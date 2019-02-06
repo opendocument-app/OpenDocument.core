@@ -10,7 +10,7 @@ TEST(OpenDocumentFileTest, open) {
     const std::string path = "../../test/empty.odt";
     auto zip = ZipFile::open(path);
     OpenDocumentFile odf(*zip);
-    LOG(INFO) << odf.size("mimetype");
+    LOG(INFO) << odf.getSize("mimetype");
 }
 
 }

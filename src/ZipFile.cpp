@@ -17,44 +17,34 @@ public:
     };
     typedef std::set<Entry> Entries;
 
-    explicit ZipFileMinizImpl(const std::string &path);
-    ~ZipFileMinizImpl() override;
+    explicit ZipFileMinizImpl(const std::string &);
+    ~ZipFileMinizImpl() override = default;
 
-    size_t size(const Path &path) const override;
-    Source &read(const Path &path) override;
-
+    bool exists(const Path &) override;
+    bool isFile(const Path &) override;
+    bool isDirectory(const Path &) override;
+    Size getSize(const Path &) override;
+    std::unique_ptr<Source> read(const Path &) override;
     void close() override;
 private:
+    void createEntries();
+    const Entry *findEntry(const Path &) const;
+
     mz_zip_archive _zip;
     Entries _entries;
     std::list<Source *> _sources;
+};
 
-    void createEntries();
+class SourceMinizImpl : public Source {
+public:
+    SourceMinizImpl(mz_zip_archive *zip, mz_uint file_index);
+    ~SourceMinizImpl() override = default;
 
-    class ConstIteratorImpl final : public ConstIterator_ {
-    public:
-        explicit ConstIteratorImpl(Entries::const_iterator it) : _it(it) {}
-        ~ConstIteratorImpl() override = default;
-        std::unique_ptr<ConstIterator_> copy() const override { return std::make_unique<ConstIteratorImpl>(_it); }
-        const ZipFile::Entry &operator*() const override { return *_it; }
-        void operator++() override { ++_it; }
-        bool operator!=(const ConstIterator_ &it) const override { return _it != ((ConstIteratorImpl &) it)._it; }
-    private:
-        Entries::const_iterator _it;
-    };
+    Size read(Byte *buffer, Size size) override;
+    void close() override;
 
-    std::unique_ptr<ConstIterator_> begin_() const override { return std::make_unique<ConstIteratorImpl>(_entries.begin()); }
-    std::unique_ptr<ConstIterator_> end_() const override { return std::make_unique<ConstIteratorImpl>(_entries.end()); }
-
-    class SourceImpl final : public Source {
-    public:
-        SourceImpl(mz_zip_archive *zip, mz_uint file_index);
-        ~SourceImpl() override { close(); }
-        std::size_t read(Byte *buffer, std::size_t size) const override;
-        void close() override;
-    private:
-        mz_zip_reader_extract_iter_state *_reader;
-    };
+private:
+    mz_zip_reader_extract_iter_state *_reader;
 };
 
 ZipFileMinizImpl::ZipFileMinizImpl(const std::string &path) {
@@ -65,10 +55,6 @@ ZipFileMinizImpl::ZipFileMinizImpl(const std::string &path) {
         throw;
     }
     createEntries();
-}
-
-ZipFileMinizImpl::~ZipFileMinizImpl() {
-    close();
 }
 
 void ZipFileMinizImpl::createEntries() {
@@ -89,18 +75,48 @@ void ZipFileMinizImpl::createEntries() {
     }
 }
 
-size_t ZipFileMinizImpl::size(const Path &path) const {
+const ZipFileMinizImpl::Entry *ZipFileMinizImpl::findEntry(const Path &path) const {
     Entry finder;
     finder.name = path;
-    return _entries.find(finder)->size_uncompressed;
+    auto it = _entries.find(finder);
+    if (it == _entries.end()) {
+        return nullptr;
+    }
+    return &*it;
 }
 
-Source& ZipFileMinizImpl::read(const Path &path) {
-    Entry finder;
-    finder.name = path;
-    Source *source = new SourceImpl(&_zip, _entries.find(finder)->file_index);
-    _sources.push_back(source);
-    return *source;
+bool ZipFileMinizImpl::exists(const Path &path) {
+    auto entry = findEntry(path);
+    return entry != nullptr;
+}
+
+bool ZipFileMinizImpl::isFile(const Path &path) {
+    auto entry = findEntry(path);
+    if (entry == nullptr) {
+        return false;
+    }
+    return !entry->directory;
+}
+
+bool ZipFileMinizImpl::isDirectory(const Path &path) {
+    auto entry = findEntry(path);
+    if (entry == nullptr) {
+        return false;
+    }
+    return entry->directory;
+}
+
+Size ZipFileMinizImpl::getSize(const Path &path) {
+    auto entry = findEntry(path);
+    if (entry == nullptr) {
+        return -1;
+    }
+    return entry->size_uncompressed;
+}
+
+std::unique_ptr<Source> ZipFileMinizImpl::read(const Path &path) {
+    auto entry = findEntry(path);
+    return std::make_unique<SourceMinizImpl>(&_zip, entry->file_index);
 }
 
 void ZipFileMinizImpl::close() {
@@ -114,18 +130,18 @@ void ZipFileMinizImpl::close() {
     mz_zip_reader_end(&_zip);
 }
 
-ZipFileMinizImpl::SourceImpl::SourceImpl(mz_zip_archive *zip, mz_uint file_index) {
+SourceMinizImpl::SourceMinizImpl(mz_zip_archive *zip, mz_uint file_index) {
     _reader = mz_zip_reader_extract_iter_new(zip, file_index, 0);
 }
 
-std::size_t ZipFileMinizImpl::SourceImpl::read(Byte *buffer, std::size_t size) const {
+Size SourceMinizImpl::read(Byte *buffer, Size size) {
     if (_reader == nullptr) {
         return 0;
     }
-    return mz_zip_reader_extract_iter_read(_reader, buffer, size);
+    return mz_zip_reader_extract_iter_read(_reader, buffer, (size_t) size);
 }
 
-void ZipFileMinizImpl::SourceImpl::close() {
+void SourceMinizImpl::close() {
     mz_zip_reader_extract_iter_free(_reader);
     _reader = nullptr;
 }
@@ -144,35 +160,6 @@ std::unique_ptr<ZipFile> ZipFile::open(const std::string &path) {
     } catch (...) {
         return nullptr;
     }
-}
-
-ZipFile::ConstIterator ZipFile::begin() const {
-    return ConstIterator(begin_());
-}
-
-ZipFile::ConstIterator ZipFile::end() const {
-    return ConstIterator(end_());
-}
-
-ZipFile::ConstIterator::ConstIterator(std::unique_ptr<ZipFile::ConstIterator_> it) :
-    _it(std::move(it)) {
-}
-
-ZipFile::ConstIterator::ConstIterator(const ZipFile::ConstIterator &other) :
-    _it(other._it->copy()) {
-}
-
-const ZipFile::Entry& ZipFile::ConstIterator::operator*() const {
-    return _it->operator*();
-}
-
-ZipFile::ConstIterator& ZipFile::ConstIterator::operator++() {
-    _it->operator++();
-    return *this;
-}
-
-bool ZipFile::ConstIterator::operator!=(const ZipFile::ConstIterator &it) const {
-    return _it->operator!=(*it._it);
 }
 
 }

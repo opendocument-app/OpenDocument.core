@@ -2,11 +2,11 @@
 #define OPENDOCUMENT_OPENDOCUMENTFILE_H
 
 #include <string>
-#include "InputOutput.h"
+#include "Storage.h"
 
 namespace opendocument {
 
-class OpenDocumentFile : public ReadableStorage {
+class OpenDocumentFile : public Storage {
 public:
     struct Meta {
         typedef int Version;
@@ -21,7 +21,8 @@ public:
         struct Spreadsheet {
             struct Table {
                 std::string name;
-                size_t dimension[2];
+                size_t rowCount;
+                size_t columnCount;
             };
 
             size_t tableCount;
@@ -42,21 +43,27 @@ public:
         };
     };
 
-    OpenDocumentFile(ReadableStorage &access);
+    explicit OpenDocumentFile(Storage &access);
+    OpenDocumentFile(const OpenDocumentFile &) = delete;
     ~OpenDocumentFile() override;
+    OpenDocumentFile &operator=(const OpenDocumentFile &) = delete;
 
-    const Meta &meta() const;
-
-    size_t size(const Path &path) const override;
-    Source &read(const Path &path) override;
-    void loadXML(const Path &path) const;
+    bool exists(const Path &) override;
+    bool isFile(const Path &) override;
+    bool isDirectory(const Path &) override;
+    Size getSize(const Path &) override;
+    std::unique_ptr<Source> read(const Path &) override;
     void close() override;
-private:
-    ReadableStorage &_access;
-    Meta _meta;
 
+    const Meta &getMeta() const;
+    void loadXML(const Path &path) const;
+
+private:
     void createMeta();
     void destroyMeta();
+
+    Storage &_access;
+    Meta _meta;
 };
 
 }

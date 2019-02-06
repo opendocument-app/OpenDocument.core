@@ -3,16 +3,17 @@
 
 namespace opendocument {
 
-OpenDocumentFile::OpenDocumentFile(ReadableStorage &access)
+OpenDocumentFile::OpenDocumentFile(Storage &access)
     : _access(access) {
     createMeta();
 }
 
 OpenDocumentFile::~OpenDocumentFile() {
+    destroyMeta();
 }
 
 void OpenDocumentFile::createMeta() {
-    // TODO
+    // TODO: implement
     _meta.text.pageCount = 0;
     _meta.spreadsheet.tableCount = 0;
     _meta.spreadsheet.tables = new Meta::Spreadsheet::Table[_meta.spreadsheet.tableCount];
@@ -23,15 +24,30 @@ void OpenDocumentFile::destroyMeta() {
     delete[] _meta.spreadsheet.tables;
 }
 
-const OpenDocumentFile::Meta &OpenDocumentFile::meta() const {
+bool OpenDocumentFile::exists(const Path &path) {
+    // TODO: implement
+    return false;
+}
+
+bool OpenDocumentFile::isFile(const Path &path) {
+    // TODO: implement
+    return false;
+}
+
+bool OpenDocumentFile::isDirectory(const Path &path) {
+    // TODO: implement
+    return false;
+}
+
+Size OpenDocumentFile::getSize(const Path &path) {
+    return _access.getSize(path);
+}
+
+const OpenDocumentFile::Meta &OpenDocumentFile::getMeta() const {
     return _meta;
 }
 
-size_t OpenDocumentFile::size(const Path &path) const {
-    return _access.size(path);
-}
-
-Source& OpenDocumentFile::read(const Path &path) {
+std::unique_ptr<Source> OpenDocumentFile::read(const Path &path) {
     return _access.read(path);
 }
 

@@ -4,6 +4,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 find_package(glog 0.3.5 REQUIRED NO_MODULE)
 
+option(BUILD_SHARED_LIBS "OFF")
+option(BUILD_TESTS "OFF")
 add_subdirectory("lib/tinyxml2")
 add_subdirectory("lib/miniz")
 
