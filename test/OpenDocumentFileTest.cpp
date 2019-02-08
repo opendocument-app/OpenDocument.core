@@ -1,16 +1,17 @@
 #include <string>
 #include "gtest/gtest.h"
 #include "glog/logging.h"
-#include "ZipFile.h"
 #include "OpenDocumentFile.h"
 
 namespace opendocument {
 
 TEST(OpenDocumentFileTest, open) {
-    const std::string path = "../../test/empty.odt";
-    auto zip = ZipFile::open(path);
-    OpenDocumentFile odf(*zip);
-    LOG(INFO) << odf.getSize("mimetype");
+    const std::string path = "../../test/empty.ods";
+    OpenDocumentFile odf(path);
+
+    LOG(INFO) << (int) odf.getMeta().type;
+    LOG(INFO) << odf.getMeta().text.pageCount;
+    LOG(INFO) << odf.getMeta().spreadsheet.tableCount;
 }
 
 }

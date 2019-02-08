@@ -3,60 +3,163 @@
 
 namespace opendocument {
 
-OpenDocumentFile::OpenDocumentFile(Storage &access)
-    : _access(access) {
-    createMeta();
+const std::map<std::string, OpenDocumentFile::Meta::Type> OpenDocumentFile::MIMETYPES = {
+        {"application/vnd.oasis.opendocument.text", OpenDocumentFile::Meta::Type::TEXT},
+        {"application/vnd.oasis.opendocument.spreadsheet", OpenDocumentFile::Meta::Type::SPREADSHEET},
+        {"application/vnd.oasis.opendocument.presentation", OpenDocumentFile::Meta::Type::PRESENTATION},
+};
+
+OpenDocumentFile::OpenDocumentFile(const std::string &path) {
+    memset(&_zip, 0, sizeof(_zip));
+    mz_bool status = mz_zip_reader_init_file(&_zip, path.c_str(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
+    if (!status) {
+        // TODO: throw
+        throw;
+    }
+
+    if (!createEntries()){
+        // TODO: throw
+        throw;
+    }
+    if (!createMeta()) {
+        // TODO: throw
+        throw;
+    }
 }
 
 OpenDocumentFile::~OpenDocumentFile() {
     destroyMeta();
+    close();
 }
 
-void OpenDocumentFile::createMeta() {
-    // TODO: implement
-    _meta.text.pageCount = 0;
-    _meta.spreadsheet.tableCount = 0;
-    _meta.spreadsheet.tables = new Meta::Spreadsheet::Table[_meta.spreadsheet.tableCount];
-    _meta.presentation.pageCount = 0;
+bool OpenDocumentFile::createEntries() {
+    for (mz_uint i = 0; i < mz_zip_reader_get_num_files(&_zip); ++i) {
+        mz_zip_archive_file_stat entry_stat;
+        if (!mz_zip_reader_file_stat(&_zip, i, &entry_stat)) {
+            mz_zip_reader_end(&_zip);
+            return false;
+        }
+
+        if (mz_zip_reader_is_file_a_directory(&_zip, i)) {
+            continue;
+        }
+
+        Entry entry;
+        entry.size = entry_stat.m_uncomp_size;
+        entry.size_compressed = entry_stat.m_comp_size;
+        entry.index = i;
+        _entries[entry_stat.m_filename] = entry;
+    }
+
+    return true;
+}
+
+bool OpenDocumentFile::createMeta() {
+    if (!isFile("content.xml") | !isFile("styles.xml")) {
+        return false;
+    }
+
+    if (isFile("mimetype")) {
+        auto mimetype = loadText("mimetype");
+        auto it = MIMETYPES.find(mimetype);
+        if (it == MIMETYPES.end()) {
+            return false;
+        }
+        _meta.type = it->second;
+    }
+
+    if (isFile("META-INF/manifest.xml")) {
+        auto manifest = loadXML("META-INF/manifest.xml");
+        // TODO: parse version
+        // TODO: parse media type
+        // TODO: parse entity media types
+        // TODO: parse entity crypto info
+    }
+
+    if (isFile("meta.xml")) {
+        auto meta = loadXML("meta.xml");
+        tinyxml2::XMLHandle metaHandle(meta.get());
+        tinyxml2::XMLElement *statisticsElement = metaHandle
+                .FirstChildElement("office:document-meta")
+                .FirstChildElement("office:meta")
+                .FirstChildElement("meta:document-statistic")
+                .ToElement();
+        if (statisticsElement != nullptr) {
+            switch (_meta.type) {
+                case Meta::Type::TEXT: {
+                    const tinyxml2::XMLAttribute *pageCount = statisticsElement->FindAttribute("meta:page-count");
+                    if (pageCount == nullptr) {
+                        break;
+                    }
+                    _meta.text.pageCount = pageCount->UnsignedValue();
+                } break;
+                case Meta::Type::SPREADSHEET: {
+                    const tinyxml2::XMLAttribute *tableCount = statisticsElement->FindAttribute("meta:table-count");
+                    if (tableCount == nullptr) {
+                        break;
+                    }
+                    _meta.spreadsheet.tableCount = tableCount->UnsignedValue();
+                    _meta.spreadsheet.tables = new Meta::Spreadsheet::Table[_meta.spreadsheet.tableCount];
+                } break;
+                case Meta::Type::PRESENTATION: {
+                    _meta.presentation.pageCount = 0;
+                } break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    return _meta.type != Meta::Type::UNKNOWN;
 }
 
 void OpenDocumentFile::destroyMeta() {
-    delete[] _meta.spreadsheet.tables;
+    if (_meta.type == Meta::Type::UNKNOWN) {
+        delete[] _meta.spreadsheet.tables;
+    }
 }
 
-bool OpenDocumentFile::exists(const Path &path) {
-    // TODO: implement
-    return false;
-}
-
-bool OpenDocumentFile::isFile(const Path &path) {
-    // TODO: implement
-    return false;
-}
-
-bool OpenDocumentFile::isDirectory(const Path &path) {
-    // TODO: implement
-    return false;
-}
-
-Size OpenDocumentFile::getSize(const Path &path) {
-    return _access.getSize(path);
+const OpenDocumentFile::Entries OpenDocumentFile::getEntries() const {
+    return _entries;
 }
 
 const OpenDocumentFile::Meta &OpenDocumentFile::getMeta() const {
     return _meta;
 }
 
-std::unique_ptr<Source> OpenDocumentFile::read(const Path &path) {
-    return _access.read(path);
+bool OpenDocumentFile::isFile(const std::string &path) const {
+    return _entries.find(path) != _entries.end();
 }
 
-void OpenDocumentFile::loadXML(const Path &entry) const {
-    // TODO: use read
+std::string OpenDocumentFile::loadText(const std::string &path) {
+    auto it = _entries.find(path);
+    if (it == _entries.end()) {
+        // TODO: throw
+        throw;
+    }
+    auto reader = mz_zip_reader_extract_iter_new(&_zip, it->second.index, 0);
+    std::string result(it->second.size, '\0');
+    auto read = mz_zip_reader_extract_iter_read(reader, &result[0], it->second.size);
+    if (read != it->second.size) {
+        // TODO: throw
+        throw;
+    }
+    mz_zip_reader_extract_iter_free(reader);
+    return result;
+}
+
+std::unique_ptr<tinyxml2::XMLDocument> OpenDocumentFile::loadXML(const std::string &path) {
+    if (!isFile(path)) {
+        return nullptr;
+    }
+    auto result = std::make_unique<tinyxml2::XMLDocument>();
+    auto xml = loadText(path);
+    result->Parse(xml.c_str(), xml.size());
+    return result;
 }
 
 void OpenDocumentFile::close() {
-    // TODO
+    mz_zip_reader_end(&_zip);
 }
 
 }

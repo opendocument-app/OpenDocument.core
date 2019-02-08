@@ -1,40 +1,49 @@
 #ifndef OPENDOCUMENT_OPENDOCUMENTFILE_H
 #define OPENDOCUMENT_OPENDOCUMENTFILE_H
 
+#include <memory>
 #include <string>
-#include "Storage.h"
+#include <map>
+#include "miniz_zip.h"
+#include "tinyxml2.h"
 
 namespace opendocument {
 
-class OpenDocumentFile : public Storage {
+class OpenDocumentFile final {
 public:
+    struct Entry {
+        std::size_t size;
+        std::size_t size_compressed;
+        mz_uint index;
+        std::string mediaType;
+    };
+
     struct Meta {
         typedef int Version;
         enum class Type {
+            UNKNOWN,
             TEXT,
             SPREADSHEET,
             PRESENTATION
         };
         struct Text {
-            size_t pageCount;
+            std::size_t pageCount;
         };
         struct Spreadsheet {
             struct Table {
                 std::string name;
-                size_t rowCount;
-                size_t columnCount;
+                std::size_t rowCount;
+                std::size_t columnCount;
             };
 
-            size_t tableCount;
+            std::size_t tableCount;
             Table *tables;
         };
         struct Presentation {
-            size_t pageCount;
+            std::size_t pageCount;
         };
 
-        size_t size;
-        Type type;
-        Version version;
+        Type type = Type::UNKNOWN;
 
         union {
             Text text;
@@ -43,27 +52,31 @@ public:
         };
     };
 
-    explicit OpenDocumentFile(Storage &access);
+    typedef std::map<std::string, Entry> Entries;
+
+    static const std::map<std::string, Meta::Type> MIMETYPES;
+
+    explicit OpenDocumentFile(const std::string &);
     OpenDocumentFile(const OpenDocumentFile &) = delete;
-    ~OpenDocumentFile() override;
+    ~OpenDocumentFile();
     OpenDocumentFile &operator=(const OpenDocumentFile &) = delete;
 
-    bool exists(const Path &) override;
-    bool isFile(const Path &) override;
-    bool isDirectory(const Path &) override;
-    Size getSize(const Path &) override;
-    std::unique_ptr<Source> read(const Path &) override;
-    void close() override;
-
+    const Entries getEntries() const;
     const Meta &getMeta() const;
-    void loadXML(const Path &path) const;
+    bool isFile(const std::string &) const;
+    std::string loadText(const std::string &);
+    std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &);
+
+    void close();
 
 private:
-    void createMeta();
+    bool createEntries();
+    bool createMeta();
     void destroyMeta();
 
-    Storage &_access;
+    mz_zip_archive _zip;
     Meta _meta;
+    Entries _entries;
 };
 
 }

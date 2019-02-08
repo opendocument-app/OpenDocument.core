@@ -1,19 +1,20 @@
 #ifndef OPENDOCUMENT_TEXTTRANSLATOR_H
 #define OPENDOCUMENT_TEXTTRANSLATOR_H
 
-#include "Translator.h"
+#include <string>
 
 namespace opendocument {
 
-class TextTranslator : public Translator {
-public:
-    struct Config : public Translator::Config {
-    };
+class OpenDocumentFile;
 
-    TextTranslator(const Config &config);
+class TextTranslator final {
+public:
+    TextTranslator();
     ~TextTranslator();
+
+    bool translate(OpenDocumentFile &in, const std::string &out) const;
+
 private:
-    const Config _config;
 };
 
 }
