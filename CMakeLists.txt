@@ -12,6 +12,7 @@ add_subdirectory("lib/miniz")
 file(GLOB SOURCES "src/*.cpp")
 add_library(opendocument STATIC ${SOURCES})
 target_include_directories(opendocument PUBLIC "include")
+target_include_directories(opendocument PRIVATE "src")
 target_link_libraries(opendocument miniz tinyxml2)
 set_property(TARGET opendocument PROPERTY POSITION_INDEPENDENT_CODE ON)
 

@@ -13,17 +13,14 @@ OpenDocumentFile::OpenDocumentFile(const std::string &path) {
     memset(&_zip, 0, sizeof(_zip));
     mz_bool status = mz_zip_reader_init_file(&_zip, path.c_str(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
     if (!status) {
-        // TODO: throw
-        throw;
+        throw "miniz error! not a file or not a zip file?";
     }
 
     if (!createEntries()){
-        // TODO: throw
-        throw;
+        throw "could not create entry table!";
     }
     if (!createMeta()) {
-        // TODO: throw
-        throw;
+        throw "could not get meta!";
     }
 }
 
@@ -61,7 +58,7 @@ bool OpenDocumentFile::createMeta() {
 
     if (isFile("mimetype")) {
         auto mimetype = loadText("mimetype");
-        auto it = MIMETYPES.find(mimetype);
+        auto it = MIMETYPES.find(*mimetype);
         if (it == MIMETYPES.end()) {
             return false;
         }
@@ -131,21 +128,19 @@ bool OpenDocumentFile::isFile(const std::string &path) const {
     return _entries.find(path) != _entries.end();
 }
 
-std::string OpenDocumentFile::loadText(const std::string &path) {
+std::unique_ptr<std::string> OpenDocumentFile::loadText(const std::string &path) {
     auto it = _entries.find(path);
     if (it == _entries.end()) {
-        // TODO: throw
-        throw;
+        return nullptr;
     }
     auto reader = mz_zip_reader_extract_iter_new(&_zip, it->second.index, 0);
     std::string result(it->second.size, '\0');
     auto read = mz_zip_reader_extract_iter_read(reader, &result[0], it->second.size);
     if (read != it->second.size) {
-        // TODO: throw
-        throw;
+        return nullptr;
     }
     mz_zip_reader_extract_iter_free(reader);
-    return result;
+    return std::make_unique<std::string>(std::move(result));
 }
 
 std::unique_ptr<tinyxml2::XMLDocument> OpenDocumentFile::loadXML(const std::string &path) {
@@ -154,7 +149,7 @@ std::unique_ptr<tinyxml2::XMLDocument> OpenDocumentFile::loadXML(const std::stri
     }
     auto result = std::make_unique<tinyxml2::XMLDocument>();
     auto xml = loadText(path);
-    result->Parse(xml.c_str(), xml.size());
+    result->Parse(xml->c_str(), xml->size());
     return result;
 }
 

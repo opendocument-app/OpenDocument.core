@@ -64,7 +64,7 @@ public:
     const Entries getEntries() const;
     const Meta &getMeta() const;
     bool isFile(const std::string &) const;
-    std::string loadText(const std::string &);
+    std::unique_ptr<std::string> loadText(const std::string &);
     std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &);
 
     void close();
