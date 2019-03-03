@@ -1,6 +1,6 @@
 #include "opendocument/TranslationHelper.h"
 #include "OpenDocumentFile.h"
-#include "TextDocumentTranslator.h"
+#include "DocumentTranslator.h"
 
 namespace opendocument {
 

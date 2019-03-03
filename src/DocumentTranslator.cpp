@@ -75,4 +75,12 @@ bool DocumentTranslator::translate(OpenDocumentFile &in, const std::string &out)
     return true;
 }
 
+const StyleTranslator& TextDocumentTranslator::getStyleTranslator() const {
+    return styleTranslator_;
+}
+
+const ContentTranslator& TextDocumentTranslator::getContentTranslator() const {
+    return contentTranslator_;
+}
+
 }

@@ -11,6 +11,7 @@ namespace opendocument {
 
 class StyleTranslator {
 public:
+    virtual ~StyleTranslator() = default;
     virtual bool translate(tinyxml2::XMLElement &in, std::ostream &out) const;
 };
 
