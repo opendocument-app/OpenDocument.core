@@ -9,7 +9,7 @@ option(BUILD_TESTS "OFF")
 add_subdirectory("lib/tinyxml2")
 add_subdirectory("lib/miniz")
 
-file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB SOURCES "src/*.cpp")
 add_library(opendocument STATIC ${SOURCES})
 target_include_directories(opendocument PUBLIC "include")
 target_link_libraries(opendocument miniz tinyxml2)
