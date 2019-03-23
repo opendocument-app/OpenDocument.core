@@ -6,30 +6,26 @@ namespace opendocument {
 
 class TranslationHelperImpl : public TranslationHelper {
 public:
-    TranslationConfig &getConfig() override;
-
-    bool translate(const std::string &in, const std::string &out) const override;
-
-private:
     TranslationConfig config_;
+    std::unique_ptr<DocumentTranslator> translator_;
 
-    TextDocumentTranslator textTranslator_;
-};
+    ~TranslationHelperImpl() override = default;
 
-TranslationConfig& TranslationHelperImpl::getConfig() {
-    return config_;
-}
-
-bool TranslationHelperImpl::translate(const std::string &in, const std::string &out) const {
-    OpenDocumentFile odf(in);
-
-    switch (odf.getMeta().type) {
-        case OpenDocumentFile::Meta::Type::TEXT:
-            return textTranslator_.translate(odf, out);
-        default:
-            return false;
+    TranslationConfig& getConfig() override {
+        return config_;
     }
-}
+
+    bool translate(const std::string &in, const std::string &out) const override {
+        OpenDocumentFile odf(in);
+
+        switch (odf.getMeta().type) {
+            case OpenDocumentFile::Meta::Type::TEXT:
+                return translator_->translate(odf, out);
+            default:
+                return false;
+        }
+    }
+};
 
 TranslationHelper& TranslationHelper::instance() {
     static TranslationHelperImpl instance;

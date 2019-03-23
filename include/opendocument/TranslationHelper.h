@@ -12,8 +12,8 @@ class TranslationHelper {
 public:
     static TranslationHelper &instance();
 
+    virtual ~TranslationHelper() = default;
     virtual TranslationConfig &getConfig() = 0;
-
     virtual bool translate(const std::string &in, const std::string &out) const = 0;
 };
 
