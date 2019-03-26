@@ -15,11 +15,11 @@ public:
     ~TranslationHelperImpl() override = default;
 
     bool translate(const std::string &in, const std::string &out) const override {
-        OpenDocumentFile odf(in);
+        auto odf = OpenDocumentFile::open(out);
 
-        switch (odf.getMeta().type) {
+        switch (odf->getMeta().type) {
             case OpenDocumentFile::Meta::Type::TEXT:
-                return translator->translate(odf, out);
+                return translator->translate(*odf, out);
             default:
                 return false;
         }

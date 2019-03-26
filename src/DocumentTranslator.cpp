@@ -1,6 +1,7 @@
 #include "DocumentTranslator.h"
-#include "odr/TranslationConfig.h"
 #include <fstream>
+#include "tinyxml2.h"
+#include "odr/TranslationConfig.h"
 #include "OpenDocumentFile.h"
 #include "StyleTranslator.h"
 #include "ContentTranslator.h"
