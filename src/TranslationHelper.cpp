@@ -15,7 +15,8 @@ public:
     ~TranslationHelperImpl() override = default;
 
     bool translate(const std::string &in, const std::string &out) const override {
-        auto odf = OpenDocumentFile::open(out);
+        auto odf = OpenDocumentFile::create();
+        odf->open(out);
 
         switch (odf->getMeta().type) {
             case OpenDocumentFile::Meta::Type::TEXT:

@@ -5,6 +5,7 @@
 #ifdef ODR_CRYPTO
 #include "openssl/evp.h"
 #endif
+#include "glog/logging.h"
 
 namespace odr {
 
@@ -20,23 +21,7 @@ public:
     Meta meta;
     Entries entries;
 
-    explicit OpenDocumentFileImpl(const std::string &path) {
-        memset(&zip, 0, sizeof(zip));
-        mz_bool status = mz_zip_reader_init_file(&zip, path.c_str(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
-        if (!status) {
-            throw "miniz error! not a file or not a zip file?";
-        }
-
-        if (!createEntries()){
-            throw "could not create entry table!";
-        }
-        if (!createMeta()) {
-            throw "could not get meta!";
-        }
-    }
-
     ~OpenDocumentFileImpl() override {
-        destroyMeta();
         close();
     }
 
@@ -127,6 +112,31 @@ public:
         }
     }
 
+    bool open(const std::string &path) override {
+        memset(&zip, 0, sizeof(zip));
+        mz_bool status = mz_zip_reader_init_file(&zip, path.c_str(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
+        if (!status) {
+            LOG(ERROR) << "miniz error! not a file or not a zip file?";
+            return false;
+        }
+
+        if (!createEntries()){
+            LOG(ERROR) << "could not create entry table!";
+            return false;
+        }
+        if (!createMeta()) {
+            LOG(ERROR) << "could not get meta!";
+            return false;
+        }
+
+        return true;
+    }
+
+    void close() override {
+        destroyMeta();
+        mz_zip_reader_end(&zip);
+    }
+
     const Entries getEntries() const override {
         return entries;
     }
@@ -163,14 +173,10 @@ public:
         result->Parse(xml.c_str(), xml.size());
         return result;
     }
-
-    void close() override {
-        mz_zip_reader_end(&zip);
-    }
 };
 
-std::unique_ptr<OpenDocumentFile> OpenDocumentFile::open(const std::string &path) {
-    return std::make_unique<OpenDocumentFileImpl>(path);
+std::unique_ptr<OpenDocumentFile> OpenDocumentFile::create() {
+    return std::make_unique<OpenDocumentFileImpl>();
 }
 
 }
