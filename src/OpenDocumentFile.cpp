@@ -1,7 +1,7 @@
 #include "OpenDocumentFile.h"
 #include <fstream>
 
-namespace opendocument {
+namespace odr {
 
 const std::map<std::string, OpenDocumentFile::Meta::Type> OpenDocumentFile::MIMETYPES = {
         {"application/vnd.oasis.opendocument.text", OpenDocumentFile::Meta::Type::TEXT},

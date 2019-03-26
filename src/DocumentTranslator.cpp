@@ -1,8 +1,11 @@
 #include "DocumentTranslator.h"
+#include "odr/TranslationConfig.h"
 #include <fstream>
 #include "OpenDocumentFile.h"
+#include "StyleTranslator.h"
+#include "ContentTranslator.h"
 
-namespace opendocument {
+namespace odr {
 
 class DefaultDocumentTranslatorImpl : public DocumentTranslator {
 public:
@@ -81,10 +84,10 @@ public:
     }
 };
 
-std::unique_ptr<DocumentTranslator> DocumentTranslator::createDefaultDocumentTranslator() {
+std::unique_ptr<DocumentTranslator> DocumentTranslator::create(const TranslationConfig &config) {
     auto result = std::make_unique<DefaultDocumentTranslatorImpl>();
-    result->styleTranslator = nullptr;
-    result->contentTranslator = ContentTranslator::createDefaultContentTranslator();
+    result->styleTranslator = StyleTranslator::create(config);
+    result->contentTranslator = ContentTranslator::create(config);
     return result;
 }
 

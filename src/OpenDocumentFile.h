@@ -1,5 +1,5 @@
-#ifndef OPENDOCUMENT_OPENDOCUMENTFILE_H
-#define OPENDOCUMENT_OPENDOCUMENTFILE_H
+#ifndef ODR_OPENDOCUMENTFILE_H
+#define ODR_OPENDOCUMENTFILE_H
 
 #include <memory>
 #include <string>
@@ -7,7 +7,7 @@
 #include "miniz_zip.h"
 #include "tinyxml2.h"
 
-namespace opendocument {
+namespace odr {
 
 class OpenDocumentFile final {
 public:
@@ -81,4 +81,4 @@ private:
 
 }
 
-#endif //OPENDOCUMENT_OPENDOCUMENTFILE_H
+#endif //ODR_OPENDOCUMENTFILE_H

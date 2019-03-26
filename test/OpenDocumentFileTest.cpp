@@ -3,7 +3,7 @@
 #include "glog/logging.h"
 #include "OpenDocumentFile.h"
 
-namespace opendocument {
+namespace odr {
 
 TEST(OpenDocumentFileTest, open) {
     const std::string path = "../../test/empty.ods";

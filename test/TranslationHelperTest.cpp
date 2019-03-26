@@ -2,15 +2,18 @@
 #include "gtest/gtest.h"
 #include "glog/logging.h"
 #include "OpenDocumentFile.h"
-#include "opendocument/TranslationHelper.h"
+#include "odr/TranslationConfig.h"
+#include "odr/TranslationHelper.h"
 
-namespace opendocument {
+namespace odr {
 
 TEST(TranslationHelperTest, translate) {
     const std::string input = "/home/andreas/Downloads/03_smpldap.odt";
     const std::string output = "../../test/test.html";
 
-    TranslationHelper::instance().translate(input, output);
+    TranslationConfig config = {};
+    auto translator = TranslationHelper::create(config);
+    translator->translate(input, output);
 }
 
 }

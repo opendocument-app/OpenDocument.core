@@ -1,18 +1,17 @@
-#ifndef OPENDOCUMENT_DOCUMENTTRANSLATOR_H
-#define OPENDOCUMENT_DOCUMENTTRANSLATOR_H
+#ifndef ODR_DOCUMENTTRANSLATOR_H
+#define ODR_DOCUMENTTRANSLATOR_H
 
 #include <string>
 #include <memory>
-#include "StyleTranslator.h"
-#include "ContentTranslator.h"
 
-namespace opendocument {
+namespace odr {
 
+class TranslationConfig;
 class OpenDocumentFile;
 
 class DocumentTranslator {
 public:
-    static std::unique_ptr<DocumentTranslator> createDefaultDocumentTranslator();
+    static std::unique_ptr<DocumentTranslator> create(const TranslationConfig &);
 
     virtual ~DocumentTranslator() = default;
     virtual bool translate(OpenDocumentFile &in, const std::string &out) const = 0;
@@ -20,4 +19,4 @@ public:
 
 }
 
-#endif //OPENDOCUMENT_DOCUMENTTRANSLATOR_H
+#endif //ODR_DOCUMENTTRANSLATOR_H
