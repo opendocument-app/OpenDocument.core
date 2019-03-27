@@ -2,7 +2,6 @@
 #include <string>
 #include <unordered_set>
 #include <unordered_map>
-#include "odr/TranslationConfig.h"
 #include "tinyxml2.h"
 #include "glog/logging.h"
 #include "odr/TranslationConfig.h"
@@ -21,7 +20,7 @@ public:
     std::string nameAttribute;
     std::unordered_set<std::string> properties;
     std::unordered_map<std::string, const char *> attributeTranslator;
-    StyleClassTranslator(const std::string &nameAttribute)
+    explicit StyleClassTranslator(const std::string &nameAttribute)
             : nameAttribute(nameAttribute) {
         // TODO: there should be a config file for this
 
@@ -69,6 +68,10 @@ public:
         attributeTranslator["fo:hyphenation-push-char-count"] = nullptr;
         attributeTranslator["fo:hyphenate"] = nullptr;
         attributeTranslator["fo:clip"] = nullptr;
+        attributeTranslator["fo:border-top"] = nullptr;
+        attributeTranslator["fo:border-right"] = nullptr;
+        attributeTranslator["fo:border-bottom"] = nullptr;
+        attributeTranslator["fo:border-left"] = nullptr;
 
         attributeTranslator["style:font-name"] = "font-family";
         attributeTranslator["style:width"] = "width";
@@ -119,8 +122,31 @@ public:
         attributeTranslator["style:writing-mode"] = nullptr;
         attributeTranslator["style:page-number"] = nullptr;
         attributeTranslator["style:run-through"] = nullptr;
-        attributeTranslator["draw:fill"] = nullptr;
         attributeTranslator["style:mirror"] = nullptr;
+        attributeTranslator["style:decimal-places"] = nullptr;
+        attributeTranslator["style:rotation-align"] = nullptr;
+        attributeTranslator["style:text-underline-width"] = nullptr;
+        attributeTranslator["style:text-underline-color"] = nullptr;
+        attributeTranslator["style:text-align-source"] = nullptr;
+        attributeTranslator["style:repeat-content"] = nullptr;
+        attributeTranslator["style:rotation-angle"] = nullptr;
+        attributeTranslator["style:cell-protect"] = nullptr;
+        attributeTranslator["style:print-content"] = nullptr;
+        attributeTranslator["style:diagonal-bl-tr"] = nullptr;
+        attributeTranslator["style:diagonal-tl-br"] = nullptr;
+        attributeTranslator["style:direction"] = nullptr;
+        attributeTranslator["style:shrink-to-fit"] = nullptr;
+        attributeTranslator["style:text-outline"] = nullptr;
+        attributeTranslator["style:font-weight-complex"] = nullptr;
+        attributeTranslator["style:use-optimal-row-height"] = nullptr;
+        attributeTranslator["style:text-underline-mode"] = nullptr;
+        attributeTranslator["style:text-overline-mode"] = nullptr;
+        attributeTranslator["style:text-line-through-mode"] = nullptr;
+        attributeTranslator["style:text-emphasize"] = nullptr;
+        attributeTranslator["style:font-relief"] = nullptr;
+        attributeTranslator["style:text-overline-style"] = nullptr;
+        attributeTranslator["style:text-overline-color"] = nullptr;
+        attributeTranslator["style:glyph-orientation-vertical"] = nullptr;
 
         attributeTranslator["text:anchor-type"] = nullptr;
         attributeTranslator["text:number-lines"] = nullptr;
@@ -129,7 +155,9 @@ public:
 
         attributeTranslator["table:align"] = nullptr;
         attributeTranslator["table:border-model"] = nullptr;
+        attributeTranslator["table:display"] = nullptr;
 
+        attributeTranslator["draw:fill"] = nullptr;
         attributeTranslator["draw:fill-color"] = nullptr;
         attributeTranslator["draw:luminance"] = nullptr;
         attributeTranslator["draw:contrast"] = nullptr;
@@ -226,12 +254,19 @@ public:
         elementTranslator["style:font-face"] = nullptr;
         elementTranslator["style:default-style"] = std::make_unique<StyleClassTranslator>("style:family");
         elementTranslator["style:style"] = std::make_unique<StyleClassTranslator>("style:name");
+        elementTranslator["style:default-page-layout"] = nullptr;
+        elementTranslator["style:page-layout"] = nullptr;
+
         elementTranslator["text:outline-style"] = nullptr;
         elementTranslator["text:list-style"] = nullptr;
         elementTranslator["text:notes-configuration"] = nullptr;
         elementTranslator["text:linenumbering-configuration"] = nullptr;
-        elementTranslator["style:default-page-layout"] = nullptr;
-        elementTranslator["style:page-layout"] = nullptr;
+
+        elementTranslator["number:text-style"] = nullptr;
+        elementTranslator["number:number-style"] = nullptr;
+        elementTranslator["number:time-style"] = nullptr;
+        elementTranslator["number:date-style"] = nullptr;
+        elementTranslator["number:currency-style"] = nullptr;
     }
 
     ~DefaultStyleTranslatorImpl() override = default;
@@ -249,7 +284,7 @@ public:
             if (elementTranslatorIt != elementTranslator.end()) {
                 translator = elementTranslatorIt->second.get();
             } else {
-                LOG(WARNING) << "unhandled element: " << elementName;
+                LOG(WARNING) << "unhandled style element: " << elementName;
                 //tinyxml2::XMLPrinter printer;
                 //child->ToElement()->Accept(&printer);
                 //LOG(INFO) << printer.CStr();

@@ -27,7 +27,8 @@ public:
             UNKNOWN,
             TEXT,
             SPREADSHEET,
-            PRESENTATION
+            PRESENTATION,
+            GRAPHICS
         };
         struct Text {
             std::size_t pageCount;

@@ -12,6 +12,8 @@ namespace odr {
 
 struct Context;
 
+// TODO: we could have a "ContentTranslatorContext" containing (in, out, context) to reduce parameter count
+
 class ContentTranslator {
 public:
     static std::unique_ptr<ContentTranslator> create();

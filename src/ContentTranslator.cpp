@@ -10,19 +10,11 @@
 
 namespace odr {
 
-// TODO: we could have a "ContentTranslatorContext" containing (in, out, context) to reduce parameter count
-
 class ElementTranslator {
 public:
     virtual ~ElementTranslator() = default;
     virtual void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
     virtual void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
-};
-
-class HierarchyTranslator {
-public:
-    virtual ~HierarchyTranslator() = default;
-    virtual void translate(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
 };
 
 class AttributeTranslator {
@@ -86,6 +78,9 @@ public:
                 LOG(WARNING) << "unhandled attribute: " << in.Name() << " " << attributeName;
                 continue;
             }
+            if (attributeTranslatorIt->second == nullptr) {
+                continue;
+            }
 
             out << " ";
             attributeTranslatorIt->second->translate(*attr, out, context);
@@ -127,7 +122,6 @@ public:
 
 class LinkTranslator : public ElementTranslator {
 public:
-    // https://github.com/andiwand/OpenDocument.java/blob/master/src/at/stefl/opendocument/java/translator/content/LinkTranslator.java
     ~LinkTranslator() override = default;
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         auto href = in.FindAttribute("xlink:href");
@@ -150,7 +144,6 @@ public:
 
 class BookmarkTranslator : public ElementTranslator {
 public:
-    // https://github.com/andiwand/OpenDocument.java/blob/development/src/at/stefl/opendocument/java/translator/content/BookmarkTranslator.java
     ~BookmarkTranslator() override = default;
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         auto id = in.FindAttribute("text:name");
@@ -173,15 +166,41 @@ public:
         newAttributes.emplace_back("border", "0");
         newAttributes.emplace_back("cellspacing", "0");
         newAttributes.emplace_back("cellpadding", "0");
+
+        attributeTranslator["table:name"] = nullptr;
+        attributeTranslator["table:print"] = nullptr;
     }
     ~TableTranslator() override = default;
+};
+
+class TableColumnTranslator : public DefaultElementTranslator {
+public:
+    TableColumnTranslator() : DefaultElementTranslator("col") {
+        attributeTranslator["table:default-cell-style-name"] = nullptr; // TODO: implement
+        attributeTranslator["table:number-columns-repeated"] = nullptr; // TODO: implement
+    }
+    ~TableColumnTranslator() override = default;
+};
+
+class TableRowTranslator : public DefaultElementTranslator {
+public:
+    TableRowTranslator() : DefaultElementTranslator("tr") {
+        attributeTranslator["table:number-rows-repeated"] = nullptr; // TODO: implement
+    }
+    ~TableRowTranslator() override = default;
 };
 
 class TableCellTranslator : public DefaultElementTranslator {
 public:
     TableCellTranslator() : DefaultElementTranslator("td") {
+        attributeTranslator["table:formula"] = nullptr;
         attributeTranslator["table:number-columns-spanned"] = std::make_unique<DefaultAttributeTranslator>("colspan");
         attributeTranslator["table:number-rows-spanned"] = std::make_unique<DefaultAttributeTranslator>("rowspan");
+        attributeTranslator["table:number-columns-repeated"] = nullptr; // TODO: implement
+
+        attributeTranslator["office:value"] = nullptr;
+        attributeTranslator["office:value-type"] = nullptr;
+        attributeTranslator["office:string-value"] = nullptr;
     }
     ~TableCellTranslator() override = default;
 };
@@ -191,26 +210,33 @@ public:
     std::unordered_map<std::string, std::unique_ptr<ElementTranslator>> elementTranslator;
 
     DefaultContentTranslatorImpl() {
+        elementTranslator["office:body"] = nullptr;
+        elementTranslator["office:text"] = nullptr;
+        elementTranslator["office:spreadsheet"] = nullptr;
+
         elementTranslator["text:p"] = std::make_unique<DefaultElementTranslator>("p");
         elementTranslator["text:h"] = std::make_unique<DefaultElementTranslator>("h");
         elementTranslator["text:span"] = std::make_unique<DefaultElementTranslator>("span");
+        elementTranslator["text:a"] = std::make_unique<LinkTranslator>();
         elementTranslator["text:s"] = std::make_unique<SpaceTranslator>();
         elementTranslator["text:tab"] = std::make_unique<TabTranslator>();
         elementTranslator["text:line-break"] = std::make_unique<DefaultElementTranslator>("br");
         elementTranslator["text:soft-page-break"] = nullptr;
         elementTranslator["text:list"] = std::make_unique<DefaultElementTranslator>("ul");
         elementTranslator["text:list-item"] = std::make_unique<DefaultElementTranslator>("li");
-        elementTranslator["text:a"] = std::make_unique<LinkTranslator>();
         elementTranslator["text:bookmark"] = std::make_unique<BookmarkTranslator>();
         elementTranslator["text:bookmark-start"] = std::make_unique<BookmarkTranslator>();
         elementTranslator["text:bookmark-end"] = nullptr;
-        elementTranslator["table:table"] = std::make_unique<TableTranslator>();
-        elementTranslator["table:table-column"] = std::make_unique<DefaultElementTranslator>("col");
-        elementTranslator["table:table-row"] = std::make_unique<DefaultElementTranslator>("tr");
-        elementTranslator["table:table-cell"] = std::make_unique<TableCellTranslator>();
-        elementTranslator["table:tracked-changes"] = nullptr;
         elementTranslator["text:sequence-decls"] = nullptr;
         elementTranslator["text:sequence-decl"] = nullptr;
+
+        elementTranslator["table:table"] = std::make_unique<TableTranslator>();
+        elementTranslator["table:table-column"] = std::make_unique<TableColumnTranslator>();
+        elementTranslator["table:table-row"] = std::make_unique<TableRowTranslator>();
+        elementTranslator["table:table-cell"] = std::make_unique<TableCellTranslator>();
+        elementTranslator["table:tracked-changes"] = nullptr;
+        elementTranslator["table:calculation-settings"] = nullptr;
+        elementTranslator["table:iteration"] = nullptr;
     }
     ~DefaultContentTranslatorImpl() override = default;
 

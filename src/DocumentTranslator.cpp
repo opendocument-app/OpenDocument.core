@@ -72,7 +72,6 @@ public:
             tinyxml2::XMLElement *body = contentHandle
                     .FirstChildElement("office:document-content")
                     .FirstChildElement("office:body")
-                    .FirstChildElement("office:text")
                     .ToElement();
             contentTranslator->translate(*body, of, context);
         }

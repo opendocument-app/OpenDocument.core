@@ -27,6 +27,12 @@ public:
         switch (odf->getMeta().type) {
             case OpenDocumentFile::Meta::Type::TEXT:
                 return translator->translate(*odf, out, context);
+            case OpenDocumentFile::Meta::Type::SPREADSHEET:
+                return translator->translate(*odf, out, context);
+            case OpenDocumentFile::Meta::Type::PRESENTATION:
+                return translator->translate(*odf, out, context);
+            case OpenDocumentFile::Meta::Type::GRAPHICS:
+                return translator->translate(*odf, out, context);
             default:
                 return false;
         }
