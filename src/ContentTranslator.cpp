@@ -4,36 +4,86 @@
 #include "tinyxml2.h"
 #include "glog/logging.h"
 #include "odr/TranslationConfig.h"
+#include "Context.h"
 
 namespace odr {
-
-struct Context {
-    TranslationConfig config;
-};
 
 class ElementTranslator {
 public:
     virtual ~ElementTranslator() = default;
-    virtual void translateStart(tinyxml2::XMLElement &in, std::ostream &out) const = 0;
-    virtual void translateEnd(tinyxml2::XMLElement &in, std::ostream &out) const = 0;
+    virtual void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
+    virtual void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
 };
 
 class HierarchyTranslator {
 public:
     virtual ~HierarchyTranslator() = default;
-    virtual void translate(tinyxml2::XMLElement &in, std::ostream &out) const = 0;
+    virtual void translate(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
+};
+
+class AttributeTranslator {
+public:
+    virtual ~AttributeTranslator() = default;
+    virtual void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, Context &context) const = 0;
+};
+
+class DefaultAttributeTranslator : public AttributeTranslator {
+public:
+    const std::string name;
+
+    explicit DefaultAttributeTranslator(const std::string &name) : name(name) {}
+    ~DefaultAttributeTranslator() override = default;
+    void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, Context &context) const override {
+        out << " " << name << "=\"" << in.Value() << "\"";
+    }
+};
+
+class StyleAttributeTranslator : public AttributeTranslator {
+public:
+    ~StyleAttributeTranslator() override = default;
+    void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, Context &context) const override {
+        const std::string styleName = in.Value();
+        auto styleIt = context.styleDependencies.find(styleName);
+        if (styleIt == context.styleDependencies.end()) {
+            LOG(WARNING) << "unknown style: " << styleName;
+            return;
+        }
+
+        out << "class=\"" << styleName;
+        for (auto &&s : styleIt->second) {
+            out << " " << s;
+        }
+        out << "\"";
+    }
 };
 
 class DefaultElementTranslator : public ElementTranslator {
 public:
-    std::string name;
+    const std::string name;
+    std::unordered_map<std::string, std::unique_ptr<AttributeTranslator>> attributeTranslator;
 
-    explicit DefaultElementTranslator(const std::string &name) : name(name) {}
-    ~DefaultElementTranslator() override = default;
-    void translateStart(tinyxml2::XMLElement &in, std::ostream &out) const override {
-        out << "<" << name << ">";
+    explicit DefaultElementTranslator(const std::string &name) : name(name) {
+        attributeTranslator["text:style-name"] = std::make_unique<StyleAttributeTranslator>();
     }
-    void translateEnd(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    ~DefaultElementTranslator() override = default;
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+        out << "<" << name;
+
+        for (auto attr = in.FirstAttribute(); attr != nullptr; attr = attr->Next()) {
+            const std::string attributeName = attr->Name();
+            auto attributeTranslatorIt = attributeTranslator.find(attributeName);
+            if (attributeTranslatorIt == attributeTranslator.end()) {
+                LOG(WARNING) << "unhandled attribute: " << in.Name() << " " << attributeName;
+                continue;
+            }
+
+            out << " ";
+            attributeTranslatorIt->second->translate(*attr, out, context);
+        }
+
+        out << ">";
+    }
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         out << "</" << name << ">";
     }
 };
@@ -41,7 +91,7 @@ public:
 class SpaceTranslator : public ElementTranslator {
 public:
     ~SpaceTranslator() override = default;
-    void translateStart(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         int64_t count = in.Int64Attribute("text:c", -1);
         if (count <= 0) {
             return;
@@ -52,24 +102,24 @@ public:
             out << " ";
         }
     }
-    void translateEnd(tinyxml2::XMLElement &in, std::ostream &out) const override {}
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {}
 };
 
 class TabTranslator : public ElementTranslator {
 public:
     ~TabTranslator() override = default;
-    void translateStart(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         // TODO: use "&emsp;"?
         out << "\t";
     }
-    void translateEnd(tinyxml2::XMLElement &in, std::ostream &out) const override {}
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {}
 };
 
 class LinkTranslator : public ElementTranslator {
 public:
     // https://github.com/andiwand/OpenDocument.java/blob/master/src/at/stefl/opendocument/java/translator/content/LinkTranslator.java
     ~LinkTranslator() override = default;
-    void translateStart(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         auto href = in.FindAttribute("xlink:href");
         out << "<a";
         if (href != nullptr) {
@@ -83,7 +133,7 @@ public:
         }
         out << ">";
     }
-    void translateEnd(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         out << "</a>";
     }
 };
@@ -92,7 +142,7 @@ class BookmarkTranslator : public ElementTranslator {
 public:
     // https://github.com/andiwand/OpenDocument.java/blob/development/src/at/stefl/opendocument/java/translator/content/BookmarkTranslator.java
     ~BookmarkTranslator() override = default;
-    void translateStart(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         auto id = in.FindAttribute("text:name");
         out << "<a";
         if (id != nullptr) {
@@ -102,26 +152,28 @@ public:
         }
         out << ">";
     }
-    void translateEnd(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         out << "</a>";
     }
 };
 
+// TODO: extend DefaultElementTranslator
 class TableTranslator : public ElementTranslator {
 public:
     ~TableTranslator() override = default;
-    void translateStart(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         out << "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\">";
     }
-    void translateEnd(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         out << "</table>";
     }
 };
 
+// TODO: extend DefaultElementTranslator
 class TableCellTranslator : public ElementTranslator {
 public:
     ~TableCellTranslator() override = default;
-    void translateStart(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         int64_t colspan = in.Int64Attribute("table:number-columns-spanned", -1);
         int64_t rowspan = in.Int64Attribute("table:number-rows-spanned", -1);
         out << "<td";
@@ -134,7 +186,7 @@ public:
         }
         out << ">";
     }
-    void translateEnd(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         out << "</td>";
     }
 };
@@ -164,10 +216,12 @@ public:
         elementTranslator["table:table-row"] = std::make_unique<DefaultElementTranslator>("tr");
         elementTranslator["table:table-cell"] = std::make_unique<TableCellTranslator>();
         elementTranslator["table:tracked-changes"] = nullptr;
+        elementTranslator["text:sequence-decls"] = nullptr;
+        elementTranslator["text:sequence-decl"] = nullptr;
     }
     ~DefaultContentTranslatorImpl() override = default;
 
-    void translate(tinyxml2::XMLElement &in, std::ostream &out) const override {
+    void translate(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         const std::string elementName = in.Name();
         auto elementTranslatorIt = elementTranslator.find(elementName);
         const ElementTranslator *translator = nullptr;
@@ -178,24 +232,24 @@ public:
         }
 
         if (translator != nullptr) {
-            translator->translateStart(in, out);
+            translator->translateStart(in, out, context);
         }
 
         for (auto child = in.FirstChild(); child != nullptr; child = child->NextSibling()) {
             if (child->ToText() != nullptr) {
                 out << child->ToText()->Value();
             } else if (child->ToElement() != nullptr) {
-                translate(*child->ToElement(), out);
+                translate(*child->ToElement(), out, context);
             }
         }
 
         if (translator != nullptr) {
-            translator->translateEnd(in, out);
+            translator->translateEnd(in, out, context);
         }
     }
 };
 
-std::unique_ptr<ContentTranslator> ContentTranslator::create(const TranslationConfig &) {
+std::unique_ptr<ContentTranslator> ContentTranslator::create() {
     return std::make_unique<DefaultContentTranslatorImpl>();
 }
 

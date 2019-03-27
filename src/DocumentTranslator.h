@@ -6,15 +6,15 @@
 
 namespace odr {
 
-class TranslationConfig;
+class Context;
 class OpenDocumentFile;
 
 class DocumentTranslator {
 public:
-    static std::unique_ptr<DocumentTranslator> create(const TranslationConfig &);
+    static std::unique_ptr<DocumentTranslator> create();
 
     virtual ~DocumentTranslator() = default;
-    virtual bool translate(OpenDocumentFile &in, const std::string &out) const = 0;
+    virtual bool translate(OpenDocumentFile &in, const std::string &out, Context &context) const = 0;
 };
 
 }

@@ -15,7 +15,7 @@ public:
 
     ~DefaultDocumentTranslatorImpl() override = default;
 
-    bool translate(OpenDocumentFile &in, const std::string &out) const override {
+    bool translate(OpenDocumentFile &in, const std::string &out, Context &context) const override {
         if (!in.isFile("content.xml")) {
             return false;
         }
@@ -40,13 +40,13 @@ public:
                     .FirstChildElement("office:document-styles")
                     .FirstChildElement("office:font-face-decls")
                     .ToElement();
-            styleTranslator->translate(*fontFaceDecls, of);
+            styleTranslator->translate(*fontFaceDecls, of, context);
 
             tinyxml2::XMLElement *styles = stylesHandle
                     .FirstChildElement("office:document-styles")
                     .FirstChildElement("office:styles")
                     .ToElement();
-            styleTranslator->translate(*styles, of);
+            styleTranslator->translate(*styles, of, context);
         }
 
         {
@@ -57,13 +57,13 @@ public:
                     .FirstChildElement("office:document-content")
                     .FirstChildElement("office:font-face-decls")
                     .ToElement();
-            styleTranslator->translate(*fontFaceDecls, of);
+            styleTranslator->translate(*fontFaceDecls, of, context);
 
             tinyxml2::XMLElement *automaticStyles = contentHandle
                     .FirstChildElement("office:document-content")
                     .FirstChildElement("office:automatic-styles")
                     .ToElement();
-            styleTranslator->translate(*automaticStyles, of);
+            styleTranslator->translate(*automaticStyles, of, context);
 
             of << "</style>\n"
                   "</head>\n"
@@ -72,8 +72,9 @@ public:
             tinyxml2::XMLElement *body = contentHandle
                     .FirstChildElement("office:document-content")
                     .FirstChildElement("office:body")
+                    .FirstChildElement("office:text")
                     .ToElement();
-            contentTranslator->translate(*body, of);
+            contentTranslator->translate(*body, of, context);
         }
 
         of << "\n"
@@ -85,10 +86,10 @@ public:
     }
 };
 
-std::unique_ptr<DocumentTranslator> DocumentTranslator::create(const TranslationConfig &config) {
+std::unique_ptr<DocumentTranslator> DocumentTranslator::create() {
     auto result = std::make_unique<DefaultDocumentTranslatorImpl>();
-    result->styleTranslator = StyleTranslator::create(config);
-    result->contentTranslator = ContentTranslator::create(config);
+    result->styleTranslator = StyleTranslator::create();
+    result->contentTranslator = ContentTranslator::create();
     return result;
 }
 
