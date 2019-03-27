@@ -1,5 +1,7 @@
 #include "ContentTranslator.h"
+#include <utility>
 #include <string>
+#include <list>
 #include <unordered_map>
 #include "tinyxml2.h"
 #include "glog/logging.h"
@@ -7,6 +9,8 @@
 #include "Context.h"
 
 namespace odr {
+
+// TODO: we could have a "ContentTranslatorContext" containing (in, out, context) to reduce parameter count
 
 class ElementTranslator {
 public:
@@ -49,25 +53,31 @@ public:
             return;
         }
 
-        out << "class=\"" << styleName;
-        for (auto &&s : styleIt->second) {
-            out << " " << s;
+        out << "class=\"";
+        for (auto i = styleIt->second.rbegin(); i != styleIt->second.rend(); ++i) {
+            out << *i << " ";
         }
-        out << "\"";
+        out << styleName << "\"";
     }
 };
 
 class DefaultElementTranslator : public ElementTranslator {
 public:
     const std::string name;
+    std::list<std::pair<std::string, std::string>> newAttributes;
     std::unordered_map<std::string, std::unique_ptr<AttributeTranslator>> attributeTranslator;
 
     explicit DefaultElementTranslator(const std::string &name) : name(name) {
         attributeTranslator["text:style-name"] = std::make_unique<StyleAttributeTranslator>();
+        attributeTranslator["table:style-name"] = std::make_unique<StyleAttributeTranslator>();
     }
     ~DefaultElementTranslator() override = default;
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         out << "<" << name;
+
+        for (auto &&a : newAttributes) {
+            out << " " << a.first << "=\"" << a.second << "\"";
+        }
 
         for (auto attr = in.FirstAttribute(); attr != nullptr; attr = attr->Next()) {
             const std::string attributeName = attr->Name();
@@ -157,38 +167,23 @@ public:
     }
 };
 
-// TODO: extend DefaultElementTranslator
-class TableTranslator : public ElementTranslator {
+class TableTranslator : public DefaultElementTranslator {
 public:
+    TableTranslator() : DefaultElementTranslator("table") {
+        newAttributes.emplace_back("border", "0");
+        newAttributes.emplace_back("cellspacing", "0");
+        newAttributes.emplace_back("cellpadding", "0");
+    }
     ~TableTranslator() override = default;
-    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
-        out << "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\">";
-    }
-    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
-        out << "</table>";
-    }
 };
 
-// TODO: extend DefaultElementTranslator
-class TableCellTranslator : public ElementTranslator {
+class TableCellTranslator : public DefaultElementTranslator {
 public:
+    TableCellTranslator() : DefaultElementTranslator("td") {
+        attributeTranslator["table:number-columns-spanned"] = std::make_unique<DefaultAttributeTranslator>("colspan");
+        attributeTranslator["table:number-rows-spanned"] = std::make_unique<DefaultAttributeTranslator>("rowspan");
+    }
     ~TableCellTranslator() override = default;
-    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
-        int64_t colspan = in.Int64Attribute("table:number-columns-spanned", -1);
-        int64_t rowspan = in.Int64Attribute("table:number-rows-spanned", -1);
-        out << "<td";
-        // TODO: use maxRepeat
-        if (colspan > 1) {
-            out << " colspan=\"" << colspan << "\"";
-        }
-        if (rowspan > 1) {
-            out << " rowspan=\"" << rowspan << "\"";
-        }
-        out << ">";
-    }
-    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
-        out << "</td>";
-    }
 };
 
 class DefaultContentTranslatorImpl : public ContentTranslator {
@@ -196,10 +191,8 @@ public:
     std::unordered_map<std::string, std::unique_ptr<ElementTranslator>> elementTranslator;
 
     DefaultContentTranslatorImpl() {
-        // https://github.com/andiwand/OpenDocument.java/blob/master/src/at/stefl/opendocument/java/translator/content/ParagraphTranslator.java
         elementTranslator["text:p"] = std::make_unique<DefaultElementTranslator>("p");
         elementTranslator["text:h"] = std::make_unique<DefaultElementTranslator>("h");
-        // https://github.com/andiwand/OpenDocument.java/blob/master/src/at/stefl/opendocument/java/translator/content/SpanTranslator.java
         elementTranslator["text:span"] = std::make_unique<DefaultElementTranslator>("span");
         elementTranslator["text:s"] = std::make_unique<SpaceTranslator>();
         elementTranslator["text:tab"] = std::make_unique<TabTranslator>();
