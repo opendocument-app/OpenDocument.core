@@ -36,6 +36,8 @@ public:
 
 class StyleAttributeTranslator : public AttributeTranslator {
 public:
+    std::list<std::string> newClasses;
+
     ~StyleAttributeTranslator() override = default;
     void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, Context &context) const override {
         const std::string styleName = in.Value();
@@ -49,7 +51,11 @@ public:
         for (auto i = styleIt->second.rbegin(); i != styleIt->second.rend(); ++i) {
             out << *i << " ";
         }
-        out << styleName << "\"";
+        out << styleName;
+        for (auto &&c : newClasses) {
+            out << " " << c;
+        }
+        out << "\"";
     }
 };
 
@@ -91,6 +97,20 @@ public:
     void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         out << "</" << name << ">";
     }
+};
+
+class ParagraphTranslator : public DefaultElementTranslator {
+public:
+    ParagraphTranslator() : DefaultElementTranslator("p") {}
+    ~ParagraphTranslator() override = default;
+};
+
+class HeadlineTranslator : public DefaultElementTranslator {
+public:
+    HeadlineTranslator() : DefaultElementTranslator("h") {
+        attributeTranslator["text:outline-level"] = nullptr;
+    }
+    ~HeadlineTranslator() override = default;
 };
 
 class SpaceTranslator : public ElementTranslator {
@@ -160,6 +180,16 @@ public:
     }
 };
 
+class ListTranslator : public DefaultElementTranslator {
+public:
+    ListTranslator() : DefaultElementTranslator("ul") {
+        attributeTranslator["xml:id"] = nullptr;
+    }
+    ~ListTranslator() override = default;
+};
+
+// TODO: simple table translator
+
 class TableTranslator : public DefaultElementTranslator {
 public:
     TableTranslator() : DefaultElementTranslator("table") {
@@ -169,6 +199,9 @@ public:
 
         attributeTranslator["table:name"] = nullptr;
         attributeTranslator["table:print"] = nullptr;
+        attributeTranslator["table:protected"] = nullptr;
+        attributeTranslator["table:protection-key"] = nullptr;
+        attributeTranslator["table:protection-key-digest-algorithm"] = nullptr;
     }
     ~TableTranslator() override = default;
 };
@@ -201,6 +234,8 @@ public:
         attributeTranslator["office:value"] = nullptr;
         attributeTranslator["office:value-type"] = nullptr;
         attributeTranslator["office:string-value"] = nullptr;
+
+        attributeTranslator["calcext:value-type"] = nullptr;
     }
     ~TableCellTranslator() override = default;
 };
@@ -215,20 +250,32 @@ public:
         elementTranslator["office:spreadsheet"] = nullptr;
 
         elementTranslator["text:p"] = std::make_unique<DefaultElementTranslator>("p");
-        elementTranslator["text:h"] = std::make_unique<DefaultElementTranslator>("h");
+        elementTranslator["text:h"] = std::make_unique<HeadlineTranslator>();
         elementTranslator["text:span"] = std::make_unique<DefaultElementTranslator>("span");
         elementTranslator["text:a"] = std::make_unique<LinkTranslator>();
         elementTranslator["text:s"] = std::make_unique<SpaceTranslator>();
         elementTranslator["text:tab"] = std::make_unique<TabTranslator>();
         elementTranslator["text:line-break"] = std::make_unique<DefaultElementTranslator>("br");
         elementTranslator["text:soft-page-break"] = nullptr;
-        elementTranslator["text:list"] = std::make_unique<DefaultElementTranslator>("ul");
+        elementTranslator["text:list"] = std::make_unique<ListTranslator>();
         elementTranslator["text:list-item"] = std::make_unique<DefaultElementTranslator>("li");
         elementTranslator["text:bookmark"] = std::make_unique<BookmarkTranslator>();
         elementTranslator["text:bookmark-start"] = std::make_unique<BookmarkTranslator>();
         elementTranslator["text:bookmark-end"] = nullptr;
         elementTranslator["text:sequence-decls"] = nullptr;
         elementTranslator["text:sequence-decl"] = nullptr;
+        elementTranslator["text:table-of-content"] = nullptr;
+        elementTranslator["text:table-of-content-source"] = nullptr;
+        elementTranslator["text:table-of-content-entry-template"] = nullptr;
+        elementTranslator["text:index-title"] = nullptr;
+        elementTranslator["text:index-body"] = nullptr;
+        elementTranslator["text:index-title-template"] = nullptr;
+        elementTranslator["text:index-entry-link-start"] = nullptr;
+        elementTranslator["text:index-entry-link-end"] = nullptr;
+        elementTranslator["text:index-entry-text"] = nullptr;
+        elementTranslator["text:index-entry-tab-stop"] = nullptr;
+        elementTranslator["text:index-entry-page-number"] = nullptr;
+        elementTranslator["text:index-entry-chapter"] = nullptr;
 
         elementTranslator["table:table"] = std::make_unique<TableTranslator>();
         elementTranslator["table:table-column"] = std::make_unique<TableColumnTranslator>();
@@ -237,6 +284,25 @@ public:
         elementTranslator["table:tracked-changes"] = nullptr;
         elementTranslator["table:calculation-settings"] = nullptr;
         elementTranslator["table:iteration"] = nullptr;
+        elementTranslator["table:covered-table-cell"] = nullptr;
+        elementTranslator["table:named-expressions"] = nullptr;
+        elementTranslator["table:shapes"] = nullptr;
+
+        elementTranslator["draw:object"] = nullptr;
+        elementTranslator["draw:frame"] = nullptr;
+        elementTranslator["draw:image"] = nullptr;
+
+        elementTranslator["office:annotation"] = nullptr;
+        elementTranslator["office:forms"] = nullptr;
+
+        elementTranslator["svg:desc"] = nullptr;
+
+        elementTranslator["dc:date"] = nullptr;
+        elementTranslator["calcext:condition"] = nullptr;
+        elementTranslator["calcext:conditional-format"] = nullptr;
+        elementTranslator["calcext:conditional-formats"] = nullptr;
+        elementTranslator["loext:p"] = nullptr;
+        elementTranslator["loext:table-protection"] = nullptr;
     }
     ~DefaultContentTranslatorImpl() override = default;
 

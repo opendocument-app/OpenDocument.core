@@ -9,13 +9,14 @@ namespace odr {
 
 TEST(TranslationHelperTest, translate) {
     std::string input;
-    input = "/home/andreas/Downloads/03_smpldap.odt";
     input = "/home/andreas/workspace/OpenDocument.test/files/spreadsheet/efficiency-big-2.ods";
+    input = "/home/andreas/Desktop/odr/ruski.odt";
     const std::string output = "../../test/test.html";
 
     TranslationConfig config = {};
-    auto translator = TranslationHelper::create(config);
-    translator->translate(input, output);
+    auto translator = TranslationHelper::create();
+    translator->open(input);
+    translator->translate(output, config);
 }
 
 }

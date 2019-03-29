@@ -6,15 +6,20 @@
 namespace odr {
 
 struct TranslationConfig {
-    // e.g. split up tables in spreadsheet or pages in presentation
-    bool oneHtml = false;
-    // embed images in html
-    bool embedMedia = false;
+    // starting sheet for spreadsheet, starting page for presentation, ignored for text, ignored for graphics
+    std::uint32_t entryOffset = 0;
+    // translate only N sheets / pages; zero means translate all
+    std::uint32_t entryCount = 0;
+
+    // embed js, embed css, embed images, squash up tables in spreadsheet or pages in presentation
+    bool singleOutput = true;
+    // generate js or not
+    bool useJavaScript = true;
     // general limit for any repeating thing
-    uint32_t maxRepeat = 1000;
+    std::uint32_t maxRepeat = 1000;
     // limit for table dimensions (surrounds problems with repeat* in spreadsheet)
-    uint32_t maxTableRows = 10000;
-    uint32_t maxTableCols = 10000;
+    std::uint32_t maxTableRows = 10000;
+    std::uint32_t maxTableCols = 10000;
 };
 
 }

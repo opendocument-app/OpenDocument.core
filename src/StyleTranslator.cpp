@@ -32,6 +32,8 @@ public:
         properties.insert("style:table-row-properties");
         properties.insert("style:table-cell-properties");
         properties.insert("style:page-layout-properties");
+        properties.insert("style:section-properties");
+        properties.insert("loext:graphic-properties");
 
         attributeTranslator["fo:font-family"] = nullptr;
         attributeTranslator["fo:text-align"] = "text-align";
@@ -50,6 +52,10 @@ public:
         attributeTranslator["fo:margin-bottom"] = "margin-bottom";
         attributeTranslator["fo:margin-left"] = "margin-left";
         attributeTranslator["fo:padding"] = "padding";
+        attributeTranslator["fo:padding-top"] = "padding-top";
+        attributeTranslator["fo:padding-right"] = "padding-right";
+        attributeTranslator["fo:padding-bottom"] = "padding-bottom";
+        attributeTranslator["fo:padding-left"] = "padding-left";
         attributeTranslator["fo:border"] = "border";
         attributeTranslator["fo:font-variant"] = nullptr;
         attributeTranslator["fo:text-transform"] = nullptr;
@@ -72,6 +78,10 @@ public:
         attributeTranslator["fo:border-right"] = nullptr;
         attributeTranslator["fo:border-bottom"] = nullptr;
         attributeTranslator["fo:border-left"] = nullptr;
+        attributeTranslator["fo:min-width"] = nullptr;
+        attributeTranslator["fo:max-width"] = nullptr;
+        attributeTranslator["fo:min-height"] = nullptr;
+        attributeTranslator["fo:max-height"] = nullptr;
 
         attributeTranslator["style:font-name"] = "font-family";
         attributeTranslator["style:width"] = "width";
@@ -79,6 +89,7 @@ public:
         attributeTranslator["style:vertical-align"] = "vertical-align";
         attributeTranslator["style:column-width"] = "width";
         attributeTranslator["style:row-height"] = "height";
+        attributeTranslator["style:shadow"] = nullptr;
         attributeTranslator["style:text-position"] = nullptr;
         attributeTranslator["style:text-underline-style"] = nullptr;
         attributeTranslator["style:text-line-through-style"] = nullptr;
@@ -88,6 +99,7 @@ public:
         attributeTranslator["style:font-family-generic-asian"] = nullptr;
         attributeTranslator["style:font-pitch-asian"] = nullptr;
         attributeTranslator["style:font-size-asian"] = nullptr;
+        attributeTranslator["style:font-style-name"] = nullptr;
         attributeTranslator["style:font-style-asian"] = nullptr;
         attributeTranslator["style:font-style-complex"] = nullptr;
         attributeTranslator["style:font-weight-asian"] = nullptr;
@@ -147,6 +159,8 @@ public:
         attributeTranslator["style:text-overline-style"] = nullptr;
         attributeTranslator["style:text-overline-color"] = nullptr;
         attributeTranslator["style:glyph-orientation-vertical"] = nullptr;
+        attributeTranslator["style:protect"] = nullptr;
+        attributeTranslator["style:rel-column-width"] = nullptr;
 
         attributeTranslator["text:anchor-type"] = nullptr;
         attributeTranslator["text:number-lines"] = nullptr;
@@ -157,6 +171,7 @@ public:
         attributeTranslator["table:border-model"] = nullptr;
         attributeTranslator["table:display"] = nullptr;
 
+        attributeTranslator["draw:stroke"] = nullptr;
         attributeTranslator["draw:fill"] = nullptr;
         attributeTranslator["draw:fill-color"] = nullptr;
         attributeTranslator["draw:luminance"] = nullptr;
@@ -165,6 +180,7 @@ public:
         attributeTranslator["draw:green"] = nullptr;
         attributeTranslator["draw:blue"] = nullptr;
         attributeTranslator["draw:gamma"] = nullptr;
+        attributeTranslator["draw:shadow"] = nullptr;
         attributeTranslator["draw:color-inversion"] = nullptr;
         attributeTranslator["draw:color-mode"] = nullptr;
         attributeTranslator["draw:image-opacity"] = nullptr;
@@ -174,11 +190,23 @@ public:
         attributeTranslator["draw:start-line-spacing-vertical"] = nullptr;
         attributeTranslator["draw:end-line-spacing-horizontal"] = nullptr;
         attributeTranslator["draw:end-line-spacing-vertical"] = nullptr;
+        attributeTranslator["draw:marker-start"] = nullptr;
+        attributeTranslator["draw:marker-start-width"] = nullptr;
+        attributeTranslator["draw:marker-start-center"] = nullptr;
+        attributeTranslator["draw:auto-grow-width"] = nullptr;
+        attributeTranslator["draw:auto-grow-height"] = nullptr;
+        attributeTranslator["draw:caption-escape-direction"] = nullptr;
+        attributeTranslator["draw:textarea-horizontal-align"] = nullptr;
+        attributeTranslator["draw:textarea-vertical-align"] = nullptr;
+        attributeTranslator["draw:ole-draw-aspect"] = nullptr;
 
         attributeTranslator["svg:x"] = nullptr;
         attributeTranslator["svg:y"] = nullptr;
         attributeTranslator["svg:stroke-color"] = nullptr;
 
+        attributeTranslator["tableooo:tab-color"] = nullptr;
+        attributeTranslator["officeooo:rsid"] = nullptr;
+        attributeTranslator["officeooo:paragraph-rsid"] = nullptr;
         attributeTranslator["loext:contextual-spacing"] = nullptr;
     }
     ~StyleClassTranslator() override = default;
@@ -261,12 +289,15 @@ public:
         elementTranslator["text:list-style"] = nullptr;
         elementTranslator["text:notes-configuration"] = nullptr;
         elementTranslator["text:linenumbering-configuration"] = nullptr;
+        elementTranslator["text:bibliography-configuration"] = nullptr;
 
         elementTranslator["number:text-style"] = nullptr;
         elementTranslator["number:number-style"] = nullptr;
         elementTranslator["number:time-style"] = nullptr;
         elementTranslator["number:date-style"] = nullptr;
         elementTranslator["number:currency-style"] = nullptr;
+
+        elementTranslator["draw:marker"] = nullptr;
     }
 
     ~DefaultStyleTranslatorImpl() override = default;

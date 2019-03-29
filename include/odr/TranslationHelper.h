@@ -10,10 +10,14 @@ struct TranslationConfig;
 
 class TranslationHelper {
 public:
-    static std::unique_ptr<TranslationHelper> create(const TranslationConfig &);
+    static std::unique_ptr<TranslationHelper> create();
 
     virtual ~TranslationHelper() = default;
-    virtual bool translate(const std::string &in, const std::string &out) const = 0;
+    // TODO: open (with path, password, ...) return error (no odx, wrong passwort, ...)
+    virtual bool open(const std::string &in) = 0;
+    // TODO: read meta (page count, sheet names, ...)
+    // TODO: get progress
+    virtual bool translate(const std::string &out, const TranslationConfig &config) const = 0;
 };
 
 }
