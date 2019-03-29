@@ -32,6 +32,43 @@ public:
               "<title>odr</title>\n"
               "<style>\n";
 
+        // default css
+        of << "* {\n"
+              "\tmargin: 0px;\n"
+              "\tposition: relative;\n"
+              "}"
+              "\tbody {\n"
+              "\tpadding: 5px;\n"
+              "}\n"
+              "\tspan {\n"
+              "\twhite-space: pre-wrap;\n"
+              "}\n"
+              "table {\n"
+              "\ttable-layout: fixed;\n"
+              "\twidth: 0px;\n"
+              "}\n"
+              "p {\n"
+              "\tbackground-color: transparent !important;\n"
+              "\tpadding: 0 !important;\n"
+              "}\n"
+              "\n"
+              "span {\n"
+              "\tmargin: 0 !important;\n"
+              "}\n"
+              "table {\n"
+              "\tborder-collapse: collapse;\n"
+              "\tdisplay: block;\n"
+              "}\n"
+              "\n"
+              "td {\n"
+              "\tvertical-align: top;\n"
+              "}\n"
+              "\n"
+              "p {\n"
+              "\tfont-family: \"Arial\";\n"
+              "\tfont-size: 10pt;\n"
+              "}\n";
+
         {
             auto stylesXml = in.loadXML("styles.xml");
             tinyxml2::XMLHandle stylesHandle(stylesXml.get());
