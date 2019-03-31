@@ -1,20 +1,23 @@
-#ifndef OPENDOCUMENT_OPENDOCUMENTFILE_H
-#define OPENDOCUMENT_OPENDOCUMENTFILE_H
+#ifndef ODR_OPENDOCUMENTFILE_H
+#define ODR_OPENDOCUMENTFILE_H
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <map>
-#include "miniz_zip.h"
-#include "tinyxml2.h"
 
-namespace opendocument {
+namespace tinyxml2 {
+class XMLDocument;
+}
 
-class OpenDocumentFile final {
+namespace odr {
+
+class OpenDocumentFile {
 public:
     struct Entry {
         std::size_t size;
         std::size_t size_compressed;
-        mz_uint index;
+        uint32_t index;
         std::string mediaType;
     };
 
@@ -24,7 +27,8 @@ public:
             UNKNOWN,
             TEXT,
             SPREADSHEET,
-            PRESENTATION
+            PRESENTATION,
+            GRAPHICS
         };
         struct Text {
             std::size_t pageCount;
@@ -54,31 +58,21 @@ public:
 
     typedef std::map<std::string, Entry> Entries;
 
-    static const std::map<std::string, Meta::Type> MIMETYPES;
+    static std::unique_ptr<OpenDocumentFile> create();
 
-    explicit OpenDocumentFile(const std::string &);
-    OpenDocumentFile(const OpenDocumentFile &) = delete;
-    ~OpenDocumentFile();
-    OpenDocumentFile &operator=(const OpenDocumentFile &) = delete;
+    virtual ~OpenDocumentFile() = default;
 
-    const Entries getEntries() const;
-    const Meta &getMeta() const;
-    bool isFile(const std::string &) const;
-    std::string loadText(const std::string &);
-    std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &);
+    virtual bool open(const std::string &) = 0;
+    virtual void close() = 0;
 
-    void close();
+    virtual const Entries getEntries() const = 0;
+    virtual const Meta &getMeta() const = 0;
+    virtual bool isFile(const std::string &) const = 0;
 
-private:
-    bool createEntries();
-    bool createMeta();
-    void destroyMeta();
-
-    mz_zip_archive _zip;
-    Meta _meta;
-    Entries _entries;
+    virtual std::string loadText(const std::string &) = 0;
+    virtual std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &) = 0;
 };
 
 }
 
-#endif //OPENDOCUMENT_OPENDOCUMENTFILE_H
+#endif //ODR_OPENDOCUMENTFILE_H

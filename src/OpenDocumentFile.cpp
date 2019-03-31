@@ -1,165 +1,182 @@
 #include "OpenDocumentFile.h"
 #include <fstream>
+#include "miniz_zip.h"
+#include "tinyxml2.h"
+#ifdef ODR_CRYPTO
+#include "openssl/evp.h"
+#endif
+#include "glog/logging.h"
 
-namespace opendocument {
+namespace odr {
 
-const std::map<std::string, OpenDocumentFile::Meta::Type> OpenDocumentFile::MIMETYPES = {
+static const std::map<std::string, OpenDocumentFile::Meta::Type> MIMETYPES = {
         {"application/vnd.oasis.opendocument.text", OpenDocumentFile::Meta::Type::TEXT},
         {"application/vnd.oasis.opendocument.spreadsheet", OpenDocumentFile::Meta::Type::SPREADSHEET},
         {"application/vnd.oasis.opendocument.presentation", OpenDocumentFile::Meta::Type::PRESENTATION},
 };
 
-OpenDocumentFile::OpenDocumentFile(const std::string &path) {
-    memset(&_zip, 0, sizeof(_zip));
-    mz_bool status = mz_zip_reader_init_file(&_zip, path.c_str(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
-    if (!status) {
-        // TODO: throw
-        throw "error";
+class OpenDocumentFileImpl : public OpenDocumentFile {
+public:
+    mz_zip_archive zip;
+    Meta meta;
+    Entries entries;
+
+    ~OpenDocumentFileImpl() override {
+        close();
     }
 
-    if (!createEntries()){
-        // TODO: throw
-        throw "error";
-    }
-    if (!createMeta()) {
-        // TODO: throw
-        throw "error";
-    }
-}
+    bool createEntries() {
+        for (mz_uint i = 0; i < mz_zip_reader_get_num_files(&zip); ++i) {
+            mz_zip_archive_file_stat entry_stat;
+            if (!mz_zip_reader_file_stat(&zip, i, &entry_stat)) {
+                mz_zip_reader_end(&zip);
+                return false;
+            }
 
-OpenDocumentFile::~OpenDocumentFile() {
-    destroyMeta();
-    close();
-}
+            if (mz_zip_reader_is_file_a_directory(&zip, i)) {
+                continue;
+            }
 
-bool OpenDocumentFile::createEntries() {
-    for (mz_uint i = 0; i < mz_zip_reader_get_num_files(&_zip); ++i) {
-        mz_zip_archive_file_stat entry_stat;
-        if (!mz_zip_reader_file_stat(&_zip, i, &entry_stat)) {
-            mz_zip_reader_end(&_zip);
+            Entry entry;
+            entry.size = entry_stat.m_uncomp_size;
+            entry.size_compressed = entry_stat.m_comp_size;
+            entry.index = i;
+            entries[entry_stat.m_filename] = entry;
+        }
+
+        return true;
+    }
+
+    bool createMeta() {
+        if (!isFile("content.xml") | !isFile("styles.xml")) {
             return false;
         }
 
-        if (mz_zip_reader_is_file_a_directory(&_zip, i)) {
-            continue;
+        if (isFile("mimetype")) {
+            auto mimetype = loadText("mimetype");
+            auto it = MIMETYPES.find(mimetype);
+            if (it == MIMETYPES.end()) {
+                return false;
+            }
+            meta.type = it->second;
         }
 
-        Entry entry;
-        entry.size = entry_stat.m_uncomp_size;
-        entry.size_compressed = entry_stat.m_comp_size;
-        entry.index = i;
-        _entries[entry_stat.m_filename] = entry;
-    }
-
-    return true;
-}
-
-bool OpenDocumentFile::createMeta() {
-    if (!isFile("content.xml") | !isFile("styles.xml")) {
-        return false;
-    }
-
-    if (isFile("mimetype")) {
-        auto mimetype = loadText("mimetype");
-        auto it = MIMETYPES.find(mimetype);
-        if (it == MIMETYPES.end()) {
-            return false;
+        if (isFile("META-INF/manifest.xml")) {
+            auto manifest = loadXML("META-INF/manifest.xml");
+            // TODO: parse version
+            // TODO: parse media type
+            // TODO: parse entity media types
+            // TODO: parse entity crypto info
         }
-        _meta.type = it->second;
-    }
 
-    if (isFile("META-INF/manifest.xml")) {
-        auto manifest = loadXML("META-INF/manifest.xml");
-        // TODO: parse version
-        // TODO: parse media type
-        // TODO: parse entity media types
-        // TODO: parse entity crypto info
-    }
-
-    if (isFile("meta.xml")) {
-        auto meta = loadXML("meta.xml");
-        tinyxml2::XMLHandle metaHandle(meta.get());
-        tinyxml2::XMLElement *statisticsElement = metaHandle
-                .FirstChildElement("office:document-meta")
-                .FirstChildElement("office:meta")
-                .FirstChildElement("meta:document-statistic")
-                .ToElement();
-        if (statisticsElement != nullptr) {
-            switch (_meta.type) {
-                case Meta::Type::TEXT: {
-                    const tinyxml2::XMLAttribute *pageCount = statisticsElement->FindAttribute("meta:page-count");
-                    if (pageCount == nullptr) {
+        if (isFile("meta.xml")) {
+            auto metaXml = loadXML("meta.xml");
+            tinyxml2::XMLHandle metaHandle(metaXml.get());
+            tinyxml2::XMLElement *statisticsElement = metaHandle
+                    .FirstChildElement("office:document-meta")
+                    .FirstChildElement("office:meta")
+                    .FirstChildElement("meta:document-statistic")
+                    .ToElement();
+            if (statisticsElement != nullptr) {
+                switch (meta.type) {
+                    case Meta::Type::TEXT: {
+                        const tinyxml2::XMLAttribute *pageCount = statisticsElement->FindAttribute("meta:page-count");
+                        if (pageCount == nullptr) {
+                            break;
+                        }
+                        meta.text.pageCount = pageCount->UnsignedValue();
+                    } break;
+                    case Meta::Type::SPREADSHEET: {
+                        const tinyxml2::XMLAttribute *tableCount = statisticsElement->FindAttribute("meta:table-count");
+                        if (tableCount == nullptr) {
+                            break;
+                        }
+                        meta.spreadsheet.tableCount = tableCount->UnsignedValue();
+                        meta.spreadsheet.tables = new Meta::Spreadsheet::Table[meta.spreadsheet.tableCount];
+                    } break;
+                    case Meta::Type::PRESENTATION: {
+                        meta.presentation.pageCount = 0;
+                    } break;
+                    default:
                         break;
-                    }
-                    _meta.text.pageCount = pageCount->UnsignedValue();
-                } break;
-                case Meta::Type::SPREADSHEET: {
-                    const tinyxml2::XMLAttribute *tableCount = statisticsElement->FindAttribute("meta:table-count");
-                    if (tableCount == nullptr) {
-                        break;
-                    }
-                    _meta.spreadsheet.tableCount = tableCount->UnsignedValue();
-                    _meta.spreadsheet.tables = new Meta::Spreadsheet::Table[_meta.spreadsheet.tableCount];
-                } break;
-                case Meta::Type::PRESENTATION: {
-                    _meta.presentation.pageCount = 0;
-                } break;
-                default:
-                    break;
+                }
             }
         }
+
+        return meta.type != Meta::Type::UNKNOWN;
     }
 
-    return _meta.type != Meta::Type::UNKNOWN;
-}
-
-void OpenDocumentFile::destroyMeta() {
-    if (_meta.type == Meta::Type::UNKNOWN) {
-        delete[] _meta.spreadsheet.tables;
+    void destroyMeta() {
+        if (meta.type == Meta::Type::UNKNOWN) {
+            delete[] meta.spreadsheet.tables;
+        }
     }
-}
 
-const OpenDocumentFile::Entries OpenDocumentFile::getEntries() const {
-    return _entries;
-}
+    bool open(const std::string &path) override {
+        memset(&zip, 0, sizeof(zip));
+        mz_bool status = mz_zip_reader_init_file(&zip, path.c_str(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
+        if (!status) {
+            LOG(ERROR) << "miniz error! not a file or not a zip file?";
+            return false;
+        }
 
-const OpenDocumentFile::Meta &OpenDocumentFile::getMeta() const {
-    return _meta;
-}
+        if (!createEntries()){
+            LOG(ERROR) << "could not create entry table!";
+            return false;
+        }
+        if (!createMeta()) {
+            LOG(ERROR) << "could not get meta!";
+            return false;
+        }
 
-bool OpenDocumentFile::isFile(const std::string &path) const {
-    return _entries.find(path) != _entries.end();
-}
-
-std::string OpenDocumentFile::loadText(const std::string &path) {
-    auto it = _entries.find(path);
-    if (it == _entries.end()) {
-        // TODO: throw
-        throw "error";
+        return true;
     }
-    auto reader = mz_zip_reader_extract_iter_new(&_zip, it->second.index, 0);
-    std::string result(it->second.size, '\0');
-    auto read = mz_zip_reader_extract_iter_read(reader, &result[0], it->second.size);
-    if (read != it->second.size) {
-        // TODO: throw
-        throw "error";
-    }
-    mz_zip_reader_extract_iter_free(reader);
-    return result;
-}
 
-std::unique_ptr<tinyxml2::XMLDocument> OpenDocumentFile::loadXML(const std::string &path) {
-    if (!isFile(path)) {
-        return nullptr;
+    void close() override {
+        destroyMeta();
+        mz_zip_reader_end(&zip);
     }
-    auto result = std::make_unique<tinyxml2::XMLDocument>();
-    auto xml = loadText(path);
-    result->Parse(xml.c_str(), xml.size());
-    return result;
-}
 
-void OpenDocumentFile::close() {
-    mz_zip_reader_end(&_zip);
+    const Entries getEntries() const override {
+        return entries;
+    }
+
+    const Meta &getMeta() const override {
+        return meta;
+    }
+
+    bool isFile(const std::string &path) const override {
+        return entries.find(path) != entries.end();
+    }
+
+    std::string loadText(const std::string &path) override {
+        auto it = entries.find(path);
+        if (it == entries.end()) {
+            return nullptr;
+        }
+        auto reader = mz_zip_reader_extract_iter_new(&zip, it->second.index, 0);
+        std::string result(it->second.size, '\0');
+        auto read = mz_zip_reader_extract_iter_read(reader, &result[0], it->second.size);
+        if (read != it->second.size) {
+            return nullptr;
+        }
+        mz_zip_reader_extract_iter_free(reader);
+        return result;
+    }
+
+    std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &path) {
+        if (!isFile(path)) {
+            return nullptr;
+        }
+        auto result = std::make_unique<tinyxml2::XMLDocument>();
+        auto xml = loadText(path);
+        result->Parse(xml.c_str(), xml.size());
+        return result;
+    }
+};
+
+std::unique_ptr<OpenDocumentFile> OpenDocumentFile::create() {
+    return std::make_unique<OpenDocumentFileImpl>();
 }
 
 }
