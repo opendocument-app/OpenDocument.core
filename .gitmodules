@@ -10,3 +10,6 @@
 [submodule "lib/googletest"]
 	path = lib/googletest
 	url = https://github.com/google/googletest.git
+[submodule "lib/ios-cmake"]
+	path = lib/ios-cmake
+	url = git@github.com:leetal/ios-cmake.git
