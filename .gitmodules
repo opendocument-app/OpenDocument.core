@@ -3,4 +3,10 @@
 	url = https://github.com/richgel999/miniz.git
 [submodule "lib/tinyxml2"]
 	path = lib/tinyxml2
-	url = https://github.com/leethomason/tinyxml2.git
+	url = https://github.com/tomtasche/tinyxml2.git
+[submodule "lib/glog"]
+	path = lib/glog
+	url = https://github.com/tomtasche/glog.git
+[submodule "lib/ios-cmake"]
+	path = lib/ios-cmake
+	url = git@github.com:leetal/ios-cmake.git
