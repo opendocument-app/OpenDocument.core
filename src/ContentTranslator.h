@@ -1,26 +1,27 @@
-#ifndef OPENDOCUMENT_CONTENTTRANSLATOR_H
-#define OPENDOCUMENT_CONTENTTRANSLATOR_H
+#ifndef ODR_CONTENTTRANSLATOR_H
+#define ODR_CONTENTTRANSLATOR_H
 
 #include <iostream>
+#include <memory>
 
 namespace tinyxml2 {
 class XMLElement;
 }
 
-namespace opendocument {
+namespace odr {
+
+struct Context;
+
+// TODO: we could have a "ContentTranslatorContext" containing (in, out, context) to reduce parameter count
 
 class ContentTranslator {
 public:
-    virtual ~ContentTranslator() = default;
-    virtual bool translate(tinyxml2::XMLElement &in, std::ostream &out) const;
-};
+    static std::unique_ptr<ContentTranslator> create();
 
-class TextContentTranslator : public ContentTranslator {
-public:
-    ~TextContentTranslator() override = default;
-    bool translate(tinyxml2::XMLElement &in, std::ostream &out) const override;
+    virtual ~ContentTranslator() = default;
+    virtual void translate(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
 };
 
 }
 
-#endif //OPENDOCUMENT_CONTENTTRANSLATOR_H
+#endif //ODR_CONTENTTRANSLATOR_H

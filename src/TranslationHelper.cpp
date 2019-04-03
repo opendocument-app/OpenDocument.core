@@ -1,39 +1,45 @@
-#include "opendocument/TranslationHelper.h"
+#include "odr/TranslationHelper.h"
+#include "odr/TranslationConfig.h"
 #include "OpenDocumentFile.h"
+#include "Context.h"
 #include "DocumentTranslator.h"
 
-namespace opendocument {
+namespace odr {
 
 class TranslationHelperImpl : public TranslationHelper {
 public:
-    TranslationConfig &getConfig() override;
+    std::unique_ptr<OpenDocumentFile> file;
+    std::unique_ptr<DocumentTranslator> translator;
 
-    bool translate(const std::string &in, const std::string &out) const override;
+    explicit TranslationHelperImpl() {
+        file = OpenDocumentFile::create();
+        translator = DocumentTranslator::create();
+    }
+    ~TranslationHelperImpl() override = default;
 
-private:
-    TranslationConfig config_;
+    bool open(const std::string &in) override {
+        return file->open(in);
+    }
 
-    TextDocumentTranslator textTranslator_;
+    bool translate(const std::string &out, const TranslationConfig &config) const override {
+        Context context = {};
+        context.config = &config;
+
+        switch (file->getMeta().type) {
+            case OpenDocumentFile::Meta::Type::TEXT:
+            case OpenDocumentFile::Meta::Type::SPREADSHEET:
+            case OpenDocumentFile::Meta::Type::PRESENTATION:
+            case OpenDocumentFile::Meta::Type::GRAPHICS:
+                // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
+                return translator->translate(*file, out, context);
+            default:
+                return false;
+        }
+    }
 };
 
-TranslationConfig& TranslationHelperImpl::getConfig() {
-    return config_;
-}
-
-bool TranslationHelperImpl::translate(const std::string &in, const std::string &out) const {
-    OpenDocumentFile odf(in);
-
-    switch (odf.getMeta().type) {
-        case OpenDocumentFile::Meta::Type::TEXT:
-            return textTranslator_.translate(odf, out);
-        default:
-            return false;
-    }
-}
-
-TranslationHelper& TranslationHelper::instance() {
-    static TranslationHelperImpl instance;
-    return instance;
+std::unique_ptr<TranslationHelper> TranslationHelper::create() {
+    return std::make_unique<TranslationHelperImpl>();
 }
 
 }

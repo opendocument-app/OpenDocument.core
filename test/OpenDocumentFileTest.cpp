@@ -3,15 +3,16 @@
 #include "glog/logging.h"
 #include "OpenDocumentFile.h"
 
-namespace opendocument {
+namespace odr {
 
 TEST(OpenDocumentFileTest, open) {
     const std::string path = "../../test/empty.ods";
-    OpenDocumentFile odf(path);
+    auto odf = OpenDocumentFile::create();
+    odf->open(path);
 
-    LOG(INFO) << (int) odf.getMeta().type;
-    LOG(INFO) << odf.getMeta().text.pageCount;
-    LOG(INFO) << odf.getMeta().spreadsheet.tableCount;
+    LOG(INFO) << (int) odf->getMeta().type;
+    LOG(INFO) << odf->getMeta().text.pageCount;
+    LOG(INFO) << odf->getMeta().spreadsheet.tableCount;
 }
 
 }
