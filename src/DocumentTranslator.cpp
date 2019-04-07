@@ -1,6 +1,7 @@
 #include "DocumentTranslator.h"
 #include <fstream>
 #include "tinyxml2.h"
+#include "glog/logging.h"
 #include "odr/TranslationConfig.h"
 #include "OpenDocumentFile.h"
 #include "StyleTranslator.h"
@@ -48,7 +49,7 @@ public:
         of << "</head>\n";
         of << "<body>\n";
 
-        generateContent(contentHandle, of, context);
+        generateContent(in, contentHandle, of, context);
 
         of << "\n";
         of << "</body>\n";
@@ -129,15 +130,48 @@ public:
     void generateScript(std::ofstream &of, Context &context) const {
         // TODO: get script from translators?
     }
-    void generateContent(tinyxml2::XMLHandle &in, std::ofstream &of, Context &context) const {
+    void generateContent(OpenDocumentFile &file, tinyxml2::XMLHandle &in, std::ofstream &of, Context &context) const {
         tinyxml2::XMLHandle bodyHandle = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:body");
-        if ((context.config->entryOffset <= 0) && (context.config->entryCount <= 0)) {
-            contentTranslator->translate(*bodyHandle.ToElement(), of, context);
-        } else {
-            // TODO
+        tinyxml2::XMLElement *body = bodyHandle.ToElement();
+
+        if ((context.config->entryOffset > 0) | (context.config->entryCount > 0)) {
+            tinyxml2::XMLElement *content = nullptr;
+            const char *entryName = nullptr;
+
+            switch (file.getMeta().type) {
+                case OpenDocumentFile::Meta::Type::SPREADSHEET:
+                    content = bodyHandle.FirstChildElement("office:spreadsheet").ToElement();
+                    entryName = "table:table";
+                    break;
+                case OpenDocumentFile::Meta::Type::PRESENTATION:
+                    content = bodyHandle.FirstChildElement("office:presentation").ToElement();
+                    entryName = "draw:page";
+                    break;
+                case OpenDocumentFile::Meta::Type::TEXT:
+                case OpenDocumentFile::Meta::Type::GRAPHICS:
+                default:
+                    break;
+            }
+
+            if (content != nullptr) {
+                std::uint32_t i = 0;
+                tinyxml2::XMLElement *e = content->FirstChildElement(entryName);
+                while (e != nullptr) {
+                    tinyxml2::XMLElement *next = e->NextSiblingElement(entryName);
+                    if ((i < context.config->entryOffset) ||
+                            ((context.config->entryCount == 0) ||
+                             (i >= context.config->entryOffset + context.config->entryCount))) {
+                        content->DeleteChild(e);
+                    }
+                    ++i;
+                    e = next;
+                }
+            }
         }
+
+        contentTranslator->translate(*body, of, context);
     }
 };
 

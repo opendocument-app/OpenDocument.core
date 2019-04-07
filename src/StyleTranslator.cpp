@@ -33,6 +33,7 @@ public:
         properties.insert("style:table-cell-properties");
         properties.insert("style:page-layout-properties");
         properties.insert("style:section-properties");
+        properties.insert("style:drawing-page-properties");
         properties.insert("loext:graphic-properties");
 
         attributeTranslator["fo:font-family"] = nullptr;
@@ -193,16 +194,31 @@ public:
         attributeTranslator["draw:marker-start"] = nullptr;
         attributeTranslator["draw:marker-start-width"] = nullptr;
         attributeTranslator["draw:marker-start-center"] = nullptr;
+        attributeTranslator["draw:marker-end"] = nullptr;
+        attributeTranslator["draw:marker-end-width"] = nullptr;
         attributeTranslator["draw:auto-grow-width"] = nullptr;
         attributeTranslator["draw:auto-grow-height"] = nullptr;
         attributeTranslator["draw:caption-escape-direction"] = nullptr;
         attributeTranslator["draw:textarea-horizontal-align"] = nullptr;
         attributeTranslator["draw:textarea-vertical-align"] = nullptr;
         attributeTranslator["draw:ole-draw-aspect"] = nullptr;
+        attributeTranslator["draw:shadow-color"] = nullptr;
+        attributeTranslator["draw:fit-to-size"] = nullptr;
+        attributeTranslator["draw:show-unit"] = nullptr;
+        attributeTranslator["draw:marker-end-center"] = nullptr;
+
+        attributeTranslator["presentation:background-visible"] = nullptr;
+        attributeTranslator["presentation:background-objects-visible"] = nullptr;
+        attributeTranslator["presentation:display-footer"] = nullptr;
+        attributeTranslator["presentation:display-page-number"] = nullptr;
+        attributeTranslator["presentation:display-date-time"] = nullptr;
+        attributeTranslator["presentation:display-header"] = nullptr;
+        attributeTranslator["presentation:display-footer"] = nullptr;
 
         attributeTranslator["svg:x"] = nullptr;
         attributeTranslator["svg:y"] = nullptr;
         attributeTranslator["svg:stroke-color"] = nullptr;
+        attributeTranslator["svg:stroke-width"] = nullptr;
 
         attributeTranslator["tableooo:tab-color"] = nullptr;
         attributeTranslator["officeooo:rsid"] = nullptr;
@@ -244,9 +260,9 @@ public:
             translateAttributes(*child->ToElement(), out, context);
 
             if (!child->ToElement()->NoChildren()) {
-                tinyxml2::XMLPrinter printer;
-                child->ToElement()->Accept(&printer);
-                LOG(WARNING) << "unhandled children in " << printer.CStr();
+                //tinyxml2::XMLPrinter printer;
+                //child->ToElement()->Accept(&printer);
+                LOG(WARNING) << "unhandled children in " << child->ToElement()->Name();
                 continue;
             }
         }
@@ -284,6 +300,7 @@ public:
         elementTranslator["style:style"] = std::make_unique<StyleClassTranslator>("style:name");
         elementTranslator["style:default-page-layout"] = nullptr;
         elementTranslator["style:page-layout"] = nullptr;
+        elementTranslator["style:presentation-page-layout"] = nullptr;
 
         elementTranslator["text:outline-style"] = nullptr;
         elementTranslator["text:list-style"] = nullptr;

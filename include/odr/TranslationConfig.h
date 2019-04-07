@@ -10,6 +10,8 @@ struct TranslationConfig {
     std::uint32_t entryOffset = 0;
     // translate only N sheets / pages; zero means translate all
     std::uint32_t entryCount = 0;
+    // translate presentation notes
+    bool translateNotes = true;
 
     // embed js, embed css, embed images, squash up tables in spreadsheet or pages in presentation
     bool singleOutput = true;

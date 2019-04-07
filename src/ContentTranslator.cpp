@@ -245,10 +245,6 @@ public:
     std::unordered_map<std::string, std::unique_ptr<ElementTranslator>> elementTranslator;
 
     DefaultContentTranslatorImpl() {
-        elementTranslator["office:body"] = nullptr;
-        elementTranslator["office:text"] = nullptr;
-        elementTranslator["office:spreadsheet"] = nullptr;
-
         elementTranslator["text:p"] = std::make_unique<DefaultElementTranslator>("p");
         elementTranslator["text:h"] = std::make_unique<HeadlineTranslator>();
         elementTranslator["text:span"] = std::make_unique<DefaultElementTranslator>("span");
@@ -288,10 +284,20 @@ public:
         elementTranslator["table:named-expressions"] = nullptr;
         elementTranslator["table:shapes"] = nullptr;
 
+        elementTranslator["draw:page"] = nullptr;
+        elementTranslator["draw:text-box"] = nullptr;
         elementTranslator["draw:object"] = nullptr;
         elementTranslator["draw:frame"] = nullptr;
         elementTranslator["draw:image"] = nullptr;
+        elementTranslator["draw:page-thumbnail"] = nullptr;
 
+        elementTranslator["presentation:notes"] = nullptr;
+        elementTranslator["presentation:settings"] = nullptr;
+
+        elementTranslator["office:body"] = nullptr;
+        elementTranslator["office:text"] = nullptr;
+        elementTranslator["office:spreadsheet"] = nullptr;
+        elementTranslator["office:presentation"] = nullptr;
         elementTranslator["office:annotation"] = nullptr;
         elementTranslator["office:forms"] = nullptr;
 
