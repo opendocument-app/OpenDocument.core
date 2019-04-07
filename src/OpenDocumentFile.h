@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <map>
+#include "odr/DocumentMeta.h"
 
 namespace tinyxml2 {
 class XMLDocument;
@@ -21,41 +22,6 @@ public:
         std::string mediaType;
     };
 
-    struct Meta {
-        typedef int Version;
-        enum class Type {
-            UNKNOWN,
-            TEXT,
-            SPREADSHEET,
-            PRESENTATION,
-            GRAPHICS
-        };
-        struct Text {
-            std::size_t pageCount;
-        };
-        struct Spreadsheet {
-            struct Table {
-                std::string name;
-                std::size_t rowCount;
-                std::size_t columnCount;
-            };
-
-            std::size_t tableCount;
-            Table *tables;
-        };
-        struct Presentation {
-            std::size_t pageCount;
-        };
-
-        Type type = Type::UNKNOWN;
-
-        union {
-            Text text;
-            Spreadsheet spreadsheet;
-            Presentation presentation;
-        };
-    };
-
     typedef std::map<std::string, Entry> Entries;
 
     static std::unique_ptr<OpenDocumentFile> create();
@@ -66,7 +32,7 @@ public:
     virtual void close() = 0;
 
     virtual const Entries getEntries() const = 0;
-    virtual const Meta &getMeta() const = 0;
+    virtual const DocumentMeta &getMeta() const = 0;
     virtual bool isFile(const std::string &) const = 0;
 
     virtual std::string loadText(const std::string &) = 0;

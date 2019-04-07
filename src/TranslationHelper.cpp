@@ -21,15 +21,19 @@ public:
         return file->open(in);
     }
 
+    const DocumentMeta &getMeta() const override {
+        return file->getMeta();
+    }
+
     bool translate(const std::string &out, const TranslationConfig &config) const override {
         Context context = {};
         context.config = &config;
 
         switch (file->getMeta().type) {
-            case OpenDocumentFile::Meta::Type::TEXT:
-            case OpenDocumentFile::Meta::Type::SPREADSHEET:
-            case OpenDocumentFile::Meta::Type::PRESENTATION:
-            case OpenDocumentFile::Meta::Type::GRAPHICS:
+            case DocumentType::TEXT:
+            case DocumentType::SPREADSHEET:
+            case DocumentType::PRESENTATION:
+            case DocumentType::GRAPHICS:
                 // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
                 return translator->translate(*file, out, context);
             default:

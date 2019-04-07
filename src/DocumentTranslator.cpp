@@ -141,16 +141,16 @@ public:
             const char *entryName = nullptr;
 
             switch (file.getMeta().type) {
-                case OpenDocumentFile::Meta::Type::SPREADSHEET:
+                case DocumentType::SPREADSHEET:
                     content = bodyHandle.FirstChildElement("office:spreadsheet").ToElement();
                     entryName = "table:table";
                     break;
-                case OpenDocumentFile::Meta::Type::PRESENTATION:
+                case DocumentType::PRESENTATION:
                     content = bodyHandle.FirstChildElement("office:presentation").ToElement();
                     entryName = "draw:page";
                     break;
-                case OpenDocumentFile::Meta::Type::TEXT:
-                case OpenDocumentFile::Meta::Type::GRAPHICS:
+                case DocumentType::TEXT:
+                case DocumentType::GRAPHICS:
                 default:
                     break;
             }

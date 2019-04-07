@@ -6,6 +6,7 @@
 
 namespace odr {
 
+struct DocumentMeta;
 struct TranslationConfig;
 
 class TranslationHelper {
@@ -15,7 +16,7 @@ public:
     virtual ~TranslationHelper() = default;
     // TODO: open (with path, password, ...) return error (no odx, wrong passwort, ...)
     virtual bool open(const std::string &in) = 0;
-    // TODO: read meta (page count, sheet names, ...)
+    virtual const DocumentMeta &getMeta() const = 0;
     // TODO: get progress
     virtual bool translate(const std::string &out, const TranslationConfig &config) const = 0;
 };

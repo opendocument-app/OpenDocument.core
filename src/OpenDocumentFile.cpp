@@ -2,23 +2,20 @@
 #include <fstream>
 #include "miniz_zip.h"
 #include "tinyxml2.h"
-#ifdef ODR_CRYPTO
-#include "openssl/evp.h"
-#endif
 #include "glog/logging.h"
 
 namespace odr {
 
-static const std::map<std::string, OpenDocumentFile::Meta::Type> MIMETYPES = {
-        {"application/vnd.oasis.opendocument.text", OpenDocumentFile::Meta::Type::TEXT},
-        {"application/vnd.oasis.opendocument.spreadsheet", OpenDocumentFile::Meta::Type::SPREADSHEET},
-        {"application/vnd.oasis.opendocument.presentation", OpenDocumentFile::Meta::Type::PRESENTATION},
+static const std::map<std::string, DocumentType> MIMETYPES = {
+        {"application/vnd.oasis.opendocument.text", DocumentType::TEXT},
+        {"application/vnd.oasis.opendocument.spreadsheet", DocumentType::SPREADSHEET},
+        {"application/vnd.oasis.opendocument.presentation", DocumentType::PRESENTATION},
 };
 
 class OpenDocumentFileImpl : public OpenDocumentFile {
 public:
     mz_zip_archive zip;
-    Meta meta;
+    DocumentMeta meta;
     Entries entries;
 
     ~OpenDocumentFileImpl() override {
@@ -79,22 +76,21 @@ public:
                     .ToElement();
             if (statisticsElement != nullptr) {
                 switch (meta.type) {
-                    case Meta::Type::TEXT: {
+                    case DocumentType::TEXT: {
                         const tinyxml2::XMLAttribute *pageCount = statisticsElement->FindAttribute("meta:page-count");
                         if (pageCount == nullptr) {
                             break;
                         }
                         meta.text.pageCount = pageCount->UnsignedValue();
                     } break;
-                    case Meta::Type::SPREADSHEET: {
+                    case DocumentType::SPREADSHEET: {
                         const tinyxml2::XMLAttribute *tableCount = statisticsElement->FindAttribute("meta:table-count");
                         if (tableCount == nullptr) {
                             break;
                         }
                         meta.spreadsheet.tableCount = tableCount->UnsignedValue();
-                        meta.spreadsheet.tables = new Meta::Spreadsheet::Table[meta.spreadsheet.tableCount];
                     } break;
-                    case Meta::Type::PRESENTATION: {
+                    case DocumentType::PRESENTATION: {
                         meta.presentation.pageCount = 0;
                     } break;
                     default:
@@ -103,13 +99,7 @@ public:
             }
         }
 
-        return meta.type != Meta::Type::UNKNOWN;
-    }
-
-    void destroyMeta() {
-        if (meta.type == Meta::Type::UNKNOWN) {
-            delete[] meta.spreadsheet.tables;
-        }
+        return meta.type != DocumentType::UNKNOWN;
     }
 
     bool open(const std::string &path) override {
@@ -133,7 +123,6 @@ public:
     }
 
     void close() override {
-        destroyMeta();
         mz_zip_reader_end(&zip);
     }
 
@@ -141,7 +130,7 @@ public:
         return entries;
     }
 
-    const Meta &getMeta() const override {
+    const DocumentMeta &getMeta() const override {
         return meta;
     }
 
