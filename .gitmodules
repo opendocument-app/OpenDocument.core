@@ -7,6 +7,3 @@
 [submodule "lib/glog"]
 	path = lib/glog
 	url = https://github.com/tomtasche/glog.git
-[submodule "lib/ios-cmake"]
-	path = lib/ios-cmake
-	url = git@github.com:leetal/ios-cmake.git
