@@ -81,17 +81,63 @@ public:
                         if (pageCount == nullptr) {
                             break;
                         }
-                        meta.text.pageCount = pageCount->UnsignedValue();
+                        meta.entryCount = pageCount->UnsignedValue();
                     } break;
                     case DocumentType::SPREADSHEET: {
                         const tinyxml2::XMLAttribute *tableCount = statisticsElement->FindAttribute("meta:table-count");
                         if (tableCount == nullptr) {
                             break;
                         }
-                        meta.spreadsheet.tableCount = tableCount->UnsignedValue();
+                        // TODO: use content.xml?
+                        meta.entryCount = tableCount->UnsignedValue();
+                        // TODO: get table names
                     } break;
                     case DocumentType::PRESENTATION: {
-                        meta.presentation.pageCount = 0;
+                        meta.entryCount = 0;
+                    } break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        if (!isFile("content.xml")) {
+            return false;
+        } else {
+            // TODO: dont load content twice (happens in case of translation)
+            auto contentXml = loadXML("content.xml");
+            tinyxml2::XMLHandle contentHandle(contentXml.get());
+            tinyxml2::XMLHandle bodyHandle = contentHandle
+                    .FirstChildElement("office:document-content")
+                    .FirstChildElement("office:body");
+            if (bodyHandle.ToElement() != nullptr) {
+                switch (meta.type) {
+                    case DocumentType::SPREADSHEET: {
+                        meta.entryCount = 0;
+                        tinyxml2::XMLHandle tableHandle = bodyHandle
+                                .FirstChildElement("office:spreadsheet")
+                                .FirstChildElement("table:table");
+                        while (tableHandle.ToElement() != nullptr) {
+                            ++meta.entryCount;
+                            DocumentMeta::Entry entry;
+                            entry.name = tableHandle.ToElement()->FindAttribute("table:name")->Value();
+                            // TODO: table dimension
+                            meta.entries.emplace_back(entry);
+                            tableHandle = tableHandle.NextSiblingElement("table:table");
+                        }
+                    } break;
+                    case DocumentType::PRESENTATION: {
+                        meta.entryCount = 0;
+                        tinyxml2::XMLHandle pageHandle = bodyHandle
+                                .FirstChildElement("office:presentation")
+                                .FirstChildElement("draw:page");
+                        while (pageHandle.ToElement() != nullptr) {
+                            ++meta.entryCount;
+                            DocumentMeta::Entry entry;
+                            entry.name = pageHandle.ToElement()->FindAttribute("draw:name")->Value();
+                            meta.entries.emplace_back(entry);
+                            pageHandle = pageHandle.NextSiblingElement("draw:page");
+                        }
                     } break;
                     default:
                         break;
