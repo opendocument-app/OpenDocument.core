@@ -28,6 +28,7 @@ public:
     bool translate(const std::string &out, const TranslationConfig &config) const override {
         Context context = {};
         context.config = &config;
+        context.meta = &getMeta();
 
         switch (file->getMeta().type) {
             case DocumentType::TEXT:
