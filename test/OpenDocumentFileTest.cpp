@@ -6,13 +6,12 @@
 namespace odr {
 
 TEST(OpenDocumentFileTest, open) {
-    const std::string path = "../../test/empty.ods";
+    const std::string path = "../../test/empty.odp";
     auto odf = OpenDocumentFile::create();
     odf->open(path);
 
     LOG(INFO) << (int) odf->getMeta().type;
-    LOG(INFO) << odf->getMeta().text.pageCount;
-    LOG(INFO) << odf->getMeta().spreadsheet.tableCount;
+    LOG(INFO) << odf->getMeta().entryCount;
 }
 
 }

@@ -16,34 +16,15 @@ enum class DocumentType {
 };
 
 struct DocumentMeta {
-    typedef int Version;
-    struct Text {
-        std::size_t pageCount;
+    struct Entry {
+        std::string name;
+        std::size_t rowCount = 0;
+        std::size_t columnCount = 0;
     };
-    struct Spreadsheet {
-        struct Table {
-            std::string name;
-            std::size_t rowCount;
-            std::size_t columnCount;
-        };
-
-        std::size_t tableCount;
-        std::list<Table> tables;
-    };
-    struct Presentation {
-        std::size_t pageCount;
-    };
-
-    DocumentMeta() {}
-    ~DocumentMeta() {}
 
     DocumentType type = DocumentType::UNKNOWN;
-
-    union {
-        Text text;
-        Spreadsheet spreadsheet;
-        Presentation presentation;
-    };
+    std::size_t entryCount;
+    std::list<Entry> entries;
 };
 
 }
