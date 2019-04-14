@@ -319,7 +319,10 @@ public:
 
     ~DefaultStyleTranslatorImpl() override = default;
 
-    void translate(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translate(const tinyxml2::XMLElement &in, Context &context) const override {
+        auto &out = *context.output;
+        context.currentElement = &in;
+
         for (auto child = in.FirstChild(); child != nullptr; child = child->NextSibling()) {
             if (child->ToElement() == nullptr) {
                 LOG(WARNING) << "skipped. no element.";
@@ -339,7 +342,8 @@ public:
             }
 
             if (translator != nullptr) {
-                translator->translate(*child->ToElement(), out, context);
+                context.currentElement = child->ToElement();
+                translator->translate(in, out, context);
             }
         }
     }

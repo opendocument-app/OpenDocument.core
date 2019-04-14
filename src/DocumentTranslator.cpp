@@ -26,6 +26,7 @@ public:
         if (!of.is_open()) {
             return false;
         }
+        context.output = &of;
 
         of << "<!DOCTYPE html>\n"
               "<html>\n"
@@ -36,10 +37,10 @@ public:
               "<title>odr</title>\n";
 
         of << "<style>\n";
-        generateStyle(in, of, context);
+        generateStyle(of, context);
         auto contentXml = in.loadXML("content.xml");
         tinyxml2::XMLHandle contentHandle(contentXml.get());
-        generateContentStyle(contentHandle, of, context);
+        generateContentStyle(contentHandle, context);
         of << "</style>\n";
 
         of << "<script>\n";
@@ -49,7 +50,7 @@ public:
         of << "</head>\n";
         of << "<body>\n";
 
-        generateContent(in, contentHandle, of, context);
+        generateContent(in, contentHandle, context);
 
         of << "\n";
         of << "</body>\n";
@@ -59,11 +60,11 @@ public:
         return true;
     }
 
-    void generateStyle(OpenDocumentFile &in, std::ofstream &of, Context &context) const {
+    void generateStyle(std::ofstream &out, Context &context) const {
         // TODO: get styles from translators?
 
         // default css
-        of << "* {\n"
+        out << "* {\n"
               "\tmargin: 0px;\n"
               "\tposition: relative;\n"
               "}"
@@ -99,38 +100,41 @@ public:
               "\tfont-size: 10pt;\n"
               "}\n";
 
-        auto stylesXml = in.loadXML("styles.xml");
+        auto stylesXml = context.file->loadXML("styles.xml");
+        context.styles = stylesXml.get();
         tinyxml2::XMLHandle stylesHandle(stylesXml.get());
 
         tinyxml2::XMLElement *fontFaceDecls = stylesHandle
                 .FirstChildElement("office:document-styles")
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
-        styleTranslator->translate(*fontFaceDecls, of, context);
+        styleTranslator->translate(*fontFaceDecls, context);
 
         tinyxml2::XMLElement *styles = stylesHandle
                 .FirstChildElement("office:document-styles")
                 .FirstChildElement("office:styles")
                 .ToElement();
-        styleTranslator->translate(*styles, of, context);
+        styleTranslator->translate(*styles, context);
+
+        context.styles = nullptr;
     }
-    void generateContentStyle(tinyxml2::XMLHandle &in, std::ofstream &of, Context &context) const {
+    void generateContentStyle(tinyxml2::XMLHandle &in, Context &context) const {
         tinyxml2::XMLElement *fontFaceDecls = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
-        styleTranslator->translate(*fontFaceDecls, of, context);
+        styleTranslator->translate(*fontFaceDecls, context);
 
         tinyxml2::XMLElement *automaticStyles = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:automatic-styles")
                 .ToElement();
-        styleTranslator->translate(*automaticStyles, of, context);
+        styleTranslator->translate(*automaticStyles, context);
     }
     void generateScript(std::ofstream &of, Context &context) const {
         // TODO: get script from translators?
     }
-    void generateContent(OpenDocumentFile &file, tinyxml2::XMLHandle &in, std::ofstream &of, Context &context) const {
+    void generateContent(OpenDocumentFile &file, tinyxml2::XMLHandle &in, Context &context) const {
         tinyxml2::XMLHandle bodyHandle = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:body");
@@ -171,7 +175,7 @@ public:
             }
         }
 
-        contentTranslator->translate(*body, of, context);
+        contentTranslator->translate(*body, context);
     }
 };
 

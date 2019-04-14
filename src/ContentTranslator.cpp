@@ -312,7 +312,10 @@ public:
     }
     ~DefaultContentTranslatorImpl() override = default;
 
-    void translate(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translate(const tinyxml2::XMLElement &in, Context &context) const override {
+        auto &out = *context.output;
+        context.currentElement = &in;
+
         const std::string elementName = in.Name();
         auto elementTranslatorIt = elementTranslator.find(elementName);
         const ElementTranslator *translator = nullptr;
@@ -330,7 +333,7 @@ public:
             if (child->ToText() != nullptr) {
                 out << child->ToText()->Value();
             } else if (child->ToElement() != nullptr) {
-                translate(*child->ToElement(), out, context);
+                translate(*child->ToElement(), context);
             }
         }
 

@@ -199,7 +199,7 @@ public:
         return result;
     }
 
-    std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &path) {
+    std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &path) override {
         if (!isFile(path)) {
             return nullptr;
         }
