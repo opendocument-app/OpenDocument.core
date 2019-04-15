@@ -1,8 +1,32 @@
 #include "OpenDocumentFile.h"
 #include <fstream>
 #include "miniz_zip.h"
+#include "cryptopp/hex.h"
+#include "cryptopp/filters.h"
+#include "cryptopp/base64.h"
+#include "cryptopp/pwdbased.h"
+#include "cryptopp/sha.h"
+#include "cryptopp/modes.h"
+#include "cryptopp/aes.h"
+#include "cryptopp/zinflate.h"
 #include "tinyxml2.h"
 #include "glog/logging.h"
+
+typedef unsigned char byte;
+
+static std::string base64decode(const std::string &in) {
+    std::string out;
+    CryptoPP::Base64Decoder b(new CryptoPP::StringSink(out));
+    b.Put((const byte *) in.data(), in.size());
+    b.MessageEnd();
+    return out;
+}
+
+static std::string sha256(const std::string &in) {
+    byte out[CryptoPP::SHA256::DIGESTSIZE];
+    CryptoPP::SHA256().CalculateDigest(out, (byte *) in.data(), in.size());
+    return std::string((char *) out, CryptoPP::SHA256::DIGESTSIZE);
+}
 
 namespace odr {
 
@@ -35,9 +59,11 @@ public:
             }
 
             Entry entry;
-            entry.size = entry_stat.m_uncomp_size;
+            entry.size_real = entry_stat.m_uncomp_size;
+            entry.size_uncompressed = entry_stat.m_uncomp_size;
             entry.size_compressed = entry_stat.m_comp_size;
             entry.index = i;
+            entry.encrypted = false;
             entries[entry_stat.m_filename] = entry;
         }
 
@@ -51,6 +77,7 @@ public:
 
         if (isFile("mimetype")) {
             auto mimetype = loadText("mimetype");
+            meta.mediaType = mimetype;
             auto it = MIMETYPES.find(mimetype);
             if (it == MIMETYPES.end()) {
                 return false;
@@ -58,12 +85,60 @@ public:
             meta.type = it->second;
         }
 
+        meta.encrypted = false;
+
         if (isFile("META-INF/manifest.xml")) {
             auto manifest = loadXML("META-INF/manifest.xml");
-            // TODO: parse version
-            // TODO: parse media type
-            // TODO: parse entity media types
-            // TODO: parse entity crypto info
+
+            // TODO: pointer safe
+            tinyxml2::XMLElement *e = manifest
+                    ->FirstChildElement("manifest:manifest")
+                    ->FirstChildElement("manifest:file-entry");
+            for (; e != nullptr; e = e->NextSiblingElement("manifest:file-entry")) {
+                std::string fullPath = e->FindAttribute("manifest:full-path")->Value();
+
+                if (fullPath == "/") {
+                    meta.mediaType = e->FindAttribute("manifest:media-type")->Value();
+                    meta.version = e->FindAttribute("manifest:version")->Value();
+                    continue;
+                }
+
+                auto entryIt = entries.find(fullPath);
+                if (entryIt == entries.end()) {
+                    continue;
+                }
+
+                meta.encrypted = true;
+                Entry &entry = entryIt->second;
+                entry.encrypted = true;
+
+                entry.size_real = e->FindAttribute("manifest:size")->UnsignedValue();
+                entry.mediaType = e->FindAttribute("manifest:media-type")->Value();
+
+                tinyxml2::XMLElement *crypto = e->FirstChildElement("manifest:encryption-data");
+                if (crypto == nullptr) {
+                    continue;
+                }
+
+                tinyxml2::XMLElement *algo = crypto->FirstChildElement("manifest:algorithm");
+                tinyxml2::XMLElement *key = crypto->FirstChildElement("manifest:key-derivation");
+                tinyxml2::XMLElement *start = crypto->FirstChildElement("manifest:start-key-generation");
+
+                entry.checksumType = crypto->FindAttribute("manifest:checksum-type")->Value();
+                entry.checksum = crypto->FindAttribute("manifest:checksum")->Value();
+                entry.algorithmName = algo->FindAttribute("manifest:algorithm-name")->Value();
+                entry.initialisationVector = algo->FindAttribute("manifest:initialisation-vector")->Value();
+                entry.keyDerivationName = key->FindAttribute("manifest:key-derivation-name")->Value();
+                entry.keySize = key->FindAttribute("manifest:key-size")->UnsignedValue();
+                entry.keyIterationCount = key->FindAttribute("manifest:iteration-count")->UnsignedValue();
+                entry.keySalt = key->FindAttribute("manifest:salt")->Value();
+                entry.startKeyGenerationName = start->FindAttribute("manifest:start-key-generation-name")->Value();
+                entry.startKeySize = start->FindAttribute("manifest:key-size")->Value();
+
+                entry.checksum = base64decode(entry.checksum);
+                entry.initialisationVector = base64decode(entry.initialisationVector);
+                entry.keySalt = base64decode(entry.keySalt);
+            }
         }
 
         if (isFile("meta.xml")) {
@@ -88,9 +163,7 @@ public:
                         if (tableCount == nullptr) {
                             break;
                         }
-                        // TODO: use content.xml?
                         meta.entryCount = tableCount->UnsignedValue();
-                        // TODO: get table names
                     } break;
                     case DocumentType::PRESENTATION: {
                         meta.entryCount = 0;
@@ -168,6 +241,11 @@ public:
         return true;
     }
 
+    bool decrypt(const std::string &password) override {
+        // TODO
+        return true;
+    }
+
     void close() override {
         mz_zip_reader_end(&zip);
     }
@@ -190,9 +268,9 @@ public:
             return nullptr;
         }
         auto reader = mz_zip_reader_extract_iter_new(&zip, it->second.index, 0);
-        std::string result(it->second.size, '\0');
-        auto read = mz_zip_reader_extract_iter_read(reader, &result[0], it->second.size);
-        if (read != it->second.size) {
+        std::string result(it->second.size_uncompressed, '\0');
+        auto read = mz_zip_reader_extract_iter_read(reader, &result[0], it->second.size_uncompressed);
+        if (read != it->second.size_uncompressed) {
             return nullptr;
         }
         mz_zip_reader_extract_iter_free(reader);
@@ -201,6 +279,10 @@ public:
 
     std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &path) override {
         if (!isFile(path)) {
+            return nullptr;
+        }
+        if (entries[path].encrypted) {
+            // TODO
             return nullptr;
         }
         auto result = std::make_unique<tinyxml2::XMLDocument>();
