@@ -21,6 +21,10 @@ public:
         return file->open(in);
     }
 
+    bool decrypt(const std::string &password) override {
+        return file->decrypt(password);
+    }
+
     const DocumentMeta &getMeta() const override {
         return file->getMeta();
     }

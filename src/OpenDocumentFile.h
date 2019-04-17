@@ -48,8 +48,9 @@ public:
     virtual const Entries getEntries() const = 0;
     virtual const DocumentMeta &getMeta() const = 0;
     virtual bool isFile(const std::string &) const = 0;
+    virtual bool isDecrypted() const = 0;
 
-    virtual std::string loadText(const std::string &) = 0;
+    virtual std::unique_ptr<std::string> loadText(const std::string &) = 0;
     virtual std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &) = 0;
 };
 
