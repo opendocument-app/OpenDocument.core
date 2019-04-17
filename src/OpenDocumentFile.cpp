@@ -2,68 +2,10 @@
 #include <fstream>
 #include <algorithm>
 #include "miniz_zip.h"
-#ifdef ODR_CRYPTO
-#include "cryptopp/hex.h"
-#include "cryptopp/filters.h"
-#include "cryptopp/base64.h"
-#include "cryptopp/pwdbased.h"
-#include "cryptopp/sha.h"
-#include "cryptopp/modes.h"
-#include "cryptopp/aes.h"
-#include "cryptopp/zinflate.h"
-#endif
 #include "tinyxml2.h"
 #include "glog/logging.h"
-
 #ifdef ODR_CRYPTO
-typedef unsigned char byte;
-
-static std::string base64decode(const std::string &in) {
-    std::string out;
-    CryptoPP::Base64Decoder b(new CryptoPP::StringSink(out));
-    b.Put((const byte *) in.data(), in.size());
-    b.MessageEnd();
-    return out;
-}
-
-static std::string sha256(const std::string &in) {
-    byte out[CryptoPP::SHA256::DIGESTSIZE];
-    CryptoPP::SHA256().CalculateDigest(out, (byte *) in.data(), in.size());
-    return std::string((char *) out, CryptoPP::SHA256::DIGESTSIZE);
-}
-
-static std::string deriveKey(const std::size_t keySize, const std::string &startKey,
-        const std::string &salt, const std::size_t iterationCount) {
-    std::string result(keySize, '\0');
-    CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
-    pbkdf2.DeriveKey((byte *) result.data(), result.size(), false, (byte *) startKey.data(), startKey.size(),
-                     (byte *) salt.data(), salt.size(), iterationCount);
-    return result;
-}
-
-static std::string decryptAes(const std::string &key, const std::string &iv, const std::string &input) {
-    std::string result;
-    CryptoPP::AES::Decryption aesDecryption((byte *) key.data(), key.size());
-    CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, (byte *) iv.data());
-    CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(result), CryptoPP::BlockPaddingSchemeDef::NO_PADDING);
-    stfDecryptor.Put((byte *) input.data(), input.size());
-    stfDecryptor.MessageEnd();
-    return result;
-}
-
-static std::string deriveKeyAndDecrypt(const odr::OpenDocumentFile::Entry &entry, const std::string &startKey,
-        const std::string &input) {
-    std::string derivedKey = deriveKey(entry.keySize, startKey, entry.keySalt, entry.keyIterationCount);
-    return decryptAes(derivedKey, entry.initialisationVector, input);
-}
-
-static std::string inflate(const std::string &input) {
-    std::string result;
-    CryptoPP::Inflator inflator(new CryptoPP::StringSink(result));
-    inflator.Put((byte *) input.data(), input.size());
-    inflator.MessageEnd();
-    return result;
-}
+#include "CryptoUtil.h"
 #endif
 
 namespace odr {
@@ -84,7 +26,7 @@ public:
     bool opened = false;
     bool decrypted = false;
 
-    Entry *smallestEncryptedEntry = nullptr;
+    OpenDocumentEntry *smallestEncryptedEntry = nullptr;
 
     ~OpenDocumentFileImpl() override {
         close();
@@ -102,7 +44,7 @@ public:
                 continue;
             }
 
-            Entry entry;
+            OpenDocumentEntry entry;
             entry.size_real = entry_stat.m_uncomp_size;
             entry.size_uncompressed = entry_stat.m_uncomp_size;
             entry.size_compressed = entry_stat.m_comp_size;
@@ -152,7 +94,7 @@ public:
                     continue;
                 }
 
-                Entry &entry = entryIt->second;
+                OpenDocumentEntry &entry = entryIt->second;
                 entry.mediaType = e->FindAttribute("manifest:media-type")->Value();
 
                 tinyxml2::XMLElement *crypto = e->FirstChildElement("manifest:encryption-data");
@@ -179,9 +121,11 @@ public:
                 entry.startKeyGenerationName = start->FindAttribute("manifest:start-key-generation-name")->Value();
                 entry.startKeySize = start->FindAttribute("manifest:key-size")->Value();
 
-                entry.checksum = base64decode(entry.checksum);
-                entry.initialisationVector = base64decode(entry.initialisationVector);
-                entry.keySalt = base64decode(entry.keySalt);
+#ifdef ODR_CRYPTO
+                entry.checksum = CryptoUtil::base64decode(entry.checksum);
+                entry.initialisationVector = CryptoUtil::base64decode(entry.initialisationVector);
+                entry.keySalt = CryptoUtil::base64decode(entry.keySalt);
+#endif
 
                 if ((smallestEncryptedEntry == nullptr) || (entry.size_uncompressed < smallestEncryptedEntry->size_uncompressed)) {
                     smallestEncryptedEntry = &entry;
@@ -301,6 +245,7 @@ public:
     }
 
     bool decrypt(const std::string &password) override {
+#ifdef ODR_CRYPTO
         if (!opened || decrypted) {
             return false;
         }
@@ -308,24 +253,25 @@ public:
             LOG(ERROR) << "no smallest encrypted entry";
             return false;
         }
-        startKey = sha256(password);
+        startKey = CryptoUtil::sha256(password);
         decrypted = validatePassword(*smallestEncryptedEntry);
         if (decrypted) {
             createMeta2();
         }
         return decrypted;
-    }
-
-    bool validatePassword(const Entry &entry) {
-#ifdef ODR_CRYPTO
-        std::string result = deriveKeyAndDecrypt(entry, startKey, loadPlain(entry));
-        // TODO: change hash and limit
-        std::string checksum = sha256(result.substr(0, 1024));
-        return checksum == entry.checksum;
 #else
         return false;
 #endif
     }
+
+#ifdef ODR_CRYPTO
+    bool validatePassword(const OpenDocumentEntry &entry) {
+        std::string result = CryptoUtil::deriveKeyAndDecrypt(entry, startKey, loadPlain(entry));
+        // TODO: change hash and limit
+        std::string checksum = CryptoUtil::sha256(result.substr(0, 1024));
+        return checksum == entry.checksum;
+    }
+#endif
 
     void close() override {
         if (!opened) {
@@ -354,7 +300,7 @@ public:
         return decrypted;
     }
 
-    std::string loadPlain(const Entry &entry) {
+    std::string loadPlain(const OpenDocumentEntry &entry) {
         auto reader = mz_zip_reader_extract_iter_new(&zip, entry.index, 0);
         std::string result(entry.size_uncompressed, '\0');
         auto read = mz_zip_reader_extract_iter_read(reader, &result[0], entry.size_uncompressed);
@@ -375,7 +321,7 @@ public:
         }
 #ifdef ODR_CRYPTO
         if (it->second.encrypted) {
-            result = inflate(deriveKeyAndDecrypt(it->second, startKey, result));
+            result = CryptoUtil::inflate(CryptoUtil::deriveKeyAndDecrypt(it->second, startKey, result));
             result = result.substr(0, it->second.size_real);
         }
 #endif
