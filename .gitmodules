@@ -7,3 +7,6 @@
 [submodule "lib/glog"]
 	path = lib/glog
 	url = https://github.com/tomtasche/glog.git
+[submodule "lib/cryptopp"]
+	path = lib/cryptopp
+	url = https://github.com/TomTasche/cryptopp.git
