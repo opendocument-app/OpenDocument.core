@@ -21,6 +21,10 @@ public:
         return file->open(in);
     }
 
+    bool decrypt(const std::string &password) override {
+        return file->decrypt(password);
+    }
+
     const DocumentMeta &getMeta() const override {
         return file->getMeta();
     }
@@ -28,6 +32,7 @@ public:
     bool translate(const std::string &out, const TranslationConfig &config) const override {
         Context context = {};
         context.config = &config;
+        context.file = file.get();
         context.meta = &getMeta();
 
         switch (file->getMeta().type) {

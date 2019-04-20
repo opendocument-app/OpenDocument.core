@@ -23,6 +23,9 @@ struct DocumentMeta {
     };
 
     DocumentType type = DocumentType::UNKNOWN;
+    std::string mediaType;
+    std::string version;
+    bool encrypted;
     std::size_t entryCount;
     std::list<Entry> entries;
 };

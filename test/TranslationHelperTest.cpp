@@ -5,20 +5,19 @@
 #include "odr/TranslationConfig.h"
 #include "odr/TranslationHelper.h"
 
-namespace odr {
-
 TEST(TranslationHelperTest, translate) {
     std::string input;
     input = "/home/andreas/workspace/OpenDocument.test/files/spreadsheet/efficiency-big-2.ods";
     input = "/home/andreas/Desktop/odr/test.odp";
+    input = "../../test/encrypted.odt";
     const std::string output = "../../test/test.html";
+    const std::string password = "password";
 
-    TranslationConfig config = {};
+    odr::TranslationConfig config = {};
     config.entryOffset = 0;
     config.entryCount = 0;
-    auto translator = TranslationHelper::create();
+    auto translator = odr::TranslationHelper::create();
     translator->open(input);
+    translator->decrypt(password);
     translator->translate(output, config);
-}
-
 }
