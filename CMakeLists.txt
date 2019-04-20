@@ -10,11 +10,10 @@ add_subdirectory("lib/tinyxml2")
 add_subdirectory("lib/miniz")
 add_subdirectory("lib/glog")
 
+add_subdirectory("cryptopp")
 # TODO: remove
 set(CryptoPP_FOUND ON)
 add_library(cryptopp STATIC IMPORTED)
-set_target_properties(cryptopp PROPERTIES IMPORTED_LOCATION "/home/andreas/Desktop/odr/cryptopp/libcryptopp.a")
-target_include_directories(cryptopp INTERFACE "/home/andreas/Desktop/odr")
 
 file(GLOB SOURCES "src/*.cpp")
 add_library(odrlib STATIC ${SOURCES})
