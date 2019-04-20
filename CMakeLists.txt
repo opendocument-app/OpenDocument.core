@@ -14,7 +14,7 @@ file(GLOB SOURCES "src/*.cpp")
 add_library(odrlib STATIC ${SOURCES})
 target_include_directories(odrlib PUBLIC "include")
 
-target_link_libraries(odrlib PRIVATE glog miniz tinyxml2 cryptopp)
+target_link_libraries(odrlib PRIVATE glog miniz tinyxml2)
 
 # miniz defines a lot of macros without that
 target_compile_definitions(odrlib PRIVATE MINIZ_NO_ZLIB_COMPATIBLE_NAMES)
