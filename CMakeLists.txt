@@ -3,9 +3,10 @@ project(odr C CXX)
 set(CMAKE_CXX_STANDARD 14)
 
 option(ODR_DISABLE_CRYPTO "disable crypto" "OFF")
+
+# tinyxml2 options
 option(BUILD_SHARED_LIBS "OFF")
 option(BUILD_TESTS "OFF")
-
 add_subdirectory("lib/tinyxml2")
 add_subdirectory("lib/miniz")
 add_subdirectory("lib/glog")

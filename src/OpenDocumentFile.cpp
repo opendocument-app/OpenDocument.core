@@ -10,16 +10,37 @@
 
 namespace odr {
 
-static const std::map<std::string, DocumentType> MIMETYPES = {
-        {"application/vnd.oasis.opendocument.text", DocumentType::TEXT},
-        {"application/vnd.oasis.opendocument.spreadsheet", DocumentType::SPREADSHEET},
-        {"application/vnd.oasis.opendocument.presentation", DocumentType::PRESENTATION},
+static const std::map<std::string, FileType> MIMETYPES = {
+        {"application/vnd.oasis.opendocument.text", FileType::OPENDOCUMENT_TEXT},
+        {"application/vnd.oasis.opendocument.presentation", FileType::OPENDOCUMENT_PRESENTATION},
+        {"application/vnd.oasis.opendocument.spreadsheet", FileType::OPENDOCUMENT_SPREADSHEET},
+        {"application/vnd.oasis.opendocument.graphics", FileType::OPENDOCUMENT_GRAPHICS},
 };
+
+#ifdef ODR_CRYPTO
+static const std::map<std::string, ChecksumType> CHECKSUM_TYPES = {
+        {"SHA1", ChecksumType::SHA1},
+        {"SHA1/1K", ChecksumType::SHA1_1K},
+        {"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0#sha256-1k", ChecksumType::SHA256_1K},
+};
+static const std::map<std::string, AlgorithmType> ALGORITHM_TYPES = {
+        {"http://www.w3.org/2001/04/xmlenc#aes256-cbc", AlgorithmType::AES256_CBC},
+        {"", AlgorithmType::TRIPLE_DES_CBC},
+        {"Blowfish CFB", AlgorithmType::BLOWFISH_CFB},
+};
+static const std::map<std::string, KeyDerivationType> KEY_DERIVATION_TYPES = {
+        {"PBKDF2", KeyDerivationType::PBKDF2},
+};
+static const std::map<std::string, ChecksumType> STARTKEY_TYPES = {
+        {"SHA1", ChecksumType::SHA1},
+        {"http://www.w3.org/2000/09/xmldsig#sha256", ChecksumType::SHA256},
+};
+#endif
 
 class OpenDocumentFileImpl : public OpenDocumentFile {
 public:
     mz_zip_archive zip;
-    DocumentMeta meta;
+    FileMeta meta;
     Entries entries;
     std::string startKey;
 
@@ -63,7 +84,6 @@ public:
 
         if (isFile("mimetype")) {
             auto mimetype = loadText("mimetype");
-            meta.mediaType = *mimetype;
             auto it = MIMETYPES.find(*mimetype);
             if (it == MIMETYPES.end()) {
                 return false;
@@ -76,7 +96,6 @@ public:
         if (isFile("META-INF/manifest.xml")) {
             auto manifest = loadXML("META-INF/manifest.xml");
 
-            // TODO: pointer safe
             tinyxml2::XMLElement *e = manifest
                     ->FirstChildElement("manifest:manifest")
                     ->FirstChildElement("manifest:file-entry");
@@ -95,6 +114,7 @@ public:
                 }
 
                 OpenDocumentEntry &entry = entryIt->second;
+                entry.path = fullPath;
                 entry.mediaType = e->FindAttribute("manifest:media-type")->Value();
 
                 tinyxml2::XMLElement *crypto = e->FirstChildElement("manifest:encryption-data");
@@ -106,25 +126,55 @@ public:
                 entry.encrypted = true;
                 entry.size_real = e->FindAttribute("manifest:size")->UnsignedValue();
 
+#ifdef ODR_CRYPTO
                 tinyxml2::XMLElement *algo = crypto->FirstChildElement("manifest:algorithm");
                 tinyxml2::XMLElement *key = crypto->FirstChildElement("manifest:key-derivation");
                 tinyxml2::XMLElement *start = crypto->FirstChildElement("manifest:start-key-generation");
 
-                entry.checksumType = crypto->FindAttribute("manifest:checksum-type")->Value();
+                std::string checksumType = crypto->FindAttribute("manifest:checksum-type")->Value();
                 entry.checksum = crypto->FindAttribute("manifest:checksum")->Value();
-                entry.algorithmName = algo->FindAttribute("manifest:algorithm-name")->Value();
+                std::string algorithmName = algo->FindAttribute("manifest:algorithm-name")->Value();
                 entry.initialisationVector = algo->FindAttribute("manifest:initialisation-vector")->Value();
-                entry.keyDerivationName = key->FindAttribute("manifest:key-derivation-name")->Value();
+                std::string keyDerivationName = key->FindAttribute("manifest:key-derivation-name")->Value();
                 entry.keySize = key->FindAttribute("manifest:key-size")->UnsignedValue();
                 entry.keyIterationCount = key->FindAttribute("manifest:iteration-count")->UnsignedValue();
                 entry.keySalt = key->FindAttribute("manifest:salt")->Value();
-                entry.startKeyGenerationName = start->FindAttribute("manifest:start-key-generation-name")->Value();
-                entry.startKeySize = start->FindAttribute("manifest:key-size")->Value();
+                std::string startKeyGenerationName = start->FindAttribute("manifest:start-key-generation-name")->Value();
+                entry.startKeySize = start->FindAttribute("manifest:key-size")->UnsignedValue();
 
-#ifdef ODR_CRYPTO
-                entry.checksum = CryptoUtil::base64decode(entry.checksum);
-                entry.initialisationVector = CryptoUtil::base64decode(entry.initialisationVector);
-                entry.keySalt = CryptoUtil::base64decode(entry.keySalt);
+                auto checksum_it = CHECKSUM_TYPES.find(checksumType);
+                auto algorithm_it = ALGORITHM_TYPES.find(algorithmName);
+                auto keyDerivation_it = KEY_DERIVATION_TYPES.find(keyDerivationName);
+                auto startKey_it = STARTKEY_TYPES.find(startKeyGenerationName);
+
+                if (checksum_it != CHECKSUM_TYPES.end()) {
+                    entry.checksumType = checksum_it->second;
+                } else {
+                    entry.checksumType = ChecksumType::UNKNOWN;
+                    LOG(ERROR) << "unknown checksum " << checksumType;
+                }
+                if (algorithm_it != ALGORITHM_TYPES.end()) {
+                    entry.algorithm = algorithm_it->second;
+                } else {
+                    entry.algorithm = AlgorithmType::UNKNOWN;
+                    LOG(ERROR) << "unknown algorithm " << algorithmName;
+                }
+                if (keyDerivation_it != KEY_DERIVATION_TYPES.end()) {
+                    entry.keyDerivation = keyDerivation_it->second;
+                } else {
+                    entry.keyDerivation = KeyDerivationType::UNKNOWN;
+                    LOG(ERROR) << "unknown key derivation " << keyDerivationName;
+                }
+                if (startKey_it != STARTKEY_TYPES.end()) {
+                    entry.startKeyGeneration = startKey_it->second;
+                } else {
+                    entry.startKeyGeneration = ChecksumType::UNKNOWN;
+                    LOG(ERROR) << "unknown start key generation " << startKeyGenerationName;
+                }
+
+                entry.checksum = CryptoUtil::base64Decode(entry.checksum);
+                entry.initialisationVector = CryptoUtil::base64Decode(entry.initialisationVector);
+                entry.keySalt = CryptoUtil::base64Decode(entry.keySalt);
 #endif
 
                 if ((smallestEncryptedEntry == nullptr) || (entry.size_uncompressed < smallestEncryptedEntry->size_uncompressed)) {
@@ -133,7 +183,7 @@ public:
             }
         }
 
-        return meta.type != DocumentType::UNKNOWN;
+        return meta.type != FileType::UNKNOWN;
     }
 
     void createMeta2() {
@@ -144,7 +194,6 @@ public:
             tinyxml2::XMLElement *metaElement = metaHandle
                     .FirstChildElement("office:document-meta")
                     .ToElement();
-            meta.version = metaElement->FindAttribute("office:version")->Value();
 
             tinyxml2::XMLElement *statisticsElement = metaHandle
                     .FirstChildElement("office:document-meta")
@@ -153,22 +202,24 @@ public:
                     .ToElement();
             if (statisticsElement != nullptr) {
                 switch (meta.type) {
-                    case DocumentType::TEXT: {
+                    case FileType::OPENDOCUMENT_TEXT: {
                         const tinyxml2::XMLAttribute *pageCount = statisticsElement->FindAttribute("meta:page-count");
                         if (pageCount == nullptr) {
                             break;
                         }
                         meta.entryCount = pageCount->UnsignedValue();
                     } break;
-                    case DocumentType::SPREADSHEET: {
+                    case FileType::OPENDOCUMENT_PRESENTATION: {
+                        meta.entryCount = 0;
+                    } break;
+                    case FileType::OPENDOCUMENT_SPREADSHEET: {
                         const tinyxml2::XMLAttribute *tableCount = statisticsElement->FindAttribute("meta:table-count");
                         if (tableCount == nullptr) {
                             break;
                         }
                         meta.entryCount = tableCount->UnsignedValue();
                     } break;
-                    case DocumentType::PRESENTATION: {
-                        meta.entryCount = 0;
+                    case FileType::OPENDOCUMENT_GRAPHICS: {
                     } break;
                     default:
                         break;
@@ -185,31 +236,31 @@ public:
                     .FirstChildElement("office:body");
             if (bodyHandle.ToElement() != nullptr) {
                 switch (meta.type) {
-                    case DocumentType::SPREADSHEET: {
-                        meta.entryCount = 0;
-                        tinyxml2::XMLHandle tableHandle = bodyHandle
-                                .FirstChildElement("office:spreadsheet")
-                                .FirstChildElement("table:table");
-                        while (tableHandle.ToElement() != nullptr) {
-                            ++meta.entryCount;
-                            DocumentMeta::Entry entry;
-                            entry.name = tableHandle.ToElement()->FindAttribute("table:name")->Value();
-                            // TODO: table dimension
-                            meta.entries.emplace_back(entry);
-                            tableHandle = tableHandle.NextSiblingElement("table:table");
-                        }
-                    } break;
-                    case DocumentType::PRESENTATION: {
+                    case FileType::OPENDOCUMENT_PRESENTATION: {
                         meta.entryCount = 0;
                         tinyxml2::XMLHandle pageHandle = bodyHandle
                                 .FirstChildElement("office:presentation")
                                 .FirstChildElement("draw:page");
                         while (pageHandle.ToElement() != nullptr) {
                             ++meta.entryCount;
-                            DocumentMeta::Entry entry;
+                            FileMeta::Entry entry;
                             entry.name = pageHandle.ToElement()->FindAttribute("draw:name")->Value();
                             meta.entries.emplace_back(entry);
                             pageHandle = pageHandle.NextSiblingElement("draw:page");
+                        }
+                    } break;
+                    case FileType::OPENDOCUMENT_SPREADSHEET: {
+                        meta.entryCount = 0;
+                        tinyxml2::XMLHandle tableHandle = bodyHandle
+                                .FirstChildElement("office:spreadsheet")
+                                .FirstChildElement("table:table");
+                        while (tableHandle.ToElement() != nullptr) {
+                            ++meta.entryCount;
+                            FileMeta::Entry entry;
+                            entry.name = tableHandle.ToElement()->FindAttribute("table:name")->Value();
+                            // TODO: table dimension
+                            meta.entries.emplace_back(entry);
+                            tableHandle = tableHandle.NextSiblingElement("table:table");
                         }
                     } break;
                     default:
@@ -253,7 +304,25 @@ public:
             LOG(ERROR) << "no smallest encrypted entry";
             return false;
         }
-        startKey = CryptoUtil::sha256(password);
+        if (!canDecrypt(*smallestEncryptedEntry)) {
+            LOG(ERROR) << "cannot decrypt smallest encrypted entry";
+            return false;
+        }
+        switch (smallestEncryptedEntry->startKeyGeneration) {
+            case ChecksumType::SHA1:
+                startKey = CryptoUtil::sha1(password);
+                break;
+            case ChecksumType::SHA256:
+                startKey = CryptoUtil::sha256(password);
+                break;
+            default:
+                throw;
+        }
+        if (startKey.size() < smallestEncryptedEntry->startKeySize) {
+            LOG(ERROR) << "start key too short";
+            return false;
+        }
+        startKey = startKey.substr(0, smallestEncryptedEntry->startKeySize);
         decrypted = validatePassword(*smallestEncryptedEntry);
         if (decrypted) {
             createMeta2();
@@ -265,10 +334,45 @@ public:
     }
 
 #ifdef ODR_CRYPTO
+    bool canDecrypt(const OpenDocumentEntry &entry) {
+        return (entry.checksumType != ChecksumType::UNKNOWN) &&
+                (entry.algorithm != AlgorithmType::UNKNOWN) &&
+                (entry.keyDerivation != KeyDerivationType::UNKNOWN) &&
+                (entry.startKeyGeneration != ChecksumType::UNKNOWN);
+    }
+
+    std::string deriveKeyAndDecrypt(const OpenDocumentEntry &entry, const std::string &input) {
+        std::string derivedKey = CryptoUtil::pbkdf2(entry.keySize, startKey, entry.keySalt, entry.keyIterationCount);
+        switch (entry.algorithm) {
+            case AlgorithmType::AES256_CBC:
+                return CryptoUtil::decryptAES(derivedKey, entry.initialisationVector, input);
+            case AlgorithmType::TRIPLE_DES_CBC:
+                return CryptoUtil::decryptTripleDES(derivedKey, entry.initialisationVector, input);
+            case AlgorithmType::BLOWFISH_CFB:
+                return CryptoUtil::decryptBlowfish(derivedKey, entry.initialisationVector, input);
+            default:
+                throw;
+        }
+    }
+
     bool validatePassword(const OpenDocumentEntry &entry) {
-        std::string result = CryptoUtil::deriveKeyAndDecrypt(entry, startKey, loadPlain(entry));
-        // TODO: change hash and limit
-        std::string checksum = CryptoUtil::sha256(result.substr(0, 1024));
+        std::string result = deriveKeyAndDecrypt(entry, loadPlain(entry));
+        std::size_t padding = CryptoUtil::padding(result);
+        result = result.substr(0, result.size() - padding);
+        std::string checksum;
+        switch (entry.checksumType) {
+            case ChecksumType::SHA1:
+                checksum = CryptoUtil::sha1(result);
+                break;
+            case ChecksumType::SHA1_1K:
+                checksum = CryptoUtil::sha1(result.substr(0, 1024));
+                break;
+            case ChecksumType::SHA256_1K:
+                checksum = CryptoUtil::sha256(result.substr(0, 1024));
+                break;
+            default:
+                throw;
+        }
         return checksum == entry.checksum;
     }
 #endif
@@ -284,20 +388,24 @@ public:
         smallestEncryptedEntry = nullptr;
     }
 
+    bool isOpen() const override {
+        return opened;
+    }
+
+    bool isDecrypted() const override {
+        return decrypted;
+    }
+
     const Entries getEntries() const override {
         return entries;
     }
 
-    const DocumentMeta &getMeta() const override {
+    const FileMeta &getMeta() const override {
         return meta;
     }
 
     bool isFile(const std::string &path) const override {
         return entries.find(path) != entries.end();
-    }
-
-    bool isDecrypted() const override {
-        return decrypted;
     }
 
     std::string loadPlain(const OpenDocumentEntry &entry) {
@@ -321,8 +429,19 @@ public:
         }
 #ifdef ODR_CRYPTO
         if (it->second.encrypted) {
-            result = CryptoUtil::inflate(CryptoUtil::deriveKeyAndDecrypt(it->second, startKey, result));
-            result = result.substr(0, it->second.size_real);
+            if (!decrypted) {
+                LOG(ERROR) << "not decrypted";
+                return nullptr;
+            }
+            if (!canDecrypt(it->second)) {
+                LOG(ERROR) << "cannot decrypt " << path;
+                return nullptr;
+            }
+            result = CryptoUtil::inflate(deriveKeyAndDecrypt(it->second, result));
+            if (result.size() != it->second.size_real) {
+                LOG(ERROR) << "inflated size doesn't match " << path;
+                return nullptr;
+            }
         }
 #endif
         return std::make_unique<std::string>(result);

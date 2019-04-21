@@ -25,21 +25,25 @@ public:
         return file->decrypt(password);
     }
 
-    const DocumentMeta &getMeta() const override {
+    const FileMeta &getMeta() const override {
         return file->getMeta();
     }
 
     bool translate(const std::string &out, const TranslationConfig &config) const override {
+        if (!file->isOpen() || !file->isDecrypted()) {
+            return false;
+        }
+
         Context context = {};
         context.config = &config;
         context.file = file.get();
         context.meta = &getMeta();
 
         switch (file->getMeta().type) {
-            case DocumentType::TEXT:
-            case DocumentType::SPREADSHEET:
-            case DocumentType::PRESENTATION:
-            case DocumentType::GRAPHICS:
+            case FileType::OPENDOCUMENT_TEXT:
+            case FileType::OPENDOCUMENT_PRESENTATION:
+            case FileType::OPENDOCUMENT_SPREADSHEET:
+            case FileType::OPENDOCUMENT_GRAPHICS:
                 // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
                 return translator->translate(*file, out, context);
             default:
