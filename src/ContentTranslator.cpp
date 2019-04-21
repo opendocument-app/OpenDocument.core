@@ -282,28 +282,23 @@ public:
     ~ImageTranslator() override = default;
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         auto href = in.FindAttribute("xlink:href");
-        auto mimetype = in.FindAttribute("loext:mime-type");
 
         out << "<img";
         out << " style=\"width:100%;heigth:100%\"";
 
-        if (mimetype == nullptr) {
-            // TODO: svm
-            LOG(ERROR) << "mimetype not found";
-        }
+        // TODO: svm
         if (href == nullptr) {
             out << " alt=\"Image path not specified";
             LOG(ERROR) << "href not found";
         } else {
             const std::string &path = href->Value();
             out << " alt=\"Image not found or unsupported: " << path << "\"";
-            if (mimetype != nullptr) {
-                out << " src=\"data:" << mimetype->Value() << ";base64,";
+            // hacky image/jpg working according to tom
+            out << " src=\"data:image/jpg;base64, ";
 #ifdef ODR_CRYPTO
-                out << CryptoUtil::base64Encode(*context.file->loadText(path));
+            out << CryptoUtil::base64Encode(*context.file->loadText(path));
 #endif
-                out << "\"";
-            }
+            out << "\"";
         }
 
         out << " />";
