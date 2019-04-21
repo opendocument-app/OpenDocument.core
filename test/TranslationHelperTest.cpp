@@ -11,7 +11,9 @@ TEST(TranslationHelperTest, translate) {
     input = "/home/andreas/Desktop/odr/test.odp";
     input = "../../test/encrypted.odt";
     input = "/home/andreas/workspace/OpenDocument.test/files/text/encrypted-undefined-1$password$.odt";
-    //input = "/home/andreas/workspace/OpenDocument.test/files/text/encrypted-exception-1$password$.odt";
+    input = "/home/andreas/workspace/OpenDocument.test/files/text/encrypted-exception-1$password$.odt";
+    input = "/home/andreas/Desktop/odr/ruski.odt";
+    input = "/home/andreas/Downloads/tuesday_d6.odp";
     const std::string output = "../../test/test.html";
     const std::string password = "password";
 

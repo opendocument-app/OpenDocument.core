@@ -108,7 +108,9 @@ public:
                 .FirstChildElement("office:document-styles")
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
-        styleTranslator->translate(*fontFaceDecls, context);
+        if (fontFaceDecls != nullptr) {
+            styleTranslator->translate(*fontFaceDecls, context);
+        }
 
         tinyxml2::XMLElement *styles = stylesHandle
                 .FirstChildElement("office:document-styles")
@@ -123,7 +125,9 @@ public:
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
-        styleTranslator->translate(*fontFaceDecls, context);
+        if (fontFaceDecls != nullptr) {
+            styleTranslator->translate(*fontFaceDecls, context);
+        }
 
         tinyxml2::XMLElement *automaticStyles = in
                 .FirstChildElement("office:document-content")
