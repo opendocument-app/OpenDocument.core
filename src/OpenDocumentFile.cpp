@@ -4,9 +4,7 @@
 #include "miniz_zip.h"
 #include "tinyxml2.h"
 #include "glog/logging.h"
-#ifdef ODR_CRYPTO
 #include "CryptoUtil.h"
-#endif
 
 namespace odr {
 

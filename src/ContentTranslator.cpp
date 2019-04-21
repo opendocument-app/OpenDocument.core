@@ -7,6 +7,8 @@
 #include "glog/logging.h"
 #include "odr/TranslationConfig.h"
 #include "Context.h"
+#include "OpenDocumentFile.h"
+#include "CryptoUtil.h"
 
 namespace odr {
 
@@ -68,6 +70,7 @@ public:
     explicit DefaultElementTranslator(const std::string &name) : name(name) {
         attributeTranslator["text:style-name"] = std::make_unique<StyleAttributeTranslator>();
         attributeTranslator["table:style-name"] = std::make_unique<StyleAttributeTranslator>();
+        attributeTranslator["draw:style-name"] = std::make_unique<StyleAttributeTranslator>();
     }
     ~DefaultElementTranslator() override = default;
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
@@ -92,11 +95,16 @@ public:
             attributeTranslatorIt->second->translate(*attr, out, context);
         }
 
+        translateStartCallback(in, out, context);
+
         out << ">";
     }
     void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
         out << "</" << name << ">";
     }
+
+protected:
+    virtual void translateStartCallback(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const {}
 };
 
 class ParagraphTranslator : public DefaultElementTranslator {
@@ -240,6 +248,64 @@ public:
     ~TableCellTranslator() override = default;
 };
 
+class FrameTranslator : public DefaultElementTranslator {
+public:
+    FrameTranslator() : DefaultElementTranslator("div") {
+        attributeTranslator["draw:name"] = nullptr;
+        attributeTranslator["text:anchor-type"] = nullptr;
+        attributeTranslator["svg:x"] = nullptr;
+        attributeTranslator["svg:y"] = nullptr;
+        attributeTranslator["svg:width"] = nullptr;
+        attributeTranslator["svg:height"] = nullptr;
+        attributeTranslator["draw:z-index"] = nullptr;
+    }
+    ~FrameTranslator() override = default;
+
+protected:
+    void translateStartCallback(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+        auto width = in.FindAttribute("svg:width");
+        auto height = in.FindAttribute("svg:height");
+
+        out << " style=\"";
+        if (width != nullptr) {
+            out << "width:" << width->Value() << ";";
+        }
+        if (height != nullptr) {
+            out << "height:" << height->Value() << ";";
+        }
+        out << "\"";
+    }
+};
+
+class ImageTranslator : public ElementTranslator {
+public:
+    ~ImageTranslator() override = default;
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+        auto href = in.FindAttribute("xlink:href");
+
+        out << "<img";
+        out << " style=\"width:100%;heigth:100%\"";
+
+        // TODO: svm
+        if (href == nullptr) {
+            out << " alt=\"Image path not specified";
+            LOG(ERROR) << "href not found";
+        } else {
+            const std::string &path = href->Value();
+            out << " alt=\"Image not found or unsupported: " << path << "\"";
+            // hacky image/jpg working according to tom
+            out << " src=\"data:image/jpg;base64, ";
+#ifdef ODR_CRYPTO
+            out << CryptoUtil::base64Encode(*context.file->loadText(path));
+#endif
+            out << "\"";
+        }
+
+        out << " />";
+    }
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {}
+};
+
 class DefaultContentTranslatorImpl : public ContentTranslator {
 public:
     std::unordered_map<std::string, std::unique_ptr<ElementTranslator>> elementTranslator;
@@ -284,11 +350,11 @@ public:
         elementTranslator["table:named-expressions"] = nullptr;
         elementTranslator["table:shapes"] = nullptr;
 
+        elementTranslator["draw:frame"] = std::make_unique<FrameTranslator>();
+        elementTranslator["draw:image"] = std::make_unique<ImageTranslator>();
+        elementTranslator["draw:object"] = nullptr;
         elementTranslator["draw:page"] = nullptr;
         elementTranslator["draw:text-box"] = nullptr;
-        elementTranslator["draw:object"] = nullptr;
-        elementTranslator["draw:frame"] = nullptr;
-        elementTranslator["draw:image"] = nullptr;
         elementTranslator["draw:page-thumbnail"] = nullptr;
 
         elementTranslator["presentation:notes"] = nullptr;
