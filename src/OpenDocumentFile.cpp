@@ -415,7 +415,15 @@ public:
     }
 
     std::unique_ptr<std::string> loadText(const std::string &path) override {
-        auto it = entries.find(path);
+        // normalize path
+        std::string npath;
+        if (path.rfind("./", 0) == 0) {
+            npath = path.substr(2);
+        } else {
+            npath = path;
+        }
+
+        auto it = entries.find(npath);
         if (it == entries.end()) {
             LOG(ERROR) << "zip entry size not found " << path;
             return nullptr;
