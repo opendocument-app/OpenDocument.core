@@ -9,6 +9,7 @@
 #include "OpenDocumentContext.h"
 #include "OpenDocumentFile.h"
 #include "CryptoUtil.h"
+#include "Svm2Svg.h"
 
 namespace odr {
 
@@ -32,7 +33,9 @@ public:
     const std::string name;
 
     explicit DefaultAttributeTranslator(const std::string &name) : name(name) {}
+
     ~DefaultAttributeTranslator() override = default;
+
     void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << " " << name << "=\"" << in.Value() << "\"";
     }
@@ -43,6 +46,7 @@ public:
     std::list<std::string> newClasses;
 
     ~StyleAttributeTranslator() override = default;
+
     void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, OpenDocumentContext &context) const override {
         const std::string styleName = in.Value();
         auto styleIt = context.styleDependencies.find(styleName);
@@ -74,7 +78,9 @@ public:
         attributeTranslator["table:style-name"] = std::make_unique<StyleAttributeTranslator>();
         attributeTranslator["draw:style-name"] = std::make_unique<StyleAttributeTranslator>();
     }
+
     ~DefaultElementTranslator() override = default;
+
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << "<" << name;
 
@@ -101,6 +107,7 @@ public:
 
         out << ">";
     }
+
     void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << "</" << name << ">";
     }
@@ -120,12 +127,14 @@ public:
     HeadlineTranslator() : DefaultElementTranslator("h") {
         attributeTranslator["text:outline-level"] = nullptr;
     }
+
     ~HeadlineTranslator() override = default;
 };
 
 class SpaceTranslator : public ElementTranslator {
 public:
     ~SpaceTranslator() override = default;
+
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         int64_t count = in.Int64Attribute("text:c", -1);
         if (count <= 0) {
@@ -137,22 +146,26 @@ public:
             out << " ";
         }
     }
+
     void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {}
 };
 
 class TabTranslator : public ElementTranslator {
 public:
     ~TabTranslator() override = default;
+
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         // TODO: use "&emsp;"?
         out << "\t";
     }
+
     void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {}
 };
 
 class LinkTranslator : public ElementTranslator {
 public:
     ~LinkTranslator() override = default;
+
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         auto href = in.FindAttribute("xlink:href");
         out << "<a";
@@ -167,6 +180,7 @@ public:
         }
         out << ">";
     }
+
     void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << "</a>";
     }
@@ -175,6 +189,7 @@ public:
 class BookmarkTranslator : public ElementTranslator {
 public:
     ~BookmarkTranslator() override = default;
+
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         auto id = in.FindAttribute("text:name");
         out << "<a";
@@ -185,6 +200,7 @@ public:
         }
         out << ">";
     }
+
     void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << "</a>";
     }
@@ -195,6 +211,7 @@ public:
     ListTranslator() : DefaultElementTranslator("ul") {
         attributeTranslator["xml:id"] = nullptr;
     }
+
     ~ListTranslator() override = default;
 };
 
@@ -213,6 +230,7 @@ public:
         attributeTranslator["table:protection-key"] = nullptr;
         attributeTranslator["table:protection-key-digest-algorithm"] = nullptr;
     }
+
     ~TableTranslator() override = default;
 };
 
@@ -222,6 +240,7 @@ public:
         attributeTranslator["table:default-cell-style-name"] = nullptr; // TODO: implement
         attributeTranslator["table:number-columns-repeated"] = nullptr; // TODO: implement
     }
+
     ~TableColumnTranslator() override = default;
 };
 
@@ -230,6 +249,7 @@ public:
     TableRowTranslator() : DefaultElementTranslator("tr") {
         attributeTranslator["table:number-rows-repeated"] = nullptr; // TODO: implement
     }
+
     ~TableRowTranslator() override = default;
 };
 
@@ -247,6 +267,7 @@ public:
 
         attributeTranslator["calcext:value-type"] = nullptr;
     }
+
     ~TableCellTranslator() override = default;
 };
 
@@ -261,6 +282,7 @@ public:
         attributeTranslator["svg:height"] = nullptr;
         attributeTranslator["draw:z-index"] = nullptr;
     }
+
     ~FrameTranslator() override = default;
 
 protected:
@@ -282,24 +304,33 @@ protected:
 class ImageTranslator : public ElementTranslator {
 public:
     ~ImageTranslator() override = default;
+
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         auto href = in.FindAttribute("xlink:href");
 
         out << "<img";
         out << " style=\"width:100%;heigth:100%\"";
 
-        // TODO: svm
         if (href == nullptr) {
-            out << " alt=\"Image path not specified";
-            LOG(ERROR) << "href not found";
+            out << " alt=\"Error: image path not specified";
+            LOG(ERROR) << "image href not found";
         } else {
             const std::string &path = href->Value();
-            out << " alt=\"Image not found or unsupported: " << path << "\"";
-            // hacky image/jpg working according to tom
-            out << " src=\"data:image/jpg;base64, ";
+            out << " alt=\"Error: image not found or unsupported: " << path << "\"";
 #ifdef ODR_CRYPTO
             auto image = context.file->loadEntry(path);
             if (image) {
+                if (path.find("ObjectReplacements", 0) != std::string::npos) {
+                    std::istringstream svmIn(*image);
+                    std::ostringstream svgOut;
+                    Svm2Svg svm2svg;
+                    svm2svg.translate(svmIn, svgOut);
+                    *image = svgOut.str();
+                    out << " src=\"data:image/svg+xml;base64, ";
+                } else {
+                    // hacky image/jpg working according to tom
+                    out << " src=\"data:image/jpg;base64, ";
+                }
                 out << CryptoUtil::base64Encode(*image);
             } else {
                 LOG(ERROR) << "image not found " << path;
@@ -310,14 +341,16 @@ public:
 
         out << " />";
     }
+
     void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {}
 };
 
-class DefaultContentTranslatorImpl : public OpenDocumentContentTranslator {
+class DefaultContentTranslator : public OpenDocumentContentTranslator {
 public:
-    std::unordered_map<std::string, std::unique_ptr<ElementTranslator>> elementTranslator;
+    const std::shared_ptr<ElementTranslator> skipper = std::make_shared<SpaceTranslator>();
+    std::unordered_map<std::string, std::shared_ptr<ElementTranslator>> elementTranslator;
 
-    DefaultContentTranslatorImpl() {
+    DefaultContentTranslator() {
         elementTranslator["text:p"] = std::make_unique<DefaultElementTranslator>("p");
         elementTranslator["text:h"] = std::make_unique<HeadlineTranslator>();
         elementTranslator["text:span"] = std::make_unique<DefaultElementTranslator>("span");
@@ -374,7 +407,7 @@ public:
         elementTranslator["office:annotation"] = nullptr;
         elementTranslator["office:forms"] = nullptr;
 
-        elementTranslator["svg:desc"] = nullptr;
+        elementTranslator["svg:desc"] = skipper;
 
         elementTranslator["dc:date"] = nullptr;
         elementTranslator["calcext:condition"] = nullptr;
@@ -383,7 +416,8 @@ public:
         elementTranslator["loext:p"] = nullptr;
         elementTranslator["loext:table-protection"] = nullptr;
     }
-    ~DefaultContentTranslatorImpl() override = default;
+
+    ~DefaultContentTranslator() override = default;
 
     void translate(const tinyxml2::XMLElement &in, OpenDocumentContext &context) const override {
         auto &out = *context.output;
@@ -396,6 +430,10 @@ public:
             translator = elementTranslatorIt->second.get();
         } else {
             LOG(WARNING) << "unhandled element: " << elementName;
+        }
+
+        if (translator == skipper.get()) {
+            return;
         }
 
         if (translator != nullptr) {
@@ -419,7 +457,7 @@ public:
 }
 
 std::unique_ptr<OpenDocumentContentTranslator> OpenDocumentContentTranslator::create() {
-    return std::make_unique<DefaultContentTranslatorImpl>();
+    return std::make_unique<DefaultContentTranslator>();
 }
 
 }

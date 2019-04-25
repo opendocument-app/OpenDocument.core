@@ -22,6 +22,7 @@ public:
     std::string nameAttribute;
     std::unordered_set<std::string> properties;
     std::unordered_map<std::string, const char *> attributeTranslator;
+
     explicit StyleClassTranslator(const std::string &nameAttribute)
             : nameAttribute(nameAttribute) {
         // TODO: there should be a config file for this
@@ -227,7 +228,9 @@ public:
         attributeTranslator["officeooo:paragraph-rsid"] = nullptr;
         attributeTranslator["loext:contextual-spacing"] = nullptr;
     }
+
     ~StyleClassTranslator() override = default;
+
     void translate(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         auto styleNameAttr = in.FindAttribute(nameAttribute.c_str());
         if (styleNameAttr == nullptr) {
@@ -271,11 +274,13 @@ public:
 
         out << "}\n";
     }
+
     void translateAttributes(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const {
         for (auto attr = in.FirstAttribute(); attr != nullptr; attr = attr->Next()) {
             translateAttribute(in, *attr, out, context);
         }
     }
+
     void translateAttribute(const tinyxml2::XMLElement &e, const tinyxml2::XMLAttribute &in, std::ostream &out, OpenDocumentContext &context) const {
         const std::string attributeName = in.Name();
         auto attributeTranslatorIt = attributeTranslator.find(attributeName);
@@ -292,11 +297,11 @@ public:
     }
 };
 
-class DefaultStyleTranslatorImpl : public OpenDocumentStyleTranslator {
+class DefaultStyleTranslator : public OpenDocumentStyleTranslator {
 public:
     std::unordered_map<std::string, std::unique_ptr<StyleElementTranslator>> elementTranslator;
 
-    DefaultStyleTranslatorImpl() {
+    DefaultStyleTranslator() {
         elementTranslator["style:font-face"] = nullptr;
         elementTranslator["style:default-style"] = std::make_unique<StyleClassTranslator>("style:family");
         elementTranslator["style:style"] = std::make_unique<StyleClassTranslator>("style:name");
@@ -319,7 +324,7 @@ public:
         elementTranslator["draw:marker"] = nullptr;
     }
 
-    ~DefaultStyleTranslatorImpl() override = default;
+    ~DefaultStyleTranslator() override = default;
 
     void translate(const tinyxml2::XMLElement &in, OpenDocumentContext &context) const override {
         auto &out = *context.output;
@@ -338,9 +343,6 @@ public:
                 translator = elementTranslatorIt->second.get();
             } else {
                 LOG(WARNING) << "unhandled style element: " << elementName;
-                //tinyxml2::XMLPrinter printer;
-                //child->ToElement()->Accept(&printer);
-                //LOG(INFO) << printer.CStr();
             }
 
             if (translator != nullptr) {
@@ -354,7 +356,7 @@ public:
 }
 
 std::unique_ptr<OpenDocumentStyleTranslator> OpenDocumentStyleTranslator::create() {
-    return std::make_unique<DefaultStyleTranslatorImpl>();
+    return std::make_unique<DefaultStyleTranslator>();
 }
 
 }
