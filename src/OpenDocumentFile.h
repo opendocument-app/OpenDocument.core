@@ -62,7 +62,7 @@ public:
     virtual const FileMeta &getMeta() const = 0;
     virtual bool isFile(const std::string &) const = 0;
 
-    virtual std::unique_ptr<std::string> loadText(const std::string &) = 0;
+    virtual std::unique_ptr<std::string> loadEntry(const std::string &) = 0;
     virtual std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &) = 0;
 };
 

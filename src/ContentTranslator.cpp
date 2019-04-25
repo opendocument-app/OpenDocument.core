@@ -296,7 +296,12 @@ public:
             // hacky image/jpg working according to tom
             out << " src=\"data:image/jpg;base64, ";
 #ifdef ODR_CRYPTO
-            out << CryptoUtil::base64Encode(*context.file->loadText(path));
+            auto image = context.file->loadEntry(path);
+            if (image) {
+                out << CryptoUtil::base64Encode(*image);
+            } else {
+                LOG(ERROR) << "image not found " << path;
+            }
 #endif
             out << "\"";
         }

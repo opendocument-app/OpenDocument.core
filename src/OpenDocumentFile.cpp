@@ -81,7 +81,7 @@ public:
         }
 
         if (isFile("mimetype")) {
-            auto mimetype = loadText("mimetype");
+            auto mimetype = loadEntry("mimetype");
             auto it = MIMETYPES.find(*mimetype);
             if (it == MIMETYPES.end()) {
                 return false;
@@ -402,8 +402,19 @@ public:
         return meta;
     }
 
+    std::string normalizePath(const std::string path) const {
+        std::string result;
+        if (path.rfind("./", 0) == 0) {
+            result = path.substr(2);
+        } else {
+            result = path;
+        }
+        return result;
+    }
+
     bool isFile(const std::string &path) const override {
-        return entries.find(path) != entries.end();
+        std::string npath = normalizePath(path);
+        return entries.find(npath) != entries.end();
     }
 
     std::string loadPlain(const OpenDocumentEntry &entry) {
@@ -414,15 +425,8 @@ public:
         return result;
     }
 
-    std::unique_ptr<std::string> loadText(const std::string &path) override {
-        // normalize path
-        std::string npath;
-        if (path.rfind("./", 0) == 0) {
-            npath = path.substr(2);
-        } else {
-            npath = path;
-        }
-
+    std::unique_ptr<std::string> loadEntry(const std::string &path) override {
+        std::string npath = normalizePath(path);
         auto it = entries.find(npath);
         if (it == entries.end()) {
             LOG(ERROR) << "zip entry size not found " << path;
@@ -454,7 +458,7 @@ public:
     }
 
     std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &path) override {
-        auto xml = loadText(path);
+        auto xml = loadEntry(path);
         if (!xml) {
             return nullptr;
         }
