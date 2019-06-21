@@ -15,6 +15,7 @@ TEST(TranslationHelperTest, translate) {
     input = "/home/andreas/Desktop/odr/ruski.odt";
     input = "/home/andreas/Desktop/odr/tuesday_d6.odp";
     input = "/home/andreas/Desktop/odr/file_example_ODP_1MB.odp";
+    input = "/home/andreas/Desktop/odr/megatest.odt";
     const std::string output = "../../test/test.html";
     const std::string password = "password";
 

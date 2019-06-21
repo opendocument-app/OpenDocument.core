@@ -343,7 +343,7 @@ public:
 
             if (translator != nullptr) {
                 context.currentElement = child->ToElement();
-                translator->translate(in, out, context);
+                translator->translate(*context.currentElement, out, context);
             }
         }
     }
