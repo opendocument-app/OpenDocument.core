@@ -1,4 +1,4 @@
-#include "ContentTranslator.h"
+#include "OpenDocumentContentTranslator.h"
 #include <utility>
 #include <string>
 #include <list>
@@ -6,7 +6,7 @@
 #include "tinyxml2.h"
 #include "glog/logging.h"
 #include "odr/TranslationConfig.h"
-#include "Context.h"
+#include "OpenDocumentContext.h"
 #include "OpenDocumentFile.h"
 #include "CryptoUtil.h"
 
@@ -15,14 +15,14 @@ namespace odr {
 class ElementTranslator {
 public:
     virtual ~ElementTranslator() = default;
-    virtual void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
-    virtual void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
+    virtual void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const = 0;
+    virtual void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const = 0;
 };
 
 class AttributeTranslator {
 public:
     virtual ~AttributeTranslator() = default;
-    virtual void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, Context &context) const = 0;
+    virtual void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, OpenDocumentContext &context) const = 0;
 };
 
 class DefaultAttributeTranslator : public AttributeTranslator {
@@ -31,7 +31,7 @@ public:
 
     explicit DefaultAttributeTranslator(const std::string &name) : name(name) {}
     ~DefaultAttributeTranslator() override = default;
-    void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, Context &context) const override {
+    void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << " " << name << "=\"" << in.Value() << "\"";
     }
 };
@@ -41,7 +41,7 @@ public:
     std::list<std::string> newClasses;
 
     ~StyleAttributeTranslator() override = default;
-    void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, Context &context) const override {
+    void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, OpenDocumentContext &context) const override {
         const std::string styleName = in.Value();
         auto styleIt = context.styleDependencies.find(styleName);
         if (styleIt == context.styleDependencies.end()) {
@@ -73,7 +73,7 @@ public:
         attributeTranslator["draw:style-name"] = std::make_unique<StyleAttributeTranslator>();
     }
     ~DefaultElementTranslator() override = default;
-    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << "<" << name;
 
         for (auto &&a : newAttributes) {
@@ -99,12 +99,12 @@ public:
 
         out << ">";
     }
-    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << "</" << name << ">";
     }
 
 protected:
-    virtual void translateStartCallback(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const {}
+    virtual void translateStartCallback(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const {}
 };
 
 class ParagraphTranslator : public DefaultElementTranslator {
@@ -124,7 +124,7 @@ public:
 class SpaceTranslator : public ElementTranslator {
 public:
     ~SpaceTranslator() override = default;
-    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         int64_t count = in.Int64Attribute("text:c", -1);
         if (count <= 0) {
             return;
@@ -135,23 +135,23 @@ public:
             out << " ";
         }
     }
-    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {}
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {}
 };
 
 class TabTranslator : public ElementTranslator {
 public:
     ~TabTranslator() override = default;
-    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         // TODO: use "&emsp;"?
         out << "\t";
     }
-    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {}
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {}
 };
 
 class LinkTranslator : public ElementTranslator {
 public:
     ~LinkTranslator() override = default;
-    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         auto href = in.FindAttribute("xlink:href");
         out << "<a";
         if (href != nullptr) {
@@ -165,7 +165,7 @@ public:
         }
         out << ">";
     }
-    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << "</a>";
     }
 };
@@ -173,7 +173,7 @@ public:
 class BookmarkTranslator : public ElementTranslator {
 public:
     ~BookmarkTranslator() override = default;
-    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         auto id = in.FindAttribute("text:name");
         out << "<a";
         if (id != nullptr) {
@@ -183,7 +183,7 @@ public:
         }
         out << ">";
     }
-    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         out << "</a>";
     }
 };
@@ -262,7 +262,7 @@ public:
     ~FrameTranslator() override = default;
 
 protected:
-    void translateStartCallback(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateStartCallback(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         auto width = in.FindAttribute("svg:width");
         auto height = in.FindAttribute("svg:height");
 
@@ -280,7 +280,7 @@ protected:
 class ImageTranslator : public ElementTranslator {
 public:
     ~ImageTranslator() override = default;
-    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         auto href = in.FindAttribute("xlink:href");
 
         out << "<img";
@@ -308,10 +308,10 @@ public:
 
         out << " />";
     }
-    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {}
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {}
 };
 
-class DefaultContentTranslatorImpl : public ContentTranslator {
+class DefaultContentTranslatorImpl : public OpenDocumentContentTranslator {
 public:
     std::unordered_map<std::string, std::unique_ptr<ElementTranslator>> elementTranslator;
 
@@ -383,7 +383,7 @@ public:
     }
     ~DefaultContentTranslatorImpl() override = default;
 
-    void translate(const tinyxml2::XMLElement &in, Context &context) const override {
+    void translate(const tinyxml2::XMLElement &in, OpenDocumentContext &context) const override {
         auto &out = *context.output;
         context.currentElement = &in;
 
@@ -414,7 +414,7 @@ public:
     }
 };
 
-std::unique_ptr<ContentTranslator> ContentTranslator::create() {
+std::unique_ptr<OpenDocumentContentTranslator> OpenDocumentContentTranslator::create() {
     return std::make_unique<DefaultContentTranslatorImpl>();
 }
 
