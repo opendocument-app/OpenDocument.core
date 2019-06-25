@@ -1,18 +1,18 @@
-#include "StyleTranslator.h"
+#include "OpenDocumentStyleTranslator.h"
 #include <string>
 #include <unordered_set>
 #include <unordered_map>
 #include "tinyxml2.h"
 #include "glog/logging.h"
 #include "odr/TranslationConfig.h"
-#include "Context.h"
+#include "OpenDocumentContext.h"
 
 namespace odr {
 
 class StyleElementTranslator {
 public:
     virtual ~StyleElementTranslator() = default;
-    virtual void translate(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const = 0;
+    virtual void translate(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const = 0;
 };
 
 class StyleClassTranslator : public StyleElementTranslator {
@@ -226,7 +226,7 @@ public:
         attributeTranslator["loext:contextual-spacing"] = nullptr;
     }
     ~StyleClassTranslator() override = default;
-    void translate(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const override {
+    void translate(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
         auto styleNameAttr = in.FindAttribute(nameAttribute.c_str());
         if (styleNameAttr == nullptr) {
             LOG(WARNING) << "skipped style " << in.Name() << ". no name attribute.";
@@ -269,12 +269,12 @@ public:
 
         out << "}\n";
     }
-    void translateAttributes(const tinyxml2::XMLElement &in, std::ostream &out, Context &context) const {
+    void translateAttributes(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const {
         for (auto attr = in.FirstAttribute(); attr != nullptr; attr = attr->Next()) {
             translateAttribute(in, *attr, out, context);
         }
     }
-    void translateAttribute(const tinyxml2::XMLElement &e, const tinyxml2::XMLAttribute &in, std::ostream &out, Context &context) const {
+    void translateAttribute(const tinyxml2::XMLElement &e, const tinyxml2::XMLAttribute &in, std::ostream &out, OpenDocumentContext &context) const {
         const std::string attributeName = in.Name();
         auto attributeTranslatorIt = attributeTranslator.find(attributeName);
         if (attributeTranslatorIt == attributeTranslator.end()) {
@@ -290,7 +290,7 @@ public:
     }
 };
 
-class DefaultStyleTranslatorImpl : public StyleTranslator {
+class DefaultStyleTranslatorImpl : public OpenDocumentStyleTranslator {
 public:
     std::unordered_map<std::string, std::unique_ptr<StyleElementTranslator>> elementTranslator;
 
@@ -319,7 +319,7 @@ public:
 
     ~DefaultStyleTranslatorImpl() override = default;
 
-    void translate(const tinyxml2::XMLElement &in, Context &context) const override {
+    void translate(const tinyxml2::XMLElement &in, OpenDocumentContext &context) const override {
         auto &out = *context.output;
         context.currentElement = &in;
 
@@ -349,7 +349,7 @@ public:
     }
 };
 
-std::unique_ptr<StyleTranslator> StyleTranslator::create() {
+std::unique_ptr<OpenDocumentStyleTranslator> OpenDocumentStyleTranslator::create() {
     return std::make_unique<DefaultStyleTranslatorImpl>();
 }
 

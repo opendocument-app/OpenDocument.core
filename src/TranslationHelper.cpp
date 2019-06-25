@@ -1,59 +1,96 @@
 #include "odr/TranslationHelper.h"
 #include "odr/TranslationConfig.h"
 #include "OpenDocumentFile.h"
-#include "Context.h"
-#include "DocumentTranslator.h"
+#include "OpenDocumentContext.h"
+#include "OpenDocumentTranslator.h"
+#include "MicrosoftOpenXmlFile.h"
+#include "MicrosoftContext.h"
+#include "MicrosoftTranslator.h"
 
 namespace odr {
 
-class TranslationHelperImpl : public TranslationHelper {
+class TranslationHelperImpl final {
 public:
-    std::unique_ptr<OpenDocumentFile> file;
-    std::unique_ptr<DocumentTranslator> translator;
+    OpenDocumentFile file;
+    std::unique_ptr<OpenDocumentTranslator> translator;
+    MicrosoftOpenXmlFile fileMs;
+    std::unique_ptr<MicrosoftTranslator> translatorMs;
 
-    explicit TranslationHelperImpl() {
-        file = OpenDocumentFile::create();
-        translator = DocumentTranslator::create();
-    }
-    ~TranslationHelperImpl() override = default;
-
-    bool open(const std::string &in) override {
-        return file->open(in);
+    TranslationHelperImpl() {
+        translator = OpenDocumentTranslator::create();
+        translatorMs = MicrosoftTranslator::create();
     }
 
-    bool decrypt(const std::string &password) override {
-        return file->decrypt(password);
-    }
-
-    const FileMeta &getMeta() const override {
-        return file->getMeta();
-    }
-
-    bool translate(const std::string &out, const TranslationConfig &config) const override {
-        if (!file->isOpen() || !file->isDecrypted()) {
-            return false;
+    bool translate(const std::string &out, const TranslationConfig &config) {
+        if (!file.isOpen() || !file.isDecrypted()) {
+            return translateMs(out, config);
         }
 
-        Context context = {};
+        OpenDocumentContext context = {};
         context.config = &config;
-        context.file = file.get();
-        context.meta = &getMeta();
+        context.file = &file;
+        context.meta = &file.getMeta();
 
-        switch (file->getMeta().type) {
+        switch (file.getMeta().type) {
             case FileType::OPENDOCUMENT_TEXT:
             case FileType::OPENDOCUMENT_PRESENTATION:
             case FileType::OPENDOCUMENT_SPREADSHEET:
             case FileType::OPENDOCUMENT_GRAPHICS:
                 // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
-                return translator->translate(*file, out, context);
+                return translator->translate(file, out, context);
+            default:
+                return false;
+        }
+    }
+
+    bool translateMs(const std::string &out, const TranslationConfig &config) {
+        if (!fileMs.isOpen() || !fileMs.isDecrypted()) {
+            return false;
+        }
+
+        MicrosoftContext context = {};
+        context.config = &config;
+        context.file = &fileMs;
+        context.meta = &fileMs.getMeta();
+
+        switch (fileMs.getMeta().type) {
+            case FileType::OFFICE_OPEN_XML_DOCUMENT:
+            case FileType::OFFICE_OPEN_XML_PRESENTATION:
+            case FileType::OFFICE_OPEN_XML_WORKBOOK:
+                // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
+                return translatorMs->translate(fileMs, out, context);
             default:
                 return false;
         }
     }
 };
 
-std::unique_ptr<TranslationHelper> TranslationHelper::create() {
-    return std::make_unique<TranslationHelperImpl>();
+TranslationHelper::TranslationHelper() :
+        impl_(new TranslationHelperImpl()) {
+}
+
+TranslationHelper::~TranslationHelper() {
+    delete impl_;
+}
+
+bool TranslationHelper::open(const std::string &path) {
+    return impl_->file.open(path);
+}
+
+bool TranslationHelper::openMicrosoft(const std::string &path) {
+    return impl_->fileMs.open(path);
+}
+
+bool TranslationHelper::decrypt(const std::string &password) {
+    return impl_->file.decrypt(password);
+}
+
+const FileMeta& TranslationHelper::getMeta() const {
+    return impl_->file.getMeta();
+}
+
+bool TranslationHelper::translate(const std::string &out, const odr::TranslationConfig &config) {
+    return impl_->translate(out, config);
 }
 
 }

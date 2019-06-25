@@ -8,6 +8,8 @@
 
 namespace odr {
 
+typedef OpenDocumentFile::Entries Entries;
+
 static const std::map<std::string, FileType> MIMETYPES = {
         {"application/vnd.oasis.opendocument.text", FileType::OPENDOCUMENT_TEXT},
         {"application/vnd.oasis.opendocument.presentation", FileType::OPENDOCUMENT_PRESENTATION},
@@ -35,7 +37,7 @@ static const std::map<std::string, ChecksumType> STARTKEY_TYPES = {
 };
 #endif
 
-class OpenDocumentFileImpl : public OpenDocumentFile {
+class OpenDocumentFileImpl {
 public:
     mz_zip_archive zip;
     FileMeta meta;
@@ -47,7 +49,7 @@ public:
 
     OpenDocumentEntry *smallestEncryptedEntry = nullptr;
 
-    ~OpenDocumentFileImpl() override {
+    ~OpenDocumentFileImpl() {
         close();
     }
 
@@ -268,7 +270,7 @@ public:
         }
     }
 
-    bool open(const std::string &path) override {
+    bool open(const std::string &path) {
         memset(&zip, 0, sizeof(zip));
         mz_bool status = mz_zip_reader_init_file(&zip, path.data(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
         if (!status) {
@@ -293,7 +295,7 @@ public:
         return true;
     }
 
-    bool decrypt(const std::string &password) override {
+    bool decrypt(const std::string &password) {
 #ifdef ODR_CRYPTO
         if (!opened || decrypted) {
             return false;
@@ -375,7 +377,7 @@ public:
     }
 #endif
 
-    void close() override {
+    void close() {
         if (!opened) {
             return;
         }
@@ -386,23 +388,7 @@ public:
         smallestEncryptedEntry = nullptr;
     }
 
-    bool isOpen() const override {
-        return opened;
-    }
-
-    bool isDecrypted() const override {
-        return decrypted;
-    }
-
-    const Entries getEntries() const override {
-        return entries;
-    }
-
-    const FileMeta &getMeta() const override {
-        return meta;
-    }
-
-    std::string normalizePath(const std::string path) const {
+    std::string normalizePath(const std::string &path) const {
         std::string result;
         if (path.rfind("./", 0) == 0) {
             result = path.substr(2);
@@ -412,7 +398,7 @@ public:
         return result;
     }
 
-    bool isFile(const std::string &path) const override {
+    bool isFile(const std::string &path) const {
         std::string npath = normalizePath(path);
         return entries.find(npath) != entries.end();
     }
@@ -425,7 +411,7 @@ public:
         return result;
     }
 
-    std::unique_ptr<std::string> loadEntry(const std::string &path) override {
+    std::unique_ptr<std::string> loadEntry(const std::string &path) {
         std::string npath = normalizePath(path);
         auto it = entries.find(npath);
         if (it == entries.end()) {
@@ -457,7 +443,7 @@ public:
         return std::make_unique<std::string>(result);
     }
 
-    std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &path) override {
+    std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &path) {
         auto xml = loadEntry(path);
         if (!xml) {
             return nullptr;
@@ -468,8 +454,52 @@ public:
     }
 };
 
-std::unique_ptr<OpenDocumentFile> OpenDocumentFile::create() {
-    return std::make_unique<OpenDocumentFileImpl>();
+OpenDocumentFile::OpenDocumentFile() :
+        impl_(new OpenDocumentFileImpl()) {
+}
+
+OpenDocumentFile::~OpenDocumentFile() {
+    delete impl_;
+}
+
+bool OpenDocumentFile::open(const std::string &path) {
+    return impl_->open(path);
+}
+
+bool OpenDocumentFile::decrypt(const std::string &password) {
+    return impl_->decrypt(password);
+}
+
+void OpenDocumentFile::close() {
+    return impl_->close();
+}
+
+bool OpenDocumentFile::isOpen() const {
+    return impl_->opened;
+}
+
+bool OpenDocumentFile::isDecrypted() const {
+    return impl_->decrypted;
+}
+
+const Entries OpenDocumentFile::getEntries() const {
+    return impl_->entries;
+}
+
+const FileMeta &OpenDocumentFile::getMeta() const {
+    return impl_->meta;
+}
+
+bool OpenDocumentFile::isFile(const std::string &path) const {
+    return impl_->isFile(path);
+}
+
+std::unique_ptr<std::string> OpenDocumentFile::loadEntry(const std::string &path) {
+    return impl_->loadEntry(path);
+}
+
+std::unique_ptr<tinyxml2::XMLDocument> OpenDocumentFile::loadXML(const std::string &path) {
+    return impl_->loadXML(path);
 }
 
 }

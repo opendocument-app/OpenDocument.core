@@ -13,6 +13,7 @@ class XMLDocument;
 
 namespace odr {
 
+#ifdef ODR_CRYPTO
 enum class ChecksumType {
     UNKNOWN, SHA1, SHA1_1K, SHA256, SHA256_1K
 };
@@ -22,6 +23,7 @@ enum class AlgorithmType {
 enum class KeyDerivationType {
     UNKNOWN, PBKDF2
 };
+#endif
 
 struct OpenDocumentEntry {
     std::string path;
@@ -32,6 +34,7 @@ struct OpenDocumentEntry {
     std::string mediaType;
     bool encrypted;
 
+#ifdef ODR_CRYPTO
     ChecksumType checksumType = ChecksumType::UNKNOWN;
     std::string checksum;
     AlgorithmType algorithm = AlgorithmType::UNKNOWN;
@@ -42,28 +45,33 @@ struct OpenDocumentEntry {
     std::string keySalt;
     ChecksumType startKeyGeneration = ChecksumType::UNKNOWN;
     std::uint64_t startKeySize;
+#endif
 };
 
-class OpenDocumentFile {
+class OpenDocumentFileImpl;
+
+class OpenDocumentFile final {
 public:
     typedef std::map<std::string, OpenDocumentEntry> Entries;
 
-    static std::unique_ptr<OpenDocumentFile> create();
+    OpenDocumentFile();
+    ~OpenDocumentFile();
 
-    virtual ~OpenDocumentFile() = default;
+    bool open(const std::string &);
+    bool decrypt(const std::string &);
+    void close();
 
-    virtual bool open(const std::string &) = 0;
-    virtual bool decrypt(const std::string &) = 0;
-    virtual void close() = 0;
+    bool isOpen() const;
+    bool isDecrypted() const;
+    const Entries getEntries() const;
+    const FileMeta &getMeta() const;
+    bool isFile(const std::string &) const;
 
-    virtual bool isOpen() const = 0;
-    virtual bool isDecrypted() const = 0;
-    virtual const Entries getEntries() const = 0;
-    virtual const FileMeta &getMeta() const = 0;
-    virtual bool isFile(const std::string &) const = 0;
+    std::unique_ptr<std::string> loadEntry(const std::string &);
+    std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &);
 
-    virtual std::unique_ptr<std::string> loadEntry(const std::string &) = 0;
-    virtual std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &) = 0;
+private:
+    OpenDocumentFileImpl * const impl_;
 };
 
 }

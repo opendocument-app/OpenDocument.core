@@ -1,5 +1,5 @@
-#ifndef ODR_CONTEXT_H
-#define ODR_CONTEXT_H
+#ifndef ODR_OPENDOCUMENTCONTEXT_H
+#define ODR_OPENDOCUMENTCONTEXT_H
 
 #include <string>
 #include <list>
@@ -19,7 +19,7 @@ struct FileMeta;
 
 // TODO: input/output context?
 
-struct Context {
+struct OpenDocumentContext {
     const TranslationConfig *config;
     OpenDocumentFile *file;
     const FileMeta *meta;
@@ -32,4 +32,4 @@ struct Context {
 
 }
 
-#endif //ODR_CONTEXT_H
+#endif //ODR_OPENDOCUMENTCONTEXT_H
