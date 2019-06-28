@@ -9,6 +9,8 @@
 
 namespace odr {
 
+namespace {
+
 class StyleElementTranslator {
 public:
     virtual ~StyleElementTranslator() = default;
@@ -348,6 +350,8 @@ public:
         }
     }
 };
+
+}
 
 std::unique_ptr<OpenDocumentStyleTranslator> OpenDocumentStyleTranslator::create() {
     return std::make_unique<DefaultStyleTranslatorImpl>();

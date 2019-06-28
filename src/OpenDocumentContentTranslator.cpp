@@ -12,6 +12,8 @@
 
 namespace odr {
 
+namespace {
+
 class ElementTranslator {
 public:
     virtual ~ElementTranslator() = default;
@@ -413,6 +415,8 @@ public:
         }
     }
 };
+
+}
 
 std::unique_ptr<OpenDocumentContentTranslator> OpenDocumentContentTranslator::create() {
     return std::make_unique<DefaultContentTranslatorImpl>();

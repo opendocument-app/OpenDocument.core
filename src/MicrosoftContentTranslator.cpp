@@ -12,6 +12,8 @@
 
 namespace odr {
 
+namespace {
+
 class ElementTranslator {
 public:
     virtual ~ElementTranslator() = default;
@@ -88,6 +90,8 @@ public:
         }
     }
 };
+
+}
 
 std::unique_ptr<MicrosoftContentTranslator> MicrosoftContentTranslator::create() {
     return std::make_unique<DefaultContentTranslatorImpl>();

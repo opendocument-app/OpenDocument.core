@@ -9,6 +9,8 @@
 
 namespace odr {
 
+namespace {
+
 class DefaultDocumentTranslatorImpl : public MicrosoftTranslator {
 public:
     std::unique_ptr<MicrosoftContentTranslator> contentTranslator;
@@ -60,6 +62,8 @@ public:
         contentTranslator->translate(*body, context);
     }
 };
+
+}
 
 std::unique_ptr<MicrosoftTranslator> MicrosoftTranslator::create() {
     auto result = std::make_unique<DefaultDocumentTranslatorImpl>();

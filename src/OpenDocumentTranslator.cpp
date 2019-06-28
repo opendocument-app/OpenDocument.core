@@ -10,6 +10,8 @@
 
 namespace odr {
 
+namespace {
+
 class DefaultDocumentTranslatorImpl : public OpenDocumentTranslator {
 public:
     std::unique_ptr<OpenDocumentStyleTranslator> styleTranslator;
@@ -184,6 +186,8 @@ public:
         contentTranslator->translate(*body, context);
     }
 };
+
+}
 
 std::unique_ptr<OpenDocumentTranslator> OpenDocumentTranslator::create() {
     auto result = std::make_unique<DefaultDocumentTranslatorImpl>();
