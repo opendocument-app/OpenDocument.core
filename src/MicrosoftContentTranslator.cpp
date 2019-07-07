@@ -27,14 +27,15 @@ public:
 
     explicit DefaultElementTranslator(const std::string &name) : name(name) {
     }
+
     ~DefaultElementTranslator() override = default;
+
     void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, MicrosoftContext &context) const override {
         out << "<" << name;
-
         translateStartCallback(in, out, context);
-
         out << ">";
     }
+
     void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, MicrosoftContext &context) const override {
         out << "</" << name << ">";
     }
@@ -49,16 +50,17 @@ public:
     ~ParagraphTranslator() override = default;
 };
 
-class DefaultContentTranslatorImpl : public MicrosoftContentTranslator {
+class DefaultContentTranslator : public MicrosoftContentTranslator {
 public:
     std::unordered_map<std::string, std::unique_ptr<ElementTranslator>> elementTranslator;
 
-    DefaultContentTranslatorImpl() {
+    DefaultContentTranslator() {
         elementTranslator["w:body"] = nullptr;
         elementTranslator["w:p"] = std::make_unique<ParagraphTranslator>();
         elementTranslator["w:r"] = nullptr;
     }
-    ~DefaultContentTranslatorImpl() override = default;
+
+    ~DefaultContentTranslator() override = default;
 
     void translate(const tinyxml2::XMLElement &in, MicrosoftContext &context) const override {
         auto &out = *context.output;
@@ -94,7 +96,7 @@ public:
 }
 
 std::unique_ptr<MicrosoftContentTranslator> MicrosoftContentTranslator::create() {
-    return std::make_unique<DefaultContentTranslatorImpl>();
+    return std::make_unique<DefaultContentTranslator>();
 }
 
 }

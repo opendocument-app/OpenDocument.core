@@ -8,7 +8,7 @@
 #include "odr/TranslationConfig.h"
 #include "odr/TranslationHelper.h"
 
-TEST(MicrosoftTranslationHelperTest, translate) {
+TEST(MicrosoftTranslationTest, translate) {
     std::string input;
     input = "/home/andreas/Desktop/odr/03_smpldap.docx";
     const std::string output = "../../test/test.html";
