@@ -9,14 +9,14 @@ class XMLElement;
 
 namespace odr {
 
-struct MicrosoftContext;
+struct TranslationContext;
 
 class MicrosoftContentTranslator {
 public:
     static std::unique_ptr<MicrosoftContentTranslator> create();
 
     virtual ~MicrosoftContentTranslator() = default;
-    virtual void translate(const tinyxml2::XMLElement &in, MicrosoftContext &context) const = 0;
+    virtual void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const = 0;
 };
 
 }

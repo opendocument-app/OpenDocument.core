@@ -1,10 +1,9 @@
 #include "odr/TranslationHelper.h"
 #include "odr/TranslationConfig.h"
 #include "OpenDocumentFile.h"
-#include "OpenDocumentContext.h"
+#include "TranslationContext.h"
 #include "OpenDocumentTranslator.h"
 #include "MicrosoftOpenXmlFile.h"
-#include "MicrosoftContext.h"
 #include "MicrosoftTranslator.h"
 
 namespace odr {
@@ -26,9 +25,9 @@ public:
             return translateMs(out, config);
         }
 
-        OpenDocumentContext context = {};
+        TranslationContext context = {};
         context.config = &config;
-        context.file = &file;
+        context.odFile = &file;
         context.meta = &file.getMeta();
 
         switch (file.getMeta().type) {
@@ -48,9 +47,9 @@ public:
             return false;
         }
 
-        MicrosoftContext context = {};
+        TranslationContext context = {};
         context.config = &config;
-        context.file = &fileMs;
+        context.msFile = &fileMs;
         context.meta = &fileMs.getMeta();
 
         switch (fileMs.getMeta().type) {

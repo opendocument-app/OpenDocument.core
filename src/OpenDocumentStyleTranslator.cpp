@@ -5,7 +5,7 @@
 #include "tinyxml2.h"
 #include "glog/logging.h"
 #include "odr/TranslationConfig.h"
-#include "OpenDocumentContext.h"
+#include "TranslationContext.h"
 
 namespace odr {
 
@@ -14,7 +14,7 @@ namespace {
 class StyleElementTranslator {
 public:
     virtual ~StyleElementTranslator() = default;
-    virtual void translate(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const = 0;
+    virtual void translate(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) const = 0;
 };
 
 class StyleClassTranslator : public StyleElementTranslator {
@@ -231,7 +231,7 @@ public:
 
     ~StyleClassTranslator() override = default;
 
-    void translate(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const override {
+    void translate(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) const override {
         auto styleNameAttr = in.FindAttribute(nameAttribute.c_str());
         if (styleNameAttr == nullptr) {
             LOG(WARNING) << "skipped style " << in.Name() << ". no name attribute.";
@@ -275,13 +275,13 @@ public:
         out << "}\n";
     }
 
-    void translateAttributes(const tinyxml2::XMLElement &in, std::ostream &out, OpenDocumentContext &context) const {
+    void translateAttributes(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) const {
         for (auto attr = in.FirstAttribute(); attr != nullptr; attr = attr->Next()) {
             translateAttribute(in, *attr, out, context);
         }
     }
 
-    void translateAttribute(const tinyxml2::XMLElement &e, const tinyxml2::XMLAttribute &in, std::ostream &out, OpenDocumentContext &context) const {
+    void translateAttribute(const tinyxml2::XMLElement &e, const tinyxml2::XMLAttribute &in, std::ostream &out, TranslationContext &context) const {
         const std::string attributeName = in.Name();
         auto attributeTranslatorIt = attributeTranslator.find(attributeName);
         if (attributeTranslatorIt == attributeTranslator.end()) {
@@ -326,7 +326,7 @@ public:
 
     ~DefaultStyleTranslator() override = default;
 
-    void translate(const tinyxml2::XMLElement &in, OpenDocumentContext &context) const override {
+    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const override {
         auto &out = *context.output;
         context.currentElement = &in;
 

@@ -6,13 +6,9 @@
 
 namespace odr {
 
-class Svm2Svg final {
-public:
-    Svm2Svg();
-    ~Svm2Svg();
-
-    bool translate(std::istream &in, std::ostream &out) const;
-};
+namespace Svm2Svg {
+    bool translate(std::istream &in, std::ostream &out);
+}
 
 }
 
