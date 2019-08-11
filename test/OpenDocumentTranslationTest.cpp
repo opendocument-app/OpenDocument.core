@@ -1,6 +1,5 @@
 #include <string>
 #include "gtest/gtest.h"
-#include "glog/logging.h"
 #include "OpenDocumentFile.h"
 #include "odr/TranslationConfig.h"
 #include "odr/TranslationHelper.h"
@@ -16,6 +15,7 @@ TEST(OpenDocumentTranslationTest, translate) {
     input = "/home/andreas/Desktop/odr/megatest.odt";
     input = "/home/andreas/Desktop/odr/tuesday_d6.odp";
     input = "/home/andreas/Desktop/odr/ruski.odt";
+    input = "/home/andreas/Desktop/odr/Vektoranalysis Zusammenfassung.odt";
     const std::string output = "../../test/test.html";
     const std::string password = "password";
 

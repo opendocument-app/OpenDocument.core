@@ -320,7 +320,8 @@ public:
 #ifdef ODR_CRYPTO
             auto image = context.file->loadEntry(path);
             if (image) {
-                if (path.find("ObjectReplacements", 0) != std::string::npos) {
+                if ((path.find("ObjectReplacements", 0) != std::string::npos) ||
+                        (path.find(".svm", 0) != std::string::npos)) {
                     std::istringstream svmIn(*image);
                     std::ostringstream svgOut;
                     Svm2Svg svm2svg;
