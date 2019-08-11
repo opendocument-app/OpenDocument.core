@@ -318,8 +318,8 @@ public:
             const std::string &path = href->Value();
             out << " alt=\"Error: image not found or unsupported: " << path << "\"";
 #ifdef ODR_CRYPTO
-            auto image = context.file->loadEntry(path);
-            if (image) {
+            if (context.file->isFile(path)) {
+                auto image = context.file->loadEntry(path);
                 if ((path.find("ObjectReplacements", 0) != std::string::npos) ||
                         (path.find(".svm", 0) != std::string::npos)) {
                     std::istringstream svmIn(*image);

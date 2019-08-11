@@ -399,7 +399,7 @@ public:
     }
 
     bool isFile(const std::string &path) const {
-        std::string npath = normalizePath(path);
+        const std::string npath = normalizePath(path);
         return entries.find(npath) != entries.end();
     }
 
@@ -412,7 +412,7 @@ public:
     }
 
     std::unique_ptr<std::string> loadEntry(const std::string &path) {
-        std::string npath = normalizePath(path);
+        const std::string npath = normalizePath(path);
         auto it = entries.find(npath);
         if (it == entries.end()) {
             LOG(ERROR) << "zip entry size not found " << path;
