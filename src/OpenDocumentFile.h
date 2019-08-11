@@ -67,7 +67,7 @@ public:
     const FileMeta &getMeta() const;
     bool isFile(const std::string &) const;
 
-    std::unique_ptr<std::string> loadEntry(const std::string &);
+    std::string loadEntry(const std::string &);
     std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &);
 
 private:

@@ -319,20 +319,20 @@ public:
             out << " alt=\"Error: image not found or unsupported: " << path << "\"";
 #ifdef ODR_CRYPTO
             if (context.file->isFile(path)) {
-                auto image = context.file->loadEntry(path);
+                std::string image = context.file->loadEntry(path);
                 if ((path.find("ObjectReplacements", 0) != std::string::npos) ||
                         (path.find(".svm", 0) != std::string::npos)) {
-                    std::istringstream svmIn(*image);
+                    std::istringstream svmIn(image);
                     std::ostringstream svgOut;
                     Svm2Svg svm2svg;
                     svm2svg.translate(svmIn, svgOut);
-                    *image = svgOut.str();
+                    image = svgOut.str();
                     out << " src=\"data:image/svg+xml;base64, ";
                 } else {
                     // hacky image/jpg working according to tom
                     out << " src=\"data:image/jpg;base64, ";
                 }
-                out << CryptoUtil::base64Encode(*image);
+                out << CryptoUtil::base64Encode(image);
             } else {
                 LOG(ERROR) << "image not found " << path;
             }

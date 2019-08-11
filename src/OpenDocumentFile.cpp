@@ -83,8 +83,8 @@ public:
         }
 
         if (isFile("mimetype")) {
-            auto mimetype = loadEntry("mimetype");
-            auto it = MIMETYPES.find(*mimetype);
+            const auto mimetype = loadEntry("mimetype");
+            auto it = MIMETYPES.find(mimetype);
             if (it == MIMETYPES.end()) {
                 return false;
             }
@@ -398,9 +398,13 @@ public:
         return result;
     }
 
-    bool isFile(const std::string &path) const {
+    Entries::const_iterator find(const std::string &path) const {
         const std::string npath = normalizePath(path);
-        return entries.find(npath) != entries.end();
+        return entries.find(npath);
+    }
+
+    bool isFile(const std::string &path) const {
+        return find(path) != entries.end();
     }
 
     std::string loadPlain(const OpenDocumentEntry &entry) {
@@ -411,13 +415,12 @@ public:
         return result;
     }
 
-    std::unique_ptr<std::string> loadEntry(const std::string &path) {
-        const std::string npath = normalizePath(path);
-        auto it = entries.find(npath);
-        if (it == entries.end()) {
+    std::string loadEntry(const std::string &path) {
+        if (!isFile(path)) {
             LOG(ERROR) << "zip entry size not found " << path;
             return nullptr;
         }
+        const auto it = find(path);
         std::string result = loadPlain(it->second);
         if (result.size() != it->second.size_uncompressed) {
             LOG(ERROR) << "zip entry size doesn't match " << path;
@@ -440,16 +443,16 @@ public:
             }
         }
 #endif
-        return std::make_unique<std::string>(result);
+        return result;
     }
 
     std::unique_ptr<tinyxml2::XMLDocument> loadXML(const std::string &path) {
-        auto xml = loadEntry(path);
-        if (!xml) {
+        if (!isFile(path)) {
             return nullptr;
         }
+        const auto xml = loadEntry(path);
         auto result = std::make_unique<tinyxml2::XMLDocument>();
-        result->Parse(xml->data(), xml->size());
+        result->Parse(xml.data(), xml.size());
         return result;
     }
 };
@@ -494,7 +497,7 @@ bool OpenDocumentFile::isFile(const std::string &path) const {
     return impl_->isFile(path);
 }
 
-std::unique_ptr<std::string> OpenDocumentFile::loadEntry(const std::string &path) {
+std::string OpenDocumentFile::loadEntry(const std::string &path) {
     return impl_->loadEntry(path);
 }
 
