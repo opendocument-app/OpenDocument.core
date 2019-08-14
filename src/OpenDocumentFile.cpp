@@ -485,7 +485,7 @@ bool OpenDocumentFile::isDecrypted() const {
     return impl_->decrypted;
 }
 
-const Entries OpenDocumentFile::getEntries() const {
+const Entries &OpenDocumentFile::getEntries() const {
     return impl_->entries;
 }
 

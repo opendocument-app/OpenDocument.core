@@ -63,7 +63,7 @@ public:
 
     bool isOpen() const;
     bool isDecrypted() const;
-    const Entries getEntries() const;
+    const Entries &getEntries() const;
     const FileMeta &getMeta() const;
     bool isFile(const std::string &) const;
 
