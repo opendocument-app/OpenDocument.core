@@ -81,26 +81,27 @@ public:
               "\twidth: 0px;\n"
               "}\n"
               "p {\n"
-              "\tbackground-color: transparent !important;\n"
               "\tpadding: 0 !important;\n"
               "}\n"
               "\n"
               "span {\n"
               "\tmargin: 0 !important;\n"
-              "}\n"
-              "table {\n"
-              "\tborder-collapse: collapse;\n"
-              "\tdisplay: block;\n"
-              "}\n"
-              "\n"
-              "td {\n"
-              "\tvertical-align: top;\n"
-              "}\n"
-              "\n"
-              "p {\n"
-              "\tfont-family: \"Arial\";\n"
-              "\tfont-size: 10pt;\n"
               "}\n";
+
+        if (context.file->getMeta().type == FileType::OPENDOCUMENT_SPREADSHEET) {
+            out <<
+                "table {\n"
+                "\tborder-collapse: collapse;\n"
+                "\tdisplay: block;\n"
+                "}\n"
+                "td {\n"
+                "\tvertical-align: top;\n"
+                "}\n"
+                "p {\n"
+                "\tfont-family: \"Arial\";\n"
+                "\tfont-size: 10pt;\n"
+                "}\n";
+        }
 
         auto stylesXml = context.file->loadXML("styles.xml");
         context.styles = stylesXml.get();
