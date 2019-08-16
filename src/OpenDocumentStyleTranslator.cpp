@@ -60,7 +60,6 @@ public:
         attributeTranslator["fo:padding-right"] = "padding-right";
         attributeTranslator["fo:padding-bottom"] = "padding-bottom";
         attributeTranslator["fo:padding-left"] = "padding-left";
-        attributeTranslator["fo:border"] = "border";
         attributeTranslator["fo:font-variant"] = nullptr;
         attributeTranslator["fo:text-transform"] = nullptr;
         attributeTranslator["fo:line-height"] = nullptr;
@@ -78,10 +77,11 @@ public:
         attributeTranslator["fo:hyphenation-push-char-count"] = nullptr;
         attributeTranslator["fo:hyphenate"] = nullptr;
         attributeTranslator["fo:clip"] = nullptr;
-        attributeTranslator["fo:border-top"] = nullptr;
-        attributeTranslator["fo:border-right"] = nullptr;
-        attributeTranslator["fo:border-bottom"] = nullptr;
-        attributeTranslator["fo:border-left"] = nullptr;
+        attributeTranslator["fo:border"] = "border";
+        attributeTranslator["fo:border-top"] = "border-top";
+        attributeTranslator["fo:border-right"] = "border-right";
+        attributeTranslator["fo:border-bottom"] = "border-bottom";
+        attributeTranslator["fo:border-left"] = "border-left";
         attributeTranslator["fo:min-width"] = nullptr;
         attributeTranslator["fo:max-width"] = nullptr;
         attributeTranslator["fo:min-height"] = nullptr;
@@ -237,15 +237,15 @@ public:
             LOG(WARNING) << "skipped style " << in.Name() << ". no name attribute.";
             return;
         }
-        const std::string styleName = styleNameAttr->Value();
+        const std::string styleName = OpenDocumentStyleTranslator::escapeStyleName(styleNameAttr->Value());
 
         const char *parentStyleName;
         if (in.QueryStringAttribute("style:parent-style-name", &parentStyleName) == tinyxml2::XML_SUCCESS) {
-            context.styleDependencies[styleName].push_back(parentStyleName);
+            context.styleDependencies[styleName].push_back(OpenDocumentStyleTranslator::escapeStyleName(parentStyleName));
         }
         const char *family;
         if (in.QueryStringAttribute("style:family", &family) == tinyxml2::XML_SUCCESS) {
-            context.styleDependencies[styleName].push_back(family);
+            context.styleDependencies[styleName].push_back(OpenDocumentStyleTranslator::escapeStyleName(family));
         }
 
         out << "." << styleName << "{";
@@ -353,6 +353,21 @@ public:
     }
 };
 
+}
+
+// TODO: out-source
+static void findAndReplaceAll(std::string &data, const std::string &toSearch, const std::string &replaceStr) {
+    std::size_t pos = data.find(toSearch);
+    while (pos != std::string::npos) {
+        data.replace(pos, toSearch.size(), replaceStr);
+        pos = data.find(toSearch, pos + replaceStr.size());
+    }
+}
+
+std::string OpenDocumentStyleTranslator::escapeStyleName(const std::string &name) {
+    std::string result = name;
+    findAndReplaceAll(result, ".", "_");
+    return result;
 }
 
 std::unique_ptr<OpenDocumentStyleTranslator> OpenDocumentStyleTranslator::create() {

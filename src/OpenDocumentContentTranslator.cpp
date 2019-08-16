@@ -10,6 +10,7 @@
 #include "OpenDocumentFile.h"
 #include "CryptoUtil.h"
 #include "Svm2Svg.h"
+#include "OpenDocumentStyleTranslator.h"
 
 namespace odr {
 
@@ -48,7 +49,7 @@ public:
     ~StyleAttributeTranslator() override = default;
 
     void translate(const tinyxml2::XMLAttribute &in, std::ostream &out, OpenDocumentContext &context) const override {
-        const std::string styleName = in.Value();
+        const std::string styleName = OpenDocumentStyleTranslator::escapeStyleName(in.Value());
         auto styleIt = context.styleDependencies.find(styleName);
         if (styleIt == context.styleDependencies.end()) {
             LOG(WARNING) << "unknown style: " << styleName;
@@ -76,6 +77,7 @@ public:
     explicit DefaultElementTranslator(const std::string &name) : name(name) {
         attributeTranslator["text:style-name"] = std::make_unique<StyleAttributeTranslator>();
         attributeTranslator["table:style-name"] = std::make_unique<StyleAttributeTranslator>();
+        attributeTranslator["table:default-cell-style-name"] = std::make_unique<StyleAttributeTranslator>();
         attributeTranslator["draw:style-name"] = std::make_unique<StyleAttributeTranslator>();
     }
 
@@ -237,7 +239,6 @@ public:
 class TableColumnTranslator : public DefaultElementTranslator {
 public:
     TableColumnTranslator() : DefaultElementTranslator("col") {
-        attributeTranslator["table:default-cell-style-name"] = nullptr; // TODO: implement
         attributeTranslator["table:number-columns-repeated"] = nullptr; // TODO: implement
     }
 

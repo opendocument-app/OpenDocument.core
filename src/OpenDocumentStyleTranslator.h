@@ -14,6 +14,7 @@ struct OpenDocumentContext;
 class OpenDocumentStyleTranslator {
 public:
     static std::unique_ptr<OpenDocumentStyleTranslator> create();
+    static std::string escapeStyleName(const std::string &);
 
     virtual ~OpenDocumentStyleTranslator() = default;
     virtual void translate(const tinyxml2::XMLElement &in, OpenDocumentContext &context) const = 0;
