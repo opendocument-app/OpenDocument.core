@@ -1,5 +1,5 @@
-#ifndef ODR_OPENDOCUMENTCONTEXT_H
-#define ODR_OPENDOCUMENTCONTEXT_H
+#ifndef ODR_TRANSLATIONCONTEXT_H
+#define ODR_TRANSLATIONCONTEXT_H
 
 #include <string>
 #include <list>
@@ -15,13 +15,13 @@ namespace odr {
 
 struct TranslationConfig;
 struct OpenDocumentFile;
+struct MicrosoftOpenXmlFile;
 struct FileMeta;
 
-// TODO: input/output context?
-
-struct OpenDocumentContext {
+struct TranslationContext {
     const TranslationConfig *config;
-    OpenDocumentFile *file;
+    OpenDocumentFile *odFile;
+    MicrosoftOpenXmlFile *msFile;
     const FileMeta *meta;
     const tinyxml2::XMLDocument *styles;
     const tinyxml2::XMLDocument *content;
@@ -32,4 +32,4 @@ struct OpenDocumentContext {
 
 }
 
-#endif //ODR_OPENDOCUMENTCONTEXT_H
+#endif //ODR_TRANSLATIONCONTEXT_H

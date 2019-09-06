@@ -6,15 +6,15 @@
 
 namespace odr {
 
-class MicrosoftContext;
 class MicrosoftOpenXmlFile;
+class TranslationContext;
 
 class MicrosoftTranslator {
 public:
     static std::unique_ptr<MicrosoftTranslator> create();
 
     virtual ~MicrosoftTranslator() = default;
-    virtual bool translate(MicrosoftOpenXmlFile &in, const std::string &out, MicrosoftContext &context) const = 0;
+    virtual bool translate(MicrosoftOpenXmlFile &in, const std::string &out, TranslationContext &context) const = 0;
 };
 
 }

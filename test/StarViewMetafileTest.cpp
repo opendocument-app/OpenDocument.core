@@ -18,8 +18,7 @@ TEST(StarViewMetafileTest, draft) {
     std::ofstream out;
     out.open(output);
 
-    odr::Svm2Svg translator;
-    translator.translate(in, out);
+    odr::Svm2Svg::translate(in, out);
 
     LOG(INFO) << "done";
 }

@@ -5,7 +5,7 @@
 #include "odr/TranslationConfig.h"
 #include "MicrosoftOpenXmlFile.h"
 #include "MicrosoftContentTranslator.h"
-#include "MicrosoftContext.h"
+#include "TranslationContext.h"
 
 namespace odr {
 
@@ -17,7 +17,7 @@ public:
 
     ~DefaultDocumentTranslatorImpl() override = default;
 
-    bool translate(MicrosoftOpenXmlFile &in, const std::string &out, MicrosoftContext &context) const override {
+    bool translate(MicrosoftOpenXmlFile &in, const std::string &out, TranslationContext &context) const override {
         std::ofstream of(out);
         if (!of.is_open()) {
             return false;
@@ -53,7 +53,7 @@ public:
         return true;
     }
 
-    void generateContent(MicrosoftOpenXmlFile &file, tinyxml2::XMLHandle &in, MicrosoftContext &context) const {
+    void generateContent(MicrosoftOpenXmlFile &file, tinyxml2::XMLHandle &in, TranslationContext &context) const {
         tinyxml2::XMLHandle bodyHandle = in
                 .FirstChildElement("w:document")
                 .FirstChildElement("w:body");

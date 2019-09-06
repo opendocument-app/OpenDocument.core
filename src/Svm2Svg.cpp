@@ -707,11 +707,7 @@ static void translateAction(const ActionHeader &action, std::istream &in, std::o
     }
 }
 
-Svm2Svg::Svm2Svg() = default;
-
-Svm2Svg::~Svm2Svg() = default;
-
-bool Svm2Svg::translate(std::istream &in, std::ostream &out) const {
+bool Svm2Svg::translate(std::istream &in, std::ostream &out) {
     SVMContext context = {};
     context.in = &in;
     context.out = &out;

@@ -6,7 +6,7 @@
 #include "tinyxml2.h"
 #include "glog/logging.h"
 #include "odr/TranslationConfig.h"
-#include "MicrosoftContext.h"
+#include "TranslationContext.h"
 #include "MicrosoftOpenXmlFile.h"
 #include "CryptoUtil.h"
 
@@ -17,8 +17,8 @@ namespace {
 class ElementTranslator {
 public:
     virtual ~ElementTranslator() = default;
-    virtual void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, MicrosoftContext &context) const = 0;
-    virtual void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, MicrosoftContext &context) const = 0;
+    virtual void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) const = 0;
+    virtual void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) const = 0;
 };
 
 class DefaultElementTranslator : public ElementTranslator {
@@ -30,18 +30,18 @@ public:
 
     ~DefaultElementTranslator() override = default;
 
-    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, MicrosoftContext &context) const override {
+    void translateStart(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) const override {
         out << "<" << name;
         translateStartCallback(in, out, context);
         out << ">";
     }
 
-    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, MicrosoftContext &context) const override {
+    void translateEnd(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) const override {
         out << "</" << name << ">";
     }
 
 protected:
-    virtual void translateStartCallback(const tinyxml2::XMLElement &in, std::ostream &out, MicrosoftContext &context) const {}
+    virtual void translateStartCallback(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) const {}
 };
 
 class ParagraphTranslator : public DefaultElementTranslator {
@@ -62,7 +62,7 @@ public:
 
     ~DefaultContentTranslator() override = default;
 
-    void translate(const tinyxml2::XMLElement &in, MicrosoftContext &context) const override {
+    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const override {
         auto &out = *context.output;
         context.currentElement = &in;
 

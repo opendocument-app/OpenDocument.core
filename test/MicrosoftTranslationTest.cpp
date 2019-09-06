@@ -1,10 +1,7 @@
 #include <string>
-#include <MicrosoftTranslator.h>
 #include "gtest/gtest.h"
 #include "glog/logging.h"
 #include "MicrosoftOpenXmlFile.h"
-#include "MicrosoftContext.h"
-#include "MicrosoftTranslator.h"
 #include "odr/TranslationConfig.h"
 #include "odr/TranslationHelper.h"
 

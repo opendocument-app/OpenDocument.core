@@ -9,7 +9,7 @@ class XMLElement;
 
 namespace odr {
 
-struct OpenDocumentContext;
+struct TranslationContext;
 
 class OpenDocumentStyleTranslator {
 public:
@@ -17,7 +17,7 @@ public:
     static std::string escapeStyleName(const std::string &);
 
     virtual ~OpenDocumentStyleTranslator() = default;
-    virtual void translate(const tinyxml2::XMLElement &in, OpenDocumentContext &context) const = 0;
+    virtual void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const = 0;
 };
 
 }
