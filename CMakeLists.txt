@@ -30,3 +30,5 @@ endif()
 set_property(TARGET odrlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory("test")
+
+add_subdirectory("main")
