@@ -10,6 +10,7 @@ option(BUILD_TESTS "OFF")
 add_subdirectory("lib/tinyxml2" EXCLUDE_FROM_ALL)
 add_subdirectory("lib/miniz" EXCLUDE_FROM_ALL)
 add_subdirectory("lib/glog" EXCLUDE_FROM_ALL)
+add_subdirectory("lib/googletest/googletest" EXCLUDE_FROM_ALL)
 
 file(GLOB SOURCES "src/*.cpp")
 add_library(odrlib STATIC ${SOURCES})
