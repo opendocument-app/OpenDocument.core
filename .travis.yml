@@ -6,9 +6,12 @@ compiler:
 #  - clang
   - gcc
 
+cache:
+  directories:
+    - build
+
 install:
   - wget https://raw.githubusercontent.com/andiwand/gdrive.sh/master/gdrive.sh -O gdrive.sh
-  - mkdir -p build && cd build && cmake .. && make -j8 && cd ..
 
 script:
   - mkdir -p build && cd build && cmake .. && make -j8 && cd ..
