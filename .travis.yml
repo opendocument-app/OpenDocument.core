@@ -1,0 +1,17 @@
+sudo: false
+
+language: cpp
+
+compiler:
+#  - clang
+  - gcc
+
+install:
+  - wget https://raw.githubusercontent.com/andiwand/gdrive.sh/master/gdrive.sh -O gdrive.sh
+  - mkdir -p build && cd build && cmake .. && make -j8 && cd ..
+
+script:
+  - mkdir -p build && cd build && cmake .. && make -j8 && cd ..
+  - cd test && bash ../gdrive.sh "${INPUT}" && [[ -d "input/" ]] && cd ..
+  - cd test && bash ../gdrive.sh "${OUTPUT}" && [[ -d "output/" ]] && cd ..
+  - cd test && ODR="../build/main/odrmain" INPUT_DIR="input" ./translate.sh

@@ -8,7 +8,6 @@ int main(int argc, char **argv) {
     const std::string password("password");
 
     odr::TranslationConfig config = {};
-    config.editable = true;
     config.entryOffset = 0;
     config.entryCount = 0;
 

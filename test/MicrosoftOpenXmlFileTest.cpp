@@ -5,6 +5,7 @@
 
 TEST(MicrosoftOpenXmlFileTest, open) {
     const std::string path = "../../test/empty.docx";
+
     odr::MicrosoftOpenXmlFile docx;
     docx.open(path);
 
