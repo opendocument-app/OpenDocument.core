@@ -22,6 +22,8 @@ struct TranslationConfig {
     // limit for table dimensions (surrounds problems with repeat* in spreadsheet)
     std::uint32_t maxTableRows = 10000;
     std::uint32_t maxTableCols = 10000;
+
+    bool editable = false;
 };
 
 }

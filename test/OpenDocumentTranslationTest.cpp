@@ -1,8 +1,8 @@
 #include <string>
 #include "gtest/gtest.h"
-#include "OpenDocumentFile.h"
 #include "odr/TranslationConfig.h"
 #include "odr/TranslationHelper.h"
+#include "odf/OpenDocumentFile.h"
 
 TEST(OpenDocumentTranslationTest, translate) {
     std::string input;
@@ -20,11 +20,12 @@ TEST(OpenDocumentTranslationTest, translate) {
     const std::string password = "password";
 
     odr::TranslationConfig config = {};
+    config.editable = true;
     config.entryOffset = 0;
     config.entryCount = 0;
 
     odr::TranslationHelper translator;
-    translator.open(input);
+    translator.openOpenDocument(input);
     translator.decrypt(password);
     translator.translate(output, config);
 }

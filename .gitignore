@@ -31,4 +31,22 @@
 *.out
 *.app
 
+.idea/
+
 bin/
+build/
+cmake-build-debug/
+cmake-build-release/
+
+*.zip
+*.html
+*.svg
+*.odt
+*.odp
+*.ods
+*.docx
+*.pptx
+*.xlsx
+*.doc
+*.ppt
+*.xls

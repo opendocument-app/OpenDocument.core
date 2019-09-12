@@ -1,6 +1,6 @@
 add_executable(odrmain "odrmain.cpp")
 target_link_libraries(odrmain PRIVATE glog tinyxml2 odrlib)
-if (NOT ODR_DISABLE_CRYPTO AND CryptoPP_FOUND)
+if(NOT ODR_DISABLE_CRYPTO AND CryptoPP_FOUND)
     target_link_libraries(odrtests PRIVATE cryptopp)
     target_compile_definitions(odrtests PRIVATE ODR_CRYPTO)
 endif()

@@ -8,21 +8,22 @@ namespace odr {
 
 struct FileMeta;
 struct TranslationConfig;
-class TranslationHelperImpl;
 
-class TranslationHelper {
+class TranslationHelper final {
 public:
     TranslationHelper();
     ~TranslationHelper();
 
-    bool open(const std::string &);
-    bool openMicrosoft(const std::string &);
-    bool decrypt(const std::string &);
-    const FileMeta &getMeta() const;
-    bool translate(const std::string &out, const TranslationConfig &config);
+    bool openOpenDocument(const std::string &) noexcept;
+    bool openMicrosoft(const std::string &) noexcept;
+    bool decrypt(const std::string &) noexcept;
+    const FileMeta *getMeta() const noexcept;
+    bool translate(const std::string &out, const TranslationConfig &config) noexcept;
+    void close() noexcept;
 
 private:
-    TranslationHelperImpl * const impl_;
+    class Impl;
+    const std::unique_ptr<Impl> impl_;
 };
 
 }

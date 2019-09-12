@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     config.entryCount = 0;
 
     odr::TranslationHelper translator;
-    translator.open(input);
+    translator.openOpenDocument(input);
     translator.decrypt(password);
     translator.translate(output, config);
 

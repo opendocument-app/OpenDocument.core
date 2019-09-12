@@ -1,6 +1,5 @@
 #include <string>
 #include "gtest/gtest.h"
-#include "MicrosoftOpenXmlFile.h"
 #include "odr/TranslationConfig.h"
 #include "odr/TranslationHelper.h"
 
