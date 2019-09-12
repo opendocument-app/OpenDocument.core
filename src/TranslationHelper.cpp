@@ -108,6 +108,46 @@ public:
                 return false;
         }
     }
+
+    bool backTranslate(const std::string &in, const std::string &out) {
+        if (fileOd.isOpen()) {
+            return backTranslateOd(in, out);
+        } else if (fileMs.isOpen()) {
+            return backTranslateMs(in, out);
+        }
+        return false;
+    }
+
+    bool backTranslateOd(const std::string &in, const std::string &out) {
+        if (!context.config->editable) {
+            return false;
+        }
+
+        switch (fileOd.getMeta().type) {
+            case FileType::OPENDOCUMENT_TEXT:
+            case FileType::OPENDOCUMENT_PRESENTATION:
+            case FileType::OPENDOCUMENT_SPREADSHEET:
+            case FileType::OPENDOCUMENT_GRAPHICS:
+                return translatorOd.backTranslate(fileOd, in, out, context);
+            default:
+                return false;
+        }
+    }
+
+    bool backTranslateMs(const std::string &in, const std::string &out) {
+        if (!context.config->editable) {
+            return false;
+        }
+
+        switch (fileMs.getMeta().type) {
+            case FileType::OFFICE_OPEN_XML_DOCUMENT:
+                return translatorMs.backTranslate(fileMs, in, out, context);
+            case FileType::OFFICE_OPEN_XML_PRESENTATION:
+            case FileType::OFFICE_OPEN_XML_WORKBOOK:
+            default:
+                return false;
+        }
+    }
 };
 
 TranslationHelper::TranslationHelper() :
@@ -138,6 +178,10 @@ const FileMeta *TranslationHelper::getMeta() const noexcept {
 
 bool TranslationHelper::translate(const std::string &out, const TranslationConfig &config) noexcept {
     return impl_->translate(out, config);
+}
+
+bool TranslationHelper::backTranslate(const std::string &in, const std::string &out) noexcept {
+    return impl_->backTranslate(in, out);
 }
 
 }
