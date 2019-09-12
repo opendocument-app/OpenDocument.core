@@ -27,6 +27,7 @@ struct TranslationContext {
     MicrosoftOpenXmlFile *msFile;
     const FileMeta *meta;
     std::unique_ptr<tinyxml2::XMLDocument> content;
+    std::unique_ptr<tinyxml2::XMLDocument> sharedStringsDoc;
     std::vector<const tinyxml2::XMLElement *> sharedStrings;
     std::unordered_map<std::string, std::list<std::string>> styleDependencies;
     std::ostream *output;

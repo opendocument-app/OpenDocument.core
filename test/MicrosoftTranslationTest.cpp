@@ -6,6 +6,8 @@
 TEST(MicrosoftTranslationTest, translate) {
     std::string input;
     input = "/home/andreas/Desktop/odr/03_smpldap.docx";
+    input = "/home/andreas/Desktop/odr/ruski.xlsx";
+    input = "/home/andreas/Desktop/odr/tuesday_d6.pptx";
     const std::string output = "../../test/test.html";
     const std::string password = "password";
 

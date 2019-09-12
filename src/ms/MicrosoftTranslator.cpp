@@ -13,6 +13,24 @@
 
 namespace odr {
 
+namespace {
+struct Relationship {
+    // type
+    Path target;
+};
+std::unordered_map<std::string, Relationship> parseRelationships(tinyxml2::XMLDocument &rels) {
+    std::unordered_map<std::string, Relationship> result;
+    XmlUtil::recursiveVisitElementsWithName(rels.RootElement(), "Relationship", [&](const auto &rel) {
+        const std::string rId = rel.FindAttribute("Id")->Value();
+        const Relationship r = {
+                .target = rel.FindAttribute("Target")->Value()
+        };
+        result.insert({rId, r});
+    });
+    return result;
+}
+}
+
 class MicrosoftTranslator::Impl {
 public:
     MicrosoftContentTranslator contentTranslator;
@@ -60,14 +78,42 @@ public:
     }
 
     void generateContent(MicrosoftOpenXmlFile &file, tinyxml2::XMLDocument &in, TranslationContext &context) const {
-        tinyxml2::XMLHandle bodyHandle = tinyxml2::XMLHandle(in)
-                .FirstChildElement("w:document")
-                .FirstChildElement("w:body");
-        tinyxml2::XMLElement *body = in
-                .FirstChildElement("w:document")
-                ->FirstChildElement("w:body");
+        switch (file.getMeta().type) {
+            case FileType::OFFICE_OPEN_XML_DOCUMENT: {
+                tinyxml2::XMLHandle bodyHandle = tinyxml2::XMLHandle(in)
+                        .FirstChildElement("w:document")
+                        .FirstChildElement("w:body");
+                tinyxml2::XMLElement *body = in
+                        .FirstChildElement("w:document")
+                        ->FirstChildElement("w:body");
 
-        contentTranslator.translate(*body, context);
+                contentTranslator.translate(*body, context);
+            } break;
+            case FileType::OFFICE_OPEN_XML_PRESENTATION: {
+                const auto rels = parseRelationships(*file.loadRelationships(file.getContentPath()));
+                XmlUtil::recursiveVisitElementsWithName(in.RootElement(), "p:sldId", [&](const auto &child) {
+                    const std::string rId = child.FindAttribute("r:id")->Value();
+                    const auto sheet = file.loadXml(Path("ppt").join(rels.at(rId).target));
+                    contentTranslator.translate(*sheet->RootElement(), context);
+                });
+            } break;
+            case FileType::OFFICE_OPEN_XML_WORKBOOK: {
+                // TODO this breaks back translation
+                context.sharedStringsDoc = file.loadXml("xl/sharedStrings.xml");
+                XmlUtil::recursiveVisitElementsWithName(context.sharedStringsDoc->RootElement(), "si", [&](const auto &child) {
+                    context.sharedStrings.push_back(&child);
+                });
+
+                const auto rels = parseRelationships(*file.loadRelationships(file.getContentPath()));
+                XmlUtil::recursiveVisitElementsWithName(in.RootElement(), "sheet", [&](const auto &child) {
+                    const std::string rId = child.FindAttribute("r:id")->Value();
+                    const auto sheet = file.loadXml(Path("xl").join(rels.at(rId).target));
+                    contentTranslator.translate(*sheet->RootElement(), context);
+                });
+            } break;
+            default:
+                throw; // TODO
+        }
     }
 };
 
