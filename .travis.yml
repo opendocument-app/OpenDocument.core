@@ -2,19 +2,26 @@ sudo: false
 
 language: cpp
 
+git:
+  depth: 10
+
+addons:
+  apt:
+    packages:
+      - ninja-build
+
 compiler:
-#  - clang
+  - clang
   - gcc
 
 cache:
-  directories:
-    - build
+  - ccache
 
 install:
   - wget https://raw.githubusercontent.com/andiwand/gdrive.sh/master/gdrive.sh -O gdrive.sh
 
 script:
-  - mkdir -p build && cd build && cmake .. && make -j8 && cd ..
+  - mkdir -p build && cd build && cmake -GNinja .. && cmake --build . && cd ..
   - cd test && bash ../gdrive.sh "${INPUT}" && [[ -d "input/" ]] && cd ..
   - cd test && bash ../gdrive.sh "${OUTPUT}" && [[ -d "output/" ]] && cd ..
   - cd test && ODR="../build/main/odrmain" INPUT_DIR="input" ./translate.sh
