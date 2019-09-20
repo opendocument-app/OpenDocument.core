@@ -1,15 +1,15 @@
 #ifdef ODR_CRYPTO
+
 #include "CryptoUtil.h"
-#include "cryptopp/hex.h"
-#include "cryptopp/filters.h"
-#include "cryptopp/base64.h"
-#include "cryptopp/pwdbased.h"
-#include "cryptopp/sha.h"
-#include "cryptopp/modes.h"
-#include "cryptopp/aes.h"
-#include "cryptopp/des.h"
-#include "cryptopp/blowfish.h"
-#include "cryptopp/zinflate.h"
+#include "cryptopp-src/filters.h"
+#include "cryptopp-src/base64.h"
+#include "cryptopp-src/pwdbased.h"
+#include "cryptopp-src/sha.h"
+#include "cryptopp-src/modes.h"
+#include "cryptopp-src/aes.h"
+#include "cryptopp-src/des.h"
+#include "cryptopp-src/blowfish.h"
+#include "cryptopp-src/zinflate.h"
 
 namespace odr {
 
@@ -79,7 +79,7 @@ std::string CryptoUtil::decryptBlowfish(const std::string &key, const std::strin
 // discard non deflated content caused by padding
 class MyInflator : public CryptoPP::Inflator {
 public:
-    MyInflator(BufferedTransformation *attachment = NULLPTR, bool repeat = false, int autoSignalPropagation = -1) :
+    MyInflator(BufferedTransformation *attachment = nullptr, bool repeat = false, int autoSignalPropagation = -1) :
             Inflator(attachment, repeat, autoSignalPropagation) {}
 
     virtual unsigned int GetPadding() const {return m_padding;}
