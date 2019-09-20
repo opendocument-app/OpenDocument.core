@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12.4)
 project(odr C CXX)
 set(CMAKE_CXX_STANDARD 14)
 
@@ -11,13 +11,46 @@ if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif(CCACHE_FOUND)
 
-# tinyxml2 options
-option(BUILD_SHARED_LIBS "OFF")
-option(BUILD_TESTS "OFF")
-add_subdirectory("lib/tinyxml2" EXCLUDE_FROM_ALL)
-add_subdirectory("lib/miniz" EXCLUDE_FROM_ALL)
-add_subdirectory("lib/glog" EXCLUDE_FROM_ALL)
-add_subdirectory("lib/googletest/googletest" EXCLUDE_FROM_ALL)
+include("FetchContent")
+
+FetchContent_Declare(
+        tinyxml2
+        GIT_REPOSITORY https://github.com/tomtasche/tinyxml2.git
+        GIT_TAG 5effa6d
+)
+FetchContent_Declare(
+        miniz
+        GIT_REPOSITORY https://github.com/richgel999/miniz.git
+        GIT_TAG 2.1.0
+)
+FetchContent_Declare(
+        glog
+        GIT_REPOSITORY https://github.com/tomtasche/glog.git
+        GIT_TAG fb5b382
+)
+FetchContent_Declare(
+        cryptopp
+        GIT_REPOSITORY https://github.com/TomTasche/cryptopp.ios.git
+        GIT_TAG 8c373c0
+)
+
+FetchContent_GetProperties(tinyxml2)
+if(NOT tinyxml2_POPULATED)
+    FetchContent_Populate(tinyxml2)
+    option(BUILD_SHARED_LIBS "OFF")
+    option(BUILD_TESTS "OFF")
+    add_subdirectory(${tinyxml2_SOURCE_DIR} ${tinyxml2_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+FetchContent_GetProperties(miniz)
+if(NOT miniz_POPULATED)
+    FetchContent_Populate(miniz)
+    add_subdirectory(${miniz_SOURCE_DIR} ${miniz_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+FetchContent_GetProperties(glog)
+if(NOT glog_POPULATED)
+    FetchContent_Populate(glog)
+    add_subdirectory(${glog_SOURCE_DIR} ${glog_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 file(GLOB SOURCES "src/*.cpp")
 add_library(odrlib STATIC ${SOURCES})
@@ -29,7 +62,11 @@ target_link_libraries(odrlib PRIVATE glog miniz tinyxml2)
 target_compile_definitions(odrlib PRIVATE MINIZ_NO_ZLIB_COMPATIBLE_NAMES)
 
 if (NOT ODR_DISABLE_CRYPTO)
-    add_subdirectory("lib/cryptopp" EXCLUDE_FROM_ALL)
+    FetchContent_GetProperties(cryptopp)
+    if(NOT cryptopp_POPULATED)
+        FetchContent_Populate(cryptopp)
+        add_subdirectory(${cryptopp_SOURCE_DIR} ${cryptopp_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
 
     target_link_libraries(odrlib PRIVATE cryptopp-static)
     target_compile_definitions(odrlib PRIVATE ODR_CRYPTO)
