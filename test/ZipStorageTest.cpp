@@ -2,7 +2,6 @@
 #include "gtest/gtest.h"
 #include "io/Path.h"
 #include "io/ZipStorage.h"
-#include "io/Stream.h"
 
 TEST(ZipWriterTest, create) {
     const std::string output = "../../test/created.zip";

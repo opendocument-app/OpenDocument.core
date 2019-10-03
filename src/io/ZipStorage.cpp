@@ -24,10 +24,9 @@ public:
             mz_zip_reader_extract_iter_free(iter);
         }
 
-        std::uint32_t read(char *data, const std::uint32_t amount) final {
-            if (remaining <= 0) {
-                return 0;
-            }
+        std::uint32_t read(char *data, std::uint32_t amount) final {
+            if (remaining <= 0) return 0;
+            if (remaining < amount) amount = remaining;
             const std::uint32_t result = mz_zip_reader_extract_iter_read(iter, data, amount);
             remaining -= result;
             return result;
