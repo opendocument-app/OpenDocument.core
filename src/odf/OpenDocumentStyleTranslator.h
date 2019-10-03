@@ -11,13 +11,18 @@ namespace odr {
 
 struct TranslationContext;
 
-class OpenDocumentStyleTranslator {
+class OpenDocumentStyleTranslator final {
 public:
-    static std::unique_ptr<OpenDocumentStyleTranslator> create();
     static std::string escapeStyleName(const std::string &);
 
-    virtual ~OpenDocumentStyleTranslator() = default;
-    virtual void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const = 0;
+    OpenDocumentStyleTranslator();
+    ~OpenDocumentStyleTranslator();
+
+    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const;
+
+private:
+    class Impl;
+    const std::unique_ptr<Impl> impl;
 };
 
 }

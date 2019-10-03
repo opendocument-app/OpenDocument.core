@@ -4,6 +4,10 @@ set(CMAKE_CXX_STANDARD 14)
 
 option(ODR_DISABLE_CRYPTO "disable crypto" "OFF")
 
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 # use ccache if available
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
@@ -20,8 +24,8 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
         miniz
-        GIT_REPOSITORY https://github.com/richgel999/miniz.git
-        GIT_TAG 2.1.0
+        GIT_REPOSITORY https://github.com/andiwand/miniz.git
+        GIT_TAG cd99aff
 )
 FetchContent_Declare(
         glog
@@ -52,7 +56,7 @@ if(NOT glog_POPULATED)
     add_subdirectory(${glog_SOURCE_DIR} ${glog_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_library(odrlib STATIC ${SOURCES})
 target_include_directories(odrlib PUBLIC "include")
 
@@ -61,7 +65,7 @@ target_link_libraries(odrlib PRIVATE glog miniz tinyxml2)
 # miniz defines a lot of macros without that
 target_compile_definitions(odrlib PRIVATE MINIZ_NO_ZLIB_COMPATIBLE_NAMES)
 
-if (NOT ODR_DISABLE_CRYPTO)
+if(NOT ODR_DISABLE_CRYPTO)
     FetchContent_GetProperties(cryptopp)
     if(NOT cryptopp_POPULATED)
         FetchContent_Populate(cryptopp)

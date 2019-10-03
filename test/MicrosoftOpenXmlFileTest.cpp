@@ -1,7 +1,9 @@
 #include <string>
 #include "gtest/gtest.h"
 #include "glog/logging.h"
-#include "MicrosoftOpenXmlFile.h"
+#include "odr/FileMeta.h"
+#include "io/Path.h"
+#include "ms/MicrosoftOpenXmlFile.h"
 
 TEST(MicrosoftOpenXmlFileTest, open) {
     const std::string path = "../../test/empty.docx";

@@ -2,9 +2,9 @@
 #include <fstream>
 #include "gtest/gtest.h"
 #include "glog/logging.h"
-#include "Svm2Svg.h"
+#include "svm/Svm2Svg.h"
 
-TEST(StarViewMetafileTest, draft) {
+TEST(SvmTest, draft) {
     std::string input;
     input = "/home/andreas/Desktop/odr/svm/test.svm";
     //input = "/home/andreas/Desktop/odr/svm/Object 44";

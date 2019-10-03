@@ -1,53 +1,99 @@
 #include "odr/TranslationHelper.h"
+#include "tinyxml2.h"
+#include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
-#include "OpenDocumentFile.h"
 #include "TranslationContext.h"
-#include "OpenDocumentTranslator.h"
-#include "MicrosoftOpenXmlFile.h"
-#include "MicrosoftTranslator.h"
+#include "io/Path.h"
+#include "odf/OpenDocumentFile.h"
+#include "odf/OpenDocumentTranslator.h"
+#include "ms/MicrosoftOpenXmlFile.h"
+#include "ms/MicrosoftTranslator.h"
 
 namespace odr {
 
-class TranslationHelperImpl final {
+class TranslationHelper::Impl final {
 public:
-    OpenDocumentFile file;
-    std::unique_ptr<OpenDocumentTranslator> translator;
+    OpenDocumentFile fileOd;
     MicrosoftOpenXmlFile fileMs;
-    std::unique_ptr<MicrosoftTranslator> translatorMs;
 
-    TranslationHelperImpl() {
-        translator = OpenDocumentTranslator::create();
-        translatorMs = MicrosoftTranslator::create();
+    TranslationContext context;
+
+    OpenDocumentTranslator translatorOd;
+    MicrosoftTranslator translatorMs;
+
+    bool openOd(const std::string &path) {
+        return fileOd.open(path);
+    }
+
+    bool openMs(const std::string &path) {
+        return fileMs.open(path);
+    }
+
+    void close() {
+        context = {};
+
+        if (fileOd.isOpen()) {
+            fileOd.close();
+        } else if (fileMs.isOpen()) {
+            fileMs.close();
+        }
+    }
+
+    bool decrypt(const std::string &password) {
+        if (fileOd.isOpen()) {
+            return fileOd.decrypt(password);
+        } else if (fileMs.isOpen()) {
+            return fileMs.decrypt(password);
+        }
+        return false;
+    }
+
+    const FileMeta *getMeta() const {
+        if (fileOd.isOpen()) {
+            return &fileOd.getMeta();
+        } else if (fileMs.isOpen()) {
+            return &fileMs.getMeta();
+        }
+        return nullptr;
     }
 
     bool translate(const std::string &out, const TranslationConfig &config) {
-        if (!file.isOpen() || !file.isDecrypted()) {
+        if (fileOd.isOpen()) {
+            return translateOd(out, config);
+        } else if (fileMs.isOpen()) {
             return translateMs(out, config);
         }
+        return false;
+    }
 
-        TranslationContext context = {};
+    bool translateOd(const std::string &out, const TranslationConfig &config) {
+        if (!fileOd.isDecrypted()) {
+            return false;
+        }
+
+        context = {};
         context.config = &config;
-        context.odFile = &file;
-        context.meta = &file.getMeta();
+        context.odFile = &fileOd;
+        context.meta = &fileOd.getMeta();
 
-        switch (file.getMeta().type) {
+        switch (fileOd.getMeta().type) {
             case FileType::OPENDOCUMENT_TEXT:
             case FileType::OPENDOCUMENT_PRESENTATION:
             case FileType::OPENDOCUMENT_SPREADSHEET:
             case FileType::OPENDOCUMENT_GRAPHICS:
                 // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
-                return translator->translate(file, out, context);
+                return translatorOd.translate(fileOd, out, context);
             default:
                 return false;
         }
     }
 
     bool translateMs(const std::string &out, const TranslationConfig &config) {
-        if (!fileMs.isOpen() || !fileMs.isDecrypted()) {
+        if (!fileMs.isDecrypted()) {
             return false;
         }
 
-        TranslationContext context = {};
+        context = {};
         context.config = &config;
         context.msFile = &fileMs;
         context.meta = &fileMs.getMeta();
@@ -57,7 +103,7 @@ public:
             case FileType::OFFICE_OPEN_XML_PRESENTATION:
             case FileType::OFFICE_OPEN_XML_WORKBOOK:
                 // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
-                return translatorMs->translate(fileMs, out, context);
+                return translatorMs.translate(fileMs, out, context);
             default:
                 return false;
         }
@@ -65,30 +111,32 @@ public:
 };
 
 TranslationHelper::TranslationHelper() :
-        impl_(new TranslationHelperImpl()) {
+        impl_(std::make_unique<Impl>()) {
 }
 
-TranslationHelper::~TranslationHelper() {
-    delete impl_;
+TranslationHelper::~TranslationHelper() = default;
+
+bool TranslationHelper::openOpenDocument(const std::string &path) noexcept {
+    return impl_->openOd(path);
 }
 
-bool TranslationHelper::open(const std::string &path) {
-    return impl_->file.open(path);
+bool TranslationHelper::openMicrosoft(const std::string &path) noexcept {
+    return impl_->openMs(path);
 }
 
-bool TranslationHelper::openMicrosoft(const std::string &path) {
-    return impl_->fileMs.open(path);
+void TranslationHelper::close() noexcept {
+    impl_->close();
 }
 
-bool TranslationHelper::decrypt(const std::string &password) {
-    return impl_->file.decrypt(password);
+bool TranslationHelper::decrypt(const std::string &password) noexcept {
+    return impl_->decrypt(password);
 }
 
-const FileMeta& TranslationHelper::getMeta() const {
-    return impl_->file.getMeta();
+const FileMeta *TranslationHelper::getMeta() const noexcept {
+    return impl_->getMeta();
 }
 
-bool TranslationHelper::translate(const std::string &out, const odr::TranslationConfig &config) {
+bool TranslationHelper::translate(const std::string &out, const TranslationConfig &config) noexcept {
     return impl_->translate(out, config);
 }
 

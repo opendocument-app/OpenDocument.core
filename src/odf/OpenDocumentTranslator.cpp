@@ -1,29 +1,25 @@
 #include "OpenDocumentTranslator.h"
 #include <fstream>
 #include "tinyxml2.h"
-#include "glog/logging.h"
+#include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
+#include "../TranslationContext.h"
+#include "../io/Path.h"
+#include "../io/FileUtil.h"
+#include "../io/ZipStorage.h"
+#include "../xml/XmlUtil.h"
 #include "OpenDocumentFile.h"
 #include "OpenDocumentStyleTranslator.h"
 #include "OpenDocumentContentTranslator.h"
-#include "TranslationContext.h"
 
 namespace odr {
 
-namespace {
-
-class DefaultDocumentTranslatorImpl : public OpenDocumentTranslator {
+class OpenDocumentTranslator::Impl final {
 public:
-    std::unique_ptr<OpenDocumentStyleTranslator> styleTranslator;
-    std::unique_ptr<OpenDocumentContentTranslator> contentTranslator;
+    OpenDocumentStyleTranslator styleTranslator;
+    OpenDocumentContentTranslator contentTranslator;
 
-    ~DefaultDocumentTranslatorImpl() override = default;
-
-    bool translate(OpenDocumentFile &in, const std::string &out, TranslationContext &context) const override {
-        if (!in.isFile("content.xml")) {
-            return false;
-        }
-
+    bool translate(OpenDocumentFile &in, const std::string &out, TranslationContext &context) const {
         std::ofstream of(out);
         if (!of.is_open()) {
             return false;
@@ -40,8 +36,8 @@ public:
 
         of << "<style>\n";
         generateStyle(of, context);
-        auto contentXml = in.loadXML("content.xml");
-        tinyxml2::XMLHandle contentHandle(contentXml.get());
+        context.content = in.loadXml("content.xml");
+        tinyxml2::XMLHandle contentHandle(context.content.get());
         generateContentStyle(contentHandle, context);
         of << "</style>\n";
 
@@ -54,9 +50,8 @@ public:
 
         generateContent(in, contentHandle, context);
 
-        of << "\n";
         of << "</body>\n";
-        of << "</html>\n";
+        of << "</html>";
 
         of.close();
         return true;
@@ -103,8 +98,7 @@ public:
                 "}\n";
         }
 
-        auto stylesXml = context.odFile->loadXML("styles.xml");
-        context.styles = stylesXml.get();
+        auto stylesXml = context.odFile->loadXml("styles.xml");
         tinyxml2::XMLHandle stylesHandle(stylesXml.get());
 
         tinyxml2::XMLElement *fontFaceDecls = stylesHandle
@@ -112,41 +106,43 @@ public:
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
         if (fontFaceDecls != nullptr) {
-            styleTranslator->translate(*fontFaceDecls, context);
+            styleTranslator.translate(*fontFaceDecls, context);
         }
 
         tinyxml2::XMLElement *styles = stylesHandle
                 .FirstChildElement("office:document-styles")
                 .FirstChildElement("office:styles")
                 .ToElement();
-        styleTranslator->translate(*styles, context);
-
-        context.styles = nullptr;
+        styleTranslator.translate(*styles, context);
     }
+
     void generateContentStyle(tinyxml2::XMLHandle &in, TranslationContext &context) const {
         tinyxml2::XMLElement *fontFaceDecls = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
         if (fontFaceDecls != nullptr) {
-            styleTranslator->translate(*fontFaceDecls, context);
+            styleTranslator.translate(*fontFaceDecls, context);
         }
 
         tinyxml2::XMLElement *automaticStyles = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:automatic-styles")
                 .ToElement();
-        styleTranslator->translate(*automaticStyles, context);
+        styleTranslator.translate(*automaticStyles, context);
     }
+
     void generateScript(std::ofstream &of, TranslationContext &context) const {
         // TODO: get script from translators?
     }
+
     void generateContent(OpenDocumentFile &file, tinyxml2::XMLHandle &in, TranslationContext &context) const {
         tinyxml2::XMLHandle bodyHandle = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:body");
         tinyxml2::XMLElement *body = bodyHandle.ToElement();
 
+        // TODO breaks back translation
         if ((context.config->entryOffset > 0) | (context.config->entryCount > 0)) {
             tinyxml2::XMLElement *content = nullptr;
             const char *entryName = nullptr;
@@ -184,17 +180,18 @@ public:
             }
         }
 
-        contentTranslator->translate(*body, context);
+        contentTranslator.translate(*body, context);
     }
 };
 
+OpenDocumentTranslator::OpenDocumentTranslator() :
+        impl(std::make_unique<Impl>()){
 }
 
-std::unique_ptr<OpenDocumentTranslator> OpenDocumentTranslator::create() {
-    auto result = std::make_unique<DefaultDocumentTranslatorImpl>();
-    result->styleTranslator = OpenDocumentStyleTranslator::create();
-    result->contentTranslator = OpenDocumentContentTranslator::create();
-    return result;
+OpenDocumentTranslator::~OpenDocumentTranslator() = default;
+
+bool OpenDocumentTranslator::translate(OpenDocumentFile &in, const std::string &out, TranslationContext &context) const {
+    return impl->translate(in, out, context);
 }
 
 }

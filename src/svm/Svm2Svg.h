@@ -7,7 +7,7 @@
 namespace odr {
 
 namespace Svm2Svg {
-    bool translate(std::istream &in, std::ostream &out);
+bool translate(std::istream &in, std::ostream &out);
 }
 
 }
