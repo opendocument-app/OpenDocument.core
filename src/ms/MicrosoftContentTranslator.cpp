@@ -74,11 +74,36 @@ class MicrosoftContentTranslator::Impl final : public DefaultXmlTranslator {
 public:
     DefaultElementTranslator paragraphTranslator;
 
+    DefaultElementTranslator slidTranslator;
+    DefaultElementTranslator boxTranslator;
+    DefaultElementTranslator boxParagraphTranslator;
+
+    TableTranslator tableTranslator;
+    DefaultElementTranslator tableRowTranslator;
+    TableCellTranslator tableCellTranslator;
+
+    IgnoreHandler skipper;
     DefaultHandler defaultHandler;
 
     Impl() :
-            paragraphTranslator("p") {
+            paragraphTranslator("p"),
+            slidTranslator("div"),
+            boxTranslator("div"),
+            boxParagraphTranslator("p"),
+            tableRowTranslator("tr") {
+        // document
         addElementDelegation("w:p", paragraphTranslator.setDefaultDelegation(this));
+
+        // presentation
+        addElementDelegation("p:cSld", slidTranslator.setDefaultDelegation(this));
+        addElementDelegation("p:sp", boxTranslator.setDefaultDelegation(this));
+        addElementDelegation("a:p", boxParagraphTranslator.setDefaultDelegation(this));
+
+        // workbook
+        addElementDelegation("worksheet", tableTranslator.setDefaultDelegation(this));
+        addElementDelegation("row", tableRowTranslator.setDefaultDelegation(this));
+        addElementDelegation("c", tableCellTranslator.setDefaultDelegation(this));
+        addElementDelegation("headerFooter", skipper);
 
         defaultHandler.setDefaultDelegation(this);
         setDefaultDelegation(&defaultHandler);
