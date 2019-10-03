@@ -7,11 +7,14 @@
 #include "TranslationContext.h"
 #include "io/Storage.h"
 #include "io/ZipStorage.h"
+#include "io/CfbStorage.h"
+#include "io/StreamUtil.h"
 #include "odf/OpenDocumentMeta.h"
 #include "odf/OpenDocumentCrypto.h"
 #include "odf/OpenDocumentTranslator.h"
-#include "ooxml/MicrosoftTranslator.h"
 #include "ooxml/OfficeOpenXmlMeta.h"
+#include "ooxml/OfficeOpenXmlCrypto.h"
+#include "ooxml/MicrosoftTranslator.h"
 
 namespace odr {
 
@@ -51,12 +54,24 @@ public:
                 try {
                     meta = OpenDocumentMeta::parseFileMeta(*storage, false);
                     return true;
-                } catch(NoOpenDocumentFileException &) {}
+                } catch (NoOpenDocumentFileException &) {}
                 try {
                     meta = OfficeOpenXmlMeta::parseFileMeta(*storage);
                     return true;
-                } catch(NoOfficeOpenXmlFileException &) {}
-            } catch(NoZipFileException &) {}
+                } catch (NoOfficeOpenXmlFileException &) {}
+            } catch (NoZipFileException &) {}
+            try {
+                storage = std::make_unique<CfbReader>(path);
+
+                // TODO legacy microsoft documents
+
+                {
+                    meta = {};
+                    meta.type = FileType::COMPOUND_FILE_BINARY_FORMAT;
+                    meta.encrypted = storage->isFile("EncryptionInfo") && storage->isFile("EncryptedPackage");
+                    return true;
+                }
+            } catch (NoCfbFileException &) {}
 
             // file detection failed
             return false;
@@ -129,6 +144,24 @@ public:
                 if (!OpenDocumentCrypto::decrypt(storage, manifest, password)) return false;
                 meta = OpenDocumentMeta::parseFileMeta(*storage, true);
                 return true;
+            }
+            case FileType::COMPOUND_FILE_BINARY_FORMAT: {
+                // office open xml decryption
+                {
+                    const std::string encryptionInfo = StreamUtil::read(*storage->read("EncryptionInfo"));
+                    OfficeOpenXmlCrypto::Util util(encryptionInfo);
+                    const std::string key = util.deriveKey(password);
+                    if (!util.verify(key)) return false;
+                    const std::string encryptedPackage = StreamUtil::read(*storage->read("EncryptedPackage"));
+                    const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
+                    storage = std::make_unique<ZipReader>(decryptedPackage, false);
+                    meta = OfficeOpenXmlMeta::parseFileMeta(*storage);
+                    return true;
+                }
+
+                // TODO legacy microsoft decryption
+
+                return false;
             }
             default:
                 return false;
