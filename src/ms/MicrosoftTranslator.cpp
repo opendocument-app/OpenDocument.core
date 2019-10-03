@@ -115,6 +115,56 @@ public:
                 throw; // TODO
         }
     }
+
+    bool backTranslate(MicrosoftOpenXmlFile &in, const std::string &inHtml, const std::string &out, TranslationContext &context) const {
+        // TODO code duplication
+        // TODO exit on encrypted files
+        tinyxml2::XMLDocument contentHtml;
+        // TODO out-source parse html
+        const std::string contentHtmlStr = FileUtil::read(inHtml);
+        const auto contentHtmlStr_begin = contentHtmlStr.find("<body>");
+        auto contentHtmlStr_end = contentHtmlStr.rfind("</body>");
+        if ((contentHtmlStr_begin == std::string::npos) ||
+            (contentHtmlStr_end == std::string::npos)) {
+            return false;
+        }
+        contentHtmlStr_end += 7;
+        tinyxml2::XMLError state = contentHtml.Parse(
+                contentHtmlStr.c_str() + contentHtmlStr_begin,
+                contentHtmlStr_end - contentHtmlStr_begin);
+        if (state != tinyxml2::XMLError::XML_SUCCESS) {
+            return false;
+        }
+
+        std::unordered_map<std::uint32_t, const char *> editedContent;
+        XmlUtil::recursiveVisitElementsWithAttribute(contentHtml.RootElement(), "data-odr-cid", [&](const tinyxml2::XMLElement &element) {
+            const std::uint32_t id = element.FindAttribute("data-odr-cid")->Int64Value();
+            if ((element.FirstChild() == nullptr) || (element.FirstChild()->ToText() == nullptr)) return;
+            editedContent[id] = element.FirstChild()->ToText()->Value();
+        });
+
+        for (auto &&e : context.textTranslation) {
+            const auto editedIt = editedContent.find(e.first);
+            // TODO dirty const off-cast
+            if (editedIt == editedContent.end()) {
+                ((tinyxml2::XMLText *) e.second)->SetValue("");
+            } else {
+                ((tinyxml2::XMLText *) e.second)->SetValue(editedIt->second);
+            }
+        }
+
+        ZipWriter writer(out);
+        in.getZipReader().visit([&](const auto &p) {
+            if (p == in.getContentPath()) return;
+            writer.copy(in.getZipReader(), p);
+        });
+
+        tinyxml2::XMLPrinter printer(0, true, 0);
+        context.content->Print(&printer);
+        writer.write(in.getContentPath())->write(printer.CStr(), printer.CStrSize() - 1);
+
+        return true;
+    }
 };
 
 MicrosoftTranslator::MicrosoftTranslator() :
@@ -125,6 +175,10 @@ MicrosoftTranslator::~MicrosoftTranslator() = default;
 
 bool MicrosoftTranslator::translate(MicrosoftOpenXmlFile &in, const std::string &out, TranslationContext &context) const {
     return impl->translate(in, out, context);
+}
+
+bool MicrosoftTranslator::backTranslate(MicrosoftOpenXmlFile &in, const std::string &inHtml, const std::string &out, TranslationContext &context) const {
+    return impl->backTranslate(in, inHtml, out, context);
 }
 
 }

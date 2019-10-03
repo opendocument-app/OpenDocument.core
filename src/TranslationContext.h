@@ -31,6 +31,9 @@ struct TranslationContext {
     std::vector<const tinyxml2::XMLElement *> sharedStrings;
     std::unordered_map<std::string, std::list<std::string>> styleDependencies;
     std::ostream *output;
+
+    std::uint32_t currentTextTranslationIndex;
+    std::unordered_map<std::uint32_t, const tinyxml2::XMLText *> textTranslation;
 };
 
 }

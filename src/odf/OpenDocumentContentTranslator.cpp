@@ -278,7 +278,14 @@ public:
     }
 
     void translate(const tinyxml2::XMLText &in, TranslationContext &context) const final {
-        *context.output << in.Value();
+        if (!context.config->editable) {
+            *context.output << in.Value();
+        } else {
+            *context.output << "<span contenteditable=\"true\" data-odr-cid=\""
+                    << context.currentTextTranslationIndex << "\">" << in.Value() << "</span>";
+            context.textTranslation[context.currentTextTranslationIndex] = &in;
+            ++context.currentTextTranslationIndex;
+        }
     }
 };
 

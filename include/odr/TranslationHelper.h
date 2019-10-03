@@ -19,6 +19,7 @@ public:
     bool decrypt(const std::string &) noexcept;
     const FileMeta *getMeta() const noexcept;
     bool translate(const std::string &out, const TranslationConfig &config) noexcept;
+    bool backTranslate(const std::string &in, const std::string &out) noexcept;
     void close() noexcept;
 
 private:

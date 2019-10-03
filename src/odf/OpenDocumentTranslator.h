@@ -15,6 +15,7 @@ public:
     ~OpenDocumentTranslator();
 
     bool translate(OpenDocumentFile &in, const std::string &out, TranslationContext &context) const;
+    bool backTranslate(OpenDocumentFile &in, const std::string &inHtml, const std::string &out, TranslationContext &context) const;
 
 private:
     class Impl;
