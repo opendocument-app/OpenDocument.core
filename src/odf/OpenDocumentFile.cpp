@@ -7,6 +7,7 @@
 #include "../MapUtil.h"
 #include "../io/Path.h"
 #include "../io/ZipStorage.h"
+#include "../xml/XmlUtil.h"
 #include "../crypto/CryptoUtil.h"
 
 namespace odr {
@@ -14,7 +15,7 @@ namespace odr {
 namespace {
 #ifdef ODR_CRYPTO
 enum class ChecksumType {
-    UNKNOWN, SHA1, SHA1_1K, SHA256, SHA256_1K
+    UNKNOWN, SHA256, SHA1, SHA256_1K, SHA1_1K
 };
 enum class AlgorithmType {
     UNKNOWN, AES256_CBC, TRIPLE_DES_CBC, BLOWFISH_CFB
@@ -28,7 +29,6 @@ struct Entry {
     Path path;
     std::size_t sizeReal;
     std::size_t sizeUncompressed;
-    std::string mediaType;
     bool encrypted;
 
 #ifdef ODR_CRYPTO
@@ -132,79 +132,101 @@ public:
 
         if (isFile("META-INF/manifest.xml")) {
             const auto manifest = loadXml("META-INF/manifest.xml");
-
-            const tinyxml2::XMLElement *e = manifest
-                    ->FirstChildElement("manifest:manifest")
-                    ->FirstChildElement("manifest:file-entry");
-            for (; e != nullptr; e = e->NextSiblingElement("manifest:file-entry")) {
-                const std::string fullPath = e->FindAttribute("manifest:full-path")->Value();
+            XmlUtil::recursiveVisitElementsWithName(manifest->RootElement(), "manifest:file-entry", [&](const tinyxml2::XMLElement &e) {
+                const std::string fullPath = e.FindAttribute("manifest:full-path")->Value();
 
                 if (fullPath == "/") {
-                    //meta.mediaType = e->FindAttribute("manifest:media-type")->Value();
+                    const std::string mimetype = e.FindAttribute("manifest:media-type")->Value();
+                    if (!lookupFileType(mimetype, meta.type)) {
+                        LOG(ERROR) << "mimetype not found: " << mimetype;
+                        return; // TODO throw
+                    }
                     //meta.version = e->FindAttribute("manifest:version")->Value();
-                    continue;
+                    return;
                 }
 
                 const auto it = entries.find(fullPath);
                 if (it == entries.end()) {
-                    continue;
+                    return;
                 }
 
                 Entry &entry = it->second;
                 entry.path = fullPath;
-                entry.mediaType = e->FindAttribute("manifest:media-type")->Value();
+                //entry.mediaType = e.FindAttribute("manifest:media-type")->Value();
 
-                const tinyxml2::XMLElement *crypto = e->FirstChildElement("manifest:encryption-data");
+                const tinyxml2::XMLElement *crypto = e.FirstChildElement("manifest:encryption-data");
                 if (crypto == nullptr) {
-                    continue;
+                    return;
                 }
 
                 meta.encrypted = true;
                 entry.encrypted = true;
-                entry.sizeReal = e->FindAttribute("manifest:size")->UnsignedValue();
+                entry.sizeReal = e.FindAttribute("manifest:size")->UnsignedValue();
+
+                if ((smallestEncryptedEntry == nullptr) || (entry.sizeUncompressed < smallestEncryptedEntry->sizeUncompressed)) {
+                    smallestEncryptedEntry = &entry;
+                }
 
 #ifdef ODR_CRYPTO
-                const tinyxml2::XMLElement *algo = crypto->FirstChildElement("manifest:algorithm");
-                const tinyxml2::XMLElement *key = crypto->FirstChildElement("manifest:key-derivation");
-                const tinyxml2::XMLElement *start = crypto->FirstChildElement("manifest:start-key-generation");
+                { // checksum
+                    const std::string checksumType = crypto->FindAttribute("manifest:checksum-type")->Value();
+                    if (!lookupChecksumType(checksumType, entry.checksumType)) {
+                        LOG(ERROR) << "unknown checksum " << checksumType;
+                        // TODO throw
+                    }
+                    entry.checksum = crypto->FindAttribute("manifest:checksum")->Value();
+                }
 
-                const std::string checksumType = crypto->FindAttribute("manifest:checksum-type")->Value();
-                entry.checksum = crypto->FindAttribute("manifest:checksum")->Value();
-                const std::string algorithmName = algo->FindAttribute("manifest:algorithm-name")->Value();
-                entry.initialisationVector = algo->FindAttribute("manifest:initialisation-vector")->Value();
-                const std::string keyDerivationName = key->FindAttribute("manifest:key-derivation-name")->Value();
-                entry.keySize = key->FindAttribute("manifest:key-size")->UnsignedValue();
-                entry.keyIterationCount = key->FindAttribute("manifest:iteration-count")->UnsignedValue();
-                entry.keySalt = key->FindAttribute("manifest:salt")->Value();
-                const std::string startKeyGenerationName = start->FindAttribute("manifest:start-key-generation-name")->Value();
-                entry.startKeySize = start->FindAttribute("manifest:key-size")->UnsignedValue();
+                { // encryption algorithm
+                    const tinyxml2::XMLElement *algorithm = crypto->FirstChildElement("manifest:algorithm");
+                    const std::string algorithmName = algorithm->FindAttribute("manifest:algorithm-name")->Value();
+                    if (!lookupAlgorithmTypes(algorithmName, entry.algorithm)) {
+                        LOG(ERROR) << "unknown algorithm " << algorithmName;
+                        // TODO throw
+                    }
+                    entry.initialisationVector = algorithm->FindAttribute("manifest:initialisation-vector")->Value();
+                }
 
-                if (!lookupChecksumType(checksumType, entry.checksumType)) {
-                    LOG(ERROR) << "unknown checksum " << checksumType;
-                    // TODO throw
+                { // key derivation
+                    const tinyxml2::XMLElement *key = crypto->FirstChildElement("manifest:key-derivation");
+                    const std::string keyDerivationName = key->FindAttribute("manifest:key-derivation-name")->Value();
+                    if (!lookupKeyDerivationTypes(keyDerivationName, entry.keyDerivation)) {
+                        LOG(ERROR) << "unknown key derivation " << keyDerivationName;
+                        // TODO throw
+                    }
+                    if (key->FindAttribute("manifest:key-size") != nullptr) {
+                        entry.keySize = key->FindAttribute("manifest:key-size")->UnsignedValue();
+                    } else {
+                        entry.keySize = 16;
+                    }
+                    entry.keyIterationCount = key->FindAttribute("manifest:iteration-count")->UnsignedValue();
+                    entry.keySalt = key->FindAttribute("manifest:salt")->Value();
                 }
-                if (!lookupAlgorithmTypes(algorithmName, entry.algorithm)) {
-                    LOG(ERROR) << "unknown algorithm " << algorithmName;
-                    // TODO throw
-                }
-                if (!lookupKeyDerivationTypes(keyDerivationName, entry.keyDerivation)) {
-                    LOG(ERROR) << "unknown key derivation " << keyDerivationName;
-                    // TODO throw
-                }
-                if (!lookupStartKeyTypes(startKeyGenerationName, entry.startKeyGeneration)) {
-                    LOG(ERROR) << "unknown start key generation " << startKeyGenerationName;
-                    // TODO throw
+
+                { // start key generation
+                    const tinyxml2::XMLElement *start = crypto->FirstChildElement("manifest:start-key-generation");
+                    if (start != nullptr) {
+                        const std::string startKeyGenerationName = start->FindAttribute("manifest:start-key-generation-name")->Value();
+                        if (!lookupStartKeyTypes(startKeyGenerationName, entry.startKeyGeneration)) {
+                            LOG(ERROR) << "unknown start key generation " << startKeyGenerationName;
+                            // TODO throw
+                        }
+                        entry.startKeySize = start->FindAttribute("manifest:key-size")->UnsignedValue();
+                    } else {
+                        entry.startKeyGeneration = ChecksumType::SHA1;
+                        entry.startKeySize = 20;
+                    }
                 }
 
                 entry.checksum = CryptoUtil::base64Decode(entry.checksum);
                 entry.initialisationVector = CryptoUtil::base64Decode(entry.initialisationVector);
                 entry.keySalt = CryptoUtil::base64Decode(entry.keySalt);
 #endif
+            });
+        }
 
-                if ((smallestEncryptedEntry == nullptr) || (entry.sizeUncompressed < smallestEncryptedEntry->sizeUncompressed)) {
-                    smallestEncryptedEntry = &entry;
-                }
-            }
+        if (meta.type == FileType::UNKNOWN) {
+            // TODO look into content.xml
         }
 
         return meta.type != FileType::UNKNOWN;
@@ -213,9 +235,8 @@ public:
     void createMeta2() {
         if (zip->isFile("meta.xml")) {
             const auto metaXml = loadXml("meta.xml");
-            tinyxml2::XMLHandle metaHandle(metaXml.get());
 
-            tinyxml2::XMLElement *statisticsElement = metaHandle
+            tinyxml2::XMLElement *statisticsElement = tinyxml2::XMLHandle(metaXml.get())
                     .FirstChildElement("office:document-meta")
                     .FirstChildElement("office:meta")
                     .FirstChildElement("meta:document-statistic")
@@ -247,45 +268,42 @@ public:
             }
         }
 
-        if (zip->isFile("content.xml")) {
-            // TODO: dont load content twice (happens in case of translation)
-            const auto contentXml = loadXml("content.xml");
-            tinyxml2::XMLHandle contentHandle(contentXml.get());
-            tinyxml2::XMLHandle bodyHandle = contentHandle
-                    .FirstChildElement("office:document-content")
-                    .FirstChildElement("office:body");
-            if (bodyHandle.ToElement() != nullptr) {
-                switch (meta.type) {
-                    case FileType::OPENDOCUMENT_PRESENTATION: {
-                        meta.entryCount = 0;
-                        tinyxml2::XMLHandle pageHandle = bodyHandle
-                                .FirstChildElement("office:presentation")
-                                .FirstChildElement("draw:page");
-                        while (pageHandle.ToElement() != nullptr) {
-                            ++meta.entryCount;
-                            FileMeta::Entry entry;
-                            entry.name = pageHandle.ToElement()->FindAttribute("draw:name")->Value();
-                            meta.entries.emplace_back(entry);
-                            pageHandle = pageHandle.NextSiblingElement("draw:page");
-                        }
-                    } break;
-                    case FileType::OPENDOCUMENT_SPREADSHEET: {
-                        meta.entryCount = 0;
-                        tinyxml2::XMLHandle tableHandle = bodyHandle
-                                .FirstChildElement("office:spreadsheet")
-                                .FirstChildElement("table:table");
-                        while (tableHandle.ToElement() != nullptr) {
-                            ++meta.entryCount;
-                            FileMeta::Entry entry;
-                            entry.name = tableHandle.ToElement()->FindAttribute("table:name")->Value();
-                            // TODO: table dimension
-                            meta.entries.emplace_back(entry);
-                            tableHandle = tableHandle.NextSiblingElement("table:table");
-                        }
-                    } break;
-                    default:
-                        break;
-                }
+        // TODO: dont load content twice (happens in case of translation)
+        const auto contentXml = loadXml("content.xml");
+        tinyxml2::XMLHandle bodyHandle = tinyxml2::XMLHandle(contentXml.get())
+                .FirstChildElement("office:document-content")
+                .FirstChildElement("office:body");
+        if (bodyHandle.ToElement() != nullptr) {
+            switch (meta.type) {
+                case FileType::OPENDOCUMENT_PRESENTATION: {
+                    meta.entryCount = 0;
+                    tinyxml2::XMLHandle pageHandle = bodyHandle
+                            .FirstChildElement("office:presentation")
+                            .FirstChildElement("draw:page");
+                    while (pageHandle.ToElement() != nullptr) {
+                        ++meta.entryCount;
+                        FileMeta::Entry entry;
+                        entry.name = pageHandle.ToElement()->FindAttribute("draw:name")->Value();
+                        meta.entries.emplace_back(entry);
+                        pageHandle = pageHandle.NextSiblingElement("draw:page");
+                    }
+                } break;
+                case FileType::OPENDOCUMENT_SPREADSHEET: {
+                    meta.entryCount = 0;
+                    tinyxml2::XMLHandle tableHandle = bodyHandle
+                            .FirstChildElement("office:spreadsheet")
+                            .FirstChildElement("table:table");
+                    while (tableHandle.ToElement() != nullptr) {
+                        ++meta.entryCount;
+                        FileMeta::Entry entry;
+                        entry.name = tableHandle.ToElement()->FindAttribute("table:name")->Value();
+                        // TODO: table dimension
+                        meta.entries.emplace_back(entry);
+                        tableHandle = tableHandle.NextSiblingElement("table:table");
+                    }
+                } break;
+                default:
+                    break;
             }
         }
     }
@@ -320,25 +338,9 @@ public:
             LOG(ERROR) << "cannot decrypt smallest encrypted entry";
             return false;
         }
-        switch (smallestEncryptedEntry->startKeyGeneration) {
-            case ChecksumType::SHA1:
-                startKey = CryptoUtil::sha1(password);
-                break;
-            case ChecksumType::SHA256:
-                startKey = CryptoUtil::sha256(password);
-                break;
-            default:
-                throw;
-        }
-        if (startKey.size() < smallestEncryptedEntry->startKeySize) {
-            LOG(ERROR) << "start key too short";
-            return false;
-        }
-        startKey = startKey.substr(0, smallestEncryptedEntry->startKeySize);
-        decrypted = validatePassword(*smallestEncryptedEntry);
-        if (decrypted) {
-            createMeta2();
-        }
+        startKey = startKey_(*smallestEncryptedEntry, password);
+        decrypted = validatePassword_();
+        if (decrypted) createMeta2();
         return decrypted;
 #else
         return false;
@@ -347,46 +349,69 @@ public:
 
 #ifdef ODR_CRYPTO
     static bool canDecrypt(const Entry &entry) {
-        // TODO remove and fail fast
-        return (entry.checksumType != ChecksumType::UNKNOWN) &&
-                (entry.algorithm != AlgorithmType::UNKNOWN) &&
-                (entry.keyDerivation != KeyDerivationType::UNKNOWN) &&
-                (entry.startKeyGeneration != ChecksumType::UNKNOWN);
+        return (entry.checksumType != ChecksumType::UNKNOWN)
+            && (entry.algorithm != AlgorithmType::UNKNOWN)
+            && (entry.keyDerivation != KeyDerivationType::UNKNOWN)
+            && (entry.startKeyGeneration != ChecksumType::UNKNOWN);
     }
 
-    std::string deriveKeyAndDecrypt(const Entry &entry, const std::string &input) {
-        const std::string derivedKey = CryptoUtil::pbkdf2(entry.keySize, startKey, entry.keySalt, entry.keyIterationCount);
-        switch (entry.algorithm) {
-            case AlgorithmType::AES256_CBC:
-                return CryptoUtil::decryptAES(derivedKey, entry.initialisationVector, input);
-            case AlgorithmType::TRIPLE_DES_CBC:
-                return CryptoUtil::decryptTripleDES(derivedKey, entry.initialisationVector, input);
-            case AlgorithmType::BLOWFISH_CFB:
-                return CryptoUtil::decryptBlowfish(derivedKey, entry.initialisationVector, input);
-            default:
-                throw;
-        }
-    }
-
-    bool validatePassword(const Entry &entry) {
-        std::string result = deriveKeyAndDecrypt(entry, loadPlain(entry));
-        const std::size_t padding = CryptoUtil::padding(result);
-        result = result.substr(0, result.size() - padding);
-        std::string checksum;
-        switch (entry.checksumType) {
+    static std::string hash_(const std::string &input, const ChecksumType checksumType) {
+        switch (checksumType) {
+            case ChecksumType::SHA256:
+                return CryptoUtil::sha256(input);
             case ChecksumType::SHA1:
-                checksum = CryptoUtil::sha1(result);
-                break;
-            case ChecksumType::SHA1_1K:
-                checksum = CryptoUtil::sha1(result.substr(0, 1024));
-                break;
+                return CryptoUtil::sha1(input);
             case ChecksumType::SHA256_1K:
-                checksum = CryptoUtil::sha256(result.substr(0, 1024));
-                break;
+                return CryptoUtil::sha256(input.substr(0, 1024));
+            case ChecksumType::SHA1_1K:
+                return CryptoUtil::sha1(input.substr(0, 1024));
+            default:
+                throw; // TODO
+        }
+    }
+
+    static std::string decrypt_(const std::string &input, const std::string &derivedKey, const std::string &initialisationVector, const AlgorithmType algorithm) {
+        switch (algorithm) {
+            case AlgorithmType::AES256_CBC:
+                return CryptoUtil::decryptAES(derivedKey, initialisationVector, input);
+            case AlgorithmType::TRIPLE_DES_CBC:
+                return CryptoUtil::decryptTripleDES(derivedKey, initialisationVector, input);
+            case AlgorithmType::BLOWFISH_CFB:
+                return CryptoUtil::decryptBlowfish(derivedKey, initialisationVector, input);
             default:
                 throw;
         }
+    }
+
+    static std::string startKey_(const Entry &entry, const std::string &password) {
+        const std::string result = hash_(password, entry.startKeyGeneration);
+        if (result.size() < entry.startKeySize) {
+            LOG(ERROR) << "start key too short";
+            throw; // TODO
+        }
+        return result.substr(0, entry.startKeySize);
+    }
+
+    static std::string deriveKeyAndDecrypt_(const Entry &entry, const std::string &startKey, const std::string &input) {
+        const std::string derivedKey = CryptoUtil::pbkdf2(entry.keySize, startKey, entry.keySalt, entry.keyIterationCount);
+        return decrypt_(input, derivedKey, entry.initialisationVector, entry.algorithm);
+    }
+
+    static bool validatePassword_(const Entry &entry, std::string decrypted) {
+        const std::size_t padding = CryptoUtil::padding(decrypted);
+        decrypted = decrypted.substr(0, decrypted.size() - padding);
+        const std::string checksum = hash_(decrypted, entry.checksumType);
         return checksum == entry.checksum;
+    }
+
+    std::string deriveKeyAndDecrypt_(const Entry &entry, const std::string &input) {
+        return deriveKeyAndDecrypt_(entry, startKey, input);
+    }
+
+    bool validatePassword_() {
+        const Entry &entry = *smallestEncryptedEntry;
+        const std::string decrypt = deriveKeyAndDecrypt_(entry, loadPlain(entry));
+        return validatePassword_(entry, decrypt);
     }
 #endif
 
@@ -439,7 +464,7 @@ public:
                 LOG(ERROR) << "cannot decrypt " << path;
                 return ""; // TODO throw
             }
-            result = CryptoUtil::inflate(deriveKeyAndDecrypt(it->second, result));
+            result = CryptoUtil::inflate(deriveKeyAndDecrypt_(it->second, result));
             if (result.size() != it->second.sizeReal) {
                 LOG(ERROR) << "inflated size doesn't match " << path;
                 return ""; // TODO throw
@@ -455,7 +480,10 @@ public:
         }
         const auto xml = loadEntry(path);
         auto result = std::make_unique<tinyxml2::XMLDocument>();
-        result->Parse(xml.data(), xml.size());
+        tinyxml2::XMLError error = result->Parse(xml.data(), xml.size());
+        if (error != tinyxml2::XML_SUCCESS) {
+            return nullptr; // TODO throw
+        }
         return result;
     }
 };
@@ -502,7 +530,7 @@ std::unique_ptr<tinyxml2::XMLDocument> OpenDocumentFile::loadXml(const Path &pat
     return impl->loadXml(path);
 }
 
-const ZipReader& OpenDocumentFile::getZipReader() const {
+const ZipReader &OpenDocumentFile::getZipReader() const {
     return *impl->zip;
 }
 

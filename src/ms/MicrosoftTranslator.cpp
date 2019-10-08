@@ -49,7 +49,6 @@ public:
               "<base target=\"_blank\" />\n"
               "<meta name=\"viewport\" content=\"width=device-width; initial-scale=1.0; user-scalable=yes\" />\n"
               "<title>odr</title>\n";
-
         of << "<style>\n";
         generateStyle(of, context);
         of << "</style>\n";
@@ -57,13 +56,11 @@ public:
         of << "<script>\n";
         generateScript(of, context);
         of << "</script>\n";
-
         of << "</head>\n";
-        of << "<body>\n";
 
+        of << "<body>\n";
         context.content = in.loadContent();
         generateContent(in, *context.content, context);
-
         of << "</body>\n";
         of << "</html>\n";
 

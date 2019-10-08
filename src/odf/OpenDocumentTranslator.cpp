@@ -33,7 +33,6 @@ public:
               "<base target=\"_blank\" />\n"
               "<meta name=\"viewport\" content=\"width=device-width; initial-scale=1.0; user-scalable=yes\" />\n"
               "<title>odr</title>\n";
-
         of << "<style>\n";
         generateStyle(of, context);
         context.content = in.loadXml("content.xml");
@@ -44,12 +43,10 @@ public:
         of << "<script>\n";
         generateScript(of, context);
         of << "</script>\n";
-
         of << "</head>\n";
+
         of << "<body>\n";
-
         generateContent(in, contentHandle, context);
-
         of << "</body>\n";
         of << "</html>";
 
@@ -113,7 +110,17 @@ public:
                 .FirstChildElement("office:document-styles")
                 .FirstChildElement("office:styles")
                 .ToElement();
-        styleTranslator.translate(*styles, context);
+        if (styles != nullptr) {
+            styleTranslator.translate(*styles, context);
+        }
+
+        tinyxml2::XMLElement *automaticStyles = stylesHandle
+                .FirstChildElement("office:document-styles")
+                .FirstChildElement("office:automatic-styles")
+                .ToElement();
+        if (automaticStyles != nullptr) {
+            styleTranslator.translate(*automaticStyles, context);
+        }
     }
 
     void generateContentStyle(tinyxml2::XMLHandle &in, TranslationContext &context) const {
@@ -129,7 +136,9 @@ public:
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:automatic-styles")
                 .ToElement();
-        styleTranslator.translate(*automaticStyles, context);
+        if (automaticStyles != nullptr) {
+            styleTranslator.translate(*automaticStyles, context);
+        }
     }
 
     void generateScript(std::ofstream &of, TranslationContext &context) const {

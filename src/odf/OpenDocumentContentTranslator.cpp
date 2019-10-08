@@ -66,13 +66,11 @@ public:
 
     void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
         const auto id = in.FindAttribute("text:name");
-        *context.output << "<a";
         if (id != nullptr) {
             *context.output << " id=\"" << id->Value() << "\"";
         } else {
             LOG(WARNING) << "empty bookmark";
         }
-        *context.output << ">";
 
         DefaultElementTranslator::translateElementAttributes(in, context);
     }
