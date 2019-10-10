@@ -23,15 +23,35 @@ struct FileMeta;
 
 struct TranslationContext {
     const TranslationConfig *config;
+    const FileMeta *meta;
+
+    // input files
     OpenDocumentFile *odFile;
     MicrosoftOpenXmlFile *msFile;
-    const FileMeta *meta;
+
+    // input xml
+    std::unique_ptr<tinyxml2::XMLDocument> style;
     std::unique_ptr<tinyxml2::XMLDocument> content;
-    std::unique_ptr<tinyxml2::XMLDocument> sharedStringsDoc;
-    std::vector<const tinyxml2::XMLElement *> sharedStrings;
-    std::unordered_map<std::string, std::list<std::string>> styleDependencies;
+    std::unordered_map<std::string, std::list<std::string>> odStyleDependencies; // odf
+    std::unique_ptr<tinyxml2::XMLDocument> msSharedStringsDocument; // xlsx
+    std::vector<const tinyxml2::XMLElement *> msSharedStrings; // xlsx
+
+    // current
+    tinyxml2::XMLNode *currentStyleNode;
+    tinyxml2::XMLNode *currentContentNode;
+    std::uint32_t currentEntry;
+    std::uint32_t currentTableRow;
+    std::uint32_t currentTableCol;
+    std::uint32_t currentTableRowStart;
+    std::uint32_t currentTableRowEnd;
+    std::uint32_t currentTableColStart;
+    std::uint32_t currentTableColEnd;
+    std::unordered_map<std::uint32_t, std::string> odDefaultCellStyles;
+
+    // output
     std::ostream *output;
 
+    // editing
     std::uint32_t currentTextTranslationIndex;
     std::unordered_map<std::uint32_t, const tinyxml2::XMLText *> textTranslation;
 };

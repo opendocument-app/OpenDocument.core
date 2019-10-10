@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include <string>
-#include <list>
+#include <vector>
 
 namespace odr {
 
@@ -37,14 +37,14 @@ enum class FileType {
 struct FileMeta {
     struct Entry {
         std::string name;
-        std::size_t rowCount = 0;
-        std::size_t columnCount = 0;
+        std::uint32_t rowCount = 0;
+        std::uint32_t columnCount = 0;
     };
 
     FileType type = FileType::UNKNOWN;
     bool encrypted;
-    std::size_t entryCount;
-    std::list<Entry> entries;
+    std::uint32_t entryCount;
+    std::vector<Entry> entries;
 };
 
 }

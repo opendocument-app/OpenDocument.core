@@ -36,7 +36,7 @@ public:
             if (std::strcmp(t->Value(), "s") == 0) {
                 const auto sharedStringIndex = in.FirstChildElement("v")->IntText(-1);
                 if (sharedStringIndex >= 0) {
-                    const tinyxml2::XMLElement &replacement = *context.sharedStrings[sharedStringIndex];
+                    const tinyxml2::XMLElement &replacement = *context.msSharedStrings[sharedStringIndex];
                     DefaultElementTranslator::translateElementChildren(replacement, context);
                 } else {
                     DLOG(INFO) << "undefined behaviour: shared string not found";

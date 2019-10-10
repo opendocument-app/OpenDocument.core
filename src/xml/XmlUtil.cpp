@@ -29,21 +29,25 @@ void XmlUtil::recursiveVisitNodes(const tinyxml2::XMLNode *root, NodeVisiter vis
     });
 }
 
+void XmlUtil::recursiveVisitElements(const tinyxml2::XMLElement *root, ElementVisiter visiter) {
+    if (root == nullptr) return;
+    visiter(*root);
+    visitElementChildren(*root, [&](const auto &child) {
+        recursiveVisitElements(&child, visiter);
+    });
+}
+
 void XmlUtil::recursiveVisitElementsWithName(const tinyxml2::XMLElement *root, const char *name, ElementVisiter visiter) {
-    recursiveVisitNodes(root, [&](const tinyxml2::XMLNode &node) {
-        visitIfElement(node, [&](const auto &element) {
-            if (std::strcmp(element.Name(), name) != 0) return;
-            visiter(element);
-        });
+    recursiveVisitElements(root, [&](const tinyxml2::XMLElement &element) {
+        if (std::strcmp(element.Name(), name) != 0) return;
+        visiter(element);
     });
 }
 
 void XmlUtil::recursiveVisitElementsWithAttribute(const tinyxml2::XMLElement *root, const char *attribute, ElementVisiter visiter) {
-    recursiveVisitNodes(root, [&](const tinyxml2::XMLNode &node) {
-        visitIfElement(node, [&](const auto &element) {
-            if (element.FindAttribute(attribute) == nullptr) return;
-            visiter(element);
-        });
+    recursiveVisitElements(root, [&](const tinyxml2::XMLElement &element) {
+        if (element.FindAttribute(attribute) == nullptr) return;
+        visiter(element);
     });
 }
 

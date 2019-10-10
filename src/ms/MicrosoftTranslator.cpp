@@ -96,9 +96,9 @@ public:
             } break;
             case FileType::OFFICE_OPEN_XML_WORKBOOK: {
                 // TODO this breaks back translation
-                context.sharedStringsDoc = file.loadXml("xl/sharedStrings.xml");
-                XmlUtil::recursiveVisitElementsWithName(context.sharedStringsDoc->RootElement(), "si", [&](const auto &child) {
-                    context.sharedStrings.push_back(&child);
+                context.msSharedStringsDocument = file.loadXml("xl/sharedStrings.xml");
+                XmlUtil::recursiveVisitElementsWithName(context.msSharedStringsDocument->RootElement(), "si", [&](const auto &child) {
+                    context.msSharedStrings.push_back(&child);
                 });
 
                 const auto rels = parseRelationships(*file.loadRelationships(file.getContentPath()));

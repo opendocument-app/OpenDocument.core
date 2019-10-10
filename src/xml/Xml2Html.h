@@ -16,6 +16,7 @@ public:
     void addAttributeTranslator(const std::string &from, const std::string &to);
     void addAttributes(const std::string &name, const std::string &value);
 
+    using DefaultXmlTranslator::translate;
     void translate(const tinyxml2::XMLAttribute &, TranslationContext &) const override;
 
 protected:

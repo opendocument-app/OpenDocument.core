@@ -20,6 +20,7 @@ void visitNodeChildren(const tinyxml2::XMLNode &, NodeVisiter);
 void visitElementChildren(const tinyxml2::XMLElement &, ElementVisiter);
 
 void recursiveVisitNodes(const tinyxml2::XMLNode *root, NodeVisiter);
+void recursiveVisitElements(const tinyxml2::XMLElement *root, ElementVisiter);
 void recursiveVisitElementsWithName(const tinyxml2::XMLElement *root, const char *name, ElementVisiter);
 void recursiveVisitElementsWithAttribute(const tinyxml2::XMLElement *root, const char *attribute, ElementVisiter);
 }

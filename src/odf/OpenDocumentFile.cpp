@@ -85,6 +85,38 @@ bool lookupStartKeyTypes(const std::string &checksum, ChecksumType &checksumType
     return MapUtil::lookupMapDefault(STARTKEY_TYPES, checksum, checksumType, ChecksumType::UNKNOWN);
 }
 #endif
+
+void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint32_t &rows, std::uint32_t &cols) {
+    // TODO
+    rows = 0;
+    cols = 0;
+
+    std::uint32_t currentRows = 0;
+    std::uint32_t currentCols = 0;
+
+    // TODO we dont need to recurse so deep
+    XmlUtil::recursiveVisitElements(&table, [&](const auto &e) {
+        if (e.Name() == std::string("table:table-row")) {
+            const auto repeatedAttribute = e.FindAttribute("table:number-rows-repeated");
+            currentRows += repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
+            currentCols = 0;
+        } else if (e.Name() == std::string("table:table-cell")) {
+            const auto repeatedAttribute = e.FindAttribute("table:number-columns-repeated");
+            const auto colspanAttribute = e.FindAttribute("table:number-columns-spanned");
+            const auto rowspanAttribute = e.FindAttribute("table:number-rows-spanned");
+            const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
+            const auto colspan = colspanAttribute == nullptr ? 1 : colspanAttribute->UnsignedValue();
+            const auto rowspan = rowspanAttribute == nullptr ? 1 : rowspanAttribute->UnsignedValue();
+            currentCols += repeated * colspan;
+
+            if (e.FirstChild() != nullptr) {
+                rows = currentRows + repeated * rowspan - 1;
+                // TODO rowspan has an impact on the cols in the next rows; could be solved with a stack of cols
+                cols = currentCols;
+            }
+        }
+    });
+}
 }
 
 class OpenDocumentFile::Impl final {
@@ -297,7 +329,7 @@ public:
                         ++meta.entryCount;
                         FileMeta::Entry entry;
                         entry.name = tableHandle.ToElement()->FindAttribute("table:name")->Value();
-                        // TODO: table dimension
+                        estimateTableDimensions(*tableHandle.ToElement(), entry.rowCount, entry.columnCount);
                         meta.entries.emplace_back(entry);
                         tableHandle = tableHandle.NextSiblingElement("table:table");
                     }

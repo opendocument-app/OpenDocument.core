@@ -10,18 +10,17 @@ struct TranslationConfig {
     std::uint32_t entryOffset = 0;
     // translate only N sheets / pages; zero means translate all
     std::uint32_t entryCount = 0;
+
     // translate presentation notes
     bool translateNotes = true;
 
-    // embed js, embed css, embed images, squash up tables in spreadsheet or pages in presentation
-    bool singleOutput = true;
-    // generate js or not
-    bool useJavaScript = true;
-    // general limit for any repeating thing
-    std::uint32_t maxRepeat = 1000;
-    // limit for table dimensions (surrounds problems with repeat* in spreadsheet)
-    std::uint32_t maxTableRows = 10000;
-    std::uint32_t maxTableCols = 10000;
+    // spreadsheet table offset
+    std::uint32_t tableOffsetRows = 0;
+    std::uint32_t tableOffsetCols = 0;
+    // spreadsheet table limit
+    std::uint32_t tableLimitRows = 1000;
+    std::uint32_t tableLimitCols = 100;
+    bool tableLimitByDimensions = true;
 
     bool editable = false;
 };

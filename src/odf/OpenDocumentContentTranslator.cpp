@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include "tinyxml2.h"
 #include "glog/logging.h"
+#include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
 #include "../io/Path.h"
@@ -20,12 +21,11 @@ namespace {
 class SpaceTranslator final : public DefaultXmlTranslator {
 public:
     void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        int64_t count = in.Int64Attribute("text:c", -1);
+        const auto count = in.Int64Attribute("text:c", -1);
         if (count <= 0) {
             return;
         }
-        // TODO: use maxRepeat
-        for (uint64_t i = 0; i < count; ++i) {
+        for (std::uint32_t i = 0; i < count; ++i) {
             // TODO: use "&nbsp;"?
             *context.output << " ";
         }
@@ -34,7 +34,7 @@ public:
 
 class TabTranslator final : public DefaultXmlTranslator {
 public:
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
+    void translate(const tinyxml2::XMLElement &, TranslationContext &context) const final {
         // TODO: use "&emsp;"?
         *context.output << "\t";
     }
@@ -83,28 +83,114 @@ public:
         addAttributes("cellspacing", "0");
         addAttributes("cellpadding", "0");
     }
+
+    using DefaultXmlTranslator::translate;
+    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
+        context.currentTableRow = 0;
+        context.currentTableCol = 0;
+        context.currentTableRowStart = context.config->tableOffsetRows;
+        context.currentTableRowEnd = context.currentTableRowStart + context.config->tableLimitRows;
+        context.currentTableColStart = context.config->tableOffsetCols;
+        context.currentTableColEnd = context.currentTableColStart + context.config->tableLimitCols;
+        if (context.config->tableLimitByDimensions) {
+            context.currentTableRowEnd = std::min(context.currentTableRowEnd, context.currentTableRowStart + context.meta->entries[context.currentEntry].rowCount);
+            context.currentTableColEnd = std::min(context.currentTableColEnd, context.currentTableColStart + context.meta->entries[context.currentEntry].columnCount);
+        }
+        context.odDefaultCellStyles.clear();
+
+        DefaultElementTranslator::translate(in, context);
+
+        ++context.currentEntry;
+    }
 };
 
 class TableColumnTranslator final : public DefaultElementTranslator {
 public:
-    TableColumnTranslator() : DefaultElementTranslator("col") {
-        // TODO table:number-columns-repeated
+    TableColumnTranslator() : DefaultElementTranslator("col") {}
+
+    using DefaultXmlTranslator::translate;
+    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
+        const auto repeatedAttribute = in.FindAttribute("table:number-columns-repeated");
+        const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
+        const auto defaultCellStyleAttribute = in.FindAttribute("table:default-cell-style-name");
+        // TODO we could use span instead
+        for (std::uint32_t i = 0; i < repeated; ++i) {
+            if (context.currentTableCol >= context.currentTableColEnd) {
+                break;
+            }
+            if (context.currentTableCol >= context.currentTableColStart) {
+                if (defaultCellStyleAttribute != nullptr) {
+                    context.odDefaultCellStyles[context.currentTableCol] = defaultCellStyleAttribute->Value();
+                }
+                DefaultElementTranslator::translate(in, context);
+            }
+            ++context.currentTableCol;
+        }
     }
 };
 
 class TableRowTranslator final : public DefaultElementTranslator {
 public:
-    TableRowTranslator() : DefaultElementTranslator("tr") {
-        // TODO table:number-rows-repeated
+    TableRowTranslator() : DefaultElementTranslator("tr") {}
+
+    using DefaultXmlTranslator::translate;
+    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
+        const auto repeatedAttribute = in.FindAttribute("table:number-rows-repeated");
+        const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
+        context.currentTableCol = 0;
+        for (std::uint32_t i = 0; i < repeated; ++i) {
+            if (context.currentTableRow >= context.currentTableRowEnd) {
+                break;
+            }
+            if (context.currentTableRow >= context.currentTableRowStart) {
+                DefaultElementTranslator::translate(in, context);
+            }
+            ++context.currentTableRow;
+        }
     }
 };
 
 class TableCellTranslator final : public DefaultElementTranslator {
 public:
+    tinyxml2::XMLDocument tmpDoc;
+    tinyxml2::XMLElement *tmpEle;
+
     TableCellTranslator() : DefaultElementTranslator("td") {
         addAttributeTranslator("table:number-columns-spanned", "colspan");
         addAttributeTranslator("table:number-rows-spanned", "rowspan");
-        // TODO table:number-columns-repeated
+
+        tmpEle = tmpDoc.NewElement("tmp");
+    }
+
+    using DefaultXmlTranslator::translate;
+    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
+        const auto repeatedAttribute = in.FindAttribute("table:number-columns-repeated");
+        const auto colspanAttribute = in.FindAttribute("table:number-columns-spanned");
+        const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
+        const auto colspan = colspanAttribute == nullptr ? 1 : colspanAttribute->UnsignedValue();
+        for (std::uint32_t i = 0; i < repeated; ++i) {
+            if (context.currentTableCol >= context.currentTableColEnd) {
+                break;
+            }
+            if (context.currentTableCol >= context.currentTableColStart) {
+                DefaultElementTranslator::translate(in, context);
+            }
+            context.currentTableCol += colspan;
+        }
+    }
+
+    void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const override {
+        if (in.FindAttribute("table:style-name") == nullptr) {
+            // TODO looks quite dirty; better options?
+            const auto it = context.odDefaultCellStyles.find(context.currentTableCol);
+            if (it != context.odDefaultCellStyles.end()) {
+                tmpEle->SetAttribute("table:style-name", it->second.c_str());
+                const auto tmpAttr = tmpEle->FindAttribute("table:style-name");
+                translate(*tmpAttr, context);
+            }
+        }
+
+        DefaultElementTranslator::translateElementAttributes(in, context);
     }
 };
 
@@ -172,25 +258,33 @@ public:
 
 class StyleAttributeTranslator final : public DefaultXmlTranslator {
 public:
-    std::list<std::string> newClasses;
-
     void translate(const tinyxml2::XMLAttribute &in, TranslationContext &context) const final {
         const std::string styleName = OpenDocumentStyleTranslator::escapeStyleName(in.Value());
-        const auto it = context.styleDependencies.find(styleName);
 
         *context.output << " class=\"";
-        if (it == context.styleDependencies.end()) {
-            // TODO remove ?
-            LOG(WARNING) << "unknown style: " << styleName;
-        } else {
-            for (auto i = it->second.rbegin(); i != it->second.rend(); ++i) {
-                *context.output << *i << " ";
+        *context.output << styleName;
+
+        { // handle style dependencies
+            const auto it = context.odStyleDependencies.find(styleName);
+            if (it == context.odStyleDependencies.end()) {
+                // TODO remove ?
+                LOG(WARNING) << "unknown style: " << styleName;
+            } else {
+                for (auto i = it->second.rbegin(); i != it->second.rend(); ++i) {
+                    *context.output<< " " << *i;
+                }
             }
         }
-        *context.output << styleName;
-        for (auto &&c : newClasses) {
-            *context.output << " " << c;
+
+        /*
+        { // handle column default styles
+            const auto it = context.odDefaultCellStyles.find(context.currentTableCol);
+            if (it != context.odDefaultCellStyles.end()) {
+                *context.output << " " << it->second;
+            }
         }
+         */
+
         *context.output << "\"";
     }
 };
@@ -264,7 +358,6 @@ public:
 
         addAttributeDelegation("text:style-name", styleAttributeTranslator);
         addAttributeDelegation("table:style-name", styleAttributeTranslator);
-        addAttributeDelegation("table:default-cell-style-name", styleAttributeTranslator);
         addAttributeDelegation("draw:style-name", styleAttributeTranslator);
 
         defaultHandler.setDefaultDelegation(this);
