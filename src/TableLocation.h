@@ -10,9 +10,9 @@ class TableLocation final {
 public:
     TableLocation() noexcept;
 
-    void addCol(std::uint32_t repeat) noexcept;
-    void addRow(std::uint32_t repeat) noexcept;
-    void addCell(std::uint32_t colspan, std::uint32_t rowspan, std::uint32_t repeat) noexcept;
+    void addCol(std::uint32_t repeat = 1) noexcept;
+    void addRow(std::uint32_t repeat = 1) noexcept;
+    void addCell(std::uint32_t colspan, std::uint32_t rowspan, std::uint32_t repeat = 1) noexcept;
 
     std::uint32_t getNextRow() const noexcept { return nextRow; }
     std::uint32_t getNextCol() const noexcept { return nextCol; }

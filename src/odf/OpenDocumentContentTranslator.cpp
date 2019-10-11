@@ -126,7 +126,7 @@ public:
                 }
                 DefaultElementTranslator::translate(in, context);
             }
-            context.currentTableLocation.addCol(1);
+            context.currentTableLocation.addCol();
         }
     }
 };
@@ -148,7 +148,7 @@ public:
             if (context.currentTableLocation.getNextRow() >= context.currentTableRowStart) {
                 DefaultElementTranslator::translate(in, context);
             }
-            context.currentTableLocation.addRow(1);
+            context.currentTableLocation.addRow();
         }
     }
 };
@@ -182,7 +182,7 @@ public:
             if (context.currentTableLocation.getNextCol() >= context.currentTableColStart) {
                 DefaultElementTranslator::translate(in, context);
             }
-            context.currentTableLocation.addCell(colspan, rowspan, 1);
+            context.currentTableLocation.addCell(colspan, rowspan);
         }
     }
 
