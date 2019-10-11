@@ -85,17 +85,18 @@ public:
     }
 
     using DefaultXmlTranslator::translate;
+
     void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        context.currentTableRow = 0;
-        context.currentTableCol = 0;
         context.currentTableRowStart = context.config->tableOffsetRows;
         context.currentTableRowEnd = context.currentTableRowStart + context.config->tableLimitRows;
         context.currentTableColStart = context.config->tableOffsetCols;
         context.currentTableColEnd = context.currentTableColStart + context.config->tableLimitCols;
-        if (context.config->tableLimitByDimensions) {
+        // TODO remove dirty file check; add simple table translator for odt/odp
+        if ((context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) && context.config->tableLimitByDimensions) {
             context.currentTableRowEnd = std::min(context.currentTableRowEnd, context.currentTableRowStart + context.meta->entries[context.currentEntry].rowCount);
             context.currentTableColEnd = std::min(context.currentTableColEnd, context.currentTableColStart + context.meta->entries[context.currentEntry].columnCount);
         }
+        context.currentTableLocation = {};
         context.odDefaultCellStyles.clear();
 
         DefaultElementTranslator::translate(in, context);
@@ -109,22 +110,23 @@ public:
     TableColumnTranslator() : DefaultElementTranslator("col") {}
 
     using DefaultXmlTranslator::translate;
+
     void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
         const auto repeatedAttribute = in.FindAttribute("table:number-columns-repeated");
         const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
         const auto defaultCellStyleAttribute = in.FindAttribute("table:default-cell-style-name");
         // TODO we could use span instead
         for (std::uint32_t i = 0; i < repeated; ++i) {
-            if (context.currentTableCol >= context.currentTableColEnd) {
+            if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) {
                 break;
             }
-            if (context.currentTableCol >= context.currentTableColStart) {
+            if (context.currentTableLocation.getNextCol() >= context.currentTableColStart) {
                 if (defaultCellStyleAttribute != nullptr) {
-                    context.odDefaultCellStyles[context.currentTableCol] = defaultCellStyleAttribute->Value();
+                    context.odDefaultCellStyles[context.currentTableLocation.getNextCol()] = defaultCellStyleAttribute->Value();
                 }
                 DefaultElementTranslator::translate(in, context);
             }
-            ++context.currentTableCol;
+            context.currentTableLocation.addCol(1);
         }
     }
 };
@@ -134,18 +136,19 @@ public:
     TableRowTranslator() : DefaultElementTranslator("tr") {}
 
     using DefaultXmlTranslator::translate;
+
     void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
         const auto repeatedAttribute = in.FindAttribute("table:number-rows-repeated");
         const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
-        context.currentTableCol = 0;
+        context.currentTableLocation.addRow(0); // TODO hacky
         for (std::uint32_t i = 0; i < repeated; ++i) {
-            if (context.currentTableRow >= context.currentTableRowEnd) {
+            if (context.currentTableLocation.getNextRow() >= context.currentTableRowEnd) {
                 break;
             }
-            if (context.currentTableRow >= context.currentTableRowStart) {
+            if (context.currentTableLocation.getNextRow() >= context.currentTableRowStart) {
                 DefaultElementTranslator::translate(in, context);
             }
-            ++context.currentTableRow;
+            context.currentTableLocation.addRow(1);
         }
     }
 };
@@ -158,31 +161,35 @@ public:
     TableCellTranslator() : DefaultElementTranslator("td") {
         addAttributeTranslator("table:number-columns-spanned", "colspan");
         addAttributeTranslator("table:number-rows-spanned", "rowspan");
+        // TODO limit span
 
         tmpEle = tmpDoc.NewElement("tmp");
     }
 
     using DefaultXmlTranslator::translate;
+
     void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
         const auto repeatedAttribute = in.FindAttribute("table:number-columns-repeated");
         const auto colspanAttribute = in.FindAttribute("table:number-columns-spanned");
+        const auto rowspanAttribute = in.FindAttribute("table:number-rows-spanned");
         const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
         const auto colspan = colspanAttribute == nullptr ? 1 : colspanAttribute->UnsignedValue();
+        const auto rowspan = rowspanAttribute == nullptr ? 1 : rowspanAttribute->UnsignedValue();
         for (std::uint32_t i = 0; i < repeated; ++i) {
-            if (context.currentTableCol >= context.currentTableColEnd) {
+            if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) {
                 break;
             }
-            if (context.currentTableCol >= context.currentTableColStart) {
+            if (context.currentTableLocation.getNextCol() >= context.currentTableColStart) {
                 DefaultElementTranslator::translate(in, context);
             }
-            context.currentTableCol += colspan;
+            context.currentTableLocation.addCell(colspan, rowspan, 1);
         }
     }
 
     void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const override {
         if (in.FindAttribute("table:style-name") == nullptr) {
             // TODO looks quite dirty; better options?
-            const auto it = context.odDefaultCellStyles.find(context.currentTableCol);
+            const auto it = context.odDefaultCellStyles.find(context.currentTableLocation.getNextCol());
             if (it != context.odDefaultCellStyles.end()) {
                 tmpEle->SetAttribute("table:style-name", it->second.c_str());
                 const auto tmpAttr = tmpEle->FindAttribute("table:style-name");

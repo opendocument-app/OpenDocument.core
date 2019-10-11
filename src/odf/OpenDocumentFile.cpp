@@ -4,6 +4,7 @@
 #include "tinyxml2.h"
 #include "glog/logging.h"
 #include "odr/FileMeta.h"
+#include "../TableLocation.h"
 #include "../MapUtil.h"
 #include "../io/Path.h"
 #include "../io/ZipStorage.h"
@@ -87,19 +88,17 @@ bool lookupStartKeyTypes(const std::string &checksum, ChecksumType &checksumType
 #endif
 
 void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint32_t &rows, std::uint32_t &cols) {
-    // TODO
     rows = 0;
     cols = 0;
 
-    std::uint32_t currentRows = 0;
-    std::uint32_t currentCols = 0;
+    TableLocation tl;
 
     // TODO we dont need to recurse so deep
     XmlUtil::recursiveVisitElements(&table, [&](const auto &e) {
         if (e.Name() == std::string("table:table-row")) {
             const auto repeatedAttribute = e.FindAttribute("table:number-rows-repeated");
-            currentRows += repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
-            currentCols = 0;
+            const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
+            tl.addRow(repeated);
         } else if (e.Name() == std::string("table:table-cell")) {
             const auto repeatedAttribute = e.FindAttribute("table:number-columns-repeated");
             const auto colspanAttribute = e.FindAttribute("table:number-columns-spanned");
@@ -107,12 +106,11 @@ void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint32_t &r
             const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
             const auto colspan = colspanAttribute == nullptr ? 1 : colspanAttribute->UnsignedValue();
             const auto rowspan = rowspanAttribute == nullptr ? 1 : rowspanAttribute->UnsignedValue();
-            currentCols += repeated * colspan;
+            tl.addCell(colspan, rowspan, repeated);
 
             if (e.FirstChild() != nullptr) {
-                rows = currentRows + repeated * rowspan - 1;
-                // TODO rowspan has an impact on the cols in the next rows; could be solved with a stack of cols
-                cols = currentCols;
+                rows = tl.getNextRow();
+                cols = std::max(cols, tl.getNextCol());
             }
         }
     });

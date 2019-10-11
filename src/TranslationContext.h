@@ -7,6 +7,7 @@
 #include <vector>
 #include <unordered_map>
 #include <iostream>
+#include "TableLocation.h"
 
 namespace tinyxml2 {
 class XMLDocument;
@@ -40,12 +41,11 @@ struct TranslationContext {
     tinyxml2::XMLNode *currentStyleNode;
     tinyxml2::XMLNode *currentContentNode;
     std::uint32_t currentEntry;
-    std::uint32_t currentTableRow;
-    std::uint32_t currentTableCol;
     std::uint32_t currentTableRowStart;
     std::uint32_t currentTableRowEnd;
     std::uint32_t currentTableColStart;
     std::uint32_t currentTableColEnd;
+    TableLocation currentTableLocation;
     std::unordered_map<std::uint32_t, std::string> odDefaultCellStyles;
 
     // output
