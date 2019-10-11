@@ -208,14 +208,15 @@ public:
     void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
         const auto width = in.FindAttribute("svg:width");
         const auto height = in.FindAttribute("svg:height");
+        const auto x = in.FindAttribute("svg:x");
+        const auto y = in.FindAttribute("svg:y");
 
         *context.output << " style=\"";
-        if (width != nullptr) {
-            *context.output << "width:" << width->Value() << ";";
-        }
-        if (height != nullptr) {
-            *context.output << "height:" << height->Value() << ";";
-        }
+        if (width != nullptr) *context.output << "width:" << width->Value() << ";";
+        if (height != nullptr) *context.output << "height:" << height->Value() << ";";
+        //if ((x != nullptr) || (y != nullptr))  *context.output << "position:absolute;";
+        if (x != nullptr) *context.output << "left:" << x->Value() << ";";
+        if (y != nullptr) *context.output << "top:" << y->Value() << ";";
         *context.output << "\"";
 
         DefaultElementTranslator::translateElementAttributes(in, context);
@@ -283,14 +284,7 @@ public:
             }
         }
 
-        /*
-        { // handle column default styles
-            const auto it = context.odDefaultCellStyles.find(context.currentTableCol);
-            if (it != context.odDefaultCellStyles.end()) {
-                *context.output << " " << it->second;
-            }
-        }
-         */
+        // TODO draw:master-page-name
 
         *context.output << "\"";
     }
@@ -329,6 +323,7 @@ public:
     TableColumnTranslator tableColumnTranslator;
     TableRowTranslator tableRowTranslator;
     TableCellTranslator tableCellTranslator;
+    DefaultElementTranslator drawPageTranslator;
     FrameTranslator frameTranslator;
     ImageTranslator imageTranslator;
 
@@ -343,7 +338,8 @@ public:
             spanTranslator("span"),
             breakTranslator("br"),
             listTranslator("ul"),
-            listItemTranslator("li") {
+            listItemTranslator("li"),
+            drawPageTranslator("div") {
         addElementDelegation("text:p", paragraphTranslator.setDefaultDelegation(this));
         addElementDelegation("text:h", headlineTranslator.setDefaultDelegation(this));
         addElementDelegation("text:span", spanTranslator.setDefaultDelegation(this));
@@ -359,13 +355,16 @@ public:
         addElementDelegation("table:table-column", tableColumnTranslator.setDefaultDelegation(this));
         addElementDelegation("table:table-row", tableRowTranslator.setDefaultDelegation(this));
         addElementDelegation("table:table-cell", tableCellTranslator.setDefaultDelegation(this));
+        addElementDelegation("draw:page", drawPageTranslator.setDefaultDelegation(this));
         addElementDelegation("draw:frame", frameTranslator.setDefaultDelegation(this));
+        addElementDelegation("draw:custom-shape", frameTranslator.setDefaultDelegation(this));
         addElementDelegation("draw:image", imageTranslator.setDefaultDelegation(this));
         addElementDelegation("svg:desc", skipper);
 
         addAttributeDelegation("text:style-name", styleAttributeTranslator);
         addAttributeDelegation("table:style-name", styleAttributeTranslator);
         addAttributeDelegation("draw:style-name", styleAttributeTranslator);
+        addAttributeDelegation("presentation:style-name", styleAttributeTranslator);
 
         defaultHandler.setDefaultDelegation(this);
         setDefaultDelegation(&defaultHandler);
