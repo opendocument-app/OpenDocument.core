@@ -39,6 +39,7 @@ struct FileMeta {
         std::string name;
         std::uint32_t rowCount = 0;
         std::uint32_t columnCount = 0;
+        std::string notes;
     };
 
     FileType type = FileType::UNKNOWN;

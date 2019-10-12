@@ -214,7 +214,6 @@ public:
         *context.output << " style=\"";
         if (width != nullptr) *context.output << "width:" << width->Value() << ";";
         if (height != nullptr) *context.output << "height:" << height->Value() << ";";
-        //if ((x != nullptr) || (y != nullptr))  *context.output << "position:absolute;";
         if (x != nullptr) *context.output << "left:" << x->Value() << ";";
         if (y != nullptr) *context.output << "top:" << y->Value() << ";";
         *context.output << "\"";
@@ -360,6 +359,7 @@ public:
         addElementDelegation("draw:custom-shape", frameTranslator.setDefaultDelegation(this));
         addElementDelegation("draw:image", imageTranslator.setDefaultDelegation(this));
         addElementDelegation("svg:desc", skipper);
+        addElementDelegation("presentation:notes", skipper);
 
         addAttributeDelegation("text:style-name", styleAttributeTranslator);
         addAttributeDelegation("table:style-name", styleAttributeTranslator);
