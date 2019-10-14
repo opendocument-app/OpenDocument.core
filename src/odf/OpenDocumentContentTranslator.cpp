@@ -7,6 +7,7 @@
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
+#include "../StringUtil.h"
 #include "../io/Path.h"
 #include "../svm/Svm2Svg.h"
 #include "../xml/XmlTranslator.h"
@@ -18,10 +19,23 @@
 namespace odr {
 
 namespace {
+class ParagraphTranslator final : public DefaultElementTranslator {
+public:
+    ParagraphTranslator() : DefaultElementTranslator("p") {}
+
+    void translateElementChildren(const tinyxml2::XMLElement &in, TranslationContext &context) const override {
+        if (in.FirstChild() == nullptr) {
+            *context.output << "<br/>";
+        } else {
+            DefaultXmlTranslator::translateElementChildren(in, context);
+        }
+    }
+};
+
 class SpaceTranslator final : public DefaultXmlTranslator {
 public:
     void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto count = in.Int64Attribute("text:c", -1);
+        const auto count = in.Unsigned64Attribute("text:c", 1);
         if (count <= 0) {
             return;
         }
@@ -47,7 +61,7 @@ public:
     void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
         const auto href = in.FindAttribute("xlink:href");
         if (href != nullptr) {
-            *context.output << " href\"" << href->Value() << "\"";
+            *context.output << " href=\"" << href->Value() << "\"";
             // NOTE: there is a trim in java
             if ((std::strlen(href->Value()) > 0) && (href->Value()[0] == '#')) {
                 *context.output << " target\"_self\"";
@@ -112,8 +126,7 @@ public:
     using DefaultXmlTranslator::translate;
 
     void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto repeatedAttribute = in.FindAttribute("table:number-columns-repeated");
-        const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
+        const auto repeated = in.Unsigned64Attribute("table:number-columns-repeated", 1);
         const auto defaultCellStyleAttribute = in.FindAttribute("table:default-cell-style-name");
         // TODO we could use span instead
         for (std::uint32_t i = 0; i < repeated; ++i) {
@@ -138,8 +151,7 @@ public:
     using DefaultXmlTranslator::translate;
 
     void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto repeatedAttribute = in.FindAttribute("table:number-rows-repeated");
-        const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
+        const auto repeated = in.Unsigned64Attribute("table:number-rows-repeated", 1);
         context.currentTableLocation.addRow(0); // TODO hacky
         for (std::uint32_t i = 0; i < repeated; ++i) {
             if (context.currentTableLocation.getNextRow() >= context.currentTableRowEnd) {
@@ -169,12 +181,9 @@ public:
     using DefaultXmlTranslator::translate;
 
     void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto repeatedAttribute = in.FindAttribute("table:number-columns-repeated");
-        const auto colspanAttribute = in.FindAttribute("table:number-columns-spanned");
-        const auto rowspanAttribute = in.FindAttribute("table:number-rows-spanned");
-        const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
-        const auto colspan = colspanAttribute == nullptr ? 1 : colspanAttribute->UnsignedValue();
-        const auto rowspan = rowspanAttribute == nullptr ? 1 : rowspanAttribute->UnsignedValue();
+        const auto repeated = in.Unsigned64Attribute("table:number-columns-repeated", 1);
+        const auto colspan = in.Unsigned64Attribute("table:number-columns-spanned", 1);
+        const auto rowspan = in.Unsigned64Attribute("table:number-rows-spanned", 1);
         for (std::uint32_t i = 0; i < repeated; ++i) {
             if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) {
                 break;
@@ -308,12 +317,11 @@ public:
 
 class OpenDocumentContentTranslator::Impl final : public DefaultXmlTranslator {
 public:
-    DefaultElementTranslator paragraphTranslator;
-    DefaultElementTranslator headlineTranslator;
+    ParagraphTranslator paragraphTranslator;
     DefaultElementTranslator spanTranslator;
-    LinkTranslator linkTranslator;
     SpaceTranslator spaceTranslator;
     TabTranslator tabTranslator;
+    LinkTranslator linkTranslator;
     DefaultElementTranslator breakTranslator;
     DefaultElementTranslator listTranslator;
     DefaultElementTranslator listItemTranslator;
@@ -332,15 +340,13 @@ public:
     DefaultHandler defaultHandler;
 
     Impl() :
-            paragraphTranslator("p"),
-            headlineTranslator("h"),
             spanTranslator("span"),
             breakTranslator("br"),
             listTranslator("ul"),
             listItemTranslator("li"),
             drawPageTranslator("div") {
         addElementDelegation("text:p", paragraphTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:h", headlineTranslator.setDefaultDelegation(this));
+        addElementDelegation("text:h", paragraphTranslator.setDefaultDelegation(this));
         addElementDelegation("text:span", spanTranslator.setDefaultDelegation(this));
         addElementDelegation("text:a", linkTranslator.setDefaultDelegation(this));
         addElementDelegation("text:s", spaceTranslator.setDefaultDelegation(this));
@@ -375,11 +381,16 @@ public:
     }
 
     void translate(const tinyxml2::XMLText &in, TranslationContext &context) const final {
+        std::string text = in.Value();
+        StringUtil::findAndReplaceAll(text, "&", "&amp;");
+        StringUtil::findAndReplaceAll(text, "<", "&lt;");
+        StringUtil::findAndReplaceAll(text, ">", "&gt;");
+
         if (!context.config->editable) {
-            *context.output << in.Value();
+            *context.output << text;
         } else {
             *context.output << "<span contenteditable=\"true\" data-odr-cid=\""
-                    << context.currentTextTranslationIndex << "\">" << in.Value() << "</span>";
+                    << context.currentTextTranslationIndex << "\">" << text << "</span>";
             context.textTranslation[context.currentTextTranslationIndex] = &in;
             ++context.currentTextTranslationIndex;
         }

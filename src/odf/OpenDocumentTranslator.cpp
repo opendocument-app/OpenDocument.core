@@ -31,7 +31,7 @@ public:
               "<head>\n"
               "<meta charset=\"UTF-8\" />\n"
               "<base target=\"_blank\" />\n"
-              "<meta name=\"viewport\" content=\"width=device-width; initial-scale=1.0; user-scalable=yes\" />\n"
+              "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0,user-scalable=yes\" />\n"
               "<title>odr</title>\n";
         of << "<style>\n";
         generateStyle(of, context);

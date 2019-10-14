@@ -96,16 +96,12 @@ void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint32_t &r
     // TODO we dont need to recurse so deep
     XmlUtil::recursiveVisitElements(&table, [&](const auto &e) {
         if (e.Name() == std::string("table:table-row")) {
-            const auto repeatedAttribute = e.FindAttribute("table:number-rows-repeated");
-            const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
+            const auto repeated = e.Unsigned64Attribute("table:number-rows-repeated", 1);
             tl.addRow(repeated);
         } else if (e.Name() == std::string("table:table-cell")) {
-            const auto repeatedAttribute = e.FindAttribute("table:number-columns-repeated");
-            const auto colspanAttribute = e.FindAttribute("table:number-columns-spanned");
-            const auto rowspanAttribute = e.FindAttribute("table:number-rows-spanned");
-            const auto repeated = repeatedAttribute == nullptr ? 1 : repeatedAttribute->UnsignedValue();
-            const auto colspan = colspanAttribute == nullptr ? 1 : colspanAttribute->UnsignedValue();
-            const auto rowspan = rowspanAttribute == nullptr ? 1 : rowspanAttribute->UnsignedValue();
+            const auto repeated = e.Unsigned64Attribute("table:number-columns-repeated", 1);
+            const auto colspan = e.Unsigned64Attribute("table:number-columns-spanned", 1);
+            const auto rowspan = e.Unsigned64Attribute("table:number-rows-spanned", 1);
             tl.addCell(colspan, rowspan, repeated);
 
             if (e.FirstChild() != nullptr) {
@@ -224,11 +220,7 @@ public:
                         LOG(ERROR) << "unknown key derivation " << keyDerivationName;
                         // TODO throw
                     }
-                    if (key->FindAttribute("manifest:key-size") != nullptr) {
-                        entry.keySize = key->FindAttribute("manifest:key-size")->UnsignedValue();
-                    } else {
-                        entry.keySize = 16;
-                    }
+                    entry.keySize = key->Unsigned64Attribute("manifest:key-size", 16);
                     entry.keyIterationCount = key->FindAttribute("manifest:iteration-count")->UnsignedValue();
                     entry.keySalt = key->FindAttribute("manifest:salt")->Value();
                 }
