@@ -247,7 +247,10 @@ public:
             const std::string &path = href->Value();
             *context.output << " alt=\"Error: image not found or unsupported: " << path << "\"";
 #ifdef ODR_CRYPTO
-            if (context.odFile->isFile(path)) {
+            *context.output << " src=\"";
+            if (!context.odFile->isFile(path)) {
+                *context.output << path;
+            } else {
                 std::string image = context.odFile->loadEntry(path);
                 if ((path.find("ObjectReplacements", 0) != std::string::npos) ||
                     (path.find(".svm", 0) != std::string::npos)) {
@@ -255,17 +258,15 @@ public:
                     std::ostringstream svgOut;
                     Svm2Svg::translate(svmIn, svgOut);
                     image = svgOut.str();
-                    *context.output << " src=\"data:image/svg+xml;base64, ";
+                    *context.output << "data:image/svg+xml;base64, ";
                 } else {
                     // hacky image/jpg working according to tom
-                    *context.output << " src=\"data:image/jpg;base64, ";
+                    *context.output << "data:image/jpg;base64, ";
                 }
                 *context.output << CryptoUtil::base64Encode(image);
-            } else {
-                LOG(ERROR) << "image not found " << path;
             }
-#endif
             *context.output << "\"";
+#endif
         }
 
         DefaultElementTranslator::translateElementAttributes(in, context);
