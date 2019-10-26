@@ -1,6 +1,7 @@
 #ifndef ODR_XMLTRANSLATOR_H
 #define ODR_XMLTRANSLATOR_H
 
+#include <string>
 #include <unordered_map>
 
 namespace tinyxml2 {
