@@ -20,7 +20,7 @@ include("FetchContent")
 FetchContent_Declare(
         tinyxml2
         GIT_REPOSITORY https://github.com/andiwand/tinyxml2.git
-        GIT_TAG 1489203
+        GIT_TAG f4e1f46
 )
 FetchContent_Declare(
         miniz
