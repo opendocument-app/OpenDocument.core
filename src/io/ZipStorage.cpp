@@ -9,6 +9,8 @@ class ZipReader::Impl final {
 public:
     mz_zip_archive zip;
     mz_zip_archive_file_stat tmp_stat;
+    
+    bool initialized;
 
     class SourceImpl final : public Source {
     public:
@@ -40,9 +42,7 @@ public:
     explicit Impl(const std::string &path) {
         memset(&zip, 0, sizeof(zip));
         const mz_bool status = mz_zip_reader_init_file(&zip, path.data(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
-        if (!status) {
-            throw; // TODO
-        }
+        initialized = status;
     }
 
     ~Impl() {
@@ -50,6 +50,10 @@ public:
     }
 
     bool stat(const std::string &path, mz_zip_archive_file_stat &result) {
+        if (!initialized) {
+            return false;
+        }
+        
         mz_uint i;
         if (!find(path, i)) {
             return false;
@@ -58,6 +62,10 @@ public:
     }
 
     bool find(const std::string &path, mz_uint &i) {
+        if (!initialized) {
+            return false;
+        }
+        
         int tmp = mz_zip_reader_locate_file(&zip, path.data(), nullptr, 0);
         if (tmp < 0) {
             return false;
@@ -86,6 +94,10 @@ public:
     }
 
     std::uint64_t size(const Path &path) {
+        if (!initialized) {
+            return false;
+        }
+        
         if (!stat(path, tmp_stat)) {
             return false;
         }
@@ -93,6 +105,10 @@ public:
     }
 
     void visit(Visiter visiter) {
+        if (!initialized) {
+            return;
+        }
+        
         for (mz_uint i = 0; i < mz_zip_reader_get_num_files(&zip); ++i) {
             mz_zip_reader_get_filename(&zip, i, tmp_stat.m_filename, sizeof(impl->tmp_stat.m_filename));
             visiter(Path(tmp_stat.m_filename));
@@ -107,6 +123,10 @@ public:
     }
 
     std::unique_ptr<Source> read(const Path &path) {
+        if (!initialized) {
+            return nullptr;
+        }
+        
         auto iter = mz_zip_reader_extract_file_iter_new(&zip, path.string().c_str(), 0);
         if (iter == nullptr) {
             return nullptr;
