@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <typeindex>
+#include <iostream>
 
 namespace odr {
 
