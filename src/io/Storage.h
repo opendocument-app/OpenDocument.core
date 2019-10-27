@@ -3,13 +3,29 @@
 
 #include <memory>
 #include <functional>
+#include <exception>
+#include "Path.h"
 #include "Stream.h"
 
 namespace odr {
 
-class Path;
-class Source;
-class Sink;
+class FileNotFoundException : public std::exception {
+public:
+    explicit FileNotFoundException(const std::string &path) : path(path) {}
+    const std::string &getPath() const { return path; }
+    const char *what() const noexcept override { return "file not found"; }
+private:
+    std::string path;
+};
+
+class FileNotCreatedException : public std::exception {
+public:
+    explicit FileNotCreatedException(const std::string &path) : path(path) {}
+    const std::string &getPath() const { return path; }
+    const char *what() const noexcept override { return "file not created"; }
+private:
+    std::string path;
+};
 
 class Storage {
 public:

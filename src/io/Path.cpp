@@ -1,5 +1,6 @@
 #include "Path.h"
 #include <algorithm>
+#include <stdexcept>
 
 namespace odr {
 
@@ -104,7 +105,7 @@ std::string Path::fullExtension() const noexcept {
 
 Path Path::parent() const {
     const auto find = path_.rfind('/');
-    if (find == std::string::npos) throw; // TODO
+    if (find == std::string::npos) throw std::invalid_argument("this");
     return path_.substr(0, find);
 }
 

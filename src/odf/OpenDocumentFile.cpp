@@ -1,6 +1,7 @@
 #include "OpenDocumentFile.h"
 #include <cstdint>
 #include <unordered_map>
+#include <stdexcept>
 #include "tinyxml2.h"
 #include "glog/logging.h"
 #include "odr/FileMeta.h"
@@ -388,7 +389,7 @@ public:
             case ChecksumType::SHA1_1K:
                 return CryptoUtil::sha1(input.substr(0, 1024));
             default:
-                throw; // TODO
+                throw std::invalid_argument("checksumType");
         }
     }
 
@@ -401,16 +402,13 @@ public:
             case AlgorithmType::BLOWFISH_CFB:
                 return CryptoUtil::decryptBlowfish(derivedKey, initialisationVector, input);
             default:
-                throw;
+                throw std::invalid_argument("algorithm");
         }
     }
 
     static std::string startKey_(const Entry &entry, const std::string &password) {
         const std::string result = hash_(password, entry.startKeyGeneration);
-        if (result.size() < entry.startKeySize) {
-            LOG(ERROR) << "start key too short";
-            throw; // TODO
-        }
+        if (result.size() < entry.startKeySize) throw std::invalid_argument("password");
         return result.substr(0, entry.startKeySize);
     }
 
@@ -462,35 +460,16 @@ public:
     }
 
     std::string loadEntry(const Path &path) {
-        if (!zip->isFile(path)) {
-            LOG(ERROR) << "zip entry size not found " << path;
-            return ""; // TODO throw
-        }
+        if (!zip->isFile(path)) throw FileNotFoundException(path);
         const auto it = entries.find(path);
-        if (it == entries.end()) {
-            LOG(ERROR) << "zip entry not found " << path;
-            return ""; // TODO throw
-        }
+        if (it == entries.end()) throw FileMetaNotFoundException(path);
         std::string result = loadPlain(it->second);
-        if (result.size() != it->second.sizeUncompressed) {
-            LOG(ERROR) << "zip entry size doesn't match " << path;
-            return ""; // TODO throw
-        }
 #ifdef ODR_CRYPTO
         if (it->second.encrypted) {
-            if (!decrypted) {
-                LOG(ERROR) << "not decrypted";
-                return ""; // TODO throw
-            }
-            if (!canDecrypt(it->second)) {
-                LOG(ERROR) << "cannot decrypt " << path;
-                return ""; // TODO throw
-            }
+            if (!decrypted) throw NotDecryptedException();
+            if (!canDecrypt(it->second)) throw CannotDecryptException();
             result = CryptoUtil::inflate(deriveKeyAndDecrypt_(it->second, result));
-            if (result.size() != it->second.sizeReal) {
-                LOG(ERROR) << "inflated size doesn't match " << path;
-                return ""; // TODO throw
-            }
+            if (result.size() != it->second.sizeReal) throw DecryptionFailedException();
         }
 #endif
         return result;
@@ -503,9 +482,7 @@ public:
         const auto xml = loadEntry(path);
         auto result = std::make_unique<tinyxml2::XMLDocument>();
         tinyxml2::XMLError error = result->Parse(xml.data(), xml.size());
-        if (error != tinyxml2::XML_SUCCESS) {
-            return nullptr; // TODO throw
-        }
+        if (error != tinyxml2::XML_SUCCESS) throw NoXmlFileException(path);
         return result;
     }
 };

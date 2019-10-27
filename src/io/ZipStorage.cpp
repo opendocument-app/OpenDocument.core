@@ -40,9 +40,7 @@ public:
     explicit Impl(const std::string &path) {
         memset(&zip, 0, sizeof(zip));
         const mz_bool status = mz_zip_reader_init_file(&zip, path.data(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
-        if (!status) {
-            throw; // TODO
-        }
+        if (!status) throw NoZipFileException(path);
     }
 
     ~Impl() {
@@ -143,9 +141,7 @@ public:
     explicit Impl(const std::string &path) {
         memset(&zip, 0, sizeof(zip));
         const mz_bool status = mz_zip_writer_init_file(&zip, path.data(), 0);
-        if (!status) {
-            throw; // TODO
-        }
+        if (!status) throw FileNotCreatedException(path);
     }
 
     ~Impl() {
