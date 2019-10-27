@@ -1,6 +1,6 @@
 #include <string>
 #include "gtest/gtest.h"
-#include "io/Path.h"
+#include "glog/logging.h"
 #include "io/ZipStorage.h"
 
 TEST(ZipWriterTest, create) {
@@ -30,4 +30,12 @@ TEST(ZipWriterTest, copy) {
     reader.visit([&] (const auto &p) {
         writer.copy(reader, p);
     });
+}
+
+TEST(ZipReaderTest, exception) {
+    try {
+        odr::ZipReader reader("/");
+    } catch (odr::NoZipFileException &e) {
+        LOG(ERROR) << "not a zip file";
+    }
 }

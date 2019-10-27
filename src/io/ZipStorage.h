@@ -1,11 +1,21 @@
 #ifndef ODR_ZIPSTORAGE_H
 #define ODR_ZIPSTORAGE_H
 
+#include <exception>
 #include "Storage.h"
 
 namespace odr {
 
 class ZipWriter;
+
+class NoZipFileException : public std::exception {
+public:
+    explicit NoZipFileException(const std::string &path) : path(path) {}
+    const std::string &getPath() const { return path; }
+    const char *what() const noexcept override { return "not a zip file"; }
+private:
+    std::string path;
+};
 
 class ZipReader final : public Storage {
 public:

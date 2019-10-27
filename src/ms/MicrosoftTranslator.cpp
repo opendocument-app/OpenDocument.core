@@ -1,5 +1,6 @@
 #include "MicrosoftTranslator.h"
 #include <fstream>
+#include <stdexcept>
 #include "tinyxml2.h"
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
@@ -109,7 +110,7 @@ public:
                 });
             } break;
             default:
-                throw; // TODO
+                throw std::invalid_argument("file.getMeta().type");
         }
     }
 
