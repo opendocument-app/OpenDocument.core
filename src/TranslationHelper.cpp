@@ -157,11 +157,19 @@ TranslationHelper::TranslationHelper() :
 TranslationHelper::~TranslationHelper() = default;
 
 bool TranslationHelper::openOpenDocument(const std::string &path) noexcept {
-    return impl_->openOd(path);
+    try {
+        return impl_->openOd(path);
+    } catch (...) {
+        return false;
+    }
 }
 
 bool TranslationHelper::openMicrosoft(const std::string &path) noexcept {
-    return impl_->openMs(path);
+    try {
+        return impl_->openMs(path);
+    } catch (...) {
+        return false;
+    }
 }
 
 void TranslationHelper::close() noexcept {
