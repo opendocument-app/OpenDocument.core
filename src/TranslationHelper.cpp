@@ -6,8 +6,8 @@
 #include "io/Path.h"
 #include "odf/OpenDocumentFile.h"
 #include "odf/OpenDocumentTranslator.h"
-#include "ms/MicrosoftOpenXmlFile.h"
-#include "ms/MicrosoftTranslator.h"
+#include "ooxml/MicrosoftOpenXmlFile.h"
+#include "ooxml/MicrosoftTranslator.h"
 
 namespace odr {
 
