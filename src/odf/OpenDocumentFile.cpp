@@ -88,7 +88,7 @@ bool lookupStartKeyTypes(const std::string &checksum, ChecksumType &checksumType
 }
 #endif
 
-void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint32_t &rows, std::uint32_t &cols) {
+void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint32_t &rows, std::uint32_t &cols, const std::uint32_t limitRows, const std::uint32_t limitCols) {
     rows = 0;
     cols = 0;
 
@@ -105,9 +105,12 @@ void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint32_t &r
             const auto rowspan = e.Unsigned64Attribute("table:number-rows-spanned", 1);
             tl.addCell(colspan, rowspan, repeated);
 
-            if (e.FirstChild() != nullptr) {
-                rows = tl.getNextRow();
-                cols = std::max(cols, tl.getNextCol());
+            const auto newRows = tl.getNextRow();
+            const auto newCols = std::max(cols, tl.getNextCol());
+            if ((e.FirstChild() != nullptr) &&
+                    (((limitRows != 0) && (newRows < limitRows)) && ((limitCols != 0) && (newCols < limitCols)))) {
+                rows = newRows;
+                cols = newCols;
             }
         }
     });
@@ -255,6 +258,7 @@ public:
         return meta.type != FileType::UNKNOWN;
     }
 
+    // TODO out-source meta gathering
     void createMeta2() {
         if (zip->isFile("meta.xml")) {
             const auto metaXml = loadXml("meta.xml");
@@ -320,7 +324,8 @@ public:
                         ++meta.entryCount;
                         FileMeta::Entry entry;
                         entry.name = tableHandle.ToElement()->FindAttribute("table:name")->Value();
-                        estimateTableDimensions(*tableHandle.ToElement(), entry.rowCount, entry.columnCount);
+                        // TODO configuration
+                        estimateTableDimensions(*tableHandle.ToElement(), entry.rowCount, entry.columnCount, 10000, 500);
                         meta.entries.emplace_back(entry);
                         tableHandle = tableHandle.NextSiblingElement("table:table");
                     }
