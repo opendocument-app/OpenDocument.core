@@ -22,7 +22,8 @@ struct TranslationConfig {
     std::uint32_t tableLimitCols = 100;
     bool tableLimitByDimensions = true;
 
-    bool editable = false;
+    // use int instead of bool for now due to iOS bug (editable toggled randomly)
+    std::uint32_t editable = 0;
 };
 
 }
