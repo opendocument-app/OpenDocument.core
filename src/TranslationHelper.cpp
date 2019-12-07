@@ -16,6 +16,7 @@ public:
     OpenDocumentFile fileOd;
     MicrosoftOpenXmlFile fileMs;
 
+    TranslationConfig config;
     TranslationContext context;
 
     OpenDocumentTranslator translatorOd;
@@ -57,22 +58,24 @@ public:
         return nullptr;
     }
 
-    bool translate(const std::string &out, const TranslationConfig &config) {
+    bool translate(const std::string &out, const TranslationConfig &c) {
+        config = c;
+        context = {};
+        context.config = &config;
+
         if (fileOd.isOpen()) {
-            return translateOd(out, config);
+            return translateOd(out);
         } else if (fileMs.isOpen()) {
-            return translateMs(out, config);
+            return translateMs(out);
         }
         return false;
     }
 
-    bool translateOd(const std::string &out, const TranslationConfig &config) {
+    bool translateOd(const std::string &out) {
         if (!fileOd.isDecrypted()) {
             return false;
         }
 
-        context = {};
-        context.config = &config;
         context.odFile = &fileOd;
         context.meta = &fileOd.getMeta();
 
@@ -88,13 +91,11 @@ public:
         }
     }
 
-    bool translateMs(const std::string &out, const TranslationConfig &config) {
+    bool translateMs(const std::string &out) {
         if (!fileMs.isDecrypted()) {
             return false;
         }
 
-        context = {};
-        context.config = &config;
         context.msFile = &fileMs;
         context.meta = &fileMs.getMeta();
 
