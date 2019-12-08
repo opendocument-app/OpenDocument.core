@@ -178,7 +178,11 @@ void TranslationHelper::close() noexcept {
 }
 
 bool TranslationHelper::decrypt(const std::string &password) noexcept {
-    return impl_->decrypt(password);
+    try {
+        return impl_->decrypt(password);
+    } catch (...) {
+        return false;
+    }
 }
 
 const FileMeta *TranslationHelper::getMeta() const noexcept {
@@ -186,11 +190,19 @@ const FileMeta *TranslationHelper::getMeta() const noexcept {
 }
 
 bool TranslationHelper::translate(const std::string &out, const TranslationConfig &config) noexcept {
-    return impl_->translate(out, config);
+    try {
+        return impl_->translate(out, config);
+    } catch (...) {
+        return false;
+    }
 }
 
 bool TranslationHelper::backTranslate(const std::string &in, const std::string &out) noexcept {
-    return impl_->backTranslate(in, out);
+    try {
+        return impl_->backTranslate(in, out);
+    } catch (...) {
+        return false;
+    }
 }
 
 }
