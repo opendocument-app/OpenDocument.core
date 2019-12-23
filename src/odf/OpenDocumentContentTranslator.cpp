@@ -367,6 +367,7 @@ public:
         addElementDelegation("draw:image", imageTranslator.setDefaultDelegation(this));
         addElementDelegation("svg:desc", skipper);
         addElementDelegation("presentation:notes", skipper);
+        addElementDelegation("office:annotation", skipper);
 
         addAttributeDelegation("text:style-name", styleAttributeTranslator);
         addAttributeDelegation("table:style-name", styleAttributeTranslator);
