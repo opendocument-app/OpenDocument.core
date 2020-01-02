@@ -67,7 +67,6 @@ if(NOT json_POPULATED)
 endif()
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
-set(SOURCES ${SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/src/Constants.cpp)
 add_library(odrlib STATIC ${SOURCES})
 target_include_directories(odrlib PUBLIC "include")
 

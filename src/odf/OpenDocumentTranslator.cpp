@@ -1,14 +1,13 @@
 #include "OpenDocumentTranslator.h"
 #include <fstream>
 #include "tinyxml2.h"
+#include "nlohmann/json.hpp"
 #include "../Constants.h"
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
 #include "../io/Path.h"
-#include "../io/FileUtil.h"
 #include "../io/ZipStorage.h"
-#include "../xml/XmlUtil.h"
 #include "OpenDocumentFile.h"
 #include "OpenDocumentStyleTranslator.h"
 #include "OpenDocumentContentTranslator.h"
@@ -20,11 +19,9 @@ public:
     OpenDocumentStyleTranslator styleTranslator;
     OpenDocumentContentTranslator contentTranslator;
 
-    bool translate(OpenDocumentFile &in, const std::string &out, TranslationContext &context) const {
-        std::ofstream of(out);
-        if (!of.is_open()) {
-            return false;
-        }
+    bool translate(OpenDocumentFile &in, const std::string &outPath, TranslationContext &context) const {
+        std::ofstream of(outPath);
+        if (!of.is_open()) return false;
         context.output = &of;
 
         of << Constants::getHtmlBeginToStyle();
@@ -157,37 +154,15 @@ public:
 
     bool backTranslate(OpenDocumentFile &in, const std::string &diff, const std::string &out, TranslationContext &context) const {
         // TODO exit on encrypted files
-        tinyxml2::XMLDocument contentHtml;
-        // TODO out-source parse html
-        const std::string contentHtmlStr = FileUtil::read(diff);
-        const auto contentHtmlStr_begin = contentHtmlStr.find("<body>");
-        auto contentHtmlStr_end = contentHtmlStr.rfind("</body>");
-        if ((contentHtmlStr_begin == std::string::npos) ||
-            (contentHtmlStr_end == std::string::npos)) {
-            return false;
-        }
-        contentHtmlStr_end += 7;
-        tinyxml2::XMLError state = contentHtml.Parse(
-                contentHtmlStr.c_str() + contentHtmlStr_begin,
-                contentHtmlStr_end - contentHtmlStr_begin);
-        if (state != tinyxml2::XMLError::XML_SUCCESS) {
-            return false;
-        }
 
-        std::unordered_map<std::uint32_t, const char *> editedContent;
-        XmlUtil::recursiveVisitElementsWithAttribute(contentHtml.RootElement(), "data-odr-cid", [&](const tinyxml2::XMLElement &element) {
-            const std::uint32_t id = element.FindAttribute("data-odr-cid")->Int64Value();
-            if ((element.FirstChild() == nullptr) || (element.FirstChild()->ToText() == nullptr)) return;
-            editedContent[id] = element.FirstChild()->ToText()->Value();
-        });
+        const auto json = nlohmann::json::parse(diff);
 
-        for (auto &&e : context.textTranslation) {
-            const auto editedIt = editedContent.find(e.first);
-            // TODO dirty const off-cast
-            if (editedIt == editedContent.end()) {
-                ((tinyxml2::XMLText *) e.second)->SetValue("");
-            } else {
-                ((tinyxml2::XMLText *) e.second)->SetValue(editedIt->second);
+        if (json.contains("modifiedText")) {
+            for (auto &&i : json["modifiedText"].items()) {
+                const auto it = context.textTranslation.find(std::stoi(i.key()));
+                // TODO dirty const off-cast
+                if (it == context.textTranslation.end()) continue;
+                ((tinyxml2::XMLText *) it->second)->SetValue(i.value().get<std::string>().c_str());
             }
         }
 
@@ -211,12 +186,12 @@ OpenDocumentTranslator::OpenDocumentTranslator() :
 
 OpenDocumentTranslator::~OpenDocumentTranslator() = default;
 
-bool OpenDocumentTranslator::translate(OpenDocumentFile &in, const std::string &out, TranslationContext &context) const {
-    return impl->translate(in, out, context);
+bool OpenDocumentTranslator::translate(OpenDocumentFile &in, const std::string &outPath, TranslationContext &context) const {
+    return impl->translate(in, outPath, context);
 }
 
-bool OpenDocumentTranslator::backTranslate(OpenDocumentFile &in, const std::string &diff, const std::string &out, TranslationContext &context) const {
-    return impl->backTranslate(in, diff, out, context);
+bool OpenDocumentTranslator::backTranslate(OpenDocumentFile &in, const std::string &diff, const std::string &outPath, TranslationContext &context) const {
+    return impl->backTranslate(in, diff, outPath, context);
 }
 
 }

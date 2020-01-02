@@ -14,8 +14,8 @@ public:
     MicrosoftTranslator();
     ~MicrosoftTranslator();
 
-    bool translate(MicrosoftOpenXmlFile &in, const std::string &out, TranslationContext &context) const;
-    bool backTranslate(MicrosoftOpenXmlFile &in, const std::string &diff, const std::string &out, TranslationContext &context) const;
+    bool translate(MicrosoftOpenXmlFile &in, const std::string &outPath, TranslationContext &context) const;
+    bool backTranslate(MicrosoftOpenXmlFile &in, const std::string &diff, const std::string &outPath, TranslationContext &context) const;
 
 private:
     class Impl;
