@@ -1,6 +1,7 @@
 #include "OpenDocumentTranslator.h"
 #include <fstream>
 #include "tinyxml2.h"
+#include "../Constants.h"
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
@@ -26,29 +27,22 @@ public:
         }
         context.output = &of;
 
-        of << "<!DOCTYPE html>\n"
-              "<html>\n"
-              "<head>\n"
-              "<meta charset=\"UTF-8\" />\n"
-              "<base target=\"_blank\" />\n"
-              "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0,user-scalable=yes\" />\n"
-              "<title>odr</title>\n";
-        of << "<style>\n";
+        of << Constants::getHtmlBeginToStyle();
+
         generateStyle(of, context);
         context.content = in.loadXml("content.xml");
         tinyxml2::XMLHandle contentHandle(context.content.get());
         generateContentStyle(contentHandle, context);
-        of << "</style>\n";
 
-        of << "<script>\n";
-        generateScript(of, context);
-        of << "</script>\n";
-        of << "</head>\n";
+        of << Constants::getHtmlStyleToBody();
 
-        of << "<body>\n";
         generateContent(in, contentHandle, context);
-        of << "</body>\n";
-        of << "</html>";
+
+        of << Constants::getHtmlBodyToScript();
+
+        generateScript(of, context);
+
+        of << Constants::getHtmlScriptToEnd();
 
         of.close();
         return true;
@@ -58,41 +52,10 @@ public:
         // TODO: get styles from translators?
 
         // default css
-        out << "* {\n"
-              "\tmargin: 0px;\n"
-              "\tposition: relative;\n"
-              "}"
-              "\tbody {\n"
-              "\tpadding: 5px;\n"
-              "}\n"
-              "\tspan {\n"
-              "\twhite-space: pre-wrap;\n"
-              "}\n"
-              "table {\n"
-              "\ttable-layout: fixed;\n"
-              "\twidth: 0px;\n"
-              "}\n"
-              "p {\n"
-              "\tpadding: 0 !important;\n"
-              "}\n"
-              "\n"
-              "span {\n"
-              "\tmargin: 0 !important;\n"
-              "}\n";
+        out << Constants::getOpenDocumentDefaultCss();
 
         if (context.odFile->getMeta().type == FileType::OPENDOCUMENT_SPREADSHEET) {
-            out <<
-                "table {\n"
-                "\tborder-collapse: collapse;\n"
-                "\tdisplay: block;\n"
-                "}\n"
-                "td {\n"
-                "\tvertical-align: top;\n"
-                "}\n"
-                "p {\n"
-                "\tfont-family: \"Arial\";\n"
-                "\tfont-size: 10pt;\n"
-                "}\n";
+            out << Constants::getOpenDocumentSpreadsheetDefaultCss();
         }
 
         auto stylesXml = context.odFile->loadXml("styles.xml");
@@ -142,7 +105,7 @@ public:
     }
 
     void generateScript(std::ofstream &of, TranslationContext &context) const {
-        // TODO: get script from translators?
+        of << Constants::getDefaultScript();
     }
 
     void generateContent(OpenDocumentFile &file, tinyxml2::XMLHandle &in, TranslationContext &context) const {
@@ -192,11 +155,11 @@ public:
         contentTranslator.translate(*body, context);
     }
 
-    bool backTranslate(OpenDocumentFile &in, const std::string &inHtml, const std::string &out, TranslationContext &context) const {
+    bool backTranslate(OpenDocumentFile &in, const std::string &diff, const std::string &out, TranslationContext &context) const {
         // TODO exit on encrypted files
         tinyxml2::XMLDocument contentHtml;
         // TODO out-source parse html
-        const std::string contentHtmlStr = FileUtil::read(inHtml);
+        const std::string contentHtmlStr = FileUtil::read(diff);
         const auto contentHtmlStr_begin = contentHtmlStr.find("<body>");
         auto contentHtmlStr_end = contentHtmlStr.rfind("</body>");
         if ((contentHtmlStr_begin == std::string::npos) ||
@@ -252,8 +215,8 @@ bool OpenDocumentTranslator::translate(OpenDocumentFile &in, const std::string &
     return impl->translate(in, out, context);
 }
 
-bool OpenDocumentTranslator::backTranslate(OpenDocumentFile &in, const std::string &inHtml, const std::string &out, TranslationContext &context) const {
-    return impl->backTranslate(in, inHtml, out, context);
+bool OpenDocumentTranslator::backTranslate(OpenDocumentFile &in, const std::string &diff, const std::string &out, TranslationContext &context) const {
+    return impl->backTranslate(in, diff, out, context);
 }
 
 }

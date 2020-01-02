@@ -2,6 +2,7 @@
 #include <fstream>
 #include <stdexcept>
 #include "tinyxml2.h"
+#include "../Constants.h"
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
@@ -43,36 +44,30 @@ public:
         }
         context.output = &of;
 
-        of << "<!DOCTYPE html>\n"
-              "<html>\n"
-              "<head>\n"
-              "<meta charset=\"UTF-8\" />\n"
-              "<base target=\"_blank\" />\n"
-              "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0,user-scalable=yes\" />\n"
-              "<title>odr</title>\n";
-        of << "<style>\n";
+        of << Constants::getHtmlBeginToStyle();
+
         generateStyle(of, context);
-        of << "</style>\n";
 
-        of << "<script>\n";
-        generateScript(of, context);
-        of << "</script>\n";
-        of << "</head>\n";
+        of << Constants::getHtmlStyleToBody();
 
-        of << "<body>\n";
         context.content = in.loadContent();
         generateContent(in, *context.content, context);
-        of << "</body>\n";
-        of << "</html>\n";
+
+        of << Constants::getHtmlBodyToScript();
+
+        generateScript(of, context);
+
+        of << Constants::getHtmlScriptToEnd();
 
         of.close();
         return true;
     }
 
-    void generateStyle(std::ofstream &of, TranslationContext &context) const {
+    void generateStyle(std::ofstream &of, TranslationContext &) const {
     }
 
-    void generateScript(std::ofstream &of, TranslationContext &context) const {
+    void generateScript(std::ofstream &of, TranslationContext &) const {
+        of << Constants::getDefaultScript();
     }
 
     void generateContent(MicrosoftOpenXmlFile &file, tinyxml2::XMLDocument &in, TranslationContext &context) const {
@@ -114,12 +109,12 @@ public:
         }
     }
 
-    bool backTranslate(MicrosoftOpenXmlFile &in, const std::string &inHtml, const std::string &out, TranslationContext &context) const {
+    bool backTranslate(MicrosoftOpenXmlFile &in, const std::string &diff, const std::string &out, TranslationContext &context) const {
         // TODO code duplication
         // TODO exit on encrypted files
         tinyxml2::XMLDocument contentHtml;
         // TODO out-source parse html
-        const std::string contentHtmlStr = FileUtil::read(inHtml);
+        const std::string contentHtmlStr = FileUtil::read(diff);
         const auto contentHtmlStr_begin = contentHtmlStr.find("<body>");
         auto contentHtmlStr_end = contentHtmlStr.rfind("</body>");
         if ((contentHtmlStr_begin == std::string::npos) ||
@@ -175,8 +170,8 @@ bool MicrosoftTranslator::translate(MicrosoftOpenXmlFile &in, const std::string 
     return impl->translate(in, out, context);
 }
 
-bool MicrosoftTranslator::backTranslate(MicrosoftOpenXmlFile &in, const std::string &inHtml, const std::string &out, TranslationContext &context) const {
-    return impl->backTranslate(in, inHtml, out, context);
+bool MicrosoftTranslator::backTranslate(MicrosoftOpenXmlFile &in, const std::string &diff, const std::string &out, TranslationContext &context) const {
+    return impl->backTranslate(in, diff, out, context);
 }
 
 }

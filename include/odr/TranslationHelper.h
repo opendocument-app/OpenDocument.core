@@ -11,6 +11,9 @@ struct TranslationConfig;
 
 class TranslationHelper final {
 public:
+    static std::string getVersion();
+    static std::string getCommit();
+
     TranslationHelper();
     ~TranslationHelper();
 

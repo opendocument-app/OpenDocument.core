@@ -1,5 +1,6 @@
 #include "odr/TranslationHelper.h"
 #include "tinyxml2.h"
+#include "Constants.h"
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "TranslationContext.h"
@@ -150,6 +151,14 @@ public:
         }
     }
 };
+
+std::string TranslationHelper::getVersion() {
+    return Constants::getVersion();
+}
+
+std::string TranslationHelper::getCommit() {
+    return Constants::getCommit();
+}
 
 TranslationHelper::TranslationHelper() :
         impl_(std::make_unique<Impl>()) {
