@@ -114,8 +114,6 @@ public:
     bool backTranslate(const std::string &in, const std::string &out) {
         if (fileOd.isOpen()) {
             return backTranslateOd(in, out);
-        } else if (fileMs.isOpen()) {
-            return backTranslateMs(in, out);
         }
         return false;
     }
@@ -131,21 +129,6 @@ public:
             case FileType::OPENDOCUMENT_SPREADSHEET:
             case FileType::OPENDOCUMENT_GRAPHICS:
                 return translatorOd.backTranslate(fileOd, diff, outPath, context);
-            default:
-                return false;
-        }
-    }
-
-    bool backTranslateMs(const std::string &diff, const std::string &outPath) {
-        if (!context.config->editable) {
-            return false;
-        }
-
-        switch (fileMs.getMeta().type) {
-            case FileType::OFFICE_OPEN_XML_DOCUMENT:
-                return translatorMs.backTranslate(fileMs, diff, outPath, context);
-            case FileType::OFFICE_OPEN_XML_PRESENTATION:
-            case FileType::OFFICE_OPEN_XML_WORKBOOK:
             default:
                 return false;
         }
