@@ -68,7 +68,6 @@ span {
   white-space: pre-wrap;
 }
 table {
-  table-layout: fixed;
   width: 0px;
 }
 p {
