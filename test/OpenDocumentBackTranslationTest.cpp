@@ -2,13 +2,14 @@
 #include "gtest/gtest.h"
 #include "odr/TranslationConfig.h"
 #include "odr/TranslationHelper.h"
+#include "io/FileUtil.h"
 
 TEST(OpenDocumentBackTranslationTest, translate) {
     std::string input;
-    input = "/home/andreas/Desktop/odr/megatest.odt";
+    input = "/home/andreas/workspace/OpenDocument.test/odt/03_smpldap.odt";
     const std::string password = "password";
     const std::string output = "/home/andreas/Desktop/odr/edited_pre.html";
-    const std::string backInput = "/home/andreas/Desktop/odr/edited.html";
+    const std::string backInput = "/home/andreas/Downloads/test.json";
     const std::string backOutput = "/home/andreas/Desktop/odr/edited.odt";
 
     odr::TranslationConfig config = {};
@@ -21,5 +22,6 @@ TEST(OpenDocumentBackTranslationTest, translate) {
     translator.decrypt(password);
     translator.translate(output, config);
 
-    translator.backTranslate(backInput, backOutput);
+    const std::string backDiff = odr::FileUtil::read(backInput);
+    translator.backTranslate(backDiff, backOutput);
 }

@@ -1,5 +1,6 @@
 #include "odr/TranslationHelper.h"
 #include "tinyxml2.h"
+#include "Constants.h"
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "TranslationContext.h"
@@ -40,15 +41,6 @@ public:
         }
     }
 
-    bool decrypt(const std::string &password) {
-        if (fileOd.isOpen()) {
-            return fileOd.decrypt(password);
-        } else if (fileMs.isOpen()) {
-            return fileMs.decrypt(password);
-        }
-        return false;
-    }
-
     const FileMeta *getMeta() const {
         if (fileOd.isOpen()) {
             return &fileOd.getMeta();
@@ -58,20 +50,29 @@ public:
         return nullptr;
     }
 
-    bool translate(const std::string &out, const TranslationConfig &c) {
+    bool decrypt(const std::string &password) {
+        if (fileOd.isOpen()) {
+            return fileOd.decrypt(password);
+        } else if (fileMs.isOpen()) {
+            return fileMs.decrypt(password);
+        }
+        return false;
+    }
+
+    bool translate(const std::string &outPath, const TranslationConfig &c) {
         config = c;
         context = {};
         context.config = &config;
 
         if (fileOd.isOpen()) {
-            return translateOd(out);
+            return translateOd(outPath);
         } else if (fileMs.isOpen()) {
-            return translateMs(out);
+            return translateMs(outPath);
         }
         return false;
     }
 
-    bool translateOd(const std::string &out) {
+    bool translateOd(const std::string &outPath) {
         if (!fileOd.isDecrypted()) {
             return false;
         }
@@ -85,13 +86,13 @@ public:
             case FileType::OPENDOCUMENT_SPREADSHEET:
             case FileType::OPENDOCUMENT_GRAPHICS:
                 // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
-                return translatorOd.translate(fileOd, out, context);
+                return translatorOd.translate(fileOd, outPath, context);
             default:
                 return false;
         }
     }
 
-    bool translateMs(const std::string &out) {
+    bool translateMs(const std::string &outPath) {
         if (!fileMs.isDecrypted()) {
             return false;
         }
@@ -104,7 +105,7 @@ public:
             case FileType::OFFICE_OPEN_XML_PRESENTATION:
             case FileType::OFFICE_OPEN_XML_WORKBOOK:
                 // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
-                return translatorMs.translate(fileMs, out, context);
+                return translatorMs.translate(fileMs, outPath, context);
             default:
                 return false;
         }
@@ -113,13 +114,11 @@ public:
     bool backTranslate(const std::string &in, const std::string &out) {
         if (fileOd.isOpen()) {
             return backTranslateOd(in, out);
-        } else if (fileMs.isOpen()) {
-            return backTranslateMs(in, out);
         }
         return false;
     }
 
-    bool backTranslateOd(const std::string &in, const std::string &out) {
+    bool backTranslateOd(const std::string &diff, const std::string &outPath) {
         if (!context.config->editable) {
             return false;
         }
@@ -129,27 +128,20 @@ public:
             case FileType::OPENDOCUMENT_PRESENTATION:
             case FileType::OPENDOCUMENT_SPREADSHEET:
             case FileType::OPENDOCUMENT_GRAPHICS:
-                return translatorOd.backTranslate(fileOd, in, out, context);
-            default:
-                return false;
-        }
-    }
-
-    bool backTranslateMs(const std::string &in, const std::string &out) {
-        if (!context.config->editable) {
-            return false;
-        }
-
-        switch (fileMs.getMeta().type) {
-            case FileType::OFFICE_OPEN_XML_DOCUMENT:
-                return translatorMs.backTranslate(fileMs, in, out, context);
-            case FileType::OFFICE_OPEN_XML_PRESENTATION:
-            case FileType::OFFICE_OPEN_XML_WORKBOOK:
+                return translatorOd.backTranslate(fileOd, diff, outPath, context);
             default:
                 return false;
         }
     }
 };
+
+std::string TranslationHelper::getVersion() {
+    return Constants::getVersion();
+}
+
+std::string TranslationHelper::getCommit() {
+    return Constants::getCommit();
+}
 
 TranslationHelper::TranslationHelper() :
         impl_(std::make_unique<Impl>()) {
@@ -177,6 +169,10 @@ void TranslationHelper::close() noexcept {
     impl_->close();
 }
 
+const FileMeta *TranslationHelper::getMeta() const noexcept {
+    return impl_->getMeta();
+}
+
 bool TranslationHelper::decrypt(const std::string &password) noexcept {
     try {
         return impl_->decrypt(password);
@@ -185,21 +181,17 @@ bool TranslationHelper::decrypt(const std::string &password) noexcept {
     }
 }
 
-const FileMeta *TranslationHelper::getMeta() const noexcept {
-    return impl_->getMeta();
-}
-
-bool TranslationHelper::translate(const std::string &out, const TranslationConfig &config) noexcept {
+bool TranslationHelper::translate(const std::string &outPath, const TranslationConfig &config) noexcept {
     try {
-        return impl_->translate(out, config);
+        return impl_->translate(outPath, config);
     } catch (...) {
         return false;
     }
 }
 
-bool TranslationHelper::backTranslate(const std::string &in, const std::string &out) noexcept {
+bool TranslationHelper::backTranslate(const std::string &diff, const std::string &outPath) noexcept {
     try {
-        return impl_->backTranslate(in, out);
+        return impl_->backTranslate(diff, outPath);
     } catch (...) {
         return false;
     }

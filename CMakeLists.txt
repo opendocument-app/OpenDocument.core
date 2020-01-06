@@ -37,6 +37,11 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/TomTasche/cryptopp.ios.git
         GIT_TAG 8c373c0
 )
+FetchContent_Declare(
+        json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG v3.7.3
+)
 
 FetchContent_GetProperties(tinyxml2)
 if(NOT tinyxml2_POPULATED)
@@ -55,12 +60,17 @@ if(NOT glog_POPULATED)
     FetchContent_Populate(glog)
     add_subdirectory(${glog_SOURCE_DIR} ${glog_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
+FetchContent_GetProperties(json)
+if(NOT json_POPULATED)
+    FetchContent_Populate(json)
+    add_subdirectory(${json_SOURCE_DIR} ${json_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_library(odrlib STATIC ${SOURCES})
 target_include_directories(odrlib PUBLIC "include")
 
-target_link_libraries(odrlib PRIVATE glog miniz tinyxml2)
+target_link_libraries(odrlib PRIVATE glog miniz tinyxml2 nlohmann_json::nlohmann_json)
 
 # miniz defines a lot of macros without that
 target_compile_definitions(odrlib PRIVATE MINIZ_NO_ZLIB_COMPATIBLE_NAMES)
