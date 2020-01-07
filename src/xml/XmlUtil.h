@@ -26,6 +26,7 @@ public:
 namespace XmlUtil {
 typedef std::function<void(const tinyxml2::XMLNode &)> NodeVisiter;
 typedef std::function<void(const tinyxml2::XMLElement &)> ElementVisiter;
+typedef std::function<void(const tinyxml2::XMLAttribute &)> AttributeVisiter;
 
 std::unique_ptr<tinyxml2::XMLDocument> parse(const std::string &);
 std::unique_ptr<tinyxml2::XMLDocument> parse(Source &);
@@ -33,6 +34,7 @@ std::unique_ptr<tinyxml2::XMLDocument> parse(const Storage &, const Path &);
 
 void visitNodeChildren(const tinyxml2::XMLNode &, NodeVisiter);
 void visitElementChildren(const tinyxml2::XMLElement &, ElementVisiter);
+void visitElementAttributes(const tinyxml2::XMLElement &, AttributeVisiter);
 
 void recursiveVisitNodes(const tinyxml2::XMLNode *root, NodeVisiter);
 void recursiveVisitElements(const tinyxml2::XMLElement *root, ElementVisiter);

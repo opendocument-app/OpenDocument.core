@@ -40,6 +40,12 @@ void XmlUtil::visitElementChildren(const tinyxml2::XMLElement &element, ElementV
     });
 }
 
+void XmlUtil::visitElementAttributes(const tinyxml2::XMLElement &element, AttributeVisiter visiter) {
+    for (auto attr = element.FirstAttribute(); attr != nullptr; attr = attr->Next()) {
+        visiter(*attr);
+    }
+}
+
 void XmlUtil::recursiveVisitNodes(const tinyxml2::XMLNode *root, NodeVisiter visiter) {
     if (root == nullptr) return;
     visiter(*root);
