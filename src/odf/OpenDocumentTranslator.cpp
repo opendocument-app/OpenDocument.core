@@ -6,11 +6,11 @@
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
+#include "../XmlUtil.h"
 #include "../io/Path.h"
 #include "../io/StreamUtil.h"
 #include "../io/StorageUtil.h"
 #include "../io/ZipStorage.h"
-#include "../xml/XmlUtil.h"
 #include "OpenDocumentStyleTranslator.h"
 #include "OpenDocumentContentTranslator.h"
 

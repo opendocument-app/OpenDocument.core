@@ -5,6 +5,7 @@
 #include "../TranslationContext.h"
 #include "../xml/XmlTranslator.h"
 #include "../xml/Xml2Html.h"
+#include "MicrosoftOpenXmlFile.h"
 
 namespace odr {
 

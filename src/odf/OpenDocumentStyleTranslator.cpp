@@ -5,7 +5,7 @@
 #include "glog/logging.h"
 #include "../TranslationContext.h"
 #include "../StringUtil.h"
-#include "../xml/XmlUtil.h"
+#include "../XmlUtil.h"
 
 namespace odr {
 

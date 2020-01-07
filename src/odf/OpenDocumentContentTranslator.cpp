@@ -1,6 +1,7 @@
 #include "OpenDocumentContentTranslator.h"
 #include <string>
 #include <list>
+#include <unordered_set>
 #include <unordered_map>
 #include "tinyxml2.h"
 #include "glog/logging.h"
@@ -10,404 +11,332 @@
 #include "../StringUtil.h"
 #include "../io/Path.h"
 #include "../io/Storage.h"
-#include "../io/StorageUtil.h"
+#include "../io/StreamUtil.h"
 #include "../svm/Svm2Svg.h"
-#include "../xml/XmlTranslator.h"
-#include "../xml/Xml2Html.h"
+#include "../XmlUtil.h"
 #include "../crypto/CryptoUtil.h"
 #include "OpenDocumentStyleTranslator.h"
+#include "../io/StreamUtil.h"
 
 namespace odr {
 
-namespace {
-class ParagraphTranslator final : public DefaultElementTranslator {
-public:
-    ParagraphTranslator() : DefaultElementTranslator("p") {}
+static void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context);
+static void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out, TranslationContext &context);
+static void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
+static void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
+static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 
-    void translateElementChildren(const tinyxml2::XMLElement &in, TranslationContext &context) const override {
-        if (in.FirstChild() == nullptr) {
-            *context.output << "<br/>";
+static void StyleAttributeTranslator(const std::string &name, std::ostream &out, TranslationContext &context) {
+    out << " class=\"";
+    out << name;
+
+    { // handle style dependencies
+        const auto it = context.odStyleDependencies.find(name);
+        if (it == context.odStyleDependencies.end()) {
+            // TODO remove ?
+            LOG(WARNING) << "unknown style: " << name;
         } else {
-            DefaultXmlTranslator::translateElementChildren(in, context);
-        }
-    }
-};
-
-class SpaceTranslator final : public DefaultXmlTranslator {
-public:
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto count = in.Unsigned64Attribute("text:c", 1);
-        if (count <= 0) {
-            return;
-        }
-        for (std::uint32_t i = 0; i < count; ++i) {
-            // TODO: use "&nbsp;"?
-            *context.output << " ";
-        }
-    }
-};
-
-class TabTranslator final : public DefaultXmlTranslator {
-public:
-    void translate(const tinyxml2::XMLElement &, TranslationContext &context) const final {
-        // TODO: use "&emsp;"?
-        *context.output << "\t";
-    }
-};
-
-class LinkTranslator final : public DefaultElementTranslator {
-public:
-    LinkTranslator() : DefaultElementTranslator("a") {}
-
-    void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto href = in.FindAttribute("xlink:href");
-        if (href != nullptr) {
-            *context.output << " href=\"" << href->Value() << "\"";
-            // NOTE: there is a trim in java
-            if ((std::strlen(href->Value()) > 0) && (href->Value()[0] == '#')) {
-                *context.output << " target\"_self\"";
-            }
-        } else {
-            LOG(WARNING) << "empty link";
-        }
-
-        DefaultElementTranslator::translateElementAttributes(in, context);
-    }
-};
-
-class BookmarkTranslator final : public DefaultElementTranslator {
-public:
-    BookmarkTranslator() : DefaultElementTranslator("a") {}
-
-    void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto id = in.FindAttribute("text:name");
-        if (id != nullptr) {
-            *context.output << " id=\"" << id->Value() << "\"";
-        } else {
-            LOG(WARNING) << "empty bookmark";
-        }
-
-        DefaultElementTranslator::translateElementAttributes(in, context);
-    }
-};
-
-class TableTranslator final : public DefaultElementTranslator {
-public:
-    TableTranslator() : DefaultElementTranslator("table") {
-        addAttributes("border", "0");
-        addAttributes("cellspacing", "0");
-        addAttributes("cellpadding", "0");
-    }
-
-    using DefaultXmlTranslator::translate;
-
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        context.currentTableRowStart = context.config->tableOffsetRows;
-        context.currentTableRowEnd = context.currentTableRowStart + context.config->tableLimitRows;
-        context.currentTableColStart = context.config->tableOffsetCols;
-        context.currentTableColEnd = context.currentTableColStart + context.config->tableLimitCols;
-        // TODO remove dirty file check; add simple table translator for odt/odp
-        if ((context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) && context.config->tableLimitByDimensions) {
-            context.currentTableRowEnd = std::min(context.currentTableRowEnd, context.currentTableRowStart + context.meta->entries[context.currentEntry].rowCount);
-            context.currentTableColEnd = std::min(context.currentTableColEnd, context.currentTableColStart + context.meta->entries[context.currentEntry].columnCount);
-        }
-        context.currentTableLocation = {};
-        context.odDefaultCellStyles.clear();
-
-        DefaultElementTranslator::translate(in, context);
-
-        ++context.currentEntry;
-    }
-};
-
-class TableColumnTranslator final : public DefaultElementTranslator {
-public:
-    TableColumnTranslator() : DefaultElementTranslator("col") {}
-
-    using DefaultXmlTranslator::translate;
-
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto repeated = in.Unsigned64Attribute("table:number-columns-repeated", 1);
-        const auto defaultCellStyleAttribute = in.FindAttribute("table:default-cell-style-name");
-        // TODO we could use span instead
-        for (std::uint32_t i = 0; i < repeated; ++i) {
-            if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) {
-                break;
-            }
-            if (context.currentTableLocation.getNextCol() >= context.currentTableColStart) {
-                if (defaultCellStyleAttribute != nullptr) {
-                    context.odDefaultCellStyles[context.currentTableLocation.getNextCol()] = defaultCellStyleAttribute->Value();
-                }
-                DefaultElementTranslator::translate(in, context);
-            }
-            context.currentTableLocation.addCol();
-        }
-    }
-};
-
-class TableRowTranslator final : public DefaultElementTranslator {
-public:
-    TableRowTranslator() : DefaultElementTranslator("tr") {}
-
-    using DefaultXmlTranslator::translate;
-
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto repeated = in.Unsigned64Attribute("table:number-rows-repeated", 1);
-        context.currentTableLocation.addRow(0); // TODO hacky
-        for (std::uint32_t i = 0; i < repeated; ++i) {
-            if (context.currentTableLocation.getNextRow() >= context.currentTableRowEnd) {
-                break;
-            }
-            if (context.currentTableLocation.getNextRow() >= context.currentTableRowStart) {
-                DefaultElementTranslator::translate(in, context);
-            }
-            context.currentTableLocation.addRow();
-        }
-    }
-};
-
-class TableCellTranslator final : public DefaultElementTranslator {
-public:
-    tinyxml2::XMLDocument tmpDoc;
-    tinyxml2::XMLElement *tmpEle;
-
-    TableCellTranslator() : DefaultElementTranslator("td") {
-        addAttributeTranslator("table:number-columns-spanned", "colspan");
-        addAttributeTranslator("table:number-rows-spanned", "rowspan");
-        // TODO limit span
-
-        tmpEle = tmpDoc.NewElement("tmp");
-    }
-
-    using DefaultXmlTranslator::translate;
-
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto repeated = in.Unsigned64Attribute("table:number-columns-repeated", 1);
-        const auto colspan = in.Unsigned64Attribute("table:number-columns-spanned", 1);
-        const auto rowspan = in.Unsigned64Attribute("table:number-rows-spanned", 1);
-        for (std::uint32_t i = 0; i < repeated; ++i) {
-            if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) {
-                break;
-            }
-            if (context.currentTableLocation.getNextCol() >= context.currentTableColStart) {
-                DefaultElementTranslator::translate(in, context);
-            }
-            context.currentTableLocation.addCell(colspan, rowspan);
-        }
-    }
-
-    void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const override {
-        if (in.FindAttribute("table:style-name") == nullptr) {
-            // TODO looks quite dirty; better options?
-            const auto it = context.odDefaultCellStyles.find(context.currentTableLocation.getNextCol());
-            if (it != context.odDefaultCellStyles.end()) {
-                tmpEle->SetAttribute("table:style-name", it->second.c_str());
-                const auto tmpAttr = tmpEle->FindAttribute("table:style-name");
-                translate(*tmpAttr, context);
+            for (auto i = it->second.rbegin(); i != it->second.rend(); ++i) {
+                out << " " << *i;
             }
         }
-
-        DefaultElementTranslator::translateElementAttributes(in, context);
     }
-};
 
-class FrameTranslator final : public DefaultElementTranslator {
-public:
-    FrameTranslator() : DefaultElementTranslator("div") {}
+    // TODO draw:master-page-name
 
-    void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto width = in.FindAttribute("svg:width");
-        const auto height = in.FindAttribute("svg:height");
-        const auto x = in.FindAttribute("svg:x");
-        const auto y = in.FindAttribute("svg:y");
+    out << "\"";
+}
 
-        *context.output << " style=\"";
-        if (width != nullptr) *context.output << "width:" << width->Value() << ";";
-        if (height != nullptr) *context.output << "height:" << height->Value() << ";";
-        if (x != nullptr) *context.output << "left:" << x->Value() << ";";
-        if (y != nullptr) *context.output << "top:" << y->Value() << ";";
-        *context.output << "\"";
+static void StyleAttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out, TranslationContext &context) {
+    const std::string name = OpenDocumentStyleTranslator::escapeStyleName(in.Value());
+    StyleAttributeTranslator(name, out, context);
+}
 
-        DefaultElementTranslator::translateElementAttributes(in, context);
+static void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<p";
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+
+    if (in.FirstChild() == nullptr) out << "<br/>";
+    else ElementChildrenTranslator(in, out, context);
+
+    out << "</p>";
+}
+
+static void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    const auto count = in.Unsigned64Attribute("text:c", 1);
+    if (count <= 0) {
+        return;
     }
-};
+    for (std::uint32_t i = 0; i < count; ++i) {
+        // TODO: use "&nbsp;"?
+        out << " ";
+    }
+}
 
-class ImageTranslator final : public DefaultElementTranslator {
-public:
-    ImageTranslator() : DefaultElementTranslator("img") {}
+static void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, TranslationContext &) {
+    // TODO: use "&emsp;"?
+    out << "\t";
+}
 
-    void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto href = in.FindAttribute("xlink:href");
+static void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<a";
+    const auto href = in.FindAttribute("xlink:href");
+    if (href != nullptr) {
+        out << " href=\"" << href->Value() << "\"";
+        // NOTE: there is a trim in java
+        if ((std::strlen(href->Value()) > 0) && (href->Value()[0] == '#')) {
+            out << " target\"_self\"";
+        }
+    } else {
+        LOG(WARNING) << "empty link";
+    }
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
 
-        *context.output << " style=\"width:100%;heigth:100%\"";
+    if (in.FirstChild() == nullptr) out << "<br/>";
+    else ElementChildrenTranslator(in, out, context);
 
-        if (href == nullptr) {
-            *context.output << " alt=\"Error: image path not specified";
-            LOG(ERROR) << "image href not found";
-        } else {
-            const std::string &path = href->Value();
-            *context.output << " alt=\"Error: image not found or unsupported: " << path << "\"";
+    out << "</a>";
+}
+
+static void BookmarkTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<a";
+    const auto id = in.FindAttribute("text:name");
+    if (id != nullptr) {
+        out << " id=\"" << id->Value() << "\"";
+    } else {
+        LOG(WARNING) << "empty bookmark";
+    }
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+
+    out << "</a>";
+}
+
+static void FrameTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<div style=\"";
+
+    const auto width = in.FindAttribute("svg:width");
+    const auto height = in.FindAttribute("svg:height");
+    const auto x = in.FindAttribute("svg:x");
+    const auto y = in.FindAttribute("svg:y");
+
+    if (width != nullptr) out << "width:" << width->Value() << ";";
+    if (height != nullptr) out << "height:" << height->Value() << ";";
+    if (x != nullptr) out << "left:" << x->Value() << ";";
+    if (y != nullptr) out << "top:" << y->Value() << ";";
+
+    out << "\"";
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+}
+
+static void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<img style=\"width:100%;heigth:100%\"";
+
+    const auto href = in.FindAttribute("xlink:href");
+    if (href == nullptr) {
+        out << " alt=\"Error: image path not specified";
+        LOG(ERROR) << "image href not found";
+    } else {
+        const std::string &path = href->Value();
+        out << " alt=\"Error: image not found or unsupported: " << path << "\"";
 #ifdef ODR_CRYPTO
-            *context.output << " src=\"";
-            if (!context.storage->isFile(path)) {
-                *context.output << path;
-            } else {
-                std::string image = StorageUtil::read(*context.storage, path);
-                if ((path.find("ObjectReplacements", 0) != std::string::npos) ||
-                    (path.find(".svm", 0) != std::string::npos)) {
-                    std::istringstream svmIn(image);
-                    std::ostringstream svgOut;
-                    Svm2Svg::translate(svmIn, svgOut);
-                    image = svgOut.str();
-                    *context.output << "data:image/svg+xml;base64, ";
-                } else {
-                    // hacky image/jpg working according to tom
-                    *context.output << "data:image/jpg;base64, ";
-                }
-                *context.output << CryptoUtil::base64Encode(image);
-            }
-            *context.output << "\"";
-#endif
-        }
-
-        DefaultElementTranslator::translateElementAttributes(in, context);
-    }
-};
-
-class StyleAttributeTranslator final : public DefaultXmlTranslator {
-public:
-    void translate(const tinyxml2::XMLAttribute &in, TranslationContext &context) const final {
-        const std::string styleName = OpenDocumentStyleTranslator::escapeStyleName(in.Value());
-
-        *context.output << " class=\"";
-        *context.output << styleName;
-
-        { // handle style dependencies
-            const auto it = context.odStyleDependencies.find(styleName);
-            if (it == context.odStyleDependencies.end()) {
-                // TODO remove ?
-                LOG(WARNING) << "unknown style: " << styleName;
-            } else {
-                for (auto i = it->second.rbegin(); i != it->second.rend(); ++i) {
-                    *context.output<< " " << *i;
-                }
-            }
-        }
-
-        // TODO draw:master-page-name
-
-        *context.output << "\"";
-    }
-};
-
-class IgnoreHandler final : public XmlTranslator {
-public:
-    void translate(const tinyxml2::XMLElement &, TranslationContext &) const final {}
-    void translate(const tinyxml2::XMLAttribute &, TranslationContext &) const final {}
-    void translate(const tinyxml2::XMLText &, TranslationContext &) const final {}
-};
-
-class DefaultHandler final : public DefaultXmlTranslator {
-public:
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        translateElementChildren(in, context);
-    }
-
-    void translate(const tinyxml2::XMLAttribute &, TranslationContext &) const final {}
-};
-}
-
-class OpenDocumentContentTranslator::Impl final : public DefaultXmlTranslator {
-public:
-    ParagraphTranslator paragraphTranslator;
-    DefaultElementTranslator spanTranslator;
-    SpaceTranslator spaceTranslator;
-    TabTranslator tabTranslator;
-    LinkTranslator linkTranslator;
-    DefaultElementTranslator breakTranslator;
-    DefaultElementTranslator listTranslator;
-    DefaultElementTranslator listItemTranslator;
-    BookmarkTranslator bookmarkTranslator;
-    TableTranslator tableTranslator;
-    TableColumnTranslator tableColumnTranslator;
-    TableRowTranslator tableRowTranslator;
-    TableCellTranslator tableCellTranslator;
-    DefaultElementTranslator drawPageTranslator;
-    FrameTranslator frameTranslator;
-    ImageTranslator imageTranslator;
-
-    StyleAttributeTranslator styleAttributeTranslator;
-
-    IgnoreHandler skipper;
-    DefaultHandler defaultHandler;
-
-    Impl() :
-            spanTranslator("span"),
-            breakTranslator("br"),
-            listTranslator("ul"),
-            listItemTranslator("li"),
-            drawPageTranslator("div") {
-        addElementDelegation("text:p", paragraphTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:h", paragraphTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:span", spanTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:a", linkTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:s", spaceTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:tab", tabTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:line-break", breakTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:list", listTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:list-item", listItemTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:bookmark", bookmarkTranslator.setDefaultDelegation(this));
-        addElementDelegation("text:bookmark-start", bookmarkTranslator.setDefaultDelegation(this));
-        addElementDelegation("table:table", tableTranslator.setDefaultDelegation(this));
-        addElementDelegation("table:table-column", tableColumnTranslator.setDefaultDelegation(this));
-        addElementDelegation("table:table-row", tableRowTranslator.setDefaultDelegation(this));
-        addElementDelegation("table:table-cell", tableCellTranslator.setDefaultDelegation(this));
-        addElementDelegation("draw:page", drawPageTranslator.setDefaultDelegation(this));
-        addElementDelegation("draw:frame", frameTranslator.setDefaultDelegation(this));
-        addElementDelegation("draw:custom-shape", frameTranslator.setDefaultDelegation(this));
-        addElementDelegation("draw:image", imageTranslator.setDefaultDelegation(this));
-        addElementDelegation("svg:desc", skipper);
-        addElementDelegation("presentation:notes", skipper);
-        addElementDelegation("office:annotation", skipper);
-
-        addAttributeDelegation("text:style-name", styleAttributeTranslator);
-        addAttributeDelegation("table:style-name", styleAttributeTranslator);
-        addAttributeDelegation("draw:style-name", styleAttributeTranslator);
-        addAttributeDelegation("presentation:style-name", styleAttributeTranslator);
-
-        defaultHandler.setDefaultDelegation(this);
-        setDefaultDelegation(&defaultHandler);
-    }
-
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        translateElementChild(in, context);
-    }
-
-    void translate(const tinyxml2::XMLText &in, TranslationContext &context) const final {
-        std::string text = in.Value();
-        StringUtil::findAndReplaceAll(text, "&", "&amp;");
-        StringUtil::findAndReplaceAll(text, "<", "&lt;");
-        StringUtil::findAndReplaceAll(text, ">", "&gt;");
-
-        if (!context.config->editable) {
-            *context.output << text;
+        out << " src=\"";
+        if (!context.storage->isFile(path)) {
+            out << path;
         } else {
-            *context.output << "<span contenteditable=\"true\" data-odr-cid=\""
-                    << context.currentTextTranslationIndex << "\">" << text << "</span>";
-            context.textTranslation[context.currentTextTranslationIndex] = &in;
-            ++context.currentTextTranslationIndex;
+            std::string image = StreamUtil::read(*context.storage->read(path));
+            if ((path.find("ObjectReplacements", 0) != std::string::npos) ||
+                (path.find(".svm", 0) != std::string::npos)) {
+                std::istringstream svmIn(image);
+                std::ostringstream svgOut;
+                Svm2Svg::translate(svmIn, svgOut);
+                image = svgOut.str();
+                out << "data:image/svg+xml;base64, ";
+            } else {
+                // hacky image/jpg working according to tom
+                out << "data:image/jpg;base64, ";
+            }
+            out << CryptoUtil::base64Encode(image);
         }
+        out << "\"";
+#endif
     }
-};
 
-OpenDocumentContentTranslator::OpenDocumentContentTranslator() :
-        impl(std::make_unique<Impl>()) {
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+    ElementChildrenTranslator(in, out, context);
+    out << "</frame>";
 }
 
-OpenDocumentContentTranslator::~OpenDocumentContentTranslator() = default;
+static void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    context.currentTableRowStart = context.config->tableOffsetRows;
+    context.currentTableRowEnd = context.currentTableRowStart + context.config->tableLimitRows;
+    context.currentTableColStart = context.config->tableOffsetCols;
+    context.currentTableColEnd = context.currentTableColStart + context.config->tableLimitCols;
+    // TODO remove file check; add simple table translator for odt/odp
+    if ((context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) && context.config->tableLimitByDimensions) {
+        context.currentTableRowEnd = std::min(context.currentTableRowEnd,
+                context.currentTableRowStart + context.meta->entries[context.currentEntry].rowCount);
+        context.currentTableColEnd = std::min(context.currentTableColEnd,
+                context.currentTableColStart + context.meta->entries[context.currentEntry].columnCount);
+    }
+    context.currentTableLocation = {};
+    context.odDefaultCellStyles.clear();
 
-void OpenDocumentContentTranslator::translate(const tinyxml2::XMLElement &in, TranslationContext &context) const {
-    impl->translate(in, context);
+    out << R"(<table border="0" cellspacing="0" cellpadding="0")";
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+    ElementChildrenTranslator(in, out, context);
+    out << "</table>";
+
+    ++context.currentEntry;
+}
+
+static void TableColumnTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    const auto repeated = in.Unsigned64Attribute("table:number-columns-repeated", 1);
+    const auto defaultCellStyleAttribute = in.FindAttribute("table:default-cell-style-name");
+    // TODO we could use span instead
+    for (std::uint32_t i = 0; i < repeated; ++i) {
+        if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) {
+            break;
+        }
+        if (context.currentTableLocation.getNextCol() >= context.currentTableColStart) {
+            if (defaultCellStyleAttribute != nullptr) {
+                context.odDefaultCellStyles[context.currentTableLocation.getNextCol()] = defaultCellStyleAttribute->Value();
+            }
+            out << "<col";
+            ElementAttributeTranslator(in, out, context);
+            out << ">";
+        }
+        context.currentTableLocation.addCol();
+    }
+}
+
+static void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    const auto repeated = in.Unsigned64Attribute("table:number-rows-repeated", 1);
+    context.currentTableLocation.addRow(0); // TODO hacky
+    for (std::uint32_t i = 0; i < repeated; ++i) {
+        if (context.currentTableLocation.getNextRow() >= context.currentTableRowEnd) {
+            break;
+        }
+        if (context.currentTableLocation.getNextRow() >= context.currentTableRowStart) {
+            out << "<tr>";
+            ElementChildrenTranslator(in, out, context);
+            out << "</tr>";
+        }
+        context.currentTableLocation.addRow();
+    }
+}
+
+static void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    const auto repeated = in.Unsigned64Attribute("table:number-columns-repeated", 1);
+    const auto colspan = in.Unsigned64Attribute("table:number-columns-spanned", 1);
+    const auto rowspan = in.Unsigned64Attribute("table:number-rows-spanned", 1);
+    for (std::uint32_t i = 0; i < repeated; ++i) {
+        if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) {
+            break;
+        }
+        if (context.currentTableLocation.getNextCol() >= context.currentTableColStart) {
+            out << "<td colspan=\"" << colspan << "\" rowspan=\"" << rowspan << "\"";
+            ElementAttributeTranslator(in, out, context);
+            if (in.FindAttribute("table:style-name") == nullptr) {
+                const auto it = context.odDefaultCellStyles.find(context.currentTableLocation.getNextCol());
+                if (it != context.odDefaultCellStyles.end()) StyleAttributeTranslator(it->second, out, context);
+            }
+            out << ">";
+            ElementChildrenTranslator(in, out, context);
+            out << "</td>";
+        }
+        context.currentTableLocation.addCell(colspan, rowspan);
+    }
+}
+
+static void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context) {
+    std::string text = in.Value();
+    StringUtil::findAndReplaceAll(text, "&", "&amp;");
+    StringUtil::findAndReplaceAll(text, "<", "&lt;");
+    StringUtil::findAndReplaceAll(text, ">", "&gt;");
+
+    if (!context.config->editable) {
+        out << text;
+    } else {
+        out << R"(<span contenteditable="true" data-odr-cid=")"
+            << context.currentTextTranslationIndex << "\">" << text << "</span>";
+        context.textTranslation[context.currentTextTranslationIndex] = &in;
+        ++context.currentTextTranslationIndex;
+    }
+}
+
+static void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out, TranslationContext &context) {
+    static std::unordered_set<std::string> styleAttributes{
+            "text:style-name",
+            "table:style-name",
+            "draw:style-name",
+            "presentation:style-name",
+    };
+
+    const std::string element = in.Name();
+    if (styleAttributes.find(element) != styleAttributes.end()) {
+        StyleAttributeTranslator(in, out, context);
+    }
+}
+
+static void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    XmlUtil::visitElementAttributes(in, [&](const tinyxml2::XMLAttribute &a) {
+        AttributeTranslator(a, out, context);
+    });
+}
+
+static void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
+        if (n.ToText() != nullptr) TextTranslator(*n.ToText(), out, context);
+        if (n.ToElement() != nullptr) ElementTranslator(*n.ToElement(), out, context);
+    });
+}
+
+static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    static std::unordered_map<std::string, const char *> substitution{
+            {"text:span", "span"},
+            {"text:line-break", "br"},
+            {"text:list", "ul"},
+            {"text:list-item", "li"},
+            {"draw:page", "div"},
+    };
+    static std::unordered_set<std::string> skippers{
+            "svg:desc",
+            "presentation:notes",
+            "office:annotation",
+    };
+
+    const std::string element = in.Name();
+    if (skippers.find(element) != skippers.end()) return;
+
+    if (element == "text:p" || element == "text:h") ParagraphTranslator(in, out, context);
+    else if (element == "text:s") SpaceTranslator(in, out, context);
+    else if (element == "text:tab") TabTranslator(in, out, context);
+    else if (element == "text:a") LinkTranslator(in, out, context);
+    else if (element == "text:bookmark" || element == "text:bookmark-start") BookmarkTranslator(in, out, context);
+    else if (element == "draw:frame" || element == "draw:custom-shape") FrameTranslator(in, out, context);
+    else if (element == "draw:image") ImageTranslator(in, out, context);
+    else if (element == "table:table") TableTranslator(in, out, context);
+    else if (element == "table:table-column") TableColumnTranslator(in, out, context);
+    else if (element == "table:table-row") TableRowTranslator(in, out, context);
+    else if (element == "table:table-cell") TableCellTranslator(in, out, context);
+    else {
+        const auto it = substitution.find(element);
+        if (it != substitution.end()) out << "<" << it->second;
+        ElementAttributeTranslator(in, out, context);
+        if (it != substitution.end()) out << ">";
+        ElementChildrenTranslator(in, out, context);
+        if (it != substitution.end()) out << "</" << it->second << ">";
+    }
+}
+
+void OpenDocumentContentTranslator::translate(const tinyxml2::XMLElement &in, TranslationContext &context) {
+    ElementTranslator(in, *context.output, context);
 }
 
 }

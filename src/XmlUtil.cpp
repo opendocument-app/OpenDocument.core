@@ -1,8 +1,8 @@
 #include "XmlUtil.h"
 #include "tinyxml2.h"
-#include "../io/Storage.h"
-#include "../io/StreamUtil.h"
-#include "../io/StorageUtil.h"
+#include "io/Storage.h"
+#include "io/StreamUtil.h"
+#include "io/StorageUtil.h"
 
 namespace odr {
 
