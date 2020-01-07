@@ -55,10 +55,10 @@ public:
             out << Constants::getOpenDocumentSpreadsheetDefaultCss();
         }
 
-        auto stylesXml = context.odFile->loadXml("styles.xml");
+        const auto stylesXml = context.odFile->loadXml("styles.xml");
         tinyxml2::XMLHandle stylesHandle(stylesXml.get());
 
-        tinyxml2::XMLElement *fontFaceDecls = stylesHandle
+        const tinyxml2::XMLElement *fontFaceDecls = stylesHandle
                 .FirstChildElement("office:document-styles")
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
@@ -66,7 +66,7 @@ public:
             styleTranslator.translate(*fontFaceDecls, context);
         }
 
-        tinyxml2::XMLElement *styles = stylesHandle
+        const tinyxml2::XMLElement *styles = stylesHandle
                 .FirstChildElement("office:document-styles")
                 .FirstChildElement("office:styles")
                 .ToElement();
@@ -74,7 +74,7 @@ public:
             styleTranslator.translate(*styles, context);
         }
 
-        tinyxml2::XMLElement *automaticStyles = stylesHandle
+        const tinyxml2::XMLElement *automaticStyles = stylesHandle
                 .FirstChildElement("office:document-styles")
                 .FirstChildElement("office:automatic-styles")
                 .ToElement();
@@ -84,7 +84,7 @@ public:
     }
 
     void generateContentStyle(tinyxml2::XMLHandle &in, TranslationContext &context) const {
-        tinyxml2::XMLElement *fontFaceDecls = in
+        const tinyxml2::XMLElement *fontFaceDecls = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
@@ -92,7 +92,7 @@ public:
             styleTranslator.translate(*fontFaceDecls, context);
         }
 
-        tinyxml2::XMLElement *automaticStyles = in
+        const tinyxml2::XMLElement *automaticStyles = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:automatic-styles")
                 .ToElement();
@@ -109,7 +109,7 @@ public:
         tinyxml2::XMLHandle bodyHandle = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:body");
-        tinyxml2::XMLElement *body = bodyHandle.ToElement();
+        const tinyxml2::XMLElement *body = bodyHandle.ToElement();
 
         // TODO breaks back translation
         if ((context.config->entryOffset > 0) | (context.config->entryCount > 0)) {

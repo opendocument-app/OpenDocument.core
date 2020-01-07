@@ -11,6 +11,7 @@
 #include "../xml/XmlUtil.h"
 #include "MicrosoftOpenXmlFile.h"
 #include "MicrosoftContentTranslator.h"
+#include "MicrosoftStyleTranslator.h"
 
 namespace odr {
 
@@ -35,6 +36,7 @@ std::unordered_map<std::string, Relationship> parseRelationships(tinyxml2::XMLDo
 class MicrosoftTranslator::Impl {
 public:
     MicrosoftContentTranslator contentTranslator;
+    MicrosoftStyleTranslator styleTranslator;
 
     bool translate(MicrosoftOpenXmlFile &in, const std::string &outPath, TranslationContext &context) const {
         std::ofstream of(outPath);
@@ -43,7 +45,7 @@ public:
 
         of << Constants::getHtmlBeginToStyle();
 
-        generateStyle(of, context);
+        generateStyle(in, context);
 
         of << Constants::getHtmlStyleToBody();
 
@@ -60,7 +62,19 @@ public:
         return true;
     }
 
-    void generateStyle(std::ofstream &of, TranslationContext &) const {
+    void generateStyle(MicrosoftOpenXmlFile &file, TranslationContext &context) const {
+        switch (file.getMeta().type) {
+            case FileType::OFFICE_OPEN_XML_DOCUMENT: {
+                const auto stylesXml = context.msFile->loadXml("word/styles.xml");
+                const tinyxml2::XMLElement *styles = stylesXml->RootElement();
+                styleTranslator.translate(*styles, context);
+            } break;
+            case FileType::OFFICE_OPEN_XML_PRESENTATION:
+            case FileType::OFFICE_OPEN_XML_WORKBOOK:
+                break;
+            default:
+                throw std::invalid_argument("file.getMeta().type");
+        }
     }
 
     void generateScript(std::ofstream &of, TranslationContext &) const {
@@ -70,9 +84,6 @@ public:
     void generateContent(MicrosoftOpenXmlFile &file, tinyxml2::XMLDocument &in, TranslationContext &context) const {
         switch (file.getMeta().type) {
             case FileType::OFFICE_OPEN_XML_DOCUMENT: {
-                tinyxml2::XMLHandle bodyHandle = tinyxml2::XMLHandle(in)
-                        .FirstChildElement("w:document")
-                        .FirstChildElement("w:body");
                 tinyxml2::XMLElement *body = in
                         .FirstChildElement("w:document")
                         ->FirstChildElement("w:body");
