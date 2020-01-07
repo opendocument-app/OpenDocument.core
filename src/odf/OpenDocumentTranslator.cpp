@@ -18,8 +18,6 @@ namespace odr {
 
 class OpenDocumentTranslator::Impl final {
 public:
-    OpenDocumentContentTranslator contentTranslator;
-
     bool translate(const std::string &outPath, TranslationContext &context) const {
         std::ofstream of(outPath);
         if (!of.is_open()) return false;
@@ -149,7 +147,7 @@ public:
             }
         }
 
-        contentTranslator.translate(*body, context);
+        OpenDocumentContentTranslator::translate(*body, context);
     }
 
     bool backTranslate(const std::string &diff, const std::string &out, TranslationContext &context) const {

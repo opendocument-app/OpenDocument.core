@@ -1,6 +1,5 @@
 #include "OpenDocumentContentTranslator.h"
 #include <string>
-#include <list>
 #include <unordered_set>
 #include <unordered_map>
 #include "tinyxml2.h"
@@ -9,11 +8,11 @@
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
 #include "../StringUtil.h"
+#include "../XmlUtil.h"
 #include "../io/Path.h"
 #include "../io/Storage.h"
 #include "../io/StreamUtil.h"
 #include "../svm/Svm2Svg.h"
-#include "../XmlUtil.h"
 #include "../crypto/CryptoUtil.h"
 #include "OpenDocumentStyleTranslator.h"
 #include "../io/StreamUtil.h"
