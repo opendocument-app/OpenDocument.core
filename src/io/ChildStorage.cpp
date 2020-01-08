@@ -3,7 +3,7 @@
 
 namespace odr {
 
-ChildStorage::ChildStorage(const Storage &parent, const Path &prefix) :
+ChildStorage::ChildStorage(const Storage &parent, const Path prefix) :
         parent(parent),
         prefix(prefix) {
     // TODO throw if path is not a folder in parent

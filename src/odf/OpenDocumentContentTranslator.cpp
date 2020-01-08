@@ -13,7 +13,7 @@
 #include "../xml/XmlTranslator.h"
 #include "../xml/Xml2Html.h"
 #include "../crypto/CryptoUtil.h"
-#include "OpenDocumentFile.h"
+#include "../io/OpenDocumentFile.h"
 #include "OpenDocumentStyleTranslator.h"
 
 namespace odr {

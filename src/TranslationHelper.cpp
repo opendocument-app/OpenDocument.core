@@ -5,17 +5,17 @@
 #include "odr/TranslationConfig.h"
 #include "TranslationContext.h"
 #include "io/Path.h"
-#include "odf/OpenDocumentFile.h"
+#include "io/OpenDocumentFile.h"
 #include "odf/OpenDocumentTranslator.h"
-#include "ooxml/MicrosoftOpenXmlFile.h"
+#include "io/MicrosoftOpenXmlFile.h"
 #include "ooxml/MicrosoftTranslator.h"
 
 namespace odr {
 
 class TranslationHelper::Impl final {
 public:
-    OpenDocumentFile fileOd;
-    MicrosoftOpenXmlFile fileMs;
+    std::unique_ptr<OpenDocumentFile> odf;
+    std::unique_ptr<MicrosoftOpenXmlFile> ooxml;
 
     TranslationConfig config;
     TranslationContext context;
@@ -23,12 +23,11 @@ public:
     OpenDocumentTranslator translatorOd;
     MicrosoftTranslator translatorMs;
 
-    bool openOd(const std::string &path) {
-        return fileOd.open(path);
-    }
-
-    bool openMs(const std::string &path) {
-        return fileMs.open(path);
+    bool open(const std::string &path) {
+        // TODO guess file type
+        odf = std::make_unique<OpenDocumentFile>(path);
+        ooxml = std::make_unique<MicrosoftOpenXmlFile>(path);
+        return true;
     }
 
     void close() {
@@ -149,17 +148,9 @@ TranslationHelper::TranslationHelper() :
 
 TranslationHelper::~TranslationHelper() = default;
 
-bool TranslationHelper::openOpenDocument(const std::string &path) noexcept {
+bool TranslationHelper::open(const std::string &path) noexcept {
     try {
-        return impl_->openOd(path);
-    } catch (...) {
-        return false;
-    }
-}
-
-bool TranslationHelper::openMicrosoft(const std::string &path) noexcept {
-    try {
-        return impl_->openMs(path);
+        return impl_->open(path);
     } catch (...) {
         return false;
     }

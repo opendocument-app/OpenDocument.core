@@ -2,7 +2,7 @@
 #include "gtest/gtest.h"
 #include "odr/TranslationConfig.h"
 #include "odr/TranslationHelper.h"
-#include "odf/OpenDocumentFile.h"
+#include "io/OpenDocumentFile.h"
 
 TEST(OpenDocumentTranslationTest, translate) {
     std::string input;

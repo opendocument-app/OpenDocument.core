@@ -17,8 +17,7 @@ public:
     TranslationHelper();
     ~TranslationHelper();
 
-    bool openOpenDocument(const std::string &path) noexcept;
-    bool openMicrosoft(const std::string &path) noexcept;
+    bool open(const std::string &path) noexcept;
     const FileMeta *getMeta() const noexcept;
     bool decrypt(const std::string &password) noexcept;
     bool translate(const std::string &outPath, const TranslationConfig &config) noexcept;

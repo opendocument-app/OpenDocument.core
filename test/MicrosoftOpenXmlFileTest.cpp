@@ -3,7 +3,7 @@
 #include "glog/logging.h"
 #include "odr/FileMeta.h"
 #include "io/Path.h"
-#include "ooxml/MicrosoftOpenXmlFile.h"
+#include "io/MicrosoftOpenXmlFile.h"
 
 TEST(MicrosoftOpenXmlFileTest, open) {
     const std::string path = "../../test/empty.docx";

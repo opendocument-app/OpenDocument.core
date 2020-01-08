@@ -8,7 +8,7 @@ namespace odr {
 
 class ChildStorage final : public Storage {
 public:
-    ChildStorage(const Storage &parent, const Path &prefix);
+    ChildStorage(const Storage &parent, Path prefix);
 
     bool isSomething(const Path &) const final;
     bool isFile(const Path &) const final;
@@ -29,7 +29,7 @@ public:
 
 private:
     const Storage &parent;
-    const Path &prefix;
+    const Path prefix;
 };
 
 }

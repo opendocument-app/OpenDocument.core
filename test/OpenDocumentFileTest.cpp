@@ -3,7 +3,7 @@
 #include "glog/logging.h"
 #include "odr/FileMeta.h"
 #include "io/Path.h"
-#include "odf/OpenDocumentFile.h"
+#include "io/OpenDocumentFile.h"
 
 TEST(OpenDocumentFileTest, open) {
     const std::string path = "../../test/empty.odp";

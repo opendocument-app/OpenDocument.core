@@ -9,7 +9,7 @@
 #include "../io/Path.h"
 #include "../io/ZipStorage.h"
 #include "../xml/XmlUtil.h"
-#include "MicrosoftOpenXmlFile.h"
+#include "../io/MicrosoftOpenXmlFile.h"
 #include "MicrosoftContentTranslator.h"
 #include "MicrosoftStyleTranslator.h"
 

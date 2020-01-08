@@ -51,6 +51,33 @@ public:
     virtual std::unique_ptr<Sink> write(const Path &) const = 0;
 };
 
+class ReadStorage : public Storage {
+public:
+    ~ReadStorage() override = default;
+
+    bool isWriteable(const Path &) const final { return false; }
+
+    bool remove(const Path &) const final { return false; }
+    bool copy(const Path &from, const Path &to) const final { return false; }
+    bool move(const Path &from, const Path &to) const final { return false; }
+
+    std::unique_ptr<Sink> write(const Path &) const final { return nullptr; }
+};
+
+class WriteStorage : public Storage {
+public:
+    ~WriteStorage() override = default;
+
+    bool isSomething(const Path &) const final { return false; }
+    bool isFile(const Path &) const final { return false; }
+    bool isFolder(const Path &) const final { return false; }
+    bool isReadable(const Path &) const final { return false; }
+
+    void visit(const Path &, Visiter) const final {}
+
+    std::unique_ptr<Source> read(const Path &) const final { return nullptr; }
+};
+
 }
 
 #endif //ODR_STORAGE_H
