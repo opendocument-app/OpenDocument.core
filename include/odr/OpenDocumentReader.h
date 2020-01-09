@@ -1,28 +1,36 @@
-#ifndef ODR_TRANSLATIONHELPER_H
-#define ODR_TRANSLATIONHELPER_H
+#ifndef ODR_OPENDOCUMENTREADER_H
+#define ODR_OPENDOCUMENTREADER_H
 
 #include <string>
 #include <memory>
 
 namespace odr {
 
+enum class FileType;
 struct FileMeta;
 struct TranslationConfig;
 
-class TranslationHelper final {
+class OpenDocumentReader final {
 public:
     static std::string getVersion();
     static std::string getCommit();
 
-    TranslationHelper();
-    ~TranslationHelper();
+    OpenDocumentReader();
+    ~OpenDocumentReader();
+
+    FileType guess(const std::string &path) const noexcept;
 
     bool open(const std::string &path) noexcept;
-    const FileMeta *getMeta() const noexcept;
+    void close() noexcept;
+
+    bool canTranslate() const noexcept;
+    bool canBackTranslate() const noexcept;
+    FileMeta getMeta() const noexcept;
+
     bool decrypt(const std::string &password) noexcept;
+
     bool translate(const std::string &outPath, const TranslationConfig &config) noexcept;
     bool backTranslate(const std::string &diff, const std::string &outPath) noexcept;
-    void close() noexcept;
 
 private:
     class Impl;
@@ -31,4 +39,4 @@ private:
 
 }
 
-#endif //ODR_TRANSLATIONHELPER_H
+#endif //ODR_OPENDOCUMENTREADER_H

@@ -1,7 +1,7 @@
 #include <string>
 #include "gtest/gtest.h"
 #include "odr/TranslationConfig.h"
-#include "odr/TranslationHelper.h"
+#include "odr/OpenDocumentReader.h"
 
 TEST(MicrosoftTranslationTest, translate) {
     std::string input;
@@ -15,7 +15,7 @@ TEST(MicrosoftTranslationTest, translate) {
     config.entryOffset = 0;
     config.entryCount = 0;
 
-    odr::TranslationHelper translator;
+    odr::OpenDocumentReader translator;
     translator.openMicrosoft(input);
     translator.decrypt(password);
     translator.translate(output, config);

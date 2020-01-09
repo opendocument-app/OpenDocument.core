@@ -11,7 +11,7 @@ namespace odr {
 
 class FileNotFoundException : public std::exception {
 public:
-    explicit FileNotFoundException(const std::string &path) : path(path) {}
+    explicit FileNotFoundException(std::string path) : path(std::move(path)) {}
     const std::string &getPath() const { return path; }
     const char *what() const noexcept override { return "file not found"; }
 private:
@@ -20,7 +20,7 @@ private:
 
 class FileNotCreatedException : public std::exception {
 public:
-    explicit FileNotCreatedException(const std::string &path) : path(path) {}
+    explicit FileNotCreatedException(std::string path) : path(std::move(path)) {}
     const std::string &getPath() const { return path; }
     const char *what() const noexcept override { return "file not created"; }
 private:
@@ -58,8 +58,8 @@ public:
     bool isWriteable(const Path &) const final { return false; }
 
     bool remove(const Path &) const final { return false; }
-    bool copy(const Path &from, const Path &to) const final { return false; }
-    bool move(const Path &from, const Path &to) const final { return false; }
+    bool copy(const Path &, const Path &) const final { return false; }
+    bool move(const Path &, const Path &) const final { return false; }
 
     std::unique_ptr<Sink> write(const Path &) const final { return nullptr; }
 };

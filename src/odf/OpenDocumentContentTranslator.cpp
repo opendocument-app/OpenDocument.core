@@ -9,11 +9,12 @@
 #include "../TranslationContext.h"
 #include "../StringUtil.h"
 #include "../io/Path.h"
+#include "../io/Storage.h"
+#include "../io/StorageUtil.h"
 #include "../svm/Svm2Svg.h"
 #include "../xml/XmlTranslator.h"
 #include "../xml/Xml2Html.h"
 #include "../crypto/CryptoUtil.h"
-#include "../io/OpenDocumentFile.h"
 #include "OpenDocumentStyleTranslator.h"
 
 namespace odr {
@@ -248,10 +249,10 @@ public:
             *context.output << " alt=\"Error: image not found or unsupported: " << path << "\"";
 #ifdef ODR_CRYPTO
             *context.output << " src=\"";
-            if (!context.odFile->isFile(path)) {
+            if (!context.storage->isFile(path)) {
                 *context.output << path;
             } else {
-                std::string image = context.odFile->loadEntry(path);
+                std::string image = StorageUtil::read(*context.storage, path);
                 if ((path.find("ObjectReplacements", 0) != std::string::npos) ||
                     (path.find(".svm", 0) != std::string::npos)) {
                     std::istringstream svmIn(image);

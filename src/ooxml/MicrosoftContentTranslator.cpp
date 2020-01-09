@@ -5,7 +5,6 @@
 #include "../TranslationContext.h"
 #include "../xml/XmlTranslator.h"
 #include "../xml/Xml2Html.h"
-#include "../io/MicrosoftOpenXmlFile.h"
 
 namespace odr {
 
@@ -41,7 +40,7 @@ public:
     TableCellTranslator() : DefaultElementTranslator("td") {}
 
     void translateElementStart(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto r = in.FindAttribute("r");
+        //const auto r = in.FindAttribute("r");
         // TODO check placement r and fill empty cells/rows
 
         DefaultElementTranslator::translateElementStart(in, context);

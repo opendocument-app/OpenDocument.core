@@ -1,7 +1,7 @@
 #include <string>
 #include "gtest/gtest.h"
 #include "odr/TranslationConfig.h"
-#include "odr/TranslationHelper.h"
+#include "odr/OpenDocumentReader.h"
 #include "io/OpenDocumentFile.h"
 
 TEST(OpenDocumentTranslationTest, translate) {
@@ -24,7 +24,7 @@ TEST(OpenDocumentTranslationTest, translate) {
     config.entryOffset = 0;
     config.entryCount = 0;
 
-    odr::TranslationHelper translator;
+    odr::OpenDocumentReader translator;
     translator.openOpenDocument(input);
     translator.decrypt(password);
     translator.translate(output, config);

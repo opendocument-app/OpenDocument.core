@@ -8,7 +8,7 @@
 #include "../TranslationContext.h"
 #include "../io/Path.h"
 #include "../io/ZipStorage.h"
-#include "../io/OpenDocumentFile.h"
+#include "../xml/XmlUtil.h"
 #include "OpenDocumentStyleTranslator.h"
 #include "OpenDocumentContentTranslator.h"
 
@@ -19,7 +19,7 @@ public:
     OpenDocumentStyleTranslator styleTranslator;
     OpenDocumentContentTranslator contentTranslator;
 
-    bool translate(OpenDocumentFile &in, const std::string &outPath, TranslationContext &context) const {
+    bool translate(const std::string &outPath, TranslationContext &context) const {
         std::ofstream of(outPath);
         if (!of.is_open()) return false;
         context.output = &of;
@@ -27,13 +27,13 @@ public:
         of << Constants::getHtmlBeginToStyle();
 
         generateStyle(of, context);
-        context.content = in.loadXml("content.xml");
+        context.content = XmlUtil::parse(*context.storage, "content.xml");
         tinyxml2::XMLHandle contentHandle(context.content.get());
         generateContentStyle(contentHandle, context);
 
         of << Constants::getHtmlStyleToBody();
 
-        generateContent(in, contentHandle, context);
+        generateContent(contentHandle, context);
 
         of << Constants::getHtmlBodyToScript();
 
@@ -51,11 +51,11 @@ public:
         // default css
         out << Constants::getOpenDocumentDefaultCss();
 
-        if (context.odFile->getMeta().type == FileType::OPENDOCUMENT_SPREADSHEET) {
+        if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) {
             out << Constants::getOpenDocumentSpreadsheetDefaultCss();
         }
 
-        const auto stylesXml = context.odFile->loadXml("styles.xml");
+        const auto stylesXml = XmlUtil::parse(*context.storage, "styles.xml");
         tinyxml2::XMLHandle stylesHandle(stylesXml.get());
 
         const tinyxml2::XMLElement *fontFaceDecls = stylesHandle
@@ -101,11 +101,11 @@ public:
         }
     }
 
-    void generateScript(std::ofstream &of, TranslationContext &context) const {
+    void generateScript(std::ofstream &of, TranslationContext &) const {
         of << Constants::getDefaultScript();
     }
 
-    void generateContent(OpenDocumentFile &file, tinyxml2::XMLHandle &in, TranslationContext &context) const {
+    void generateContent(tinyxml2::XMLHandle &in, TranslationContext &context) const {
         tinyxml2::XMLHandle bodyHandle = in
                 .FirstChildElement("office:document-content")
                 .FirstChildElement("office:body");
@@ -116,8 +116,9 @@ public:
             tinyxml2::XMLElement *content = nullptr;
             const char *entryName = nullptr;
 
-            switch (file.getMeta().type) {
+            switch (context.meta->type) {
                 case FileType::OPENDOCUMENT_TEXT:
+                case FileType::OPENDOCUMENT_GRAPHICS:
                     break;
                 case FileType::OPENDOCUMENT_PRESENTATION:
                     content = bodyHandle.FirstChildElement("office:presentation").ToElement();
@@ -126,8 +127,6 @@ public:
                 case FileType::OPENDOCUMENT_SPREADSHEET:
                     content = bodyHandle.FirstChildElement("office:spreadsheet").ToElement();
                     entryName = "table:table";
-                    break;
-                case FileType::OPENDOCUMENT_GRAPHICS:
                     break;
                 default:
                     break;
@@ -152,7 +151,7 @@ public:
         contentTranslator.translate(*body, context);
     }
 
-    bool backTranslate(OpenDocumentFile &in, const std::string &diff, const std::string &out, TranslationContext &context) const {
+    bool backTranslate(const std::string &diff, const std::string &out, TranslationContext &context) const {
         // TODO exit on encrypted files
 
         const auto json = nlohmann::json::parse(diff);
@@ -167,12 +166,13 @@ public:
         }
 
         ZipWriter writer(out);
+        /* TODO
         in.getZipReader().visit([&](const auto &p) {
             if (p == "content.xml") return;
             writer.copy(in.getZipReader(), p);
-        });
+        });*/
 
-        tinyxml2::XMLPrinter printer(0, true, 0);
+        tinyxml2::XMLPrinter printer(nullptr, true, 0);
         context.content->Print(&printer);
         writer.write("content.xml")->write(printer.CStr(), printer.CStrSize() - 1);
 
@@ -186,12 +186,12 @@ OpenDocumentTranslator::OpenDocumentTranslator() :
 
 OpenDocumentTranslator::~OpenDocumentTranslator() = default;
 
-bool OpenDocumentTranslator::translate(OpenDocumentFile &in, const std::string &outPath, TranslationContext &context) const {
-    return impl->translate(in, outPath, context);
+bool OpenDocumentTranslator::translate(const std::string &outPath, TranslationContext &context) const {
+    return impl->translate(outPath, context);
 }
 
-bool OpenDocumentTranslator::backTranslate(OpenDocumentFile &in, const std::string &diff, const std::string &outPath, TranslationContext &context) const {
-    return impl->backTranslate(in, diff, outPath, context);
+bool OpenDocumentTranslator::backTranslate(const std::string &diff, const std::string &outPath, TranslationContext &context) const {
+    return impl->backTranslate(diff, outPath, context);
 }
 
 }
