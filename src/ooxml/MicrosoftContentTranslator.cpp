@@ -10,6 +10,23 @@
 namespace odr {
 
 namespace {
+class ParagraphTranslator final : public DefaultElementTranslator {
+public:
+    ParagraphTranslator() : DefaultElementTranslator("p") {}
+
+    void translateElementAttributes(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
+        const tinyxml2::XMLElement *style = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
+                .FirstChildElement("w:pPr")
+                .FirstChildElement("w:pStyle")
+                .ToElement();
+        if (style != nullptr) {
+            *context.output << " class=\"" << style->FindAttribute("w:val")->Value() <<  "\"";
+        }
+
+        DefaultElementTranslator::translateElementAttributes(in, context);
+    }
+};
+
 class TableTranslator final : public DefaultElementTranslator {
 public:
     TableTranslator() : DefaultElementTranslator("table") {
@@ -72,7 +89,7 @@ public:
 
 class MicrosoftContentTranslator::Impl final : public DefaultXmlTranslator {
 public:
-    DefaultElementTranslator paragraphTranslator;
+    ParagraphTranslator paragraphTranslator;
 
     DefaultElementTranslator slidTranslator;
     DefaultElementTranslator boxTranslator;
@@ -86,7 +103,6 @@ public:
     DefaultHandler defaultHandler;
 
     Impl() :
-            paragraphTranslator("p"),
             slidTranslator("div"),
             boxTranslator("div"),
             boxParagraphTranslator("p"),

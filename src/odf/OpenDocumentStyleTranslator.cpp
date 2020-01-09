@@ -78,23 +78,24 @@ public:
     }
 
     void translateElementStart(const tinyxml2::XMLElement &in, TranslationContext &context) const final {
-        const auto styleNameAttr = in.FindAttribute(nameAttribute.c_str());
-        if (styleNameAttr == nullptr) {
-            LOG(WARNING) << "skipped style " << in.Name() << ". no name attribute.";
-            return;
+        const auto nameAttr = in.FindAttribute(nameAttribute.c_str());
+        std::string name = "unknown";
+        if (nameAttr != nullptr) {
+            name = OpenDocumentStyleTranslator::escapeStyleName(nameAttr->Value());
+        } else {
+            LOG(WARNING) << "no name attribute " << in.Name();
         }
-        const std::string styleName = OpenDocumentStyleTranslator::escapeStyleName(styleNameAttr->Value());
 
         const char *parentStyleName;
         if (in.QueryStringAttribute("style:parent-style-name", &parentStyleName) == tinyxml2::XML_SUCCESS) {
-            context.odStyleDependencies[styleName].push_back(OpenDocumentStyleTranslator::escapeStyleName(parentStyleName));
+            context.odStyleDependencies[name].push_back(OpenDocumentStyleTranslator::escapeStyleName(parentStyleName));
         }
         const char *family;
         if (in.QueryStringAttribute("style:family", &family) == tinyxml2::XML_SUCCESS) {
-            context.odStyleDependencies[styleName].push_back(OpenDocumentStyleTranslator::escapeStyleName(family));
+            context.odStyleDependencies[name].push_back(OpenDocumentStyleTranslator::escapeStyleName(family));
         }
 
-        *context.output << "." << styleName << " {";
+        *context.output << "." << name << " {";
     }
 
     void translateElementEnd(const tinyxml2::XMLElement &, TranslationContext &context) const final {

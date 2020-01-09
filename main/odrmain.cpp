@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
     odr::TranslationConfig config = {};
     config.entryOffset = 0;
     config.entryCount = 0;
-    config.editable = false;
+    config.editable = true;
 
     bool success = true;
 

@@ -11,15 +11,18 @@ struct TranslationConfig;
 
 class TranslationHelper final {
 public:
+    static std::string getVersion();
+    static std::string getCommit();
+
     TranslationHelper();
     ~TranslationHelper();
 
-    bool openOpenDocument(const std::string &) noexcept;
-    bool openMicrosoft(const std::string &) noexcept;
-    bool decrypt(const std::string &) noexcept;
+    bool openOpenDocument(const std::string &path) noexcept;
+    bool openMicrosoft(const std::string &path) noexcept;
     const FileMeta *getMeta() const noexcept;
-    bool translate(const std::string &out, const TranslationConfig &config) noexcept;
-    bool backTranslate(const std::string &in, const std::string &out) noexcept;
+    bool decrypt(const std::string &password) noexcept;
+    bool translate(const std::string &outPath, const TranslationConfig &config) noexcept;
+    bool backTranslate(const std::string &diff, const std::string &outPath) noexcept;
     void close() noexcept;
 
 private:
