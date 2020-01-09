@@ -3,6 +3,7 @@ project(odr C CXX)
 set(CMAKE_CXX_STANDARD 14)
 
 option(ODR_DISABLE_CRYPTO "disable crypto" "OFF")
+option(ODR_TEST "enable tests" "ON")
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
@@ -103,6 +104,8 @@ endif()
 
 set_property(TARGET odrlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-add_subdirectory("test")
+if(ODR_TEST)
+    add_subdirectory("test")
+endif()
 
 add_subdirectory("main")
