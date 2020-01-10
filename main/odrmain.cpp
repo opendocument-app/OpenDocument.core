@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     bool success = true;
 
     odr::OpenDocumentReader translator;
-    success &= translator.openOpenDocument(input);
+    success &= translator.open(input);
     if (hasPassword) {
         success &= translator.decrypt(password);
     }

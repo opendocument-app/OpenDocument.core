@@ -2,10 +2,12 @@
 #include "gtest/gtest.h"
 #include "odr/TranslationConfig.h"
 #include "odr/OpenDocumentReader.h"
-#include "io/OpenDocumentFile.h"
 
 TEST(OpenDocumentTranslationTest, translate) {
     std::string input;
+    input = "/home/andreas/Desktop/odr/ruski.xlsx";
+    input = "/home/andreas/Desktop/odr/tuesday_d6.pptx";
+    input = "/home/andreas/Desktop/odr/03_smpldap.docx";
     input = "/home/andreas/Desktop/odr/test.odp";
     input = "../../test/encrypted.odt";
     input = "/home/andreas/workspace/OpenDocument.test/files/text/encrypted-undefined-1$password$.odt";
@@ -25,7 +27,7 @@ TEST(OpenDocumentTranslationTest, translate) {
     config.entryCount = 0;
 
     odr::OpenDocumentReader translator;
-    translator.openOpenDocument(input);
+    translator.open(input);
     translator.decrypt(password);
     translator.translate(output, config);
 }

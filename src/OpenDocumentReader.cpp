@@ -11,6 +11,7 @@
 #include "odf/OpenDocumentMeta.h"
 #include "odf/OpenDocumentTranslator.h"
 #include "ooxml/MicrosoftTranslator.h"
+#include "ooxml/OfficeOpenXmlMeta.h"
 
 namespace odr {
 
@@ -43,7 +44,10 @@ public:
                     meta = OpenDocumentMeta::parseFileMeta(*storage);
                     return true;
                 } catch(NoOpenDocumentFileException &) {}
-                // TODO try to parse ooxml
+                try {
+                    meta = OfficeOpenXmlMeta::parseFileMeta(*storage);
+                    return true;
+                } catch(NoOfficeOpenXmlFileException &) {}
             } catch(NoZipFileException &) {}
 
             // file detection failed
@@ -94,17 +98,13 @@ public:
     }
 
     bool decrypt(const std::string &password) noexcept {
-        try {
-            if (fileOd.isOpen()) {
-                return fileOd.decrypt(password);
-            } else if (fileMs.isOpen()) {
-                return fileMs.decrypt(password);
-            }
-        } catch(...) {}
+        if (!meta.encrypted) return true;
+        // TODO
         return false;
     }
 
     bool translate(const std::string &outPath, const TranslationConfig &c) noexcept {
+        // TODO check if decrypted
         if (!canTranslate()) return false;
 
         config = c;
@@ -114,73 +114,41 @@ public:
         context.storage = storage.get();
 
         try {
-            if (fileOd.isOpen()) {
-                return translateOd(outPath);
-            } else if (fileMs.isOpen()) {
-                return translateMs(outPath);
+            switch (meta.type) {
+                case FileType::OPENDOCUMENT_TEXT:
+                case FileType::OPENDOCUMENT_PRESENTATION:
+                case FileType::OPENDOCUMENT_SPREADSHEET:
+                case FileType::OPENDOCUMENT_GRAPHICS:
+                    // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
+                    return translatorOd.translate(outPath, context);
+                case FileType::OFFICE_OPEN_XML_DOCUMENT:
+                case FileType::OFFICE_OPEN_XML_PRESENTATION:
+                case FileType::OFFICE_OPEN_XML_WORKBOOK:
+                    // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
+                    return translatorMs.translate(outPath, context);
+                default:
+                    return false;
             }
         } catch(...) {}
         return false;
     }
 
-    bool translateOd(const std::string &outPath) {
-        if (!fileOd.isDecrypted()) {
-            return false;
-        }
-
-        switch (fileOd.getMeta().type) {
-            case FileType::OPENDOCUMENT_TEXT:
-            case FileType::OPENDOCUMENT_PRESENTATION:
-            case FileType::OPENDOCUMENT_SPREADSHEET:
-            case FileType::OPENDOCUMENT_GRAPHICS:
-                // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
-                return translatorOd.translate(fileOd, outPath, context);
-            default:
-                return false;
-        }
-    }
-
-    bool translateMs(const std::string &outPath) {
-        if (!fileMs.isDecrypted()) {
-            return false;
-        }
-
-        switch (fileMs.getMeta().type) {
-            case FileType::OFFICE_OPEN_XML_DOCUMENT:
-            case FileType::OFFICE_OPEN_XML_PRESENTATION:
-            case FileType::OFFICE_OPEN_XML_WORKBOOK:
-                // TODO: optimize; dont reload xml, dont regenerate styles, ... for same input file
-                return translatorMs.translate(fileMs, outPath, context);
-            default:
-                return false;
-        }
-    }
-
-    bool backTranslate(const std::string &in, const std::string &out) noexcept {
+    bool backTranslate(const std::string &diff, const std::string &outPath) noexcept {
+        if (!context.config->editable) return false;
         if (!canBackTranslate()) return false;
 
         try {
-            if (fileOd.isOpen()) {
-                return backTranslateOd(in, out);
+            switch (meta.type) {
+                case FileType::OPENDOCUMENT_TEXT:
+                case FileType::OPENDOCUMENT_PRESENTATION:
+                case FileType::OPENDOCUMENT_SPREADSHEET:
+                case FileType::OPENDOCUMENT_GRAPHICS:
+                    return translatorOd.backTranslate(diff, outPath, context);
+                default:
+                    return false;
             }
         } catch(...) {}
         return false;
-    }
-
-    bool backTranslateOd(const std::string &diff, const std::string &outPath) {
-        if (!context.config->editable) {
-            return false;
-        }
-
-        switch (fileOd.getMeta().type) {
-            case FileType::OPENDOCUMENT_TEXT:
-            case FileType::OPENDOCUMENT_PRESENTATION:
-            case FileType::OPENDOCUMENT_SPREADSHEET:
-            case FileType::OPENDOCUMENT_GRAPHICS:
-                return translatorOd.backTranslate(fileOd, diff, outPath, context);
-            default:
-                return false;
-        }
     }
 };
 
