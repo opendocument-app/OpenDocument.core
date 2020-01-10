@@ -84,9 +84,6 @@ public:
             case FileType::OPENDOCUMENT_PRESENTATION:
             case FileType::OPENDOCUMENT_SPREADSHEET:
             case FileType::OPENDOCUMENT_GRAPHICS:
-            case FileType::OFFICE_OPEN_XML_DOCUMENT:
-            case FileType::OFFICE_OPEN_XML_PRESENTATION:
-            case FileType::OFFICE_OPEN_XML_WORKBOOK:
                 return !meta.encrypted;
             default:
                 return false;
