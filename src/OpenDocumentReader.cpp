@@ -5,10 +5,10 @@
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "TranslationContext.h"
-#include "io/Path.h"
 #include "io/Storage.h"
 #include "io/ZipStorage.h"
 #include "odf/OpenDocumentMeta.h"
+#include "odf/OpenDocumentCrypto.h"
 #include "odf/OpenDocumentTranslator.h"
 #include "ooxml/MicrosoftTranslator.h"
 #include "ooxml/OfficeOpenXmlMeta.h"
@@ -17,8 +17,9 @@ namespace odr {
 
 class OpenDocumentReader::Impl final {
 public:
+    bool opened = false;
+    bool decrypted = false;
     std::unique_ptr<Storage> storage;
-
     FileMeta meta;
 
     TranslationConfig config;
@@ -36,6 +37,13 @@ public:
     }
 
     bool open(const std::string &path) noexcept {
+        if (opened) close();
+        opened = open_(path);
+        decrypted = !meta.encrypted;
+        return opened;
+    }
+
+    bool open_(const std::string &path) noexcept {
         try {
             try {
                 storage = std::make_unique<ZipReader>(path);
@@ -59,11 +67,16 @@ public:
     }
 
     void close() noexcept {
+        if (!opened) return;
+        opened = false;
         storage.reset();
+        meta = {};
         context = {};
     }
 
     bool canTranslate() const noexcept {
+        if (!opened) return false;
+        if (!decrypted) return false;
         switch (meta.type) {
             case FileType::OPENDOCUMENT_TEXT:
             case FileType::OPENDOCUMENT_PRESENTATION:
@@ -79,6 +92,9 @@ public:
     }
 
     bool canBackTranslate() const noexcept {
+        if (!opened) return false;
+        if (!decrypted) return false;
+        if (!context.config->editable) return false;
         switch (meta.type) {
             case FileType::OPENDOCUMENT_TEXT:
             case FileType::OPENDOCUMENT_PRESENTATION:
@@ -90,18 +106,27 @@ public:
         }
     }
 
-    FileMeta getMeta() const noexcept {
+    const FileMeta &getMeta() const noexcept {
         return meta;
     }
 
     bool decrypt(const std::string &password) noexcept {
-        if (!meta.encrypted) return true;
-        // TODO
-        return false;
+        if (decrypted) return true;
+
+        switch (meta.type) {
+            case FileType::OPENDOCUMENT_TEXT:
+            case FileType::OPENDOCUMENT_PRESENTATION:
+            case FileType::OPENDOCUMENT_SPREADSHEET:
+            case FileType::OPENDOCUMENT_GRAPHICS: {
+                const auto manifest = OpenDocumentMeta::parseManifest(*storage);
+                return OpenDocumentCrypto::decrypt(storage, manifest, password);
+            }
+            default:
+                return false;
+        }
     }
 
     bool translate(const std::string &outPath, const TranslationConfig &c) noexcept {
-        // TODO check if decrypted
         if (!canTranslate()) return false;
 
         config = c;
@@ -131,7 +156,6 @@ public:
     }
 
     bool backTranslate(const std::string &diff, const std::string &outPath) noexcept {
-        if (!context.config->editable) return false;
         if (!canBackTranslate()) return false;
 
         try {
@@ -183,7 +207,7 @@ bool OpenDocumentReader::canBackTranslate() const noexcept {
     return impl_->canBackTranslate();
 }
 
-FileMeta OpenDocumentReader::getMeta() const noexcept {
+const FileMeta &OpenDocumentReader::getMeta() const noexcept {
     return impl_->getMeta();
 }
 

@@ -5,14 +5,14 @@
 
 namespace odr {
 
-bool canDecrypt(const OpenDocumentMeta::Manifest::Entry &entry) {
+bool OpenDocumentCrypto::canDecrypt(const OpenDocumentMeta::Manifest::Entry &entry) {
     return entry.checksumType != OpenDocumentMeta::ChecksumType::UNKNOWN
            && entry.algorithm != OpenDocumentMeta::AlgorithmType::UNKNOWN
            && entry.keyDerivation != OpenDocumentMeta::KeyDerivationType::UNKNOWN
            && entry.startKeyGeneration != OpenDocumentMeta::ChecksumType::UNKNOWN;
 }
 
-std::string hash(const std::string &input, const OpenDocumentMeta::ChecksumType checksumType) {
+std::string OpenDocumentCrypto::hash(const std::string &input, const OpenDocumentMeta::ChecksumType checksumType) {
     switch (checksumType) {
         case OpenDocumentMeta::ChecksumType::SHA256:
             return CryptoUtil::sha256(input);
@@ -27,7 +27,7 @@ std::string hash(const std::string &input, const OpenDocumentMeta::ChecksumType 
     }
 }
 
-std::string decrypt(const std::string &input, const std::string &derivedKey,
+std::string OpenDocumentCrypto::decrypt(const std::string &input, const std::string &derivedKey,
         const std::string &initialisationVector, const OpenDocumentMeta::AlgorithmType algorithm) {
     switch (algorithm) {
         case OpenDocumentMeta::AlgorithmType::AES256_CBC:
@@ -41,18 +41,18 @@ std::string decrypt(const std::string &input, const std::string &derivedKey,
     }
 }
 
-std::string startKey(const OpenDocumentMeta::Manifest::Entry &entry, const std::string &password) {
+std::string OpenDocumentCrypto::startKey(const OpenDocumentMeta::Manifest::Entry &entry, const std::string &password) {
     const std::string result = hash(password, entry.startKeyGeneration);
     if (result.size() < entry.startKeySize) throw std::invalid_argument("hash too small");
     return result.substr(0, entry.startKeySize);
 }
 
-std::string deriveKeyAndDecrypt(const OpenDocumentMeta::Manifest::Entry &entry, const std::string &startKey, const std::string &input) {
+std::string OpenDocumentCrypto::deriveKeyAndDecrypt(const OpenDocumentMeta::Manifest::Entry &entry, const std::string &startKey, const std::string &input) {
     const std::string derivedKey = CryptoUtil::pbkdf2(entry.keySize, startKey, entry.keySalt, entry.keyIterationCount);
     return decrypt(input, derivedKey, entry.initialisationVector, entry.algorithm);
 }
 
-bool validatePassword(const OpenDocumentMeta::Manifest::Entry &entry, std::string decrypted) {
+bool OpenDocumentCrypto::validatePassword(const OpenDocumentMeta::Manifest::Entry &entry, std::string decrypted) {
     const std::size_t padding = CryptoUtil::padding(decrypted);
     decrypted = decrypted.substr(0, decrypted.size() - padding);
     const std::string checksum = hash(decrypted, entry.checksumType);
@@ -88,14 +88,14 @@ public:
     std::unique_ptr<Source> read(const Path &p) const final {
         const auto it = manifest.entries.find(p);
         if (it == manifest.entries.end()) return parent->read(p);
-        if (!canDecrypt(it->second)) throw UnsupportedCryptoAlgorithmException();
+        if (!OpenDocumentCrypto::canDecrypt(it->second)) throw UnsupportedCryptoAlgorithmException();
         //result = CryptoUtil::inflate(deriveKeyAndDecrypt_(it->second, result));
         return nullptr; // TODO
     }
 };
 }
 
-bool decrypt(std::unique_ptr<Storage> &storage, const OpenDocumentMeta::Manifest &manifest,
+bool OpenDocumentCrypto::decrypt(std::unique_ptr<Storage> &storage, const OpenDocumentMeta::Manifest &manifest,
         const std::string &password) {
     if (!manifest.encryted) return true;
     if (!canDecrypt(*manifest.smallestFileEntry)) throw UnsupportedCryptoAlgorithmException();

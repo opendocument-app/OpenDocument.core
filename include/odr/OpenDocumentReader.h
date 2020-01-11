@@ -25,7 +25,7 @@ public:
 
     bool canTranslate() const noexcept;
     bool canBackTranslate() const noexcept;
-    FileMeta getMeta() const noexcept;
+    const FileMeta &getMeta() const noexcept;
 
     bool decrypt(const std::string &password) noexcept;
 
