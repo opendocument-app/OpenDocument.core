@@ -1,5 +1,6 @@
 #include "OpenDocumentCrypto.h"
 #include "../io/Storage.h"
+#include "../io/StreamUtil.h"
 #include "../io/StorageUtil.h"
 #include "../crypto/CryptoUtil.h"
 
@@ -85,12 +86,14 @@ public:
 
     void visit(const Path &p, Visiter v) const final { parent->visit(p, v); }
 
-    std::unique_ptr<Source> read(const Path &p) const final {
-        const auto it = manifest.entries.find(p);
-        if (it == manifest.entries.end()) return parent->read(p);
+    std::unique_ptr<Source> read(const Path &path) const final {
+        const auto it = manifest.entries.find(path);
+        if (it == manifest.entries.end()) return parent->read(path);
         if (!OpenDocumentCrypto::canDecrypt(it->second)) throw UnsupportedCryptoAlgorithmException();
-        //result = CryptoUtil::inflate(deriveKeyAndDecrypt_(it->second, result));
-        return nullptr; // TODO
+        std::unique_ptr<Source> source = parent->read(path);
+        const std::string input = StreamUtil::read(*source);
+        std::string result = CryptoUtil::inflate(OpenDocumentCrypto::deriveKeyAndDecrypt(it->second, startKey, input));
+        return std::make_unique<StringSource>(std::move(result));
     }
 };
 }

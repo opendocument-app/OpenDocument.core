@@ -1,7 +1,19 @@
 #include "StreamUtil.h"
+#include <cstring>
 #include "Stream.h"
 
 namespace odr {
+
+std::uint32_t StringSource::read(char *d, std::uint32_t amount) {
+    amount = std::min(amount, available());
+    std::memcpy(d, &data[pos], amount);
+    pos += amount;
+    return amount;
+}
+
+std::uint32_t StringSource::available() const {
+    return data.size() - pos;
+}
 
 std::string StreamUtil::read(Source &in) {
     // TODO use available? or enhance Source with tell?
