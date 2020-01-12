@@ -1,7 +1,7 @@
 #include <string>
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
-#include "odr/TranslationHelper.h"
+#include "odr/OpenDocumentReader.h"
 
 int main(int argc, char **argv) {
     const std::string input(argv[1]);
@@ -18,8 +18,8 @@ int main(int argc, char **argv) {
 
     bool success = true;
 
-    odr::TranslationHelper translator;
-    success &= translator.openOpenDocument(input);
+    odr::OpenDocumentReader translator;
+    success &= translator.open(input);
     if (hasPassword) {
         success &= translator.decrypt(password);
     }

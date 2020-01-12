@@ -6,7 +6,6 @@
 
 namespace odr {
 
-class MicrosoftOpenXmlFile;
 class TranslationContext;
 
 class MicrosoftTranslator final {
@@ -14,8 +13,8 @@ public:
     MicrosoftTranslator();
     ~MicrosoftTranslator();
 
-    bool translate(MicrosoftOpenXmlFile &in, const std::string &outPath, TranslationContext &context) const;
-    bool backTranslate(MicrosoftOpenXmlFile &in, const std::string &diff, const std::string &outPath, TranslationContext &context) const;
+    bool translate(const std::string &outPath, TranslationContext &context) const;
+    bool backTranslate(const std::string &diff, const std::string &outPath, TranslationContext &context) const;
 
 private:
     class Impl;

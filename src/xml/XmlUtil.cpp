@@ -1,7 +1,26 @@
 #include "XmlUtil.h"
 #include "tinyxml2.h"
+#include "../io/Storage.h"
+#include "../io/StreamUtil.h"
+#include "../io/StorageUtil.h"
 
 namespace odr {
+
+std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(const std::string &in) {
+    auto result = std::make_unique<tinyxml2::XMLDocument>();
+    tinyxml2::XMLError error = result->Parse(in.data(), in.size());
+    if (error != tinyxml2::XML_SUCCESS) throw NotXmlException();
+    return result;
+}
+
+std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(Source &in) {
+    return parse(StreamUtil::read(in));
+}
+
+std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(const Storage &storage, const Path &path) {
+    if (!storage.isReadable(path)) return nullptr;
+    return parse(StorageUtil::read(storage, path));
+}
 
 static inline void visitIfElement(const tinyxml2::XMLNode &node, XmlUtil::ElementVisiter visiter) {
     const tinyxml2::XMLElement *element = node.ToElement();

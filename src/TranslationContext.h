@@ -18,17 +18,15 @@ class XMLText;
 namespace odr {
 
 struct TranslationConfig;
-struct OpenDocumentFile;
-struct MicrosoftOpenXmlFile;
 struct FileMeta;
+class Storage;
 
 struct TranslationContext {
     const TranslationConfig *config;
     const FileMeta *meta;
 
     // input files
-    OpenDocumentFile *odFile;
-    MicrosoftOpenXmlFile *msFile;
+    Storage *storage;
 
     // input xml
     std::unique_ptr<tinyxml2::XMLDocument> style;

@@ -25,7 +25,7 @@ void DefaultElementTranslator::translate(const tinyxml2::XMLAttribute &in, odr::
     DefaultXmlTranslator::translate(in, context);
 }
 
-void DefaultElementTranslator::translateElementStart(const tinyxml2::XMLElement &in, TranslationContext &context) const {
+void DefaultElementTranslator::translateElementStart(const tinyxml2::XMLElement &, TranslationContext &context) const {
     *context.output << "<" << name;
 }
 

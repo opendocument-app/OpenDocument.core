@@ -11,7 +11,7 @@ namespace odr {
 
 class FileNotFoundException : public std::exception {
 public:
-    explicit FileNotFoundException(const std::string &path) : path(path) {}
+    explicit FileNotFoundException(std::string path) : path(std::move(path)) {}
     const std::string &getPath() const { return path; }
     const char *what() const noexcept override { return "file not found"; }
 private:
@@ -20,7 +20,7 @@ private:
 
 class FileNotCreatedException : public std::exception {
 public:
-    explicit FileNotCreatedException(const std::string &path) : path(path) {}
+    explicit FileNotCreatedException(std::string path) : path(std::move(path)) {}
     const std::string &getPath() const { return path; }
     const char *what() const noexcept override { return "file not created"; }
 private:
@@ -29,7 +29,7 @@ private:
 
 class Storage {
 public:
-    typedef std::function<void(const Path &)> Visiter;
+    typedef std::function<void(const Path &)> Visitor;
 
     virtual ~Storage() = default;
 
@@ -45,10 +45,37 @@ public:
     virtual bool copy(const Path &from, const Path &to) const = 0;
     virtual bool move(const Path &from, const Path &to) const = 0;
 
-    virtual void visit(const Path &, Visiter) const = 0;
+    virtual void visit(const Path &, Visitor) const = 0;
 
     virtual std::unique_ptr<Source> read(const Path &) const = 0;
     virtual std::unique_ptr<Sink> write(const Path &) const = 0;
+};
+
+class ReadStorage : public Storage {
+public:
+    ~ReadStorage() override = default;
+
+    bool isWriteable(const Path &) const final { return false; }
+
+    bool remove(const Path &) const final { return false; }
+    bool copy(const Path &, const Path &) const final { return false; }
+    bool move(const Path &, const Path &) const final { return false; }
+
+    std::unique_ptr<Sink> write(const Path &) const final { return nullptr; }
+};
+
+class WriteStorage : public Storage {
+public:
+    ~WriteStorage() override = default;
+
+    bool isSomething(const Path &) const final { return false; }
+    bool isFile(const Path &) const final { return false; }
+    bool isFolder(const Path &) const final { return false; }
+    bool isReadable(const Path &) const final { return false; }
+
+    void visit(const Path &, Visitor) const final {}
+
+    std::unique_ptr<Source> read(const Path &) const final { return nullptr; }
 };
 
 }

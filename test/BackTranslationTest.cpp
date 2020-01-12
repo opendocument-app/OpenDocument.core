@@ -1,11 +1,12 @@
 #include <string>
 #include "gtest/gtest.h"
 #include "odr/TranslationConfig.h"
-#include "odr/TranslationHelper.h"
+#include "odr/OpenDocumentReader.h"
 #include "io/FileUtil.h"
 
 TEST(OpenDocumentBackTranslationTest, translate) {
     std::string input;
+    input = "/home/andreas/Desktop/odr/03_smpldap.docx";
     input = "/home/andreas/workspace/OpenDocument.test/odt/03_smpldap.odt";
     const std::string password = "password";
     const std::string output = "/home/andreas/Desktop/odr/edited_pre.html";
@@ -17,8 +18,8 @@ TEST(OpenDocumentBackTranslationTest, translate) {
     config.entryOffset = 0;
     config.entryCount = 0;
 
-    odr::TranslationHelper translator;
-    translator.openOpenDocument(input);
+    odr::OpenDocumentReader translator;
+    translator.open(input);
     translator.decrypt(password);
     translator.translate(output, config);
 

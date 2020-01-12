@@ -12,7 +12,7 @@ std::string FileUtil::read(const std::string &path) {
     result.reserve(in.tellg());
     in.seekg(0, std::ios::beg);
 
-    result.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    result.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
 
     return result;
 }

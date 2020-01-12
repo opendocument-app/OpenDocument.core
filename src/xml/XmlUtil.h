@@ -2,8 +2,10 @@
 #define ODR_XMLUTIL_H
 
 #include <functional>
+#include <memory>
 
 namespace tinyxml2 {
+class XMLDocument;
 class XMLNode;
 class XMLElement;
 class XMLAttribute;
@@ -12,9 +14,22 @@ class XMLText;
 
 namespace odr {
 
+class Source;
+class Path;
+class Storage;
+
+class NotXmlException : public std::exception {
+public:
+    const char *what() const noexcept override { return "not xml"; }
+};
+
 namespace XmlUtil {
 typedef std::function<void(const tinyxml2::XMLNode &)> NodeVisiter;
 typedef std::function<void(const tinyxml2::XMLElement &)> ElementVisiter;
+
+std::unique_ptr<tinyxml2::XMLDocument> parse(const std::string &);
+std::unique_ptr<tinyxml2::XMLDocument> parse(Source &);
+std::unique_ptr<tinyxml2::XMLDocument> parse(const Storage &, const Path &);
 
 void visitNodeChildren(const tinyxml2::XMLNode &, NodeVisiter);
 void visitElementChildren(const tinyxml2::XMLElement &, ElementVisiter);
