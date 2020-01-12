@@ -153,31 +153,23 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage, const bool decrypted)
         switch (result.type) {
             case FileType::OPENDOCUMENT_PRESENTATION: {
                 result.entryCount = 0;
-                tinyxml2::XMLHandle pageHandle = bodyHandle
-                        .FirstChildElement("office:presentation")
-                        .FirstChildElement("draw:page");
-                while (pageHandle.ToElement() != nullptr) {
+                XmlUtil::recursiveVisitElementsWithName(bodyHandle.ToElement(), "draw:page", [&](const tinyxml2::XMLElement &e) {
                     ++result.entryCount;
                     FileMeta::Entry entry;
-                    entry.name = pageHandle.ToElement()->FindAttribute("draw:name")->Value();
+                    entry.name = e.FindAttribute("draw:name")->Value();
                     result.entries.emplace_back(entry);
-                    pageHandle = pageHandle.NextSiblingElement("draw:page");
-                }
+                });
             } break;
             case FileType::OPENDOCUMENT_SPREADSHEET: {
                 result.entryCount = 0;
-                tinyxml2::XMLHandle tableHandle = bodyHandle
-                        .FirstChildElement("office:spreadsheet")
-                        .FirstChildElement("table:table");
-                while (tableHandle.ToElement() != nullptr) {
+                XmlUtil::recursiveVisitElementsWithName(bodyHandle.ToElement(), "table:table", [&](const tinyxml2::XMLElement &e) {
                     ++result.entryCount;
                     FileMeta::Entry entry;
-                    entry.name = tableHandle.ToElement()->FindAttribute("table:name")->Value();
+                    entry.name = e.FindAttribute("table:name")->Value();
                     // TODO configuration
-                    estimateTableDimensions(*tableHandle.ToElement(), entry.rowCount, entry.columnCount, 10000, 500);
+                    estimateTableDimensions(e, entry.rowCount, entry.columnCount, 10000, 500);
                     result.entries.emplace_back(entry);
-                    tableHandle = tableHandle.NextSiblingElement("table:table");
-                }
+                });
             } break;
             default:
                 break;
