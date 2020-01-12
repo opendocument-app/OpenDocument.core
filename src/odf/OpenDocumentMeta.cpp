@@ -83,7 +83,7 @@ static void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint
     });
 }
 
-FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage) {
+FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage, const bool decrypted) {
     FileMeta result{};
 
     if (!storage.isFile("content.xml")) throw NoOpenDocumentFileException();
@@ -95,12 +95,19 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage) {
 
     if (storage.isFile("META-INF/manifest.xml")) {
         const auto manifest = XmlUtil::parse(storage, "META-INF/manifest.xml");
+        XmlUtil::recursiveVisitElementsWithName(manifest->RootElement(), "manifest:file-entry", [&](const tinyxml2::XMLElement &e) {
+            const Path path = e.FindAttribute("manifest:full-path")->Value();
+            if (path == "/" && e.FindAttribute("manifest:media-type") != nullptr) {
+                const std::string mimeType = e.FindAttribute("manifest:media-type")->Value();
+                lookupFileType(mimeType, result.type);
+            }
+        });
         XmlUtil::recursiveVisitElementsWithName(manifest->RootElement(), "manifest:encryption-data", [&](const tinyxml2::XMLElement &) {
             result.encrypted = true;
         });
     }
 
-    if (!result.encrypted) {
+    if (result.encrypted == decrypted) {
         if (storage.isFile("meta.xml")) {
             const auto metaXml = XmlUtil::parse(storage, "meta.xml");
 

@@ -57,7 +57,7 @@ struct Manifest {
     const Entry *smallestFileEntry;
 };
 
-extern FileMeta parseFileMeta(Storage &);
+extern FileMeta parseFileMeta(Storage &, bool decrypted);
 
 extern Manifest parseManifest(Storage &storage);
 extern Manifest parseManifest(const tinyxml2::XMLDocument &manifest);

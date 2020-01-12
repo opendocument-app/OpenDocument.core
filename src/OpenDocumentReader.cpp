@@ -49,7 +49,7 @@ public:
                 storage = std::make_unique<ZipReader>(path);
 
                 try {
-                    meta = OpenDocumentMeta::parseFileMeta(*storage);
+                    meta = OpenDocumentMeta::parseFileMeta(*storage, false);
                     return true;
                 } catch(NoOpenDocumentFileException &) {}
                 try {
@@ -111,6 +111,13 @@ public:
     }
 
     bool decrypt(const std::string &password) noexcept {
+        if (!opened) return false;
+        if (decrypted) return true;
+        decrypted = decrypt_(password);
+        return decrypted;
+    }
+
+    bool decrypt_(const std::string &password) noexcept {
         if (decrypted) return true;
 
         switch (meta.type) {
@@ -119,7 +126,9 @@ public:
             case FileType::OPENDOCUMENT_SPREADSHEET:
             case FileType::OPENDOCUMENT_GRAPHICS: {
                 const auto manifest = OpenDocumentMeta::parseManifest(*storage);
-                return OpenDocumentCrypto::decrypt(storage, manifest, password);
+                if (!OpenDocumentCrypto::decrypt(storage, manifest, password)) return false;
+                meta = OpenDocumentMeta::parseFileMeta(*storage, true);
+                return true;
             }
             default:
                 return false;

@@ -102,11 +102,11 @@ bool OpenDocumentCrypto::decrypt(std::unique_ptr<Storage> &storage, const OpenDo
         const std::string &password) {
     if (!manifest.encryted) return true;
     if (!canDecrypt(*manifest.smallestFileEntry)) throw UnsupportedCryptoAlgorithmException();
-    const std::string startKey_ = startKey(*manifest.smallestFileEntry, password);
+    const std::string startKey = OpenDocumentCrypto::startKey(*manifest.smallestFileEntry, password);
     const std::string input = StorageUtil::read(*storage, *manifest.smallestFilePath);
-    const std::string decrypt = deriveKeyAndDecrypt(*manifest.smallestFileEntry, startKey_, input);
+    const std::string decrypt = deriveKeyAndDecrypt(*manifest.smallestFileEntry, startKey, input);
     if (!validatePassword(*manifest.smallestFileEntry, decrypt)) return false;
-    storage = std::make_unique<CryptoOpenDocumentFile>(std::move(storage), manifest, startKey_);
+    storage = std::make_unique<CryptoOpenDocumentFile>(std::move(storage), manifest, startKey);
     return true;
 }
 

@@ -18,8 +18,8 @@ class XMLText;
 namespace odr {
 
 struct TranslationConfig;
-class Storage;
 struct FileMeta;
+class Storage;
 
 struct TranslationContext {
     const TranslationConfig *config;
