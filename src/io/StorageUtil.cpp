@@ -20,4 +20,16 @@ std::string StorageUtil::read(const Storage &storage, const Path &path) {
     return result;
 }
 
+void StorageUtil::deepVisit(const Storage &storage, Storage::Visitor visitor) {
+    deepVisit(storage, "", visitor);
+}
+
+void StorageUtil::deepVisit(const Storage &storage, const Path &path, Storage::Visitor visitor) {
+    visitor(path);
+    storage.visit(path, [&](const Path &child) {
+        visitor(child);
+        if (storage.isFolder(child)) deepVisit(storage, child, visitor);
+    });
+}
+
 }

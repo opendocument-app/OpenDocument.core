@@ -20,7 +20,9 @@ private:
 
 namespace StreamUtil {
 
-std::string read(Source &);
+extern std::string read(Source &);
+
+extern void pipe(Source &, Sink &);
 
 }
 

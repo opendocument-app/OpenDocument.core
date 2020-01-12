@@ -7,6 +7,8 @@
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
 #include "../io/Path.h"
+#include "../io/StreamUtil.h"
+#include "../io/StorageUtil.h"
 #include "../io/ZipStorage.h"
 #include "../xml/XmlUtil.h"
 #include "OpenDocumentStyleTranslator.h"
@@ -166,11 +168,12 @@ public:
         }
 
         ZipWriter writer(out);
-        /* TODO
-        in.getZipReader().visit([&](const auto &p) {
+        StorageUtil::deepVisit(*context.storage, [&](const auto &p) {
             if (p == "content.xml") return;
-            writer.copy(in.getZipReader(), p);
-        });*/
+            const auto in = context.storage->read(p);
+            const auto out = writer.write(p);
+            StreamUtil::pipe(*in, *out);
+        });
 
         tinyxml2::XMLPrinter printer(nullptr, true, 0);
         context.content->Print(&printer);

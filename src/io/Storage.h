@@ -29,7 +29,7 @@ private:
 
 class Storage {
 public:
-    typedef std::function<void(const Path &)> Visiter;
+    typedef std::function<void(const Path &)> Visitor;
 
     virtual ~Storage() = default;
 
@@ -45,7 +45,7 @@ public:
     virtual bool copy(const Path &from, const Path &to) const = 0;
     virtual bool move(const Path &from, const Path &to) const = 0;
 
-    virtual void visit(const Path &, Visiter) const = 0;
+    virtual void visit(const Path &, Visitor) const = 0;
 
     virtual std::unique_ptr<Source> read(const Path &) const = 0;
     virtual std::unique_ptr<Sink> write(const Path &) const = 0;
@@ -73,7 +73,7 @@ public:
     bool isFolder(const Path &) const final { return false; }
     bool isReadable(const Path &) const final { return false; }
 
-    void visit(const Path &, Visiter) const final {}
+    void visit(const Path &, Visitor) const final {}
 
     std::unique_ptr<Source> read(const Path &) const final { return nullptr; }
 };

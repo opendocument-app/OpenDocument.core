@@ -84,7 +84,7 @@ public:
         return it->second.size;
     }
 
-    void visit(const Path &p, Visiter v) const final { parent->visit(p, v); }
+    void visit(const Path &p, Visitor v) const final { parent->visit(p, v); }
 
     std::unique_ptr<Source> read(const Path &path) const final {
         const auto it = manifest.entries.find(path);

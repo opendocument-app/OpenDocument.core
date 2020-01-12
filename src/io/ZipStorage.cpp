@@ -90,14 +90,14 @@ public:
         return tmp_stat.m_uncomp_size;
     }
 
-    void visit(Visiter visiter) {
+    void visit(Visitor visiter) {
         for (mz_uint i = 0; i < mz_zip_reader_get_num_files(&zip); ++i) {
             mz_zip_reader_get_filename(&zip, i, tmp_stat.m_filename, sizeof(impl->tmp_stat.m_filename));
             visiter(Path(tmp_stat.m_filename));
         }
     }
 
-    void visit(const Path &path, Visiter visiter) {
+    void visit(const Path &path, Visitor visiter) {
         if (!isFolder(path)) {
             return;
         }
@@ -189,11 +189,11 @@ std::uint64_t ZipReader::size(const Path &path) const {
     return impl->size(path);
 }
 
-void ZipReader::visit(Visiter visiter) const {
+void ZipReader::visit(Visitor visiter) const {
     return impl->visit(visiter);
 }
 
-void ZipReader::visit(const Path &path, Visiter visiter) const {
+void ZipReader::visit(const Path &path, Visitor visiter) const {
     return impl->visit(path, visiter);
 }
 
