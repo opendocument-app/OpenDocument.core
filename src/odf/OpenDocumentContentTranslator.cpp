@@ -92,10 +92,7 @@ static void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tr
     }
     ElementAttributeTranslator(in, out, context);
     out << ">";
-
-    if (in.FirstChild() == nullptr) out << "<br/>";
-    else ElementChildrenTranslator(in, out, context);
-
+    ElementChildrenTranslator(in, out, context);
     out << "</a>";
 }
 
@@ -127,8 +124,11 @@ static void FrameTranslator(const tinyxml2::XMLElement &in, std::ostream &out, T
     if (y != nullptr) out << "top:" << y->Value() << ";";
 
     out << "\"";
+
     ElementAttributeTranslator(in, out, context);
     out << ">";
+    ElementChildrenTranslator(in, out, context);
+    out << "</div>";
 }
 
 static void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
@@ -166,8 +166,9 @@ static void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, T
 
     ElementAttributeTranslator(in, out, context);
     out << ">";
+    // TODO children for image?
     ElementChildrenTranslator(in, out, context);
-    out << "</frame>";
+    out << "</img>";
 }
 
 static void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
@@ -185,8 +186,9 @@ static void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, T
     context.currentTableLocation = {};
     context.odDefaultCellStyles.clear();
 
-    out << R"(<table border="0" cellspacing="0" cellpadding="0")";
+    out << "<table";
     ElementAttributeTranslator(in, out, context);
+    out << R"( cellpadding="0" border="0" cellspacing="0")";
     out << ">";
     ElementChildrenTranslator(in, out, context);
     out << "</table>";
@@ -199,9 +201,7 @@ static void TableColumnTranslator(const tinyxml2::XMLElement &in, std::ostream &
     const auto defaultCellStyleAttribute = in.FindAttribute("table:default-cell-style-name");
     // TODO we could use span instead
     for (std::uint32_t i = 0; i < repeated; ++i) {
-        if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) {
-            break;
-        }
+        if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) break;
         if (context.currentTableLocation.getNextCol() >= context.currentTableColStart) {
             if (defaultCellStyleAttribute != nullptr) {
                 context.odDefaultCellStyles[context.currentTableLocation.getNextCol()] = defaultCellStyleAttribute->Value();
@@ -218,11 +218,11 @@ static void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out
     const auto repeated = in.Unsigned64Attribute("table:number-rows-repeated", 1);
     context.currentTableLocation.addRow(0); // TODO hacky
     for (std::uint32_t i = 0; i < repeated; ++i) {
-        if (context.currentTableLocation.getNextRow() >= context.currentTableRowEnd) {
-            break;
-        }
+        if (context.currentTableLocation.getNextRow() >= context.currentTableRowEnd) break;
         if (context.currentTableLocation.getNextRow() >= context.currentTableRowStart) {
-            out << "<tr>";
+            out << "<tr";
+            ElementAttributeTranslator(in, out, context);
+            out << ">";
             ElementChildrenTranslator(in, out, context);
             out << "</tr>";
         }
@@ -235,16 +235,17 @@ static void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
     const auto colspan = in.Unsigned64Attribute("table:number-columns-spanned", 1);
     const auto rowspan = in.Unsigned64Attribute("table:number-rows-spanned", 1);
     for (std::uint32_t i = 0; i < repeated; ++i) {
-        if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) {
-            break;
-        }
+        if (context.currentTableLocation.getNextCol() >= context.currentTableColEnd) break;
         if (context.currentTableLocation.getNextCol() >= context.currentTableColStart) {
-            out << "<td colspan=\"" << colspan << "\" rowspan=\"" << rowspan << "\"";
-            ElementAttributeTranslator(in, out, context);
+            out << "<td";
             if (in.FindAttribute("table:style-name") == nullptr) {
                 const auto it = context.odDefaultCellStyles.find(context.currentTableLocation.getNextCol());
                 if (it != context.odDefaultCellStyles.end()) StyleAttributeTranslator(it->second, out, context);
             }
+            ElementAttributeTranslator(in, out, context);
+            // TODO check for >1?
+            if (in.FindAttribute("table:number-columns-spanned") != nullptr) out << " colspan=\"" << colspan << "\"";
+            if (in.FindAttribute("table:number-rows-spanned") != nullptr) out << " rowspan=\"" << rowspan << "\"";
             out << ">";
             ElementChildrenTranslator(in, out, context);
             out << "</td>";
@@ -326,11 +327,15 @@ static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     else if (element == "table:table-cell") TableCellTranslator(in, out, context);
     else {
         const auto it = substitution.find(element);
-        if (it != substitution.end()) out << "<" << it->second;
-        ElementAttributeTranslator(in, out, context);
-        if (it != substitution.end()) out << ">";
+        if (it != substitution.end()) {
+            out << "<" << it->second;
+            ElementAttributeTranslator(in, out, context);
+            out << ">";
+        }
         ElementChildrenTranslator(in, out, context);
-        if (it != substitution.end()) out << "</" << it->second << ">";
+        if (it != substitution.end()) {
+            out << "</" << it->second << ">";
+        }
     }
 }
 
