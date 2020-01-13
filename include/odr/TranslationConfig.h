@@ -18,8 +18,8 @@ struct TranslationConfig {
     std::uint32_t tableOffsetRows = 0;
     std::uint32_t tableOffsetCols = 0;
     // spreadsheet table limit
-    std::uint32_t tableLimitRows = 1000;
-    std::uint32_t tableLimitCols = 100;
+    std::uint32_t tableLimitRows = 10000;
+    std::uint32_t tableLimitCols = 500;
     bool tableLimitByDimensions = true;
 
     bool editable = false;
