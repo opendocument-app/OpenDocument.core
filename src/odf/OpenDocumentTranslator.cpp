@@ -6,11 +6,11 @@
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
+#include "../XmlUtil.h"
 #include "../io/Path.h"
 #include "../io/StreamUtil.h"
 #include "../io/StorageUtil.h"
 #include "../io/ZipStorage.h"
-#include "../xml/XmlUtil.h"
 #include "OpenDocumentStyleTranslator.h"
 #include "OpenDocumentContentTranslator.h"
 
@@ -18,9 +18,6 @@ namespace odr {
 
 class OpenDocumentTranslator::Impl final {
 public:
-    OpenDocumentStyleTranslator styleTranslator;
-    OpenDocumentContentTranslator contentTranslator;
-
     bool translate(const std::string &outPath, TranslationContext &context) const {
         std::ofstream of(outPath);
         if (!of.is_open()) return false;
@@ -65,7 +62,7 @@ public:
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
         if (fontFaceDecls != nullptr) {
-            styleTranslator.translate(*fontFaceDecls, context);
+            OpenDocumentStyleTranslator::translate(*fontFaceDecls, context);
         }
 
         const tinyxml2::XMLElement *styles = stylesHandle
@@ -73,7 +70,7 @@ public:
                 .FirstChildElement("office:styles")
                 .ToElement();
         if (styles != nullptr) {
-            styleTranslator.translate(*styles, context);
+            OpenDocumentStyleTranslator::translate(*styles, context);
         }
 
         const tinyxml2::XMLElement *automaticStyles = stylesHandle
@@ -81,7 +78,7 @@ public:
                 .FirstChildElement("office:automatic-styles")
                 .ToElement();
         if (automaticStyles != nullptr) {
-            styleTranslator.translate(*automaticStyles, context);
+            OpenDocumentStyleTranslator::translate(*automaticStyles, context);
         }
     }
 
@@ -91,7 +88,7 @@ public:
                 .FirstChildElement("office:font-face-decls")
                 .ToElement();
         if (fontFaceDecls != nullptr) {
-            styleTranslator.translate(*fontFaceDecls, context);
+            OpenDocumentStyleTranslator::translate(*fontFaceDecls, context);
         }
 
         const tinyxml2::XMLElement *automaticStyles = in
@@ -99,7 +96,7 @@ public:
                 .FirstChildElement("office:automatic-styles")
                 .ToElement();
         if (automaticStyles != nullptr) {
-            styleTranslator.translate(*automaticStyles, context);
+            OpenDocumentStyleTranslator::translate(*automaticStyles, context);
         }
     }
 
@@ -150,7 +147,7 @@ public:
             }
         }
 
-        contentTranslator.translate(*body, context);
+        OpenDocumentContentTranslator::translate(*body, context);
     }
 
     bool backTranslate(const std::string &diff, const std::string &out, TranslationContext &context) const {

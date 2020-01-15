@@ -1,10 +1,9 @@
 #include "OfficeOpenXmlMeta.h"
-#include <exception>
 #include <unordered_map>
 #include "tinyxml2.h"
 #include "odr/FileMeta.h"
+#include "../XmlUtil.h"
 #include "../io/Storage.h"
-#include "../xml/XmlUtil.h"
 
 namespace odr {
 

@@ -1,8 +1,8 @@
 #include "XmlUtil.h"
 #include "tinyxml2.h"
-#include "../io/Storage.h"
-#include "../io/StreamUtil.h"
-#include "../io/StorageUtil.h"
+#include "io/Storage.h"
+#include "io/StreamUtil.h"
+#include "io/StorageUtil.h"
 
 namespace odr {
 
@@ -38,6 +38,12 @@ void XmlUtil::visitElementChildren(const tinyxml2::XMLElement &element, ElementV
     visitNodeChildren(element, [&](const auto &child) {
         visitIfElement(child, visiter);
     });
+}
+
+void XmlUtil::visitElementAttributes(const tinyxml2::XMLElement &element, AttributeVisiter visiter) {
+    for (auto attr = element.FirstAttribute(); attr != nullptr; attr = attr->Next()) {
+        visiter(*attr);
+    }
 }
 
 void XmlUtil::recursiveVisitNodes(const tinyxml2::XMLNode *root, NodeVisiter visiter) {

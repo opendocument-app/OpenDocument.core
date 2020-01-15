@@ -4,9 +4,9 @@
 #include "odr/FileMeta.h"
 #include "../TableLocation.h"
 #include "../MapUtil.h"
+#include "../XmlUtil.h"
 #include "../io/Storage.h"
 #include "../io/StorageUtil.h"
-#include "../xml/XmlUtil.h"
 #include "../crypto/CryptoUtil.h"
 
 namespace odr {
