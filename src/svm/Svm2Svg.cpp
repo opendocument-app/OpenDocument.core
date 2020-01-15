@@ -3,9 +3,7 @@
 #include <string>
 #include <locale>
 #include <codecvt>
-#include <list>
 #include <vector>
-#include <unordered_map>
 #include "glog/logging.h"
 
 namespace odr {

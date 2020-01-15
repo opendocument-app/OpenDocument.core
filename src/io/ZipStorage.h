@@ -10,7 +10,7 @@ class ZipWriter;
 
 class NoZipFileException : public std::exception {
 public:
-    explicit NoZipFileException(const std::string &path) : path(path) {}
+    explicit NoZipFileException(std::string path) : path(std::move(path)) {}
     const std::string &getPath() const { return path; }
     const char *what() const noexcept override { return "not a zip file"; }
 private:
@@ -19,6 +19,8 @@ private:
 
 class ZipReader final : public ReadStorage {
 public:
+    ZipReader(const void *, std::uint64_t size);
+    ZipReader(const std::string &zip, bool dummy);
     explicit ZipReader(const Path &);
     ~ZipReader() final;
 
