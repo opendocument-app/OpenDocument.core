@@ -8,8 +8,9 @@
 
 TEST(MsCfbReaderTest, open) {
     std::string input;
-    input = "../../test/empty.doc";
     input = "../../test/encrypted.docx";
+    input = "../../test/encrypted.doc";
+    input = "../../test/empty.doc";
 
     odr::CfbReader reader(input);
     reader.visit([&](const auto &p) {
