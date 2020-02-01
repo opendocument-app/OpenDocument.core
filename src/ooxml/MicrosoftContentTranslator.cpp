@@ -30,7 +30,10 @@ static void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
 
     ElementAttributeTranslator(in, out, context);
     out << ">";
-    ElementChildrenTranslator(in, out, context);
+
+    if (tinyxml2::XMLHandle((tinyxml2::XMLElement &) in).FirstChildElement("w:r").FirstChildElement("w:t").ToElement() == nullptr) out << "<br/>";
+    else ElementChildrenTranslator(in, out, context);
+
     out << "</p>";
 }
 
@@ -109,7 +112,6 @@ static void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostre
 static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> substitution{
             // document
-            {"w:p", "p"},
             // presentation
             {"p:cSld", "div"},
             {"p:sp", "div"},
@@ -118,6 +120,8 @@ static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
             {"row", "tr"},
     };
     static std::unordered_set<std::string> skippers{
+            // document
+            "w:instrText",
             // workbook
             "headerFooter",
     };
@@ -125,7 +129,8 @@ static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     const std::string element = in.Name();
     if (skippers.find(element) != skippers.end()) return;
 
-    if (element == "worksheet") TableTranslator(in, out, context);
+    if (element == "w:p") ParagraphTranslator(in, out, context);
+    else if (element == "worksheet") TableTranslator(in, out, context);
     else if (element == "c") TableCellTranslator(in, out, context);
     else {
         const auto it = substitution.find(element);

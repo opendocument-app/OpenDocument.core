@@ -59,7 +59,7 @@ static void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &o
 
     out << "." << name << " {";
 
-    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+    XmlUtil::recursiveVisitElements(&in, [&](const tinyxml2::XMLElement &e) {
         const std::string element = e.Name();
 
         if (element == "w:rFonts") FontTranslator(e, out, context);

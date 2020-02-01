@@ -18,29 +18,32 @@ namespace odr {
 class MicrosoftTranslator::Impl {
 public:
     bool translate(const std::string &outPath, TranslationContext &context) const {
-        std::ofstream of(outPath);
-        if (!of.is_open()) return false;
-        context.output = &of;
+        std::ofstream out(outPath);
+        if (!out.is_open()) return false;
+        context.output = &out;
 
-        of << Constants::getHtmlBeginToStyle();
+        out << Constants::getHtmlBeginToStyle();
 
-        generateStyle(context);
+        generateStyle(out, context);
 
-        of << Constants::getHtmlStyleToBody();
+        out << Constants::getHtmlStyleToBody();
 
         generateContent(context);
 
-        of << Constants::getHtmlBodyToScript();
+        out << Constants::getHtmlBodyToScript();
 
-        generateScript(of, context);
+        generateScript(out, context);
 
-        of << Constants::getHtmlScriptToEnd();
+        out << Constants::getHtmlScriptToEnd();
 
-        of.close();
+        out.close();
         return true;
     }
 
-    void generateStyle(TranslationContext &context) const {
+    void generateStyle(std::ofstream &out, TranslationContext &context) const {
+        // default css
+        out << Constants::getOpenDocumentDefaultCss();
+
         switch (context.meta->type) {
             case FileType::OFFICE_OPEN_XML_DOCUMENT: {
                 const auto stylesXml = XmlUtil::parse(*context.storage, "word/styles.xml");
