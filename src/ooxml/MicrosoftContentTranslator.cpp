@@ -8,6 +8,7 @@
 #include "../TranslationContext.h"
 #include "../StringUtil.h"
 #include "../XmlUtil.h"
+#include "MicrosoftStyleTranslator.h"
 
 namespace odr {
 
@@ -17,6 +18,7 @@ static void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostr
 static void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 
+// TODO duplication to SpanTranslator
 static void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     out << "<p";
 
@@ -29,12 +31,63 @@ static void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
     }
 
     ElementAttributeTranslator(in, out, context);
+
+    const tinyxml2::XMLElement *inlineStyle = in.FirstChildElement("w:pPr");
+    if (inlineStyle != nullptr && inlineStyle->FirstChild() != nullptr) {
+        out << " style=\"";
+        MicrosoftStyleTranslator::translateInline(*inlineStyle, out, context);
+        out << "\"";
+    }
+
     out << ">";
 
-    if (tinyxml2::XMLHandle((tinyxml2::XMLElement &) in).FirstChildElement("w:r").FirstChildElement("w:t").ToElement() == nullptr) out << "<br/>";
+    bool empty = true;
+    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+        if (std::strcmp(e.Name(), "w:r") == 0 && e.FirstChildElement("w:t") != nullptr) {
+            empty = false;
+        }
+    });
+
+    if (empty) out << "<br/>";
     else ElementChildrenTranslator(in, out, context);
 
     out << "</p>";
+}
+
+// TODO duplication to ParagraphTranslator
+static void SpanTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<span";
+
+    const tinyxml2::XMLElement *style = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
+            .FirstChildElement("w:rPr")
+            .FirstChildElement("w:rStyle")
+            .ToElement();
+    if (style != nullptr) {
+        *context.output << " class=\"" << style->FindAttribute("w:val")->Value() <<  "\"";
+    }
+
+    ElementAttributeTranslator(in, out, context);
+
+    const tinyxml2::XMLElement *inlineStyle = in.FirstChildElement("w:rPr");
+    if (inlineStyle != nullptr && inlineStyle->FirstChild() != nullptr) {
+        out << " style=\"";
+        MicrosoftStyleTranslator::translateInline(*inlineStyle, out, context);
+        out << "\"";
+    }
+
+    out << ">";
+
+    ElementChildrenTranslator(in, out, context);
+
+    out << "</span>";
+}
+
+static void WordTableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << R"(<table border="0" cellspacing="0" cellpadding="0")";
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+    ElementChildrenTranslator(in, out, context);
+    out << "</table>";
 }
 
 static void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
@@ -112,6 +165,8 @@ static void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostre
 static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> substitution{
             // document
+            {"w:tr", "tr"},
+            {"w:tc", "td"},
             // presentation
             {"p:cSld", "div"},
             {"p:sp", "div"},
@@ -130,6 +185,8 @@ static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     if (skippers.find(element) != skippers.end()) return;
 
     if (element == "w:p") ParagraphTranslator(in, out, context);
+    else if (element == "w:r") SpanTranslator(in, out, context);
+    else if (element == "w:tbl") WordTableTranslator(in, out, context);
     else if (element == "worksheet") TableTranslator(in, out, context);
     else if (element == "c") TableCellTranslator(in, out, context);
     else {

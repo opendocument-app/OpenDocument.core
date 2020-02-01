@@ -8,6 +8,11 @@
 
 namespace odr {
 
+static void AlignmentTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    const auto valAttr = in.FindAttribute("w:val");
+    out << "text-align:" << valAttr->Value() << ";";
+}
+
 static void FontTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
     const auto fontAttr = in.FindAttribute("w:cs");
     if (fontAttr == nullptr) return;
@@ -31,6 +36,35 @@ static void ItalicTranslator(const tinyxml2::XMLElement &in, std::ostream &out, 
     const auto valAttr = in.FindAttribute("w:val");
     if (valAttr != nullptr) return;
     out << "font-style:italic;";
+}
+
+static void UnderlineTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    const auto valAttr = in.FindAttribute("w:val");
+    if (std::strcmp(valAttr->Value(), "single") == 0) out << "text-decoration:underline;";
+    // TODO wont work with StrikeThroughTranslator
+}
+
+static void StrikeThroughTranslator(const tinyxml2::XMLElement &, std::ostream &out, TranslationContext &) {
+    // TODO wont work with UnderlineTranslator
+    out << "text-decoration:line-through;";
+}
+
+static void ShadowTranslator(const tinyxml2::XMLElement &, std::ostream &out, TranslationContext &) {
+    out << "text-shadow:1pt 1pt;";
+}
+
+static void ColorTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    const auto valAttr = in.FindAttribute("w:val");
+    if (std::strcmp(valAttr->Value(), "auto") == 0) return;
+    if (std::strlen(valAttr->Value()) == 6) out << "color:#" << valAttr->Value();
+    else out << "color:" << valAttr->Value();
+}
+
+static void HighlightTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    const auto valAttr = in.FindAttribute("w:val");
+    if (std::strcmp(valAttr->Value(), "auto") == 0) return;
+    if (std::strlen(valAttr->Value()) == 6) out << "background-color:#" << valAttr->Value();
+    else out << "background-color:" << valAttr->Value();
 }
 
 static void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
@@ -59,14 +93,10 @@ static void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &o
 
     out << "." << name << " {";
 
-    XmlUtil::recursiveVisitElements(&in, [&](const tinyxml2::XMLElement &e) {
-        const std::string element = e.Name();
-
-        if (element == "w:rFonts") FontTranslator(e, out, context);
-        else if (element == "w:sz") FontSizeTranslator(e, out, context);
-        else if (element == "w:b") BoldTranslator(e, out, context);
-        else if (element == "w:i") ItalicTranslator(e, out, context);
-    });
+    const auto rPr = in.FirstChildElement("w:rPr");
+    if (rPr != nullptr) {
+        MicrosoftStyleTranslator::translateInline(*rPr, out, context);
+    }
 
     out << "}\n";
 }
@@ -77,6 +107,23 @@ void MicrosoftStyleTranslator::translate(const tinyxml2::XMLElement &in, Transla
 
         if (element == "w:style") StyleClassTranslator(e, *context.output, context);
         //else if (element == "w:docDefaults") DefaultStyleTranslator(e, *context.output, context);
+    });
+}
+
+void MicrosoftStyleTranslator::translateInline(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+        const std::string element = e.Name();
+
+        if (element == "w:jc") AlignmentTranslator(e, out, context);
+        else if (element == "w:rFonts") FontTranslator(e, out, context);
+        else if (element == "w:sz") FontSizeTranslator(e, out, context);
+        else if (element == "w:b") BoldTranslator(e, out, context);
+        else if (element == "w:i") ItalicTranslator(e, out, context);
+        else if (element == "w:u") UnderlineTranslator(e, out, context);
+        else if (element == "w:strike") StrikeThroughTranslator(e, out, context);
+        else if (element == "w:shadow") ShadowTranslator(e, out, context);
+        else if (element == "w:color") ColorTranslator(e, out, context);
+        else if (element == "w:highlight") HighlightTranslator(e, out, context);
     });
 }
 
