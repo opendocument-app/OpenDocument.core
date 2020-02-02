@@ -132,7 +132,7 @@ static void FrameTranslator(const tinyxml2::XMLElement &in, std::ostream &out, T
 }
 
 static void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    out << "<img style=\"width:100%;heigth:100%\"";
+    out << "<img style=\"width:100%;height:100%\"";
 
     const auto href = in.FindAttribute("xlink:href");
     if (href == nullptr) {

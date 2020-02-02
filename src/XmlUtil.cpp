@@ -28,6 +28,15 @@ static inline void visitIfElement(const tinyxml2::XMLNode &node, XmlUtil::Elemen
     visiter(*element);
 }
 
+const tinyxml2::XMLElement *XmlUtil::firstChildElement(const tinyxml2::XMLElement &root) {
+    const tinyxml2::XMLNode *child = root.FirstChild();
+    while (child != nullptr) {
+        if (child->ToElement() != nullptr) return child->ToElement();
+        child = child->NextSibling();
+    }
+    return nullptr;
+}
+
 void XmlUtil::visitNodeChildren(const tinyxml2::XMLNode &node, NodeVisiter visiter) {
     for (auto child = node.FirstChild(); child != nullptr; child = child->NextSibling()) {
         visiter(*child);
