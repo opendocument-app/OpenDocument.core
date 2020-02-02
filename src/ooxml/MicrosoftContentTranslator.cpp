@@ -34,9 +34,9 @@ static void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
     bool empty = true;
     XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e1) {
         XmlUtil::visitElementChildren(e1, [&](const tinyxml2::XMLElement &e2) {
-            if (std::strcmp(e1.Name(), "w:r") == 0 && std::strcmp(e2.Name(), "w:rPr") != 0) {
-                empty = false;
-            }
+            if (std::strcmp(e1.Name(), "w:pPr") == 0) ;
+            else if (std::strcmp(e1.Name(), "w:r") != 0) empty = false;
+            else if (std::strcmp(e2.Name(), "w:rPr") != 0) empty = false;
         });
     });
 
