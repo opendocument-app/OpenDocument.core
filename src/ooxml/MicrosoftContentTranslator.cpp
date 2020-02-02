@@ -21,6 +21,10 @@ static void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostr
 static void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 
+static void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, TranslationContext &) {
+    out << "\t";
+}
+
 static void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     out << "<p";
     ElementAttributeTranslator(in, out, context);
@@ -48,6 +52,26 @@ static void SpanTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tr
     out << ">";
     ElementChildrenTranslator(in, out, context);
     out << "</span>";
+}
+
+static void HyperlinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<a";
+
+    const tinyxml2::XMLAttribute *anchorAttr = in.FindAttribute("w:anchor");
+    const tinyxml2::XMLAttribute *rIdAttr = in.FindAttribute("r:id");
+    if (anchorAttr != nullptr) out << " href=\"#" << anchorAttr->Value() << "\" target=\"_self\"";
+    else if (rIdAttr != nullptr) out << " href=\"" << context.msRelations[rIdAttr->Value()] << "\"";
+
+    ElementAttributeTranslator(in, out, context);
+
+    out << ">";
+    ElementChildrenTranslator(in, out, context);
+    out << "</a>";
+}
+
+static void BookmarkTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    const tinyxml2::XMLAttribute *nameAttr = in.FindAttribute("w:name");
+    if (nameAttr != nullptr) out << "<a id=\"" << nameAttr->Value() << "\"/>";
 }
 
 static void WordTableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
@@ -93,20 +117,17 @@ static void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, T
         out << " alt=\"Error: image path not specified";
         LOG(ERROR) << "image href not found";
     } else {
-        const char *rId = ref->FindAttribute("r:embed")->Value();
-        const auto it = context.msRelations.find(rId);
-        if (it != context.msRelations.end()) {
-            const Path path = context.msRoot.join(it->second);
-            out << " alt=\"Error: image not found or unsupported: " << path << "\"";
+        const char *rIdAttr = ref->FindAttribute("r:embed")->Value();
+        const Path path = context.msRoot.join(context.msRelations[rIdAttr]);
+        out << " alt=\"Error: image not found or unsupported: " << path << "\"";
 #ifdef ODR_CRYPTO
-            out << " src=\"";
-            std::string image = StreamUtil::read(*context.storage->read(path));
-            // hacky image/jpg working according to tom
-            out << "data:image/jpg;base64, ";
-            out << CryptoUtil::base64Encode(image);
-            out << "\"";
+        out << " src=\"";
+        std::string image = StreamUtil::read(*context.storage->read(path));
+        // hacky image/jpg working according to tom
+        out << "data:image/jpg;base64, ";
+        out << CryptoUtil::base64Encode(image);
+        out << "\"";
 #endif
-        }
     }
 
     out << ">";
@@ -226,8 +247,11 @@ static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     const std::string element = in.Name();
     if (skippers.find(element) != skippers.end()) return;
 
-    if (element == "w:p") ParagraphTranslator(in, out, context);
+    if (element == "w:tab") TabTranslator(in, out, context);
+    else if (element == "w:p") ParagraphTranslator(in, out, context);
     else if (element == "w:r") SpanTranslator(in, out, context);
+    else if (element == "w:hyperlink") HyperlinkTranslator(in, out, context);
+    else if (element == "w:bookmarkStart") BookmarkTranslator(in, out, context);
     else if (element == "w:tbl") WordTableTranslator(in, out, context);
     else if (element == "w:drawing") DrawingsTranslator(in, out, context);
     else if (element == "pic:pic") ImageTranslator(in, out, context);

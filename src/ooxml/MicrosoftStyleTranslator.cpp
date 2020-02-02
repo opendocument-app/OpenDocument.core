@@ -67,6 +67,13 @@ static void HighlightTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
     else out << "background-color:" << valAttr->Value();
 }
 
+static void IndentationTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    const tinyxml2::XMLAttribute *attrLeft = in.FindAttribute("w:left");
+    if (attrLeft != nullptr) out << "margin-left:" << attrLeft->Int64Value() / 1440.0f << "in;";
+    const tinyxml2::XMLAttribute *attrRight = in.FindAttribute("w:right");
+    if (attrRight != nullptr) out << "margin-right:" << attrRight->Int64Value() / 1440.0f << "in;";
+}
+
 static void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     const auto nameAttr = in.FindAttribute("w:styleId");
     std::string name = "unknown";
@@ -93,10 +100,11 @@ static void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &o
 
     out << "." << name << " {";
 
+    const auto pPr = in.FirstChildElement("w:pPr");
+    if (pPr != nullptr) MicrosoftStyleTranslator::translateInline(*pPr, out, context);
+
     const auto rPr = in.FirstChildElement("w:rPr");
-    if (rPr != nullptr) {
-        MicrosoftStyleTranslator::translateInline(*rPr, out, context);
-    }
+    if (rPr != nullptr) MicrosoftStyleTranslator::translateInline(*rPr, out, context);
 
     out << "}\n";
 }
@@ -124,6 +132,7 @@ void MicrosoftStyleTranslator::translateInline(const tinyxml2::XMLElement &in, s
         else if (element == "w:shadow") ShadowTranslator(e, out, context);
         else if (element == "w:color") ColorTranslator(e, out, context);
         else if (element == "w:highlight") HighlightTranslator(e, out, context);
+        else if (element == "w:ind") IndentationTranslator(e, out, context);
     });
 }
 

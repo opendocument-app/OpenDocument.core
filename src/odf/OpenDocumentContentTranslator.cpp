@@ -85,7 +85,7 @@ static void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tr
         out << " href=\"" << href->Value() << "\"";
         // NOTE: there is a trim in java
         if ((std::strlen(href->Value()) > 0) && (href->Value()[0] == '#')) {
-            out << " target\"_self\"";
+            out << " target=\"_self\"";
         }
     } else {
         LOG(WARNING) << "empty link";

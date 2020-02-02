@@ -28,8 +28,8 @@ extern FileMeta parseFileMeta(Storage &);
 
 extern Path relationsPath(const Path &);
 extern std::unique_ptr<tinyxml2::XMLDocument> loadRelationships(Storage &, const Path &);
-extern std::unordered_map<std::string, Path> parseRelationships(const tinyxml2::XMLDocument &rels);
-extern std::unordered_map<std::string, Path> parseRelationships(Storage &, const Path &);
+extern std::unordered_map<std::string, std::string> parseRelationships(const tinyxml2::XMLDocument &rels);
+extern std::unordered_map<std::string, std::string> parseRelationships(Storage &, const Path &);
 
 }
 
