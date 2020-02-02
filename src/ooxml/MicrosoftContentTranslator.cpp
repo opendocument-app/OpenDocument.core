@@ -58,8 +58,32 @@ static void WordTableTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
     out << "</table>";
 }
 
+static void DrawingsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    // ooxml is using amazing units
+    // https://startbigthinksmall.wordpress.com/2010/01/04/points-inches-and-emus-measuring-units-in-office-open-xml/
+
+    const tinyxml2::XMLElement *child = XmlUtil::firstChildElement(in);
+    if (child == nullptr) return;
+    const tinyxml2::XMLElement *graphic = child->FirstChildElement("a:graphic");
+    if (graphic == nullptr) return;
+    // TODO handle something other than inline
+
+    out << "<div";
+
+    const tinyxml2::XMLElement *sizeEle = child->FirstChildElement("wp:extent");
+    if (sizeEle != nullptr) {
+        float widthIn = sizeEle->FindAttribute("cx")->Int64Value() / 914400.0f;
+        float heightIn = sizeEle->FindAttribute("cy")->Int64Value() / 914400.0f;
+        out << " style=\"width:" << widthIn << "in;height:" << heightIn << "in;\"";
+    }
+
+    out << ">";
+    ElementTranslator(*graphic, out, context);
+    out << "</div>";
+}
+
 static void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    out << "<img";
+    out << "<img style=\"width:100%;height:100%\"";
 
     const tinyxml2::XMLElement *ref = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
             .FirstChildElement("pic:blipFill")
@@ -205,6 +229,7 @@ static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     if (element == "w:p") ParagraphTranslator(in, out, context);
     else if (element == "w:r") SpanTranslator(in, out, context);
     else if (element == "w:tbl") WordTableTranslator(in, out, context);
+    else if (element == "w:drawing") DrawingsTranslator(in, out, context);
     else if (element == "pic:pic") ImageTranslator(in, out, context);
     else if (element == "worksheet") TableTranslator(in, out, context);
     else if (element == "c") TableCellTranslator(in, out, context);
