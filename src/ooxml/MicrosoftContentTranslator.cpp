@@ -26,11 +26,22 @@ static void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, Trans
 }
 
 static void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    const tinyxml2::XMLElement *num = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
+            .FirstChildElement("w:pPr")
+            .FirstChildElement("w:numPr")
+            .ToElement();
+    bool listing = num != nullptr;
+    int listingLevel;
+    if (listing) {
+        listingLevel = num->FirstChildElement("w:ilvl")->FindAttribute("w:val")->IntValue();
+        for (int i = 0; i <= listingLevel; ++i) out << "<ul>";
+        out << "<li>";
+    }
+
     out << "<p";
     ElementAttributeTranslator(in, out, context);
     out << ">";
 
-    // TODO inefficient
     bool empty = true;
     XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e1) {
         XmlUtil::visitElementChildren(e1, [&](const tinyxml2::XMLElement &e2) {
@@ -44,6 +55,11 @@ static void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
     else ElementChildrenTranslator(in, out, context);
 
     out << "</p>";
+
+    if (listing) {
+        out << "</li>";
+        for (int i = 0; i <= listingLevel; ++i) out << "</ul>";
+    }
 }
 
 static void SpanTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
