@@ -34,17 +34,17 @@ std::unique_ptr<tinyxml2::XMLDocument> OfficeOpenXmlMeta::loadRelationships(Stor
     return XmlUtil::parse(storage, relationsPath(path));
 }
 
-std::unordered_map<std::string, Path> OfficeOpenXmlMeta::parseRelationships(const tinyxml2::XMLDocument &rels) {
-    std::unordered_map<std::string, Path> result;
+std::unordered_map<std::string, std::string> OfficeOpenXmlMeta::parseRelationships(const tinyxml2::XMLDocument &rels) {
+    std::unordered_map<std::string, std::string> result;
     XmlUtil::recursiveVisitElementsWithName(rels.RootElement(), "Relationship", [&](const auto &rel) {
         const std::string rId = rel.FindAttribute("Id")->Value();
-        const Path p = rel.FindAttribute("Target")->Value();
+        const std::string p = rel.FindAttribute("Target")->Value();
         result.insert({rId, p});
     });
     return result;
 }
 
-std::unordered_map<std::string, Path> OfficeOpenXmlMeta::parseRelationships(Storage &storage, const Path &path) {
+std::unordered_map<std::string, std::string> OfficeOpenXmlMeta::parseRelationships(Storage &storage, const Path &path) {
     const auto relationships = loadRelationships(storage, path);
     if (!relationships) throw std::invalid_argument("xml not present");
     return parseRelationships(*relationships);

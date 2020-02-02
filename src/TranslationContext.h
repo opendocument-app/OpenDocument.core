@@ -34,7 +34,7 @@ struct TranslationContext {
     std::unique_ptr<tinyxml2::XMLDocument> content;
     std::unordered_map<std::string, std::list<std::string>> odStyleDependencies; // odf
     Path msRoot; // ooxml
-    std::unordered_map<std::string, Path> msRelations; // ooxml
+    std::unordered_map<std::string, std::string> msRelations; // ooxml
     std::unique_ptr<tinyxml2::XMLDocument> msSharedStringsDocument; // xlsx
     std::vector<const tinyxml2::XMLElement *> msSharedStrings; // xlsx
 
