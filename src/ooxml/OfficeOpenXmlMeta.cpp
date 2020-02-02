@@ -31,22 +31,20 @@ Path OfficeOpenXmlMeta::relationsPath(const Path &path) {
 }
 
 std::unique_ptr<tinyxml2::XMLDocument> OfficeOpenXmlMeta::loadRelationships(Storage &storage, const Path &path) {
-    return XmlUtil::parse(storage, path);
+    return XmlUtil::parse(storage, relationsPath(path));
 }
 
-std::unordered_map<std::string, OfficeOpenXmlMeta::Relationship> OfficeOpenXmlMeta::parseRelationships(const tinyxml2::XMLDocument &rels) {
-    std::unordered_map<std::string, Relationship> result;
+std::unordered_map<std::string, Path> OfficeOpenXmlMeta::parseRelationships(const tinyxml2::XMLDocument &rels) {
+    std::unordered_map<std::string, Path> result;
     XmlUtil::recursiveVisitElementsWithName(rels.RootElement(), "Relationship", [&](const auto &rel) {
         const std::string rId = rel.FindAttribute("Id")->Value();
-        const Relationship r = {
-                .target = rel.FindAttribute("Target")->Value()
-        };
-        result.insert({rId, r});
+        const Path p = rel.FindAttribute("Target")->Value();
+        result.insert({rId, p});
     });
     return result;
 }
 
-std::unordered_map<std::string, OfficeOpenXmlMeta::Relationship> OfficeOpenXmlMeta::parseRelationships(Storage &storage, const Path &path) {
+std::unordered_map<std::string, Path> OfficeOpenXmlMeta::parseRelationships(Storage &storage, const Path &path) {
     const auto relationships = loadRelationships(storage, path);
     if (!relationships) throw std::invalid_argument("xml not present");
     return parseRelationships(*relationships);

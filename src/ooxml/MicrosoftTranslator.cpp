@@ -66,6 +66,8 @@ public:
         switch (context.meta->type) {
             case FileType::OFFICE_OPEN_XML_DOCUMENT: {
                 context.content = XmlUtil::parse(*context.storage, "word/document.xml");
+                context.msRoot = "word";
+                context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, "word/document.xml");
 
                 tinyxml2::XMLElement *body = context.content
                         ->FirstChildElement("w:document")
@@ -75,16 +77,19 @@ public:
             } break;
             case FileType::OFFICE_OPEN_XML_PRESENTATION: {
                 context.content = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
+                context.msRoot = "ppt";
+                context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, "ppt/presentation.xml");
 
-                const auto rels = OfficeOpenXmlMeta::parseRelationships(*context.storage, "ppt/presentation.xml");
                 XmlUtil::recursiveVisitElementsWithName(context.content->RootElement(), "p:sldId", [&](const auto &child) {
                     const std::string rId = child.FindAttribute("r:id")->Value();
-                    const auto sheet = XmlUtil::parse(*context.storage, Path("ppt").join(rels.at(rId).target));
+                    const auto sheet = XmlUtil::parse(*context.storage, Path("ppt").join(context.msRelations.at(rId)));
                     MicrosoftContentTranslator::translate(*sheet->RootElement(), context);
                 });
             } break;
             case FileType::OFFICE_OPEN_XML_WORKBOOK: {
                 context.content = XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
+                context.msRoot = "xl";
+                context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, "xl/workbook.xml");
 
                 // TODO this breaks back translation
                 context.msSharedStringsDocument = XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
@@ -92,10 +97,9 @@ public:
                     context.msSharedStrings.push_back(&child);
                 });
 
-                const auto rels = OfficeOpenXmlMeta::parseRelationships(*context.storage, "xl/workbook.xml");
                 XmlUtil::recursiveVisitElementsWithName(context.content->RootElement(), "sheet", [&](const auto &child) {
                     const std::string rId = child.FindAttribute("r:id")->Value();
-                    const auto sheet = XmlUtil::parse(*context.storage, Path("xl").join(rels.at(rId).target));
+                    const auto sheet = XmlUtil::parse(*context.storage, Path("xl").join(context.msRelations.at(rId)));
                     MicrosoftContentTranslator::translate(*sheet->RootElement(), context);
                 });
             } break;
