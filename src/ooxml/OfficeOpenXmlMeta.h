@@ -24,17 +24,12 @@ private:
 
 namespace OfficeOpenXmlMeta {
 
-struct Relationship {
-    // type
-    Path target;
-};
-
 extern FileMeta parseFileMeta(Storage &);
 
 extern Path relationsPath(const Path &);
 extern std::unique_ptr<tinyxml2::XMLDocument> loadRelationships(Storage &, const Path &);
-extern std::unordered_map<std::string, Relationship> parseRelationships(const tinyxml2::XMLDocument &rels);
-extern std::unordered_map<std::string, Relationship> parseRelationships(Storage &, const Path &);
+extern std::unordered_map<std::string, Path> parseRelationships(const tinyxml2::XMLDocument &rels);
+extern std::unordered_map<std::string, Path> parseRelationships(Storage &, const Path &);
 
 }
 
