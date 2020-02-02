@@ -47,6 +47,12 @@ static void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in, std::ost
     const auto it = substitution.find(property);
     if (it != substitution.end()) {
         out << it->second << ":" << in.Value() << ";";
+    } else if (property == "style:text-underline-style") {
+        // TODO breaks line-through
+        if (std::strcmp(in.Value(), "solid") == 0) out << "text-decoration:underline;";
+    } else if (property == "style:text-line-through-style") {
+        // TODO breaks underline
+        if (std::strcmp(in.Value(), "solid") == 0) out << "text-decoration:line-through;";
     }
 }
 
