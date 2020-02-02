@@ -68,10 +68,51 @@ static void HighlightTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
 }
 
 static void IndentationTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
-    const tinyxml2::XMLAttribute *attrLeft = in.FindAttribute("w:left");
-    if (attrLeft != nullptr) out << "margin-left:" << attrLeft->Int64Value() / 1440.0f << "in;";
-    const tinyxml2::XMLAttribute *attrRight = in.FindAttribute("w:right");
-    if (attrRight != nullptr) out << "margin-right:" << attrRight->Int64Value() / 1440.0f << "in;";
+    const tinyxml2::XMLAttribute *leftAttr = in.FindAttribute("w:left");
+    if (leftAttr != nullptr) out << "margin-left:" << leftAttr->Int64Value() / 1440.0f << "in;";
+    const tinyxml2::XMLAttribute *rightAttr = in.FindAttribute("w:right");
+    if (rightAttr != nullptr) out << "margin-right:" << rightAttr->Int64Value() / 1440.0f << "in;";
+}
+
+static void TableCellWidthTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    const tinyxml2::XMLAttribute *widthAttr = in.FindAttribute("w:w");
+    const tinyxml2::XMLAttribute *typeAttr = in.FindAttribute("w:type");
+    if (widthAttr != nullptr) {
+        float width = widthAttr->Int64Value();
+        if (typeAttr != nullptr && std::strcmp(typeAttr->Value(), "dxa") == 0) width /= 1440.0f;
+        out << "width:" << width << "in;";
+    }
+}
+
+static void TableCellBorderTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    auto translator = [&](const char *name, const tinyxml2::XMLElement &e) {
+        out << name << ":";
+
+        const float sizePt = e.FindAttribute("w:sz")->IntValue() / 2.0f;
+        out << sizePt << "pt ";
+
+        const char *type = "solid";
+        if (std::strcmp(e.FindAttribute("w:val")->Value(), "") == 0) type = "solid";
+        out << type << " ";
+
+        const auto colorAttr = e.FindAttribute("w:color");
+        if (std::strlen(colorAttr->Value()) == 6) out << "#" << colorAttr->Value();
+        else out << colorAttr->Value();
+
+        out << ";";
+    };
+
+    const tinyxml2::XMLElement *top = in.FirstChildElement("w:top");
+    if (top != nullptr) translator("border-top", *top);
+
+    const tinyxml2::XMLElement *left = in.FirstChildElement("w:left");
+    if (left != nullptr) translator("border-left", *left);
+
+    const tinyxml2::XMLElement *bottom = in.FirstChildElement("w:bottom");
+    if (bottom != nullptr) translator("border-bottom", *bottom);
+
+    const tinyxml2::XMLElement *right = in.FirstChildElement("w:right");
+    if (right != nullptr) translator("border-right", *right);
 }
 
 static void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
@@ -133,6 +174,8 @@ void MicrosoftStyleTranslator::translateInline(const tinyxml2::XMLElement &in, s
         else if (element == "w:color") ColorTranslator(e, out, context);
         else if (element == "w:highlight") HighlightTranslator(e, out, context);
         else if (element == "w:ind") IndentationTranslator(e, out, context);
+        else if (element == "w:tcW") TableCellWidthTranslator(e, out, context);
+        else if (element == "w:tcBorders") TableCellBorderTranslator(e, out, context);
     });
 }
 

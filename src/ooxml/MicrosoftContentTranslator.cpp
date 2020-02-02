@@ -82,6 +82,14 @@ static void WordTableTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
     out << "</table>";
 }
 
+static void WordTableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<td";
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+    ElementChildrenTranslator(in, out, context);
+    out << "</td>";
+}
+
 static void DrawingsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     // ooxml is using amazing units
     // https://startbigthinksmall.wordpress.com/2010/01/04/points-inches-and-emus-measuring-units-in-office-open-xml/
@@ -253,6 +261,7 @@ static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     else if (element == "w:hyperlink") HyperlinkTranslator(in, out, context);
     else if (element == "w:bookmarkStart") BookmarkTranslator(in, out, context);
     else if (element == "w:tbl") WordTableTranslator(in, out, context);
+    else if (element == "w:tc") WordTableCellTranslator(in, out, context);
     else if (element == "w:drawing") DrawingsTranslator(in, out, context);
     else if (element == "pic:pic") ImageTranslator(in, out, context);
     else if (element == "worksheet") TableTranslator(in, out, context);

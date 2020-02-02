@@ -307,7 +307,11 @@ static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     };
     static std::unordered_set<std::string> skippers{
             "svg:desc",
+            // odt
+            "text:index-title-template",
+            // odp
             "presentation:notes",
+            // ods
             "office:annotation",
     };
 
