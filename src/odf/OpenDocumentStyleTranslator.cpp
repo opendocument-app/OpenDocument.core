@@ -9,7 +9,8 @@
 
 namespace odr {
 
-static void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out) {
+namespace {
+void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out) {
     static std::unordered_map<std::string, const char *> substitution{
             {"fo:text-align", "text-align"},
             {"fo:font-size", "font-size"},
@@ -47,10 +48,16 @@ static void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in, std::ost
     const auto it = substitution.find(property);
     if (it != substitution.end()) {
         out << it->second << ":" << in.Value() << ";";
+    } else if (property == "style:text-underline-style") {
+        // TODO breaks line-through
+        if (std::strcmp(in.Value(), "solid") == 0) out << "text-decoration:underline;";
+    } else if (property == "style:text-line-through-style") {
+        // TODO breaks underline
+        if (std::strcmp(in.Value(), "solid") == 0) out << "text-decoration:line-through;";
     }
 }
 
-static void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> elementToNameAttr{
             {"style:default-style", "style:family"},
             {"style:style", "style:name"},
@@ -87,7 +94,7 @@ static void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &o
     out << "}\n";
 }
 
-static void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     //addElementDelegation("text:list-level-style-number", propertiesTranslator);
     //addElementDelegation("text:list-level-style-bullet", propertiesTranslator);
 
@@ -128,6 +135,7 @@ static void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
     } else {
         LOG(WARNING) << "unhandled case";
     }
+}
 }
 
 std::string OpenDocumentStyleTranslator::escapeStyleName(const std::string &name) {

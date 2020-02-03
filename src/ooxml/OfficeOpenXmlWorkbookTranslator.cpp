@@ -1,4 +1,4 @@
-#include "MicrosoftContentTranslator.h"
+#include "OfficeOpenXmlWorkbookTranslator.h"
 #include <string>
 #include <unordered_set>
 #include <unordered_map>
@@ -7,34 +7,23 @@
 #include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
 #include "../StringUtil.h"
+#include "../io/Storage.h"
+#include "../io/StreamUtil.h"
 #include "../XmlUtil.h"
 
 namespace odr {
 
-static void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context);
-static void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out, TranslationContext &context);
-static void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
-static void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
-static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
-
-static void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    out << "<p";
-
-    const tinyxml2::XMLElement *style = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
-            .FirstChildElement("w:pPr")
-            .FirstChildElement("w:pStyle")
-            .ToElement();
-    if (style != nullptr) {
-        *context.output << " class=\"" << style->FindAttribute("w:val")->Value() <<  "\"";
-    }
-
-    ElementAttributeTranslator(in, out, context);
-    out << ">";
-    ElementChildrenTranslator(in, out, context);
-    out << "</p>";
+void OfficeOpenXmlWorkbookTranslator::translateStyle(const tinyxml2::XMLElement &in, TranslationContext &context) {
 }
 
-static void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+namespace {
+void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context);
+void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out, TranslationContext &context);
+void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
+void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
+void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
+
+void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     out << R"(<table border="0" cellspacing="0" cellpadding="0")";
     ElementAttributeTranslator(in, out, context);
     out << ">";
@@ -42,7 +31,7 @@ static void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, T
     out << "</table>";
 }
 
-static void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     //const auto r = in.FindAttribute("r");
     // TODO check placement r and fill empty cells/rows
 
@@ -73,7 +62,7 @@ static void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
     out << "</td>";
 }
 
-static void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context) {
+void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context) {
     std::string text = in.Value();
     StringUtil::findAndReplaceAll(text, "&", "&amp;");
     StringUtil::findAndReplaceAll(text, "<", "&lt;");
@@ -89,36 +78,27 @@ static void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, Trans
     }
 }
 
-static void AttributeTranslator(const tinyxml2::XMLAttribute &, std::ostream &, TranslationContext &) {
-    //const std::string element = in.Name();
+void AttributeTranslator(const tinyxml2::XMLAttribute &, std::ostream &, TranslationContext &) {
 }
 
-static void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     XmlUtil::visitElementAttributes(in, [&](const tinyxml2::XMLAttribute &a) {
         AttributeTranslator(a, out, context);
     });
 }
 
-static void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
         if (n.ToText() != nullptr) TextTranslator(*n.ToText(), out, context);
-        if (n.ToElement() != nullptr) ElementTranslator(*n.ToElement(), out, context);
+        else if (n.ToElement() != nullptr) ElementTranslator(*n.ToElement(), out, context);
     });
 }
 
-static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> substitution{
-            // document
-            {"w:p", "p"},
-            // presentation
-            {"p:cSld", "div"},
-            {"p:sp", "div"},
-            {"a:p", "p"},
-            // workbook
             {"row", "tr"},
     };
     static std::unordered_set<std::string> skippers{
-            // workbook
             "headerFooter",
     };
 
@@ -129,15 +109,20 @@ static void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     else if (element == "c") TableCellTranslator(in, out, context);
     else {
         const auto it = substitution.find(element);
-        if (it != substitution.end()) out << "<" << it->second;
-        ElementAttributeTranslator(in, out, context);
-        if (it != substitution.end()) out << ">";
+        if (it != substitution.end()) {
+            out << "<" << it->second;
+            ElementAttributeTranslator(in, out, context);
+            out << ">";
+        }
         ElementChildrenTranslator(in, out, context);
-        if (it != substitution.end()) out << "</" << it->second << ">";
+        if (it != substitution.end()) {
+            out << "</" << it->second << ">";
+        }
     }
 }
+}
 
-void MicrosoftContentTranslator::translate(const tinyxml2::XMLElement &in, TranslationContext &context) {
+void OfficeOpenXmlWorkbookTranslator::translateContent(const tinyxml2::XMLElement &in, TranslationContext &context) {
     ElementTranslator(in, *context.output, context);
 }
 

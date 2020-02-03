@@ -19,28 +19,28 @@ namespace odr {
 class OpenDocumentTranslator::Impl final {
 public:
     bool translate(const std::string &outPath, TranslationContext &context) const {
-        std::ofstream of(outPath);
-        if (!of.is_open()) return false;
-        context.output = &of;
+        std::ofstream out(outPath);
+        if (!out.is_open()) return false;
+        context.output = &out;
 
-        of << Constants::getHtmlBeginToStyle();
+        out << Constants::getHtmlBeginToStyle();
 
-        generateStyle(of, context);
+        generateStyle(out, context);
         context.content = XmlUtil::parse(*context.storage, "content.xml");
         tinyxml2::XMLHandle contentHandle(context.content.get());
         generateContentStyle(contentHandle, context);
 
-        of << Constants::getHtmlStyleToBody();
+        out << Constants::getHtmlStyleToBody();
 
         generateContent(contentHandle, context);
 
-        of << Constants::getHtmlBodyToScript();
+        out << Constants::getHtmlBodyToScript();
 
-        generateScript(of, context);
+        generateScript(out, context);
 
-        of << Constants::getHtmlScriptToEnd();
+        out << Constants::getHtmlScriptToEnd();
 
-        of.close();
+        out.close();
         return true;
     }
 

@@ -14,7 +14,7 @@
 #include "odf/OpenDocumentTranslator.h"
 #include "ooxml/OfficeOpenXmlMeta.h"
 #include "ooxml/OfficeOpenXmlCrypto.h"
-#include "ooxml/MicrosoftTranslator.h"
+#include "ooxml/OfficeOpenXmlTranslator.h"
 
 namespace odr {
 
@@ -29,7 +29,7 @@ public:
     TranslationContext context;
 
     OpenDocumentTranslator translatorOd;
-    MicrosoftTranslator translatorMs;
+    OfficeOpenXmlTranslator translatorMs;
 
     FileType guess(const std::string &path) noexcept {
         // TODO guess by file extension first
