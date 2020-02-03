@@ -1,5 +1,5 @@
-#ifndef ODR_MICROSOFTTRANSLATOR_H
-#define ODR_MICROSOFTTRANSLATOR_H
+#ifndef ODR_OFFICEOPENXMLTRANSLATOR_H
+#define ODR_OFFICEOPENXMLTRANSLATOR_H
 
 #include <string>
 #include <memory>
@@ -8,10 +8,10 @@ namespace odr {
 
 class TranslationContext;
 
-class MicrosoftTranslator final {
+class OfficeOpenXmlTranslator final {
 public:
-    MicrosoftTranslator();
-    ~MicrosoftTranslator();
+    OfficeOpenXmlTranslator();
+    ~OfficeOpenXmlTranslator();
 
     bool translate(const std::string &outPath, TranslationContext &context) const;
     bool backTranslate(const std::string &diff, const std::string &outPath, TranslationContext &context) const;
@@ -23,4 +23,4 @@ private:
 
 }
 
-#endif //ODR_MICROSOFTTRANSLATOR_H
+#endif //ODR_OFFICEOPENXMLTRANSLATOR_H
