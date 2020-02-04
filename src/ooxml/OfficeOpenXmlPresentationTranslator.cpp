@@ -33,17 +33,77 @@ void XfrmTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translati
     }
 }
 
-void translateStyleInline(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void BorderTranslator(const std::string &property, const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    const tinyxml2::XMLAttribute *wAttr = in.FindAttribute("w");
+    if (wAttr == nullptr) return;
+    const tinyxml2::XMLElement *colorEle = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
+            .FirstChildElement("a:solidFill")
+            .FirstChildElement("a:srgbClr")
+            .ToElement();
+    if (colorEle == nullptr) return;
+    const tinyxml2::XMLAttribute *valAttr = colorEle->FindAttribute("val");
+    if (valAttr == nullptr) return;
+    out << property << ":" << wAttr->Int64Value() / 14400.0f << "pt solid ";
+    if (std::strlen(valAttr->Value()) == 6) out << "#";
+    out << valAttr->Value();
+    out << ";";
+}
+
+void BackgroundColorTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
+    const tinyxml2::XMLElement *colorEle = in.FirstChildElement("a:srgbClr");
+    if (colorEle == nullptr) return;
+    const tinyxml2::XMLAttribute *valAttr = colorEle->FindAttribute("val");
+    if (valAttr == nullptr) return;
+    out << "background-color:";
+    if (std::strlen(valAttr->Value()) == 6) out << "#";
+    out << valAttr->Value();
+    out << ";";
+}
+
+void MarginAttributesTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     const tinyxml2::XMLAttribute *marLAttr = in.FindAttribute("marL");
     if (marLAttr != nullptr) {
         float marLIn = marLAttr->Int64Value() / 914400.0f;
         out << "margin-left:" << marLIn << "in;";
     }
 
+    const tinyxml2::XMLAttribute *marRAttr = in.FindAttribute("marR");
+    if (marRAttr != nullptr) {
+        float marRIn = marRAttr->Int64Value() / 914400.0f;
+        out << "margin-right:" << marRIn << "in;";
+    }
+}
+
+void TableCellPropertyTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    MarginAttributesTranslator(in, out, context);
+
+    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+        const std::string element = e.Name();
+
+        if (element == "a:lnL") BorderTranslator("border-left", e, out, context);
+        else if (element == "a:lnR") BorderTranslator("border-right", e, out, context);
+        else if (element == "a:lnT") BorderTranslator("border-top", e, out, context);
+        else if (element == "a:lnB") BorderTranslator("border-bottom", e, out, context);
+        else if (element == "a:solidFill") BackgroundColorTranslator(e, out, context);
+    });
+}
+
+void DefaultPropertyTransaltor(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    MarginAttributesTranslator(in, out, context);
+
     const tinyxml2::XMLAttribute *szAttr = in.FindAttribute("sz");
     if (szAttr != nullptr) {
         float szPt = szAttr->Int64Value() / 100.0f;
         out << "font-size:" << szPt << "pt;";
+    }
+
+    const tinyxml2::XMLAttribute *algnAttr = in.FindAttribute("algn");
+    if (algnAttr != nullptr) {
+        out << "text-align:";
+        if (algnAttr->Value() == std::string("l")) out << "left";
+        if (algnAttr->Value() == std::string("ctr")) out << "center";
+        if (algnAttr->Value() == std::string("r")) out << "right";
+        out << ";";
     }
 
     XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
@@ -80,16 +140,26 @@ void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     const tinyxml2::XMLElement *pPr = in.FirstChildElement("a:pPr");
     const tinyxml2::XMLElement *rPr = in.FirstChildElement("a:rPr");
     const tinyxml2::XMLElement *spPr = in.FirstChildElement("p:spPr");
+    const tinyxml2::XMLElement *tcPr = in.FirstChildElement("a:tcPr");
     const tinyxml2::XMLElement *endParaRPr = in.FirstChildElement("a:endParaRPr");
+    const tinyxml2::XMLElement *xfrmPr = in.FirstChildElement("p:xfrm");
+    const tinyxml2::XMLAttribute *wAttr = in.FindAttribute("w");
+    const tinyxml2::XMLAttribute *hAttr = in.FindAttribute("h");
     if ((pPr != nullptr && pPr->FirstChild() != nullptr) ||
             (rPr != nullptr && rPr->FirstChild() != nullptr) ||
             (spPr != nullptr && spPr->FirstChild() != nullptr) ||
-            (endParaRPr != nullptr && endParaRPr->FirstChild() != nullptr)) {
+            (tcPr != nullptr && tcPr->FirstChild() != nullptr) ||
+            (endParaRPr != nullptr && endParaRPr->FirstChild() != nullptr) ||
+            (xfrmPr != nullptr) || (wAttr != nullptr) || (hAttr != nullptr)) {
         out << " style=\"";
-        if (pPr != nullptr) translateStyleInline(*pPr, out, context);
-        if (rPr != nullptr) translateStyleInline(*rPr, out, context);
-        if (spPr != nullptr) translateStyleInline(*spPr, out, context);
-        if (endParaRPr != nullptr) translateStyleInline(*endParaRPr, out, context);
+        if (pPr != nullptr) DefaultPropertyTransaltor(*pPr, out, context);
+        if (rPr != nullptr) DefaultPropertyTransaltor(*rPr, out, context);
+        if (spPr != nullptr) DefaultPropertyTransaltor(*spPr, out, context);
+        if (tcPr != nullptr) TableCellPropertyTranslator(*tcPr, out, context);
+        if (endParaRPr != nullptr) DefaultPropertyTransaltor(*endParaRPr, out, context);
+        if (xfrmPr != nullptr) XfrmTranslator(*xfrmPr, out, context);
+        if (wAttr != nullptr) out << "width:" << (wAttr->Int64Value() / 914400.0f) << "in;";
+        if (hAttr != nullptr) out << "height:" << (hAttr->Int64Value() / 914400.0f) << "in;";
         out << "\"";
     }
 }
@@ -149,6 +219,14 @@ void SlideTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
     out << "</div>";
 }
 
+void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << R"(<table border="0" cellspacing="0" cellpadding="0")";
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+    ElementChildrenTranslator(in, out, context);
+    out << "</table>";
+}
+
 // TODO duplicated in document translation
 void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     out << "<img";
@@ -188,6 +266,11 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> substitution{
             {"p:sp", "div"},
+            {"p:graphicFrame", "div"},
+            {"a:tblGrid", "colgroup"},
+            {"a:gridCol", "col"},
+            {"a:tr", "tr"},
+            {"a:tc", "td"},
     };
     static std::unordered_set<std::string> skippers{
     };
@@ -198,6 +281,7 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
     if (element == "a:p") ParagraphTranslator(in, out, context);
     else if (element == "a:r") SpanTranslator(in, out, context);
     else if (element == "p:cSld") SlideTranslator(in, out, context);
+    else if (element == "a:tbl") TableTranslator(in, out, context);
     else if (element == "p:pic") ImageTranslator(in, out, context);
     else {
         const auto it = substitution.find(element);

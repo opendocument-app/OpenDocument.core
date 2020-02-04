@@ -307,14 +307,6 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
     out << "</table>";
 }
 
-void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    out << "<td";
-    ElementAttributeTranslator(in, out, context);
-    out << ">";
-    ElementChildrenTranslator(in, out, context);
-    out << "</td>";
-}
-
 void DrawingsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     // ooxml is using amazing units
     // https://startbigthinksmall.wordpress.com/2010/01/04/points-inches-and-emus-measuring-units-in-office-open-xml/
@@ -375,8 +367,8 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out
 
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> substitution{
-            { "w:tr",   "tr" },
-            { "w:tc",   "td" },
+            {"w:tr", "tr"},
+            {"w:tc", "td"},
     };
     static std::unordered_set<std::string> skippers{
             "w:instrText",
@@ -391,7 +383,6 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
     else if (element == "w:hyperlink") HyperlinkTranslator(in, out, context);
     else if (element == "w:bookmarkStart") BookmarkTranslator(in, out, context);
     else if (element == "w:tbl") TableTranslator(in, out, context);
-    else if (element == "w:tc") TableCellTranslator(in, out, context);
     else if (element == "w:drawing") DrawingsTranslator(in, out, context);
     else if (element == "pic:pic") ImageTranslator(in, out, context);
     else {
