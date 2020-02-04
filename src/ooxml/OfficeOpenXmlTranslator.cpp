@@ -51,7 +51,20 @@ public:
                 const tinyxml2::XMLElement *styles = stylesXml->RootElement();
                 OfficeOpenXmlDocumentTranslator::translateStyle(*styles, context);
             } break;
-            case FileType::OFFICE_OPEN_XML_PRESENTATION:
+            case FileType::OFFICE_OPEN_XML_PRESENTATION: {
+                // TODO duplication in generateContent
+                const auto presentation = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
+                const tinyxml2::XMLElement *sizeEle = presentation->RootElement()->FirstChildElement("p:sldSz");
+                if (sizeEle != nullptr) {
+                    float widthIn = sizeEle->FindAttribute("cx")->Int64Value() / 914400.0f;
+                    float heightIn = sizeEle->FindAttribute("cy")->Int64Value() / 914400.0f;
+
+                    out << ".slide {";
+                    out << "width:" << widthIn << "in;";
+                    out << "height:" << heightIn << "in;";
+                    out << "}";
+                }
+            } break;
             case FileType::OFFICE_OPEN_XML_WORKBOOK:
                 break;
             default:

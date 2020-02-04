@@ -33,13 +33,7 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationC
     }
 }
 
-void AttributeTranslator(const tinyxml2::XMLAttribute &, std::ostream &, TranslationContext &) {
-}
-
 void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    XmlUtil::visitElementAttributes(in, [&](const tinyxml2::XMLAttribute &a) {
-        AttributeTranslator(a, out, context);
-    });
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);

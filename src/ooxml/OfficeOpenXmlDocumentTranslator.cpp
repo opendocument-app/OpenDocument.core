@@ -223,15 +223,8 @@ void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     }
 }
 
-void AttributeTranslator(const tinyxml2::XMLAttribute &, std::ostream &, TranslationContext &) {
-}
-
 void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     StyleAttributeTranslator(in, out, context);
-
-    XmlUtil::visitElementAttributes(in, [&](const tinyxml2::XMLAttribute &a) {
-        AttributeTranslator(a, out, context);
-    });
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
