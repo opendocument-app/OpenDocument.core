@@ -121,6 +121,28 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
     out << "</p>";
 }
 
+void SpanTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    bool link = false;
+    const tinyxml2::XMLElement *hlinkClick = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
+            .FirstChildElement("a:rPr")
+            .FirstChildElement("a:hlinkClick")
+            .ToElement();
+    if (hlinkClick != nullptr && hlinkClick->FindAttribute("r:id") != nullptr) {
+        const tinyxml2::XMLAttribute *rIdAttr = hlinkClick->FindAttribute("r:id");
+        const std::string href = context.msRelations[rIdAttr->Value()];
+        link = true;
+        out << "<a href=\"" << href << "\">";
+    }
+
+    out << "<span";
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+    ElementChildrenTranslator(in, out, context);
+    out << "</span>";
+
+    if (link) out << "</a>";
+}
+
 void SlideTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     out << "<div class=\"slide\">";
     ElementChildrenTranslator(in, out, context);
@@ -140,8 +162,8 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
         out << " alt=\"Error: image path not specified";
         LOG(ERROR) << "image href not found";
     } else {
-        const char *rIdAttr = ref->FindAttribute("r:embed")->Value();
-        const Path path = Path("ppt/slides").join(context.msRelations[rIdAttr]);
+        const tinyxml2::XMLAttribute *rIdAttr = ref->FindAttribute("r:embed");
+        const Path path = Path("ppt/slides").join(context.msRelations[rIdAttr->Value()]);
         out << " alt=\"Error: image not found or unsupported: " << path << "\"";
 #ifdef ODR_CRYPTO
         out << " src=\"";
@@ -166,7 +188,6 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> substitution{
             {"p:sp", "div"},
-            {"a:r", "span"},
     };
     static std::unordered_set<std::string> skippers{
     };
@@ -175,6 +196,7 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
     if (skippers.find(element) != skippers.end()) return;
 
     if (element == "a:p") ParagraphTranslator(in, out, context);
+    else if (element == "a:r") SpanTranslator(in, out, context);
     else if (element == "p:cSld") SlideTranslator(in, out, context);
     else if (element == "p:pic") ImageTranslator(in, out, context);
     else {
