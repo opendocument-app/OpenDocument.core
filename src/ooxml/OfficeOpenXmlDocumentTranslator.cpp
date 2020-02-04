@@ -188,9 +188,52 @@ void OfficeOpenXmlDocumentTranslator::translateStyle(const tinyxml2::XMLElement 
 }
 
 namespace {
-void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context);
-void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out, TranslationContext &context);
-void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
+void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context) {
+    std::string text = in.Value();
+    StringUtil::findAndReplaceAll(text, "&", "&amp;");
+    StringUtil::findAndReplaceAll(text, "<", "&lt;");
+    StringUtil::findAndReplaceAll(text, ">", "&gt;");
+
+    if (!context.config->editable) {
+        out << text;
+    } else {
+        out << R"(<span contenteditable="true" data-odr-cid=")"
+            << context.currentTextTranslationIndex << "\">" << text << "</span>";
+        context.textTranslation[context.currentTextTranslationIndex] = &in;
+        ++context.currentTextTranslationIndex;
+    }
+}
+
+void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    const std::string prefix = in.Name();
+
+    const tinyxml2::XMLElement *style = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
+            .FirstChildElement((prefix + "Pr").c_str())
+            .FirstChildElement((prefix + "Style").c_str())
+            .ToElement();
+    if (style != nullptr) {
+        *context.output << " class=\"" << style->FindAttribute("w:val")->Value() << "\"";
+    }
+
+    const tinyxml2::XMLElement *inlineStyle = in.FirstChildElement((prefix + "Pr").c_str());
+    if (inlineStyle != nullptr && inlineStyle->FirstChild() != nullptr) {
+        out << " style=\"";
+        translateStyleInline(*inlineStyle, out, context);
+        out << "\"";
+    }
+}
+
+void AttributeTranslator(const tinyxml2::XMLAttribute &, std::ostream &, TranslationContext &) {
+}
+
+void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    StyleAttributeTranslator(in, out, context);
+
+    XmlUtil::visitElementAttributes(in, [&](const tinyxml2::XMLAttribute &a) {
+        AttributeTranslator(a, out, context);
+    });
+}
+
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 
@@ -328,52 +371,6 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
     }
 
     out << ">";
-}
-
-void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context) {
-    std::string text = in.Value();
-    StringUtil::findAndReplaceAll(text, "&", "&amp;");
-    StringUtil::findAndReplaceAll(text, "<", "&lt;");
-    StringUtil::findAndReplaceAll(text, ">", "&gt;");
-
-    if (!context.config->editable) {
-        out << text;
-    } else {
-        out << R"(<span contenteditable="true" data-odr-cid=")"
-            << context.currentTextTranslationIndex << "\">" << text << "</span>";
-        context.textTranslation[context.currentTextTranslationIndex] = &in;
-        ++context.currentTextTranslationIndex;
-    }
-}
-
-void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    const std::string prefix = in.Name();
-
-    const tinyxml2::XMLElement *style = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
-            .FirstChildElement((prefix + "Pr").c_str())
-            .FirstChildElement((prefix + "Style").c_str())
-            .ToElement();
-    if (style != nullptr) {
-        *context.output << " class=\"" << style->FindAttribute("w:val")->Value() << "\"";
-    }
-
-    const tinyxml2::XMLElement *inlineStyle = in.FirstChildElement((prefix + "Pr").c_str());
-    if (inlineStyle != nullptr && inlineStyle->FirstChild() != nullptr) {
-        out << " style=\"";
-        translateStyleInline(*inlineStyle, out, context);
-        out << "\"";
-    }
-}
-
-void AttributeTranslator(const tinyxml2::XMLAttribute &, std::ostream &, TranslationContext &) {
-}
-
-void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    StyleAttributeTranslator(in, out, context);
-
-    XmlUtil::visitElementAttributes(in, [&](const tinyxml2::XMLAttribute &a) {
-        AttributeTranslator(a, out, context);
-    });
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
