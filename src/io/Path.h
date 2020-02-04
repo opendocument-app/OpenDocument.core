@@ -13,7 +13,6 @@ public:
     Path() noexcept;
     Path(const char *);
     Path(const std::string &);
-    Path(std::string &&);
     Path(const Path &) = default;
     Path(Path &&) = default;
     ~Path() = default;
@@ -31,28 +30,33 @@ public:
     const std::string &string() const noexcept;
     std::size_t hash() const noexcept;
 
-    bool isAbsolute() const noexcept;
-    bool isRelative() const noexcept;
+    bool isAbsolute() const noexcept { return absolute_; }
+    bool isRelative() const noexcept { return !absolute_; }
     bool isVisible() const noexcept;
     bool isEscaping() const noexcept;
-    bool childOf(const Path &) const noexcept;
-    bool parentOf(const Path &) const noexcept;
-    bool ancestorOf(const Path &) const noexcept;
-    bool descendantOf(const Path &) const noexcept;
+    bool childOf(const Path &) const;
+    bool parentOf(const Path &) const;
+    bool ancestorOf(const Path &) const;
+    bool descendantOf(const Path &) const;
 
     std::string basename() const noexcept;
     std::string extension() const noexcept;
     std::string fullExtension() const noexcept;
 
     Path parent() const;
-    Path join(const Path &) const noexcept;
+    Path join(const Path &) const;
 
 private:
     std::string path_;
-    std::uint32_t nesting_;
+    std::uint32_t upwards_;
+    std::uint32_t downwards_;
+    bool absolute_;
 
     friend struct ::std::hash<odr::Path>;
     friend std::ostream &operator<<(std::ostream &, const Path &);
+
+    void parent_();
+    void join_(const std::string &);
 };
 
 }
