@@ -423,8 +423,7 @@ public:
             // TODO not sure what directory is; was empty so far
             // const std::string dir = convert.to_bytes(directory);
             const std::string name = convert.to_bytes(std::u16string((const char16_t *) entry->name, (entry->nameLen - 1) / 2));
-            const Path path = name;
-            visitor(entry, path);
+            visitor(entry, Path(name));
         });
     }
 

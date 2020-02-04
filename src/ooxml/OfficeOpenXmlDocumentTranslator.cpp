@@ -254,9 +254,9 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
     bool empty = true;
     XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e1) {
         XmlUtil::visitElementChildren(e1, [&](const tinyxml2::XMLElement &e2) {
-            if (std::strcmp(e1.Name(), "w:pPr") == 0);
+            if (StringUtil::endsWith(e1.Name(), "Pr")) ;
             else if (std::strcmp(e1.Name(), "w:r") != 0) empty = false;
-            else if (std::strcmp(e2.Name(), "w:rPr") != 0) empty = false;
+            else if (StringUtil::endsWith(e2.Name(), "Pr")) empty = false;
         });
     });
 
@@ -351,7 +351,7 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
         LOG(ERROR) << "image href not found";
     } else {
         const char *rIdAttr = ref->FindAttribute("r:embed")->Value();
-        const Path path = context.msRoot.join(context.msRelations[rIdAttr]);
+        const Path path = Path("word").join(context.msRelations[rIdAttr]);
         out << " alt=\"Error: image not found or unsupported: " << path << "\"";
 #ifdef ODR_CRYPTO
         out << " src=\"";
@@ -363,7 +363,7 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
 #endif
     }
 
-    out << ">";
+    out << "></img>";
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
