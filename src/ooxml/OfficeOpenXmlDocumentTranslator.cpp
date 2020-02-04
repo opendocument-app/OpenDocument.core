@@ -95,7 +95,7 @@ void TableCellBorderTranslator(const tinyxml2::XMLElement &in, std::ostream &out
     auto translator = [&](const char *name, const tinyxml2::XMLElement &e) {
         out << name << ":";
 
-        const float sizePt = e.FindAttribute("w:sz")->IntValue() / 2.0f;
+        const float sizePt = e.FindAttribute("w:sz")->Int64Value() / 2.0f;
         out << sizePt << "pt ";
 
         const char *type = "solid";
