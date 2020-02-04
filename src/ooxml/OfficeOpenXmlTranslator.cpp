@@ -53,8 +53,8 @@ public:
             } break;
             case FileType::OFFICE_OPEN_XML_PRESENTATION: {
                 // TODO duplication in generateContent
-                const auto presentation = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
-                const tinyxml2::XMLElement *sizeEle = presentation->RootElement()->FirstChildElement("p:sldSz");
+                const auto ppt = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
+                const tinyxml2::XMLElement *sizeEle = ppt->RootElement()->FirstChildElement("p:sldSz");
                 if (sizeEle != nullptr) {
                     float widthIn = sizeEle->FindAttribute("cx")->Int64Value() / 914400.0f;
                     float heightIn = sizeEle->FindAttribute("cy")->Int64Value() / 914400.0f;
@@ -80,7 +80,6 @@ public:
         switch (context.meta->type) {
             case FileType::OFFICE_OPEN_XML_DOCUMENT: {
                 context.content = XmlUtil::parse(*context.storage, "word/document.xml");
-                context.msRoot = "word";
                 context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, "word/document.xml");
 
                 tinyxml2::XMLElement *body = context.content
@@ -90,19 +89,21 @@ public:
                 OfficeOpenXmlDocumentTranslator::translateContent(*body, context);
             } break;
             case FileType::OFFICE_OPEN_XML_PRESENTATION: {
-                context.content = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
-                context.msRoot = "ppt";
-                context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, "ppt/presentation.xml");
+                const auto ppt = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
+                const auto pptRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, "ppt/presentation.xml");
 
-                XmlUtil::recursiveVisitElementsWithName(context.content->RootElement(), "p:sldId", [&](const auto &child) {
+                XmlUtil::recursiveVisitElementsWithName(ppt->RootElement(), "p:sldId", [&](const auto &child) {
                     const std::string rId = child.FindAttribute("r:id")->Value();
-                    const auto sheet = XmlUtil::parse(*context.storage, Path("ppt").join(context.msRelations.at(rId)));
-                    OfficeOpenXmlPresentationTranslator::translateContent(*sheet->RootElement(), context);
+
+                    const auto path = Path("ppt").join(pptRelations.at(rId));
+                    context.content = XmlUtil::parse(*context.storage, path);
+                    context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, path);
+
+                    OfficeOpenXmlPresentationTranslator::translateContent(*context.content->RootElement(), context);
                 });
             } break;
             case FileType::OFFICE_OPEN_XML_WORKBOOK: {
                 context.content = XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
-                context.msRoot = "xl";
                 context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, "xl/workbook.xml");
 
                 // TODO this breaks back translation
@@ -113,7 +114,7 @@ public:
 
                 XmlUtil::recursiveVisitElementsWithName(context.content->RootElement(), "sheet", [&](const auto &child) {
                     const std::string rId = child.FindAttribute("r:id")->Value();
-                    const auto sheet = XmlUtil::parse(*context.storage, Path("xl").join(context.msRelations.at(rId)));
+                    const auto sheet = XmlUtil::parse(*context.storage, Path("xl").join(context.msRelations[rId]));
                     OfficeOpenXmlWorkbookTranslator::translateContent(*sheet->RootElement(), context);
                 });
             } break;

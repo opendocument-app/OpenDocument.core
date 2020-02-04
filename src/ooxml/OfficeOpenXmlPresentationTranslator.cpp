@@ -10,6 +10,7 @@
 #include "../io/Storage.h"
 #include "../io/StreamUtil.h"
 #include "../XmlUtil.h"
+#include "../crypto/CryptoUtil.h"
 
 namespace odr {
 
@@ -33,10 +34,15 @@ void XfrmTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translati
 }
 
 void translateStyleInline(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    // <a:rPr b="1" lang="en-US" sz="4800" spc="-1" strike="noStrike">
+    const tinyxml2::XMLAttribute *marLAttr = in.FindAttribute("marL");
+    if (marLAttr != nullptr) {
+        float marLIn = marLAttr->Int64Value() / 914400.0f;
+        out << "margin-left:" << marLIn << "in;";
+    }
+
     const tinyxml2::XMLAttribute *szAttr = in.FindAttribute("sz");
     if (szAttr != nullptr) {
-        float szPt = szAttr->Int64Value() / 100.0;
+        float szPt = szAttr->Int64Value() / 100.0f;
         out << "font-size:" << szPt << "pt;";
     }
 
@@ -71,10 +77,19 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationC
 void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     const std::string prefix = in.Name();
 
-    const tinyxml2::XMLElement *inlineStyle = in.FirstChildElement((prefix + "Pr").c_str());
-    if (inlineStyle != nullptr && inlineStyle->FirstChild() != nullptr) {
+    const tinyxml2::XMLElement *pPr = in.FirstChildElement("a:pPr");
+    const tinyxml2::XMLElement *rPr = in.FirstChildElement("a:rPr");
+    const tinyxml2::XMLElement *spPr = in.FirstChildElement("p:spPr");
+    const tinyxml2::XMLElement *endParaRPr = in.FirstChildElement("a:endParaRPr");
+    if ((pPr != nullptr && pPr->FirstChild() != nullptr) ||
+            (rPr != nullptr && rPr->FirstChild() != nullptr) ||
+            (spPr != nullptr && spPr->FirstChild() != nullptr) ||
+            (endParaRPr != nullptr && endParaRPr->FirstChild() != nullptr)) {
         out << " style=\"";
-        translateStyleInline(*inlineStyle, out, context);
+        if (pPr != nullptr) translateStyleInline(*pPr, out, context);
+        if (rPr != nullptr) translateStyleInline(*rPr, out, context);
+        if (spPr != nullptr) translateStyleInline(*spPr, out, context);
+        if (endParaRPr != nullptr) translateStyleInline(*endParaRPr, out, context);
         out << "\"";
     }
 }
@@ -86,18 +101,59 @@ void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 
+void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<p";
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+
+    bool empty = true;
+    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e1) {
+        XmlUtil::visitElementChildren(e1, [&](const tinyxml2::XMLElement &e2) {
+            if (StringUtil::endsWith(e1.Name(), "Pr")) ;
+            else if (std::strcmp(e1.Name(), "w:r") != 0) empty = false;
+            else if (StringUtil::endsWith(e2.Name(), "Pr")) empty = false;
+        });
+    });
+
+    if (empty) out << "<br/>";
+    else ElementChildrenTranslator(in, out, context);
+
+    out << "</p>";
+}
+
 void SlideTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     out << "<div class=\"slide\">";
     ElementChildrenTranslator(in, out, context);
     out << "</div>";
 }
 
-void ShapeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    out << "<div";
+// TODO duplicated in document translation
+void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<img";
     ElementAttributeTranslator(in, out, context);
-    out << ">";
-    ElementChildrenTranslator(in, out, context);
-    out << "</div>";
+
+    const tinyxml2::XMLElement *ref = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
+            .FirstChildElement("p:blipFill")
+            .FirstChildElement("a:blip")
+            .ToElement();
+    if (ref == nullptr || ref->FindAttribute("r:embed") == nullptr) {
+        out << " alt=\"Error: image path not specified";
+        LOG(ERROR) << "image href not found";
+    } else {
+        const char *rIdAttr = ref->FindAttribute("r:embed")->Value();
+        const Path path = Path("ppt/slides").join(context.msRelations[rIdAttr]);
+        out << " alt=\"Error: image not found or unsupported: " << path << "\"";
+#ifdef ODR_CRYPTO
+        out << " src=\"";
+        std::string image = StreamUtil::read(*context.storage->read(path));
+        // hacky image/jpg working according to tom
+        out << "data:image/jpg;base64, ";
+        out << CryptoUtil::base64Encode(image);
+        out << "\"";
+#endif
+    }
+
+    out << "></img>";
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
@@ -109,7 +165,7 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out
 
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> substitution{
-            {"a:p", "p"},
+            {"p:sp", "div"},
             {"a:r", "span"},
     };
     static std::unordered_set<std::string> skippers{
@@ -118,8 +174,9 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
     const std::string element = in.Name();
     if (skippers.find(element) != skippers.end()) return;
 
-    if (element == "p:cSld") SlideTranslator(in, out, context);
-    else if (element == "p:sp") ShapeTranslator(in, out, context);
+    if (element == "a:p") ParagraphTranslator(in, out, context);
+    else if (element == "p:cSld") SlideTranslator(in, out, context);
+    else if (element == "p:pic") ImageTranslator(in, out, context);
     else {
         const auto it = substitution.find(element);
         if (it != substitution.end()) {
