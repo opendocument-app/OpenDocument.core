@@ -17,12 +17,6 @@ void OfficeOpenXmlPresentationTranslator::translateStyle(const tinyxml2::XMLElem
 }
 
 namespace {
-void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context);
-void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out, TranslationContext &context);
-void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
-void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
-void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
-
 void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context) {
     std::string text = in.Value();
     StringUtil::findAndReplaceAll(text, "&", "&amp;");
@@ -47,6 +41,9 @@ void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &ou
         AttributeTranslator(a, out, context);
     });
 }
+
+void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
+void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {

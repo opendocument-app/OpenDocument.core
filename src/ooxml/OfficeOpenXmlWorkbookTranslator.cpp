@@ -17,9 +17,31 @@ void OfficeOpenXmlWorkbookTranslator::translateStyle(const tinyxml2::XMLElement 
 }
 
 namespace {
-void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context);
-void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out, TranslationContext &context);
-void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
+void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context) {
+    std::string text = in.Value();
+    StringUtil::findAndReplaceAll(text, "&", "&amp;");
+    StringUtil::findAndReplaceAll(text, "<", "&lt;");
+    StringUtil::findAndReplaceAll(text, ">", "&gt;");
+
+    if (!context.config->editable) {
+        out << text;
+    } else {
+        out << R"(<span contenteditable="true" data-odr-cid=")"
+            << context.currentTextTranslationIndex << "\">" << text << "</span>";
+        context.textTranslation[context.currentTextTranslationIndex] = &in;
+        ++context.currentTextTranslationIndex;
+    }
+}
+
+void AttributeTranslator(const tinyxml2::XMLAttribute &, std::ostream &, TranslationContext &) {
+}
+
+void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    XmlUtil::visitElementAttributes(in, [&](const tinyxml2::XMLAttribute &a) {
+        AttributeTranslator(a, out, context);
+    });
+}
+
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 
@@ -60,31 +82,6 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
     }
 
     out << "</td>";
-}
-
-void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationContext &context) {
-    std::string text = in.Value();
-    StringUtil::findAndReplaceAll(text, "&", "&amp;");
-    StringUtil::findAndReplaceAll(text, "<", "&lt;");
-    StringUtil::findAndReplaceAll(text, ">", "&gt;");
-
-    if (!context.config->editable) {
-        out << text;
-    } else {
-        out << R"(<span contenteditable="true" data-odr-cid=")"
-            << context.currentTextTranslationIndex << "\">" << text << "</span>";
-        context.textTranslation[context.currentTextTranslationIndex] = &in;
-        ++context.currentTextTranslationIndex;
-    }
-}
-
-void AttributeTranslator(const tinyxml2::XMLAttribute &, std::ostream &, TranslationContext &) {
-}
-
-void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    XmlUtil::visitElementAttributes(in, [&](const tinyxml2::XMLAttribute &a) {
-        AttributeTranslator(a, out, context);
-    });
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
