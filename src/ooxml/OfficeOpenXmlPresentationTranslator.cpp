@@ -176,6 +176,23 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
     ElementAttributeTranslator(in, out, context);
     out << ">";
 
+    const tinyxml2::XMLElement *buCharEle = tinyxml2::XMLHandle((tinyxml2::XMLElement &) in)
+            .FirstChildElement("a:pPr")
+            .FirstChildElement("a:buChar")
+            .ToElement();
+    if (buCharEle != nullptr) {
+        //const tinyxml2::XMLAttribute *charAttr = buCharEle->FindAttribute("char");
+        //const tinyxml2::XMLAttribute *sizeAttr = in.FirstChildElement("a:pPr")->FirstChildElement("a:buSzPct")->FindAttribute("val");
+        //const tinyxml2::XMLAttribute *fontAttr = in.FirstChildElement("a:pPr")->FirstChildElement("a:buFont")->FindAttribute("typeface");
+
+        std::string bullet = "•";
+        // TODO decide bullet, font, size on input
+
+        out << "<span style=\"";
+        //out << "font-family:" << fontAttr->Value() << " 2;font-size:" << sizeAttr->Int64Value() / 1440.0f << "pt;";
+        out << "\">" << bullet << " </span>";
+    }
+
     bool empty = true;
     XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e1) {
         XmlUtil::visitElementChildren(e1, [&](const tinyxml2::XMLElement &e2) {
