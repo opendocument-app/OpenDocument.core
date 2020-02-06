@@ -46,7 +46,7 @@ std::unordered_map<std::string, std::string> OfficeOpenXmlMeta::parseRelationshi
 
 std::unordered_map<std::string, std::string> OfficeOpenXmlMeta::parseRelationships(Storage &storage, const Path &path) {
     const auto relationships = loadRelationships(storage, path);
-    if (!relationships) throw std::invalid_argument("xml not present");
+    if (!relationships) return {};
     return parseRelationships(*relationships);
 }
 
