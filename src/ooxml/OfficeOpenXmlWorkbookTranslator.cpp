@@ -87,7 +87,8 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
             } else {
                 DLOG(INFO) << "undefined behaviour: shared string not found";
             }
-        } else if ((std::strcmp(t->Value(), "inlineStr") == 0) ||
+        } else if ((std::strcmp(t->Value(), "str") == 0) ||
+                   (std::strcmp(t->Value(), "inlineStr") == 0) ||
                    (std::strcmp(t->Value(), "n") == 0)) {
             ElementChildrenTranslator(in, out, context);
         } else {
@@ -115,6 +116,7 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
     };
     static std::unordered_set<std::string> skippers{
             "headerFooter",
+            "f", // TODO translate formula and hide
     };
 
     const std::string element = in.Name();
