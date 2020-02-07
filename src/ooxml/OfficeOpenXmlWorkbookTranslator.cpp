@@ -13,7 +13,114 @@
 
 namespace odr {
 
+namespace {
+void FontsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    std::uint32_t i = 0;
+    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+        out << ".font-" << i << " {";
+
+        const tinyxml2::XMLElement *name = e.FirstChildElement("name");
+        if (name != nullptr) out << "font-family: " << name->FindAttribute("val")->Value() << ";";
+
+        const tinyxml2::XMLElement *size = e.FirstChildElement("sz");
+        if (size != nullptr) out << "font-size: " << size->FindAttribute("val")->Value() << "pt;";
+
+        const tinyxml2::XMLElement *color = e.FirstChildElement("color");
+        if (color != nullptr) out << "color: #" << std::string(color->FindAttribute("rgb")->Value()).substr(2) << ";";
+
+        // TODO
+        // <u val="single" /> underline?
+        // <b val="true" /> bold?
+        // <vertAlign val="superscript" />
+
+        out << "} ";
+
+        ++i;
+    });
+}
+
+void FillsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    std::uint32_t i = 0;
+    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+        out << ".fill-" << i << " {";
+
+        const auto patternFill = e.FirstChildElement("patternFill");
+        if (patternFill != nullptr) {
+            const auto bgColor = patternFill->FirstChildElement("bgColor");
+            if (bgColor != nullptr)
+                out << "background-color: #" << std::string(bgColor->FindAttribute("rgb")->Value()).substr(2) << ";";
+        }
+
+        out << "} ";
+
+        ++i;
+    });
+}
+
+void BordersTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    std::uint32_t i = 0;
+    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+        out << ".border-" << i << " {";
+        // TODO
+        out << "} ";
+
+        ++i;
+    });
+}
+
+void CellXfsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    std::uint32_t i = 0;
+    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+        const std::string name = "cellxf-" + std::to_string(i);
+
+        const tinyxml2::XMLAttribute *fontId = e.FindAttribute("fontId");
+        const tinyxml2::XMLAttribute *applyFont = e.FindAttribute("applyFont");
+        if (std::strcmp(applyFont->Value(), "true") == 0)
+            context.styleDependencies[name].push_back(std::string("font-") + fontId->Value());
+
+        const tinyxml2::XMLAttribute *fillId = e.FindAttribute("fillId");
+        if (fillId != nullptr)
+            context.styleDependencies[name].push_back(std::string("fill-") + fillId->Value());
+
+        const tinyxml2::XMLAttribute *borderId = e.FindAttribute("borderId");
+        const tinyxml2::XMLAttribute *applyBorder = e.FindAttribute("applyBorder");
+        if (std::strcmp(applyBorder->Value(), "true") == 0)
+            context.styleDependencies[name].push_back(std::string("border-") + borderId->Value());
+
+        out << "." << name << " {";
+
+        const tinyxml2::XMLAttribute *applyAlignment = e.FindAttribute("applyAlignment");
+        if (std::strcmp(applyAlignment->Value(), "true") == 0) {
+            const auto *alignment = e.FirstChildElement("alignment");
+            out << "text-align: " << alignment->FindAttribute("horizontal")->Value() << ";";
+            // TODO vertical alignment
+            // <alignment horizontal="left" vertical="bottom" textRotation="0" wrapText="false" indent="0" shrinkToFit="false" />
+        }
+
+        // TODO
+        // <protection locked="true" hidden="false" />
+
+        out << "} ";
+
+        ++i;
+    });
+}
+}
+
 void OfficeOpenXmlWorkbookTranslator::translateStyle(const tinyxml2::XMLElement &in, TranslationContext &context) {
+    std::ostream &out = *context.output;
+
+    const tinyxml2::XMLElement *fonts = in.FirstChildElement("fonts");
+    if (fonts != nullptr) FontsTranslator(*fonts, out, context);
+
+    const tinyxml2::XMLElement *fills = in.FirstChildElement("fills");
+    if (fills != nullptr) FillsTranslator(*fills, out, context);
+
+    const tinyxml2::XMLElement *borders = in.FirstChildElement("borders");
+    if (borders != nullptr) BordersTranslator(*borders, out, context);
+
+    const tinyxml2::XMLElement *cellXfs = in.FirstChildElement("cellXfs");
+    if (cellXfs != nullptr) CellXfsTranslator(*cellXfs, out, context);
 }
 
 namespace {
@@ -47,6 +154,27 @@ void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    const auto s = in.FindAttribute("s");
+    if (s != nullptr) {
+        const std::string name = std::string("cellxf-") + s->Value();
+        out << " class=\"";
+        out << name;
+
+        { // handle style dependencies
+            const auto it = context.styleDependencies.find(name);
+            if (it == context.styleDependencies.end()) {
+                // TODO remove ?
+                LOG(WARNING) << "unknown style: " << name;
+            } else {
+                for (auto i = it->second.rbegin(); i != it->second.rend(); ++i) {
+                    out << " " << *i;
+                }
+            }
+        }
+
+        out << "\"";
+    }
+
     StyleAttributeTranslator(in, out, context);
 }
 
@@ -96,7 +224,6 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
         }
     } else {
         // TODO empty cell?
-        //DLOG(INFO) << "undefined behaviour: t not found";
     }
 
     out << "</td>";

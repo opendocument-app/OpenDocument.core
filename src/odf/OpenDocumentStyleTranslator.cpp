@@ -76,11 +76,11 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tra
 
     const char *parentStyleName;
     if (in.QueryStringAttribute("style:parent-style-name", &parentStyleName) == tinyxml2::XML_SUCCESS) {
-        context.odStyleDependencies[name].push_back(OpenDocumentStyleTranslator::escapeStyleName(parentStyleName));
+        context.styleDependencies[name].push_back(OpenDocumentStyleTranslator::escapeStyleName(parentStyleName));
     }
     const char *family;
     if (in.QueryStringAttribute("style:family", &family) == tinyxml2::XML_SUCCESS) {
-        context.odStyleDependencies[name].push_back(OpenDocumentStyleTranslator::escapeStyleName(family));
+        context.styleDependencies[name].push_back(OpenDocumentStyleTranslator::escapeStyleName(family));
     }
 
     out << "." << name << " {";
@@ -104,7 +104,7 @@ void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
         return;
     }
     const std::string styleName = OpenDocumentStyleTranslator::escapeStyleName(styleNameAttr->Value());
-    context.odStyleDependencies[styleName] = {};
+    context.styleDependencies[styleName] = {};
 
     const auto listLevelAttr = in.FindAttribute("text:level");
     if (listLevelAttr == nullptr) {

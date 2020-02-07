@@ -40,8 +40,8 @@ void StyleAttributeTranslator(const std::string &name, std::ostream &out, Transl
     out << name;
 
     { // handle style dependencies
-        const auto it = context.odStyleDependencies.find(name);
-        if (it == context.odStyleDependencies.end()) {
+        const auto it = context.styleDependencies.find(name);
+        if (it == context.styleDependencies.end()) {
             // TODO remove ?
             LOG(WARNING) << "unknown style: " << name;
         } else {

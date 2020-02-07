@@ -65,8 +65,11 @@ public:
                     out << "}";
                 }
             } break;
-            case FileType::OFFICE_OPEN_XML_WORKBOOK:
-                break;
+            case FileType::OFFICE_OPEN_XML_WORKBOOK: {
+                const auto stylesXml = XmlUtil::parse(*context.storage, "xl/styles.xml");
+                const tinyxml2::XMLElement *styles = stylesXml->RootElement();
+                OfficeOpenXmlWorkbookTranslator::translateStyle(*styles, context);
+            } break;
             default:
                 throw std::invalid_argument("file.getMeta().type");
         }
