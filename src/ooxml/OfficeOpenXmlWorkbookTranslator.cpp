@@ -33,7 +33,21 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationC
     }
 }
 
+void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    const std::string prefix = in.Name();
+
+    const tinyxml2::XMLAttribute *width = in.FindAttribute("width");
+    const tinyxml2::XMLAttribute *ht = in.FindAttribute("ht");
+    if ((width != nullptr) || (ht != nullptr)) {
+        out << " style=\"";
+        if (width != nullptr) out << "width:" << (width->Int64Value()) << "in;";
+        if (ht != nullptr) out << "height:" << (ht->Int64Value()) << "pt;";
+        out << "\"";
+    }
+}
+
 void ElementAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    StyleAttributeTranslator(in, out, context);
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
@@ -45,6 +59,14 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
     out << ">";
     ElementChildrenTranslator(in, out, context);
     out << "</table>";
+}
+
+void TableColTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    out << "<col";
+    ElementAttributeTranslator(in, out, context);
+    out << ">";
+    ElementChildrenTranslator(in, out, context);
+    out << "</col>";
 }
 
 void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
@@ -72,7 +94,8 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
             DLOG(INFO) << "undefined behaviour: t=" << t->Value();
         }
     } else {
-        DLOG(INFO) << "undefined behaviour: t not found";
+        // TODO empty cell?
+        //DLOG(INFO) << "undefined behaviour: t not found";
     }
 
     out << "</td>";
@@ -88,6 +111,7 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> substitution{
             {"row", "tr"},
+            {"cols", "colgroup"},
     };
     static std::unordered_set<std::string> skippers{
             "headerFooter",
@@ -97,6 +121,7 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
     if (skippers.find(element) != skippers.end()) return;
 
     if (element == "worksheet") TableTranslator(in, out, context);
+    else if (element == "col") TableColTranslator(in, out, context);
     else if (element == "c") TableCellTranslator(in, out, context);
     else {
         const auto it = substitution.find(element);
