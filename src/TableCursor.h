@@ -1,21 +1,21 @@
-#ifndef ODR_TABLELOCATION_H
-#define ODR_TABLELOCATION_H
+#ifndef ODR_TABLECURSOR_H
+#define ODR_TABLECURSOR_H
 
 #include <cstdint>
 #include <list>
 
 namespace odr {
 
-class TableLocation final {
+class TableCursor final {
 public:
-    TableLocation() noexcept;
+    TableCursor() noexcept;
 
     void addCol(std::uint32_t repeat = 1) noexcept;
     void addRow(std::uint32_t repeat = 1) noexcept;
     void addCell(std::uint32_t colspan, std::uint32_t rowspan, std::uint32_t repeat = 1) noexcept;
 
-    std::uint32_t getNextRow() const noexcept { return nextRow; }
-    std::uint32_t getNextCol() const noexcept { return nextCol; }
+    std::uint32_t getRow() const noexcept { return row; }
+    std::uint32_t getCol() const noexcept { return col; }
 
 private:
     struct Range {
@@ -23,13 +23,13 @@ private:
         std::uint32_t end;
     };
 
-    std::uint32_t nextRow;
-    std::uint32_t nextCol;
-    std::list<std::list<Range>> nextSparse;
+    std::uint32_t row;
+    std::uint32_t col;
+    std::list<std::list<Range>> sparse;
 
     void handleRowspan() noexcept;
 };
 
 }
 
-#endif //ODR_TABLELOCATION_H
+#endif //ODR_TABLECURSOR_H
