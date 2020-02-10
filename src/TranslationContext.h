@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <iostream>
 #include "io/Path.h"
-#include "TableLocation.h"
+#include "TableCursor.h"
 
 namespace tinyxml2 {
 class XMLDocument;
@@ -32,7 +32,7 @@ struct TranslationContext {
     // input xml
     std::unique_ptr<tinyxml2::XMLDocument> style;
     std::unique_ptr<tinyxml2::XMLDocument> content;
-    std::unordered_map<std::string, std::list<std::string>> odStyleDependencies; // odf
+    std::unordered_map<std::string, std::list<std::string>> styleDependencies;
     std::unordered_map<std::string, std::string> msRelations; // ooxml
     std::unique_ptr<tinyxml2::XMLDocument> msSharedStringsDocument; // xlsx
     std::vector<const tinyxml2::XMLElement *> msSharedStrings; // xlsx
@@ -45,7 +45,7 @@ struct TranslationContext {
     std::uint32_t currentTableRowEnd;
     std::uint32_t currentTableColStart;
     std::uint32_t currentTableColEnd;
-    TableLocation currentTableLocation;
+    TableCursor tableCursor;
     std::unordered_map<std::uint32_t, std::string> odDefaultCellStyles;
 
     // output

@@ -23,6 +23,32 @@ FileMeta OfficeOpenXmlMeta::parseFileMeta(Storage &storage) {
         }
     }
 
+    // TODO dont load content twice (happens in case of translation)
+    switch (result.type) {
+        case FileType::OFFICE_OPEN_XML_PRESENTATION: {
+            const auto ppt = XmlUtil::parse(storage, "ppt/presentation.xml");
+            result.entryCount = 0;
+            XmlUtil::recursiveVisitElementsWithName(ppt->RootElement(), "p:sldId", [&](const tinyxml2::XMLElement &e) {
+                ++result.entryCount;
+                FileMeta::Entry entry;
+                result.entries.emplace_back(entry);
+            });
+        } break;
+        case FileType::OFFICE_OPEN_XML_WORKBOOK: {
+            const auto xls = XmlUtil::parse(storage, "xl/workbook.xml");
+            result.entryCount = 0;
+            XmlUtil::recursiveVisitElementsWithName(xls->RootElement(), "sheet", [&](const tinyxml2::XMLElement &e) {
+                ++result.entryCount;
+                FileMeta::Entry entry;
+                entry.name = e.FindAttribute("name")->Value();
+                // TODO dimension
+                result.entries.emplace_back(entry);
+            });
+        } break;
+        default:
+            break;
+    }
+
     return result;
 }
 

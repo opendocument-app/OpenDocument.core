@@ -2,7 +2,7 @@
 #include <unordered_map>
 #include "tinyxml2.h"
 #include "odr/FileMeta.h"
-#include "../TableLocation.h"
+#include "../TableCursor.h"
 #include "../MapUtil.h"
 #include "../XmlUtil.h"
 #include "../io/Storage.h"
@@ -59,7 +59,7 @@ static void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint
     rows = 0;
     cols = 0;
 
-    TableLocation tl;
+    TableCursor tl;
 
     // TODO we dont need to recurse so deep
     XmlUtil::recursiveVisitElements(&table, [&](const auto &e) {
@@ -72,8 +72,8 @@ static void estimateTableDimensions(const tinyxml2::XMLElement &table, std::uint
             const auto rowspan = e.Unsigned64Attribute("table:number-rows-spanned", 1);
             tl.addCell(colspan, rowspan, repeated);
 
-            const auto newRows = tl.getNextRow();
-            const auto newCols = std::max(cols, tl.getNextCol());
+            const auto newRows = tl.getRow();
+            const auto newCols = std::max(cols, tl.getCol());
             if ((e.FirstChild() != nullptr) &&
                 (((limitRows != 0) && (newRows < limitRows)) && ((limitCols != 0) && (newCols < limitCols)))) {
                 rows = newRows;
@@ -143,7 +143,7 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage, const bool decrypted)
             }
         }
 
-        // TODO: dont load content twice (happens in case of translation)
+        // TODO dont load content twice (happens in case of translation)
         const auto contentXml = XmlUtil::parse(storage, "content.xml");
         tinyxml2::XMLHandle bodyHandle = tinyxml2::XMLHandle(contentXml.get())
                 .FirstChildElement("office:document-content")

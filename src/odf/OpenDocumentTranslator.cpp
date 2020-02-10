@@ -111,7 +111,7 @@ public:
         const tinyxml2::XMLElement *body = bodyHandle.ToElement();
 
         // TODO breaks back translation
-        if ((context.config->entryOffset > 0) | (context.config->entryCount > 0)) {
+        if ((context.config->entryOffset > 0) || (context.config->entryCount > 0)) {
             tinyxml2::XMLElement *content = nullptr;
             const char *entryName = nullptr;
 

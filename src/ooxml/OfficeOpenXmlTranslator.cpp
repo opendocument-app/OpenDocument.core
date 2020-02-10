@@ -65,8 +65,11 @@ public:
                     out << "}";
                 }
             } break;
-            case FileType::OFFICE_OPEN_XML_WORKBOOK:
-                break;
+            case FileType::OFFICE_OPEN_XML_WORKBOOK: {
+                const auto stylesXml = XmlUtil::parse(*context.storage, "xl/styles.xml");
+                const tinyxml2::XMLElement *styles = stylesXml->RootElement();
+                OfficeOpenXmlWorkbookTranslator::translateStyle(*styles, context);
+            } break;
             default:
                 throw std::invalid_argument("file.getMeta().type");
         }
@@ -92,14 +95,23 @@ public:
                 const auto ppt = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
                 const auto pptRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, "ppt/presentation.xml");
 
-                XmlUtil::recursiveVisitElementsWithName(ppt->RootElement(), "p:sldId", [&](const auto &child) {
-                    const std::string rId = child.FindAttribute("r:id")->Value();
+                XmlUtil::recursiveVisitElementsWithName(ppt->RootElement(), "p:sldId", [&](const auto &e) {
+                    const std::string rId = e.FindAttribute("r:id")->Value();
 
                     const auto path = Path("ppt").join(pptRelations.at(rId));
                     context.content = XmlUtil::parse(*context.storage, path);
                     context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, path);
 
-                    OfficeOpenXmlPresentationTranslator::translateContent(*context.content->RootElement(), context);
+                    if ((context.config->entryOffset > 0) || (context.config->entryCount > 0)) {
+                        if ((context.currentEntry >= context.config->entryOffset) &&
+                            (context.currentEntry < context.config->entryOffset + context.config->entryCount)) {
+                            OfficeOpenXmlPresentationTranslator::translateContent(*context.content->RootElement(), context);
+                        }
+                    } else {
+                        OfficeOpenXmlPresentationTranslator::translateContent(*context.content->RootElement(), context);
+                    }
+
+                    ++context.currentEntry;
                 });
             } break;
             case FileType::OFFICE_OPEN_XML_WORKBOOK: {
@@ -112,14 +124,23 @@ public:
                     context.msSharedStrings.push_back(&child);
                 });
 
-                XmlUtil::recursiveVisitElementsWithName(xls->RootElement(), "sheet", [&](const auto &child) {
-                    const std::string rId = child.FindAttribute("r:id")->Value();
+                XmlUtil::recursiveVisitElementsWithName(xls->RootElement(), "sheet", [&](const auto &e) {
+                    const std::string rId = e.FindAttribute("r:id")->Value();
 
                     const auto path = Path("xl").join(xlsRelations.at(rId));
                     context.content = XmlUtil::parse(*context.storage, path);
                     context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, path);
 
-                    OfficeOpenXmlWorkbookTranslator::translateContent(*context.content->RootElement(), context);
+                    if ((context.config->entryOffset > 0) || (context.config->entryCount > 0)) {
+                        if ((context.currentEntry >= context.config->entryOffset) &&
+                                (context.currentEntry < context.config->entryOffset + context.config->entryCount)) {
+                            OfficeOpenXmlWorkbookTranslator::translateContent(*context.content->RootElement(), context);
+                        }
+                    } else {
+                        OfficeOpenXmlWorkbookTranslator::translateContent(*context.content->RootElement(), context);
+                    }
+
+                    ++context.currentEntry;
                 });
             } break;
             default:
