@@ -201,8 +201,6 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
     out << ">";
     ElementChildrenTranslator(in, out, context);
     out << "</table>";
-
-    ++context.currentEntry;
 }
 
 void TableColTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {

@@ -102,7 +102,16 @@ public:
                     context.content = XmlUtil::parse(*context.storage, path);
                     context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, path);
 
-                    OfficeOpenXmlPresentationTranslator::translateContent(*context.content->RootElement(), context);
+                    if ((context.config->entryOffset > 0) || (context.config->entryCount > 0)) {
+                        if ((context.currentEntry >= context.config->entryOffset) &&
+                            (context.currentEntry < context.config->entryOffset + context.config->entryCount)) {
+                            OfficeOpenXmlPresentationTranslator::translateContent(*context.content->RootElement(), context);
+                        }
+                    } else {
+                        OfficeOpenXmlPresentationTranslator::translateContent(*context.content->RootElement(), context);
+                    }
+
+                    ++context.currentEntry;
                 });
             } break;
             case FileType::OFFICE_OPEN_XML_WORKBOOK: {
@@ -122,7 +131,16 @@ public:
                     context.content = XmlUtil::parse(*context.storage, path);
                     context.msRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, path);
 
-                    OfficeOpenXmlWorkbookTranslator::translateContent(*context.content->RootElement(), context);
+                    if ((context.config->entryOffset > 0) || (context.config->entryCount > 0)) {
+                        if ((context.currentEntry >= context.config->entryOffset) &&
+                                (context.currentEntry < context.config->entryOffset + context.config->entryCount)) {
+                            OfficeOpenXmlWorkbookTranslator::translateContent(*context.content->RootElement(), context);
+                        }
+                    } else {
+                        OfficeOpenXmlWorkbookTranslator::translateContent(*context.content->RootElement(), context);
+                    }
+
+                    ++context.currentEntry;
                 });
             } break;
             default:
