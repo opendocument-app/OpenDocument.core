@@ -5,6 +5,7 @@
 #include "tinyxml2.h"
 #include "glog/logging.h"
 #include "odr/TranslationConfig.h"
+#include "odr/FileMeta.h"
 #include "../TranslationContext.h"
 #include "../StringUtil.h"
 #include "../io/Storage.h"
@@ -182,24 +183,80 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context);
 
 void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    context.currentTableRowStart = context.config->tableOffsetRows;
+    context.currentTableRowEnd = context.currentTableRowStart + context.config->tableLimitRows;
+    context.currentTableColStart = context.config->tableOffsetCols;
+    context.currentTableColEnd = context.currentTableColStart + context.config->tableLimitCols;
+    if (context.config->tableLimitByDimensions) {
+        // TODO
+        //context.currentTableRowEnd = std::min(context.currentTableRowEnd,
+        //        context.currentTableRowStart + context.meta->entries[context.currentEntry].rowCount);
+        //context.currentTableColEnd = std::min(context.currentTableColEnd,
+        //        context.currentTableColStart + context.meta->entries[context.currentEntry].columnCount);
+    }
+    context.tableCursor = {};
+
     out << R"(<table border="0" cellspacing="0" cellpadding="0")";
     ElementAttributeTranslator(in, out, context);
     out << ">";
     ElementChildrenTranslator(in, out, context);
     out << "</table>";
+
+    ++context.currentEntry;
 }
 
 void TableColTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    out << "<col";
-    ElementAttributeTranslator(in, out, context);
-    out << ">";
-    ElementChildrenTranslator(in, out, context);
-    out << "</col>";
+    // TODO if min/max is unordered we have a problem here; fail fast in that case
+
+    const auto min = in.Unsigned64Attribute("min", 1);
+    const auto max = in.Unsigned64Attribute("max", 1);
+    const auto repeated = max - min + 1;
+
+    for (std::uint32_t i = 0; i < repeated; ++i) {
+        if (context.tableCursor.getCol() >= context.currentTableColEnd) break;
+        if (context.tableCursor.getCol() >= context.currentTableColStart) {
+            out << "<col";
+            ElementAttributeTranslator(in, out, context);
+            out << ">";
+        }
+        context.tableCursor.addCol();
+    }
+}
+
+void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+    const auto rowIndex = in.FindAttribute("r")->Unsigned64Value() - 1;
+
+    while (rowIndex > context.tableCursor.getRow()) {
+        if (context.tableCursor.getRow() >= context.currentTableRowEnd) return;
+        if (context.tableCursor.getRow() >= context.currentTableRowStart) {
+            // TODO insert empty proper rows
+            out << "<tr></tr>";
+        }
+        context.tableCursor.addRow();
+    }
+
+    context.tableCursor.addRow(0); // TODO hacky
+    if (context.tableCursor.getRow() >= context.currentTableRowEnd) return;
+    if (context.tableCursor.getRow() >= context.currentTableRowStart) {
+        out << "<tr";
+        ElementAttributeTranslator(in, out, context);
+        out << ">";
+        ElementChildrenTranslator(in, out, context);
+        out << "</tr>";
+    }
+    context.tableCursor.addRow();
 }
 
 void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
-    //const auto r = in.FindAttribute("r");
-    // TODO check placement r and fill empty cells/rows
+    const TablePosition cellIndex(in.FindAttribute("r")->Value());
+
+    while (cellIndex.getCol() > context.tableCursor.getCol()) {
+        if (context.tableCursor.getCol() >= context.currentTableColEnd) return;
+        if (context.tableCursor.getCol() >= context.currentTableColStart) {
+            out << "<td></td>";
+        }
+        context.tableCursor.addCell();
+    }
 
     out << "<td";
     ElementAttributeTranslator(in, out, context);
@@ -227,6 +284,7 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
     }
 
     out << "</td>";
+    context.tableCursor.addCell();
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
@@ -238,7 +296,6 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in, std::ostream &out
 
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
     static std::unordered_map<std::string, const char *> substitution{
-            {"row", "tr"},
             {"cols", "colgroup"},
     };
     static std::unordered_set<std::string> skippers{
@@ -251,6 +308,7 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
 
     if (element == "worksheet") TableTranslator(in, out, context);
     else if (element == "col") TableColTranslator(in, out, context);
+    else if (element == "row") TableRowTranslator(in, out, context);
     else if (element == "c") TableCellTranslator(in, out, context);
     else {
         const auto it = substitution.find(element);
