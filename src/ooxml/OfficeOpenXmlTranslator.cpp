@@ -95,8 +95,8 @@ public:
                 const auto ppt = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
                 const auto pptRelations = OfficeOpenXmlMeta::parseRelationships(*context.storage, "ppt/presentation.xml");
 
-                XmlUtil::recursiveVisitElementsWithName(ppt->RootElement(), "p:sldId", [&](const auto &child) {
-                    const std::string rId = child.FindAttribute("r:id")->Value();
+                XmlUtil::recursiveVisitElementsWithName(ppt->RootElement(), "p:sldId", [&](const auto &e) {
+                    const std::string rId = e.FindAttribute("r:id")->Value();
 
                     const auto path = Path("ppt").join(pptRelations.at(rId));
                     context.content = XmlUtil::parse(*context.storage, path);
@@ -115,8 +115,8 @@ public:
                     context.msSharedStrings.push_back(&child);
                 });
 
-                XmlUtil::recursiveVisitElementsWithName(xls->RootElement(), "sheet", [&](const auto &child) {
-                    const std::string rId = child.FindAttribute("r:id")->Value();
+                XmlUtil::recursiveVisitElementsWithName(xls->RootElement(), "sheet", [&](const auto &e) {
+                    const std::string rId = e.FindAttribute("r:id")->Value();
 
                     const auto path = Path("xl").join(xlsRelations.at(rId));
                     context.content = XmlUtil::parse(*context.storage, path);

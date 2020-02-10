@@ -143,7 +143,7 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage, const bool decrypted)
             }
         }
 
-        // TODO: dont load content twice (happens in case of translation)
+        // TODO dont load content twice (happens in case of translation)
         const auto contentXml = XmlUtil::parse(storage, "content.xml");
         tinyxml2::XMLHandle bodyHandle = tinyxml2::XMLHandle(contentXml.get())
                 .FirstChildElement("office:document-content")
