@@ -25,7 +25,7 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
         miniz
-        GIT_REPOSITORY https://github.com/andiwand/miniz.git
+        GIT_REPOSITORY https://github.com/richgel999/miniz.git
         GIT_TAG cd99aff
 )
 FetchContent_Declare(
@@ -56,9 +56,6 @@ option (BUILD_SHARED_LIBS "" OFF)
 set(BUILD_SHARED_LIBS OFF)
 option (BUILD_TESTS "" OFF)
 set(BUILD_TESTS OFF)
-# cryptopp: do not build cryptopp-object (causes error in Android build)
-option(USE_INTERMEDIATE_OBJECTS_TARGET "" OFF)
-set(USE_INTERMEDIATE_OBJECTS_TARGET OFF)
 
 FetchContent_GetProperties(tinyxml2)
 if(NOT tinyxml2_POPULATED)
