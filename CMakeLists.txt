@@ -25,7 +25,7 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
         miniz
-        GIT_REPOSITORY https://github.com/andiwand/miniz.git
+        GIT_REPOSITORY https://github.com/richgel999/miniz.git
         GIT_TAG cd99aff
 )
 FetchContent_Declare(
