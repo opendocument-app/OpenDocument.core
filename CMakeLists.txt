@@ -3,6 +3,7 @@ project(odr C CXX)
 set(CMAKE_CXX_STANDARD 14)
 
 option(ODR_DISABLE_CRYPTO "disable crypto" "OFF")
+option(ODR_TEST "enable tests" "ON")
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
@@ -29,13 +30,13 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
         glog
-        GIT_REPOSITORY https://github.com/tomtasche/glog.git
-        GIT_TAG fb5b382
+        GIT_REPOSITORY https://github.com/google/glog.git
+        GIT_TAG 1b7d541
 )
 FetchContent_Declare(
         cryptopp
-        GIT_REPOSITORY https://github.com/TomTasche/cryptopp.ios.git
-        GIT_TAG 8c373c0
+        GIT_REPOSITORY https://github.com/TomTasche/cryptopp.git
+        GIT_TAG 6b1dd5f
 )
 FetchContent_Declare(
         json
@@ -43,11 +44,25 @@ FetchContent_Declare(
         GIT_TAG v3.7.3
 )
 
+# cryptopp: fixes "phony targets" duplicate error during Android build
+# also disables building unit tests for glog and tinyxml
+option (BUILD_TESTING "" OFF)
+set(BUILD_TESTING OFF)
+# miniz
+option (BUILD_EXAMPLES "" OFF)
+set(BUILD_EXAMPLES OFF)
+# tinyxml2
+option (BUILD_SHARED_LIBS "" OFF)
+set(BUILD_SHARED_LIBS OFF)
+option (BUILD_TESTS "" OFF)
+set(BUILD_TESTS OFF)
+# cryptopp: do not build cryptopp-object (causes error in Android build)
+option(USE_INTERMEDIATE_OBJECTS_TARGET "" OFF)
+set(USE_INTERMEDIATE_OBJECTS_TARGET OFF)
+
 FetchContent_GetProperties(tinyxml2)
 if(NOT tinyxml2_POPULATED)
     FetchContent_Populate(tinyxml2)
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-    set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
     add_subdirectory(${tinyxml2_SOURCE_DIR} ${tinyxml2_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 FetchContent_GetProperties(miniz)
@@ -82,7 +97,6 @@ if(NOT ODR_DISABLE_CRYPTO)
     FetchContent_GetProperties(cryptopp)
     if(NOT cryptopp_POPULATED)
         FetchContent_Populate(cryptopp)
-        set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
         add_subdirectory(${cryptopp_SOURCE_DIR} ${cryptopp_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif()
 
@@ -92,6 +106,8 @@ endif()
 
 set_property(TARGET odrlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-add_subdirectory("test")
+if(ODR_TEST)
+    add_subdirectory("test")
+endif()
 
 add_subdirectory("main")

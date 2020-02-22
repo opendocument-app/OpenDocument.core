@@ -730,7 +730,7 @@ bool Svm2Svg::translate(std::istream &in, std::ostream &out) {
 
         translateAction(action, in, out, context);
 
-        std::int64_t left = action.vl.length - (in.tellg() - start);
+        std::int64_t left = action.vl.length - ((int) in.tellg() - start);
         if (left > 0) {
             LOG(WARNING) << "skipping " << left << " bytes of action "
                     << action.type << " version " << action.vl.version;
