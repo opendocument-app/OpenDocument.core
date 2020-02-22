@@ -1,7 +1,34 @@
 #include <string>
+#include <iostream>
 #include "odr/FileMeta.h"
 #include "odr/TranslationConfig.h"
-#include "odr/TranslationHelper.h"
+#include "odr/OpenDocumentReader.h"
+
+static void print_meta(const odr::OpenDocumentReader &odr) {
+    const auto &meta = odr.getMeta();
+
+    std::cout << "type " << (int) meta.type << " ";
+    switch (meta.type) {
+        case odr::FileType::ZIP: std::cout << "zip"; break;
+        case odr::FileType::COMPOUND_FILE_BINARY_FORMAT: std::cout << "cfb"; break;
+        case odr::FileType::OPENDOCUMENT_TEXT: std::cout << "odr"; break;
+        case odr::FileType::OPENDOCUMENT_SPREADSHEET: std::cout << "ods"; break;
+        case odr::FileType::OPENDOCUMENT_PRESENTATION: std::cout << "odp"; break;
+        case odr::FileType::OPENDOCUMENT_GRAPHICS: std::cout << "odg"; break;
+        case odr::FileType::OFFICE_OPEN_XML_DOCUMENT: std::cout << "docx"; break;
+        case odr::FileType::OFFICE_OPEN_XML_WORKBOOK: std::cout << "xlsx"; break;
+        case odr::FileType::OFFICE_OPEN_XML_PRESENTATION: std::cout << "pptx"; break;
+        default: std::cout << "unnamed"; break;
+    }
+
+    if (!meta.entries.empty()) {
+        std::cout << " entries " << meta.entryCount << " ";
+        for (auto &&e : meta.entries) {
+            std::cout << "\"" << e.name << "\" ";
+        }
+        std::cout << std::endl;
+    }
+}
 
 int main(int argc, char **argv) {
     const std::string input(argv[1]);
@@ -18,12 +45,14 @@ int main(int argc, char **argv) {
 
     bool success = true;
 
-    odr::TranslationHelper translator;
-    success &= translator.openOpenDocument(input);
+    odr::OpenDocumentReader odr;
+    success &= odr.open(input);
+    if (success) print_meta(odr);
     if (hasPassword) {
-        success &= translator.decrypt(password);
+        success &= odr.decrypt(password);
     }
-    success &= translator.translate(output, config);
+    if (success) print_meta(odr);
+    success &= odr.translate(output, config);
 
     return !success;
 }

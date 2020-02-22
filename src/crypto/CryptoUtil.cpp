@@ -52,6 +52,14 @@ std::string CryptoUtil::pbkdf2(const std::size_t keySize, const std::string &sta
     return result;
 }
 
+std::string CryptoUtil::decryptAES(const std::string &key, const std::string &input) {
+    std::string result(input.size(), '\0');
+    CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption decryptor;
+    decryptor.SetKey((byte *) key.data(), key.size());
+    decryptor.ProcessData((byte *) result.data(), (byte *) input.data(), input.size());
+    return result;
+}
+
 std::string CryptoUtil::decryptAES(const std::string &key, const std::string &iv, const std::string &input) {
     std::string result(input.size(), '\0');
     CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption decryptor;

@@ -45,7 +45,7 @@ bool SystemStorage::move(const Path &, const Path &) const {
     return false; // TODO
 }
 
-void SystemStorage::visit(const Path &, Visiter) const {
+void SystemStorage::visit(const Path &, Visitor) const {
     // TODO
 }
 

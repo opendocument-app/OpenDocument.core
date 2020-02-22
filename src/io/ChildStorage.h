@@ -8,7 +8,7 @@ namespace odr {
 
 class ChildStorage final : public Storage {
 public:
-    ChildStorage(const Storage &parent, const Path &prefix);
+    ChildStorage(const Storage &parent, Path prefix);
 
     bool isSomething(const Path &) const final;
     bool isFile(const Path &) const final;
@@ -22,14 +22,14 @@ public:
     bool copy(const Path &, const Path &) const final;
     bool move(const Path &, const Path &) const final;
 
-    void visit(const Path &, Visiter) const final;
+    void visit(const Path &, Visitor) const final;
 
     std::unique_ptr<Source> read(const Path &) const final;
     std::unique_ptr<Sink> write(const Path &) const final;
 
 private:
     const Storage &parent;
-    const Path &prefix;
+    const Path prefix;
 };
 
 }

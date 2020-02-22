@@ -13,14 +13,7 @@ struct TranslationContext;
 
 class OpenDocumentContentTranslator final {
 public:
-    OpenDocumentContentTranslator();
-    ~OpenDocumentContentTranslator();
-
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const;
-
-private:
-    class Impl;
-    const std::unique_ptr<Impl> impl;
+    static void translate(const tinyxml2::XMLElement &in, TranslationContext &context);
 };
 
 }

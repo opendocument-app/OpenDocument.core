@@ -14,15 +14,7 @@ struct TranslationContext;
 class OpenDocumentStyleTranslator final {
 public:
     static std::string escapeStyleName(const std::string &);
-
-    OpenDocumentStyleTranslator();
-    ~OpenDocumentStyleTranslator();
-
-    void translate(const tinyxml2::XMLElement &in, TranslationContext &context) const;
-
-private:
-    class Impl;
-    const std::unique_ptr<Impl> impl;
+    static void translate(const tinyxml2::XMLElement &in, TranslationContext &context);
 };
 
 }

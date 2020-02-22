@@ -32,6 +32,10 @@ enum class FileType {
     RICH_TEXT_FORMAT,
     // https://en.wikipedia.org/wiki/Markdown
     MARKDOWN,
+    // https://en.wikipedia.org/wiki/Zip_(file_format)
+    ZIP,
+    // https://en.wikipedia.org/wiki/Compound_File_Binary_Format
+    COMPOUND_FILE_BINARY_FORMAT,
 };
 
 struct FileMeta {

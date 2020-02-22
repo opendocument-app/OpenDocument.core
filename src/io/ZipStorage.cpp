@@ -7,6 +7,7 @@ namespace odr {
 
 class ZipReader::Impl final {
 public:
+    std::string buffer;
     mz_zip_archive zip;
     mz_zip_archive_file_stat tmp_stat;
 
@@ -37,10 +38,23 @@ public:
         }
     };
 
-    explicit Impl(const std::string &path) {
+    Impl(const void *mem, const std::uint64_t size) {
         memset(&zip, 0, sizeof(zip));
-        const mz_bool status = mz_zip_reader_init_file(&zip, path.data(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
-        if (!status) throw NoZipFileException(path);
+        const mz_bool status = mz_zip_reader_init_mem(&zip, mem, size, MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
+        if (!status) throw NoZipFileException("memory");
+    }
+
+    Impl(const std::string &data) :
+            buffer(data) {
+        memset(&zip, 0, sizeof(zip));
+        const mz_bool status = mz_zip_reader_init_mem(&zip, buffer.data(), buffer.size(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
+        if (!status) throw NoZipFileException("memory");
+    }
+
+    explicit Impl(const Path &path) {
+        memset(&zip, 0, sizeof(zip));
+        const mz_bool status = mz_zip_reader_init_file(&zip, path.string().data(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
+        if (!status) throw NoZipFileException(path.string());
     }
 
     ~Impl() {
@@ -90,18 +104,18 @@ public:
         return tmp_stat.m_uncomp_size;
     }
 
-    void visit(Visiter visiter) {
+    void visit(Visitor visitor) {
         for (mz_uint i = 0; i < mz_zip_reader_get_num_files(&zip); ++i) {
             mz_zip_reader_get_filename(&zip, i, tmp_stat.m_filename, sizeof(impl->tmp_stat.m_filename));
-            visiter(Path(tmp_stat.m_filename));
+            visitor(Path(tmp_stat.m_filename));
         }
     }
 
-    void visit(const Path &path, Visiter visiter) {
+    void visit(const Path &path, Visitor visitor) {
         if (!isFolder(path)) {
             return;
         }
-        visit([&](const auto &p) { if (p.childOf(path)) visiter(p); });
+        visit([&](const auto &p) { if (p.childOf(path)) visitor(p); });
     }
 
     std::unique_ptr<Source> read(const Path &path) {
@@ -163,6 +177,14 @@ public:
     }
 };
 
+ZipReader::ZipReader(const void *mem, const std::uint64_t size) :
+        impl(std::make_unique<Impl>(mem, size)) {
+}
+
+ZipReader::ZipReader(const std::string &data, bool) :
+        impl(std::make_unique<Impl>(data)) {
+}
+
 ZipReader::ZipReader(const Path &path) :
         impl(std::make_unique<Impl>(path)) {
 }
@@ -189,12 +211,12 @@ std::uint64_t ZipReader::size(const Path &path) const {
     return impl->size(path);
 }
 
-void ZipReader::visit(Visiter visiter) const {
-    return impl->visit(visiter);
+void ZipReader::visit(Visitor visitor) const {
+    return impl->visit(visitor);
 }
 
-void ZipReader::visit(const Path &path, Visiter visiter) const {
-    return impl->visit(path, visiter);
+void ZipReader::visit(const Path &path, Visitor visitor) const {
+    return impl->visit(path, visitor);
 }
 
 std::unique_ptr<Source> ZipReader::read(const Path &path) const {

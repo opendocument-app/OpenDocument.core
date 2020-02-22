@@ -10,15 +10,17 @@ class ZipWriter;
 
 class NoZipFileException : public std::exception {
 public:
-    explicit NoZipFileException(const std::string &path) : path(path) {}
+    explicit NoZipFileException(std::string path) : path(std::move(path)) {}
     const std::string &getPath() const { return path; }
     const char *what() const noexcept override { return "not a zip file"; }
 private:
     std::string path;
 };
 
-class ZipReader final : public Storage {
+class ZipReader final : public ReadStorage {
 public:
+    ZipReader(const void *, std::uint64_t size);
+    ZipReader(const std::string &zip, bool dummy);
     explicit ZipReader(const Path &);
     ~ZipReader() final;
 
@@ -26,19 +28,13 @@ public:
     bool isFile(const Path &) const final;
     bool isFolder(const Path &) const final;
     bool isReadable(const Path &) const final;
-    bool isWriteable(const Path &) const final { return false; }
 
     std::uint64_t size(const Path &) const final;
 
-    bool remove(const Path &) const final { return false; }
-    bool copy(const Path &, const Path &) const final { return false; }
-    bool move(const Path &, const Path &) const final { return false; }
-
-    void visit(Visiter) const;
-    void visit(const Path &, Visiter) const final;
+    void visit(Visitor) const;
+    void visit(const Path &, Visitor) const final;
 
     std::unique_ptr<Source> read(const Path &) const final;
-    std::unique_ptr<Sink> write(const Path &) const final { return nullptr; }
 
 private:
     class Impl;
@@ -47,15 +43,11 @@ private:
     friend ZipWriter;
 };
 
-class ZipWriter final : public Storage {
+class ZipWriter final : public WriteStorage {
 public:
     explicit ZipWriter(const Path &);
     ~ZipWriter() final;
 
-    bool isSomething(const Path &) const final { return false; }
-    bool isFile(const Path &) const final { return false; }
-    bool isFolder(const Path &) const final { return false; }
-    bool isReadable(const Path &) const final { return false; }
     bool isWriteable(const Path &) const final { return true; }
 
     std::uint64_t size(const Path &) const final { return 0; }
@@ -65,9 +57,6 @@ public:
     bool copy(const ZipReader &, const Path &) const;
     bool move(const Path &, const Path &) const final { return false; }
 
-    void visit(const Path &, Visiter) const final {}
-
-    std::unique_ptr<Source> read(const Path &) const final { return nullptr; }
     std::unique_ptr<Sink> write(const Path &) const final;
 
 private:

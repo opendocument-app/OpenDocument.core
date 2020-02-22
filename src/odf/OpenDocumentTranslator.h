@@ -6,7 +6,6 @@
 
 namespace odr {
 
-class OpenDocumentFile;
 class TranslationContext;
 
 class OpenDocumentTranslator final {
@@ -14,8 +13,8 @@ public:
     OpenDocumentTranslator();
     ~OpenDocumentTranslator();
 
-    bool translate(OpenDocumentFile &in, const std::string &outPath, TranslationContext &context) const;
-    bool backTranslate(OpenDocumentFile &in, const std::string &diff, const std::string &outPath, TranslationContext &context) const;
+    bool translate(const std::string &outPath, TranslationContext &context) const;
+    bool backTranslate(const std::string &diff, const std::string &outPath, TranslationContext &context) const;
 
 private:
     class Impl;
