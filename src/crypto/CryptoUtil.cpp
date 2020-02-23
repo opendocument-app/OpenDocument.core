@@ -1,15 +1,15 @@
 #ifdef ODR_CRYPTO
 
 #include "CryptoUtil.h"
-#include "cryptopp-src/filters.h"
-#include "cryptopp-src/base64.h"
-#include "cryptopp-src/pwdbased.h"
-#include "cryptopp-src/sha.h"
-#include "cryptopp-src/modes.h"
-#include "cryptopp-src/aes.h"
-#include "cryptopp-src/des.h"
-#include "cryptopp-src/blowfish.h"
-#include "cryptopp-src/zinflate.h"
+#include "filters.h"
+#include "base64.h"
+#include "pwdbased.h"
+#include "sha.h"
+#include "modes.h"
+#include "aes.h"
+#include "des.h"
+#include "blowfish.h"
+#include "zinflate.h"
 
 namespace odr {
 

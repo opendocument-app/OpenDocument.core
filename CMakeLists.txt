@@ -34,9 +34,14 @@ FetchContent_Declare(
         GIT_TAG 1b7d541
 )
 FetchContent_Declare(
+        cryptopp_cmake
+        GIT_REPOSITORY https://github.com/noloader/cryptopp-cmake.git
+        GIT_TAG 85941c6
+)
+FetchContent_Declare(
         cryptopp
-        GIT_REPOSITORY https://github.com/TomTasche/cryptopp.git
-        GIT_TAG 6b1dd5f
+        GIT_REPOSITORY https://github.com/noloader/cryptopp.git
+        GIT_TAG 5d68850
 )
 FetchContent_Declare(
         json
@@ -92,8 +97,14 @@ target_compile_definitions(odrlib PRIVATE MINIZ_NO_ZLIB_COMPATIBLE_NAMES)
 
 if(NOT ODR_DISABLE_CRYPTO)
     FetchContent_GetProperties(cryptopp)
+    FetchContent_GetProperties(cryptopp_cmake)
     if(NOT cryptopp_POPULATED)
         FetchContent_Populate(cryptopp)
+        FetchContent_Populate(cryptopp_cmake)
+
+        file(COPY ${cryptopp_cmake_SOURCE_DIR}/CMakeLists.txt DESTINATION ${cryptopp_SOURCE_DIR})
+        file(COPY ${cryptopp_cmake_SOURCE_DIR}/cryptopp-config.cmake DESTINATION ${cryptopp_SOURCE_DIR})
+
         add_subdirectory(${cryptopp_SOURCE_DIR} ${cryptopp_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif()
 
