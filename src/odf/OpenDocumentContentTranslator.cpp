@@ -310,6 +310,8 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
             "presentation:notes",
             // ods
             "office:annotation",
+            "table:tracked-changes",
+            "table:covered-table-cell",
     };
 
     const std::string element = in.Name();
