@@ -61,46 +61,39 @@ public:
         mz_zip_reader_end(&zip);
     }
 
-    bool stat(const std::string &path, mz_zip_archive_file_stat &result) {
+    bool stat(const std::string &path, mz_zip_archive_file_stat &result) noexcept {
         mz_uint i;
-        if (!find(path, i)) {
-            return false;
-        }
+        if (!find(path, i)) return false;
         return mz_zip_reader_file_stat(&zip, i, &result);
     }
 
-    bool find(const std::string &path, mz_uint &i) {
+    bool find(const std::string &path, mz_uint &i) noexcept {
         int tmp = mz_zip_reader_locate_file(&zip, path.data(), nullptr, 0);
-        if (tmp < 0) {
-            return false;
-        }
+        if (tmp < 0) return false;
         i = tmp;
         return true;
     }
 
-    bool isSomething(const Path &path) {
+    bool isSomething(const Path &path) noexcept {
         mz_uint dummy;
         return find(path, dummy);
     }
 
-    bool isFile(const Path &path) {
+    bool isFile(const Path &path) noexcept {
         mz_uint i;
         return find(path, i) && !mz_zip_reader_is_file_a_directory(&zip, i);
     }
 
-    bool isFolder(const Path &path) {
-        mz_uint i;
-        return find(path, i) && mz_zip_reader_is_file_a_directory(&zip, i);
+    bool isFolder(const Path &) noexcept {
+        return false;
     }
 
-    bool isReadable(const Path &path) {
+    bool isReadable(const Path &path) noexcept {
         return isFile(path);
     }
 
-    std::uint64_t size(const Path &path) {
-        if (!stat(path, tmp_stat)) {
-            return false;
-        }
+    std::uint64_t size(const Path &path) noexcept {
+        if (!stat(path, tmp_stat)) return false;
         return tmp_stat.m_uncomp_size;
     }
 
@@ -111,18 +104,9 @@ public:
         }
     }
 
-    void visit(const Path &path, Visitor visitor) {
-        if (!isFolder(path)) {
-            return;
-        }
-        visit([&](const auto &p) { if (p.childOf(path)) visitor(p); });
-    }
-
-    std::unique_ptr<Source> read(const Path &path) {
+    std::unique_ptr<Source> read(const Path &path) noexcept {
         auto iter = mz_zip_reader_extract_file_iter_new(&zip, path.string().c_str(), 0);
-        if (iter == nullptr) {
-            return nullptr;
-        }
+        if (iter == nullptr) return nullptr;
         return std::make_unique<SourceImpl>(iter);
     }
 };
@@ -163,16 +147,14 @@ public:
         mz_zip_writer_end(&zip);
     }
 
-    bool copy(const ZipReader &source, const Path &path) {
+    bool copy(const ZipReader &source, const Path &path) noexcept {
         mz_uint i;
-        if (!source.impl->find(path, i)) {
-            return false;
-        }
+        if (!source.impl->find(path, i)) return false;
         mz_zip_writer_add_from_zip_reader(&zip, &source.impl->zip, i);
         return true;
     }
 
-    std::unique_ptr<Sink> write(const Path &path) {
+    std::unique_ptr<Sink> write(const Path &path) noexcept {
         return std::make_unique<SinkImpl>(zip, path);
     }
 };
@@ -213,10 +195,6 @@ std::uint64_t ZipReader::size(const Path &path) const {
 
 void ZipReader::visit(Visitor visitor) const {
     return impl->visit(visitor);
-}
-
-void ZipReader::visit(const Path &path, Visitor visitor) const {
-    return impl->visit(path, visitor);
 }
 
 std::unique_ptr<Source> ZipReader::read(const Path &path) const {

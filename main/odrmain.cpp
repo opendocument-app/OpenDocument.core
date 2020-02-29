@@ -26,8 +26,9 @@ static void print_meta(const odr::OpenDocumentReader &odr) {
         for (auto &&e : meta.entries) {
             std::cout << "\"" << e.name << "\" ";
         }
-        std::cout << std::endl;
     }
+
+    std::cout << std::endl;
 }
 
 int main(int argc, char **argv) {

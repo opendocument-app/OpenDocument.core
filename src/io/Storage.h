@@ -45,7 +45,8 @@ public:
     virtual bool copy(const Path &from, const Path &to) const = 0;
     virtual bool move(const Path &from, const Path &to) const = 0;
 
-    virtual void visit(const Path &, Visitor) const = 0;
+    // TODO only list for subdir? harder in case of zip
+    virtual void visit(Visitor) const = 0;
 
     virtual std::unique_ptr<Source> read(const Path &) const = 0;
     virtual std::unique_ptr<Sink> write(const Path &) const = 0;
@@ -73,7 +74,7 @@ public:
     bool isFolder(const Path &) const final { return false; }
     bool isReadable(const Path &) const final { return false; }
 
-    void visit(const Path &, Visitor) const final {}
+    void visit(Visitor) const final {}
 
     std::unique_ptr<Source> read(const Path &) const final { return nullptr; }
 };

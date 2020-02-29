@@ -51,8 +51,11 @@ void UnderlineTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
     // TODO wont work with StrikeThroughTranslator
 }
 
-void StrikeThroughTranslator(const tinyxml2::XMLElement &, std::ostream &out, TranslationContext &) {
+void StrikeThroughTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
     // TODO wont work with UnderlineTranslator
+
+    const auto valAttr = in.FindAttribute("w:val");
+    if ((valAttr != nullptr) && (std::strcmp(valAttr->Value(), "false") == 0)) return;
     out << "text-decoration:line-through;";
 }
 
@@ -259,7 +262,7 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
         XmlUtil::visitElementChildren(e1, [&](const tinyxml2::XMLElement &e2) {
             if (StringUtil::endsWith(e1.Name(), "Pr")) ;
             else if (std::strcmp(e1.Name(), "w:r") != 0) empty = false;
-            else if (StringUtil::endsWith(e2.Name(), "Pr")) empty = false;
+            else if (!StringUtil::endsWith(e2.Name(), "Pr")) empty = false;
         });
     });
 
