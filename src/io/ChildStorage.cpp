@@ -47,8 +47,9 @@ bool ChildStorage::move(const Path &from, const Path &to) const {
     return parent.move(prefix.join(from), prefix.join(to));
 }
 
-void ChildStorage::visit(const Path &path, Visitor visiter) const {
-    parent.visit(prefix.join(path), [&](const auto &p) {
+void ChildStorage::visit(Visitor visiter) const {
+    parent.visit([&](const auto &p) {
+        // TODO show only subdir results
         // TODO remove prefix
         visiter(p);
     });

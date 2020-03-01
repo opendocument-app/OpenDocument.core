@@ -22,7 +22,7 @@ public:
     bool copy(const Path &, const Path &) const final;
     bool move(const Path &, const Path &) const final;
 
-    void visit(const Path &, Visitor) const final;
+    void visit(Visitor) const final;
 
     std::unique_ptr<Source> read(const Path &) const final;
     std::unique_ptr<Sink> write(const Path &) const final;

@@ -39,3 +39,13 @@ TEST(ZipReaderTest, exception) {
         LOG(ERROR) << "not a zip file";
     }
 }
+
+TEST(ZipReaderTest, visit) {
+    const std::string input = "/home/andreas/Desktop/odr/megatest.odt";
+
+    odr::ZipReader reader(input);
+
+    reader.visit([&] (const auto &p) {
+        std::cout << p << std::endl;
+    });
+}

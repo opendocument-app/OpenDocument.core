@@ -13,9 +13,6 @@ namespace StorageUtil {
 
 extern std::string read(const Storage &, const Path &);
 
-extern void deepVisit(const Storage &, Storage::Visitor);
-extern void deepVisit(const Storage &, const Path &, Storage::Visitor);
-
 }
 
 }

@@ -6,7 +6,6 @@
 
 TEST(OpenDocumentBackTranslationTest, translate) {
     std::string input;
-    input = "/home/andreas/Desktop/odr/03_smpldap.docx";
     input = "/home/andreas/workspace/OpenDocument.test/odt/03_smpldap.odt";
     const std::string password = "password";
     const std::string output = "/home/andreas/Desktop/odr/edited_pre.html";

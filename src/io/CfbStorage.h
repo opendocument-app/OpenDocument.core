@@ -27,8 +27,7 @@ public:
 
     std::uint64_t size(const Path &) const final;
 
-    void visit(Visitor) const;
-    void visit(const Path &, Visitor) const final;
+    void visit(Visitor) const final;
 
     std::unique_ptr<Source> read(const Path &) const final;
 

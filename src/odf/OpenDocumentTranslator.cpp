@@ -164,8 +164,10 @@ public:
             }
         }
 
+        // TODO this would decrypt/inflate and encrypt/deflate again
         ZipWriter writer(out);
-        StorageUtil::deepVisit(*context.storage, [&](const auto &p) {
+        context.storage->visit([&](const auto &p) {
+            if (!context.storage->isReadable(p)) return;
             if (p == "content.xml") return;
             const auto in = context.storage->read(p);
             const auto out = writer.write(p);

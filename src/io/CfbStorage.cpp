@@ -465,12 +465,6 @@ public:
         });
     }
 
-    void visit(const Path &p, Visitor visitor) const {
-        visit([&](const CFB::CompoundFileEntry *, const Path &path) {
-            if (path.childOf(p)) visitor(path);
-        });
-    }
-
     std::unique_ptr<Source> read(const Path &p) const {
         const auto entry = find(p);
         if (entry == nullptr) return nullptr;
@@ -510,10 +504,6 @@ std::uint64_t CfbReader::size(const Path &path) const {
 
 void CfbReader::visit(Visitor visitor) const {
     impl->visit(visitor);
-}
-
-void CfbReader::visit(const Path &path, Visitor visitor) const {
-    impl->visit(path, visitor);
 }
 
 std::unique_ptr<Source> CfbReader::read(const Path &path) const {
