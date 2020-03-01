@@ -27,7 +27,7 @@ void FontsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
         if (size != nullptr) out << "font-size: " << size->FindAttribute("val")->Value() << "pt;";
 
         const tinyxml2::XMLElement *color = e.FirstChildElement("color");
-        if (color != nullptr) out << "color: #" << std::string(color->FindAttribute("rgb")->Value()).substr(2) << ";";
+        if ((color != nullptr) && (color->FindAttribute("rgb") != nullptr)) out << "color: #" << std::string(color->FindAttribute("rgb")->Value()).substr(2) << ";";
 
         // TODO
         // <u val="single" /> underline?
@@ -76,7 +76,7 @@ void CellXfsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
 
         const tinyxml2::XMLAttribute *fontId = e.FindAttribute("fontId");
         const tinyxml2::XMLAttribute *applyFont = e.FindAttribute("applyFont");
-        if (std::strcmp(applyFont->Value(), "true") == 0)
+        if (applyFont != nullptr && (std::strcmp(applyFont->Value(), "true") == 0 || std::strcmp(applyFont->Value(), "1") == 0))
             context.styleDependencies[name].push_back(std::string("font-") + fontId->Value());
 
         const tinyxml2::XMLAttribute *fillId = e.FindAttribute("fillId");
@@ -85,13 +85,13 @@ void CellXfsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Transl
 
         const tinyxml2::XMLAttribute *borderId = e.FindAttribute("borderId");
         const tinyxml2::XMLAttribute *applyBorder = e.FindAttribute("applyBorder");
-        if (std::strcmp(applyBorder->Value(), "true") == 0)
+        if (applyBorder != nullptr && (std::strcmp(applyBorder->Value(), "true") == 0 || std::strcmp(applyBorder->Value(), "1") == 0))
             context.styleDependencies[name].push_back(std::string("border-") + borderId->Value());
 
         out << "." << name << " {";
 
         const tinyxml2::XMLAttribute *applyAlignment = e.FindAttribute("applyAlignment");
-        if (std::strcmp(applyAlignment->Value(), "true") == 0) {
+        if (applyAlignment != nullptr && (std::strcmp(applyAlignment->Value(), "true") == 0 || std::strcmp(applyAlignment->Value(), "1") == 0)) {
             const auto *alignment = e.FirstChildElement("alignment");
             out << "text-align: " << alignment->FindAttribute("horizontal")->Value() << ";";
             // TODO vertical alignment
