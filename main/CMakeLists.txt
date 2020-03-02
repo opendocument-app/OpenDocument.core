@@ -1,6 +1,7 @@
-add_executable(odrmain "odrmain.cpp")
-target_link_libraries(odrmain PRIVATE glog tinyxml2 odrlib)
-if(NOT ODR_DISABLE_CRYPTO AND CryptoPP_FOUND)
-    target_link_libraries(odrtests PRIVATE cryptopp)
-    target_compile_definitions(odrtests PRIVATE ODR_CRYPTO)
-endif()
+add_executable(translate translate.cpp)
+target_include_directories(translate PRIVATE ../src)
+target_link_libraries(translate PRIVATE odrlib)
+
+add_executable(back_translate back_translate.cpp)
+target_include_directories(back_translate PRIVATE ../src)
+target_link_libraries(back_translate PRIVATE odrlib)

@@ -3,7 +3,7 @@
 #include "gtest/gtest.h"
 #include "ooxml/OfficeOpenXmlCrypto.h"
 
-TEST(MsCryptoUtilTest, ECMA376Standard_deriveKey) {
+TEST(MsCryptoUtil, ECMA376Standard_deriveKey) {
     odr::OfficeOpenXmlCrypto::EncryptionHeader encryptionHeader{};
     encryptionHeader.algId = 0x660e;
     encryptionHeader.algIdHash = 0x8004;
@@ -21,7 +21,7 @@ TEST(MsCryptoUtilTest, ECMA376Standard_deriveKey) {
     EXPECT_TRUE(key == expectedKey);
 }
 
-TEST(MsCryptoUtilTest, ECMA376Standard_verify) {
+TEST(MsCryptoUtil, ECMA376Standard_verify) {
     const odr::OfficeOpenXmlCrypto::EncryptionHeader encryptionHeader{};
     odr::OfficeOpenXmlCrypto::EncryptionVerifier encryptionVerifier{};
     encryptionVerifier.verifierHashSize = 16;

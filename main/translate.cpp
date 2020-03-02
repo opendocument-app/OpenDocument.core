@@ -44,16 +44,21 @@ int main(int argc, char **argv) {
     config.entryCount = 0;
     config.editable = true;
 
-    bool success = true;
+    bool success;
 
     odr::OpenDocumentReader odr;
-    success &= odr.open(input);
-    if (success) print_meta(odr);
-    if (hasPassword) {
-        success &= odr.decrypt(password);
-    }
-    if (success) print_meta(odr);
-    success &= odr.translate(output, config);
+    success = odr.open(input);
+    if (!success) return 1;
 
-    return !success;
+    print_meta(odr);
+    if (hasPassword) {
+        success = odr.decrypt(password);
+        if (!success) return 2;
+        print_meta(odr);
+    }
+
+    success = odr.translate(output, config);
+    if (!success) return 3;
+
+    return 0;
 }

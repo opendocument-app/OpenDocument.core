@@ -5,7 +5,7 @@
 #include "io/ZipStorage.h"
 #include "ooxml/OfficeOpenXmlMeta.h"
 
-TEST(OfficeOpenXmlMetaTest, open) {
+TEST(OfficeOpenXmlMeta, open) {
     const std::string path = "../../test/empty.docx";
 
     odr::ZipReader ooxml(path);
