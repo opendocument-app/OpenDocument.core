@@ -110,15 +110,12 @@ public:
                 .FirstChildElement("office:body");
         const tinyxml2::XMLElement *body = bodyHandle.ToElement();
 
-        // TODO breaks back translation
-        if ((context.config->entryOffset > 0) || (context.config->entryCount > 0)) {
+        if (((context.meta->type == FileType::OPENDOCUMENT_PRESENTATION) || (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET)) &&
+                ((context.config->entryOffset > 0) || (context.config->entryCount > 0))) {
             tinyxml2::XMLElement *content = nullptr;
-            const char *entryName = nullptr;
+            std::string entryName;
 
             switch (context.meta->type) {
-                case FileType::OPENDOCUMENT_TEXT:
-                case FileType::OPENDOCUMENT_GRAPHICS:
-                    break;
                 case FileType::OPENDOCUMENT_PRESENTATION:
                     content = bodyHandle.FirstChildElement("office:presentation").ToElement();
                     entryName = "draw:page";
@@ -128,26 +125,23 @@ public:
                     entryName = "table:table";
                     break;
                 default:
-                    break;
+                    throw std::invalid_argument("type");
             }
 
-            if (content != nullptr) {
-                std::uint32_t i = 0;
-                tinyxml2::XMLElement *e = content->FirstChildElement(entryName);
-                while (e != nullptr) {
-                    tinyxml2::XMLElement *next = e->NextSiblingElement(entryName);
-                    if ((i < context.config->entryOffset) ||
-                            ((context.config->entryCount == 0) ||
-                             (i >= context.config->entryOffset + context.config->entryCount))) {
-                        content->DeleteChild(e);
-                    }
-                    ++i;
-                    e = next;
+            std::uint32_t i = 0;
+            XmlUtil::visitElementChildren(*content, [&](const tinyxml2::XMLElement &c) {
+                if (c.Name() != entryName) return;
+                if ((i >= context.config->entryOffset) && ((context.config->entryCount == 0) ||
+                     (i < context.config->entryOffset + context.config->entryCount))) {
+                    OpenDocumentContentTranslator::translate(c, context);
+                } else {
+                    ++context.currentEntry; // TODO hacky
                 }
-            }
+                ++i;
+            });
+        } else {
+            OpenDocumentContentTranslator::translate(*body, context);
         }
-
-        OpenDocumentContentTranslator::translate(*body, context);
     }
 
     bool backTranslate(const std::string &diff, const std::string &out, TranslationContext &context) const {

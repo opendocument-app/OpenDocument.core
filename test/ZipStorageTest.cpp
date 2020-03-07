@@ -3,7 +3,7 @@
 #include "glog/logging.h"
 #include "io/ZipStorage.h"
 
-TEST(ZipWriterTest, create) {
+TEST(ZipWriter, create) {
     const std::string output = "../../test/created.zip";
 
     odr::ZipWriter writer(output);
@@ -20,7 +20,7 @@ TEST(ZipWriterTest, create) {
     }
 }
 
-TEST(ZipWriterTest, copy) {
+TEST(ZipWriter, copy) {
     const std::string input = "/home/andreas/Desktop/odr/megatest.odt";
     const std::string output = "../../test/copied.zip";
 
@@ -32,7 +32,7 @@ TEST(ZipWriterTest, copy) {
     });
 }
 
-TEST(ZipReaderTest, exception) {
+TEST(ZipReader, exception) {
     try {
         odr::ZipReader reader("/");
     } catch (odr::NoZipFileException &e) {
@@ -40,7 +40,7 @@ TEST(ZipReaderTest, exception) {
     }
 }
 
-TEST(ZipReaderTest, visit) {
+TEST(ZipReader, visit) {
     const std::string input = "/home/andreas/Desktop/odr/megatest.odt";
 
     odr::ZipReader reader(input);

@@ -4,7 +4,7 @@
 #include "glog/logging.h"
 #include "svm/Svm2Svg.h"
 
-TEST(SvmTest, draft) {
+TEST(Svm, draft) {
     std::string input;
     input = "/home/andreas/Desktop/odr/svm/test.svm";
     //input = "/home/andreas/Desktop/odr/svm/Object 44";

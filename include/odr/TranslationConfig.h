@@ -10,9 +10,8 @@ struct TranslationConfig {
     std::uint32_t entryOffset = 0;
     // translate only N sheets / pages; zero means translate all
     std::uint32_t entryCount = 0;
-
-    // translate presentation notes
-    bool translateNotes = true;
+    // create editable output
+    bool editable = false;
 
     // spreadsheet table offset
     std::uint32_t tableOffsetRows = 0;
@@ -21,8 +20,6 @@ struct TranslationConfig {
     std::uint32_t tableLimitRows = 10000;
     std::uint32_t tableLimitCols = 500;
     bool tableLimitByDimensions = true;
-
-    bool editable = false;
 };
 
 }

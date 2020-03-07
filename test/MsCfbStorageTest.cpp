@@ -6,7 +6,7 @@
 #include "io/CfbStorage.h"
 #include "ooxml/OfficeOpenXmlCrypto.h"
 
-TEST(MsCfbReaderTest, open) {
+TEST(MsCfbReader, open) {
     std::string input;
     input = "../../test/encrypted.docx";
     input = "../../test/encrypted.doc";
@@ -18,7 +18,7 @@ TEST(MsCfbReaderTest, open) {
     });
 }
 
-TEST(MsCfbReaderTest, read) {
+TEST(MsCfbReader, read) {
     std::string input;
     input = "../../test/encrypted.docx";
 
@@ -28,7 +28,7 @@ TEST(MsCfbReaderTest, read) {
     LOG(INFO) << content;
 }
 
-TEST(MsCfbReaderTest, decrypt) {
+TEST(MsCfbReader, decrypt) {
     std::string input;
     input = "../../test/encrypted.docx";
 

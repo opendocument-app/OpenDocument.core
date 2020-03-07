@@ -5,7 +5,7 @@
 #include "io/ZipStorage.h"
 #include "odf/OpenDocumentMeta.h"
 
-TEST(OpenDocumentMetaTest, open) {
+TEST(OpenDocumentMeta, open) {
     const std::string path = "../../test/empty.odp";
 
     odr::ZipReader odf(path);
