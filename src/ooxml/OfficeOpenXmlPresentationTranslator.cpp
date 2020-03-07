@@ -1,16 +1,16 @@
 #include "OfficeOpenXmlPresentationTranslator.h"
-#include <string>
-#include <unordered_set>
-#include <unordered_map>
-#include "tinyxml2.h"
-#include "glog/logging.h"
-#include "odr/TranslationConfig.h"
-#include "../TranslationContext.h"
 #include "../StringUtil.h"
-#include "../io/Storage.h"
-#include "../io/StreamUtil.h"
+#include "../TranslationContext.h"
 #include "../XmlUtil.h"
 #include "../crypto/CryptoUtil.h"
+#include "../io/Storage.h"
+#include "../io/StreamUtil.h"
+#include "glog/logging.h"
+#include "odr/Config.h"
+#include "tinyxml2.h"
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace odr {
 
@@ -60,7 +60,7 @@ void BackgroundColorTranslator(const tinyxml2::XMLElement &in, std::ostream &out
     out << ";";
 }
 
-void MarginAttributesTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void MarginAttributesTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
     const tinyxml2::XMLAttribute *marLAttr = in.FindAttribute("marL");
     if (marLAttr != nullptr) {
         float marLIn = marLAttr->Int64Value() / 914400.0f;
@@ -114,7 +114,7 @@ void DefaultPropertyTransaltor(const tinyxml2::XMLElement &in, std::ostream &out
 }
 }
 
-void OfficeOpenXmlPresentationTranslator::translateStyle(const tinyxml2::XMLElement &in, TranslationContext &context) {
+void OfficeOpenXmlPresentationTranslator::translateStyle(const tinyxml2::XMLElement &, TranslationContext &) {
 }
 
 namespace {

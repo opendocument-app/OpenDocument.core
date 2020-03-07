@@ -49,7 +49,7 @@ struct Manifest {
         std::uint64_t startKeySize;
     };
 
-    bool encryted;
+    bool encrypted;
     std::unordered_map<Path, Entry> entries;
 
     std::uint64_t smallestFileSize;
@@ -57,7 +57,7 @@ struct Manifest {
     const Entry *smallestFileEntry;
 };
 
-extern FileMeta parseFileMeta(Storage &, bool decrypted);
+extern FileMeta parseFileMeta(Storage &storage, bool decrypted);
 
 extern Manifest parseManifest(Storage &storage);
 extern Manifest parseManifest(const tinyxml2::XMLDocument &manifest);

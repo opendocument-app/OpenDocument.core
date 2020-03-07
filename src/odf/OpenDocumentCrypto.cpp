@@ -100,7 +100,7 @@ public:
 
 bool OpenDocumentCrypto::decrypt(std::unique_ptr<Storage> &storage, const OpenDocumentMeta::Manifest &manifest,
         const std::string &password) {
-    if (!manifest.encryted) return true;
+    if (!manifest.encrypted) return true;
     if (!canDecrypt(*manifest.smallestFileEntry)) throw UnsupportedCryptoAlgorithmException();
     const std::string startKey = OpenDocumentCrypto::startKey(*manifest.smallestFileEntry, password);
     const std::string input = StorageUtil::read(*storage, *manifest.smallestFilePath);

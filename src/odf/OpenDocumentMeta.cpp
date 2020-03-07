@@ -1,13 +1,13 @@
 #include "OpenDocumentMeta.h"
-#include <unordered_map>
-#include "tinyxml2.h"
-#include "odr/FileMeta.h"
-#include "../TableCursor.h"
 #include "../MapUtil.h"
+#include "../TableCursor.h"
 #include "../XmlUtil.h"
+#include "../crypto/CryptoUtil.h"
 #include "../io/Storage.h"
 #include "../io/StorageUtil.h"
-#include "../crypto/CryptoUtil.h"
+#include "odr/Meta.h"
+#include "tinyxml2.h"
+#include <unordered_map>
 
 namespace odr {
 
@@ -192,7 +192,7 @@ OpenDocumentMeta::Manifest OpenDocumentMeta::parseManifest(const tinyxml2::XMLDo
         const Path path = e.FindAttribute("manifest:full-path")->Value();
         const tinyxml2::XMLElement *crypto = e.FirstChildElement("manifest:encryption-data");
         if (crypto == nullptr) return;
-        result.encryted = true;
+        result.encrypted = true;
 
         Manifest::Entry entry{};
         entry.size = e.FindAttribute("manifest:size")->UnsignedValue();

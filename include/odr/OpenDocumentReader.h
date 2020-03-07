@@ -8,7 +8,7 @@ namespace odr {
 
 enum class FileType;
 struct FileMeta;
-struct TranslationConfig;
+struct Config;
 
 class OpenDocumentReader final {
 public:
@@ -29,7 +29,7 @@ public:
 
     bool decrypt(const std::string &password) noexcept;
 
-    bool translate(const std::string &outPath, const TranslationConfig &config) noexcept;
+    bool translate(const std::string &outPath, const Config &config) noexcept;
     bool backTranslate(const std::string &diff, const std::string &outPath) noexcept;
 
 private:

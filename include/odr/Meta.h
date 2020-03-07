@@ -1,5 +1,5 @@
-#ifndef ODR_FILEMETA_H
-#define ODR_FILEMETA_H
+#ifndef ODR_META_H
+#define ODR_META_H
 
 #include <cstdint>
 #include <string>
@@ -54,4 +54,4 @@ struct FileMeta {
 
 }
 
-#endif //ODR_FILEMETA_H
+#endif // ODR_META_H

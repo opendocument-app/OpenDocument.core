@@ -1,15 +1,15 @@
-#include <string>
-#include "odr/FileMeta.h"
-#include "odr/TranslationConfig.h"
-#include "odr/OpenDocumentReader.h"
 #include "io/FileUtil.h"
+#include "odr/Config.h"
+#include "odr/Meta.h"
+#include "odr/OpenDocumentReader.h"
+#include <string>
 
 int main(int, char **argv) {
     const std::string input(argv[1]);
     const std::string diff(argv[3]);
     const std::string output(argv[2]);
 
-    odr::TranslationConfig config = {};
+    odr::Config config = {};
     config.entryOffset = 0;
     config.entryCount = 0;
     config.editable = true;

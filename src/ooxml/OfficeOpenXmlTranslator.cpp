@@ -1,18 +1,18 @@
 #include "OfficeOpenXmlTranslator.h"
-#include <fstream>
-#include <stdexcept>
-#include "tinyxml2.h"
 #include "../Constants.h"
-#include "odr/FileMeta.h"
-#include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
+#include "../XmlUtil.h"
 #include "../io/Path.h"
 #include "../io/ZipStorage.h"
-#include "../XmlUtil.h"
-#include "OfficeOpenXmlMeta.h"
 #include "OfficeOpenXmlDocumentTranslator.h"
+#include "OfficeOpenXmlMeta.h"
 #include "OfficeOpenXmlPresentationTranslator.h"
 #include "OfficeOpenXmlWorkbookTranslator.h"
+#include "odr/Config.h"
+#include "odr/Meta.h"
+#include "tinyxml2.h"
+#include <fstream>
+#include <stdexcept>
 
 namespace odr {
 
@@ -148,7 +148,7 @@ public:
         }
     }
 
-    bool backTranslate(const std::string &diff, const std::string &outPath, TranslationContext &context) const {
+    bool backTranslate(const std::string &, const std::string &, TranslationContext &) const {
         return false;
     }
 };

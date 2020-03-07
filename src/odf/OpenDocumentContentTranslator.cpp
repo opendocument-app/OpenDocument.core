@@ -1,20 +1,20 @@
 #include "OpenDocumentContentTranslator.h"
-#include <string>
-#include <unordered_set>
-#include <unordered_map>
-#include "tinyxml2.h"
-#include "glog/logging.h"
-#include "odr/FileMeta.h"
-#include "odr/TranslationConfig.h"
-#include "../TranslationContext.h"
 #include "../StringUtil.h"
+#include "../TranslationContext.h"
 #include "../XmlUtil.h"
+#include "../crypto/CryptoUtil.h"
 #include "../io/Path.h"
 #include "../io/Storage.h"
 #include "../io/StreamUtil.h"
 #include "../svm/Svm2Svg.h"
-#include "../crypto/CryptoUtil.h"
 #include "OpenDocumentStyleTranslator.h"
+#include "glog/logging.h"
+#include "odr/Config.h"
+#include "odr/Meta.h"
+#include "tinyxml2.h"
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace odr {
 
@@ -95,7 +95,7 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Tran
     out << "</p>";
 }
 
-void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
     const auto count = in.Unsigned64Attribute("text:c", 1);
     if (count <= 0) {
         return;

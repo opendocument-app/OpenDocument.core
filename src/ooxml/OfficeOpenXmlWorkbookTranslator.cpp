@@ -1,21 +1,21 @@
 #include "OfficeOpenXmlWorkbookTranslator.h"
-#include <string>
-#include <unordered_set>
-#include <unordered_map>
-#include "tinyxml2.h"
-#include "glog/logging.h"
-#include "odr/TranslationConfig.h"
-#include "odr/FileMeta.h"
-#include "../TranslationContext.h"
 #include "../StringUtil.h"
+#include "../TranslationContext.h"
+#include "../XmlUtil.h"
 #include "../io/Storage.h"
 #include "../io/StreamUtil.h"
-#include "../XmlUtil.h"
+#include "glog/logging.h"
+#include "odr/Config.h"
+#include "odr/Meta.h"
+#include "tinyxml2.h"
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace odr {
 
 namespace {
-void FontsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void FontsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
     std::uint32_t i = 0;
     XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
         out << ".font-" << i << " {";
@@ -40,7 +40,7 @@ void FontsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
     });
 }
 
-void FillsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void FillsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
     std::uint32_t i = 0;
     XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
         out << ".fill-" << i << " {";
@@ -58,9 +58,9 @@ void FillsTranslator(const tinyxml2::XMLElement &in, std::ostream &out, Translat
     });
 }
 
-void BordersTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void BordersTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
     std::uint32_t i = 0;
-    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+    XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &) {
         out << ".border-" << i << " {";
         // TODO
         out << "} ";
@@ -141,7 +141,7 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out, TranslationC
     }
 }
 
-void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &context) {
+void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out, TranslationContext &) {
     const std::string prefix = in.Name();
 
     const tinyxml2::XMLAttribute *width = in.FindAttribute("width");

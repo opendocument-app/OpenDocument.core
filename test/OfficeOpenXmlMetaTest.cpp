@@ -1,9 +1,9 @@
-#include <string>
-#include "gtest/gtest.h"
-#include "glog/logging.h"
-#include "odr/FileMeta.h"
-#include "io/ZipStorage.h"
 #include "ooxml/OfficeOpenXmlMeta.h"
+#include "glog/logging.h"
+#include "io/ZipStorage.h"
+#include "odr/Meta.h"
+#include "gtest/gtest.h"
+#include <string>
 
 TEST(OfficeOpenXmlMeta, open) {
     const std::string path = "../../test/empty.docx";

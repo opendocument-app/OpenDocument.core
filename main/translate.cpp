@@ -1,8 +1,8 @@
-#include <string>
-#include <iostream>
-#include "odr/FileMeta.h"
-#include "odr/TranslationConfig.h"
+#include "odr/Config.h"
+#include "odr/Meta.h"
 #include "odr/OpenDocumentReader.h"
+#include <iostream>
+#include <string>
 
 static void print_meta(const odr::OpenDocumentReader &odr) {
     const auto &meta = odr.getMeta();
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     std::string password;
     if (hasPassword) password = argv[3];
 
-    odr::TranslationConfig config = {};
+    odr::Config config = {};
     config.entryOffset = 0;
     config.entryCount = 0;
     config.editable = true;

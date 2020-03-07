@@ -1,20 +1,20 @@
 #include "odr/OpenDocumentReader.h"
-#include <memory>
-#include "tinyxml2.h"
 #include "Constants.h"
-#include "odr/FileMeta.h"
-#include "odr/TranslationConfig.h"
 #include "TranslationContext.h"
-#include "io/Storage.h"
-#include "io/ZipStorage.h"
 #include "io/CfbStorage.h"
+#include "io/Storage.h"
 #include "io/StreamUtil.h"
-#include "odf/OpenDocumentMeta.h"
+#include "io/ZipStorage.h"
 #include "odf/OpenDocumentCrypto.h"
+#include "odf/OpenDocumentMeta.h"
 #include "odf/OpenDocumentTranslator.h"
-#include "ooxml/OfficeOpenXmlMeta.h"
+#include "odr/Config.h"
+#include "odr/Meta.h"
 #include "ooxml/OfficeOpenXmlCrypto.h"
+#include "ooxml/OfficeOpenXmlMeta.h"
 #include "ooxml/OfficeOpenXmlTranslator.h"
+#include "tinyxml2.h"
+#include <memory>
 
 namespace odr {
 
@@ -25,14 +25,13 @@ public:
     std::unique_ptr<Storage> storage;
     FileMeta meta;
 
-    TranslationConfig config;
+    Config config;
     TranslationContext context;
 
     OpenDocumentTranslator translatorOd;
     OfficeOpenXmlTranslator translatorMs;
 
     FileType guess(const std::string &path) noexcept {
-        // TODO guess by file extension first
         if (!open(path)) return FileType::UNKNOWN;
         const FileType result = meta.type;
         close();
@@ -168,7 +167,7 @@ public:
         }
     }
 
-    bool translate(const std::string &outPath, const TranslationConfig &c) noexcept {
+    bool translate(const std::string &outPath, const Config &c) noexcept {
         if (!canTranslate()) return false;
 
         config = c;
@@ -257,7 +256,7 @@ bool OpenDocumentReader::decrypt(const std::string &password) noexcept {
     return impl_->decrypt(password);
 }
 
-bool OpenDocumentReader::translate(const std::string &outPath, const TranslationConfig &config) noexcept {
+bool OpenDocumentReader::translate(const std::string &outPath, const Config &config) noexcept {
     return impl_->translate(outPath, config);
 }
 

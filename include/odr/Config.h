@@ -1,15 +1,17 @@
-#ifndef ODR_TRANSLATIONCONFIG_H
-#define ODR_TRANSLATIONCONFIG_H
+#ifndef ODR_CONFIG_H
+#define ODR_CONFIG_H
 
 #include <cstdint>
 
 namespace odr {
 
-struct TranslationConfig {
+struct Config {
     // starting sheet for spreadsheet, starting page for presentation, ignored for text, ignored for graphics
     std::uint32_t entryOffset = 0;
     // translate only N sheets / pages; zero means translate all
     std::uint32_t entryCount = 0;
+    // create output for each entry
+    bool splitEntries = false;
     // create editable output
     bool editable = false;
 
@@ -24,4 +26,4 @@ struct TranslationConfig {
 
 }
 
-#endif //ODR_TRANSLATIONCONFIG_H
+#endif // ODR_CONFIG_H

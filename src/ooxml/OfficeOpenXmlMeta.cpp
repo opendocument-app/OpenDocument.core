@@ -1,9 +1,9 @@
 #include "OfficeOpenXmlMeta.h"
-#include <unordered_map>
-#include "tinyxml2.h"
-#include "odr/FileMeta.h"
 #include "../XmlUtil.h"
 #include "../io/Storage.h"
+#include "odr/Meta.h"
+#include "tinyxml2.h"
+#include <unordered_map>
 
 namespace odr {
 
@@ -28,7 +28,7 @@ FileMeta OfficeOpenXmlMeta::parseFileMeta(Storage &storage) {
         case FileType::OFFICE_OPEN_XML_PRESENTATION: {
             const auto ppt = XmlUtil::parse(storage, "ppt/presentation.xml");
             result.entryCount = 0;
-            XmlUtil::recursiveVisitElementsWithName(ppt->RootElement(), "p:sldId", [&](const tinyxml2::XMLElement &e) {
+            XmlUtil::recursiveVisitElementsWithName(ppt->RootElement(), "p:sldId", [&](const tinyxml2::XMLElement &) {
                 ++result.entryCount;
                 FileMeta::Entry entry;
                 result.entries.emplace_back(entry);

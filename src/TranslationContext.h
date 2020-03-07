@@ -9,21 +9,16 @@
 #include <iostream>
 #include "io/Path.h"
 #include "TableCursor.h"
-
-namespace tinyxml2 {
-class XMLDocument;
-class XMLElement;
-class XMLText;
-}
+#include "tinyxml2.h"
 
 namespace odr {
 
-struct TranslationConfig;
+struct Config;
 struct FileMeta;
 class Storage;
 
 struct TranslationContext {
-    const TranslationConfig *config;
+    const Config *config;
     const FileMeta *meta;
 
     // input files

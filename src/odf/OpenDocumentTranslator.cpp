@@ -1,18 +1,18 @@
 #include "OpenDocumentTranslator.h"
-#include <fstream>
-#include "tinyxml2.h"
-#include "nlohmann/json.hpp"
 #include "../Constants.h"
-#include "odr/FileMeta.h"
-#include "odr/TranslationConfig.h"
 #include "../TranslationContext.h"
 #include "../XmlUtil.h"
 #include "../io/Path.h"
-#include "../io/StreamUtil.h"
 #include "../io/StorageUtil.h"
+#include "../io/StreamUtil.h"
 #include "../io/ZipStorage.h"
-#include "OpenDocumentStyleTranslator.h"
 #include "OpenDocumentContentTranslator.h"
+#include "OpenDocumentStyleTranslator.h"
+#include "nlohmann/json.hpp"
+#include "odr/Config.h"
+#include "odr/Meta.h"
+#include "tinyxml2.h"
+#include <fstream>
 
 namespace odr {
 
@@ -45,9 +45,6 @@ public:
     }
 
     void generateStyle(std::ofstream &out, TranslationContext &context) const {
-        // TODO: get styles from translators?
-
-        // default css
         out << Constants::getOpenDocumentDefaultCss();
 
         if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) {
@@ -110,24 +107,25 @@ public:
                 .FirstChildElement("office:body");
         const tinyxml2::XMLElement *body = bodyHandle.ToElement();
 
-        if (((context.meta->type == FileType::OPENDOCUMENT_PRESENTATION) || (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET)) &&
-                ((context.config->entryOffset > 0) || (context.config->entryCount > 0))) {
-            tinyxml2::XMLElement *content = nullptr;
-            std::string entryName;
+        tinyxml2::XMLElement *content = nullptr;
+        std::string entryName;
+        switch (context.meta->type) {
+            case FileType::OPENDOCUMENT_TEXT:
+            case FileType::OPENDOCUMENT_GRAPHICS:
+                break;
+            case FileType::OPENDOCUMENT_PRESENTATION:
+                content = bodyHandle.FirstChildElement("office:presentation").ToElement();
+                entryName = "draw:page";
+                break;
+            case FileType::OPENDOCUMENT_SPREADSHEET:
+                content = bodyHandle.FirstChildElement("office:spreadsheet").ToElement();
+                entryName = "table:table";
+                break;
+            default:
+                throw std::invalid_argument("type");
+        }
 
-            switch (context.meta->type) {
-                case FileType::OPENDOCUMENT_PRESENTATION:
-                    content = bodyHandle.FirstChildElement("office:presentation").ToElement();
-                    entryName = "draw:page";
-                    break;
-                case FileType::OPENDOCUMENT_SPREADSHEET:
-                    content = bodyHandle.FirstChildElement("office:spreadsheet").ToElement();
-                    entryName = "table:table";
-                    break;
-                default:
-                    throw std::invalid_argument("type");
-            }
-
+        if ((content != nullptr) && ((context.config->entryOffset > 0) || (context.config->entryCount > 0))) {
             std::uint32_t i = 0;
             XmlUtil::visitElementChildren(*content, [&](const tinyxml2::XMLElement &c) {
                 if (c.Name() != entryName) return;
@@ -145,8 +143,6 @@ public:
     }
 
     bool backTranslate(const std::string &diff, const std::string &out, TranslationContext &context) const {
-        // TODO exit on encrypted files
-
         const auto json = nlohmann::json::parse(diff);
 
         if (json.contains("modifiedText")) {

@@ -2,10 +2,8 @@
 #define ODR_OPENDOCUMENTSTYLETRANSLATOR_H
 
 #include <memory>
-
-namespace tinyxml2 {
-class XMLElement;
-}
+#include "tinyxml2.h"
+#include "OpenDocumentContext.h"
 
 namespace odr {
 
@@ -13,7 +11,7 @@ struct TranslationContext;
 
 class OpenDocumentStyleTranslator final {
 public:
-    static std::string escapeStyleName(const std::string &);
+    static std::string escapeStyleName(const std::string &name);
     static void translate(const tinyxml2::XMLElement &in, TranslationContext &context);
 };
 
