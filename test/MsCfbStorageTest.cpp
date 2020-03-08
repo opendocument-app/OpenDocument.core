@@ -1,10 +1,10 @@
 #include <string>
 #include <fstream>
-#include <io/ZipStorage.h>
-#include "gtest/gtest.h"
-#include "glog/logging.h"
-#include "io/CfbStorage.h"
-#include "ooxml/OfficeOpenXmlCrypto.h"
+#include <access/ZipStorage.h>
+#include <gtest/gtest.h>
+#include <glog/logging.h>
+#include <access/CfbStorage.h>
+#include <ooxml/OfficeOpenXmlCrypto.h>
 
 TEST(MsCfbReader, open) {
     std::string input;

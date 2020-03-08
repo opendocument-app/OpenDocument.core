@@ -1,5 +1,5 @@
-#include "gtest/gtest.h"
-#include "TableRange.h"
+#include <gtest/gtest.h>
+#include <common/TableRange.h>
 
 namespace odr {
 

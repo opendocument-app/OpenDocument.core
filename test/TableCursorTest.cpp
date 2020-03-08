@@ -1,5 +1,5 @@
-#include "gtest/gtest.h"
-#include "TableCursor.h"
+#include <gtest/gtest.h>
+#include <common/TableCursor.h>
 
 namespace odr {
 
