@@ -7,8 +7,9 @@ add_library(odr_access OBJECT
         src/StreamUtil.cpp
         src/SystemStorage.cpp
         src/ZipStorage.cpp
-        )
+)
 target_include_directories(odr_access PUBLIC include)
-target_link_libraries(odr_access PRIVATE
+target_link_libraries(odr_access
+    PRIVATE
         miniz
-        )
+)

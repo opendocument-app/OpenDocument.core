@@ -11,10 +11,11 @@ struct TranslationContext;
 
 class OpenDocumentStyleTranslator final {
 public:
-    static std::string escapeStyleName(const std::string &name);
-    static void translate(const tinyxml2::XMLElement &in, TranslationContext &context);
+  static std::string escapeStyleName(const std::string &name);
+  static void translate(const tinyxml2::XMLElement &in,
+                        TranslationContext &context);
 };
 
-}
+} // namespace odr
 
-#endif //ODR_OPENDOCUMENTSTYLETRANSLATOR_H
+#endif // ODR_OPENDOCUMENTSTYLETRANSLATOR_H

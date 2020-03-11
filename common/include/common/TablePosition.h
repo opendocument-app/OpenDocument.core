@@ -8,22 +8,22 @@ namespace odr {
 
 class TablePosition {
 public:
-    static std::uint32_t to_col_num(const std::string &);
-    static std::string to_col_string(std::uint32_t);
+  static std::uint32_t to_col_num(const std::string &);
+  static std::string to_col_string(std::uint32_t);
 
-    TablePosition() noexcept;
-    TablePosition(std::uint32_t row, std::uint32_t col) noexcept;
-    explicit TablePosition(const std::string &);
+  TablePosition() noexcept;
+  TablePosition(std::uint32_t row, std::uint32_t col) noexcept;
+  explicit TablePosition(const std::string &);
 
-    std::uint32_t getRow() const noexcept { return row; }
-    std::uint32_t getCol() const noexcept { return col; }
-    std::string toString() const noexcept;
+  std::uint32_t getRow() const noexcept { return row; }
+  std::uint32_t getCol() const noexcept { return col; }
+  std::string toString() const noexcept;
 
 private:
-    std::uint32_t row;
-    std::uint32_t col;
+  std::uint32_t row;
+  std::uint32_t col;
 };
 
-}
+} // namespace odr
 
-#endif //ODR_TABLEPOSITION_H
+#endif // ODR_TABLEPOSITION_H

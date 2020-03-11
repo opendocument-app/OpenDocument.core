@@ -9,6 +9,6 @@ namespace FileUtil {
 extern std::string read(const std::string &);
 }
 
-}
+} // namespace odr
 
-#endif //ODR_FILEUTIL_H
+#endif // ODR_FILEUTIL_H

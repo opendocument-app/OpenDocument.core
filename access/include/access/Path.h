@@ -2,70 +2,69 @@
 #define ODR_PATH_H
 
 #include <cstdint>
+#include <iostream>
 #include <string>
 #include <typeindex>
-#include <iostream>
 
 namespace odr {
 
 class Path final {
 public:
-    Path() noexcept;
-    Path(const char *);
-    Path(const std::string &);
-    Path(const Path &) = default;
-    Path(Path &&) = default;
-    ~Path() = default;
+  Path() noexcept;
+  Path(const char *);
+  Path(const std::string &);
+  Path(const Path &) = default;
+  Path(Path &&) = default;
+  ~Path() = default;
 
-    Path &operator=(const Path &) = default;
-    Path &operator=(Path &&) = default;
+  Path &operator=(const Path &) = default;
+  Path &operator=(Path &&) = default;
 
-    bool operator==(const Path &) const noexcept;
-    bool operator!=(const Path &) const noexcept;
-    bool operator<(const Path &) const noexcept;
-    bool operator>(const Path &) const noexcept;
+  bool operator==(const Path &) const noexcept;
+  bool operator!=(const Path &) const noexcept;
+  bool operator<(const Path &) const noexcept;
+  bool operator>(const Path &) const noexcept;
 
-    operator std::string() const noexcept;
-    operator const std::string &() const noexcept;
-    const std::string &string() const noexcept;
-    std::size_t hash() const noexcept;
+  operator std::string() const noexcept;
+  operator const std::string &() const noexcept;
+  const std::string &string() const noexcept;
+  std::size_t hash() const noexcept;
 
-    bool isAbsolute() const noexcept { return absolute_; }
-    bool isRelative() const noexcept { return !absolute_; }
-    bool isVisible() const noexcept;
-    bool isEscaping() const noexcept;
-    bool childOf(const Path &) const;
-    bool parentOf(const Path &) const;
-    bool ancestorOf(const Path &) const;
-    bool descendantOf(const Path &) const;
+  bool isAbsolute() const noexcept { return absolute_; }
+  bool isRelative() const noexcept { return !absolute_; }
+  bool isVisible() const noexcept;
+  bool isEscaping() const noexcept;
+  bool childOf(const Path &) const;
+  bool parentOf(const Path &) const;
+  bool ancestorOf(const Path &) const;
+  bool descendantOf(const Path &) const;
 
-    std::string basename() const noexcept;
-    std::string extension() const noexcept;
-    std::string fullExtension() const noexcept;
+  std::string basename() const noexcept;
+  std::string extension() const noexcept;
+  std::string fullExtension() const noexcept;
 
-    Path parent() const;
-    Path join(const Path &) const;
+  Path parent() const;
+  Path join(const Path &) const;
 
 private:
-    std::string path_;
-    std::uint32_t upwards_;
-    std::uint32_t downwards_;
-    bool absolute_;
+  std::string path_;
+  std::uint32_t upwards_;
+  std::uint32_t downwards_;
+  bool absolute_;
 
-    friend struct ::std::hash<odr::Path>;
-    friend std::ostream &operator<<(std::ostream &, const Path &);
+  friend struct ::std::hash<odr::Path>;
+  friend std::ostream &operator<<(std::ostream &, const Path &);
 
-    void parent_();
-    void join_(const std::string &);
+  void parent_();
+  void join_(const std::string &);
 };
 
-}
+} // namespace odr
 
 namespace std {
-template<>
-struct hash<::odr::Path> {
-    std::size_t operator()(const ::odr::Path &p) const { return p.hash(); }
+template <> struct hash<::odr::Path> {
+  std::size_t operator()(const ::odr::Path &p) const { return p.hash(); }
 };
-}
+} // namespace std
 
-#endif //ODR_PATH_H
+#endif // ODR_PATH_H

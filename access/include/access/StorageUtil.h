@@ -1,8 +1,8 @@
 #ifndef ODR_STORAGEUTIL_H
 #define ODR_STORAGEUTIL_H
 
-#include <string>
 #include <access/Storage.h>
+#include <string>
 
 namespace odr {
 
@@ -15,6 +15,6 @@ extern std::string read(const Storage &, const Path &);
 
 }
 
-}
+} // namespace odr
 
-#endif //ODR_STORAGEUTIL_H
+#endif // ODR_STORAGEUTIL_H

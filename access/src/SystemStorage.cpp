@@ -1,60 +1,60 @@
-#include <access/SystemStorage.h>
 #include <access/Path.h>
 #include <access/Stream.h>
+#include <access/SystemStorage.h>
 
 namespace odr {
 
 const SystemStorage &SystemStorage::instance() {
-    static SystemStorage instance;
-    return instance;
+  static SystemStorage instance;
+  return instance;
 }
 
 bool SystemStorage::isSomething(const Path &) const {
-    return false; // TODO
+  return false; // TODO
 }
 
 bool SystemStorage::isFile(const Path &) const {
-    return false; // TODO
+  return false; // TODO
 }
 
 bool SystemStorage::isFolder(const Path &) const {
-    return false; // TODO
+  return false; // TODO
 }
 
 bool SystemStorage::isReadable(const Path &) const {
-    return false; // TODO
+  return false; // TODO
 }
 
 bool SystemStorage::isWriteable(const Path &) const {
-    return false; // TODO
+  return false; // TODO
 }
 
 std::uint64_t SystemStorage::size(const Path &) const {
-    return 0; // TODO
+  return 0; // TODO
 }
 
 bool SystemStorage::remove(const Path &) const {
-    return false; // TODO
+  return false; // TODO
 }
 
 bool SystemStorage::copy(const Path &, const Path &) const {
-    return false; // TODO
+  return false; // TODO
 }
 
 bool SystemStorage::move(const Path &, const Path &) const {
-    return false; // TODO
+  return false; // TODO
 }
 
 void SystemStorage::visit(Visitor) const {
-    // TODO
+  // TODO
 }
 
 std::unique_ptr<Source> SystemStorage::read(const Path &) const {
-    return nullptr; // TODO
+  return nullptr; // TODO
 }
 
 std::unique_ptr<Sink> SystemStorage::write(const Path &) const {
-    return nullptr; // TODO
+  return nullptr; // TODO
 }
 
-}
+} // namespace odr

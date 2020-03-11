@@ -13,8 +13,9 @@ add_executable(odr_test
         TablePositionTest.cpp
         TableRangeTest.cpp
         ZipStorageTest.cpp
-        )
-target_link_libraries(odr_test PRIVATE
+)
+target_link_libraries(odr_test
+    PRIVATE
         tinyxml2
         miniz
         glog
@@ -31,5 +32,5 @@ target_link_libraries(odr_test PRIVATE
         odr_svm
 
         odr-static
-        )
+)
 gtest_add_tests(TARGET odr_test)

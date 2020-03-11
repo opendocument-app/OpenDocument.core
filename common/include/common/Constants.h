@@ -16,8 +16,8 @@ extern const char *getOpenDocumentDefaultCss();
 extern const char *getOpenDocumentSpreadsheetDefaultCss();
 
 extern const char *getDefaultScript();
-}
+} // namespace Constants
 
-}
+} // namespace odr
 
-#endif //ODR_TEMPLATES_H
+#endif // ODR_TEMPLATES_H

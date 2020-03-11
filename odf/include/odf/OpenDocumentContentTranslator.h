@@ -13,9 +13,10 @@ struct TranslationContext;
 
 class OpenDocumentContentTranslator final {
 public:
-    static void translate(const tinyxml2::XMLElement &in, TranslationContext &context);
+  static void translate(const tinyxml2::XMLElement &in,
+                        TranslationContext &context);
 };
 
-}
+} // namespace odr
 
-#endif //ODR_OPENDOCUMENTCONTENTTRANSLATOR_H
+#endif // ODR_OPENDOCUMENTCONTENTTRANSLATOR_H

@@ -1,9 +1,12 @@
-# TODO use object library
-add_library(odr-static STATIC
+add_library(odr-interface INTERFACE)
+target_include_directories(odr-interface INTERFACE include)
+
+add_library(odr STATIC
         src/OpenDocumentReader.cpp
         )
-target_include_directories(odr-static PUBLIC include)
-target_link_libraries(odr-static PRIVATE
+target_include_directories(odr PUBLIC include)
+target_link_libraries(odr
+    PRIVATE
         tinyxml2
         miniz
         glog
@@ -16,4 +19,4 @@ target_link_libraries(odr-static PRIVATE
         odr_odf
         odr_ooxml
         )
-set_property(TARGET odr-static PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET odr PROPERTY POSITION_INDEPENDENT_CODE ON)

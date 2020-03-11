@@ -5,13 +5,17 @@ add_library(odr_ooxml OBJECT
         src/OfficeOpenXmlPresentationTranslator.cpp
         src/OfficeOpenXmlTranslator.cpp
         src/OfficeOpenXmlWorkbookTranslator.cpp
-        )
+)
 target_include_directories(odr_ooxml PUBLIC include)
-target_link_libraries(odr_ooxml PRIVATE
+target_link_libraries(odr_ooxml
+    PRIVATE
         tinyxml2
         glog
 
+    PUBLIC
         odr_access
         odr_common
         odr_crypto
-        )
+
+        odr-interface
+)

@@ -13,10 +13,12 @@ struct TranslationContext;
 
 class OfficeOpenXmlPresentationTranslator {
 public:
-    static void translateStyle(const tinyxml2::XMLElement &in, TranslationContext &context);
-    static void translateContent(const tinyxml2::XMLElement &in, TranslationContext &context);
+  static void translateStyle(const tinyxml2::XMLElement &in,
+                             TranslationContext &context);
+  static void translateContent(const tinyxml2::XMLElement &in,
+                               TranslationContext &context);
 };
 
-}
+} // namespace odr
 
-#endif //ODR_OFFICEOPENXMLPRESENTATIONTRANSLATOR_H
+#endif // ODR_OFFICEOPENXMLPRESENTATIONTRANSLATOR_H

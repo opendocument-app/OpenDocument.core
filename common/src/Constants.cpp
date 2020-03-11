@@ -4,16 +4,12 @@
 
 namespace odr {
 
-const char *Constants::getVersion() {
-    return "";
-}
+const char *Constants::getVersion() { return ""; }
 
-const char *Constants::getCommit() {
-    return "";
-}
+const char *Constants::getCommit() { return ""; }
 
 const char *Constants::getHtmlBeginToStyle() {
-    // clang-format off
+  // clang-format off
     return MULTILINE(
 <!DOCTYPE html>
 <html>
@@ -24,38 +20,38 @@ const char *Constants::getHtmlBeginToStyle() {
     <title>odr</title>
     <style>
     );
-    // clang-format on
+  // clang-format on
 }
 
 const char *Constants::getHtmlStyleToBody() {
-    // clang-format off
+  // clang-format off
     return MULTILINE(
     </style>
     <body>
     );
-    // clang-format on
+  // clang-format on
 }
 
 const char *Constants::getHtmlBodyToScript() {
-    // clang-format off
+  // clang-format off
     return MULTILINE(
     </body>
     <script>
     );
-    // clang-format on
+  // clang-format on
 }
 
 const char *Constants::getHtmlScriptToEnd() {
-    // clang-format off
+  // clang-format off
     return MULTILINE(
     </script>
     </html>
     );
-    // clang-format on
+  // clang-format on
 }
 
 const char *Constants::getOpenDocumentDefaultCss() {
-    // clang-format off
+  // clang-format off
     return MULTILINE(
 * {
   margin: 0px;
@@ -77,11 +73,11 @@ span {
   margin: 0 !important;
 }
     );
-    // clang-format on
+  // clang-format on
 }
 
 const char *Constants::getOpenDocumentSpreadsheetDefaultCss() {
-    // clang-format off
+  // clang-format off
     return MULTILINE(
 table {
   border-collapse: collapse;
@@ -95,11 +91,11 @@ p {
   font-size: 10pt;
 }
     );
-    // clang-format on
+  // clang-format on
 }
 
 const char *Constants::getDefaultScript() {
-    // clang-format off
+  // clang-format off
     return MULTILINE(
 function download(filename, text) {
   var element = document.createElement('a');
@@ -154,7 +150,7 @@ const observer = new MutationObserver(mutation);
 const config = { attributes: false, childList: true, subtree: true, characterData: true };
 observer.observe(document.body, config);
     );
-    // clang-format on
+  // clang-format on
 }
 
-}
+} // namespace odr
