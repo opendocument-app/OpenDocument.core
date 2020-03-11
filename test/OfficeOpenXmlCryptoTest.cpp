@@ -1,7 +1,7 @@
 #include <string>
 #include <cstring>
-#include "gtest/gtest.h"
-#include "ooxml/OfficeOpenXmlCrypto.h"
+#include <gtest/gtest.h>
+#include <ooxml/OfficeOpenXmlCrypto.h>
 
 TEST(MsCryptoUtil, ECMA376Standard_deriveKey) {
     odr::OfficeOpenXmlCrypto::EncryptionHeader encryptionHeader{};

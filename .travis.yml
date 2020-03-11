@@ -22,6 +22,6 @@ install:
 
 script:
   - mkdir -p build && cd build && cmake -GNinja .. && cmake --build . && cd ..
-  - cd test && bash ../gdrive.sh "${INPUT}" && [[ -d "input/" ]] && cd ..
-  - cd test && bash ../gdrive.sh "${OUTPUT}" && [[ -d "output/" ]] && cd ..
-  - cd test && ODR="../build/main/translate" INPUT_DIR="input" ./translate.sh
+  - cd .travis && bash ../gdrive.sh "${INPUT}" && [[ -d "input/" ]] && cd ..
+  - cd .travis && bash ../gdrive.sh "${OUTPUT}" && [[ -d "output/" ]] && cd ..
+  - cd .travis && ODR="../build/cli/translate" INPUT_DIR="input" ./translate.sh

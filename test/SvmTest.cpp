@@ -1,8 +1,8 @@
 #include <string>
 #include <fstream>
-#include "gtest/gtest.h"
-#include "glog/logging.h"
-#include "svm/Svm2Svg.h"
+#include <gtest/gtest.h>
+#include <glog/logging.h>
+#include <svm/Svm2Svg.h>
 
 TEST(Svm, draft) {
     std::string input;

@@ -1,5 +1,5 @@
-#include "gtest/gtest.h"
-#include "TablePosition.h"
+#include <gtest/gtest.h>
+#include <common/TablePosition.h>
 
 namespace odr {
 

@@ -1,30 +1,35 @@
-include("FetchContent")
-
-FetchContent_Declare(
-        googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG release-1.8.1
-)
-
-FetchContent_GetProperties(googletest)
-if(NOT googletest_POPULATED)
-    FetchContent_Populate(googletest)
-    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
-    set(gtest_build_tests OFF CACHE BOOL "" FORCE)
-    set(gtest_build_samples OFF CACHE BOOL "" FORCE)
-    add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
-
 find_package(Threads REQUIRED)
 include(GoogleTest REQUIRED)
 
 enable_testing()
-file(GLOB TEST_SOURCES "*.cpp")
-add_executable(odrtests ${TEST_SOURCES})
-target_link_libraries(odrtests PRIVATE gtest_main gtest glog tinyxml2 miniz odrlib)
-if(NOT ODR_DISABLE_CRYPTO AND CryptoPP_FOUND)
-    target_link_libraries(odrtests PRIVATE cryptopp)
-    target_compile_definitions(odrtests PRIVATE ODR_CRYPTO)
-endif()
-target_include_directories(odrtests PRIVATE "../src")
-gtest_add_tests(TARGET odrtests)
+add_executable(odr_test
+        MsCfbStorageTest.cpp
+        OfficeOpenXmlCryptoTest.cpp
+        OfficeOpenXmlMetaTest.cpp
+        OpenDocumentMetaTest.cpp
+        PathTest.cpp
+        SvmTest.cpp
+        TableCursorTest.cpp
+        TablePositionTest.cpp
+        TableRangeTest.cpp
+        ZipStorageTest.cpp
+        )
+target_link_libraries(odr_test PRIVATE
+        tinyxml2
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
+        gtest_main
+        gtest
+
+        odr_access
+        odr_common
+        odr_crypto
+        odr_odf
+        odr_ooxml
+        odr_svm
+
+        odr-static
+        )
+gtest_add_tests(TARGET odr_test)

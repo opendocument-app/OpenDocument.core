@@ -1,7 +1,7 @@
 #include <string>
-#include "gtest/gtest.h"
-#include "glog/logging.h"
-#include "io/ZipStorage.h"
+#include <gtest/gtest.h>
+#include <glog/logging.h>
+#include <access/ZipStorage.h>
 
 TEST(ZipWriter, create) {
     const std::string output = "../../test/created.zip";

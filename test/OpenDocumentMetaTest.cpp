@@ -1,8 +1,8 @@
-#include "odf/OpenDocumentMeta.h"
-#include "glog/logging.h"
-#include "io/ZipStorage.h"
-#include "odr/Meta.h"
-#include "gtest/gtest.h"
+#include <odf/OpenDocumentMeta.h>
+#include <glog/logging.h>
+#include <access/ZipStorage.h>
+#include <odr/Meta.h>
+#include <gtest/gtest.h>
 #include <string>
 
 TEST(OpenDocumentMeta, open) {
