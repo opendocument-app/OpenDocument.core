@@ -31,6 +31,6 @@ target_link_libraries(odr_test
         odr_ooxml
         odr_svm
 
-        odr-static
+        odr
 )
 gtest_add_tests(TARGET odr_test)
