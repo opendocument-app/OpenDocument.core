@@ -1,12 +1,12 @@
-#ifndef ODR_CRYPTOUTIL_H
-#define ODR_CRYPTOUTIL_H
+#ifndef ODR_CRYPTO_UTIL_H
+#define ODR_CRYPTO_UTIL_H
 
 #include <string>
 
 namespace odr {
 namespace crypto {
 
-namespace CryptoUtil {
+namespace Util {
 std::string base64Encode(const std::string &);
 std::string base64Decode(const std::string &);
 std::string sha1(const std::string &);
@@ -22,9 +22,9 @@ std::string decryptBlowfish(const std::string &key, const std::string &iv,
                             const std::string &input);
 std::string inflate(const std::string &input);
 std::size_t padding(const std::string &input);
-} // namespace CryptoUtil
+} // namespace Util
 
 } // namespace crypto
 } // namespace odr
 
-#endif // ODR_CRYPTOUTIL_H
+#endif // ODR_CRYPTO_UTIL_H

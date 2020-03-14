@@ -1,11 +1,16 @@
 add_library(odr_odf STATIC
-        src/OpenDocumentContentTranslator.cpp
-        src/OpenDocumentCrypto.cpp
-        src/OpenDocumentMeta.cpp
-        src/OpenDocumentStyleTranslator.cpp
-        src/OpenDocumentTranslator.cpp
+        src/OpenDocument.cpp
+        src/ContentTranslator.cpp
+        src/Crypto.cpp
+        src/Meta.cpp
+        src/StyleTranslator.cpp
         )
-target_include_directories(odr_odf PUBLIC include)
+target_include_directories(odr_odf
+        PUBLIC
+        include
+        PRIVATE
+        src
+        )
 target_link_libraries(odr_odf
         PRIVATE
         tinyxml2

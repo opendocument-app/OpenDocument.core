@@ -12,4 +12,6 @@ target_include_directories(odr_access PUBLIC include)
 target_link_libraries(odr_access
         PRIVATE
         miniz
+
+        odr_crypto
         )

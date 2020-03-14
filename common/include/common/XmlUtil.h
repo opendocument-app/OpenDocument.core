@@ -1,5 +1,5 @@
-#ifndef ODR_XMLUTIL_H
-#define ODR_XMLUTIL_H
+#ifndef ODR_COMMON_XML_UTIL_H
+#define ODR_COMMON_XML_UTIL_H
 
 #include <functional>
 #include <memory>
@@ -23,8 +23,7 @@ class Storage;
 namespace odr {
 namespace common {
 
-class NotXmlException : public std::exception {
-public:
+struct NotXmlException final : public std::exception {
   const char *what() const noexcept override { return "not xml"; }
 };
 
@@ -33,30 +32,26 @@ typedef std::function<void(const tinyxml2::XMLNode &)> NodeVisiter;
 typedef std::function<void(const tinyxml2::XMLElement &)> ElementVisiter;
 typedef std::function<void(const tinyxml2::XMLAttribute &)> AttributeVisiter;
 
-extern std::unique_ptr<tinyxml2::XMLDocument> parse(const std::string &);
-extern std::unique_ptr<tinyxml2::XMLDocument> parse(access::Source &);
-extern std::unique_ptr<tinyxml2::XMLDocument> parse(const access::Storage &,
-                                                    const access::Path &);
+std::unique_ptr<tinyxml2::XMLDocument> parse(const std::string &);
+std::unique_ptr<tinyxml2::XMLDocument> parse(access::Source &);
+std::unique_ptr<tinyxml2::XMLDocument> parse(const access::Storage &,
+                                             const access::Path &);
 
-extern const tinyxml2::XMLElement *
-firstChildElement(const tinyxml2::XMLElement &);
+const tinyxml2::XMLElement *firstChildElement(const tinyxml2::XMLElement &);
 
-extern void visitNodeChildren(const tinyxml2::XMLNode &, NodeVisiter);
-extern void visitElementChildren(const tinyxml2::XMLElement &, ElementVisiter);
-extern void visitElementAttributes(const tinyxml2::XMLElement &,
-                                   AttributeVisiter);
+void visitNodeChildren(const tinyxml2::XMLNode &, NodeVisiter);
+void visitElementChildren(const tinyxml2::XMLElement &, ElementVisiter);
+void visitElementAttributes(const tinyxml2::XMLElement &, AttributeVisiter);
 
-extern void recursiveVisitNodes(const tinyxml2::XMLNode *root, NodeVisiter);
-extern void recursiveVisitElements(const tinyxml2::XMLElement *root,
-                                   ElementVisiter);
-extern void recursiveVisitElementsWithName(const tinyxml2::XMLElement *root,
-                                           const char *name, ElementVisiter);
-extern void
-recursiveVisitElementsWithAttribute(const tinyxml2::XMLElement *root,
-                                    const char *attribute, ElementVisiter);
+void recursiveVisitNodes(const tinyxml2::XMLNode *root, NodeVisiter);
+void recursiveVisitElements(const tinyxml2::XMLElement *root, ElementVisiter);
+void recursiveVisitElementsWithName(const tinyxml2::XMLElement *root,
+                                    const char *name, ElementVisiter);
+void recursiveVisitElementsWithAttribute(const tinyxml2::XMLElement *root,
+                                         const char *attribute, ElementVisiter);
 } // namespace XmlUtil
 
 } // namespace common
 } // namespace odr
 
-#endif // ODR_XMLUTIL_H
+#endif // ODR_COMMON_XML_UTIL_H

@@ -1,5 +1,5 @@
-#ifndef ODR_PATH_H
-#define ODR_PATH_H
+#ifndef ODR_ACCESS_PATH_H
+#define ODR_ACCESS_PATH_H
 
 #include <cstdint>
 #include <iostream>
@@ -71,4 +71,4 @@ template <> struct hash<::odr::access::Path> {
 };
 } // namespace std
 
-#endif // ODR_PATH_H
+#endif // ODR_ACCESS_PATH_H

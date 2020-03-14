@@ -1,5 +1,5 @@
-#ifndef ODR_TABLEPOSITION_H
-#define ODR_TABLEPOSITION_H
+#ifndef ODR_COMMON_TABLE_POSITION_H
+#define ODR_COMMON_TABLE_POSITION_H
 
 #include <cstdint>
 #include <string>
@@ -28,4 +28,4 @@ private:
 } // namespace common
 } // namespace odr
 
-#endif // ODR_TABLEPOSITION_H
+#endif // ODR_COMMON_TABLE_POSITION_H

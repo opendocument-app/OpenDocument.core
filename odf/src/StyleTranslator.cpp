@@ -1,13 +1,13 @@
+#include <StyleTranslator.h>
 #include <common/StringUtil.h>
-#include <common/TranslationContext.h>
 #include <common/XmlUtil.h>
 #include <glog/logging.h>
-#include <odf/OpenDocumentStyleTranslator.h>
 #include <string>
 #include <tinyxml2.h>
 #include <unordered_map>
 
 namespace odr {
+namespace odf {
 
 namespace {
 void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
@@ -61,7 +61,7 @@ void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
 }
 
 void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                          common::TranslationContext &context) {
+                          Context &context) {
   static std::unordered_map<std::string, const char *> elementToNameAttr{
       {"style:default-style", "style:family"},
       {"style:style", "style:name"},
@@ -77,20 +77,19 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     LOG(WARNING) << "skipped style " << in.Name() << ". no name attribute.";
     return;
   }
-  const std::string name =
-      OpenDocumentStyleTranslator::escapeStyleName(nameAttr->Value());
+  const std::string name = StyleTranslator::escapeStyleName(nameAttr->Value());
 
   const char *parentStyleName;
   if (in.QueryStringAttribute("style:parent-style-name", &parentStyleName) ==
       tinyxml2::XML_SUCCESS) {
     context.styleDependencies[name].push_back(
-        OpenDocumentStyleTranslator::escapeStyleName(parentStyleName));
+        StyleTranslator::escapeStyleName(parentStyleName));
   }
   const char *family;
   if (in.QueryStringAttribute("style:family", &family) ==
       tinyxml2::XML_SUCCESS) {
     context.styleDependencies[name].push_back(
-        OpenDocumentStyleTranslator::escapeStyleName(family));
+        StyleTranslator::escapeStyleName(family));
   }
 
   out << "." << name << " {";
@@ -106,7 +105,7 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                         common::TranslationContext &context) {
+                         Context &context) {
   // addElementDelegation("text:list-level-style-number", propertiesTranslator);
   // addElementDelegation("text:list-level-style-bullet", propertiesTranslator);
 
@@ -118,7 +117,7 @@ void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     return;
   }
   const std::string styleName =
-      OpenDocumentStyleTranslator::escapeStyleName(styleNameAttr->Value());
+      StyleTranslator::escapeStyleName(styleNameAttr->Value());
   context.styleDependencies[styleName] = {};
 
   const auto listLevelAttr = in.FindAttribute("text:level");
@@ -153,19 +152,18 @@ void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 } // namespace
 
-std::string
-OpenDocumentStyleTranslator::escapeStyleName(const std::string &name) {
+std::string StyleTranslator::escapeStyleName(const std::string &name) {
   std::string result = name;
   common::StringUtil::findAndReplaceAll(result, ".", "_");
   return result;
 }
 
-void OpenDocumentStyleTranslator::translate(
-    const tinyxml2::XMLElement &in, common::TranslationContext &context) {
+void StyleTranslator::css(const tinyxml2::XMLElement &in, Context &context) {
   common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
     StyleClassTranslator(e, *context.output, context);
     // TODO ListStyleTranslator
   });
 }
 
+} // namespace odf
 } // namespace odr

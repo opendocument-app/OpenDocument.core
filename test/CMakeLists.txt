@@ -3,7 +3,7 @@ include(GoogleTest REQUIRED)
 
 enable_testing()
 add_executable(odr_test
-        OfficeOpenXmlCryptoTest.cpp
+        CfbCryptoTest.cpp
         PathTest.cpp
         TableCursorTest.cpp
         TablePositionTest.cpp

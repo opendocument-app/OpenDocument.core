@@ -1,23 +1,22 @@
-#ifndef ODR_OFFICEOPENXMLCRYPTO_H
-#define ODR_OFFICEOPENXMLCRYPTO_H
+#ifndef ODR_CRYPTO_CFB_CRYPTO_H
+#define ODR_CRYPTO_CFB_CRYPTO_H
 
 #include <memory>
 #include <string>
 
 namespace odr {
-namespace ooxml {
+namespace crypto {
 
-class UnsupportedEndianException : public std::exception {
-public:
-  const char *what() const noexcept override { return "unsupported endian"; }
+struct UnsupportedEndianException final : public std::exception {
+  const char *what() const noexcept final { return "unsupported endian"; }
 };
 
-class MsUnsupportedCryptoAlgorithmException : public std::exception {
+class MsUnsupportedCryptoAlgorithmException final : public std::exception {
 public:
   explicit MsUnsupportedCryptoAlgorithmException(std::string name)
       : name(std::move(name)) {}
   const std::string &getName() const { return name; }
-  const char *what() const noexcept override {
+  const char *what() const noexcept final {
     return "unsupported crypto algorithm";
   }
 
@@ -25,7 +24,7 @@ private:
   std::string name;
 };
 
-namespace OfficeOpenXmlCrypto {
+namespace CfbCrypto {
 // TODO support big endian
 #pragma pack(push, 1)
 struct VersionInfo {
@@ -107,9 +106,9 @@ private:
   std::unique_ptr<Algorithm> impl;
 };
 
-} // namespace OfficeOpenXmlCrypto
+} // namespace CfbCrypto
 
-} // namespace ooxml
+} // namespace crypto
 } // namespace odr
 
-#endif // ODR_OFFICEOPENXMLCRYPTO_H
+#endif // ODR_CRYPTO_CFB_CRYPTO_H

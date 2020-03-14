@@ -1,18 +1,21 @@
 add_library(odr_ooxml STATIC
-        src/OfficeOpenXmlCrypto.cpp
-        src/OfficeOpenXmlDocumentTranslator.cpp
-        src/OfficeOpenXmlMeta.cpp
-        src/OfficeOpenXmlPresentationTranslator.cpp
-        src/OfficeOpenXmlTranslator.cpp
-        src/OfficeOpenXmlWorkbookTranslator.cpp
+        src/OfficeOpenXml.cpp
+        src/DocumentTranslator.cpp
+        src/Meta.cpp
+        src/PresentationTranslator.cpp
+        src/WorkbookTranslator.cpp
         )
-target_include_directories(odr_ooxml PUBLIC include)
+target_include_directories(odr_ooxml
+        PUBLIC
+        include
+        PRIVATE
+        src
+        )
 target_link_libraries(odr_ooxml
         PRIVATE
         tinyxml2
         glog
 
-        PUBLIC
         odr_access
         odr_common
         odr_crypto
