@@ -1,5 +1,5 @@
-#ifndef ODR_SYSTEMSTORAGE_H
-#define ODR_SYSTEMSTORAGE_H
+#ifndef ODR_ACCESS_SYSTEM_STORAGE_H
+#define ODR_ACCESS_SYSTEM_STORAGE_H
 
 #include <access/Storage.h>
 
@@ -37,4 +37,4 @@ private:
 } // namespace access
 } // namespace odr
 
-#endif // ODR_SYSTEMSTORAGE_H
+#endif // ODR_ACCESS_SYSTEM_STORAGE_H

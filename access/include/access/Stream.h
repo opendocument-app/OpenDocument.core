@@ -1,5 +1,5 @@
-#ifndef ODR_STREAM_H
-#define ODR_STREAM_H
+#ifndef ODR_ACCESS_STREAM_H
+#define ODR_ACCESS_STREAM_H
 
 #include <cstdint>
 
@@ -22,4 +22,4 @@ public:
 } // namespace access
 } // namespace odr
 
-#endif // ODR_STREAM_H
+#endif // ODR_ACCESS_STREAM_H

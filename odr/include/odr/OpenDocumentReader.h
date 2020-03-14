@@ -1,5 +1,5 @@
-#ifndef ODR_OPENDOCUMENTREADER_H
-#define ODR_OPENDOCUMENTREADER_H
+#ifndef ODR_OPEN_DOCUMENT_READER_H
+#define ODR_OPEN_DOCUMENT_READER_H
 
 #include <memory>
 #include <string>
@@ -12,26 +12,33 @@ struct Config;
 
 class OpenDocumentReader final {
 public:
-  static std::string getVersion();
-  static std::string getCommit();
+  static std::string getVersion() noexcept;
+  static std::string getCommit() noexcept;
 
   OpenDocumentReader();
   ~OpenDocumentReader();
 
   FileType guess(const std::string &path) const noexcept;
 
-  bool open(const std::string &path) noexcept;
-  bool save(const std::string &path) noexcept;
-  void close() noexcept;
+  bool open(const std::string &path) const noexcept;
+  bool open(const std::string &path, FileType as) const noexcept;
+  bool save(const std::string &path) const noexcept;
+  bool save(const std::string &path, const std::string &password) const
+      noexcept;
+  void close() const noexcept;
 
+  bool isOpen() const noexcept;
+  bool isDecrypted() const noexcept;
   bool canTranslate() const noexcept;
-  bool canBackTranslate() const noexcept;
+  bool canEdit() const noexcept;
+  bool canSave() const noexcept;
+  bool canSave(bool encrypted) const noexcept;
   const FileMeta &getMeta() const noexcept;
 
-  bool decrypt(const std::string &password) noexcept;
+  bool decrypt(const std::string &password) const noexcept;
 
-  bool translate(const std::string &path, const Config &config) noexcept;
-  bool backTranslate(const std::string &diff, const std::string &path) noexcept;
+  bool translate(const std::string &path, const Config &config) const noexcept;
+  bool edit(const std::string &diff) const noexcept;
 
 private:
   class Impl;
@@ -40,4 +47,4 @@ private:
 
 } // namespace odr
 
-#endif // ODR_OPENDOCUMENTREADER_H
+#endif // ODR_OPEN_DOCUMENT_READER_H

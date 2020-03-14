@@ -5,11 +5,6 @@ add_library(odr STATIC
         src/OpenDocumentReader.cpp
         )
 target_include_directories(odr PUBLIC include)
-# TODO remove
-target_include_directories(odr
-        PRIVATE
-        ".."
-        )
 target_link_libraries(odr
         PRIVATE
         tinyxml2

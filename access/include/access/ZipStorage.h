@@ -1,5 +1,5 @@
-#ifndef ODR_ZIPSTORAGE_H
-#define ODR_ZIPSTORAGE_H
+#ifndef ODR_ACCESS_ZIP_STORAGE_H
+#define ODR_ACCESS_ZIP_STORAGE_H
 
 #include <access/Storage.h>
 #include <exception>
@@ -68,4 +68,4 @@ private:
 } // namespace access
 } // namespace odr
 
-#endif // ODR_ZIPSTORAGE_H
+#endif // ODR_ACCESS_ZIP_STORAGE_H

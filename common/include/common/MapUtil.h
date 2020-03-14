@@ -1,5 +1,5 @@
-#ifndef ODR_MAPUTIL_H
-#define ODR_MAPUTIL_H
+#ifndef ODR_COMMON_MAPUTIL_H
+#define ODR_COMMON_MAPUTIL_H
 
 namespace odr {
 namespace common {
@@ -29,4 +29,4 @@ bool lookupMapDefault(const Map &map, const Key &key, Value &value,
 } // namespace common
 } // namespace odr
 
-#endif // ODR_MAPUTIL_H
+#endif // ODR_COMMON_MAPUTIL_H

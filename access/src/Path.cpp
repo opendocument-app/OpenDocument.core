@@ -94,8 +94,7 @@ Path::operator const std::string &() const noexcept { return path_; }
 const std::string &Path::string() const noexcept { return path_; }
 
 std::size_t Path::hash() const noexcept {
-  static const std::hash<std::string> stringHash;
-  return stringHash(path_);
+  return std::hash<std::string>{}(path_);
 }
 
 bool Path::isVisible() const noexcept { return absolute_ || (upwards_ == 0); }

@@ -5,11 +5,11 @@
 namespace odr {
 namespace common {
 
-const char *Constants::getVersion() { return ""; }
+const char *Constants::getVersion() noexcept { return ""; }
 
-const char *Constants::getCommit() { return ""; }
+const char *Constants::getCommit() noexcept { return ""; }
 
-const char *Constants::getHtmlBeginToStyle() {
+const char *Constants::getHtmlBeginToStyle() noexcept {
   // clang-format off
     return MULTILINE(
 <!DOCTYPE html>
@@ -24,7 +24,7 @@ const char *Constants::getHtmlBeginToStyle() {
   // clang-format on
 }
 
-const char *Constants::getHtmlStyleToBody() {
+const char *Constants::getHtmlStyleToBody() noexcept {
   // clang-format off
     return MULTILINE(
     </style>
@@ -33,7 +33,7 @@ const char *Constants::getHtmlStyleToBody() {
   // clang-format on
 }
 
-const char *Constants::getHtmlBodyToScript() {
+const char *Constants::getHtmlBodyToScript() noexcept {
   // clang-format off
     return MULTILINE(
     </body>
@@ -42,7 +42,7 @@ const char *Constants::getHtmlBodyToScript() {
   // clang-format on
 }
 
-const char *Constants::getHtmlScriptToEnd() {
+const char *Constants::getHtmlScriptToEnd() noexcept {
   // clang-format off
     return MULTILINE(
     </script>
@@ -51,7 +51,7 @@ const char *Constants::getHtmlScriptToEnd() {
   // clang-format on
 }
 
-const char *Constants::getOpenDocumentDefaultCss() {
+const char *Constants::getOpenDocumentDefaultCss() noexcept {
   // clang-format off
     return MULTILINE(
 * {
@@ -77,7 +77,7 @@ span {
   // clang-format on
 }
 
-const char *Constants::getOpenDocumentSpreadsheetDefaultCss() {
+const char *Constants::getOpenDocumentSpreadsheetDefaultCss() noexcept {
   // clang-format off
     return MULTILINE(
 table {
@@ -95,7 +95,7 @@ p {
   // clang-format on
 }
 
-const char *Constants::getDefaultScript() {
+const char *Constants::getDefaultScript() noexcept {
   // clang-format off
     return MULTILINE(
 function download(filename, text) {

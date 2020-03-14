@@ -1,23 +1,33 @@
-#ifndef ODR_OPENDOCUMENTCONTEXT_H
-#define ODR_OPENDOCUMENTCONTEXT_H
+#ifndef ODR_ODF_CONTEXT_H
+#define ODR_ODF_CONTEXT_H
 
-#include <access/Path.h>
-#include <access/Storage.h>
 #include <common/TableCursor.h>
 #include <iostream>
 #include <list>
 #include <memory>
-#include <odr/Config.h>
-#include <odr/Meta.h>
 #include <string>
 #include <tinyxml2.h>
 #include <unordered_map>
-#include <vector>
 
 namespace odr {
+struct Config;
+struct FileMeta;
 
-struct OpenDocumentContext {
-  access::Storage *storage;
+namespace access {
+class Storage;
+}
+} // namespace odr
+
+namespace odr {
+namespace odf {
+
+struct Context {
+  const Config *config;
+  const FileMeta *meta;
+
+  const access::Storage *storage;
+
+  std::ostream *output;
 
   std::unordered_map<std::string, std::list<std::string>> styleDependencies;
 
@@ -29,13 +39,12 @@ struct OpenDocumentContext {
   common::TableCursor tableCursor;
   std::unordered_map<std::uint32_t, std::string> defaultCellStyles;
 
-  std::ostream *output;
-
   // editing
   std::uint32_t currentTextTranslationIndex;
   std::unordered_map<std::uint32_t, const tinyxml2::XMLText *> textTranslation;
 };
 
+} // namespace odf
 } // namespace odr
 
-#endif // ODR_OPENDOCUMENTCONTEXT_H
+#endif // ODR_ODF_CONTEXT_H

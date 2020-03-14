@@ -1,5 +1,5 @@
-#ifndef ODR_TABLECURSOR_H
-#define ODR_TABLECURSOR_H
+#ifndef ODR_COMMON_TABLE_CURSOR_H
+#define ODR_COMMON_TABLE_CURSOR_H
 
 #include <common/TablePosition.h>
 #include <cstdint>
@@ -37,4 +37,4 @@ private:
 } // namespace common
 } // namespace odr
 
-#endif // ODR_TABLECURSOR_H
+#endif // ODR_COMMON_TABLE_CURSOR_H

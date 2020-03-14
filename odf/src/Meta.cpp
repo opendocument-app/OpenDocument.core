@@ -1,10 +1,10 @@
+#include <Meta.h>
 #include <access/Storage.h>
 #include <access/StorageUtil.h>
 #include <common/MapUtil.h>
 #include <common/TableCursor.h>
 #include <common/XmlUtil.h>
 #include <crypto/CryptoUtil.h>
-#include <odf/OpenDocumentMeta.h>
 #include <odr/Meta.h>
 #include <tinyxml2.h>
 #include <unordered_map>
@@ -12,7 +12,8 @@
 namespace odr {
 namespace odf {
 
-static bool lookupFileType(const std::string &mimeType, FileType &fileType) {
+namespace {
+bool lookupFileType(const std::string &mimeType, FileType &fileType) {
   static const std::unordered_map<std::string, FileType> MIME_TYPES = {
       {"application/vnd.oasis.opendocument.text", FileType::OPENDOCUMENT_TEXT},
       {"application/vnd.oasis.opendocument.presentation",
@@ -26,65 +27,59 @@ static bool lookupFileType(const std::string &mimeType, FileType &fileType) {
                                            FileType::UNKNOWN);
 }
 
-static bool lookupChecksumType(const std::string &checksum,
-                               OpenDocumentMeta::ChecksumType &checksumType) {
-  static const std::unordered_map<std::string, OpenDocumentMeta::ChecksumType>
+bool lookupChecksumType(const std::string &checksum,
+                        Meta::ChecksumType &checksumType) {
+  static const std::unordered_map<std::string, Meta::ChecksumType>
       CHECKSUM_TYPES = {
-          {"SHA1", OpenDocumentMeta::ChecksumType::SHA1},
-          {"SHA1/1K", OpenDocumentMeta::ChecksumType::SHA1_1K},
+          {"SHA1", Meta::ChecksumType::SHA1},
+          {"SHA1/1K", Meta::ChecksumType::SHA1_1K},
           {"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0#sha256-1k",
-           OpenDocumentMeta::ChecksumType::SHA256_1K},
+           Meta::ChecksumType::SHA256_1K},
       };
   return common::MapUtil::lookupMapDefault(
-      CHECKSUM_TYPES, checksum, checksumType,
-      OpenDocumentMeta::ChecksumType::UNKNOWN);
+      CHECKSUM_TYPES, checksum, checksumType, Meta::ChecksumType::UNKNOWN);
 }
 
-static bool
-lookupAlgorithmTypes(const std::string &algorithm,
-                     OpenDocumentMeta::AlgorithmType &algorithmType) {
-  static const std::unordered_map<std::string, OpenDocumentMeta::AlgorithmType>
+bool lookupAlgorithmTypes(const std::string &algorithm,
+                          Meta::AlgorithmType &algorithmType) {
+  static const std::unordered_map<std::string, Meta::AlgorithmType>
       ALGORITHM_TYPES = {
           {"http://www.w3.org/2001/04/xmlenc#aes256-cbc",
-           OpenDocumentMeta::AlgorithmType::AES256_CBC},
-          {"", OpenDocumentMeta::AlgorithmType::TRIPLE_DES_CBC},
-          {"Blowfish CFB", OpenDocumentMeta::AlgorithmType::BLOWFISH_CFB},
+           Meta::AlgorithmType::AES256_CBC},
+          {"", Meta::AlgorithmType::TRIPLE_DES_CBC},
+          {"Blowfish CFB", Meta::AlgorithmType::BLOWFISH_CFB},
       };
   return common::MapUtil::lookupMapDefault(
-      ALGORITHM_TYPES, algorithm, algorithmType,
-      OpenDocumentMeta::AlgorithmType::UNKNOWN);
+      ALGORITHM_TYPES, algorithm, algorithmType, Meta::AlgorithmType::UNKNOWN);
 }
 
-static bool lookupKeyDerivationTypes(
-    const std::string &keyDerivation,
-    OpenDocumentMeta::KeyDerivationType &keyDerivationType) {
-  static const std::unordered_map<std::string,
-                                  OpenDocumentMeta::KeyDerivationType>
+bool lookupKeyDerivationTypes(const std::string &keyDerivation,
+                              Meta::KeyDerivationType &keyDerivationType) {
+  static const std::unordered_map<std::string, Meta::KeyDerivationType>
       KEY_DERIVATION_TYPES = {
-          {"PBKDF2", OpenDocumentMeta::KeyDerivationType::PBKDF2},
+          {"PBKDF2", Meta::KeyDerivationType::PBKDF2},
       };
-  return common::MapUtil::lookupMapDefault(
-      KEY_DERIVATION_TYPES, keyDerivation, keyDerivationType,
-      OpenDocumentMeta::KeyDerivationType::UNKNOWN);
+  return common::MapUtil::lookupMapDefault(KEY_DERIVATION_TYPES, keyDerivation,
+                                           keyDerivationType,
+                                           Meta::KeyDerivationType::UNKNOWN);
 }
 
-static bool lookupStartKeyTypes(const std::string &checksum,
-                                OpenDocumentMeta::ChecksumType &checksumType) {
-  static const std::unordered_map<std::string, OpenDocumentMeta::ChecksumType>
+bool lookupStartKeyTypes(const std::string &checksum,
+                         Meta::ChecksumType &checksumType) {
+  static const std::unordered_map<std::string, Meta::ChecksumType>
       STARTKEY_TYPES = {
-          {"SHA1", OpenDocumentMeta::ChecksumType::SHA1},
+          {"SHA1", Meta::ChecksumType::SHA1},
           {"http://www.w3.org/2000/09/xmldsig#sha256",
-           OpenDocumentMeta::ChecksumType::SHA256},
+           Meta::ChecksumType::SHA256},
       };
   return common::MapUtil::lookupMapDefault(
-      STARTKEY_TYPES, checksum, checksumType,
-      OpenDocumentMeta::ChecksumType::UNKNOWN);
+      STARTKEY_TYPES, checksum, checksumType, Meta::ChecksumType::UNKNOWN);
 }
 
-static void estimateTableDimensions(const tinyxml2::XMLElement &table,
-                                    std::uint32_t &rows, std::uint32_t &cols,
-                                    const std::uint32_t limitRows,
-                                    const std::uint32_t limitCols) {
+void estimateTableDimensions(const tinyxml2::XMLElement &table,
+                             std::uint32_t &rows, std::uint32_t &cols,
+                             const std::uint32_t limitRows,
+                             const std::uint32_t limitCols) {
   rows = 0;
   cols = 0;
 
@@ -116,9 +111,10 @@ static void estimateTableDimensions(const tinyxml2::XMLElement &table,
     }
   });
 }
+} // namespace
 
-FileMeta OpenDocumentMeta::parseFileMeta(access::Storage &storage,
-                                         const bool decrypted) {
+FileMeta Meta::parseFileMeta(const access::Storage &storage,
+                             const bool decrypted) {
   FileMeta result{};
 
   if (!storage.isFile("content.xml"))
@@ -231,8 +227,7 @@ FileMeta OpenDocumentMeta::parseFileMeta(access::Storage &storage,
   return result;
 }
 
-OpenDocumentMeta::Manifest
-OpenDocumentMeta::parseManifest(access::Storage &storage) {
+Meta::Manifest Meta::parseManifest(const access::Storage &storage) {
   if (!storage.isFile("META-INF/manifest.xml"))
     throw NoOpenDocumentFileException();
   const auto manifest =
@@ -240,8 +235,7 @@ OpenDocumentMeta::parseManifest(access::Storage &storage) {
   return parseManifest(*manifest);
 }
 
-OpenDocumentMeta::Manifest
-OpenDocumentMeta::parseManifest(const tinyxml2::XMLDocument &manifest) {
+Meta::Manifest Meta::parseManifest(const tinyxml2::XMLDocument &manifest) {
   Manifest result{};
 
   common::XmlUtil::recursiveVisitElementsWithName(
@@ -305,10 +299,10 @@ OpenDocumentMeta::parseManifest(const tinyxml2::XMLDocument &manifest) {
           }
         }
 
-        entry.checksum = crypto::CryptoUtil::base64Decode(entry.checksum);
+        entry.checksum = crypto::Util::base64Decode(entry.checksum);
         entry.initialisationVector =
-            crypto::CryptoUtil::base64Decode(entry.initialisationVector);
-        entry.keySalt = crypto::CryptoUtil::base64Decode(entry.keySalt);
+            crypto::Util::base64Decode(entry.initialisationVector);
+        entry.keySalt = crypto::Util::base64Decode(entry.keySalt);
 
         const auto it = result.entries.emplace(path, entry).first;
         if ((result.smallestFilePath == nullptr) ||

@@ -14,7 +14,7 @@ namespace crypto {
 
 typedef unsigned char byte;
 
-std::string CryptoUtil::base64Encode(const std::string &in) {
+std::string Util::base64Encode(const std::string &in) {
   std::string out;
   CryptoPP::Base64Encoder b(new CryptoPP::StringSink(out));
   b.Put((const byte *)in.data(), in.size());
@@ -22,7 +22,7 @@ std::string CryptoUtil::base64Encode(const std::string &in) {
   return out;
 }
 
-std::string CryptoUtil::base64Decode(const std::string &in) {
+std::string Util::base64Decode(const std::string &in) {
   std::string out;
   CryptoPP::Base64Decoder b(new CryptoPP::StringSink(out));
   b.Put((const byte *)in.data(), in.size());
@@ -30,22 +30,21 @@ std::string CryptoUtil::base64Decode(const std::string &in) {
   return out;
 }
 
-std::string CryptoUtil::sha1(const std::string &in) {
+std::string Util::sha1(const std::string &in) {
   byte out[CryptoPP::SHA1::DIGESTSIZE];
   CryptoPP::SHA1().CalculateDigest(out, (byte *)in.data(), in.size());
   return std::string((char *)out, CryptoPP::SHA1::DIGESTSIZE);
 }
 
-std::string CryptoUtil::sha256(const std::string &in) {
+std::string Util::sha256(const std::string &in) {
   byte out[CryptoPP::SHA256::DIGESTSIZE];
   CryptoPP::SHA256().CalculateDigest(out, (byte *)in.data(), in.size());
   return std::string((char *)out, CryptoPP::SHA256::DIGESTSIZE);
 }
 
-std::string CryptoUtil::pbkdf2(const std::size_t keySize,
-                               const std::string &startKey,
-                               const std::string &salt,
-                               const std::size_t iterationCount) {
+std::string Util::pbkdf2(const std::size_t keySize, const std::string &startKey,
+                         const std::string &salt,
+                         const std::size_t iterationCount) {
   std::string result(keySize, '\0');
   CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
   pbkdf2.DeriveKey((byte *)result.data(), result.size(), false,
@@ -54,8 +53,7 @@ std::string CryptoUtil::pbkdf2(const std::size_t keySize,
   return result;
 }
 
-std::string CryptoUtil::decryptAES(const std::string &key,
-                                   const std::string &input) {
+std::string Util::decryptAES(const std::string &key, const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption decryptor;
   decryptor.SetKey((byte *)key.data(), key.size());
@@ -64,9 +62,8 @@ std::string CryptoUtil::decryptAES(const std::string &key,
   return result;
 }
 
-std::string CryptoUtil::decryptAES(const std::string &key,
-                                   const std::string &iv,
-                                   const std::string &input) {
+std::string Util::decryptAES(const std::string &key, const std::string &iv,
+                             const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption decryptor;
   decryptor.SetKeyWithIV((byte *)key.data(), key.size(), (byte *)iv.data(),
@@ -76,9 +73,9 @@ std::string CryptoUtil::decryptAES(const std::string &key,
   return result;
 }
 
-std::string CryptoUtil::decryptTripleDES(const std::string &key,
-                                         const std::string &iv,
-                                         const std::string &input) {
+std::string Util::decryptTripleDES(const std::string &key,
+                                   const std::string &iv,
+                                   const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::DES_EDE3>::Decryption decryptor;
   decryptor.SetKeyWithIV((byte *)key.data(), key.size(), (byte *)iv.data(),
@@ -88,9 +85,8 @@ std::string CryptoUtil::decryptTripleDES(const std::string &key,
   return result;
 }
 
-std::string CryptoUtil::decryptBlowfish(const std::string &key,
-                                        const std::string &iv,
-                                        const std::string &input) {
+std::string Util::decryptBlowfish(const std::string &key, const std::string &iv,
+                                  const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::CFB_Mode<CryptoPP::Blowfish>::Decryption decryptor;
   decryptor.SetKeyWithIV((byte *)key.data(), key.size(), (byte *)iv.data(),
@@ -121,7 +117,7 @@ private:
 };
 } // namespace
 
-std::string CryptoUtil::inflate(const std::string &input) {
+std::string Util::inflate(const std::string &input) {
   std::string result;
   MyInflator inflator(new CryptoPP::StringSink(result));
   inflator.Put((byte *)input.data(), input.size());
@@ -129,7 +125,7 @@ std::string CryptoUtil::inflate(const std::string &input) {
   return result;
 }
 
-std::size_t CryptoUtil::padding(const std::string &input) {
+std::size_t Util::padding(const std::string &input) {
   MyInflator inflator;
   inflator.Put((byte *)input.data(), input.size());
   inflator.MessageEnd();
