@@ -7,6 +7,7 @@
 #include <vector>
 
 namespace odr {
+namespace svm {
 
 enum TextEncoding {
   RTL_TEXTENCODING_DONTKNOW = 0,
@@ -760,4 +761,5 @@ bool Svm2Svg::translate(std::istream &in, std::ostream &out) {
   return true;
 }
 
+} // namespace svm
 } // namespace odr

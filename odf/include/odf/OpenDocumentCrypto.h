@@ -7,8 +7,13 @@
 #include <string>
 
 namespace odr {
-
+namespace access {
 class Storage;
+}
+} // namespace odr
+
+namespace odr {
+namespace odf {
 
 class UnsupportedCryptoAlgorithmException : public std::exception {
 public:
@@ -34,12 +39,13 @@ deriveKeyAndDecrypt(const OpenDocumentMeta::Manifest::Entry &,
 extern bool validatePassword(const OpenDocumentMeta::Manifest::Entry &,
                              std::string decrypted) noexcept;
 
-extern bool decrypt(std::unique_ptr<Storage> &,
+extern bool decrypt(std::unique_ptr<access::Storage> &,
                     const OpenDocumentMeta::Manifest &,
                     const std::string &password);
 
 } // namespace OpenDocumentCrypto
 
+} // namespace odf
 } // namespace odr
 
 #endif // ODR_OPENDOCUMENTCRYPTO_H

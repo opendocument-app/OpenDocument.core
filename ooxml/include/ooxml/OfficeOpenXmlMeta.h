@@ -1,7 +1,6 @@
 #ifndef ODR_OFFICEOPENXMLMETA_H
 #define ODR_OFFICEOPENXMLMETA_H
 
-#include <access/Path.h>
 #include <exception>
 #include <memory>
 #include <string>
@@ -12,9 +11,16 @@ class XMLDocument;
 }
 
 namespace odr {
-
 struct FileMeta;
+
+namespace access {
+class Path;
 class Storage;
+} // namespace access
+} // namespace odr
+
+namespace odr {
+namespace ooxml {
 
 class NoOfficeOpenXmlFileException : public std::exception {
 public:
@@ -27,18 +33,19 @@ private:
 
 namespace OfficeOpenXmlMeta {
 
-extern FileMeta parseFileMeta(Storage &storage);
+extern FileMeta parseFileMeta(access::Storage &storage);
 
-extern Path relationsPath(const Path &path);
+extern access::Path relationsPath(const access::Path &path);
 extern std::unique_ptr<tinyxml2::XMLDocument>
-loadRelationships(Storage &storage, const Path &path);
+loadRelationships(access::Storage &storage, const access::Path &path);
 extern std::unordered_map<std::string, std::string>
 parseRelationships(const tinyxml2::XMLDocument &relations);
 extern std::unordered_map<std::string, std::string>
-parseRelationships(Storage &storage, const Path &path);
+parseRelationships(access::Storage &storage, const access::Path &path);
 
 } // namespace OfficeOpenXmlMeta
 
+} // namespace ooxml
 } // namespace odr
 
 #endif // ODR_OFFICEOPENXMLMETA_H

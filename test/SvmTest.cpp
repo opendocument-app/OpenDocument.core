@@ -17,7 +17,7 @@ TEST(Svm, draft) {
   std::ofstream out;
   out.open(output);
 
-  odr::Svm2Svg::translate(in, out);
+  odr::svm::Svm2Svg::translate(in, out);
 
   LOG(INFO) << "done";
 }

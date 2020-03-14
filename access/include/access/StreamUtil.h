@@ -5,6 +5,7 @@
 #include <string>
 
 namespace odr {
+namespace access {
 
 class StringSource final : public Source {
 public:
@@ -26,6 +27,7 @@ extern void pipe(Source &, Sink &);
 
 } // namespace StreamUtil
 
+} // namespace access
 } // namespace odr
 
 #endif // ODR_STREAMUTIL_H

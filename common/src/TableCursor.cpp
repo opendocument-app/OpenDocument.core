@@ -1,6 +1,7 @@
 #include <common/TableCursor.h>
 
 namespace odr {
+namespace common {
 
 TableCursor::TableCursor() noexcept {
   row = 0;
@@ -52,4 +53,5 @@ void TableCursor::handleRowspan() noexcept {
   s.erase(s.begin(), it);
 }
 
+} // namespace common
 } // namespace odr

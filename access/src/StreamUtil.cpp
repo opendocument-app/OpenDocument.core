@@ -3,6 +3,7 @@
 #include <cstring>
 
 namespace odr {
+namespace access {
 
 static constexpr std::uint32_t bufferSize = 4096;
 
@@ -42,4 +43,5 @@ void StreamUtil::pipe(Source &in, Sink &out) {
   }
 }
 
+} // namespace access
 } // namespace odr

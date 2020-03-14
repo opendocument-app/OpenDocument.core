@@ -3,6 +3,7 @@
 #define MULTILINE(...) #__VA_ARGS__
 
 namespace odr {
+namespace common {
 
 const char *Constants::getVersion() { return ""; }
 
@@ -153,4 +154,5 @@ observer.observe(document.body, config);
   // clang-format on
 }
 
+} // namespace common
 } // namespace odr

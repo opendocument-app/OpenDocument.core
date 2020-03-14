@@ -21,6 +21,7 @@ public:
   FileType guess(const std::string &path) const noexcept;
 
   bool open(const std::string &path) noexcept;
+  bool save(const std::string &path) noexcept;
   void close() noexcept;
 
   bool canTranslate() const noexcept;
@@ -29,9 +30,8 @@ public:
 
   bool decrypt(const std::string &password) noexcept;
 
-  bool translate(const std::string &outPath, const Config &config) noexcept;
-  bool backTranslate(const std::string &diff,
-                     const std::string &outPath) noexcept;
+  bool translate(const std::string &path, const Config &config) noexcept;
+  bool backTranslate(const std::string &diff, const std::string &path) noexcept;
 
 private:
   class Impl;

@@ -8,6 +8,7 @@
 #include <memory>
 
 namespace odr {
+namespace access {
 
 class FileNotFoundException : public std::exception {
 public:
@@ -81,6 +82,7 @@ public:
   std::unique_ptr<Source> read(const Path &) const final { return nullptr; }
 };
 
+} // namespace access
 } // namespace odr
 
 #endif // ODR_STORAGE_H

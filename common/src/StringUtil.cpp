@@ -1,6 +1,7 @@
 #include <common/StringUtil.h>
 
 namespace odr {
+namespace common {
 
 bool StringUtil::startsWith(const std::string &string,
                             const std::string &with) {
@@ -23,4 +24,5 @@ void StringUtil::findAndReplaceAll(std::string &string,
   }
 }
 
+} // namespace common
 } // namespace odr

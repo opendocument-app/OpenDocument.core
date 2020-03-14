@@ -7,6 +7,7 @@
 #include <typeindex>
 
 namespace odr {
+namespace access {
 
 class Path final {
 public:
@@ -52,18 +53,21 @@ private:
   std::uint32_t downwards_;
   bool absolute_;
 
-  friend struct ::std::hash<odr::Path>;
+  friend struct ::std::hash<Path>;
   friend std::ostream &operator<<(std::ostream &, const Path &);
 
   void parent_();
   void join_(const std::string &);
 };
 
+} // namespace access
 } // namespace odr
 
 namespace std {
-template <> struct hash<::odr::Path> {
-  std::size_t operator()(const ::odr::Path &p) const { return p.hash(); }
+template <> struct hash<::odr::access::Path> {
+  std::size_t operator()(const ::odr::access::Path &p) const {
+    return p.hash();
+  }
 };
 } // namespace std
 

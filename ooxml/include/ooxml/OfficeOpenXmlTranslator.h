@@ -5,23 +5,30 @@
 #include <string>
 
 namespace odr {
+namespace common {
+struct TranslationContext;
+}
+} // namespace odr
 
-class TranslationContext;
+namespace odr {
+namespace ooxml {
 
 class OfficeOpenXmlTranslator final {
 public:
   OfficeOpenXmlTranslator();
   ~OfficeOpenXmlTranslator();
 
-  bool translate(const std::string &outPath, TranslationContext &context) const;
+  bool translate(const std::string &outPath,
+                 common::TranslationContext &context) const;
   bool backTranslate(const std::string &diff, const std::string &outPath,
-                     TranslationContext &context) const;
+                     common::TranslationContext &context) const;
 
 private:
   class Impl;
   const std::unique_ptr<Impl> impl;
 };
 
+} // namespace ooxml
 } // namespace odr
 
 #endif // ODR_OFFICEOPENXMLTRANSLATOR_H

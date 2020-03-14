@@ -5,6 +5,7 @@
 #include <tinyxml2.h>
 
 namespace odr {
+namespace common {
 
 std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(const std::string &in) {
   auto result = std::make_unique<tinyxml2::XMLDocument>();
@@ -14,15 +15,15 @@ std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(const std::string &in) {
   return result;
 }
 
-std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(Source &in) {
-  return parse(StreamUtil::read(in));
+std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(access::Source &in) {
+  return parse(access::StreamUtil::read(in));
 }
 
-std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(const Storage &storage,
-                                                      const Path &path) {
+std::unique_ptr<tinyxml2::XMLDocument>
+XmlUtil::parse(const access::Storage &storage, const access::Path &path) {
   if (!storage.isReadable(path))
     return nullptr;
-  return parse(StorageUtil::read(storage, path));
+  return parse(access::StorageUtil::read(storage, path));
 }
 
 static inline void visitIfElement(const tinyxml2::XMLNode &node,
@@ -105,4 +106,5 @@ void XmlUtil::recursiveVisitElementsWithAttribute(
   });
 }
 
+} // namespace common
 } // namespace odr

@@ -8,8 +8,9 @@
 TEST(OfficeOpenXmlMeta, open) {
   const std::string path = "../../test/empty.docx";
 
-  odr::ZipReader ooxml(path);
-  const odr::FileMeta meta = odr::OfficeOpenXmlMeta::parseFileMeta(ooxml);
+  odr::access::ZipReader ooxml(path);
+  const odr::FileMeta meta =
+      odr::ooxml::OfficeOpenXmlMeta::parseFileMeta(ooxml);
 
   LOG(INFO) << (int)meta.type;
   LOG(INFO) << meta.entryCount;
