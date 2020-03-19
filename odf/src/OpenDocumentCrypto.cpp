@@ -69,10 +69,14 @@ std::string OpenDocumentCrypto::deriveKeyAndDecrypt(
 
 bool OpenDocumentCrypto::validatePassword(
     const OpenDocumentMeta::Manifest::Entry &entry, std::string decrypted) {
-  const std::size_t padding = CryptoUtil::padding(decrypted);
-  decrypted = decrypted.substr(0, decrypted.size() - padding);
-  const std::string checksum = hash(decrypted, entry.checksumType);
-  return checksum == entry.checksum;
+  try {
+    const std::size_t padding = CryptoUtil::padding(decrypted);
+    decrypted = decrypted.substr(0, decrypted.size() - padding);
+    const std::string checksum = hash(decrypted, entry.checksumType);
+    return checksum == entry.checksum;
+  } catch (...) {
+    return false;
+  }
 }
 
 namespace {
