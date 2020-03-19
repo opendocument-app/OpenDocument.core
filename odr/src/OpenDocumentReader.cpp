@@ -14,12 +14,10 @@
 #include <ooxml/OfficeOpenXmlCrypto.h>
 #include <ooxml/OfficeOpenXmlMeta.h>
 #include <ooxml/OfficeOpenXmlTranslator.h>
-#include <tinyxml2.h>
 
 namespace odr {
 
 class OpenDocumentReader::Impl final {
-public:
   bool opened = false;
   bool decrypted = false;
   std::unique_ptr<Storage> storage;
@@ -31,7 +29,43 @@ public:
   OpenDocumentTranslator translatorOd;
   OfficeOpenXmlTranslator translatorMs;
 
-  FileType guess(const std::string &path) noexcept {
+  bool open_(const std::string &path) {
+    try {
+      storage = std::make_unique<ZipReader>(path);
+
+      try {
+        meta = OpenDocumentMeta::parseFileMeta(*storage, false);
+        return true;
+      } catch (NoOpenDocumentFileException &) {
+      }
+      try {
+        meta = OfficeOpenXmlMeta::parseFileMeta(*storage);
+        return true;
+      } catch (NoOfficeOpenXmlFileException &) {
+      }
+    } catch (NoZipFileException &) {
+    }
+    try {
+      storage = std::make_unique<CfbReader>(path);
+
+      // TODO legacy microsoft documents
+
+      {
+        meta = {};
+        meta.type = FileType::COMPOUND_FILE_BINARY_FORMAT;
+        meta.encrypted = storage->isFile("EncryptionInfo") &&
+                         storage->isFile("EncryptedPackage");
+        return true;
+      }
+    } catch (NoCfbFileException &) {
+    }
+
+    // file detection failed
+    return false;
+  }
+
+public:
+  FileType guess(const std::string &path) {
     if (!open(path))
       return FileType::UNKNOWN;
     const FileType result = meta.type;
@@ -39,52 +73,12 @@ public:
     return result;
   }
 
-  bool open(const std::string &path) noexcept {
+  bool open(const std::string &path) {
     if (opened)
       close();
     opened = open_(path);
     decrypted = !meta.encrypted;
     return opened;
-  }
-
-  bool open_(const std::string &path) noexcept {
-    try {
-      try {
-        storage = std::make_unique<ZipReader>(path);
-
-        try {
-          meta = OpenDocumentMeta::parseFileMeta(*storage, false);
-          return true;
-        } catch (NoOpenDocumentFileException &) {
-        }
-        try {
-          meta = OfficeOpenXmlMeta::parseFileMeta(*storage);
-          return true;
-        } catch (NoOfficeOpenXmlFileException &) {
-        }
-      } catch (NoZipFileException &) {
-      }
-      try {
-        storage = std::make_unique<CfbReader>(path);
-
-        // TODO legacy microsoft documents
-
-        {
-          meta = {};
-          meta.type = FileType::COMPOUND_FILE_BINARY_FORMAT;
-          meta.encrypted = storage->isFile("EncryptionInfo") &&
-                           storage->isFile("EncryptedPackage");
-          return true;
-        }
-      } catch (NoCfbFileException &) {
-      }
-
-      // file detection failed
-      return false;
-    } catch (...) {
-      // error occurred
-      return false;
-    }
   }
 
   void close() noexcept {
@@ -135,16 +129,9 @@ public:
 
   const FileMeta &getMeta() const noexcept { return meta; }
 
-  bool decrypt(const std::string &password) noexcept {
+  bool decrypt(const std::string &password) {
     if (!opened)
       return false;
-    if (decrypted)
-      return true;
-    decrypted = decrypt_(password);
-    return decrypted;
-  }
-
-  bool decrypt_(const std::string &password) noexcept {
     if (decrypted)
       return true;
 
@@ -186,7 +173,7 @@ public:
     }
   }
 
-  bool translate(const std::string &outPath, const Config &c) noexcept {
+  bool translate(const std::string &outPath, const Config &c) {
     if (!canTranslate())
       return false;
 
@@ -196,47 +183,39 @@ public:
     context.meta = &meta;
     context.storage = storage.get();
 
-    try {
-      switch (meta.type) {
-      case FileType::OPENDOCUMENT_TEXT:
-      case FileType::OPENDOCUMENT_PRESENTATION:
-      case FileType::OPENDOCUMENT_SPREADSHEET:
-      case FileType::OPENDOCUMENT_GRAPHICS:
-        // TODO: optimize; dont reload xml, dont regenerate styles, ... for same
-        // input file
-        return translatorOd.translate(outPath, context);
-      case FileType::OFFICE_OPEN_XML_DOCUMENT:
-      case FileType::OFFICE_OPEN_XML_PRESENTATION:
-      case FileType::OFFICE_OPEN_XML_WORKBOOK:
-        // TODO: optimize; dont reload xml, dont regenerate styles, ... for same
-        // input file
-        return translatorMs.translate(outPath, context);
-      default:
-        return false;
-      }
-    } catch (...) {
+    switch (meta.type) {
+    case FileType::OPENDOCUMENT_TEXT:
+    case FileType::OPENDOCUMENT_PRESENTATION:
+    case FileType::OPENDOCUMENT_SPREADSHEET:
+    case FileType::OPENDOCUMENT_GRAPHICS:
+      // TODO: optimize; dont reload xml, dont regenerate styles, ... for same
+      // input file
+      return translatorOd.translate(outPath, context);
+    case FileType::OFFICE_OPEN_XML_DOCUMENT:
+    case FileType::OFFICE_OPEN_XML_PRESENTATION:
+    case FileType::OFFICE_OPEN_XML_WORKBOOK:
+      // TODO: optimize; dont reload xml, dont regenerate styles, ... for same
+      // input file
+      return translatorMs.translate(outPath, context);
+    default:
+      return false;
     }
-    return false;
   }
 
   bool backTranslate(const std::string &diff,
-                     const std::string &outPath) noexcept {
+                     const std::string &outPath) {
     if (!canBackTranslate())
       return false;
 
-    try {
-      switch (meta.type) {
-      case FileType::OPENDOCUMENT_TEXT:
-      case FileType::OPENDOCUMENT_PRESENTATION:
-      case FileType::OPENDOCUMENT_SPREADSHEET:
-      case FileType::OPENDOCUMENT_GRAPHICS:
-        return translatorOd.backTranslate(diff, outPath, context);
-      default:
-        return false;
-      }
-    } catch (...) {
+    switch (meta.type) {
+    case FileType::OPENDOCUMENT_TEXT:
+    case FileType::OPENDOCUMENT_PRESENTATION:
+    case FileType::OPENDOCUMENT_SPREADSHEET:
+    case FileType::OPENDOCUMENT_GRAPHICS:
+      return translatorOd.backTranslate(diff, outPath, context);
+    default:
+      return false;
     }
-    return false;
   }
 };
 
@@ -249,39 +228,85 @@ OpenDocumentReader::OpenDocumentReader() : impl_(std::make_unique<Impl>()) {}
 OpenDocumentReader::~OpenDocumentReader() = default;
 
 FileType OpenDocumentReader::guess(const std::string &path) const noexcept {
-  return impl_->guess(path);
+  try {
+    return impl_->guess(path);
+  } catch (...) {
+    // TODO log
+    return FileType::UNKNOWN;
+  }
 }
 
 bool OpenDocumentReader::open(const std::string &path) noexcept {
-  return impl_->open(path);
+  try {
+    return impl_->open(path);
+  } catch (...) {
+    // TODO log
+    return false;
+  }
 }
 
-void OpenDocumentReader::close() noexcept { impl_->close(); }
+void OpenDocumentReader::close() noexcept {
+  try {
+    impl_->close();
+  } catch (...) {
+    // TODO log
+  }
+}
 
 bool OpenDocumentReader::canTranslate() const noexcept {
-  return impl_->canTranslate();
+  try {
+    return impl_->canTranslate();
+  } catch (...) {
+    // TODO log
+    return false;
+  }
 }
 
 bool OpenDocumentReader::canBackTranslate() const noexcept {
-  return impl_->canBackTranslate();
+  try {
+    return impl_->canBackTranslate();
+  } catch (...) {
+    // TODO log
+    return false;
+  }
 }
 
 const FileMeta &OpenDocumentReader::getMeta() const noexcept {
-  return impl_->getMeta();
+  try {
+    return impl_->getMeta();
+  } catch (...) {
+    // TODO log
+    return {};
+  }
 }
 
 bool OpenDocumentReader::decrypt(const std::string &password) noexcept {
-  return impl_->decrypt(password);
+  try {
+    return impl_->decrypt(password);
+  } catch (...) {
+    // TODO log
+    return false;
+  }
 }
 
 bool OpenDocumentReader::translate(const std::string &outPath,
                                    const Config &config) noexcept {
-  return impl_->translate(outPath, config);
+  try {
+    return impl_->translate(outPath, config);
+  } catch (...) {
+    // TODO log
+    return false;
+  }
 }
 
 bool OpenDocumentReader::backTranslate(const std::string &diff,
                                        const std::string &outPath) noexcept {
-  return impl_->backTranslate(diff, outPath);
+  try {
+    return impl_->backTranslate(diff, outPath);
+  } catch (...) {
+    // TODO log
+    return false;
+  }
 }
 
 } // namespace odr

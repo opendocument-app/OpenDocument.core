@@ -7,7 +7,7 @@
 namespace odr {
 
 bool OpenDocumentCrypto::canDecrypt(
-    const OpenDocumentMeta::Manifest::Entry &entry) {
+    const OpenDocumentMeta::Manifest::Entry &entry) noexcept {
   return entry.checksumType != OpenDocumentMeta::ChecksumType::UNKNOWN &&
          entry.algorithm != OpenDocumentMeta::AlgorithmType::UNKNOWN &&
          entry.keyDerivation != OpenDocumentMeta::KeyDerivationType::UNKNOWN &&
@@ -68,7 +68,8 @@ std::string OpenDocumentCrypto::deriveKeyAndDecrypt(
 }
 
 bool OpenDocumentCrypto::validatePassword(
-    const OpenDocumentMeta::Manifest::Entry &entry, std::string decrypted) {
+    const OpenDocumentMeta::Manifest::Entry &entry,
+    std::string decrypted) noexcept {
   try {
     const std::size_t padding = CryptoUtil::padding(decrypted);
     decrypted = decrypted.substr(0, decrypted.size() - padding);

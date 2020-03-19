@@ -19,7 +19,7 @@ public:
 
 namespace OpenDocumentCrypto {
 
-extern bool canDecrypt(const OpenDocumentMeta::Manifest::Entry &);
+extern bool canDecrypt(const OpenDocumentMeta::Manifest::Entry &) noexcept;
 extern std::string hash(const std::string &input,
                         OpenDocumentMeta::ChecksumType checksumType);
 extern std::string decrypt(const std::string &input,
@@ -32,7 +32,7 @@ extern std::string
 deriveKeyAndDecrypt(const OpenDocumentMeta::Manifest::Entry &,
                     const std::string &startKey, const std::string &input);
 extern bool validatePassword(const OpenDocumentMeta::Manifest::Entry &,
-                             std::string decrypted);
+                             std::string decrypted) noexcept;
 
 extern bool decrypt(std::unique_ptr<Storage> &,
                     const OpenDocumentMeta::Manifest &,
