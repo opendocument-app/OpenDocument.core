@@ -64,6 +64,45 @@ class OpenDocumentReader::Impl final {
     return false;
   }
 
+  bool decrypt_(const std::string &password) {
+    switch (meta.type) {
+    case FileType::OPENDOCUMENT_TEXT:
+    case FileType::OPENDOCUMENT_PRESENTATION:
+    case FileType::OPENDOCUMENT_SPREADSHEET:
+    case FileType::OPENDOCUMENT_GRAPHICS: {
+      const auto manifest = OpenDocumentMeta::parseManifest(*storage);
+      if (!OpenDocumentCrypto::decrypt(storage, manifest, password))
+        return false;
+      meta = OpenDocumentMeta::parseFileMeta(*storage, true);
+      return true;
+    }
+    case FileType::COMPOUND_FILE_BINARY_FORMAT: {
+      // office open xml decryption
+      {
+        const std::string encryptionInfo =
+            StreamUtil::read(*storage->read("EncryptionInfo"));
+        OfficeOpenXmlCrypto::Util util(encryptionInfo);
+        const std::string key = util.deriveKey(password);
+        if (!util.verify(key))
+          return false;
+        const std::string encryptedPackage =
+            StreamUtil::read(*storage->read("EncryptedPackage"));
+        const std::string decryptedPackage =
+            util.decrypt(encryptedPackage, key);
+        storage = std::make_unique<ZipReader>(decryptedPackage, false);
+        meta = OfficeOpenXmlMeta::parseFileMeta(*storage);
+        return true;
+      }
+
+      // TODO legacy microsoft decryption
+
+      return false;
+    }
+    default:
+      return false;
+    }
+  }
+
 public:
   FileType guess(const std::string &path) {
     if (!open(path))
@@ -134,43 +173,8 @@ public:
       return false;
     if (decrypted)
       return true;
-
-    switch (meta.type) {
-    case FileType::OPENDOCUMENT_TEXT:
-    case FileType::OPENDOCUMENT_PRESENTATION:
-    case FileType::OPENDOCUMENT_SPREADSHEET:
-    case FileType::OPENDOCUMENT_GRAPHICS: {
-      const auto manifest = OpenDocumentMeta::parseManifest(*storage);
-      if (!OpenDocumentCrypto::decrypt(storage, manifest, password))
-        return false;
-      meta = OpenDocumentMeta::parseFileMeta(*storage, true);
-      return true;
-    }
-    case FileType::COMPOUND_FILE_BINARY_FORMAT: {
-      // office open xml decryption
-      {
-        const std::string encryptionInfo =
-            StreamUtil::read(*storage->read("EncryptionInfo"));
-        OfficeOpenXmlCrypto::Util util(encryptionInfo);
-        const std::string key = util.deriveKey(password);
-        if (!util.verify(key))
-          return false;
-        const std::string encryptedPackage =
-            StreamUtil::read(*storage->read("EncryptedPackage"));
-        const std::string decryptedPackage =
-            util.decrypt(encryptedPackage, key);
-        storage = std::make_unique<ZipReader>(decryptedPackage, false);
-        meta = OfficeOpenXmlMeta::parseFileMeta(*storage);
-        return true;
-      }
-
-      // TODO legacy microsoft decryption
-
-      return false;
-    }
-    default:
-      return false;
-    }
+    decrypted = decrypt_(password);
+    return decrypted;
   }
 
   bool translate(const std::string &outPath, const Config &c) {
