@@ -134,11 +134,13 @@ public:
       // TODO this breaks back translation
       context.msSharedStringsDocument =
           XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
-      XmlUtil::recursiveVisitElementsWithName(
-          context.msSharedStringsDocument->RootElement(), "si",
-          [&](const auto &child) {
-            context.msSharedStrings.push_back(&child);
-          });
+      if (context.msSharedStringsDocument) {
+        XmlUtil::recursiveVisitElementsWithName(
+            context.msSharedStringsDocument->RootElement(), "si",
+            [&](const auto &child) {
+              context.msSharedStrings.push_back(&child);
+            });
+      }
 
       XmlUtil::recursiveVisitElementsWithName(
           xls->RootElement(), "sheet", [&](const auto &e) {
