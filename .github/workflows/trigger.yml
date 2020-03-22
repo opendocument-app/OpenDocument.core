@@ -7,11 +7,11 @@ on:
 jobs:
   trigger-tests:
     runs-on: ubuntu-latest
-		steps:
-			- name: Extract branch name
-				shell: bash
-				run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-				id: extract_branch
+    steps:
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
       - name: Dispatch  initiating repository event
         if: github.event.action != 'regression-test'
         run: |
