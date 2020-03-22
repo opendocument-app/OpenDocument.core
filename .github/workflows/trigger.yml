@@ -1,0 +1,25 @@
+name: Remote Dispatch Action Initiator
+
+on:
+  push:
+  repository_dispatch:
+
+jobs:
+  trigger-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch initiating repository event
+        if: github.event.action != 'regression-test'
+        run: |
+          curl -X POST https://api.github.com/repos/marcelblanarik/OpenDocument.test/dispatches \
+          -H 'Accept: application/vnd.github.everest-preview+json' \
+          -u ${{ secrets.ACCESS_TOKEN }} \
+          --data '{"event_type": "trigger-regression-test", "client_payload": { "repository": "'"$GITHUB_REPOSITORY"'" }}'
+      - name: ACK - Acknowledge message from remote repository
+        if: github.event.action == 'run-regression-test'
+        run: |
+          echo "Message received from '${{ github.event.client_payload.repository }}'" && \
+          curl -X POST https://api.github.com/repos/marcelblanarik/OpenDocument.test/dispatches \
+          -H 'Accept: application/vnd.github.everest-preview+json' \
+          -u ${{ secrets.ACCESS_TOKEN }} \
+          --data '{"event_type": "ack", "client_payload": { "repository": "'"$GITHUB_REPOSITORY"'" }}'
