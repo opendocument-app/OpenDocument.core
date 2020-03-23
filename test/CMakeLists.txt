@@ -29,6 +29,7 @@ target_link_libraries(odr_test
         odr_crypto
         odr_odf
         odr_ooxml
+        odr_svm
 
         odr
 )
