@@ -1,4 +1,4 @@
-add_library(odr_crypto OBJECT
+add_library(odr_crypto STATIC
         src/CryptoUtil.cpp
 )
 target_include_directories(odr_crypto PUBLIC include)

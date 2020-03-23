@@ -1,4 +1,4 @@
-add_library(odr_svm OBJECT
+add_library(odr_svm STATIC
         src/Svm2Svg.cpp
 )
 target_include_directories(odr_svm PUBLIC include)

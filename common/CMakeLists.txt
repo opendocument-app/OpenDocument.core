@@ -1,4 +1,4 @@
-add_library(odr_common OBJECT
+add_library(odr_common STATIC
         src/Constants.cpp
         src/StringUtil.cpp
         src/TableCursor.cpp

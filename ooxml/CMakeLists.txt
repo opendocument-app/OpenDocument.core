@@ -1,4 +1,4 @@
-add_library(odr_ooxml OBJECT
+add_library(odr_ooxml STATIC
         src/OfficeOpenXmlCrypto.cpp
         src/OfficeOpenXmlDocumentTranslator.cpp
         src/OfficeOpenXmlMeta.cpp

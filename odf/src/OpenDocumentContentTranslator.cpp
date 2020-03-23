@@ -196,7 +196,6 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   } else {
     const std::string &path = href->Value();
     out << " alt=\"Error: image not found or unsupported: " << path << "\"";
-#ifdef ODR_CRYPTO
     out << " src=\"";
     if (!context.storage->isFile(path)) {
       out << path;
@@ -216,7 +215,6 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       out << CryptoUtil::base64Encode(image);
     }
     out << "\"";
-#endif
   }
 
   ElementAttributeTranslator(in, out, context);

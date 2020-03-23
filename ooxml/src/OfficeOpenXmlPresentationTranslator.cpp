@@ -318,14 +318,12 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     const Path path =
         Path("ppt/slides").join(context.msRelations[rIdAttr->Value()]);
     out << " alt=\"Error: image not found or unsupported: " << path << "\"";
-#ifdef ODR_CRYPTO
     out << " src=\"";
     std::string image = StreamUtil::read(*context.storage->read(path));
     // hacky image/jpg working according to tom
     out << "data:image/jpg;base64, ";
     out << CryptoUtil::base64Encode(image);
     out << "\"";
-#endif
   }
 
   out << "></img>";

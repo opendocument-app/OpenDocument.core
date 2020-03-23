@@ -1,4 +1,4 @@
-add_library(odr_odf OBJECT
+add_library(odr_odf STATIC
         src/OpenDocumentContentTranslator.cpp
         src/OpenDocumentCrypto.cpp
         src/OpenDocumentMeta.cpp
