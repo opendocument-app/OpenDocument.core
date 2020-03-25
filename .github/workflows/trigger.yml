@@ -12,6 +12,6 @@ jobs:
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
-          repository: marcelblanarik/OpenDocument.test
+          repository: TomTasche/OpenDocument.test
           event-type: trigger-test
           client-payload: '{"ref": "${{ github.ref }}"}'
