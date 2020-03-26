@@ -6,7 +6,7 @@
 TEST(ZipWriter, create) {
   const std::string output = "../../test/created.zip";
 
-  odr::ZipWriter writer(output);
+  odr::access::ZipWriter writer(output);
 
   {
     const auto sink = writer.write("one.txt");
@@ -24,16 +24,16 @@ TEST(ZipWriter, copy) {
   const std::string input = "/home/andreas/Desktop/odr/megatest.odt";
   const std::string output = "../../test/copied.zip";
 
-  odr::ZipReader reader(input);
-  odr::ZipWriter writer(output);
+  odr::access::ZipReader reader(input);
+  odr::access::ZipWriter writer(output);
 
   reader.visit([&](const auto &p) { writer.copy(reader, p); });
 }
 
 TEST(ZipReader, exception) {
   try {
-    odr::ZipReader reader("/");
-  } catch (odr::NoZipFileException &e) {
+    odr::access::ZipReader reader("/");
+  } catch (odr::access::NoZipFileException &e) {
     LOG(ERROR) << "not a zip file";
   }
 }
@@ -41,7 +41,7 @@ TEST(ZipReader, exception) {
 TEST(ZipReader, visit) {
   const std::string input = "/home/andreas/Desktop/odr/megatest.odt";
 
-  odr::ZipReader reader(input);
+  odr::access::ZipReader reader(input);
 
   reader.visit([&](const auto &p) { std::cout << p << std::endl; });
 }

@@ -25,7 +25,7 @@ int main(int, char **argv) {
   if (!success)
     return 2;
 
-  const std::string backDiff = odr::FileUtil::read(diff);
+  const std::string backDiff = odr::access::FileUtil::read(diff);
   success = odr.backTranslate(backDiff, output);
   if (!success)
     return 3;

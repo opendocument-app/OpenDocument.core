@@ -4,6 +4,7 @@
 #include <string>
 
 namespace odr {
+namespace crypto {
 
 namespace CryptoUtil {
 std::string base64Encode(const std::string &);
@@ -23,6 +24,7 @@ std::string inflate(const std::string &input);
 std::size_t padding(const std::string &input);
 } // namespace CryptoUtil
 
+} // namespace crypto
 } // namespace odr
 
 #endif // ODR_CRYPTOUTIL_H

@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 namespace odr {
+namespace access {
 
 namespace {
 namespace CFB {
@@ -544,4 +545,5 @@ std::unique_ptr<Source> CfbReader::read(const Path &path) const {
   return impl->read(path);
 }
 
+} // namespace access
 } // namespace odr

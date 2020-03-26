@@ -12,17 +12,23 @@
 #include <vector>
 
 namespace odr {
-
 struct Config;
 struct FileMeta;
+
+namespace access {
 class Storage;
+}
+} // namespace odr
+
+namespace odr {
+namespace common {
 
 struct TranslationContext {
   const Config *config;
   const FileMeta *meta;
 
   // input files
-  Storage *storage;
+  access::Storage *storage;
 
   // input xml
   std::unique_ptr<tinyxml2::XMLDocument> style;
@@ -51,6 +57,7 @@ struct TranslationContext {
   std::unordered_map<std::uint32_t, const tinyxml2::XMLText *> textTranslation;
 };
 
+} // namespace common
 } // namespace odr
 
 #endif // ODR_TRANSLATIONCONTEXT_H

@@ -5,6 +5,7 @@
 #include <string>
 
 namespace odr {
+namespace ooxml {
 
 class UnsupportedEndianException : public std::exception {
 public:
@@ -108,6 +109,7 @@ private:
 
 } // namespace OfficeOpenXmlCrypto
 
+} // namespace ooxml
 } // namespace odr
 
 #endif // ODR_OFFICEOPENXMLCRYPTO_H

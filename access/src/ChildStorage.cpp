@@ -2,6 +2,7 @@
 #include <access/Stream.h>
 
 namespace odr {
+namespace access {
 
 ChildStorage::ChildStorage(const Storage &parent, const Path prefix)
     : parent(parent), prefix(prefix) {
@@ -62,4 +63,5 @@ std::unique_ptr<Sink> ChildStorage::write(const Path &path) const {
   return parent.write(prefix.join(path));
 }
 
+} // namespace access
 } // namespace odr

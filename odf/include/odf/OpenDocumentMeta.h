@@ -11,9 +11,15 @@ class XMLDocument;
 }
 
 namespace odr {
-
 struct FileMeta;
+
+namespace access {
 class Storage;
+}
+} // namespace odr
+
+namespace odr {
+namespace odf {
 
 class NoOpenDocumentFileException : public std::exception {
 public:
@@ -47,20 +53,21 @@ struct Manifest {
   };
 
   bool encrypted;
-  std::unordered_map<Path, Entry> entries;
+  std::unordered_map<access::Path, Entry> entries;
 
   std::uint64_t smallestFileSize;
-  const Path *smallestFilePath;
+  const access::Path *smallestFilePath;
   const Entry *smallestFileEntry;
 };
 
-extern FileMeta parseFileMeta(Storage &storage, bool decrypted);
+extern FileMeta parseFileMeta(access::Storage &storage, bool decrypted);
 
-extern Manifest parseManifest(Storage &storage);
+extern Manifest parseManifest(access::Storage &storage);
 extern Manifest parseManifest(const tinyxml2::XMLDocument &manifest);
 
 } // namespace OpenDocumentMeta
 
+} // namespace odf
 } // namespace odr
 
 #endif // ODR_OPENDOCUMENTMETA_H

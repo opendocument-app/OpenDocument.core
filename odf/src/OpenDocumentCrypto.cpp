@@ -5,6 +5,7 @@
 #include <odf/OpenDocumentCrypto.h>
 
 namespace odr {
+namespace odf {
 
 bool OpenDocumentCrypto::canDecrypt(
     const OpenDocumentMeta::Manifest::Entry &entry) noexcept {
@@ -19,13 +20,13 @@ OpenDocumentCrypto::hash(const std::string &input,
                          const OpenDocumentMeta::ChecksumType checksumType) {
   switch (checksumType) {
   case OpenDocumentMeta::ChecksumType::SHA256:
-    return CryptoUtil::sha256(input);
+    return crypto::CryptoUtil::sha256(input);
   case OpenDocumentMeta::ChecksumType::SHA1:
-    return CryptoUtil::sha1(input);
+    return crypto::CryptoUtil::sha1(input);
   case OpenDocumentMeta::ChecksumType::SHA256_1K:
-    return CryptoUtil::sha256(input.substr(0, 1024));
+    return crypto::CryptoUtil::sha256(input.substr(0, 1024));
   case OpenDocumentMeta::ChecksumType::SHA1_1K:
-    return CryptoUtil::sha1(input.substr(0, 1024));
+    return crypto::CryptoUtil::sha1(input.substr(0, 1024));
   default:
     throw std::invalid_argument("checksumType");
   }
@@ -38,12 +39,14 @@ OpenDocumentCrypto::decrypt(const std::string &input,
                             const OpenDocumentMeta::AlgorithmType algorithm) {
   switch (algorithm) {
   case OpenDocumentMeta::AlgorithmType::AES256_CBC:
-    return CryptoUtil::decryptAES(derivedKey, initialisationVector, input);
+    return crypto::CryptoUtil::decryptAES(derivedKey, initialisationVector,
+                                          input);
   case OpenDocumentMeta::AlgorithmType::TRIPLE_DES_CBC:
-    return CryptoUtil::decryptTripleDES(derivedKey, initialisationVector,
-                                        input);
+    return crypto::CryptoUtil::decryptTripleDES(derivedKey,
+                                                initialisationVector, input);
   case OpenDocumentMeta::AlgorithmType::BLOWFISH_CFB:
-    return CryptoUtil::decryptBlowfish(derivedKey, initialisationVector, input);
+    return crypto::CryptoUtil::decryptBlowfish(derivedKey, initialisationVector,
+                                               input);
   default:
     throw std::invalid_argument("algorithm");
   }
@@ -61,7 +64,7 @@ OpenDocumentCrypto::startKey(const OpenDocumentMeta::Manifest::Entry &entry,
 std::string OpenDocumentCrypto::deriveKeyAndDecrypt(
     const OpenDocumentMeta::Manifest::Entry &entry, const std::string &startKey,
     const std::string &input) {
-  const std::string derivedKey = CryptoUtil::pbkdf2(
+  const std::string derivedKey = crypto::CryptoUtil::pbkdf2(
       entry.keySize, startKey, entry.keySalt, entry.keyIterationCount);
   return decrypt(input, derivedKey, entry.initialisationVector,
                  entry.algorithm);
@@ -71,7 +74,7 @@ bool OpenDocumentCrypto::validatePassword(
     const OpenDocumentMeta::Manifest::Entry &entry,
     std::string decrypted) noexcept {
   try {
-    const std::size_t padding = CryptoUtil::padding(decrypted);
+    const std::size_t padding = crypto::CryptoUtil::padding(decrypted);
     decrypted = decrypted.substr(0, decrypted.size() - padding);
     const std::string checksum = hash(decrypted, entry.checksumType);
     return checksum == entry.checksum;
@@ -81,7 +84,7 @@ bool OpenDocumentCrypto::validatePassword(
 }
 
 namespace {
-class CryptoOpenDocumentFile : public ReadStorage {
+class CryptoOpenDocumentFile : public access::ReadStorage {
 public:
   const std::unique_ptr<Storage> parent;
   const OpenDocumentMeta::Manifest manifest;
@@ -93,12 +96,18 @@ public:
       : parent(std::move(parent)), manifest(std::move(manifest)),
         startKey(std::move(startKey)) {}
 
-  bool isSomething(const Path &p) const final { return parent->isSomething(p); }
-  bool isFile(const Path &p) const final { return parent->isSomething(p); }
-  bool isFolder(const Path &p) const final { return parent->isSomething(p); }
-  bool isReadable(const Path &p) const final { return isFile(p); }
+  bool isSomething(const access::Path &p) const final {
+    return parent->isSomething(p);
+  }
+  bool isFile(const access::Path &p) const final {
+    return parent->isSomething(p);
+  }
+  bool isFolder(const access::Path &p) const final {
+    return parent->isSomething(p);
+  }
+  bool isReadable(const access::Path &p) const final { return isFile(p); }
 
-  std::uint64_t size(const Path &p) const final {
+  std::uint64_t size(const access::Path &p) const final {
     const auto it = manifest.entries.find(p);
     if (it == manifest.entries.end())
       return parent->size(p);
@@ -107,22 +116,22 @@ public:
 
   void visit(Visitor v) const final { parent->visit(v); }
 
-  std::unique_ptr<Source> read(const Path &path) const final {
+  std::unique_ptr<access::Source> read(const access::Path &path) const final {
     const auto it = manifest.entries.find(path);
     if (it == manifest.entries.end())
       return parent->read(path);
     if (!OpenDocumentCrypto::canDecrypt(it->second))
       throw UnsupportedCryptoAlgorithmException();
-    std::unique_ptr<Source> source = parent->read(path);
-    const std::string input = StreamUtil::read(*source);
-    std::string result = CryptoUtil::inflate(
+    std::unique_ptr<access::Source> source = parent->read(path);
+    const std::string input = access::StreamUtil::read(*source);
+    std::string result = crypto::CryptoUtil::inflate(
         OpenDocumentCrypto::deriveKeyAndDecrypt(it->second, startKey, input));
-    return std::make_unique<StringSource>(std::move(result));
+    return std::make_unique<access::StringSource>(std::move(result));
   }
 };
 } // namespace
 
-bool OpenDocumentCrypto::decrypt(std::unique_ptr<Storage> &storage,
+bool OpenDocumentCrypto::decrypt(std::unique_ptr<access::Storage> &storage,
                                  const OpenDocumentMeta::Manifest &manifest,
                                  const std::string &password) {
   if (!manifest.encrypted)
@@ -132,7 +141,7 @@ bool OpenDocumentCrypto::decrypt(std::unique_ptr<Storage> &storage,
   const std::string startKey =
       OpenDocumentCrypto::startKey(*manifest.smallestFileEntry, password);
   const std::string input =
-      StorageUtil::read(*storage, *manifest.smallestFilePath);
+      access::StorageUtil::read(*storage, *manifest.smallestFilePath);
   const std::string decrypt =
       deriveKeyAndDecrypt(*manifest.smallestFileEntry, startKey, input);
   if (!validatePassword(*manifest.smallestFileEntry, decrypt))
@@ -142,4 +151,5 @@ bool OpenDocumentCrypto::decrypt(std::unique_ptr<Storage> &storage,
   return true;
 }
 
+} // namespace odf
 } // namespace odr

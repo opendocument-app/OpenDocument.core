@@ -5,6 +5,7 @@
 #include <string>
 
 namespace odr {
+namespace access {
 
 class Path;
 class Storage;
@@ -15,6 +16,7 @@ extern std::string read(const Storage &, const Path &);
 
 }
 
+} // namespace access
 } // namespace odr
 
 #endif // ODR_STORAGEUTIL_H

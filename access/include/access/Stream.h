@@ -4,6 +4,7 @@
 #include <cstdint>
 
 namespace odr {
+namespace access {
 
 class Source {
 public:
@@ -18,6 +19,7 @@ public:
   virtual void write(const char *data, std::uint32_t amount) = 0;
 };
 
+} // namespace access
 } // namespace odr
 
 #endif // ODR_STREAM_H

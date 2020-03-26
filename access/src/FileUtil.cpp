@@ -3,6 +3,7 @@
 #include <streambuf>
 
 namespace odr {
+namespace access {
 
 std::string FileUtil::read(const std::string &path) {
   std::ifstream in(path);
@@ -18,4 +19,5 @@ std::string FileUtil::read(const std::string &path) {
   return result;
 }
 
+} // namespace access
 } // namespace odr

@@ -5,6 +5,7 @@
 #include <exception>
 
 namespace odr {
+namespace access {
 
 class ZipWriter;
 
@@ -64,6 +65,7 @@ private:
   const std::unique_ptr<Impl> impl;
 };
 
+} // namespace access
 } // namespace odr
 
 #endif // ODR_ZIPSTORAGE_H

@@ -2,6 +2,7 @@
 #include <access/StorageUtil.h>
 
 namespace odr {
+namespace access {
 
 std::string StorageUtil::read(const Storage &storage, const Path &path) {
   static constexpr std::uint32_t bufferSize = 4096;
@@ -21,4 +22,5 @@ std::string StorageUtil::read(const Storage &storage, const Path &path) {
   return result;
 }
 
+} // namespace access
 } // namespace odr

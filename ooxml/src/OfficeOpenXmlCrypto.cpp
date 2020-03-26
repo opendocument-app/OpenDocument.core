@@ -6,6 +6,7 @@
 #include <ooxml/OfficeOpenXmlCrypto.h>
 
 namespace odr {
+namespace ooxml {
 
 namespace OfficeOpenXmlCrypto {
 
@@ -78,16 +79,16 @@ std::string ECMA376Standard::deriveKey(const std::string &password) const
     const std::string passwordU16Bytes((char *)passwordU16.data(),
                                        2 * passwordU16.size());
 
-    hash = CryptoUtil::sha1(
+    hash = crypto::CryptoUtil::sha1(
         std::string(encryptionVerifier.salt, encryptionVerifier.saltSize) +
         passwordU16Bytes);
     std::string ibytes(4, ' ');
     for (std::uint32_t i = 0; i < ITER_COUNT; ++i) {
       toLittleEndian(i, ibytes);
-      hash = CryptoUtil::sha1(ibytes + hash);
+      hash = crypto::CryptoUtil::sha1(ibytes + hash);
     }
     toLittleEndian((std::uint32_t)0, ibytes);
-    hash = CryptoUtil::sha1(hash + ibytes);
+    hash = crypto::CryptoUtil::sha1(hash + ibytes);
   }
 
   std::string result;
@@ -97,10 +98,10 @@ std::string ECMA376Standard::deriveKey(const std::string &password) const
 
     std::string buf1(64, '\x36');
     buf1 = xor_bytes(hash, buf1.substr(0, cbHash)) + buf1.substr(cbHash);
-    const auto x1 = CryptoUtil::sha1(buf1);
+    const auto x1 = crypto::CryptoUtil::sha1(buf1);
     std::string buf2(64, '\x5c');
     buf2 = xor_bytes(hash, buf2.substr(0, cbHash)) + buf2.substr(cbHash);
-    const auto x2 = CryptoUtil::sha1(buf2);
+    const auto x2 = crypto::CryptoUtil::sha1(buf2);
     const auto x3 = x1 + x2;
     result = x3.substr(0, cbRequiredKeyLength);
   }
@@ -111,12 +112,13 @@ std::string ECMA376Standard::deriveKey(const std::string &password) const
 bool ECMA376Standard::verify(const std::string &key) const noexcept {
   // https://msdn.microsoft.com/en-us/library/dd926426(v=office.12).aspx
 
-  const std::string verifier = CryptoUtil::decryptAES(
+  const std::string verifier = crypto::CryptoUtil::decryptAES(
       key, std::string(encryptionVerifier.encryptedVerifier,
                        sizeof(encryptionVerifier.encryptedVerifier)));
-  const std::string hash = CryptoUtil::sha1(verifier);
+  const std::string hash = crypto::CryptoUtil::sha1(verifier);
   const std::string verifierHash =
-      CryptoUtil::decryptAES(key, encryptedVerifierHash).substr(0, hash.size());
+      crypto::CryptoUtil::decryptAES(key, encryptedVerifierHash)
+          .substr(0, hash.size());
 
   return hash == verifierHash;
 }
@@ -125,7 +127,7 @@ std::string ECMA376Standard::decrypt(const std::string &encryptedPackage,
                                      const std::string &key) const noexcept {
   const std::size_t totalSize = *((const std::size_t *)encryptedPackage.data());
   const std::string result =
-      CryptoUtil::decryptAES(key, encryptedPackage.substr(8))
+      crypto::CryptoUtil::decryptAES(key, encryptedPackage.substr(8))
           .substr(0, totalSize);
 
   return result;
@@ -173,4 +175,5 @@ std::string Util::decrypt(const std::string &encryptedPackage,
 
 } // namespace OfficeOpenXmlCrypto
 
+} // namespace ooxml
 } // namespace odr

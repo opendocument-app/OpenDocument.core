@@ -4,6 +4,7 @@
 #include <miniz.h>
 
 namespace odr {
+namespace access {
 
 class ZipReader::Impl final {
 public:
@@ -210,4 +211,5 @@ std::unique_ptr<Sink> ZipWriter::write(const Path &path) const {
   return impl->write(path);
 }
 
+} // namespace access
 } // namespace odr

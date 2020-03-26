@@ -5,6 +5,7 @@
 #include <string>
 
 namespace odr {
+namespace common {
 
 class TablePosition {
 public:
@@ -24,6 +25,7 @@ private:
   std::uint32_t col;
 };
 
+} // namespace common
 } // namespace odr
 
 #endif // ODR_TABLEPOSITION_H

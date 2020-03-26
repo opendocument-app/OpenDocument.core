@@ -1,7 +1,8 @@
-#ifndef ODR_TEMPLATES_H
-#define ODR_TEMPLATES_H
+#ifndef ODR_CONSTANTS_H
+#define ODR_CONSTANTS_H
 
 namespace odr {
+namespace common {
 
 namespace Constants {
 extern const char *getVersion();
@@ -18,6 +19,7 @@ extern const char *getOpenDocumentSpreadsheetDefaultCss();
 extern const char *getDefaultScript();
 } // namespace Constants
 
+} // namespace common
 } // namespace odr
 
-#endif // ODR_TEMPLATES_H
+#endif // ODR_CONSTANTS_H

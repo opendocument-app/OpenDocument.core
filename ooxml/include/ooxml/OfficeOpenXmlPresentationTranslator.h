@@ -8,17 +8,23 @@ class XMLElement;
 }
 
 namespace odr {
-
+namespace common {
 struct TranslationContext;
+}
+} // namespace odr
+
+namespace odr {
+namespace ooxml {
 
 class OfficeOpenXmlPresentationTranslator {
 public:
   static void translateStyle(const tinyxml2::XMLElement &in,
-                             TranslationContext &context);
+                             common::TranslationContext &context);
   static void translateContent(const tinyxml2::XMLElement &in,
-                               TranslationContext &context);
+                               common::TranslationContext &context);
 };
 
+} // namespace ooxml
 } // namespace odr
 
 #endif // ODR_OFFICEOPENXMLPRESENTATIONTRANSLATOR_H

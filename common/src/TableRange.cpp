@@ -2,6 +2,7 @@
 #include <stdexcept>
 
 namespace odr {
+namespace common {
 
 TableRange::TableRange(const TablePosition &from,
                        const TablePosition &to) noexcept
@@ -19,4 +20,5 @@ std::string TableRange::toString() const noexcept {
   return from.toString() + ":" + to.toString();
 }
 
+} // namespace common
 } // namespace odr
