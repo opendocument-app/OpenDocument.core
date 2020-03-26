@@ -1,4 +1,4 @@
-add_library(odr_access OBJECT
+add_library(odr_access STATIC
         src/CfbStorage.cpp
         src/ChildStorage.cpp
         src/FileUtil.cpp
