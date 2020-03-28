@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 namespace odr {
+namespace access {
 
 Path::Path() noexcept : Path("") {}
 
@@ -76,12 +77,12 @@ bool Path::operator!=(const Path &b) const noexcept {
   return (downwards_ != b.downwards_) || (path_ != b.path_);
 }
 
-bool Path::operator<(const odr::Path &b) const noexcept {
+bool Path::operator<(const Path &b) const noexcept {
   // TODO could be improved
   return path_ < b.path_;
 }
 
-bool Path::operator>(const odr::Path &b) const noexcept {
+bool Path::operator>(const Path &b) const noexcept {
   // TODO could be improved
   return path_ > b.path_;
 }
@@ -156,8 +157,9 @@ Path Path::join(const Path &b) const {
   return Path(result);
 }
 
-std::ostream &operator<<(std::ostream &os, const odr::Path &p) {
+std::ostream &operator<<(std::ostream &os, const Path &p) {
   return os << p.path_;
 }
 
+} // namespace access
 } // namespace odr

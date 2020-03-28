@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
     return 1;
 
   print_meta(odr);
-  if (hasPassword) {
+  if (odr.getMeta().encrypted && hasPassword) {
     success = odr.decrypt(password);
     if (!success)
       return 2;

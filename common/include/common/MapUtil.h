@@ -2,6 +2,7 @@
 #define ODR_MAPUTIL_H
 
 namespace odr {
+namespace common {
 
 namespace MapUtil {
 template <typename Map, typename Key, typename Value>
@@ -25,6 +26,7 @@ bool lookupMapDefault(const Map &map, const Key &key, Value &value,
 }
 } // namespace MapUtil
 
+} // namespace common
 } // namespace odr
 
 #endif // ODR_MAPUTIL_H

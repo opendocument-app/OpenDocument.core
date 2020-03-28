@@ -8,13 +8,17 @@ class XMLElement;
 }
 
 namespace odr {
-
+namespace common {
 struct TranslationContext;
+}
+} // namespace odr
+
+namespace odr {
 
 class OpenDocumentContentTranslator final {
 public:
   static void translate(const tinyxml2::XMLElement &in,
-                        TranslationContext &context);
+                        common::TranslationContext &context);
 };
 
 } // namespace odr

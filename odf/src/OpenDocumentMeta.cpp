@@ -10,6 +10,7 @@
 #include <unordered_map>
 
 namespace odr {
+namespace odf {
 
 static bool lookupFileType(const std::string &mimeType, FileType &fileType) {
   static const std::unordered_map<std::string, FileType> MIME_TYPES = {
@@ -21,8 +22,8 @@ static bool lookupFileType(const std::string &mimeType, FileType &fileType) {
       {"application/vnd.oasis.opendocument.graphics",
        FileType::OPENDOCUMENT_GRAPHICS},
   };
-  return MapUtil::lookupMapDefault(MIME_TYPES, mimeType, fileType,
-                                   FileType::UNKNOWN);
+  return common::MapUtil::lookupMapDefault(MIME_TYPES, mimeType, fileType,
+                                           FileType::UNKNOWN);
 }
 
 static bool lookupChecksumType(const std::string &checksum,
@@ -34,8 +35,9 @@ static bool lookupChecksumType(const std::string &checksum,
           {"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0#sha256-1k",
            OpenDocumentMeta::ChecksumType::SHA256_1K},
       };
-  return MapUtil::lookupMapDefault(CHECKSUM_TYPES, checksum, checksumType,
-                                   OpenDocumentMeta::ChecksumType::UNKNOWN);
+  return common::MapUtil::lookupMapDefault(
+      CHECKSUM_TYPES, checksum, checksumType,
+      OpenDocumentMeta::ChecksumType::UNKNOWN);
 }
 
 static bool
@@ -48,8 +50,9 @@ lookupAlgorithmTypes(const std::string &algorithm,
           {"", OpenDocumentMeta::AlgorithmType::TRIPLE_DES_CBC},
           {"Blowfish CFB", OpenDocumentMeta::AlgorithmType::BLOWFISH_CFB},
       };
-  return MapUtil::lookupMapDefault(ALGORITHM_TYPES, algorithm, algorithmType,
-                                   OpenDocumentMeta::AlgorithmType::UNKNOWN);
+  return common::MapUtil::lookupMapDefault(
+      ALGORITHM_TYPES, algorithm, algorithmType,
+      OpenDocumentMeta::AlgorithmType::UNKNOWN);
 }
 
 static bool lookupKeyDerivationTypes(
@@ -60,7 +63,7 @@ static bool lookupKeyDerivationTypes(
       KEY_DERIVATION_TYPES = {
           {"PBKDF2", OpenDocumentMeta::KeyDerivationType::PBKDF2},
       };
-  return MapUtil::lookupMapDefault(
+  return common::MapUtil::lookupMapDefault(
       KEY_DERIVATION_TYPES, keyDerivation, keyDerivationType,
       OpenDocumentMeta::KeyDerivationType::UNKNOWN);
 }
@@ -73,8 +76,9 @@ static bool lookupStartKeyTypes(const std::string &checksum,
           {"http://www.w3.org/2000/09/xmldsig#sha256",
            OpenDocumentMeta::ChecksumType::SHA256},
       };
-  return MapUtil::lookupMapDefault(STARTKEY_TYPES, checksum, checksumType,
-                                   OpenDocumentMeta::ChecksumType::UNKNOWN);
+  return common::MapUtil::lookupMapDefault(
+      STARTKEY_TYPES, checksum, checksumType,
+      OpenDocumentMeta::ChecksumType::UNKNOWN);
 }
 
 static void estimateTableDimensions(const tinyxml2::XMLElement &table,
@@ -84,10 +88,10 @@ static void estimateTableDimensions(const tinyxml2::XMLElement &table,
   rows = 0;
   cols = 0;
 
-  TableCursor tl;
+  common::TableCursor tl;
 
   // TODO we dont need to recurse so deep
-  XmlUtil::recursiveVisitElements(&table, [&](const auto &e) {
+  common::XmlUtil::recursiveVisitElements(&table, [&](const auto &e) {
     if (e.Name() == std::string("table:table-row")) {
       const auto repeated =
           e.Unsigned64Attribute("table:number-rows-repeated", 1);
@@ -113,7 +117,7 @@ static void estimateTableDimensions(const tinyxml2::XMLElement &table,
   });
 }
 
-FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage,
+FileMeta OpenDocumentMeta::parseFileMeta(access::Storage &storage,
                                          const bool decrypted) {
   FileMeta result{};
 
@@ -121,16 +125,18 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage,
     throw NoOpenDocumentFileException();
 
   if (storage.isFile("mimetype")) {
-    const auto mimeType = StorageUtil::read(storage, "mimetype");
+    const auto mimeType = access::StorageUtil::read(storage, "mimetype");
     lookupFileType(mimeType, result.type);
   }
 
   if (storage.isFile("META-INF/manifest.xml")) {
-    const auto manifest = XmlUtil::parse(storage, "META-INF/manifest.xml");
-    XmlUtil::recursiveVisitElementsWithName(
+    const auto manifest =
+        common::XmlUtil::parse(storage, "META-INF/manifest.xml");
+    common::XmlUtil::recursiveVisitElementsWithName(
         manifest->RootElement(), "manifest:file-entry",
         [&](const tinyxml2::XMLElement &e) {
-          const Path path = e.FindAttribute("manifest:full-path")->Value();
+          const access::Path path =
+              e.FindAttribute("manifest:full-path")->Value();
           if (path == "/" &&
               e.FindAttribute("manifest:media-type") != nullptr) {
             const std::string mimeType =
@@ -138,14 +144,14 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage,
             lookupFileType(mimeType, result.type);
           }
         });
-    XmlUtil::recursiveVisitElementsWithName(
+    common::XmlUtil::recursiveVisitElementsWithName(
         manifest->RootElement(), "manifest:encryption-data",
         [&](const tinyxml2::XMLElement &) { result.encrypted = true; });
   }
 
   if (result.encrypted == decrypted) {
     if (storage.isFile("meta.xml")) {
-      const auto metaXml = XmlUtil::parse(storage, "meta.xml");
+      const auto metaXml = common::XmlUtil::parse(storage, "meta.xml");
 
       tinyxml2::XMLElement *statisticsElement =
           tinyxml2::XMLHandle(metaXml.get())
@@ -183,7 +189,7 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage,
     }
 
     // TODO dont load content twice (happens in case of translation)
-    const auto contentXml = XmlUtil::parse(storage, "content.xml");
+    const auto contentXml = common::XmlUtil::parse(storage, "content.xml");
     tinyxml2::XMLHandle bodyHandle =
         tinyxml2::XMLHandle(contentXml.get())
             .FirstChildElement("office:document-content")
@@ -194,7 +200,7 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage,
     switch (result.type) {
     case FileType::OPENDOCUMENT_PRESENTATION: {
       result.entryCount = 0;
-      XmlUtil::recursiveVisitElementsWithName(
+      common::XmlUtil::recursiveVisitElementsWithName(
           bodyHandle.ToElement(), "draw:page",
           [&](const tinyxml2::XMLElement &e) {
             ++result.entryCount;
@@ -205,7 +211,7 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage,
     } break;
     case FileType::OPENDOCUMENT_SPREADSHEET: {
       result.entryCount = 0;
-      XmlUtil::recursiveVisitElementsWithName(
+      common::XmlUtil::recursiveVisitElementsWithName(
           bodyHandle.ToElement(), "table:table",
           [&](const tinyxml2::XMLElement &e) {
             ++result.entryCount;
@@ -225,10 +231,12 @@ FileMeta OpenDocumentMeta::parseFileMeta(Storage &storage,
   return result;
 }
 
-OpenDocumentMeta::Manifest OpenDocumentMeta::parseManifest(Storage &storage) {
+OpenDocumentMeta::Manifest
+OpenDocumentMeta::parseManifest(access::Storage &storage) {
   if (!storage.isFile("META-INF/manifest.xml"))
     throw NoOpenDocumentFileException();
-  const auto manifest = XmlUtil::parse(storage, "META-INF/manifest.xml");
+  const auto manifest =
+      common::XmlUtil::parse(storage, "META-INF/manifest.xml");
   return parseManifest(*manifest);
 }
 
@@ -236,10 +244,11 @@ OpenDocumentMeta::Manifest
 OpenDocumentMeta::parseManifest(const tinyxml2::XMLDocument &manifest) {
   Manifest result{};
 
-  XmlUtil::recursiveVisitElementsWithName(
+  common::XmlUtil::recursiveVisitElementsWithName(
       manifest.RootElement(), "manifest:file-entry",
       [&](const tinyxml2::XMLElement &e) {
-        const Path path = e.FindAttribute("manifest:full-path")->Value();
+        const access::Path path =
+            e.FindAttribute("manifest:full-path")->Value();
         const tinyxml2::XMLElement *crypto =
             e.FirstChildElement("manifest:encryption-data");
         if (crypto == nullptr)
@@ -296,10 +305,10 @@ OpenDocumentMeta::parseManifest(const tinyxml2::XMLDocument &manifest) {
           }
         }
 
-        entry.checksum = CryptoUtil::base64Decode(entry.checksum);
+        entry.checksum = crypto::CryptoUtil::base64Decode(entry.checksum);
         entry.initialisationVector =
-            CryptoUtil::base64Decode(entry.initialisationVector);
-        entry.keySalt = CryptoUtil::base64Decode(entry.keySalt);
+            crypto::CryptoUtil::base64Decode(entry.initialisationVector);
+        entry.keySalt = crypto::CryptoUtil::base64Decode(entry.keySalt);
 
         const auto it = result.entries.emplace(path, entry).first;
         if ((result.smallestFilePath == nullptr) ||
@@ -313,4 +322,5 @@ OpenDocumentMeta::parseManifest(const tinyxml2::XMLDocument &manifest) {
   return result;
 }
 
+} // namespace odf
 } // namespace odr

@@ -2,6 +2,7 @@
 #include <stdexcept>
 
 namespace odr {
+namespace common {
 
 std::uint32_t TablePosition::to_col_num(const std::string &s) {
   if (s.empty())
@@ -56,4 +57,5 @@ std::string TablePosition::toString() const noexcept {
   return to_col_string(col) + std::to_string(row + 1);
 }
 
+} // namespace common
 } // namespace odr

@@ -10,6 +10,7 @@
 #include <zinflate.h>
 
 namespace odr {
+namespace crypto {
 
 typedef unsigned char byte;
 
@@ -99,6 +100,7 @@ std::string CryptoUtil::decryptBlowfish(const std::string &key,
   return result;
 }
 
+namespace {
 // discard non deflated content caused by padding
 class MyInflator : public CryptoPP::Inflator {
 public:
@@ -117,6 +119,7 @@ protected:
 private:
   unsigned int m_padding = 0;
 };
+} // namespace
 
 std::string CryptoUtil::inflate(const std::string &input) {
   std::string result;
@@ -133,4 +136,5 @@ std::size_t CryptoUtil::padding(const std::string &input) {
   return inflator.GetPadding();
 }
 
+} // namespace crypto
 } // namespace odr

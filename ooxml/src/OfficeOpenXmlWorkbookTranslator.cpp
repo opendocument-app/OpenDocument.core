@@ -13,12 +13,13 @@
 #include <unordered_set>
 
 namespace odr {
+namespace ooxml {
 
 namespace {
 void FontsTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                     TranslationContext &) {
+                     common::TranslationContext &) {
   std::uint32_t i = 0;
-  XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+  common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
     out << ".font-" << i << " {";
 
     const tinyxml2::XMLElement *name = e.FirstChildElement("name");
@@ -46,9 +47,9 @@ void FontsTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void FillsTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                     TranslationContext &) {
+                     common::TranslationContext &) {
   std::uint32_t i = 0;
-  XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+  common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
     out << ".fill-" << i << " {";
 
     const auto patternFill = e.FirstChildElement("patternFill");
@@ -67,9 +68,9 @@ void FillsTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void BordersTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                       TranslationContext &) {
+                       common::TranslationContext &) {
   std::uint32_t i = 0;
-  XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &) {
+  common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &) {
     out << ".border-" << i << " {";
     // TODO
     out << "} ";
@@ -79,9 +80,9 @@ void BordersTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void CellXfsTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                       TranslationContext &context) {
+                       common::TranslationContext &context) {
   std::uint32_t i = 0;
-  XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+  common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
     const std::string name = "cellxf-" + std::to_string(i);
 
     const tinyxml2::XMLAttribute *fontId = e.FindAttribute("fontId");
@@ -130,7 +131,7 @@ void CellXfsTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 } // namespace
 
 void OfficeOpenXmlWorkbookTranslator::translateStyle(
-    const tinyxml2::XMLElement &in, TranslationContext &context) {
+    const tinyxml2::XMLElement &in, common::TranslationContext &context) {
   std::ostream &out = *context.output;
 
   const tinyxml2::XMLElement *fonts = in.FirstChildElement("fonts");
@@ -152,11 +153,11 @@ void OfficeOpenXmlWorkbookTranslator::translateStyle(
 
 namespace {
 void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
-                    TranslationContext &context) {
+                    common::TranslationContext &context) {
   std::string text = in.Value();
-  StringUtil::findAndReplaceAll(text, "&", "&amp;");
-  StringUtil::findAndReplaceAll(text, "<", "&lt;");
-  StringUtil::findAndReplaceAll(text, ">", "&gt;");
+  common::StringUtil::findAndReplaceAll(text, "&", "&amp;");
+  common::StringUtil::findAndReplaceAll(text, "<", "&lt;");
+  common::StringUtil::findAndReplaceAll(text, ">", "&gt;");
 
   if (!context.config->editable) {
     out << text;
@@ -169,7 +170,7 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
 }
 
 void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                              TranslationContext &) {
+                              common::TranslationContext &) {
   const std::string prefix = in.Name();
 
   const tinyxml2::XMLAttribute *width = in.FindAttribute("width");
@@ -186,7 +187,7 @@ void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
 void ElementAttributeTranslator(const tinyxml2::XMLElement &in,
                                 std::ostream &out,
-                                TranslationContext &context) {
+                                common::TranslationContext &context) {
   const auto s = in.FindAttribute("s");
   if (s != nullptr) {
     const std::string name = std::string("cellxf-") + s->Value();
@@ -212,12 +213,13 @@ void ElementAttributeTranslator(const tinyxml2::XMLElement &in,
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
-                               std::ostream &out, TranslationContext &context);
+                               std::ostream &out,
+                               common::TranslationContext &context);
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                       TranslationContext &context);
+                       common::TranslationContext &context);
 
 void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                     TranslationContext &context) {
+                     common::TranslationContext &context) {
   context.currentTableRowStart = context.config->tableOffsetRows;
   context.currentTableRowEnd =
       context.currentTableRowStart + context.config->tableLimitRows;
@@ -243,7 +245,7 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void TableColTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                        TranslationContext &context) {
+                        common::TranslationContext &context) {
   // TODO if min/max is unordered we have a problem here; fail fast in that case
 
   const auto min = in.Unsigned64Attribute("min", 1);
@@ -263,7 +265,7 @@ void TableColTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                        TranslationContext &context) {
+                        common::TranslationContext &context) {
   const auto rowIndex = in.FindAttribute("r")->Unsigned64Value() - 1;
 
   while (rowIndex > context.tableCursor.getRow()) {
@@ -290,8 +292,8 @@ void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                         TranslationContext &context) {
-  const TablePosition cellIndex(in.FindAttribute("r")->Value());
+                         common::TranslationContext &context) {
+  const common::TablePosition cellIndex(in.FindAttribute("r")->Value());
 
   while (cellIndex.getCol() > context.tableCursor.getCol()) {
     if (context.tableCursor.getCol() >= context.currentTableColEnd)
@@ -333,8 +335,9 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
-                               std::ostream &out, TranslationContext &context) {
-  XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
+                               std::ostream &out,
+                               common::TranslationContext &context) {
+  common::XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
     if (n.ToText() != nullptr)
       TextTranslator(*n.ToText(), out, context);
     else if (n.ToElement() != nullptr)
@@ -343,7 +346,7 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
 }
 
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                       TranslationContext &context) {
+                       common::TranslationContext &context) {
   static std::unordered_map<std::string, const char *> substitution{
       {"cols", "colgroup"},
   };
@@ -380,8 +383,9 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 } // namespace
 
 void OfficeOpenXmlWorkbookTranslator::translateContent(
-    const tinyxml2::XMLElement &in, TranslationContext &context) {
+    const tinyxml2::XMLElement &in, common::TranslationContext &context) {
   ElementTranslator(in, *context.output, context);
 }
 
+} // namespace ooxml
 } // namespace odr

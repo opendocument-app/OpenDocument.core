@@ -1,10 +1,8 @@
 #include <common/TableCursor.h>
 #include <gtest/gtest.h>
 
-namespace odr {
-
 TEST(TableCursor, test) {
-  TableCursor tl;
+  odr::common::TableCursor tl;
   EXPECT_EQ(tl.getRow(), 0);
   EXPECT_EQ(tl.getCol(), 0);
   tl.addRow(1);
@@ -27,5 +25,3 @@ TEST(TableCursor, test) {
   EXPECT_EQ(tl.getRow(), 3);
   EXPECT_EQ(tl.getCol(), 0);
 }
-
-} // namespace odr

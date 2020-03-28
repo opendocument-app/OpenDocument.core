@@ -8,8 +8,9 @@
 TEST(OpenDocumentMeta, open) {
   const std::string path = "../../test/empty.odp";
 
-  odr::ZipReader odf(path);
-  const odr::FileMeta meta = odr::OpenDocumentMeta::parseFileMeta(odf, false);
+  odr::access::ZipReader odf(path);
+  const odr::FileMeta meta =
+      odr::odf::OpenDocumentMeta::parseFileMeta(odf, false);
 
   LOG(INFO) << (int)meta.type;
   LOG(INFO) << meta.entryCount;

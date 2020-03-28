@@ -61,7 +61,7 @@ void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
 }
 
 void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                          TranslationContext &context) {
+                          common::TranslationContext &context) {
   static std::unordered_map<std::string, const char *> elementToNameAttr{
       {"style:default-style", "style:family"},
       {"style:style", "style:name"},
@@ -95,17 +95,18 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
   out << "." << name << " {";
 
-  XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
-    XmlUtil::visitElementAttributes(e, [&](const tinyxml2::XMLAttribute &a) {
-      StylePropertiesTranslator(a, out);
-    });
+  common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+    common::XmlUtil::visitElementAttributes(
+        e, [&](const tinyxml2::XMLAttribute &a) {
+          StylePropertiesTranslator(a, out);
+        });
   });
 
   out << "}\n";
 }
 
 void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                         TranslationContext &context) {
+                         common::TranslationContext &context) {
   // addElementDelegation("text:list-level-style-number", propertiesTranslator);
   // addElementDelegation("text:list-level-style-bullet", propertiesTranslator);
 
@@ -155,13 +156,13 @@ void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 std::string
 OpenDocumentStyleTranslator::escapeStyleName(const std::string &name) {
   std::string result = name;
-  StringUtil::findAndReplaceAll(result, ".", "_");
+  common::StringUtil::findAndReplaceAll(result, ".", "_");
   return result;
 }
 
-void OpenDocumentStyleTranslator::translate(const tinyxml2::XMLElement &in,
-                                            TranslationContext &context) {
-  XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+void OpenDocumentStyleTranslator::translate(
+    const tinyxml2::XMLElement &in, common::TranslationContext &context) {
+  common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
     StyleClassTranslator(e, *context.output, context);
     // TODO ListStyleTranslator
   });

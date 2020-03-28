@@ -13,10 +13,15 @@ class XMLText;
 } // namespace tinyxml2
 
 namespace odr {
-
+namespace access {
 class Source;
 class Path;
 class Storage;
+} // namespace access
+} // namespace odr
+
+namespace odr {
+namespace common {
 
 class NotXmlException : public std::exception {
 public:
@@ -29,9 +34,9 @@ typedef std::function<void(const tinyxml2::XMLElement &)> ElementVisiter;
 typedef std::function<void(const tinyxml2::XMLAttribute &)> AttributeVisiter;
 
 extern std::unique_ptr<tinyxml2::XMLDocument> parse(const std::string &);
-extern std::unique_ptr<tinyxml2::XMLDocument> parse(Source &);
-extern std::unique_ptr<tinyxml2::XMLDocument> parse(const Storage &,
-                                                    const Path &);
+extern std::unique_ptr<tinyxml2::XMLDocument> parse(access::Source &);
+extern std::unique_ptr<tinyxml2::XMLDocument> parse(const access::Storage &,
+                                                    const access::Path &);
 
 extern const tinyxml2::XMLElement *
 firstChildElement(const tinyxml2::XMLElement &);
@@ -51,6 +56,7 @@ recursiveVisitElementsWithAttribute(const tinyxml2::XMLElement *root,
                                     const char *attribute, ElementVisiter);
 } // namespace XmlUtil
 
+} // namespace common
 } // namespace odr
 
 #endif // ODR_XMLUTIL_H

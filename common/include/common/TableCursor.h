@@ -6,6 +6,7 @@
 #include <list>
 
 namespace odr {
+namespace common {
 
 class TableCursor final {
 public:
@@ -33,6 +34,7 @@ private:
   void handleRowspan() noexcept;
 };
 
+} // namespace common
 } // namespace odr
 
 #endif // ODR_TABLECURSOR_H

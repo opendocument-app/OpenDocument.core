@@ -1,4 +1,4 @@
-add_library(odr_access OBJECT
+add_library(odr_access STATIC
         src/CfbStorage.cpp
         src/ChildStorage.cpp
         src/FileUtil.cpp
@@ -7,9 +7,9 @@ add_library(odr_access OBJECT
         src/StreamUtil.cpp
         src/SystemStorage.cpp
         src/ZipStorage.cpp
-)
+        )
 target_include_directories(odr_access PUBLIC include)
 target_link_libraries(odr_access
-    PRIVATE
+        PRIVATE
         miniz
-)
+        )

@@ -15,48 +15,51 @@
 #include <tinyxml2.h>
 
 namespace odr {
+namespace ooxml {
 
 class OfficeOpenXmlTranslator::Impl {
 public:
   bool translate(const std::string &outPath,
-                 TranslationContext &context) const {
+                 common::TranslationContext &context) const {
     std::ofstream out(outPath);
     if (!out.is_open())
       return false;
     context.output = &out;
 
-    out << Constants::getHtmlBeginToStyle();
+    out << common::Constants::getHtmlBeginToStyle();
 
     generateStyle(out, context);
 
-    out << Constants::getHtmlStyleToBody();
+    out << common::Constants::getHtmlStyleToBody();
 
     generateContent(context);
 
-    out << Constants::getHtmlBodyToScript();
+    out << common::Constants::getHtmlBodyToScript();
 
     generateScript(out, context);
 
-    out << Constants::getHtmlScriptToEnd();
+    out << common::Constants::getHtmlScriptToEnd();
 
     out.close();
     return true;
   }
 
-  void generateStyle(std::ofstream &out, TranslationContext &context) const {
+  void generateStyle(std::ofstream &out,
+                     common::TranslationContext &context) const {
     // default css
-    out << Constants::getOpenDocumentDefaultCss();
+    out << common::Constants::getOpenDocumentDefaultCss();
 
     switch (context.meta->type) {
     case FileType::OFFICE_OPEN_XML_DOCUMENT: {
       const auto stylesXml =
-          XmlUtil::parse(*context.storage, "word/styles.xml");
+          common::XmlUtil::parse(*context.storage, "word/styles.xml");
       const tinyxml2::XMLElement *styles = stylesXml->RootElement();
       OfficeOpenXmlDocumentTranslator::translateStyle(*styles, context);
     } break;
     case FileType::OFFICE_OPEN_XML_PRESENTATION: {
       // TODO duplication in generateContent
-      const auto ppt = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
+      const auto ppt =
+          common::XmlUtil::parse(*context.storage, "ppt/presentation.xml");
       const tinyxml2::XMLElement *sizeEle =
           ppt->RootElement()->FirstChildElement("p:sldSz");
       if (sizeEle != nullptr) {
@@ -70,7 +73,8 @@ public:
       }
     } break;
     case FileType::OFFICE_OPEN_XML_WORKBOOK: {
-      const auto stylesXml = XmlUtil::parse(*context.storage, "xl/styles.xml");
+      const auto stylesXml =
+          common::XmlUtil::parse(*context.storage, "xl/styles.xml");
       const tinyxml2::XMLElement *styles = stylesXml->RootElement();
       OfficeOpenXmlWorkbookTranslator::translateStyle(*styles, context);
     } break;
@@ -79,14 +83,15 @@ public:
     }
   }
 
-  void generateScript(std::ofstream &of, TranslationContext &) const {
-    of << Constants::getDefaultScript();
+  void generateScript(std::ofstream &of, common::TranslationContext &) const {
+    of << common::Constants::getDefaultScript();
   }
 
-  void generateContent(TranslationContext &context) const {
+  void generateContent(common::TranslationContext &context) const {
     switch (context.meta->type) {
     case FileType::OFFICE_OPEN_XML_DOCUMENT: {
-      context.content = XmlUtil::parse(*context.storage, "word/document.xml");
+      context.content =
+          common::XmlUtil::parse(*context.storage, "word/document.xml");
       context.msRelations = OfficeOpenXmlMeta::parseRelationships(
           *context.storage, "word/document.xml");
 
@@ -97,16 +102,17 @@ public:
       OfficeOpenXmlDocumentTranslator::translateContent(*body, context);
     } break;
     case FileType::OFFICE_OPEN_XML_PRESENTATION: {
-      const auto ppt = XmlUtil::parse(*context.storage, "ppt/presentation.xml");
+      const auto ppt =
+          common::XmlUtil::parse(*context.storage, "ppt/presentation.xml");
       const auto pptRelations = OfficeOpenXmlMeta::parseRelationships(
           *context.storage, "ppt/presentation.xml");
 
-      XmlUtil::recursiveVisitElementsWithName(
+      common::XmlUtil::recursiveVisitElementsWithName(
           ppt->RootElement(), "p:sldId", [&](const auto &e) {
             const std::string rId = e.FindAttribute("r:id")->Value();
 
-            const auto path = Path("ppt").join(pptRelations.at(rId));
-            context.content = XmlUtil::parse(*context.storage, path);
+            const auto path = access::Path("ppt").join(pptRelations.at(rId));
+            context.content = common::XmlUtil::parse(*context.storage, path);
             context.msRelations =
                 OfficeOpenXmlMeta::parseRelationships(*context.storage, path);
 
@@ -127,27 +133,28 @@ public:
           });
     } break;
     case FileType::OFFICE_OPEN_XML_WORKBOOK: {
-      const auto xls = XmlUtil::parse(*context.storage, "xl/workbook.xml");
+      const auto xls =
+          common::XmlUtil::parse(*context.storage, "xl/workbook.xml");
       const auto xlsRelations = OfficeOpenXmlMeta::parseRelationships(
           *context.storage, "xl/workbook.xml");
 
       // TODO this breaks back translation
       context.msSharedStringsDocument =
-          XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
+          common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
       if (context.msSharedStringsDocument) {
-        XmlUtil::recursiveVisitElementsWithName(
+        common::XmlUtil::recursiveVisitElementsWithName(
             context.msSharedStringsDocument->RootElement(), "si",
             [&](const auto &child) {
               context.msSharedStrings.push_back(&child);
             });
       }
 
-      XmlUtil::recursiveVisitElementsWithName(
+      common::XmlUtil::recursiveVisitElementsWithName(
           xls->RootElement(), "sheet", [&](const auto &e) {
             const std::string rId = e.FindAttribute("r:id")->Value();
 
-            const auto path = Path("xl").join(xlsRelations.at(rId));
-            context.content = XmlUtil::parse(*context.storage, path);
+            const auto path = access::Path("xl").join(xlsRelations.at(rId));
+            context.content = common::XmlUtil::parse(*context.storage, path);
             context.msRelations =
                 OfficeOpenXmlMeta::parseRelationships(*context.storage, path);
 
@@ -173,7 +180,7 @@ public:
   }
 
   bool backTranslate(const std::string &, const std::string &,
-                     TranslationContext &) const {
+                     common::TranslationContext &) const {
     return false;
   }
 };
@@ -183,15 +190,16 @@ OfficeOpenXmlTranslator::OfficeOpenXmlTranslator()
 
 OfficeOpenXmlTranslator::~OfficeOpenXmlTranslator() = default;
 
-bool OfficeOpenXmlTranslator::translate(const std::string &outPath,
-                                        TranslationContext &context) const {
+bool OfficeOpenXmlTranslator::translate(
+    const std::string &outPath, common::TranslationContext &context) const {
   return impl->translate(outPath, context);
 }
 
-bool OfficeOpenXmlTranslator::backTranslate(const std::string &diff,
-                                            const std::string &outPath,
-                                            TranslationContext &context) const {
+bool OfficeOpenXmlTranslator::backTranslate(
+    const std::string &diff, const std::string &outPath,
+    common::TranslationContext &context) const {
   return impl->backTranslate(diff, outPath, context);
 }
 
+} // namespace ooxml
 } // namespace odr
