@@ -203,7 +203,8 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     if (!context.storage->isFile(path)) {
       out << path;
     } else {
-      std::string image = access::StreamUtil::read(*context.storage->read(path));
+      std::string image =
+          access::StreamUtil::read(*context.storage->read(path));
       if ((path.find("ObjectReplacements", 0) != std::string::npos) ||
           (path.find(".svm", 0) != std::string::npos)) {
         std::istringstream svmIn(image);

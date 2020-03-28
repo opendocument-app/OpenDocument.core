@@ -317,7 +317,8 @@ bool OpenDocumentReader::translate(const std::string &outPath,
   }
 }
 
-bool OpenDocumentReader::backTranslate(const std::string &diff, const std::string &path) noexcept {
+bool OpenDocumentReader::backTranslate(const std::string &diff,
+                                       const std::string &path) noexcept {
   try {
     return impl_->backTranslate(diff, path);
   } catch (...) {
