@@ -1,27 +1,69 @@
-sudo: false
-
 language: cpp
-
-git:
-  depth: 10
+compiler: clang
+os: linux
+dist: bionic
 
 addons:
   apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - sourceline: 'deb https://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main'
+      key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
     packages:
+      - clang-9
       - ninja-build
+  snaps:
+    - tidy
 
-compiler:
-  - clang
-  - gcc
+env:
+  global:
+    - TEST_REPO=https://github.com/TomTasche/OpenDocument.test.git
+    - CORE_DIR=$TRAVIS_BUILD_DIR
+    - TEST_DIR=$TRAVIS_BUILD_DIR/../OpenDocument.test
+    - BUILD_LATEST=$HOME/build-latest
+    - BUILD_REFERENCE=$HOME/build-reference
+    - TRANSLATION_TOOL=$CORE_DIR/.travis/translate.py
+    - OUTPUT_LATEST=$HOME/output-latest
+    - OUTPUT_REFERENCE=$HOME/output-reference
 
 cache:
-  - ccache
+  ccache: true
+  directories:
+    - $TEST_DIR
 
-install:
-  - wget https://raw.githubusercontent.com/andiwand/gdrive.sh/master/gdrive.sh -O gdrive.sh
+before_install:
+  - echo -e "machine github.com\n  login $CI_USER_TOKEN" > ~/.netrc
+  - |
+    if [ ! -d "$TEST_DIR" ] || [ -z "$(ls -A "$TEST_DIR")"]; then
+      git clone "$TEST_REPO" "$TEST_DIR"
+    else
+      git -C "$TEST_DIR" pull
+    fi
 
 script:
-  - mkdir -p build && cd build && cmake -GNinja .. && cmake --build . && cd ..
-  - cd .travis && bash ../gdrive.sh "${INPUT}" && [[ -d "input/" ]] && cd ..
-  - cd .travis && bash ../gdrive.sh "${OUTPUT}" && [[ -d "output/" ]] && cd ..
-  - cd .travis && ODR="../build/cli/translate" INPUT_DIR="input" ./translate.sh
+  # build latest
+  - mkdir -p "$BUILD_LATEST"
+  - cd "$BUILD_LATEST"; cmake -GNinja "$CORE_DIR"
+  - cmake --build .
+
+  # run unit tests
+  - . "$BUILD_LATEST/test/odr_test"
+
+  # run latest translation
+  - mkdir -p "$OUTPUT_LATEST"
+  - . "$TRANSLATION_TOOL" "$BUILD_LATEST/cli/translate" "$OUTPUT_LATEST" "$TEST_DIR"/od?/* "$TEST_DIR"/???x/*
+
+  # build reference
+  - git checkout "$CORE_REF"
+  - mkdir -p "$BUILD_REFERENCE"
+  - cd "$BUILD_REFERENCE"; cmake -GNinja "$CORE_DIR"
+  - cmake --build .
+
+  # run reference translation
+  - mkdir -p "$OUTPUT_REFERENCE"
+  - . "$TRANSLATION_TOOL" "$BUILD_REFERENCE/cli/translate" "$OUTPUT_REFERENCE" "$TEST_DIR"/od?/* "$TEST_DIR"/???x/*
+
+  # compare output directories
+  - tidy -i -m -w 160 -ashtml -utf8 "$OUTPUT_LATEST"/*.html 2> /dev/null # TODO remove null
+  - tidy -i -m -w 160 -ashtml -utf8 "$OUTPUT_REFERENCE"/*.html 2> /dev/null # TODO remove null
+  - diff "$OUTPUT_LATEST" "$OUTPUT_REFERENCE"

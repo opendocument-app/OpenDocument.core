@@ -3,12 +3,8 @@ include(GoogleTest REQUIRED)
 
 enable_testing()
 add_executable(odr_test
-        MsCfbStorageTest.cpp
         OfficeOpenXmlCryptoTest.cpp
-        OfficeOpenXmlMetaTest.cpp
-        OpenDocumentMetaTest.cpp
         PathTest.cpp
-        SvmTest.cpp
         TableCursorTest.cpp
         TablePositionTest.cpp
         TableRangeTest.cpp

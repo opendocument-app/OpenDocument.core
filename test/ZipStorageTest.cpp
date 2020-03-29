@@ -1,10 +1,16 @@
 #include <access/ZipStorage.h>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <string>
 
+// TODO visit test
+
+TEST(ZipReader, exception) {
+  EXPECT_THROW(odr::access::ZipReader reader("/"),
+               odr::access::NoZipFileException);
+}
+
 TEST(ZipWriter, create) {
-  const std::string output = "../../test/created.zip";
+  const std::string output = "created.zip";
 
   odr::access::ZipWriter writer(output);
 
@@ -20,28 +26,4 @@ TEST(ZipWriter, create) {
   }
 }
 
-TEST(ZipWriter, copy) {
-  const std::string input = "/home/andreas/Desktop/odr/megatest.odt";
-  const std::string output = "../../test/copied.zip";
-
-  odr::access::ZipReader reader(input);
-  odr::access::ZipWriter writer(output);
-
-  reader.visit([&](const auto &p) { writer.copy(reader, p); });
-}
-
-TEST(ZipReader, exception) {
-  try {
-    odr::access::ZipReader reader("/");
-  } catch (odr::access::NoZipFileException &e) {
-    LOG(ERROR) << "not a zip file";
-  }
-}
-
-TEST(ZipReader, visit) {
-  const std::string input = "/home/andreas/Desktop/odr/megatest.odt";
-
-  odr::access::ZipReader reader(input);
-
-  reader.visit([&](const auto &p) { std::cout << p << std::endl; });
-}
+// TODO copy test
