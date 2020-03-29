@@ -1,13 +1,13 @@
 #include <crypto/CryptoUtil.h>
-#include <cryptopp-src/aes.h>
-#include <cryptopp-src/base64.h>
-#include <cryptopp-src/blowfish.h>
-#include <cryptopp-src/des.h>
-#include <cryptopp-src/filters.h>
-#include <cryptopp-src/modes.h>
-#include <cryptopp-src/pwdbased.h>
-#include <cryptopp-src/sha.h>
-#include <cryptopp-src/zinflate.h>
+#include <aes.h>
+#include <base64.h>
+#include <blowfish.h>
+#include <des.h>
+#include <filters.h>
+#include <modes.h>
+#include <pwdbased.h>
+#include <sha.h>
+#include <zinflate.h>
 
 namespace odr {
 namespace crypto {

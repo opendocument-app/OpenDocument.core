@@ -12,13 +12,18 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
         glog
-        GIT_REPOSITORY https://github.com/google/glog.git
-        GIT_TAG 1b7d541
+        GIT_REPOSITORY https://github.com/TomTasche/glog.git
+        GIT_TAG 9aed7a1
+)
+FetchContent_Declare(
+        cryptopp_cmake
+        GIT_REPOSITORY https://github.com/noloader/cryptopp-cmake.git
+        GIT_TAG 85941c6
 )
 FetchContent_Declare(
         cryptopp
-        GIT_REPOSITORY https://github.com/TomTasche/cryptopp.git
-        GIT_TAG 6b1dd5f
+        GIT_REPOSITORY https://github.com/noloader/cryptopp.git
+        GIT_TAG 5d68850
 )
 FetchContent_Declare(
         json
@@ -64,8 +69,14 @@ if (NOT glog_POPULATED)
     add_subdirectory(${glog_SOURCE_DIR} ${glog_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
 FetchContent_GetProperties(cryptopp)
+FetchContent_GetProperties(cryptopp_cmake)
 if (NOT cryptopp_POPULATED)
     FetchContent_Populate(cryptopp)
+    FetchContent_Populate(cryptopp_cmake)
+
+    file(COPY ${cryptopp_cmake_SOURCE_DIR}/CMakeLists.txt DESTINATION ${cryptopp_SOURCE_DIR})
+    file(COPY ${cryptopp_cmake_SOURCE_DIR}/cryptopp-config.cmake DESTINATION ${cryptopp_SOURCE_DIR})
+
     add_subdirectory(${cryptopp_SOURCE_DIR} ${cryptopp_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
 FetchContent_GetProperties(json)
