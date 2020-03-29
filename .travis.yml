@@ -34,36 +34,36 @@ cache:
 before_install:
   - echo -e "machine github.com\n  login $CI_USER_TOKEN" > ~/.netrc
   - |
-    if [ ! -d "$TEST_DIR" ] || [ -z "$(ls -A "$TEST_DIR")"]; then
-      git clone "$TEST_REPO" "$TEST_DIR"
+    if [ ! -d $TEST_DIR ] || [ -z "$(ls -A $TEST_DIR)"]; then
+      git clone $TEST_REPO $TEST_DIR
     else
-      git -C "$TEST_DIR" pull
+      git -C $TEST_DIR pull
     fi
 
 script:
   # build latest
-  - mkdir -p "$BUILD_LATEST"
-  - cd "$BUILD_LATEST"; cmake -GNinja "$CORE_DIR"
+  - mkdir -p $BUILD_LATEST
+  - cd $BUILD_LATEST; cmake -GNinja $CORE_DIR
   - cmake --build .
 
   # run unit tests
-  - . "$BUILD_LATEST/test/odr_test"
+  - $BUILD_LATEST/test/odr_test
 
   # run latest translation
-  - mkdir -p "$OUTPUT_LATEST"
-  - . "$TRANSLATION_TOOL" "$BUILD_LATEST/cli/translate" "$OUTPUT_LATEST" "$TEST_DIR"/od?/* "$TEST_DIR"/???x/*
+  - mkdir -p $OUTPUT_LATEST
+  - $TRANSLATION_TOOL $BUILD_LATEST/cli/translate $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
 
   # build reference
-  - git checkout "$CORE_REF"
-  - mkdir -p "$BUILD_REFERENCE"
-  - cd "$BUILD_REFERENCE"; cmake -GNinja "$CORE_DIR"
+  - git checkout $CORE_REF
+  - mkdir -p $BUILD_REFERENCE
+  - cd $BUILD_REFERENCE; cmake -GNinja $CORE_DIR
   - cmake --build .
 
   # run reference translation
-  - mkdir -p "$OUTPUT_REFERENCE"
-  - . "$TRANSLATION_TOOL" "$BUILD_REFERENCE/cli/translate" "$OUTPUT_REFERENCE" "$TEST_DIR"/od?/* "$TEST_DIR"/???x/*
+  - mkdir -p $OUTPUT_REFERENCE
+  - $TRANSLATION_TOOL $BUILD_REFERENCE/cli/translate $OUTPUT_REFERENCE $TEST_DIR/od?/* $TEST_DIR/???x/*
 
   # compare output directories
-  - tidy -i -m -w 160 -ashtml -utf8 "$OUTPUT_LATEST"/*.html 2> /dev/null # TODO remove null
-  - tidy -i -m -w 160 -ashtml -utf8 "$OUTPUT_REFERENCE"/*.html 2> /dev/null # TODO remove null
-  - diff "$OUTPUT_LATEST" "$OUTPUT_REFERENCE"
+  - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_LATEST/*.html 2> /dev/null # TODO remove null
+  - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_REFERENCE/*.html 2> /dev/null # TODO remove null
+  - diff $OUTPUT_LATEST $OUTPUT_REFERENCE
