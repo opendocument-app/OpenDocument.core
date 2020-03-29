@@ -61,6 +61,10 @@ script:
 
   # run reference translation
   - mkdir -p $OUTPUT_REFERENCE
+  - ls -la $CORE_DIR/.travis
+  - ls -la $OUTPUT_REFERENCE
+  - ls -la $BUILD_REFERENCE
+  - ls -la $BUILD_REFERENCE/cli
   - $TRANSLATION_TOOL $BUILD_REFERENCE/cli/translate $OUTPUT_REFERENCE $TEST_DIR/od?/* $TEST_DIR/???x/*
 
   # compare output directories
