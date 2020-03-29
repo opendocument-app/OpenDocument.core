@@ -54,7 +54,7 @@ script:
   - $TRANSLATION_TOOL $BUILD_LATEST/cli/translate $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
 
   # build reference
-  - git checkout $CORE_REF
+  - cd $CORE_DIR; git checkout $CORE_REF
   - mkdir -p $BUILD_REFERENCE
   - cd $BUILD_REFERENCE; cmake -GNinja $CORE_DIR
   - cmake --build .
