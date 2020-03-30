@@ -20,9 +20,10 @@ env:
     - TEST_REPO=https://github.com/TomTasche/OpenDocument.test.git
     - CORE_DIR=$TRAVIS_BUILD_DIR
     - TEST_DIR=$TRAVIS_BUILD_DIR/../OpenDocument.test
+    - TOOL_DIR=$HOME/tools
+    - TRANSLATION_TOOL=$TOOL_DIR/translate.py
     - BUILD_LATEST=$HOME/build-latest
     - BUILD_REFERENCE=$HOME/build-reference
-    - TRANSLATION_TOOL=$CORE_DIR/.travis/translate.py
     - OUTPUT_LATEST=$HOME/output-latest
     - OUTPUT_REFERENCE=$HOME/output-reference
 
@@ -41,6 +42,9 @@ before_install:
     fi
 
 script:
+  # copy tools
+  - cp -a $CORE_DIR/.travis $TOOL_DIR
+
   # build latest
   - mkdir -p $BUILD_LATEST
   - cd $BUILD_LATEST; cmake -GNinja $CORE_DIR
