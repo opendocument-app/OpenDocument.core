@@ -55,7 +55,7 @@ script:
 
   # run latest translation
   - mkdir -p $OUTPUT_LATEST
-  - $TRANSLATION_TOOL $BUILD_LATEST/cli/translate $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
+  - $TRANSLATION_TOOL "ulimit -v 104857600; $BUILD_LATEST/cli/translate" $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
 
   # build reference
   - cd $CORE_DIR; git checkout $CORE_REF
@@ -65,7 +65,7 @@ script:
 
   # run reference translation
   - mkdir -p $OUTPUT_REFERENCE
-  - $TRANSLATION_TOOL $BUILD_REFERENCE/cli/translate $OUTPUT_REFERENCE $TEST_DIR/od?/* $TEST_DIR/???x/*
+  - $TRANSLATION_TOOL "ulimit -v 104857600; $BUILD_REFERENCE/cli/translate" $OUTPUT_REFERENCE $TEST_DIR/od?/* $TEST_DIR/???x/*
 
   # compare output directories
   - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_LATEST/*.html 2> /dev/null || true # TODO remove null and true
