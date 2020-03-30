@@ -25,7 +25,7 @@ def main():
     translate = [args.translator, infile, outhtml]
     if password:
       translate.append(password)
-    result = subprocess.run(translate, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    result = subprocess.run(translate, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     print(result.stdout.decode("utf-8").strip())
     if result.returncode != 0 or not os.path.isfile(outhtml):
       if os.path.isfile(outhtml):
