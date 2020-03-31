@@ -106,9 +106,11 @@ void generateContent_(Context &context) {
     // TODO this breaks back translation
     context.sharedStringsDocument =
         common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
-    common::XmlUtil::recursiveVisitElementsWithName(
-        context.sharedStringsDocument->RootElement(), "si",
-        [&](const auto &child) { context.sharedStrings.push_back(&child); });
+    if (context.sharedStringsDocument) {
+      common::XmlUtil::recursiveVisitElementsWithName(
+          context.sharedStringsDocument->RootElement(), "si",
+          [&](const auto &child) { context.sharedStrings.push_back(&child); });
+    }
 
     common::XmlUtil::recursiveVisitElementsWithName(
         xls->RootElement(), "sheet", [&](const auto &e) {
