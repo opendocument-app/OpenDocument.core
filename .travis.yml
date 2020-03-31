@@ -1,7 +1,13 @@
 language: cpp
-compiler: clang
-os: linux
+
+os:
+  - linux
+  - osx
 dist: bionic
+
+compiler:
+  - gcc
+  - clang
 
 addons:
   apt:
