@@ -1,7 +1,13 @@
 language: cpp
-compiler: clang
-os: linux
+
+os:
+  - linux
+  - osx
 dist: bionic
+
+compiler:
+  - gcc
+  - clang
 
 addons:
   apt:
@@ -11,7 +17,6 @@ addons:
       key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
     packages:
       - clang-9
-      - ninja-build
   snaps:
     - tidy
 
@@ -47,7 +52,7 @@ script:
 
   # build latest
   - mkdir -p $BUILD_LATEST
-  - cd $BUILD_LATEST; cmake -GNinja $CORE_DIR
+  - cd $BUILD_LATEST; cmake $CORE_DIR
   - cmake --build .
 
   # run unit tests
@@ -60,7 +65,7 @@ script:
   # build reference
   - cd $CORE_DIR; git checkout $CORE_REF
   - mkdir -p $BUILD_REFERENCE
-  - cd $BUILD_REFERENCE; cmake -GNinja $CORE_DIR
+  - cd $BUILD_REFERENCE; cmake $CORE_DIR
   - cmake --build .
 
   # run reference translation
