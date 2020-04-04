@@ -1,9 +1,9 @@
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <odr/Config.h>
 #include <odr/Meta.h>
 #include <odr/OpenDocumentReader.h>
 #include <string>
-#include <nlohmann/json.hpp>
 
 namespace {
 std::string type_to_string(const odr::FileType type) {
@@ -42,10 +42,10 @@ nlohmann::json meta_to_json(const odr::FileMeta &meta) {
   if (!meta.entries.empty()) {
     for (auto &&e : meta.entries) {
       result["entries"].push_back({
-                                         {"name", e.name},
-                                         {"rowCount", e.rowCount},
-                                         {"columnCount", e.columnCount},
-                                         {"notes", e.notes},
+          {"name", e.name},
+          {"rowCount", e.rowCount},
+          {"columnCount", e.columnCount},
+          {"notes", e.notes},
       });
     }
   }
