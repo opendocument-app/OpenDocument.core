@@ -10,3 +10,11 @@ target_link_libraries(back_translate
         odr_access
         odr
         )
+
+add_executable(meta src/meta.cpp)
+target_link_libraries(meta
+        PRIVATE
+        nlohmann_json::nlohmann_json
+
+        odr
+        )
