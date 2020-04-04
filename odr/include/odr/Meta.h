@@ -50,6 +50,8 @@ struct FileMeta {
   bool encrypted{false};
   std::uint32_t entryCount{0};
   std::vector<Entry> entries;
+
+  std::string typeAsString() const noexcept;
 };
 
 } // namespace odr
