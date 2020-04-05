@@ -26,15 +26,23 @@ addons:
 env:
   global:
     - TEST_REPO=https://github.com/TomTasche/OpenDocument.test.git
+    # repo dir
     - CORE_DIR=$TRAVIS_BUILD_DIR
     - TEST_DIR=$TRAVIS_BUILD_DIR/../OpenDocument.test
+    # tool
     - TOOL_DIR=$HOME/tools
     - TRANSLATION_TOOL=$TOOL_DIR/translate.py
     - RENDER_TOOL=$TOOL_DIR/render.py
-    - BUILD_LATEST=$HOME/build-latest
-    - BUILD_REFERENCE=$HOME/build-reference
-    - OUTPUT_LATEST=$HOME/output-latest
-    - OUTPUT_REFERENCE=$HOME/output-reference
+    - IMAGEDIFF_TOOL=$TOOL_DIR/imagediff.py
+    # build
+    - BUILD_DIR_LATEST=$HOME/build-latest
+    - BUILD_DIR_REFERENCE=$HOME/build-reference
+    # output
+    - OUTPUT_DIR=$HOME/output
+    - OUTPUT_DIR_LATEST_HTML=$OUTPUT_DIR/latest/html
+    - OUTPUT_DIR_LATEST_IMAGE=$OUTPUT_DIR/latest/image
+    - OUTPUT_DIR_REFERENCE_HTML=$OUTPUT_DIR/reference/html
+    - OUTPUT_DIR_REFERENCE_IMAGE=$OUTPUT_DIR/reference/image
 
 cache:
   ccache: true
@@ -42,6 +50,7 @@ cache:
     - $TEST_DIR
 
 before_install:
+  # get test repo
   - echo -e "machine github.com\n  login $CI_USER_TOKEN" > ~/.netrc
   - |
     if [ ! -d $TEST_DIR ] || [ -z "$(ls -A $TEST_DIR)"]; then
@@ -49,37 +58,49 @@ before_install:
     else
       git -C $TEST_DIR pull
     fi
+
+install:
   # install phantomjs for ubuntu
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then .travis/ubuntu_install_phantomjs.sh; fi
   # copy tools
   - cp -a $CORE_DIR/.travis $TOOL_DIR
+  - pip install -r .travis/requirements.txt
 
 script:
   # build latest
-  - mkdir -p $BUILD_LATEST
-  - cd $BUILD_LATEST; cmake $CORE_DIR
+  - mkdir -p $BUILD_DIR_LATEST
+  - cd $BUILD_DIR_LATEST; cmake $CORE_DIR
   - cmake --build .
 
   # run unit tests
-  - $BUILD_LATEST/test/odr_test
+  - $BUILD_DIR_LATEST/test/odr_test
 
-  # run latest translation and render
-  - mkdir -p $OUTPUT_LATEST
-  - $TRANSLATION_TOOL $BUILD_LATEST/cli/translate $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
-  - $RENDER_TOOL "phantomjs $TOOL_DIR/render.js" $OUTPUT_LATEST $OUTPUT_LATEST/*.html
+  # run latest translation
+  - mkdir -p $OUTPUT_DIR_LATEST_HTML
+  - $TRANSLATION_TOOL $BUILD_DIR_LATEST/cli/translate $OUTPUT_DIR_LATEST_HTML $TEST_DIR/od?/* $TEST_DIR/???x/*
+
+  # run latest render
+  - mkdir -p $OUTPUT_DIR_LATEST_IMAGE
+  - $RENDER_TOOL "phantomjs $TOOL_DIR/render.js" $OUTPUT_DIR_LATEST_IMAGE $OUTPUT_DIR_LATEST_HTML/*.html
 
   # build reference
   - cd $CORE_DIR; git checkout $CORE_REF
-  - mkdir -p $BUILD_REFERENCE
-  - cd $BUILD_REFERENCE; cmake $CORE_DIR
+  - mkdir -p $BUILD_DIR_LATEST
+  - cd $BUILD_DIR_REFERENCE; cmake $CORE_DIR
   - cmake --build .
 
-  # run reference translation and render
-  - mkdir -p $OUTPUT_REFERENCE
-  - $TRANSLATION_TOOL $BUILD_REFERENCE/cli/translate $OUTPUT_REFERENCE $TEST_DIR/od?/* $TEST_DIR/???x/*
-  - $RENDER_TOOL "phantomjs $TOOL_DIR/render.js" $OUTPUT_REFERENCE $OUTPUT_LATEST/*.html
+  # run reference translation
+  - mkdir -p $OUTPUT_DIR_REFERENCE_HTML
+  - $TRANSLATION_TOOL $BUILD_DIR_REFERENCE/cli/translate $OUTPUT_DIR_REFERENCE_HTML $TEST_DIR/od?/* $TEST_DIR/???x/*
 
-  # compare output directories
-  - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_LATEST/*.html 2> /dev/null || true # TODO remove null and true
-  - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_REFERENCE/*.html 2> /dev/null || true # TODO remove null and true
-  - diff $OUTPUT_LATEST $OUTPUT_REFERENCE
+  # run reference render
+  - mkdir -p $OUTPUT_DIR_REFERENCE_IMAGE
+  - $RENDER_TOOL "phantomjs $TOOL_DIR/render.js" $OUTPUT_DIR_REFERENCE_IMAGE $OUTPUT_DIR_REFERENCE_HTML/*.html
+
+  # tidy and compare html output
+  - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_DIR_LATEST_HTML/*.html 2> /dev/null || true # TODO remove null and true
+  - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_DIR_REFERENCE_HTML/*.html 2> /dev/null || true # TODO remove null and true
+  - diff $OUTPUT_DIR_LATEST_HTML $OUTPUT_DIR_REFERENCE_HTML
+
+  # compare image output
+  - $IMAGEDIFF_TOOL --ssim-limit 0.99 $OUTPUT_DIR_LATEST_IMAGE $OUTPUT_DIR_REFERENCE_IMAGE

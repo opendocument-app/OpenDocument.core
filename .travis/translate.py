@@ -7,7 +7,7 @@ import argparse
 import subprocess
 
 def main():
-  parser = argparse.ArgumentParser(description='')
+  parser = argparse.ArgumentParser()
   parser.add_argument('translator')
   parser.add_argument('output')
   parser.add_argument('input', nargs='+')
