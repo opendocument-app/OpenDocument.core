@@ -1,13 +1,9 @@
 language: cpp
 
-os:
-  - linux
-  - osx
+os: linux
 dist: bionic
 
-compiler:
-  - gcc
-  - clang
+compiler: clang
 
 python: "3.6"
 
