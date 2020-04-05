@@ -71,6 +71,8 @@ install:
 
 script:
   # build latest
+  - cd $CORE_DIR
+  - git log --pretty=oneline --abbrev-commit -n 5
   - mkdir -p $BUILD_DIR_LATEST
   - cd $BUILD_DIR_LATEST
   - cmake $CORE_DIR
@@ -90,7 +92,7 @@ script:
   # build reference
   - cd $CORE_DIR
   - git checkout $CORE_REF
-  - git log
+  - git log --pretty=oneline --abbrev-commit -n 5
   - mkdir -p $BUILD_DIR_REFERENCE
   - cd $BUILD_DIR_REFERENCE
   - cmake $CORE_DIR
