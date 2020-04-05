@@ -89,7 +89,7 @@ script:
 
   # build reference
   - cd $CORE_DIR; git checkout $CORE_REF
-  - mkdir -p $BUILD_DIR_LATEST
+  - mkdir -p $BUILD_DIR_REFERENCE
   - cd $BUILD_DIR_REFERENCE; cmake $CORE_DIR
   - cmake --build .
 
