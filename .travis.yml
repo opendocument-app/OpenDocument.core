@@ -19,6 +19,9 @@ addons:
       - clang-9
   snaps:
     - tidy
+  homebrew:
+    taps: homebrew/cask
+    casks: phantomjs
 
 env:
   global:
@@ -46,6 +49,7 @@ before_install:
     else
       git -C $TEST_DIR pull
     fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then .travis/ubuntu_install_phantomjs.sh; fi
 
 script:
   # copy tools
@@ -59,7 +63,7 @@ script:
   # run unit tests
   - $BUILD_LATEST/test/odr_test
 
-  # run latest
+  # run latest translation and render
   - mkdir -p $OUTPUT_LATEST
   - $TRANSLATION_TOOL $BUILD_LATEST/cli/translate $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
   - $RENDER_TOOL phantomjs $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
@@ -70,7 +74,7 @@ script:
   - cd $BUILD_REFERENCE; cmake $CORE_DIR
   - cmake --build .
 
-  # run reference
+  # run reference translation and render
   - mkdir -p $OUTPUT_REFERENCE
   - $TRANSLATION_TOOL $BUILD_REFERENCE/cli/translate $OUTPUT_REFERENCE $TEST_DIR/od?/* $TEST_DIR/???x/*
   - $RENDER_TOOL phantomjs $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
