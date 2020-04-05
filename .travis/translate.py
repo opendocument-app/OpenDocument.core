@@ -19,17 +19,17 @@ def main():
     password = re.search('\$(.*)\$', infile)
     password = password.group(1) if password else None
     outhtml = os.path.join(args.output, os.path.basename(infile) + '.html')
-
     print('translate %s to %s' % (infile, outhtml))
 
-    translate = [args.translator, infile, outhtml]
+    cmd = [args.translator, infile, outhtml]
     if password:
-      translate.append(password)
-    result = subprocess.run(translate, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    print(result.stdout.decode("utf-8").strip())
+      cmd.append(password)
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if result.returncode != 0 or not os.path.isfile(outhtml):
-      if os.path.isfile(outhtml):
-        os.remove(outhtml)
+      try:
+        os.remove(outimage)
+      except OSError:
+        pass
       failed.append(infile)
       print('FAILED')
       continue
