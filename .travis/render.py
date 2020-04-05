@@ -20,11 +20,13 @@ def main():
 
     print('render %s to %s' % (infile, outimage))
 
-    render = shlex.split(args.renderer) + [infile, outimage]
-    result = subprocess.run(render, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    cmd = shlex.split(args.renderer) + [infile, outimage]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if result.returncode != 0 or not os.path.isfile(outimage):
-      if os.path.isfile(outimage):
+      try:
         os.remove(outimage)
+      except OSError:
+        pass
       failed.append(infile)
       print('FAILED')
       continue
