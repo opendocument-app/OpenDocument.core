@@ -25,6 +25,7 @@ addons:
 
 env:
   global:
+    - CORE_REF=${CORE_REF:-3dd7eb19dcd954a0878772cc5399378287075f16}
     - TEST_REPO=https://github.com/TomTasche/OpenDocument.test.git
     # repo dir
     - CORE_DIR=$TRAVIS_BUILD_DIR
