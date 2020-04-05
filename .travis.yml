@@ -9,6 +9,8 @@ compiler:
   - gcc
   - clang
 
+python: "3.6"
+
 addons:
   apt:
     sources:
@@ -66,7 +68,7 @@ install:
   # copy tools
   - cp -a $CORE_DIR/.travis $TOOL_DIR
   # python tools dependencies
-  - pip3 install -r .travis/requirements.txt
+  - pip install -r .travis/requirements.txt
 
 script:
   # build latest
