@@ -20,9 +20,6 @@ addons:
       - clang-9
   snaps:
     - tidy
-  homebrew:
-    taps: homebrew/cask
-    casks: phantomjs
 
 env:
   global:
@@ -66,8 +63,6 @@ before_install:
   - pyenv global $PYTHON
 
 install:
-  # phantomjs for ubuntu
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then .travis/ubuntu-install-phantomjs.sh; fi
   # copy tools
   - cp -a $CORE_DIR/.travis $TOOL_DIR
   # python tools dependencies
