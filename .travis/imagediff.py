@@ -4,13 +4,13 @@ import os
 import sys
 import argparse
 import cv2
-from skimage.metrics import structural_similarity
+from skimage.measure import compare_ssim
 import filecmp
 
 def imagediff(a, b):
   imageA = cv2.imread(a)
   imageB = cv2.imread(b)
-  ssim, diff = structural_similarity(imageA, imageB, full=True, multichannel=True)
+  ssim, diff = compare_ssim(imageA, imageB, full=True, multichannel=True)
   return ssim
 
 def main():
