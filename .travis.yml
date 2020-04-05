@@ -66,7 +66,7 @@ install:
   # copy tools
   - cp -a $CORE_DIR/.travis $TOOL_DIR
   # python tools dependencies
-  - pip install -r .travis/requirements.txt
+  - pip3 install -r .travis/requirements.txt
 
 script:
   # build latest
