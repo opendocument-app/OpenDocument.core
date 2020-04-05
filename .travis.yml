@@ -48,6 +48,7 @@ env:
 
 cache:
   ccache: true
+  pip: true
   directories:
     - $TEST_DIR
 
