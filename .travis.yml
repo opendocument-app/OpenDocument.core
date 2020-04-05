@@ -70,7 +70,8 @@ script:
   # build latest
   - echo -en 'travis_fold:start:script.1\\r'
   - mkdir -p $BUILD_DIR_LATEST
-  - cd $BUILD_DIR_LATEST; cmake $CORE_DIR
+  - cd $BUILD_DIR_LATEST
+  - cmake $CORE_DIR
   - cmake --build .
   - echo -en 'travis_fold:end:script.1\\r'
 
@@ -93,10 +94,12 @@ script:
 
   # build reference
   - echo -en 'travis_fold:start:script.5\\r'
-  - cd $CORE_DIR; git checkout $CORE_REF
+  - cd $CORE_DIR
+  - git checkout $CORE_REF
   - git log
   - mkdir -p $BUILD_DIR_REFERENCE
-  - cd $BUILD_DIR_REFERENCE; cmake $CORE_DIR
+  - cd $BUILD_DIR_REFERENCE
+  - cmake $CORE_DIR
   - cmake --build .
   - echo -en 'travis_fold:end:script.5\\r'
 
