@@ -1,5 +1,8 @@
 language: cpp
 
+git:
+  depth: false
+
 os: linux
 dist: bionic
 
