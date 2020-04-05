@@ -2,13 +2,13 @@
 
 import os
 import sys
-import re
 import argparse
 import subprocess
+import shlex
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('translator')
+  parser.add_argument('renderer')
   parser.add_argument('output')
   parser.add_argument('input', nargs='+')
   args = parser.parse_args()
@@ -16,16 +16,13 @@ def main():
   failed = []
 
   for infile in args.input:
-    password = re.search('\$(.*)\$', infile)
-    password = password.group(1) if password else None
-    outhtml = os.path.join(args.output, os.path.basename(infile) + '.html')
-    print('translate %s to %s' % (infile, outhtml))
+    outimage = os.path.join(args.output, os.path.splitext(os.path.basename(infile))[0] + '.png')
 
-    cmd = [args.translator, infile, outhtml]
-    if password:
-      cmd.append(password)
+    print('render %s to %s' % (infile, outimage))
+
+    cmd = shlex.split(args.renderer) + [infile, outimage]
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    if result.returncode != 0 or not os.path.isfile(outhtml):
+    if result.returncode != 0 or not os.path.isfile(outimage):
       try:
         os.remove(outimage)
       except OSError:
@@ -36,7 +33,7 @@ def main():
 
   if not failed:
     return 0
-  print('translation failed for the following files:')
+  print('render failed for the following files:')
   print('\n'.join(failed))
   return 1
 
