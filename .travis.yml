@@ -27,7 +27,7 @@ addons:
 
 env:
   global:
-    - CORE_REF=${CORE_REF:-3dd7eb19dcd954a0878772cc5399378287075f16}
+    - CORE_REF=${CORE_REF:-master}
     - TEST_REPO=https://github.com/TomTasche/OpenDocument.test.git
     # repo dir
     - CORE_DIR=$TRAVIS_BUILD_DIR
@@ -89,6 +89,7 @@ script:
 
   # build reference
   - cd $CORE_DIR; git checkout $CORE_REF
+  - git log
   - mkdir -p $BUILD_DIR_REFERENCE
   - cd $BUILD_DIR_REFERENCE; cmake $CORE_DIR
   - cmake --build .
