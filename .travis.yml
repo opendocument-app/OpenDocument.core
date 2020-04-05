@@ -49,7 +49,9 @@ before_install:
     else
       git -C $TEST_DIR pull
     fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo .travis/ubuntu_install_phantomjs.sh; fi
+  - ls -la
+  - ls -la .travis
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then .travis/ubuntu_install_phantomjs.sh; fi
 
 script:
   # copy tools
