@@ -28,6 +28,7 @@ env:
   global:
     - CORE_REF=${CORE_REF:-master}
     - TEST_REPO=https://github.com/TomTasche/OpenDocument.test.git
+    - PYTHON=3.6
     # repo dir
     - CORE_DIR=$TRAVIS_BUILD_DIR
     - TEST_DIR=$TRAVIS_BUILD_DIR/../OpenDocument.test
@@ -61,6 +62,8 @@ before_install:
     else
       git -C $TEST_DIR pull
     fi
+  # set python version
+  - pyenv global $PYTHON
 
 install:
   # phantomjs for ubuntu
@@ -68,7 +71,7 @@ install:
   # copy tools
   - cp -a $CORE_DIR/.travis $TOOL_DIR
   # python tools dependencies
-  - pip3 install -r .travis/requirements.txt
+  - pip install -r .travis/requirements.txt
 
 script:
   # build latest
