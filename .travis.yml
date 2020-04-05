@@ -30,7 +30,7 @@ env:
     - TEST_DIR=$TRAVIS_BUILD_DIR/../OpenDocument.test
     - TOOL_DIR=$HOME/tools
     - TRANSLATION_TOOL=$TOOL_DIR/translate.py
-    - RENDER_TOOL=$TOOL_DIR/render.py
+    - RENDER_TOOL=$TOOL_DIR/render.py "phantomjs $TOOL_DIR/render.js"
     - BUILD_LATEST=$HOME/build-latest
     - BUILD_REFERENCE=$HOME/build-reference
     - OUTPUT_LATEST=$HOME/output-latest
@@ -49,14 +49,12 @@ before_install:
     else
       git -C $TEST_DIR pull
     fi
-  - ls -la
-  - ls -la .travis
+  # install phantomjs for ubuntu
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then .travis/ubuntu_install_phantomjs.sh; fi
-
-script:
   # copy tools
   - cp -a $CORE_DIR/.travis $TOOL_DIR
 
+script:
   # build latest
   - mkdir -p $BUILD_LATEST
   - cd $BUILD_LATEST; cmake $CORE_DIR
@@ -68,7 +66,7 @@ script:
   # run latest translation and render
   - mkdir -p $OUTPUT_LATEST
   - $TRANSLATION_TOOL $BUILD_LATEST/cli/translate $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
-  - $RENDER_TOOL phantomjs $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
+  - $RENDER_TOOL $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
 
   # build reference
   - cd $CORE_DIR; git checkout $CORE_REF
@@ -79,7 +77,7 @@ script:
   # run reference translation and render
   - mkdir -p $OUTPUT_REFERENCE
   - $TRANSLATION_TOOL $BUILD_REFERENCE/cli/translate $OUTPUT_REFERENCE $TEST_DIR/od?/* $TEST_DIR/???x/*
-  - $RENDER_TOOL phantomjs $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
+  - $RENDER_TOOL $OUTPUT_LATEST $TEST_DIR/od?/* $TEST_DIR/???x/*
 
   # compare output directories
   - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_LATEST/*.html 2> /dev/null || true # TODO remove null and true
