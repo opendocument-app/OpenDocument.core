@@ -11,6 +11,7 @@ def main():
   parser.add_argument('output')
   parser.add_argument('input', nargs='+')
   args = parser.parse_args()
+  print(args)
 
   failed = []
 
