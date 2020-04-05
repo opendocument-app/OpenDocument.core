@@ -61,10 +61,11 @@ before_install:
     fi
 
 install:
-  # install phantomjs for ubuntu
+  # phantomjs for ubuntu
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then .travis/ubuntu_install_phantomjs.sh; fi
   # copy tools
   - cp -a $CORE_DIR/.travis $TOOL_DIR
+  # python tools dependencies
   - pip install -r .travis/requirements.txt
 
 script:
