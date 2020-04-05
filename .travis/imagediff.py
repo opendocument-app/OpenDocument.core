@@ -20,6 +20,7 @@ def main():
   parser.add_argument('--ssim-limit', type=float, default=0.99)
   args = parser.parse_args()
 
+  missing = False
   min_ssim = 1
 
   if os.path.isdir(args.a) and os.path.isdir(args.b):
@@ -28,6 +29,7 @@ def main():
       ssim = imagediff(os.path.join(args.a, file), os.path.join(args.b, file))
       min_ssim = min(ssim, min_ssim)
       print('ssim {} for {}'.format(ssim, file))
+    missing = dircmp.left_only or dircmp.right_only
     for a in dircmp.left_only:
       print('left only {}'.formt(a))
     for b in dircmp.right_only:
@@ -37,7 +39,7 @@ def main():
     min_ssim = min(ssim, min_ssim)
     print('ssim {} for {} vs {}'.format(ssim, args.a, args.b))
 
-  if min_ssim < args.ssim_limit:
+  if missing or min_ssim < args.ssim_limit:
     return 1
   return 0
 

@@ -105,7 +105,7 @@ script:
   # tidy and compare html output
   - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_DIR_LATEST_HTML/*.html 2> /dev/null || true # TODO remove null and true
   - tidy -i -m -w 160 -ashtml -utf8 $OUTPUT_DIR_REFERENCE_HTML/*.html 2> /dev/null || true # TODO remove null and true
-  - diff $OUTPUT_DIR_LATEST_HTML $OUTPUT_DIR_REFERENCE_HTML
+  - diff -qrN $OUTPUT_DIR_LATEST_HTML $OUTPUT_DIR_REFERENCE_HTML
 
   # compare image output
   - $IMAGEDIFF_TOOL --ssim-limit 0.99 $OUTPUT_DIR_LATEST_IMAGE $OUTPUT_DIR_REFERENCE_IMAGE
