@@ -4,7 +4,8 @@
 #include <odr/OpenDocumentReader.h>
 #include <string>
 
-static void print_meta(const odr::OpenDocumentReader &odr) {
+namespace {
+void print_meta(const odr::OpenDocumentReader &odr) {
   const auto &meta = odr.getMeta();
 
   std::cout << "type " << (int)meta.type << " ";
@@ -50,6 +51,7 @@ static void print_meta(const odr::OpenDocumentReader &odr) {
 
   std::cout << std::endl;
 }
+} // namespace
 
 int main(int argc, char **argv) {
   const std::string input(argv[1]);
@@ -60,7 +62,7 @@ int main(int argc, char **argv) {
   if (hasPassword)
     password = argv[3];
 
-  odr::Config config = {};
+  odr::Config config;
   config.entryOffset = 0;
   config.entryCount = 0;
   config.editable = true;
@@ -84,5 +86,6 @@ int main(int argc, char **argv) {
   if (!success)
     return 3;
 
+  odr.close();
   return 0;
 }

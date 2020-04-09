@@ -41,14 +41,14 @@ enum class FileType {
 struct FileMeta {
   struct Entry {
     std::string name;
-    std::uint32_t rowCount = 0;
-    std::uint32_t columnCount = 0;
+    std::uint32_t rowCount{0};
+    std::uint32_t columnCount{0};
     std::string notes;
   };
 
-  FileType type = FileType::UNKNOWN;
-  bool encrypted;
-  std::uint32_t entryCount;
+  FileType type{FileType::UNKNOWN};
+  bool encrypted{false};
+  std::uint32_t entryCount{0};
   std::vector<Entry> entries;
 };
 

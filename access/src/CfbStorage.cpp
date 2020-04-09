@@ -15,8 +15,8 @@ namespace access {
 namespace {
 namespace CFB {
 
-static constexpr auto MAGIC = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
-static constexpr std::size_t MAX_REG_SECT = 0xFFFFFFFA;
+constexpr auto MAGIC = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
+constexpr std::size_t MAX_REG_SECT = 0xFFFFFFFA;
 
 #pragma pack(push, 1)
 
@@ -80,7 +80,7 @@ struct PropertySetHeader {
 
 #pragma pack(pop)
 
-static std::uint32_t ParseUint32(const void *buffer) {
+std::uint32_t ParseUint32(const void *buffer) {
   return *static_cast<const std::uint32_t *>(buffer);
 }
 

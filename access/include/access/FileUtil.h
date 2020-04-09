@@ -1,5 +1,5 @@
-#ifndef ODR_FILEUTIL_H
-#define ODR_FILEUTIL_H
+#ifndef ODR_ACCESS_FILE_UTIL_H
+#define ODR_ACCESS_FILE_UTIL_H
 
 #include <string>
 
@@ -13,4 +13,4 @@ extern std::string read(const std::string &);
 } // namespace access
 } // namespace odr
 
-#endif // ODR_FILEUTIL_H
+#endif // ODR_ACCESS_FILE_UTIL_H

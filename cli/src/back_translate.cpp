@@ -9,7 +9,7 @@ int main(int, char **argv) {
   const std::string diff(argv[3]);
   const std::string output(argv[2]);
 
-  odr::Config config = {};
+  odr::Config config;
   config.entryOffset = 0;
   config.entryCount = 0;
   config.editable = true;
@@ -26,9 +26,13 @@ int main(int, char **argv) {
     return 2;
 
   const std::string backDiff = odr::access::FileUtil::read(diff);
-  success = odr.backTranslate(backDiff, output);
+  success = odr.edit(backDiff);
   if (!success)
     return 3;
+  success = odr.save(output);
+  if (!success)
+    return 4;
 
+  odr.close();
   return 0;
 }

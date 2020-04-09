@@ -1,7 +1,7 @@
-#ifndef ODR_OPENDOCUMENTMETA_H
-#define ODR_OPENDOCUMENTMETA_H
+#ifndef ODR_ODF_META_H
+#define ODR_ODF_META_H
 
-#include "access/Path.h"
+#include <access/Path.h>
 #include <exception>
 #include <string>
 #include <unordered_map>
@@ -15,23 +15,17 @@ struct FileMeta;
 
 namespace access {
 class Storage;
-}
+} // namespace access
 } // namespace odr
 
 namespace odr {
 namespace odf {
 
-class NoOpenDocumentFileException : public std::exception {
-public:
-  const char *what() const noexcept override {
-    return "not a open document file";
-  }
-
-private:
+struct NoOpenDocumentFileException final : public std::exception {
+  const char *what() const noexcept final { return "not a open document file"; }
 };
 
-namespace OpenDocumentMeta {
-
+namespace Meta {
 enum class ChecksumType { UNKNOWN, SHA256, SHA1, SHA256_1K, SHA1_1K };
 enum class AlgorithmType { UNKNOWN, AES256_CBC, TRIPLE_DES_CBC, BLOWFISH_CFB };
 enum class KeyDerivationType { UNKNOWN, PBKDF2 };
@@ -60,14 +54,13 @@ struct Manifest {
   const Entry *smallestFileEntry;
 };
 
-extern FileMeta parseFileMeta(access::Storage &storage, bool decrypted);
+FileMeta parseFileMeta(const access::Storage &storage, bool decrypted);
 
-extern Manifest parseManifest(access::Storage &storage);
-extern Manifest parseManifest(const tinyxml2::XMLDocument &manifest);
-
-} // namespace OpenDocumentMeta
+Manifest parseManifest(const access::Storage &storage);
+Manifest parseManifest(const tinyxml2::XMLDocument &manifest);
+} // namespace Meta
 
 } // namespace odf
 } // namespace odr
 
-#endif // ODR_OPENDOCUMENTMETA_H
+#endif // ODR_ODF_META_H

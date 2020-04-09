@@ -1,5 +1,5 @@
-#ifndef ODR_CFBSTORAGE_H
-#define ODR_CFBSTORAGE_H
+#ifndef ODR_ACCESS_CFB_STORAGE_H
+#define ODR_ACCESS_CFB_STORAGE_H
 
 #include <access/Storage.h>
 
@@ -40,4 +40,4 @@ private:
 } // namespace access
 } // namespace odr
 
-#endif // ODR_CFBSTORAGE_H
+#endif // ODR_ACCESS_CFB_STORAGE_H

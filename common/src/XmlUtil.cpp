@@ -7,6 +7,16 @@
 namespace odr {
 namespace common {
 
+namespace {
+inline void visitIfElement_(const tinyxml2::XMLNode &node,
+                            XmlUtil::ElementVisiter visiter) {
+  const tinyxml2::XMLElement *element = node.ToElement();
+  if (element == nullptr)
+    return;
+  visiter(*element);
+}
+} // namespace
+
 std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(const std::string &in) {
   auto result = std::make_unique<tinyxml2::XMLDocument>();
   tinyxml2::XMLError error = result->Parse(in.data(), in.size());
@@ -24,14 +34,6 @@ XmlUtil::parse(const access::Storage &storage, const access::Path &path) {
   if (!storage.isReadable(path))
     return nullptr;
   return parse(access::StorageUtil::read(storage, path));
-}
-
-static inline void visitIfElement(const tinyxml2::XMLNode &node,
-                                  XmlUtil::ElementVisiter visiter) {
-  const tinyxml2::XMLElement *element = node.ToElement();
-  if (element == nullptr)
-    return;
-  visiter(*element);
 }
 
 const tinyxml2::XMLElement *
@@ -55,8 +57,8 @@ void XmlUtil::visitNodeChildren(const tinyxml2::XMLNode &node,
 
 void XmlUtil::visitElementChildren(const tinyxml2::XMLElement &element,
                                    ElementVisiter visiter) {
-  visitNodeChildren(element,
-                    [&](const auto &child) { visitIfElement(child, visiter); });
+  visitNodeChildren(
+      element, [&](const auto &child) { visitIfElement_(child, visiter); });
 }
 
 void XmlUtil::visitElementAttributes(const tinyxml2::XMLElement &element,

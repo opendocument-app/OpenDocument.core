@@ -1,5 +1,5 @@
-#ifndef ODR_CHILDSTORAGE_H
-#define ODR_CHILDSTORAGE_H
+#ifndef ODR_ACCESS_CHILD_STORAGE_H
+#define ODR_ACCESS_CHILD_STORAGE_H
 
 #include <access/Path.h>
 #include <access/Storage.h>
@@ -36,4 +36,4 @@ private:
 } // namespace access
 } // namespace odr
 
-#endif // ODR_CHILDSTORAGE_H
+#endif // ODR_ACCESS_CHILD_STORAGE_H

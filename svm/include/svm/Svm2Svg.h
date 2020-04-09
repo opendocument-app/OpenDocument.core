@@ -1,5 +1,5 @@
-#ifndef ODR_SVM2SVG_H
-#define ODR_SVM2SVG_H
+#ifndef ODR_SVM_SVM2SVG_H
+#define ODR_SVM_SVM2SVG_H
 
 #include <iostream>
 #include <memory>
@@ -7,11 +7,11 @@
 namespace odr {
 namespace svm {
 
-namespace Svm2Svg {
-bool translate(std::istream &in, std::ostream &out);
+namespace Translator {
+bool svg(std::istream &in, std::ostream &out);
 }
 
 } // namespace svm
 } // namespace odr
 
-#endif // ODR_SVM2SVG_H
+#endif // ODR_SVM_SVM2SVG_H

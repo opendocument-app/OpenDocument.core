@@ -9,6 +9,7 @@
 namespace odr {
 namespace svm {
 
+namespace {
 enum TextEncoding {
   RTL_TEXTENCODING_DONTKNOW = 0,
   RTL_TEXTENCODING_ASCII_US = 11,
@@ -73,19 +74,17 @@ enum MetaActionType {
   META_COMMENT_ACTION = 512,
 };
 
-template <typename T> static void readPrimitive(std::istream &in, T &out) {
+template <typename T> void readPrimitive(std::istream &in, T &out) {
   in.read((char *)&out, sizeof(out));
 }
 
-static std::string readAsciiString(std::istream &in,
-                                   const std::uint32_t length) {
+std::string readAsciiString(std::istream &in, const std::uint32_t length) {
   std::string result(length, ' ');
   in.read((char *)result.data(), result.size());
   return result;
 }
 
-static std::string readUtf16String(std::istream &in,
-                                   const std::uint32_t length) {
+std::string readUtf16String(std::istream &in, const std::uint32_t length) {
   std::u16string resultU16(length, ' ');
   in.read((char *)resultU16.data(), length * 2);
   std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> conversion;
@@ -93,33 +92,33 @@ static std::string readUtf16String(std::istream &in,
   return result;
 }
 
-static std::string readUint16PrefixedAsciiString(std::istream &in) {
+std::string readUint16PrefixedAsciiString(std::istream &in) {
   uint16_t length;
   readPrimitive(in, length);
   return readAsciiString(in, length);
 }
 
-static std::string readUint32PrefixedUtf16String(std::istream &in) {
+std::string readUint32PrefixedUtf16String(std::istream &in) {
   uint32_t length;
   readPrimitive(in, length);
   return readUtf16String(in, length);
 }
 
-static std::string readUint16PrefixedUtf16String(std::istream &in) {
+std::string readUint16PrefixedUtf16String(std::istream &in) {
   uint16_t length;
   readPrimitive(in, length);
   return readUtf16String(in, length);
 }
 
-static std::string readStringWithEncoding(std::istream &in,
-                                          const TextEncoding encoding) {
+std::string readStringWithEncoding(std::istream &in,
+                                   const TextEncoding encoding) {
   if (encoding == RTL_TEXTENCODING_UCS2) {
     return readUint32PrefixedUtf16String(in);
   }
   return readUint16PrefixedAsciiString(in);
 }
 
-struct VersionLength {
+struct VersionLength final {
   std::uint16_t version;
   std::uint32_t length;
 
@@ -132,7 +131,7 @@ struct VersionLength {
   }
 };
 
-struct IntPair {
+struct IntPair final {
   std::int32_t x;
   std::int32_t y;
 
@@ -142,7 +141,7 @@ struct IntPair {
   }
 };
 
-struct Rectangle {
+struct Rectangle final {
   std::int32_t left;
   std::int32_t top;
   std::int32_t right;
@@ -156,7 +155,7 @@ struct Rectangle {
   }
 };
 
-static std::vector<IntPair> readPolygon(std::istream &in) {
+std::vector<IntPair> readPolygon(std::istream &in) {
   std::vector<IntPair> result;
 
   std::uint16_t size;
@@ -170,7 +169,7 @@ static std::vector<IntPair> readPolygon(std::istream &in) {
   return result;
 }
 
-static std::vector<std::vector<IntPair>> readPolyPolygon(std::istream &in) {
+std::vector<std::vector<IntPair>> readPolyPolygon(std::istream &in) {
   std::vector<std::vector<IntPair>> result;
 
   std::uint16_t size;
@@ -184,7 +183,7 @@ static std::vector<std::vector<IntPair>> readPolyPolygon(std::istream &in) {
   return result;
 }
 
-struct MapMode {
+struct MapMode final {
   std::uint16_t unit;
   IntPair origin;
   IntPair scale_x;
@@ -203,7 +202,7 @@ struct MapMode {
   }
 };
 
-struct LineInfo {
+struct LineInfo final {
   std::uint16_t lineStyle;
   std::int32_t width;
 
@@ -241,7 +240,7 @@ struct LineInfo {
   }
 };
 
-struct Font {
+struct Font final {
   VersionLength vl;
   std::string familyName;
   std::string styleName;
@@ -303,7 +302,7 @@ struct Font {
   }
 };
 
-struct Header {
+struct Header final {
   VersionLength vl;
   std::uint32_t compression_mode;
   MapMode map_mode;
@@ -336,7 +335,7 @@ struct Header {
   }
 };
 
-struct ActionHeader {
+struct ActionHeader final {
   std::uint16_t type;
   VersionLength vl;
 
@@ -346,7 +345,7 @@ struct ActionHeader {
   }
 };
 
-struct PolyLineAction {
+struct PolyLineAction final {
   std::vector<IntPair> points;
   LineInfo lineInfo;
 
@@ -369,7 +368,7 @@ struct PolyLineAction {
   }
 };
 
-struct PolygonAction {
+struct PolygonAction final {
   std::vector<IntPair> points;
 
   void read(std::istream &in, const VersionLength &vl) {
@@ -387,7 +386,7 @@ struct PolygonAction {
   }
 };
 
-struct PolyPolygonAction {
+struct PolyPolygonAction final {
   std::vector<std::vector<IntPair>> polygons;
 
   void read(std::istream &in, const VersionLength &vl) {
@@ -405,7 +404,7 @@ struct PolyPolygonAction {
   }
 };
 
-struct TextAction {
+struct TextAction final {
   IntPair point;
   std::string text;
   std::uint16_t offset;
@@ -424,7 +423,7 @@ struct TextAction {
   }
 };
 
-struct TextArrayAction {
+struct TextArrayAction final {
   IntPair point;
   std::string text;
   std::uint16_t offset;
@@ -450,7 +449,7 @@ struct TextArrayAction {
   }
 };
 
-struct StretchTextAction {
+struct StretchTextAction final {
   IntPair point;
   std::string text;
   std::uint32_t width;
@@ -471,7 +470,7 @@ struct StretchTextAction {
   }
 };
 
-struct TextRectangleAction {
+struct TextRectangleAction final {
   Rectangle rectangle;
   std::string text;
   std::uint16_t style;
@@ -488,7 +487,7 @@ struct TextRectangleAction {
   }
 };
 
-struct TextLineAction {
+struct TextLineAction final {
   IntPair rectangle;
   std::int32_t width;
   std::uint32_t strikeout;
@@ -507,7 +506,7 @@ struct TextLineAction {
   }
 };
 
-struct SVMContext {
+struct SvmContext final {
   std::istream *in;
   std::ostream *out;
   const ActionHeader *action;
@@ -526,7 +525,7 @@ struct SVMContext {
   bool textFillRGBSet;
 };
 
-static std::string getSVGColorString(std::uint32_t color) {
+std::string getSVGColorString(std::uint32_t color) {
   const uint8_t blue = (color >> 0) & 0xFF;
   const uint8_t green = (color >> 8) & 0xFF;
   const uint8_t red = (color >> 16) & 0xFF;
@@ -534,8 +533,8 @@ static std::string getSVGColorString(std::uint32_t color) {
          std::to_string(blue) + ")";
 }
 
-static void writeColorStyle(std::ostream &out, const std::string &prefix,
-                            std::uint32_t color, bool set) {
+void writeColorStyle(std::ostream &out, const std::string &prefix,
+                     std::uint32_t color, bool set) {
   if (set) {
     out << prefix << ":" << getSVGColorString(color);
   } else {
@@ -544,24 +543,24 @@ static void writeColorStyle(std::ostream &out, const std::string &prefix,
   out << ";";
 }
 
-static void writeLineStyle(std::ostream &out, SVMContext &context) {
+void writeLineStyle(std::ostream &out, SvmContext &context) {
   writeColorStyle(out, "stroke", context.lineRGB, context.lineRGBSet);
   out << "vector-effect:non-scaling-stroke;";
   out << "fill:none;";
 }
 
-static void writeFillStyle(std::ostream &out, SVMContext &context) {
+void writeFillStyle(std::ostream &out, SvmContext &context) {
   writeColorStyle(out, "fill", context.fillRGB, context.fillRGBSet);
   out << "stroke:none;";
 }
 
-static void writeTextStyle(std::ostream &out, SVMContext &context) {
+void writeTextStyle(std::ostream &out, SvmContext &context) {
   writeColorStyle(out, "fill", context.textRGB, true);
   out << "font-family:" << context.font.familyName << ";";
   out << "font-size:" << context.font.size.y << ";";
 }
 
-static void writeStyle(std::ostream &out, SVMContext &context, int styles) {
+void writeStyle(std::ostream &out, SvmContext &context, int styles) {
   out << " style=\"";
   switch (styles) {
   case 0:
@@ -580,8 +579,8 @@ static void writeStyle(std::ostream &out, SVMContext &context, int styles) {
   out << "\"";
 }
 
-static void writeRectangle(std::ostream &out, const Rectangle &rect,
-                           SVMContext &context) {
+void writeRectangle(std::ostream &out, const Rectangle &rect,
+                    SvmContext &context) {
   out << "<rect";
   out << " x=\"" << rect.left << "\"";
   out << " y=\"" << rect.top << "\"";
@@ -591,9 +590,9 @@ static void writeRectangle(std::ostream &out, const Rectangle &rect,
   out << " />";
 }
 
-static void writePolygon(std::ostream &out, const std::string &tag,
-                         const std::vector<IntPair> &points, bool fill,
-                         SVMContext &context) {
+void writePolygon(std::ostream &out, const std::string &tag,
+                  const std::vector<IntPair> &points, bool fill,
+                  SvmContext &context) {
   out << "<" << tag;
 
   out << " points=\"";
@@ -612,8 +611,8 @@ static void writePolygon(std::ostream &out, const std::string &tag,
   out << " />";
 }
 
-static void writeText(std::ostream &out, const IntPair &point,
-                      const std::string &text, SVMContext &context) {
+void writeText(std::ostream &out, const IntPair &point, const std::string &text,
+               SvmContext &context) {
   out << "<text";
   out << " x=\"" << point.x << "\"";
   out << " y=\"" << point.y << "\"";
@@ -623,8 +622,8 @@ static void writeText(std::ostream &out, const IntPair &point,
   out << "</text>";
 }
 
-static void translateAction(const ActionHeader &action, std::istream &in,
-                            std::ostream &out, SVMContext &context) {
+void translateAction(const ActionHeader &action, std::istream &in,
+                     std::ostream &out, SvmContext &context) {
   switch (action.type) {
   case META_FILLCOLOR_ACTION:
     readPrimitive(in, context.fillRGB);
@@ -717,13 +716,14 @@ static void translateAction(const ActionHeader &action, std::istream &in,
     break;
   }
 }
+} // namespace
 
-bool Svm2Svg::translate(std::istream &in, std::ostream &out) {
-  SVMContext context = {};
+bool Translator::svg(std::istream &in, std::ostream &out) {
+  SvmContext context{};
   context.in = &in;
   context.out = &out;
 
-  Header header = {};
+  Header header{};
   header.read(in);
 
   context.encoding = RTL_TEXTENCODING_ASCII_US;
@@ -738,7 +738,7 @@ bool Svm2Svg::translate(std::istream &in, std::ostream &out) {
   while (in.peek() != -1) {
     // TODO: check length fields should never exceed file size (limited
     // inputstream?)
-    ActionHeader action = {};
+    ActionHeader action{};
     action.read(in);
     std::int64_t start = in.tellg();
 

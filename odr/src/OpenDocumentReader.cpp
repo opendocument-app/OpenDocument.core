@@ -3,59 +3,176 @@
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <common/Constants.h>
-#include <common/TranslationContext.h>
+#include <crypto/CfbCrypto.h>
 #include <memory>
-#include <odf/OpenDocumentCrypto.h>
-#include <odf/OpenDocumentMeta.h>
-#include <odf/OpenDocumentTranslator.h>
+#include <odf/OpenDocument.h>
 #include <odr/Config.h>
 #include <odr/Meta.h>
 #include <odr/OpenDocumentReader.h>
-#include <ooxml/OfficeOpenXmlCrypto.h>
-#include <ooxml/OfficeOpenXmlMeta.h>
-#include <ooxml/OfficeOpenXmlTranslator.h>
+#include <ooxml/OfficeOpenXml.h>
+#include <glog/logging.h>
 
 namespace odr {
 
 class OpenDocumentReader::Impl final {
+public:
+  FileType guess(const std::string &path) {
+    if (!open(path))
+      return FileType::UNKNOWN;
+    const FileType result = meta_.type;
+    close();
+    return result;
+  }
+
+  bool open(const std::string &path) {
+    if (opened_)
+      close();
+    opened_ = open_(path);
+    decrypted_ = !meta_.encrypted;
+    return opened_;
+  }
+
+  bool open(const std::string &path, const FileType as) {
+    if (opened_)
+      close();
+    opened_ = open_(path, as);
+    decrypted_ = !meta_.encrypted;
+    return opened_;
+  }
+
+  bool save(const std::string &path) {
+    if (!opened_)
+      return false;
+    if (translatorOd_)
+      return translatorOd_->save(path);
+    if (translatorMs_)
+      return translatorMs_->save(path);
+    return false;
+  }
+
+  bool save(const std::string &path, const std::string &password) {
+    if (!opened_)
+      return false;
+    if (translatorOd_)
+      return translatorOd_->save(path, password);
+    if (translatorMs_)
+      return translatorMs_->save(path, password);
+    return false;
+  }
+
+  void close() noexcept {
+    if (!opened_)
+      return;
+    opened_ = false;
+    decrypted_ = false;
+    storage_.reset();
+    meta_ = {};
+    translatorOd_ = nullptr;
+    translatorMs_ = nullptr;
+  }
+
+  bool isOpen() const noexcept { return opened_; }
+
+  bool isDecrypted() const noexcept { return decrypted_; }
+
+  bool canTranslate() const noexcept {
+    if (!opened_)
+      return false;
+    if (translatorOd_)
+      return translatorOd_->canHtml();
+    if (translatorMs_)
+      return translatorMs_->canHtml();
+    return false;
+  }
+
+  bool canEdit() const noexcept {
+    if (!opened_)
+      return false;
+    if (translatorOd_)
+      return translatorOd_->canEdit();
+    if (translatorMs_)
+      return translatorMs_->canEdit();
+    return false;
+  }
+
+  bool canSave(const bool encrypted) const noexcept {
+    if (!opened_)
+      return false;
+    if (translatorOd_)
+      return translatorOd_->canSave(encrypted);
+    if (translatorMs_)
+      return translatorMs_->canSave(encrypted);
+    return false;
+  }
+
+  const FileMeta &getMeta() const noexcept { return meta_; }
+
+  bool decrypt(const std::string &password) {
+    if (!opened_)
+      return false;
+    if (decrypted_)
+      return true;
+    decrypted_ = decrypt_(password);
+    return decrypted_;
+  }
+
+  bool translate(const std::string &path, const Config &config) {
+    if (!canTranslate())
+      return false;
+    if (translatorOd_)
+      return translatorOd_->html(path, config);
+    if (translatorMs_)
+      return translatorMs_->html(path, config);
+    return false;
+  }
+
+  bool edit(const std::string &diff) {
+    if (!canEdit())
+      return false;
+    if (translatorOd_)
+      return translatorOd_->edit(diff);
+    if (translatorMs_)
+      return translatorMs_->edit(diff);
+    return false;
+  }
+
 private:
-  bool opened = false;
-  bool decrypted = false;
-  std::unique_ptr<access::Storage> storage;
-  FileMeta meta;
+  bool opened_{false};
+  bool decrypted_{false};
+  std::unique_ptr<access::Storage> storage_;
+  FileMeta meta_;
 
-  Config config;
-  common::TranslationContext context;
-
-  odf::OpenDocumentTranslator translatorOd;
-  ooxml::OfficeOpenXmlTranslator translatorMs;
+  std::unique_ptr<odf::OpenDocument> translatorOd_;
+  std::unique_ptr<ooxml::OfficeOpenXml> translatorMs_;
 
   bool open_(const std::string &path) {
     try {
-      storage = std::make_unique<access::ZipReader>(path);
+      storage_ = std::make_unique<access::ZipReader>(path);
 
       try {
-        meta = odf::OpenDocumentMeta::parseFileMeta(*storage, false);
+        translatorOd_ = std::make_unique<odf::OpenDocument>(storage_);
+        meta_ = translatorOd_->getMeta();
         return true;
-      } catch (odf::NoOpenDocumentFileException &) {
+      } catch (...) {
       }
       try {
-        meta = ooxml::OfficeOpenXmlMeta::parseFileMeta(*storage);
+        translatorMs_ = std::make_unique<ooxml::OfficeOpenXml>(storage_);
         return true;
-      } catch (ooxml::NoOfficeOpenXmlFileException &) {
+      } catch (...) {
       }
     } catch (access::NoZipFileException &) {
     }
     try {
-      storage = std::make_unique<access::CfbReader>(path);
+      storage_ = std::make_unique<access::CfbReader>(path);
 
       // TODO legacy microsoft documents
 
       {
-        meta = {};
-        meta.type = FileType::COMPOUND_FILE_BINARY_FORMAT;
-        meta.encrypted = storage->isFile("EncryptionInfo") &&
-                         storage->isFile("EncryptedPackage");
+        meta_ = {};
+        meta_.type = FileType::COMPOUND_FILE_BINARY_FORMAT;
+        // TODO out-source
+        meta_.encrypted = storage_->isFile("EncryptionInfo") &&
+                          storage_->isFile("EncryptedPackage");
         return true;
       }
     } catch (access::NoCfbFileException &) {
@@ -65,171 +182,43 @@ private:
     return false;
   }
 
+  bool open_(const std::string &path, const FileType as) {
+    // TODO implement
+    return false;
+  }
+
   bool decrypt_(const std::string &password) {
-    switch (meta.type) {
-    case FileType::OPENDOCUMENT_TEXT:
-    case FileType::OPENDOCUMENT_PRESENTATION:
-    case FileType::OPENDOCUMENT_SPREADSHEET:
-    case FileType::OPENDOCUMENT_GRAPHICS: {
-      const auto manifest = odf::OpenDocumentMeta::parseManifest(*storage);
-      if (!odf::OpenDocumentCrypto::decrypt(storage, manifest, password))
+    if (translatorOd_) {
+      if (!translatorOd_->decrypt(password))
         return false;
-      meta = odf::OpenDocumentMeta::parseFileMeta(*storage, true);
+      meta_ = translatorOd_->getMeta();
       return true;
     }
-    case FileType::COMPOUND_FILE_BINARY_FORMAT: {
+    if (meta_.type == FileType::COMPOUND_FILE_BINARY_FORMAT) {
       // office open xml decryption
-      {
-        const std::string encryptionInfo =
-            access::StreamUtil::read(*storage->read("EncryptionInfo"));
-        ooxml::OfficeOpenXmlCrypto::Util util(encryptionInfo);
-        const std::string key = util.deriveKey(password);
-        if (!util.verify(key))
-          return false;
-        const std::string encryptedPackage =
-            access::StreamUtil::read(*storage->read("EncryptedPackage"));
-        const std::string decryptedPackage =
-            util.decrypt(encryptedPackage, key);
-        storage = std::make_unique<access::ZipReader>(decryptedPackage, false);
-        meta = ooxml::OfficeOpenXmlMeta::parseFileMeta(*storage);
-        return true;
-      }
-
-      // TODO legacy microsoft decryption
-
-      return false;
-    }
-    default:
-      return false;
-    }
-  }
-
-public:
-  FileType guess(const std::string &path) {
-    if (!open(path))
-      return FileType::UNKNOWN;
-    const FileType result = meta.type;
-    close();
-    return result;
-  }
-
-  bool open(const std::string &path) {
-    if (opened)
-      close();
-    opened = open_(path);
-    decrypted = !meta.encrypted;
-    return opened;
-  }
-
-  bool save(const std::string &path) { return false; }
-
-  void close() noexcept {
-    if (!opened)
-      return;
-    opened = false;
-    storage.reset();
-    meta = {};
-    context = {};
-  }
-
-  bool canTranslate() const noexcept {
-    if (!opened)
-      return false;
-    if (!decrypted)
-      return false;
-    switch (meta.type) {
-    case FileType::OPENDOCUMENT_TEXT:
-    case FileType::OPENDOCUMENT_PRESENTATION:
-    case FileType::OPENDOCUMENT_SPREADSHEET:
-    case FileType::OPENDOCUMENT_GRAPHICS:
-    case FileType::OFFICE_OPEN_XML_DOCUMENT:
-    case FileType::OFFICE_OPEN_XML_PRESENTATION:
-    case FileType::OFFICE_OPEN_XML_WORKBOOK:
+      const std::string encryptionInfo =
+          access::StreamUtil::read(*storage_->read("EncryptionInfo"));
+      crypto::CfbCrypto::Util util(encryptionInfo);
+      const std::string key = util.deriveKey(password);
+      if (!util.verify(key))
+        return false;
+      const std::string encryptedPackage =
+          access::StreamUtil::read(*storage_->read("EncryptedPackage"));
+      const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
+      storage_ = std::make_unique<access::ZipReader>(decryptedPackage, false);
+      translatorMs_ = std::make_unique<ooxml::OfficeOpenXml>(storage_);
+      meta_ = translatorMs_->getMeta();
       return true;
-    default:
-      return false;
     }
-  }
-
-  bool canBackTranslate() const noexcept {
-    if (!opened)
-      return false;
-    if (!decrypted)
-      return false;
-    if (!context.config->editable)
-      return false;
-    switch (meta.type) {
-    case FileType::OPENDOCUMENT_TEXT:
-    case FileType::OPENDOCUMENT_PRESENTATION:
-    case FileType::OPENDOCUMENT_SPREADSHEET:
-    case FileType::OPENDOCUMENT_GRAPHICS:
-      return !meta.encrypted;
-    default:
-      return false;
-    }
-  }
-
-  const FileMeta &getMeta() const noexcept { return meta; }
-
-  bool decrypt(const std::string &password) {
-    if (!opened)
-      return false;
-    if (decrypted)
-      return true;
-    decrypted = decrypt_(password);
-    return decrypted;
-  }
-
-  bool translate(const std::string &path, const Config &c) {
-    if (!canTranslate())
-      return false;
-
-    config = c;
-    context = {};
-    context.config = &config;
-    context.meta = &meta;
-    context.storage = storage.get();
-
-    switch (meta.type) {
-    case FileType::OPENDOCUMENT_TEXT:
-    case FileType::OPENDOCUMENT_PRESENTATION:
-    case FileType::OPENDOCUMENT_SPREADSHEET:
-    case FileType::OPENDOCUMENT_GRAPHICS:
-      // TODO: optimize; dont reload xml, dont regenerate styles, ... for same
-      // input file
-      return translatorOd.translate(path, context);
-    case FileType::OFFICE_OPEN_XML_DOCUMENT:
-    case FileType::OFFICE_OPEN_XML_PRESENTATION:
-    case FileType::OFFICE_OPEN_XML_WORKBOOK:
-      // TODO: optimize; dont reload xml, dont regenerate styles, ... for same
-      // input file
-      return translatorMs.translate(path, context);
-    default:
-      return false;
-    }
-  }
-
-  bool backTranslate(const std::string &diff, const std::string &path) {
-    if (!canBackTranslate())
-      return false;
-
-    switch (meta.type) {
-    case FileType::OPENDOCUMENT_TEXT:
-    case FileType::OPENDOCUMENT_PRESENTATION:
-    case FileType::OPENDOCUMENT_SPREADSHEET:
-    case FileType::OPENDOCUMENT_GRAPHICS:
-      return translatorOd.backTranslate(diff, path, context);
-    default:
-      return false;
-    }
+    return false;
   }
 };
 
-std::string OpenDocumentReader::getVersion() {
+std::string OpenDocumentReader::getVersion() noexcept {
   return common::Constants::getVersion();
 }
 
-std::string OpenDocumentReader::getCommit() {
+std::string OpenDocumentReader::getCommit() noexcept {
   return common::Constants::getCommit();
 }
 
@@ -241,33 +230,72 @@ FileType OpenDocumentReader::guess(const std::string &path) const noexcept {
   try {
     return impl_->guess(path);
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "guess failed";
     return FileType::UNKNOWN;
   }
 }
 
-bool OpenDocumentReader::open(const std::string &path) noexcept {
+bool OpenDocumentReader::open(const std::string &path) const noexcept {
   try {
     return impl_->open(path);
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "open failed";
     return false;
   }
 }
 
-bool OpenDocumentReader::save(const std::string &path) noexcept {
+bool OpenDocumentReader::open(const std::string &path, const FileType as) const
+    noexcept {
   try {
-    return impl_->save(path);
+    return impl_->open(path, as);
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "openAs failed";
+    return false;
   }
 }
 
-void OpenDocumentReader::close() noexcept {
+bool OpenDocumentReader::save(const std::string &path) const noexcept {
+  try {
+    return impl_->save(path);
+  } catch (...) {
+    LOG(ERROR) << "save failed";
+    return false;
+  }
+}
+
+bool OpenDocumentReader::save(const std::string &path,
+                              const std::string &password) const noexcept {
+  try {
+    return impl_->save(path, password);
+  } catch (...) {
+    LOG(ERROR) << "saveEncrypted failed";
+    return false;
+  }
+}
+
+void OpenDocumentReader::close() const noexcept {
   try {
     impl_->close();
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "close failed";
+  }
+}
+
+bool OpenDocumentReader::isOpen() const noexcept {
+  try {
+    return impl_->isOpen();
+  } catch (...) {
+    LOG(ERROR) << "isOpen failed";
+    return false;
+  }
+}
+
+bool OpenDocumentReader::isDecrypted() const noexcept {
+  try {
+    return impl_->isDecrypted();
+  } catch (...) {
+    LOG(ERROR) << "isDecrypted failed";
+    return false;
   }
 }
 
@@ -275,16 +303,27 @@ bool OpenDocumentReader::canTranslate() const noexcept {
   try {
     return impl_->canTranslate();
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "canTranslate failed";
     return false;
   }
 }
 
-bool OpenDocumentReader::canBackTranslate() const noexcept {
+bool OpenDocumentReader::canEdit() const noexcept {
   try {
-    return impl_->canBackTranslate();
+    return impl_->canEdit();
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "canEdit failed";
+    return false;
+  }
+}
+
+bool OpenDocumentReader::canSave() const noexcept { return canSave(false); }
+
+bool OpenDocumentReader::canSave(const bool encrypted) const noexcept {
+  try {
+    return impl_->canSave(encrypted);
+  } catch (...) {
+    LOG(ERROR) << "canSave failed";
     return false;
   }
 }
@@ -293,36 +332,35 @@ const FileMeta &OpenDocumentReader::getMeta() const noexcept {
   try {
     return impl_->getMeta();
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "getMeta failed";
     return {};
   }
 }
 
-bool OpenDocumentReader::decrypt(const std::string &password) noexcept {
+bool OpenDocumentReader::decrypt(const std::string &password) const noexcept {
   try {
     return impl_->decrypt(password);
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "decrypt failed";
     return false;
   }
 }
 
-bool OpenDocumentReader::translate(const std::string &outPath,
-                                   const Config &config) noexcept {
+bool OpenDocumentReader::translate(const std::string &path,
+                                   const Config &config) const noexcept {
   try {
-    return impl_->translate(outPath, config);
+    return impl_->translate(path, config);
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "translate failed";
     return false;
   }
 }
 
-bool OpenDocumentReader::backTranslate(const std::string &diff,
-                                       const std::string &path) noexcept {
+bool OpenDocumentReader::edit(const std::string &diff) const noexcept {
   try {
-    return impl_->backTranslate(diff, path);
+    return impl_->edit(diff);
   } catch (...) {
-    // TODO log
+    LOG(ERROR) << "edit failed";
     return false;
   }
 }

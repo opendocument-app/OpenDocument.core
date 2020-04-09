@@ -1,13 +1,12 @@
+#include <ContentTranslator.h>
+#include <StyleTranslator.h>
 #include <access/Path.h>
 #include <access/Storage.h>
 #include <access/StreamUtil.h>
 #include <common/StringUtil.h>
-#include <common/TranslationContext.h>
 #include <common/XmlUtil.h>
 #include <crypto/CryptoUtil.h>
 #include <glog/logging.h>
-#include <odf/OpenDocumentContentTranslator.h>
-#include <odf/OpenDocumentStyleTranslator.h>
 #include <odr/Config.h>
 #include <odr/Meta.h>
 #include <string>
@@ -17,10 +16,11 @@
 #include <unordered_set>
 
 namespace odr {
+namespace odf {
 
 namespace {
 void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
-                    common::TranslationContext &context) {
+                    Context &context) {
   std::string text = in.Value();
   common::StringUtil::findAndReplaceAll(text, "&", "&amp;");
   common::StringUtil::findAndReplaceAll(text, "<", "&lt;");
@@ -37,7 +37,7 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
 }
 
 void StyleAttributeTranslator(const std::string &name, std::ostream &out,
-                              common::TranslationContext &context) {
+                              Context &context) {
   out << " class=\"";
   out << name;
 
@@ -59,15 +59,13 @@ void StyleAttributeTranslator(const std::string &name, std::ostream &out,
 }
 
 void StyleAttributeTranslator(const tinyxml2::XMLAttribute &in,
-                              std::ostream &out,
-                              common::TranslationContext &context) {
-  const std::string name =
-      OpenDocumentStyleTranslator::escapeStyleName(in.Value());
+                              std::ostream &out, Context &context) {
+  const std::string name = StyleTranslator::escapeStyleName(in.Value());
   StyleAttributeTranslator(name, out, context);
 }
 
 void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out,
-                         common::TranslationContext &context) {
+                         Context &context) {
   static std::unordered_set<std::string> styleAttributes{
       "text:style-name",
       "table:style-name",
@@ -82,8 +80,7 @@ void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out,
 }
 
 void ElementAttributeTranslator(const tinyxml2::XMLElement &in,
-                                std::ostream &out,
-                                common::TranslationContext &context) {
+                                std::ostream &out, Context &context) {
   common::XmlUtil::visitElementAttributes(
       in, [&](const tinyxml2::XMLAttribute &a) {
         AttributeTranslator(a, out, context);
@@ -91,13 +88,12 @@ void ElementAttributeTranslator(const tinyxml2::XMLElement &in,
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
-                               std::ostream &out,
-                               common::TranslationContext &context);
+                               std::ostream &out, Context &context);
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                       common::TranslationContext &context);
+                       Context &context);
 
 void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                         common::TranslationContext &context) {
+                         Context &context) {
   out << "<p";
   ElementAttributeTranslator(in, out, context);
   out << ">";
@@ -111,7 +107,7 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                     common::TranslationContext &) {
+                     Context &) {
   const auto count = in.Unsigned64Attribute("text:c", 1);
   if (count <= 0) {
     return;
@@ -122,14 +118,13 @@ void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   }
 }
 
-void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out,
-                   common::TranslationContext &) {
+void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, Context &) {
   // TODO: use "&emsp;"?
   out << "\t";
 }
 
 void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                    common::TranslationContext &context) {
+                    Context &context) {
   out << "<a";
   const auto href = in.FindAttribute("xlink:href");
   if (href != nullptr) {
@@ -148,7 +143,7 @@ void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void BookmarkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                        common::TranslationContext &context) {
+                        Context &context) {
   out << "<a";
   const auto id = in.FindAttribute("text:name");
   if (id != nullptr) {
@@ -163,7 +158,7 @@ void BookmarkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void FrameTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                     common::TranslationContext &context) {
+                     Context &context) {
   out << "<div style=\"";
 
   const auto width = in.FindAttribute("svg:width");
@@ -189,7 +184,7 @@ void FrameTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                     common::TranslationContext &context) {
+                     Context &context) {
   out << "<img style=\"width:100%;height:100%\"";
 
   const auto href = in.FindAttribute("xlink:href");
@@ -209,14 +204,14 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
           (path.find(".svm", 0) != std::string::npos)) {
         std::istringstream svmIn(image);
         std::ostringstream svgOut;
-        svm::Svm2Svg::translate(svmIn, svgOut);
+        svm::Translator::svg(svmIn, svgOut);
         image = svgOut.str();
         out << "data:image/svg+xml;base64, ";
       } else {
         // hacky image/jpg working according to tom
         out << "data:image/jpg;base64, ";
       }
-      out << crypto::CryptoUtil::base64Encode(image);
+      out << crypto::Util::base64Encode(image);
     }
     out << "\"";
   }
@@ -229,7 +224,7 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                     common::TranslationContext &context) {
+                     Context &context) {
   context.currentTableRowStart = context.config->tableOffsetRows;
   context.currentTableRowEnd =
       context.currentTableRowStart + context.config->tableLimitRows;
@@ -249,7 +244,7 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                      context.meta->entries[context.currentEntry].columnCount);
   }
   context.tableCursor = {};
-  context.odDefaultCellStyles.clear();
+  context.defaultCellStyles.clear();
 
   out << "<table";
   ElementAttributeTranslator(in, out, context);
@@ -262,7 +257,7 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void TableColumnTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                           common::TranslationContext &context) {
+                           Context &context) {
   const auto repeated =
       in.Unsigned64Attribute("table:number-columns-repeated", 1);
   const auto defaultCellStyleAttribute =
@@ -273,7 +268,7 @@ void TableColumnTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       break;
     if (context.tableCursor.getCol() >= context.currentTableColStart) {
       if (defaultCellStyleAttribute != nullptr) {
-        context.odDefaultCellStyles[context.tableCursor.getCol()] =
+        context.defaultCellStyles[context.tableCursor.getCol()] =
             defaultCellStyleAttribute->Value();
       }
       out << "<col";
@@ -285,7 +280,7 @@ void TableColumnTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                        common::TranslationContext &context) {
+                        Context &context) {
   const auto repeated = in.Unsigned64Attribute("table:number-rows-repeated", 1);
   context.tableCursor.addRow(0); // TODO hacky
   for (std::uint32_t i = 0; i < repeated; ++i) {
@@ -303,7 +298,7 @@ void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                         common::TranslationContext &context) {
+                         Context &context) {
   const auto repeated =
       in.Unsigned64Attribute("table:number-columns-repeated", 1);
   const auto colspan =
@@ -316,8 +311,8 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       out << "<td";
       if (in.FindAttribute("table:style-name") == nullptr) {
         const auto it =
-            context.odDefaultCellStyles.find(context.tableCursor.getCol());
-        if (it != context.odDefaultCellStyles.end())
+            context.defaultCellStyles.find(context.tableCursor.getCol());
+        if (it != context.defaultCellStyles.end())
           StyleAttributeTranslator(it->second, out, context);
       }
       ElementAttributeTranslator(in, out, context);
@@ -335,8 +330,7 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
-                               std::ostream &out,
-                               common::TranslationContext &context) {
+                               std::ostream &out, Context &context) {
   common::XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
     if (n.ToText() != nullptr)
       TextTranslator(*n.ToText(), out, context);
@@ -346,7 +340,7 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
 }
 
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                       common::TranslationContext &context) {
+                       Context &context) {
   static std::unordered_map<std::string, const char *> substitution{
       {"text:span", "span"},    {"text:line-break", "br"}, {"text:list", "ul"},
       {"text:list-item", "li"}, {"draw:page", "div"},
@@ -404,9 +398,9 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 } // namespace
 
-void OpenDocumentContentTranslator::translate(
-    const tinyxml2::XMLElement &in, common::TranslationContext &context) {
+void ContentTranslator::html(const tinyxml2::XMLElement &in, Context &context) {
   ElementTranslator(in, *context.output, context);
 }
 
+} // namespace odf
 } // namespace odr

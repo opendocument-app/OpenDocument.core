@@ -1,5 +1,5 @@
-#ifndef ODR_STORAGE_H
-#define ODR_STORAGE_H
+#ifndef ODR_ACCESS_STORAGE_H
+#define ODR_ACCESS_STORAGE_H
 
 #include <access/Path.h>
 #include <access/Stream.h>
@@ -10,21 +10,21 @@
 namespace odr {
 namespace access {
 
-class FileNotFoundException : public std::exception {
+class FileNotFoundException final : public std::exception {
 public:
   explicit FileNotFoundException(std::string path) : path(std::move(path)) {}
   const std::string &getPath() const { return path; }
-  const char *what() const noexcept override { return "file not found"; }
+  const char *what() const noexcept final { return "file not found"; }
 
 private:
   std::string path;
 };
 
-class FileNotCreatedException : public std::exception {
+class FileNotCreatedException final : public std::exception {
 public:
   explicit FileNotCreatedException(std::string path) : path(std::move(path)) {}
   const std::string &getPath() const { return path; }
-  const char *what() const noexcept override { return "file not created"; }
+  const char *what() const noexcept final { return "file not created"; }
 
 private:
   std::string path;
@@ -85,4 +85,4 @@ public:
 } // namespace access
 } // namespace odr
 
-#endif // ODR_STORAGE_H
+#endif // ODR_ACCESS_STORAGE_H

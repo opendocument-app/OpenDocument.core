@@ -5,7 +5,9 @@
 namespace odr {
 namespace access {
 
-static constexpr std::uint32_t bufferSize = 4096;
+namespace {
+constexpr std::uint32_t bufferSize_ = 4096;
+}
 
 std::uint32_t StringSource::read(char *d, std::uint32_t amount) {
   amount = std::min(amount, available());
@@ -20,10 +22,10 @@ std::string StreamUtil::read(Source &in) {
   // TODO use available? or enhance Source with tell?
 
   std::string result;
-  char buffer[bufferSize];
+  char buffer[bufferSize_];
 
   while (true) {
-    const std::uint32_t read = in.read(buffer, bufferSize);
+    const std::uint32_t read = in.read(buffer, bufferSize_);
     if (read == 0)
       break;
     result.append(buffer, read);
@@ -33,10 +35,10 @@ std::string StreamUtil::read(Source &in) {
 }
 
 void StreamUtil::pipe(Source &in, Sink &out) {
-  char buffer[bufferSize];
+  char buffer[bufferSize_];
 
   while (true) {
-    const std::uint32_t read = in.read(buffer, bufferSize);
+    const std::uint32_t read = in.read(buffer, bufferSize_);
     if (read == 0)
       break;
     out.write(buffer, read);

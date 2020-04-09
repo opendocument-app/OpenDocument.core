@@ -1,5 +1,5 @@
-#ifndef ODR_TABLERANGE_H
-#define ODR_TABLERANGE_H
+#ifndef ODR_COMMON_TABLE_RANGE_H
+#define ODR_COMMON_TABLE_RANGE_H
 
 #include <common/TablePosition.h>
 
@@ -23,4 +23,4 @@ private:
 } // namespace common
 } // namespace odr
 
-#endif // ODR_TABLERANGE_H
+#endif // ODR_COMMON_TABLE_RANGE_H

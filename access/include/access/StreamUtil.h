@@ -1,5 +1,5 @@
-#ifndef ODR_STREAMUTIL_H
-#define ODR_STREAMUTIL_H
+#ifndef ODR_ACCESS_STREAMUTIL_H
+#define ODR_ACCESS_STREAMUTIL_H
 
 #include <access/Stream.h>
 #include <string>
@@ -30,4 +30,4 @@ extern void pipe(Source &, Sink &);
 } // namespace access
 } // namespace odr
 
-#endif // ODR_STREAMUTIL_H
+#endif // ODR_ACCESS_STREAMUTIL_H

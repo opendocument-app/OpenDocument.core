@@ -1,5 +1,5 @@
-#ifndef ODR_STORAGEUTIL_H
-#define ODR_STORAGEUTIL_H
+#ifndef ODR_ACCESS_STORAGE_UTIL_H
+#define ODR_ACCESS_STORAGE_UTIL_H
 
 #include <access/Storage.h>
 #include <string>
@@ -11,12 +11,10 @@ class Path;
 class Storage;
 
 namespace StorageUtil {
-
 extern std::string read(const Storage &, const Path &);
-
 }
 
 } // namespace access
 } // namespace odr
 
-#endif // ODR_STORAGEUTIL_H
+#endif // ODR_ACCESS_STORAGE_UTIL_H
