@@ -112,15 +112,15 @@ void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   if (count <= 0) {
     return;
   }
+  out << "<span class=\"whitespace\">";
   for (std::uint32_t i = 0; i < count; ++i) {
-    // TODO: use "&nbsp;"?
     out << " ";
   }
+  out << "</span>";
 }
 
 void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, Context &) {
-  // TODO: use "&emsp;"?
-  out << "\t";
+  out << "<span class=\"whitespace\">&emsp;</span>";
 }
 
 void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,

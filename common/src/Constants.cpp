@@ -11,7 +11,7 @@ const char *Constants::getCommit() noexcept { return ""; }
 
 const char *Constants::getHtmlBeginToStyle() noexcept {
   // clang-format off
-    return MULTILINE(
+  return MULTILINE(
 <!DOCTYPE html>
 <html>
   <head>
@@ -20,49 +20,46 @@ const char *Constants::getHtmlBeginToStyle() noexcept {
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes"/>
     <title>odr</title>
     <style>
-    );
+  );
   // clang-format on
 }
 
 const char *Constants::getHtmlStyleToBody() noexcept {
   // clang-format off
-    return MULTILINE(
+  return MULTILINE(
     </style>
     <body>
-    );
+  );
   // clang-format on
 }
 
 const char *Constants::getHtmlBodyToScript() noexcept {
   // clang-format off
-    return MULTILINE(
+  return MULTILINE(
     </body>
     <script>
-    );
+  );
   // clang-format on
 }
 
 const char *Constants::getHtmlScriptToEnd() noexcept {
   // clang-format off
-    return MULTILINE(
+  return MULTILINE(
     </script>
     </html>
-    );
+  );
   // clang-format on
 }
 
 const char *Constants::getOpenDocumentDefaultCss() noexcept {
   // clang-format off
-    return MULTILINE(
+  return MULTILINE(
 * {
   margin: 0px;
   position: relative;
 }
 body {
   padding: 5px;
-}
-span {
-  white-space: pre-wrap;
 }
 table {
   width: 0px;
@@ -73,13 +70,16 @@ p {
 span {
   margin: 0 !important;
 }
-    );
+.whitespace {
+  white-space: pre-wrap;
+}
+  );
   // clang-format on
 }
 
 const char *Constants::getOpenDocumentSpreadsheetDefaultCss() noexcept {
   // clang-format off
-    return MULTILINE(
+  return MULTILINE(
 table {
   border-collapse: collapse;
   display: block;
@@ -91,13 +91,13 @@ p {
   font-family: "Arial";
   font-size: 10pt;
 }
-    );
+  );
   // clang-format on
 }
 
 const char *Constants::getDefaultScript() noexcept {
   // clang-format off
-    return MULTILINE(
+  return MULTILINE(
 function download(filename, text) {
   var element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
@@ -150,7 +150,7 @@ var editJournal = {
 const observer = new MutationObserver(mutation);
 const config = { attributes: false, childList: true, subtree: true, characterData: true };
 observer.observe(document.body, config);
-    );
+  );
   // clang-format on
 }
 
