@@ -3,6 +3,7 @@ target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr STATIC
         src/OpenDocumentReader.cpp
+        src/Meta.cpp
         )
 target_include_directories(odr PUBLIC include)
 target_link_libraries(odr
