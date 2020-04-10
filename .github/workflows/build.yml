@@ -9,10 +9,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         arch: [x86_64]
-        #compiler: [clang, gcc]
+        compiler: clang
     env:
-      #CC: ${{ matrix.compiler }}
-      #CXX: ${{ matrix.compiler }}
+      CC: ${{ matrix.compiler }}
+      CXX: ${{ matrix.compiler }}
       sha: ${GITHUB_SHA::7}
 
     steps:
@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.ccache
-          key: ${{ matrix.os }}-${{ matrix.arch }}
+          key: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.compiler }}
 
       - name: cmake
         run: mkdir -p build && cd build && cmake ..
