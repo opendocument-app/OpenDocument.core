@@ -8,18 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            ARCH: x86_64
-            TARGET: x86_64-linux
-            COMPILER: clang
-            LINKER: clang
-
-          - os: macos-latest
-            ARCH: x86_64
-            TARGET: x86_64-apple-darwin
-            COMPILER: clang
-            LINKER: clang
+        compiler: [clang, gcc]
 
     steps:
       - uses: actions/checkout@v2
