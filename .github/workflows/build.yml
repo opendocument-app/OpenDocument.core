@@ -10,6 +10,8 @@ jobs:
         os: [ubuntu-latest, macos-latest]
         arch: [x86_64]
         compiler: [clang, gcc]
+    env:
+      git-sha: ${GITHUB_SHA::7}
 
     steps:
       - uses: actions/checkout@v2
@@ -30,3 +32,8 @@ jobs:
         run: mkdir -p build && cd build && cmake ..
       - name: make
         run: cd build && cmake --build .
+
+      - uses: actions/upload-artifact@v1
+        with:
+          name: ${{ git-sha }}-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.clang }}
+          path: build
