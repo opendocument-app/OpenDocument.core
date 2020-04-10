@@ -16,6 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - run: echo ${{ matrix.os }}
       - if: startsWith(matrix.os, 'ubuntu')
         run: sudo apt install ccache
       - if: startsWith(matrix.os, 'macos')
