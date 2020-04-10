@@ -9,10 +9,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         arch: [x86_64]
-        compiler: [clang, gcc]
+        #compiler: [clang, gcc]
     env:
-      CC: ${{ matrix.compiler }}
-      CXX: ${{ matrix.compiler }}
+      #CC: ${{ matrix.compiler }}
+      #CXX: ${{ matrix.compiler }}
       sha: ${GITHUB_SHA::7}
 
     steps:
@@ -50,5 +50,5 @@ jobs:
       - name: upload binaries
         uses: actions/upload-artifact@v1
         with:
-          name: ${sha}-${{ matrix.os }}-${{ matrix.arch }}
+          name: ${{ matrix.os }}-${{ matrix.arch }}
           path: install
