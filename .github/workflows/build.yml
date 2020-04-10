@@ -43,7 +43,7 @@ jobs:
         run: |
           mkdir -p install
           cd build
-          cmake --build . --target=install
+          cmake --build . --target install
           cp cli/meta ../install
           cp cli/translate ../install
           cp cli/back_translate ../install
