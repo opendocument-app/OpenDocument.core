@@ -24,3 +24,4 @@ target_link_libraries(odr_odf
 
         odr-interface
         )
+set_property(TARGET odr_odf PROPERTY POSITION_INDEPENDENT_CODE ON)

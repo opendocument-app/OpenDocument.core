@@ -13,3 +13,4 @@ target_link_libraries(odr_common
 
         odr_access
         )
+set_property(TARGET odr_common PROPERTY POSITION_INDEPENDENT_CODE ON)

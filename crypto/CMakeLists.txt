@@ -7,3 +7,4 @@ target_link_libraries(odr_crypto
         PRIVATE
         cryptopp-static
         )
+set_property(TARGET odr_crypto PROPERTY POSITION_INDEPENDENT_CODE ON)
