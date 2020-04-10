@@ -9,7 +9,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         arch: [x86_64]
-        compiler: clang
+        compiler: [clang]
     env:
       CC: ${{ matrix.compiler }}
       CXX: ${{ matrix.compiler }}
