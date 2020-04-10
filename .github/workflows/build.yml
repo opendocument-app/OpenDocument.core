@@ -36,5 +36,5 @@ jobs:
 
       - uses: actions/upload-artifact@v1
         with:
-          name: ${{ sha }}-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.clang }}
+          name: ${{ env.sha }}-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.clang }}
           path: build
