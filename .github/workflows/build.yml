@@ -11,6 +11,8 @@ jobs:
         arch: [x86_64]
         compiler: [clang, gcc]
     env:
+      CC: ${{ matrix.compiler }}
+      CXX: ${{ matrix.compiler }}
       sha: ${GITHUB_SHA::7}
 
     steps:
