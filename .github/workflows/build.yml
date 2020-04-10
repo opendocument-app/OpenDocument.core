@@ -14,11 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: install ccache ubuntu
-        if: ${{ matrix.os }} == ubuntu-latest
+      - if: matrix.os == 'ubuntu-latest'
         run: sudo apt install ccache
-      - name: install ccache ubuntu
-        if: ${{ matrix.os }} == ubuntu-latest
+      - if: matrix.os == 'macOS-10.14'
         run: brew install ccache
       - run: which ccache
 
