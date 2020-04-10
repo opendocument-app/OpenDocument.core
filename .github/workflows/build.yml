@@ -14,14 +14,15 @@ jobs:
       sha: ${GITHUB_SHA::7}
 
     steps:
+      - name: checkout
       - uses: actions/checkout@v2
 
-      - if: startsWith(matrix.os, 'ubuntu')
+      - name: ubuntu install ccache
+        if: startsWith(matrix.os, 'ubuntu')
         run: sudo apt install ccache
-        name: ubuntu install ccache
-      - if: startsWith(matrix.os, 'macos')
+      - name: macos install ccache
+        if: startsWith(matrix.os, 'macos')
         run: brew install ccache
-        name: macos install ccache
 
       - name: ccache
         uses: actions/cache@v1
@@ -34,7 +35,10 @@ jobs:
       - name: make
         run: cd build && cmake --build .
 
+      - name: install
+        run: mkdir -p install && cp build/cli/* install
+
       - uses: actions/upload-artifact@v1
         with:
           name: ${{ env.sha }}-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.clang }}
-          path: build
+          path: install
