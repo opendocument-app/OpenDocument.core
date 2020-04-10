@@ -4,13 +4,11 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v2
-      - name: creat build directroy
-        run: mkdir -p build && cd build
       - name: cmake
-        run: cmake ..
+        run: mkdir -p build && cd build && cmake ..
       - name: make
-        run: make -j8
+        run: cd build && cmake --build .
