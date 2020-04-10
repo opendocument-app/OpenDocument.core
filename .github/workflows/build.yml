@@ -16,12 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - run: echo ${{ matrix.os }}
       - if: startsWith(matrix.os, 'ubuntu')
         run: sudo apt install ccache
+        name: ubuntu install ccache
       - if: startsWith(matrix.os, 'macos')
         run: brew install ccache
-      - run: which ccache
+        name: macos install ccache
 
       - name: ccache
         uses: actions/cache@v1
