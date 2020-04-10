@@ -3,18 +3,28 @@ name: build
 on: [push, pull_request]
 
 jobs:
+  install:
+
+
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        compiler: [clang, gcc]
         arch: [x86_64]
+        compiler: [clang, gcc]
 
     steps:
       - uses: actions/checkout@v2
 
+      - name: install ccache ubuntu
+        if: ${{ matrix.os }} == ubuntu-latest
+        run: sudo apt install ccache
+      - name: install ccache ubuntu
+        if: ${{ matrix.os }} == ubuntu-latest
+        run: brew install ccache
       - run: which ccache
+
       - name: ccache
         uses: actions/cache@v1
         with:
