@@ -48,5 +48,5 @@ jobs:
       - name: upload binaries
         uses: actions/upload-artifact@v1
         with:
-          name: ${{ env.sha }}-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.clang }}
+          name: ${sha}-${{ matrix.os }}-${{ matrix.arch }}
           path: install
