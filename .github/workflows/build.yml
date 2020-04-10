@@ -3,9 +3,6 @@ name: build
 on: [push, pull_request]
 
 jobs:
-  install:
-
-
   build:
     runs-on: ${{ matrix.os }}
     strategy:
