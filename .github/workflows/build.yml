@@ -35,10 +35,18 @@ jobs:
       - name: make
         run: cd build && cmake --build .
 
-      - name: install
-        run: mkdir -p install && cp build/cli/* install
+      - name: test
+        run: build/test/odr_test
 
-      - uses: actions/upload-artifact@v1
+      - name: install
+        run: |
+          mkdir -p install
+          cp build/cli/meta install
+          cp build/cli/translate install
+          cp build/cli/back_translate install
+
+      - name: upload binaries
+        uses: actions/upload-artifact@v1
         with:
           name: ${{ env.sha }}-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.clang }}
           path: install
