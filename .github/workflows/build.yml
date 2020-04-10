@@ -11,7 +11,7 @@ jobs:
         arch: [x86_64]
         compiler: [clang, gcc]
     env:
-      git-sha: ${GITHUB_SHA::7}
+      sha: ${GITHUB_SHA::7}
 
     steps:
       - uses: actions/checkout@v2
@@ -36,5 +36,5 @@ jobs:
 
       - uses: actions/upload-artifact@v1
         with:
-          name: ${{ git-sha }}-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.clang }}
+          name: ${{ sha }}-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.clang }}
           path: build
