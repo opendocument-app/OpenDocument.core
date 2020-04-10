@@ -9,9 +9,18 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         compiler: [clang, gcc]
+        arch: [x86_64]
 
     steps:
       - uses: actions/checkout@v2
+
+      - run: which ccache
+      - name: ccache
+        uses: actions/cache@v1
+        with:
+          path: ~/.ccache
+          key: ${{ matrix.os }}-${{ matrix.arch }}
+
       - name: cmake
         run: mkdir -p build && cd build && cmake ..
       - name: make
