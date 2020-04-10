@@ -4,7 +4,22 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            ARCH: x86_64
+            TARGET: x86_64-linux
+            COMPILER: clang
+            LINKER: clang
+
+          - os: macos-latest
+            ARCH: x86_64
+            TARGET: x86_64-apple-darwin
+            COMPILER: clang
+            LINKER: clang
 
     steps:
       - uses: actions/checkout@v2
