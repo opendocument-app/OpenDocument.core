@@ -18,9 +18,3 @@ target_link_libraries(meta
 
         odr-shared
         )
-
-install(TARGETS
-        translate
-        back_translate
-        meta
-        DESTINATION bin)
