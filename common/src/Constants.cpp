@@ -82,9 +82,11 @@ const char *Constants::getOpenDocumentSpreadsheetDefaultCss() noexcept {
 table {
   border-collapse: collapse;
   display: block;
+  border:1px solid #C0C0C0;
 }
 td {
   vertical-align: top;
+  border:1px solid #C0C0C0;
 }
 p {
   font-family: "Arial";
