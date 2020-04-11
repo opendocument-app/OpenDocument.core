@@ -82,15 +82,28 @@ const char *Constants::getOpenDocumentSpreadsheetDefaultCss() noexcept {
 table {
   border-collapse: collapse;
   display: block;
-  border:1px solid #C0C0C0;
 }
-td {
+table td {
   vertical-align: top;
-  border:1px solid #C0C0C0;
 }
 p {
   font-family: "Arial";
   font-size: 10pt;
+}
+
+.gridlines-none table {}
+.gridlines-none table td {}
+.gridlines-soft table {
+  border:1px solid #C0C0C0;
+}
+.gridlines-soft table td {
+  border:1px solid #C0C0C0;
+}
+.gridlines-hard table {
+  border:1px solid #C0C0C0 !important;
+}
+.gridlines-hard table td {
+  border:1px solid #C0C0C0 !important;
 }
   )V0G0N";
   // clang-format on
@@ -99,6 +112,23 @@ p {
 const char *Constants::getDefaultScript() noexcept {
   // clang-format off
   return R"V0G0N((
+function gridlines(mode) {
+  document.body.classList.remove('gridlines-none');
+  document.body.classList.remove('gridlines-soft');
+  document.body.classList.remove('gridlines-hard');
+  switch (mode) {
+  case 'none':
+    document.body.classList.add('gridlines-none');
+    break;
+  case 'soft':
+    document.body.classList.add('gridlines-soft');
+    break;
+  case 'hard':
+    document.body.classList.add('gridlines-hard');
+    break;
+  }
+}
+
 function download(filename, text) {
   var element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
