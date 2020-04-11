@@ -92,7 +92,7 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
         StyleTranslator::escapeStyleName(family));
   }
 
-  out << "." << name << " {";
+  out << "." << name << "." << name << " {";
 
   common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
     common::XmlUtil::visitElementAttributes(
