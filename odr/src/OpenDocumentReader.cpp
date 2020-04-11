@@ -157,6 +157,7 @@ private:
       }
       try {
         translatorMs_ = std::make_unique<ooxml::OfficeOpenXml>(storage_);
+        meta_ = translatorMs_->getMeta();
         return true;
       } catch (...) {
       }
