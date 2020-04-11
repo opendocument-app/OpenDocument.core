@@ -22,3 +22,4 @@ target_link_libraries(odr_ooxml
 
         odr-interface
         )
+set_property(TARGET odr_ooxml PROPERTY POSITION_INDEPENDENT_CODE ON)

@@ -8,3 +8,4 @@ target_include_directories(odr_svm
         src
         )
 target_link_libraries(odr_svm PRIVATE glog)
+set_property(TARGET odr_svm PROPERTY POSITION_INDEPENDENT_CODE ON)

@@ -61,6 +61,7 @@ if (NOT miniz_POPULATED)
     add_subdirectory(${miniz_SOURCE_DIR} ${miniz_BINARY_DIR} EXCLUDE_FROM_ALL)
     # miniz defines a lot of macros without that
     target_compile_definitions(miniz PUBLIC MINIZ_NO_ZLIB_COMPATIBLE_NAMES)
+    set_property(TARGET miniz PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif ()
 FetchContent_GetProperties(glog)
 if (NOT glog_POPULATED)

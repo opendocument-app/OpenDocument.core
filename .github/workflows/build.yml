@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX:PATH=install ..
+          cmake -DCMAKE_INSTALL_PREFIX:PATH=../install ..
       - name: make
         run: cd build && cmake --build .
 
@@ -44,9 +44,6 @@ jobs:
           mkdir -p install
           cd build
           cmake --build . --target install
-          cp cli/meta ../install
-          cp cli/translate ../install
-          cp cli/back_translate ../install
 
       - name: upload binaries
         uses: actions/upload-artifact@v1

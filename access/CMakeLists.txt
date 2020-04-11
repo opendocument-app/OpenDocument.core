@@ -15,3 +15,4 @@ target_link_libraries(odr_access
 
         odr_crypto
         )
+set_property(TARGET odr_access PROPERTY POSITION_INDEPENDENT_CODE ON)

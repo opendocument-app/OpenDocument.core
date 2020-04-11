@@ -1,12 +1,12 @@
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
 
-add_library(odr STATIC
+add_library(odr-static STATIC
         src/OpenDocumentReader.cpp
         src/Meta.cpp
         )
-target_include_directories(odr PUBLIC include)
-target_link_libraries(odr
+target_include_directories(odr-static PUBLIC include)
+target_link_libraries(odr-static
         PRIVATE
         tinyxml2
         miniz
@@ -20,4 +20,22 @@ target_link_libraries(odr
         odr_odf
         odr_ooxml
         )
-set_property(TARGET odr PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+add_library(odr-shared SHARED
+        src/OpenDocumentReader.cpp
+        src/Meta.cpp
+        )
+target_link_libraries(odr-shared
+        PRIVATE
+        tinyxml2
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
+
+        odr_access
+        odr_common
+        odr_crypto
+        odr_odf
+        odr_ooxml)
+target_include_directories(odr-shared PUBLIC include)

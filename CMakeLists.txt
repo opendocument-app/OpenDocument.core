@@ -30,3 +30,12 @@ add_subdirectory(cli)
 if (ODR_TEST)
     add_subdirectory(test)
 endif ()
+
+install(TARGETS
+        odr-shared
+        DESTINATION lib)
+install(TARGETS
+        translate
+        back_translate
+        meta
+        DESTINATION bin)
