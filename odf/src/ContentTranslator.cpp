@@ -70,6 +70,7 @@ void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out,
       "text:style-name",
       "table:style-name",
       "draw:style-name",
+      "draw:text-style-name",
       "presentation:style-name",
   };
 
@@ -329,6 +330,37 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   }
 }
 
+void DrawRectTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+                        Context &context) {
+  //<draw:rect draw:style-name="gr1" draw:text-style-name="P1" draw:layer="layout" svg:width="19.4cm" svg:height="1cm" svg:x="0cm" svg:y="28.2cm">
+
+  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" style=")";
+
+  const auto width = in.FindAttribute("svg:width");
+  const auto height = in.FindAttribute("svg:height");
+  const auto x = in.FindAttribute("svg:x");
+  const auto y = in.FindAttribute("svg:y");
+
+  out << "position:absolute;";
+  if (width != nullptr)
+    out << "width:" << width->Value() << ";";
+  if (height != nullptr)
+    out << "height:" << height->Value() << ";";
+  if (x != nullptr)
+    out << "left:" << x->Value() << ";";
+  if (y != nullptr)
+    out << "top:" << y->Value() << ";";
+
+  out << "\"";
+
+  out << R"(><rect x="0" y="0" width="100" height="100")";
+  ElementAttributeTranslator(in, out, context);
+  out << ">";
+  ElementChildrenTranslator(in, out, context);
+  out << "</rect>";
+  out << "</svg>";
+}
+
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
                                std::ostream &out, Context &context) {
   common::XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
@@ -383,6 +415,8 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     TableRowTranslator(in, out, context);
   else if (element == "table:table-cell")
     TableCellTranslator(in, out, context);
+  else if (element == "draw:rect")
+    DrawRectTranslator(in, out, context);
   else {
     const auto it = substitution.find(element);
     if (it != substitution.end()) {

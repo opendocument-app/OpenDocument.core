@@ -194,6 +194,7 @@ FileMeta Meta::parseFileMeta(const access::Storage &storage,
       throw NoOpenDocumentFileException();
 
     switch (result.type) {
+    case FileType::OPENDOCUMENT_GRAPHICS:
     case FileType::OPENDOCUMENT_PRESENTATION: {
       result.entryCount = 0;
       common::XmlUtil::recursiveVisitElementsWithName(

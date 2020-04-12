@@ -43,6 +43,9 @@ void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
       {"style:vertical-align", "vertical-align"},
       {"style:column-width", "width"},
       {"style:row-height", "height"},
+      {"draw:fill-color", "fill"},
+      {"draw:textarea-vertical-align", "vertical-align"},
+      {"svg:stroke-color", "stroke"},
   };
 
   const std::string property = in.Name();
