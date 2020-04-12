@@ -1,7 +1,5 @@
 #include <common/Constants.h>
 
-#define MULTILINE(...) #__VA_ARGS__
-
 namespace odr {
 namespace common {
 
@@ -11,7 +9,7 @@ const char *Constants::getCommit() noexcept { return ""; }
 
 const char *Constants::getHtmlBeginToStyle() noexcept {
   // clang-format off
-  return MULTILINE(
+  return R"V0G0N((
 <!DOCTYPE html>
 <html>
   <head>
@@ -20,40 +18,41 @@ const char *Constants::getHtmlBeginToStyle() noexcept {
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes"/>
     <title>odr</title>
     <style>
-  );
+  )V0G0N";
   // clang-format on
 }
 
 const char *Constants::getHtmlStyleToBody() noexcept {
   // clang-format off
-  return MULTILINE(
+  return R"V0G0N((
     </style>
-    <body>
-  );
+  </head>
+  <body>
+  )V0G0N";
   // clang-format on
 }
 
 const char *Constants::getHtmlBodyToScript() noexcept {
   // clang-format off
-  return MULTILINE(
-    </body>
-    <script>
-  );
+  return R"V0G0N((
+  </body>
+  <script>
+  )V0G0N";
   // clang-format on
 }
 
 const char *Constants::getHtmlScriptToEnd() noexcept {
   // clang-format off
-  return MULTILINE(
-    </script>
-    </html>
-  );
+  return R"V0G0N((
+  </script>
+</html>
+  )V0G0N";
   // clang-format on
 }
 
 const char *Constants::getOpenDocumentDefaultCss() noexcept {
   // clang-format off
-  return MULTILINE(
+  return R"V0G0N((
 * {
   margin: 0px;
   position: relative;
@@ -73,13 +72,13 @@ span {
 .whitespace {
   white-space: pre-wrap;
 }
-  );
+  )V0G0N";
   // clang-format on
 }
 
 const char *Constants::getOpenDocumentSpreadsheetDefaultCss() noexcept {
   // clang-format off
-  return MULTILINE(
+  return R"V0G0N((
 table {
   border-collapse: collapse;
   display: block;
@@ -91,13 +90,13 @@ p {
   font-family: "Arial";
   font-size: 10pt;
 }
-  );
+  )V0G0N";
   // clang-format on
 }
 
 const char *Constants::getDefaultScript() noexcept {
   // clang-format off
-  return MULTILINE(
+  return R"V0G0N((
 function download(filename, text) {
   var element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
@@ -150,7 +149,7 @@ var editJournal = {
 const observer = new MutationObserver(mutation);
 const config = { attributes: false, childList: true, subtree: true, characterData: true };
 observer.observe(document.body, config);
-  );
+  )V0G0N";
   // clang-format on
 }
 
