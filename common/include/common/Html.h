@@ -1,19 +1,26 @@
 #ifndef ODR_COMMON_HTML_H
 #define ODR_COMMON_HTML_H
 
+#include <string>
+
+namespace odr {
+struct Config;
+}
+
 namespace odr {
 namespace common {
 
 namespace Html {
-const char *getBeginToStyle() noexcept;
-const char *getStyleToBody() noexcept;
-const char *getBodyToScript() noexcept;
-const char *getScriptToEnd() noexcept;
+const char *doctype() noexcept;
 
-const char *getOpenDocumentDefaultCss() noexcept;
-const char *getOpenDocumentSpreadsheetDefaultCss() noexcept;
+const char *defaultHeaders() noexcept;
 
-const char *getDefaultScript() noexcept;
+const char *odfDefaultStyle() noexcept;
+const char *odfSpreadsheetDefaultStyle() noexcept;
+
+const char *defaultScript() noexcept;
+
+std::string bodyAttributes(const Config &) noexcept;
 } // namespace Html
 
 } // namespace common
