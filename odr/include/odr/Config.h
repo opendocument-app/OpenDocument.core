@@ -5,6 +5,12 @@
 
 namespace odr {
 
+enum class TableGridlines {
+  NONE,
+  SOFT,
+  HARD,
+};
+
 struct Config {
   // starting sheet for spreadsheet, starting page for presentation, ignored for
   // text, ignored for graphics
@@ -23,6 +29,8 @@ struct Config {
   std::uint32_t tableLimitRows{10000};
   std::uint32_t tableLimitCols{500};
   bool tableLimitByDimensions{true};
+  // spreadsheet gridlines
+  TableGridlines tableGridlines{TableGridlines::SOFT};
 };
 
 } // namespace odr

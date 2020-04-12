@@ -4,7 +4,7 @@
 #include <PresentationTranslator.h>
 #include <WorkbookTranslator.h>
 #include <access/ZipStorage.h>
-#include <common/Constants.h>
+#include <common/Html.h>
 #include <common/XmlUtil.h>
 #include <fstream>
 #include <ooxml/OfficeOpenXml.h>
@@ -16,7 +16,7 @@ namespace ooxml {
 namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
   // default css
-  out << common::Constants::getOpenDocumentDefaultCss();
+  out << common::Html::odfDefaultStyle();
 
   switch (context.meta->type) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT: {
@@ -53,7 +53,7 @@ void generateStyle_(std::ofstream &out, Context &context) {
 }
 
 void generateScript_(std::ofstream &out, Context &) {
-  out << common::Constants::getDefaultScript();
+  out << common::Html::defaultScript();
 }
 
 void generateContent_(Context &context) {
@@ -180,19 +180,22 @@ public:
     context_.storage = storage_.get();
     context_.output = &out;
 
-    out << common::Constants::getHtmlBeginToStyle();
-
+    out << common::Html::doctype();
+    out << "<html><head>";
+    out << common::Html::defaultHeaders();
+    out << "<style>";
     generateStyle_(out, context_);
+    out << "</style>";
+    out << "</head>";
 
-    out << common::Constants::getHtmlStyleToBody();
-
+    out << "<body " << common::Html::bodyAttributes(config) << ">";
     generateContent_(context_);
+    out << "</body>";
 
-    out << common::Constants::getHtmlBodyToScript();
-
+    out << "<script>";
     generateScript_(out, context_);
-
-    out << common::Constants::getHtmlScriptToEnd();
+    out << "</script>";
+    out << "</html>";
 
     context_.config = nullptr;
     context_.output = nullptr;

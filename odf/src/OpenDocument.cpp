@@ -5,7 +5,7 @@
 #include <StyleTranslator.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
-#include <common/Constants.h>
+#include <common/Html.h>
 #include <common/XmlUtil.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -17,10 +17,10 @@ namespace odf {
 
 namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
-  out << common::Constants::getOpenDocumentDefaultCss();
+  out << common::Html::odfDefaultStyle();
 
   if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) {
-    out << common::Constants::getOpenDocumentSpreadsheetDefaultCss();
+    out << common::Html::odfSpreadsheetDefaultStyle();
   }
 
   const auto stylesXml = common::XmlUtil::parse(*context.storage, "styles.xml");
@@ -70,7 +70,7 @@ void generateContentStyle_(tinyxml2::XMLHandle &in, Context &context) {
 }
 
 void generateScript_(std::ofstream &out, Context &) {
-  out << common::Constants::getDefaultScript();
+  out << common::Html::defaultScript();
 }
 
 void generateContent_(tinyxml2::XMLHandle &in, Context &context) {
@@ -178,22 +178,26 @@ public:
     context_.storage = storage_.get();
     context_.output = &out;
 
-    out << common::Constants::getHtmlBeginToStyle();
-
-    generateStyle_(out, context_);
     content_ = common::XmlUtil::parse(*storage_, "content.xml");
     tinyxml2::XMLHandle contentHandle(content_.get());
+
+    out << common::Html::doctype();
+    out << "<html><head>";
+    out << common::Html::defaultHeaders();
+    out << "<style>";
+    generateStyle_(out, context_);
     generateContentStyle_(contentHandle, context_);
+    out << "</style>";
+    out << "</head>";
 
-    out << common::Constants::getHtmlStyleToBody();
-
+    out << "<body " << common::Html::bodyAttributes(config) << ">";
     generateContent_(contentHandle, context_);
+    out << "</body>";
 
-    out << common::Constants::getHtmlBodyToScript();
-
+    out << "<script>";
     generateScript_(out, context_);
-
-    out << common::Constants::getHtmlScriptToEnd();
+    out << "</script>";
+    out << "</html>";
 
     context_.config = nullptr;
     context_.output = nullptr;

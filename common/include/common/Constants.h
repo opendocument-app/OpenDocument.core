@@ -7,16 +7,6 @@ namespace common {
 namespace Constants {
 const char *getVersion() noexcept;
 const char *getCommit() noexcept;
-
-const char *getHtmlBeginToStyle() noexcept;
-const char *getHtmlStyleToBody() noexcept;
-const char *getHtmlBodyToScript() noexcept;
-const char *getHtmlScriptToEnd() noexcept;
-
-const char *getOpenDocumentDefaultCss() noexcept;
-const char *getOpenDocumentSpreadsheetDefaultCss() noexcept;
-
-const char *getDefaultScript() noexcept;
 } // namespace Constants
 
 } // namespace common
