@@ -1,5 +1,5 @@
 # OpenDocument.core
-![build status](https://travis-ci.org/andiwand/OpenDocument.core.svg?branch=development)
+![build status](https://github.com/opendocument-app/OpenDocument.core/workflows/build/badge.svg)
 
 C++ library to visualize files in HTML.
 
