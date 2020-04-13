@@ -2,6 +2,7 @@
 #define ODR_OOXML_CONTEXT_H
 
 #include <common/TableCursor.h>
+#include <common/TableRange.h>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -35,11 +36,8 @@ struct Context {
   std::unique_ptr<tinyxml2::XMLDocument> sharedStringsDocument; // xlsx
   std::vector<const tinyxml2::XMLElement *> sharedStrings;      // xlsx
 
-  std::uint32_t currentEntry;
-  std::uint32_t currentTableRowStart;
-  std::uint32_t currentTableRowEnd;
-  std::uint32_t currentTableColStart;
-  std::uint32_t currentTableColEnd;
+  std::uint32_t entry{0};
+  common::TableRange tableRange;
   common::TableCursor tableCursor;
   std::unordered_map<std::uint32_t, std::string> defaultCellStyles;
 

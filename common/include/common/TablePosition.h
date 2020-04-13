@@ -7,22 +7,22 @@
 namespace odr {
 namespace common {
 
-class TablePosition {
+class TablePosition final {
 public:
-  static std::uint32_t to_col_num(const std::string &);
-  static std::string to_col_string(std::uint32_t);
+  static std::uint32_t toColNum(const std::string &string);
+  static std::string toColString(std::uint32_t col);
 
   TablePosition() noexcept;
   TablePosition(std::uint32_t row, std::uint32_t col) noexcept;
   explicit TablePosition(const std::string &);
 
-  std::uint32_t getRow() const noexcept { return row; }
-  std::uint32_t getCol() const noexcept { return col; }
+  std::uint32_t row() const noexcept { return row_; }
+  std::uint32_t col() const noexcept { return col_; }
   std::string toString() const noexcept;
 
 private:
-  std::uint32_t row;
-  std::uint32_t col;
+  std::uint32_t row_{0};
+  std::uint32_t col_{0};
 };
 
 } // namespace common

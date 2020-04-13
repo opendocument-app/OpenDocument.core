@@ -57,6 +57,8 @@ void generateScript_(std::ofstream &out, Context &) {
 }
 
 void generateContent_(Context &context) {
+  context.entry = 0;
+
   switch (context.meta->type) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT: {
     const auto content =
@@ -85,8 +87,8 @@ void generateContent_(Context &context) {
 
           if ((context.config->entryOffset > 0) ||
               (context.config->entryCount > 0)) {
-            if ((context.currentEntry >= context.config->entryOffset) &&
-                (context.currentEntry <
+            if ((context.entry >= context.config->entryOffset) &&
+                (context.entry <
                  context.config->entryOffset + context.config->entryCount)) {
               PresentationTranslator::html(*content->RootElement(), context);
             }
@@ -94,7 +96,7 @@ void generateContent_(Context &context) {
             PresentationTranslator::html(*content->RootElement(), context);
           }
 
-          ++context.currentEntry;
+          ++context.entry;
         });
   } break;
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
@@ -122,8 +124,8 @@ void generateContent_(Context &context) {
 
           if ((context.config->entryOffset > 0) ||
               (context.config->entryCount > 0)) {
-            if ((context.currentEntry >= context.config->entryOffset) &&
-                (context.currentEntry <
+            if ((context.entry >= context.config->entryOffset) &&
+                (context.entry <
                  context.config->entryOffset + context.config->entryCount)) {
               WorkbookTranslator::html(*content->RootElement(), context);
             }
@@ -131,7 +133,7 @@ void generateContent_(Context &context) {
             WorkbookTranslator::html(*content->RootElement(), context);
           }
 
-          ++context.currentEntry;
+          ++context.entry;
         });
   } break;
   default:
@@ -151,13 +153,11 @@ public:
 
   explicit Impl(std::unique_ptr<access::Storage> &&storage) {
     meta_ = Meta::parseFileMeta(*storage);
-
     storage_ = std::move(storage);
   }
 
   explicit Impl(std::unique_ptr<access::Storage> &storage) {
     meta_ = Meta::parseFileMeta(*storage);
-
     storage_ = std::move(storage);
   }
 

@@ -4,7 +4,7 @@
 namespace odr {
 namespace common {
 
-std::uint32_t TablePosition::to_col_num(const std::string &s) {
+std::uint32_t TablePosition::toColNum(const std::string &s) {
   if (s.empty())
     throw std::invalid_argument("s is empty");
 
@@ -17,7 +17,7 @@ std::uint32_t TablePosition::to_col_num(const std::string &s) {
   return result - 1;
 }
 
-std::string TablePosition::to_col_string(std::uint32_t col) {
+std::string TablePosition::toColString(std::uint32_t col) {
   std::string result;
 
   col += 1;
@@ -35,26 +35,26 @@ std::string TablePosition::to_col_string(std::uint32_t col) {
   return result;
 }
 
-TablePosition::TablePosition() noexcept : TablePosition(0, 0) {}
+TablePosition::TablePosition() noexcept = default;
 
 TablePosition::TablePosition(const std::uint32_t row,
                              const std::uint32_t col) noexcept
-    : row(row), col(col) {}
+    : row_(row), col_(col) {}
 
 TablePosition::TablePosition(const std::string &s) {
   const auto pos = s.find_first_of("0123456789");
   if (pos == std::string::npos)
     throw std::invalid_argument("malformed table position " + s);
-  row = std::stoul(s.substr(pos));
-  if (row <= 0)
+  row_ = std::stoul(s.substr(pos));
+  if (row_ <= 0)
     throw std::invalid_argument("row number needs to be at least 1 " +
                                 s.substr(pos));
-  --row;
-  col = to_col_num(s.substr(0, pos));
+  --row_;
+  col_ = toColNum(s.substr(0, pos));
 }
 
 std::string TablePosition::toString() const noexcept {
-  return to_col_string(col) + std::to_string(row + 1);
+  return toColString(col_) + std::to_string(row_ + 1);
 }
 
 } // namespace common

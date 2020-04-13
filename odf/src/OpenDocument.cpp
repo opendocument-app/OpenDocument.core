@@ -97,7 +97,7 @@ void generateContent_(tinyxml2::XMLHandle &in, Context &context) {
     throw std::invalid_argument("type");
   }
 
-  context.currentEntry = 0;
+  context.entry = 0;
 
   if ((content != nullptr) &&
       ((context.config->entryOffset > 0) || (context.config->entryCount > 0))) {
@@ -112,7 +112,7 @@ void generateContent_(tinyxml2::XMLHandle &in, Context &context) {
                 context.config->entryOffset + context.config->entryCount))) {
             ContentTranslator::html(c, context);
           } else {
-            ++context.currentEntry; // TODO hacky
+            ++context.entry; // TODO hacky
           }
           ++i;
         });

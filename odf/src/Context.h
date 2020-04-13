@@ -2,6 +2,7 @@
 #define ODR_ODF_CONTEXT_H
 
 #include <common/TableCursor.h>
+#include <common/TableRange.h>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -31,16 +32,13 @@ struct Context {
 
   std::unordered_map<std::string, std::list<std::string>> styleDependencies;
 
-  std::uint32_t currentEntry;
-  std::uint32_t currentTableRowStart;
-  std::uint32_t currentTableRowEnd;
-  std::uint32_t currentTableColStart;
-  std::uint32_t currentTableColEnd;
+  std::uint32_t entry{0};
+  common::TableRange tableRange;
   common::TableCursor tableCursor;
   std::unordered_map<std::uint32_t, std::string> defaultCellStyles;
 
   // editing
-  std::uint32_t currentTextTranslationIndex;
+  std::uint32_t currentTextTranslationIndex{0};
   std::unordered_map<std::uint32_t, const tinyxml2::XMLText *> textTranslation;
 };
 
