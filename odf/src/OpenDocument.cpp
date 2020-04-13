@@ -97,6 +97,8 @@ void generateContent_(tinyxml2::XMLHandle &in, Context &context) {
     throw std::invalid_argument("type");
   }
 
+  context.currentEntry = 0;
+
   if ((content != nullptr) &&
       ((context.config->entryOffset > 0) || (context.config->entryCount > 0))) {
     std::uint32_t i = 0;
