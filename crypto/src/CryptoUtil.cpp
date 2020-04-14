@@ -16,7 +16,7 @@ typedef unsigned char byte;
 
 std::string Util::base64Encode(const std::string &in) {
   std::string out;
-  CryptoPP::Base64Encoder b(new CryptoPP::StringSink(out));
+  CryptoPP::Base64Encoder b(new CryptoPP::StringSink(out), false);
   b.Put((const byte *)in.data(), in.size());
   b.MessageEnd();
   return out;
