@@ -3,7 +3,7 @@
 namespace odr {
 namespace common {
 
-TableCursor::TableCursor() noexcept : row_{0}, col_{0} {
+TableCursor::TableCursor() noexcept {
   sparse_.emplace_back();
 }
 
