@@ -100,7 +100,7 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << ">";
 
   if (in.FirstChild() == nullptr)
-    out << "<br/>";
+    out << "<br>";
   else
     ElementChildrenTranslator(in, out, context);
 
@@ -122,6 +122,10 @@ void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
 void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, Context &) {
   out << "<span class=\"whitespace\">&emsp;</span>";
+}
+
+void LineBreakTranslator(const tinyxml2::XMLElement &, std::ostream &out, Context &) {
+  out << "<br>";
 }
 
 void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
@@ -334,7 +338,7 @@ void DrawRectTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                         Context &context) {
   //<draw:rect draw:style-name="gr1" draw:text-style-name="P1" draw:layer="layout" svg:width="19.4cm" svg:height="1cm" svg:x="0cm" svg:y="28.2cm">
 
-  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" style=")";
+  out << "<div style=\"";
 
   const auto width = in.FindAttribute("svg:width");
   const auto height = in.FindAttribute("svg:height");
@@ -350,15 +354,15 @@ void DrawRectTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     out << "left:" << x->Value() << ";";
   if (y != nullptr)
     out << "top:" << y->Value() << ";";
-
   out << "\"";
 
-  out << R"(><rect x="0" y="0" width="100" height="100")";
   ElementAttributeTranslator(in, out, context);
   out << ">";
+  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:100%;position:absolute;top:0;left:0;"><rect x="0" y="0" width="100" height="100"></rect></svg>)";
+  out << "<div style=\"width:100%;height:100%;position:absolute;top:0;left:0;\">";
   ElementChildrenTranslator(in, out, context);
-  out << "</rect>";
-  out << "</svg>";
+  out << "</div>";
+  out << "</div>";
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
@@ -374,7 +378,7 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                        Context &context) {
   static std::unordered_map<std::string, const char *> substitution{
-      {"text:span", "span"},    {"text:line-break", "br"}, {"text:list", "ul"},
+      {"text:span", "span"},    {"text:list", "ul"},
       {"text:list-item", "li"}, {"draw:page", "div"},
   };
   static std::unordered_set<std::string> skippers{
@@ -399,6 +403,8 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     SpaceTranslator(in, out, context);
   else if (element == "text:tab")
     TabTranslator(in, out, context);
+  else if (element == "text:line-break")
+    LineBreakTranslator(in, out, context);
   else if (element == "text:a")
     LinkTranslator(in, out, context);
   else if (element == "text:bookmark" || element == "text:bookmark-start")
