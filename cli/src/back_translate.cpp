@@ -6,8 +6,8 @@
 
 int main(int, char **argv) {
   const std::string input(argv[1]);
-  const std::string diff(argv[3]);
-  const std::string output(argv[2]);
+  const std::string diff(argv[2]);
+  const std::string output(argv[3]);
 
   odr::Config config;
   config.entryOffset = 0;

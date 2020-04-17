@@ -23,7 +23,7 @@ public:
 
   bool isSomething(const Path &) const final;
   bool isFile(const Path &) const final;
-  bool isFolder(const Path &) const final;
+  bool isDirectory(const Path &) const final;
   bool isReadable(const Path &) const final;
 
   std::uint64_t size(const Path &) const final;

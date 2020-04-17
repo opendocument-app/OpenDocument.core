@@ -95,7 +95,7 @@ public:
   bool isFile(const access::Path &p) const final {
     return parent->isSomething(p);
   }
-  bool isFolder(const access::Path &p) const final {
+  bool isDirectory(const access::Path &p) const final {
     return parent->isSomething(p);
   }
   bool isReadable(const access::Path &p) const final { return isFile(p); }

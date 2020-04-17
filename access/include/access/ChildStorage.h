@@ -13,7 +13,7 @@ public:
 
   bool isSomething(const Path &) const final;
   bool isFile(const Path &) const final;
-  bool isFolder(const Path &) const final;
+  bool isDirectory(const Path &) const final;
   bool isReadable(const Path &) const final;
   bool isWriteable(const Path &) const final;
 
@@ -22,6 +22,8 @@ public:
   bool remove(const Path &) const final;
   bool copy(const Path &, const Path &) const final;
   bool move(const Path &, const Path &) const final;
+
+  bool createDirectory(const Path &) const final;
 
   void visit(Visitor) const final;
 

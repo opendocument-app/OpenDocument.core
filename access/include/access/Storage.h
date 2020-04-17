@@ -38,7 +38,7 @@ public:
 
   virtual bool isSomething(const Path &) const = 0;
   virtual bool isFile(const Path &) const = 0;
-  virtual bool isFolder(const Path &) const = 0;
+  virtual bool isDirectory(const Path &) const = 0;
   virtual bool isReadable(const Path &) const = 0;
   virtual bool isWriteable(const Path &) const = 0;
 
@@ -47,6 +47,8 @@ public:
   virtual bool remove(const Path &) const = 0;
   virtual bool copy(const Path &from, const Path &to) const = 0;
   virtual bool move(const Path &from, const Path &to) const = 0;
+
+  virtual bool createDirectory(const Path &) const = 0;
 
   // TODO only list for subdir? harder in case of zip
   virtual void visit(Visitor) const = 0;
@@ -65,6 +67,8 @@ public:
   bool copy(const Path &, const Path &) const final { return false; }
   bool move(const Path &, const Path &) const final { return false; }
 
+  bool createDirectory(const Path &) const final { return false; }
+
   std::unique_ptr<Sink> write(const Path &) const final { return nullptr; }
 };
 
@@ -74,7 +78,7 @@ public:
 
   bool isSomething(const Path &) const final { return false; }
   bool isFile(const Path &) const final { return false; }
-  bool isFolder(const Path &) const final { return false; }
+  bool isDirectory(const Path &) const final { return false; }
   bool isReadable(const Path &) const final { return false; }
 
   void visit(Visitor) const final {}

@@ -89,7 +89,11 @@ public:
     return find(path, i) && !mz_zip_reader_is_file_a_directory(&zip, i);
   }
 
-  bool isFolder(const Path &) noexcept { return false; }
+  bool isDirectory(const Path &path) noexcept {
+    mz_uint i;
+    return find(path.string() + "/", i) &&
+           mz_zip_reader_is_file_a_directory(&zip, i);
+  }
 
   bool isReadable(const Path &path) noexcept { return isFile(path); }
 
@@ -124,14 +128,15 @@ public:
   public:
     mz_zip_archive &zip;
     const std::string path;
+    const int compression;
     std::string buffer;
 
-    SinkImpl(mz_zip_archive &zip, const std::string &path)
-        : zip(zip), path(path) {}
+    SinkImpl(mz_zip_archive &zip, std::string path, int compression)
+        : zip(zip), path(std::move(path)), compression(compression) {}
 
     ~SinkImpl() final {
       mz_zip_writer_add_mem(&zip, path.data(), buffer.data(), buffer.size(),
-                            MZ_DEFAULT_COMPRESSION);
+                            compression);
     }
 
     void write(const char *data, const std::uint32_t amount) final {
@@ -160,8 +165,15 @@ public:
     return true;
   }
 
-  std::unique_ptr<Sink> write(const Path &path) noexcept {
-    return std::make_unique<SinkImpl>(zip, path);
+  bool createDirectory(const Path &path) noexcept {
+    const std::string dir = path.string() + "/";
+    mz_zip_writer_add_mem(&zip, dir.data(), "", 0, 0);
+    return true;
+  }
+
+  std::unique_ptr<Sink> write(const Path &path,
+                              const int compression) noexcept {
+    return std::make_unique<SinkImpl>(zip, path.string(), compression);
   }
 };
 
@@ -181,8 +193,8 @@ bool ZipReader::isSomething(const Path &path) const {
 
 bool ZipReader::isFile(const Path &path) const { return impl->isFile(path); }
 
-bool ZipReader::isFolder(const Path &path) const {
-  return impl->isFolder(path);
+bool ZipReader::isDirectory(const Path &path) const {
+  return impl->isDirectory(path);
 }
 
 bool ZipReader::isReadable(const Path &path) const {
@@ -207,8 +219,17 @@ bool ZipWriter::copy(const ZipReader &source, const Path &path) const {
   return impl->copy(source, path);
 }
 
+bool ZipWriter::createDirectory(const Path &path) const {
+  return impl->createDirectory(path);
+}
+
 std::unique_ptr<Sink> ZipWriter::write(const Path &path) const {
-  return impl->write(path);
+  return impl->write(path, MZ_DEFAULT_LEVEL);
+}
+
+std::unique_ptr<Sink> ZipWriter::write(const Path &path,
+                                       const int compression) const {
+  return impl->write(path, compression);
 }
 
 } // namespace access
