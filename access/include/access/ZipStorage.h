@@ -28,7 +28,7 @@ public:
 
   bool isSomething(const Path &) const final;
   bool isFile(const Path &) const final;
-  bool isFolder(const Path &) const final;
+  bool isDirectory(const Path &) const final;
   bool isReadable(const Path &) const final;
 
   std::uint64_t size(const Path &) const final;
@@ -58,7 +58,10 @@ public:
   bool copy(const ZipReader &, const Path &) const;
   bool move(const Path &, const Path &) const final { return false; }
 
+  bool createDirectory(const Path &) const final;
+
   std::unique_ptr<Sink> write(const Path &) const final;
+  std::unique_ptr<Sink> write(const Path &, int compression) const;
 
 private:
   class Impl;

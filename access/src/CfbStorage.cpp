@@ -485,7 +485,7 @@ public:
     return (entry != nullptr) && reader->IsStream(entry);
   }
 
-  bool isFolder(const Path &p) const {
+  bool isDirectory(const Path &p) const {
     const auto entry = find(p);
     return (entry != nullptr) && !reader->IsStream(entry);
   }
@@ -527,8 +527,8 @@ bool CfbReader::isSomething(const Path &) const {
 
 bool CfbReader::isFile(const Path &path) const { return impl->isFile(path); }
 
-bool CfbReader::isFolder(const Path &path) const {
-  return impl->isFolder(path);
+bool CfbReader::isDirectory(const Path &path) const {
+  return impl->isDirectory(path);
 }
 
 bool CfbReader::isReadable(const Path &path) const {

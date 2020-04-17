@@ -19,7 +19,7 @@ bool ChildStorage::isFile(const Path &path) const {
   return parent.isFile(prefix.join(path));
 }
 
-bool ChildStorage::isFolder(const Path &path) const {
+bool ChildStorage::isDirectory(const Path &path) const {
   return parent.isFile(prefix.join(path));
 }
 
@@ -45,6 +45,10 @@ bool ChildStorage::copy(const Path &from, const Path &to) const {
 
 bool ChildStorage::move(const Path &from, const Path &to) const {
   return parent.move(prefix.join(from), prefix.join(to));
+}
+
+bool ChildStorage::createDirectory(const Path &path) const {
+  return parent.createDirectory(prefix.join(path));
 }
 
 void ChildStorage::visit(Visitor visiter) const {

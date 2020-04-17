@@ -18,7 +18,7 @@ bool SystemStorage::isFile(const Path &) const {
   return false; // TODO
 }
 
-bool SystemStorage::isFolder(const Path &) const {
+bool SystemStorage::isDirectory(const Path &) const {
   return false; // TODO
 }
 
@@ -43,6 +43,10 @@ bool SystemStorage::copy(const Path &, const Path &) const {
 }
 
 bool SystemStorage::move(const Path &, const Path &) const {
+  return false; // TODO
+}
+
+bool SystemStorage::createDirectory(const Path &) const {
   return false; // TODO
 }
 

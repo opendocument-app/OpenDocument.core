@@ -237,19 +237,32 @@ public:
     // TODO throw if not decrypted
     // TODO this would decrypt/inflate and encrypt/deflate again
     access::ZipWriter writer(path);
+
+    // `mimetype` has to be the first file and uncompressed
+    if (storage_->isFile("mimetype")) {
+      const auto in = storage_->read("mimetype");
+      const auto out = writer.write("mimetype", 0);
+      access::StreamUtil::pipe(*in, *out);
+    }
+
     storage_->visit([&](const auto &p) {
-      if (!storage_->isReadable(p))
+      std::cout << p.string() << std::endl;
+      if (p == "mimetype")
         return;
-      if (p == "content.xml")
+      if (storage_->isDirectory(p)) {
+        writer.createDirectory(p);
         return;
+      }
       const auto in = storage_->read(p);
       const auto out = writer.write(p);
+      if (p == "content.xml") {
+        tinyxml2::XMLPrinter printer(nullptr, true, 0);
+        content_->Print(&printer);
+        out->write(printer.CStr(), printer.CStrSize() - 1);
+        return;
+      }
       access::StreamUtil::pipe(*in, *out);
     });
-
-    tinyxml2::XMLPrinter printer(nullptr, true, 0);
-    content_->Print(&printer);
-    writer.write("content.xml")->write(printer.CStr(), printer.CStrSize() - 1);
 
     return true;
   }
