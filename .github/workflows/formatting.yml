@@ -1,0 +1,19 @@
+name: formatting
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: apply clang-format
+        run: |
+          FILES=$( find . -type f \( -iname \*.h -o -iname \*.cpp \) )
+          ls -la $FILES
+          clang-format --style=file -i $FILES
+
+      - run: git diff --exit-code
