@@ -49,6 +49,14 @@ void generateStyle_(std::ofstream &out, Context &context) {
   if (automaticStyles != nullptr) {
     StyleTranslator::css(*automaticStyles, context);
   }
+
+  const tinyxml2::XMLElement *masterStyles =
+      stylesHandle.FirstChildElement("office:document-styles")
+          .FirstChildElement("office:master-styles")
+          .ToElement();
+  if (masterStyles != nullptr) {
+    StyleTranslator::css(*masterStyles, context);
+  }
 }
 
 void generateContentStyle_(tinyxml2::XMLHandle &in, Context &context) {

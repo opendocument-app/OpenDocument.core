@@ -43,7 +43,9 @@ void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
       {"style:vertical-align", "vertical-align"},
       {"style:column-width", "width"},
       {"style:row-height", "height"},
-  };
+      {"draw:fill-color", "fill"},
+      {"svg:stroke-color", "stroke"},
+      {"svg:stroke-width", "stroke-width"}};
 
   const std::string property = in.Name();
   const auto it = substitution.find(property);
@@ -57,6 +59,9 @@ void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
     // TODO breaks underline
     if (std::strcmp(in.Value(), "solid") == 0)
       out << "text-decoration:line-through;";
+  } else if (property == "draw:textarea-vertical-align") {
+    if (std::strcmp(in.Value(), "middle") == 0)
+      out << "display:flex;justify-content:center;flex-direction: column;";
   }
 }
 
@@ -65,6 +70,8 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   static std::unordered_map<std::string, const char *> elementToNameAttr{
       {"style:default-style", "style:family"},
       {"style:style", "style:name"},
+      {"style:page-layout", "style:name"},
+      {"style:master-page", "style:name"},
   };
 
   const std::string element = in.Name();
@@ -91,6 +98,20 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(family));
   }
+  // master page
+  const char *pageLayout;
+  if (in.QueryStringAttribute("style:page-layout-name", &pageLayout) ==
+      tinyxml2::XML_SUCCESS) {
+    context.styleDependencies[name].push_back(
+        StyleTranslator::escapeStyleName(pageLayout));
+  }
+  // master page
+  const char *drawStyle;
+  if (in.QueryStringAttribute("draw:style-name", &drawStyle) ==
+      tinyxml2::XML_SUCCESS) {
+    context.styleDependencies[name].push_back(
+        StyleTranslator::escapeStyleName(drawStyle));
+  }
 
   out << "." << name << "." << name << " {";
 
@@ -104,6 +125,7 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "}\n";
 }
 
+// TODO
 void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                          Context &context) {
   // addElementDelegation("text:list-level-style-number", propertiesTranslator);
@@ -161,7 +183,6 @@ std::string StyleTranslator::escapeStyleName(const std::string &name) {
 void StyleTranslator::css(const tinyxml2::XMLElement &in, Context &context) {
   common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
     StyleClassTranslator(e, *context.output, context);
-    // TODO ListStyleTranslator
   });
 }
 

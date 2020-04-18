@@ -36,9 +36,8 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
   }
 }
 
-void StyleAttributeTranslator(const std::string &name, std::ostream &out,
-                              Context &context) {
-  out << " class=\"";
+void StyleClassTranslator(const std::string &name, std::ostream &out,
+                          Context &context) {
   out << name;
 
   { // handle style dependencies
@@ -52,39 +51,33 @@ void StyleAttributeTranslator(const std::string &name, std::ostream &out,
       }
     }
   }
-
-  // TODO draw:master-page-name
-
-  out << "\"";
 }
 
-void StyleAttributeTranslator(const tinyxml2::XMLAttribute &in,
-                              std::ostream &out, Context &context) {
-  const std::string name = StyleTranslator::escapeStyleName(in.Value());
-  StyleAttributeTranslator(name, out, context);
-}
-
-void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out,
-                         Context &context) {
+void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+                          Context &context) {
   static std::unordered_set<std::string> styleAttributes{
-      "text:style-name",
-      "table:style-name",
-      "draw:style-name",
-      "presentation:style-name",
+      "text:style-name",         "table:style-name",
+      "draw:style-name",         "draw:text-style-name",
+      "presentation:style-name", "draw:master-page-name",
   };
 
-  const std::string element = in.Name();
-  if (styleAttributes.find(element) != styleAttributes.end()) {
-    StyleAttributeTranslator(in, out, context);
-  }
+  out << " class=\"";
+  common::XmlUtil::visitElementAttributes(
+      in, [&](const tinyxml2::XMLAttribute &a) {
+        const std::string attribute = a.Name();
+        if (styleAttributes.find(attribute) == styleAttributes.end()) {
+          return;
+        }
+        const std::string name = StyleTranslator::escapeStyleName(a.Value());
+        StyleClassTranslator(name, out, context);
+        out << " ";
+      });
+  out << "\"";
 }
 
 void ElementAttributeTranslator(const tinyxml2::XMLElement &in,
                                 std::ostream &out, Context &context) {
-  common::XmlUtil::visitElementAttributes(
-      in, [&](const tinyxml2::XMLAttribute &a) {
-        AttributeTranslator(a, out, context);
-      });
+  StyleClassTranslator(in, out, context);
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
@@ -99,7 +92,7 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << ">";
 
   if (in.FirstChild() == nullptr)
-    out << "<br/>";
+    out << "<br>";
   else
     ElementChildrenTranslator(in, out, context);
 
@@ -121,6 +114,11 @@ void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
 void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, Context &) {
   out << "<span class=\"whitespace\">&emsp;</span>";
+}
+
+void LineBreakTranslator(const tinyxml2::XMLElement &, std::ostream &out,
+                         Context &) {
+  out << "<br>";
 }
 
 void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
@@ -313,7 +311,7 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
         const auto it =
             context.defaultCellStyles.find(context.tableCursor.getCol());
         if (it != context.defaultCellStyles.end())
-          StyleAttributeTranslator(it->second, out, context);
+          StyleClassTranslator(it->second, out, context);
       }
       ElementAttributeTranslator(in, out, context);
       // TODO check for >1?
@@ -329,6 +327,86 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   }
 }
 
+void DrawLineTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+                        Context &context) {
+  const auto x1 = in.FindAttribute("svg:x1");
+  const auto y1 = in.FindAttribute("svg:y1");
+  const auto x2 = in.FindAttribute("svg:x2");
+  const auto y2 = in.FindAttribute("svg:y2");
+
+  if ((x1 == nullptr) || (y1 == nullptr) || (x2 == nullptr) || (y2 == nullptr))
+    return;
+
+  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" style="z-index:-1;position:absolute;top:0;left:0;")";
+
+  ElementAttributeTranslator(in, out, context);
+  out << ">";
+
+  out << "<line";
+
+  out << " x1=\"" << x1->Value() << "\"";
+  out << " y1=\"" << y1->Value() << "\"";
+  out << " x2=\"" << x2->Value() << "\"";
+  out << " y2=\"" << y2->Value() << "\"";
+  out << " />";
+
+  out << "</svg>";
+}
+
+void DrawRectTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+                        Context &context) {
+  out << "<div style=\"";
+
+  const auto width = in.FindAttribute("svg:width");
+  const auto height = in.FindAttribute("svg:height");
+  const auto x = in.FindAttribute("svg:x");
+  const auto y = in.FindAttribute("svg:y");
+
+  out << "position:absolute;";
+  if (width != nullptr)
+    out << "width:" << width->Value() << ";";
+  if (height != nullptr)
+    out << "height:" << height->Value() << ";";
+  if (x != nullptr)
+    out << "left:" << x->Value() << ";";
+  if (y != nullptr)
+    out << "top:" << y->Value() << ";";
+  out << "\"";
+
+  ElementAttributeTranslator(in, out, context);
+  out << ">";
+  ElementChildrenTranslator(in, out, context);
+  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%"></rect></svg>)";
+  out << "</div>";
+}
+
+void DrawCircleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+                          Context &context) {
+  out << "<div style=\"";
+
+  const auto width = in.FindAttribute("svg:width");
+  const auto height = in.FindAttribute("svg:height");
+  const auto x = in.FindAttribute("svg:x");
+  const auto y = in.FindAttribute("svg:y");
+
+  out << "position:absolute;";
+  if (width != nullptr)
+    out << "width:" << width->Value() << ";";
+  if (height != nullptr)
+    out << "height:" << height->Value() << ";";
+  if (x != nullptr)
+    out << "left:" << x->Value() << ";";
+  if (y != nullptr)
+    out << "top:" << y->Value() << ";";
+  out << "\"";
+
+  ElementAttributeTranslator(in, out, context);
+  out << ">";
+  ElementChildrenTranslator(in, out, context);
+  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%"></rect></svg>)";
+  out << "</div>";
+}
+
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
                                std::ostream &out, Context &context) {
   common::XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
@@ -342,8 +420,10 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
 void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                        Context &context) {
   static std::unordered_map<std::string, const char *> substitution{
-      {"text:span", "span"},    {"text:line-break", "br"}, {"text:list", "ul"},
-      {"text:list-item", "li"}, {"draw:page", "div"},
+      {"text:span", "span"},
+      {"text:list", "ul"},
+      {"text:list-item", "li"},
+      {"draw:page", "div"},
   };
   static std::unordered_set<std::string> skippers{
       "svg:desc",
@@ -367,6 +447,8 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     SpaceTranslator(in, out, context);
   else if (element == "text:tab")
     TabTranslator(in, out, context);
+  else if (element == "text:line-break")
+    LineBreakTranslator(in, out, context);
   else if (element == "text:a")
     LinkTranslator(in, out, context);
   else if (element == "text:bookmark" || element == "text:bookmark-start")
@@ -383,6 +465,12 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     TableRowTranslator(in, out, context);
   else if (element == "table:table-cell")
     TableCellTranslator(in, out, context);
+  else if (element == "draw:line")
+    DrawLineTranslator(in, out, context);
+  else if (element == "draw:rect")
+    DrawRectTranslator(in, out, context);
+  else if (element == "draw:circle")
+    DrawCircleTranslator(in, out, context);
   else {
     const auto it = substitution.find(element);
     if (it != substitution.end()) {
