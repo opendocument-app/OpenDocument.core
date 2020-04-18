@@ -225,17 +225,16 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                      Context &context) {
   context.tableRange = {
       {context.config->tableOffsetRows, context.config->tableOffsetCols},
-      context.config->tableLimitRows, context.config->tableLimitCols
-  };
+      context.config->tableLimitRows,
+      context.config->tableLimitCols};
   context.tableCursor = {};
 
   // TODO remove file check; add simple table translator for odt/odp
   if ((context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) &&
       context.config->tableLimitByDimensions) {
     const common::TablePosition end{
-      context.meta->entries[context.entry].rowCount,
-      context.meta->entries[context.entry].columnCount
-    };
+        context.meta->entries[context.entry].rowCount,
+        context.meta->entries[context.entry].columnCount};
 
     context.tableRange = {context.tableRange.from(), end};
   }

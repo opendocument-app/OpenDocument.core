@@ -3,9 +3,7 @@
 namespace odr {
 namespace common {
 
-TableCursor::TableCursor() noexcept {
-  sparse_.emplace_back();
-}
+TableCursor::TableCursor() noexcept { sparse_.emplace_back(); }
 
 void TableCursor::addCol(const std::uint32_t repeat) noexcept {
   col_ += repeat;

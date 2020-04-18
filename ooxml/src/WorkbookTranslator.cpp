@@ -220,8 +220,8 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   // TODO context.config->tableLimitByDimensions
   context.tableRange = {
       {context.config->tableOffsetRows, context.config->tableOffsetCols},
-      context.config->tableLimitRows, context.config->tableLimitCols
-  };
+      context.config->tableLimitRows,
+      context.config->tableLimitCols};
   context.tableCursor = {};
 
   out << R"(<table border="0" cellspacing="0" cellpadding="0")";
