@@ -19,7 +19,7 @@ function generateDiff() {
     var result = {
         modifiedText: {}
     };
-    for(let [k, v] of Object.entries(editJournal['modifiedText'])) {
+    for (let [k, v] of Object.entries(editJournal['modifiedText'])) {
         result['modifiedText'][k] = v.innerText;
     }
     return JSON.stringify(result);
