@@ -100,8 +100,8 @@ void estimateTableDimensions(const tinyxml2::XMLElement &table,
           e.Unsigned64Attribute("table:number-rows-spanned", 1);
       tl.addCell(colspan, rowspan, repeated);
 
-      const auto newRows = tl.getRow();
-      const auto newCols = std::max(cols, tl.getCol());
+      const auto newRows = tl.row();
+      const auto newCols = std::max(cols, tl.col());
       if ((e.FirstChild() != nullptr) &&
           (((limitRows != 0) && (newRows < limitRows)) &&
            ((limitCols != 0) && (newCols < limitCols)))) {

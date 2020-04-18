@@ -223,23 +223,21 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
 void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                      Context &context) {
-  context.currentTableRowStart = context.config->tableOffsetRows;
-  context.currentTableRowEnd =
-      context.currentTableRowStart + context.config->tableLimitRows;
-  context.currentTableColStart = context.config->tableOffsetCols;
-  context.currentTableColEnd =
-      context.currentTableColStart + context.config->tableLimitCols;
+  context.tableRange = {
+      {context.config->tableOffsetRows, context.config->tableOffsetCols},
+      context.config->tableLimitRows, context.config->tableLimitCols
+  };
+  context.tableCursor = {};
+
   // TODO remove file check; add simple table translator for odt/odp
   if ((context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) &&
       context.config->tableLimitByDimensions) {
-    context.currentTableRowEnd =
-        std::min(context.currentTableRowEnd,
-                 context.currentTableRowStart +
-                     context.meta->entries[context.currentEntry].rowCount);
-    context.currentTableColEnd =
-        std::min(context.currentTableColEnd,
-                 context.currentTableColStart +
-                     context.meta->entries[context.currentEntry].columnCount);
+    const common::TablePosition end{
+      context.meta->entries[context.entry].rowCount,
+      context.meta->entries[context.entry].columnCount
+    };
+
+    context.tableRange = {context.tableRange.from(), end};
   }
   context.tableCursor = {};
   context.defaultCellStyles.clear();
@@ -251,7 +249,7 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   ElementChildrenTranslator(in, out, context);
   out << "</table>";
 
-  ++context.currentEntry;
+  ++context.entry;
 }
 
 void TableColumnTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
@@ -262,11 +260,11 @@ void TableColumnTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       in.FindAttribute("table:default-cell-style-name");
   // TODO we could use span instead
   for (std::uint32_t i = 0; i < repeated; ++i) {
-    if (context.tableCursor.getCol() >= context.currentTableColEnd)
+    if (context.tableCursor.col() >= context.tableRange.to().col())
       break;
-    if (context.tableCursor.getCol() >= context.currentTableColStart) {
+    if (context.tableCursor.col() >= context.tableRange.from().col()) {
       if (defaultCellStyleAttribute != nullptr) {
-        context.defaultCellStyles[context.tableCursor.getCol()] =
+        context.defaultCellStyles[context.tableCursor.col()] =
             defaultCellStyleAttribute->Value();
       }
       out << "<col";
@@ -282,9 +280,9 @@ void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   const auto repeated = in.Unsigned64Attribute("table:number-rows-repeated", 1);
   context.tableCursor.addRow(0); // TODO hacky
   for (std::uint32_t i = 0; i < repeated; ++i) {
-    if (context.tableCursor.getRow() >= context.currentTableRowEnd)
+    if (context.tableCursor.col() >= context.tableRange.to().row())
       break;
-    if (context.tableCursor.getRow() >= context.currentTableRowStart) {
+    if (context.tableCursor.col() >= context.tableRange.from().row()) {
       out << "<tr";
       ElementAttributeTranslator(in, out, context);
       out << ">";
@@ -303,13 +301,13 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       in.Unsigned64Attribute("table:number-columns-spanned", 1);
   const auto rowspan = in.Unsigned64Attribute("table:number-rows-spanned", 1);
   for (std::uint32_t i = 0; i < repeated; ++i) {
-    if (context.tableCursor.getCol() >= context.currentTableColEnd)
+    if (context.tableCursor.col() >= context.tableRange.to().col())
       break;
-    if (context.tableCursor.getCol() >= context.currentTableColStart) {
+    if (context.tableCursor.col() >= context.tableRange.from().col()) {
       out << "<td";
       if (in.FindAttribute("table:style-name") == nullptr) {
         const auto it =
-            context.defaultCellStyles.find(context.tableCursor.getCol());
+            context.defaultCellStyles.find(context.tableCursor.col());
         if (it != context.defaultCellStyles.end())
           StyleClassTranslator(it->second, out, context);
       }

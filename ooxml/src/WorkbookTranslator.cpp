@@ -217,21 +217,11 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
 void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                      Context &context) {
-  context.currentTableRowStart = context.config->tableOffsetRows;
-  context.currentTableRowEnd =
-      context.currentTableRowStart + context.config->tableLimitRows;
-  context.currentTableColStart = context.config->tableOffsetCols;
-  context.currentTableColEnd =
-      context.currentTableColStart + context.config->tableLimitCols;
-  if (context.config->tableLimitByDimensions) {
-    // TODO
-    // context.currentTableRowEnd = std::min(context.currentTableRowEnd,
-    //        context.currentTableRowStart +
-    //        context.meta->entries[context.currentEntry].rowCount);
-    // context.currentTableColEnd = std::min(context.currentTableColEnd,
-    //        context.currentTableColStart +
-    //        context.meta->entries[context.currentEntry].columnCount);
-  }
+  // TODO context.config->tableLimitByDimensions
+  context.tableRange = {
+      {context.config->tableOffsetRows, context.config->tableOffsetCols},
+      context.config->tableLimitRows, context.config->tableLimitCols
+  };
   context.tableCursor = {};
 
   out << R"(<table border="0" cellspacing="0" cellpadding="0")";
@@ -250,9 +240,9 @@ void TableColTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   const auto repeated = max - min + 1;
 
   for (std::uint32_t i = 0; i < repeated; ++i) {
-    if (context.tableCursor.getCol() >= context.currentTableColEnd)
+    if (context.tableCursor.col() >= context.tableRange.to().col())
       break;
-    if (context.tableCursor.getCol() >= context.currentTableColStart) {
+    if (context.tableCursor.col() >= context.tableRange.from().col()) {
       out << "<col";
       ElementAttributeTranslator(in, out, context);
       out << ">";
@@ -265,10 +255,10 @@ void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                         Context &context) {
   const auto rowIndex = in.FindAttribute("r")->Unsigned64Value() - 1;
 
-  while (rowIndex > context.tableCursor.getRow()) {
-    if (context.tableCursor.getRow() >= context.currentTableRowEnd)
+  while (rowIndex > context.tableCursor.row()) {
+    if (context.tableCursor.row() >= context.tableRange.to().row())
       return;
-    if (context.tableCursor.getRow() >= context.currentTableRowStart) {
+    if (context.tableCursor.row() >= context.tableRange.from().row()) {
       // TODO insert empty proper rows
       out << "<tr></tr>";
     }
@@ -276,9 +266,9 @@ void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   }
 
   context.tableCursor.addRow(0); // TODO hacky
-  if (context.tableCursor.getRow() >= context.currentTableRowEnd)
+  if (context.tableCursor.row() >= context.tableRange.to().row())
     return;
-  if (context.tableCursor.getRow() >= context.currentTableRowStart) {
+  if (context.tableCursor.row() >= context.tableRange.from().row()) {
     out << "<tr";
     ElementAttributeTranslator(in, out, context);
     out << ">";
@@ -292,10 +282,10 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                          Context &context) {
   const common::TablePosition cellIndex(in.FindAttribute("r")->Value());
 
-  while (cellIndex.getCol() > context.tableCursor.getCol()) {
-    if (context.tableCursor.getCol() >= context.currentTableColEnd)
+  while (cellIndex.col() > context.tableCursor.col()) {
+    if (context.tableCursor.col() >= context.tableRange.to().col())
       return;
-    if (context.tableCursor.getCol() >= context.currentTableColStart) {
+    if (context.tableCursor.col() >= context.tableRange.from().col()) {
       out << "<td></td>";
     }
     context.tableCursor.addCell();

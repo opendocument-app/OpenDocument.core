@@ -4,50 +4,50 @@ namespace odr {
 namespace common {
 
 TableCursor::TableCursor() noexcept {
-  row = 0;
-  col = 0;
-  sparse.emplace_back();
+  sparse_.emplace_back();
 }
 
-void TableCursor::addCol(const std::uint32_t repeat) noexcept { col += repeat; }
+void TableCursor::addCol(const std::uint32_t repeat) noexcept {
+  col_ += repeat;
+}
 
 void TableCursor::addRow(const std::uint32_t repeat) noexcept {
-  row += repeat;
-  col = 0;
+  row_ += repeat;
+  col_ = 0;
   if (repeat > 1) {
     // TODO assert trivial
-    sparse.clear();
+    sparse_.clear();
   } else if (repeat == 1) {
-    sparse.pop_front();
+    sparse_.pop_front();
   }
-  if (sparse.empty())
-    sparse.emplace_back();
+  if (sparse_.empty())
+    sparse_.emplace_back();
   handleRowspan();
 }
 
 void TableCursor::addCell(const std::uint32_t colspan,
                           const std::uint32_t rowspan,
                           const std::uint32_t repeat) noexcept {
-  const auto newNextCols = col + colspan * repeat;
+  const auto newNextCols = col_ + colspan * repeat;
 
   // handle rowspan
-  auto it = sparse.begin();
+  auto it = sparse_.begin();
   for (std::uint32_t i = 1; i < rowspan; ++i) {
-    if (std::next(it) == sparse.end())
-      sparse.emplace_back();
+    if (std::next(it) == sparse_.end())
+      sparse_.emplace_back();
     ++it;
-    it->emplace_back(Range{col, newNextCols});
+    it->emplace_back(Range{col_, newNextCols});
   }
 
-  col = newNextCols;
+  col_ = newNextCols;
   handleRowspan();
 }
 
 void TableCursor::handleRowspan() noexcept {
-  auto &s = sparse.front();
+  auto &s = sparse_.front();
   auto it = s.begin();
-  while ((it != s.end()) && (col == it->start)) {
-    col = it->end;
+  while ((it != s.end()) && (col_ == it->start)) {
+    col_ = it->end;
     ++it;
   }
   s.erase(s.begin(), it);

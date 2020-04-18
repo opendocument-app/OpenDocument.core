@@ -17,9 +17,9 @@ public:
   void addCell(std::uint32_t colspan = 1, std::uint32_t rowspan = 1,
                std::uint32_t repeat = 1) noexcept;
 
-  TablePosition getPosition() const noexcept { return {row, col}; }
-  std::uint32_t getRow() const noexcept { return row; }
-  std::uint32_t getCol() const noexcept { return col; }
+  TablePosition position() const noexcept { return {row_, col_}; }
+  std::uint32_t row() const noexcept { return row_; }
+  std::uint32_t col() const noexcept { return col_; }
 
 private:
   struct Range {
@@ -27,9 +27,9 @@ private:
     std::uint32_t end;
   };
 
-  std::uint32_t row;
-  std::uint32_t col;
-  std::list<std::list<Range>> sparse;
+  std::uint32_t row_{0};
+  std::uint32_t col_{0};
+  std::list<std::list<Range>> sparse_;
 
   void handleRowspan() noexcept;
 };
