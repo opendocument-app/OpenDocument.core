@@ -68,6 +68,8 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   static std::unordered_map<std::string, const char *> elementToNameAttr{
       {"style:default-style", "style:family"},
       {"style:style", "style:name"},
+      {"style:page-layout", "style:name"},
+      {"style:master-page", "style:name"},
   };
 
   const std::string element = in.Name();
@@ -93,6 +95,20 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       tinyxml2::XML_SUCCESS) {
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(family));
+  }
+  // master page
+  const char *pageLayout;
+  if (in.QueryStringAttribute("style:page-layout-name", &pageLayout) ==
+      tinyxml2::XML_SUCCESS) {
+    context.styleDependencies[name].push_back(
+        StyleTranslator::escapeStyleName(pageLayout));
+  }
+  // master page
+  const char *drawStyle;
+  if (in.QueryStringAttribute("draw:style-name", &drawStyle) ==
+      tinyxml2::XML_SUCCESS) {
+    context.styleDependencies[name].push_back(
+        StyleTranslator::escapeStyleName(drawStyle));
   }
 
   out << "." << name << "." << name << " {";

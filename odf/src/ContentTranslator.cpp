@@ -36,9 +36,8 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
   }
 }
 
-void StyleAttributeTranslator(const std::string &name, std::ostream &out,
+void StyleClassTranslator(const std::string &name, std::ostream &out,
                               Context &context) {
-  out << " class=\"";
   out << name;
 
   { // handle style dependencies
@@ -52,40 +51,35 @@ void StyleAttributeTranslator(const std::string &name, std::ostream &out,
       }
     }
   }
-
-  // TODO draw:master-page-name
-
-  out << "\"";
 }
 
-void StyleAttributeTranslator(const tinyxml2::XMLAttribute &in,
-                              std::ostream &out, Context &context) {
-  const std::string name = StyleTranslator::escapeStyleName(in.Value());
-  StyleAttributeTranslator(name, out, context);
-}
-
-void AttributeTranslator(const tinyxml2::XMLAttribute &in, std::ostream &out,
-                         Context &context) {
+void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+                          Context &context) {
   static std::unordered_set<std::string> styleAttributes{
       "text:style-name",
       "table:style-name",
       "draw:style-name",
       "draw:text-style-name",
       "presentation:style-name",
+      "draw:master-page-name",
   };
 
-  const std::string element = in.Name();
-  if (styleAttributes.find(element) != styleAttributes.end()) {
-    StyleAttributeTranslator(in, out, context);
-  }
+  out << " class=\"";
+  common::XmlUtil::visitElementAttributes(
+      in, [&](const tinyxml2::XMLAttribute &a) {
+        const std::string attribute = a.Name();
+        if (styleAttributes.find(attribute) == styleAttributes.end()) {
+          return;
+        }
+        const std::string name = StyleTranslator::escapeStyleName(a.Value());
+        StyleClassTranslator(name, out, context);
+      });
+  out << "\"";
 }
 
 void ElementAttributeTranslator(const tinyxml2::XMLElement &in,
                                 std::ostream &out, Context &context) {
-  common::XmlUtil::visitElementAttributes(
-      in, [&](const tinyxml2::XMLAttribute &a) {
-        AttributeTranslator(a, out, context);
-      });
+  StyleClassTranslator(in, out, context);
 }
 
 void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
@@ -318,7 +312,7 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
         const auto it =
             context.defaultCellStyles.find(context.tableCursor.getCol());
         if (it != context.defaultCellStyles.end())
-          StyleAttributeTranslator(it->second, out, context);
+          StyleClassTranslator(it->second, out, context);
       }
       ElementAttributeTranslator(in, out, context);
       // TODO check for >1?
