@@ -4,13 +4,13 @@
 #include <access/ZipStorage.h>
 #include <common/Constants.h>
 #include <crypto/CfbCrypto.h>
+#include <glog/logging.h>
 #include <memory>
 #include <odf/OpenDocument.h>
 #include <odr/Config.h>
 #include <odr/Meta.h>
 #include <odr/OpenDocumentReader.h>
 #include <ooxml/OfficeOpenXml.h>
-#include <glog/logging.h>
 
 namespace odr {
 
