@@ -44,9 +44,8 @@ void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
       {"style:column-width", "width"},
       {"style:row-height", "height"},
       {"draw:fill-color", "fill"},
-      {"draw:textarea-vertical-align", "vertical-align"},
       {"svg:stroke-color", "stroke"},
-  };
+      {"svg:stroke-width", "stroke-width"}};
 
   const std::string property = in.Name();
   const auto it = substitution.find(property);
@@ -60,6 +59,9 @@ void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
     // TODO breaks underline
     if (std::strcmp(in.Value(), "solid") == 0)
       out << "text-decoration:line-through;";
+  } else if (property == "draw:textarea-vertical-align") {
+    if (std::strcmp(in.Value(), "middle") == 0)
+      out << "display:flex;justify-content:center;flex-direction: column;";
   }
 }
 
