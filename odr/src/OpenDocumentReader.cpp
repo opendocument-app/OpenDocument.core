@@ -166,10 +166,31 @@ private:
     try {
       storage_ = std::make_unique<access::CfbReader>(path);
 
-      // TODO legacy microsoft documents
+      // MS-DOC: The "WordDocument" stream MUST be present in the file.
+      // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
+      if (storage_->isFile("WordDocument")) {
+        meta_ = {};
+        meta_.type = FileType::LEGACY_WORD_DOCUMENT;
+        return true;
+      }
+      // MS-PPT: The "PowerPoint Document" stream MUST be present in the file.
+      // https://msdn.microsoft.com/en-us/library/dd911009(v=office.12).aspx
+      if (storage_->isFile("PowerPoint Document")) {
+        meta_ = {};
+        meta_.type = FileType::LEGACY_POWERPOINT_PRESENTATION;
+        return true;
+      }
+      // MS-XLS: The "Workbook" stream MUST be present in the file.
+      // https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt/1fc22d56-28f9-4818-bd45-67c2bf721ccf
+      if (storage_->isFile("Workbook")) {
+        meta_ = {};
+        meta_.type = FileType::LEGACY_EXCEL_WORKSHEETS;
+        return true;
+      }
 
       {
         meta_ = {};
+        // TODO dedicated OOXML file type?
         meta_.type = FileType::COMPOUND_FILE_BINARY_FORMAT;
         // TODO out-source
         meta_.encrypted = storage_->isFile("EncryptionInfo") &&
