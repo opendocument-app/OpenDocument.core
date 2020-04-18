@@ -4,6 +4,7 @@ target_include_directories(odr-interface INTERFACE include)
 add_library(odr-static STATIC
         src/Document.cpp
         src/Meta.cpp
+        src/Server.cpp
         )
 target_include_directories(odr-static PUBLIC include)
 target_link_libraries(odr-static
@@ -13,6 +14,7 @@ target_link_libraries(odr-static
         glog
         cryptopp-static
         nlohmann_json::nlohmann_json
+        httplib
 
         odr_access
         odr_common
@@ -25,6 +27,7 @@ target_link_libraries(odr-static
 add_library(odr-shared SHARED
         src/Document.cpp
         src/Meta.cpp
+        src/Server.cpp
         )
 target_link_libraries(odr-shared
         PRIVATE
@@ -33,6 +36,7 @@ target_link_libraries(odr-shared
         glog
         cryptopp-static
         nlohmann_json::nlohmann_json
+        httplib
 
         odr_access
         odr_common

@@ -6,7 +6,7 @@ namespace odr {
 namespace access {
 
 std::string FileUtil::read(const std::string &path) {
-  std::ifstream in(path);
+  std::ifstream in{path};
   std::string result;
 
   in.seekg(0, std::ios::end);
@@ -17,6 +17,11 @@ std::string FileUtil::read(const std::string &path) {
                 std::istreambuf_iterator<char>());
 
   return result;
+}
+
+void FileUtil::write(const std::string &content, const std::string &path) {
+  std::ofstream file{path};
+  file << content;
 }
 
 } // namespace access

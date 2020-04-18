@@ -33,7 +33,7 @@ if (ODR_TEST)
 endif ()
 
 install(
-        TARGETS odr-shared meta translate back_translate
+        TARGETS odr-shared meta translate back_translate server
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
 )
