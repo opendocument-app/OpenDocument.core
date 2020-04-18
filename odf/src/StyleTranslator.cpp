@@ -123,6 +123,7 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "}\n";
 }
 
+// TODO
 void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                          Context &context) {
   // addElementDelegation("text:list-level-style-number", propertiesTranslator);
@@ -180,7 +181,6 @@ std::string StyleTranslator::escapeStyleName(const std::string &name) {
 void StyleTranslator::css(const tinyxml2::XMLElement &in, Context &context) {
   common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
     StyleClassTranslator(e, *context.output, context);
-    // TODO ListStyleTranslator
   });
 }
 
