@@ -64,8 +64,7 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << " class=\"";
   // TODO this is ods specific
   if (in.FindAttribute("table:style-name") == nullptr) {
-    const auto it =
-        context.defaultCellStyles.find(context.tableCursor.col());
+    const auto it = context.defaultCellStyles.find(context.tableCursor.col());
     if (it != context.defaultCellStyles.end())
       StyleClassTranslator(it->second, out, context);
   }
