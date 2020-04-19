@@ -9,7 +9,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         arch: [x86_64]
-        compiler: [clang]
+        compiler: [gcc]
 
     steps:
       - name: ubuntu install ccache
@@ -26,7 +26,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.ccache
-          key: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.compiler }}
+          key: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-rev1
 
       - name: cmake
         run: |
