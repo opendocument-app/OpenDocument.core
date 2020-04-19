@@ -12,15 +12,15 @@ jobs:
         compiler: [clang]
 
     steps:
-      - name: checkout
-        uses: actions/checkout@v2
-
       - name: ubuntu install ccache
         if: startsWith(matrix.os, 'ubuntu')
         run: sudo apt install ccache
       - name: macos install ccache
         if: startsWith(matrix.os, 'macos')
         run: brew install ccache
+
+      - name: checkout
+        uses: actions/checkout@v2
 
       - name: ccache
         uses: actions/cache@v1

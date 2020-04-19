@@ -12,6 +12,9 @@ jobs:
         compiler: [clang]
 
     steps:
+      - name: install
+        run: sudo apt install ccache tidy
+
       - name: checkout reference
         uses: actions/checkout@v2
         with:
@@ -23,8 +26,6 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           path: test
 
-      - name: install ccache
-        run: sudo apt install ccache
       - name: ccache
         uses: actions/cache@v1
         with:
