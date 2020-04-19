@@ -49,7 +49,8 @@ jobs:
           mkdir -p output/html
           python3 -u core/scripts/translate.py translate output/html test/odt/* test/odp/* test/ods/* test/odg/* test/docx/* test/pptx/* test/xlsx/*
       - name: tidy
-        run: tidy -i -m -w 160 -ashtml -utf8 -eq output/html/*
+        run: |
+          find output/html -name "*.html" -exec tidy -ashtml -utf8 -eq {} \;
       - name: render
         run: |
           mkdir -p output/image
