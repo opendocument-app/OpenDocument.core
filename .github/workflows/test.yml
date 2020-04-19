@@ -47,10 +47,9 @@ jobs:
       - name: html
         run: |
           mkdir -p output/html
-          core/scripts/translate.py translate output/html test/odt/* test/odp/* test/odg/* test/docx/* test/pptx/* test/xlsx/*
-      - run: core/scripts/translate.py translate output/html test/ods/*
+          core/scripts/translate.py translate output/html test/odt/* test/odp/* test/ods/* test/odg/* test/docx/* test/pptx/* test/xlsx/*
       - name: tidy
-        run: tidy -i -m -w 160 -ashtml -utf8 output/html/* 2> /dev/null || true # TODO remove null and true
+        run: tidy -i -m -w 160 -ashtml -utf8 output/html/*
       - name: render
         run: |
           mkdir -p output/image
