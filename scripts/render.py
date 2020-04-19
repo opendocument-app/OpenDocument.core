@@ -28,7 +28,8 @@ def main():
       except OSError:
         pass
       failed.append(infile)
-      print('FAILED')
+      print('ERROR')
+      print(result.stdout.decode('utf-8'))
       continue
 
   if not failed:

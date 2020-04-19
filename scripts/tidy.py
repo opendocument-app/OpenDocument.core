@@ -20,10 +20,13 @@ def main():
     cmd = shlex.split(args.tidy) + [infile]
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if result.returncode == 1:
-      print(result.stdout)
+      print('WARNING')
+      # too much spam
+      #print(result.stdout)
     if result.returncode > 1:
       failed.append(infile)
-      print(result.stdout)
+      print('ERROR')
+      print(result.stdout.decode('utf-8'))
       continue
 
   if not failed:
