@@ -31,11 +31,8 @@ if (ODR_TEST)
     add_subdirectory(test)
 endif ()
 
-install(TARGETS
-        odr-shared
-        DESTINATION lib)
-install(TARGETS
-        translate
-        back_translate
-        meta
-        DESTINATION bin)
+install(
+        TARGETS odr-shared meta translate back_translate
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+)
