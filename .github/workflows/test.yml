@@ -43,7 +43,6 @@ jobs:
         run: |
           mkdir -p output/meta
           core/scripts/meta.py meta output/meta test/od?/* test/???x/* test/doc/* test/ppt/* test/xls/*
-      - run: which translate
       - name: html
         run: |
           mkdir -p output/html
