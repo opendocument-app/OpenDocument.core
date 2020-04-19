@@ -50,7 +50,18 @@ jobs:
           python3 -u core/scripts/translate.py translate output/html test/odt/* test/odp/* test/ods/* test/odg/* test/docx/* test/pptx/* test/xlsx/*
       - name: tidy
         run: |
-          find output/html -name "*.html" -exec tidy -ashtml -utf8 -eq {} \;
+          RESULT=0
+          for f in ./*.js; do
+            ERROR=0
+            echo "tidy $f"
+            tidy -ashtml -utf8 -eq "$f" || ERROR=$?
+            if [ "$ERROR" -gt "$RESULT" ]; then
+              RESULT=$ERROR
+            fi
+          done
+          if [ "$RESULT" -gt 1 ]; then
+            exit $RESULT
+          fi
       - name: render
         run: |
           mkdir -p output/image
