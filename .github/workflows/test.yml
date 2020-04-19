@@ -42,14 +42,14 @@ jobs:
       - name: meta
         run: |
           mkdir -p output/meta
-          core/scripts/meta.py meta output/meta test/od?/* test/???x/* test/doc/* test/ppt/* test/xls/*
+          python3 -u core/scripts/meta.py meta output/meta test/od?/* test/???x/* test/doc/* test/ppt/* test/xls/*
       - name: html
         run: |
           mkdir -p output/html
-          core/scripts/translate.py translate output/html test/odt/* test/odp/* test/ods/* test/odg/* test/docx/* test/pptx/* test/xlsx/*
+          python3 -u core/scripts/translate.py translate output/html test/odt/* test/odp/* test/ods/* test/odg/* test/docx/* test/pptx/* test/xlsx/*
       - name: tidy
         run: tidy -i -m -w 160 -ashtml -utf8 output/html/*
       - name: render
         run: |
           mkdir -p output/image
-          core/scripts/render.py "phantomjs core/scripts/render.js" output/image output/html/*
+          python3 -u core/scripts/render.py "phantomjs core/scripts/render.js" output/image output/html/*
