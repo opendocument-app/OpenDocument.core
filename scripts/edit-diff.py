@@ -22,7 +22,8 @@ def main():
     result = subprocess.run([args.editor, infile, outjson], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if result.returncode != 0:
       failed.append(infile)
-      print('FAILED cmd')
+      print('ERROR')
+      print(result.stdout.decode('utf-8'))
       continue
 
     try:
