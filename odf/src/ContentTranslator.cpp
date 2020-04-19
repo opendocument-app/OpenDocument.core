@@ -279,9 +279,9 @@ void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   const auto repeated = in.Unsigned64Attribute("table:number-rows-repeated", 1);
   context.tableCursor.addRow(0); // TODO hacky
   for (std::uint32_t i = 0; i < repeated; ++i) {
-    if (context.tableCursor.col() >= context.tableRange.to().row())
+    if (context.tableCursor.row() >= context.tableRange.to().row())
       break;
-    if (context.tableCursor.col() >= context.tableRange.from().row()) {
+    if (context.tableCursor.row() >= context.tableRange.from().row()) {
       out << "<tr";
       ElementAttributeTranslator(in, out, context);
       out << ">";
