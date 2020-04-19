@@ -62,6 +62,13 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   };
 
   out << " class=\"";
+  // TODO this is ods specific
+  if (in.FindAttribute("table:style-name") == nullptr) {
+    const auto it =
+        context.defaultCellStyles.find(context.tableCursor.col());
+    if (it != context.defaultCellStyles.end())
+      StyleClassTranslator(it->second, out, context);
+  }
   common::XmlUtil::visitElementAttributes(
       in, [&](const tinyxml2::XMLAttribute &a) {
         const std::string attribute = a.Name();
@@ -304,12 +311,6 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       break;
     if (context.tableCursor.col() >= context.tableRange.from().col()) {
       out << "<td";
-      if (in.FindAttribute("table:style-name") == nullptr) {
-        const auto it =
-            context.defaultCellStyles.find(context.tableCursor.col());
-        if (it != context.defaultCellStyles.end())
-          StyleClassTranslator(it->second, out, context);
-      }
       ElementAttributeTranslator(in, out, context);
       // TODO check for >1?
       if (in.FindAttribute("table:number-columns-spanned") != nullptr)
