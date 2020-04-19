@@ -47,10 +47,10 @@ jobs:
       - name: html
         run: |
           mkdir -p output/html
-          core/scripts/translate.py translate output/html test/odt/* test/odp/* test/odg/*
-      #- name: tidy
-      #  run: tidy -i -m -w 160 -ashtml -utf8 output/html/* 2> /dev/null || true # TODO remove null and true
-      #- name: render
-      #  run: |
-      #    mkdir -p output/image
-      #    core/scripts/render.py "phantomjs core/scripts/render.js" output/image output/html/*
+          core/scripts/translate.py translate output/html test/odt/* test/odp/* test/odg/* test/docx/* test/pptx/* test/xlsx/*
+      - name: tidy
+        run: tidy -i -m -w 160 -ashtml -utf8 output/html/* 2> /dev/null || true # TODO remove null and true
+      - name: render
+        run: |
+          mkdir -p output/image
+          core/scripts/render.py "phantomjs core/scripts/render.js" output/image output/html/*
