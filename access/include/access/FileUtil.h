@@ -9,7 +9,7 @@ namespace access {
 namespace FileUtil {
 std::string read(const std::string &path);
 void write(const std::string &content, const std::string &path);
-}
+} // namespace FileUtil
 
 } // namespace access
 } // namespace odr

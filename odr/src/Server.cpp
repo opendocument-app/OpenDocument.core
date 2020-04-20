@@ -1,11 +1,11 @@
-#include <iostream>
-#include <httplib.h>
-#include <odr/Server.h>
-#include <access/Path.h>
 #include <access/FileUtil.h>
+#include <access/Path.h>
+#include <httplib.h>
+#include <iostream>
 #include <odr/Config.h>
 #include <odr/Meta.h>
 #include <odr/OpenDocumentReader.h>
+#include <odr/Server.h>
 
 namespace odr {
 
@@ -66,8 +66,7 @@ public:
       res.set_content(html, "text/html");
     });
 
-    server.Post("/api/open", [&](const auto &req, auto &res) {
-    });
+    server.Post("/api/open", [&](const auto &req, auto &res) {});
   }
 
   void listen(const std::string &endpoint, const int port) {

@@ -2,6 +2,7 @@
 #define ODR_SERVER_H
 
 #include <memory>
+#include <string>
 
 namespace odr {
 
