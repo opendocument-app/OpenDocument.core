@@ -1,11 +1,11 @@
-#include <string>
 #include <access/FileUtil.h>
 #include <access/Path.h>
 #include <httplib.h>
-#include <utility>
 #include <odr/Config.h>
 #include <odr/Meta.h>
 #include <odr/OpenDocumentReader.h>
+#include <string>
+#include <utility>
 
 namespace {
 struct Config {
@@ -43,7 +43,8 @@ public:
 
       const auto &file = req.get_file_value("file");
       const auto tmpInputFile = odr::access::Path{config.tmpDir}.join("input");
-      const auto tmpOutputFile = odr::access::Path{config.tmpDir}.join("output");
+      const auto tmpOutputFile =
+          odr::access::Path{config.tmpDir}.join("output");
       odr::access::FileUtil::write(file.content, tmpInputFile);
 
       bool success{true};
@@ -82,7 +83,7 @@ private:
   httplib::Server server;
   odr::OpenDocumentReader odr;
 };
-}
+} // namespace
 
 int main(int argc, char **argv) {
   const std::string endpoint{"0.0.0.0"};
