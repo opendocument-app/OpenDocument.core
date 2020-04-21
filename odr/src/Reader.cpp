@@ -17,9 +17,7 @@ namespace odr {
 // TODO throw on invalid state (like not open)
 class Reader::Impl final {
 public:
-  ~Impl() {
-    close();
-  }
+  ~Impl() { close(); }
 
   bool open(const std::string &path) {
     if (opened_)
@@ -249,13 +247,9 @@ private:
   }
 };
 
-std::string Reader::version() noexcept {
-  return common::Constants::version();
-}
+std::string Reader::version() noexcept { return common::Constants::version(); }
 
-std::string Reader::commit() noexcept {
-  return common::Constants::commit();
-}
+std::string Reader::commit() noexcept { return common::Constants::commit(); }
 
 FileType Reader::guessType(const std::string &path) noexcept {
   try {
@@ -294,8 +288,7 @@ bool Reader::open(const std::string &path) const noexcept {
   }
 }
 
-bool Reader::open(const std::string &path, const FileType as) const
-    noexcept {
+bool Reader::open(const std::string &path, const FileType as) const noexcept {
   try {
     return impl_->open(path, as);
   } catch (...) {
@@ -314,7 +307,7 @@ bool Reader::save(const std::string &path) const noexcept {
 }
 
 bool Reader::save(const std::string &path,
-                              const std::string &password) const noexcept {
+                  const std::string &password) const noexcept {
   try {
     return impl_->save(path, password);
   } catch (...) {
@@ -415,7 +408,7 @@ bool Reader::decrypt(const std::string &password) const noexcept {
 }
 
 bool Reader::translate(const std::string &path,
-                                   const Config &config) const noexcept {
+                       const Config &config) const noexcept {
   try {
     return impl_->translate(path, config);
   } catch (...) {
