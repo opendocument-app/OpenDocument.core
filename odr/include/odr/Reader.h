@@ -1,5 +1,5 @@
-#ifndef ODR_OPEN_DOCUMENT_READER_H
-#define ODR_OPEN_DOCUMENT_READER_H
+#ifndef ODR_READER_H
+#define ODR_READER_H
 
 #include <memory>
 #include <string>
@@ -10,15 +10,16 @@ enum class FileType;
 struct FileMeta;
 struct Config;
 
-class OpenDocumentReader final {
+class Reader final {
 public:
-  static std::string getVersion() noexcept;
-  static std::string getCommit() noexcept;
+  static std::string version() noexcept;
+  static std::string commit() noexcept;
 
-  OpenDocumentReader();
-  ~OpenDocumentReader();
+  static FileType guessType(const std::string &path) noexcept;
+  static FileMeta fetchMeta(const std::string &path) noexcept;
 
-  FileType guess(const std::string &path) const noexcept;
+  Reader();
+  ~Reader();
 
   bool open(const std::string &path) const noexcept;
   bool open(const std::string &path, FileType as) const noexcept;
@@ -33,7 +34,10 @@ public:
   bool canEdit() const noexcept;
   bool canSave() const noexcept;
   bool canSave(bool encrypted) const noexcept;
-  const FileMeta &getMeta() const noexcept;
+
+  bool isEncrypted() const noexcept;
+  FileType type() const noexcept;
+  const FileMeta &meta() const noexcept;
 
   bool decrypt(const std::string &password) const noexcept;
 
@@ -47,4 +51,4 @@ private:
 
 } // namespace odr
 
-#endif // ODR_OPEN_DOCUMENT_READER_H
+#endif // ODR_READER_H

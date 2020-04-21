@@ -5,8 +5,8 @@ namespace odr {
 namespace common {
 
 namespace Constants {
-const char *getVersion() noexcept;
-const char *getCommit() noexcept;
+const char *version() noexcept;
+const char *commit() noexcept;
 } // namespace Constants
 
 } // namespace common

@@ -1,7 +1,6 @@
-#include <iostream>
 #include <odr/Config.h>
 #include <odr/Meta.h>
-#include <odr/OpenDocumentReader.h>
+#include <odr/Reader.h>
 #include <string>
 
 int main(int argc, char **argv) {
@@ -20,21 +19,21 @@ int main(int argc, char **argv) {
 
   bool success;
 
-  odr::OpenDocumentReader odr;
-  success = odr.open(input);
+  odr::Reader reader;
+  success = reader.open(input);
   if (!success)
     return 1;
 
-  if (odr.getMeta().encrypted && hasPassword) {
-    success = odr.decrypt(password);
+  if (reader.isEncrypted() && hasPassword) {
+    success = reader.decrypt(password);
     if (!success)
       return 2;
   }
 
-  success = odr.translate(output, config);
+  success = reader.translate(output, config);
   if (!success)
     return 3;
 
-  odr.close();
+  reader.close();
   return 0;
 }
