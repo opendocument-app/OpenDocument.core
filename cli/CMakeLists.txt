@@ -22,6 +22,8 @@ target_link_libraries(back_translate
 add_executable(server src/server.cpp)
 target_link_libraries(server
         PRIVATE
+        httplib
+
         odr_access
         odr-static
         )

@@ -14,7 +14,6 @@ target_link_libraries(odr-static
         glog
         cryptopp-static
         nlohmann_json::nlohmann_json
-        httplib
 
         odr_access
         odr_common
@@ -36,7 +35,6 @@ target_link_libraries(odr-shared
         glog
         cryptopp-static
         nlohmann_json::nlohmann_json
-        httplib
 
         odr_access
         odr_common
