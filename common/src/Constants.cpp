@@ -3,9 +3,9 @@
 namespace odr {
 namespace common {
 
-const char *Constants::getVersion() noexcept { return ""; }
+const char *Constants::version() noexcept { return ""; }
 
-const char *Constants::getCommit() noexcept { return ""; }
+const char *Constants::commit() noexcept { return ""; }
 
 } // namespace common
 } // namespace odr

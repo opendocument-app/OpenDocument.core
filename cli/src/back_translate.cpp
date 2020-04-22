@@ -1,7 +1,7 @@
 #include <access/FileUtil.h>
 #include <odr/Config.h>
 #include <odr/Meta.h>
-#include <odr/OpenDocumentReader.h>
+#include <odr/Reader.h>
 #include <string>
 
 int main(int, char **argv) {
@@ -16,23 +16,23 @@ int main(int, char **argv) {
 
   bool success;
 
-  odr::OpenDocumentReader odr;
-  success = odr.open(input);
+  odr::Reader reader;
+  success = reader.open(input);
   if (!success)
     return 1;
 
-  success = odr.translate(output, config);
+  success = reader.translate(output, config);
   if (!success)
     return 2;
 
   const std::string backDiff = odr::access::FileUtil::read(diff);
-  success = odr.edit(backDiff);
+  success = reader.edit(backDiff);
   if (!success)
     return 3;
-  success = odr.save(output);
+  success = reader.save(output);
   if (!success)
     return 4;
 
-  odr.close();
+  reader.close();
   return 0;
 }
