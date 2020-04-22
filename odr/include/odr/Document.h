@@ -1,5 +1,5 @@
-#ifndef ODR_READER_H
-#define ODR_READER_H
+#ifndef ODR_DOCUMENT_H
+#define ODR_DOCUMENT_H
 
 #include <memory>
 #include <string>
@@ -10,30 +10,28 @@ enum class FileType;
 struct FileMeta;
 struct Config;
 
-class Reader final {
+class Document final {
 public:
   static std::string version() noexcept;
   static std::string commit() noexcept;
 
+  static std::unique_ptr<Document> open(const std::string &path) noexcept;
+  static std::unique_ptr<Document> open(const std::string &path, FileType as) noexcept;
+
   static FileType readType(const std::string &path) noexcept;
   static FileMeta readMeta(const std::string &path) noexcept;
 
-  Reader();
-  ~Reader();
+  ~Document();
 
-  bool open() const noexcept;
+  FileType type() const noexcept;
+  bool encrypted() const noexcept;
+  const FileMeta &meta() const noexcept;
+
   bool decrypted() const noexcept;
   bool canTranslate() const noexcept;
   bool canEdit() const noexcept;
   bool canSave() const noexcept;
   bool canSave(bool encrypted) const noexcept;
-
-  bool encrypted() const noexcept;
-  FileType type() const noexcept;
-  const FileMeta &meta() const noexcept;
-
-  bool open(const std::string &path) const noexcept;
-  bool open(const std::string &path, FileType as) const noexcept;
 
   bool decrypt(const std::string &password) const noexcept;
 
@@ -42,15 +40,14 @@ public:
 
   bool save(const std::string &path) const noexcept;
   bool save(const std::string &path, const std::string &password) const
-      noexcept;
+  noexcept;
 
-  void close() const noexcept;
-
-private:
   class Impl;
+  Document(std::unique_ptr<Impl>);
+private:
   const std::unique_ptr<Impl> impl_;
 };
 
-} // namespace odr
+}
 
-#endif // ODR_READER_H
+#endif // ODR_DOCUMENT_H
