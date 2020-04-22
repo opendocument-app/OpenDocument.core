@@ -19,56 +19,9 @@ class Reader::Impl final {
 public:
   ~Impl() { close(); }
 
-  bool open(const std::string &path) {
-    if (opened_)
-      close();
-    opened_ = open_(path);
-    decrypted_ = !meta_.encrypted;
-    return opened_;
-  }
+  bool open() const noexcept { return opened_; }
 
-  bool open(const std::string &path, const FileType as) {
-    if (opened_)
-      close();
-    opened_ = open_(path, as);
-    decrypted_ = !meta_.encrypted;
-    return opened_;
-  }
-
-  bool save(const std::string &path) {
-    if (!opened_)
-      return false;
-    if (translatorOd_)
-      return translatorOd_->save(path);
-    if (translatorMs_)
-      return translatorMs_->save(path);
-    return false;
-  }
-
-  bool save(const std::string &path, const std::string &password) {
-    if (!opened_)
-      return false;
-    if (translatorOd_)
-      return translatorOd_->save(path, password);
-    if (translatorMs_)
-      return translatorMs_->save(path, password);
-    return false;
-  }
-
-  void close() noexcept {
-    if (!opened_)
-      return;
-    opened_ = false;
-    decrypted_ = false;
-    storage_.reset();
-    meta_ = {};
-    translatorOd_ = nullptr;
-    translatorMs_ = nullptr;
-  }
-
-  bool isOpen() const noexcept { return opened_; }
-
-  bool isDecrypted() const noexcept { return decrypted_; }
+  bool decrypted() const noexcept { return decrypted_; }
 
   bool canTranslate() const noexcept {
     if (!opened_)
@@ -100,7 +53,7 @@ public:
     return false;
   }
 
-  bool isEncrypted() const noexcept {
+  bool encrypted() const noexcept {
     if (!opened_)
       return false;
     return meta_.encrypted;
@@ -116,6 +69,22 @@ public:
     if (!opened_)
       return {};
     return meta_;
+  }
+
+  bool open(const std::string &path) {
+    if (opened_)
+      close();
+    opened_ = open_(path);
+    decrypted_ = !meta_.encrypted;
+    return opened_;
+  }
+
+  bool open(const std::string &path, const FileType as) {
+    if (opened_)
+      close();
+    opened_ = open_(path, as);
+    decrypted_ = !meta_.encrypted;
+    return opened_;
   }
 
   bool decrypt(const std::string &password) {
@@ -145,6 +114,37 @@ public:
     if (translatorMs_)
       return translatorMs_->edit(diff);
     return false;
+  }
+
+  bool save(const std::string &path) {
+    if (!opened_)
+      return false;
+    if (translatorOd_)
+      return translatorOd_->save(path);
+    if (translatorMs_)
+      return translatorMs_->save(path);
+    return false;
+  }
+
+  bool save(const std::string &path, const std::string &password) {
+    if (!opened_)
+      return false;
+    if (translatorOd_)
+      return translatorOd_->save(path, password);
+    if (translatorMs_)
+      return translatorMs_->save(path, password);
+    return false;
+  }
+
+  void close() noexcept {
+    if (!opened_)
+      return;
+    opened_ = false;
+    decrypted_ = false;
+    storage_.reset();
+    meta_ = {};
+    translatorOd_ = nullptr;
+    translatorMs_ = nullptr;
   }
 
 private:
@@ -251,7 +251,7 @@ std::string Reader::version() noexcept { return common::Constants::version(); }
 
 std::string Reader::commit() noexcept { return common::Constants::commit(); }
 
-FileType Reader::guessType(const std::string &path) noexcept {
+FileType Reader::readType(const std::string &path) noexcept {
   try {
     Reader odr;
     if (!odr.open(path))
@@ -263,7 +263,7 @@ FileType Reader::guessType(const std::string &path) noexcept {
   }
 }
 
-FileMeta Reader::fetchMeta(const std::string &path) noexcept {
+FileMeta Reader::readMeta(const std::string &path) noexcept {
   try {
     Reader odr;
     if (!odr.open(path))
@@ -279,65 +279,20 @@ Reader::Reader() : impl_(std::make_unique<Impl>()) {}
 
 Reader::~Reader() = default;
 
-bool Reader::open(const std::string &path) const noexcept {
+bool Reader::open() const noexcept {
   try {
-    return impl_->open(path);
+    return impl_->open();
   } catch (...) {
     LOG(ERROR) << "open failed";
     return false;
   }
 }
 
-bool Reader::open(const std::string &path, const FileType as) const noexcept {
+bool Reader::decrypted() const noexcept {
   try {
-    return impl_->open(path, as);
+    return impl_->decrypted();
   } catch (...) {
-    LOG(ERROR) << "openAs failed";
-    return false;
-  }
-}
-
-bool Reader::save(const std::string &path) const noexcept {
-  try {
-    return impl_->save(path);
-  } catch (...) {
-    LOG(ERROR) << "save failed";
-    return false;
-  }
-}
-
-bool Reader::save(const std::string &path,
-                  const std::string &password) const noexcept {
-  try {
-    return impl_->save(path, password);
-  } catch (...) {
-    LOG(ERROR) << "saveEncrypted failed";
-    return false;
-  }
-}
-
-void Reader::close() const noexcept {
-  try {
-    impl_->close();
-  } catch (...) {
-    LOG(ERROR) << "close failed";
-  }
-}
-
-bool Reader::isOpen() const noexcept {
-  try {
-    return impl_->isOpen();
-  } catch (...) {
-    LOG(ERROR) << "isOpen failed";
-    return false;
-  }
-}
-
-bool Reader::isDecrypted() const noexcept {
-  try {
-    return impl_->isDecrypted();
-  } catch (...) {
-    LOG(ERROR) << "isDecrypted failed";
+    LOG(ERROR) << "decrypted failed";
     return false;
   }
 }
@@ -371,11 +326,11 @@ bool Reader::canSave(const bool encrypted) const noexcept {
   }
 }
 
-bool Reader::isEncrypted() const noexcept {
+bool Reader::encrypted() const noexcept {
   try {
-    return impl_->isEncrypted();
+    return impl_->encrypted();
   } catch (...) {
-    LOG(ERROR) << "isEncrypted failed";
+    LOG(ERROR) << "encrypted failed";
     return false;
   }
 }
@@ -395,6 +350,24 @@ const FileMeta &Reader::meta() const noexcept {
   } catch (...) {
     LOG(ERROR) << "meta failed";
     return {};
+  }
+}
+
+bool Reader::open(const std::string &path) const noexcept {
+  try {
+    return impl_->open(path);
+  } catch (...) {
+    LOG(ERROR) << "open failed";
+    return false;
+  }
+}
+
+bool Reader::open(const std::string &path, const FileType as) const noexcept {
+  try {
+    return impl_->open(path, as);
+  } catch (...) {
+    LOG(ERROR) << "openAs failed";
+    return false;
   }
 }
 
@@ -423,6 +396,33 @@ bool Reader::edit(const std::string &diff) const noexcept {
   } catch (...) {
     LOG(ERROR) << "edit failed";
     return false;
+  }
+}
+
+bool Reader::save(const std::string &path) const noexcept {
+  try {
+    return impl_->save(path);
+  } catch (...) {
+    LOG(ERROR) << "save failed";
+    return false;
+  }
+}
+
+bool Reader::save(const std::string &path,
+                  const std::string &password) const noexcept {
+  try {
+    return impl_->save(path, password);
+  } catch (...) {
+    LOG(ERROR) << "saveEncrypted failed";
+    return false;
+  }
+}
+
+void Reader::close() const noexcept {
+  try {
+    impl_->close();
+  } catch (...) {
+    LOG(ERROR) << "close failed";
   }
 }
 

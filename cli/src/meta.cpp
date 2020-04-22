@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
   if (!success)
     return 1;
 
-  if (reader.isEncrypted() && hasPassword) {
+  if (reader.encrypted() && hasPassword) {
     success = reader.decrypt(password);
     if (!success)
       return 2;

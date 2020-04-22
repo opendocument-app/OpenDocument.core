@@ -15,34 +15,36 @@ public:
   static std::string version() noexcept;
   static std::string commit() noexcept;
 
-  static FileType guessType(const std::string &path) noexcept;
-  static FileMeta fetchMeta(const std::string &path) noexcept;
+  static FileType readType(const std::string &path) noexcept;
+  static FileMeta readMeta(const std::string &path) noexcept;
 
   Reader();
   ~Reader();
 
-  bool open(const std::string &path) const noexcept;
-  bool open(const std::string &path, FileType as) const noexcept;
-  bool save(const std::string &path) const noexcept;
-  bool save(const std::string &path, const std::string &password) const
-      noexcept;
-  void close() const noexcept;
-
-  bool isOpen() const noexcept;
-  bool isDecrypted() const noexcept;
+  bool open() const noexcept;
+  bool decrypted() const noexcept;
   bool canTranslate() const noexcept;
   bool canEdit() const noexcept;
   bool canSave() const noexcept;
   bool canSave(bool encrypted) const noexcept;
 
-  bool isEncrypted() const noexcept;
+  bool encrypted() const noexcept;
   FileType type() const noexcept;
   const FileMeta &meta() const noexcept;
+
+  bool open(const std::string &path) const noexcept;
+  bool open(const std::string &path, FileType as) const noexcept;
 
   bool decrypt(const std::string &password) const noexcept;
 
   bool translate(const std::string &path, const Config &config) const noexcept;
   bool edit(const std::string &diff) const noexcept;
+
+  bool save(const std::string &path) const noexcept;
+  bool save(const std::string &path,
+            const std::string &password) const noexcept;
+
+  void close() const noexcept;
 
 private:
   class Impl;
