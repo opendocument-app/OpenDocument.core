@@ -380,8 +380,8 @@ bool Reader::decrypt(const std::string &password) const noexcept {
   }
 }
 
-bool Reader::translate(const std::string &path,
-                       const Config &config) const noexcept {
+bool Reader::translate(const std::string &path, const Config &config) const
+    noexcept {
   try {
     return impl_->translate(path, config);
   } catch (...) {
@@ -408,8 +408,8 @@ bool Reader::save(const std::string &path) const noexcept {
   }
 }
 
-bool Reader::save(const std::string &path,
-                  const std::string &password) const noexcept {
+bool Reader::save(const std::string &path, const std::string &password) const
+    noexcept {
   try {
     return impl_->save(path, password);
   } catch (...) {
