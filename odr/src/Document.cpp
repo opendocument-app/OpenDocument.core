@@ -46,7 +46,7 @@ protected:
 namespace {
 class OpenDocumentImpl final : public Document::Impl {
 public:
-  explicit OpenDocumentImpl(std::unique_ptr<access::Storage> &storage) : document_{storage} {
+  explicit OpenDocumentImpl(std::unique_ptr<access::ReadStorage> &storage) : document_{storage} {
     meta_ = document_.getMeta();
   }
 
@@ -74,7 +74,7 @@ private:
 
 class OfficeOpenXmlImpl final : public Document::Impl {
 public:
-  explicit OfficeOpenXmlImpl(std::unique_ptr<access::Storage> &storage) : document_{storage} {
+  explicit OfficeOpenXmlImpl(std::unique_ptr<access::ReadStorage> &storage) : document_{storage} {
     meta_ = document_.getMeta();
   }
 
