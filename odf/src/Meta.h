@@ -14,7 +14,7 @@ namespace odr {
 struct FileMeta;
 
 namespace access {
-class Storage;
+class ReadStorage;
 } // namespace access
 } // namespace odr
 
@@ -54,9 +54,9 @@ struct Manifest {
   const Entry *smallestFileEntry;
 };
 
-FileMeta parseFileMeta(const access::Storage &storage, bool decrypted);
+FileMeta parseFileMeta(const access::ReadStorage &storage, bool decrypted);
 
-Manifest parseManifest(const access::Storage &storage);
+Manifest parseManifest(const access::ReadStorage &storage);
 Manifest parseManifest(const tinyxml2::XMLDocument &manifest);
 } // namespace Meta
 

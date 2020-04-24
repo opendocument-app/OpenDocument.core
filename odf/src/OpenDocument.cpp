@@ -137,16 +137,16 @@ public:
   explicit Impl(const std::string &path) : Impl(access::Path(path)) {}
 
   explicit Impl(const access::Path &path)
-      : Impl(std::unique_ptr<access::Storage>(new access::ZipReader(path))) {}
+      : Impl(std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {}
 
-  explicit Impl(std::unique_ptr<access::Storage> &&storage) {
+  explicit Impl(std::unique_ptr<access::ReadStorage> &&storage) {
     meta_ = Meta::parseFileMeta(*storage, false);
     manifest_ = Meta::parseManifest(*storage);
 
     storage_ = std::move(storage);
   }
 
-  explicit Impl(std::unique_ptr<access::Storage> &storage) {
+  explicit Impl(std::unique_ptr<access::ReadStorage> &storage) {
     meta_ = Meta::parseFileMeta(*storage, false);
     manifest_ = Meta::parseManifest(*storage);
 
@@ -167,7 +167,7 @@ public:
 
   const FileMeta &getMeta() const noexcept { return meta_; }
 
-  const access::Storage &getStorage() const noexcept { return *storage_; }
+  const access::ReadStorage &getStorage() const noexcept { return *storage_; }
 
   bool decrypt(const std::string &password) {
     // TODO throw if not encrypted
@@ -273,7 +273,7 @@ public:
   }
 
 private:
-  std::unique_ptr<access::Storage> storage_;
+  std::unique_ptr<access::ReadStorage> storage_;
 
   FileMeta meta_;
   Meta::Manifest manifest_;
@@ -294,10 +294,10 @@ OpenDocument::OpenDocument(const std::string &path)
 OpenDocument::OpenDocument(const access::Path &path)
     : impl_(std::make_unique<Impl>(path)) {}
 
-OpenDocument::OpenDocument(std::unique_ptr<access::Storage> &&storage)
+OpenDocument::OpenDocument(std::unique_ptr<access::ReadStorage> &&storage)
     : impl_(std::make_unique<Impl>(storage)) {}
 
-OpenDocument::OpenDocument(std::unique_ptr<access::Storage> &storage)
+OpenDocument::OpenDocument(std::unique_ptr<access::ReadStorage> &storage)
     : impl_(std::make_unique<Impl>(storage)) {}
 
 OpenDocument::OpenDocument(OpenDocument &&) noexcept = default;
@@ -320,7 +320,7 @@ const FileMeta &OpenDocument::getMeta() const noexcept {
   return impl_->getMeta();
 }
 
-const access::Storage &OpenDocument::getStorage() const noexcept {
+const access::ReadStorage &OpenDocument::getStorage() const noexcept {
   return impl_->getStorage();
 }
 

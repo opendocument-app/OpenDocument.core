@@ -8,10 +8,10 @@ namespace odr {
 namespace access {
 
 class Path;
-class Storage;
+class ReadStorage;
 
 namespace StorageUtil {
-extern std::string read(const Storage &, const Path &);
+extern std::string read(const ReadStorage &, const Path &);
 }
 
 } // namespace access

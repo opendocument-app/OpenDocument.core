@@ -15,7 +15,7 @@ struct FileMeta;
 
 namespace access {
 class Path;
-class Storage;
+class ReadStorage;
 } // namespace access
 } // namespace odr
 
@@ -27,15 +27,15 @@ struct NoOfficeOpenXmlFileException final : public std::exception {
 };
 
 namespace Meta {
-FileMeta parseFileMeta(access::Storage &storage);
+FileMeta parseFileMeta(access::ReadStorage &storage);
 
 access::Path relationsPath(const access::Path &path);
 std::unique_ptr<tinyxml2::XMLDocument>
-loadRelationships(const access::Storage &storage, const access::Path &path);
+loadRelationships(const access::ReadStorage &storage, const access::Path &path);
 std::unordered_map<std::string, std::string>
 parseRelationships(const tinyxml2::XMLDocument &relations);
 std::unordered_map<std::string, std::string>
-parseRelationships(const access::Storage &storage, const access::Path &path);
+parseRelationships(const access::ReadStorage &storage, const access::Path &path);
 } // namespace Meta
 
 } // namespace ooxml

@@ -149,14 +149,14 @@ public:
   explicit Impl(const std::string &path) : Impl(access::Path(path)) {}
 
   explicit Impl(const access::Path &path)
-      : Impl(std::unique_ptr<access::Storage>(new access::ZipReader(path))) {}
+      : Impl(std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {}
 
-  explicit Impl(std::unique_ptr<access::Storage> &&storage) {
+  explicit Impl(std::unique_ptr<access::ReadStorage> &&storage) {
     meta_ = Meta::parseFileMeta(*storage);
     storage_ = std::move(storage);
   }
 
-  explicit Impl(std::unique_ptr<access::Storage> &storage) {
+  explicit Impl(std::unique_ptr<access::ReadStorage> &storage) {
     meta_ = Meta::parseFileMeta(*storage);
     storage_ = std::move(storage);
   }
@@ -169,7 +169,7 @@ public:
 
   const FileMeta &getMeta() const noexcept { return meta_; }
 
-  const access::Storage &getStorage() const noexcept { return *storage_; }
+  const access::ReadStorage &getStorage() const noexcept { return *storage_; }
 
   bool html(const access::Path &path, const Config &config) {
     std::ofstream out(path);
@@ -212,7 +212,7 @@ public:
   }
 
 private:
-  std::unique_ptr<access::Storage> storage_;
+  std::unique_ptr<access::ReadStorage> storage_;
 
   FileMeta meta_;
 
@@ -230,10 +230,10 @@ OfficeOpenXml::OfficeOpenXml(const std::string &path)
 OfficeOpenXml::OfficeOpenXml(const access::Path &path)
     : impl_(std::make_unique<Impl>(path)) {}
 
-OfficeOpenXml::OfficeOpenXml(std::unique_ptr<access::Storage> &&storage)
+OfficeOpenXml::OfficeOpenXml(std::unique_ptr<access::ReadStorage> &&storage)
     : impl_(std::make_unique<Impl>(storage)) {}
 
-OfficeOpenXml::OfficeOpenXml(std::unique_ptr<access::Storage> &storage)
+OfficeOpenXml::OfficeOpenXml(std::unique_ptr<access::ReadStorage> &storage)
     : impl_(std::make_unique<Impl>(storage)) {}
 
 OfficeOpenXml::OfficeOpenXml(OfficeOpenXml &&) noexcept = default;
@@ -254,7 +254,7 @@ const FileMeta &OfficeOpenXml::getMeta() const noexcept {
   return impl_->getMeta();
 }
 
-const access::Storage &OfficeOpenXml::getStorage() const noexcept {
+const access::ReadStorage &OfficeOpenXml::getStorage() const noexcept {
   return impl_->getStorage();
 }
 

@@ -16,7 +16,7 @@ namespace odr {
 namespace access {
 class Source;
 class Path;
-class Storage;
+class ReadStorage;
 } // namespace access
 } // namespace odr
 
@@ -34,7 +34,7 @@ typedef std::function<void(const tinyxml2::XMLAttribute &)> AttributeVisiter;
 
 std::unique_ptr<tinyxml2::XMLDocument> parse(const std::string &);
 std::unique_ptr<tinyxml2::XMLDocument> parse(access::Source &);
-std::unique_ptr<tinyxml2::XMLDocument> parse(const access::Storage &,
+std::unique_ptr<tinyxml2::XMLDocument> parse(const access::ReadStorage &,
                                              const access::Path &);
 
 const tinyxml2::XMLElement *firstChildElement(const tinyxml2::XMLElement &);

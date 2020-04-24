@@ -8,7 +8,7 @@
 namespace odr {
 namespace access {
 class Path;
-class Storage;
+class ReadStorage;
 } // namespace access
 } // namespace odr
 
@@ -20,8 +20,8 @@ public:
   explicit OpenDocument(const char *path);
   explicit OpenDocument(const std::string &path);
   explicit OpenDocument(const access::Path &path);
-  explicit OpenDocument(std::unique_ptr<access::Storage> &&storage);
-  explicit OpenDocument(std::unique_ptr<access::Storage> &storage);
+  explicit OpenDocument(std::unique_ptr<access::ReadStorage> &&storage);
+  explicit OpenDocument(std::unique_ptr<access::ReadStorage> &storage);
   OpenDocument(const OpenDocument &) = delete;
   OpenDocument(OpenDocument &&) noexcept;
   OpenDocument &operator=(const OpenDocument &) = delete;
@@ -33,7 +33,7 @@ public:
   bool canEdit() const noexcept;
   bool canSave(bool encrypted = false) const noexcept;
   const FileMeta &getMeta() const noexcept;
-  const access::Storage &getStorage() const noexcept;
+  const access::ReadStorage &getStorage() const noexcept;
 
   bool decrypt(const std::string &password);
 

@@ -8,7 +8,7 @@
 namespace odr {
 namespace access {
 class Path;
-class Storage;
+class ReadStorage;
 } // namespace access
 } // namespace odr
 
@@ -20,8 +20,8 @@ public:
   explicit OfficeOpenXml(const char *path);
   explicit OfficeOpenXml(const std::string &path);
   explicit OfficeOpenXml(const access::Path &path);
-  explicit OfficeOpenXml(std::unique_ptr<access::Storage> &&storage);
-  explicit OfficeOpenXml(std::unique_ptr<access::Storage> &storage);
+  explicit OfficeOpenXml(std::unique_ptr<access::ReadStorage> &&storage);
+  explicit OfficeOpenXml(std::unique_ptr<access::ReadStorage> &storage);
   OfficeOpenXml(const OfficeOpenXml &) = delete;
   OfficeOpenXml(OfficeOpenXml &&) noexcept;
   OfficeOpenXml &operator=(const OfficeOpenXml &) = delete;
@@ -32,7 +32,7 @@ public:
   bool canEdit() const noexcept;
   bool canSave(bool encrypted = false) const noexcept;
   const FileMeta &getMeta() const noexcept;
-  const access::Storage &getStorage() const noexcept;
+  const access::ReadStorage &getStorage() const noexcept;
 
   bool html(const access::Path &path, const Config &config);
   bool edit(const std::string &diff);

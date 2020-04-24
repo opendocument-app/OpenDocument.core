@@ -113,7 +113,7 @@ void estimateTableDimensions(const tinyxml2::XMLElement &table,
 }
 } // namespace
 
-FileMeta Meta::parseFileMeta(const access::Storage &storage,
+FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
                              const bool decrypted) {
   FileMeta result{};
 
@@ -228,7 +228,7 @@ FileMeta Meta::parseFileMeta(const access::Storage &storage,
   return result;
 }
 
-Meta::Manifest Meta::parseManifest(const access::Storage &storage) {
+Meta::Manifest Meta::parseManifest(const access::ReadStorage &storage) {
   if (!storage.isFile("META-INF/manifest.xml"))
     throw NoOpenDocumentFileException();
   const auto manifest =

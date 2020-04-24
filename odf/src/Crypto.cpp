@@ -80,11 +80,11 @@ bool Crypto::validatePassword(const Meta::Manifest::Entry &entry,
 namespace {
 class CryptoOpenDocumentFile : public access::ReadStorage {
 public:
-  const std::unique_ptr<Storage> parent;
+  const std::unique_ptr<ReadStorage> parent;
   const Meta::Manifest manifest;
   const std::string startKey;
 
-  CryptoOpenDocumentFile(std::unique_ptr<Storage> parent,
+  CryptoOpenDocumentFile(std::unique_ptr<ReadStorage> parent,
                          Meta::Manifest manifest, std::string startKey)
       : parent(std::move(parent)), manifest(std::move(manifest)),
         startKey(std::move(startKey)) {}
@@ -124,7 +124,7 @@ public:
 };
 } // namespace
 
-bool Crypto::decrypt(std::unique_ptr<access::Storage> &storage,
+bool Crypto::decrypt(std::unique_ptr<access::ReadStorage> &storage,
                      const Meta::Manifest &manifest,
                      const std::string &password) {
   if (!manifest.encrypted)

@@ -8,7 +8,7 @@
 namespace odr {
 namespace ooxml {
 
-FileMeta Meta::parseFileMeta(access::Storage &storage) {
+FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
   static const std::unordered_map<access::Path, FileType> TYPES = {
       {"word/document.xml", FileType::OFFICE_OPEN_XML_DOCUMENT},
       {"ppt/presentation.xml", FileType::OFFICE_OPEN_XML_PRESENTATION},
@@ -60,7 +60,7 @@ access::Path Meta::relationsPath(const access::Path &path) {
 }
 
 std::unique_ptr<tinyxml2::XMLDocument>
-Meta::loadRelationships(const access::Storage &storage,
+Meta::loadRelationships(const access::ReadStorage &storage,
                         const access::Path &path) {
   return common::XmlUtil::parse(storage, relationsPath(path));
 }
@@ -78,7 +78,7 @@ Meta::parseRelationships(const tinyxml2::XMLDocument &rels) {
 }
 
 std::unordered_map<std::string, std::string>
-Meta::parseRelationships(const access::Storage &storage,
+Meta::parseRelationships(const access::ReadStorage &storage,
                          const access::Path &path) {
   const auto relationships = loadRelationships(storage, path);
   if (!relationships)
