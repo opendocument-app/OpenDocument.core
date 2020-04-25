@@ -6,7 +6,7 @@
 #include <string>
 
 namespace {
-nlohmann::json meta_to_json(const odr::FileMeta &meta) {
+nlohmann::json metaToJson(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.typeAsString()},
       {"encrypted", meta.encrypted},
@@ -39,19 +39,14 @@ int main(int argc, char **argv) {
 
   const odr::Document document{input};
 
-  if (document.encrypted()) {
-    if (hasPassword) {
-      if (!document.decrypt(password)) {
-        std::cerr << "wrong password" << std::endl;
-        return 1;
-      }
-    } else {
-      std::cerr << "document encrypted but no password given" << std::endl;
-      return 2;
+  if (document.encrypted() && hasPassword) {
+    if (!document.decrypt(password)) {
+      std::cerr << "wrong password" << std::endl;
+      return 1;
     }
   }
 
-  const auto json = meta_to_json(document.meta());
+  const auto json = metaToJson(document.meta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;
