@@ -3,6 +3,7 @@
 #include <memory>
 #include <odr/Exception.h>
 #include <oldms/LegacyMicrosoft.h>
+#include <unordered_map>
 
 namespace odr {
 namespace oldms {
