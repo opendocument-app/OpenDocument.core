@@ -2,20 +2,20 @@
 #define ODR_OOXML_OFFICE_OPEN_XML_H
 
 #include <memory>
-#include <odr/Config.h>
-#include <odr/Meta.h>
+#include <common/Document.h>
 
 namespace odr {
+struct FileMeta;
+struct Config;
+
 namespace access {
 class Path;
 class ReadStorage;
 } // namespace access
-} // namespace odr
 
-namespace odr {
 namespace ooxml {
 
-class OfficeOpenXml final {
+class OfficeOpenXml final : public common::Document {
 public:
   explicit OfficeOpenXml(const char *path);
   explicit OfficeOpenXml(const std::string &path);
@@ -26,25 +26,24 @@ public:
   OfficeOpenXml(OfficeOpenXml &&) noexcept;
   OfficeOpenXml &operator=(const OfficeOpenXml &) = delete;
   OfficeOpenXml &operator=(OfficeOpenXml &&) noexcept;
-  ~OfficeOpenXml();
+  ~OfficeOpenXml() final;
 
-  FileType type() const noexcept;
-  bool encrypted() const noexcept;
-  const FileMeta &meta() const noexcept;
+  const FileMeta &meta() const noexcept final;
   const access::ReadStorage &storage() const noexcept;
 
-  bool decrypted() const noexcept;
-  bool canHtml() const noexcept;
-  bool canEdit() const noexcept;
-  bool canSave(bool encrypted = false) const noexcept;
+  bool decrypted() const noexcept final;
+  bool canTranslate() const noexcept final;
+  bool canEdit() const noexcept final;
+  bool canSave(bool encrypted) const noexcept final;
 
-  bool decrypt(const std::string &password);
+  bool decrypt(const std::string &password) final;
 
-  bool html(const access::Path &path, const Config &config);
-  bool edit(const std::string &diff);
+  void translate(const access::Path &path, const Config &config) final;
 
-  bool save(const access::Path &path) const;
-  bool save(const access::Path &path, const std::string &password) const;
+  void edit(const std::string &diff) final;
+
+  void save(const access::Path &path) const final;
+  void save(const access::Path &path, const std::string &password) const final;
 
 private:
   class Impl;

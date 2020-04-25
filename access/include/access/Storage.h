@@ -64,7 +64,7 @@ public:
   virtual std::unique_ptr<Sink> write(const Path &) const = 0;
 };
 
-class Storage : public ReadStorage, WriteStorage {
+class Storage : public ReadStorage, public WriteStorage {
 public:
   ~Storage() override = default;
 

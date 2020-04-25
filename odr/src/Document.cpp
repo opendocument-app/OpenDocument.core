@@ -2,6 +2,7 @@
 #include <access/Storage.h>
 #include <access/ZipStorage.h>
 #include <common/Constants.h>
+#include <common/Document.h>
 #include <glog/logging.h>
 #include <memory>
 #include <odf/OpenDocument.h>
@@ -13,133 +14,57 @@
 
 namespace odr {
 
-class Document::Impl {
-public:
-  Impl() = default;
-  Impl(FileMeta meta) : meta_{std::move(meta)} {}
-  virtual ~Impl() = default;
-
-  FileType type() const { return meta_.type; }
-  bool encrypted() const { return meta_.encrypted; }
-  virtual const FileMeta &meta() const { return meta_; }
-
-  virtual bool decrypted() const { return false; }
-  virtual bool canTranslate() const { return false; }
-  virtual bool canEdit() const { return false; }
-  virtual bool canSave() const { return false; }
-  virtual bool canSave(bool encrypted) const { return false; }
-
-  virtual bool decrypt(const std::string &password) { return false; }
-
-  virtual bool translate(const std::string &path, const Config &config) {
-    return false;
-  }
-  virtual bool edit(const std::string &diff) { return false; }
-
-  virtual bool save(const std::string &path) const { return false; }
-  virtual bool save(const std::string &path,
-                    const std::string &password) const {
-    return false;
-  }
-
-protected:
-  FileMeta meta_;
-};
-
 namespace {
-class OpenDocumentImpl final : public Document::Impl {
+// TODO move to own module
+class LegacyMicrosoftDocument final : public common::Document {
 public:
-  explicit OpenDocumentImpl(std::unique_ptr<access::ReadStorage> &storage)
-      : document_{storage} {
-    meta_ = document_.meta();
+  explicit LegacyMicrosoftDocument(FileMeta meta)
+      : meta_(std::move(meta)) {}
+
+  const FileMeta &meta() const noexcept final { return meta_; }
+
+  bool decrypted() const noexcept final { return false; }
+  bool canTranslate() const noexcept final { return false; }
+  bool canEdit() const noexcept final { return false; }
+  bool canSave(const bool encrypted) const noexcept final { return false; }
+
+  bool decrypt(const std::string &password) final { return false; }
+
+  void translate(const access::Path &path, const Config &config) final {
+    throw; // TODO
   }
 
-  bool decrypted() const final { return document_.decrypted(); }
-  bool canTranslate() const final { return document_.canHtml(); }
-  bool canEdit() const final { return document_.canEdit(); }
-  bool canSave() const final { return document_.canSave(); }
-  bool canSave(const bool encrypted) const final {
-    return document_.canSave(encrypted);
+  void edit(const std::string &diff) final {
+    throw; // TODO
   }
 
-  bool decrypt(const std::string &password) final {
-    const bool result = document_.decrypt(password);
-    if (result)
-      meta_ = document_.meta();
-    return result;
+  void save(const access::Path &path) const final {
+    throw; // TODO
   }
-
-  bool translate(const std::string &path, const Config &config) final {
-    return document_.html(path, config);
-  }
-  bool edit(const std::string &diff) final { return document_.edit(diff); }
-
-  bool save(const std::string &path) const final {
-    return document_.save(path);
-  }
-  bool save(const std::string &path, const std::string &password) const final {
-    return document_.save(path, password);
+  void save(const access::Path &path,
+                    const std::string &password) const final {
+    throw; // TODO
   }
 
 private:
-  odf::OpenDocument document_;
-};
-
-class OfficeOpenXmlImpl final : public Document::Impl {
-public:
-  explicit OfficeOpenXmlImpl(std::unique_ptr<access::ReadStorage> &storage)
-      : document_{storage} {
-    meta_ = document_.meta();
-  }
-
-  bool decrypted() const final { return document_.decrypted(); }
-  bool canTranslate() const final { return document_.canHtml(); }
-  bool canEdit() const final { return document_.canEdit(); }
-  bool canSave() const final { return document_.canSave(); }
-  bool canSave(const bool encrypted) const final {
-    return document_.canSave(encrypted);
-  }
-
-  bool decrypt(const std::string &password) final {
-    const bool result = document_.decrypt(password);
-    if (result)
-      meta_ = document_.meta();
-    return result;
-  }
-
-  bool translate(const std::string &path, const Config &config) final {
-    return document_.html(path, config);
-  }
-  bool edit(const std::string &diff) final { return document_.edit(diff); }
-
-  bool save(const std::string &path) const final {
-    return document_.save(path);
-  }
-  bool save(const std::string &path, const std::string &password) const final {
-    return document_.save(path, password);
-  }
-
-private:
-  bool decrypted_{false};
-  std::unique_ptr<access::ReadStorage> storage_;
-  ooxml::OfficeOpenXml document_;
+  const FileMeta meta_;
 };
 
 struct UnknownFileType : public std::runtime_error {
   UnknownFileType() : std::runtime_error("unknown file type") {}
 };
 
-std::unique_ptr<Document::Impl> openImpl(const std::string &path) {
+std::unique_ptr<common::Document> openImpl(const std::string &path) {
   try {
     std::unique_ptr<access::ReadStorage> storage =
         std::make_unique<access::ZipReader>(path);
 
     try {
-      return std::make_unique<OpenDocumentImpl>(storage);
+      return std::make_unique<odf::OpenDocument>(storage);
     } catch (...) {
     }
     try {
-      return std::make_unique<OfficeOpenXmlImpl>(storage);
+      return std::make_unique<ooxml::OfficeOpenXml>(storage);
     } catch (...) {
     }
   } catch (access::NoZipFileException &) {
@@ -149,28 +74,29 @@ std::unique_ptr<Document::Impl> openImpl(const std::string &path) {
     std::unique_ptr<access::ReadStorage> storage =
         std::make_unique<access::CfbReader>(path);
 
+    // TODO move to own module
     // MS-DOC: The "WordDocument" stream MUST be present in the file.
     // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
     if (storage->isFile("WordDocument")) {
       meta.type = FileType::LEGACY_WORD_DOCUMENT;
-      return std::make_unique<Document::Impl>(meta);
+      return std::make_unique<LegacyMicrosoftDocument>(meta);
     }
     // MS-PPT: The "PowerPoint Document" stream MUST be present in the file.
     // https://msdn.microsoft.com/en-us/library/dd911009(v=office.12).aspx
     if (storage->isFile("PowerPoint Document")) {
       meta.type = FileType::LEGACY_POWERPOINT_PRESENTATION;
-      return std::make_unique<Document::Impl>(meta);
+      return std::make_unique<LegacyMicrosoftDocument>(meta);
     }
     // MS-XLS: The "Workbook" stream MUST be present in the file.
     // https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt/1fc22d56-28f9-4818-bd45-67c2bf721ccf
     if (storage->isFile("Workbook")) {
       meta.type = FileType::LEGACY_EXCEL_WORKSHEETS;
-      return std::make_unique<Document::Impl>(meta);
+      return std::make_unique<LegacyMicrosoftDocument>(meta);
     }
 
     // encrypted ooxml
     try {
-      return std::make_unique<OfficeOpenXmlImpl>(storage);
+      return std::make_unique<ooxml::OfficeOpenXml>(storage);
     } catch (...) {
     }
   } catch (access::NoCfbFileException &) {
@@ -179,7 +105,7 @@ std::unique_ptr<Document::Impl> openImpl(const std::string &path) {
   throw UnknownFileType();
 }
 
-std::unique_ptr<Document::Impl> openImpl(const std::string &path,
+std::unique_ptr<common::Document> openImpl(const std::string &path,
                                          const FileType as) {
   // TODO implement
   throw UnknownFileType();
@@ -194,7 +120,7 @@ std::string Document::commit() noexcept { return common::Constants::commit(); }
 
 FileType Document::readType(const std::string &path) {
   const auto document = openImpl(path);
-  return document->type();
+  return document->meta().type;
 }
 
 FileMeta Document::readMeta(const std::string &path) {
@@ -211,9 +137,9 @@ Document::Document(Document &&) noexcept = default;
 
 Document::~Document() = default;
 
-FileType Document::type() const noexcept { return impl_->type(); }
+FileType Document::type() const noexcept { return impl_->meta().type; }
 
-bool Document::encrypted() const noexcept { return impl_->encrypted(); }
+bool Document::encrypted() const noexcept { return impl_->meta().encrypted; }
 
 const FileMeta &Document::meta() const noexcept { return impl_->meta(); }
 
@@ -222,8 +148,6 @@ bool Document::decrypted() const noexcept { return impl_->decrypted(); }
 bool Document::canTranslate() const noexcept { return impl_->canTranslate(); }
 
 bool Document::canEdit() const noexcept { return impl_->canEdit(); }
-
-bool Document::canSave() const noexcept { return impl_->canSave(); }
 
 bool Document::canSave(const bool encrypted) const noexcept {
   impl_->canSave(encrypted);
@@ -269,7 +193,7 @@ DocumentNoExcept::open(const std::string &path, const FileType as) noexcept {
 FileType DocumentNoExcept::readType(const std::string &path) noexcept {
   try {
     auto document = openImpl(path);
-    return document->type();
+    return document->meta().type;
   } catch (...) {
     LOG(ERROR) << "readType failed";
     return FileType::UNKNOWN;

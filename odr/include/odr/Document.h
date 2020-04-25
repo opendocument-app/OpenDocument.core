@@ -7,6 +7,10 @@
 
 namespace odr {
 
+namespace common {
+class Document;
+}
+
 enum class FileType;
 struct FileMeta;
 struct Config;
@@ -31,8 +35,7 @@ public:
   bool decrypted() const noexcept;
   bool canTranslate() const noexcept;
   bool canEdit() const noexcept;
-  bool canSave() const noexcept;
-  bool canSave(bool encrypted) const noexcept;
+  bool canSave(bool encrypted = false) const noexcept;
 
   bool decrypt(const std::string &password) const;
 
@@ -42,10 +45,8 @@ public:
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
 
-  class Impl;
-
 private:
-  std::unique_ptr<Impl> impl_;
+  std::unique_ptr<common::Document> impl_;
 };
 
 class DocumentNoExcept final {

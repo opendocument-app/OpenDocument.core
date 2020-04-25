@@ -10,6 +10,8 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <odf/OpenDocument.h>
+#include <odr/Meta.h>
+#include <odr/Config.h>
 #include <tinyxml2.h>
 
 namespace odr {
@@ -165,7 +167,7 @@ public:
 
   bool decrypted() const noexcept { return decrypted_; }
 
-  bool canHtml() const noexcept { return true; }
+  bool canTranslate() const noexcept { return true; }
 
   bool canEdit() const noexcept { return true; }
 
@@ -185,7 +187,7 @@ public:
     return success;
   }
 
-  bool html(const access::Path &path, const Config &config) {
+  bool translate(const access::Path &path, const Config &config) {
     // TODO throw if not decrypted
     std::ofstream out(path);
     if (!out.is_open())
@@ -313,10 +315,6 @@ OpenDocument &OpenDocument::operator=(OpenDocument &&) noexcept = default;
 
 OpenDocument::~OpenDocument() = default;
 
-FileType OpenDocument::type() const noexcept { return impl_->type(); }
-
-bool OpenDocument::encrypted() const noexcept { return impl_->encrypted(); }
-
 const FileMeta &OpenDocument::meta() const noexcept { return impl_->meta(); }
 
 const access::ReadStorage &OpenDocument::storage() const noexcept {
@@ -325,7 +323,7 @@ const access::ReadStorage &OpenDocument::storage() const noexcept {
 
 bool OpenDocument::decrypted() const noexcept { return impl_->decrypted(); }
 
-bool OpenDocument::canHtml() const noexcept { return impl_->canHtml(); }
+bool OpenDocument::canTranslate() const noexcept { return impl_->canTranslate(); }
 
 bool OpenDocument::canEdit() const noexcept { return impl_->canEdit(); }
 
@@ -337,19 +335,19 @@ bool OpenDocument::decrypt(const std::string &password) {
   return impl_->decrypt(password);
 }
 
-bool OpenDocument::html(const access::Path &path, const Config &config) {
-  return impl_->html(path, config);
+void OpenDocument::translate(const access::Path &path, const Config &config) {
+  impl_->translate(path, config);
 }
 
-bool OpenDocument::edit(const std::string &diff) { return impl_->edit(diff); }
+void OpenDocument::edit(const std::string &diff) { impl_->edit(diff); }
 
-bool OpenDocument::save(const access::Path &path) const {
-  return impl_->save(path);
+void OpenDocument::save(const access::Path &path) const {
+  impl_->save(path);
 }
 
-bool OpenDocument::save(const access::Path &path,
+void OpenDocument::save(const access::Path &path,
                         const std::string &password) const {
-  return impl_->save(path, password);
+  impl_->save(path, password);
 }
 
 } // namespace odf
