@@ -1,8 +1,8 @@
 #include <access/CfbStorage.h>
 #include <access/Path.h>
 #include <memory>
-#include <oldms/LegacyMicrosoft.h>
 #include <odr/Exception.h>
+#include <oldms/LegacyMicrosoft.h>
 
 namespace odr {
 namespace oldms {
@@ -69,16 +69,13 @@ bool LegacyMicrosoft::canTranslate() const noexcept { return false; }
 
 bool LegacyMicrosoft::canEdit() const noexcept { return false; }
 
-bool LegacyMicrosoft::canSave(const bool) const noexcept {
-  return false;
-}
+bool LegacyMicrosoft::canSave(const bool) const noexcept { return false; }
 
 bool LegacyMicrosoft::decrypt(const std::string &) {
   throw UnsupportedOperation();
 }
 
-void LegacyMicrosoft::translate(const access::Path &,
-                                const Config &) {
+void LegacyMicrosoft::translate(const access::Path &, const Config &) {
   throw UnsupportedOperation();
 }
 
@@ -90,8 +87,7 @@ void LegacyMicrosoft::save(const access::Path &) const {
   throw UnsupportedOperation();
 }
 
-void LegacyMicrosoft::save(const access::Path &,
-                           const std::string &) const {
+void LegacyMicrosoft::save(const access::Path &, const std::string &) const {
   throw UnsupportedOperation();
 }
 

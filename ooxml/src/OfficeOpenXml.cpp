@@ -255,9 +255,7 @@ public:
 
   bool save(const access::Path &) const { return false; }
 
-  bool save(const access::Path &, const std::string &) const {
-    return false;
-  }
+  bool save(const access::Path &, const std::string &) const { return false; }
 
 private:
   std::unique_ptr<access::ReadStorage> storage_;
