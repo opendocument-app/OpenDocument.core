@@ -4,10 +4,12 @@
 #include <PresentationTranslator.h>
 #include <WorkbookTranslator.h>
 #include <access/ZipStorage.h>
+#include <access/StreamUtil.h>
 #include <common/Html.h>
 #include <common/XmlUtil.h>
 #include <fstream>
 #include <ooxml/OfficeOpenXml.h>
+#include <Crypto.h>
 #include <tinyxml2.h>
 
 namespace odr {
@@ -183,11 +185,25 @@ public:
   bool canSave(const bool encrypted) const noexcept { return false; }
 
   bool decrypt(const std::string &password) {
-    // TODO
-    return false;
+    // TODO throw if not encrypted
+    // TODO throw if decrypted
+    const std::string encryptionInfo =
+        access::StreamUtil::read(*storage_->read("EncryptionInfo"));
+    Crypto::Util util(encryptionInfo);
+    const std::string key = util.deriveKey(password);
+    if (!util.verify(key))
+      return false;
+    const std::string encryptedPackage =
+        access::StreamUtil::read(*storage_->read("EncryptedPackage"));
+    const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
+    storage_ = std::make_unique<access::ZipReader>(decryptedPackage, false);
+    meta_ = Meta::parseFileMeta(*storage_);
+    decrypted_ = true;
+    return true;
   }
 
   bool html(const access::Path &path, const Config &config) {
+    // TODO throw if not decrypted
     std::ofstream out(path);
     if (!out.is_open())
       return false;

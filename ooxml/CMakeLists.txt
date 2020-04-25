@@ -1,7 +1,8 @@
 add_library(odr_ooxml STATIC
-        src/OfficeOpenXml.cpp
+        src/Crypto.cpp
         src/DocumentTranslator.cpp
         src/Meta.cpp
+        src/OfficeOpenXml.cpp
         src/PresentationTranslator.cpp
         src/WorkbookTranslator.cpp
         )

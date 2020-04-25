@@ -179,6 +179,7 @@ public:
 
   bool decrypt(const std::string &password) {
     // TODO throw if not encrypted
+    // TODO throw if decrypted
     const bool success = Crypto::decrypt(storage_, manifest_, password);
     if (success)
       meta_ = Meta::parseFileMeta(*storage_, true);

@@ -18,6 +18,7 @@ enum class FileType {
   OFFICE_OPEN_XML_DOCUMENT,
   OFFICE_OPEN_XML_PRESENTATION,
   OFFICE_OPEN_XML_WORKBOOK,
+  OFFICE_OPEN_XML_ENCRYPTED,
   // https://en.wikipedia.org/wiki/List_of_Microsoft_Office_filename_extensions
   LEGACY_WORD_DOCUMENT,
   LEGACY_POWERPOINT_PRESENTATION,

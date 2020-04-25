@@ -1,14 +1,9 @@
 #include <codecvt>
-#include <crypto/CfbCrypto.h>
+#include <Crypto.h>
 #include <crypto/CryptoUtil.h>
 #include <cstdint>
 #include <cstring>
 #include <locale>
-
-namespace odr {
-namespace crypto {
-
-namespace CfbCrypto {
 
 namespace {
 template <typename I, typename O> void toLittleEndian(I in, O &out) {
@@ -38,6 +33,11 @@ std::string xor_bytes(const std::string &a, const std::string &b) {
   return result;
 }
 } // namespace
+
+namespace odr {
+namespace ooxml {
+
+namespace Crypto {
 
 ECMA376Standard::ECMA376Standard(const EncryptionHeader &encryptionHeader,
                                  const EncryptionVerifier &encryptionVerifier,
@@ -173,7 +173,7 @@ std::string Util::decrypt(const std::string &encryptedPackage,
   return impl->decrypt(encryptedPackage, key);
 }
 
-} // namespace CfbCrypto
+} // namespace Crypto
 
-} // namespace crypto
+} // namespace ooxml
 } // namespace odr

@@ -1,11 +1,11 @@
-#ifndef ODR_CRYPTO_CFB_CRYPTO_H
-#define ODR_CRYPTO_CFB_CRYPTO_H
+#ifndef ODR_OOXML_CRYPTO_H
+#define ODR_OOXML_CRYPTO_H
 
 #include <memory>
 #include <string>
 
 namespace odr {
-namespace crypto {
+namespace ooxml {
 
 struct UnsupportedEndianException final : public std::exception {
   const char *what() const noexcept final { return "unsupported endian"; }
@@ -24,7 +24,7 @@ private:
   std::string name;
 };
 
-namespace CfbCrypto {
+namespace Crypto {
 // TODO support big endian
 #pragma pack(push, 1)
 struct VersionInfo {
@@ -106,9 +106,9 @@ private:
   std::unique_ptr<Algorithm> impl;
 };
 
-} // namespace CfbCrypto
+} // namespace Crypto
 
-} // namespace crypto
+} // namespace ooxml
 } // namespace odr
 
-#endif // ODR_CRYPTO_CFB_CRYPTO_H
+#endif // ODR_OOXML_CRYPTO_H

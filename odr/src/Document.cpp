@@ -1,9 +1,7 @@
 #include <access/CfbStorage.h>
 #include <access/Storage.h>
-#include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <common/Constants.h>
-#include <crypto/CfbCrypto.h>
 #include <glog/logging.h>
 #include <memory>
 #include <utility>
@@ -90,22 +88,6 @@ public:
     return result;
   }
 
-  bool decrypt_(const std::string &password) {
-    const std::string encryptionInfo =
-        access::StreamUtil::read(*storage_->read("EncryptionInfo"));
-    crypto::CfbCrypto::Util util(encryptionInfo);
-    const std::string key = util.deriveKey(password);
-    if (!util.verify(key))
-      return false;
-    const std::string encryptedPackage =
-        access::StreamUtil::read(*storage_->read("EncryptedPackage"));
-    const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
-    storage_ = std::make_unique<access::ZipReader>(decryptedPackage, false);
-    document_ = ooxml::OfficeOpenXml(storage_);
-    meta_ = document_.meta();
-    return true;
-  }
-
   bool translate(const std::string &path, const Config &config) final { return document_.html(path, config); }
   bool edit(const std::string &diff) final { return document_.edit(diff); }
 
@@ -159,17 +141,10 @@ std::unique_ptr<Document::Impl> openImpl(const std::string &path) {
       return std::make_unique<Document::Impl>(meta);
     }
 
-    {
-      // TODO TODO TODO
-      // TODO dedicated OOXML file type?
-      meta.type = FileType::COMPOUND_FILE_BINARY_FORMAT;
-      // TODO out-source
-      meta.encrypted = storage->isFile("EncryptionInfo") &&
-                       storage->isFile("EncryptedPackage");
-      try {
-        return std::make_unique<OfficeOpenXmlImpl>(storage);
-      } catch (...) {
-      }
+    // encrypted ooxml
+    try {
+      return std::make_unique<OfficeOpenXmlImpl>(storage);
+    } catch (...) {
     }
   } catch (access::NoCfbFileException &) {
   }

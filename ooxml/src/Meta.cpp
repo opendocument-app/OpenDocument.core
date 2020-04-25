@@ -17,6 +17,12 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
 
   FileMeta result{};
 
+  if (storage.isFile("EncryptionInfo") && storage.isFile("EncryptedPackage")) {
+    result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;
+    result.encrypted = true;
+    return result;
+  }
+
   for (auto &&t : TYPES) {
     if (storage.isFile(t.first)) {
       result.type = t.second;
@@ -49,6 +55,7 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
         });
   } break;
   default:
+    // TODO throw
     break;
   }
 
