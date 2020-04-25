@@ -20,8 +20,8 @@ public:
   static std::string version() noexcept;
   static std::string commit() noexcept;
 
-  static FileType readType(const std::string &path);
-  static FileMeta readMeta(const std::string &path);
+  static FileType type(const std::string &path);
+  static FileMeta meta(const std::string &path);
 
   explicit Document(const std::string &path);
   Document(const std::string &path, FileType as);
@@ -55,8 +55,8 @@ public:
   static std::optional<DocumentNoExcept> open(const std::string &path,
                                               FileType as) noexcept;
 
-  static FileType readType(const std::string &path) noexcept;
-  static FileMeta readMeta(const std::string &path) noexcept;
+  static FileType type(const std::string &path) noexcept;
+  static FileMeta meta(const std::string &path) noexcept;
 
   explicit DocumentNoExcept(std::unique_ptr<Document>);
   DocumentNoExcept(DocumentNoExcept &&) noexcept;

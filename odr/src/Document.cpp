@@ -67,12 +67,12 @@ std::string Document::version() noexcept {
 
 std::string Document::commit() noexcept { return common::Constants::commit(); }
 
-FileType Document::readType(const std::string &path) {
+FileType Document::type(const std::string &path) {
   const auto document = openImpl(path);
   return document->meta().type;
 }
 
-FileMeta Document::readMeta(const std::string &path) {
+FileMeta Document::meta(const std::string &path) {
   const auto document = openImpl(path);
   return document->meta();
 }
@@ -139,7 +139,7 @@ DocumentNoExcept::open(const std::string &path, const FileType as) noexcept {
   }
 }
 
-FileType DocumentNoExcept::readType(const std::string &path) noexcept {
+FileType DocumentNoExcept::type(const std::string &path) noexcept {
   try {
     auto document = openImpl(path);
     return document->meta().type;
@@ -149,7 +149,7 @@ FileType DocumentNoExcept::readType(const std::string &path) noexcept {
   }
 }
 
-FileMeta DocumentNoExcept::readMeta(const std::string &path) noexcept {
+FileMeta DocumentNoExcept::meta(const std::string &path) noexcept {
   try {
     auto document = openImpl(path);
     return document->meta();
