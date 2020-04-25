@@ -99,11 +99,11 @@ bool Document::canTranslate() const noexcept { return impl_->canTranslate(); }
 bool Document::canEdit() const noexcept { return impl_->canEdit(); }
 
 bool Document::canSave(const bool encrypted) const noexcept {
-  impl_->canSave(encrypted);
+  return impl_->canSave(encrypted);
 }
 
 bool Document::decrypt(const std::string &password) const {
-  impl_->decrypt(password);
+  return impl_->decrypt(password);
 }
 
 void Document::translate(const std::string &path, const Config &config) const {

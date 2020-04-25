@@ -205,6 +205,7 @@ public:
     // TODO throw if decrypted
     const std::string encryptionInfo =
         access::StreamUtil::read(*storage_->read("EncryptionInfo"));
+    // TODO cache Crypto::Util
     Crypto::Util util(encryptionInfo);
     const std::string key = util.deriveKey(password);
     if (!util.verify(key))

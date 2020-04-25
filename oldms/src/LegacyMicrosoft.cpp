@@ -31,6 +31,10 @@ FileMeta parseMeta(const access::ReadStorage &storage) {
     }
   }
 
+  if (result.type == FileType::UNKNOWN) {
+    throw UnknownFileType();
+  }
+
   return result;
 }
 } // namespace

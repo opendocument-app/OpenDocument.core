@@ -22,7 +22,9 @@ namespace odr {
 namespace odf {
 
 struct NoOpenDocumentFileException final : public std::exception {
-  const char *what() const noexcept final { return "not a open document file"; }
+  const char *what() const noexcept final {
+    return "not an open document file";
+  }
 };
 
 namespace Meta {

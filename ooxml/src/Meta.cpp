@@ -1,6 +1,7 @@
 #include <Meta.h>
 #include <access/Storage.h>
 #include <common/XmlUtil.h>
+#include <odr/Exception.h>
 #include <odr/Meta.h>
 #include <tinyxml2.h>
 #include <unordered_map>
@@ -32,6 +33,8 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
 
   // TODO dont load content twice (happens in case of translation)
   switch (result.type) {
+  case FileType::OFFICE_OPEN_XML_DOCUMENT:
+    break;
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     const auto ppt = common::XmlUtil::parse(storage, "ppt/presentation.xml");
     result.entryCount = 0;
@@ -55,8 +58,7 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
         });
   } break;
   default:
-    // TODO throw
-    break;
+    throw UnknownFileType();
   }
 
   return result;
