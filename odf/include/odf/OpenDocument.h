@@ -5,16 +5,10 @@
 #include <memory>
 
 namespace odr {
-struct FileMeta;
-struct Config;
-
 namespace access {
-class Path;
 class ReadStorage;
-} // namespace access
-} // namespace odr
+}
 
-namespace odr {
 namespace odf {
 
 class OpenDocument final : public common::Document {

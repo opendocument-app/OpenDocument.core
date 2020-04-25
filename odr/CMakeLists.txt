@@ -18,6 +18,7 @@ target_link_libraries(odr-static
         odr_common
         odr_crypto
         odr_odf
+        odr_oldms
         odr_ooxml
         )
 
@@ -37,5 +38,7 @@ target_link_libraries(odr-shared
         odr_common
         odr_crypto
         odr_odf
-        odr_ooxml)
+        odr_oldms
+        odr_ooxml
+        )
 target_include_directories(odr-shared PUBLIC include)

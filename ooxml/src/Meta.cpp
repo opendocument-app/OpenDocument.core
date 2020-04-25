@@ -15,7 +15,7 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
       {"xl/workbook.xml", FileType::OFFICE_OPEN_XML_WORKBOOK},
   };
 
-  FileMeta result{};
+  FileMeta result;
 
   if (storage.isFile("EncryptionInfo") && storage.isFile("EncryptedPackage")) {
     result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;

@@ -21,6 +21,7 @@ add_subdirectory(access)
 add_subdirectory(common)
 add_subdirectory(crypto)
 add_subdirectory(odf)
+add_subdirectory(oldms)
 add_subdirectory(ooxml)
 add_subdirectory(svm)
 

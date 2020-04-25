@@ -4,6 +4,7 @@
 #include <Meta.h>
 #include <PresentationTranslator.h>
 #include <WorkbookTranslator.h>
+#include <access/CfbStorage.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <common/Html.h>
@@ -148,7 +149,6 @@ void generateContent_(Context &context) {
 
 class OfficeOpenXml::Impl {
 public:
-  // TODO decrypted_
   explicit Impl(const char *path) : Impl(access::Path(path)) {}
 
   explicit Impl(const std::string &path) : Impl(access::Path(path)) {}
@@ -156,6 +156,21 @@ public:
   explicit Impl(const access::Path &path)
       : Impl(
             std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {
+    try {
+      storage_ = std::make_unique<access::ZipReader>(path);
+      meta_ = Meta::parseFileMeta(*storage_);
+      return;
+    } catch (access::NoZipFileException &) {
+    }
+
+    try {
+      storage_ = std::make_unique<access::CfbReader>(path);
+      meta_ = Meta::parseFileMeta(*storage_);
+      return;
+    } catch (access::NoCfbFileException &) {
+    }
+
+    throw; // TODO
   }
 
   explicit Impl(std::unique_ptr<access::ReadStorage> &&storage) {

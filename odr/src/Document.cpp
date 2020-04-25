@@ -9,6 +9,7 @@
 #include <odr/Config.h>
 #include <odr/Document.h>
 #include <odr/Meta.h>
+#include <oldms/LegacyMicrosoft.h>
 #include <ooxml/OfficeOpenXml.h>
 #include <utility>
 
@@ -72,24 +73,10 @@ std::unique_ptr<common::Document> openImpl(const std::string &path) {
     std::unique_ptr<access::ReadStorage> storage =
         std::make_unique<access::CfbReader>(path);
 
-    // TODO move to own module
-    // MS-DOC: The "WordDocument" stream MUST be present in the file.
-    // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
-    if (storage->isFile("WordDocument")) {
-      meta.type = FileType::LEGACY_WORD_DOCUMENT;
-      return std::make_unique<LegacyMicrosoftDocument>(meta);
-    }
-    // MS-PPT: The "PowerPoint Document" stream MUST be present in the file.
-    // https://msdn.microsoft.com/en-us/library/dd911009(v=office.12).aspx
-    if (storage->isFile("PowerPoint Document")) {
-      meta.type = FileType::LEGACY_POWERPOINT_PRESENTATION;
-      return std::make_unique<LegacyMicrosoftDocument>(meta);
-    }
-    // MS-XLS: The "Workbook" stream MUST be present in the file.
-    // https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt/1fc22d56-28f9-4818-bd45-67c2bf721ccf
-    if (storage->isFile("Workbook")) {
-      meta.type = FileType::LEGACY_EXCEL_WORKSHEETS;
-      return std::make_unique<LegacyMicrosoftDocument>(meta);
+    // legacy microsoft
+    try {
+      return std::make_unique<oldms::LegacyMicrosoft>(storage);
+    } catch (...) {
     }
 
     // encrypted ooxml

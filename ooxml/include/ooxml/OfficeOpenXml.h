@@ -5,13 +5,9 @@
 #include <memory>
 
 namespace odr {
-struct FileMeta;
-struct Config;
-
 namespace access {
-class Path;
 class ReadStorage;
-} // namespace access
+}
 
 namespace ooxml {
 
