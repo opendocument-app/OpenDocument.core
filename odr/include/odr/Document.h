@@ -43,6 +43,7 @@ public:
   void save(const std::string &path, const std::string &password) const;
 
   class Impl;
+
 private:
   std::unique_ptr<Impl> impl_;
 };
@@ -50,7 +51,8 @@ private:
 class DocumentNoExcept final {
 public:
   static std::optional<DocumentNoExcept> open(const std::string &path) noexcept;
-  static std::optional<DocumentNoExcept> open(const std::string &path, FileType as) noexcept;
+  static std::optional<DocumentNoExcept> open(const std::string &path,
+                                              FileType as) noexcept;
 
   static FileType readType(const std::string &path) noexcept;
   static FileMeta readMeta(const std::string &path) noexcept;
@@ -76,12 +78,12 @@ public:
 
   bool save(const std::string &path) const noexcept;
   bool save(const std::string &path, const std::string &password) const
-  noexcept;
+      noexcept;
 
 private:
   std::unique_ptr<Document> impl_;
 };
 
-}
+} // namespace odr
 
 #endif // ODR_DOCUMENT_H
