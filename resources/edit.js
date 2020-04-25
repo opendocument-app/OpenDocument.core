@@ -1,48 +1,53 @@
 function download(filename, text) {
-    var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    element.setAttribute('download', filename);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+  const element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+  element.setAttribute('download', filename);
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
 }
 
 window.addEventListener('keydown', function(event) {
-    if ((event.ctrlKey || event.metaKey) && (event.key === 's')) {
-        event.preventDefault();
-        download('test.json', generateDiff());
-    }
+  if ((event.ctrlKey || event.metaKey) && (event.key === 's')) {
+    event.preventDefault();
+    download('test.json', generateDiff());
+  }
 });
 
 function generateDiff() {
-    var result = {
-        modifiedText: {}
-    };
-    for (let [k, v] of Object.entries(editJournal['modifiedText'])) {
-        result['modifiedText'][k] = v.innerText;
-    }
-    return JSON.stringify(result);
+  let result = {
+    modifiedText: {},
+  };
+  for (let [k, v] of Object.entries(editJournal['modifiedText'])) {
+    result['modifiedText'][k] = v.innerText;
+  }
+  return JSON.stringify(result);
 }
 
 function mutation(mutations, observer) {
-    for(let m of mutations) {
-        if (m.type === 'characterData') {
-            const node = m.target.parentNode;
-            const id = node.getAttribute('data-odr-cid');
-            if (id) {
-                editJournal['modifiedText'][parseInt(id)] = node;
-            }
-        } else {
-            console.log(m);
-        }
+  for(let m of mutations) {
+    if (m.type === 'characterData') {
+       const node = m.target.parentNode;
+       const id = node.getAttribute('data-odr-cid');
+       if (id) {
+         editJournal['modifiedText'][parseInt(id)] = node;
+       }
+    } else {
+      console.log(m);
     }
+  }
 }
 
-var editJournal = {
-    modifiedText: {},
+let editJournal = {
+  modifiedText: {},
 };
 
 const observer = new MutationObserver(mutation);
-const config = { attributes: false, childList: true, subtree: true, characterData: true };
+const config = {
+  attributes: false,
+  childList: true,
+  subtree: true,
+  characterData: true,
+};
 observer.observe(document.body, config);
