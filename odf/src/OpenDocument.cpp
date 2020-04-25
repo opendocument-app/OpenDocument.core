@@ -137,7 +137,9 @@ public:
   explicit Impl(const std::string &path) : Impl(access::Path(path)) {}
 
   explicit Impl(const access::Path &path)
-      : Impl(std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {}
+      : Impl(
+            std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {
+  }
 
   explicit Impl(std::unique_ptr<access::ReadStorage> &&storage) {
     meta_ = Meta::parseFileMeta(*storage, false);
@@ -153,13 +155,9 @@ public:
     storage_ = std::move(storage);
   }
 
-  FileType type() const noexcept {
-    return meta_.type;
-  }
+  FileType type() const noexcept { return meta_.type; }
 
-  bool encrypted() const noexcept {
-    return meta_.encrypted;
-  }
+  bool encrypted() const noexcept { return meta_.encrypted; }
 
   const FileMeta &meta() const noexcept { return meta_; }
 
@@ -315,17 +313,11 @@ OpenDocument &OpenDocument::operator=(OpenDocument &&) noexcept = default;
 
 OpenDocument::~OpenDocument() = default;
 
-FileType OpenDocument::type() const noexcept {
-  return impl_->type();
-}
+FileType OpenDocument::type() const noexcept { return impl_->type(); }
 
-bool OpenDocument::encrypted() const noexcept {
-  return impl_->encrypted();
-}
+bool OpenDocument::encrypted() const noexcept { return impl_->encrypted(); }
 
-const FileMeta &OpenDocument::meta() const noexcept {
-  return impl_->meta();
-}
+const FileMeta &OpenDocument::meta() const noexcept { return impl_->meta(); }
 
 const access::ReadStorage &OpenDocument::storage() const noexcept {
   return impl_->storage();

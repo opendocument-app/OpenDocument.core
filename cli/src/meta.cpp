@@ -1,8 +1,8 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <odr/Config.h>
-#include <odr/Meta.h>
 #include <odr/Document.h>
+#include <odr/Meta.h>
 #include <string>
 
 namespace {
@@ -30,23 +30,28 @@ nlohmann::json meta_to_json(const odr::FileMeta &meta) {
 } // namespace
 
 int main(int argc, char **argv) {
-  const std::string input(argv[1]);
+  const std::string input{argv[1]};
 
   bool hasPassword = argc >= 4;
   std::string password;
   if (hasPassword)
     password = argv[2];
 
-  const auto document = odr::Document::open(input);
-  if (!document)
-    return 1;
+  const odr::Document document{input};
 
-  if (document->encrypted() && hasPassword) {
-    if (!document->decrypt(password))
+  if (document.encrypted()) {
+    if (hasPassword) {
+      if (!document.decrypt(password)) {
+        std::cerr << "wrong password" << std::endl;
+        return 1;
+      }
+    } else {
+      std::cerr << "document encrypted but no password given" << std::endl;
       return 2;
+    }
   }
 
-  const auto json = meta_to_json(document->meta());
+  const auto json = meta_to_json(document.meta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;

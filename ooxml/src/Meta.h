@@ -35,7 +35,8 @@ loadRelationships(const access::ReadStorage &storage, const access::Path &path);
 std::unordered_map<std::string, std::string>
 parseRelationships(const tinyxml2::XMLDocument &relations);
 std::unordered_map<std::string, std::string>
-parseRelationships(const access::ReadStorage &storage, const access::Path &path);
+parseRelationships(const access::ReadStorage &storage,
+                   const access::Path &path);
 } // namespace Meta
 
 } // namespace ooxml

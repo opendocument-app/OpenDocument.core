@@ -1,15 +1,15 @@
 #include <Context.h>
+#include <Crypto.h>
 #include <DocumentTranslator.h>
 #include <Meta.h>
 #include <PresentationTranslator.h>
 #include <WorkbookTranslator.h>
-#include <access/ZipStorage.h>
 #include <access/StreamUtil.h>
+#include <access/ZipStorage.h>
 #include <common/Html.h>
 #include <common/XmlUtil.h>
 #include <fstream>
 #include <ooxml/OfficeOpenXml.h>
-#include <Crypto.h>
 #include <tinyxml2.h>
 
 namespace odr {
@@ -152,7 +152,9 @@ public:
   explicit Impl(const std::string &path) : Impl(access::Path(path)) {}
 
   explicit Impl(const access::Path &path)
-      : Impl(std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {}
+      : Impl(
+            std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {
+  }
 
   explicit Impl(std::unique_ptr<access::ReadStorage> &&storage) {
     meta_ = Meta::parseFileMeta(*storage);
@@ -164,13 +166,9 @@ public:
     storage_ = std::move(storage);
   }
 
-  FileType type() const noexcept {
-    return meta_.type;
-  }
+  FileType type() const noexcept { return meta_.type; }
 
-  bool encrypted() const noexcept {
-    return meta_.encrypted;
-  }
+  bool encrypted() const noexcept { return meta_.encrypted; }
 
   const FileMeta &meta() const noexcept { return meta_; }
 
@@ -276,17 +274,11 @@ OfficeOpenXml &OfficeOpenXml::operator=(OfficeOpenXml &&) noexcept = default;
 
 OfficeOpenXml::~OfficeOpenXml() = default;
 
-FileType OfficeOpenXml::type() const noexcept {
-  return impl_->type();
-}
+FileType OfficeOpenXml::type() const noexcept { return impl_->type(); }
 
-bool OfficeOpenXml::encrypted() const noexcept {
-  return impl_->encrypted();
-}
+bool OfficeOpenXml::encrypted() const noexcept { return impl_->encrypted(); }
 
-const FileMeta &OfficeOpenXml::meta() const noexcept {
-  return impl_->meta();
-}
+const FileMeta &OfficeOpenXml::meta() const noexcept { return impl_->meta(); }
 
 const access::ReadStorage &OfficeOpenXml::storage() const noexcept {
   return impl_->storage();
