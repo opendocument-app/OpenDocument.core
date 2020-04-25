@@ -11,6 +11,7 @@
 #include <common/XmlUtil.h>
 #include <fstream>
 #include <odr/Config.h>
+#include <odr/Exception.h>
 #include <odr/Meta.h>
 #include <ooxml/OfficeOpenXml.h>
 #include <tinyxml2.h>
@@ -170,7 +171,7 @@ public:
     } catch (access::NoCfbFileException &) {
     }
 
-    throw; // TODO
+    throw UnknownFileType();
   }
 
   explicit Impl(std::unique_ptr<access::ReadStorage> &&storage) {
@@ -197,7 +198,7 @@ public:
 
   bool canEdit() const noexcept { return false; }
 
-  bool canSave(const bool encrypted) const noexcept { return false; }
+  bool canSave(const bool) const noexcept { return false; }
 
   bool decrypt(const std::string &password) {
     // TODO throw if not encrypted
@@ -250,11 +251,11 @@ public:
     return true;
   }
 
-  bool edit(const std::string &diff) { return false; }
+  bool edit(const std::string &) { return false; }
 
-  bool save(const access::Path &path) const { return false; }
+  bool save(const access::Path &) const { return false; }
 
-  bool save(const access::Path &path, const std::string &password) const {
+  bool save(const access::Path &, const std::string &) const {
     return false;
   }
 

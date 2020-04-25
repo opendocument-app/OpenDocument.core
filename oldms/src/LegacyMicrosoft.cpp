@@ -2,6 +2,7 @@
 #include <access/Path.h>
 #include <memory>
 #include <oldms/LegacyMicrosoft.h>
+#include <odr/Exception.h>
 
 namespace odr {
 namespace oldms {
@@ -68,30 +69,30 @@ bool LegacyMicrosoft::canTranslate() const noexcept { return false; }
 
 bool LegacyMicrosoft::canEdit() const noexcept { return false; }
 
-bool LegacyMicrosoft::canSave(const bool encrypted) const noexcept {
+bool LegacyMicrosoft::canSave(const bool) const noexcept {
   return false;
 }
 
-bool LegacyMicrosoft::decrypt(const std::string &password) {
-  throw; // TODO
+bool LegacyMicrosoft::decrypt(const std::string &) {
+  throw UnsupportedOperation();
 }
 
-void LegacyMicrosoft::translate(const access::Path &path,
-                                const Config &config) {
-  throw; // TODO
+void LegacyMicrosoft::translate(const access::Path &,
+                                const Config &) {
+  throw UnsupportedOperation();
 }
 
-void LegacyMicrosoft::edit(const std::string &diff) {
-  throw; // TODO
+void LegacyMicrosoft::edit(const std::string &) {
+  throw UnsupportedOperation();
 }
 
-void LegacyMicrosoft::save(const access::Path &path) const {
-  throw; // TODO
+void LegacyMicrosoft::save(const access::Path &) const {
+  throw UnsupportedOperation();
 }
 
-void LegacyMicrosoft::save(const access::Path &path,
-                           const std::string &password) const {
-  throw; // TODO
+void LegacyMicrosoft::save(const access::Path &,
+                           const std::string &) const {
+  throw UnsupportedOperation();
 }
 
 } // namespace oldms

@@ -8,6 +8,7 @@
 #include <odf/OpenDocument.h>
 #include <odr/Config.h>
 #include <odr/Document.h>
+#include <odr/Exception.h>
 #include <odr/Meta.h>
 #include <oldms/LegacyMicrosoft.h>
 #include <ooxml/OfficeOpenXml.h>
@@ -16,43 +17,6 @@
 namespace odr {
 
 namespace {
-// TODO move to own module
-class LegacyMicrosoftDocument final : public common::Document {
-public:
-  explicit LegacyMicrosoftDocument(FileMeta meta) : meta_(std::move(meta)) {}
-
-  const FileMeta &meta() const noexcept final { return meta_; }
-
-  bool decrypted() const noexcept final { return false; }
-  bool canTranslate() const noexcept final { return false; }
-  bool canEdit() const noexcept final { return false; }
-  bool canSave(const bool encrypted) const noexcept final { return false; }
-
-  bool decrypt(const std::string &password) final { return false; }
-
-  void translate(const access::Path &path, const Config &config) final {
-    throw; // TODO
-  }
-
-  void edit(const std::string &diff) final {
-    throw; // TODO
-  }
-
-  void save(const access::Path &path) const final {
-    throw; // TODO
-  }
-  void save(const access::Path &path, const std::string &password) const final {
-    throw; // TODO
-  }
-
-private:
-  const FileMeta meta_;
-};
-
-struct UnknownFileType : public std::runtime_error {
-  UnknownFileType() : std::runtime_error("unknown file type") {}
-};
-
 std::unique_ptr<common::Document> openImpl(const std::string &path) {
   try {
     std::unique_ptr<access::ReadStorage> storage =
