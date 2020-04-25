@@ -28,12 +28,15 @@ public:
   OpenDocument &operator=(OpenDocument &&) noexcept;
   ~OpenDocument();
 
-  bool isDecrypted() const noexcept;
+  FileType type() const noexcept;
+  bool encrypted() const noexcept;
+  const FileMeta &meta() const noexcept;
+  const access::ReadStorage &storage() const noexcept;
+
+  bool decrypted() const noexcept;
   bool canHtml() const noexcept;
   bool canEdit() const noexcept;
   bool canSave(bool encrypted = false) const noexcept;
-  const FileMeta &getMeta() const noexcept;
-  const access::ReadStorage &getStorage() const noexcept;
 
   bool decrypt(const std::string &password);
 

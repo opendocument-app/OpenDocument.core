@@ -47,10 +47,10 @@ namespace {
 class OpenDocumentImpl final : public Document::Impl {
 public:
   explicit OpenDocumentImpl(std::unique_ptr<access::ReadStorage> &storage) : document_{storage} {
-    meta_ = document_.getMeta();
+    meta_ = document_.meta();
   }
 
-  bool decrypted() const final { return document_.isDecrypted(); }
+  bool decrypted() const final { return document_.decrypted(); }
   bool canTranslate() const final { return document_.canHtml(); }
   bool canEdit() const final { return document_.canEdit(); }
   bool canSave() const final { return document_.canSave(); }
@@ -58,7 +58,7 @@ public:
 
   bool decrypt(const std::string &password) final {
     const bool result = document_.decrypt(password);
-    if (result) meta_ = document_.getMeta();
+    if (result) meta_ = document_.meta();
     return result;
   }
 
@@ -75,10 +75,10 @@ private:
 class OfficeOpenXmlImpl final : public Document::Impl {
 public:
   explicit OfficeOpenXmlImpl(std::unique_ptr<access::ReadStorage> &storage) : document_{storage} {
-    meta_ = document_.getMeta();
+    meta_ = document_.meta();
   }
 
-  bool decrypted() const final { return document_.isDecrypted(); }
+  bool decrypted() const final { return document_.decrypted(); }
   bool canTranslate() const final { return document_.canHtml(); }
   bool canEdit() const final { return document_.canEdit(); }
   bool canSave() const final { return document_.canSave(); }
@@ -86,7 +86,7 @@ public:
 
   bool decrypt(const std::string &password) final {
     const bool result = document_.decrypt(password);
-    if (result) meta_ = document_.getMeta();
+    if (result) meta_ = document_.meta();
     return result;
   }
 
@@ -102,7 +102,7 @@ public:
     const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
     storage_ = std::make_unique<access::ZipReader>(decryptedPackage, false);
     document_ = ooxml::OfficeOpenXml(storage_);
-    meta_ = document_.getMeta();
+    meta_ = document_.meta();
     return true;
   }
 
@@ -114,7 +114,7 @@ public:
 
 private:
   bool decrypted_{false};
-  std::unique_ptr<access::Storage> storage_;
+  std::unique_ptr<access::ReadStorage> storage_;
   ooxml::OfficeOpenXml document_;
 };
 
@@ -124,7 +124,7 @@ struct UnknownFileType : public std::runtime_error {
 
 std::unique_ptr<Document::Impl> openImpl(const std::string &path) {
   try {
-    std::unique_ptr<access::Storage> storage = std::make_unique<access::ZipReader>(path);
+    std::unique_ptr<access::ReadStorage> storage = std::make_unique<access::ZipReader>(path);
 
     try {
       return std::make_unique<OpenDocumentImpl>(storage);
@@ -138,7 +138,7 @@ std::unique_ptr<Document::Impl> openImpl(const std::string &path) {
   }
   try {
     FileMeta meta;
-    std::unique_ptr<access::Storage> storage = std::make_unique<access::CfbReader>(path);
+    std::unique_ptr<access::ReadStorage> storage = std::make_unique<access::CfbReader>(path);
 
     // MS-DOC: The "WordDocument" stream MUST be present in the file.
     // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx

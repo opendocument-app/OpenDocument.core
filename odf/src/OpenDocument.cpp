@@ -153,7 +153,19 @@ public:
     storage_ = std::move(storage);
   }
 
-  bool isDecrypted() const noexcept { return decrypted_; }
+  FileType type() const noexcept {
+    return meta_.type;
+  }
+
+  bool encrypted() const noexcept {
+    return meta_.encrypted;
+  }
+
+  const FileMeta &meta() const noexcept { return meta_; }
+
+  const access::ReadStorage &storage() const noexcept { return *storage_; }
+
+  bool decrypted() const noexcept { return decrypted_; }
 
   bool canHtml() const noexcept { return true; }
 
@@ -164,10 +176,6 @@ public:
       return false;
     return !meta_.encrypted;
   }
-
-  const FileMeta &getMeta() const noexcept { return meta_; }
-
-  const access::ReadStorage &getStorage() const noexcept { return *storage_; }
 
   bool decrypt(const std::string &password) {
     // TODO throw if not encrypted
@@ -306,7 +314,23 @@ OpenDocument &OpenDocument::operator=(OpenDocument &&) noexcept = default;
 
 OpenDocument::~OpenDocument() = default;
 
-bool OpenDocument::isDecrypted() const noexcept { return impl_->isDecrypted(); }
+FileType OpenDocument::type() const noexcept {
+  return impl_->type();
+}
+
+bool OpenDocument::encrypted() const noexcept {
+  return impl_->encrypted();
+}
+
+const FileMeta &OpenDocument::meta() const noexcept {
+  return impl_->meta();
+}
+
+const access::ReadStorage &OpenDocument::storage() const noexcept {
+  return impl_->storage();
+}
+
+bool OpenDocument::decrypted() const noexcept { return impl_->decrypted(); }
 
 bool OpenDocument::canHtml() const noexcept { return impl_->canHtml(); }
 
@@ -314,14 +338,6 @@ bool OpenDocument::canEdit() const noexcept { return impl_->canEdit(); }
 
 bool OpenDocument::canSave(const bool encrypted) const noexcept {
   return impl_->canSave(encrypted);
-}
-
-const FileMeta &OpenDocument::getMeta() const noexcept {
-  return impl_->getMeta();
-}
-
-const access::ReadStorage &OpenDocument::getStorage() const noexcept {
-  return impl_->getStorage();
 }
 
 bool OpenDocument::decrypt(const std::string &password) {

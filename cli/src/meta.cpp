@@ -2,7 +2,7 @@
 #include <nlohmann/json.hpp>
 #include <odr/Config.h>
 #include <odr/Meta.h>
-#include <odr/Reader.h>
+#include <odr/Document.h>
 #include <string>
 
 namespace {
@@ -37,20 +37,17 @@ int main(int argc, char **argv) {
   if (hasPassword)
     password = argv[2];
 
-  odr::Reader reader;
-  bool success = reader.open(input);
-  if (!success)
+  const auto document = odr::Document::open(input);
+  if (!document)
     return 1;
 
-  if (reader.encrypted() && hasPassword) {
-    success = reader.decrypt(password);
-    if (!success)
+  if (document->encrypted() && hasPassword) {
+    if (!document->decrypt(password))
       return 2;
   }
 
-  const auto json = meta_to_json(reader.meta());
+  const auto json = meta_to_json(document->meta());
   std::cout << json.dump(4) << std::endl;
 
-  reader.close();
   return 0;
 }

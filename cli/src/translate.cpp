@@ -1,6 +1,6 @@
 #include <odr/Config.h>
 #include <odr/Meta.h>
-#include <odr/Reader.h>
+#include <odr/Document.h>
 #include <string>
 
 int main(int argc, char **argv) {
@@ -19,21 +19,19 @@ int main(int argc, char **argv) {
 
   bool success;
 
-  odr::Reader reader;
-  success = reader.open(input);
-  if (!success)
+  const auto document = odr::Document::open(input);
+  if (!document)
     return 1;
 
-  if (reader.encrypted() && hasPassword) {
-    success = reader.decrypt(password);
+  if (document->encrypted() && hasPassword) {
+    success = document->decrypt(password);
     if (!success)
       return 2;
   }
 
-  success = reader.translate(output, config);
+  success = document->translate(output, config);
   if (!success)
     return 3;
 
-  reader.close();
   return 0;
 }

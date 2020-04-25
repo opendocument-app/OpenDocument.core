@@ -144,6 +144,7 @@ void generateContent_(Context &context) {
 
 class OfficeOpenXml::Impl {
 public:
+  // TODO decrypted_
   explicit Impl(const char *path) : Impl(access::Path(path)) {}
 
   explicit Impl(const std::string &path) : Impl(access::Path(path)) {}
@@ -161,15 +162,30 @@ public:
     storage_ = std::move(storage);
   }
 
+  FileType type() const noexcept {
+    return meta_.type;
+  }
+
+  bool encrypted() const noexcept {
+    return meta_.encrypted;
+  }
+
+  const FileMeta &meta() const noexcept { return meta_; }
+
+  const access::ReadStorage &storage() const noexcept { return *storage_; }
+
+  bool decrypted() const noexcept { return decrypted_; }
+
   bool canHtml() const noexcept { return true; }
 
   bool canEdit() const noexcept { return false; }
 
   bool canSave(const bool encrypted) const noexcept { return false; }
 
-  const FileMeta &getMeta() const noexcept { return meta_; }
-
-  const access::ReadStorage &getStorage() const noexcept { return *storage_; }
+  bool decrypt(const std::string &password) {
+    // TODO
+    return false;
+  }
 
   bool html(const access::Path &path, const Config &config) {
     std::ofstream out(path);
@@ -216,6 +232,8 @@ private:
 
   FileMeta meta_;
 
+  bool decrypted_{false};
+
   Context context_;
   std::unique_ptr<tinyxml2::XMLDocument> style_;
   std::unique_ptr<tinyxml2::XMLDocument> content_;
@@ -242,6 +260,24 @@ OfficeOpenXml &OfficeOpenXml::operator=(OfficeOpenXml &&) noexcept = default;
 
 OfficeOpenXml::~OfficeOpenXml() = default;
 
+FileType OfficeOpenXml::type() const noexcept {
+  return impl_->type();
+}
+
+bool OfficeOpenXml::encrypted() const noexcept {
+  return impl_->encrypted();
+}
+
+const FileMeta &OfficeOpenXml::meta() const noexcept {
+  return impl_->meta();
+}
+
+const access::ReadStorage &OfficeOpenXml::storage() const noexcept {
+  return impl_->storage();
+}
+
+bool OfficeOpenXml::decrypted() const noexcept { return impl_->decrypted(); }
+
 bool OfficeOpenXml::canHtml() const noexcept { return impl_->canHtml(); }
 
 bool OfficeOpenXml::canEdit() const noexcept { return impl_->canEdit(); }
@@ -250,12 +286,8 @@ bool OfficeOpenXml::canSave(const bool encrypted) const noexcept {
   return impl_->canSave(encrypted);
 }
 
-const FileMeta &OfficeOpenXml::getMeta() const noexcept {
-  return impl_->getMeta();
-}
-
-const access::ReadStorage &OfficeOpenXml::getStorage() const noexcept {
-  return impl_->getStorage();
+bool OfficeOpenXml::decrypt(const std::string &password) {
+  return impl_->decrypt(password);
 }
 
 bool OfficeOpenXml::html(const access::Path &path, const Config &config) {
