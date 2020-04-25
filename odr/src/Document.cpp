@@ -18,8 +18,7 @@ namespace {
 // TODO move to own module
 class LegacyMicrosoftDocument final : public common::Document {
 public:
-  explicit LegacyMicrosoftDocument(FileMeta meta)
-      : meta_(std::move(meta)) {}
+  explicit LegacyMicrosoftDocument(FileMeta meta) : meta_(std::move(meta)) {}
 
   const FileMeta &meta() const noexcept final { return meta_; }
 
@@ -41,8 +40,7 @@ public:
   void save(const access::Path &path) const final {
     throw; // TODO
   }
-  void save(const access::Path &path,
-                    const std::string &password) const final {
+  void save(const access::Path &path, const std::string &password) const final {
     throw; // TODO
   }
 
@@ -106,7 +104,7 @@ std::unique_ptr<common::Document> openImpl(const std::string &path) {
 }
 
 std::unique_ptr<common::Document> openImpl(const std::string &path,
-                                         const FileType as) {
+                                           const FileType as) {
   // TODO implement
   throw UnknownFileType();
 }

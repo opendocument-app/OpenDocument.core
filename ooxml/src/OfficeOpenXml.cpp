@@ -9,9 +9,9 @@
 #include <common/Html.h>
 #include <common/XmlUtil.h>
 #include <fstream>
-#include <ooxml/OfficeOpenXml.h>
-#include <odr/Meta.h>
 #include <odr/Config.h>
+#include <odr/Meta.h>
+#include <ooxml/OfficeOpenXml.h>
 #include <tinyxml2.h>
 
 namespace odr {
@@ -284,7 +284,9 @@ const access::ReadStorage &OfficeOpenXml::storage() const noexcept {
 
 bool OfficeOpenXml::decrypted() const noexcept { return impl_->decrypted(); }
 
-bool OfficeOpenXml::canTranslate() const noexcept { return impl_->canTranslate(); }
+bool OfficeOpenXml::canTranslate() const noexcept {
+  return impl_->canTranslate();
+}
 
 bool OfficeOpenXml::canEdit() const noexcept { return impl_->canEdit(); }
 
@@ -302,9 +304,7 @@ void OfficeOpenXml::translate(const access::Path &path, const Config &config) {
 
 void OfficeOpenXml::edit(const std::string &diff) { impl_->edit(diff); }
 
-void OfficeOpenXml::save(const access::Path &path) const {
-  impl_->save(path);
-}
+void OfficeOpenXml::save(const access::Path &path) const { impl_->save(path); }
 
 void OfficeOpenXml::save(const access::Path &path,
                          const std::string &password) const {

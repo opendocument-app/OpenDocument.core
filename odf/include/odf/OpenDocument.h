@@ -1,8 +1,8 @@
 #ifndef ODR_ODF_OPEN_DOCUMENT_H
 #define ODR_ODF_OPEN_DOCUMENT_H
 
-#include <memory>
 #include <common/Document.h>
+#include <memory>
 
 namespace odr {
 struct FileMeta;

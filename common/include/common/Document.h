@@ -30,10 +30,11 @@ public:
   virtual void edit(const std::string &diff) = 0;
 
   virtual void save(const access::Path &path) const = 0;
-  virtual void save(const access::Path &path, const std::string &password) const = 0;
+  virtual void save(const access::Path &path,
+                    const std::string &password) const = 0;
 };
 
-}
-}
+} // namespace common
+} // namespace odr
 
 #endif // ODR_COMMON_DOCUMENT_H

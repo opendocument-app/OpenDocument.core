@@ -1,8 +1,8 @@
 #ifndef ODR_OOXML_OFFICE_OPEN_XML_H
 #define ODR_OOXML_OFFICE_OPEN_XML_H
 
-#include <memory>
 #include <common/Document.h>
+#include <memory>
 
 namespace odr {
 struct FileMeta;

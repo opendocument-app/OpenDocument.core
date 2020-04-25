@@ -10,8 +10,8 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <odf/OpenDocument.h>
-#include <odr/Meta.h>
 #include <odr/Config.h>
+#include <odr/Meta.h>
 #include <tinyxml2.h>
 
 namespace odr {
@@ -323,7 +323,9 @@ const access::ReadStorage &OpenDocument::storage() const noexcept {
 
 bool OpenDocument::decrypted() const noexcept { return impl_->decrypted(); }
 
-bool OpenDocument::canTranslate() const noexcept { return impl_->canTranslate(); }
+bool OpenDocument::canTranslate() const noexcept {
+  return impl_->canTranslate();
+}
 
 bool OpenDocument::canEdit() const noexcept { return impl_->canEdit(); }
 
@@ -341,9 +343,7 @@ void OpenDocument::translate(const access::Path &path, const Config &config) {
 
 void OpenDocument::edit(const std::string &diff) { impl_->edit(diff); }
 
-void OpenDocument::save(const access::Path &path) const {
-  impl_->save(path);
-}
+void OpenDocument::save(const access::Path &path) const { impl_->save(path); }
 
 void OpenDocument::save(const access::Path &path,
                         const std::string &password) const {
