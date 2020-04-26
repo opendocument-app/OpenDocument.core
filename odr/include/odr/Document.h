@@ -33,9 +33,9 @@ public:
   const FileMeta &meta() const noexcept;
 
   bool decrypted() const noexcept;
-  bool canTranslate() const noexcept;
-  bool canEdit() const noexcept;
-  bool canSave(bool encrypted = false) const noexcept;
+  bool translatable() const noexcept;
+  bool editable() const noexcept;
+  bool savable(bool encrypted = false) const noexcept;
 
   bool decrypt(const std::string &password) const;
 

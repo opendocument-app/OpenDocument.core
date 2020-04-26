@@ -167,11 +167,11 @@ public:
 
   bool decrypted() const noexcept { return decrypted_; }
 
-  bool canTranslate() const noexcept { return true; }
+  bool translatable() const noexcept { return true; }
 
-  bool canEdit() const noexcept { return true; }
+  bool editable() const noexcept { return true; }
 
-  bool canSave(const bool encrypted) const noexcept {
+  bool savable(const bool encrypted) const noexcept {
     if (encrypted)
       return false;
     return !meta_.encrypted;
@@ -323,14 +323,14 @@ const access::ReadStorage &OpenDocument::storage() const noexcept {
 
 bool OpenDocument::decrypted() const noexcept { return impl_->decrypted(); }
 
-bool OpenDocument::canTranslate() const noexcept {
-  return impl_->canTranslate();
+bool OpenDocument::translatable() const noexcept {
+  return impl_->translatable();
 }
 
-bool OpenDocument::canEdit() const noexcept { return impl_->canEdit(); }
+bool OpenDocument::editable() const noexcept { return impl_->editable(); }
 
-bool OpenDocument::canSave(const bool encrypted) const noexcept {
-  return impl_->canSave(encrypted);
+bool OpenDocument::savable(const bool encrypted) const noexcept {
+  return impl_->savable(encrypted);
 }
 
 bool OpenDocument::decrypt(const std::string &password) {

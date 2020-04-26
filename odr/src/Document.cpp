@@ -94,12 +94,12 @@ const FileMeta &Document::meta() const noexcept { return impl_->meta(); }
 
 bool Document::decrypted() const noexcept { return impl_->decrypted(); }
 
-bool Document::canTranslate() const noexcept { return impl_->canTranslate(); }
+bool Document::translatable() const noexcept { return impl_->translatable(); }
 
-bool Document::canEdit() const noexcept { return impl_->canEdit(); }
+bool Document::editable() const noexcept { return impl_->editable(); }
 
-bool Document::canSave(const bool encrypted) const noexcept {
-  return impl_->canSave(encrypted);
+bool Document::savable(const bool encrypted) const noexcept {
+  return impl_->savable(encrypted);
 }
 
 bool Document::decrypt(const std::string &password) const {
@@ -204,7 +204,7 @@ bool DocumentNoExcept::decrypted() const noexcept {
 
 bool DocumentNoExcept::canTranslate() const noexcept {
   try {
-    return impl_->canTranslate();
+    return impl_->translatable();
   } catch (...) {
     LOG(ERROR) << "canTranslate failed";
     return false;
@@ -213,7 +213,7 @@ bool DocumentNoExcept::canTranslate() const noexcept {
 
 bool DocumentNoExcept::canEdit() const noexcept {
   try {
-    return impl_->canEdit();
+    return impl_->editable();
   } catch (...) {
     LOG(ERROR) << "canEdit failed";
     return false;
@@ -224,7 +224,7 @@ bool DocumentNoExcept::canSave() const noexcept { return canSave(false); }
 
 bool DocumentNoExcept::canSave(const bool encrypted) const noexcept {
   try {
-    return impl_->canSave(encrypted);
+    return impl_->savable(encrypted);
   } catch (...) {
     LOG(ERROR) << "canSave failed";
     return false;

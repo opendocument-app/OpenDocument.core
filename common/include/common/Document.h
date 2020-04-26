@@ -19,9 +19,9 @@ public:
   virtual const FileMeta &meta() const noexcept = 0;
 
   virtual bool decrypted() const noexcept = 0;
-  virtual bool canTranslate() const noexcept = 0;
-  virtual bool canEdit() const noexcept = 0;
-  virtual bool canSave(bool encrypted) const noexcept = 0;
+  virtual bool translatable() const noexcept = 0;
+  virtual bool editable() const noexcept = 0;
+  virtual bool savable(bool encrypted) const noexcept = 0;
 
   virtual bool decrypt(const std::string &password) = 0;
 

@@ -194,11 +194,11 @@ public:
 
   bool decrypted() const noexcept { return decrypted_; }
 
-  bool canTranslate() const noexcept { return true; }
+  bool translatable() const noexcept { return true; }
 
-  bool canEdit() const noexcept { return false; }
+  bool editable() const noexcept { return false; }
 
-  bool canSave(const bool) const noexcept { return false; }
+  bool savable(const bool) const noexcept { return false; }
 
   bool decrypt(const std::string &password) {
     // TODO throw if not encrypted
@@ -299,14 +299,14 @@ const access::ReadStorage &OfficeOpenXml::storage() const noexcept {
 
 bool OfficeOpenXml::decrypted() const noexcept { return impl_->decrypted(); }
 
-bool OfficeOpenXml::canTranslate() const noexcept {
-  return impl_->canTranslate();
+bool OfficeOpenXml::translatable() const noexcept {
+  return impl_->translatable();
 }
 
-bool OfficeOpenXml::canEdit() const noexcept { return impl_->canEdit(); }
+bool OfficeOpenXml::editable() const noexcept { return impl_->editable(); }
 
-bool OfficeOpenXml::canSave(const bool encrypted) const noexcept {
-  return impl_->canSave(encrypted);
+bool OfficeOpenXml::savable(const bool encrypted) const noexcept {
+  return impl_->savable(encrypted);
 }
 
 bool OfficeOpenXml::decrypt(const std::string &password) {

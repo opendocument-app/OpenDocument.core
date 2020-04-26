@@ -70,11 +70,11 @@ const FileMeta &LegacyMicrosoft::meta() const noexcept { return meta_; }
 
 bool LegacyMicrosoft::decrypted() const noexcept { return false; }
 
-bool LegacyMicrosoft::canTranslate() const noexcept { return false; }
+bool LegacyMicrosoft::translatable() const noexcept { return false; }
 
-bool LegacyMicrosoft::canEdit() const noexcept { return false; }
+bool LegacyMicrosoft::editable() const noexcept { return false; }
 
-bool LegacyMicrosoft::canSave(const bool) const noexcept { return false; }
+bool LegacyMicrosoft::savable(const bool) const noexcept { return false; }
 
 bool LegacyMicrosoft::decrypt(const std::string &) {
   throw UnsupportedOperation();
