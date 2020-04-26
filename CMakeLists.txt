@@ -3,6 +3,7 @@ project(odr C CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 option(ODR_TEST "enable tests" "ON")
+option(ODR_INSTALL "install" "ON")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -D_GLIBCXX_DEBUG")
@@ -31,8 +32,10 @@ if (ODR_TEST)
     add_subdirectory(test)
 endif ()
 
-install(
-        TARGETS odr-shared meta translate back_translate
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-)
+if (ODR_INSTALL)
+  install(
+          TARGETS odr-shared meta translate back_translate
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+  )
+endif ()
