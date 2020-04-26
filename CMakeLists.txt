@@ -35,4 +35,5 @@ install(
         TARGETS odr-shared meta translate back_translate
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
+        BUNDLE DESTINATION lib
 )
