@@ -34,5 +34,6 @@ endif ()
 install(
         TARGETS odr-shared meta translate back_translate
         RUNTIME DESTINATION bin
+        BUNDLE DESTINATION bin
         LIBRARY DESTINATION lib
 )
