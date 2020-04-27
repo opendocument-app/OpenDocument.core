@@ -1,6 +1,7 @@
 #include <Meta.h>
 #include <access/Storage.h>
 #include <common/XmlUtil.h>
+#include <odr/Exception.h>
 #include <odr/Meta.h>
 #include <tinyxml2.h>
 #include <unordered_map>
@@ -8,14 +9,20 @@
 namespace odr {
 namespace ooxml {
 
-FileMeta Meta::parseFileMeta(access::Storage &storage) {
+FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
   static const std::unordered_map<access::Path, FileType> TYPES = {
       {"word/document.xml", FileType::OFFICE_OPEN_XML_DOCUMENT},
       {"ppt/presentation.xml", FileType::OFFICE_OPEN_XML_PRESENTATION},
       {"xl/workbook.xml", FileType::OFFICE_OPEN_XML_WORKBOOK},
   };
 
-  FileMeta result{};
+  FileMeta result;
+
+  if (storage.isFile("EncryptionInfo") && storage.isFile("EncryptedPackage")) {
+    result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;
+    result.encrypted = true;
+    return result;
+  }
 
   for (auto &&t : TYPES) {
     if (storage.isFile(t.first)) {
@@ -26,6 +33,8 @@ FileMeta Meta::parseFileMeta(access::Storage &storage) {
 
   // TODO dont load content twice (happens in case of translation)
   switch (result.type) {
+  case FileType::OFFICE_OPEN_XML_DOCUMENT:
+    break;
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     const auto ppt = common::XmlUtil::parse(storage, "ppt/presentation.xml");
     result.entryCount = 0;
@@ -49,7 +58,7 @@ FileMeta Meta::parseFileMeta(access::Storage &storage) {
         });
   } break;
   default:
-    break;
+    throw UnknownFileType();
   }
 
   return result;
@@ -60,7 +69,7 @@ access::Path Meta::relationsPath(const access::Path &path) {
 }
 
 std::unique_ptr<tinyxml2::XMLDocument>
-Meta::loadRelationships(const access::Storage &storage,
+Meta::loadRelationships(const access::ReadStorage &storage,
                         const access::Path &path) {
   return common::XmlUtil::parse(storage, relationsPath(path));
 }
@@ -78,7 +87,7 @@ Meta::parseRelationships(const tinyxml2::XMLDocument &rels) {
 }
 
 std::unordered_map<std::string, std::string>
-Meta::parseRelationships(const access::Storage &storage,
+Meta::parseRelationships(const access::ReadStorage &storage,
                          const access::Path &path) {
   const auto relationships = loadRelationships(storage, path);
   if (!relationships)

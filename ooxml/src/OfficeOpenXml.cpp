@@ -1,12 +1,18 @@
 #include <Context.h>
+#include <Crypto.h>
 #include <DocumentTranslator.h>
 #include <Meta.h>
 #include <PresentationTranslator.h>
 #include <WorkbookTranslator.h>
+#include <access/CfbStorage.h>
+#include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <common/Html.h>
 #include <common/XmlUtil.h>
 #include <fstream>
+#include <odr/Config.h>
+#include <odr/Exception.h>
+#include <odr/Meta.h>
 #include <ooxml/OfficeOpenXml.h>
 #include <tinyxml2.h>
 
@@ -149,29 +155,72 @@ public:
   explicit Impl(const std::string &path) : Impl(access::Path(path)) {}
 
   explicit Impl(const access::Path &path)
-      : Impl(std::unique_ptr<access::Storage>(new access::ZipReader(path))) {}
+      : Impl(
+            std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {
+    try {
+      storage_ = std::make_unique<access::ZipReader>(path);
+      meta_ = Meta::parseFileMeta(*storage_);
+      return;
+    } catch (access::NoZipFileException &) {
+    }
 
-  explicit Impl(std::unique_ptr<access::Storage> &&storage) {
+    try {
+      storage_ = std::make_unique<access::CfbReader>(path);
+      meta_ = Meta::parseFileMeta(*storage_);
+      return;
+    } catch (access::NoCfbFileException &) {
+    }
+
+    throw UnknownFileType();
+  }
+
+  explicit Impl(std::unique_ptr<access::ReadStorage> &&storage) {
     meta_ = Meta::parseFileMeta(*storage);
     storage_ = std::move(storage);
   }
 
-  explicit Impl(std::unique_ptr<access::Storage> &storage) {
+  explicit Impl(std::unique_ptr<access::ReadStorage> &storage) {
     meta_ = Meta::parseFileMeta(*storage);
     storage_ = std::move(storage);
   }
 
-  bool canHtml() const noexcept { return true; }
+  FileType type() const noexcept { return meta_.type; }
 
-  bool canEdit() const noexcept { return false; }
+  bool encrypted() const noexcept { return meta_.encrypted; }
 
-  bool canSave(const bool encrypted) const noexcept { return false; }
+  const FileMeta &meta() const noexcept { return meta_; }
 
-  const FileMeta &getMeta() const noexcept { return meta_; }
+  const access::ReadStorage &storage() const noexcept { return *storage_; }
 
-  const access::Storage &getStorage() const noexcept { return *storage_; }
+  bool decrypted() const noexcept { return decrypted_; }
 
-  bool html(const access::Path &path, const Config &config) {
+  bool translatable() const noexcept { return true; }
+
+  bool editable() const noexcept { return false; }
+
+  bool savable(const bool) const noexcept { return false; }
+
+  bool decrypt(const std::string &password) {
+    // TODO throw if not encrypted
+    // TODO throw if decrypted
+    const std::string encryptionInfo =
+        access::StreamUtil::read(*storage_->read("EncryptionInfo"));
+    // TODO cache Crypto::Util
+    Crypto::Util util(encryptionInfo);
+    const std::string key = util.deriveKey(password);
+    if (!util.verify(key))
+      return false;
+    const std::string encryptedPackage =
+        access::StreamUtil::read(*storage_->read("EncryptedPackage"));
+    const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
+    storage_ = std::make_unique<access::ZipReader>(decryptedPackage, false);
+    meta_ = Meta::parseFileMeta(*storage_);
+    decrypted_ = true;
+    return true;
+  }
+
+  bool translate(const access::Path &path, const Config &config) {
+    // TODO throw if not decrypted
     std::ofstream out(path);
     if (!out.is_open())
       return false;
@@ -203,18 +252,18 @@ public:
     return true;
   }
 
-  bool edit(const std::string &diff) { return false; }
+  bool edit(const std::string &) { return false; }
 
-  bool save(const access::Path &path) const { return false; }
+  bool save(const access::Path &) const { return false; }
 
-  bool save(const access::Path &path, const std::string &password) const {
-    return false;
-  }
+  bool save(const access::Path &, const std::string &) const { return false; }
 
 private:
-  std::unique_ptr<access::Storage> storage_;
+  std::unique_ptr<access::ReadStorage> storage_;
 
   FileMeta meta_;
+
+  bool decrypted_{false};
 
   Context context_;
   std::unique_ptr<tinyxml2::XMLDocument> style_;
@@ -230,10 +279,10 @@ OfficeOpenXml::OfficeOpenXml(const std::string &path)
 OfficeOpenXml::OfficeOpenXml(const access::Path &path)
     : impl_(std::make_unique<Impl>(path)) {}
 
-OfficeOpenXml::OfficeOpenXml(std::unique_ptr<access::Storage> &&storage)
+OfficeOpenXml::OfficeOpenXml(std::unique_ptr<access::ReadStorage> &&storage)
     : impl_(std::make_unique<Impl>(storage)) {}
 
-OfficeOpenXml::OfficeOpenXml(std::unique_ptr<access::Storage> &storage)
+OfficeOpenXml::OfficeOpenXml(std::unique_ptr<access::ReadStorage> &storage)
     : impl_(std::make_unique<Impl>(storage)) {}
 
 OfficeOpenXml::OfficeOpenXml(OfficeOpenXml &&) noexcept = default;
@@ -242,35 +291,39 @@ OfficeOpenXml &OfficeOpenXml::operator=(OfficeOpenXml &&) noexcept = default;
 
 OfficeOpenXml::~OfficeOpenXml() = default;
 
-bool OfficeOpenXml::canHtml() const noexcept { return impl_->canHtml(); }
+const FileMeta &OfficeOpenXml::meta() const noexcept { return impl_->meta(); }
 
-bool OfficeOpenXml::canEdit() const noexcept { return impl_->canEdit(); }
-
-bool OfficeOpenXml::canSave(const bool encrypted) const noexcept {
-  return impl_->canSave(encrypted);
+const access::ReadStorage &OfficeOpenXml::storage() const noexcept {
+  return impl_->storage();
 }
 
-const FileMeta &OfficeOpenXml::getMeta() const noexcept {
-  return impl_->getMeta();
+bool OfficeOpenXml::decrypted() const noexcept { return impl_->decrypted(); }
+
+bool OfficeOpenXml::translatable() const noexcept {
+  return impl_->translatable();
 }
 
-const access::Storage &OfficeOpenXml::getStorage() const noexcept {
-  return impl_->getStorage();
+bool OfficeOpenXml::editable() const noexcept { return impl_->editable(); }
+
+bool OfficeOpenXml::savable(const bool encrypted) const noexcept {
+  return impl_->savable(encrypted);
 }
 
-bool OfficeOpenXml::html(const access::Path &path, const Config &config) {
-  return impl_->html(path, config);
+bool OfficeOpenXml::decrypt(const std::string &password) {
+  return impl_->decrypt(password);
 }
 
-bool OfficeOpenXml::edit(const std::string &diff) { return impl_->edit(diff); }
-
-bool OfficeOpenXml::save(const access::Path &path) const {
-  return impl_->save(path);
+void OfficeOpenXml::translate(const access::Path &path, const Config &config) {
+  impl_->translate(path, config);
 }
 
-bool OfficeOpenXml::save(const access::Path &path,
+void OfficeOpenXml::edit(const std::string &diff) { impl_->edit(diff); }
+
+void OfficeOpenXml::save(const access::Path &path) const { impl_->save(path); }
+
+void OfficeOpenXml::save(const access::Path &path,
                          const std::string &password) const {
-  return impl_->save(path, password);
+  impl_->save(path, password);
 }
 
 } // namespace ooxml

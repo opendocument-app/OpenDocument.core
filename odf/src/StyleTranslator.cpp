@@ -126,7 +126,7 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 // TODO
-void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ListStyleTranslator(const tinyxml2::XMLElement &in, std::ostream &,
                          Context &context) {
   // addElementDelegation("text:list-level-style-number", propertiesTranslator);
   // addElementDelegation("text:list-level-style-bullet", propertiesTranslator);

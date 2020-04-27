@@ -16,7 +16,7 @@ struct Config;
 struct FileMeta;
 
 namespace access {
-class Storage;
+class ReadStorage;
 }
 } // namespace odr
 
@@ -27,7 +27,7 @@ struct Context {
   const Config *config;
   const FileMeta *meta;
 
-  const access::Storage *storage;
+  const access::ReadStorage *storage;
 
   std::ostream *output;
 

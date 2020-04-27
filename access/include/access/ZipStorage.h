@@ -51,8 +51,6 @@ public:
 
   bool isWriteable(const Path &) const final { return true; }
 
-  std::uint64_t size(const Path &) const final { return 0; }
-
   bool remove(const Path &) const final { return false; }
   bool copy(const Path &, const Path &) const final { return false; }
   bool copy(const ZipReader &, const Path &) const;

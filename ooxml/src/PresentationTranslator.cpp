@@ -139,8 +139,7 @@ void DefaultPropertyTransaltor(const tinyxml2::XMLElement &in,
 }
 } // namespace
 
-void PresentationTranslator::css(const tinyxml2::XMLElement &in,
-                                 Context &context) {}
+void PresentationTranslator::css(const tinyxml2::XMLElement &, Context &) {}
 
 namespace {
 void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,

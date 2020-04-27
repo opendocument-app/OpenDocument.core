@@ -1,12 +1,12 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <odr/Config.h>
+#include <odr/Document.h>
 #include <odr/Meta.h>
-#include <odr/Reader.h>
 #include <string>
 
 namespace {
-nlohmann::json meta_to_json(const odr::FileMeta &meta) {
+nlohmann::json metaToJson(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.typeAsString()},
       {"encrypted", meta.encrypted},
@@ -30,27 +30,24 @@ nlohmann::json meta_to_json(const odr::FileMeta &meta) {
 } // namespace
 
 int main(int argc, char **argv) {
-  const std::string input(argv[1]);
+  const std::string input{argv[1]};
 
   bool hasPassword = argc >= 4;
   std::string password;
   if (hasPassword)
     password = argv[2];
 
-  odr::Reader reader;
-  bool success = reader.open(input);
-  if (!success)
-    return 1;
+  const odr::Document document{input};
 
-  if (reader.encrypted() && hasPassword) {
-    success = reader.decrypt(password);
-    if (!success)
-      return 2;
+  if (document.encrypted() && hasPassword) {
+    if (!document.decrypt(password)) {
+      std::cerr << "wrong password" << std::endl;
+      return 1;
+    }
   }
 
-  const auto json = meta_to_json(reader.meta());
+  const auto json = metaToJson(document.meta());
   std::cout << json.dump(4) << std::endl;
 
-  reader.close();
   return 0;
 }

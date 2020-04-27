@@ -8,7 +8,7 @@ namespace {
 constexpr std::uint32_t bufferSize_ = 4096;
 }
 
-std::string StorageUtil::read(const Storage &storage, const Path &path) {
+std::string StorageUtil::read(const ReadStorage &storage, const Path &path) {
   std::string result;
   char buffer[bufferSize_];
   auto in = storage.read(path);

@@ -30,19 +30,30 @@ private:
   std::string path;
 };
 
-class Storage {
+class ReadStorage {
 public:
   typedef std::function<void(const Path &)> Visitor;
 
-  virtual ~Storage() = default;
+  virtual ~ReadStorage() = default;
 
   virtual bool isSomething(const Path &) const = 0;
   virtual bool isFile(const Path &) const = 0;
   virtual bool isDirectory(const Path &) const = 0;
   virtual bool isReadable(const Path &) const = 0;
-  virtual bool isWriteable(const Path &) const = 0;
 
   virtual std::uint64_t size(const Path &) const = 0;
+
+  // TODO only list for subdir? harder in case of zip
+  virtual void visit(Visitor) const = 0;
+
+  virtual std::unique_ptr<Source> read(const Path &) const = 0;
+};
+
+class WriteStorage {
+public:
+  virtual ~WriteStorage() = default;
+
+  virtual bool isWriteable(const Path &) const = 0;
 
   virtual bool remove(const Path &) const = 0;
   virtual bool copy(const Path &from, const Path &to) const = 0;
@@ -50,40 +61,31 @@ public:
 
   virtual bool createDirectory(const Path &) const = 0;
 
-  // TODO only list for subdir? harder in case of zip
-  virtual void visit(Visitor) const = 0;
-
-  virtual std::unique_ptr<Source> read(const Path &) const = 0;
   virtual std::unique_ptr<Sink> write(const Path &) const = 0;
 };
 
-class ReadStorage : public Storage {
+class Storage : public ReadStorage, public WriteStorage {
 public:
-  ~ReadStorage() override = default;
+  ~Storage() override = default;
 
-  bool isWriteable(const Path &) const final { return false; }
+  bool isSomething(const Path &) const override = 0;
+  bool isFile(const Path &) const override = 0;
+  bool isDirectory(const Path &) const override = 0;
+  bool isReadable(const Path &) const override = 0;
+  bool isWriteable(const Path &) const override = 0;
 
-  bool remove(const Path &) const final { return false; }
-  bool copy(const Path &, const Path &) const final { return false; }
-  bool move(const Path &, const Path &) const final { return false; }
+  std::uint64_t size(const Path &) const override = 0;
 
-  bool createDirectory(const Path &) const final { return false; }
+  bool remove(const Path &) const override = 0;
+  bool copy(const Path &from, const Path &to) const override = 0;
+  bool move(const Path &from, const Path &to) const override = 0;
 
-  std::unique_ptr<Sink> write(const Path &) const final { return nullptr; }
-};
+  bool createDirectory(const Path &) const override = 0;
 
-class WriteStorage : public Storage {
-public:
-  ~WriteStorage() override = default;
+  void visit(Visitor) const override = 0;
 
-  bool isSomething(const Path &) const final { return false; }
-  bool isFile(const Path &) const final { return false; }
-  bool isDirectory(const Path &) const final { return false; }
-  bool isReadable(const Path &) const final { return false; }
-
-  void visit(Visitor) const final {}
-
-  std::unique_ptr<Source> read(const Path &) const final { return nullptr; }
+  std::unique_ptr<Source> read(const Path &) const override = 0;
+  std::unique_ptr<Sink> write(const Path &) const override = 0;
 };
 
 } // namespace access

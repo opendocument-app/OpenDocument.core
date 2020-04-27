@@ -30,7 +30,7 @@ std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(access::Source &in) {
 }
 
 std::unique_ptr<tinyxml2::XMLDocument>
-XmlUtil::parse(const access::Storage &storage, const access::Path &path) {
+XmlUtil::parse(const access::ReadStorage &storage, const access::Path &path) {
   if (!storage.isReadable(path))
     return nullptr;
   return parse(access::StorageUtil::read(storage, path));

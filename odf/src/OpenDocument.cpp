@@ -10,6 +10,8 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <odf/OpenDocument.h>
+#include <odr/Config.h>
+#include <odr/Meta.h>
 #include <tinyxml2.h>
 
 namespace odr {
@@ -137,40 +139,47 @@ public:
   explicit Impl(const std::string &path) : Impl(access::Path(path)) {}
 
   explicit Impl(const access::Path &path)
-      : Impl(std::unique_ptr<access::Storage>(new access::ZipReader(path))) {}
+      : Impl(
+            std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {
+  }
 
-  explicit Impl(std::unique_ptr<access::Storage> &&storage) {
+  explicit Impl(std::unique_ptr<access::ReadStorage> &&storage) {
     meta_ = Meta::parseFileMeta(*storage, false);
     manifest_ = Meta::parseManifest(*storage);
 
     storage_ = std::move(storage);
   }
 
-  explicit Impl(std::unique_ptr<access::Storage> &storage) {
+  explicit Impl(std::unique_ptr<access::ReadStorage> &storage) {
     meta_ = Meta::parseFileMeta(*storage, false);
     manifest_ = Meta::parseManifest(*storage);
 
     storage_ = std::move(storage);
   }
 
-  bool isDecrypted() const noexcept { return decrypted_; }
+  FileType type() const noexcept { return meta_.type; }
 
-  bool canHtml() const noexcept { return true; }
+  bool encrypted() const noexcept { return meta_.encrypted; }
 
-  bool canEdit() const noexcept { return true; }
+  const FileMeta &meta() const noexcept { return meta_; }
 
-  bool canSave(const bool encrypted) const noexcept {
+  const access::ReadStorage &storage() const noexcept { return *storage_; }
+
+  bool decrypted() const noexcept { return decrypted_; }
+
+  bool translatable() const noexcept { return true; }
+
+  bool editable() const noexcept { return true; }
+
+  bool savable(const bool encrypted) const noexcept {
     if (encrypted)
       return false;
     return !meta_.encrypted;
   }
 
-  const FileMeta &getMeta() const noexcept { return meta_; }
-
-  const access::Storage &getStorage() const noexcept { return *storage_; }
-
   bool decrypt(const std::string &password) {
     // TODO throw if not encrypted
+    // TODO throw if decrypted
     const bool success = Crypto::decrypt(storage_, manifest_, password);
     if (success)
       meta_ = Meta::parseFileMeta(*storage_, true);
@@ -178,7 +187,7 @@ public:
     return success;
   }
 
-  bool html(const access::Path &path, const Config &config) {
+  bool translate(const access::Path &path, const Config &config) {
     // TODO throw if not decrypted
     std::ofstream out(path);
     if (!out.is_open())
@@ -273,7 +282,7 @@ public:
   }
 
 private:
-  std::unique_ptr<access::Storage> storage_;
+  std::unique_ptr<access::ReadStorage> storage_;
 
   FileMeta meta_;
   Meta::Manifest manifest_;
@@ -294,10 +303,10 @@ OpenDocument::OpenDocument(const std::string &path)
 OpenDocument::OpenDocument(const access::Path &path)
     : impl_(std::make_unique<Impl>(path)) {}
 
-OpenDocument::OpenDocument(std::unique_ptr<access::Storage> &&storage)
+OpenDocument::OpenDocument(std::unique_ptr<access::ReadStorage> &&storage)
     : impl_(std::make_unique<Impl>(storage)) {}
 
-OpenDocument::OpenDocument(std::unique_ptr<access::Storage> &storage)
+OpenDocument::OpenDocument(std::unique_ptr<access::ReadStorage> &storage)
     : impl_(std::make_unique<Impl>(storage)) {}
 
 OpenDocument::OpenDocument(OpenDocument &&) noexcept = default;
@@ -306,41 +315,39 @@ OpenDocument &OpenDocument::operator=(OpenDocument &&) noexcept = default;
 
 OpenDocument::~OpenDocument() = default;
 
-bool OpenDocument::isDecrypted() const noexcept { return impl_->isDecrypted(); }
+const FileMeta &OpenDocument::meta() const noexcept { return impl_->meta(); }
 
-bool OpenDocument::canHtml() const noexcept { return impl_->canHtml(); }
-
-bool OpenDocument::canEdit() const noexcept { return impl_->canEdit(); }
-
-bool OpenDocument::canSave(const bool encrypted) const noexcept {
-  return impl_->canSave(encrypted);
+const access::ReadStorage &OpenDocument::storage() const noexcept {
+  return impl_->storage();
 }
 
-const FileMeta &OpenDocument::getMeta() const noexcept {
-  return impl_->getMeta();
+bool OpenDocument::decrypted() const noexcept { return impl_->decrypted(); }
+
+bool OpenDocument::translatable() const noexcept {
+  return impl_->translatable();
 }
 
-const access::Storage &OpenDocument::getStorage() const noexcept {
-  return impl_->getStorage();
+bool OpenDocument::editable() const noexcept { return impl_->editable(); }
+
+bool OpenDocument::savable(const bool encrypted) const noexcept {
+  return impl_->savable(encrypted);
 }
 
 bool OpenDocument::decrypt(const std::string &password) {
   return impl_->decrypt(password);
 }
 
-bool OpenDocument::html(const access::Path &path, const Config &config) {
-  return impl_->html(path, config);
+void OpenDocument::translate(const access::Path &path, const Config &config) {
+  impl_->translate(path, config);
 }
 
-bool OpenDocument::edit(const std::string &diff) { return impl_->edit(diff); }
+void OpenDocument::edit(const std::string &diff) { impl_->edit(diff); }
 
-bool OpenDocument::save(const access::Path &path) const {
-  return impl_->save(path);
-}
+void OpenDocument::save(const access::Path &path) const { impl_->save(path); }
 
-bool OpenDocument::save(const access::Path &path,
+void OpenDocument::save(const access::Path &path,
                         const std::string &password) const {
-  return impl_->save(path, password);
+  impl_->save(path, password);
 }
 
 } // namespace odf

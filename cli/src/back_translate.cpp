@@ -1,38 +1,32 @@
 #include <access/FileUtil.h>
+#include <iostream>
 #include <odr/Config.h>
+#include <odr/Document.h>
 #include <odr/Meta.h>
-#include <odr/Reader.h>
 #include <string>
 
 int main(int, char **argv) {
-  const std::string input(argv[1]);
-  const std::string diff(argv[2]);
-  const std::string output(argv[3]);
+  const std::string input{argv[1]};
+  const std::string diff{argv[2]};
+  const std::string output{argv[3]};
 
   odr::Config config;
   config.entryOffset = 0;
   config.entryCount = 0;
   config.editable = true;
 
-  bool success;
+  const odr::Document document{input};
 
-  odr::Reader reader;
-  success = reader.open(input);
-  if (!success)
+  if (document.encrypted()) {
+    std::cerr << "encrypted documents are not supported" << std::endl;
     return 1;
+  }
 
-  success = reader.translate(output, config);
-  if (!success)
-    return 2;
+  document.translate(output, config);
 
   const std::string backDiff = odr::access::FileUtil::read(diff);
-  success = reader.edit(backDiff);
-  if (!success)
-    return 3;
-  success = reader.save(output);
-  if (!success)
-    return 4;
+  document.edit(backDiff);
+  document.save(output);
 
-  reader.close();
   return 0;
 }

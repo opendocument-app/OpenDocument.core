@@ -5,9 +5,11 @@
 
 namespace odr {
 struct Config;
+
+namespace access {
+class Sink;
 }
 
-namespace odr {
 namespace common {
 
 namespace Html {

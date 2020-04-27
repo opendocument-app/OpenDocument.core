@@ -1,47 +1,45 @@
 #ifndef ODR_ODF_OPEN_DOCUMENT_H
 #define ODR_ODF_OPEN_DOCUMENT_H
 
+#include <common/Document.h>
 #include <memory>
-#include <odr/Config.h>
-#include <odr/Meta.h>
 
 namespace odr {
 namespace access {
-class Path;
-class Storage;
-} // namespace access
-} // namespace odr
+class ReadStorage;
+}
 
-namespace odr {
 namespace odf {
 
-class OpenDocument final {
+class OpenDocument final : public common::Document {
 public:
   explicit OpenDocument(const char *path);
   explicit OpenDocument(const std::string &path);
   explicit OpenDocument(const access::Path &path);
-  explicit OpenDocument(std::unique_ptr<access::Storage> &&storage);
-  explicit OpenDocument(std::unique_ptr<access::Storage> &storage);
+  explicit OpenDocument(std::unique_ptr<access::ReadStorage> &&storage);
+  explicit OpenDocument(std::unique_ptr<access::ReadStorage> &storage);
   OpenDocument(const OpenDocument &) = delete;
   OpenDocument(OpenDocument &&) noexcept;
   OpenDocument &operator=(const OpenDocument &) = delete;
   OpenDocument &operator=(OpenDocument &&) noexcept;
-  ~OpenDocument();
+  ~OpenDocument() final;
 
-  bool isDecrypted() const noexcept;
-  bool canHtml() const noexcept;
-  bool canEdit() const noexcept;
-  bool canSave(bool encrypted = false) const noexcept;
-  const FileMeta &getMeta() const noexcept;
-  const access::Storage &getStorage() const noexcept;
+  const FileMeta &meta() const noexcept;
+  const access::ReadStorage &storage() const noexcept;
 
-  bool decrypt(const std::string &password);
+  bool decrypted() const noexcept final;
+  bool translatable() const noexcept final;
+  bool editable() const noexcept final;
+  bool savable(bool encrypted) const noexcept final;
 
-  bool html(const access::Path &path, const Config &config);
-  bool edit(const std::string &diff);
+  bool decrypt(const std::string &password) final;
 
-  bool save(const access::Path &path) const;
-  bool save(const access::Path &path, const std::string &password) const;
+  void translate(const access::Path &path, const Config &config) final;
+
+  void edit(const std::string &diff) final;
+
+  void save(const access::Path &path) const final;
+  void save(const access::Path &path, const std::string &password) const final;
 
 private:
   class Impl;

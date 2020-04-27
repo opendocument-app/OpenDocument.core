@@ -2,7 +2,7 @@ add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-static STATIC
-        src/Reader.cpp
+        src/Document.cpp
         src/Meta.cpp
         )
 target_include_directories(odr-static PUBLIC include)
@@ -18,11 +18,12 @@ target_link_libraries(odr-static
         odr_common
         odr_crypto
         odr_odf
+        odr_oldms
         odr_ooxml
         )
 
 add_library(odr-shared SHARED
-        src/Reader.cpp
+        src/Document.cpp
         src/Meta.cpp
         )
 target_link_libraries(odr-shared
@@ -37,5 +38,7 @@ target_link_libraries(odr-shared
         odr_common
         odr_crypto
         odr_odf
-        odr_ooxml)
+        odr_oldms
+        odr_ooxml
+        )
 target_include_directories(odr-shared PUBLIC include)

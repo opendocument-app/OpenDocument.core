@@ -14,7 +14,7 @@ namespace odr {
 struct FileMeta;
 
 namespace access {
-class Storage;
+class ReadStorage;
 } // namespace access
 } // namespace odr
 
@@ -22,7 +22,9 @@ namespace odr {
 namespace odf {
 
 struct NoOpenDocumentFileException final : public std::exception {
-  const char *what() const noexcept final { return "not a open document file"; }
+  const char *what() const noexcept final {
+    return "not an open document file";
+  }
 };
 
 namespace Meta {
@@ -54,9 +56,9 @@ struct Manifest {
   const Entry *smallestFileEntry;
 };
 
-FileMeta parseFileMeta(const access::Storage &storage, bool decrypted);
+FileMeta parseFileMeta(const access::ReadStorage &storage, bool decrypted);
 
-Manifest parseManifest(const access::Storage &storage);
+Manifest parseManifest(const access::ReadStorage &storage);
 Manifest parseManifest(const tinyxml2::XMLDocument &manifest);
 } // namespace Meta
 

@@ -1,11 +1,12 @@
+#include <iostream>
 #include <odr/Config.h>
+#include <odr/Document.h>
 #include <odr/Meta.h>
-#include <odr/Reader.h>
 #include <string>
 
 int main(int argc, char **argv) {
-  const std::string input(argv[1]);
-  const std::string output(argv[2]);
+  const std::string input{argv[1]};
+  const std::string output{argv[2]};
 
   bool hasPassword = argc >= 4;
   std::string password;
@@ -17,23 +18,21 @@ int main(int argc, char **argv) {
   config.entryCount = 0;
   config.editable = true;
 
-  bool success;
+  const odr::Document document{input};
 
-  odr::Reader reader;
-  success = reader.open(input);
-  if (!success)
-    return 1;
-
-  if (reader.encrypted() && hasPassword) {
-    success = reader.decrypt(password);
-    if (!success)
+  if (document.encrypted()) {
+    if (hasPassword) {
+      if (!document.decrypt(password)) {
+        std::cerr << "wrong password" << std::endl;
+        return 1;
+      }
+    } else {
+      std::cerr << "document encrypted but no password given" << std::endl;
       return 2;
+    }
   }
 
-  success = reader.translate(output, config);
-  if (!success)
-    return 3;
+  document.translate(output, config);
 
-  reader.close();
   return 0;
 }

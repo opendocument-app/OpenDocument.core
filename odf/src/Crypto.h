@@ -8,7 +8,7 @@
 
 namespace odr {
 namespace access {
-class Storage;
+class ReadStorage;
 } // namespace access
 } // namespace odr
 
@@ -35,7 +35,7 @@ std::string deriveKeyAndDecrypt(const Meta::Manifest::Entry &,
 bool validatePassword(const Meta::Manifest::Entry &,
                       std::string decrypted) noexcept;
 
-bool decrypt(std::unique_ptr<access::Storage> &, const Meta::Manifest &,
+bool decrypt(std::unique_ptr<access::ReadStorage> &, const Meta::Manifest &,
              const std::string &password);
 } // namespace Crypto
 
