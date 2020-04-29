@@ -182,6 +182,41 @@ public:
     generateStyle_(out, context_);
     generateContentStyle_(content_, context_);
     out << "</style>";
+    if (config.paging) {
+      out << "<style>\n"
+             "@page {\n"
+             "\tsize: A4;\n"
+             "\tmargin-top: 0.79in;\n"
+             "\tmargin-right: 0.79in;\n"
+             "\tmargin-bottom: 0.79in;\n"
+             "\tmargin-left: 0.79in;\n"
+             "}\n"
+             ":root {\n"
+             "\tdisplay: flex;\n"
+             "\tflex-direction: row;\n"
+             "\tflex-wrap: wrap;\n"
+             "\tjustify-content: center;\n"
+             "\talign-items: center;\n"
+             "}"
+             ".pagedjs_page {\n"
+             "\tdisplay: block;\n"
+             "\twidth: calc(100 / 23 * 21)!important;\n"
+             "\theight: calc(100 / 23 * 29.7)!important;\n"
+             "\tmargin: calc(100 / 23 * 1vw) auto!important;\n"
+             "\tborder: 1px #D3D3D3 solid;\n"
+             "\tborder-radius: 5px;\n"
+             "\tbackground: white;\n"
+             "\tbox-shadow: 0 0 5px rgba(0, 0, 0, 0.1);\n"
+             "}\n"
+             "\n"
+             "@media screen {\n"
+             "\tbody {\n"
+             "\t\tbackground-color: whitesmoke;\n"
+             "\t}\n"
+             "}"
+             "</style>";
+      out << "<script src=\"https://unpkg.com/pagedjs/dist/paged.polyfill.js\" defer></script>";
+    }
     out << "</head>";
 
     out << "<body " << common::Html::bodyAttributes(config) << ">";

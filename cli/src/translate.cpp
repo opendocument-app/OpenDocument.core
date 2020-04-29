@@ -17,6 +17,7 @@ int main(int argc, char **argv) {
   config.entryOffset = 0;
   config.entryCount = 0;
   config.editable = true;
+  config.paging = true;
 
   const odr::Document document{input};
 

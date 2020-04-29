@@ -21,6 +21,8 @@ struct Config {
   bool splitEntries{false};
   // create editable output
   bool editable{false};
+  // javascript paging for odt
+  bool paging{false};
 
   // spreadsheet table offset
   std::uint32_t tableOffsetRows{0};
