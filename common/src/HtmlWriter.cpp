@@ -3,5 +3,5 @@
 namespace odr {
 namespace common {
 
-}
-}
+} // namespace common
+} // namespace odr

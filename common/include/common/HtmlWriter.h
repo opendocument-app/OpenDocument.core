@@ -2,59 +2,89 @@
 #define ODR_COMMON_HTML_WRITER_H
 
 #include <access/Stream.h>
-#include <vector>
-#include <string>
+#include <iostream>
 #include <memory>
+#include <string>
+#include <type_traits>
+#include <vector>
 
 namespace odr {
 namespace common {
 
 class HtmlHeadWriter;
-class CssWriter;
-class ScriptWriter;
 class HtmlElementWriter;
+class HtmlElementBodyWriter;
 
 class HtmlWriter final {
 public:
-  HtmlHeadWriter head(const std::string &title);
+  HtmlWriter(std::unique_ptr<std::ostream> output);
+  HtmlWriter(std::unique_ptr<std::ostream> output,
+             std::unique_ptr<std::ostream> &owner);
+  ~HtmlWriter();
+
+  HtmlHeadWriter head();
 
 private:
+  std::unique_ptr<std::ostream> output_;
+  std::unique_ptr<std::ostream> &owner_;
 };
 
 class HtmlHeadWriter final {
 public:
-  HtmlHeadWriter meta(const std::string &charset);
-  HtmlHeadWriter meta(const std::string &name, const std::string &content);
+  HtmlHeadWriter(std::unique_ptr<std::ostream> output);
+  HtmlHeadWriter(std::unique_ptr<std::ostream> output,
+                 std::unique_ptr<std::ostream> &owner);
+  ~HtmlHeadWriter();
 
-  CssWriter style();
-  HtmlHeadWriter link();
+  HtmlHeadWriter &meta(const std::string &charset);
+  HtmlHeadWriter &meta(const std::string &name,
+                       const std::string &content);
 
-  ScriptWriter script();
-  HtmlHeadWriter script(const std::string &href);
-
+  void style();
+  HtmlHeadWriter &link();
+  void script();
+  void script(const std::string &href);
   HtmlElementWriter body();
 
 private:
+  std::unique_ptr<std::ostream> output_;
+  std::unique_ptr<std::ostream> &owner_;
 };
 
 class HtmlElementWriter final {
 public:
-  explicit HtmlElementWriter(std::unique_ptr<access::Sink> sink);
+  HtmlElementWriter(std::unique_ptr<std::ostream> output);
+  HtmlElementWriter(std::unique_ptr<std::ostream> output,
+                    std::unique_ptr<std::ostream> &owner);
   ~HtmlElementWriter();
 
-  void addAttribute(const std::string &name, const std::string &value);
-  HtmlAttributeValueWriter addAttribute(const std::string &name);
-
-  void addComment(const std::string &text);
-  HtmlCommentWriter addComment();
-
-  void addText(const std::string &text);
-  HtmlTextWriter addText();
+  HtmlElementWriter &attribute();
+  HtmlElementBodyWriter comment();
+  HtmlElementBodyWriter text();
+  HtmlElementBodyWriter element(const std::string &href);
 
 private:
+  std::unique_ptr<std::ostream> output_;
+  std::unique_ptr<std::ostream> &owner_;
 };
 
-}
-}
+class HtmlElementBodyWriter final {
+public:
+  HtmlElementBodyWriter(std::unique_ptr<std::ostream> output);
+  HtmlElementBodyWriter(std::unique_ptr<std::ostream> output,
+                        std::unique_ptr<std::ostream> &owner);
+  ~HtmlElementBodyWriter();
+
+  HtmlElementBodyWriter &comment();
+  HtmlElementBodyWriter &text();
+  HtmlElementBodyWriter &element(const std::string &href);
+
+private:
+  std::unique_ptr<std::ostream> output_;
+  std::unique_ptr<std::ostream> &owner_;
+};
+
+} // namespace common
+} // namespace odr
 
 #endif // ODR_COMMON_HTML_WRITER_H
