@@ -191,31 +191,37 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                      Context &context) {
   out << "<img style=\"width:100%;height:100%\"";
 
-  const auto href = in.FindAttribute("xlink:href");
-  if (href == nullptr) {
+  const auto hrefAttr = in.FindAttribute("xlink:href");
+  if (hrefAttr == nullptr) {
     out << " alt=\"Error: image path not specified";
     LOG(ERROR) << "image href not found";
   } else {
-    const std::string &path = href->Value();
-    out << " alt=\"Error: image not found or unsupported: " << path << "\"";
+    const std::string href = hrefAttr->Value();
+    out << " alt=\"Error: image not found or unsupported: " << href << "\"";
     out << " src=\"";
-    if (!context.storage->isFile(path)) {
-      out << path;
-    } else {
-      std::string image =
-          access::StreamUtil::read(*context.storage->read(path));
-      if ((path.find("ObjectReplacements", 0) != std::string::npos) ||
-          (path.find(".svm", 0) != std::string::npos)) {
-        std::istringstream svmIn(image);
-        std::ostringstream svgOut;
-        svm::Translator::svg(svmIn, svgOut);
-        image = svgOut.str();
-        out << "data:image/svg+xml;base64, ";
+    try {
+      // is it a path?
+      const access::Path path{href};
+      if (!context.storage->isFile(path)) {
+        out << path;
       } else {
-        // hacky image/jpg working according to tom
-        out << "data:image/jpg;base64, ";
+        std::string image =
+            access::StreamUtil::read(*context.storage->read(path));
+        // TODO we could also try to use svm first and if it crashes inline
+        if (path.descendantOf("ObjectReplacements")) {
+          std::istringstream svmIn(image);
+          std::ostringstream svgOut;
+          svm::Translator::svg(svmIn, svgOut);
+          image = svgOut.str();
+          out << "data:image/svg+xml;base64, ";
+        } else {
+          // hacky image/jpg working according to tom
+          out << "data:image/jpg;base64, ";
+        }
+        out << crypto::Util::base64Encode(image);
       }
-      out << crypto::Util::base64Encode(image);
+    } catch (...) {
+      out << href;
     }
     out << "\"";
   }

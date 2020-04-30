@@ -32,19 +32,29 @@ TEST(ZipWriter, create) {
       const auto sink = writer.write("notempty/three.txt");
       sink->write("asdf", 4);
     }
+
+    {
+      const auto sink = writer.write("./notempty/four.txt");
+      sink->write("1234", 4);
+    }
   }
 
   {
     odr::access::ZipReader reader(file);
+
     EXPECT_TRUE(reader.isFile("one.txt"));
     EXPECT_TRUE(reader.isFile("two.txt"));
     EXPECT_TRUE(reader.isDirectory("empty"));
     EXPECT_TRUE(reader.isDirectory("notempty"));
     EXPECT_TRUE(reader.isFile("notempty/three.txt"));
+    EXPECT_TRUE(reader.isFile("notempty/four.txt"));
+    EXPECT_TRUE(reader.isFile("./notempty/four.txt"));
 
     EXPECT_EQ(23, reader.size("one.txt"));
     EXPECT_EQ(28, reader.size("two.txt"));
     EXPECT_EQ(4, reader.size("notempty/three.txt"));
+    EXPECT_EQ(4, reader.size("notempty/four.txt"));
+    EXPECT_EQ(4, reader.size("./notempty/four.txt"));
   }
 }
 
