@@ -200,15 +200,15 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     out << " alt=\"Error: image not found or unsupported: " << href << "\"";
     out << " src=\"";
     try {
-      // is it a path?
       const access::Path path{href};
       if (!context.storage->isFile(path)) {
+        // TODO sometimes `ObjectReplacements` does not exist
         out << path;
       } else {
         std::string image =
             access::StreamUtil::read(*context.storage->read(path));
-        // TODO we could also try to use svm first and if it crashes inline
-        if (path.descendantOf("ObjectReplacements")) {
+        if ((href.find("ObjectReplacements", 0) != std::string::npos) ||
+            (href.find(".svm", 0) != std::string::npos)) {
           std::istringstream svmIn(image);
           std::ostringstream svgOut;
           svm::Translator::svg(svmIn, svgOut);
