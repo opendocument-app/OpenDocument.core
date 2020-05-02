@@ -60,8 +60,6 @@ table td {
 p {
   font-family: "Arial";
   font-size: 10pt;
-  height: 0;
-  word-wrap: break-word;
 }
 
 .odr-gridlines-none table td {}
