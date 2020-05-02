@@ -16,5 +16,6 @@ TEST(Path, normalization) {
   EXPECT_EQ(Path("ppt/media/image8.png"), Path("./ppt/media/image8.png"));
   EXPECT_EQ(Path("ppt/media/image8.png"), Path("ppt/./media/image8.png"));
   EXPECT_EQ(Path("ppt/media/image8.png"), Path("ppt/media/./image8.png"));
-  EXPECT_EQ(Path("ppt/media/image8.png"), Path("././././././ppt/media/image8.png"));
+  EXPECT_EQ(Path("ppt/media/image8.png"),
+            Path("././././././ppt/media/image8.png"));
 }
