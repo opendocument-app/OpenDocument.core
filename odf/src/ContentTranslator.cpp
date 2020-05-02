@@ -62,12 +62,20 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   };
 
   out << " class=\"";
+
   // TODO this is ods specific
   if (in.FindAttribute("table:style-name") == nullptr) {
     const auto it = context.defaultCellStyles.find(context.tableCursor.col());
-    if (it != context.defaultCellStyles.end())
+    if (it != context.defaultCellStyles.end()) {
       StyleClassTranslator(it->second, out, context);
+      out << " ";
+    }
   }
+  const auto valueTypeAttr = in.FindAttribute("office:value-type");
+  if (valueTypeAttr != nullptr) {
+    out << "odr-value-type-" << valueTypeAttr->Value() << " ";
+  }
+
   common::XmlUtil::visitElementAttributes(
       in, [&](const tinyxml2::XMLAttribute &a) {
         const std::string attribute = a.Name();
@@ -111,7 +119,7 @@ void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   if (count <= 0) {
     return;
   }
-  out << "<span class=\"whitespace\">";
+  out << "<span class=\"odr-whitespace\">";
   for (std::uint32_t i = 0; i < count; ++i) {
     out << " ";
   }
@@ -119,7 +127,7 @@ void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 
 void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, Context &) {
-  out << "<span class=\"whitespace\">&emsp;</span>";
+  out << "<span class=\"odr-whitespace\">&emsp;</span>";
 }
 
 void LineBreakTranslator(const tinyxml2::XMLElement &, std::ostream &out,

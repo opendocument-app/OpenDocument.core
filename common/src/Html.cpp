@@ -32,16 +32,13 @@ const char *Html::odfDefaultStyle() noexcept {
 body {
   padding: 5px;
 }
-table {
-  width: 0px;
-}
 p {
   padding: 0 !important;
 }
 span {
   margin: 0 !important;
 }
-.whitespace {
+.odr-whitespace {
   white-space: pre-wrap;
 }
   )V0G0N";
@@ -53,29 +50,30 @@ const char *Html::odfSpreadsheetDefaultStyle() noexcept {
   return R"V0G0N(
 table {
   border-collapse: collapse;
-  display: block;
+  table-layout: fixed;
 }
 table td {
   vertical-align: top;
+  overflow: hidden;
 }
+
 p {
   font-family: "Arial";
   font-size: 10pt;
+  height: 0;
+  word-wrap: break-word;
 }
 
-.gridlines-none table {}
-.gridlines-none table td {}
-.gridlines-soft table {
+.odr-gridlines-none table td {}
+.odr-gridlines-soft table td {
   border:1px solid #C0C0C0;
 }
-.gridlines-soft table td {
-  border:1px solid #C0C0C0;
-}
-.gridlines-hard table {
+.odr-gridlines-hard table td {
   border:1px solid #C0C0C0 !important;
 }
-.gridlines-hard table td {
-  border:1px solid #C0C0C0 !important;
+
+table td.odr-value-type-float {
+  text-align: right;
 }
   )V0G0N";
   // clang-format on
@@ -94,14 +92,14 @@ std::string Html::bodyAttributes(const Config &config) noexcept {
   result += "class=\"";
   switch (config.tableGridlines) {
   case TableGridlines::SOFT:
-    result += "gridlines-soft";
+    result += "odr-gridlines-soft";
     break;
   case TableGridlines::HARD:
-    result += "gridlines-hard";
+    result += "odr-gridlines-hard";
     break;
   case TableGridlines::NONE:
   default:
-    result += "gridlines-none";
+    result += "odr-gridlines-none";
     break;
   }
   result += "\"";
