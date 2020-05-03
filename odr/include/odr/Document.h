@@ -51,9 +51,9 @@ private:
 
 class DocumentNoExcept final {
 public:
-  static std::optional<DocumentNoExcept> open(const std::string &path) noexcept;
-  static std::optional<DocumentNoExcept> open(const std::string &path,
-                                              FileType as) noexcept;
+  static std::unique_ptr<DocumentNoExcept> open(const std::string &path) noexcept;
+  static std::unique_ptr<DocumentNoExcept> open(const std::string &path,
+                                                FileType as) noexcept;
 
   static FileType type(const std::string &path) noexcept;
   static FileMeta meta(const std::string &path) noexcept;
