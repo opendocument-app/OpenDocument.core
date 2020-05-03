@@ -79,8 +79,8 @@ public:
   bool edit(const std::string &diff) const noexcept;
 
   bool save(const std::string &path) const noexcept;
-  bool save(const std::string &path,
-            const std::string &password) const noexcept;
+  bool save(const std::string &path, const std::string &password) const
+      noexcept;
 
 private:
   std::unique_ptr<Document> impl_;
