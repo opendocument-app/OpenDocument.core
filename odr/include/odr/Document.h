@@ -51,7 +51,8 @@ private:
 
 class DocumentNoExcept final {
 public:
-  static std::unique_ptr<DocumentNoExcept> open(const std::string &path) noexcept;
+  static std::unique_ptr<DocumentNoExcept>
+  open(const std::string &path) noexcept;
   static std::unique_ptr<DocumentNoExcept> open(const std::string &path,
                                                 FileType as) noexcept;
 
@@ -78,8 +79,8 @@ public:
   bool edit(const std::string &diff) const noexcept;
 
   bool save(const std::string &path) const noexcept;
-  bool save(const std::string &path, const std::string &password) const
-      noexcept;
+  bool save(const std::string &path,
+            const std::string &password) const noexcept;
 
 private:
   std::unique_ptr<Document> impl_;
