@@ -119,20 +119,21 @@ void Document::save(const std::string &path,
   impl_->save(path, password);
 }
 
-std::optional<DocumentNoExcept>
+std::unique_ptr<DocumentNoExcept>
 DocumentNoExcept::open(const std::string &path) noexcept {
   try {
-    return DocumentNoExcept(std::make_unique<Document>(path));
+    return std::make_unique<DocumentNoExcept>(std::make_unique<Document>(path));
   } catch (...) {
     LOG(ERROR) << "open failed";
     return {};
   }
 }
 
-std::optional<DocumentNoExcept>
+std::unique_ptr<DocumentNoExcept>
 DocumentNoExcept::open(const std::string &path, const FileType as) noexcept {
   try {
-    return DocumentNoExcept(std::make_unique<Document>(path, as));
+    return std::make_unique<DocumentNoExcept>(
+        std::make_unique<Document>(path, as));
   } catch (...) {
     LOG(ERROR) << "open failed";
     return {};
