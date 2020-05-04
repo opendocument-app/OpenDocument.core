@@ -1,8 +1,8 @@
 #ifndef ODR_ACCESS_STREAMUTIL_H
 #define ODR_ACCESS_STREAMUTIL_H
 
-#include <string>
 #include <iostream>
+#include <string>
 
 namespace odr {
 namespace access {

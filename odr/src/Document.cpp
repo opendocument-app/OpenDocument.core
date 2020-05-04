@@ -1,6 +1,6 @@
 #include <access/CfbStorage.h>
-#include <access/Storage.h>
 #include <access/Path.h>
+#include <access/Storage.h>
 #include <access/ZipStorage.h>
 #include <common/Constants.h>
 #include <common/Document.h>

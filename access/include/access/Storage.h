@@ -3,8 +3,8 @@
 
 #include <exception>
 #include <functional>
-#include <memory>
 #include <iostream>
+#include <memory>
 
 namespace odr {
 namespace access {
