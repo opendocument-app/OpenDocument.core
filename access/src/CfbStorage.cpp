@@ -505,7 +505,7 @@ public:
     });
   }
 
-  std::unique_ptr<Source> read(const Path &p) const {
+  std::unique_ptr<std::istream> read(const Path &p) const {
     const auto entry = find(p);
     if (entry == nullptr)
       return nullptr;
@@ -541,7 +541,7 @@ std::uint64_t CfbReader::size(const Path &path) const {
 
 void CfbReader::visit(Visitor visitor) const { impl->visit(visitor); }
 
-std::unique_ptr<Source> CfbReader::read(const Path &path) const {
+std::unique_ptr<std::istream> CfbReader::read(const Path &path) const {
   return impl->read(path);
 }
 

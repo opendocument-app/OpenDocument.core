@@ -11,12 +11,12 @@ class ZipWriter;
 
 class NoZipFileException : public std::exception {
 public:
-  explicit NoZipFileException(std::string path) : path(std::move(path)) {}
-  const std::string &getPath() const { return path; }
+  explicit NoZipFileException(std::string path) : path_(std::move(path)) {}
+  const std::string &path() const { return path_; }
   const char *what() const noexcept override { return "not a zip file"; }
 
 private:
-  std::string path;
+  std::string path_;
 };
 
 class ZipReader final : public ReadStorage {
@@ -35,7 +35,7 @@ public:
 
   void visit(Visitor) const final;
 
-  std::unique_ptr<Source> read(const Path &) const final;
+  std::unique_ptr<std::istream> read(const Path &) const final;
 
 private:
   class Impl;
@@ -58,8 +58,8 @@ public:
 
   bool createDirectory(const Path &) const final;
 
-  std::unique_ptr<Sink> write(const Path &) const final;
-  std::unique_ptr<Sink> write(const Path &, int compression) const;
+  std::unique_ptr<std::ostream> write(const Path &) const final;
+  std::unique_ptr<std::ostream> write(const Path &, int compression) const;
 
 private:
   class Impl;

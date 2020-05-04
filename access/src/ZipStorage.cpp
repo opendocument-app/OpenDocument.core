@@ -1,5 +1,4 @@
 #include <access/Path.h>
-#include <access/Stream.h>
 #include <access/ZipStorage.h>
 #include <miniz.h>
 
@@ -111,7 +110,7 @@ public:
     }
   }
 
-  std::unique_ptr<Source> read(const Path &path) noexcept {
+  std::unique_ptr<std::istream> read(const Path &path) noexcept {
     auto iter =
         mz_zip_reader_extract_file_iter_new(&zip, path.string().c_str(), 0);
     if (iter == nullptr)
@@ -171,8 +170,8 @@ public:
     return true;
   }
 
-  std::unique_ptr<Sink> write(const Path &path,
-                              const int compression) noexcept {
+  std::unique_ptr<std::ostream> write(const Path &path,
+                                      const int compression) noexcept {
     return std::make_unique<SinkImpl>(zip, path.string(), compression);
   }
 };
@@ -207,7 +206,7 @@ std::uint64_t ZipReader::size(const Path &path) const {
 
 void ZipReader::visit(Visitor visitor) const { return impl->visit(visitor); }
 
-std::unique_ptr<Source> ZipReader::read(const Path &path) const {
+std::unique_ptr<std::istream> ZipReader::read(const Path &path) const {
   return impl->read(path);
 }
 
@@ -223,12 +222,12 @@ bool ZipWriter::createDirectory(const Path &path) const {
   return impl->createDirectory(path);
 }
 
-std::unique_ptr<Sink> ZipWriter::write(const Path &path) const {
+std::unique_ptr<std::ostream> ZipWriter::write(const Path &path) const {
   return impl->write(path, MZ_DEFAULT_LEVEL);
 }
 
-std::unique_ptr<Sink> ZipWriter::write(const Path &path,
-                                       const int compression) const {
+std::unique_ptr<std::ostream> ZipWriter::write(const Path &path,
+                                               const int compression) const {
   return impl->write(path, compression);
 }
 
