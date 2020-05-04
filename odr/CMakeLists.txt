@@ -4,8 +4,14 @@ target_include_directories(odr-interface INTERFACE include)
 add_library(odr-static STATIC
         src/Document.cpp
         src/Meta.cpp
+        src/SignalHandler.cpp
         )
-target_include_directories(odr-static PUBLIC include)
+target_include_directories(odr-static
+        PUBLIC
+        include
+        PRIVATE
+        src
+        )
 target_link_libraries(odr-static
         PRIVATE
         pugixml
@@ -25,6 +31,7 @@ target_link_libraries(odr-static
 add_library(odr-shared SHARED
         src/Document.cpp
         src/Meta.cpp
+        src/SignalHandler.cpp
         )
 target_link_libraries(odr-shared
         PRIVATE
@@ -41,4 +48,9 @@ target_link_libraries(odr-shared
         odr_oldms
         odr_ooxml
         )
-target_include_directories(odr-shared PUBLIC include)
+target_include_directories(odr-shared
+        PUBLIC
+        include
+        PRIVATE
+        src
+        )
