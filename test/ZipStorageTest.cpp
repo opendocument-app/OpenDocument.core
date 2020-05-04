@@ -1,5 +1,5 @@
-#include <access/ZipStorage.h>
 #include <access/Path.h>
+#include <access/ZipStorage.h>
 #include <gtest/gtest.h>
 #include <string>
 
@@ -7,9 +7,7 @@ using namespace odr::access;
 
 // TODO visit test
 
-TEST(ZipReader, exception) {
-  EXPECT_THROW(ZipReader("/"), NoZipFileException);
-}
+TEST(ZipReader, exception) { EXPECT_THROW(ZipReader("/"), NoZipFileException); }
 
 TEST(ZipWriter, create) {
   const std::string file = "created.zip";
