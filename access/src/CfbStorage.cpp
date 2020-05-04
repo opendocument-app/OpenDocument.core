@@ -414,49 +414,62 @@ private:
 } // namespace CFB
 } // namespace
 
+namespace {
+constexpr std::uint64_t buffer_size_ = 4098;
+
+class CfbReaderBuf_ final : public std::streambuf {
+public:
+  CfbReaderBuf_(const CFB::CompoundFileReader &reader,
+                const CFB::CompoundFileEntry &entry)
+      : reader_(reader), entry_(entry), buffer_(new char[buffer_size_]) {}
+
+  ~CfbReaderBuf_() final { delete[] buffer_; }
+
+  int underflow() final {
+    const std::uint64_t remaining = entry_.size - offset_;
+    if (remaining <= 0)
+      return std::char_traits<char>::eof();
+
+    const std::uint64_t amount = std::min(remaining, buffer_size_);
+    reader_.ReadFile(&entry_, offset_, buffer_, amount);
+    offset_ += amount;
+    this->setg(this->buffer_, this->buffer_, this->buffer_ + amount);
+
+    return std::char_traits<char>::to_int_type(*gptr());
+  }
+
+private:
+  const CFB::CompoundFileReader &reader_;
+  const CFB::CompoundFileEntry &entry_;
+  std::uint64_t offset_{0};
+  char *buffer_;
+};
+
+class CfbReaderIstream_ final : public std::istream {
+public:
+  CfbReaderIstream_(const CFB::CompoundFileReader &reader,
+                    const CFB::CompoundFileEntry &entry)
+      : CfbReaderIstream_(new CfbReaderBuf_(reader, entry)) {}
+  explicit CfbReaderIstream_(CfbReaderBuf_ *sbuf)
+      : std::istream(sbuf), sbuf_(sbuf) {}
+  ~CfbReaderIstream_() final { delete sbuf_; }
+
+private:
+  CfbReaderBuf_ *sbuf_;
+};
+} // namespace
+
 typedef std::function<void(const CFB::CompoundFileEntry *, const Path &)>
     CfbVisitor;
 
 class CfbReader::Impl final {
 public:
-  std::string buffer;
-  std::unique_ptr<CFB::CompoundFileReader> reader;
-
-  class SourceImpl final : public Source {
-  public:
-    const CFB::CompoundFileReader &reader;
-    const CFB::CompoundFileEntry *entry;
-    std::uint32_t offset;
-
-    explicit SourceImpl(const CFB::CompoundFileReader &reader,
-                        const CFB::CompoundFileEntry &entry)
-        : reader(reader), entry(&entry) {
-      offset = 0;
-    }
-
-    std::uint32_t read(char *data, std::uint32_t amount) final {
-      const std::uint32_t remaining = available();
-      if (remaining <= 0)
-        return 0;
-      if (remaining < amount)
-        amount = remaining;
-      reader.ReadFile(entry, offset, data, amount);
-      offset += amount;
-      return amount;
-    }
-
-    std::uint32_t available() const final { return entry->size - offset; }
-  };
-
-  explicit Impl(const Path &path) {
-    buffer = FileUtil::read(path);
-    reader =
-        std::make_unique<CFB::CompoundFileReader>(buffer.data(), buffer.size());
-  }
+  explicit Impl(const Path &path)
+      : buffer(FileUtil::read(path)), reader(buffer.data(), buffer.size()) {}
 
   void visit(CfbVisitor visitor) const {
-    reader->EnumFiles(
-        reader->GetRootEntry(), -1,
+    reader.EnumFiles(
+        reader.GetRootEntry(), -1,
         [&](const CFB::CompoundFileEntry *entry,
             const std::u16string &directory, const int level) {
           std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>
@@ -482,12 +495,12 @@ public:
 
   bool isFile(const Path &p) const {
     const auto entry = find(p);
-    return (entry != nullptr) && reader->IsStream(entry);
+    return (entry != nullptr) && reader.IsStream(entry);
   }
 
   bool isDirectory(const Path &p) const {
     const auto entry = find(p);
-    return (entry != nullptr) && !reader->IsStream(entry);
+    return (entry != nullptr) && !reader.IsStream(entry);
   }
 
   bool isReadable(const Path &p) const { return isFile(p); }
@@ -509,20 +522,20 @@ public:
     const auto entry = find(p);
     if (entry == nullptr)
       return nullptr;
-    return std::make_unique<SourceImpl>(*reader, *entry);
+    return std::make_unique<CfbReaderIstream_>(reader, *entry);
   }
+
+private:
+  std::string buffer;
+  CFB::CompoundFileReader reader;
 };
 
 CfbReader::CfbReader(const Path &path) : impl(std::make_unique<Impl>(path)) {}
 
 CfbReader::~CfbReader() = default;
 
-bool CfbReader::isSomething(const Path &) const {
-  bool result = false;
-  impl->visit([&](const auto &p) {
-
-  });
-  return result;
+bool CfbReader::isSomething(const Path &path) const {
+  return impl->isSomething(path);
 }
 
 bool CfbReader::isFile(const Path &path) const { return impl->isFile(path); }

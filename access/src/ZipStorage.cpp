@@ -1,40 +1,89 @@
 #include <access/Path.h>
 #include <access/ZipStorage.h>
 #include <miniz.h>
+#include <sstream>
+#include <streambuf>
+#include <utility>
 
 namespace odr {
 namespace access {
 
+namespace {
+constexpr std::uint64_t buffer_size_ = 4098;
+
+class ZipReaderBuf_ final : public std::streambuf {
+public:
+  explicit ZipReaderBuf_(mz_zip_reader_extract_iter_state *iter)
+      : iter_(iter), remaining_(iter->file_stat.m_uncomp_size),
+        buffer_(new char[buffer_size_]) {}
+
+  ~ZipReaderBuf_() final { delete[] buffer_; }
+
+  int underflow() final {
+    if (remaining_ <= 0)
+      return std::char_traits<char>::eof();
+
+    const std::uint64_t amount = std::min(remaining_, buffer_size_);
+    const std::uint32_t result =
+        mz_zip_reader_extract_iter_read(iter_, buffer_, amount);
+    remaining_ -= result;
+    this->setg(this->buffer_, this->buffer_, this->buffer_ + result);
+
+    return std::char_traits<char>::to_int_type(*gptr());
+  }
+
+private:
+  mz_zip_reader_extract_iter_state *iter_;
+  std::uint64_t remaining_;
+  char *buffer_;
+};
+
+class ZipWriterBuf_ final : public std::stringbuf {
+public:
+  ZipWriterBuf_(mz_zip_archive &zip, std::string path, int compression)
+      : zip_(zip), path_(std::move(path)), compression_(compression) {}
+  ~ZipWriterBuf_() final {
+    // TODO this is super inefficient
+    const auto buffer = str();
+    mz_zip_writer_add_mem(&zip_, path_.data(), buffer.data(), buffer.size(),
+                          compression_);
+  }
+
+private:
+  mz_zip_archive &zip_;
+  const std::string path_;
+  const int compression_;
+};
+
+class ZipReaderIstream_ final : public std::istream {
+public:
+  explicit ZipReaderIstream_(mz_zip_reader_extract_iter_state *iter)
+      : ZipReaderIstream_(new ZipReaderBuf_(iter)) {}
+  explicit ZipReaderIstream_(ZipReaderBuf_ *sbuf)
+      : std::istream(sbuf), sbuf_(sbuf) {}
+  ~ZipReaderIstream_() final { delete sbuf_; }
+
+private:
+  ZipReaderBuf_ *sbuf_;
+};
+
+class ZipWriterOstream_ final : public std::ostream {
+public:
+  ZipWriterOstream_(mz_zip_archive &zip, std::string path,
+                    const int compression)
+      : ZipWriterOstream_(
+            new ZipWriterBuf_(zip, std::move(path), compression)) {}
+  explicit ZipWriterOstream_(ZipWriterBuf_ *sbuf)
+      : std::ostream(sbuf), sbuf_(sbuf) {}
+  ~ZipWriterOstream_() final { delete sbuf_; }
+
+private:
+  ZipWriterBuf_ *sbuf_;
+};
+} // namespace
+
 class ZipReader::Impl final {
 public:
-  std::string buffer;
-  mz_zip_archive zip;
-  mz_zip_archive_file_stat tmp_stat;
-
-  class SourceImpl final : public Source {
-  public:
-    mz_zip_reader_extract_iter_state *iter;
-    std::uint64_t remaining;
-
-    explicit SourceImpl(mz_zip_reader_extract_iter_state *iter)
-        : iter(iter), remaining(iter->file_stat.m_uncomp_size) {}
-
-    ~SourceImpl() final { mz_zip_reader_extract_iter_free(iter); }
-
-    std::uint32_t read(char *data, std::uint32_t amount) final {
-      if (remaining <= 0)
-        return 0;
-      if (remaining < amount)
-        amount = remaining;
-      const std::uint32_t result =
-          mz_zip_reader_extract_iter_read(iter, data, amount);
-      remaining -= result;
-      return result;
-    }
-
-    std::uint32_t available() const final { return remaining; }
-  };
-
   Impl(const void *mem, const std::uint64_t size) {
     memset(&zip, 0, sizeof(zip));
     const mz_bool status = mz_zip_reader_init_mem(
@@ -43,7 +92,7 @@ public:
       throw NoZipFileException("memory");
   }
 
-  Impl(const std::string &data) : buffer(data) {
+  explicit Impl(std::string data) : buffer(std::move(data)) {
     memset(&zip, 0, sizeof(zip));
     const mz_bool status =
         mz_zip_reader_init_mem(&zip, buffer.data(), buffer.size(),
@@ -115,35 +164,17 @@ public:
         mz_zip_reader_extract_file_iter_new(&zip, path.string().c_str(), 0);
     if (iter == nullptr)
       return nullptr;
-    return std::make_unique<SourceImpl>(iter);
+    return std::make_unique<ZipReaderIstream_>(iter);
   }
+
+  // private:
+  std::string buffer;
+  mz_zip_archive zip{};
+  mz_zip_archive_file_stat tmp_stat{};
 };
 
 class ZipWriter::Impl final {
 public:
-  mz_zip_archive zip;
-
-  class SinkImpl final : public Sink {
-  public:
-    mz_zip_archive &zip;
-    const std::string path;
-    const int compression;
-    std::string buffer;
-
-    SinkImpl(mz_zip_archive &zip, std::string path, int compression)
-        : zip(zip), path(std::move(path)), compression(compression) {}
-
-    ~SinkImpl() final {
-      mz_zip_writer_add_mem(&zip, path.data(), buffer.data(), buffer.size(),
-                            compression);
-    }
-
-    void write(const char *data, const std::uint32_t amount) final {
-      // TODO this is super inefficient
-      buffer += std::string(data, amount);
-    }
-  };
-
   explicit Impl(const std::string &path) {
     memset(&zip, 0, sizeof(zip));
     const mz_bool status = mz_zip_writer_init_file(&zip, path.data(), 0);
@@ -172,8 +203,11 @@ public:
 
   std::unique_ptr<std::ostream> write(const Path &path,
                                       const int compression) noexcept {
-    return std::make_unique<SinkImpl>(zip, path.string(), compression);
+    return std::make_unique<ZipWriterOstream_>(zip, path.string(), compression);
   }
+
+public:
+  mz_zip_archive zip{};
 };
 
 ZipReader::ZipReader(const void *mem, const std::uint64_t size)

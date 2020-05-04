@@ -1,4 +1,5 @@
 #include <Meta.h>
+#include <access/Path.h>
 #include <access/Storage.h>
 #include <common/XmlUtil.h>
 #include <odr/Exception.h>

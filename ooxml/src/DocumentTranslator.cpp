@@ -1,5 +1,6 @@
 #include <Context.h>
 #include <DocumentTranslator.h>
+#include <access/Path.h>
 #include <access/Storage.h>
 #include <access/StreamUtil.h>
 #include <common/StringUtil.h>

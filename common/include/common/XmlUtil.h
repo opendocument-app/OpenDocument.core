@@ -14,7 +14,6 @@ class XMLText;
 
 namespace odr {
 namespace access {
-class Source;
 class Path;
 class ReadStorage;
 } // namespace access
@@ -33,7 +32,7 @@ typedef std::function<void(const tinyxml2::XMLElement &)> ElementVisiter;
 typedef std::function<void(const tinyxml2::XMLAttribute &)> AttributeVisiter;
 
 std::unique_ptr<tinyxml2::XMLDocument> parse(const std::string &);
-std::unique_ptr<tinyxml2::XMLDocument> parse(access::Source &);
+std::unique_ptr<tinyxml2::XMLDocument> parse(std::istream &);
 std::unique_ptr<tinyxml2::XMLDocument> parse(const access::ReadStorage &,
                                              const access::Path &);
 
