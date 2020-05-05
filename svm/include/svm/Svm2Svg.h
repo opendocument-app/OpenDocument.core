@@ -7,8 +7,18 @@
 namespace odr {
 namespace svm {
 
+class NoSvmFileException : public std::exception {
+public:
+  const char *what() const noexcept override { return "not a svm file"; }
+};
+
+class MalformedSvmFileException : public std::exception {
+public:
+  const char *what() const noexcept override { return "malformed svm file"; }
+};
+
 namespace Translator {
-bool svg(std::istream &in, std::ostream &out);
+void svg(std::istream &in, std::ostream &out);
 }
 
 } // namespace svm

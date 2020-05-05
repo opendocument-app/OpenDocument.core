@@ -88,8 +88,7 @@ std::string readUtf16String(std::istream &in, const std::uint32_t length) {
   std::u16string resultU16(length, ' ');
   in.read((char *)resultU16.data(), length * 2);
   std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> conversion;
-  const std::string result = conversion.to_bytes(resultU16);
-  return result;
+  return conversion.to_bytes(resultU16);
 }
 
 std::string readUint16PrefixedAsciiString(std::istream &in) {
@@ -119,21 +118,21 @@ std::string readStringWithEncoding(std::istream &in,
 }
 
 struct VersionLength final {
-  std::uint16_t version;
-  std::uint32_t length;
+  std::uint16_t version{};
+  std::uint32_t length{};
 
   void read(std::istream &in) {
     readPrimitive(in, version);
     readPrimitive(in, length);
     if (version <= 0) {
-      LOG(WARNING) << "illegal version";
+      DLOG(WARNING) << "illegal version";
     }
   }
 };
 
 struct IntPair final {
-  std::int32_t x;
-  std::int32_t y;
+  std::int32_t x{};
+  std::int32_t y{};
 
   void read(std::istream &in) {
     readPrimitive(in, x);
@@ -142,10 +141,10 @@ struct IntPair final {
 };
 
 struct Rectangle final {
-  std::int32_t left;
-  std::int32_t top;
-  std::int32_t right;
-  std::int32_t bottom;
+  std::int32_t left{};
+  std::int32_t top{};
+  std::int32_t right{};
+  std::int32_t bottom{};
 
   void read(std::istream &in) {
     readPrimitive(in, left);
@@ -184,11 +183,11 @@ std::vector<std::vector<IntPair>> readPolyPolygon(std::istream &in) {
 }
 
 struct MapMode final {
-  std::uint16_t unit;
+  std::uint16_t unit{};
   IntPair origin;
   IntPair scale_x;
   IntPair scale_y;
-  bool simple;
+  bool simple{};
 
   void read(std::istream &in) {
     VersionLength vl;
@@ -203,16 +202,16 @@ struct MapMode final {
 };
 
 struct LineInfo final {
-  std::uint16_t lineStyle;
-  std::int32_t width;
+  std::uint16_t lineStyle{};
+  std::int32_t width{};
 
-  std::uint16_t dashCount;
-  std::int32_t dashLength;
-  std::uint16_t dotCount;
-  std::int32_t dotLength;
-  std::int32_t distance;
+  std::uint16_t dashCount{};
+  std::int32_t dashLength{};
+  std::uint16_t dotCount{};
+  std::int32_t dotLength{};
+  std::int32_t distance{};
 
-  std::uint16_t lineJoin;
+  std::uint16_t lineJoin{};
 
   void read(std::istream &in) {
     VersionLength vl;
@@ -235,7 +234,7 @@ struct LineInfo final {
 
     if (vl.version >= 4) {
       // TODO
-      LOG(WARNING) << "version 4 not implemented";
+      DLOG(WARNING) << "version 4 not implemented";
     }
   }
 };
@@ -245,29 +244,29 @@ struct Font final {
   std::string familyName;
   std::string styleName;
   IntPair size;
-  std::uint16_t charset;
-  std::uint16_t family;
-  std::uint16_t pitch;
-  std::uint16_t weight;
-  std::uint16_t underline;
-  std::uint16_t strikeout;
-  std::uint16_t italic;
-  std::uint16_t language;
-  std::uint16_t width;
-  std::uint16_t orientation;
-  bool wordline;
-  bool outline;
-  bool shadow;
-  std::uint8_t kerning;
+  std::uint16_t charset{};
+  std::uint16_t family{};
+  std::uint16_t pitch{};
+  std::uint16_t weight{};
+  std::uint16_t underline{};
+  std::uint16_t strikeout{};
+  std::uint16_t italic{};
+  std::uint16_t language{};
+  std::uint16_t width{};
+  std::uint16_t orientation{};
+  bool wordline{};
+  bool outline{};
+  bool shadow{};
+  std::uint8_t kerning{};
 
   // version 2
-  std::uint8_t relief;
-  std::uint16_t cjkLanguage;
-  bool vertical;
-  std::uint16_t emphasisMark;
+  std::uint8_t relief{};
+  std::uint16_t cjkLanguage{};
+  bool vertical{};
+  std::uint16_t emphasisMark{};
 
   // version 3
-  std::uint16_t overline;
+  std::uint16_t overline{};
 
   void read(std::istream &in) {
     vl.read(in);
@@ -304,18 +303,17 @@ struct Font final {
 
 struct Header final {
   VersionLength vl;
-  std::uint32_t compression_mode;
+  std::uint32_t compression_mode{};
   MapMode map_mode;
   IntPair size;
-  std::uint32_t action_count;
-  std::uint8_t render_graphic_replacements;
+  std::uint32_t action_count{};
+  std::uint8_t render_graphic_replacements{};
 
-  bool read(std::istream &in) {
+  void read(std::istream &in) {
     char magic[6];
     in.read(magic, sizeof(magic));
     if (std::strncmp("VCLMTF", magic, sizeof(magic)) != 0) {
-      LOG(WARNING) << "illegal magic";
-      return false;
+      throw NoSvmFileException();
     }
     vl.read(in);
     std::size_t start = in.tellg();
@@ -328,15 +326,14 @@ struct Header final {
     }
     std::size_t left = vl.length - ((std::size_t)in.tellg() - start);
     if (left > 0) {
-      LOG(WARNING) << "skipping " << left << " bytes";
+      DLOG(WARNING) << "skipping " << left << " bytes";
       in.ignore(left);
     }
-    return true;
   }
 };
 
 struct ActionHeader final {
-  std::uint16_t type;
+  std::uint16_t type{};
   VersionLength vl;
 
   void read(std::istream &in) {
@@ -362,7 +359,7 @@ struct PolyLineAction final {
 
       if (hasFlags) {
         // TODO
-        LOG(WARNING) << "not implemented";
+        DLOG(WARNING) << "not implemented";
       }
     }
   }
@@ -380,7 +377,7 @@ struct PolygonAction final {
 
       if (hasFlags) {
         // TODO
-        LOG(WARNING) << "not implemented";
+        DLOG(WARNING) << "not implemented";
       }
     }
   }
@@ -398,7 +395,7 @@ struct PolyPolygonAction final {
 
       if (complexPolygons > 0) {
         // TODO
-        LOG(WARNING) << "not implemented";
+        DLOG(WARNING) << "not implemented";
       }
     }
   }
@@ -407,8 +404,8 @@ struct PolyPolygonAction final {
 struct TextAction final {
   IntPair point;
   std::string text;
-  std::uint16_t offset;
-  std::uint16_t length;
+  std::uint16_t offset{};
+  std::uint16_t length{};
 
   void read(std::istream &in, const VersionLength &vl,
             const TextEncoding encoding) {
@@ -426,8 +423,8 @@ struct TextAction final {
 struct TextArrayAction final {
   IntPair point;
   std::string text;
-  std::uint16_t offset;
-  std::uint16_t length;
+  std::uint16_t offset{};
+  std::uint16_t length{};
   std::vector<std::uint32_t> dxArray;
 
   void read(std::istream &in, const VersionLength &vl,
@@ -452,9 +449,9 @@ struct TextArrayAction final {
 struct StretchTextAction final {
   IntPair point;
   std::string text;
-  std::uint32_t width;
-  std::uint16_t offset;
-  std::uint16_t length;
+  std::uint32_t width{};
+  std::uint16_t offset{};
+  std::uint16_t length{};
 
   void read(std::istream &in, const VersionLength &vl,
             const TextEncoding encoding) {
@@ -473,7 +470,7 @@ struct StretchTextAction final {
 struct TextRectangleAction final {
   Rectangle rectangle;
   std::string text;
-  std::uint16_t style;
+  std::uint16_t style{};
 
   void read(std::istream &in, const VersionLength &vl,
             const TextEncoding encoding) {
@@ -489,10 +486,10 @@ struct TextRectangleAction final {
 
 struct TextLineAction final {
   IntPair rectangle;
-  std::int32_t width;
-  std::uint32_t strikeout;
-  std::uint32_t underline;
-  std::uint32_t overline;
+  std::int32_t width{};
+  std::uint32_t strikeout{};
+  std::uint32_t underline{};
+  std::uint32_t overline{};
 
   void read(std::istream &in, const VersionLength &vl) {
     rectangle.read(in);
@@ -507,25 +504,25 @@ struct TextLineAction final {
 };
 
 struct SvmContext final {
-  std::istream *in;
-  std::ostream *out;
-  const ActionHeader *action;
+  std::istream *in{};
+  std::ostream *out{};
+  const ActionHeader *action{};
 
   MapMode mapMode;
-  TextEncoding encoding;
+  TextEncoding encoding{};
   Font font;
   TextLineAction textLine;
-  std::uint32_t fillRGB;
-  bool fillRGBSet;
-  std::uint32_t lineRGB;
-  bool lineRGBSet;
-  std::uint32_t overLineRGB;
-  std::uint32_t textRGB;
-  std::uint32_t textFillRGB;
-  bool textFillRGBSet;
+  std::uint32_t fillRGB{};
+  bool fillRGBSet{};
+  std::uint32_t lineRGB{};
+  bool lineRGBSet{};
+  std::uint32_t overLineRGB{};
+  std::uint32_t textRGB{};
+  std::uint32_t textFillRGB{};
+  bool textFillRGBSet{};
 };
 
-std::string getSVGColorString(std::uint32_t color) {
+std::string getSVGColorString(const std::uint32_t color) {
   const uint8_t blue = (color >> 0) & 0xFF;
   const uint8_t green = (color >> 8) & 0xFF;
   const uint8_t red = (color >> 16) & 0xFF;
@@ -534,7 +531,7 @@ std::string getSVGColorString(std::uint32_t color) {
 }
 
 void writeColorStyle(std::ostream &out, const std::string &prefix,
-                     std::uint32_t color, bool set) {
+                     const std::uint32_t color, const bool set) {
   if (set) {
     out << prefix << ":" << getSVGColorString(color);
   } else {
@@ -560,7 +557,7 @@ void writeTextStyle(std::ostream &out, SvmContext &context) {
   out << "font-size:" << context.font.size.y << ";";
 }
 
-void writeStyle(std::ostream &out, SvmContext &context, int styles) {
+void writeStyle(std::ostream &out, SvmContext &context, const int styles) {
   out << " style=\"";
   switch (styles) {
   case 0:
@@ -574,7 +571,7 @@ void writeStyle(std::ostream &out, SvmContext &context, int styles) {
     writeTextStyle(out, context);
     break;
   default:
-    LOG(ERROR) << "not implemented";
+    DLOG(WARNING) << "not implemented";
   }
   out << "\"";
 }
@@ -591,7 +588,7 @@ void writeRectangle(std::ostream &out, const Rectangle &rect,
 }
 
 void writePolygon(std::ostream &out, const std::string &tag,
-                  const std::vector<IntPair> &points, bool fill,
+                  const std::vector<IntPair> &points, const bool fill,
                   SvmContext &context) {
   out << "<" << tag;
 
@@ -711,14 +708,14 @@ void translateAction(const ActionHeader &action, std::istream &in,
     in.ignore(action.vl.length);
     break;
   default:
-    LOG(WARNING) << "unhandled action " << action.type;
+    DLOG(WARNING) << "unhandled action " << action.type;
     in.ignore(action.vl.length);
     break;
   }
 }
 } // namespace
 
-bool Translator::svg(std::istream &in, std::ostream &out) {
+void Translator::svg(std::istream &in, std::ostream &out) {
   SvmContext context{};
   context.in = &in;
   context.out = &out;
@@ -736,7 +733,7 @@ bool Translator::svg(std::istream &in, std::ostream &out) {
   out << ">";
 
   while (in.peek() != -1) {
-    // TODO: check length fields should never exceed file size (limited
+    // TODO check length fields should never exceed file size (limited
     // inputstream?)
     ActionHeader action{};
     action.read(in);
@@ -744,21 +741,20 @@ bool Translator::svg(std::istream &in, std::ostream &out) {
 
     translateAction(action, in, out, context);
 
-    std::int64_t left = action.vl.length - ((int)in.tellg() - start);
+    const std::int64_t left =
+        action.vl.length - ((std::int64_t)in.tellg() - start);
     if (left > 0) {
-      LOG(WARNING) << "skipping " << left << " bytes of action " << action.type
-                   << " version " << action.vl.version;
+      DLOG(WARNING) << "skipping " << left << " bytes of action " << action.type
+                    << " version " << action.vl.version;
       in.ignore(left);
     } else if (left < 0) {
       LOG(ERROR) << -left << " bytes missing action " << action.type
                  << " version " << action.vl.version;
-      return false;
+      throw MalformedSvmFileException();
     }
   }
 
   out << "</svg>";
-
-  return true;
 }
 
 } // namespace svm
