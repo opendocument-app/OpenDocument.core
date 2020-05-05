@@ -69,10 +69,8 @@ private:
 
 class ZipWriterOstream final : public std::ostream {
 public:
-  ZipWriterOstream(mz_zip_archive &zip, std::string path,
-                    const int compression)
-      : ZipWriterOstream(
-            new ZipWriterBuf(zip, std::move(path), compression)) {}
+  ZipWriterOstream(mz_zip_archive &zip, std::string path, const int compression)
+      : ZipWriterOstream(new ZipWriterBuf(zip, std::move(path), compression)) {}
   explicit ZipWriterOstream(ZipWriterBuf *sbuf)
       : std::ostream(sbuf), sbuf_(sbuf) {}
   ~ZipWriterOstream() final { delete sbuf_; }

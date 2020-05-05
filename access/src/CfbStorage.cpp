@@ -420,7 +420,7 @@ constexpr std::uint64_t buffer_size_ = 4098;
 class CfbReaderBuf final : public std::streambuf {
 public:
   CfbReaderBuf(const CFB::CompoundFileReader &reader,
-                const CFB::CompoundFileEntry &entry)
+               const CFB::CompoundFileEntry &entry)
       : reader_(reader), entry_(entry), buffer_(new char[buffer_size_]) {}
 
   ~CfbReaderBuf() final { delete[] buffer_; }
@@ -448,7 +448,7 @@ private:
 class CfbReaderIstream final : public std::istream {
 public:
   CfbReaderIstream(const CFB::CompoundFileReader &reader,
-                    const CFB::CompoundFileEntry &entry)
+                   const CFB::CompoundFileEntry &entry)
       : CfbReaderIstream(new CfbReaderBuf(reader, entry)) {}
   explicit CfbReaderIstream(CfbReaderBuf *sbuf)
       : std::istream(sbuf), sbuf_(sbuf) {}
