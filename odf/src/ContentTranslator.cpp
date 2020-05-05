@@ -79,10 +79,11 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   common::XmlUtil::visitElementAttributes(
       in, [&](const tinyxml2::XMLAttribute &a) {
         const std::string attribute = a.Name();
-        if (styleAttributes.find(attribute) == styleAttributes.end()) {
+        if (styleAttributes.find(attribute) == styleAttributes.end())
           return;
-        }
-        const std::string name = StyleTranslator::escapeStyleName(a.Value());
+        std::string name = StyleTranslator::escapeStyleName(a.Value());
+        if (attribute == "draw:master-page-name")
+          name = StyleTranslator::escapeMasterStyleName(a.Value());
         StyleClassTranslator(name, out, context);
         out << " ";
       });

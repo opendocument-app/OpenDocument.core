@@ -12,6 +12,7 @@ struct Context;
 
 namespace StyleTranslator {
 std::string escapeStyleName(const std::string &name);
+std::string escapeMasterStyleName(const std::string &name);
 void css(const tinyxml2::XMLElement &in, Context &context);
 } // namespace StyleTranslator
 
