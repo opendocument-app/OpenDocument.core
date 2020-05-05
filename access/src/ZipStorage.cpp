@@ -11,13 +11,13 @@ namespace access {
 namespace {
 constexpr std::uint64_t buffer_size_ = 4098;
 
-class ZipReaderBuf_ final : public std::streambuf {
+class ZipReaderBuf final : public std::streambuf {
 public:
-  explicit ZipReaderBuf_(mz_zip_reader_extract_iter_state *iter)
+  explicit ZipReaderBuf(mz_zip_reader_extract_iter_state *iter)
       : iter_(iter), remaining_(iter->file_stat.m_uncomp_size),
         buffer_(new char[buffer_size_]) {}
 
-  ~ZipReaderBuf_() final { delete[] buffer_; }
+  ~ZipReaderBuf() final { delete[] buffer_; }
 
   int underflow() final {
     if (remaining_ <= 0)
@@ -38,11 +38,11 @@ private:
   char *buffer_;
 };
 
-class ZipWriterBuf_ final : public std::stringbuf {
+class ZipWriterBuf final : public std::stringbuf {
 public:
-  ZipWriterBuf_(mz_zip_archive &zip, std::string path, int compression)
+  ZipWriterBuf(mz_zip_archive &zip, std::string path, int compression)
       : zip_(zip), path_(std::move(path)), compression_(compression) {}
-  ~ZipWriterBuf_() final {
+  ~ZipWriterBuf() final {
     // TODO this is super inefficient
     const auto buffer = str();
     mz_zip_writer_add_mem(&zip_, path_.data(), buffer.data(), buffer.size(),
@@ -55,30 +55,30 @@ private:
   const int compression_;
 };
 
-class ZipReaderIstream_ final : public std::istream {
+class ZipReaderIstream final : public std::istream {
 public:
-  explicit ZipReaderIstream_(mz_zip_reader_extract_iter_state *iter)
-      : ZipReaderIstream_(new ZipReaderBuf_(iter)) {}
-  explicit ZipReaderIstream_(ZipReaderBuf_ *sbuf)
+  explicit ZipReaderIstream(mz_zip_reader_extract_iter_state *iter)
+      : ZipReaderIstream(new ZipReaderBuf(iter)) {}
+  explicit ZipReaderIstream(ZipReaderBuf *sbuf)
       : std::istream(sbuf), sbuf_(sbuf) {}
-  ~ZipReaderIstream_() final { delete sbuf_; }
+  ~ZipReaderIstream() final { delete sbuf_; }
 
 private:
-  ZipReaderBuf_ *sbuf_;
+  ZipReaderBuf *sbuf_;
 };
 
-class ZipWriterOstream_ final : public std::ostream {
+class ZipWriterOstream final : public std::ostream {
 public:
-  ZipWriterOstream_(mz_zip_archive &zip, std::string path,
+  ZipWriterOstream(mz_zip_archive &zip, std::string path,
                     const int compression)
-      : ZipWriterOstream_(
-            new ZipWriterBuf_(zip, std::move(path), compression)) {}
-  explicit ZipWriterOstream_(ZipWriterBuf_ *sbuf)
+      : ZipWriterOstream(
+            new ZipWriterBuf(zip, std::move(path), compression)) {}
+  explicit ZipWriterOstream(ZipWriterBuf *sbuf)
       : std::ostream(sbuf), sbuf_(sbuf) {}
-  ~ZipWriterOstream_() final { delete sbuf_; }
+  ~ZipWriterOstream() final { delete sbuf_; }
 
 private:
-  ZipWriterBuf_ *sbuf_;
+  ZipWriterBuf *sbuf_;
 };
 } // namespace
 
@@ -164,7 +164,7 @@ public:
         mz_zip_reader_extract_file_iter_new(&zip, path.string().c_str(), 0);
     if (iter == nullptr)
       return nullptr;
-    return std::make_unique<ZipReaderIstream_>(iter);
+    return std::make_unique<ZipReaderIstream>(iter);
   }
 
   // private:
@@ -203,7 +203,7 @@ public:
 
   std::unique_ptr<std::ostream> write(const Path &path,
                                       const int compression) noexcept {
-    return std::make_unique<ZipWriterOstream_>(zip, path.string(), compression);
+    return std::make_unique<ZipWriterOstream>(zip, path.string(), compression);
   }
 
 public:

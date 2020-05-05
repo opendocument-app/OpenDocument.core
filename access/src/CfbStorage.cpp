@@ -417,13 +417,13 @@ private:
 namespace {
 constexpr std::uint64_t buffer_size_ = 4098;
 
-class CfbReaderBuf_ final : public std::streambuf {
+class CfbReaderBuf final : public std::streambuf {
 public:
-  CfbReaderBuf_(const CFB::CompoundFileReader &reader,
+  CfbReaderBuf(const CFB::CompoundFileReader &reader,
                 const CFB::CompoundFileEntry &entry)
       : reader_(reader), entry_(entry), buffer_(new char[buffer_size_]) {}
 
-  ~CfbReaderBuf_() final { delete[] buffer_; }
+  ~CfbReaderBuf() final { delete[] buffer_; }
 
   int underflow() final {
     const std::uint64_t remaining = entry_.size - offset_;
@@ -445,17 +445,17 @@ private:
   char *buffer_;
 };
 
-class CfbReaderIstream_ final : public std::istream {
+class CfbReaderIstream final : public std::istream {
 public:
-  CfbReaderIstream_(const CFB::CompoundFileReader &reader,
+  CfbReaderIstream(const CFB::CompoundFileReader &reader,
                     const CFB::CompoundFileEntry &entry)
-      : CfbReaderIstream_(new CfbReaderBuf_(reader, entry)) {}
-  explicit CfbReaderIstream_(CfbReaderBuf_ *sbuf)
+      : CfbReaderIstream(new CfbReaderBuf(reader, entry)) {}
+  explicit CfbReaderIstream(CfbReaderBuf *sbuf)
       : std::istream(sbuf), sbuf_(sbuf) {}
-  ~CfbReaderIstream_() final { delete sbuf_; }
+  ~CfbReaderIstream() final { delete sbuf_; }
 
 private:
-  CfbReaderBuf_ *sbuf_;
+  CfbReaderBuf *sbuf_;
 };
 } // namespace
 
@@ -522,7 +522,7 @@ public:
     const auto entry = find(p);
     if (entry == nullptr)
       return nullptr;
-    return std::make_unique<CfbReaderIstream_>(reader, *entry);
+    return std::make_unique<CfbReaderIstream>(reader, *entry);
   }
 
 private:
