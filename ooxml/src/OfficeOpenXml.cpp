@@ -5,6 +5,7 @@
 #include <PresentationTranslator.h>
 #include <WorkbookTranslator.h>
 #include <access/CfbStorage.h>
+#include <access/Path.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <common/Html.h>

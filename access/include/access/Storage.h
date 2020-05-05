@@ -1,33 +1,34 @@
 #ifndef ODR_ACCESS_STORAGE_H
 #define ODR_ACCESS_STORAGE_H
 
-#include <access/Path.h>
-#include <access/Stream.h>
 #include <exception>
 #include <functional>
+#include <iostream>
 #include <memory>
 
 namespace odr {
 namespace access {
 
+class Path;
+
 class FileNotFoundException final : public std::exception {
 public:
-  explicit FileNotFoundException(std::string path) : path(std::move(path)) {}
-  const std::string &getPath() const { return path; }
+  explicit FileNotFoundException(std::string path) : path_(std::move(path)) {}
+  const std::string &path() const { return path_; }
   const char *what() const noexcept final { return "file not found"; }
 
 private:
-  std::string path;
+  std::string path_;
 };
 
 class FileNotCreatedException final : public std::exception {
 public:
-  explicit FileNotCreatedException(std::string path) : path(std::move(path)) {}
-  const std::string &getPath() const { return path; }
+  explicit FileNotCreatedException(std::string path) : path_(std::move(path)) {}
+  const std::string &path() const { return path_; }
   const char *what() const noexcept final { return "file not created"; }
 
 private:
-  std::string path;
+  std::string path_;
 };
 
 class ReadStorage {
@@ -46,7 +47,7 @@ public:
   // TODO only list for subdir? harder in case of zip
   virtual void visit(Visitor) const = 0;
 
-  virtual std::unique_ptr<Source> read(const Path &) const = 0;
+  virtual std::unique_ptr<std::istream> read(const Path &) const = 0;
 };
 
 class WriteStorage {
@@ -61,7 +62,7 @@ public:
 
   virtual bool createDirectory(const Path &) const = 0;
 
-  virtual std::unique_ptr<Sink> write(const Path &) const = 0;
+  virtual std::unique_ptr<std::ostream> write(const Path &) const = 0;
 };
 
 class Storage : public ReadStorage, public WriteStorage {
@@ -84,8 +85,8 @@ public:
 
   void visit(Visitor) const override = 0;
 
-  std::unique_ptr<Source> read(const Path &) const override = 0;
-  std::unique_ptr<Sink> write(const Path &) const override = 0;
+  std::unique_ptr<std::istream> read(const Path &) const override = 0;
+  std::unique_ptr<std::ostream> write(const Path &) const override = 0;
 };
 
 } // namespace access

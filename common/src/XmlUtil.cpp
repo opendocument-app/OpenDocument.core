@@ -25,7 +25,7 @@ std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(const std::string &in) {
   return result;
 }
 
-std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(access::Source &in) {
+std::unique_ptr<tinyxml2::XMLDocument> XmlUtil::parse(std::istream &in) {
   return parse(access::StreamUtil::read(in));
 }
 

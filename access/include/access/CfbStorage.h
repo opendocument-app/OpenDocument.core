@@ -30,7 +30,7 @@ public:
 
   void visit(Visitor) const final;
 
-  std::unique_ptr<Source> read(const Path &) const final;
+  std::unique_ptr<std::istream> read(const Path &) const final;
 
 private:
   class Impl;
