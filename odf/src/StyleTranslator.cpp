@@ -84,7 +84,10 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     LOG(WARNING) << "skipped style " << in.Name() << ". no name attribute.";
     return;
   }
-  const std::string name = StyleTranslator::escapeStyleName(nameAttr->Value());
+  std::string name = StyleTranslator::escapeStyleName(nameAttr->Value());
+  // master page
+  if (std::strcmp(in.Name(), "style:master-page") == 0)
+    name = StyleTranslator::escapeMasterStyleName(nameAttr->Value());
 
   const char *parentStyleName;
   if (in.QueryStringAttribute("style:parent-style-name", &parentStyleName) ==
@@ -98,6 +101,7 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(family));
   }
+
   // master page
   const char *pageLayout;
   if (in.QueryStringAttribute("style:page-layout-name", &pageLayout) ==
@@ -178,6 +182,10 @@ std::string StyleTranslator::escapeStyleName(const std::string &name) {
   std::string result = name;
   common::StringUtil::findAndReplaceAll(result, ".", "_");
   return result;
+}
+
+std::string StyleTranslator::escapeMasterStyleName(const std::string &name) {
+  return "master_" + escapeStyleName(name);
 }
 
 void StyleTranslator::css(const tinyxml2::XMLElement &in, Context &context) {
