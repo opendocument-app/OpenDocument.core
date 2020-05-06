@@ -7,9 +7,9 @@ struct UnsupportedOperation : public std::runtime_error {
   UnsupportedOperation() : std::runtime_error("unsupported operation") {}
 };
 
-struct FileNotFound : public std::runtime_error  {
-  FileNotFound() : std::runtime_error ("file not found") {}
-  explicit FileNotFound(const char *desc) : std::runtime_error (desc) {}
+struct FileNotFound : public std::runtime_error {
+  FileNotFound() : std::runtime_error("file not found") {}
+  explicit FileNotFound(const char *desc) : std::runtime_error(desc) {}
 };
 
 struct UnknownFileType : public std::runtime_error {
