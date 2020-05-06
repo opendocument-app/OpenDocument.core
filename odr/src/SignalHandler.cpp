@@ -1,5 +1,6 @@
 #include <SignalHandler.h>
 #include <csignal>
+#include <glog/logging.h>
 
 namespace odr {
 
@@ -11,7 +12,7 @@ volatile signal_handler_t previousAbrtHandler{nullptr};
 
 void signal_handler(const int signal) {
   std::signal(signal, SIG_DFL);
-  // TODO log
+  LOG(ERROR) << "caught signal " << signal;
   if ((signal == SIGSEGV) && (previousSegvHandler != nullptr))
     previousSegvHandler(signal);
   else if ((signal == SIGABRT) && (previousAbrtHandler != nullptr))
@@ -19,6 +20,10 @@ void signal_handler(const int signal) {
   else
     std::raise(SIGABRT);
 }
+}
+
+void SignalHandler::sigsegv() {
+  std::raise(SIGSEGV);
 }
 
 void SignalHandler::install() {

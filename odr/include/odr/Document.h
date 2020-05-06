@@ -17,6 +17,9 @@ struct Config;
 
 class Document final {
 public:
+  // TODO remove
+  static void sigsegv();
+
   static std::string version() noexcept;
   static std::string commit() noexcept;
 
@@ -51,6 +54,9 @@ private:
 
 class DocumentNoExcept final {
 public:
+  // TODO remove
+  static void sigsegv();
+
   static std::unique_ptr<DocumentNoExcept>
   open(const std::string &path) noexcept;
   static std::unique_ptr<DocumentNoExcept> open(const std::string &path,

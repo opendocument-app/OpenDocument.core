@@ -14,6 +14,7 @@
 #include <oldms/LegacyMicrosoft.h>
 #include <ooxml/OfficeOpenXml.h>
 #include <utility>
+#include <SignalHandler.h>
 
 namespace odr {
 
@@ -67,6 +68,10 @@ std::unique_ptr<common::Document> openImpl(const std::string &path,
   throw UnknownFileType();
 }
 } // namespace
+
+void Document::sigsegv() {
+  SignalHandler::sigsegv();
+}
 
 std::string Document::version() noexcept {
   return common::Constants::version();
@@ -124,6 +129,11 @@ void Document::save(const std::string &path) const { impl_->save(path); }
 void Document::save(const std::string &path,
                     const std::string &password) const {
   impl_->save(path, password);
+}
+
+void DocumentNoExcept::sigsegv() {
+  SignalHandler::install();
+  Document::sigsegv();
 }
 
 std::unique_ptr<DocumentNoExcept>
