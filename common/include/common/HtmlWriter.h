@@ -61,7 +61,7 @@ public:
   HtmlElementWriter &attribute();
   HtmlElementBodyWriter comment();
   HtmlElementBodyWriter text();
-  HtmlElementBodyWriter element(const std::string &href);
+  HtmlElementBodyWriter element(const std::string &name);
 
 private:
   std::unique_ptr<std::ostream> output_;
@@ -77,7 +77,7 @@ public:
 
   HtmlElementBodyWriter &comment();
   HtmlElementBodyWriter &text();
-  HtmlElementBodyWriter &element(const std::string &href);
+  HtmlElementBodyWriter &element(const std::string &name);
 
 private:
   std::unique_ptr<std::ostream> output_;
