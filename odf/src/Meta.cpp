@@ -22,6 +22,8 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
        FileType::OPENDOCUMENT_SPREADSHEET},
       {"application/vnd.oasis.opendocument.graphics",
        FileType::OPENDOCUMENT_GRAPHICS},
+      {"application/vnd.sun.xml.writer",
+       FileType::OPENDOCUMENT_TEXT} // TODO might deserve its own type
   };
   return common::MapUtil::lookupMapDefault(MIME_TYPES, mimeType, fileType,
                                            FileType::UNKNOWN);
