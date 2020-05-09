@@ -14,6 +14,7 @@ namespace odf {
 
 namespace {
 bool lookupFileType(const std::string &mimeType, FileType &fileType) {
+  // https://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
   static const std::unordered_map<std::string, FileType> MIME_TYPES = {
       {"application/vnd.oasis.opendocument.text", FileType::OPENDOCUMENT_TEXT},
       {"application/vnd.oasis.opendocument.presentation",
@@ -22,8 +23,28 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
        FileType::OPENDOCUMENT_SPREADSHEET},
       {"application/vnd.oasis.opendocument.graphics",
        FileType::OPENDOCUMENT_GRAPHICS},
-      {"application/vnd.sun.xml.writer",
-       FileType::OPENDOCUMENT_TEXT} // TODO might deserve its own type
+      // TODO any difference for template files?
+      {"application/vnd.oasis.opendocument.text-template",
+       FileType::OPENDOCUMENT_TEXT},
+      {"application/vnd.oasis.opendocument.presentation-template",
+       FileType::OPENDOCUMENT_PRESENTATION},
+      {"application/vnd.oasis.opendocument.spreadsheet-template",
+       FileType::OPENDOCUMENT_SPREADSHEET},
+      {"application/vnd.oasis.opendocument.graphics-template",
+       FileType::OPENDOCUMENT_GRAPHICS},
+      // TODO these staroffice types might deserve their own type
+      {"application/vnd.sun.xml.writer", FileType::OPENDOCUMENT_TEXT},
+      {"application/vnd.sun.xml.impress", FileType::OPENDOCUMENT_PRESENTATION},
+      {"application/vnd.sun.xml.calc", FileType::OPENDOCUMENT_SPREADSHEET},
+      {"application/vnd.sun.xml.draw", FileType::OPENDOCUMENT_GRAPHICS},
+      // TODO any difference for template files?
+      {"application/vnd.sun.xml.writer.template", FileType::OPENDOCUMENT_TEXT},
+      {"application/vnd.sun.xml.impress.template",
+       FileType::OPENDOCUMENT_PRESENTATION},
+      {"application/vnd.sun.xml.calc.template",
+       FileType::OPENDOCUMENT_SPREADSHEET},
+      {"application/vnd.sun.xml.draw.template",
+       FileType::OPENDOCUMENT_GRAPHICS},
   };
   return common::MapUtil::lookupMapDefault(MIME_TYPES, mimeType, fileType,
                                            FileType::UNKNOWN);
