@@ -34,16 +34,16 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
        FileType::OPENDOCUMENT_GRAPHICS},
       // TODO these staroffice types might deserve their own type
       {"application/vnd.sun.xml.writer", FileType::OPENDOCUMENT_TEXT},
-      {"application/vnd.sun.xml.calc", FileType::OPENDOCUMENT_PRESENTATION},
-      {"application/vnd.sun.xml.draw", FileType::OPENDOCUMENT_SPREADSHEET},
-      {"application/vnd.sun.xml.impress", FileType::OPENDOCUMENT_GRAPHICS},
+      {"application/vnd.sun.xml.impress", FileType::OPENDOCUMENT_PRESENTATION},
+      {"application/vnd.sun.xml.calc", FileType::OPENDOCUMENT_SPREADSHEET},
+      {"application/vnd.sun.xml.draw", FileType::OPENDOCUMENT_GRAPHICS},
       // TODO any difference for template files?
       {"application/vnd.sun.xml.writer.template", FileType::OPENDOCUMENT_TEXT},
-      {"application/vnd.sun.xml.calc.template",
-       FileType::OPENDOCUMENT_PRESENTATION},
-      {"application/vnd.sun.xml.draw.template",
-       FileType::OPENDOCUMENT_SPREADSHEET},
       {"application/vnd.sun.xml.impress.template",
+       FileType::OPENDOCUMENT_PRESENTATION},
+      {"application/vnd.sun.xml.calc.template",
+       FileType::OPENDOCUMENT_SPREADSHEET},
+      {"application/vnd.sun.xml.draw.template",
        FileType::OPENDOCUMENT_GRAPHICS},
   };
   return common::MapUtil::lookupMapDefault(MIME_TYPES, mimeType, fileType,
