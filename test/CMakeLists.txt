@@ -6,6 +6,7 @@ add_executable(odr_test
         DocumentTest.cpp
         OoxmlCryptoTest.cpp
         PathTest.cpp
+        SignalHandlerTest.cpp
         TableCursorTest.cpp
         TablePositionTest.cpp
         TableRangeTest.cpp

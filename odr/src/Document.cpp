@@ -73,6 +73,10 @@ void Document::sigsegv() {
   SignalHandler::sigsegv();
 }
 
+void Document::derefnullptr() {
+  SignalHandler::derefnullptr();
+}
+
 std::string Document::version() noexcept {
   return common::Constants::version();
 }
@@ -134,6 +138,11 @@ void Document::save(const std::string &path,
 void DocumentNoExcept::sigsegv() {
   SignalHandler::install();
   Document::sigsegv();
+}
+
+void DocumentNoExcept::derefnullptr() {
+  SignalHandler::install();
+  Document::derefnullptr();
 }
 
 std::unique_ptr<DocumentNoExcept>

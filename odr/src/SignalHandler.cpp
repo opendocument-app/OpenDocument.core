@@ -26,6 +26,11 @@ void SignalHandler::sigsegv() {
   std::raise(SIGSEGV);
 }
 
+void SignalHandler::derefnullptr() {
+  int *i = nullptr;
+  *i = 0;
+}
+
 void SignalHandler::install() {
   signal_handler_t result;
 

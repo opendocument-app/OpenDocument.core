@@ -19,6 +19,7 @@ class Document final {
 public:
   // TODO remove
   static void sigsegv();
+  static void derefnullptr();
 
   static std::string version() noexcept;
   static std::string commit() noexcept;
@@ -56,6 +57,7 @@ class DocumentNoExcept final {
 public:
   // TODO remove
   static void sigsegv();
+  static void derefnullptr();
 
   static std::unique_ptr<DocumentNoExcept>
   open(const std::string &path) noexcept;

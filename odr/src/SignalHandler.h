@@ -7,6 +7,7 @@ class SignalHandler {
 public:
   // TODO remove
   static void sigsegv();
+  static void derefnullptr();
 
   static void install();
   static void uninstall();
