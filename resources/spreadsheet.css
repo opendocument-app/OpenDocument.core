@@ -1,0 +1,25 @@
+table {
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+table td {
+    vertical-align: top;
+    overflow: hidden;
+}
+
+p {
+    font-family: "Arial";
+    font-size: 10pt;
+}
+
+.odr-gridlines-none table td {}
+.odr-gridlines-soft table td {
+    border:1px solid #C0C0C0;
+}
+.odr-gridlines-hard table td {
+    border:1px solid #C0C0C0 !important;
+}
+
+table td.odr-value-type-float {
+    text-align: right;
+}

@@ -1,0 +1,16 @@
+* {
+    margin: 0px;
+    position: relative;
+}
+body {
+    padding: 5px;
+}
+p {
+    padding: 0 !important;
+}
+span {
+    margin: 0 !important;
+}
+.odr-whitespace {
+    white-space: pre-wrap;
+}
