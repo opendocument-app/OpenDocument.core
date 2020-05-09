@@ -26,12 +26,15 @@ std::unique_ptr<common::Document> openImpl(const std::string &path) {
     try {
       return std::make_unique<odf::OpenDocument>(storage);
     } catch (...) {
+      // TODO
     }
     try {
       return std::make_unique<ooxml::OfficeOpenXml>(storage);
     } catch (...) {
+      // TODO
     }
-  } catch (access::NoZipFileException &) {
+  } catch (...) {
+    // TODO
   }
   try {
     FileMeta meta;
@@ -42,14 +45,17 @@ std::unique_ptr<common::Document> openImpl(const std::string &path) {
     try {
       return std::make_unique<oldms::LegacyMicrosoft>(storage);
     } catch (...) {
+      // TODO
     }
 
     // encrypted ooxml
     try {
       return std::make_unique<ooxml::OfficeOpenXml>(storage);
     } catch (...) {
+      // TODO
     }
-  } catch (access::NoCfbFileException &) {
+  } catch (...) {
+    // TODO
   }
 
   throw UnknownFileType();

@@ -3,6 +3,7 @@ include(GoogleTest REQUIRED)
 
 enable_testing()
 add_executable(odr_test
+        DocumentTest.cpp
         OoxmlCryptoTest.cpp
         PathTest.cpp
         TableCursorTest.cpp
@@ -30,5 +31,7 @@ target_link_libraries(odr_test
         odr_odf
         odr_ooxml
         odr_svm
+
+        odr-static
         )
 gtest_add_tests(TARGET odr_test)

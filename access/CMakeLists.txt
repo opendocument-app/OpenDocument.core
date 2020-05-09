@@ -14,5 +14,7 @@ target_link_libraries(odr_access
         miniz
 
         odr_crypto
+
+        odr-interface
         )
 set_property(TARGET odr_access PROPERTY POSITION_INDEPENDENT_CODE ON)
