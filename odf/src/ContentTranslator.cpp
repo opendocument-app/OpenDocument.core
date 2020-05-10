@@ -63,7 +63,15 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
 
   out << " class=\"";
 
+  // TODO this is odp and odg specific
+  if (std::strcmp("draw:page", in.Name()) == 0) {
+    out << "odr-page ";
+  }
+
   // TODO this is ods specific
+  if (std::strcmp("table:table", in.Name()) == 0) {
+    out << "odr-table ";
+  }
   if (!in.attribute("table:style-name")) {
     const auto it = context.defaultCellStyles.find(context.tableCursor.col());
     if (it != context.defaultCellStyles.end()) {
@@ -117,7 +125,7 @@ void SpaceTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   if (count <= 0)
     return;
 
-  out << "<span class=\"odr-whitespace\">";
+  out << "<span style=\"white-space:pre-wrap\">";
   for (std::uint32_t i = 0; i < count; ++i) {
     out << " ";
   }
@@ -125,7 +133,7 @@ void SpaceTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
 }
 
 void TabTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
-  out << "<span class=\"odr-whitespace\">&emsp;</span>";
+  out << "<span style=\"white-space:pre-wrap\">&emsp;</span>";
 }
 
 void LineBreakTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
@@ -168,6 +176,7 @@ void FrameTranslator(const pugi::xml_node &in, std::ostream &out,
                      Context &context) {
   out << "<div style=\"";
 
+  out << "position:absolute;";
   if (const auto widthAttr = in.attribute("svg:width"); widthAttr)
     out << "width:" << widthAttr.as_string() << ";";
   if (const auto heightAttr = in.attribute("svg:height"); heightAttr)

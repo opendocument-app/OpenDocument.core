@@ -39,6 +39,7 @@ p {
 span {
   margin: 0 !important;
 }
+
 #odr-content {
   background-color: white;
 }
@@ -50,8 +51,16 @@ span {
   margin: 1cm auto;
   padding: 2cm;
 }
-.odr-whitespace {
-  white-space: pre-wrap;
+.odr-presentation #odr-content {
+  background-color: rgba(0, 0, 0, 0);
+}
+.odr-presentation .odr-page {
+  margin: 1cm auto !important;
+  background-color: white;
+}
+.odr-spreadsheet .odr-table {
+  margin: 1cm auto !important;
+  background-color: white;
 }
 
 /* https://github.com/marcelblanarik/js-keyword-highlighter/blob/dd69436bee06f8c658abe1e12e2abb35d3bf250b/index.html#L81-L82 */
