@@ -259,12 +259,20 @@ void TableTranslator(const pugi::xml_node &in, std::ostream &out,
   context.tableCursor = {};
   context.defaultCellStyles.clear();
 
+  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) {
+    out << "<div class=\"odr-page\">";
+  }
+
   out << "<table";
   ElementAttributeTranslator(in, out, context);
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
   ElementChildrenTranslator(in, out, context);
   out << "</table>";
+
+  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) {
+    out << "</div>";
+  }
 
   ++context.entry;
 }

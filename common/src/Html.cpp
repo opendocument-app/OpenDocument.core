@@ -40,9 +40,6 @@ span {
   margin: 0 !important;
 }
 
-#odr-content {
-  background-color: white;
-}
 .odr-text #odr-content {
   box-sizing: border-box;
   -moz-box-sizing: border-box;
@@ -50,15 +47,42 @@ span {
   width: 21cm;
   margin: 1cm auto;
   padding: 2cm;
+  background-color: white;
 }
-.odr-presentation #odr-content {
-  background-color: rgba(0, 0, 0, 0);
-}
+
 .odr-presentation .odr-page {
   margin: 1cm auto !important;
   background-color: white;
 }
-.odr-spreadsheet .odr-table {
+
+.odr-spreadsheet table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  background-color: white;
+}
+.odr-spreadsheet table td {
+  vertical-align: top;
+  overflow: hidden;
+}
+
+.odr-spreadsheet p {
+  font-family: "Arial";
+  font-size: 10pt;
+}
+
+.odr-spreadsheet.odr-gridlines-none table td {}
+.odr-spreadsheet.odr-gridlines-soft table td {
+  border:1px solid #C0C0C0;
+}
+.odr-spreadsheet.odr-gridlines-hard table td {
+  border:1px solid #C0C0C0 !important;
+}
+
+.odr-spreadsheet table td.odr-value-type-float {
+  text-align: right;
+}
+
+.odr-graphics .odr-page {
   margin: 1cm auto !important;
   background-color: white;
 }
@@ -69,37 +93,6 @@ mark.current { background: orange; }
   )V0G0N";
   // clang-format on
 }
-
-const char *Html::odfSpreadsheetDefaultStyle() noexcept {
-  // clang-format off
-  return R"V0G0N(
-table {
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-table td {
-  vertical-align: top;
-  overflow: hidden;
-}
-
-p {
-  font-family: "Arial";
-  font-size: 10pt;
-}
-
-.odr-gridlines-none table td {}
-.odr-gridlines-soft table td {
-  border:1px solid #C0C0C0;
-}
-.odr-gridlines-hard table td {
-  border:1px solid #C0C0C0 !important;
-}
-
-table td.odr-value-type-float {
-  text-align: right;
-}
-  )V0G0N";
-  // clang-format on
 }
 
 const char *Html::defaultScript() noexcept {
