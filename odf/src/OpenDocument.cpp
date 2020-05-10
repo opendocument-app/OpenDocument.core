@@ -19,7 +19,7 @@ namespace odf {
 
 namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
-  out << common::Html::odfDefaultStyle();
+  out << common::Html::defaultStyle();
 
   const auto stylesXml = common::XmlUtil::parse(*context.storage, "styles.xml");
 

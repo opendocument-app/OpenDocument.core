@@ -23,7 +23,7 @@ const char *Html::defaultHeaders() noexcept {
   // clang-format on
 }
 
-const char *Html::odfDefaultStyle() noexcept {
+const char *Html::defaultStyle() noexcept {
   // clang-format off
   return R"V0G0N(
 * {

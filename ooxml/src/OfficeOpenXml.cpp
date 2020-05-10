@@ -23,7 +23,7 @@ namespace ooxml {
 namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
   // default css
-  out << common::Html::odfDefaultStyle();
+  out << common::Html::defaultStyle();
 
   switch (context.meta->type) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT: {

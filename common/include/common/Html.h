@@ -18,7 +18,7 @@ const char *doctype() noexcept;
 
 const char *defaultHeaders() noexcept;
 
-const char *odfDefaultStyle() noexcept;
+const char *defaultStyle() noexcept;
 
 const char *defaultScript() noexcept;
 
