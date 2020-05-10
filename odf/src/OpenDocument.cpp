@@ -184,8 +184,10 @@ public:
     out << "</style>";
     out << "</head>";
 
-    out << "<body " << common::Html::bodyAttributes(config) << ">";
+    out << "<body " << common::Html::bodyAttributes(config, meta_) << ">";
+    out << "<div id=\"odr-content\">";
     generateContent_(content_, context_);
+    out << "</div>";
     out << "</body>";
 
     out << "<script>";

@@ -63,8 +63,8 @@ void generateScript_(std::ofstream &out, Context &) {
 }
 
 void generateContent_(Context &context) {
+  // TODO refactor
   context.entry = 0;
-
   switch (context.meta->type) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT: {
     const auto content =
@@ -233,8 +233,10 @@ public:
     out << "</style>";
     out << "</head>";
 
-    out << "<body " << common::Html::bodyAttributes(config) << ">";
+    out << "<body " << common::Html::bodyAttributes(config, meta_) << ">";
+    out << "<div id=\"odr-content\">";
     generateContent_(context_);
+    out << "</div>";
     out << "</body>";
 
     out << "<script>";

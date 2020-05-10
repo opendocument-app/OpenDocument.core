@@ -1,5 +1,6 @@
 #include <common/Html.h>
 #include <odr/Config.h>
+#include <odr/Meta.h>
 
 namespace odr {
 namespace common {
@@ -30,13 +31,24 @@ const char *Html::odfDefaultStyle() noexcept {
   position: relative;
 }
 body {
-  padding: 5px;
+  background-color: lightgray;
 }
 p {
   padding: 0 !important;
 }
 span {
   margin: 0 !important;
+}
+#odr-content {
+  background-color: white;
+}
+.odr-text #odr-content {
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  width: 21cm;
+  margin: 1cm auto;
+  padding: 2cm;
 }
 .odr-whitespace {
   white-space: pre-wrap;
@@ -95,10 +107,31 @@ const char *Html::defaultScript() noexcept {
   // clang-format on
 }
 
-std::string Html::bodyAttributes(const Config &config) noexcept {
+std::string Html::bodyAttributes(const Config &config, const FileMeta &meta) noexcept {
   std::string result;
 
   result += "class=\"";
+
+  switch (meta.type) {
+  case FileType::OPENDOCUMENT_TEXT:
+  case FileType::OFFICE_OPEN_XML_DOCUMENT:
+    result += "odr-text ";
+    break;
+  case FileType::OPENDOCUMENT_PRESENTATION:
+  case FileType::OFFICE_OPEN_XML_PRESENTATION:
+    result += "odr-presentation ";
+    break;
+  case FileType::OPENDOCUMENT_SPREADSHEET:
+  case FileType::OFFICE_OPEN_XML_WORKBOOK:
+    result += "odr-spreadsheet ";
+    break;
+  case FileType::OPENDOCUMENT_GRAPHICS:
+    result += "odr-graphics ";
+    break;
+  default:
+    break;
+  }
+
   switch (config.tableGridlines) {
   case TableGridlines::SOFT:
     result += "odr-gridlines-soft";
@@ -111,6 +144,8 @@ std::string Html::bodyAttributes(const Config &config) noexcept {
     result += "odr-gridlines-none";
     break;
   }
+  // mind the gap: there is not space in front
+
   result += "\"";
 
   return result;

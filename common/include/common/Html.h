@@ -5,6 +5,7 @@
 
 namespace odr {
 struct Config;
+struct FileMeta;
 
 namespace access {
 class Sink;
@@ -22,7 +23,7 @@ const char *odfSpreadsheetDefaultStyle() noexcept;
 
 const char *defaultScript() noexcept;
 
-std::string bodyAttributes(const Config &) noexcept;
+std::string bodyAttributes(const Config &, const FileMeta &) noexcept;
 } // namespace Html
 
 } // namespace common
