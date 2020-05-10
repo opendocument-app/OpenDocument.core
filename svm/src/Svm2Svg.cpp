@@ -125,7 +125,7 @@ struct VersionLength final {
     readPrimitive(in, version);
     readPrimitive(in, length);
     if (version <= 0) {
-      DLOG(WARNING) << "illegal version";
+      DLOG(WARNING) << "VersionLength illegal version";
     }
   }
 };
@@ -234,7 +234,7 @@ struct LineInfo final {
 
     if (vl.version >= 4) {
       // TODO
-      DLOG(WARNING) << "version 4 not implemented";
+      DLOG(WARNING) << "LineInfo version 4 not implemented";
     }
   }
 };
@@ -326,7 +326,7 @@ struct Header final {
     }
     std::size_t left = vl.length - ((std::size_t)in.tellg() - start);
     if (left > 0) {
-      DLOG(WARNING) << "skipping " << left << " bytes";
+      DLOG(WARNING) << "Header skipping " << left << " bytes";
       in.ignore(left);
     }
   }
@@ -359,7 +359,7 @@ struct PolyLineAction final {
 
       if (hasFlags) {
         // TODO
-        DLOG(WARNING) << "not implemented";
+        DLOG(WARNING) << "PolyLineAction flags not implemented";
       }
     }
   }
@@ -377,7 +377,7 @@ struct PolygonAction final {
 
       if (hasFlags) {
         // TODO
-        DLOG(WARNING) << "not implemented";
+        DLOG(WARNING) << "PolygonAction flags not implemented";
       }
     }
   }
@@ -395,7 +395,7 @@ struct PolyPolygonAction final {
 
       if (complexPolygons > 0) {
         // TODO
-        DLOG(WARNING) << "not implemented";
+        DLOG(WARNING) << "PolyPolygonAction complex not implemented";
       }
     }
   }
@@ -694,21 +694,12 @@ void translateAction(const ActionHeader &action, std::istream &in,
   case META_PUSH_ACTION:
   case META_POP_ACTION:
   case META_TEXTLANGUAGE_ACTION:
-  case META_TEXTLINECOLOR_ACTION:
-    // TODO
-  case META_TEXTALIGN_ACTION:
-    // TODO
-  case META_LAYOUTMODE_ACTION:
-    // TODO:
-  case META_ISECTRECTCLIPREGION_ACTION:
-    // Rectangle action2;
-    // action2.read(in);
-    // TODO
   case META_COMMENT_ACTION:
     in.ignore(action.vl.length);
     break;
   default:
-    DLOG(WARNING) << "unhandled action " << action.type;
+    DLOG(WARNING) << "unhandled action " << action.type << " version "
+                  << action.vl.version << " length " << action.vl.length;
     in.ignore(action.vl.length);
     break;
   }
