@@ -14,31 +14,24 @@ class CssDeclarationWriter;
 
 class CssWriter final {
 public:
-  explicit CssWriter(std::unique_ptr<std::ostream> output);
-  CssWriter(std::unique_ptr<std::ostream> output,
-            std::unique_ptr<std::ostream> &owner);
-  ~CssWriter();
+  explicit CssWriter(std::ostream &output);
 
   CssDeclarationWriter selector(const std::string &selector);
 
 private:
-  std::unique_ptr<std::ostream> output_;
-  std::unique_ptr<std::ostream> &owner_;
+  std::ostream &output_;
 };
 
 class CssDeclarationWriter final {
 public:
-  explicit CssDeclarationWriter(std::unique_ptr<std::ostream> output);
-  CssDeclarationWriter(std::unique_ptr<std::ostream> output,
-                       std::unique_ptr<std::ostream> &owner);
+  explicit CssDeclarationWriter(std::ostream &output);
   ~CssDeclarationWriter();
 
-  CssDeclarationWriter &declaration(const std::string &property,
-                                    const std::string &value);
+  CssDeclarationWriter &property(const std::string &property,
+                                 const std::string &value);
 
 private:
-  std::unique_ptr<std::ostream> output_;
-  std::unique_ptr<std::ostream> &owner_;
+  std::ostream &output_;
 };
 
 } // namespace common

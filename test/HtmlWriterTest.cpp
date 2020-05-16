@@ -5,16 +5,22 @@
 using namespace odr::common;
 
 TEST(HtmlWriter, foo) {
-  std::unique_ptr<std::ostream> output = std::make_unique<std::stringstream>();
+  std::stringstream output;
 
   {
-    HtmlWriter html{std::move(output), output};
-    auto head = html.head("hello world");
-    head.meta("a", "b");
-    auto body = head.body();
-    body.text("success");
+    HtmlWriter html{output};
+
+    {
+      auto head = html.head("hello world");
+      head.meta("a", "b");
+    }
+
+    {
+      auto body = html.body();
+      body.text("success");
+    }
   }
 
-  const std::string result = dynamic_cast<std::stringstream *>(output.get())->str();
+  const std::string result = output.str();
   std::cout << result;
 }

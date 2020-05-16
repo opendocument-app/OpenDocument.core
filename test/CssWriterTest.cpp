@@ -5,13 +5,13 @@
 using namespace odr::common;
 
 TEST(CssWriter, foo) {
-  std::unique_ptr<std::ostream> output = std::make_unique<std::stringstream>();
+  std::stringstream output;
 
   {
-    CssWriter css{std::move(output), output};
-    css.selector("*").declaration("hello", "world");
+    CssWriter css{output};
+    css.selector("*").property("hello", "world");
   }
 
-  const std::string result = dynamic_cast<std::stringstream *>(output.get())->str();
+  const std::string result = output.str();
   EXPECT_EQ("*{hello:world}", result);
 }

@@ -17,71 +17,58 @@ class HtmlElementBodyWriter;
 
 class HtmlWriter final {
 public:
-  HtmlWriter(std::unique_ptr<std::ostream> output);
-  HtmlWriter(std::unique_ptr<std::ostream> output,
-             std::unique_ptr<std::ostream> &owner);
+  explicit HtmlWriter(std::ostream &output);
   ~HtmlWriter();
 
-  HtmlHeadWriter head();
+  HtmlHeadWriter head(const std::string &title) const;
+  HtmlElementWriter body() const;
 
 private:
-  std::unique_ptr<std::ostream> output_;
-  std::unique_ptr<std::ostream> &owner_;
+  std::ostream &output_;
 };
 
 class HtmlHeadWriter final {
 public:
-  HtmlHeadWriter(std::unique_ptr<std::ostream> output);
-  HtmlHeadWriter(std::unique_ptr<std::ostream> output,
-                 std::unique_ptr<std::ostream> &owner);
+  HtmlHeadWriter(const std::string &title, std::ostream &output);
   ~HtmlHeadWriter();
 
-  HtmlHeadWriter &meta(const std::string &charset);
-  HtmlHeadWriter &meta(const std::string &name,
-                       const std::string &content);
+  const HtmlHeadWriter &meta(const std::string &charset) const;
+  const HtmlHeadWriter &meta(const std::string &name, const std::string &content) const;
 
-  void style();
-  HtmlHeadWriter &link();
-  void script();
-  void script(const std::string &href);
-  HtmlElementWriter body();
+  void style() const;
+  const HtmlHeadWriter &link() const;
+  void script() const;
+  void script(const std::string &href) const;
 
 private:
-  std::unique_ptr<std::ostream> output_;
-  std::unique_ptr<std::ostream> &owner_;
+  std::ostream &output_;
 };
 
 class HtmlElementWriter final {
 public:
-  HtmlElementWriter(std::unique_ptr<std::ostream> output);
-  HtmlElementWriter(std::unique_ptr<std::ostream> output,
-                    std::unique_ptr<std::ostream> &owner);
+  HtmlElementWriter(std::string name, std::ostream &output);
   ~HtmlElementWriter();
 
-  HtmlElementWriter &attribute();
-  HtmlElementBodyWriter comment();
-  HtmlElementBodyWriter text();
-  HtmlElementBodyWriter element(const std::string &name);
+  const HtmlElementWriter &attribute(const std::string &name, const std::string &value) const;
+  HtmlElementBodyWriter comment(const std::string &content) const;
+  HtmlElementBodyWriter text(const std::string &content) const;
+  HtmlElementWriter element(const std::string &name) const;
 
 private:
-  std::unique_ptr<std::ostream> output_;
-  std::unique_ptr<std::ostream> &owner_;
+  std::string name_;
+  std::ostream &output_;
 };
 
 class HtmlElementBodyWriter final {
 public:
-  HtmlElementBodyWriter(std::unique_ptr<std::ostream> output);
-  HtmlElementBodyWriter(std::unique_ptr<std::ostream> output,
-                        std::unique_ptr<std::ostream> &owner);
-  ~HtmlElementBodyWriter();
+  explicit HtmlElementBodyWriter(std::ostream &output);
 
-  HtmlElementBodyWriter &comment();
-  HtmlElementBodyWriter &text();
-  HtmlElementBodyWriter &element(const std::string &name);
+  const HtmlElementBodyWriter &comment(const std::string &content) const;
+  const HtmlElementBodyWriter &text(const std::string &content) const;
+  HtmlElementWriter element(const std::string &name) const;
 
 private:
-  std::unique_ptr<std::ostream> output_;
-  std::unique_ptr<std::ostream> &owner_;
+  std::ostream &output_;
 };
 
 } // namespace common
