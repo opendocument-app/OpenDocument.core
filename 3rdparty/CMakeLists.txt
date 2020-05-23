@@ -8,7 +8,7 @@ FetchContent_Declare(
 FetchContent_Declare(
         miniz
         GIT_REPOSITORY https://github.com/richgel999/miniz.git
-        GIT_TAG cd99aff
+        GIT_TAG 4159f8c
 )
 FetchContent_Declare(
         glog
@@ -18,12 +18,12 @@ FetchContent_Declare(
 FetchContent_Declare(
         cryptopp_cmake
         GIT_REPOSITORY https://github.com/noloader/cryptopp-cmake.git
-        GIT_TAG 85941c6
+        GIT_TAG CRYPTOPP_8_2_0
 )
 FetchContent_Declare(
         cryptopp
-        GIT_REPOSITORY https://github.com/noloader/cryptopp.git
-        GIT_TAG 5d68850
+        GIT_REPOSITORY https://github.com/weidai11/cryptopp.git
+        GIT_TAG CRYPTOPP_8_2_0
 )
 FetchContent_Declare(
         json
