@@ -263,21 +263,16 @@ void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
                               Context &context) {
   const std::string prefix = in.name();
 
-  const pugi::xml_node *style =
-      tinyxml2::XMLHandle((pugi::xml_node &)in)
-          .FirstChildElement((prefix + "Pr").c_str())
-          .FirstChildElement((prefix + "Style").c_str())
-          .ToElement();
-  if (style != nullptr) {
-    *context.output << " class=\"" << style->FindAttribute("w:val")->Value()
+  const pugi::xml_node style = in.child((prefix + "Pr").c_str()).child((prefix + "Style").c_str());
+  if (style) {
+    *context.output << " class=\"" << style.attribute("w:val").as_string()
                     << "\"";
   }
 
-  const pugi::xml_node *inlineStyle =
-      in.FirstChildElement((prefix + "Pr").c_str());
-  if (inlineStyle != nullptr && inlineStyle->FirstChild() != nullptr) {
+  const pugi::xml_node inlineStyle = in.child((prefix + "Pr").c_str());
+  if (inlineStyle && inlineStyle.first_child()) {
     out << " style=\"";
-    translateStyleInline(*inlineStyle, out, context);
+    translateStyleInline(inlineStyle, out, context);
     out << "\"";
   }
 }
@@ -298,16 +293,11 @@ void TabTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
 
 void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &context) {
-  const pugi::xml_node *num =
-      tinyxml2::XMLHandle((pugi::xml_node &)in)
-          .FirstChildElement("w:pPr")
-          .FirstChildElement("w:numPr")
-          .ToElement();
-  bool listing = num != nullptr;
+  const pugi::xml_node num = in.child("w:pPr").child("w:numPr");
   int listingLevel;
-  if (listing) {
+  if (num) {
     listingLevel =
-        num->FirstChildElement("w:ilvl")->FindAttribute("w:val")->IntValue();
+        num.child("w:ilvl").attribute("w:val").as_int();
     for (int i = 0; i <= listingLevel; ++i)
       out << "<ul>";
     out << "<li>";
@@ -338,7 +328,7 @@ void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
 
   out << "</p>";
 
-  if (listing) {
+  if (num) {
     out << "</li>";
     for (int i = 0; i <= listingLevel; ++i)
       out << "</ul>";
@@ -358,12 +348,10 @@ void HyperlinkTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &context) {
   out << "<a";
 
-  const tinyxml2::XMLAttribute *anchorAttr = in.FindAttribute("w:anchor");
-  const tinyxml2::XMLAttribute *rIdAttr = in.FindAttribute("r:id");
-  if (anchorAttr != nullptr)
-    out << " href=\"#" << anchorAttr->Value() << "\" target=\"_self\"";
-  else if (rIdAttr != nullptr)
-    out << " href=\"" << context.relations[rIdAttr->Value()] << "\"";
+  if (const auto anchorAttr = in.attribute("w:anchor"); anchorAttr)
+    out << " href=\"#" << anchorAttr.as_string() << R"(" target="_self")";
+  else if (const auto rIdAttr = in.attribute("r:id"); rIdAttr != nullptr)
+    out << " href=\"" << context.relations[rIdAttr.as_string()] << "\"";
 
   ElementAttributeTranslator(in, out, context);
 
@@ -374,9 +362,8 @@ void HyperlinkTranslator(const pugi::xml_node &in, std::ostream &out,
 
 void BookmarkTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &) {
-  const tinyxml2::XMLAttribute *nameAttr = in.FindAttribute("w:name");
-  if (nameAttr != nullptr)
-    out << "<a id=\"" << nameAttr->Value() << "\"/>";
+  if (const auto nameAttr = in.attribute("w:name"); nameAttr)
+    out << "<a id=\"" << nameAttr.as_string() << "\"/>";
 }
 
 void TableTranslator(const pugi::xml_node &in, std::ostream &out,
@@ -393,17 +380,17 @@ void DrawingsTranslator(const pugi::xml_node &in, std::ostream &out,
   // ooxml is using amazing units
   // https://startbigthinksmall.wordpress.com/2010/01/04/points-inches-and-emus-measuring-units-in-office-open-xml/
 
-  const pugi::xml_node *child = common::XmlUtil::firstChildElement(in);
-  if (child == nullptr)
+  const auto child = in.first_child();
+  if (!child)
     return;
-  const pugi::xml_node *graphic = child->FirstChildElement("a:graphic");
-  if (graphic == nullptr)
+  const auto graphic = child.child("a:graphic");
+  if (!graphic)
     return;
   // TODO handle something other than inline
 
   out << "<div";
 
-  const pugi::xml_node *sizeEle = child->FirstChildElement("wp:extent");
+  const auto sizeEle = child.child("wp:extent");
   if (sizeEle != nullptr) {
     float widthIn = sizeEle->FindAttribute("cx")->Int64Value() / 914400.0f;
     float heightIn = sizeEle->FindAttribute("cy")->Int64Value() / 914400.0f;
