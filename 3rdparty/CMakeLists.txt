@@ -5,6 +5,11 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/andiwand/tinyxml2.git
         GIT_TAG f4e1f46
 )
+FetchContent_Declate(
+        pugixml
+        GIT_REPOSITORY https://github.com/zeux/pugixml.git
+        GIT_TAG v1.10
+)
 FetchContent_Declare(
         miniz
         GIT_REPOSITORY https://github.com/richgel999/miniz.git
