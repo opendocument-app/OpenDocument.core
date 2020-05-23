@@ -12,8 +12,8 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
         glog
-        GIT_REPOSITORY https://github.com/TomTasche/glog.git
-        GIT_TAG 9aed7a1
+        GIT_REPOSITORY https://github.com/google/glog.git
+        GIT_TAG v0.4.0
 )
 FetchContent_Declare(
         cryptopp_cmake
@@ -38,16 +38,14 @@ FetchContent_Declare(
 
 # cryptopp: fixes "phony targets" duplicate error during Android build
 # also disables building unit tests for glog and tinyxml
-option(BUILD_TESTING "" OFF)
-set(BUILD_TESTING OFF)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 # miniz
-option(BUILD_EXAMPLES "" OFF)
-set(BUILD_EXAMPLES OFF)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 # tinyxml2
-option(BUILD_SHARED_LIBS "" OFF)
-set(BUILD_SHARED_LIBS OFF)
-option(BUILD_TESTS "" OFF)
-set(BUILD_TESTS OFF)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+# glog
+set(CMAKE_DEBUG_POSTFIX "" CACHE BOOL "" FORCE)
 
 FetchContent_GetProperties(tinyxml2)
 if (NOT tinyxml2_POPULATED)
