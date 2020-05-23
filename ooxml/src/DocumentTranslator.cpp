@@ -4,12 +4,12 @@
 #include <access/Storage.h>
 #include <access/StreamUtil.h>
 #include <common/StringUtil.h>
-#include <common/XmlUtil.h>
 #include <crypto/CryptoUtil.h>
+#include <cstring>
 #include <glog/logging.h>
 #include <odr/Config.h>
+#include <pugixml.hpp>
 #include <string>
-#include <tinyxml2.h>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -17,156 +17,156 @@ namespace odr {
 namespace ooxml {
 
 namespace {
-void AlignmentTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void AlignmentTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &) {
-  const auto valAttr = in.FindAttribute("w:val");
-  out << "text-align:" << valAttr->Value() << ";";
+  out << "text-align:" << in.attribute("w:val").as_string() << ";";
 }
 
-void FontTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void FontTranslator(const pugi::xml_node &in, std::ostream &out,
                     Context &) {
-  const auto fontAttr = in.FindAttribute("w:cs");
-  if (fontAttr == nullptr)
+  const auto fontAttr = in.attribute("w:cs");
+  if (!fontAttr)
     return;
-  out << "font-family:" << fontAttr->Value() << ";";
+  out << "font-family:" << fontAttr.as_string() << ";";
 }
 
-void FontSizeTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void FontSizeTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &) {
-  const auto sizeAttr = in.FindAttribute("w:val");
-  if (sizeAttr == nullptr)
+  const auto sizeAttr = in.attribute("w:val");
+  if (!sizeAttr)
     return;
-  const double size = std::stoi(sizeAttr->Value()) / 2.0;
+  const double size = sizeAttr.as_int() / 2.0;
   out << "font-size:" << size << "pt;";
 }
 
-void BoldTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void BoldTranslator(const pugi::xml_node &in, std::ostream &out,
                     Context &) {
-  const auto valAttr = in.FindAttribute("w:val");
-  if (valAttr != nullptr)
+  const auto valAttr = in.attribute("w:val");
+  if (!valAttr)
     return;
   out << "font-weight:bold;";
 }
 
-void ItalicTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ItalicTranslator(const pugi::xml_node &in, std::ostream &out,
                       Context &) {
-  const auto valAttr = in.FindAttribute("w:val");
-  if (valAttr != nullptr)
+  const auto valAttr = in.attribute("w:val");
+  if (!valAttr)
     return;
   out << "font-style:italic;";
 }
 
-void UnderlineTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void UnderlineTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &) {
-  const auto valAttr = in.FindAttribute("w:val");
-  if (std::strcmp(valAttr->Value(), "single") == 0)
+  const auto valAttr = in.attribute("w:val");
+  if (std::strcmp(valAttr.as_string(), "single") == 0)
     out << "text-decoration:underline;";
   // TODO wont work with StrikeThroughTranslator
 }
 
-void StrikeThroughTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void StrikeThroughTranslator(const pugi::xml_node &in, std::ostream &out,
                              Context &) {
   // TODO wont work with UnderlineTranslator
 
-  const auto valAttr = in.FindAttribute("w:val");
-  if ((valAttr != nullptr) && (std::strcmp(valAttr->Value(), "false") == 0))
+  const auto valAttr = in.attribute("w:val");
+  if (valAttr && (std::strcmp(valAttr.as_string(), "false") == 0))
     return;
   out << "text-decoration:line-through;";
 }
 
-void ShadowTranslator(const tinyxml2::XMLElement &, std::ostream &out,
+void ShadowTranslator(const pugi::xml_node &, std::ostream &out,
                       Context &) {
   out << "text-shadow:1pt 1pt;";
 }
 
-void ColorTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ColorTranslator(const pugi::xml_node &in, std::ostream &out,
                      Context &) {
-  const auto valAttr = in.FindAttribute("w:val");
-  if (std::strcmp(valAttr->Value(), "auto") == 0)
+  const auto valAttr = in.attribute("w:val");
+  if (std::strcmp(valAttr.as_string(), "auto") == 0)
     return;
-  if (std::strlen(valAttr->Value()) == 6)
-    out << "color:#" << valAttr->Value();
+  if (std::strlen(valAttr.as_string()) == 6)
+    out << "color:#" << valAttr.as_string();
   else
-    out << "color:" << valAttr->Value();
+    out << "color:" << valAttr.as_string();
 }
 
-void HighlightTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void HighlightTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &) {
-  const auto valAttr = in.FindAttribute("w:val");
-  if (std::strcmp(valAttr->Value(), "auto") == 0)
+  const auto valAttr = in.attribute("w:val");
+  if (std::strcmp(valAttr.as_string(), "auto") == 0)
     return;
-  if (std::strlen(valAttr->Value()) == 6)
-    out << "background-color:#" << valAttr->Value();
+  if (std::strlen(valAttr.as_string()) == 6)
+    out << "background-color:#" << valAttr.as_string();
   else
-    out << "background-color:" << valAttr->Value();
+    out << "background-color:" << valAttr.as_string();
 }
 
-void IndentationTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void IndentationTranslator(const pugi::xml_node &in, std::ostream &out,
                            Context &) {
-  const tinyxml2::XMLAttribute *leftAttr = in.FindAttribute("w:left");
-  if (leftAttr != nullptr)
-    out << "margin-left:" << leftAttr->Int64Value() / 1440.0f << "in;";
-  const tinyxml2::XMLAttribute *rightAttr = in.FindAttribute("w:right");
-  if (rightAttr != nullptr)
-    out << "margin-right:" << rightAttr->Int64Value() / 1440.0f << "in;";
+  const auto leftAttr = in.attribute("w:left");
+  if (leftAttr)
+    out << "margin-left:" << leftAttr.as_float() / 1440.0f << "in;";
+
+  const auto rightAttr = in.attribute("w:right");
+  if (rightAttr)
+    out << "margin-right:" << rightAttr.as_float() / 1440.0f << "in;";
 }
 
-void TableCellWidthTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void TableCellWidthTranslator(const pugi::xml_node &in, std::ostream &out,
                               Context &) {
-  const tinyxml2::XMLAttribute *widthAttr = in.FindAttribute("w:w");
-  const tinyxml2::XMLAttribute *typeAttr = in.FindAttribute("w:type");
-  if (widthAttr != nullptr) {
-    float width = widthAttr->Int64Value();
-    if (typeAttr != nullptr && std::strcmp(typeAttr->Value(), "dxa") == 0)
+  const auto widthAttr = in.attribute("w:w");
+  const auto typeAttr = in.attribute("w:type");
+  if (widthAttr) {
+    float width = widthAttr.as_float();
+    if (typeAttr && std::strcmp(typeAttr.as_string(), "dxa") == 0)
       width /= 1440.0f;
     out << "width:" << width << "in;";
   }
 }
 
-void TableCellBorderTranslator(const tinyxml2::XMLElement &in,
+void TableCellBorderTranslator(const pugi::xml_node &in,
                                std::ostream &out, Context &) {
-  auto translator = [&](const char *name, const tinyxml2::XMLElement &e) {
+  auto translator = [&](const char *name, const pugi::xml_node &e) {
     out << name << ":";
 
-    const auto val = e.FindAttribute("w:val")->Value();
+    const auto val = e.attribute("w:val").as_string();
     if (std::strcmp(val, "nil") == 0) {
       out << "none";
     } else {
-      const float sizePt = e.FindAttribute("w:sz")->Int64Value() / 2.0f;
+      const float sizePt = e.attribute("w:sz").as_float() / 2.0f;
       out << sizePt << "pt ";
 
       out << "solid ";
 
-      const auto colorAttr = e.FindAttribute("w:color");
-      if (std::strlen(colorAttr->Value()) == 6)
-        out << "#" << colorAttr->Value();
+      const auto colorAttr = e.attribute("w:color");
+      if (std::strlen(colorAttr.as_string()) == 6)
+        out << "#" << colorAttr.as_string();
       else
-        out << colorAttr->Value();
+        out << colorAttr.as_string();
     }
 
     out << ";";
   };
 
-  const tinyxml2::XMLElement *top = in.FirstChildElement("w:top");
+  const pugi::xml_node *top = in.FirstChildElement("w:top");
   if (top != nullptr)
     translator("border-top", *top);
 
-  const tinyxml2::XMLElement *left = in.FirstChildElement("w:left");
+  const pugi::xml_node *left = in.FirstChildElement("w:left");
   if (left != nullptr)
     translator("border-left", *left);
 
-  const tinyxml2::XMLElement *bottom = in.FirstChildElement("w:bottom");
+  const pugi::xml_node *bottom = in.FirstChildElement("w:bottom");
   if (bottom != nullptr)
     translator("border-bottom", *bottom);
 
-  const tinyxml2::XMLElement *right = in.FirstChildElement("w:right");
+  const pugi::xml_node *right = in.FirstChildElement("w:right");
   if (right != nullptr)
     translator("border-right", *right);
 }
 
-void translateStyleInline(const tinyxml2::XMLElement &in, std::ostream &out,
+void translateStyleInline(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
-  common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+  common::XmlUtil::visitElementChildren(in, [&](const pugi::xml_node &e) {
     const std::string element = e.Name();
 
     if (element == "w:jc")
@@ -198,7 +198,7 @@ void translateStyleInline(const tinyxml2::XMLElement &in, std::ostream &out,
   });
 }
 
-void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
   const auto nameAttr = in.FindAttribute("w:styleId");
   std::string name = "unknown";
@@ -238,8 +238,8 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 } // namespace
 
-void DocumentTranslator::css(const tinyxml2::XMLElement &in, Context &context) {
-  common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
+void DocumentTranslator::css(const pugi::xml_node &in, Context &context) {
+  common::XmlUtil::visitElementChildren(in, [&](const pugi::xml_node &e) {
     const std::string element = e.Name();
 
     if (element == "w:style")
@@ -267,12 +267,12 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
   }
 }
 
-void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
                               Context &context) {
   const std::string prefix = in.Name();
 
-  const tinyxml2::XMLElement *style =
-      tinyxml2::XMLHandle((tinyxml2::XMLElement &)in)
+  const pugi::xml_node *style =
+      tinyxml2::XMLHandle((pugi::xml_node &)in)
           .FirstChildElement((prefix + "Pr").c_str())
           .FirstChildElement((prefix + "Style").c_str())
           .ToElement();
@@ -281,7 +281,7 @@ void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
                     << "\"";
   }
 
-  const tinyxml2::XMLElement *inlineStyle =
+  const pugi::xml_node *inlineStyle =
       in.FirstChildElement((prefix + "Pr").c_str());
   if (inlineStyle != nullptr && inlineStyle->FirstChild() != nullptr) {
     out << " style=\"";
@@ -290,24 +290,24 @@ void StyleAttributeTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   }
 }
 
-void ElementAttributeTranslator(const tinyxml2::XMLElement &in,
+void ElementAttributeTranslator(const pugi::xml_node &in,
                                 std::ostream &out, Context &context) {
   StyleAttributeTranslator(in, out, context);
 }
 
-void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
+void ElementChildrenTranslator(const pugi::xml_node &in,
                                std::ostream &out, Context &context);
-void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
                        Context &context);
 
-void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, Context &) {
+void TabTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
   out << "\t";
 }
 
-void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &context) {
-  const tinyxml2::XMLElement *num =
-      tinyxml2::XMLHandle((tinyxml2::XMLElement &)in)
+  const pugi::xml_node *num =
+      tinyxml2::XMLHandle((pugi::xml_node &)in)
           .FirstChildElement("w:pPr")
           .FirstChildElement("w:numPr")
           .ToElement();
@@ -327,9 +327,9 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
   bool empty = true;
   common::XmlUtil::visitElementChildren(
-      in, [&](const tinyxml2::XMLElement &e1) {
+      in, [&](const pugi::xml_node &e1) {
         common::XmlUtil::visitElementChildren(
-            e1, [&](const tinyxml2::XMLElement &e2) {
+            e1, [&](const pugi::xml_node &e2) {
               if (common::StringUtil::endsWith(e1.Name(), "Pr"))
                 ;
               else if (std::strcmp(e1.Name(), "w:r") != 0)
@@ -353,7 +353,7 @@ void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   }
 }
 
-void SpanTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void SpanTranslator(const pugi::xml_node &in, std::ostream &out,
                     Context &context) {
   out << "<span";
   ElementAttributeTranslator(in, out, context);
@@ -362,7 +362,7 @@ void SpanTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</span>";
 }
 
-void HyperlinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void HyperlinkTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &context) {
   out << "<a";
 
@@ -380,14 +380,14 @@ void HyperlinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</a>";
 }
 
-void BookmarkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void BookmarkTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &) {
   const tinyxml2::XMLAttribute *nameAttr = in.FindAttribute("w:name");
   if (nameAttr != nullptr)
     out << "<a id=\"" << nameAttr->Value() << "\"/>";
 }
 
-void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void TableTranslator(const pugi::xml_node &in, std::ostream &out,
                      Context &context) {
   out << R"(<table border="0" cellspacing="0" cellpadding="0")";
   ElementAttributeTranslator(in, out, context);
@@ -396,22 +396,22 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</table>";
 }
 
-void DrawingsTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void DrawingsTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &context) {
   // ooxml is using amazing units
   // https://startbigthinksmall.wordpress.com/2010/01/04/points-inches-and-emus-measuring-units-in-office-open-xml/
 
-  const tinyxml2::XMLElement *child = common::XmlUtil::firstChildElement(in);
+  const pugi::xml_node *child = common::XmlUtil::firstChildElement(in);
   if (child == nullptr)
     return;
-  const tinyxml2::XMLElement *graphic = child->FirstChildElement("a:graphic");
+  const pugi::xml_node *graphic = child->FirstChildElement("a:graphic");
   if (graphic == nullptr)
     return;
   // TODO handle something other than inline
 
   out << "<div";
 
-  const tinyxml2::XMLElement *sizeEle = child->FirstChildElement("wp:extent");
+  const pugi::xml_node *sizeEle = child->FirstChildElement("wp:extent");
   if (sizeEle != nullptr) {
     float widthIn = sizeEle->FindAttribute("cx")->Int64Value() / 914400.0f;
     float heightIn = sizeEle->FindAttribute("cy")->Int64Value() / 914400.0f;
@@ -423,12 +423,12 @@ void DrawingsTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</div>";
 }
 
-void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
                      Context &context) {
   out << "<img style=\"width:100%;height:100%\"";
 
-  const tinyxml2::XMLElement *ref =
-      tinyxml2::XMLHandle((tinyxml2::XMLElement &)in)
+  const pugi::xml_node *ref =
+      tinyxml2::XMLHandle((pugi::xml_node &)in)
           .FirstChildElement("pic:blipFill")
           .FirstChildElement("a:blip")
           .ToElement();
@@ -450,7 +450,7 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "></img>";
 }
 
-void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
+void ElementChildrenTranslator(const pugi::xml_node &in,
                                std::ostream &out, Context &context) {
   common::XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
     if (n.ToText() != nullptr)
@@ -460,7 +460,7 @@ void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
   });
 }
 
-void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
                        Context &context) {
   static std::unordered_map<std::string, const char *> substitution{
       {"w:tr", "tr"},
@@ -505,7 +505,7 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 }
 } // namespace
 
-void DocumentTranslator::html(const tinyxml2::XMLElement &in,
+void DocumentTranslator::html(const pugi::xml_node &in,
                               Context &context) {
   ElementTranslator(in, *context.output, context);
 }

@@ -3,11 +3,10 @@
 #include <access/StorageUtil.h>
 #include <common/MapUtil.h>
 #include <common/TableCursor.h>
-#include <common/XmlUtil.h>
 #include <crypto/CryptoUtil.h>
 #include <odr/Meta.h>
-#include <tinyxml2.h>
 #include <unordered_map>
+#include <pugixml.hpp>
 
 namespace odr {
 namespace odf {

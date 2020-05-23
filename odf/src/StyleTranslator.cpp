@@ -1,10 +1,9 @@
 #include <StyleTranslator.h>
 #include <common/StringUtil.h>
-#include <common/XmlUtil.h>
 #include <glog/logging.h>
 #include <string>
-#include <tinyxml2.h>
 #include <unordered_map>
+#include <pugixml.hpp>
 
 namespace odr {
 namespace odf {

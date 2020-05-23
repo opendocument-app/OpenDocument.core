@@ -1,11 +1,10 @@
 #include <Meta.h>
 #include <access/Path.h>
 #include <access/Storage.h>
-#include <common/XmlUtil.h>
 #include <odr/Exception.h>
 #include <odr/Meta.h>
-#include <tinyxml2.h>
 #include <unordered_map>
+#include <pugixml.hpp>
 
 namespace odr {
 namespace ooxml {

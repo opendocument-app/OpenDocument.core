@@ -13,7 +13,7 @@ target_include_directories(odr_odf
         )
 target_link_libraries(odr_odf
         PRIVATE
-        tinyxml2
+        pugixml
         nlohmann_json::nlohmann_json
         glog
 
