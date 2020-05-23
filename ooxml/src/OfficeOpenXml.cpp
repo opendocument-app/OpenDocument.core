@@ -9,13 +9,12 @@
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <common/Html.h>
-#include <common/XmlUtil.h>
 #include <fstream>
 #include <odr/Config.h>
 #include <odr/Exception.h>
 #include <odr/Meta.h>
 #include <ooxml/OfficeOpenXml.h>
-#include <tinyxml2.h>
+#include <pugixml.hpp>
 
 namespace odr {
 namespace ooxml {

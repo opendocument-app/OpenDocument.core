@@ -11,7 +11,7 @@ class ReadStorage;
 
 namespace oldms {
 
-class LegacyMicrosoft : public common::Document {
+class LegacyMicrosoft final : public common::Document {
 public:
   explicit LegacyMicrosoft(const char *path);
   explicit LegacyMicrosoft(const std::string &path);

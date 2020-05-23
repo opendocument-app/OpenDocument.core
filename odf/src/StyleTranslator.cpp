@@ -9,7 +9,7 @@ namespace odr {
 namespace odf {
 
 namespace {
-void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
+void StylePropertiesTranslator(const pugi::xml_attribute &in,
                                std::ostream &out) {
   static std::unordered_map<std::string, const char *> substitution{
       {"fo:text-align", "text-align"},
@@ -78,7 +78,7 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   if (it == elementToNameAttr.end())
     return;
 
-  const tinyxml2::XMLAttribute *nameAttr = in.FindAttribute(it->second);
+  const pugi::xml_attribute *nameAttr = in.FindAttribute(it->second);
   if (nameAttr == nullptr) {
     LOG(WARNING) << "skipped style " << in.Name() << ". no name attribute.";
     return;
@@ -120,7 +120,7 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
   common::XmlUtil::visitElementChildren(in, [&](const tinyxml2::XMLElement &e) {
     common::XmlUtil::visitElementAttributes(
-        e, [&](const tinyxml2::XMLAttribute &a) {
+        e, [&](const pugi::xml_attribute &a) {
           StylePropertiesTranslator(a, out);
         });
   });

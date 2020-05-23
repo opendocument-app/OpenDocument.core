@@ -4,14 +4,13 @@
 #include <access/Storage.h>
 #include <access/StreamUtil.h>
 #include <common/StringUtil.h>
-#include <common/XmlUtil.h>
 #include <crypto/CryptoUtil.h>
 #include <glog/logging.h>
 #include <odr/Config.h>
 #include <string>
-#include <tinyxml2.h>
 #include <unordered_map>
 #include <unordered_set>
+#include <pugixml.hpp>
 
 namespace odr {
 namespace ooxml {
