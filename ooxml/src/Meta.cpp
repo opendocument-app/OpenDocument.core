@@ -39,24 +39,23 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     const auto ppt = common::XmlUtil::parse(storage, "ppt/presentation.xml");
     result.entryCount = 0;
-    common::XmlUtil::recursiveVisitElementsWithName(
-        ppt->RootElement(), "p:sldId", [&](const tinyxml2::XMLElement &) {
-          ++result.entryCount;
-          FileMeta::Entry entry;
-          result.entries.emplace_back(entry);
-        });
+    for (auto &&e : ppt.select_nodes("//p:sldId")) {
+      ++result.entryCount;
+      FileMeta::Entry entry;
+      // TODO
+      result.entries.emplace_back(entry);
+    }
   } break;
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
     const auto xls = common::XmlUtil::parse(storage, "xl/workbook.xml");
     result.entryCount = 0;
-    common::XmlUtil::recursiveVisitElementsWithName(
-        xls->RootElement(), "sheet", [&](const tinyxml2::XMLElement &e) {
-          ++result.entryCount;
-          FileMeta::Entry entry;
-          entry.name = e.FindAttribute("name")->Value();
-          // TODO dimension
-          result.entries.emplace_back(entry);
-        });
+    for (auto &&e : xls.select_nodes("sheet")) {
+      ++result.entryCount;
+      FileMeta::Entry entry;
+      entry.name = e.node().attribute("name").as_string();
+      // TODO dimension
+      result.entries.emplace_back(entry);
+    }
   } break;
   default:
     throw UnknownFileType();
@@ -69,7 +68,7 @@ access::Path Meta::relationsPath(const access::Path &path) {
   return path.parent().join("_rels").join(path.basename() + ".rels");
 }
 
-std::unique_ptr<tinyxml2::XMLDocument>
+pugi::xml_document
 Meta::loadRelationships(const access::ReadStorage &storage,
                         const access::Path &path) {
   return common::XmlUtil::parse(storage, relationsPath(path));
