@@ -75,14 +75,13 @@ Meta::loadRelationships(const access::ReadStorage &storage,
 }
 
 std::unordered_map<std::string, std::string>
-Meta::parseRelationships(const tinyxml2::XMLDocument &rels) {
+Meta::parseRelationships(const pugi::xml_document &rels) {
   std::unordered_map<std::string, std::string> result;
-  common::XmlUtil::recursiveVisitElementsWithName(
-      rels.RootElement(), "Relationship", [&](const auto &rel) {
-        const std::string rId = rel.FindAttribute("Id")->Value();
-        const std::string p = rel.FindAttribute("Target")->Value();
-        result.insert({rId, p});
-      });
+  for (auto &&e : rels.select_nodes("//Relationship")) {
+    const std::string rId = e.node().attribute("Id").as_string();
+    const std::string p = e.node().attribute("Target").as_string();
+    result.insert({rId, p});
+  }
   return result;
 }
 
@@ -92,7 +91,7 @@ Meta::parseRelationships(const access::ReadStorage &storage,
   const auto relationships = loadRelationships(storage, path);
   if (!relationships)
     return {};
-  return parseRelationships(*relationships);
+  return parseRelationships(relationships);
 }
 
 } // namespace ooxml

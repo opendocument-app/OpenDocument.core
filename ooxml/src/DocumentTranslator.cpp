@@ -147,27 +147,23 @@ void TableCellBorderTranslator(const pugi::xml_node &in,
     out << ";";
   };
 
-  const pugi::xml_node *top = in.FirstChildElement("w:top");
-  if (top != nullptr)
-    translator("border-top", *top);
+  if (const auto top = in.child("w:top"); top)
+    translator("border-top", top);
 
-  const pugi::xml_node *left = in.FirstChildElement("w:left");
-  if (left != nullptr)
-    translator("border-left", *left);
+  if (const auto top = in.child("w:left"); top)
+    translator("border-left", top);
 
-  const pugi::xml_node *bottom = in.FirstChildElement("w:bottom");
-  if (bottom != nullptr)
-    translator("border-bottom", *bottom);
+  if (const auto top = in.child("w:bottom"); top)
+    translator("border-bottom", top);
 
-  const pugi::xml_node *right = in.FirstChildElement("w:right");
-  if (right != nullptr)
-    translator("border-right", *right);
+  if (const auto top = in.child("w:right"); top)
+    translator("border-right", top);
 }
 
 void translateStyleInline(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
-  common::XmlUtil::visitElementChildren(in, [&](const pugi::xml_node &e) {
-    const std::string element = e.Name();
+  for (auto &&e : in.children()) {
+    const std::string element = e.name();
 
     if (element == "w:jc")
       AlignmentTranslator(e, out, context);
@@ -195,25 +191,23 @@ void translateStyleInline(const pugi::xml_node &in, std::ostream &out,
       TableCellWidthTranslator(e, out, context);
     else if (element == "w:tcBorders")
       TableCellBorderTranslator(e, out, context);
-  });
+  }
 }
 
 void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
-  const auto nameAttr = in.FindAttribute("w:styleId");
   std::string name = "unknown";
-  if (nameAttr != nullptr) {
-    name = nameAttr->Value();
+  if (const auto nameAttr = in.attribute("w:styleId"); nameAttr) {
+    name = nameAttr.name();
   } else {
-    LOG(WARNING) << "no name attribute " << in.Name();
+    LOG(WARNING) << "no name attribute " << in.name();
   }
 
-  const auto typeAttr = in.FindAttribute("w:type");
   std::string type = "unknown";
-  if (typeAttr != nullptr) {
-    type = typeAttr->Value();
+  if (const auto typeAttr = in.attribute("w:type"); typeAttr) {
+    type = typeAttr.name();
   } else {
-    LOG(WARNING) << "no type attribute " << in.Name();
+    LOG(WARNING) << "no type attribute " << in.name();
   }
 
   /*
@@ -226,33 +220,31 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
 
   out << "." << name << " {";
 
-  const auto pPr = in.FirstChildElement("w:pPr");
-  if (pPr != nullptr)
-    translateStyleInline(*pPr, out, context);
+  if (const auto pPr = in.child("w:pPr"); pPr)
+    translateStyleInline(pPr, out, context);
 
-  const auto rPr = in.FirstChildElement("w:rPr");
-  if (rPr != nullptr)
-    translateStyleInline(*rPr, out, context);
+  if (const auto rPr = in.child("w:rPr"); rPr != nullptr)
+    translateStyleInline(rPr, out, context);
 
   out << "}\n";
 }
 } // namespace
 
 void DocumentTranslator::css(const pugi::xml_node &in, Context &context) {
-  common::XmlUtil::visitElementChildren(in, [&](const pugi::xml_node &e) {
-    const std::string element = e.Name();
+  for (auto &&e : in.children()) {
+    const std::string element = e.name();
 
     if (element == "w:style")
       StyleClassTranslator(e, *context.output, context);
     // else if (element == "w:docDefaults") DefaultStyleTranslator(e,
     // *context.output, context);
-  });
+  }
 }
 
 namespace {
-void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
+void TextTranslator(const pugi::xml_text &in, std::ostream &out,
                     Context &context) {
-  std::string text = in.Value();
+  std::string text = in.as_string();
   common::StringUtil::findAndReplaceAll(text, "&", "&amp;");
   common::StringUtil::findAndReplaceAll(text, "<", "&lt;");
   common::StringUtil::findAndReplaceAll(text, ">", "&gt;");
@@ -269,7 +261,7 @@ void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
 
 void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
                               Context &context) {
-  const std::string prefix = in.Name();
+  const std::string prefix = in.name();
 
   const pugi::xml_node *style =
       tinyxml2::XMLHandle((pugi::xml_node &)in)

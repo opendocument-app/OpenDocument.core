@@ -18,7 +18,7 @@ namespace odr {
 namespace odf {
 
 namespace {
-void TextTranslator(const pugi::xml_node &in, std::ostream &out,
+void TextTranslator(const pugi::xml_text &in, std::ostream &out,
                     Context &context) {
   std::string text = in.as_string();
   common::StringUtil::findAndReplaceAll(text, "&", "&amp;");
