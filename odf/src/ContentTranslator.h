@@ -3,8 +3,8 @@
 
 #include <memory>
 
-namespace tinyxml2 {
-class XMLElement;
+namespace pugi {
+class xml_node;
 }
 
 namespace odr {
@@ -13,7 +13,7 @@ namespace odf {
 struct Context;
 
 namespace ContentTranslator {
-void html(const tinyxml2::XMLElement &in, Context &context);
+void html(const pugi::xml_node &in, Context &context);
 } // namespace ContentTranslator
 
 } // namespace odf

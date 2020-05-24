@@ -308,18 +308,16 @@ void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
   out << ">";
 
   bool empty = true;
-  common::XmlUtil::visitElementChildren(
-      in, [&](const pugi::xml_node &e1) {
-        common::XmlUtil::visitElementChildren(
-            e1, [&](const pugi::xml_node &e2) {
-              if (common::StringUtil::endsWith(e1.Name(), "Pr"))
-                ;
-              else if (std::strcmp(e1.Name(), "w:r") != 0)
-                empty = false;
-              else if (!common::StringUtil::endsWith(e2.Name(), "Pr"))
-                empty = false;
-            });
-      });
+  for (auto &&e1 : in) {
+    for (auto &&e2 : e1) {
+      if (common::StringUtil::endsWith(e1.name(), "Pr"))
+        ;
+      else if (std::strcmp(e1.name(), "w:r") != 0)
+        empty = false;
+      else if (!common::StringUtil::endsWith(e2.name(), "Pr"))
+        empty = false;
+    }
+  }
 
   if (empty)
     out << "<br/>";
@@ -390,15 +388,14 @@ void DrawingsTranslator(const pugi::xml_node &in, std::ostream &out,
 
   out << "<div";
 
-  const auto sizeEle = child.child("wp:extent");
-  if (sizeEle != nullptr) {
-    float widthIn = sizeEle->FindAttribute("cx")->Int64Value() / 914400.0f;
-    float heightIn = sizeEle->FindAttribute("cy")->Int64Value() / 914400.0f;
+  if (const auto sizeEle = child.child("wp:extent"); sizeEle) {
+    const float widthIn = sizeEle.attribute("cx").as_float() / 914400.0f;
+    const float heightIn = sizeEle.attribute("cy").as_float() / 914400.0f;
     out << " style=\"width:" << widthIn << "in;height:" << heightIn << "in;\"";
   }
 
   out << ">";
-  ElementTranslator(*graphic, out, context);
+  ElementTranslator(graphic, out, context);
   out << "</div>";
 }
 
@@ -406,16 +403,12 @@ void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
                      Context &context) {
   out << "<img style=\"width:100%;height:100%\"";
 
-  const pugi::xml_node *ref =
-      tinyxml2::XMLHandle((pugi::xml_node &)in)
-          .FirstChildElement("pic:blipFill")
-          .FirstChildElement("a:blip")
-          .ToElement();
-  if (ref == nullptr || ref->FindAttribute("r:embed") == nullptr) {
+  const pugi::xml_node ref = in.child("pic:blipFill").child("a:blip");
+  if (!ref || !ref.attribute("r:embed")) {
     out << " alt=\"Error: image path not specified";
     LOG(ERROR) << "image href not found";
   } else {
-    const char *rIdAttr = ref->FindAttribute("r:embed")->Value();
+    const char *rIdAttr = ref.attribute("r:embed").as_string();
     const auto path = access::Path("word").join(context.relations[rIdAttr]);
     out << " alt=\"Error: image not found or unsupported: " << path << "\"";
     out << " src=\"";
@@ -431,12 +424,12 @@ void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
 
 void ElementChildrenTranslator(const pugi::xml_node &in,
                                std::ostream &out, Context &context) {
-  common::XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
-    if (n.ToText() != nullptr)
-      TextTranslator(*n.ToText(), out, context);
-    else if (n.ToElement() != nullptr)
-      ElementTranslator(*n.ToElement(), out, context);
-  });
+  for (auto &&n : in) {
+    if (n.text())
+      TextTranslator(n.text(), out, context);
+    else if (n)
+      ElementTranslator(n, out, context);
+  }
 }
 
 void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
@@ -449,7 +442,7 @@ void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
       "w:instrText",
   };
 
-  const std::string element = in.Name();
+  const std::string element = in.name();
   if (skippers.find(element) != skippers.end())
     return;
 

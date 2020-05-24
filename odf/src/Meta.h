@@ -6,8 +6,8 @@
 #include <string>
 #include <unordered_map>
 
-namespace tinyxml2 {
-class XMLDocument;
+namespace pugi {
+class xml_document;
 }
 
 namespace odr {
@@ -59,7 +59,7 @@ struct Manifest {
 FileMeta parseFileMeta(const access::ReadStorage &storage, bool decrypted);
 
 Manifest parseManifest(const access::ReadStorage &storage);
-Manifest parseManifest(const tinyxml2::XMLDocument &manifest);
+Manifest parseManifest(const pugi::xml_document &manifest);
 } // namespace Meta
 
 } // namespace odf

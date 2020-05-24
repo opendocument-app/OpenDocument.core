@@ -3,10 +3,12 @@
 #include <access/StorageUtil.h>
 #include <common/MapUtil.h>
 #include <common/TableCursor.h>
+#include <common/XmlUtil.h>
 #include <crypto/CryptoUtil.h>
+#include <cstring>
 #include <odr/Meta.h>
-#include <unordered_map>
 #include <pugixml.hpp>
+#include <unordered_map>
 
 namespace odr {
 namespace odf {
@@ -98,7 +100,7 @@ bool lookupStartKeyTypes(const std::string &checksum,
       STARTKEY_TYPES, checksum, checksumType, Meta::ChecksumType::UNKNOWN);
 }
 
-void estimateTableDimensions(const tinyxml2::XMLElement &table,
+void estimateTableDimensions(const pugi::xml_node &table,
                              std::uint32_t &rows, std::uint32_t &cols,
                              const std::uint32_t limitRows,
                              const std::uint32_t limitCols) {
@@ -108,36 +110,36 @@ void estimateTableDimensions(const tinyxml2::XMLElement &table,
   common::TableCursor tl;
 
   // TODO we dont need to recurse so deep
-  common::XmlUtil::recursiveVisitElements(&table, [&](const auto &e) {
-    if (e.Name() == std::string("table:table-row")) {
+  for (auto &&e : table) {
+    if (std::strcmp(e.name(), "table:table-row") == 0) {
       const auto repeated =
-          e.Unsigned64Attribute("table:number-rows-repeated", 1);
+          e.attribute("table:number-rows-repeated").as_uint(1);
       tl.addRow(repeated);
-    } else if (e.Name() == std::string("table:table-cell")) {
+    } else if (std::strcmp(e.name(), "table:table-cell") == 0) {
       const auto repeated =
-          e.Unsigned64Attribute("table:number-columns-repeated", 1);
+          e.attribute("table:number-columns-repeated").as_uint(1);
       const auto colspan =
-          e.Unsigned64Attribute("table:number-columns-spanned", 1);
+          e.attribute("table:number-columns-spanned").as_uint(1);
       const auto rowspan =
-          e.Unsigned64Attribute("table:number-rows-spanned", 1);
+          e.attribute("table:number-rows-spanned").as_uint(1);
       tl.addCell(colspan, rowspan, repeated);
 
       const auto newRows = tl.row();
       const auto newCols = std::max(cols, tl.col());
-      if ((e.FirstChild() != nullptr) &&
+      if (e.first_child() &&
           (((limitRows != 0) && (newRows < limitRows)) &&
            ((limitCols != 0) && (newCols < limitCols)))) {
         rows = newRows;
         cols = newCols;
       }
     }
-  });
+  }
 }
 } // namespace
 
 FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
                              const bool decrypted) {
-  FileMeta result{};
+  FileMeta result;
 
   if (!storage.isFile("content.xml"))
     throw NoOpenDocumentFileException();
@@ -150,53 +152,44 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
   if (storage.isFile("META-INF/manifest.xml")) {
     const auto manifest =
         common::XmlUtil::parse(storage, "META-INF/manifest.xml");
-    common::XmlUtil::recursiveVisitElementsWithName(
-        manifest->RootElement(), "manifest:file-entry",
-        [&](const tinyxml2::XMLElement &e) {
-          const access::Path path =
-              e.FindAttribute("manifest:full-path")->Value();
-          if (path == "/" &&
-              e.FindAttribute("manifest:media-type") != nullptr) {
-            const std::string mimeType =
-                e.FindAttribute("manifest:media-type")->Value();
-            lookupFileType(mimeType, result.type);
-          }
-        });
-    common::XmlUtil::recursiveVisitElementsWithName(
-        manifest->RootElement(), "manifest:encryption-data",
-        [&](const tinyxml2::XMLElement &) { result.encrypted = true; });
+    for (auto &&e : manifest.select_nodes("//manifest:file-entry")) {
+      const access::Path path =
+          e.node().attribute("manifest:full-path").as_string();
+      if (path.root() &&
+          e.node().attribute("manifest:media-type")) {
+        const std::string mimeType =
+            e.node().attribute("manifest:media-type").as_string();
+        lookupFileType(mimeType, result.type);
+      }
+    }
+    if (!manifest.select_nodes("//manifest:encryption-data").empty()) {
+      result.encrypted = true;
+    }
   }
 
   if (result.encrypted == decrypted) {
     if (storage.isFile("meta.xml")) {
       const auto metaXml = common::XmlUtil::parse(storage, "meta.xml");
 
-      tinyxml2::XMLElement *statisticsElement =
-          tinyxml2::XMLHandle(metaXml.get())
-              .FirstChildElement("office:document-meta")
-              .FirstChildElement("office:meta")
-              .FirstChildElement("meta:document-statistic")
-              .ToElement();
-      if (statisticsElement != nullptr) {
+      const pugi::xml_node statistics = metaXml.child("office:document-meta").child("office:meta").child("meta:document-statistic");
+      if (statistics) {
         switch (result.type) {
         case FileType::OPENDOCUMENT_TEXT: {
-          const tinyxml2::XMLAttribute *pageCount =
-              statisticsElement->FindAttribute("meta:page-count");
-          if (pageCount == nullptr) {
+          const auto pageCount =
+              statistics.attribute("meta:page-count");
+          if (!pageCount)
             break;
-          }
-          result.entryCount = pageCount->UnsignedValue();
+          result.entryCount = pageCount.as_uint();
         } break;
         case FileType::OPENDOCUMENT_PRESENTATION: {
           result.entryCount = 0;
         } break;
         case FileType::OPENDOCUMENT_SPREADSHEET: {
-          const tinyxml2::XMLAttribute *tableCount =
-              statisticsElement->FindAttribute("meta:table-count");
-          if (tableCount == nullptr) {
+          const auto tableCount =
+              statistics.attribute("meta:table-count");
+          if (!tableCount)
             break;
-          }
-          result.entryCount = tableCount->UnsignedValue();
+          result.entryCount = tableCount.as_uint();
         } break;
         case FileType::OPENDOCUMENT_GRAPHICS: {
         } break;
@@ -208,39 +201,32 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
 
     // TODO dont load content twice (happens in case of translation)
     const auto contentXml = common::XmlUtil::parse(storage, "content.xml");
-    tinyxml2::XMLHandle bodyHandle =
-        tinyxml2::XMLHandle(contentXml.get())
-            .FirstChildElement("office:document-content")
-            .FirstChildElement("office:body");
-    if (bodyHandle.ToElement() == nullptr)
+    const auto body = contentXml.child("office:document-content").child("office:body");
+    if (!body)
       throw NoOpenDocumentFileException();
 
     switch (result.type) {
     case FileType::OPENDOCUMENT_GRAPHICS:
     case FileType::OPENDOCUMENT_PRESENTATION: {
       result.entryCount = 0;
-      common::XmlUtil::recursiveVisitElementsWithName(
-          bodyHandle.ToElement(), "draw:page",
-          [&](const tinyxml2::XMLElement &e) {
-            ++result.entryCount;
-            FileMeta::Entry entry;
-            entry.name = e.FindAttribute("draw:name")->Value();
-            result.entries.emplace_back(entry);
-          });
+      for (auto &&e : body.select_nodes("//draw:page")) {
+        ++result.entryCount;
+        FileMeta::Entry entry;
+        entry.name = e.node().attribute("draw:name").as_string();
+        result.entries.emplace_back(entry);
+      }
     } break;
     case FileType::OPENDOCUMENT_SPREADSHEET: {
       result.entryCount = 0;
-      common::XmlUtil::recursiveVisitElementsWithName(
-          bodyHandle.ToElement(), "table:table",
-          [&](const tinyxml2::XMLElement &e) {
-            ++result.entryCount;
-            FileMeta::Entry entry;
-            entry.name = e.FindAttribute("table:name")->Value();
-            // TODO configuration
-            estimateTableDimensions(e, entry.rowCount, entry.columnCount, 10000,
-                                    500);
-            result.entries.emplace_back(entry);
-          });
+      for (auto &&e : body.select_nodes("//table:table")) {
+        ++result.entryCount;
+        FileMeta::Entry entry;
+        entry.name = e.node().attribute("table:name").as_string();
+        // TODO configuration
+        estimateTableDimensions(e.node(), entry.rowCount, entry.columnCount, 10000,
+                                500);
+        result.entries.emplace_back(entry);
+      }
     } break;
     default:
       break;
@@ -255,86 +241,82 @@ Meta::Manifest Meta::parseManifest(const access::ReadStorage &storage) {
     throw NoOpenDocumentFileException();
   const auto manifest =
       common::XmlUtil::parse(storage, "META-INF/manifest.xml");
-  return parseManifest(*manifest);
+  return parseManifest(manifest);
 }
 
-Meta::Manifest Meta::parseManifest(const tinyxml2::XMLDocument &manifest) {
-  Manifest result{};
+Meta::Manifest Meta::parseManifest(const pugi::xml_document &manifest) {
+  Manifest result;
 
-  common::XmlUtil::recursiveVisitElementsWithName(
-      manifest.RootElement(), "manifest:file-entry",
-      [&](const tinyxml2::XMLElement &e) {
-        const access::Path path =
-            e.FindAttribute("manifest:full-path")->Value();
-        const tinyxml2::XMLElement *crypto =
-            e.FirstChildElement("manifest:encryption-data");
-        if (crypto == nullptr)
-          return;
-        result.encrypted = true;
+  for (auto &&e : manifest.select_nodes("manifest:file-entry")) {
+    const access::Path path =
+        e.node().attribute("manifest:full-path").as_string();
+    const pugi::xml_node crypto =
+        e.node().child("manifest:encryption-data");
+    if (!crypto)
+      continue;
+    result.encrypted = true;
 
-        Manifest::Entry entry{};
-        entry.size = e.FindAttribute("manifest:size")->UnsignedValue();
+    Manifest::Entry entry;
+    entry.size = e.node().attribute("manifest:size").as_uint();
 
-        { // checksum
-          const std::string checksumType =
-              crypto->FindAttribute("manifest:checksum-type")->Value();
-          lookupChecksumType(checksumType, entry.checksumType);
-          entry.checksum = crypto->FindAttribute("manifest:checksum")->Value();
-        }
+    { // checksum
+      const std::string checksumType =
+          crypto.attribute("manifest:checksum-type").as_string();
+      lookupChecksumType(checksumType, entry.checksumType);
+      entry.checksum = crypto.attribute("manifest:checksum").as_string();
+    }
 
-        { // encryption algorithm
-          const tinyxml2::XMLElement *algorithm =
-              crypto->FirstChildElement("manifest:algorithm");
-          const std::string algorithmName =
-              algorithm->FindAttribute("manifest:algorithm-name")->Value();
-          lookupAlgorithmTypes(algorithmName, entry.algorithm);
-          entry.initialisationVector =
-              algorithm->FindAttribute("manifest:initialisation-vector")
-                  ->Value();
-        }
+    { // encryption algorithm
+      const pugi::xml_node algorithm =
+          crypto.child("manifest:algorithm");
+      const std::string algorithmName =
+          algorithm.attribute("manifest:algorithm-name").as_string();
+      lookupAlgorithmTypes(algorithmName, entry.algorithm);
+      entry.initialisationVector =
+          algorithm.attribute("manifest:initialisation-vector").as_string();
+    }
 
-        { // key derivation
-          const tinyxml2::XMLElement *key =
-              crypto->FirstChildElement("manifest:key-derivation");
-          const std::string keyDerivationName =
-              key->FindAttribute("manifest:key-derivation-name")->Value();
-          lookupKeyDerivationTypes(keyDerivationName, entry.keyDerivation);
-          entry.keySize = key->Unsigned64Attribute("manifest:key-size", 16);
-          entry.keyIterationCount =
-              key->FindAttribute("manifest:iteration-count")->UnsignedValue();
-          entry.keySalt = key->FindAttribute("manifest:salt")->Value();
-        }
+    { // key derivation
+      const pugi::xml_node key =
+          crypto.child("manifest:key-derivation");
+      const std::string keyDerivationName =
+          key.attribute("manifest:key-derivation-name").as_string();
+      lookupKeyDerivationTypes(keyDerivationName, entry.keyDerivation);
+      entry.keySize = key.attribute("manifest:key-size").as_uint(16);
+      entry.keyIterationCount =
+          key.attribute("manifest:iteration-count").as_uint();
+      entry.keySalt = key.attribute("manifest:salt").as_string();
+    }
 
-        { // start key generation
-          const tinyxml2::XMLElement *start =
-              crypto->FirstChildElement("manifest:start-key-generation");
-          if (start != nullptr) {
-            const std::string startKeyGenerationName =
-                start->FindAttribute("manifest:start-key-generation-name")
-                    ->Value();
-            lookupStartKeyTypes(startKeyGenerationName,
-                                entry.startKeyGeneration);
-            entry.startKeySize =
-                start->FindAttribute("manifest:key-size")->UnsignedValue();
-          } else {
-            entry.startKeyGeneration = ChecksumType::SHA1;
-            entry.startKeySize = 20;
-          }
-        }
+    { // start key generation
+      const pugi::xml_node start =
+          crypto.child("manifest:start-key-generation");
+      if (start) {
+        const std::string startKeyGenerationName =
+            start.attribute("manifest:start-key-generation-name").as_string();
+        lookupStartKeyTypes(startKeyGenerationName,
+                            entry.startKeyGeneration);
+        entry.startKeySize =
+            start.attribute("manifest:key-size").as_uint();
+      } else {
+        entry.startKeyGeneration = ChecksumType::SHA1;
+        entry.startKeySize = 20;
+      }
+    }
 
-        entry.checksum = crypto::Util::base64Decode(entry.checksum);
-        entry.initialisationVector =
-            crypto::Util::base64Decode(entry.initialisationVector);
-        entry.keySalt = crypto::Util::base64Decode(entry.keySalt);
+    entry.checksum = crypto::Util::base64Decode(entry.checksum);
+    entry.initialisationVector =
+        crypto::Util::base64Decode(entry.initialisationVector);
+    entry.keySalt = crypto::Util::base64Decode(entry.keySalt);
 
-        const auto it = result.entries.emplace(path, entry).first;
-        if ((result.smallestFilePath == nullptr) ||
-            (entry.size < result.smallestFileSize)) {
-          result.smallestFileSize = entry.size;
-          result.smallestFilePath = &it->first;
-          result.smallestFileEntry = &it->second;
-        }
-      });
+    const auto it = result.entries.emplace(path, entry).first;
+    if ((result.smallestFilePath == nullptr) ||
+        (entry.size < result.smallestFileSize)) {
+      result.smallestFileSize = entry.size;
+      result.smallestFilePath = &it->first;
+      result.smallestFileEntry = &it->second;
+    }
+  }
 
   return result;
 }
