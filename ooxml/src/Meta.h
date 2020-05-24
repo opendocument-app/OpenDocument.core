@@ -30,8 +30,8 @@ namespace Meta {
 FileMeta parseFileMeta(access::ReadStorage &storage);
 
 access::Path relationsPath(const access::Path &path);
-pugi::xml_document
-loadRelationships(const access::ReadStorage &storage, const access::Path &path);
+pugi::xml_document loadRelationships(const access::ReadStorage &storage,
+                                     const access::Path &path);
 std::unordered_map<std::string, std::string>
 parseRelationships(const pugi::xml_document &relations);
 std::unordered_map<std::string, std::string>

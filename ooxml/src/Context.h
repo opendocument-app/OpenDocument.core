@@ -33,8 +33,8 @@ struct Context {
 
   std::unordered_map<std::string, std::list<std::string>> styleDependencies;
   std::unordered_map<std::string, std::string> relations;
-  pugi::xml_document sharedStringsDocument; // xlsx
-  std::vector<pugi::xml_node> sharedStrings;      // xlsx
+  pugi::xml_document sharedStringsDocument;  // xlsx
+  std::vector<pugi::xml_node> sharedStrings; // xlsx
 
   std::uint32_t entry{0};
   common::TableRange tableRange;
