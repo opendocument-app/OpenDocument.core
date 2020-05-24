@@ -102,7 +102,6 @@ void CellXfsTranslator(const pugi::xml_node &in, std::ostream &out,
     if (const auto applyAlignment = e.attribute("applyAlignment"); applyAlignment != nullptr &&
         (std::strcmp(applyAlignment.as_string(), "true") == 0 ||
          std::strcmp(applyAlignment.as_string(), "1") == 0)) {
-      const auto *alignment = e.FirstChildElement("alignment");
       out << "text-align: " << e.child("alignment").attribute("horizontal").as_string()
           << ";";
       // TODO vertical alignment
@@ -285,7 +284,7 @@ void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
       const auto sharedStringIndex = in.child("v").text().as_int(-1);
       if (sharedStringIndex >= 0) {
         const pugi::xml_node &replacement =
-            *context.sharedStrings[sharedStringIndex];
+            context.sharedStrings[sharedStringIndex];
         ElementChildrenTranslator(replacement, out, context);
       } else {
         DLOG(INFO) << "undefined behaviour: shared string not found";

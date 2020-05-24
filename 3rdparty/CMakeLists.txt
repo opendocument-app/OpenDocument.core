@@ -37,7 +37,7 @@ FetchContent_Declare(
 )
 
 # cryptopp: fixes "phony targets" duplicate error during Android build
-# also disables building unit tests for glog and tinyxml
+# also disables building unit tests for glog
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 # miniz
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)

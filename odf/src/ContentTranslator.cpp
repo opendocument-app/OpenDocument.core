@@ -264,19 +264,16 @@ void TableTranslator(const pugi::xml_node &in, std::ostream &out,
 
 void TableColumnTranslator(const pugi::xml_node &in, std::ostream &out,
                            Context &context) {
-  const auto repeated =
-      in.Unsigned64Attribute("table:number-columns-repeated", 1);
-  const auto defaultCellStyleAttribute =
-      in.FindAttribute("table:default-cell-style-name");
+  const auto repeated = in.attribute("table:number-columns-repeated").as_uint(1);
+  const auto defaultCellStyleAttribute = in.attribute("table:default-cell-style-name");
   // TODO we could use span instead
   for (std::uint32_t i = 0; i < repeated; ++i) {
     if (context.tableCursor.col() >= context.tableRange.to().col())
       break;
     if (context.tableCursor.col() >= context.tableRange.from().col()) {
-      if (defaultCellStyleAttribute != nullptr) {
+      if (defaultCellStyleAttribute)
         context.defaultCellStyles[context.tableCursor.col()] =
-            defaultCellStyleAttribute->Value();
-      }
+            defaultCellStyleAttribute.as_string();
       out << "<col";
       ElementAttributeTranslator(in, out, context);
       out << ">";
@@ -287,7 +284,7 @@ void TableColumnTranslator(const pugi::xml_node &in, std::ostream &out,
 
 void TableRowTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &context) {
-  const auto repeated = in.Unsigned64Attribute("table:number-rows-repeated", 1);
+  const auto repeated = in.attribute("table:number-rows-repeated").as_uint(1);
   context.tableCursor.addRow(0); // TODO hacky
   for (std::uint32_t i = 0; i < repeated; ++i) {
     if (context.tableCursor.row() >= context.tableRange.to().row())
@@ -305,11 +302,9 @@ void TableRowTranslator(const pugi::xml_node &in, std::ostream &out,
 
 void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &context) {
-  const auto repeated =
-      in.Unsigned64Attribute("table:number-columns-repeated", 1);
-  const auto colspan =
-      in.Unsigned64Attribute("table:number-columns-spanned", 1);
-  const auto rowspan = in.Unsigned64Attribute("table:number-rows-spanned", 1);
+  const auto repeated = in.attribute("table:number-columns-repeated").as_uint(1);
+  const auto colspan = in.attribute("table:number-columns-spanned").as_uint(1);
+  const auto rowspan = in.attribute("table:number-rows-spanned").as_uint(1);
   for (std::uint32_t i = 0; i < repeated; ++i) {
     if (context.tableCursor.col() >= context.tableRange.to().col())
       break;
@@ -317,9 +312,9 @@ void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
       out << "<td";
       ElementAttributeTranslator(in, out, context);
       // TODO check for >1?
-      if (in.FindAttribute("table:number-columns-spanned") != nullptr)
+      if (in.attribute("table:number-columns-spanned"))
         out << " colspan=\"" << colspan << "\"";
-      if (in.FindAttribute("table:number-rows-spanned") != nullptr)
+      if (in.attribute("table:number-rows-spanned"))
         out << " rowspan=\"" << rowspan << "\"";
       out << ">";
       ElementChildrenTranslator(in, out, context);
@@ -331,12 +326,12 @@ void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
 
 void DrawLineTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &context) {
-  const auto x1 = in.FindAttribute("svg:x1");
-  const auto y1 = in.FindAttribute("svg:y1");
-  const auto x2 = in.FindAttribute("svg:x2");
-  const auto y2 = in.FindAttribute("svg:y2");
+  const auto x1 = in.attribute("svg:x1");
+  const auto y1 = in.attribute("svg:y1");
+  const auto x2 = in.attribute("svg:x2");
+  const auto y2 = in.attribute("svg:y2");
 
-  if ((x1 == nullptr) || (y1 == nullptr) || (x2 == nullptr) || (y2 == nullptr))
+  if (!x1 || !y1 || !x2 || !y2)
     return;
 
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" style="z-index:-1;position:absolute;top:0;left:0;")";
@@ -346,10 +341,10 @@ void DrawLineTranslator(const pugi::xml_node &in, std::ostream &out,
 
   out << "<line";
 
-  out << " x1=\"" << x1->Value() << "\"";
-  out << " y1=\"" << y1->Value() << "\"";
-  out << " x2=\"" << x2->Value() << "\"";
-  out << " y2=\"" << y2->Value() << "\"";
+  out << " x1=\"" << x1.as_string() << "\"";
+  out << " y1=\"" << y1.as_string() << "\"";
+  out << " x2=\"" << x2.as_string() << "\"";
+  out << " y2=\"" << y2.as_string() << "\"";
   out << " />";
 
   out << "</svg>";
@@ -359,20 +354,20 @@ void DrawRectTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &context) {
   out << "<div style=\"";
 
-  const auto width = in.FindAttribute("svg:width");
-  const auto height = in.FindAttribute("svg:height");
-  const auto x = in.FindAttribute("svg:x");
-  const auto y = in.FindAttribute("svg:y");
+  const auto width = in.attribute("svg:width");
+  const auto height = in.attribute("svg:height");
+  const auto x = in.attribute("svg:x");
+  const auto y = in.attribute("svg:y");
 
   out << "position:absolute;";
-  if (width != nullptr)
-    out << "width:" << width->Value() << ";";
-  if (height != nullptr)
-    out << "height:" << height->Value() << ";";
-  if (x != nullptr)
-    out << "left:" << x->Value() << ";";
-  if (y != nullptr)
-    out << "top:" << y->Value() << ";";
+  if (width)
+    out << "width:" << width.as_string() << ";";
+  if (height)
+    out << "height:" << height.as_string() << ";";
+  if (x)
+    out << "left:" << x.as_string() << ";";
+  if (y)
+    out << "top:" << y.as_string() << ";";
   out << "\"";
 
   ElementAttributeTranslator(in, out, context);
@@ -386,20 +381,20 @@ void DrawCircleTranslator(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
   out << "<div style=\"";
 
-  const auto width = in.FindAttribute("svg:width");
-  const auto height = in.FindAttribute("svg:height");
-  const auto x = in.FindAttribute("svg:x");
-  const auto y = in.FindAttribute("svg:y");
+  const auto width = in.attribute("svg:width");
+  const auto height = in.attribute("svg:height");
+  const auto x = in.attribute("svg:x");
+  const auto y = in.attribute("svg:y");
 
   out << "position:absolute;";
-  if (width != nullptr)
-    out << "width:" << width->Value() << ";";
-  if (height != nullptr)
-    out << "height:" << height->Value() << ";";
-  if (x != nullptr)
-    out << "left:" << x->Value() << ";";
-  if (y != nullptr)
-    out << "top:" << y->Value() << ";";
+  if (width)
+    out << "width:" << width.as_string() << ";";
+  if (height)
+    out << "height:" << height.as_string() << ";";
+  if (x)
+    out << "left:" << x.as_string() << ";";
+  if (y)
+    out << "top:" << y.as_string() << ";";
   out << "\"";
 
   ElementAttributeTranslator(in, out, context);
