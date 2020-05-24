@@ -22,8 +22,8 @@ pugi::xml_document XmlUtil::parse(std::istream &in) {
   return result;
 }
 
-pugi::xml_document
-XmlUtil::parse(const access::ReadStorage &storage, const access::Path &path) {
+pugi::xml_document XmlUtil::parse(const access::ReadStorage &storage,
+                                  const access::Path &path) {
   pugi::xml_document result;
   const auto success = result.load(*storage.read(path));
   if (!success)

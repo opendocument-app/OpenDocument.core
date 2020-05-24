@@ -17,8 +17,7 @@ namespace odr {
 namespace ooxml {
 
 namespace {
-void FontsTranslator(const pugi::xml_node &in, std::ostream &out,
-                     Context &) {
+void FontsTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   std::uint32_t i = 0;
   for (auto &&e : in.children()) {
     out << ".font-" << i << " {";
@@ -44,8 +43,7 @@ void FontsTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 }
 
-void FillsTranslator(const pugi::xml_node &in, std::ostream &out,
-                     Context &) {
+void FillsTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   std::uint32_t i = 0;
   for (auto &&e : in.children()) {
     out << ".fill-" << i << " {";
@@ -63,8 +61,7 @@ void FillsTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 }
 
-void BordersTranslator(const pugi::xml_node &in, std::ostream &out,
-                       Context &) {
+void BordersTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   std::uint32_t i = 0;
   for (auto &&e : in.children()) {
     out << ".border-" << i << " {";
@@ -84,26 +81,28 @@ void CellXfsTranslator(const pugi::xml_node &in, std::ostream &out,
     if (const auto applyFont = e.attribute("applyFont");
         applyFont && (std::strcmp(applyFont.as_string(), "true") == 0 ||
                       std::strcmp(applyFont.as_string(), "1") == 0))
-      context.styleDependencies[name].push_back(std::string("font-") +
-                                                    e.attribute("fontId").as_string());
+      context.styleDependencies[name].push_back(
+          std::string("font-") + e.attribute("fontId").as_string());
 
     if (const auto fillId = e.attribute("fillId"); fillId)
       context.styleDependencies[name].push_back(std::string("fill-") +
-                                                    fillId.as_string());
+                                                fillId.as_string());
 
-    if (const auto applyBorder = e.attribute("fillId"); applyBorder != nullptr &&
+    if (const auto applyBorder = e.attribute("fillId");
+        applyBorder != nullptr &&
         (std::strcmp(applyBorder.as_string(), "true") == 0 ||
          std::strcmp(applyBorder.as_string(), "1") == 0))
-      context.styleDependencies[name].push_back(std::string("border-") +
-                                                    e.attribute("borderId").as_string());
+      context.styleDependencies[name].push_back(
+          std::string("border-") + e.attribute("borderId").as_string());
 
     out << "." << name << " {";
 
-    if (const auto applyAlignment = e.attribute("applyAlignment"); applyAlignment != nullptr &&
+    if (const auto applyAlignment = e.attribute("applyAlignment");
+        applyAlignment != nullptr &&
         (std::strcmp(applyAlignment.as_string(), "true") == 0 ||
          std::strcmp(applyAlignment.as_string(), "1") == 0)) {
-      out << "text-align: " << e.child("alignment").attribute("horizontal").as_string()
-          << ";";
+      out << "text-align: "
+          << e.child("alignment").attribute("horizontal").as_string() << ";";
       // TODO vertical alignment
       // <alignment horizontal="left" vertical="bottom" textRotation="0"
       // wrapText="false" indent="0" shrinkToFit="false" />
@@ -169,8 +168,8 @@ void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 }
 
-void ElementAttributeTranslator(const pugi::xml_node &in,
-                                std::ostream &out, Context &context) {
+void ElementAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
+                                Context &context) {
   if (const auto s = in.attribute("s"); s) {
     const std::string name = std::string("cellxf-") + s.as_string();
     out << " class=\"";
@@ -194,8 +193,8 @@ void ElementAttributeTranslator(const pugi::xml_node &in,
   StyleAttributeTranslator(in, out, context);
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &context);
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context);
 void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
                        Context &context);
 
@@ -304,8 +303,8 @@ void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
   context.tableCursor.addCell();
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &context) {
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context) {
   for (auto &&n : in) {
     if (n.text())
       TextTranslator(n.text(), out, context);
@@ -351,8 +350,7 @@ void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
 }
 } // namespace
 
-void WorkbookTranslator::html(const pugi::xml_node &in,
-                              Context &context) {
+void WorkbookTranslator::html(const pugi::xml_node &in, Context &context) {
   ElementTranslator(in, *context.output, context);
 }
 

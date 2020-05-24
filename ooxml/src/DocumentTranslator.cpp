@@ -22,8 +22,7 @@ void AlignmentTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "text-align:" << in.attribute("w:val").as_string() << ";";
 }
 
-void FontTranslator(const pugi::xml_node &in, std::ostream &out,
-                    Context &) {
+void FontTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   const auto fontAttr = in.attribute("w:cs");
   if (!fontAttr)
     return;
@@ -39,16 +38,14 @@ void FontSizeTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "font-size:" << size << "pt;";
 }
 
-void BoldTranslator(const pugi::xml_node &in, std::ostream &out,
-                    Context &) {
+void BoldTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   const auto valAttr = in.attribute("w:val");
   if (!valAttr)
     return;
   out << "font-weight:bold;";
 }
 
-void ItalicTranslator(const pugi::xml_node &in, std::ostream &out,
-                      Context &) {
+void ItalicTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   const auto valAttr = in.attribute("w:val");
   if (!valAttr)
     return;
@@ -73,13 +70,11 @@ void StrikeThroughTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "text-decoration:line-through;";
 }
 
-void ShadowTranslator(const pugi::xml_node &, std::ostream &out,
-                      Context &) {
+void ShadowTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
   out << "text-shadow:1pt 1pt;";
 }
 
-void ColorTranslator(const pugi::xml_node &in, std::ostream &out,
-                     Context &) {
+void ColorTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   const auto valAttr = in.attribute("w:val");
   if (std::strcmp(valAttr.as_string(), "auto") == 0)
     return;
@@ -123,8 +118,8 @@ void TableCellWidthTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 }
 
-void TableCellBorderTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &) {
+void TableCellBorderTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &) {
   auto translator = [&](const char *name, const pugi::xml_node &e) {
     out << name << ":";
 
@@ -263,7 +258,8 @@ void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
                               Context &context) {
   const std::string prefix = in.name();
 
-  const pugi::xml_node style = in.child((prefix + "Pr").c_str()).child((prefix + "Style").c_str());
+  const pugi::xml_node style =
+      in.child((prefix + "Pr").c_str()).child((prefix + "Style").c_str());
   if (style) {
     *context.output << " class=\"" << style.attribute("w:val").as_string()
                     << "\"";
@@ -277,13 +273,13 @@ void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 }
 
-void ElementAttributeTranslator(const pugi::xml_node &in,
-                                std::ostream &out, Context &context) {
+void ElementAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
+                                Context &context) {
   StyleAttributeTranslator(in, out, context);
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &context);
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context);
 void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
                        Context &context);
 
@@ -296,8 +292,7 @@ void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
   const pugi::xml_node num = in.child("w:pPr").child("w:numPr");
   int listingLevel;
   if (num) {
-    listingLevel =
-        num.child("w:ilvl").attribute("w:val").as_int();
+    listingLevel = num.child("w:ilvl").attribute("w:val").as_int();
     for (int i = 0; i <= listingLevel; ++i)
       out << "<ul>";
     out << "<li>";
@@ -422,8 +417,8 @@ void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "></img>";
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &context) {
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context) {
   for (auto &&n : in) {
     if (n.text())
       TextTranslator(n.text(), out, context);
@@ -477,8 +472,7 @@ void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
 }
 } // namespace
 
-void DocumentTranslator::html(const pugi::xml_node &in,
-                              Context &context) {
+void DocumentTranslator::html(const pugi::xml_node &in, Context &context) {
   ElementTranslator(in, *context.output, context);
 }
 

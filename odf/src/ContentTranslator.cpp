@@ -71,7 +71,8 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
       out << " ";
     }
   }
-  if (const auto valueTypeAttr = in.attribute("office:value-type"); valueTypeAttr) {
+  if (const auto valueTypeAttr = in.attribute("office:value-type");
+      valueTypeAttr) {
     out << "odr-value-type-" << valueTypeAttr.as_string() << " ";
   }
 
@@ -88,13 +89,13 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "\"";
 }
 
-void ElementAttributeTranslator(const pugi::xml_node &in,
-                                std::ostream &out, Context &context) {
+void ElementAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
+                                Context &context) {
   StyleClassTranslator(in, out, context);
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &context);
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context);
 void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
                        Context &context);
 
@@ -112,8 +113,7 @@ void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "</p>";
 }
 
-void SpaceTranslator(const pugi::xml_node &in, std::ostream &out,
-                     Context &) {
+void SpaceTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   const auto count = in.attribute("text:c").as_uint(1);
   if (count <= 0) {
     return;
@@ -129,8 +129,7 @@ void TabTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
   out << "<span class=\"odr-whitespace\">&emsp;</span>";
 }
 
-void LineBreakTranslator(const pugi::xml_node &, std::ostream &out,
-                         Context &) {
+void LineBreakTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
   out << "<br>";
 }
 
@@ -264,8 +263,10 @@ void TableTranslator(const pugi::xml_node &in, std::ostream &out,
 
 void TableColumnTranslator(const pugi::xml_node &in, std::ostream &out,
                            Context &context) {
-  const auto repeated = in.attribute("table:number-columns-repeated").as_uint(1);
-  const auto defaultCellStyleAttribute = in.attribute("table:default-cell-style-name");
+  const auto repeated =
+      in.attribute("table:number-columns-repeated").as_uint(1);
+  const auto defaultCellStyleAttribute =
+      in.attribute("table:default-cell-style-name");
   // TODO we could use span instead
   for (std::uint32_t i = 0; i < repeated; ++i) {
     if (context.tableCursor.col() >= context.tableRange.to().col())
@@ -302,7 +303,8 @@ void TableRowTranslator(const pugi::xml_node &in, std::ostream &out,
 
 void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &context) {
-  const auto repeated = in.attribute("table:number-columns-repeated").as_uint(1);
+  const auto repeated =
+      in.attribute("table:number-columns-repeated").as_uint(1);
   const auto colspan = in.attribute("table:number-columns-spanned").as_uint(1);
   const auto rowspan = in.attribute("table:number-rows-spanned").as_uint(1);
   for (std::uint32_t i = 0; i < repeated; ++i) {
@@ -404,8 +406,8 @@ void DrawCircleTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "</div>";
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &context) {
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context) {
   for (auto &&n : in) {
     if (n.text())
       TextTranslator(n.text(), out, context);

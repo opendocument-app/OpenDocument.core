@@ -100,9 +100,8 @@ bool lookupStartKeyTypes(const std::string &checksum,
       STARTKEY_TYPES, checksum, checksumType, Meta::ChecksumType::UNKNOWN);
 }
 
-void estimateTableDimensions(const pugi::xml_node &table,
-                             std::uint32_t &rows, std::uint32_t &cols,
-                             const std::uint32_t limitRows,
+void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
+                             std::uint32_t &cols, const std::uint32_t limitRows,
                              const std::uint32_t limitCols) {
   rows = 0;
   cols = 0;
@@ -120,15 +119,13 @@ void estimateTableDimensions(const pugi::xml_node &table,
           e.attribute("table:number-columns-repeated").as_uint(1);
       const auto colspan =
           e.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan =
-          e.attribute("table:number-rows-spanned").as_uint(1);
+      const auto rowspan = e.attribute("table:number-rows-spanned").as_uint(1);
       tl.addCell(colspan, rowspan, repeated);
 
       const auto newRows = tl.row();
       const auto newCols = std::max(cols, tl.col());
-      if (e.first_child() &&
-          (((limitRows != 0) && (newRows < limitRows)) &&
-           ((limitCols != 0) && (newCols < limitCols)))) {
+      if (e.first_child() && (((limitRows != 0) && (newRows < limitRows)) &&
+                              ((limitCols != 0) && (newCols < limitCols)))) {
         rows = newRows;
         cols = newCols;
       }
@@ -155,8 +152,7 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
     for (auto &&e : manifest.select_nodes("//manifest:file-entry")) {
       const access::Path path =
           e.node().attribute("manifest:full-path").as_string();
-      if (path.root() &&
-          e.node().attribute("manifest:media-type")) {
+      if (path.root() && e.node().attribute("manifest:media-type")) {
         const std::string mimeType =
             e.node().attribute("manifest:media-type").as_string();
         lookupFileType(mimeType, result.type);
@@ -171,12 +167,13 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
     if (storage.isFile("meta.xml")) {
       const auto metaXml = common::XmlUtil::parse(storage, "meta.xml");
 
-      const pugi::xml_node statistics = metaXml.child("office:document-meta").child("office:meta").child("meta:document-statistic");
+      const pugi::xml_node statistics = metaXml.child("office:document-meta")
+                                            .child("office:meta")
+                                            .child("meta:document-statistic");
       if (statistics) {
         switch (result.type) {
         case FileType::OPENDOCUMENT_TEXT: {
-          const auto pageCount =
-              statistics.attribute("meta:page-count");
+          const auto pageCount = statistics.attribute("meta:page-count");
           if (!pageCount)
             break;
           result.entryCount = pageCount.as_uint();
@@ -185,8 +182,7 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
           result.entryCount = 0;
         } break;
         case FileType::OPENDOCUMENT_SPREADSHEET: {
-          const auto tableCount =
-              statistics.attribute("meta:table-count");
+          const auto tableCount = statistics.attribute("meta:table-count");
           if (!tableCount)
             break;
           result.entryCount = tableCount.as_uint();
@@ -201,7 +197,8 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
 
     // TODO dont load content twice (happens in case of translation)
     const auto contentXml = common::XmlUtil::parse(storage, "content.xml");
-    const auto body = contentXml.child("office:document-content").child("office:body");
+    const auto body =
+        contentXml.child("office:document-content").child("office:body");
     if (!body)
       throw NoOpenDocumentFileException();
 
@@ -223,8 +220,8 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
         FileMeta::Entry entry;
         entry.name = e.node().attribute("table:name").as_string();
         // TODO configuration
-        estimateTableDimensions(e.node(), entry.rowCount, entry.columnCount, 10000,
-                                500);
+        estimateTableDimensions(e.node(), entry.rowCount, entry.columnCount,
+                                10000, 500);
         result.entries.emplace_back(entry);
       }
     } break;
@@ -250,8 +247,7 @@ Meta::Manifest Meta::parseManifest(const pugi::xml_document &manifest) {
   for (auto &&e : manifest.select_nodes("manifest:file-entry")) {
     const access::Path path =
         e.node().attribute("manifest:full-path").as_string();
-    const pugi::xml_node crypto =
-        e.node().child("manifest:encryption-data");
+    const pugi::xml_node crypto = e.node().child("manifest:encryption-data");
     if (!crypto)
       continue;
     result.encrypted = true;
@@ -267,8 +263,7 @@ Meta::Manifest Meta::parseManifest(const pugi::xml_document &manifest) {
     }
 
     { // encryption algorithm
-      const pugi::xml_node algorithm =
-          crypto.child("manifest:algorithm");
+      const pugi::xml_node algorithm = crypto.child("manifest:algorithm");
       const std::string algorithmName =
           algorithm.attribute("manifest:algorithm-name").as_string();
       lookupAlgorithmTypes(algorithmName, entry.algorithm);
@@ -277,8 +272,7 @@ Meta::Manifest Meta::parseManifest(const pugi::xml_document &manifest) {
     }
 
     { // key derivation
-      const pugi::xml_node key =
-          crypto.child("manifest:key-derivation");
+      const pugi::xml_node key = crypto.child("manifest:key-derivation");
       const std::string keyDerivationName =
           key.attribute("manifest:key-derivation-name").as_string();
       lookupKeyDerivationTypes(keyDerivationName, entry.keyDerivation);
@@ -294,10 +288,8 @@ Meta::Manifest Meta::parseManifest(const pugi::xml_document &manifest) {
       if (start) {
         const std::string startKeyGenerationName =
             start.attribute("manifest:start-key-generation-name").as_string();
-        lookupStartKeyTypes(startKeyGenerationName,
-                            entry.startKeyGeneration);
-        entry.startKeySize =
-            start.attribute("manifest:key-size").as_uint();
+        lookupStartKeyTypes(startKeyGenerationName, entry.startKeyGeneration);
+        entry.startKeySize = start.attribute("manifest:key-size").as_uint();
       } else {
         entry.startKeyGeneration = ChecksumType::SHA1;
         entry.startKeySize = 20;

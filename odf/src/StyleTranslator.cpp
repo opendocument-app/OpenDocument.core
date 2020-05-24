@@ -89,7 +89,8 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
   if (std::strcmp(in.name(), "style:master-page") == 0)
     name = StyleTranslator::escapeMasterStyleName(nameAttr.as_string());
 
-  if (const auto parentStyleNameAttr = in.attribute("style:parent-style-name"); parentStyleNameAttr) {
+  if (const auto parentStyleNameAttr = in.attribute("style:parent-style-name");
+      parentStyleNameAttr) {
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(parentStyleNameAttr.as_string()));
   }
@@ -99,12 +100,14 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 
   // master page
-  if (const auto pageLayoutAttr = in.attribute("style:page-layout-name"); pageLayoutAttr) {
+  if (const auto pageLayoutAttr = in.attribute("style:page-layout-name");
+      pageLayoutAttr) {
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(pageLayoutAttr.as_string()));
   }
   // master page
-  if (const auto drawStyleAttr = in.attribute("style:style-name"); drawStyleAttr) {
+  if (const auto drawStyleAttr = in.attribute("style:style-name");
+      drawStyleAttr) {
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(drawStyleAttr.as_string()));
   }
@@ -126,8 +129,7 @@ void ListStyleTranslator(const pugi::xml_node &in, std::ostream &,
   // addElementDelegation("text:list-level-style-number", propertiesTranslator);
   // addElementDelegation("text:list-level-style-bullet", propertiesTranslator);
 
-  const auto styleNameAttr =
-      in.parent().attribute("style:name");
+  const auto styleNameAttr = in.parent().attribute("style:name");
   if (styleNameAttr == nullptr) {
     LOG(WARNING) << "skipped style " << in.parent().name()
                  << ". no name attribute.";

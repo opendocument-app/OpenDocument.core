@@ -97,7 +97,9 @@ std::size_t Path::hash() const noexcept {
   return std::hash<std::string>{}(path_);
 }
 
-bool Path::root() const noexcept { return (upwards_ == 0) && (downwards_ == 0); }
+bool Path::root() const noexcept {
+  return (upwards_ == 0) && (downwards_ == 0);
+}
 
 bool Path::visible() const noexcept { return absolute_ || (upwards_ == 0); }
 

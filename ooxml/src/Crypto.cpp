@@ -67,8 +67,8 @@ ECMA376Standard::ECMA376Standard(const std::string &encryptionInfo) {
       offset, encryptionInfo.size() - (offset - encryptionInfo.data()));
 }
 
-std::string ECMA376Standard::deriveKey(const std::string &password) const
-    noexcept {
+std::string
+ECMA376Standard::deriveKey(const std::string &password) const noexcept {
   // https://msdn.microsoft.com/en-us/library/dd925430(v=office.12).aspx
 
   std::string hash;

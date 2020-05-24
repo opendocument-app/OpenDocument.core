@@ -17,8 +17,7 @@ namespace odr {
 namespace ooxml {
 
 namespace {
-void XfrmTranslator(const pugi::xml_node &in, std::ostream &out,
-                    Context &) {
+void XfrmTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   if (const auto offEle = in.child("a:off"); offEle) {
     const float xIn = offEle.attribute("x").as_float() / 914400.0f;
     const float yIn = offEle.attribute("y").as_float() / 914400.0f;
@@ -35,9 +34,8 @@ void XfrmTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 }
 
-void BorderTranslator(const std::string &property,
-                      const pugi::xml_node &in, std::ostream &out,
-                      Context &) {
+void BorderTranslator(const std::string &property, const pugi::xml_node &in,
+                      std::ostream &out, Context &) {
   const auto wAttr = in.attribute("w");
   if (!wAttr)
     return;
@@ -57,8 +55,8 @@ void BorderTranslator(const std::string &property,
   out << ";";
 }
 
-void BackgroundColorTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &) {
+void BackgroundColorTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &) {
   const auto colorEle = in.child("a:srgbClr");
   if (!colorEle)
     return;
@@ -74,8 +72,8 @@ void BackgroundColorTranslator(const pugi::xml_node &in,
   out << ";";
 }
 
-void MarginAttributesTranslator(const pugi::xml_node &in,
-                                std::ostream &out, Context &) {
+void MarginAttributesTranslator(const pugi::xml_node &in, std::ostream &out,
+                                Context &) {
   const auto marLAttr = in.attribute("marL");
   if (!marLAttr) {
     float marLIn = marLAttr.as_float() / 914400.0f;
@@ -89,8 +87,8 @@ void MarginAttributesTranslator(const pugi::xml_node &in,
   }
 }
 
-void TableCellPropertyTranslator(const pugi::xml_node &in,
-                                 std::ostream &out, Context &context) {
+void TableCellPropertyTranslator(const pugi::xml_node &in, std::ostream &out,
+                                 Context &context) {
   MarginAttributesTranslator(in, out, context);
 
   for (auto &&e : in) {
@@ -109,8 +107,8 @@ void TableCellPropertyTranslator(const pugi::xml_node &in,
   }
 }
 
-void DefaultPropertyTransaltor(const pugi::xml_node &in,
-                               std::ostream &out, Context &context) {
+void DefaultPropertyTransaltor(const pugi::xml_node &in, std::ostream &out,
+                               Context &context) {
   MarginAttributesTranslator(in, out, context);
 
   const auto szAttr = in.attribute("sz");
@@ -168,12 +166,9 @@ void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
   const auto xfrmPr = in.child("p:xfrm");
   const auto wAttr = in.attribute("w");
   const auto hAttr = in.attribute("h");
-  if ((pPr && pPr.first_child()) ||
-      (rPr && rPr.first_child()) ||
-      (spPr && spPr.first_child()) ||
-      (tcPr && tcPr.first_child()) ||
-      (endParaRPr && endParaRPr.first_child()) ||
-      xfrmPr || wAttr || hAttr) {
+  if ((pPr && pPr.first_child()) || (rPr && rPr.first_child()) ||
+      (spPr && spPr.first_child()) || (tcPr && tcPr.first_child()) ||
+      (endParaRPr && endParaRPr.first_child()) || xfrmPr || wAttr || hAttr) {
     out << " style=\"";
     if (pPr)
       DefaultPropertyTransaltor(pPr, out, context);
@@ -195,13 +190,13 @@ void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 }
 
-void ElementAttributeTranslator(const pugi::xml_node &in,
-                                std::ostream &out, Context &context) {
+void ElementAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
+                                Context &context) {
   StyleAttributeTranslator(in, out, context);
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &context);
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context);
 void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
                        Context &context);
 
@@ -312,8 +307,8 @@ void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "></img>";
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in,
-                               std::ostream &out, Context &context) {
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context) {
   for (auto &&n : in) {
     if (n.text())
       TextTranslator(n.text(), out, context);
@@ -363,8 +358,7 @@ void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
 }
 } // namespace
 
-void PresentationTranslator::html(const pugi::xml_node &in,
-                                  Context &context) {
+void PresentationTranslator::html(const pugi::xml_node &in, Context &context) {
   ElementTranslator(in, *context.output, context);
 }
 

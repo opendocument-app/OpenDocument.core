@@ -35,8 +35,7 @@ void generateStyle_(std::ofstream &out, Context &context) {
     // TODO duplication in generateContent_
     const auto ppt =
         common::XmlUtil::parse(*context.storage, "ppt/presentation.xml");
-    const auto sizeEle =
-        ppt.child("p:sldSz");
+    const auto sizeEle = ppt.child("p:sldSz");
     if (sizeEle != nullptr) {
       float widthIn = sizeEle.attribute("cx").as_float() / 914400.0f;
       float heightIn = sizeEle.attribute("cy").as_float() / 914400.0f;

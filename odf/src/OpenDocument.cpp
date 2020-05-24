@@ -28,36 +28,34 @@ void generateStyle_(std::ofstream &out, Context &context) {
   const auto stylesXml = common::XmlUtil::parse(*context.storage, "styles.xml");
 
   const auto fontFaceDecls =
-      stylesXml.child("office:document-styles")
-          .child("office:font-face-decls");
+      stylesXml.child("office:document-styles").child("office:font-face-decls");
   if (fontFaceDecls)
     StyleTranslator::css(fontFaceDecls, context);
 
   const auto styles =
-      stylesXml.child("office:document-styles")
-          .child("office:styles");
+      stylesXml.child("office:document-styles").child("office:styles");
   if (styles)
     StyleTranslator::css(styles, context);
 
-  const auto automaticStyles = stylesXml.child("office:document-styles").child("office:automatic-styles");
+  const auto automaticStyles = stylesXml.child("office:document-styles")
+                                   .child("office:automatic-styles");
   if (automaticStyles)
     StyleTranslator::css(automaticStyles, context);
 
-  const auto masterStyles = stylesXml.child("office:document-styles").child("office:master-styles");
+  const auto masterStyles =
+      stylesXml.child("office:document-styles").child("office:master-styles");
   if (masterStyles)
     StyleTranslator::css(masterStyles, context);
 }
 
 void generateContentStyle_(const pugi::xml_node &in, Context &context) {
   const auto fontFaceDecls =
-      in.child("office:document-content")
-          .child("office:font-face-decls");
+      in.child("office:document-content").child("office:font-face-decls");
   if (fontFaceDecls)
     StyleTranslator::css(fontFaceDecls, context);
 
   const auto automaticStyles =
-      in.child("office:document-content")
-          .child("office:automatic-styles");
+      in.child("office:document-content").child("office:automatic-styles");
   if (automaticStyles)
     StyleTranslator::css(automaticStyles, context);
 }
@@ -67,7 +65,8 @@ void generateScript_(std::ofstream &out, Context &) {
 }
 
 void generateContent_(const pugi::xml_node &in, Context &context) {
-  const pugi::xml_node body = in.child("office:document-content").child("office:body");
+  const pugi::xml_node body =
+      in.child("office:document-content").child("office:body");
 
   pugi::xml_node content;
   std::string entryName;
@@ -97,8 +96,7 @@ void generateContent_(const pugi::xml_node &in, Context &context) {
         return;
       if ((i >= context.config->entryOffset) &&
           ((context.config->entryCount == 0) ||
-           (i <
-            context.config->entryOffset + context.config->entryCount))) {
+           (i < context.config->entryOffset + context.config->entryCount))) {
         ContentTranslator::html(e, context);
       } else {
         ++context.entry; // TODO hacky
@@ -212,7 +210,8 @@ public:
         // TODO dirty const off-cast
         if (it == context_.textTranslation.end())
           continue;
-        const_cast<pugi::xml_text *>(it->second)->set(i.value().get<std::string>().c_str());
+        const_cast<pugi::xml_text *>(it->second)
+            ->set(i.value().get<std::string>().c_str());
       }
     }
 

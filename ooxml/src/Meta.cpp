@@ -68,9 +68,8 @@ access::Path Meta::relationsPath(const access::Path &path) {
   return path.parent().join("_rels").join(path.basename() + ".rels");
 }
 
-pugi::xml_document
-Meta::loadRelationships(const access::ReadStorage &storage,
-                        const access::Path &path) {
+pugi::xml_document Meta::loadRelationships(const access::ReadStorage &storage,
+                                           const access::Path &path) {
   return common::XmlUtil::parse(storage, relationsPath(path));
 }
 
