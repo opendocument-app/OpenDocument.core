@@ -26,10 +26,6 @@ def main():
       cmd.append(password)
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if result.returncode != 0 or not os.path.isfile(outhtml):
-      try:
-        os.remove(outimage)
-      except OSError:
-        pass
       failed.append(infile)
       print('ERROR')
       print(result.stdout.decode('utf-8'))
