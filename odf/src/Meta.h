@@ -34,26 +34,26 @@ enum class KeyDerivationType { UNKNOWN, PBKDF2 };
 
 struct Manifest {
   struct Entry {
-    std::size_t size;
+    std::size_t size{0};
 
-    ChecksumType checksumType = ChecksumType::UNKNOWN;
+    ChecksumType checksumType{ChecksumType::UNKNOWN};
     std::string checksum;
-    AlgorithmType algorithm = AlgorithmType::UNKNOWN;
-    std::string initialisationVector;
-    KeyDerivationType keyDerivation = KeyDerivationType::UNKNOWN;
-    std::uint64_t keySize;
-    std::uint64_t keyIterationCount;
-    std::string keySalt;
-    ChecksumType startKeyGeneration = ChecksumType::UNKNOWN;
-    std::uint64_t startKeySize;
+    AlgorithmType algorithm{AlgorithmType::UNKNOWN};
+    std::string initialisationVector{0};
+    KeyDerivationType keyDerivation{KeyDerivationType::UNKNOWN};
+    std::uint64_t keySize{0};
+    std::uint64_t keyIterationCount{0};
+    std::string keySalt{0};
+    ChecksumType startKeyGeneration{ChecksumType::UNKNOWN};
+    std::uint64_t startKeySize{0};
   };
 
-  bool encrypted;
+  bool encrypted{false};
   std::unordered_map<access::Path, Entry> entries;
 
-  std::uint64_t smallestFileSize;
-  const access::Path *smallestFilePath;
-  const Entry *smallestFileEntry;
+  std::uint64_t smallestFileSize{0};
+  const access::Path *smallestFilePath{nullptr};
+  const Entry *smallestFileEntry{nullptr};
 };
 
 FileMeta parseFileMeta(const access::ReadStorage &storage, bool decrypted);
