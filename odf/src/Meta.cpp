@@ -246,8 +246,7 @@ Meta::Manifest Meta::parseManifest(const pugi::xml_document &manifest) {
 
   manifest.print(std::cout);
   for (auto &&e : manifest.child("manifest:manifest").children()) {
-    const access::Path path =
-        e.attribute("manifest:full-path").as_string();
+    const access::Path path = e.attribute("manifest:full-path").as_string();
     const pugi::xml_node crypto = e.child("manifest:encryption-data");
     if (!crypto)
       continue;
