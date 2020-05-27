@@ -78,7 +78,8 @@ Meta::parseRelationships(const pugi::xml_document &rels) {
 std::unordered_map<std::string, std::string>
 Meta::parseRelationships(const access::ReadStorage &storage,
                          const access::Path &path) {
-  const auto relPath = path.parent().join("_rels").join(path.basename() + ".rels");
+  const auto relPath =
+      path.parent().join("_rels").join(path.basename() + ".rels");
   if (!storage.isFile(relPath))
     return {};
 
