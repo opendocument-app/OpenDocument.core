@@ -5,7 +5,6 @@ pipeline {
         stage('Build') {
             steps {
                 cmakeBuild
-                    buildType: 'Release',
                     generator: 'Ninja',
                     installation: 'InSearchPath',
                     steps: [
