@@ -9,12 +9,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                echo 'Testing..'
-            }
-        }
-        stage('Deploy') {
-            steps {
-                echo 'Deploying....'
+                sh 'test/odr_test'
             }
         }
     }
