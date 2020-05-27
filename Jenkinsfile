@@ -4,13 +4,7 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                cmakeBuild
-                    installation: 'InSearchPath',
-                    buildType: 'Release',
-                    generator: 'Ninja',
-                    buildDir: 'build',
-                    cleanBuild: true,
-                    steps: [[args: 'all']]
+                cmakeBuild installation: 'InSearchPath', buildType: 'Release', generator: 'Ninja', buildDir: 'build', cleanBuild: true, steps: [[args: 'all']]
             }
         }
         stage('Test') {
