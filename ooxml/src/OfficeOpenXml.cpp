@@ -107,9 +107,9 @@ void generateContent_(Context &context) {
         Meta::parseRelationships(*context.storage, "xl/workbook.xml");
 
     // TODO this breaks back translation
-    context.sharedStringsDocument =
-        common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
-    if (context.sharedStringsDocument) {
+    if (context.storage->isFile("xl/sharedStrings.xml")) {
+      context.sharedStringsDocument =
+          common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
       for (auto &&e : context.sharedStringsDocument.select_nodes("//si")) {
         context.sharedStrings.push_back(e.node());
       }

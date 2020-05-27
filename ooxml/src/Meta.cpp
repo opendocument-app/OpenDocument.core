@@ -64,15 +64,6 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
   return result;
 }
 
-access::Path Meta::relationsPath(const access::Path &path) {
-  return path.parent().join("_rels").join(path.basename() + ".rels");
-}
-
-pugi::xml_document Meta::loadRelationships(const access::ReadStorage &storage,
-                                           const access::Path &path) {
-  return common::XmlUtil::parse(storage, relationsPath(path));
-}
-
 std::unordered_map<std::string, std::string>
 Meta::parseRelationships(const pugi::xml_document &rels) {
   std::unordered_map<std::string, std::string> result;
@@ -87,9 +78,11 @@ Meta::parseRelationships(const pugi::xml_document &rels) {
 std::unordered_map<std::string, std::string>
 Meta::parseRelationships(const access::ReadStorage &storage,
                          const access::Path &path) {
-  const auto relationships = loadRelationships(storage, path);
-  if (!relationships)
+  const auto relPath = path.parent().join("_rels").join(path.basename() + ".rels");
+  if (!storage.isFile(relPath))
     return {};
+
+  const auto relationships = common::XmlUtil::parse(storage, relPath);
   return parseRelationships(relationships);
 }
 
