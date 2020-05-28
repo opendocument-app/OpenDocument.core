@@ -22,5 +22,5 @@ jobs:
 
       - name: clang-tidy
         run: |
-          FILES=$( find . -path ./build -prune -o -type f \( -iname \*.h -o -iname \*.cpp \) )
-          clang-tidy -p build -header-filter '.*' $FILES
+          FILES=$( find . -path ./build -prune -o -type f \( -iname \*.cpp \) )
+          clang-tidy -p build -header-filter '.*' $FILES --warnings-as-errors='*'
