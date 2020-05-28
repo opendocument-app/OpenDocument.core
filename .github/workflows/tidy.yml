@@ -14,7 +14,13 @@ jobs:
 
       - run: clang-tidy --version
 
+      - name: cmake
+        run: |
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+
       - name: clang-tidy
         run: |
-          FILES=$( find . -type f \( -iname \*.h -o -iname \*.cpp \) )
-          clang-tidy $FILES
+          FILES=$( find . -path ./build -prune -o -type f \( -iname \*.h -o -iname \*.cpp \) )
+          clang-tidy -p build -header-filter '.*' $FILES
