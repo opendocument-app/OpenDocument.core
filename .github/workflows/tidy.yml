@@ -1,0 +1,18 @@
+name: tidy
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - run: clang-tidy --version
+
+      - name: clang-tidy
+        run: |
+          FILES=$( find . -type f \( -iname \*.h -o -iname \*.cpp \) )
+          clang-tidy $FILES -checks=boost-*,bugprone-*,performance-*,readability-*,portability-*,modernize-*,clang-analyzer-cplusplus-*,clang-analyzer-*,cppcoreguidelines-*
