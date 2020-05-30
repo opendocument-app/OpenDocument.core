@@ -1,3 +1,12 @@
+include(FetchContent)
+
+FetchContent_Populate(
+        odr-test-data
+        GIT_REPOSITORY https://github.com/opendocument-app/OpenDocument.test.git
+        GIT_TAG 5eebbd3
+        SOURCE_DIR input/odr-test-data
+)
+
 find_package(Threads REQUIRED)
 include(GoogleTest REQUIRED)
 
@@ -9,11 +18,12 @@ add_executable(odr_test
         TableCursorTest.cpp
         TablePositionTest.cpp
         TableRangeTest.cpp
+        TranslateTest.cpp
         ZipStorageTest.cpp
         )
 target_include_directories(odr_test
         PRIVATE
-        ".."
+        ..
         )
 target_link_libraries(odr_test
         PRIVATE
@@ -22,6 +32,7 @@ target_link_libraries(odr_test
         glog
         cryptopp-static
         nlohmann_json::nlohmann_json
+        csv
         gtest_main
         gtest
 
