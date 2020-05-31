@@ -42,4 +42,5 @@ jobs:
           cmake --build . -- -j4
 
       - name: test
-        run: build/test/odr_test
+        working-directory: build/test
+        run: ./odr_test
