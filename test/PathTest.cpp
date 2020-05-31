@@ -23,5 +23,6 @@ TEST(Path, join) {
 }
 
 TEST(Path, rebase) {
-  EXPECT_EQ("image8.png", Path("./ppt/media/image8.png").rebase("ppt/media").string());
+  EXPECT_EQ("image8.png",
+            Path("./ppt/media/image8.png").rebase("ppt/media").string());
 }
