@@ -94,10 +94,10 @@ endif ()
 
 if (ODR_TEST)
     FetchContent_Populate(
-            odr-test-data
+            odr-test-public
             GIT_REPOSITORY https://github.com/opendocument-app/OpenDocument.test.git
             GIT_TAG 58b5903
-            SOURCE_DIR ../test/input/odr-test-data
+            SOURCE_DIR ../test/input/odr-test-public
     )
 
     FetchContent_GetProperties(csv-parser)
