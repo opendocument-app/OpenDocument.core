@@ -34,7 +34,8 @@ class DataDrivenTest : public testing::TestWithParam<Param> {};
 
 Param getTestParam(std::string input, std::string metaOutput,
                    std::string htmlOutput) {
-  const FileType type = FileMeta::typeByExtension(access::Path(input).extension());
+  const FileType type =
+      FileMeta::typeByExtension(access::Path(input).extension());
   const std::string outputName = fs::path(input).filename().replace_extension();
   std::string password;
   if (const auto left = outputName.find('$'), right = outputName.rfind('$');
@@ -70,8 +71,14 @@ Params getTestParams(const std::string &input, std::string metaOutput,
       const bool encrypted = !password.empty();
       const std::string outputName =
           fs::path(path).filename().replace_extension();
-      std::string metaOutputTmp = metaOutput + "/" + access::Path(row["path"].get<>()).parent().string() + "/" + outputName + ".json";
-      std::string htmlOutputTmp = htmlOutput + "/" + access::Path(row["path"].get<>()).parent().string() + "/" + outputName + ".html";
+      std::string metaOutputTmp =
+          metaOutput + "/" +
+          access::Path(row["path"].get<>()).parent().string() + "/" +
+          outputName + ".json";
+      std::string htmlOutputTmp =
+          htmlOutput + "/" +
+          access::Path(row["path"].get<>()).parent().string() + "/" +
+          outputName + ".html";
 
       result.emplace_back(path, type, encrypted, std::move(password),
                           std::move(metaOutputTmp), std::move(htmlOutputTmp));
@@ -89,9 +96,12 @@ Params getTestParams(const std::string &input, std::string metaOutput,
         it != std::end(result))
       continue;
 
-    std::string metaOutputTmp = metaOutput + "/" + access::Path(path).rebase(input).parent().string();
-    std::string htmlOutputTmp = htmlOutput + "/" + access::Path(path).rebase(input).parent().string();
-    const auto param = getTestParam(path, std::move(metaOutputTmp), std::move(htmlOutputTmp));
+    std::string metaOutputTmp =
+        metaOutput + "/" + access::Path(path).rebase(input).parent().string();
+    std::string htmlOutputTmp =
+        htmlOutput + "/" + access::Path(path).rebase(input).parent().string();
+    const auto param =
+        getTestParam(path, std::move(metaOutputTmp), std::move(htmlOutputTmp));
     if (param.type == FileType::UNKNOWN)
       continue;
     result.push_back(param);
@@ -110,9 +120,8 @@ Params getTestParams() {
     result.insert(std::end(result), std::begin(params), std::end(params));
   }
 
-  std::sort(std::begin(result), std::end(result), [](const auto &a, const auto &b) {
-    return a.input < b.input;
-  });
+  std::sort(std::begin(result), std::end(result),
+            [](const auto &a, const auto &b) { return a.input < b.input; });
 
   return result;
 }
@@ -183,4 +192,5 @@ TEST_P(DataDrivenTest, all) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(all, DataDrivenTest, testing::ValuesIn(getTestParams()));
+INSTANTIATE_TEST_CASE_P(all, DataDrivenTest,
+                        testing::ValuesIn(getTestParams()));
