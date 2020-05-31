@@ -184,12 +184,13 @@ TEST_P(DataDrivenTest, all) {
   EXPECT_TRUE(fs::is_regular_file(param.metaOutput));
   EXPECT_LT(0, fs::file_size(param.metaOutput));
 
-  if (document.translatable()) {
-    fs::create_directories(fs::path(param.htmlOutput).parent_path());
-    document.translate(param.htmlOutput, config);
-    EXPECT_TRUE(fs::is_regular_file(param.htmlOutput));
-    EXPECT_LT(0, fs::file_size(param.htmlOutput));
-  }
+  if (!document.translatable())
+    return;
+
+  fs::create_directories(fs::path(param.htmlOutput).parent_path());
+  document.translate(param.htmlOutput, config);
+  EXPECT_TRUE(fs::is_regular_file(param.htmlOutput));
+  EXPECT_LT(0, fs::file_size(param.htmlOutput));
 }
 
 INSTANTIATE_TEST_CASE_P(all, DataDrivenTest,
