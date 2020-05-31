@@ -4,19 +4,19 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        arch: [x86_64]
-        compiler: [clang]
+        config:
+          - { os: ubuntu-18.04, arch: x86_64, cc: clang, cxx: clang++}
+          - { os: macos-10.15, arch: x86_64, cc: clang, cxx: clang++}
 
     steps:
       - name: ubuntu install ccache
-        if: startsWith(matrix.os, 'ubuntu')
+        if: startsWith(matrix.config.os, 'ubuntu')
         run: sudo apt install ccache
       - name: macos install ccache
-        if: startsWith(matrix.os, 'macos')
+        if: startsWith(matrix.config.os, 'macos')
         run: brew install ccache
 
       - name: checkout
@@ -26,11 +26,12 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.ccache
-          key: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-rev2
+          key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.compiler }}-rev2
 
       - name: cmake
         env:
-          CC: ${{ matrix.compiler }}
+          CC: ${{ matrix.config.cc }}
+          CXX: ${{ matrix.config.cxx }}
         run: |
           mkdir -p build
           cd build
