@@ -1,12 +1,3 @@
-include(FetchContent)
-
-FetchContent_Populate(
-        odr-test-data
-        GIT_REPOSITORY https://github.com/opendocument-app/OpenDocument.test.git
-        GIT_TAG 5eebbd3
-        SOURCE_DIR input/odr-test-data
-)
-
 find_package(Threads REQUIRED)
 include(GoogleTest REQUIRED)
 
@@ -18,7 +9,7 @@ add_executable(odr_test
         TableCursorTest.cpp
         TablePositionTest.cpp
         TableRangeTest.cpp
-        TranslateTest.cpp
+        DataDrivenTests.cpp
         ZipStorageTest.cpp
         )
 target_include_directories(odr_test
