@@ -12,8 +12,11 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
         glog
-        GIT_REPOSITORY https://github.com/google/glog.git
-        GIT_TAG v0.4.0
+        #GIT_REPOSITORY https://github.com/google/glog.git
+        #GIT_TAG v0.4.0
+        # TODO quick fix
+        GIT_REPOSITORY https://github.com/TomTasche/glog.git
+        GIT_TAG 9aed7a1
 )
 FetchContent_Declare(
         cryptopp_cmake
