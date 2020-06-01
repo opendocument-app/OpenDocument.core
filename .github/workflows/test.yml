@@ -22,7 +22,7 @@ jobs:
       - name: checkout test data
         uses: actions/checkout@v2
         with:
-          repository: opendocument-app/OpenDocument.test
+          repository: opendocument-app/OpenDocument.test-private
           token: ${{ secrets.ACCESS_TOKEN }}
           path: test
 
