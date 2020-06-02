@@ -2,12 +2,17 @@ include(FetchContent)
 
 FetchContent_Declare(
         tinyxml2
+        #GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
+        #GIT_TAG 8.0.0
+        # TODO quick fix
         GIT_REPOSITORY https://github.com/andiwand/tinyxml2.git
         GIT_TAG f4e1f46
 )
 FetchContent_Declare(
         miniz
         GIT_REPOSITORY https://github.com/richgel999/miniz.git
+        #GIT_TAG 2.1.0
+        # TODO switch to upcoming release
         GIT_TAG 4159f8c
 )
 FetchContent_Declare(
@@ -21,12 +26,16 @@ FetchContent_Declare(
 FetchContent_Declare(
         cryptopp_cmake
         GIT_REPOSITORY https://github.com/noloader/cryptopp-cmake.git
-        GIT_TAG CRYPTOPP_8_2_0
+        #GIT_TAG CRYPTOPP_8_2_0
+        # TODO switch to upcoming release
+        GIT_TAG 85941c6
 )
 FetchContent_Declare(
         cryptopp
         GIT_REPOSITORY https://github.com/weidai11/cryptopp.git
-        GIT_TAG CRYPTOPP_8_2_0
+        #GIT_TAG CRYPTOPP_8_2_0
+        # TODO switch to upcoming release
+        GIT_TAG 5d68850
 )
 FetchContent_Declare(
         json
