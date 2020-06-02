@@ -2,27 +2,39 @@ include(FetchContent)
 
 FetchContent_Declare(
         tinyxml2
+        #GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
+        #GIT_TAG 8.0.0
+        # TODO quick fix
         GIT_REPOSITORY https://github.com/andiwand/tinyxml2.git
         GIT_TAG f4e1f46
 )
 FetchContent_Declare(
         miniz
         GIT_REPOSITORY https://github.com/richgel999/miniz.git
-        GIT_TAG cd99aff
+        #GIT_TAG 2.1.0
+        # TODO switch to upcoming release
+        GIT_TAG 4159f8c
 )
 FetchContent_Declare(
         glog
+        #GIT_REPOSITORY https://github.com/google/glog.git
+        #GIT_TAG v0.4.0
+        # TODO quick fix
         GIT_REPOSITORY https://github.com/TomTasche/glog.git
         GIT_TAG 9aed7a1
 )
 FetchContent_Declare(
         cryptopp_cmake
         GIT_REPOSITORY https://github.com/noloader/cryptopp-cmake.git
+        #GIT_TAG CRYPTOPP_8_2_0
+        # TODO switch to upcoming release
         GIT_TAG 85941c6
 )
 FetchContent_Declare(
         cryptopp
-        GIT_REPOSITORY https://github.com/noloader/cryptopp.git
+        GIT_REPOSITORY https://github.com/weidai11/cryptopp.git
+        #GIT_TAG CRYPTOPP_8_2_0
+        # TODO switch to upcoming release
         GIT_TAG 5d68850
 )
 FetchContent_Declare(
@@ -38,16 +50,14 @@ FetchContent_Declare(
 
 # cryptopp: fixes "phony targets" duplicate error during Android build
 # also disables building unit tests for glog and tinyxml
-option(BUILD_TESTING "" OFF)
-set(BUILD_TESTING OFF)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 # miniz
-option(BUILD_EXAMPLES "" OFF)
-set(BUILD_EXAMPLES OFF)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 # tinyxml2
-option(BUILD_SHARED_LIBS "" OFF)
-set(BUILD_SHARED_LIBS OFF)
-option(BUILD_TESTS "" OFF)
-set(BUILD_TESTS OFF)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+# glog
+set(CMAKE_DEBUG_POSTFIX "" CACHE BOOL "" FORCE)
 
 FetchContent_GetProperties(tinyxml2)
 if (NOT tinyxml2_POPULATED)
