@@ -1,4 +1,4 @@
-name: formatting
+name: format
 
 on: [push, pull_request]
 
@@ -10,10 +10,11 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
+      - run: clang-format --version
+
       - name: apply clang-format
         run: |
           FILES=$( find . -type f \( -iname \*.h -o -iname \*.cpp \) )
-          ls -la $FILES
           clang-format --style=file -i $FILES
 
-      - run: git diff --exit-code
+      - run: git diff --exit-code --name-only

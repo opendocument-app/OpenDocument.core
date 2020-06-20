@@ -45,7 +45,9 @@ void StylePropertiesTranslator(const tinyxml2::XMLAttribute &in,
       {"style:row-height", "height"},
       {"draw:fill-color", "fill"},
       {"svg:stroke-color", "stroke"},
-      {"svg:stroke-width", "stroke-width"}};
+      {"svg:stroke-width", "stroke-width"},
+      {"text:display", "display"},
+  };
 
   const std::string property = in.Name();
   const auto it = substitution.find(property);
