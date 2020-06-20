@@ -45,7 +45,9 @@ void StylePropertiesTranslator(const pugi::xml_attribute &in,
       {"style:row-height", "height"},
       {"draw:fill-color", "fill"},
       {"svg:stroke-color", "stroke"},
-      {"svg:stroke-width", "stroke-width"}};
+      {"svg:stroke-width", "stroke-width"},
+      {"text:display", "display"},
+  };
 
   const std::string property = in.as_string();
   const auto it = substitution.find(property);

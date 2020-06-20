@@ -43,10 +43,10 @@ public:
 
   std::string basename() const noexcept;
   std::string extension() const noexcept;
-  std::string fullExtension() const noexcept;
 
   Path parent() const;
   Path join(const Path &) const;
+  Path rebase(const Path &on) const;
 
 private:
   std::string path_;

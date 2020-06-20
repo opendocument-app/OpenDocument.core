@@ -40,6 +40,8 @@ enum class FileType {
 };
 
 struct FileMeta {
+  static FileType typeByExtension(const std::string &extension) noexcept;
+
   struct Entry {
     std::string name;
     std::uint32_t rowCount{0};
@@ -48,6 +50,7 @@ struct FileMeta {
   };
 
   FileType type{FileType::UNKNOWN};
+  bool confident{false};
   bool encrypted{false};
   std::uint32_t entryCount{0};
   std::vector<Entry> entries;

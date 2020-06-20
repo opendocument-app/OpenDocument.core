@@ -137,6 +137,7 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
 FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
                              const bool decrypted) {
   FileMeta result;
+  result.confident = true;
 
   if (!storage.isFile("content.xml"))
     throw NoOpenDocumentFileException();
