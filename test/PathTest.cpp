@@ -7,6 +7,14 @@ TEST(Path, empty) { EXPECT_EQ("", Path().string()); }
 
 TEST(Path, root) { EXPECT_EQ("/", Path("/").string()); }
 
+TEST(Path, normalization) {
+  EXPECT_EQ(Path("ppt/media/image8.png"), Path("./ppt/media/image8.png"));
+  EXPECT_EQ(Path("ppt/media/image8.png"), Path("ppt/./media/image8.png"));
+  EXPECT_EQ(Path("ppt/media/image8.png"), Path("ppt/media/./image8.png"));
+  EXPECT_EQ(Path("ppt/media/image8.png"),
+            Path("././././././ppt/media/image8.png"));
+}
+
 TEST(Path, join) {
   const Path a("ppt/slides");
   const Path b("../media/image8.png");
@@ -14,10 +22,7 @@ TEST(Path, join) {
   EXPECT_EQ("ppt/media/image8.png", a.join(b).string());
 }
 
-TEST(Path, normalization) {
-  EXPECT_EQ(Path("ppt/media/image8.png"), Path("./ppt/media/image8.png"));
-  EXPECT_EQ(Path("ppt/media/image8.png"), Path("ppt/./media/image8.png"));
-  EXPECT_EQ(Path("ppt/media/image8.png"), Path("ppt/media/./image8.png"));
-  EXPECT_EQ(Path("ppt/media/image8.png"),
-            Path("././././././ppt/media/image8.png"));
+TEST(Path, rebase) {
+  EXPECT_EQ("image8.png",
+            Path("./ppt/media/image8.png").rebase("ppt/media").string());
 }

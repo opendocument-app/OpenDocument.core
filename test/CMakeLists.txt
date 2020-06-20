@@ -9,11 +9,12 @@ add_executable(odr_test
         TableCursorTest.cpp
         TablePositionTest.cpp
         TableRangeTest.cpp
+        DataDrivenTests.cpp
         ZipStorageTest.cpp
         )
 target_include_directories(odr_test
         PRIVATE
-        ".."
+        ..
         )
 target_link_libraries(odr_test
         PRIVATE
@@ -22,6 +23,7 @@ target_link_libraries(odr_test
         glog
         cryptopp-static
         nlohmann_json::nlohmann_json
+        csv
         gtest_main
         gtest
 

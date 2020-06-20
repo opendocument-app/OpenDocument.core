@@ -138,7 +138,8 @@ void estimateTableDimensions(const tinyxml2::XMLElement &table,
 
 FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
                              const bool decrypted) {
-  FileMeta result{};
+  FileMeta result;
+  result.confident = true;
 
   if (!storage.isFile("content.xml"))
     throw NoOpenDocumentFileException();

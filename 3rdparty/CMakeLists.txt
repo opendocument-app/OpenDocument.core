@@ -43,9 +43,14 @@ FetchContent_Declare(
         GIT_TAG v3.7.3
 )
 FetchContent_Declare(
+        csv-parser
+        GIT_REPOSITORY https://github.com/andiwand/csv-parser.git
+        GIT_TAG fix/cmake
+)
+FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG release-1.8.1
+        GIT_TAG release-1.10.0
 )
 
 # cryptopp: fixes "phony targets" duplicate error during Android build
@@ -96,11 +101,28 @@ if (NOT json_POPULATED)
     set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
     add_subdirectory(${json_SOURCE_DIR} ${json_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
-FetchContent_GetProperties(googletest)
-if (NOT googletest_POPULATED)
-    FetchContent_Populate(googletest)
-    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
-    set(gtest_build_tests OFF CACHE BOOL "" FORCE)
-    set(gtest_build_samples OFF CACHE BOOL "" FORCE)
-    add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR} EXCLUDE_FROM_ALL)
+
+if (ODR_TEST)
+    FetchContent_Populate(
+            odr-test-public
+            GIT_REPOSITORY https://github.com/opendocument-app/OpenDocument.test.git
+            GIT_TAG 58b5903
+            SOURCE_DIR ../test/input/odr-test-public
+    )
+
+    FetchContent_GetProperties(csv-parser)
+    if (NOT csv-parser_POPULATED)
+        FetchContent_Populate(csv-parser)
+        set(CSV_DEVELOPER FALSE CACHE BOOL "" FORCE)
+        add_subdirectory(${csv-parser_SOURCE_DIR} ${csv-parser_BINARY_DIR} EXCLUDE_FROM_ALL)
+        target_include_directories(csv PUBLIC "${csv-parser_SOURCE_DIR}/include") # TODO quick fix; pr this
+    endif ()
+    FetchContent_GetProperties(googletest)
+    if (NOT googletest_POPULATED)
+        FetchContent_Populate(googletest)
+        set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+        set(gtest_build_tests OFF CACHE BOOL "" FORCE)
+        set(gtest_build_samples OFF CACHE BOOL "" FORCE)
+        add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif ()
 endif ()
