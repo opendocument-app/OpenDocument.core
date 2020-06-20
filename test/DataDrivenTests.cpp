@@ -80,6 +80,8 @@ Params getTestParams(const std::string &input, std::string metaOutput,
           access::Path(row["path"].get<>()).parent().string() + "/" +
           outputName + ".html";
 
+      if (type == FileType::UNKNOWN)
+        continue;
       result.emplace_back(path, type, encrypted, std::move(password),
                           std::move(metaOutputTmp), std::move(htmlOutputTmp));
     }
@@ -102,6 +104,7 @@ Params getTestParams(const std::string &input, std::string metaOutput,
         htmlOutput + "/" + access::Path(path).rebase(input).parent().string();
     const auto param =
         getTestParam(path, std::move(metaOutputTmp), std::move(htmlOutputTmp));
+
     if (param.type == FileType::UNKNOWN)
       continue;
     result.push_back(param);
@@ -153,7 +156,8 @@ TEST_P(DataDrivenTest, all) {
   const auto param = GetParam();
   std::cout << param.input << std::endl;
 
-  if ((param.type == FileType::PORTABLE_DOCUMENT_FORMAT))
+  if ((param.type == FileType::ZIP) ||
+      (param.type == FileType::PORTABLE_DOCUMENT_FORMAT))
     GTEST_SKIP();
 
   odr::Config config;

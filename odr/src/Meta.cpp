@@ -40,13 +40,13 @@ FileType FileMeta::typeByExtension(const std::string &extension) noexcept {
     return FileType::ZIP;
   if (extension == "cfb")
     return FileType::COMPOUND_FILE_BINARY_FORMAT;
-  if (extension == "odt")
+  if (extension == "odt" || extension == "sxw")
     return FileType::OPENDOCUMENT_TEXT;
-  if (extension == "odp")
+  if (extension == "odp" || extension == "sxi")
     return FileType::OPENDOCUMENT_PRESENTATION;
-  if (extension == "ods")
+  if (extension == "ods" || extension == "sxc")
     return FileType::OPENDOCUMENT_SPREADSHEET;
-  if (extension == "odg")
+  if (extension == "odg" || extension == "sxd")
     return FileType::OPENDOCUMENT_GRAPHICS;
   if (extension == "docx")
     return FileType::OFFICE_OPEN_XML_DOCUMENT;
