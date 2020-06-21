@@ -79,9 +79,9 @@ void ColorTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   if (std::strcmp(valAttr.as_string(), "auto") == 0)
     return;
   if (std::strlen(valAttr.as_string()) == 6)
-    out << "color:#" << valAttr.as_string();
+    out << "color:#" << valAttr.as_string() << ";";
   else
-    out << "color:" << valAttr.as_string();
+    out << "color:" << valAttr.as_string() << ";";
 }
 
 void HighlightTranslator(const pugi::xml_node &in, std::ostream &out,
@@ -90,9 +90,9 @@ void HighlightTranslator(const pugi::xml_node &in, std::ostream &out,
   if (std::strcmp(valAttr.as_string(), "auto") == 0)
     return;
   if (std::strlen(valAttr.as_string()) == 6)
-    out << "background-color:#" << valAttr.as_string();
+    out << "background-color:#" << valAttr.as_string() << ";";
   else
-    out << "background-color:" << valAttr.as_string();
+    out << "background-color:" << valAttr.as_string() << ";";
 }
 
 void IndentationTranslator(const pugi::xml_node &in, std::ostream &out,

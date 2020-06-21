@@ -42,7 +42,7 @@ struct Context {
   std::unordered_map<std::uint32_t, std::string> defaultCellStyles;
 
   // editing
-  std::uint32_t currentTextTranslationIndex;
+  std::uint32_t currentTextTranslationIndex{0};
   std::unordered_map<std::uint32_t, const pugi::xml_text *> textTranslation;
 };
 
