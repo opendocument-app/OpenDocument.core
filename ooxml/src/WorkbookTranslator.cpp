@@ -89,9 +89,8 @@ void CellXfsTranslator(const pugi::xml_node &in, std::ostream &out,
                                                 fillId.as_string());
 
     if (const auto applyBorder = e.attribute("fillId");
-        applyBorder &&
-        (std::strcmp(applyBorder.as_string(), "true") == 0 ||
-         std::strcmp(applyBorder.as_string(), "1") == 0))
+        applyBorder && (std::strcmp(applyBorder.as_string(), "true") == 0 ||
+                        std::strcmp(applyBorder.as_string(), "1") == 0))
       context.styleDependencies[name].push_back(
           std::string("border-") + e.attribute("borderId").as_string());
 
