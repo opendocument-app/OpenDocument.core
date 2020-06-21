@@ -108,22 +108,25 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
 
   common::TableCursor tl;
 
-  for (auto &&e : table) {
-    if (std::strcmp(e.name(), "table:table-row") == 0) {
+  auto range = table.select_nodes("//self::table:table-row | //self::table:table-cell");
+  range.sort();
+  for (auto &&e : range) {
+    const auto &&n = e.node();
+    if (std::strcmp(n.name(), "table:table-row") == 0) {
       const auto repeated =
-          e.attribute("table:number-rows-repeated").as_uint(1);
+          n.attribute("table:number-rows-repeated").as_uint(1);
       tl.addRow(repeated);
-    } else if (std::strcmp(e.name(), "table:table-cell") == 0) {
+    } else if (std::strcmp(n.name(), "table:table-cell") == 0) {
       const auto repeated =
-          e.attribute("table:number-columns-repeated").as_uint(1);
+          n.attribute("table:number-columns-repeated").as_uint(1);
       const auto colspan =
-          e.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan = e.attribute("table:number-rows-spanned").as_uint(1);
+          n.attribute("table:number-columns-spanned").as_uint(1);
+      const auto rowspan = n.attribute("table:number-rows-spanned").as_uint(1);
       tl.addCell(colspan, rowspan, repeated);
 
       const auto newRows = tl.row();
       const auto newCols = std::max(cols, tl.col());
-      if (e.first_child() && (((limitRows != 0) && (newRows < limitRows)) &&
+      if (n.first_child() && (((limitRows != 0) && (newRows < limitRows)) &&
                               ((limitCols != 0) && (newCols < limitCols)))) {
         rows = newRows;
         cols = newCols;
