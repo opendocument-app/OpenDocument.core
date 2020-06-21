@@ -421,9 +421,9 @@ void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
 void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
                                Context &context) {
   for (auto &&n : in) {
-    if (n.text())
+    if (n.type() == pugi::node_pcdata)
       TextTranslator(n.text(), out, context);
-    else if (n)
+    else if (n.type() == pugi::node_element)
       ElementTranslator(n, out, context);
   }
 }

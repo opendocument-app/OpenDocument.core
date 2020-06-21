@@ -49,7 +49,7 @@ void StylePropertiesTranslator(const pugi::xml_attribute &in,
       {"text:display", "display"},
   };
 
-  const std::string property = in.as_string();
+  const std::string property = in.name();
   const auto it = substitution.find(property);
   if (it != substitution.end()) {
     out << it->second << ":" << in.as_string() << ";";
