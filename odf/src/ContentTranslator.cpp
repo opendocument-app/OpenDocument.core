@@ -64,7 +64,7 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
   out << " class=\"";
 
   // TODO this is ods specific
-  if (in.attribute("table:style-name") == nullptr) {
+  if (in.attribute("table:style-name")) {
     const auto it = context.defaultCellStyles.find(context.tableCursor.col());
     if (it != context.defaultCellStyles.end()) {
       StyleClassTranslator(it->second, out, context);
@@ -72,14 +72,13 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
     }
   }
   if (const auto valueTypeAttr = in.attribute("office:value-type");
-      valueTypeAttr) {
+      valueTypeAttr)
     out << "odr-value-type-" << valueTypeAttr.as_string() << " ";
-  }
 
   for (auto &&a : in.attributes()) {
     const std::string attribute = a.name();
     if (styleAttributes.find(attribute) == styleAttributes.end())
-      return;
+      continue;
     std::string name = StyleTranslator::escapeStyleName(a.as_string());
     if (attribute == "draw:master-page-name")
       name = StyleTranslator::escapeMasterStyleName(a.as_string());
@@ -106,18 +105,18 @@ void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
   out << ">";
 
   if (in.first_child())
-    out << "<br>";
-  else
     ElementChildrenTranslator(in, out, context);
+  else
+    out << "<br>";
 
   out << "</p>";
 }
 
 void SpaceTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   const auto count = in.attribute("text:c").as_uint(1);
-  if (count <= 0) {
+  if (count <= 0)
     return;
-  }
+
   out << "<span class=\"odr-whitespace\">";
   for (std::uint32_t i = 0; i < count; ++i) {
     out << " ";
@@ -411,7 +410,7 @@ void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
   for (auto &&n : in) {
     if (n.text())
       TextTranslator(n.text(), out, context);
-    if (n)
+    else if (n)
       ElementTranslator(n, out, context);
   }
 }
@@ -478,9 +477,8 @@ void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
       out << ">";
     }
     ElementChildrenTranslator(in, out, context);
-    if (it != substitution.end()) {
+    if (it != substitution.end())
       out << "</" << it->second << ">";
-    }
   }
 }
 } // namespace
