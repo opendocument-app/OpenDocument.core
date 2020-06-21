@@ -26,7 +26,7 @@ void XfrmTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
     out << "top:" << yIn << "in;";
   }
 
-  if (const auto extEle = in.child("a:ext"); extEle != nullptr) {
+  if (const auto extEle = in.child("a:ext"); extEle) {
     const float cxIn = extEle.attribute("cx").as_float() / 914400.0f;
     const float cyIn = extEle.attribute("cy").as_float() / 914400.0f;
     out << "width:" << cxIn << "in;";

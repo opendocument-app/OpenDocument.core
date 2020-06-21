@@ -49,7 +49,7 @@ void FillsTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
     out << ".fill-" << i << " {";
 
     if (const auto patternFill = e.child("patternFill"); patternFill) {
-      if (const auto bgColor = patternFill.child("bgColor"); bgColor != nullptr)
+      if (const auto bgColor = patternFill.child("bgColor"); bgColor)
         out << "background-color: #"
             << std::string(bgColor.attribute("rgb").as_string()).substr(2)
             << ";";
@@ -89,7 +89,7 @@ void CellXfsTranslator(const pugi::xml_node &in, std::ostream &out,
                                                 fillId.as_string());
 
     if (const auto applyBorder = e.attribute("fillId");
-        applyBorder != nullptr &&
+        applyBorder &&
         (std::strcmp(applyBorder.as_string(), "true") == 0 ||
          std::strcmp(applyBorder.as_string(), "1") == 0))
       context.styleDependencies[name].push_back(
@@ -98,7 +98,7 @@ void CellXfsTranslator(const pugi::xml_node &in, std::ostream &out,
     out << "." << name << " {";
 
     if (const auto applyAlignment = e.attribute("applyAlignment");
-        applyAlignment != nullptr &&
+        applyAlignment &&
         (std::strcmp(applyAlignment.as_string(), "true") == 0 ||
          std::strcmp(applyAlignment.as_string(), "1") == 0)) {
       out << "text-align: "
