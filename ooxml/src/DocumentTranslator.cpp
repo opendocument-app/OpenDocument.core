@@ -260,10 +260,9 @@ void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
 
   const pugi::xml_node style =
       in.child((prefix + "Pr").c_str()).child((prefix + "Style").c_str());
-  if (style) {
+  if (style)
     *context.output << " class=\"" << style.attribute("w:val").as_string()
                     << "\"";
-  }
 
   const pugi::xml_node inlineStyle = in.child((prefix + "Pr").c_str());
   if (inlineStyle && inlineStyle.first_child()) {
@@ -293,8 +292,9 @@ void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
   int listingLevel;
   if (num) {
     listingLevel = num.child("w:ilvl").attribute("w:val").as_int();
-    for (int i = 0; i <= listingLevel; ++i)
+    for (int i = 0; i <= listingLevel; ++i) {
       out << "<ul>";
+    }
     out << "<li>";
   }
 
@@ -323,8 +323,9 @@ void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
 
   if (num) {
     out << "</li>";
-    for (int i = 0; i <= listingLevel; ++i)
+    for (int i = 0; i <= listingLevel; ++i) {
       out << "</ul>";
+    }
   }
 }
 
