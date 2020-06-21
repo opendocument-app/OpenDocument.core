@@ -21,9 +21,8 @@ namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
   out << common::Html::odfDefaultStyle();
 
-  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) {
+  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET)
     out << common::Html::odfSpreadsheetDefaultStyle();
-  }
 
   const auto stylesXml = common::XmlUtil::parse(*context.storage, "styles.xml");
 

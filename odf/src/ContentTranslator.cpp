@@ -355,19 +355,14 @@ void DrawRectTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &context) {
   out << "<div style=\"";
 
-  const auto width = in.attribute("svg:width");
-  const auto height = in.attribute("svg:height");
-  const auto x = in.attribute("svg:x");
-  const auto y = in.attribute("svg:y");
-
   out << "position:absolute;";
-  if (width)
+  if (const auto width = in.attribute("svg:width"); width)
     out << "width:" << width.as_string() << ";";
-  if (height)
+  if (const auto height = in.attribute("svg:height"); height)
     out << "height:" << height.as_string() << ";";
-  if (x)
+  if (const auto x = in.attribute("svg:x"); x)
     out << "left:" << x.as_string() << ";";
-  if (y)
+  if (const auto y = in.attribute("svg:y"); y)
     out << "top:" << y.as_string() << ";";
   out << "\"";
 
@@ -382,19 +377,14 @@ void DrawCircleTranslator(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
   out << "<div style=\"";
 
-  const auto width = in.attribute("svg:width");
-  const auto height = in.attribute("svg:height");
-  const auto x = in.attribute("svg:x");
-  const auto y = in.attribute("svg:y");
-
   out << "position:absolute;";
-  if (width)
+  if (const auto width = in.attribute("svg:width"); width)
     out << "width:" << width.as_string() << ";";
-  if (height)
+  if (const auto height = in.attribute("svg:height"); height)
     out << "height:" << height.as_string() << ";";
-  if (x)
+  if (const auto x = in.attribute("svg:x"); x)
     out << "left:" << x.as_string() << ";";
-  if (y)
+  if (const auto y = in.attribute("svg:y"); y)
     out << "top:" << y.as_string() << ";";
   out << "\"";
 
