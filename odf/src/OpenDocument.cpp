@@ -93,7 +93,7 @@ void generateContent_(const pugi::xml_node &in, Context &context) {
     std::uint32_t i = 0;
     for (auto &&e : content) {
       if (e.name() != entryName)
-        return;
+        continue;
       if ((i >= context.config->entryOffset) &&
           ((context.config->entryCount == 0) ||
            (i < context.config->entryOffset + context.config->entryCount))) {
