@@ -110,12 +110,12 @@ void TableCellWidthTranslator(const pugi::xml_node &in, std::ostream &out,
                               Context &) {
   const auto widthAttr = in.attribute("w:w");
   const auto typeAttr = in.attribute("w:type");
-  if (widthAttr) {
-    float width = widthAttr.as_float();
-    if (typeAttr && std::strcmp(typeAttr.as_string(), "dxa") == 0)
-      width /= 1440.0f;
-    out << "width:" << width << "in;";
-  }
+  if (!widthAttr)
+    return;
+  float width = widthAttr.as_float();
+  if (typeAttr && std::strcmp(typeAttr.as_string(), "dxa") == 0)
+    width /= 1440.0f;
+  out << "width:" << width << "in;";
 }
 
 void TableCellBorderTranslator(const pugi::xml_node &in, std::ostream &out,
