@@ -288,7 +288,7 @@ void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
   ElementAttributeTranslator(in, out, context);
 
   const auto ref = in.child("p:blipFill").child("a:blip");
-  if (ref || ref.attribute("r:embed")) {
+  if (!ref || !ref.attribute("r:embed")) {
     out << " alt=\"Error: image path not specified";
     LOG(ERROR) << "image href not found";
   } else {
