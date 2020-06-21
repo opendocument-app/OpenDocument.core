@@ -81,7 +81,7 @@ void MarginAttributesTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 
   const auto marRAttr = in.attribute("marR");
-  if (!marRAttr) {
+  if (marRAttr) {
     float marRIn = marRAttr.as_float() / 914400.0f;
     out << "margin-right:" << marRIn << "in;";
   }
