@@ -85,9 +85,9 @@ void ColorTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   if (std::strcmp(valAttr->Value(), "auto") == 0)
     return;
   if (std::strlen(valAttr->Value()) == 6)
-    out << "color:#" << valAttr->Value();
+    out << "color:#" << valAttr->Value() << ";";
   else
-    out << "color:" << valAttr->Value();
+    out << "color:" << valAttr->Value() << ";";
 }
 
 void HighlightTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
@@ -96,9 +96,9 @@ void HighlightTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   if (std::strcmp(valAttr->Value(), "auto") == 0)
     return;
   if (std::strlen(valAttr->Value()) == 6)
-    out << "background-color:#" << valAttr->Value();
+    out << "background-color:#" << valAttr->Value() << ";";
   else
-    out << "background-color:" << valAttr->Value();
+    out << "background-color:" << valAttr->Value() << ";";
 }
 
 void IndentationTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
