@@ -108,7 +108,6 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
 
   common::TableCursor tl;
 
-  // TODO we dont need to recurse so deep
   for (auto &&e : table) {
     if (std::strcmp(e.name(), "table:table-row") == 0) {
       const auto repeated =
