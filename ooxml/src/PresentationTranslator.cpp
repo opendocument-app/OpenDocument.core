@@ -226,7 +226,7 @@ void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
 
   bool empty = true;
   for (auto &&e1 : in) {
-    for (auto &&e2 : in) {
+    for (auto &&e2 : e1) {
       if (common::StringUtil::endsWith(e1.name(), "Pr"))
         ;
       else if (std::strcmp(e1.name(), "w:r") != 0)
