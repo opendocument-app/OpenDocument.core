@@ -108,7 +108,7 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
 
   common::TableCursor tl;
 
-  auto range = table.select_nodes("//self::table:table-row | //self::table:table-cell");
+  auto range = table.select_nodes(".//self::table:table-row | .//self::table:table-cell");
   range.sort();
   for (auto &&e : range) {
     const auto &&n = e.node();
