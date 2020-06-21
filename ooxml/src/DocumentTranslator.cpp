@@ -40,14 +40,14 @@ void FontSizeTranslator(const pugi::xml_node &in, std::ostream &out,
 
 void BoldTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   const auto valAttr = in.attribute("w:val");
-  if (!valAttr)
+  if (valAttr)
     return;
   out << "font-weight:bold;";
 }
 
 void ItalicTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   const auto valAttr = in.attribute("w:val");
-  if (!valAttr)
+  if (valAttr)
     return;
   out << "font-style:italic;";
 }
@@ -193,14 +193,14 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
   std::string name = "unknown";
   if (const auto nameAttr = in.attribute("w:styleId"); nameAttr) {
-    name = nameAttr.name();
+    name = nameAttr.value();
   } else {
     LOG(WARNING) << "no name attribute " << in.name();
   }
 
   std::string type = "unknown";
   if (const auto typeAttr = in.attribute("w:type"); typeAttr) {
-    type = typeAttr.name();
+    type = typeAttr.value();
   } else {
     LOG(WARNING) << "no type attribute " << in.name();
   }
