@@ -50,7 +50,7 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
     const auto xls = common::XmlUtil::parse(storage, "xl/workbook.xml");
     result.entryCount = 0;
-    for (auto &&e : xls.select_nodes("sheet")) {
+    for (auto &&e : xls.select_nodes("//sheet")) {
       ++result.entryCount;
       FileMeta::Entry entry;
       entry.name = e.node().attribute("name").as_string();
