@@ -218,7 +218,7 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
   if (const auto pPr = in.child("w:pPr"); pPr)
     translateStyleInline(pPr, out, context);
 
-  if (const auto rPr = in.child("w:rPr"); rPr != nullptr)
+  if (const auto rPr = in.child("w:rPr"); rPr)
     translateStyleInline(rPr, out, context);
 
   out << "}\n";
@@ -344,7 +344,7 @@ void HyperlinkTranslator(const pugi::xml_node &in, std::ostream &out,
 
   if (const auto anchorAttr = in.attribute("w:anchor"); anchorAttr)
     out << " href=\"#" << anchorAttr.as_string() << R"(" target="_self")";
-  else if (const auto rIdAttr = in.attribute("r:id"); rIdAttr != nullptr)
+  else if (const auto rIdAttr = in.attribute("r:id"); rIdAttr)
     out << " href=\"" << context.relations[rIdAttr.as_string()] << "\"";
 
   ElementAttributeTranslator(in, out, context);
