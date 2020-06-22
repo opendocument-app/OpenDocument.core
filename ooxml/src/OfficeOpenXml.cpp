@@ -32,10 +32,12 @@ void generateStyle_(std::ofstream &out, Context &context) {
     DocumentTranslator::css(styles.child("w:styles"), context);
   } break;
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
+    // TODO that should go to `PresentationTranslator::css`
+
     // TODO duplication in generateContent_
     const auto ppt =
         common::XmlUtil::parse(*context.storage, "ppt/presentation.xml");
-    const auto sizeEle = ppt.child("p:sldSz");
+    const auto sizeEle = ppt.select_node("//p:sldSz").node();
     if (!sizeEle)
       break;
     const float widthIn = sizeEle.attribute("cx").as_float() / 914400.0f;
