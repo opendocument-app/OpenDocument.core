@@ -105,8 +105,7 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(pageLayoutAttr.as_string()));
   // master page
-  if (const auto drawStyleAttr = in.attribute("draw:style-name");
-      drawStyleAttr)
+  if (const auto drawStyleAttr = in.attribute("draw:style-name"); drawStyleAttr)
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(drawStyleAttr.as_string()));
 
