@@ -29,7 +29,7 @@ void generateStyle_(std::ofstream &out, Context &context) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT: {
     const auto styles =
         common::XmlUtil::parse(*context.storage, "word/styles.xml");
-    DocumentTranslator::css(styles.child("w:styles"), context);
+    DocumentTranslator::css(styles.document_element(), context);
   } break;
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     // TODO that should go to `PresentationTranslator::css`
@@ -51,7 +51,7 @@ void generateStyle_(std::ofstream &out, Context &context) {
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
     const auto styles =
         common::XmlUtil::parse(*context.storage, "xl/styles.xml");
-    WorkbookTranslator::css(styles.child("w:styles"), context);
+    WorkbookTranslator::css(styles.document_element(), context);
   } break;
   default:
     throw std::invalid_argument("file.getMeta().type");
