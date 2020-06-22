@@ -64,7 +64,7 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
   out << " class=\"";
 
   // TODO this is ods specific
-  if (in.attribute("table:style-name")) {
+  if (!in.attribute("table:style-name")) {
     const auto it = context.defaultCellStyles.find(context.tableCursor.col());
     if (it != context.defaultCellStyles.end()) {
       StyleClassTranslator(it->second, out, context);
@@ -236,7 +236,6 @@ void TableTranslator(const pugi::xml_node &in, std::ostream &out,
       {context.config->tableOffsetRows, context.config->tableOffsetCols},
       context.config->tableLimitRows,
       context.config->tableLimitCols};
-  context.tableCursor = {};
 
   // TODO remove file check; add simple table translator for odt/odp
   if ((context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) &&
@@ -247,6 +246,7 @@ void TableTranslator(const pugi::xml_node &in, std::ostream &out,
 
     context.tableRange = {context.tableRange.from(), end};
   }
+
   context.tableCursor = {};
   context.defaultCellStyles.clear();
 
