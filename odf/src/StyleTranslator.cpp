@@ -92,27 +92,23 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
     name = StyleTranslator::escapeMasterStyleName(nameAttr.as_string());
 
   if (const auto parentStyleNameAttr = in.attribute("style:parent-style-name");
-      parentStyleNameAttr) {
+      parentStyleNameAttr)
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(parentStyleNameAttr.as_string()));
-  }
-  if (const auto familyAttr = in.attribute("style:family"); familyAttr) {
+  if (const auto familyAttr = in.attribute("style:family"); familyAttr)
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(familyAttr.as_string()));
-  }
 
   // master page
   if (const auto pageLayoutAttr = in.attribute("style:page-layout-name");
-      pageLayoutAttr) {
+      pageLayoutAttr)
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(pageLayoutAttr.as_string()));
-  }
   // master page
-  if (const auto drawStyleAttr = in.attribute("style:style-name");
-      drawStyleAttr) {
+  if (const auto drawStyleAttr = in.attribute("draw:style-name");
+      drawStyleAttr)
     context.styleDependencies[name].push_back(
         StyleTranslator::escapeStyleName(drawStyleAttr.as_string()));
-  }
 
   out << "." << name << "." << name << " {";
 
