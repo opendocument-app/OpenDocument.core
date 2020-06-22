@@ -75,7 +75,7 @@ void BackgroundColorTranslator(const pugi::xml_node &in, std::ostream &out,
 void MarginAttributesTranslator(const pugi::xml_node &in, std::ostream &out,
                                 Context &) {
   const auto marLAttr = in.attribute("marL");
-  if (!marLAttr) {
+  if (marLAttr) {
     float marLIn = marLAttr.as_float() / 914400.0f;
     out << "margin-left:" << marLIn << "in;";
   }
