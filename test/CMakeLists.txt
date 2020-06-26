@@ -18,7 +18,7 @@ target_include_directories(odr_test
         )
 target_link_libraries(odr_test
         PRIVATE
-        tinyxml2
+        pugixml
         miniz
         glog
         cryptopp-static

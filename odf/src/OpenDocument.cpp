@@ -12,7 +12,7 @@
 #include <odf/OpenDocument.h>
 #include <odr/Config.h>
 #include <odr/Meta.h>
-#include <tinyxml2.h>
+#include <pugixml.hpp>
 
 namespace odr {
 namespace odf {
@@ -21,86 +21,64 @@ namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
   out << common::Html::odfDefaultStyle();
 
-  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) {
+  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET)
     out << common::Html::odfSpreadsheetDefaultStyle();
-  }
 
   const auto stylesXml = common::XmlUtil::parse(*context.storage, "styles.xml");
-  tinyxml2::XMLHandle stylesHandle(stylesXml.get());
 
-  const tinyxml2::XMLElement *fontFaceDecls =
-      stylesHandle.FirstChildElement("office:document-styles")
-          .FirstChildElement("office:font-face-decls")
-          .ToElement();
-  if (fontFaceDecls != nullptr) {
-    StyleTranslator::css(*fontFaceDecls, context);
-  }
+  const auto fontFaceDecls =
+      stylesXml.child("office:document-styles").child("office:font-face-decls");
+  if (fontFaceDecls)
+    StyleTranslator::css(fontFaceDecls, context);
 
-  const tinyxml2::XMLElement *styles =
-      stylesHandle.FirstChildElement("office:document-styles")
-          .FirstChildElement("office:styles")
-          .ToElement();
-  if (styles != nullptr) {
-    StyleTranslator::css(*styles, context);
-  }
+  const auto styles =
+      stylesXml.child("office:document-styles").child("office:styles");
+  if (styles)
+    StyleTranslator::css(styles, context);
 
-  const tinyxml2::XMLElement *automaticStyles =
-      stylesHandle.FirstChildElement("office:document-styles")
-          .FirstChildElement("office:automatic-styles")
-          .ToElement();
-  if (automaticStyles != nullptr) {
-    StyleTranslator::css(*automaticStyles, context);
-  }
+  const auto automaticStyles = stylesXml.child("office:document-styles")
+                                   .child("office:automatic-styles");
+  if (automaticStyles)
+    StyleTranslator::css(automaticStyles, context);
 
-  const tinyxml2::XMLElement *masterStyles =
-      stylesHandle.FirstChildElement("office:document-styles")
-          .FirstChildElement("office:master-styles")
-          .ToElement();
-  if (masterStyles != nullptr) {
-    StyleTranslator::css(*masterStyles, context);
-  }
+  const auto masterStyles =
+      stylesXml.child("office:document-styles").child("office:master-styles");
+  if (masterStyles)
+    StyleTranslator::css(masterStyles, context);
 }
 
-void generateContentStyle_(tinyxml2::XMLHandle &in, Context &context) {
-  const tinyxml2::XMLElement *fontFaceDecls =
-      in.FirstChildElement("office:document-content")
-          .FirstChildElement("office:font-face-decls")
-          .ToElement();
-  if (fontFaceDecls != nullptr) {
-    StyleTranslator::css(*fontFaceDecls, context);
-  }
+void generateContentStyle_(const pugi::xml_node &in, Context &context) {
+  const auto fontFaceDecls =
+      in.child("office:document-content").child("office:font-face-decls");
+  if (fontFaceDecls)
+    StyleTranslator::css(fontFaceDecls, context);
 
-  const tinyxml2::XMLElement *automaticStyles =
-      in.FirstChildElement("office:document-content")
-          .FirstChildElement("office:automatic-styles")
-          .ToElement();
-  if (automaticStyles != nullptr) {
-    StyleTranslator::css(*automaticStyles, context);
-  }
+  const auto automaticStyles =
+      in.child("office:document-content").child("office:automatic-styles");
+  if (automaticStyles)
+    StyleTranslator::css(automaticStyles, context);
 }
 
 void generateScript_(std::ofstream &out, Context &) {
   out << common::Html::defaultScript();
 }
 
-void generateContent_(tinyxml2::XMLHandle &in, Context &context) {
-  tinyxml2::XMLHandle bodyHandle =
-      in.FirstChildElement("office:document-content")
-          .FirstChildElement("office:body");
-  const tinyxml2::XMLElement *body = bodyHandle.ToElement();
+void generateContent_(const pugi::xml_node &in, Context &context) {
+  const pugi::xml_node body =
+      in.child("office:document-content").child("office:body");
 
-  tinyxml2::XMLElement *content = nullptr;
+  pugi::xml_node content;
   std::string entryName;
   switch (context.meta->type) {
   case FileType::OPENDOCUMENT_TEXT:
   case FileType::OPENDOCUMENT_GRAPHICS:
     break;
   case FileType::OPENDOCUMENT_PRESENTATION:
-    content = bodyHandle.FirstChildElement("office:presentation").ToElement();
+    content = body.child("office:presentation");
     entryName = "draw:page";
     break;
   case FileType::OPENDOCUMENT_SPREADSHEET:
-    content = bodyHandle.FirstChildElement("office:spreadsheet").ToElement();
+    content = body.child("office:spreadsheet");
     entryName = "table:table";
     break;
   default:
@@ -109,25 +87,23 @@ void generateContent_(tinyxml2::XMLHandle &in, Context &context) {
 
   context.entry = 0;
 
-  if ((content != nullptr) &&
+  if (content &&
       ((context.config->entryOffset > 0) || (context.config->entryCount > 0))) {
     std::uint32_t i = 0;
-    common::XmlUtil::visitElementChildren(
-        *content, [&](const tinyxml2::XMLElement &c) {
-          if (c.Name() != entryName)
-            return;
-          if ((i >= context.config->entryOffset) &&
-              ((context.config->entryCount == 0) ||
-               (i <
-                context.config->entryOffset + context.config->entryCount))) {
-            ContentTranslator::html(c, context);
-          } else {
-            ++context.entry; // TODO hacky
-          }
-          ++i;
-        });
+    for (auto &&e : content) {
+      if (e.name() != entryName)
+        continue;
+      if ((i >= context.config->entryOffset) &&
+          ((context.config->entryCount == 0) ||
+           (i < context.config->entryOffset + context.config->entryCount))) {
+        ContentTranslator::html(e, context);
+      } else {
+        ++context.entry; // TODO hacky
+      }
+      ++i;
+    }
   } else {
-    ContentTranslator::html(*body, context);
+    ContentTranslator::html(body, context);
   }
 }
 } // namespace
@@ -198,19 +174,18 @@ public:
     context_.output = &out;
 
     content_ = common::XmlUtil::parse(*storage_, "content.xml");
-    tinyxml2::XMLHandle contentHandle(content_.get());
 
     out << common::Html::doctype();
     out << "<html><head>";
     out << common::Html::defaultHeaders();
     out << "<style>";
     generateStyle_(out, context_);
-    generateContentStyle_(contentHandle, context_);
+    generateContentStyle_(content_, context_);
     out << "</style>";
     out << "</head>";
 
     out << "<body " << common::Html::bodyAttributes(config) << ">";
-    generateContent_(contentHandle, context_);
+    generateContent_(content_, context_);
     out << "</body>";
 
     out << "<script>";
@@ -234,8 +209,8 @@ public:
         // TODO dirty const off-cast
         if (it == context_.textTranslation.end())
           continue;
-        ((tinyxml2::XMLText *)it->second)
-            ->SetValue(i.value().get<std::string>().c_str());
+        const_cast<pugi::xml_text *>(it->second)
+            ->set(i.value().get<std::string>().c_str());
       }
     }
 
@@ -265,9 +240,7 @@ public:
       const auto in = storage_->read(p);
       const auto out = writer.write(p);
       if (p == "content.xml") {
-        tinyxml2::XMLPrinter printer(nullptr, true, 0);
-        content_->Print(&printer);
-        out->write(printer.CStr(), printer.CStrSize() - 1);
+        content_.print(*out);
         return;
       }
       access::StreamUtil::pipe(*in, *out);
@@ -290,8 +263,8 @@ private:
   bool decrypted_{false};
 
   Context context_;
-  std::unique_ptr<tinyxml2::XMLDocument> style_;
-  std::unique_ptr<tinyxml2::XMLDocument> content_;
+  pugi::xml_document style_;
+  pugi::xml_document content_;
 };
 
 OpenDocument::OpenDocument(const char *path)

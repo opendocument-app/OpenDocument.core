@@ -7,8 +7,11 @@
 #include <list>
 #include <memory>
 #include <string>
-#include <tinyxml2.h>
 #include <unordered_map>
+
+namespace pugi {
+class xml_text;
+}
 
 namespace odr {
 struct Config;
@@ -39,7 +42,7 @@ struct Context {
 
   // editing
   std::uint32_t currentTextTranslationIndex{0};
-  std::unordered_map<std::uint32_t, const tinyxml2::XMLText *> textTranslation;
+  std::unordered_map<std::uint32_t, const pugi::xml_text *> textTranslation;
 };
 
 } // namespace odf

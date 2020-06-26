@@ -1,12 +1,9 @@
 include(FetchContent)
 
 FetchContent_Declare(
-        tinyxml2
-        #GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
-        #GIT_TAG 8.0.0
-        # TODO quick fix
-        GIT_REPOSITORY https://github.com/andiwand/tinyxml2.git
-        GIT_TAG f4e1f46
+        pugixml
+        GIT_REPOSITORY https://github.com/zeux/pugixml.git
+        GIT_TAG v1.10
 )
 FetchContent_Declare(
         miniz
@@ -54,20 +51,18 @@ FetchContent_Declare(
 )
 
 # cryptopp: fixes "phony targets" duplicate error during Android build
-# also disables building unit tests for glog and tinyxml
+# also disables building unit tests for glog
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 # miniz
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-# tinyxml2
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 # glog
 set(CMAKE_DEBUG_POSTFIX "" CACHE BOOL "" FORCE)
 
-FetchContent_GetProperties(tinyxml2)
-if (NOT tinyxml2_POPULATED)
-    FetchContent_Populate(tinyxml2)
-    add_subdirectory(${tinyxml2_SOURCE_DIR} ${tinyxml2_BINARY_DIR} EXCLUDE_FROM_ALL)
+FetchContent_GetProperties(pugixml)
+if (NOT pugixml_POPULATED)
+    FetchContent_Populate(pugixml)
+    add_subdirectory(${pugixml_SOURCE_DIR} ${pugixml_BINARY_DIR} EXCLUDE_FROM_ALL)
+    set_property(TARGET pugixml PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif ()
 FetchContent_GetProperties(miniz)
 if (NOT miniz_POPULATED)

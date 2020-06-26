@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12.4)
 project(odr C CXX)
 set(CMAKE_CXX_STANDARD 17)
 
-option(ODR_TEST "enable tests" "ON")
+option(ODR_TEST "enable tests" ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -D_GLIBCXX_DEBUG")

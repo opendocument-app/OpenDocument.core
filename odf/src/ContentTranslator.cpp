@@ -4,14 +4,14 @@
 #include <access/Storage.h>
 #include <access/StreamUtil.h>
 #include <common/StringUtil.h>
-#include <common/XmlUtil.h>
 #include <crypto/CryptoUtil.h>
+#include <cstring>
 #include <glog/logging.h>
 #include <odr/Config.h>
 #include <odr/Meta.h>
+#include <pugixml.hpp>
 #include <string>
 #include <svm/Svm2Svg.h>
-#include <tinyxml2.h>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -19,9 +19,9 @@ namespace odr {
 namespace odf {
 
 namespace {
-void TextTranslator(const tinyxml2::XMLText &in, std::ostream &out,
+void TextTranslator(const pugi::xml_text &in, std::ostream &out,
                     Context &context) {
-  std::string text = in.Value();
+  std::string text = in.as_string();
   common::StringUtil::findAndReplaceAll(text, "&", "&amp;");
   common::StringUtil::findAndReplaceAll(text, "<", "&lt;");
   common::StringUtil::findAndReplaceAll(text, ">", "&gt;");
@@ -53,7 +53,7 @@ void StyleClassTranslator(const std::string &name, std::ostream &out,
   }
 }
 
-void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
   static std::unordered_set<std::string> styleAttributes{
       "text:style-name",         "table:style-name",
@@ -64,62 +64,59 @@ void StyleClassTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << " class=\"";
 
   // TODO this is ods specific
-  if (in.FindAttribute("table:style-name") == nullptr) {
+  if (!in.attribute("table:style-name")) {
     const auto it = context.defaultCellStyles.find(context.tableCursor.col());
     if (it != context.defaultCellStyles.end()) {
       StyleClassTranslator(it->second, out, context);
       out << " ";
     }
   }
-  const auto valueTypeAttr = in.FindAttribute("office:value-type");
-  if (valueTypeAttr != nullptr) {
-    out << "odr-value-type-" << valueTypeAttr->Value() << " ";
-  }
+  if (const auto valueTypeAttr = in.attribute("office:value-type");
+      valueTypeAttr)
+    out << "odr-value-type-" << valueTypeAttr.as_string() << " ";
 
-  common::XmlUtil::visitElementAttributes(
-      in, [&](const tinyxml2::XMLAttribute &a) {
-        const std::string attribute = a.Name();
-        if (styleAttributes.find(attribute) == styleAttributes.end())
-          return;
-        std::string name = StyleTranslator::escapeStyleName(a.Value());
-        if (attribute == "draw:master-page-name")
-          name = StyleTranslator::escapeMasterStyleName(a.Value());
-        StyleClassTranslator(name, out, context);
-        out << " ";
-      });
+  for (auto &&a : in.attributes()) {
+    const std::string attribute = a.name();
+    if (styleAttributes.find(attribute) == styleAttributes.end())
+      continue;
+    std::string name = StyleTranslator::escapeStyleName(a.as_string());
+    if (attribute == "draw:master-page-name")
+      name = StyleTranslator::escapeMasterStyleName(a.as_string());
+    StyleClassTranslator(name, out, context);
+    out << " ";
+  }
   out << "\"";
 }
 
-void ElementAttributeTranslator(const tinyxml2::XMLElement &in,
-                                std::ostream &out, Context &context) {
+void ElementAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
+                                Context &context) {
   StyleClassTranslator(in, out, context);
 }
 
-void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
-                               std::ostream &out, Context &context);
-void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context);
+void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
                        Context &context);
 
-void ParagraphTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &context) {
   out << "<p";
   ElementAttributeTranslator(in, out, context);
   out << ">";
 
-  if (in.FirstChild() == nullptr)
-    out << "<br>";
-  else
+  if (in.first_child())
     ElementChildrenTranslator(in, out, context);
+  else
+    out << "<br>";
 
   out << "</p>";
 }
 
-void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
-                     Context &) {
-  const auto count = in.Unsigned64Attribute("text:c", 1);
-  if (count <= 0) {
+void SpaceTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
+  const auto count = in.attribute("text:c").as_uint(1);
+  if (count <= 0)
     return;
-  }
+
   out << "<span class=\"odr-whitespace\">";
   for (std::uint32_t i = 0; i < count; ++i) {
     out << " ";
@@ -127,23 +124,21 @@ void SpaceTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</span>";
 }
 
-void TabTranslator(const tinyxml2::XMLElement &, std::ostream &out, Context &) {
+void TabTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
   out << "<span class=\"odr-whitespace\">&emsp;</span>";
 }
 
-void LineBreakTranslator(const tinyxml2::XMLElement &, std::ostream &out,
-                         Context &) {
+void LineBreakTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
   out << "<br>";
 }
 
-void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void LinkTranslator(const pugi::xml_node &in, std::ostream &out,
                     Context &context) {
   out << "<a";
-  const auto href = in.FindAttribute("xlink:href");
-  if (href != nullptr) {
-    out << " href=\"" << href->Value() << "\"";
+  if (const auto href = in.attribute("xlink:href"); href) {
+    out << " href=\"" << href.as_string() << "\"";
     // NOTE: there is a trim in java
-    if ((std::strlen(href->Value()) > 0) && (href->Value()[0] == '#')) {
+    if ((std::strlen(href.as_string()) > 0) && (href.as_string()[0] == '#')) {
       out << " target=\"_self\"";
     }
   } else {
@@ -155,12 +150,11 @@ void LinkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</a>";
 }
 
-void BookmarkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void BookmarkTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &context) {
   out << "<a";
-  const auto id = in.FindAttribute("text:name");
-  if (id != nullptr) {
-    out << " id=\"" << id->Value() << "\"";
+  if (const auto id = in.attribute("text:name"); id) {
+    out << " id=\"" << id.as_string() << "\"";
   } else {
     LOG(WARNING) << "empty bookmark";
   }
@@ -170,23 +164,18 @@ void BookmarkTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</a>";
 }
 
-void FrameTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void FrameTranslator(const pugi::xml_node &in, std::ostream &out,
                      Context &context) {
   out << "<div style=\"";
 
-  const auto width = in.FindAttribute("svg:width");
-  const auto height = in.FindAttribute("svg:height");
-  const auto x = in.FindAttribute("svg:x");
-  const auto y = in.FindAttribute("svg:y");
-
-  if (width != nullptr)
-    out << "width:" << width->Value() << ";";
-  if (height != nullptr)
-    out << "height:" << height->Value() << ";";
-  if (x != nullptr)
-    out << "left:" << x->Value() << ";";
-  if (y != nullptr)
-    out << "top:" << y->Value() << ";";
+  if (const auto widthAttr = in.attribute("svg:width"); widthAttr)
+    out << "width:" << widthAttr.as_string() << ";";
+  if (const auto heightAttr = in.attribute("svg:height"); heightAttr)
+    out << "height:" << heightAttr.as_string() << ";";
+  if (const auto xAttr = in.attribute("svg:x"); xAttr)
+    out << "left:" << xAttr.as_string() << ";";
+  if (const auto yAttr = in.attribute("svg:y"); yAttr)
+    out << "top:" << yAttr.as_string() << ";";
 
   out << "\"";
 
@@ -196,16 +185,12 @@ void FrameTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</div>";
 }
 
-void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
                      Context &context) {
   out << "<img style=\"width:100%;height:100%\"";
 
-  const auto hrefAttr = in.FindAttribute("xlink:href");
-  if (hrefAttr == nullptr) {
-    out << " alt=\"Error: image path not specified";
-    LOG(ERROR) << "image href not found";
-  } else {
-    const std::string href = hrefAttr->Value();
+  if (const auto hrefAttr = in.attribute("xlink:href"); hrefAttr) {
+    const std::string href = hrefAttr.as_string();
     out << " alt=\"Error: image not found or unsupported: " << href << "\"";
     out << " src=\"";
     try {
@@ -233,6 +218,9 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       out << href;
     }
     out << "\"";
+  } else {
+    out << " alt=\"Error: image path not specified";
+    LOG(ERROR) << "image href not found";
   }
 
   ElementAttributeTranslator(in, out, context);
@@ -242,13 +230,12 @@ void ImageTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</img>";
 }
 
-void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void TableTranslator(const pugi::xml_node &in, std::ostream &out,
                      Context &context) {
   context.tableRange = {
       {context.config->tableOffsetRows, context.config->tableOffsetCols},
       context.config->tableLimitRows,
       context.config->tableLimitCols};
-  context.tableCursor = {};
 
   // TODO remove file check; add simple table translator for odt/odp
   if ((context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) &&
@@ -259,6 +246,7 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
     context.tableRange = {context.tableRange.from(), end};
   }
+
   context.tableCursor = {};
   context.defaultCellStyles.clear();
 
@@ -272,21 +260,20 @@ void TableTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   ++context.entry;
 }
 
-void TableColumnTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void TableColumnTranslator(const pugi::xml_node &in, std::ostream &out,
                            Context &context) {
   const auto repeated =
-      in.Unsigned64Attribute("table:number-columns-repeated", 1);
+      in.attribute("table:number-columns-repeated").as_uint(1);
   const auto defaultCellStyleAttribute =
-      in.FindAttribute("table:default-cell-style-name");
+      in.attribute("table:default-cell-style-name");
   // TODO we could use span instead
   for (std::uint32_t i = 0; i < repeated; ++i) {
     if (context.tableCursor.col() >= context.tableRange.to().col())
       break;
     if (context.tableCursor.col() >= context.tableRange.from().col()) {
-      if (defaultCellStyleAttribute != nullptr) {
+      if (defaultCellStyleAttribute)
         context.defaultCellStyles[context.tableCursor.col()] =
-            defaultCellStyleAttribute->Value();
-      }
+            defaultCellStyleAttribute.as_string();
       out << "<col";
       ElementAttributeTranslator(in, out, context);
       out << ">";
@@ -295,9 +282,9 @@ void TableColumnTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   }
 }
 
-void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void TableRowTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &context) {
-  const auto repeated = in.Unsigned64Attribute("table:number-rows-repeated", 1);
+  const auto repeated = in.attribute("table:number-rows-repeated").as_uint(1);
   context.tableCursor.addRow(0); // TODO hacky
   for (std::uint32_t i = 0; i < repeated; ++i) {
     if (context.tableCursor.row() >= context.tableRange.to().row())
@@ -313,13 +300,12 @@ void TableRowTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   }
 }
 
-void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
                          Context &context) {
   const auto repeated =
-      in.Unsigned64Attribute("table:number-columns-repeated", 1);
-  const auto colspan =
-      in.Unsigned64Attribute("table:number-columns-spanned", 1);
-  const auto rowspan = in.Unsigned64Attribute("table:number-rows-spanned", 1);
+      in.attribute("table:number-columns-repeated").as_uint(1);
+  const auto colspan = in.attribute("table:number-columns-spanned").as_uint(1);
+  const auto rowspan = in.attribute("table:number-rows-spanned").as_uint(1);
   for (std::uint32_t i = 0; i < repeated; ++i) {
     if (context.tableCursor.col() >= context.tableRange.to().col())
       break;
@@ -327,9 +313,9 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       out << "<td";
       ElementAttributeTranslator(in, out, context);
       // TODO check for >1?
-      if (in.FindAttribute("table:number-columns-spanned") != nullptr)
+      if (in.attribute("table:number-columns-spanned"))
         out << " colspan=\"" << colspan << "\"";
-      if (in.FindAttribute("table:number-rows-spanned") != nullptr)
+      if (in.attribute("table:number-rows-spanned"))
         out << " rowspan=\"" << rowspan << "\"";
       out << ">";
       ElementChildrenTranslator(in, out, context);
@@ -339,14 +325,14 @@ void TableCellTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   }
 }
 
-void DrawLineTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void DrawLineTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &context) {
-  const auto x1 = in.FindAttribute("svg:x1");
-  const auto y1 = in.FindAttribute("svg:y1");
-  const auto x2 = in.FindAttribute("svg:x2");
-  const auto y2 = in.FindAttribute("svg:y2");
+  const auto x1 = in.attribute("svg:x1");
+  const auto y1 = in.attribute("svg:y1");
+  const auto x2 = in.attribute("svg:x2");
+  const auto y2 = in.attribute("svg:y2");
 
-  if ((x1 == nullptr) || (y1 == nullptr) || (x2 == nullptr) || (y2 == nullptr))
+  if (!x1 || !y1 || !x2 || !y2)
     return;
 
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" style="z-index:-1;position:absolute;top:0;left:0;")";
@@ -356,33 +342,28 @@ void DrawLineTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
 
   out << "<line";
 
-  out << " x1=\"" << x1->Value() << "\"";
-  out << " y1=\"" << y1->Value() << "\"";
-  out << " x2=\"" << x2->Value() << "\"";
-  out << " y2=\"" << y2->Value() << "\"";
+  out << " x1=\"" << x1.as_string() << "\"";
+  out << " y1=\"" << y1.as_string() << "\"";
+  out << " x2=\"" << x2.as_string() << "\"";
+  out << " y2=\"" << y2.as_string() << "\"";
   out << " />";
 
   out << "</svg>";
 }
 
-void DrawRectTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void DrawRectTranslator(const pugi::xml_node &in, std::ostream &out,
                         Context &context) {
   out << "<div style=\"";
 
-  const auto width = in.FindAttribute("svg:width");
-  const auto height = in.FindAttribute("svg:height");
-  const auto x = in.FindAttribute("svg:x");
-  const auto y = in.FindAttribute("svg:y");
-
   out << "position:absolute;";
-  if (width != nullptr)
-    out << "width:" << width->Value() << ";";
-  if (height != nullptr)
-    out << "height:" << height->Value() << ";";
-  if (x != nullptr)
-    out << "left:" << x->Value() << ";";
-  if (y != nullptr)
-    out << "top:" << y->Value() << ";";
+  if (const auto width = in.attribute("svg:width"); width)
+    out << "width:" << width.as_string() << ";";
+  if (const auto height = in.attribute("svg:height"); height)
+    out << "height:" << height.as_string() << ";";
+  if (const auto x = in.attribute("svg:x"); x)
+    out << "left:" << x.as_string() << ";";
+  if (const auto y = in.attribute("svg:y"); y)
+    out << "top:" << y.as_string() << ";";
   out << "\"";
 
   ElementAttributeTranslator(in, out, context);
@@ -392,24 +373,19 @@ void DrawRectTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</div>";
 }
 
-void DrawCircleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void DrawCircleTranslator(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
   out << "<div style=\"";
 
-  const auto width = in.FindAttribute("svg:width");
-  const auto height = in.FindAttribute("svg:height");
-  const auto x = in.FindAttribute("svg:x");
-  const auto y = in.FindAttribute("svg:y");
-
   out << "position:absolute;";
-  if (width != nullptr)
-    out << "width:" << width->Value() << ";";
-  if (height != nullptr)
-    out << "height:" << height->Value() << ";";
-  if (x != nullptr)
-    out << "left:" << x->Value() << ";";
-  if (y != nullptr)
-    out << "top:" << y->Value() << ";";
+  if (const auto width = in.attribute("svg:width"); width)
+    out << "width:" << width.as_string() << ";";
+  if (const auto height = in.attribute("svg:height"); height)
+    out << "height:" << height.as_string() << ";";
+  if (const auto x = in.attribute("svg:x"); x)
+    out << "left:" << x.as_string() << ";";
+  if (const auto y = in.attribute("svg:y"); y)
+    out << "top:" << y.as_string() << ";";
   out << "\"";
 
   ElementAttributeTranslator(in, out, context);
@@ -419,17 +395,17 @@ void DrawCircleTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
   out << "</div>";
 }
 
-void ElementChildrenTranslator(const tinyxml2::XMLElement &in,
-                               std::ostream &out, Context &context) {
-  common::XmlUtil::visitNodeChildren(in, [&](const tinyxml2::XMLNode &n) {
-    if (n.ToText() != nullptr)
-      TextTranslator(*n.ToText(), out, context);
-    if (n.ToElement() != nullptr)
-      ElementTranslator(*n.ToElement(), out, context);
-  });
+void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+                               Context &context) {
+  for (auto &&n : in) {
+    if (n.type() == pugi::node_pcdata)
+      TextTranslator(n.text(), out, context);
+    else if (n.type() == pugi::node_element)
+      ElementTranslator(n, out, context);
+  }
 }
 
-void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
+void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
                        Context &context) {
   static std::unordered_map<std::string, const char *> substitution{
       {"text:span", "span"},
@@ -449,7 +425,7 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       "table:covered-table-cell",
   };
 
-  const std::string element = in.Name();
+  const std::string element = in.name();
   if (skippers.find(element) != skippers.end())
     return;
 
@@ -491,14 +467,13 @@ void ElementTranslator(const tinyxml2::XMLElement &in, std::ostream &out,
       out << ">";
     }
     ElementChildrenTranslator(in, out, context);
-    if (it != substitution.end()) {
+    if (it != substitution.end())
       out << "</" << it->second << ">";
-    }
   }
 }
 } // namespace
 
-void ContentTranslator::html(const tinyxml2::XMLElement &in, Context &context) {
+void ContentTranslator::html(const pugi::xml_node &in, Context &context) {
   ElementTranslator(in, *context.output, context);
 }
 
