@@ -1,5 +1,4 @@
 #include <access/Path.h>
-#include <access/Stream.h>
 #include <access/SystemStorage.h>
 
 namespace odr {
@@ -54,11 +53,11 @@ void SystemStorage::visit(Visitor) const {
   // TODO
 }
 
-std::unique_ptr<Source> SystemStorage::read(const Path &) const {
+std::unique_ptr<std::istream> SystemStorage::read(const Path &) const {
   return nullptr; // TODO
 }
 
-std::unique_ptr<Sink> SystemStorage::write(const Path &) const {
+std::unique_ptr<std::ostream> SystemStorage::write(const Path &) const {
   return nullptr; // TODO
 }
 

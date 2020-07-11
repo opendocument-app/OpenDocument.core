@@ -31,10 +31,11 @@ public:
   const std::string &string() const noexcept;
   std::size_t hash() const noexcept;
 
-  bool isAbsolute() const noexcept { return absolute_; }
-  bool isRelative() const noexcept { return !absolute_; }
-  bool isVisible() const noexcept;
-  bool isEscaping() const noexcept;
+  bool root() const noexcept;
+  bool absolute() const noexcept { return absolute_; }
+  bool relative() const noexcept { return !absolute_; }
+  bool visible() const noexcept;
+  bool escaping() const noexcept;
   bool childOf(const Path &) const;
   bool parentOf(const Path &) const;
   bool ancestorOf(const Path &) const;
@@ -42,10 +43,10 @@ public:
 
   std::string basename() const noexcept;
   std::string extension() const noexcept;
-  std::string fullExtension() const noexcept;
 
   Path parent() const;
   Path join(const Path &) const;
+  Path rebase(const Path &on) const;
 
 private:
   std::string path_;

@@ -6,8 +6,8 @@
 #include <string>
 #include <unordered_map>
 
-namespace tinyxml2 {
-class XMLDocument;
+namespace pugi {
+class xml_document;
 }
 
 namespace odr {
@@ -29,11 +29,8 @@ struct NoOfficeOpenXmlFileException final : public std::exception {
 namespace Meta {
 FileMeta parseFileMeta(access::ReadStorage &storage);
 
-access::Path relationsPath(const access::Path &path);
-std::unique_ptr<tinyxml2::XMLDocument>
-loadRelationships(const access::ReadStorage &storage, const access::Path &path);
 std::unordered_map<std::string, std::string>
-parseRelationships(const tinyxml2::XMLDocument &relations);
+parseRelationships(const pugi::xml_document &relations);
 std::unordered_map<std::string, std::string>
 parseRelationships(const access::ReadStorage &storage,
                    const access::Path &path);

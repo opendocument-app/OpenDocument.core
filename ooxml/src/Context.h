@@ -6,8 +6,8 @@
 #include <iostream>
 #include <list>
 #include <memory>
+#include <pugixml.hpp>
 #include <string>
-#include <tinyxml2.h>
 #include <unordered_map>
 #include <vector>
 
@@ -33,8 +33,8 @@ struct Context {
 
   std::unordered_map<std::string, std::list<std::string>> styleDependencies;
   std::unordered_map<std::string, std::string> relations;
-  std::unique_ptr<tinyxml2::XMLDocument> sharedStringsDocument; // xlsx
-  std::vector<const tinyxml2::XMLElement *> sharedStrings;      // xlsx
+  pugi::xml_document sharedStringsDocument;  // xlsx
+  std::vector<pugi::xml_node> sharedStrings; // xlsx
 
   std::uint32_t entry{0};
   common::TableRange tableRange;
@@ -42,8 +42,8 @@ struct Context {
   std::unordered_map<std::uint32_t, std::string> defaultCellStyles;
 
   // editing
-  std::uint32_t currentTextTranslationIndex;
-  std::unordered_map<std::uint32_t, const tinyxml2::XMLText *> textTranslation;
+  std::uint32_t currentTextTranslationIndex{0};
+  std::unordered_map<std::uint32_t, const pugi::xml_text *> textTranslation;
 };
 
 } // namespace ooxml

@@ -1,0 +1,26 @@
+name: tidy
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: sudo apt install clang-tidy
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - run: clang-tidy --version
+
+      - name: cmake
+        run: |
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+
+      - name: clang-tidy
+        run: |
+          FILES=$( find . -path ./build -prune -o -type f \( -iname \*.cpp \) )
+          clang-tidy -p build -header-filter '.*' $FILES

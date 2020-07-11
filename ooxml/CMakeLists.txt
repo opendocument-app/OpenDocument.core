@@ -14,7 +14,7 @@ target_include_directories(odr_ooxml
         )
 target_link_libraries(odr_ooxml
         PRIVATE
-        tinyxml2
+        pugixml
         glog
 
         odr_access

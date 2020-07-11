@@ -29,8 +29,8 @@ public:
 
   void visit(Visitor) const final;
 
-  std::unique_ptr<Source> read(const Path &) const final;
-  std::unique_ptr<Sink> write(const Path &) const final;
+  std::unique_ptr<std::istream> read(const Path &) const final;
+  std::unique_ptr<std::ostream> write(const Path &) const final;
 
 private:
   SystemStorage() = default;

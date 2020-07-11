@@ -11,7 +11,7 @@ class ReadStorage;
 
 namespace oldms {
 
-class LegacyMicrosoft : public common::Document {
+class LegacyMicrosoft final : public common::Document {
 public:
   explicit LegacyMicrosoft(const char *path);
   explicit LegacyMicrosoft(const std::string &path);
@@ -27,9 +27,9 @@ public:
   const FileMeta &meta() const noexcept final;
 
   bool decrypted() const noexcept final;
-  bool canTranslate() const noexcept final;
-  bool canEdit() const noexcept final;
-  bool canSave(bool encrypted) const noexcept final;
+  bool translatable() const noexcept final;
+  bool editable() const noexcept final;
+  bool savable(bool encrypted) const noexcept final;
 
   bool decrypt(const std::string &password) final;
 

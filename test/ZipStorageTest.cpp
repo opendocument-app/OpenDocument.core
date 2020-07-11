@@ -1,18 +1,19 @@
+#include <access/Path.h>
 #include <access/ZipStorage.h>
 #include <gtest/gtest.h>
 #include <string>
 
+using namespace odr::access;
+
 // TODO visit test
 
-TEST(ZipReader, exception) {
-  EXPECT_THROW(odr::access::ZipReader("/"), odr::access::NoZipFileException);
-}
+TEST(ZipReader, exception) { EXPECT_THROW(ZipReader("/"), NoZipFileException); }
 
 TEST(ZipWriter, create) {
   const std::string file = "created.zip";
 
   {
-    odr::access::ZipWriter writer(file);
+    ZipWriter writer(file);
 
     {
       const auto sink = writer.write("one.txt");
@@ -32,19 +33,29 @@ TEST(ZipWriter, create) {
       const auto sink = writer.write("notempty/three.txt");
       sink->write("asdf", 4);
     }
+
+    {
+      const auto sink = writer.write("./notempty/four.txt");
+      sink->write("1234", 4);
+    }
   }
 
   {
-    odr::access::ZipReader reader(file);
+    ZipReader reader(file);
+
     EXPECT_TRUE(reader.isFile("one.txt"));
     EXPECT_TRUE(reader.isFile("two.txt"));
     EXPECT_TRUE(reader.isDirectory("empty"));
     EXPECT_TRUE(reader.isDirectory("notempty"));
     EXPECT_TRUE(reader.isFile("notempty/three.txt"));
+    EXPECT_TRUE(reader.isFile("notempty/four.txt"));
+    EXPECT_TRUE(reader.isFile("./notempty/four.txt"));
 
     EXPECT_EQ(23, reader.size("one.txt"));
     EXPECT_EQ(28, reader.size("two.txt"));
     EXPECT_EQ(4, reader.size("notempty/three.txt"));
+    EXPECT_EQ(4, reader.size("notempty/four.txt"));
+    EXPECT_EQ(4, reader.size("./notempty/four.txt"));
   }
 }
 
@@ -53,7 +64,7 @@ TEST(ZipWriter, create_order) {
   const std::vector<std::string> entries{"z", "one", "two", "three", "a", "0"};
 
   {
-    odr::access::ZipWriter writer(file);
+    ZipWriter writer(file);
 
     for (auto &&e : entries) {
       writer.write(e);
@@ -61,7 +72,7 @@ TEST(ZipWriter, create_order) {
   }
 
   {
-    odr::access::ZipReader reader(file);
+    ZipReader reader(file);
 
     auto it = entries.begin();
     reader.visit([&](const auto &path) {

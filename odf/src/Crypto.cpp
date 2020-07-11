@@ -3,6 +3,7 @@
 #include <access/StorageUtil.h>
 #include <access/StreamUtil.h>
 #include <crypto/CryptoUtil.h>
+#include <sstream>
 
 namespace odr {
 namespace odf {
@@ -109,17 +110,18 @@ public:
 
   void visit(Visitor v) const final { parent->visit(v); }
 
-  std::unique_ptr<access::Source> read(const access::Path &path) const final {
+  std::unique_ptr<std::istream> read(const access::Path &path) const final {
     const auto it = manifest.entries.find(path);
     if (it == manifest.entries.end())
       return parent->read(path);
     if (!Crypto::canDecrypt(it->second))
       throw UnsupportedCryptoAlgorithmException();
-    std::unique_ptr<access::Source> source = parent->read(path);
+    // TODO stream
+    auto source = parent->read(path);
     const std::string input = access::StreamUtil::read(*source);
     std::string result = crypto::Util::inflate(
         Crypto::deriveKeyAndDecrypt(it->second, startKey, input));
-    return std::make_unique<access::StringSource>(std::move(result));
+    return std::make_unique<std::istringstream>(std::move(result));
   }
 };
 } // namespace

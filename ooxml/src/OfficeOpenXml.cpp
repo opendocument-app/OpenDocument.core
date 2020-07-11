@@ -5,6 +5,7 @@
 #include <PresentationTranslator.h>
 #include <WorkbookTranslator.h>
 #include <access/CfbStorage.h>
+#include <access/Path.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <common/Html.h>
@@ -14,7 +15,7 @@
 #include <odr/Exception.h>
 #include <odr/Meta.h>
 #include <ooxml/OfficeOpenXml.h>
-#include <tinyxml2.h>
+#include <pugixml.hpp>
 
 namespace odr {
 namespace ooxml {
@@ -26,32 +27,31 @@ void generateStyle_(std::ofstream &out, Context &context) {
 
   switch (context.meta->type) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT: {
-    const auto stylesXml =
+    const auto styles =
         common::XmlUtil::parse(*context.storage, "word/styles.xml");
-    const tinyxml2::XMLElement *styles = stylesXml->RootElement();
-    DocumentTranslator::css(*styles, context);
+    DocumentTranslator::css(styles.document_element(), context);
   } break;
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
+    // TODO that should go to `PresentationTranslator::css`
+
     // TODO duplication in generateContent_
     const auto ppt =
         common::XmlUtil::parse(*context.storage, "ppt/presentation.xml");
-    const tinyxml2::XMLElement *sizeEle =
-        ppt->RootElement()->FirstChildElement("p:sldSz");
-    if (sizeEle != nullptr) {
-      float widthIn = sizeEle->FindAttribute("cx")->Int64Value() / 914400.0f;
-      float heightIn = sizeEle->FindAttribute("cy")->Int64Value() / 914400.0f;
+    const auto sizeEle = ppt.select_node("//p:sldSz").node();
+    if (!sizeEle)
+      break;
+    const float widthIn = sizeEle.attribute("cx").as_float() / 914400.0f;
+    const float heightIn = sizeEle.attribute("cy").as_float() / 914400.0f;
 
-      out << ".slide {";
-      out << "width:" << widthIn << "in;";
-      out << "height:" << heightIn << "in;";
-      out << "}";
-    }
+    out << ".slide {";
+    out << "width:" << widthIn << "in;";
+    out << "height:" << heightIn << "in;";
+    out << "}";
   } break;
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
-    const auto stylesXml =
+    const auto styles =
         common::XmlUtil::parse(*context.storage, "xl/styles.xml");
-    const tinyxml2::XMLElement *styles = stylesXml->RootElement();
-    WorkbookTranslator::css(*styles, context);
+    WorkbookTranslator::css(styles.document_element(), context);
   } break;
   default:
     throw std::invalid_argument("file.getMeta().type");
@@ -72,10 +72,8 @@ void generateContent_(Context &context) {
     context.relations =
         Meta::parseRelationships(*context.storage, "word/document.xml");
 
-    tinyxml2::XMLElement *body =
-        content->FirstChildElement("w:document")->FirstChildElement("w:body");
-
-    DocumentTranslator::html(*body, context);
+    const auto body = content.child("w:document").child("w:body");
+    DocumentTranslator::html(body, context);
   } break;
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     const auto ppt =
@@ -83,27 +81,26 @@ void generateContent_(Context &context) {
     const auto pptRelations =
         Meta::parseRelationships(*context.storage, "ppt/presentation.xml");
 
-    common::XmlUtil::recursiveVisitElementsWithName(
-        ppt->RootElement(), "p:sldId", [&](const auto &e) {
-          const std::string rId = e.FindAttribute("r:id")->Value();
+    for (auto &&e : ppt.select_nodes("//p:sldId")) {
+      const std::string rId = e.node().attribute("r:id").as_string();
 
-          const auto path = access::Path("ppt").join(pptRelations.at(rId));
-          const auto content = common::XmlUtil::parse(*context.storage, path);
-          context.relations = Meta::parseRelationships(*context.storage, path);
+      const auto path = access::Path("ppt").join(pptRelations.at(rId));
+      const auto content = common::XmlUtil::parse(*context.storage, path);
+      context.relations = Meta::parseRelationships(*context.storage, path);
 
-          if ((context.config->entryOffset > 0) ||
-              (context.config->entryCount > 0)) {
-            if ((context.entry >= context.config->entryOffset) &&
-                (context.entry <
-                 context.config->entryOffset + context.config->entryCount)) {
-              PresentationTranslator::html(*content->RootElement(), context);
-            }
-          } else {
-            PresentationTranslator::html(*content->RootElement(), context);
-          }
+      if ((context.config->entryOffset > 0) ||
+          (context.config->entryCount > 0)) {
+        if ((context.entry >= context.config->entryOffset) &&
+            (context.entry <
+             context.config->entryOffset + context.config->entryCount)) {
+          PresentationTranslator::html(content, context);
+        }
+      } else {
+        PresentationTranslator::html(content, context);
+      }
 
-          ++context.entry;
-        });
+      ++context.entry;
+    }
   } break;
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
     const auto xls =
@@ -112,35 +109,34 @@ void generateContent_(Context &context) {
         Meta::parseRelationships(*context.storage, "xl/workbook.xml");
 
     // TODO this breaks back translation
-    context.sharedStringsDocument =
-        common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
-    if (context.sharedStringsDocument) {
-      common::XmlUtil::recursiveVisitElementsWithName(
-          context.sharedStringsDocument->RootElement(), "si",
-          [&](const auto &child) { context.sharedStrings.push_back(&child); });
+    if (context.storage->isFile("xl/sharedStrings.xml")) {
+      context.sharedStringsDocument =
+          common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
+      for (auto &&e : context.sharedStringsDocument.select_nodes("//si")) {
+        context.sharedStrings.push_back(e.node());
+      }
     }
 
-    common::XmlUtil::recursiveVisitElementsWithName(
-        xls->RootElement(), "sheet", [&](const auto &e) {
-          const std::string rId = e.FindAttribute("r:id")->Value();
+    for (auto &&e : xls.select_nodes("//sheet")) {
+      const std::string rId = e.node().attribute("r:id").as_string();
 
-          const auto path = access::Path("xl").join(xlsRelations.at(rId));
-          const auto content = common::XmlUtil::parse(*context.storage, path);
-          context.relations = Meta::parseRelationships(*context.storage, path);
+      const auto path = access::Path("xl").join(xlsRelations.at(rId));
+      const auto content = common::XmlUtil::parse(*context.storage, path);
+      context.relations = Meta::parseRelationships(*context.storage, path);
 
-          if ((context.config->entryOffset > 0) ||
-              (context.config->entryCount > 0)) {
-            if ((context.entry >= context.config->entryOffset) &&
-                (context.entry <
-                 context.config->entryOffset + context.config->entryCount)) {
-              WorkbookTranslator::html(*content->RootElement(), context);
-            }
-          } else {
-            WorkbookTranslator::html(*content->RootElement(), context);
-          }
+      if ((context.config->entryOffset > 0) ||
+          (context.config->entryCount > 0)) {
+        if ((context.entry >= context.config->entryOffset) &&
+            (context.entry <
+             context.config->entryOffset + context.config->entryCount)) {
+          WorkbookTranslator::html(content, context);
+        }
+      } else {
+        WorkbookTranslator::html(content, context);
+      }
 
-          ++context.entry;
-        });
+      ++context.entry;
+    }
   } break;
   default:
     throw std::invalid_argument("file.getMeta().type");
@@ -194,11 +190,11 @@ public:
 
   bool decrypted() const noexcept { return decrypted_; }
 
-  bool canTranslate() const noexcept { return true; }
+  bool translatable() const noexcept { return true; }
 
-  bool canEdit() const noexcept { return false; }
+  bool editable() const noexcept { return false; }
 
-  bool canSave(const bool) const noexcept { return false; }
+  bool savable(const bool) const noexcept { return false; }
 
   bool decrypt(const std::string &password) {
     // TODO throw if not encrypted
@@ -266,8 +262,8 @@ private:
   bool decrypted_{false};
 
   Context context_;
-  std::unique_ptr<tinyxml2::XMLDocument> style_;
-  std::unique_ptr<tinyxml2::XMLDocument> content_;
+  pugi::xml_document style_;
+  pugi::xml_document content_;
 };
 
 OfficeOpenXml::OfficeOpenXml(const char *path)
@@ -299,14 +295,14 @@ const access::ReadStorage &OfficeOpenXml::storage() const noexcept {
 
 bool OfficeOpenXml::decrypted() const noexcept { return impl_->decrypted(); }
 
-bool OfficeOpenXml::canTranslate() const noexcept {
-  return impl_->canTranslate();
+bool OfficeOpenXml::translatable() const noexcept {
+  return impl_->translatable();
 }
 
-bool OfficeOpenXml::canEdit() const noexcept { return impl_->canEdit(); }
+bool OfficeOpenXml::editable() const noexcept { return impl_->editable(); }
 
-bool OfficeOpenXml::canSave(const bool encrypted) const noexcept {
-  return impl_->canSave(encrypted);
+bool OfficeOpenXml::savable(const bool encrypted) const noexcept {
+  return impl_->savable(encrypted);
 }
 
 bool OfficeOpenXml::decrypt(const std::string &password) {

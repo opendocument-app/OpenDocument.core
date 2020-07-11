@@ -1,34 +1,48 @@
 include(FetchContent)
 
 FetchContent_Declare(
-        tinyxml2
-        GIT_REPOSITORY https://github.com/andiwand/tinyxml2.git
-        GIT_TAG f4e1f46
+        pugixml
+        GIT_REPOSITORY https://github.com/zeux/pugixml.git
+        GIT_TAG v1.10
 )
 FetchContent_Declare(
         miniz
         GIT_REPOSITORY https://github.com/richgel999/miniz.git
-        GIT_TAG cd99aff
+        #GIT_TAG 2.1.0
+        # TODO switch to upcoming release
+        GIT_TAG 4159f8c
 )
 FetchContent_Declare(
         glog
+        #GIT_REPOSITORY https://github.com/google/glog.git
+        #GIT_TAG v0.4.0
+        # TODO quick fix
         GIT_REPOSITORY https://github.com/TomTasche/glog.git
         GIT_TAG 9aed7a1
 )
 FetchContent_Declare(
         cryptopp_cmake
         GIT_REPOSITORY https://github.com/noloader/cryptopp-cmake.git
+        #GIT_TAG CRYPTOPP_8_2_0
+        # TODO switch to upcoming release
         GIT_TAG 85941c6
 )
 FetchContent_Declare(
         cryptopp
-        GIT_REPOSITORY https://github.com/noloader/cryptopp.git
+        GIT_REPOSITORY https://github.com/weidai11/cryptopp.git
+        #GIT_TAG CRYPTOPP_8_2_0
+        # TODO switch to upcoming release
         GIT_TAG 5d68850
 )
 FetchContent_Declare(
         json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
         GIT_TAG v3.7.3
+)
+FetchContent_Declare(
+        csv-parser
+        GIT_REPOSITORY https://github.com/andiwand/csv-parser.git
+        GIT_TAG fix/cmake
 )
 FetchContent_Declare(
         httplib
@@ -38,26 +52,22 @@ FetchContent_Declare(
 FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG release-1.8.1
+        GIT_TAG release-1.10.0
 )
 
 # cryptopp: fixes "phony targets" duplicate error during Android build
-# also disables building unit tests for glog and tinyxml
-option(BUILD_TESTING "" OFF)
-set(BUILD_TESTING OFF)
+# also disables building unit tests for glog
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 # miniz
-option(BUILD_EXAMPLES "" OFF)
-set(BUILD_EXAMPLES OFF)
-# tinyxml2
-option(BUILD_SHARED_LIBS "" OFF)
-set(BUILD_SHARED_LIBS OFF)
-option(BUILD_TESTS "" OFF)
-set(BUILD_TESTS OFF)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+# glog
+set(CMAKE_DEBUG_POSTFIX "" CACHE BOOL "" FORCE)
 
-FetchContent_GetProperties(tinyxml2)
-if (NOT tinyxml2_POPULATED)
-    FetchContent_Populate(tinyxml2)
-    add_subdirectory(${tinyxml2_SOURCE_DIR} ${tinyxml2_BINARY_DIR} EXCLUDE_FROM_ALL)
+FetchContent_GetProperties(pugixml)
+if (NOT pugixml_POPULATED)
+    FetchContent_Populate(pugixml)
+    add_subdirectory(${pugixml_SOURCE_DIR} ${pugixml_BINARY_DIR} EXCLUDE_FROM_ALL)
+    set_property(TARGET pugixml PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif ()
 FetchContent_GetProperties(miniz)
 if (NOT miniz_POPULATED)
@@ -96,11 +106,28 @@ if (NOT httplib_POPULATED)
     FetchContent_Populate(httplib)
     add_subdirectory(${httplib_SOURCE_DIR} ${httplib_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
-FetchContent_GetProperties(googletest)
-if (NOT googletest_POPULATED)
-    FetchContent_Populate(googletest)
-    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
-    set(gtest_build_tests OFF CACHE BOOL "" FORCE)
-    set(gtest_build_samples OFF CACHE BOOL "" FORCE)
-    add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR} EXCLUDE_FROM_ALL)
+
+if (ODR_TEST)
+    FetchContent_Populate(
+            odr-test-public
+            GIT_REPOSITORY https://github.com/opendocument-app/OpenDocument.test.git
+            GIT_TAG 58b5903
+            SOURCE_DIR ../test/input/odr-test-public
+    )
+
+    FetchContent_GetProperties(csv-parser)
+    if (NOT csv-parser_POPULATED)
+        FetchContent_Populate(csv-parser)
+        set(CSV_DEVELOPER FALSE CACHE BOOL "" FORCE)
+        add_subdirectory(${csv-parser_SOURCE_DIR} ${csv-parser_BINARY_DIR} EXCLUDE_FROM_ALL)
+        target_include_directories(csv PUBLIC "${csv-parser_SOURCE_DIR}/include") # TODO quick fix; pr this
+    endif ()
+    FetchContent_GetProperties(googletest)
+    if (NOT googletest_POPULATED)
+        FetchContent_Populate(googletest)
+        set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+        set(gtest_build_tests OFF CACHE BOOL "" FORCE)
+        set(gtest_build_samples OFF CACHE BOOL "" FORCE)
+        add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif ()
 endif ()

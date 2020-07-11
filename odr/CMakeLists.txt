@@ -9,7 +9,7 @@ add_library(odr-static STATIC
 target_include_directories(odr-static PUBLIC include)
 target_link_libraries(odr-static
         PRIVATE
-        tinyxml2
+        pugixml
         miniz
         glog
         cryptopp-static
@@ -30,7 +30,7 @@ add_library(odr-shared SHARED
         )
 target_link_libraries(odr-shared
         PRIVATE
-        tinyxml2
+        pugixml
         miniz
         glog
         cryptopp-static

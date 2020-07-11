@@ -97,9 +97,13 @@ std::size_t Path::hash() const noexcept {
   return std::hash<std::string>{}(path_);
 }
 
-bool Path::isVisible() const noexcept { return absolute_ || (upwards_ == 0); }
+bool Path::root() const noexcept {
+  return (upwards_ == 0) && (downwards_ == 0);
+}
 
-bool Path::isEscaping() const noexcept { return !absolute_ && (upwards_ > 0); }
+bool Path::visible() const noexcept { return absolute_ || (upwards_ == 0); }
+
+bool Path::escaping() const noexcept { return !absolute_ && (upwards_ > 0); }
 
 bool Path::childOf(const Path &b) const { return b.parentOf(*this); }
 
@@ -128,14 +132,6 @@ std::string Path::basename() const noexcept {
 
 std::string Path::extension() const noexcept {
   auto bn = basename();
-  const auto pos = bn.rfind('.');
-  if (pos == std::string::npos)
-    return "";
-  return bn.substr(pos + 1);
-}
-
-std::string Path::fullExtension() const noexcept {
-  auto bn = basename();
   const auto pos = bn.find('.');
   if (pos == std::string::npos)
     return "";
@@ -153,6 +149,13 @@ Path Path::join(const Path &b) const {
     throw std::invalid_argument("cannot join an absolute path");
   // TODO could be done directly
   const std::string result = path_ + "/" + b.path_;
+  return Path(result);
+}
+
+Path Path::rebase(const Path &on) const {
+  if (!ancestorOf(on))
+    throw std::invalid_argument("cannot rebase without ancestor");
+  const std::string result = path_.substr(on.path_.size() + 1);
   return Path(result);
 }
 

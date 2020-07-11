@@ -1,4 +1,5 @@
 #include <access/CfbStorage.h>
+#include <access/Path.h>
 #include <access/Storage.h>
 #include <access/ZipStorage.h>
 #include <common/Constants.h>
@@ -25,12 +26,15 @@ std::unique_ptr<common::Document> openImpl(const std::string &path) {
     try {
       return std::make_unique<odf::OpenDocument>(storage);
     } catch (...) {
+      // TODO
     }
     try {
       return std::make_unique<ooxml::OfficeOpenXml>(storage);
     } catch (...) {
+      // TODO
     }
-  } catch (access::NoZipFileException &) {
+  } catch (...) {
+    // TODO
   }
   try {
     FileMeta meta;
@@ -41,14 +45,17 @@ std::unique_ptr<common::Document> openImpl(const std::string &path) {
     try {
       return std::make_unique<oldms::LegacyMicrosoft>(storage);
     } catch (...) {
+      // TODO
     }
 
     // encrypted ooxml
     try {
       return std::make_unique<ooxml::OfficeOpenXml>(storage);
     } catch (...) {
+      // TODO
     }
-  } catch (access::NoCfbFileException &) {
+  } catch (...) {
+    // TODO
   }
 
   throw UnknownFileType();
@@ -94,12 +101,12 @@ const FileMeta &Document::meta() const noexcept { return impl_->meta(); }
 
 bool Document::decrypted() const noexcept { return impl_->decrypted(); }
 
-bool Document::canTranslate() const noexcept { return impl_->canTranslate(); }
+bool Document::translatable() const noexcept { return impl_->translatable(); }
 
-bool Document::canEdit() const noexcept { return impl_->canEdit(); }
+bool Document::editable() const noexcept { return impl_->editable(); }
 
-bool Document::canSave(const bool encrypted) const noexcept {
-  return impl_->canSave(encrypted);
+bool Document::savable(const bool encrypted) const noexcept {
+  return impl_->savable(encrypted);
 }
 
 bool Document::decrypt(const std::string &password) const {
@@ -119,20 +126,21 @@ void Document::save(const std::string &path,
   impl_->save(path, password);
 }
 
-std::optional<DocumentNoExcept>
+std::unique_ptr<DocumentNoExcept>
 DocumentNoExcept::open(const std::string &path) noexcept {
   try {
-    return DocumentNoExcept(std::make_unique<Document>(path));
+    return std::make_unique<DocumentNoExcept>(std::make_unique<Document>(path));
   } catch (...) {
     LOG(ERROR) << "open failed";
     return {};
   }
 }
 
-std::optional<DocumentNoExcept>
+std::unique_ptr<DocumentNoExcept>
 DocumentNoExcept::open(const std::string &path, const FileType as) noexcept {
   try {
-    return DocumentNoExcept(std::make_unique<Document>(path, as));
+    return std::make_unique<DocumentNoExcept>(
+        std::make_unique<Document>(path, as));
   } catch (...) {
     LOG(ERROR) << "open failed";
     return {};
@@ -204,7 +212,7 @@ bool DocumentNoExcept::decrypted() const noexcept {
 
 bool DocumentNoExcept::canTranslate() const noexcept {
   try {
-    return impl_->canTranslate();
+    return impl_->translatable();
   } catch (...) {
     LOG(ERROR) << "canTranslate failed";
     return false;
@@ -213,7 +221,7 @@ bool DocumentNoExcept::canTranslate() const noexcept {
 
 bool DocumentNoExcept::canEdit() const noexcept {
   try {
-    return impl_->canEdit();
+    return impl_->editable();
   } catch (...) {
     LOG(ERROR) << "canEdit failed";
     return false;
@@ -224,7 +232,7 @@ bool DocumentNoExcept::canSave() const noexcept { return canSave(false); }
 
 bool DocumentNoExcept::canSave(const bool encrypted) const noexcept {
   try {
-    return impl_->canSave(encrypted);
+    return impl_->savable(encrypted);
   } catch (...) {
     LOG(ERROR) << "canSave failed";
     return false;

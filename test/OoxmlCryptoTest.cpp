@@ -5,7 +5,7 @@
 
 using namespace odr::ooxml;
 
-TEST(CfbCrypto, ECMA376Standard_deriveKey) {
+TEST(OoxmlCrypto, ECMA376Standard_deriveKey) {
   Crypto::EncryptionHeader encryptionHeader{};
   encryptionHeader.algId = 0x660e;
   encryptionHeader.algIdHash = 0x8004;
@@ -28,7 +28,7 @@ TEST(CfbCrypto, ECMA376Standard_deriveKey) {
   EXPECT_TRUE(key == expectedKey);
 }
 
-TEST(CfbCrypto, ECMA376Standard_verify) {
+TEST(OoxmlCrypto, ECMA376Standard_verify) {
   const Crypto::EncryptionHeader encryptionHeader{};
   Crypto::EncryptionVerifier encryptionVerifier{};
   encryptionVerifier.verifierHashSize = 16;
