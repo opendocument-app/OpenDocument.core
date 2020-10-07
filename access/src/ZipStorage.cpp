@@ -5,8 +5,7 @@
 #include <streambuf>
 #include <utility>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 namespace {
 constexpr std::uint64_t buffer_size_ = 4098;
@@ -263,5 +262,4 @@ std::unique_ptr<std::ostream> ZipWriter::write(const Path &path,
   return impl->write(path, compression);
 }
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access

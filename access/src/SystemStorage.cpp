@@ -1,8 +1,7 @@
 #include <access/Path.h>
 #include <access/SystemStorage.h>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 const SystemStorage &SystemStorage::instance() {
   static SystemStorage instance;
@@ -61,5 +60,4 @@ std::unique_ptr<std::ostream> SystemStorage::write(const Path &) const {
   return nullptr; // TODO
 }
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access

@@ -4,8 +4,7 @@
 #include <iostream>
 #include <memory>
 
-namespace odr {
-namespace svm {
+namespace odr::svm {
 
 class NoSvmFileException : public std::exception {
 public:
@@ -21,7 +20,6 @@ namespace Translator {
 void svg(std::istream &in, std::ostream &out);
 }
 
-} // namespace svm
-} // namespace odr
+} // namespace odr::svm
 
 #endif // ODR_SVM_SVM2SVG_H

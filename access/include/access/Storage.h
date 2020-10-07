@@ -6,8 +6,7 @@
 #include <iostream>
 #include <memory>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 class Path;
 
@@ -89,7 +88,6 @@ public:
   std::unique_ptr<std::ostream> write(const Path &) const override = 0;
 };
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access
 
 #endif // ODR_ACCESS_STORAGE_H

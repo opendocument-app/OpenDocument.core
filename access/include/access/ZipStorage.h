@@ -4,8 +4,7 @@
 #include <access/Storage.h>
 #include <exception>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 class ZipWriter;
 
@@ -66,7 +65,6 @@ private:
   const std::unique_ptr<Impl> impl;
 };
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access
 
 #endif // ODR_ACCESS_ZIP_STORAGE_H

@@ -1,8 +1,7 @@
 #include <common/TablePosition.h>
 #include <stdexcept>
 
-namespace odr {
-namespace common {
+namespace odr::common {
 
 std::uint32_t TablePosition::toColNum(const std::string &s) {
   if (s.empty())
@@ -57,5 +56,4 @@ std::string TablePosition::toString() const noexcept {
   return toColString(col_) + std::to_string(row_ + 1);
 }
 
-} // namespace common
-} // namespace odr
+} // namespace odr::common

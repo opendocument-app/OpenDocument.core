@@ -4,18 +4,12 @@
 #include <iostream>
 #include <string>
 
-namespace odr {
-namespace access {
-
-namespace StreamUtil {
+namespace odr::access::StreamUtil {
 
 extern std::string read(std::istream &);
 
 extern void pipe(std::istream &, std::ostream &);
 
-} // namespace StreamUtil
-
-} // namespace access
-} // namespace odr
+} // namespace odr::access::StreamUtil
 
 #endif // ODR_ACCESS_STREAMUTIL_H

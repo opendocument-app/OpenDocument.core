@@ -1,8 +1,7 @@
 #include <common/TableRange.h>
 #include <stdexcept>
 
-namespace odr {
-namespace common {
+namespace odr::common {
 
 TableRange::TableRange() noexcept = default;
 
@@ -31,5 +30,4 @@ bool TableRange::contains(const TablePosition &position) const noexcept {
          (from_.row() <= position.row()) && (to_.row() > position.row());
 }
 
-} // namespace common
-} // namespace odr
+} // namespace odr::common

@@ -17,8 +17,7 @@
 #include <ooxml/OfficeOpenXml.h>
 #include <pugixml.hpp>
 
-namespace odr {
-namespace ooxml {
+namespace odr::ooxml {
 
 namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
@@ -322,5 +321,4 @@ void OfficeOpenXml::save(const access::Path &path,
   impl_->save(path, password);
 }
 
-} // namespace ooxml
-} // namespace odr
+} // namespace odr::ooxml

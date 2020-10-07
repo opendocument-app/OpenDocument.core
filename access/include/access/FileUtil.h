@@ -3,14 +3,8 @@
 
 #include <string>
 
-namespace odr {
-namespace access {
-
-namespace FileUtil {
+namespace odr::access::FileUtil {
 extern std::string read(const std::string &);
-}
-
-} // namespace access
-} // namespace odr
+} // namespace odr::access::FileUtil
 
 #endif // ODR_ACCESS_FILE_UTIL_H

@@ -4,8 +4,7 @@
 #include <cstdint>
 #include <string>
 
-namespace odr {
-namespace common {
+namespace odr::common {
 
 class TablePosition final {
 public:
@@ -25,7 +24,6 @@ private:
   std::uint32_t col_{0};
 };
 
-} // namespace common
-} // namespace odr
+} // namespace odr::common
 
 #endif // ODR_COMMON_TABLE_POSITION_H

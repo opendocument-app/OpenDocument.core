@@ -6,8 +6,7 @@
 #include <svm/Svm2Svg.h>
 #include <vector>
 
-namespace odr {
-namespace svm {
+namespace odr::svm {
 
 namespace {
 enum TextEncoding {
@@ -748,5 +747,4 @@ void Translator::svg(std::istream &in, std::ostream &out) {
   out << "</svg>";
 }
 
-} // namespace svm
-} // namespace odr
+} // namespace odr::svm

@@ -4,8 +4,7 @@
 #include <common/XmlUtil.h>
 #include <pugixml.hpp>
 
-namespace odr {
-namespace common {
+namespace odr::common {
 
 pugi::xml_document XmlUtil::parse(const std::string &in) {
   pugi::xml_document result;
@@ -35,5 +34,4 @@ pugi::xml_document XmlUtil::parse(const access::ReadStorage &storage,
   return result;
 }
 
-} // namespace common
-} // namespace odr
+} // namespace odr::common

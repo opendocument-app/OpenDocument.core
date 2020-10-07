@@ -7,14 +7,14 @@
 
 namespace {
 template <typename I, typename O> void toLittleEndian(I in, O &out) {
-  for (int i = 0; i < sizeof(in); ++i) {
+  for (std::size_t i = 0; i < sizeof(in); ++i) {
     out[i] = in & 0xff;
     in >>= 8;
   }
 }
 
 template <typename I, typename O> void toBigEndian(I in, O &out) {
-  for (int i = sizeof(in) - 1; i >= 0; --i) {
+  for (std::size_t i = sizeof(in) - 1; i >= 0; --i) {
     out[i] = in & 0xff;
     in >>= 8;
   }
@@ -34,10 +34,7 @@ std::string xor_bytes(const std::string &a, const std::string &b) {
 }
 } // namespace
 
-namespace odr {
-namespace ooxml {
-
-namespace Crypto {
+namespace odr::ooxml::Crypto {
 
 ECMA376Standard::ECMA376Standard(const EncryptionHeader &encryptionHeader,
                                  const EncryptionVerifier &encryptionVerifier,
@@ -67,8 +64,8 @@ ECMA376Standard::ECMA376Standard(const std::string &encryptionInfo) {
       offset, encryptionInfo.size() - (offset - encryptionInfo.data()));
 }
 
-std::string ECMA376Standard::deriveKey(const std::string &password) const
-    noexcept {
+std::string
+ECMA376Standard::deriveKey(const std::string &password) const noexcept {
   // https://msdn.microsoft.com/en-us/library/dd925430(v=office.12).aspx
 
   std::string hash;
@@ -173,7 +170,4 @@ std::string Util::decrypt(const std::string &encryptedPackage,
   return impl->decrypt(encryptedPackage, key);
 }
 
-} // namespace Crypto
-
-} // namespace ooxml
-} // namespace odr
+} // namespace odr::ooxml::Crypto

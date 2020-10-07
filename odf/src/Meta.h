@@ -18,8 +18,7 @@ class ReadStorage;
 } // namespace access
 } // namespace odr
 
-namespace odr {
-namespace odf {
+namespace odr::odf {
 
 struct NoOpenDocumentFileException final : public std::exception {
   const char *what() const noexcept final {
@@ -62,7 +61,6 @@ Manifest parseManifest(const access::ReadStorage &storage);
 Manifest parseManifest(const pugi::xml_document &manifest);
 } // namespace Meta
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf
 
 #endif // ODR_ODF_META_H

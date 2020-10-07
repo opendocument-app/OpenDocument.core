@@ -13,8 +13,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace odr {
-namespace ooxml {
+namespace odr::ooxml {
 
 namespace {
 void AlignmentTranslator(const pugi::xml_node &in, std::ostream &out,
@@ -477,5 +476,4 @@ void DocumentTranslator::html(const pugi::xml_node &in, Context &context) {
   ElementTranslator(in, *context.output, context);
 }
 
-} // namespace ooxml
-} // namespace odr
+} // namespace odr::ooxml

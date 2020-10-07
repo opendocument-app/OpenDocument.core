@@ -2,8 +2,7 @@
 #include <access/StorageUtil.h>
 #include <access/StreamUtil.h>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 std::string StorageUtil::read(const ReadStorage &storage, const Path &path) {
   std::string result;
@@ -11,5 +10,4 @@ std::string StorageUtil::read(const ReadStorage &storage, const Path &path) {
   return StreamUtil::read(*in);
 }
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access

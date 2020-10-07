@@ -15,8 +15,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace odr {
-namespace odf {
+namespace odr::odf {
 
 namespace {
 void TextTranslator(const pugi::xml_text &in, std::ostream &out,
@@ -477,5 +476,4 @@ void ContentTranslator::html(const pugi::xml_node &in, Context &context) {
   ElementTranslator(in, *context.output, context);
 }
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf

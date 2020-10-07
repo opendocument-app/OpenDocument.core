@@ -9,8 +9,7 @@
 #include <sha.h>
 #include <zinflate.h>
 
-namespace odr {
-namespace crypto {
+namespace odr::crypto {
 
 typedef unsigned char byte;
 
@@ -132,5 +131,4 @@ std::size_t Util::padding(const std::string &input) {
   return inflator.GetPadding();
 }
 
-} // namespace crypto
-} // namespace odr
+} // namespace odr::crypto

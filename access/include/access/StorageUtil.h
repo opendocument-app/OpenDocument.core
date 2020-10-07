@@ -4,8 +4,7 @@
 #include <access/Storage.h>
 #include <string>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 class Path;
 class ReadStorage;
@@ -14,7 +13,6 @@ namespace StorageUtil {
 extern std::string read(const ReadStorage &, const Path &);
 }
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access
 
 #endif // ODR_ACCESS_STORAGE_UTIL_H

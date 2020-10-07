@@ -5,8 +5,7 @@
 #include <crypto/CryptoUtil.h>
 #include <sstream>
 
-namespace odr {
-namespace odf {
+namespace odr::odf {
 
 bool Crypto::canDecrypt(const Meta::Manifest::Entry &entry) noexcept {
   return entry.checksumType != Meta::ChecksumType::UNKNOWN &&
@@ -146,5 +145,4 @@ bool Crypto::decrypt(std::unique_ptr<access::ReadStorage> &storage,
   return true;
 }
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf

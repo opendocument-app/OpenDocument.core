@@ -4,8 +4,7 @@
 #include <memory>
 #include <string>
 
-namespace odr {
-namespace ooxml {
+namespace odr::ooxml {
 
 struct UnsupportedEndianException final : public std::exception {
   const char *what() const noexcept final { return "unsupported endian"; }
@@ -108,7 +107,6 @@ private:
 
 } // namespace Crypto
 
-} // namespace ooxml
-} // namespace odr
+} // namespace odr::ooxml
 
 #endif // ODR_OOXML_CRYPTO_H

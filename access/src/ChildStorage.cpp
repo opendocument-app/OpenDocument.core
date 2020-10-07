@@ -1,7 +1,6 @@
 #include <access/ChildStorage.h>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 ChildStorage::ChildStorage(const Storage &parent, const Path prefix)
     : parent_(parent), prefix_(prefix) {
@@ -66,5 +65,4 @@ std::unique_ptr<std::ostream> ChildStorage::write(const Path &path) const {
   return parent_.write(prefix_.join(path));
 }
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access

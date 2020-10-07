@@ -3,8 +3,7 @@
 
 #include <common/TablePosition.h>
 
-namespace odr {
-namespace common {
+namespace odr::common {
 
 class TableRange final {
 public:
@@ -25,7 +24,6 @@ private:
   TablePosition to_;
 };
 
-} // namespace common
-} // namespace odr
+} // namespace odr::common
 
 #endif // ODR_COMMON_TABLE_RANGE_H

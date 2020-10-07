@@ -10,8 +10,7 @@
 #include <pugixml.hpp>
 #include <unordered_map>
 
-namespace odr {
-namespace odf {
+namespace odr::odf {
 
 namespace {
 bool lookupFileType(const std::string &mimeType, FileType &fileType) {
@@ -316,5 +315,4 @@ Meta::Manifest Meta::parseManifest(const pugi::xml_document &manifest) {
   return result;
 }
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf

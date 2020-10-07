@@ -6,8 +6,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace odr {
-namespace odf {
+namespace odr::odf {
 
 namespace {
 void StylePropertiesTranslator(const pugi::xml_attribute &in,
@@ -184,5 +183,4 @@ void StyleTranslator::css(const pugi::xml_node &in, Context &context) {
   }
 }
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf

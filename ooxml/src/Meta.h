@@ -19,8 +19,7 @@ class ReadStorage;
 } // namespace access
 } // namespace odr
 
-namespace odr {
-namespace ooxml {
+namespace odr::ooxml {
 
 struct NoOfficeOpenXmlFileException final : public std::exception {
   const char *what() const noexcept final { return "not a open document file"; }
@@ -36,7 +35,6 @@ parseRelationships(const access::ReadStorage &storage,
                    const access::Path &path);
 } // namespace Meta
 
-} // namespace ooxml
-} // namespace odr
+} // namespace odr::ooxml
 
 #endif // ODR_OOXML_META_H
