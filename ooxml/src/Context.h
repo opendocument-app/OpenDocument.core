@@ -10,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <pugixml.hpp>
 
 namespace odr {
 struct Config;
@@ -43,7 +44,7 @@ struct Context {
 
   // editing
   std::uint32_t currentTextTranslationIndex{0};
-  std::unordered_map<std::uint32_t, const pugi::xml_text *> textTranslation;
+  std::unordered_map<std::uint32_t, pugi::xml_text> textTranslation;
 };
 
 } // namespace ooxml

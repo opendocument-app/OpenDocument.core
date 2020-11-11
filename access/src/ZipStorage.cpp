@@ -17,7 +17,10 @@ public:
       : iter_(iter), remaining_(iter->file_stat.m_uncomp_size),
         buffer_(new char[buffer_size_]) {}
 
-  ~ZipReaderBuf() final { delete[] buffer_; }
+  ~ZipReaderBuf() final {
+    mz_zip_reader_extract_iter_free(iter_);
+    delete[] buffer_;
+  }
 
   int underflow() final {
     if (remaining_ <= 0)

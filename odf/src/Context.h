@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <pugixml.hpp>
 
 namespace pugi {
 class xml_text;
@@ -42,7 +43,7 @@ struct Context {
 
   // editing
   std::uint32_t currentTextTranslationIndex{0};
-  std::unordered_map<std::uint32_t, const pugi::xml_text *> textTranslation;
+  std::unordered_map<std::uint32_t, pugi::xml_text> textTranslation;
 };
 
 } // namespace odf
