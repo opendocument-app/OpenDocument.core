@@ -4,8 +4,7 @@
 #include <access/Path.h>
 #include <access/Storage.h>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 class ChildStorage final : public Storage {
 public:
@@ -35,7 +34,6 @@ private:
   const Path prefix_;
 };
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access
 
 #endif // ODR_ACCESS_CHILD_STORAGE_H

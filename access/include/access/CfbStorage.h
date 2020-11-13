@@ -3,8 +3,7 @@
 
 #include <access/Storage.h>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 struct CfbException : public std::runtime_error {
   explicit CfbException(const char *desc) : std::runtime_error(desc) {}
@@ -37,7 +36,6 @@ private:
   const std::unique_ptr<Impl> impl;
 };
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access
 
 #endif // ODR_ACCESS_CFB_STORAGE_H

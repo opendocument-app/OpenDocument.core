@@ -7,8 +7,7 @@ namespace pugi {
 class xml_node;
 }
 
-namespace odr {
-namespace ooxml {
+namespace odr::ooxml {
 
 struct Context;
 
@@ -17,7 +16,6 @@ void css(const pugi::xml_node &in, Context &context);
 void html(const pugi::xml_node &in, Context &context);
 } // namespace PresentationTranslator
 
-} // namespace ooxml
-} // namespace odr
+} // namespace odr::ooxml
 
 #endif // ODR_OOXML_PRESENTATION_TRANSLATOR_H

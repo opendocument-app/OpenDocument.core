@@ -1,11 +1,9 @@
 #include <common/Constants.h>
 
-namespace odr {
-namespace common {
+namespace odr::common {
 
 const char *Constants::version() noexcept { return ""; }
 
 const char *Constants::commit() noexcept { return ""; }
 
-} // namespace common
-} // namespace odr
+} // namespace odr::common

@@ -6,8 +6,7 @@
 #include <string>
 #include <typeindex>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 class Path final {
 public:
@@ -61,8 +60,7 @@ private:
   void join_(const std::string &);
 };
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access
 
 namespace std {
 template <> struct hash<::odr::access::Path> {

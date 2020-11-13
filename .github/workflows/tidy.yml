@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - run: sudo apt install clang-tidy
@@ -22,5 +22,5 @@ jobs:
 
       - name: clang-tidy
         run: |
-          FILES=$( find . -path ./build -prune -o -type f \( -iname \*.cpp \) )
+          FILES=$( find . -path ./build -prune -false -o -type f \( -iname \*.cpp \) )
           clang-tidy -p build -header-filter '.*' $FILES

@@ -1,8 +1,7 @@
 #include <common/Html.h>
 #include <odr/Config.h>
 
-namespace odr {
-namespace common {
+namespace odr::common {
 
 const char *Html::doctype() noexcept {
   // clang-format off
@@ -116,5 +115,4 @@ std::string Html::bodyAttributes(const Config &config) noexcept {
   return result;
 }
 
-} // namespace common
-} // namespace odr
+} // namespace odr::common

@@ -7,8 +7,7 @@ namespace pugi {
 class xml_node;
 }
 
-namespace odr {
-namespace odf {
+namespace odr::odf {
 
 struct Context;
 
@@ -16,7 +15,6 @@ namespace ContentTranslator {
 void html(const pugi::xml_node &in, Context &context);
 } // namespace ContentTranslator
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf
 
 #endif // ODR_ODF_CONTENT_TRANSLATOR_H

@@ -14,8 +14,7 @@
 #include <odr/Meta.h>
 #include <pugixml.hpp>
 
-namespace odr {
-namespace odf {
+namespace odr::odf {
 
 namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
@@ -322,5 +321,4 @@ void OpenDocument::save(const access::Path &path,
   impl_->save(path, password);
 }
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf

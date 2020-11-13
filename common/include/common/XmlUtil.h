@@ -8,15 +8,12 @@ namespace pugi {
 class xml_document;
 } // namespace pugi
 
-namespace odr {
-namespace access {
+namespace odr::access {
 class Path;
 class ReadStorage;
-} // namespace access
-} // namespace odr
+} // namespace odr::access
 
-namespace odr {
-namespace common {
+namespace odr::common {
 
 struct NotXmlException final : public std::exception {
   const char *what() const noexcept override { return "not xml"; }
@@ -28,7 +25,6 @@ pugi::xml_document parse(std::istream &);
 pugi::xml_document parse(const access::ReadStorage &, const access::Path &);
 } // namespace XmlUtil
 
-} // namespace common
-} // namespace odr
+} // namespace odr::common
 
 #endif // ODR_COMMON_XML_UTIL_H

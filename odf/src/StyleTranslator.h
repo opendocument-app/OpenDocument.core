@@ -8,8 +8,7 @@ namespace pugi {
 class xml_node;
 }
 
-namespace odr {
-namespace odf {
+namespace odr::odf {
 
 struct Context;
 
@@ -19,7 +18,6 @@ std::string escapeMasterStyleName(const std::string &name);
 void css(const pugi::xml_node &in, Context &context);
 } // namespace StyleTranslator
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf
 
 #endif // ODR_ODF_STYLE_TRANSLATOR_H

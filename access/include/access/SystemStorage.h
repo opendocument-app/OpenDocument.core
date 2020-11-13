@@ -3,8 +3,7 @@
 
 #include <access/Storage.h>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 class SystemStorage : public Storage {
 public:
@@ -36,7 +35,6 @@ private:
   SystemStorage() = default;
 };
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access
 
 #endif // ODR_ACCESS_SYSTEM_STORAGE_H

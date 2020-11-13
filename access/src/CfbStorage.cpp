@@ -1,7 +1,6 @@
 #include <access/CfbStorage.h>
 #include <access/FileUtil.h>
 #include <access/Path.h>
-#include <algorithm>
 #include <codecvt>
 #include <cstdint>
 #include <cstring>
@@ -9,8 +8,7 @@
 #include <locale>
 #include <stdexcept>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 
 namespace {
 namespace CFB {
@@ -558,5 +556,4 @@ std::unique_ptr<std::istream> CfbReader::read(const Path &path) const {
   return impl->read(path);
 }
 
-} // namespace access
-} // namespace odr
+} // namespace odr::access

@@ -6,14 +6,11 @@
 #include <memory>
 #include <string>
 
-namespace odr {
-namespace access {
+namespace odr::access {
 class ReadStorage;
-} // namespace access
-} // namespace odr
+} // namespace odr::access
 
-namespace odr {
-namespace odf {
+namespace odr::odf {
 
 struct UnsupportedCryptoAlgorithmException final : public std::exception {
   const char *what() const noexcept final {
@@ -39,7 +36,6 @@ bool decrypt(std::unique_ptr<access::ReadStorage> &, const Meta::Manifest &,
              const std::string &password);
 } // namespace Crypto
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf
 
 #endif // ODR_ODF_CRYPTO_H

@@ -7,8 +7,7 @@
 #include <pugixml.hpp>
 #include <unordered_map>
 
-namespace odr {
-namespace ooxml {
+namespace odr::ooxml {
 
 FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
   static const std::unordered_map<access::Path, FileType> TYPES = {
@@ -88,5 +87,4 @@ Meta::parseRelationships(const access::ReadStorage &storage,
   return parseRelationships(relationships);
 }
 
-} // namespace ooxml
-} // namespace odr
+} // namespace odr::ooxml

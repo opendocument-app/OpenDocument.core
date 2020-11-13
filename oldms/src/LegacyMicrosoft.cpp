@@ -5,8 +5,7 @@
 #include <oldms/LegacyMicrosoft.h>
 #include <unordered_map>
 
-namespace odr {
-namespace oldms {
+namespace odr::oldms {
 
 namespace {
 FileMeta parseMeta(const access::ReadStorage &storage) {
@@ -96,5 +95,4 @@ void LegacyMicrosoft::save(const access::Path &, const std::string &) const {
   throw UnsupportedOperation();
 }
 
-} // namespace oldms
-} // namespace odr
+} // namespace odr::oldms

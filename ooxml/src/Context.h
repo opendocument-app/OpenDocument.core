@@ -20,8 +20,7 @@ class ReadStorage;
 }
 } // namespace odr
 
-namespace odr {
-namespace ooxml {
+namespace odr::ooxml {
 
 struct Context {
   const Config *config;
@@ -46,7 +45,6 @@ struct Context {
   std::unordered_map<std::uint32_t, pugi::xml_text> textTranslation;
 };
 
-} // namespace ooxml
-} // namespace odr
+} // namespace odr::ooxml
 
 #endif // ODR_OOXML_CONTEXT_H
