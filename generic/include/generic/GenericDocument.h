@@ -7,26 +7,51 @@ namespace odr::generic {
 
 class GenericElement {
 public:
-  GenericElement first_child();
-  GenericElement next_sibling();
+  enum class Type {
+    NONE,
+    TEXT,
+    LINE_BREAK,
+    PAGE_BREAK,
+    PARAGRAPH,
+    SPAN,
+    IMAGE,
+    LIST,
+    TABLE,
+  };
 
-private:
+  virtual ~GenericElement() = default;
+
+  virtual std::shared_ptr<GenericElement> root() = 0;
+
+  virtual std::shared_ptr<GenericElement> parent() = 0;
+  virtual std::shared_ptr<GenericElement> firstChild() = 0;
+
+  virtual std::shared_ptr<GenericElement> previousSibling() = 0;
+  virtual std::shared_ptr<GenericElement> nextSibling() = 0;
+};
+
+class GenericTable : public GenericElement {
+public:
 };
 
 class GenericDocument {
 public:
+  virtual ~GenericDocument() = default;
 };
 
-class GenericText {
+class GenericTextDocument : public GenericDocument {
 public:
+  virtual std::shared_ptr<GenericElement> firstContentElement() = 0;
 };
 
-class GenericPresentation {
+class GenericPresentation : public GenericDocument {
 public:
+  virtual std::shared_ptr<GenericElement> slideContent(std::uint32_t index) = 0;
 };
 
-class GenericSpreadsheet {
+class GenericSpreadsheet : public GenericDocument {
 public:
+  virtual std::shared_ptr<GenericElement> table(std::uint32_t index) = 0;
 };
 
 }

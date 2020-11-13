@@ -1,7 +1,5 @@
 #include <generic/GenericDocument.h>
 
-namespace odr::crypto {
-
-
+namespace odr::generic {
 
 }
