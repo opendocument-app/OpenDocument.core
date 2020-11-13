@@ -22,5 +22,5 @@ jobs:
 
       - name: clang-tidy
         run: |
-          FILES=$( find . -path ./build -prune -o -type f \( -iname \*.cpp \) )
+          FILES=$( find . -path ./build -prune -false -o -type f \( -iname \*.cpp \) )
           clang-tidy -p build -header-filter '.*' $FILES
