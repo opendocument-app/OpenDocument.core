@@ -95,4 +95,4 @@ void LegacyMicrosoft::save(const access::Path &, const std::string &) const {
   throw UnsupportedOperation();
 }
 
-} // namespace odr
+} // namespace odr::oldms
