@@ -31,7 +31,7 @@ void TextTranslator(const pugi::xml_text &in, std::ostream &out,
   } else {
     out << R"(<span contenteditable="true" data-odr-cid=")"
         << context.currentTextTranslationIndex << "\">" << text << "</span>";
-    context.textTranslation[context.currentTextTranslationIndex] = &in;
+    context.textTranslation[context.currentTextTranslationIndex] = in;
     ++context.currentTextTranslationIndex;
   }
 }

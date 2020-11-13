@@ -209,8 +209,7 @@ public:
         // TODO dirty const off-cast
         if (it == context_.textTranslation.end())
           continue;
-        const_cast<pugi::xml_text *>(it->second)
-            ->set(i.value().get<std::string>().c_str());
+        it->second.set(i.value().get<std::string>().c_str());
       }
     }
 

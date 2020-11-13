@@ -6,6 +6,7 @@
 #include <iostream>
 #include <list>
 #include <memory>
+#include <pugixml.hpp>
 #include <string>
 #include <unordered_map>
 
@@ -42,7 +43,7 @@ struct Context {
 
   // editing
   std::uint32_t currentTextTranslationIndex{0};
-  std::unordered_map<std::uint32_t, const pugi::xml_text *> textTranslation;
+  std::unordered_map<std::uint32_t, pugi::xml_text> textTranslation;
 };
 
 } // namespace odf
