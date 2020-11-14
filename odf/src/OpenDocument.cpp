@@ -3,6 +3,7 @@
 #include <Crypto.h>
 #include <Meta.h>
 #include <StyleTranslator.h>
+#include <Text.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <common/Html.h>
@@ -162,6 +163,12 @@ public:
     return success;
   }
 
+  std::shared_ptr<GenericDocument> document() {
+    auto content = common::XmlUtil::parse(*storage_, "content.xml");
+    auto style = common::XmlUtil::parse(*storage_, "styles.xml");
+    return std::make_shared<Text>(std::move(content), std::move(style));
+  }
+
   bool translate(const access::Path &path, const Config &config) {
     // TODO throw if not decrypted
     std::ofstream out(path);
@@ -306,6 +313,10 @@ bool OpenDocument::savable(const bool encrypted) const noexcept {
 
 bool OpenDocument::decrypt(const std::string &password) {
   return impl_->decrypt(password);
+}
+
+std::shared_ptr<GenericDocument> OpenDocument::document() {
+  return impl_->document();
 }
 
 void OpenDocument::translate(const access::Path &path, const Config &config) {

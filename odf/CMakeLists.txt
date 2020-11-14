@@ -1,10 +1,11 @@
 add_library(odr_odf STATIC
-        src/OpenDocument.cpp
+        src/Common.cpp
         src/ContentTranslator.cpp
         src/Crypto.cpp
-        src/OpenDocumentText.cpp
         src/Meta.cpp
         src/StyleTranslator.cpp
+        src/OpenDocument.cpp
+        src/Text.cpp
         )
 target_include_directories(odr_odf
         PUBLIC
@@ -21,7 +22,6 @@ target_link_libraries(odr_odf
         odr_access
         odr_common
         odr_crypto
-        odr_generic
         odr_svm
 
         odr-interface

@@ -34,6 +34,7 @@ public:
 
   bool decrypt(const std::string &password) final;
 
+  std::shared_ptr<GenericDocument> document() final;
   void translate(const access::Path &path, const Config &config) final;
   void edit(const std::string &diff) final;
 

@@ -1,9 +1,9 @@
-#ifndef ODR_GENERIC_GENERICDOCUMENT_H
-#define ODR_GENERIC_GENERICDOCUMENT_H
+#ifndef ODR_GENERICDOCUMENT_H
+#define ODR_GENERICDOCUMENT_H
 
 #include <memory>
 
-namespace odr::generic {
+namespace odr {
 
 class GenericTable;
 class GenericTextDocument;
@@ -92,7 +92,19 @@ public:
 
 class GenericTextDocument : public virtual GenericDocument {
 public:
+  struct PageProperties {
+    std::string width;
+    std::string height;
+    std::string marginTop;
+    std::string marginBottom;
+    std::string marginLeft;
+    std::string marginRight;
+    std::string printOrientation;
+  };
+
   Type type() const final;
+
+  virtual PageProperties pageProperties() const = 0;
 
   virtual std::shared_ptr<const GenericElement> firstContentElement() const = 0;
 };
@@ -112,6 +124,6 @@ public:
   virtual std::shared_ptr<GenericElement> table(std::uint32_t index) const = 0;
 };
 
-} // namespace odr::generic
+} // namespace odr
 
-#endif // ODR_GENERIC_GENERICDOCUMENT_H
+#endif // ODR_GENERICDOCUMENT_H
