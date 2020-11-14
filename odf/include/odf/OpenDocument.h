@@ -1,5 +1,5 @@
-#ifndef ODR_ODF_OPEN_DOCUMENT_H
-#define ODR_ODF_OPEN_DOCUMENT_H
+#ifndef ODR_ODF_OPENDOCUMENT_H
+#define ODR_ODF_OPENDOCUMENT_H
 
 #include <common/Document.h>
 #include <memory>
@@ -35,7 +35,6 @@ public:
   bool decrypt(const std::string &password) final;
 
   void translate(const access::Path &path, const Config &config) final;
-
   void edit(const std::string &diff) final;
 
   void save(const access::Path &path) const final;
@@ -49,4 +48,4 @@ private:
 } // namespace odf
 } // namespace odr
 
-#endif // ODR_ODF_OPEN_DOCUMENT_H
+#endif // ODR_ODF_OPENDOCUMENT_H

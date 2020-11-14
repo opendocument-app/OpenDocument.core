@@ -2,6 +2,7 @@ add_library(odr_odf STATIC
         src/OpenDocument.cpp
         src/ContentTranslator.cpp
         src/Crypto.cpp
+        src/OpenDocumentText.cpp
         src/Meta.cpp
         src/StyleTranslator.cpp
         )
@@ -20,6 +21,7 @@ target_link_libraries(odr_odf
         odr_access
         odr_common
         odr_crypto
+        odr_generic
         odr_svm
 
         odr-interface
