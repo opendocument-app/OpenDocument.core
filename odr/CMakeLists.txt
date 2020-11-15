@@ -3,7 +3,6 @@ target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-static STATIC
         src/Document.cpp
-        src/GenericDocument.cpp
         src/Meta.cpp
         )
 target_include_directories(odr-static PUBLIC include)

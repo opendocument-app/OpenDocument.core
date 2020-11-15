@@ -1,6 +1,6 @@
-#include <odr/GenericDocument.h>
+#include <common/GenericDocument.h>
 
-namespace odr {
+namespace odr::common {
 
 bool GenericElement::isText() const {
   return type() == Type::TEXT;

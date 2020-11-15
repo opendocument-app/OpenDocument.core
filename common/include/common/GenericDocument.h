@@ -1,9 +1,9 @@
-#ifndef ODR_GENERICDOCUMENT_H
-#define ODR_GENERICDOCUMENT_H
+#ifndef ODR_COMMON_GENERICDOCUMENT_H
+#define ODR_COMMON_GENERICDOCUMENT_H
 
 #include <memory>
 
-namespace odr {
+namespace odr::common {
 
 class GenericTable;
 class GenericTextDocument;
@@ -126,4 +126,4 @@ public:
 
 } // namespace odr
 
-#endif // ODR_GENERICDOCUMENT_H
+#endif // ODR_COMMON_GENERICDOCUMENT_H

@@ -1,12 +1,12 @@
 #ifndef ODR_ODF_OPENDOCUMENTTEXT_H
 #define ODR_ODF_OPENDOCUMENTTEXT_H
 
-#include <odr/GenericDocument.h>
+#include <common/GenericDocument.h>
 #include <pugixml.hpp>
 
 namespace odr::odf {
 
-class Text final : public GenericTextDocument {
+class Text final : public common::GenericTextDocument {
 public:
   Text(pugi::xml_document content, pugi::xml_document style);
 
@@ -15,7 +15,7 @@ public:
 
   PageProperties pageProperties() const final;
 
-  std::shared_ptr<const GenericElement> firstContentElement() const final;
+  std::shared_ptr<const common::GenericElement> firstContentElement() const final;
 
 private:
   pugi::xml_document m_content;

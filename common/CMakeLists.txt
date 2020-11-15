@@ -1,6 +1,8 @@
 add_library(odr_common STATIC
         src/Constants.cpp
+        src/GenericDocument.cpp
         src/Html.cpp
+        src/HtmlTranslation.cpp
         src/StringUtil.cpp
         src/TableCursor.cpp
         src/TablePosition.cpp

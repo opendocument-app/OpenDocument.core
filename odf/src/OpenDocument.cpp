@@ -163,7 +163,7 @@ public:
     return success;
   }
 
-  std::shared_ptr<GenericDocument> document() {
+  std::shared_ptr<common::GenericDocument> document() {
     auto content = common::XmlUtil::parse(*storage_, "content.xml");
     auto style = common::XmlUtil::parse(*storage_, "styles.xml");
     return std::make_shared<Text>(std::move(content), std::move(style));
@@ -315,7 +315,7 @@ bool OpenDocument::decrypt(const std::string &password) {
   return impl_->decrypt(password);
 }
 
-std::shared_ptr<GenericDocument> OpenDocument::document() {
+std::shared_ptr<common::GenericDocument> OpenDocument::document() {
   return impl_->document();
 }
 

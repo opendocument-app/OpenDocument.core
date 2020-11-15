@@ -5,13 +5,13 @@
 
 namespace odr {
 struct Config;
-class GenericDocument;
 
 namespace access {
 class Path;
 }
 
 namespace common {
+class GenericDocument;
 
 class Document {
 public:
