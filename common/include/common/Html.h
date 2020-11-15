@@ -21,6 +21,8 @@ const char *odfSpreadsheetDefaultStyle() noexcept;
 const char *defaultScript() noexcept;
 
 std::string bodyAttributes(const Config &) noexcept;
+
+std::string escapeText(std::string text) noexcept;
 } // namespace common::Html
 } // namespace odr
 

@@ -1,4 +1,5 @@
 #include <common/Html.h>
+#include <common/StringUtil.h>
 #include <odr/Config.h>
 
 namespace odr::common {
@@ -113,6 +114,14 @@ std::string Html::bodyAttributes(const Config &config) noexcept {
   result += "\"";
 
   return result;
+}
+
+std::string Html::escapeText(std::string text) noexcept {
+  StringUtil::findAndReplaceAll(text, "&", "&amp;");
+  StringUtil::findAndReplaceAll(text, "<", "&lt;");
+  StringUtil::findAndReplaceAll(text, ">", "&gt;");
+
+  return text;
 }
 
 } // namespace odr::common

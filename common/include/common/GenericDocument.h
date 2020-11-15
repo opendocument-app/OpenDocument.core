@@ -33,6 +33,7 @@ public:
   virtual std::shared_ptr<const GenericElement> nextSibling() const = 0;
 
   virtual Type type() const = 0;
+  bool isUnknown() const;
   bool isText() const;
   bool isLineBreak() const;
   bool isPageBreak() const;

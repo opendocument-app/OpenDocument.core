@@ -2,6 +2,10 @@
 
 namespace odr::common {
 
+bool GenericElement::isUnknown() const {
+  return type() == Type::UNKNOWN;
+}
+
 bool GenericElement::isText() const {
   return type() == Type::TEXT;
 }
