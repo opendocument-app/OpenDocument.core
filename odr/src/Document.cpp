@@ -1,6 +1,7 @@
 #include <odr/Document.h>
 #include <common/Document.h>
 #include <access/Path.h>
+#include <OpenStrategy.h>
 
 namespace odr {
 
@@ -12,14 +13,16 @@ FileMeta Document::meta(const std::string &path) {
   return Document(path).meta();
 }
 
-Document::Document(const std::string &path) : File(path) {}
+Document::Document(const std::string &path) : File(OpenStrategy::openDocument(path)) {}
 
 Document::Document(const std::string &path, const FileType as)
-    : File(path, as) {}
+    : File(OpenStrategy::openDocument(path, as)) {}
 
 Document::Document(Document &&) noexcept = default;
 
-Document::Document(File &&file) : File(std::move(file)) {}
+Document::Document(File &&file) : File(std::move(file)) {
+  // TODO check if document
+}
 
 Document::~Document() = default;
 

@@ -73,6 +73,10 @@ std::string FileMeta::typeAsString() const noexcept {
   return typeToString(type);
 }
 
+std::vector<FileType> File::types(const std::string &path) {
+  return OpenStrategy::types(path);
+}
+
 FileType File::type(const std::string &path) {
   return File(path).type();
 }
@@ -81,11 +85,13 @@ FileMeta File::meta(const std::string &path) {
   return File(path).meta();
 }
 
-File::File(const std::string &path) : impl_(OpenStrategy::openFile(path)) {}
+File::File(std::unique_ptr<common::File> file) : impl_{std::move(file)} {}
 
-File::File(const std::string &path, FileType as) : impl_(OpenStrategy::openFile(path, as)) {}
+File::File(const std::string &path) : impl_{OpenStrategy::openFile(path)} {}
 
-File::File(File &&file) noexcept {} // TODO
+File::File(const std::string &path, FileType as) : impl_{OpenStrategy::openFile(path, as)} {}
+
+File::File(File &&file) noexcept = default;
 
 File::~File() = default;
 

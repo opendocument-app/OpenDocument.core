@@ -68,6 +68,7 @@ struct FileMeta {
 
 class File {
 public:
+  static std::vector<FileType> types(const std::string &path);
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
@@ -82,6 +83,8 @@ public:
   Document document() &&;
 
 protected:
+  explicit File(std::unique_ptr<common::File>);
+
   std::unique_ptr<common::File> impl_;
 };
 
