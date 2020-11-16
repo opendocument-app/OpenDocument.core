@@ -2,6 +2,7 @@
 #define ODR_OLDMS_LEGACYMICROSOFT_H
 
 #include <common/Document.h>
+#include <odr/File.h>
 #include <memory>
 
 namespace odr {

@@ -1,10 +1,11 @@
 #ifndef ODR_COMMON_DOCUMENT_H
 #define ODR_COMMON_DOCUMENT_H
 
-#include <odr/File.h>
+#include <common/File.h>
 
 namespace odr {
 struct Config;
+struct FileMeta;
 
 namespace access {
 class Path;
@@ -13,11 +14,11 @@ class Path;
 namespace common {
 class AbstractDocument;
 
-class Document {
+class Document : public File {
 public:
-  virtual ~Document() = default;
+  ~Document() override = default;
 
-  virtual const FileMeta &meta() const noexcept = 0;
+  const FileMeta &meta() const noexcept override = 0;
 
   virtual bool decrypted() const noexcept = 0;
   virtual bool translatable() const noexcept = 0;

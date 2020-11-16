@@ -8,6 +8,10 @@
 
 namespace odr {
 
+namespace common {
+class File;
+}
+
 class Document;
 class DocumentNoExcept;
 
@@ -62,7 +66,7 @@ struct FileMeta {
   std::string typeAsString() const noexcept;
 };
 
-class File final {
+class File {
 public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
@@ -70,37 +74,15 @@ public:
   explicit File(const std::string &path);
   File(const std::string &path, FileType as);
   File(File &&) noexcept;
-  ~File();
+  virtual ~File();
 
   FileType type() const noexcept;
   const FileMeta &meta() const noexcept;
 
-  Document document() const;
+  Document document() &&;
 
-private:
-  std::unique_ptr<void> m_impl;
-};
-
-class FileNoExcept final {
-  static std::unique_ptr<FileNoExcept>
-  open(const std::string &path) noexcept;
-  static std::unique_ptr<FileNoExcept> open(const std::string &path,
-                                            FileType as) noexcept;
-
-  static FileType type(const std::string &path) noexcept;
-  static FileMeta meta(const std::string &path) noexcept;
-
-  explicit FileNoExcept(std::unique_ptr<File>);
-  FileNoExcept(FileNoExcept &&) noexcept;
-  ~FileNoExcept();
-
-  FileType type() const noexcept;
-  const FileMeta &meta() const noexcept;
-
-  DocumentNoExcept document() const noexcept;
-
-private:
-  std::unique_ptr<File> m_impl;
+protected:
+  std::unique_ptr<common::File> impl_;
 };
 
 }

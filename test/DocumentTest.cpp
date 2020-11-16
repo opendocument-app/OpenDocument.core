@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <odr/Document.h>
+#include <odr/DocumentNoExcept.h>
 #include <odr/Exception.h>
 
 using namespace odr;

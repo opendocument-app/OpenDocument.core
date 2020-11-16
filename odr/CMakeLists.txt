@@ -3,8 +3,10 @@ target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-static STATIC
         src/Document.cpp
+        src/DocumentNoExcept.cpp
         src/Elements.cpp
         src/File.cpp
+        src/FileNoExcept.cpp
         src/OpenDocument.cpp
         )
 target_include_directories(odr-static PUBLIC include)
@@ -26,8 +28,10 @@ target_link_libraries(odr-static
 
 add_library(odr-shared SHARED
         src/Document.cpp
+        src/DocumentNoExcept.cpp
         src/Elements.cpp
         src/File.cpp
+        src/FileNoExcept.cpp
         src/OpenDocument.cpp
         )
 target_link_libraries(odr-shared
