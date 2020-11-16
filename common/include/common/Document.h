@@ -1,7 +1,7 @@
 #ifndef ODR_COMMON_DOCUMENT_H
 #define ODR_COMMON_DOCUMENT_H
 
-#include <odr/Meta.h>
+#include <odr/File.h>
 
 namespace odr {
 struct Config;
@@ -11,7 +11,7 @@ class Path;
 }
 
 namespace common {
-class GenericDocument;
+class AbstractDocument;
 
 class Document {
 public:
@@ -26,7 +26,7 @@ public:
 
   virtual bool decrypt(const std::string &password) = 0;
 
-  virtual std::shared_ptr<GenericDocument> document() { return nullptr; }
+  virtual std::shared_ptr<AbstractDocument> document() { return nullptr; }
   virtual void translate(const access::Path &path, const Config &config) = 0;
   virtual void edit(const std::string &diff) = 0;
 

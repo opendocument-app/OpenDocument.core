@@ -12,7 +12,7 @@
 #include <nlohmann/json.hpp>
 #include <odf/OpenDocument.h>
 #include <odr/Config.h>
-#include <odr/Meta.h>
+#include <odr/File.h>
 #include <pugixml.hpp>
 
 namespace odr::odf {
@@ -163,7 +163,7 @@ public:
     return success;
   }
 
-  std::shared_ptr<common::GenericDocument> document() {
+  std::shared_ptr<common::AbstractDocument> document() {
     auto content = common::XmlUtil::parse(*storage_, "content.xml");
     auto style = common::XmlUtil::parse(*storage_, "styles.xml");
     return std::make_shared<Text>(std::move(content), std::move(style));
@@ -315,7 +315,7 @@ bool OpenDocument::decrypt(const std::string &password) {
   return impl_->decrypt(password);
 }
 
-std::shared_ptr<common::GenericDocument> OpenDocument::document() {
+std::shared_ptr<common::AbstractDocument> OpenDocument::document() {
   return impl_->document();
 }
 

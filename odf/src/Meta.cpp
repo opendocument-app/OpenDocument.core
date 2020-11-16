@@ -6,7 +6,7 @@
 #include <common/XmlUtil.h>
 #include <crypto/CryptoUtil.h>
 #include <cstring>
-#include <odr/Meta.h>
+#include <odr/File.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 

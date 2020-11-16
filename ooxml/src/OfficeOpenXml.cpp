@@ -13,7 +13,7 @@
 #include <fstream>
 #include <odr/Config.h>
 #include <odr/Exception.h>
-#include <odr/Meta.h>
+#include <odr/File.h>
 #include <ooxml/OfficeOpenXml.h>
 #include <pugixml.hpp>
 

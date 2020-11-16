@@ -6,7 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <odr/Config.h>
 #include <odr/Document.h>
-#include <odr/Meta.h>
+#include <odr/File.h>
 #include <utility>
 
 using namespace odr;

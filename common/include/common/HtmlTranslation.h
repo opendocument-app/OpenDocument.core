@@ -7,11 +7,11 @@ namespace odr {
 struct Config;
 
 namespace common {
-class GenericDocument;
+class AbstractDocument;
 
 namespace HtmlTranslation {
-void translate(const GenericDocument &document, const std::string &path, const Config &config);
-void edit(const GenericDocument &document, const std::string &diff);
+void translate(const AbstractDocument &document, const std::string &path, const Config &config);
+void edit(const AbstractDocument &document, const std::string &diff);
 }
 
 }

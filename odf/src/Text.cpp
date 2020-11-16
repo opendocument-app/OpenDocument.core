@@ -6,32 +6,32 @@ namespace odr::odf {
 namespace {
 class Element;
 
-std::shared_ptr<common::GenericElement>
+std::shared_ptr<common::AbstractElement>
 firstChildImpl(std::shared_ptr<const Element> parent, pugi::xml_node node);
-std::shared_ptr<common::GenericElement>
+std::shared_ptr<common::AbstractElement>
 previousSiblingImpl(std::shared_ptr<const Element> parent, pugi::xml_node node);
-std::shared_ptr<common::GenericElement>
+std::shared_ptr<common::AbstractElement>
 nextSiblingImpl(std::shared_ptr<const Element> parent, pugi::xml_node node);
 
-class Element : public virtual common::GenericElement,
+class Element : public virtual common::AbstractElement,
                 public std::enable_shared_from_this<Element> {
 public:
   Element(std::shared_ptr<const Element> parent, pugi::xml_node node)
       : m_parent{std::move(parent)}, m_node{node} {}
 
-  std::shared_ptr<const GenericElement> parent() const override {
+  std::shared_ptr<const AbstractElement> parent() const override {
     return m_parent;
   }
 
-  std::shared_ptr<const GenericElement> firstChild() const override {
+  std::shared_ptr<const AbstractElement> firstChild() const override {
     return firstChildImpl(shared_from_this(), m_node);
   }
 
-  std::shared_ptr<const GenericElement> previousSibling() const override {
+  std::shared_ptr<const AbstractElement> previousSibling() const override {
     return previousSiblingImpl(m_parent, m_node);
   }
 
-  std::shared_ptr<const GenericElement> nextSibling() const override {
+  std::shared_ptr<const AbstractElement> nextSibling() const override {
     return nextSiblingImpl(m_parent, m_node);
   }
 
@@ -52,7 +52,7 @@ private:
   const Type m_type;
 };
 
-class TextElement : public Element, public common::GenericText {
+class TextElement : public Element, public common::AbstractText {
 public:
   TextElement(std::shared_ptr<const Element> parent, pugi::xml_node node)
       : Element(std::move(parent), node) {}
@@ -75,7 +75,7 @@ public:
   }
 };
 
-class Paragraph : public Element, public common::GenericParagraph {
+class Paragraph : public Element, public common::AbstractParagraph {
 public:
   Paragraph(std::shared_ptr<const Element> parent, pugi::xml_node node)
       : Element(std::move(parent), node) {}
@@ -85,7 +85,7 @@ public:
   }
 };
 
-std::shared_ptr<common::GenericElement> convert(std::shared_ptr<const Element> parent,
+std::shared_ptr<common::AbstractElement> convert(std::shared_ptr<const Element> parent,
                                         pugi::xml_node node) {
   if (node.type() == pugi::node_pcdata) {
     return std::make_shared<TextElement>(std::move(parent), node);
@@ -100,7 +100,7 @@ std::shared_ptr<common::GenericElement> convert(std::shared_ptr<const Element> p
       return std::make_shared<TextElement>(std::move(parent), node);
     else if (element == "text:line-break")
       return std::make_shared<Primitive>(std::move(parent), node,
-                                         common::GenericElement::Type::LINE_BREAK);
+                                         common::AbstractElement::Type::LINE_BREAK);
     // else if (element == "text:a")
     //  LinkTranslator(in, out, context);
     // else if (element == "text:bookmark" || element == "text:bookmark-start")
@@ -113,7 +113,7 @@ std::shared_ptr<common::GenericElement> convert(std::shared_ptr<const Element> p
     //  TableTranslator(in, out, context);
 
     return std::make_shared<Primitive>(std::move(parent), node,
-                                       common::GenericElement::Type::UNKNOWN);
+                                       common::AbstractElement::Type::UNKNOWN);
   }
 
   return nullptr;
@@ -130,7 +130,7 @@ bool isSkipper(pugi::xml_node node) {
   return false;
 }
 
-std::shared_ptr<common::GenericElement>
+std::shared_ptr<common::AbstractElement>
 firstChildImpl(std::shared_ptr<const Element> parent, pugi::xml_node node) {
   for (auto &&c : node) {
     if (isSkipper(c))
@@ -140,7 +140,7 @@ firstChildImpl(std::shared_ptr<const Element> parent, pugi::xml_node node) {
   return nullptr;
 }
 
-std::shared_ptr<common::GenericElement>
+std::shared_ptr<common::AbstractElement>
 previousSiblingImpl(std::shared_ptr<const Element> parent,
                     pugi::xml_node node) {
   for (auto &&s = node.previous_sibling(); s; s = node.previous_sibling()) {
@@ -151,7 +151,7 @@ previousSiblingImpl(std::shared_ptr<const Element> parent,
   return nullptr;
 }
 
-std::shared_ptr<common::GenericElement>
+std::shared_ptr<common::AbstractElement>
 nextSiblingImpl(std::shared_ptr<const Element> parent, pugi::xml_node node) {
   for (auto &&s = node.next_sibling(); s; s = node.next_sibling()) {
     if (isSkipper(s))
@@ -170,11 +170,11 @@ pugi::xml_document &Text::content() { return m_content; }
 
 pugi::xml_document &Text::style() { return m_style; }
 
-common::GenericTextDocument::PageProperties Text::pageProperties() const {
+common::AbstractTextDocument::PageProperties Text::pageProperties() const {
   return Common::pageProperties(m_style);
 }
 
-std::shared_ptr<const common::GenericElement> Text::firstContentElement() const {
+std::shared_ptr<const common::AbstractElement> Text::firstContentElement() const {
   const pugi::xml_node body = m_content.child("office:document-content")
                                   .child("office:body")
                                   .child("office:text");

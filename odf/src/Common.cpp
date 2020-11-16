@@ -2,8 +2,8 @@
 
 namespace odr::odf {
 
-common::GenericTextDocument::PageProperties Common::pageProperties(const pugi::xml_document &style) {
-  common::GenericTextDocument::PageProperties result;
+common::AbstractTextDocument::PageProperties Common::pageProperties(const pugi::xml_document &style) {
+  common::AbstractTextDocument::PageProperties result;
 
   const pugi::xml_node masterStyles = style.child("office:document-styles")
       .child("office:master-styles");

@@ -1,16 +1,16 @@
-#ifndef ODR_COMMON_GENERICDOCUMENT_H
-#define ODR_COMMON_GENERICDOCUMENT_H
+#ifndef ODR_COMMON_ABSTRACTDOCUMENT_H
+#define ODR_COMMON_ABSTRACTDOCUMENT_H
 
 #include <memory>
 
 namespace odr::common {
 
-class GenericTable;
-class GenericTextDocument;
-class GenericPresentation;
-class GenericSpreadsheet;
+class AbstractTable;
+class AbstractTextDocument;
+class AbstractPresentation;
+class AbstractSpreadsheet;
 
-class GenericElement {
+class AbstractElement {
 public:
   enum class Type {
     UNKNOWN,
@@ -25,12 +25,12 @@ public:
     TABLE,
   };
 
-  virtual ~GenericElement() = default;
+  virtual ~AbstractElement() = default;
 
-  virtual std::shared_ptr<const GenericElement> parent() const = 0;
-  virtual std::shared_ptr<const GenericElement> firstChild() const = 0;
-  virtual std::shared_ptr<const GenericElement> previousSibling() const = 0;
-  virtual std::shared_ptr<const GenericElement> nextSibling() const = 0;
+  virtual std::shared_ptr<const AbstractElement> parent() const = 0;
+  virtual std::shared_ptr<const AbstractElement> firstChild() const = 0;
+  virtual std::shared_ptr<const AbstractElement> previousSibling() const = 0;
+  virtual std::shared_ptr<const AbstractElement> nextSibling() const = 0;
 
   virtual Type type() const = 0;
   bool isUnknown() const;
@@ -45,14 +45,14 @@ public:
   bool isTable() const;
 };
 
-class GenericText : public virtual GenericElement {
+class AbstractText : public virtual AbstractElement {
 public:
   Type type() const final;
 
   virtual std::string text() const = 0;
 };
 
-class GenericParagraph : public virtual GenericElement {
+class AbstractParagraph : public virtual AbstractElement {
 public:
   struct Properties {
   };
@@ -62,18 +62,18 @@ public:
   virtual Properties properties() const = 0;
 };
 
-class GenericTable : public virtual GenericElement {
+class AbstractTable : public virtual AbstractElement {
 public:
   Type type() const final;
 
   virtual std::uint32_t rows() const = 0;
   virtual std::uint32_t columns() const = 0;
 
-  virtual std::shared_ptr<GenericElement>
+  virtual std::shared_ptr<AbstractElement>
   firstContentElement(std::uint32_t row, std::uint32_t column) const = 0;
 };
 
-class GenericDocument {
+class AbstractDocument {
 public:
   enum class Type {
     NONE,
@@ -83,7 +83,7 @@ public:
     SPREADSHEET,
   };
 
-  virtual ~GenericDocument() = default;
+  virtual ~AbstractDocument() = default;
 
   virtual Type type() const = 0;
   bool isText() const;
@@ -91,7 +91,7 @@ public:
   bool isSpreadsheet() const;
 };
 
-class GenericTextDocument : public virtual GenericDocument {
+class AbstractTextDocument : public virtual AbstractDocument {
 public:
   struct PageProperties {
     std::string width;
@@ -107,24 +107,24 @@ public:
 
   virtual PageProperties pageProperties() const = 0;
 
-  virtual std::shared_ptr<const GenericElement> firstContentElement() const = 0;
+  virtual std::shared_ptr<const AbstractElement> firstContentElement() const = 0;
 };
 
-class GenericPresentation : public virtual GenericDocument {
+class AbstractPresentation : public virtual AbstractDocument {
 public:
   Type type() const final;
 
-  virtual std::shared_ptr<GenericElement>
+  virtual std::shared_ptr<AbstractElement>
   slideContent(std::uint32_t index) const = 0;
 };
 
-class GenericSpreadsheet : public virtual GenericDocument {
+class AbstractSpreadsheet : public virtual AbstractDocument {
 public:
   Type type() const final;
 
-  virtual std::shared_ptr<GenericElement> table(std::uint32_t index) const = 0;
+  virtual std::shared_ptr<AbstractElement> table(std::uint32_t index) const = 0;
 };
 
 } // namespace odr
 
-#endif // ODR_COMMON_GENERICDOCUMENT_H
+#endif // ODR_COMMON_ABSTRACTDOCUMENT_H

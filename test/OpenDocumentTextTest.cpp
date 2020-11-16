@@ -1,6 +1,6 @@
+#include <common/AbstractDocument.h>
 #include <gtest/gtest.h>
 #include <odf/OpenDocument.h>
-#include <common/GenericDocument.h>
 
 using namespace odr;
 using namespace odr::odf;
@@ -12,7 +12,7 @@ TEST(OpenDocumentText, hello) {
   std::cout << (int) doc->type() << std::endl;
   std::cout << doc->isText() << std::endl;
 
-  auto textdoc = std::dynamic_pointer_cast<common::GenericTextDocument>(doc);
+  auto textdoc = std::dynamic_pointer_cast<common::AbstractTextDocument>(doc);
   auto props = textdoc->pageProperties();
 
   std::cout << props.width << " " << props.height << std::endl;

@@ -2,7 +2,6 @@
 #define ODR_DOCUMENT_H
 
 #include <memory>
-#include <optional>
 #include <string>
 
 namespace odr {
@@ -17,9 +16,6 @@ struct Config;
 
 class Document final {
 public:
-  static std::string version() noexcept;
-  static std::string commit() noexcept;
-
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 

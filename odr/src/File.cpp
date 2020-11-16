@@ -1,4 +1,4 @@
-#include <odr/Meta.h>
+#include <odr/File.h>
 
 namespace odr {
 
@@ -68,4 +68,4 @@ std::string FileMeta::typeAsString() const noexcept {
   return typeToString(type);
 }
 
-} // namespace odr
+}

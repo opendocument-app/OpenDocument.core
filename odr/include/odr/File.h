@@ -1,11 +1,15 @@
-#ifndef ODR_META_H
-#define ODR_META_H
+#ifndef ODR_FILE_H
+#define ODR_FILE_H
 
-#include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace odr {
+
+class Document;
+class DocumentNoExcept;
 
 enum class FileType {
   UNKNOWN,
@@ -58,6 +62,47 @@ struct FileMeta {
   std::string typeAsString() const noexcept;
 };
 
-} // namespace odr
+class File final {
+public:
+  static FileType type(const std::string &path);
+  static FileMeta meta(const std::string &path);
 
-#endif // ODR_META_H
+  explicit File(const std::string &path);
+  File(const std::string &path, FileType as);
+  File(File &&) noexcept;
+  ~File();
+
+  FileType type() const noexcept;
+  const FileMeta &meta() const noexcept;
+
+  Document document() const;
+
+private:
+  std::unique_ptr<void> m_impl;
+};
+
+class FileNoExcept final {
+  static std::unique_ptr<FileNoExcept>
+  open(const std::string &path) noexcept;
+  static std::unique_ptr<FileNoExcept> open(const std::string &path,
+                                            FileType as) noexcept;
+
+  static FileType type(const std::string &path) noexcept;
+  static FileMeta meta(const std::string &path) noexcept;
+
+  explicit FileNoExcept(std::unique_ptr<File>);
+  FileNoExcept(FileNoExcept &&) noexcept;
+  ~FileNoExcept();
+
+  FileType type() const noexcept;
+  const FileMeta &meta() const noexcept;
+
+  DocumentNoExcept document() const noexcept;
+
+private:
+  std::unique_ptr<File> m_impl;
+};
+
+}
+
+#endif // ODR_FILE_H

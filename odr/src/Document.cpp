@@ -2,7 +2,6 @@
 #include <access/Path.h>
 #include <access/Storage.h>
 #include <access/ZipStorage.h>
-#include <common/Constants.h>
 #include <common/Document.h>
 #include <glog/logging.h>
 #include <memory>
@@ -10,7 +9,7 @@
 #include <odr/Config.h>
 #include <odr/Document.h>
 #include <odr/Exception.h>
-#include <odr/Meta.h>
+#include <odr/File.h>
 #include <oldms/LegacyMicrosoft.h>
 #include <ooxml/OfficeOpenXml.h>
 #include <utility>
@@ -67,12 +66,6 @@ std::unique_ptr<common::Document> openImpl(const std::string &path,
   throw UnknownFileType();
 }
 } // namespace
-
-std::string Document::version() noexcept {
-  return common::Constants::version();
-}
-
-std::string Document::commit() noexcept { return common::Constants::commit(); }
 
 FileType Document::type(const std::string &path) {
   const auto document = openImpl(path);
