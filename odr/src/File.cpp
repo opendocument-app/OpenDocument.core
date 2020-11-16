@@ -1,16 +1,9 @@
-#include <access/CfbStorage.h>
 #include <access/Path.h>
-#include <access/Storage.h>
-#include <access/ZipStorage.h>
 #include <common/Document.h>
-#include <memory>
-#include <odf/OpenDocument.h>
 #include <odr/Document.h>
-#include <odr/Exception.h>
 #include <odr/File.h>
-#include <oldms/LegacyMicrosoft.h>
-#include <ooxml/OfficeOpenXml.h>
 #include <utility>
+#include <OpenStrategy.h>
 
 namespace odr {
 
@@ -44,56 +37,6 @@ std::string typeToString(const FileType type) {
   default:
     return "unnamed";
   }
-}
-
-std::unique_ptr<common::File> openImpl(const std::string &path) {
-  try {
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::ZipReader>(path);
-
-    try {
-      return std::make_unique<odf::OpenDocument>(storage);
-    } catch (...) {
-      // TODO
-    }
-    try {
-      return std::make_unique<ooxml::OfficeOpenXml>(storage);
-    } catch (...) {
-      // TODO
-    }
-  } catch (...) {
-    // TODO
-  }
-  try {
-    FileMeta meta;
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::CfbReader>(path);
-
-    // legacy microsoft
-    try {
-      return std::make_unique<oldms::LegacyMicrosoft>(storage);
-    } catch (...) {
-      // TODO
-    }
-
-    // encrypted ooxml
-    try {
-      return std::make_unique<ooxml::OfficeOpenXml>(storage);
-    } catch (...) {
-      // TODO
-    }
-  } catch (...) {
-    // TODO
-  }
-
-  // TODO return unknown file
-  throw UnknownFileType();
-}
-
-std::unique_ptr<common::Document> openImpl(const std::string &path,
-                                           const FileType as) {
-  // TODO implement
-  throw UnknownFileType();
 }
 } // namespace
 
@@ -138,16 +81,16 @@ FileMeta File::meta(const std::string &path) {
   return File(path).meta();
 }
 
-File::File(const std::string &path) : impl_(openImpl(path)) {}
+File::File(const std::string &path) : impl_(OpenStrategy::openFile(path)) {}
 
-File::File(const std::string &path, FileType as) : impl_(openImpl(path, as)) {}
+File::File(const std::string &path, FileType as) : impl_(OpenStrategy::openFile(path, as)) {}
 
 File::File(File &&file) noexcept {} // TODO
 
 File::~File() = default;
 
 FileType File::type() const noexcept {
-  return FileType::UNKNOWN; // TODO
+  return impl_->meta().type;
 }
 
 const FileMeta & File::meta() const noexcept {

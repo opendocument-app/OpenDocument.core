@@ -1,6 +1,7 @@
 #ifndef ODR_COMMON_DOCUMENT_H
 #define ODR_COMMON_DOCUMENT_H
 
+#include <memory>
 #include <common/File.h>
 
 namespace odr {

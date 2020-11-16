@@ -8,8 +8,14 @@ add_library(odr-static STATIC
         src/File.cpp
         src/FileNoExcept.cpp
         src/OpenDocument.cpp
+        src/OpenStrategy.cpp
         )
-target_include_directories(odr-static PUBLIC include)
+target_include_directories(odr-static
+        PUBLIC
+        include
+        PRIVATE
+        src
+        )
 target_link_libraries(odr-static
         PRIVATE
         pugixml
@@ -33,6 +39,7 @@ add_library(odr-shared SHARED
         src/File.cpp
         src/FileNoExcept.cpp
         src/OpenDocument.cpp
+        src/OpenStrategy.cpp
         )
 target_link_libraries(odr-shared
         PRIVATE
@@ -49,4 +56,9 @@ target_link_libraries(odr-shared
         odr_oldms
         odr_ooxml
         )
-target_include_directories(odr-shared PUBLIC include)
+target_include_directories(odr-shared
+        PUBLIC
+        include
+        PRIVATE
+        src
+        )
