@@ -29,8 +29,10 @@ public:
   Document(Document &&) noexcept;
   ~Document();
 
-  using File::type;
-  using File::meta;
+  using File::fileType;
+  using File::fileCategory;
+  using File::fileMeta;
+  DocumentType documentType() const noexcept;
   bool encrypted() const noexcept;
 
   bool decrypted() const noexcept;

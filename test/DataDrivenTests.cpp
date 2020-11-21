@@ -168,18 +168,18 @@ TEST_P(DataDrivenTest, all) {
   const odr::Document document{param.input};
 
   // encrypted ooxml type cannot be inspected
-  if ((document.type() != FileType::OFFICE_OPEN_XML_ENCRYPTED))
-    EXPECT_EQ(param.type, document.type());
-  if (!document.meta().confident)
+  if ((document.fileType() != FileType::OFFICE_OPEN_XML_ENCRYPTED))
+    EXPECT_EQ(param.type, document.fileType());
+  if (!document.fileMeta().confident)
     return;
 
   EXPECT_EQ(param.encrypted, document.encrypted());
   if (document.encrypted())
     EXPECT_TRUE(document.decrypt(param.password));
-  EXPECT_EQ(param.type, document.type());
+  EXPECT_EQ(param.type, document.fileType());
 
   {
-    const auto json = metaToJson(document.meta());
+    const auto json = metaToJson(document.fileMeta());
 
     fs::create_directories(fs::path(param.metaOutput).parent_path());
     std::ofstream o(param.metaOutput);

@@ -1,10 +1,10 @@
 #ifndef ODR_FILE_H
 #define ODR_FILE_H
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 namespace odr {
 
@@ -47,8 +47,24 @@ enum class FileType {
   COMPOUND_FILE_BINARY_FORMAT,
 };
 
+enum class FileCategory {
+  UNKNOWN,
+  DOCUMENT,
+  IMAGE,
+  ARCHIVE,
+};
+
+enum class DocumentType {
+  UNKNOWN,
+  TEXT,
+  PRESENTATION,
+  SPREADSHEET,
+  GRAPHICS,
+};
+
 struct FileMeta {
   static FileType typeByExtension(const std::string &extension) noexcept;
+  static FileCategory categoryByType(FileType type) noexcept;
 
   struct Entry {
     std::string name;
@@ -58,6 +74,8 @@ struct FileMeta {
   };
 
   FileType type{FileType::UNKNOWN};
+  FileCategory category{FileCategory::UNKNOWN};
+  DocumentType documentType{DocumentType::UNKNOWN};
   bool confident{false};
   bool encrypted{false};
   std::uint32_t entryCount{0};
@@ -77,8 +95,9 @@ public:
   File(File &&) noexcept;
   virtual ~File();
 
-  FileType type() const noexcept;
-  const FileMeta &meta() const noexcept;
+  FileType fileType() const noexcept;
+  FileCategory fileCategory() const noexcept;
+  const FileMeta &fileMeta() const noexcept;
 
   Document document() &&;
 

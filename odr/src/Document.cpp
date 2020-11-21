@@ -6,11 +6,11 @@
 namespace odr {
 
 FileType Document::type(const std::string &path) {
-  return Document(path).type();
+  return Document(path).fileType();
 }
 
 FileMeta Document::meta(const std::string &path) {
-  return Document(path).meta();
+  return Document(path).fileMeta();
 }
 
 Document::Document(const std::string &path) : File(OpenStrategy::openDocument(path)) {}
@@ -30,7 +30,9 @@ common::Document & Document::impl() const noexcept {
   return static_cast<common::Document &>(*impl_);
 }
 
-bool Document::encrypted() const noexcept { return File::meta().encrypted; }
+DocumentType Document::documentType() const noexcept { return File::fileMeta().documentType; }
+
+bool Document::encrypted() const noexcept { return File::fileMeta().encrypted; }
 
 bool Document::decrypted() const noexcept { return impl().decrypted(); }
 

@@ -3,20 +3,20 @@
 
 namespace odr {
 
-std::unique_ptr<DocumentNoExcept>
+std::optional<DocumentNoExcept>
 DocumentNoExcept::open(const std::string &path) noexcept {
   try {
-    return std::make_unique<DocumentNoExcept>(Document(path));
+    return DocumentNoExcept(Document(path));
   } catch (...) {
     LOG(ERROR) << "open failed";
     return {};
   }
 }
 
-std::unique_ptr<DocumentNoExcept>
+std::optional<DocumentNoExcept>
 DocumentNoExcept::open(const std::string &path, const FileType as) noexcept {
   try {
-    return std::make_unique<DocumentNoExcept>(Document(path, as));
+    return DocumentNoExcept(Document(path, as));
   } catch (...) {
     LOG(ERROR) << "open failed";
     return {};
@@ -42,42 +42,43 @@ FileMeta DocumentNoExcept::meta(const std::string &path) noexcept {
 }
 
 DocumentNoExcept::DocumentNoExcept(Document &&impl)
-    : impl_{std::move(impl)} {}
+    : FileNoExcept(std::make_unique<Document>(std::move(impl))) {}
+
+DocumentNoExcept::DocumentNoExcept(std::unique_ptr<Document> document) : FileNoExcept(std::move(document)) {}
+
+DocumentNoExcept::DocumentNoExcept(FileNoExcept &&file) : FileNoExcept(std::move(file)) {
+  // TODO check document
+}
 
 DocumentNoExcept::DocumentNoExcept(DocumentNoExcept &&) noexcept = default;
 
 DocumentNoExcept::~DocumentNoExcept() = default;
 
-FileType DocumentNoExcept::type() const noexcept {
+Document & DocumentNoExcept::document() const {
+  return *static_cast<Document *>(m_impl.get());
+}
+
+DocumentType DocumentNoExcept::documentType() const noexcept {
   try {
-    return impl_.type();
+    return document().documentType();
   } catch (...) {
-    LOG(ERROR) << "type failed";
-    return FileType::UNKNOWN;
+    LOG(ERROR) << "document type failed";
+    return DocumentType::UNKNOWN;
   }
 }
 
 bool DocumentNoExcept::encrypted() const noexcept {
   try {
-    return impl_.encrypted();
+    return document().encrypted();
   } catch (...) {
     LOG(ERROR) << "encrypted failed";
     return false;
   }
 }
 
-const FileMeta &DocumentNoExcept::meta() const noexcept {
-  try {
-    return impl_.meta();
-  } catch (...) {
-    LOG(ERROR) << "meta failed";
-    return {};
-  }
-}
-
 bool DocumentNoExcept::decrypted() const noexcept {
   try {
-    return impl_.decrypted();
+    return document().decrypted();
   } catch (...) {
     LOG(ERROR) << "decrypted failed";
     return false;
@@ -86,7 +87,7 @@ bool DocumentNoExcept::decrypted() const noexcept {
 
 bool DocumentNoExcept::canTranslate() const noexcept {
   try {
-    return impl_.translatable();
+    return document().translatable();
   } catch (...) {
     LOG(ERROR) << "canTranslate failed";
     return false;
@@ -95,7 +96,7 @@ bool DocumentNoExcept::canTranslate() const noexcept {
 
 bool DocumentNoExcept::canEdit() const noexcept {
   try {
-    return impl_.editable();
+    return document().editable();
   } catch (...) {
     LOG(ERROR) << "canEdit failed";
     return false;
@@ -106,7 +107,7 @@ bool DocumentNoExcept::canSave() const noexcept { return canSave(false); }
 
 bool DocumentNoExcept::canSave(const bool encrypted) const noexcept {
   try {
-    return impl_.savable(encrypted);
+    return document().savable(encrypted);
   } catch (...) {
     LOG(ERROR) << "canSave failed";
     return false;
@@ -115,7 +116,7 @@ bool DocumentNoExcept::canSave(const bool encrypted) const noexcept {
 
 bool DocumentNoExcept::decrypt(const std::string &password) const noexcept {
   try {
-    return impl_.decrypt(password);
+    return document().decrypt(password);
   } catch (...) {
     LOG(ERROR) << "decrypt failed";
     return false;
@@ -125,7 +126,7 @@ bool DocumentNoExcept::decrypt(const std::string &password) const noexcept {
 bool DocumentNoExcept::translate(const std::string &path,
                                  const Config &config) const noexcept {
   try {
-    impl_.translate(path, config);
+    document().translate(path, config);
     return true;
   } catch (...) {
     LOG(ERROR) << "translate failed";
@@ -135,7 +136,7 @@ bool DocumentNoExcept::translate(const std::string &path,
 
 bool DocumentNoExcept::edit(const std::string &diff) const noexcept {
   try {
-    impl_.edit(diff);
+    document().edit(diff);
     return true;
   } catch (...) {
     LOG(ERROR) << "edit failed";
@@ -145,7 +146,7 @@ bool DocumentNoExcept::edit(const std::string &diff) const noexcept {
 
 bool DocumentNoExcept::save(const std::string &path) const noexcept {
   try {
-    impl_.save(path);
+    document().save(path);
     return true;
   } catch (...) {
     LOG(ERROR) << "save failed";
@@ -156,7 +157,7 @@ bool DocumentNoExcept::save(const std::string &path) const noexcept {
 bool DocumentNoExcept::save(const std::string &path,
                             const std::string &password) const noexcept {
   try {
-    impl_.save(path, password);
+    document().save(path, password);
     return true;
   } catch (...) {
     LOG(ERROR) << "saveEncrypted failed";

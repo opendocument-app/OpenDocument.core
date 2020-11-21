@@ -69,6 +69,27 @@ FileType FileMeta::typeByExtension(const std::string &extension) noexcept {
   return FileType::UNKNOWN;
 }
 
+FileCategory FileMeta::categoryByType(const FileType type) noexcept {
+  switch (type) {
+  case FileType::ZIP:
+  case FileType::COMPOUND_FILE_BINARY_FORMAT:
+    return FileCategory::ARCHIVE;
+  case FileType::OPENDOCUMENT_TEXT:
+  case FileType::OPENDOCUMENT_PRESENTATION:
+  case FileType::OPENDOCUMENT_SPREADSHEET:
+  case FileType::OPENDOCUMENT_GRAPHICS:
+  case FileType::OFFICE_OPEN_XML_DOCUMENT:
+  case FileType::OFFICE_OPEN_XML_PRESENTATION:
+  case FileType::OFFICE_OPEN_XML_WORKBOOK:
+  case FileType::LEGACY_WORD_DOCUMENT:
+  case FileType::LEGACY_POWERPOINT_PRESENTATION:
+  case FileType::LEGACY_EXCEL_WORKSHEETS:
+    return FileCategory::DOCUMENT;
+  default:
+    return FileCategory::UNKNOWN;
+  }
+}
+
 std::string FileMeta::typeAsString() const noexcept {
   return typeToString(type);
 }
@@ -78,11 +99,11 @@ std::vector<FileType> File::types(const std::string &path) {
 }
 
 FileType File::type(const std::string &path) {
-  return File(path).type();
+  return File(path).fileType();
 }
 
 FileMeta File::meta(const std::string &path) {
-  return File(path).meta();
+  return File(path).fileMeta();
 }
 
 File::File(std::unique_ptr<common::File> file) : impl_{std::move(file)} {}
@@ -95,11 +116,15 @@ File::File(File &&file) noexcept = default;
 
 File::~File() = default;
 
-FileType File::type() const noexcept {
+FileType File::fileType() const noexcept {
   return impl_->meta().type;
 }
 
-const FileMeta & File::meta() const noexcept {
+FileCategory File::fileCategory() const noexcept {
+  return impl_->meta().category;
+}
+
+const FileMeta & File::fileMeta() const noexcept {
   return impl_->meta();
 }
 

@@ -1,27 +1,33 @@
 #ifndef ODR_DOCUMENTNOEXCEPT_H
 #define ODR_DOCUMENTNOEXCEPT_H
 
+#include <optional>
 #include <odr/Document.h>
+#include <odr/FileNoExcept.h>
 
 namespace odr {
 
-class DocumentNoExcept final {
+class DocumentNoExcept : public FileNoExcept {
 public:
-  static std::unique_ptr<DocumentNoExcept>
+  static std::optional<DocumentNoExcept>
   open(const std::string &path) noexcept;
-  static std::unique_ptr<DocumentNoExcept> open(const std::string &path,
+  static std::optional<DocumentNoExcept> open(const std::string &path,
                                                 FileType as) noexcept;
 
   static FileType type(const std::string &path) noexcept;
   static FileMeta meta(const std::string &path) noexcept;
 
   explicit DocumentNoExcept(Document &&);
+  explicit DocumentNoExcept(std::unique_ptr<Document>);
+  DocumentNoExcept(FileNoExcept &&);
   DocumentNoExcept(DocumentNoExcept &&) noexcept;
   ~DocumentNoExcept();
 
-  FileType type() const noexcept;
+  using FileNoExcept::fileType;
+  using FileNoExcept::fileCategory;
+  using FileNoExcept::fileMeta;
+  DocumentType documentType() const noexcept;
   bool encrypted() const noexcept;
-  const FileMeta &meta() const noexcept;
 
   bool decrypted() const noexcept;
   bool canTranslate() const noexcept;
@@ -39,7 +45,7 @@ public:
             const std::string &password) const noexcept;
 
 private:
-  Document impl_;
+  Document &document() const;
 };
 
 }
