@@ -10,7 +10,7 @@ namespace odr {
 
 namespace common {
 class Document;
-class AbstractTextDocument;
+class TextDocument;
 }
 
 enum class FileType;
@@ -75,7 +75,7 @@ public:
   std::optional<Element> firstContentElement() const;
 
 private:
-  std::shared_ptr<const common::AbstractTextDocument> m_impl;
+  std::shared_ptr<const common::TextDocument> m_impl;
 };
 
 class Presentation final : public Document {

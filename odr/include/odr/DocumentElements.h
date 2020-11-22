@@ -1,5 +1,5 @@
-#ifndef ODR_ELEMENTS_H
-#define ODR_ELEMENTS_H
+#ifndef ODR_DOCUMENTELEMENTS_H
+#define ODR_DOCUMENTELEMENTS_H
 
 #include <memory>
 #include <optional>
@@ -7,10 +7,10 @@
 
 namespace odr {
 namespace common {
-class AbstractElement;
-class AbstractText;
-class AbstractParagraph;
-class AbstractTable;
+class Element;
+class TextElement;
+class Paragraph;
+class Table;
 } // namespace common
 
 class TextElement;
@@ -67,7 +67,7 @@ struct ParagraphProperties {
 
 class Element final {
 public:
-  explicit Element(std::shared_ptr<const common::AbstractElement> impl);
+  explicit Element(std::shared_ptr<const common::Element> impl);
 
   std::optional<Element> parent() const;
   std::optional<Element> firstChild() const;
@@ -88,68 +88,68 @@ public:
   std::optional<TableElement> table() const;
 
 private:
-  std::shared_ptr<const common::AbstractElement> m_impl;
+  std::shared_ptr<const common::Element> m_impl;
 };
 
 class TextElement final {
 public:
-  explicit TextElement(std::shared_ptr<const common::AbstractText> impl);
+  explicit TextElement(std::shared_ptr<const common::TextElement> impl);
 
   std::string string() const;
 
 private:
-  std::shared_ptr<const common::AbstractText> m_impl;
+  std::shared_ptr<const common::TextElement> m_impl;
 };
 
 class ParagraphElement final {
 public:
   explicit ParagraphElement(
-      std::shared_ptr<const common::AbstractParagraph> impl);
+      std::shared_ptr<const common::Paragraph> impl);
 
 private:
-  std::shared_ptr<const common::AbstractParagraph> m_impl;
+  std::shared_ptr<const common::Paragraph> m_impl;
 };
 
 class SpanElement final {
 public:
-  explicit SpanElement(std::shared_ptr<const common::AbstractElement> impl);
+  explicit SpanElement(std::shared_ptr<const common::Element> impl);
 
 private:
-  std::shared_ptr<const common::AbstractElement> m_impl;
+  std::shared_ptr<const common::Element> m_impl;
 };
 
 class LinkElement final {
 public:
-  explicit LinkElement(std::shared_ptr<const common::AbstractElement> impl);
+  explicit LinkElement(std::shared_ptr<const common::Element> impl);
 
 private:
-  std::shared_ptr<const common::AbstractElement> m_impl;
+  std::shared_ptr<const common::Element> m_impl;
 };
 
 class ImageElement final {
 public:
-  explicit ImageElement(std::shared_ptr<const common::AbstractElement> impl);
+  explicit ImageElement(std::shared_ptr<const common::Element> impl);
 
 private:
-  std::shared_ptr<const common::AbstractElement> m_impl;
+  std::shared_ptr<const common::Element> m_impl;
 };
 
 class ListElement final {
 public:
-  explicit ListElement(std::shared_ptr<const common::AbstractElement> impl);
+  explicit ListElement(std::shared_ptr<const common::Element> impl);
 
 private:
-  std::shared_ptr<const common::AbstractElement> m_impl;
+  std::shared_ptr<const common::Element> m_impl;
 };
 
 class TableElement final {
 public:
-  explicit TableElement(std::shared_ptr<const common::AbstractTable> impl);
+  explicit TableElement(std::shared_ptr<const common::Table> impl);
 
 private:
-  std::shared_ptr<const common::AbstractTable> m_impl;
+  std::shared_ptr<const common::Table> m_impl;
 };
 
 } // namespace odr
 
-#endif // ODR_ELEMENTS_H
+#endif // ODR_DOCUMENTELEMENTS_H

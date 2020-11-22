@@ -1,5 +1,5 @@
-#include <common/AbstractDocument.h>
-#include <odr/Elements.h>
+#include <common/DocumentElements.h>
+#include <odr/DocumentElements.h>
 
 namespace odr {
 
@@ -15,23 +15,23 @@ std::optional<R> convert(std::shared_ptr<const E> impl,
 }
 } // namespace
 
-Element::Element(std::shared_ptr<const common::AbstractElement> impl)
+Element::Element(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
 
 std::optional<Element> Element::parent() const {
-  return common::AbstractElement::convert(m_impl->parent());
+  return common::Element::convert(m_impl->parent());
 }
 
 std::optional<Element> Element::firstChild() const {
-  return common::AbstractElement::convert(m_impl->firstChild());
+  return common::Element::convert(m_impl->firstChild());
 }
 
 std::optional<Element> Element::previousSibling() const {
-  return common::AbstractElement::convert(m_impl->previousSibling());
+  return common::Element::convert(m_impl->previousSibling());
 }
 
 std::optional<Element> Element::nextSibling() const {
-  return common::AbstractElement::convert(m_impl->nextSibling());
+  return common::Element::convert(m_impl->nextSibling());
 }
 
 ElementType Element::type() const { return m_impl->type(); }
@@ -42,7 +42,7 @@ std::optional<Element> Element::unknown() const {
 
 std::optional<TextElement> Element::text() const {
   return convert<TextElement>(
-      std::dynamic_pointer_cast<const common::AbstractText>(m_impl),
+      std::dynamic_pointer_cast<const common::TextElement>(m_impl),
       ElementType::TEXT);
 }
 
@@ -56,62 +56,62 @@ std::optional<Element> Element::pageBreak() const {
 
 std::optional<ParagraphElement> Element::paragraph() const {
   return convert<ParagraphElement>(
-      std::dynamic_pointer_cast<const common::AbstractParagraph>(m_impl),
+      std::dynamic_pointer_cast<const common::Paragraph>(m_impl),
       ElementType::PARAGRAPH);
 }
 
 std::optional<SpanElement> Element::span() const {
   return convert<SpanElement>(
-      std::dynamic_pointer_cast<const common::AbstractElement>(m_impl),
+      std::dynamic_pointer_cast<const common::Element>(m_impl),
       ElementType::SPAN);
 }
 
 std::optional<LinkElement> Element::link() const {
   return convert<LinkElement>(
-      std::dynamic_pointer_cast<const common::AbstractElement>(m_impl),
+      std::dynamic_pointer_cast<const common::Element>(m_impl),
       ElementType::LINK);
 }
 
 std::optional<ImageElement> Element::image() const {
   return convert<ImageElement>(
-      std::dynamic_pointer_cast<const common::AbstractElement>(m_impl),
+      std::dynamic_pointer_cast<const common::Element>(m_impl),
       ElementType::IMAGE);
 }
 
 std::optional<ListElement> Element::list() const {
   return convert<ListElement>(
-      std::dynamic_pointer_cast<const common::AbstractElement>(m_impl),
+      std::dynamic_pointer_cast<const common::Element>(m_impl),
       ElementType::LIST);
 }
 
 std::optional<TableElement> Element::table() const {
   return convert<TableElement>(
-      std::dynamic_pointer_cast<const common::AbstractTable>(m_impl),
+      std::dynamic_pointer_cast<const common::Table>(m_impl),
       ElementType::TABLE);
 }
 
-TextElement::TextElement(std::shared_ptr<const common::AbstractText> impl)
+TextElement::TextElement(std::shared_ptr<const common::TextElement> impl)
     : m_impl{std::move(impl)} {}
 
 std::string TextElement::string() const { return m_impl->text(); }
 
 ParagraphElement::ParagraphElement(
-    std::shared_ptr<const common::AbstractParagraph> impl)
+    std::shared_ptr<const common::Paragraph> impl)
     : m_impl{std::move(impl)} {}
 
-SpanElement::SpanElement(std::shared_ptr<const common::AbstractElement> impl)
+SpanElement::SpanElement(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
 
-LinkElement::LinkElement(std::shared_ptr<const common::AbstractElement> impl)
+LinkElement::LinkElement(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
 
-ImageElement::ImageElement(std::shared_ptr<const common::AbstractElement> impl)
+ImageElement::ImageElement(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
 
-ListElement::ListElement(std::shared_ptr<const common::AbstractElement> impl)
+ListElement::ListElement(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
 
-TableElement::TableElement(std::shared_ptr<const common::AbstractTable> impl)
+TableElement::TableElement(std::shared_ptr<const common::Table> impl)
     : m_impl{std::move(impl)} {}
 
 } // namespace odr

@@ -1,52 +1,53 @@
 #include <Text.h>
 #include <Common.h>
-#include <odr/Elements.h>
+#include <common/DocumentElements.h>
+#include <odr/DocumentElements.h>
 #include <odr/Document.h>
 
 namespace odr::odf {
 
 namespace {
-class Element;
+class OdfElement;
 
-std::shared_ptr<common::AbstractElement>
-firstChildImpl(std::shared_ptr<const Element> parent, pugi::xml_node node);
-std::shared_ptr<common::AbstractElement>
-previousSiblingImpl(std::shared_ptr<const Element> parent, pugi::xml_node node);
-std::shared_ptr<common::AbstractElement>
-nextSiblingImpl(std::shared_ptr<const Element> parent, pugi::xml_node node);
+std::shared_ptr<common::Element>
+firstChildImpl(std::shared_ptr<const OdfElement> parent, pugi::xml_node node);
+std::shared_ptr<common::Element>
+previousSiblingImpl(std::shared_ptr<const OdfElement> parent, pugi::xml_node node);
+std::shared_ptr<common::Element>
+nextSiblingImpl(std::shared_ptr<const OdfElement> parent, pugi::xml_node node);
 
-class Element : public virtual common::AbstractElement,
-                public std::enable_shared_from_this<Element> {
+class OdfElement : public virtual common::Element,
+                public std::enable_shared_from_this<OdfElement> {
 public:
-  Element(std::shared_ptr<const Element> parent, pugi::xml_node node)
+  OdfElement(std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
       : m_parent{std::move(parent)}, m_node{node} {}
 
-  std::shared_ptr<const AbstractElement> parent() const override {
+  std::shared_ptr<const Element> parent() const override {
     return m_parent;
   }
 
-  std::shared_ptr<const AbstractElement> firstChild() const override {
+  std::shared_ptr<const Element> firstChild() const override {
     return firstChildImpl(shared_from_this(), m_node);
   }
 
-  std::shared_ptr<const AbstractElement> previousSibling() const override {
+  std::shared_ptr<const Element> previousSibling() const override {
     return previousSiblingImpl(m_parent, m_node);
   }
 
-  std::shared_ptr<const AbstractElement> nextSibling() const override {
+  std::shared_ptr<const Element> nextSibling() const override {
     return nextSiblingImpl(m_parent, m_node);
   }
 
 protected:
-  const std::shared_ptr<const Element> m_parent;
+  const std::shared_ptr<const OdfElement> m_parent;
   const pugi::xml_node m_node;
 };
 
-class Primitive final : public Element {
+class OdfPrimitive final : public OdfElement {
 public:
-  Primitive(std::shared_ptr<const Element> parent, pugi::xml_node node,
+  OdfPrimitive(std::shared_ptr<const OdfElement> parent, pugi::xml_node node,
          const ElementType type)
-      : Element(std::move(parent), node), m_type{type} {}
+      : OdfElement(std::move(parent), node), m_type{type} {}
 
   ElementType type() const final { return m_type; }
 
@@ -54,10 +55,10 @@ private:
   const ElementType m_type;
 };
 
-class TextElement : public Element, public common::AbstractText {
+class OdfTextElement : public OdfElement, public common::TextElement {
 public:
-  TextElement(std::shared_ptr<const Element> parent, pugi::xml_node node)
-      : Element(std::move(parent), node) {}
+  OdfTextElement(std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
+      : OdfElement(std::move(parent), node) {}
 
   std::string text() const override {
     if (m_node.type() == pugi::node_pcdata) {
@@ -77,31 +78,31 @@ public:
   }
 };
 
-class Paragraph : public Element, public common::AbstractParagraph {
+class OdfParagraph : public OdfElement, public common::Paragraph {
 public:
-  Paragraph(std::shared_ptr<const Element> parent, pugi::xml_node node)
-      : Element(std::move(parent), node) {}
+  OdfParagraph(std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
+      : OdfElement(std::move(parent), node) {}
 
   Properties properties() const override {
     return {}; // TODO
   }
 };
 
-std::shared_ptr<common::AbstractElement> convert(std::shared_ptr<const Element> parent,
+std::shared_ptr<common::Element> convert(std::shared_ptr<const OdfElement> parent,
                                         pugi::xml_node node) {
   if (node.type() == pugi::node_pcdata) {
-    return std::make_shared<TextElement>(std::move(parent), node);
+    return std::make_shared<OdfTextElement>(std::move(parent), node);
   }
 
   if (node.type() == pugi::node_element) {
     const std::string element = node.name();
 
     if (element == "text:p" || element == "text:h")
-      return std::make_shared<Paragraph>(std::move(parent), node);
+      return std::make_shared<OdfParagraph>(std::move(parent), node);
     else if (element == "text:s" || element == "text:tab")
-      return std::make_shared<TextElement>(std::move(parent), node);
+      return std::make_shared<OdfTextElement>(std::move(parent), node);
     else if (element == "text:line-break")
-      return std::make_shared<Primitive>(std::move(parent), node,
+      return std::make_shared<OdfPrimitive>(std::move(parent), node,
                                          ElementType::LINE_BREAK);
     // else if (element == "text:a")
     //  LinkTranslator(in, out, context);
@@ -114,7 +115,7 @@ std::shared_ptr<common::AbstractElement> convert(std::shared_ptr<const Element> 
     // else if (element == "table:table")
     //  TableTranslator(in, out, context);
 
-    return std::make_shared<Primitive>(std::move(parent), node,
+    return std::make_shared<OdfPrimitive>(std::move(parent), node,
                                        ElementType::UNKNOWN);
   }
 
@@ -132,8 +133,8 @@ bool isSkipper(pugi::xml_node node) {
   return false;
 }
 
-std::shared_ptr<common::AbstractElement>
-firstChildImpl(std::shared_ptr<const Element> parent, pugi::xml_node node) {
+std::shared_ptr<common::Element>
+firstChildImpl(std::shared_ptr<const OdfElement> parent, pugi::xml_node node) {
   for (auto &&c : node) {
     if (isSkipper(c))
       continue;
@@ -142,8 +143,8 @@ firstChildImpl(std::shared_ptr<const Element> parent, pugi::xml_node node) {
   return nullptr;
 }
 
-std::shared_ptr<common::AbstractElement>
-previousSiblingImpl(std::shared_ptr<const Element> parent,
+std::shared_ptr<common::Element>
+previousSiblingImpl(std::shared_ptr<const OdfElement> parent,
                     pugi::xml_node node) {
   for (auto &&s = node.previous_sibling(); s; s = node.previous_sibling()) {
     if (isSkipper(s))
@@ -153,8 +154,8 @@ previousSiblingImpl(std::shared_ptr<const Element> parent,
   return nullptr;
 }
 
-std::shared_ptr<common::AbstractElement>
-nextSiblingImpl(std::shared_ptr<const Element> parent, pugi::xml_node node) {
+std::shared_ptr<common::Element>
+nextSiblingImpl(std::shared_ptr<const OdfElement> parent, pugi::xml_node node) {
   for (auto &&s = node.next_sibling(); s; s = node.next_sibling()) {
     if (isSkipper(s))
       continue;
@@ -176,7 +177,7 @@ PageProperties Text::pageProperties() const {
   return Common::pageProperties(m_style);
 }
 
-std::shared_ptr<const common::AbstractElement> Text::firstContentElement() const {
+std::shared_ptr<const common::Element> Text::firstContentElement() const {
   const pugi::xml_node body = m_content.child("office:document-content")
                                   .child("office:body")
                                   .child("office:text");

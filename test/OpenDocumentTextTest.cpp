@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <odr/Document.h>
-#include <odr/Elements.h>
+#include <odr/DocumentElements.h>
 
 using namespace odr;
 

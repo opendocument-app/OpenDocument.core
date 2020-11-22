@@ -1,6 +1,6 @@
 add_library(odr_common STATIC
-        src/AbstractDocument.cpp
         src/Constants.cpp
+        src/DocumentElements.cpp
         src/Html.cpp
         src/HtmlTranslation.cpp
         src/StringUtil.cpp
