@@ -4,46 +4,6 @@
 
 namespace odr::common {
 
-bool AbstractElement::isUnknown() const {
-  return type() == ElementType::UNKNOWN;
-}
-
-bool AbstractElement::isText() const {
-  return type() == ElementType::TEXT;
-}
-
-bool AbstractElement::isLineBreak() const {
-  return type() == ElementType::LINE_BREAK;
-}
-
-bool AbstractElement::isPageBreak() const {
-  return type() == ElementType::PAGE_BREAK;
-}
-
-bool AbstractElement::isParagraph() const {
-  return type() == ElementType::PARAGRAPH;
-}
-
-bool AbstractElement::isSpan() const {
-  return type() == ElementType::SPAN;
-}
-
-bool AbstractElement::isLink() const {
-  return type() == ElementType::LINK;
-}
-
-bool AbstractElement::isImage() const {
-  return type() == ElementType::IMAGE;
-}
-
-bool AbstractElement::isList() const {
-  return type() == ElementType::LIST;
-}
-
-bool AbstractElement::isTable() const {
-  return type() == ElementType::TABLE;
-}
-
 ElementType AbstractText::type() const {
   return ElementType::TEXT;
 }

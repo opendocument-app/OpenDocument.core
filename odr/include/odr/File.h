@@ -99,8 +99,6 @@ public:
   FileCategory fileCategory() const noexcept;
   const FileMeta &fileMeta() const noexcept;
 
-  Document document() &&;
-
 protected:
   explicit File(std::unique_ptr<common::File>);
 

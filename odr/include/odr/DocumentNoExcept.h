@@ -45,7 +45,7 @@ public:
             const std::string &password) const noexcept;
 
 private:
-  Document &document() const;
+  Document &document() const noexcept;
 };
 
 }

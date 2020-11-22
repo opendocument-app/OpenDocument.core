@@ -1,6 +1,5 @@
 #include <access/Path.h>
 #include <common/Document.h>
-#include <odr/Document.h>
 #include <odr/File.h>
 #include <utility>
 #include <OpenStrategy.h>
@@ -126,10 +125,6 @@ FileCategory File::fileCategory() const noexcept {
 
 const FileMeta & File::fileMeta() const noexcept {
   return impl_->meta();
-}
-
-Document File::document() && {
-  return std::move(*this);
 }
 
 }

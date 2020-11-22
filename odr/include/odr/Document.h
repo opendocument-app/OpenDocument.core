@@ -42,8 +42,6 @@ public:
 
   bool decrypt(const std::string &password) const;
 
-  TextDocument textDocument() const;
-
   void translate(const std::string &path, const Config &config) const;
   void edit(const std::string &diff) const;
 

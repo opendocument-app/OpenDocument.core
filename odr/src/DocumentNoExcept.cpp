@@ -54,7 +54,7 @@ DocumentNoExcept::DocumentNoExcept(DocumentNoExcept &&) noexcept = default;
 
 DocumentNoExcept::~DocumentNoExcept() = default;
 
-Document & DocumentNoExcept::document() const {
+Document & DocumentNoExcept::document() const noexcept {
   return *static_cast<Document *>(m_impl.get());
 }
 

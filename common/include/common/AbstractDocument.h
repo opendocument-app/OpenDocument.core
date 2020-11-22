@@ -24,16 +24,6 @@ public:
   virtual std::shared_ptr<const AbstractElement> nextSibling() const = 0;
 
   virtual ElementType type() const = 0;
-  bool isUnknown() const;
-  bool isText() const;
-  bool isLineBreak() const;
-  bool isPageBreak() const;
-  bool isParagraph() const;
-  bool isSpan() const;
-  bool isLink() const;
-  bool isImage() const;
-  bool isList() const;
-  bool isTable() const;
 };
 
 class AbstractText : public virtual AbstractElement {
