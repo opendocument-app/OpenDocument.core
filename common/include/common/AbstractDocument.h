@@ -6,6 +6,7 @@
 namespace odr {
 enum class ElementType;
 enum class DocumentType;
+struct PageProperties;
 
 namespace common {
 
@@ -66,16 +67,6 @@ public:
 
 class AbstractTextDocument : public virtual AbstractDocument {
 public:
-  struct PageProperties {
-    std::string width;
-    std::string height;
-    std::string marginTop;
-    std::string marginBottom;
-    std::string marginLeft;
-    std::string marginRight;
-    std::string printOrientation;
-  };
-
   DocumentType type() const final;
 
   virtual PageProperties pageProperties() const = 0;

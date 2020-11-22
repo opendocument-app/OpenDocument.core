@@ -1,6 +1,7 @@
 #include <common/AbstractDocument.h>
 #include <gtest/gtest.h>
 #include <odf/OpenDocument.h>
+#include <odr/Document.h>
 
 using namespace odr;
 using namespace odr::odf;

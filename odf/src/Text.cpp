@@ -1,6 +1,7 @@
 #include <Text.h>
 #include <Common.h>
 #include <odr/Elements.h>
+#include <odr/Document.h>
 
 namespace odr::odf {
 
@@ -66,7 +67,7 @@ public:
     const std::string element = m_node.name();
     if (element == "text:s") {
       const auto count = m_node.attribute("text:c").as_uint(1);
-      return std::string(count, '.');
+      return std::string(count, ' ');
     } else if (element == "text:tab") {
       return "\t";
     }
@@ -171,7 +172,7 @@ pugi::xml_document &Text::content() { return m_content; }
 
 pugi::xml_document &Text::style() { return m_style; }
 
-common::AbstractTextDocument::PageProperties Text::pageProperties() const {
+PageProperties Text::pageProperties() const {
   return Common::pageProperties(m_style);
 }
 

@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 
 namespace odr {
 namespace common {
@@ -31,6 +32,37 @@ enum class ElementType {
   IMAGE,
   LIST,
   TABLE,
+};
+
+struct FontProperties {
+  std::string font;
+  std::string size;
+  std::string weight;
+  std::string style;
+  std::string color;
+};
+
+struct RectangularProperties {
+  std::optional<std::string> top;
+  std::optional<std::string> bottom;
+  std::optional<std::string> left;
+  std::optional<std::string> right;
+};
+
+struct ContainerProperties {
+  std::optional<std::string> width;
+  std::optional<std::string> height;
+
+  RectangularProperties margin;
+  RectangularProperties padding;
+  RectangularProperties border;
+
+  std::string horizontalAlign;
+  std::string verticalAlign;
+};
+
+struct ParagraphProperties {
+
 };
 
 class Element final {

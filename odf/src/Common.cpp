@@ -1,9 +1,10 @@
 #include <Common.h>
+#include <odr/Document.h>
 
 namespace odr::odf {
 
-common::AbstractTextDocument::PageProperties Common::pageProperties(const pugi::xml_document &style) {
-  common::AbstractTextDocument::PageProperties result;
+PageProperties Common::pageProperties(const pugi::xml_document &style) {
+  PageProperties result;
 
   const pugi::xml_node masterStyles = style.child("office:document-styles")
       .child("office:master-styles");

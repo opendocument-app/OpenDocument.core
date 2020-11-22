@@ -3,6 +3,8 @@
 #include <common/HtmlTranslation.h>
 #include <fstream>
 #include <odr/Config.h>
+#include <odr/Elements.h>
+#include <odr/Document.h>
 
 namespace odr::common {
 
@@ -19,17 +21,17 @@ void translateGeneration(std::shared_ptr<const AbstractElement> element,
 
 void translateElement(const AbstractElement &element, std::ostream &out,
                       const Config &config) {
-  if (element.isUnknown()) {
+  if (element.type() == ElementType::UNKNOWN) {
     translateGeneration(element.firstChild(), out, config);
-  } else if (element.isText()) {
+  } else if (element.type() == ElementType::TEXT) {
     out << Html::escapeText(dynamic_cast<const AbstractText &>(element).text());
-  } else if (element.isLineBreak()) {
+  } else if (element.type() == ElementType::LINE_BREAK) {
     out << "<br>";
-  } else if (element.isParagraph()) {
+  } else if (element.type() == ElementType::PARAGRAPH) {
     out << "<p>";
     translateGeneration(element.firstChild(), out, config);
     out << "</p>";
-  } else if (element.isSpan()) {
+  } else if (element.type() == ElementType::SPAN) {
     out << "<span>";
     translateGeneration(element.firstChild(), out, config);
     out << "</span>";
