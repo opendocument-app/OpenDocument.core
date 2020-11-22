@@ -2,6 +2,7 @@
 #define ODR_DOCUMENT_H
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <odr/File.h>
 
@@ -9,6 +10,7 @@ namespace odr {
 
 namespace common {
 class Document;
+class AbstractTextDocument;
 }
 
 enum class FileType;
@@ -48,7 +50,7 @@ public:
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
 
-private:
+protected:
   common::Document &impl() const noexcept;
 };
 
@@ -66,12 +68,14 @@ class TextDocument final : public Document {
 public:
   explicit TextDocument(const std::string &path);
   TextDocument(const std::string &path, FileType as);
-  TextDocument(TextDocument &&) noexcept;
-  ~TextDocument();
+  TextDocument(Document &&);
 
   PageProperties pageProperties() const;
 
-  Element firstContentElement() const;
+  std::optional<Element> firstContentElement() const;
+
+private:
+  std::shared_ptr<const common::AbstractTextDocument> m_impl;
 };
 
 class Presentation final : public Document {

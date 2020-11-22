@@ -2,11 +2,13 @@
 #define ODR_COMMON_ABSTRACTDOCUMENT_H
 
 #include <memory>
+#include <optional>
 
 namespace odr {
 enum class ElementType;
 enum class DocumentType;
 struct PageProperties;
+class Element;
 
 namespace common {
 
@@ -17,6 +19,9 @@ class AbstractSpreadsheet;
 
 class AbstractElement {
 public:
+  std::optional<Element>
+  static convert(std::shared_ptr<const common::AbstractElement> element);
+
   virtual ~AbstractElement() = default;
 
   virtual std::shared_ptr<const AbstractElement> parent() const = 0;

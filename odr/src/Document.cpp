@@ -2,6 +2,8 @@
 #include <common/Document.h>
 #include <access/Path.h>
 #include <OpenStrategy.h>
+#include <odr/Elements.h>
+#include <common/AbstractDocument.h>
 
 namespace odr {
 
@@ -59,6 +61,26 @@ void Document::save(const std::string &path) const { impl().save(path); }
 void Document::save(const std::string &path,
                     const std::string &password) const {
   impl().save(path, password);
+}
+
+TextDocument::TextDocument(const std::string &path) : TextDocument(Document(path)) {
+  // TODO
+}
+
+TextDocument::TextDocument(const std::string &path, FileType as) : TextDocument(Document(path, as)) {
+  // TODO
+}
+
+TextDocument::TextDocument(Document &&document) : Document(std::move(document)), m_impl{std::dynamic_pointer_cast<const common::AbstractTextDocument>(impl().document())} {
+  // TODO
+}
+
+PageProperties TextDocument::pageProperties() const {
+  return m_impl->pageProperties();
+}
+
+std::optional<Element> TextDocument::firstContentElement() const {
+  return common::AbstractElement::convert(m_impl->firstContentElement());
 }
 
 } // namespace odr

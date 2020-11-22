@@ -4,13 +4,6 @@
 namespace odr {
 
 namespace {
-std::optional<Element>
-convert(std::shared_ptr<const common::AbstractElement> impl) {
-  if (!impl)
-    return {};
-  return Element(std::move(impl));
-}
-
 template <typename R, typename E>
 std::optional<R> convert(std::shared_ptr<const E> impl,
                          ElementType type) {
@@ -26,19 +19,19 @@ Element::Element(std::shared_ptr<const common::AbstractElement> impl)
     : m_impl{std::move(impl)} {}
 
 std::optional<Element> Element::parent() const {
-  return convert(m_impl->parent());
+  return common::AbstractElement::convert(m_impl->parent());
 }
 
 std::optional<Element> Element::firstChild() const {
-  return convert(m_impl->firstChild());
+  return common::AbstractElement::convert(m_impl->firstChild());
 }
 
 std::optional<Element> Element::previousSibling() const {
-  return convert(m_impl->previousSibling());
+  return common::AbstractElement::convert(m_impl->previousSibling());
 }
 
 std::optional<Element> Element::nextSibling() const {
-  return convert(m_impl->nextSibling());
+  return common::AbstractElement::convert(m_impl->nextSibling());
 }
 
 ElementType Element::type() const { return m_impl->type(); }

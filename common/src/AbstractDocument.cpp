@@ -4,6 +4,12 @@
 
 namespace odr::common {
 
+std::optional<Element> AbstractElement::convert(std::shared_ptr<const common::AbstractElement> element) {
+  if (!element)
+    return {};
+  return Element(std::move(element));
+}
+
 ElementType AbstractText::type() const {
   return ElementType::TEXT;
 }
