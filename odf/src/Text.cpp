@@ -1,5 +1,6 @@
 #include <Text.h>
 #include <Common.h>
+#include <odr/Elements.h>
 
 namespace odr::odf {
 
@@ -43,13 +44,13 @@ protected:
 class Primitive final : public Element {
 public:
   Primitive(std::shared_ptr<const Element> parent, pugi::xml_node node,
-         const Type type)
+         const ElementType type)
       : Element(std::move(parent), node), m_type{type} {}
 
-  Type type() const final { return m_type; }
+  ElementType type() const final { return m_type; }
 
 private:
-  const Type m_type;
+  const ElementType m_type;
 };
 
 class TextElement : public Element, public common::AbstractText {
@@ -100,7 +101,7 @@ std::shared_ptr<common::AbstractElement> convert(std::shared_ptr<const Element> 
       return std::make_shared<TextElement>(std::move(parent), node);
     else if (element == "text:line-break")
       return std::make_shared<Primitive>(std::move(parent), node,
-                                         common::AbstractElement::Type::LINE_BREAK);
+                                         ElementType::LINE_BREAK);
     // else if (element == "text:a")
     //  LinkTranslator(in, out, context);
     // else if (element == "text:bookmark" || element == "text:bookmark-start")
@@ -113,7 +114,7 @@ std::shared_ptr<common::AbstractElement> convert(std::shared_ptr<const Element> 
     //  TableTranslator(in, out, context);
 
     return std::make_shared<Primitive>(std::move(parent), node,
-                                       common::AbstractElement::Type::UNKNOWN);
+                                       ElementType::UNKNOWN);
   }
 
   return nullptr;
