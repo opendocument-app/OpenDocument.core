@@ -8,8 +8,6 @@ FileNoExcept::FileNoExcept(File &&file) : m_impl{std::make_unique<File>(std::mov
 
 FileNoExcept::FileNoExcept(std::unique_ptr<File> file) : m_impl{std::move(file)} {}
 
-FileNoExcept::FileNoExcept(FileNoExcept &&other) noexcept : m_impl{std::move(other.m_impl)} {}
-
 FileType FileNoExcept::fileType() const noexcept {
   try {
     return m_impl->fileType();

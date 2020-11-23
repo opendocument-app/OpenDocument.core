@@ -50,8 +50,6 @@ DocumentNoExcept::DocumentNoExcept(FileNoExcept &&file) : FileNoExcept(std::move
   // TODO check document
 }
 
-DocumentNoExcept::DocumentNoExcept(DocumentNoExcept &&) noexcept = default;
-
 Document & DocumentNoExcept::impl() const noexcept {
   return *static_cast<Document *>(m_impl.get());
 }

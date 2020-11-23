@@ -28,8 +28,6 @@ public:
   explicit Document(const std::string &path);
   Document(const std::string &path, FileType as);
   Document(File &&);
-  Document(Document &&) noexcept;
-  ~Document();
 
   using File::fileType;
   using File::fileCategory;

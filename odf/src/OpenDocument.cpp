@@ -282,9 +282,9 @@ OpenDocument::OpenDocument(std::unique_ptr<access::ReadStorage> &storage)
 
 OpenDocument::OpenDocument(OpenDocument &&) noexcept = default;
 
-OpenDocument &OpenDocument::operator=(OpenDocument &&) noexcept = default;
-
 OpenDocument::~OpenDocument() = default;
+
+OpenDocument &OpenDocument::operator=(OpenDocument &&) noexcept = default;
 
 const FileMeta &OpenDocument::meta() const noexcept { return impl_->meta(); }
 

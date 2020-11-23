@@ -282,9 +282,9 @@ OfficeOpenXml::OfficeOpenXml(std::unique_ptr<access::ReadStorage> &storage)
 
 OfficeOpenXml::OfficeOpenXml(OfficeOpenXml &&) noexcept = default;
 
-OfficeOpenXml &OfficeOpenXml::operator=(OfficeOpenXml &&) noexcept = default;
-
 OfficeOpenXml::~OfficeOpenXml() = default;
+
+OfficeOpenXml &OfficeOpenXml::operator=(OfficeOpenXml &&) noexcept = default;
 
 const FileMeta &OfficeOpenXml::meta() const noexcept { return impl_->meta(); }
 

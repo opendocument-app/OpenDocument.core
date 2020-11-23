@@ -115,6 +115,8 @@ File::File(File &&file) noexcept = default;
 
 File::~File() = default;
 
+File & File::operator=(File &&) noexcept {}
+
 FileType File::fileType() const noexcept {
   return impl_->meta().type;
 }

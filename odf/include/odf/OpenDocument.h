@@ -20,9 +20,9 @@ public:
   explicit OpenDocumentFile(std::unique_ptr<access::ReadStorage> &storage);
   OpenDocumentFile(const OpenDocumentFile &) = delete;
   OpenDocumentFile(OpenDocumentFile &&) noexcept;
+  ~OpenDocumentFile();
   OpenDocumentFile &operator=(const OpenDocumentFile &) = delete;
   OpenDocumentFile &operator=(OpenDocumentFile &&) noexcept;
-  ~OpenDocumentFile() final;
 
   const FileMeta &meta() const noexcept;
   const access::ReadStorage &storage() const noexcept;
@@ -37,9 +37,9 @@ public:
   explicit OpenDocument(std::unique_ptr<access::ReadStorage> &storage);
   OpenDocument(const OpenDocument &) = delete;
   OpenDocument(OpenDocument &&) noexcept;
+  ~OpenDocument() final;
   OpenDocument &operator=(const OpenDocument &) = delete;
   OpenDocument &operator=(OpenDocument &&) noexcept;
-  ~OpenDocument() final;
 
   const FileMeta &meta() const noexcept;
   const access::ReadStorage &storage() const noexcept;

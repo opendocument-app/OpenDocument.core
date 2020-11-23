@@ -20,9 +20,9 @@ public:
   explicit OfficeOpenXml(std::unique_ptr<access::ReadStorage> &storage);
   OfficeOpenXml(const OfficeOpenXml &) = delete;
   OfficeOpenXml(OfficeOpenXml &&) noexcept;
+  ~OfficeOpenXml() final;
   OfficeOpenXml &operator=(const OfficeOpenXml &) = delete;
   OfficeOpenXml &operator=(OfficeOpenXml &&) noexcept;
-  ~OfficeOpenXml() final;
 
   const FileMeta &meta() const noexcept final;
   const access::ReadStorage &storage() const noexcept;

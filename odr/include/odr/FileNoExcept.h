@@ -18,7 +18,6 @@ public:
 
   explicit FileNoExcept(File &&);
   explicit FileNoExcept(std::unique_ptr<File>);
-  FileNoExcept(FileNoExcept &&) noexcept;
 
   FileType fileType() const noexcept;
   FileCategory fileCategory() const noexcept;

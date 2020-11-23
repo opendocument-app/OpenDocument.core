@@ -92,8 +92,11 @@ public:
 
   explicit File(const std::string &path);
   File(const std::string &path, FileType as);
+  File(const File &) = delete;
   File(File &&) noexcept;
   virtual ~File();
+  File &operator=(const File &) = delete;
+  File &operator=(File &&) noexcept;
 
   FileType fileType() const noexcept;
   FileCategory fileCategory() const noexcept;

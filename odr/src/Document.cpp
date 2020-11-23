@@ -20,13 +20,9 @@ Document::Document(const std::string &path) : File(OpenStrategy::openDocument(pa
 Document::Document(const std::string &path, const FileType as)
     : File(OpenStrategy::openDocument(path, as)) {}
 
-Document::Document(Document &&) noexcept = default;
-
 Document::Document(File &&file) : File(std::move(file)) {
   // TODO check if document
 }
-
-Document::~Document() = default;
 
 common::Document & Document::impl() const noexcept {
   return static_cast<common::Document &>(*impl_);

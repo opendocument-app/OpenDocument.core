@@ -20,7 +20,6 @@ public:
   explicit DocumentNoExcept(Document &&);
   explicit DocumentNoExcept(std::unique_ptr<Document>);
   DocumentNoExcept(FileNoExcept &&);
-  DocumentNoExcept(DocumentNoExcept &&) noexcept;
 
   using FileNoExcept::fileType;
   using FileNoExcept::fileCategory;
