@@ -1,8 +1,8 @@
-#include <common/Html.h>
+#include <html/Html.h>
 #include <common/StringUtil.h>
 #include <odr/Config.h>
 
-namespace odr::common {
+namespace odr::html {
 
 const char *Html::doctype() noexcept {
   // clang-format off
@@ -117,9 +117,9 @@ std::string Html::bodyAttributes(const Config &config) noexcept {
 }
 
 std::string Html::escapeText(std::string text) noexcept {
-  StringUtil::findAndReplaceAll(text, "&", "&amp;");
-  StringUtil::findAndReplaceAll(text, "<", "&lt;");
-  StringUtil::findAndReplaceAll(text, ">", "&gt;");
+  common::StringUtil::findAndReplaceAll(text, "&", "&amp;");
+  common::StringUtil::findAndReplaceAll(text, "<", "&lt;");
+  common::StringUtil::findAndReplaceAll(text, ">", "&gt;");
 
   return text;
 }

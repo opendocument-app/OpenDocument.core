@@ -22,6 +22,7 @@ target_link_libraries(odr_odf
         odr_access
         odr_common
         odr_crypto
+        odr_html
         odr_svm
 
         odr-interface

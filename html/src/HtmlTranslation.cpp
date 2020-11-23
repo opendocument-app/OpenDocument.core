@@ -1,31 +1,31 @@
 #include <common/Document.h>
 #include <common/DocumentElements.h>
-#include <common/Html.h>
-#include <common/HtmlTranslation.h>
+#include <html/Html.h>
+#include <html/HtmlTranslation.h>
 #include <fstream>
 #include <odr/Config.h>
 #include <odr/Document.h>
 #include <odr/DocumentElements.h>
 
-namespace odr::common {
+namespace odr::html {
 
 namespace {
-void translateElement(const Element &element, std::ostream &out,
+void translateElement(const common::Element &element, std::ostream &out,
                       const Config &config);
 
-void translateGeneration(std::shared_ptr<const Element> element,
+void translateGeneration(std::shared_ptr<const common::Element> element,
                          std::ostream &out, const Config &config) {
   for (auto g = element; element; element = element->nextSibling()) {
     translateElement(*g, out, config);
   }
 }
 
-void translateElement(const Element &element, std::ostream &out,
+void translateElement(const common::Element &element, std::ostream &out,
                       const Config &config) {
   if (element.type() == ElementType::UNKNOWN) {
     translateGeneration(element.firstChild(), out, config);
   } else if (element.type() == ElementType::TEXT) {
-    out << Html::escapeText(dynamic_cast<const TextElement &>(element).text());
+    out << Html::escapeText(dynamic_cast<const common::TextElement &>(element).text());
   } else if (element.type() == ElementType::LINE_BREAK) {
     out << "<br>";
   } else if (element.type() == ElementType::PARAGRAPH) {
@@ -41,7 +41,7 @@ void translateElement(const Element &element, std::ostream &out,
   }
 }
 
-void translateText(const TextDocument &document, std::ostream &out,
+void translateText(const common::TextDocument &document, std::ostream &out,
                    const Config &config) {
   // TODO out-source css
   const auto pageProperties = document.pageProperties();
@@ -57,7 +57,7 @@ void translateText(const TextDocument &document, std::ostream &out,
 }
 } // namespace
 
-void HtmlTranslation::translate(const Document &document,
+void HtmlTranslation::translate(const common::Document &document,
                                 const std::string &path, const Config &config) {
   std::ofstream out(path);
   if (!out.is_open())
@@ -73,7 +73,7 @@ void HtmlTranslation::translate(const Document &document,
 
   out << "<body " << Html::bodyAttributes(config) << ">";
 
-  if (auto textDocument = dynamic_cast<const TextDocument *>(&document);
+  if (auto textDocument = dynamic_cast<const common::TextDocument *>(&document);
       textDocument) {
     translateText(*textDocument, out, config);
   }
@@ -88,7 +88,7 @@ void HtmlTranslation::translate(const Document &document,
   // TODO throw unknown document
 }
 
-void HtmlTranslation::edit(const Document &document,
+void HtmlTranslation::edit(const common::Document &document,
                            const std::string &diff) {}
 
 } // namespace odr::common

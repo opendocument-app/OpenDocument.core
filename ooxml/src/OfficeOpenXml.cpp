@@ -8,7 +8,7 @@
 #include <access/Path.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
-#include <common/Html.h>
+#include <html/Html.h>
 #include <common/XmlUtil.h>
 #include <fstream>
 #include <odr/Config.h>
@@ -22,7 +22,7 @@ namespace odr::ooxml {
 namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
   // default css
-  out << common::Html::odfDefaultStyle();
+  out << html::Html::odfDefaultStyle();
 
   switch (context.meta->type) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT: {
@@ -58,7 +58,7 @@ void generateStyle_(std::ofstream &out, Context &context) {
 }
 
 void generateScript_(std::ofstream &out, Context &) {
-  out << common::Html::defaultScript();
+  out << html::Html::defaultScript();
 }
 
 void generateContent_(Context &context) {
@@ -224,15 +224,15 @@ public:
     context_.storage = storage_.get();
     context_.output = &out;
 
-    out << common::Html::doctype();
+    out << html::Html::doctype();
     out << "<html><head>";
-    out << common::Html::defaultHeaders();
+    out << html::Html::defaultHeaders();
     out << "<style>";
     generateStyle_(out, context_);
     out << "</style>";
     out << "</head>";
 
-    out << "<body " << common::Html::bodyAttributes(config) << ">";
+    out << "<body " << html::Html::bodyAttributes(config) << ">";
     generateContent_(context_);
     out << "</body>";
 

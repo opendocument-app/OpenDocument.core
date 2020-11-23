@@ -20,6 +20,7 @@ target_link_libraries(odr_ooxml
         odr_access
         odr_common
         odr_crypto
+        odr_html
 
         odr-interface
         )

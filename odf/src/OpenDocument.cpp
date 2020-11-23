@@ -5,7 +5,7 @@
 #include <StyleTranslator.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
-#include <common/Html.h>
+#include <html/Html.h>
 #include <common/XmlUtil.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -18,10 +18,10 @@ namespace odr::odf {
 
 namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
-  out << common::Html::odfDefaultStyle();
+  out << html::Html::odfDefaultStyle();
 
   if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET)
-    out << common::Html::odfSpreadsheetDefaultStyle();
+    out << html::Html::odfSpreadsheetDefaultStyle();
 
   const auto stylesXml = common::XmlUtil::parse(*context.storage, "styles.xml");
 
@@ -59,7 +59,7 @@ void generateContentStyle_(const pugi::xml_node &in, Context &context) {
 }
 
 void generateScript_(std::ofstream &out, Context &) {
-  out << common::Html::defaultScript();
+  out << html::Html::defaultScript();
 }
 
 void generateContent_(const pugi::xml_node &in, Context &context) {
@@ -174,16 +174,16 @@ public:
 
     content_ = common::XmlUtil::parse(*storage_, "content.xml");
 
-    out << common::Html::doctype();
+    out << html::Html::doctype();
     out << "<html><head>";
-    out << common::Html::defaultHeaders();
+    out << html::Html::defaultHeaders();
     out << "<style>";
     generateStyle_(out, context_);
     generateContentStyle_(content_, context_);
     out << "</style>";
     out << "</head>";
 
-    out << "<body " << common::Html::bodyAttributes(config) << ">";
+    out << "<body " << html::Html::bodyAttributes(config) << ">";
     generateContent_(content_, context_);
     out << "</body>";
 
