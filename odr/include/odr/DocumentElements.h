@@ -96,7 +96,7 @@ private:
   std::shared_ptr<const common::Element> m_impl;
 };
 
-class ElementIterator final {
+class ElementSiblingIterator final {
 public:
   using iterator_category = std::forward_iterator_tag;
   using value_type = Element;
@@ -104,25 +104,25 @@ public:
   using pointer = Element*;
   using reference = Element&;
 
-  explicit ElementIterator(std::optional<Element> element);
+  explicit ElementSiblingIterator(std::optional<Element> element);
 
-  ElementIterator &operator++();
-  ElementIterator operator++(int) &;
+  ElementSiblingIterator &operator++();
+  ElementSiblingIterator operator++(int) &;
   reference operator*();
   pointer operator->();
-  bool operator==(const ElementIterator& rhs) const;
-  bool operator!=(const ElementIterator& rhs) const;
+  bool operator==(const ElementSiblingIterator& rhs) const;
+  bool operator!=(const ElementSiblingIterator& rhs) const;
 
 private:
   std::optional<Element> m_element;
 };
 
-class ElementRange final {
+class ElementSiblingRange final {
 public:
-  ElementRange(std::optional<Element> begin, std::optional<Element> end);
+  ElementSiblingRange(std::optional<Element> begin, std::optional<Element> end);
 
-  ElementIterator begin();
-  ElementIterator end();
+  ElementSiblingIterator begin();
+  ElementSiblingIterator end();
 
 private:
   std::optional<Element> m_begin;

@@ -98,40 +98,40 @@ std::optional<TableElement> Element::table() const {
       ElementType::TABLE);
 }
 
-ElementIterator::ElementIterator(std::optional<Element> element) : m_element{std::move(element)} {}
+ElementSiblingIterator::ElementSiblingIterator(std::optional<Element> element) : m_element{std::move(element)} {}
 
-ElementIterator &ElementIterator::operator++() {
+ElementSiblingIterator &ElementSiblingIterator::operator++() {
   m_element = m_element->nextSibling();
   return *this;
 }
 
-ElementIterator ElementIterator::operator++(int) & {
-  ElementIterator result = *this;
+ElementSiblingIterator ElementSiblingIterator::operator++(int) & {
+  ElementSiblingIterator result = *this;
   operator++();
   return result;
 }
 
-Element &ElementIterator::operator*() {
+Element &ElementSiblingIterator::operator*() {
   return *m_element;
 }
 
-Element *ElementIterator::operator->() {
+Element *ElementSiblingIterator::operator->() {
   return &*m_element;
 }
 
-bool ElementIterator::operator==(const ElementIterator &rhs) const {
+bool ElementSiblingIterator::operator==(const ElementSiblingIterator &rhs) const {
   return m_element == rhs.m_element;
 }
 
-bool ElementIterator::operator!=(const ElementIterator &rhs) const {
+bool ElementSiblingIterator::operator!=(const ElementSiblingIterator &rhs) const {
   return m_element != rhs.m_element;
 }
 
-ElementRange::ElementRange(std::optional<Element> begin, std::optional<Element> end) : m_begin{std::move(begin)}, m_end{std::move(end)} {}
+ElementSiblingRange::ElementSiblingRange(std::optional<Element> begin, std::optional<Element> end) : m_begin{std::move(begin)}, m_end{std::move(end)} {}
 
-ElementIterator ElementRange::begin()  { return ElementIterator(m_begin); }
+ElementSiblingIterator ElementSiblingRange::begin()  { return ElementSiblingIterator(m_begin); }
 
-ElementIterator ElementRange::end()  { return ElementIterator(m_end); }
+ElementSiblingIterator ElementSiblingRange::end()  { return ElementSiblingIterator(m_end); }
 
 TextElement::TextElement(std::shared_ptr<const common::TextElement> impl)
     : m_impl{std::move(impl)} {}
