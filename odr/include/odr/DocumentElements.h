@@ -13,6 +13,8 @@ class Paragraph;
 class Table;
 } // namespace common
 
+class Element;
+class ElementRange;
 class TextElement;
 class ParagraphElement;
 class SpanElement;
@@ -69,6 +71,9 @@ class Element final {
 public:
   explicit Element(std::shared_ptr<const common::Element> impl);
 
+  bool operator==(const Element& rhs) const;
+  bool operator!=(const Element& rhs) const;
+
   std::optional<Element> parent() const;
   std::optional<Element> firstChild() const;
   std::optional<Element> previousSibling() const;
@@ -89,6 +94,39 @@ public:
 
 private:
   std::shared_ptr<const common::Element> m_impl;
+};
+
+class ElementIterator final {
+public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = Element;
+  using difference_type = std::ptrdiff_t;
+  using pointer = Element*;
+  using reference = Element&;
+
+  explicit ElementIterator(std::optional<Element> element);
+
+  ElementIterator &operator++();
+  ElementIterator operator++(int) &;
+  reference operator*();
+  pointer operator->();
+  bool operator==(const ElementIterator& rhs) const;
+  bool operator!=(const ElementIterator& rhs) const;
+
+private:
+  std::optional<Element> m_element;
+};
+
+class ElementRange final {
+public:
+  ElementRange(std::optional<Element> begin, std::optional<Element> end);
+
+  ElementIterator begin();
+  ElementIterator end();
+
+private:
+  std::optional<Element> m_begin;
+  std::optional<Element> m_end;
 };
 
 class TextElement final {

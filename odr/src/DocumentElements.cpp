@@ -18,6 +18,14 @@ std::optional<R> convert(std::shared_ptr<const E> impl,
 Element::Element(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
 
+bool Element::operator==(const Element &rhs) const {
+  return m_impl == rhs.m_impl;
+}
+
+bool Element::operator!=(const Element &rhs) const {
+  return m_impl != rhs.m_impl;
+}
+
 std::optional<Element> Element::parent() const {
   return common::Element::convert(m_impl->parent());
 }
@@ -89,6 +97,41 @@ std::optional<TableElement> Element::table() const {
       std::dynamic_pointer_cast<const common::Table>(m_impl),
       ElementType::TABLE);
 }
+
+ElementIterator::ElementIterator(std::optional<Element> element) : m_element{std::move(element)} {}
+
+ElementIterator &ElementIterator::operator++() {
+  m_element = m_element->nextSibling();
+  return *this;
+}
+
+ElementIterator ElementIterator::operator++(int) & {
+  ElementIterator result = *this;
+  operator++();
+  return result;
+}
+
+Element &ElementIterator::operator*() {
+  return *m_element;
+}
+
+Element *ElementIterator::operator->() {
+  return &*m_element;
+}
+
+bool ElementIterator::operator==(const ElementIterator &rhs) const {
+  return m_element == rhs.m_element;
+}
+
+bool ElementIterator::operator!=(const ElementIterator &rhs) const {
+  return m_element != rhs.m_element;
+}
+
+ElementRange::ElementRange(std::optional<Element> begin, std::optional<Element> end) : m_begin{std::move(begin)}, m_end{std::move(end)} {}
+
+ElementIterator ElementRange::begin()  { return ElementIterator(m_begin); }
+
+ElementIterator ElementRange::end()  { return ElementIterator(m_end); }
 
 TextElement::TextElement(std::shared_ptr<const common::TextElement> impl)
     : m_impl{std::move(impl)} {}
