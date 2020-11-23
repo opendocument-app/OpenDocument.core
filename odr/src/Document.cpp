@@ -93,6 +93,8 @@ Document::Document(Document &&) noexcept = default;
 
 Document::~Document() = default;
 
+Document& Document::operator=(Document &&) noexcept = default;
+
 FileType Document::type() const noexcept { return impl_->meta().type; }
 
 bool Document::encrypted() const noexcept { return impl_->meta().encrypted; }

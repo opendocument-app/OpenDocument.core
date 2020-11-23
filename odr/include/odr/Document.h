@@ -26,10 +26,10 @@ public:
   explicit Document(const std::string &path);
   Document(const std::string &path, FileType as);
   Document(const Document &) = delete;
-  Document(Document &&) = default;
+  Document(Document &&) noexcept;
   ~Document();
   Document& operator=(Document &) = delete;
-  Document& operator=(Document &&) = default;
+  Document& operator=(Document &&) noexcept;
 
   FileType type() const noexcept;
   bool encrypted() const noexcept;
