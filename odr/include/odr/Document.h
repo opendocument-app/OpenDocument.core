@@ -28,8 +28,8 @@ public:
   Document(const Document &) = delete;
   Document(Document &&) noexcept;
   ~Document();
-  Document& operator=(Document &) = delete;
-  Document& operator=(Document &&) noexcept;
+  Document &operator=(Document &) = delete;
+  Document &operator=(Document &&) noexcept;
 
   FileType type() const noexcept;
   bool encrypted() const noexcept;
