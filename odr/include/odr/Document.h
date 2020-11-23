@@ -25,8 +25,11 @@ public:
 
   explicit Document(const std::string &path);
   Document(const std::string &path, FileType as);
-  Document(Document &&) noexcept;
+  Document(const Document &) = delete;
+  Document(Document &&) = default;
   ~Document();
+  Document& operator=(Document &) = delete;
+  Document& operator=(Document &&) = default;
 
   FileType type() const noexcept;
   bool encrypted() const noexcept;
@@ -59,8 +62,6 @@ public:
   static FileMeta meta(const std::string &path) noexcept;
 
   explicit DocumentNoExcept(std::unique_ptr<Document>);
-  DocumentNoExcept(DocumentNoExcept &&) noexcept;
-  ~DocumentNoExcept();
 
   FileType type() const noexcept;
   bool encrypted() const noexcept;

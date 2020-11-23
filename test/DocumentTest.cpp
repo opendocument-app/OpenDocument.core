@@ -6,6 +6,4 @@ using namespace odr;
 
 TEST(Document, open) { EXPECT_THROW(Document("/"), UnknownFileType); }
 
-TEST(DocumentNoExcept, open) {
-  EXPECT_FALSE(DocumentNoExcept::open("/"));
-}
+TEST(DocumentNoExcept, open) { EXPECT_FALSE(DocumentNoExcept::open("/")); }

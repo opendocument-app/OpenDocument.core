@@ -169,10 +169,6 @@ FileMeta DocumentNoExcept::meta(const std::string &path) noexcept {
 DocumentNoExcept::DocumentNoExcept(std::unique_ptr<Document> impl)
     : impl_{std::move(impl)} {}
 
-DocumentNoExcept::DocumentNoExcept(DocumentNoExcept &&) noexcept = default;
-
-DocumentNoExcept::~DocumentNoExcept() = default;
-
 FileType DocumentNoExcept::type() const noexcept {
   try {
     return impl_->type();
