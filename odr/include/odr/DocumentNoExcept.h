@@ -21,7 +21,6 @@ public:
   explicit DocumentNoExcept(std::unique_ptr<Document>);
   DocumentNoExcept(FileNoExcept &&);
   DocumentNoExcept(DocumentNoExcept &&) noexcept;
-  ~DocumentNoExcept();
 
   using FileNoExcept::fileType;
   using FileNoExcept::fileCategory;
@@ -45,7 +44,7 @@ public:
             const std::string &password) const noexcept;
 
 private:
-  Document &document() const noexcept;
+  Document &impl() const noexcept;
 };
 
 }

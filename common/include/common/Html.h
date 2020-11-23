@@ -6,10 +6,6 @@
 namespace odr {
 struct Config;
 
-namespace access {
-class Sink;
-}
-
 namespace common::Html {
 const char *doctype() noexcept;
 

@@ -15,6 +15,7 @@ class Path;
 
 namespace common {
 class Element;
+class Table;
 
 class Document : public File {
 public:
@@ -42,13 +43,19 @@ public:
 
 class Presentation : public Document {
 public:
-  virtual std::shared_ptr<Element>
-  slideContent(std::uint32_t index) const = 0;
+  virtual std::shared_ptr<const Element>
+  firstSlideContentElement(std::uint32_t index) const = 0;
 };
 
 class Spreadsheet : public Document {
 public:
-  virtual std::shared_ptr<Element> table(std::uint32_t index) const = 0;
+  virtual std::shared_ptr<const Table> table(std::uint32_t index) const = 0;
+};
+
+class Graphics : public Document {
+public:
+  virtual std::shared_ptr<const Element>
+  firstPageContentElement(std::uint32_t index) const = 0;
 };
 
 } // namespace common

@@ -3,7 +3,6 @@
 #include <Crypto.h>
 #include <Meta.h>
 #include <StyleTranslator.h>
-#include <Text.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <common/Html.h>

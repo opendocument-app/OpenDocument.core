@@ -11,6 +11,23 @@ class ReadStorage;
 
 namespace odf {
 
+class OpenDocumentFile final {
+public:
+  explicit OpenDocumentFile(const char *path);
+  explicit OpenDocumentFile(const std::string &path);
+  explicit OpenDocumentFile(const access::Path &path);
+  explicit OpenDocumentFile(std::unique_ptr<access::ReadStorage> &&storage);
+  explicit OpenDocumentFile(std::unique_ptr<access::ReadStorage> &storage);
+  OpenDocumentFile(const OpenDocumentFile &) = delete;
+  OpenDocumentFile(OpenDocumentFile &&) noexcept;
+  OpenDocumentFile &operator=(const OpenDocumentFile &) = delete;
+  OpenDocumentFile &operator=(OpenDocumentFile &&) noexcept;
+  ~OpenDocumentFile() final;
+
+  const FileMeta &meta() const noexcept;
+  const access::ReadStorage &storage() const noexcept;
+};
+
 class OpenDocument final : public common::Document {
 public:
   explicit OpenDocument(const char *path);
