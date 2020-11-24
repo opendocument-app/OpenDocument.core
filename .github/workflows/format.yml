@@ -1,6 +1,12 @@
 name: format
 
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore:
+      - '**' # TODO remove before merge
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
