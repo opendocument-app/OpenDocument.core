@@ -93,6 +93,8 @@ Document::Document(Document &&) noexcept = default;
 
 Document::~Document() = default;
 
+Document &Document::operator=(Document &&) noexcept = default;
+
 FileType Document::type() const noexcept { return impl_->meta().type; }
 
 bool Document::encrypted() const noexcept { return impl_->meta().encrypted; }
@@ -126,21 +128,20 @@ void Document::save(const std::string &path,
   impl_->save(path, password);
 }
 
-std::unique_ptr<DocumentNoExcept>
+std::optional<DocumentNoExcept>
 DocumentNoExcept::open(const std::string &path) noexcept {
   try {
-    return std::make_unique<DocumentNoExcept>(std::make_unique<Document>(path));
+    return DocumentNoExcept(std::make_unique<Document>(path));
   } catch (...) {
     LOG(ERROR) << "open failed";
     return {};
   }
 }
 
-std::unique_ptr<DocumentNoExcept>
+std::optional<DocumentNoExcept>
 DocumentNoExcept::open(const std::string &path, const FileType as) noexcept {
   try {
-    return std::make_unique<DocumentNoExcept>(
-        std::make_unique<Document>(path, as));
+    return DocumentNoExcept(std::make_unique<Document>(path, as));
   } catch (...) {
     LOG(ERROR) << "open failed";
     return {};
@@ -169,10 +170,6 @@ FileMeta DocumentNoExcept::meta(const std::string &path) noexcept {
 
 DocumentNoExcept::DocumentNoExcept(std::unique_ptr<Document> impl)
     : impl_{std::move(impl)} {}
-
-DocumentNoExcept::DocumentNoExcept(DocumentNoExcept &&) noexcept = default;
-
-DocumentNoExcept::~DocumentNoExcept() = default;
 
 FileType DocumentNoExcept::type() const noexcept {
   try {
