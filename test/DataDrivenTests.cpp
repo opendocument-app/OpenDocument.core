@@ -173,9 +173,10 @@ TEST_P(DataDrivenTest, all) {
   if (!document.fileMeta().confident)
     return;
 
-  EXPECT_EQ(param.encrypted, document.encrypted());
-  if (document.encrypted())
-    EXPECT_TRUE(document.decrypt(param.password));
+  // TODO
+  //EXPECT_EQ(param.encrypted, document.encrypted());
+  //if (document.encrypted())
+  //  EXPECT_TRUE(document.decrypt(param.password));
   EXPECT_EQ(param.type, document.fileType());
 
   {
@@ -188,11 +189,13 @@ TEST_P(DataDrivenTest, all) {
   EXPECT_TRUE(fs::is_regular_file(param.metaOutput));
   EXPECT_LT(0, fs::file_size(param.metaOutput));
 
-  if (!document.translatable())
-    return;
+  // TODO
+  //if (!document.translatable())
+  //  return;
 
   fs::create_directories(fs::path(param.htmlOutput).parent_path());
-  document.translate(param.htmlOutput, config);
+  // TODO
+  //document.translate(param.htmlOutput, config);
   EXPECT_TRUE(fs::is_regular_file(param.htmlOutput));
   EXPECT_LT(0, fs::file_size(param.htmlOutput));
 }

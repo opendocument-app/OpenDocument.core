@@ -15,7 +15,7 @@ add_executable(odr_test
         )
 target_include_directories(odr_test
         PRIVATE
-        ..
+        ../src
         )
 target_link_libraries(odr_test
         PRIVATE
@@ -27,13 +27,6 @@ target_link_libraries(odr_test
         csv
         gtest_main
         gtest
-
-        odr_access
-        odr_common
-        odr_crypto
-        odr_odf
-        odr_ooxml
-        odr_svm
 
         odr-static
         )

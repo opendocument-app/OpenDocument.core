@@ -17,16 +17,107 @@ endif (CCACHE_FOUND)
 
 add_subdirectory(3rdparty)
 
-add_subdirectory(access)
-add_subdirectory(common)
-add_subdirectory(crypto)
-add_subdirectory(html)
-add_subdirectory(odf)
-add_subdirectory(oldms)
-add_subdirectory(ooxml)
-add_subdirectory(svm)
+add_library(odr-interface INTERFACE)
+target_include_directories(odr-interface INTERFACE include)
 
-add_subdirectory(odr)
+add_library(odr-object OBJECT
+        src/Document.cpp
+        src/DocumentElements.cpp
+        src/DocumentNoExcept.cpp
+        src/File.cpp
+        src/FileNoExcept.cpp
+        src/OpenDocument.cpp
+        src/OpenStrategy.cpp
+
+        src/access/CfbStorage.cpp
+        src/access/ChildStorage.cpp
+        src/access/FileUtil.cpp
+        src/access/Path.cpp
+        src/access/StorageUtil.cpp
+        src/access/StreamUtil.cpp
+        src/access/SystemStorage.cpp
+        src/access/ZipStorage.cpp
+
+        src/common/Constants.cpp
+        src/common/DocumentElements.cpp
+        src/common/File.cpp
+        src/common/StringUtil.cpp
+        src/common/TableCursor.cpp
+        src/common/TablePosition.cpp
+        src/common/TableRange.cpp
+        src/common/XmlUtil.cpp
+
+        src/crypto/CryptoUtil.cpp
+
+        src/html/Html.cpp
+        src/html/HtmlTranslation.cpp
+
+        src/odf/Common.cpp
+        src/odf/ContentTranslator.cpp
+        src/odf/Crypto.cpp
+        src/odf/Meta.cpp
+        src/odf/OpenDocument.cpp
+        src/odf/StyleTranslator.cpp
+        src/odf/Text.cpp
+
+        src/oldms/LegacyMicrosoft.cpp
+
+        src/ooxml/Crypto.cpp
+        src/ooxml/DocumentTranslator.cpp
+        src/ooxml/Meta.cpp
+        src/ooxml/OfficeOpenXml.cpp
+        src/ooxml/PresentationTranslator.cpp
+        src/ooxml/WorkbookTranslator.cpp
+
+        src/svm/Svm2Svg.cpp
+        )
+target_include_directories(odr-object
+        PUBLIC
+        include
+        PRIVATE
+        src
+        )
+target_link_libraries(odr-object
+        PRIVATE
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
+        )
+
+add_library(odr-static STATIC
+        $<TARGET_OBJECTS:odr-object>
+        )
+target_include_directories(odr-static
+        PUBLIC
+        include
+        )
+target_link_libraries(odr-static
+        PRIVATE
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
+        )
+
+add_library(odr-shared SHARED
+        $<TARGET_OBJECTS:odr-object>
+        )
+target_include_directories(odr-shared
+        PUBLIC
+        include
+        )
+target_link_libraries(odr-shared
+        PRIVATE
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
+        )
+
 add_subdirectory(cli)
 
 if (ODR_TEST)
@@ -34,7 +125,12 @@ if (ODR_TEST)
 endif ()
 
 install(
-        TARGETS odr-shared meta translate back_translate
+        TARGETS
+        odr-static
+        odr-shared
+        meta
+        translate
+        back_translate
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION bin
         LIBRARY DESTINATION lib

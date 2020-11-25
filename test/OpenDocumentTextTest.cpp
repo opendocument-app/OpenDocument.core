@@ -17,7 +17,7 @@ TEST(OpenDocumentText, hello) {
   std::cout << props.width << " " << props.height << std::endl;
   std::cout << props.marginTop << std::endl;
 
-  for (auto e = textDocument.firstContentElement(); e; e = e->nextSibling()) {
-    std::cout << (int) e->type() << std::endl;
+  for (auto &&e : textDocument.content()) {
+    std::cout << (int) e.type() << std::endl;
   }
 }

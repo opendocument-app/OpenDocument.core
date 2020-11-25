@@ -1,6 +1,6 @@
 #include <cstring>
 #include <gtest/gtest.h>
-#include <ooxml/src/Crypto.h>
+#include <ooxml/Crypto.h>
 #include <string>
 
 using namespace odr::ooxml;
