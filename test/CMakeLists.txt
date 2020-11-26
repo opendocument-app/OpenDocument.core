@@ -3,15 +3,19 @@ include(GoogleTest REQUIRED)
 
 enable_testing()
 add_executable(odr_test
+        access/ZipStorageTest.cpp
+
+        common/PathTest.cpp
+        common/TableCursorTest.cpp
+        common/TablePositionTest.cpp
+        common/TableRangeTest.cpp
+
+        odf/OpenDocumentTextTest.cpp
+
+        ooxml/OoxmlCryptoTest.cpp
+
         DataDrivenTests.cpp
         DocumentTest.cpp
-        OoxmlCryptoTest.cpp
-        OpenDocumentTextTest.cpp
-        PathTest.cpp
-        TableCursorTest.cpp
-        TablePositionTest.cpp
-        TableRangeTest.cpp
-        ZipStorageTest.cpp
         )
 target_include_directories(odr_test
         PRIVATE
