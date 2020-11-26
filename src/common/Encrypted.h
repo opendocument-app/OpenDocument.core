@@ -4,13 +4,10 @@
 #include <string>
 #include <common/File.h>
 
-namespace odr::common {
+namespace odr {
+enum class EncryptionState;
 
-enum class EncryptionState {
-  NOT_ENCRYPTED,
-  ENCRYPTED,
-  DECRYPTED,
-};
+namespace common {
 
 class PasswordEncrypted {
 public:
@@ -24,15 +21,17 @@ public:
   virtual EncryptionState encryptionState() const = 0;
 };
 
-template<typename F>
+template <typename F>
 class PossiblyEncryptedFile : public PossiblyEncryptedFileBase {
 public:
   virtual std::unique_ptr<F> unbox() = 0;
 };
 
-template<typename F>
-class PossiblyPasswordEncryptedFile : public PasswordEncrypted, public PossiblyEncryptedFile<F> {};
+template <typename F>
+class PossiblyPasswordEncryptedFile : public PasswordEncrypted,
+                                      public PossiblyEncryptedFile<F> {};
 
+}
 }
 
 #endif // ODR_COMMON_ENCRYPTED_H

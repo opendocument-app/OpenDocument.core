@@ -38,8 +38,6 @@ private:
 
   explicit OpenDocument(std::unique_ptr<access::ReadStorage> &storage);
 
-  bool encrypted() const;
-  bool decrypted() const;
   bool decrypt(const std::string &password);
 
   friend PossiblyEncryptedOpenDocument;
@@ -48,7 +46,7 @@ private:
 class PossiblyEncryptedOpenDocument final : common::PossiblyPasswordEncryptedFile<OpenDocument> {
 public:
   const FileMeta &meta() const noexcept final;
-  common::EncryptionState encryptionState() const final;
+  EncryptionState encryptionState() const final;
 
   bool decrypt(const std::string &password) final;
 
@@ -84,7 +82,7 @@ private:
 
 class OpenDocumentSpreadsheet final : public OpenDocument, public common::Spreadsheet {
 public:
-  Table table(std::uint32_t index) const final;
+  Table sheetTable(std::uint32_t index) const final;
 
 private:
   explicit OpenDocumentSpreadsheet(OpenDocument &&document);

@@ -162,11 +162,12 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
       }
     }
     if (!manifest.select_nodes("//manifest:encryption-data").empty()) {
-      result.encrypted = true;
+      result.encryptionState = EncryptionState::ENCRYPTED;
     }
   }
 
-  if (result.encrypted == decrypted) {
+  if ((result.encryptionState == EncryptionState::NOT_ENCRYPTED) ||
+      (result.encryptionState == EncryptionState::DECRYPTED)) {
     if (storage.isFile("meta.xml")) {
       const auto metaXml = common::XmlUtil::parse(storage, "meta.xml");
 

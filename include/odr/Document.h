@@ -27,7 +27,6 @@ public:
   static FileMeta meta(const std::string &path);
 
   explicit Document(const std::string &path);
-  Document(const std::string &path, FileType as);
   Document(File &&);
 
   using File::fileType;
@@ -45,6 +44,12 @@ protected:
   common::Document &impl() const noexcept;
 };
 
+class PossiblyPasswordEncryptedDocument : public PossiblyPasswordEncryptedFile<Document> {
+public:
+  explicit PossiblyPasswordEncryptedDocument(const std::string &path);
+  PossiblyPasswordEncryptedDocument(File &&);
+};
+
 struct PageProperties {
   std::string width;
   std::string height;
@@ -58,7 +63,6 @@ struct PageProperties {
 class TextDocument final : public Document {
 public:
   explicit TextDocument(const std::string &path);
-  TextDocument(const std::string &path, FileType as);
   TextDocument(Document &&);
 
   PageProperties pageProperties() const;
@@ -80,7 +84,7 @@ public:
   std::uint32_t slideCount() const;
   std::vector<Slide> slides() const;
 
-  Element firstSlideContentElement(std::uint32_t index) const;
+  ElementSiblingRange slideContent(std::uint32_t index) const;
 };
 
 class Spreadsheet final : public Document {
@@ -94,7 +98,7 @@ public:
   std::uint32_t sheetCount() const;
   std::vector<Sheet> sheets() const;
 
-  TableElement sheetContent(std::uint32_t index);
+  TableElement sheetTable(std::uint32_t index);
 };
 
 } // namespace odr

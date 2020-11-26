@@ -132,7 +132,7 @@ Params getTestParams() {
 nlohmann::json metaToJson(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.typeAsString()},
-      {"encrypted", meta.encrypted},
+      {"encryptionState", meta.encryptionState},
       {"entryCount", meta.entryCount},
       {"entries", nlohmann::json::array()},
   };

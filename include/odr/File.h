@@ -54,6 +54,13 @@ enum class FileCategory {
   ARCHIVE,
 };
 
+enum class EncryptionState {
+  UNKNOWN,
+  NOT_ENCRYPTED,
+  ENCRYPTED,
+  DECRYPTED,
+};
+
 enum class DocumentType {
   UNKNOWN,
   TEXT,
@@ -77,7 +84,7 @@ struct FileMeta {
   FileCategory category{FileCategory::UNKNOWN};
   DocumentType documentType{DocumentType::UNKNOWN};
   bool confident{false};
-  bool encrypted{false};
+  EncryptionState encryptionState{EncryptionState::UNKNOWN};
   std::uint32_t entryCount{0};
   std::vector<Entry> entries;
 
@@ -106,6 +113,19 @@ protected:
   explicit File(std::unique_ptr<common::File>);
 
   std::unique_ptr<common::File> impl_;
+};
+
+class PossiblyPasswordEncryptedFileBase : public File {
+public:
+  virtual EncryptionState encryptionState() const = 0;
+
+  virtual bool decrypt(const std::string &password) = 0;
+};
+
+template<typename F>
+class PossiblyPasswordEncryptedFile : public PossiblyPasswordEncryptedFileBase {
+public:
+  virtual F unbox() = 0;
 };
 
 }

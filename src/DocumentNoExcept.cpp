@@ -13,16 +13,6 @@ DocumentNoExcept::open(const std::string &path) noexcept {
   }
 }
 
-std::optional<DocumentNoExcept>
-DocumentNoExcept::open(const std::string &path, const FileType as) noexcept {
-  try {
-    return DocumentNoExcept(Document(path, as));
-  } catch (...) {
-    LOG(ERROR) << "open failed";
-    return {};
-  }
-}
-
 FileType DocumentNoExcept::type(const std::string &path) noexcept {
   try {
     return Document::type(path);

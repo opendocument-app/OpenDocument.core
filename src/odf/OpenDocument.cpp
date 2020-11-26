@@ -17,7 +17,7 @@ OpenDocument::OpenDocument(std::unique_ptr<access::ReadStorage> &storage) {
 bool OpenDocument::savable(const bool encrypted) const noexcept {
     if (encrypted)
         return false;
-    return !m_meta.encrypted;
+    return m_meta.encryptionState == EncryptionState::NOT_ENCRYPTED;
 }
 
 const FileMeta & OpenDocument::meta() const noexcept {
@@ -58,14 +58,6 @@ void OpenDocument::save(const access::Path &path, const std::string &password) c
   // TODO throw if not savable
 }
 
-bool OpenDocument::encrypted() const {
-  return m_meta.encrypted;
-}
-
-bool OpenDocument::decrypted() const {
-  return m_decrypted;
-}
-
 bool OpenDocument::decrypt(const std::string &password) {
     Meta::Manifest m_manifest; // TODO remove
     const bool success = Crypto::decrypt(m_storage, m_manifest, password);
@@ -80,10 +72,8 @@ const FileMeta & PossiblyEncryptedOpenDocument::meta() const noexcept {
   return m_document.meta();
 }
 
-common::EncryptionState PossiblyEncryptedOpenDocument::encryptionState() const {
-  if (!m_document.encrypted()) return common::EncryptionState::NOT_ENCRYPTED;
-  if (!m_document.decrypted()) return common::EncryptionState::ENCRYPTED;
-  return common::EncryptionState::DECRYPTED;
+EncryptionState PossiblyEncryptedOpenDocument::encryptionState() const {
+  return m_document.meta().encryptionState;
 }
 
 bool PossiblyEncryptedOpenDocument::decrypt(const std::string &password) {

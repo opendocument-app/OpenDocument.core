@@ -17,9 +17,6 @@ FileMeta Document::meta(const std::string &path) {
 
 Document::Document(const std::string &path) : File(OpenStrategy::openDocument(path)) {}
 
-Document::Document(const std::string &path, const FileType as)
-    : File(OpenStrategy::openDocument(path, as)) {}
-
 Document::Document(File &&file) : File(std::move(file)) {
   // TODO check if document
 }
@@ -44,10 +41,6 @@ void Document::save(const std::string &path,
 }
 
 TextDocument::TextDocument(const std::string &path) : TextDocument(Document(path)) {
-  // TODO
-}
-
-TextDocument::TextDocument(const std::string &path, FileType as) : TextDocument(Document(path, as)) {
   // TODO
 }
 

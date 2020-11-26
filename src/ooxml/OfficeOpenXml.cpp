@@ -181,8 +181,6 @@ public:
 
   FileType type() const noexcept { return meta_.type; }
 
-  bool encrypted() const noexcept { return meta_.encrypted; }
-
   const FileMeta &meta() const noexcept { return meta_; }
 
   const access::ReadStorage &storage() const noexcept { return *storage_; }

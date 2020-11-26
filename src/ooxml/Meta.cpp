@@ -21,7 +21,7 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
 
   if (storage.isFile("EncryptionInfo") && storage.isFile("EncryptedPackage")) {
     result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;
-    result.encrypted = true;
+    result.encryptionState = EncryptionState::ENCRYPTED;
     return result;
   }
 

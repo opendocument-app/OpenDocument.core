@@ -36,7 +36,7 @@ public:
 
 class Spreadsheet : public virtual Document {
 public:
-  virtual Table table(std::uint32_t index) const = 0;
+  virtual Table sheetTable(std::uint32_t index) const = 0;
 };
 
 class Graphics : public virtual Document {
