@@ -69,30 +69,32 @@ struct ParagraphProperties {
 
 class Element final {
 public:
+  Element();
   explicit Element(std::shared_ptr<const common::Element> impl);
 
   bool operator==(const Element& rhs) const;
   bool operator!=(const Element& rhs) const;
+  explicit operator bool() const;
 
-  std::optional<Element> parent() const;
-  std::optional<Element> firstChild() const;
-  std::optional<Element> previousSibling() const;
-  std::optional<Element> nextSibling() const;
+  Element parent() const;
+  Element firstChild() const;
+  Element previousSibling() const;
+  Element nextSibling() const;
 
   ElementSiblingRange children() const;
 
   ElementType type() const;
 
-  std::optional<Element> unknown() const;
-  std::optional<TextElement> text() const;
-  std::optional<Element> lineBreak() const;
-  std::optional<Element> pageBreak() const;
-  std::optional<ParagraphElement> paragraph() const;
-  std::optional<SpanElement> span() const;
-  std::optional<LinkElement> link() const;
-  std::optional<ImageElement> image() const;
-  std::optional<ListElement> list() const;
-  std::optional<TableElement> table() const;
+  Element unknown() const;
+  TextElement text() const;
+  Element lineBreak() const;
+  Element pageBreak() const;
+  ParagraphElement paragraph() const;
+  SpanElement span() const;
+  LinkElement link() const;
+  ImageElement image() const;
+  ListElement list() const;
+  TableElement table() const;
 
 private:
   std::shared_ptr<const common::Element> m_impl;
@@ -106,7 +108,7 @@ public:
   using pointer = Element*;
   using reference = Element&;
 
-  explicit ElementSiblingIterator(std::optional<Element> element);
+  explicit ElementSiblingIterator(Element element);
 
   ElementSiblingIterator &operator++();
   ElementSiblingIterator operator++(int) &;
@@ -116,27 +118,30 @@ public:
   bool operator!=(const ElementSiblingIterator& rhs) const;
 
 private:
-  std::optional<Element> m_element;
+  Element m_element;
 };
 
 class ElementSiblingRange final {
 public:
-  explicit ElementSiblingRange(std::optional<Element> begin);
-  ElementSiblingRange(std::optional<Element> begin, std::optional<Element> end);
+  explicit ElementSiblingRange(Element begin);
+  ElementSiblingRange(Element begin, Element end);
 
   ElementSiblingIterator begin() const;
   ElementSiblingIterator end() const;
 
-  std::optional<Element> front() const;
+  Element front() const;
 
 private:
-  std::optional<Element> m_begin;
-  std::optional<Element> m_end;
+  Element m_begin;
+  Element m_end;
 };
 
 class TextElement final {
 public:
+  TextElement();
   explicit TextElement(std::shared_ptr<const common::TextElement> impl);
+
+  explicit operator bool() const;
 
   std::string string() const;
 
@@ -146,8 +151,11 @@ private:
 
 class ParagraphElement final {
 public:
+  ParagraphElement();
   explicit ParagraphElement(
       std::shared_ptr<const common::Paragraph> impl);
+
+  explicit operator bool() const;
 
 private:
   std::shared_ptr<const common::Paragraph> m_impl;
@@ -155,7 +163,10 @@ private:
 
 class SpanElement final {
 public:
+  SpanElement();
   explicit SpanElement(std::shared_ptr<const common::Element> impl);
+
+  explicit operator bool() const;
 
 private:
   std::shared_ptr<const common::Element> m_impl;
@@ -163,7 +174,10 @@ private:
 
 class LinkElement final {
 public:
+  LinkElement();
   explicit LinkElement(std::shared_ptr<const common::Element> impl);
+
+  explicit operator bool() const;
 
 private:
   std::shared_ptr<const common::Element> m_impl;
@@ -171,7 +185,10 @@ private:
 
 class ImageElement final {
 public:
+  ImageElement();
   explicit ImageElement(std::shared_ptr<const common::Element> impl);
+
+  explicit operator bool() const;
 
 private:
   std::shared_ptr<const common::Element> m_impl;
@@ -179,7 +196,10 @@ private:
 
 class ListElement final {
 public:
+  ListElement();
   explicit ListElement(std::shared_ptr<const common::Element> impl);
+
+  explicit operator bool() const;
 
 private:
   std::shared_ptr<const common::Element> m_impl;
@@ -187,7 +207,10 @@ private:
 
 class TableElement final {
 public:
+  TableElement();
   explicit TableElement(std::shared_ptr<const common::Table> impl);
+
+  explicit operator bool() const;
 
 private:
   std::shared_ptr<const common::Table> m_impl;

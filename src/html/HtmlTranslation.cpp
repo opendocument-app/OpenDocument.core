@@ -24,7 +24,7 @@ void translateElement(Element element, std::ostream &out,
   if (element.type() == ElementType::UNKNOWN) {
     translateGeneration(element.children(), out, config);
   } else if (element.type() == ElementType::TEXT) {
-    out << Html::escapeText(element.text()->string());
+    out << Html::escapeText(element.text().string());
   } else if (element.type() == ElementType::LINE_BREAK) {
     out << "<br>";
   } else if (element.type() == ElementType::PARAGRAPH) {

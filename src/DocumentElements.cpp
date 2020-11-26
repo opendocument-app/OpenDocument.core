@@ -3,17 +3,7 @@
 
 namespace odr {
 
-namespace {
-template <typename R, typename E>
-std::optional<R> convert(std::shared_ptr<const E> impl,
-                         ElementType type) {
-  if (!impl)
-    return {};
-  if (impl->type() != type)
-    return {};
-  return R(std::move(impl));
-}
-} // namespace
+Element::Element() = default;
 
 Element::Element(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
@@ -26,82 +16,75 @@ bool Element::operator!=(const Element &rhs) const {
   return m_impl != rhs.m_impl;
 }
 
-std::optional<Element> Element::parent() const {
-  return common::Element::convert(m_impl->parent());
+Element::operator bool() const {
+  return m_impl.operator bool();
 }
 
-std::optional<Element> Element::firstChild() const {
-  return common::Element::convert(m_impl->firstChild());
+Element Element::parent() const {
+  return Element(m_impl->parent());
 }
 
-std::optional<Element> Element::previousSibling() const {
-  return common::Element::convert(m_impl->previousSibling());
+Element Element::firstChild() const {
+  return Element(m_impl->firstChild());
 }
 
-std::optional<Element> Element::nextSibling() const {
-  return common::Element::convert(m_impl->nextSibling());
+Element Element::previousSibling() const {
+  return Element(m_impl->previousSibling());
+}
+
+Element Element::nextSibling() const {
+  return Element(m_impl->nextSibling());
 }
 
 ElementType Element::type() const { return m_impl->type(); }
 
-std::optional<Element> Element::unknown() const {
-  return convert<Element>(m_impl, ElementType::UNKNOWN);
+Element Element::unknown() const {
+  if (type() == ElementType::UNKNOWN) return {};
+  return *this;
 }
 
-std::optional<TextElement> Element::text() const {
-  return convert<TextElement>(
-      std::dynamic_pointer_cast<const common::TextElement>(m_impl),
-      ElementType::TEXT);
+TextElement Element::text() const {
+  return TextElement(std::dynamic_pointer_cast<const common::TextElement>(m_impl));
 }
 
-std::optional<Element> Element::lineBreak() const {
-  return convert<Element>(m_impl, ElementType::LINE_BREAK);
+Element Element::lineBreak() const {
+  if (type() == ElementType::LINE_BREAK) return {};
+  return *this;
 }
 
-std::optional<Element> Element::pageBreak() const {
-  return convert<Element>(m_impl, ElementType::PAGE_BREAK);
+Element Element::pageBreak() const {
+  if (type() == ElementType::PAGE_BREAK) return {};
+  return *this;
 }
 
-std::optional<ParagraphElement> Element::paragraph() const {
-  return convert<ParagraphElement>(
-      std::dynamic_pointer_cast<const common::Paragraph>(m_impl),
-      ElementType::PARAGRAPH);
+ParagraphElement Element::paragraph() const {
+  return ParagraphElement(std::dynamic_pointer_cast<const common::Paragraph>(m_impl));
 }
 
-std::optional<SpanElement> Element::span() const {
-  return convert<SpanElement>(
-      std::dynamic_pointer_cast<const common::Element>(m_impl),
-      ElementType::SPAN);
+SpanElement Element::span() const {
+  return SpanElement(std::dynamic_pointer_cast<const common::Span>(m_impl));
 }
 
-std::optional<LinkElement> Element::link() const {
-  return convert<LinkElement>(
-      std::dynamic_pointer_cast<const common::Element>(m_impl),
-      ElementType::LINK);
+LinkElement Element::link() const {
+  return LinkElement(std::dynamic_pointer_cast<const common::Link>(m_impl));
 }
 
-std::optional<ImageElement> Element::image() const {
-  return convert<ImageElement>(
-      std::dynamic_pointer_cast<const common::Element>(m_impl),
-      ElementType::IMAGE);
+ImageElement Element::image() const {
+  return ImageElement(std::dynamic_pointer_cast<const common::Image>(m_impl));
 }
 
-std::optional<ListElement> Element::list() const {
-  return convert<ListElement>(
-      std::dynamic_pointer_cast<const common::Element>(m_impl),
-      ElementType::LIST);
+ListElement Element::list() const {
+  return ListElement(std::dynamic_pointer_cast<const common::List>(m_impl));
 }
 
-std::optional<TableElement> Element::table() const {
-  return convert<TableElement>(
-      std::dynamic_pointer_cast<const common::Table>(m_impl),
-      ElementType::TABLE);
+TableElement Element::table() const {
+  return TableElement(std::dynamic_pointer_cast<const common::Table>(m_impl));
 }
 
-ElementSiblingIterator::ElementSiblingIterator(std::optional<Element> element) : m_element{std::move(element)} {}
+ElementSiblingIterator::ElementSiblingIterator(Element element) : m_element{std::move(element)} {}
 
 ElementSiblingIterator &ElementSiblingIterator::operator++() {
-  m_element = m_element->nextSibling();
+  m_element = m_element.nextSibling();
   return *this;
 }
 
@@ -112,11 +95,11 @@ ElementSiblingIterator ElementSiblingIterator::operator++(int) & {
 }
 
 Element &ElementSiblingIterator::operator*() {
-  return *m_element;
+  return m_element;
 }
 
 Element *ElementSiblingIterator::operator->() {
-  return &*m_element;
+  return &m_element;
 }
 
 bool ElementSiblingIterator::operator==(const ElementSiblingIterator &rhs) const {
@@ -127,38 +110,80 @@ bool ElementSiblingIterator::operator!=(const ElementSiblingIterator &rhs) const
   return m_element != rhs.m_element;
 }
 
-ElementSiblingRange::ElementSiblingRange(std::optional<Element> begin) : ElementSiblingRange(std::move(begin), {}) {}
+ElementSiblingRange::ElementSiblingRange(Element begin) : ElementSiblingRange(std::move(begin), {}) {}
 
-ElementSiblingRange::ElementSiblingRange(std::optional<Element> begin, std::optional<Element> end) : m_begin{std::move(begin)}, m_end{std::move(end)} {}
+ElementSiblingRange::ElementSiblingRange(Element begin, Element end) : m_begin{std::move(begin)}, m_end{std::move(end)} {}
 
 ElementSiblingIterator ElementSiblingRange::begin() const { return ElementSiblingIterator(m_begin); }
 
 ElementSiblingIterator ElementSiblingRange::end() const { return ElementSiblingIterator(m_end); }
 
-std::optional<Element> ElementSiblingRange::front() const { return m_begin; }
+Element ElementSiblingRange::front() const { return m_begin; }
+
+TextElement::TextElement() = default;
 
 TextElement::TextElement(std::shared_ptr<const common::TextElement> impl)
     : m_impl{std::move(impl)} {}
 
+TextElement::operator bool() const {
+  return m_impl.operator bool();
+}
+
 std::string TextElement::string() const { return m_impl->text(); }
+
+ParagraphElement::ParagraphElement() = default;
 
 ParagraphElement::ParagraphElement(
     std::shared_ptr<const common::Paragraph> impl)
     : m_impl{std::move(impl)} {}
 
+ParagraphElement::operator bool() const {
+  return m_impl.operator bool();
+}
+
+SpanElement::SpanElement() = default;
+
 SpanElement::SpanElement(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
+
+SpanElement::operator bool() const {
+    return m_impl.operator bool();
+}
+
+LinkElement::LinkElement() = default;
 
 LinkElement::LinkElement(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
 
+LinkElement::operator bool() const {
+    return m_impl.operator bool();
+}
+
+ImageElement::ImageElement() = default;
+
 ImageElement::ImageElement(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
+
+ImageElement::operator bool() const {
+    return m_impl.operator bool();
+}
+
+ListElement::ListElement() = default;
 
 ListElement::ListElement(std::shared_ptr<const common::Element> impl)
     : m_impl{std::move(impl)} {}
 
+ListElement::operator bool() const {
+    return m_impl.operator bool();
+}
+
+TableElement::TableElement() = default;
+
 TableElement::TableElement(std::shared_ptr<const common::Table> impl)
     : m_impl{std::move(impl)} {}
+
+TableElement::operator bool() const {
+    return m_impl.operator bool();
+}
 
 } // namespace odr

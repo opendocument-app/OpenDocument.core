@@ -82,10 +82,6 @@ class OdfParagraph : public OdfElement, public common::Paragraph {
 public:
   OdfParagraph(std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
       : OdfElement(std::move(parent), node) {}
-
-  Properties properties() const override {
-    return {}; // TODO
-  }
 };
 
 std::shared_ptr<common::Element> convert(std::shared_ptr<const OdfElement> parent,

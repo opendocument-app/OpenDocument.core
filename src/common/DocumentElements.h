@@ -36,12 +36,27 @@ public:
 
 class Paragraph : public virtual Element {
 public:
-  struct Properties {
-  };
-
   ElementType type() const final;
+};
 
-  virtual Properties properties() const = 0;
+class Span : public virtual Element {
+public:
+  ElementType type() const final;
+};
+
+class Link : public virtual Element {
+public:
+  ElementType type() const final;
+};
+
+class Image : public virtual Element {
+public:
+  ElementType type() const final;
+};
+
+class List : public virtual Element {
+public:
+  ElementType type() const final;
 };
 
 class Table : public virtual Element {
