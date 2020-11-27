@@ -105,28 +105,32 @@ FileMeta File::meta(const std::string &path) {
   return File(path).fileMeta();
 }
 
-File::File(std::unique_ptr<common::File> file) : impl_{std::move(file)} {}
+File::File(std::shared_ptr<common::File> file) : m_file{std::move(file)} {}
 
-File::File(const std::string &path) : impl_{OpenStrategy::openFile(path)} {}
+File::File(const std::string &path) : m_file{OpenStrategy::openFile(path)} {}
 
-File::File(const std::string &path, FileType as) : impl_{OpenStrategy::openFile(path, as)} {}
+File::File(const std::string &path, FileType as) : m_file{OpenStrategy::openFile(path, as)} {}
+
+File::File(const File &) = default;
 
 File::File(File &&file) noexcept = default;
 
 File::~File() = default;
 
-File & File::operator=(File &&) noexcept {}
+File & File::operator=(const File &) = default;
+
+File & File::operator=(File &&) noexcept = default;
 
 FileType File::fileType() const noexcept {
-  return impl_->meta().type;
+  return m_file->meta().type;
 }
 
 FileCategory File::fileCategory() const noexcept {
-  return impl_->meta().category;
+  return m_file->meta().category;
 }
 
 const FileMeta & File::fileMeta() const noexcept {
-  return impl_->meta();
+  return m_file->meta();
 }
 
 }

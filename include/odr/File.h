@@ -99,10 +99,10 @@ public:
 
   explicit File(const std::string &path);
   File(const std::string &path, FileType as);
-  File(const File &) = delete;
+  File(const File &);
   File(File &&) noexcept;
   virtual ~File();
-  File &operator=(const File &) = delete;
+  File &operator=(const File &);
   File &operator=(File &&) noexcept;
 
   FileType fileType() const noexcept;
@@ -110,9 +110,9 @@ public:
   const FileMeta &fileMeta() const noexcept;
 
 protected:
-  explicit File(std::unique_ptr<common::File>);
+  explicit File(std::shared_ptr<common::File>);
 
-  std::unique_ptr<common::File> impl_;
+  std::shared_ptr<common::File> m_file;
 };
 
 class PossiblyPasswordEncryptedFileBase : public File {

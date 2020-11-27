@@ -11,6 +11,9 @@ namespace odr {
 namespace common {
 class Document;
 class TextDocument;
+class Presentation;
+class Spreadsheet;
+class Graphics;
 }
 
 enum class FileType;
@@ -27,7 +30,6 @@ public:
   static FileMeta meta(const std::string &path);
 
   explicit Document(const std::string &path);
-  Document(File &&);
 
   using File::fileType;
   using File::fileCategory;
@@ -41,7 +43,7 @@ public:
   void save(const std::string &path, const std::string &password) const;
 
 protected:
-  common::Document &impl() const noexcept;
+  std::shared_ptr<common::Document> m_document;
 };
 
 class PossiblyPasswordEncryptedDocument : public PossiblyPasswordEncryptedFile<Document> {
@@ -63,14 +65,13 @@ struct PageProperties {
 class TextDocument final : public Document {
 public:
   explicit TextDocument(const std::string &path);
-  TextDocument(Document &&);
 
   PageProperties pageProperties() const;
 
   ElementSiblingRange content() const;
 
 private:
-  std::shared_ptr<const common::TextDocument> m_impl;
+  std::shared_ptr<common::TextDocument> m_text_document;
 };
 
 class Presentation final : public Document {
@@ -85,6 +86,9 @@ public:
   std::vector<Slide> slides() const;
 
   ElementSiblingRange slideContent(std::uint32_t index) const;
+
+private:
+  std::shared_ptr<common::Presentation> m_presentation;
 };
 
 class Spreadsheet final : public Document {
@@ -99,6 +103,19 @@ public:
   std::vector<Sheet> sheets() const;
 
   TableElement sheetTable(std::uint32_t index);
+
+private:
+  std::shared_ptr<common::Presentation> m_spreadsheet;
+};
+
+class Graphics final : public Document {
+public:
+  std::uint32_t pageCount() const;
+
+  ElementSiblingRange pageContent(std::uint32_t index);
+
+private:
+  std::shared_ptr<common::Graphics> m_graphics;
 };
 
 } // namespace odr

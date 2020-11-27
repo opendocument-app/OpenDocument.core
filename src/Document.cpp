@@ -17,43 +17,27 @@ FileMeta Document::meta(const std::string &path) {
 
 Document::Document(const std::string &path) : File(OpenStrategy::openDocument(path)) {}
 
-Document::Document(File &&file) : File(std::move(file)) {
-  // TODO check if document
-}
-
-common::Document & Document::impl() const noexcept {
-  return static_cast<common::Document &>(*impl_);
-}
-
 DocumentType Document::documentType() const noexcept { return File::fileMeta().documentType; }
 
-bool Document::editable() const noexcept { return impl().editable(); }
+bool Document::editable() const noexcept { return m_document->editable(); }
 
 bool Document::savable(const bool encrypted) const noexcept {
-  return impl().savable(encrypted);
+  return m_document->savable(encrypted);
 }
 
-void Document::save(const std::string &path) const { impl().save(path); }
+void Document::save(const std::string &path) const { m_document->save(path); }
 
 void Document::save(const std::string &path,
                     const std::string &password) const {
-  impl().save(path, password);
-}
-
-TextDocument::TextDocument(const std::string &path) : TextDocument(Document(path)) {
-  // TODO
-}
-
-TextDocument::TextDocument(Document &&document) : Document(std::move(document)) {
-  // TODO
+  m_document->save(path, password);
 }
 
 PageProperties TextDocument::pageProperties() const {
-  return m_impl->pageProperties();
+  return m_text_document->pageProperties();
 }
 
 ElementSiblingRange TextDocument::content() const {
-  return m_impl->content();
+  return m_text_document->content();
 }
 
 } // namespace odr
