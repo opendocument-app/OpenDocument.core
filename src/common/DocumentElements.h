@@ -14,9 +14,6 @@ namespace common {
 
 class Element {
 public:
-  std::optional<odr::Element>
-  static convert(std::shared_ptr<const common::Element> element);
-
   virtual ~Element() = default;
 
   virtual std::shared_ptr<const Element> parent() const = 0;

@@ -1,14 +1,15 @@
 #include <common/File.h>
-#include <access/Path.h>
+#include <common/Document.h>
+#include <odr/Document.h>
 
 namespace odr::common {
 
-bool File::editable() const noexcept { return false; }
+DocumentType DocumentFile::documentType() const noexcept {
+  return document()->documentType();
+}
 
-bool File::savable(bool) const noexcept { return false; }
-
-void File::save(const access::Path &) const {}
-
-void File::save(const access::Path &, const std::string &) const {}
+DocumentMeta DocumentFile::documentMeta() const noexcept {
+  return document()->documentMeta();
+}
 
 }

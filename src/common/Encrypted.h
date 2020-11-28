@@ -24,7 +24,7 @@ public:
 template <typename F>
 class PossiblyEncryptedFile : public PossiblyEncryptedFileBase {
 public:
-  virtual std::unique_ptr<F> unbox() = 0;
+  virtual std::shared_ptr<F> unbox() = 0;
 };
 
 template <typename F>

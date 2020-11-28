@@ -1,29 +1,33 @@
 #ifndef ODR_COMMON_FILE_H
 #define ODR_COMMON_FILE_H
 
-#include <string>
+#include <memory>
 
 namespace odr {
+enum class FileType;
+enum class FileCategory;
 struct FileMeta;
-
-namespace access {
-class Path;
-}
+enum class DocumentType;
+struct DocumentMeta;
 
 namespace common {
+class Document;
 
 class File {
 public:
   virtual ~File() = default;
 
-  virtual bool editable() const noexcept;
-  virtual bool savable(bool encrypted) const noexcept;
+  virtual FileType fileType() const noexcept = 0;
+  virtual FileCategory fileCategory() const noexcept = 0;
+  virtual FileMeta fileMeta() const noexcept = 0;
+};
 
-  virtual const FileMeta &meta() const noexcept = 0;
+class DocumentFile : public File {
+public:
+  virtual DocumentType documentType() const noexcept;
+  virtual DocumentMeta documentMeta() const noexcept;
 
-  virtual void save(const access::Path &path) const;
-  virtual void save(const access::Path &path,
-                    const std::string &password) const;
+  virtual std::shared_ptr<Document> document() const = 0;
 };
 
 }

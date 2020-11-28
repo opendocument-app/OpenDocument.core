@@ -15,16 +15,18 @@ class ReadStorage;
 
 namespace odf {
 
-class PossiblyEncryptedOpenDocument;
+class PossiblyEncryptedOpenDocumentFile;
 
-class OpenDocument : public virtual common::Document {
+class OpenDocumentFile final : public virtual common::DocumentFile {
 public:
-  bool savable(bool encrypted) const noexcept final;
+  FileType fileType() const noexcept final;
+  FileCategory fileCategory() const noexcept final;
+  FileMeta fileMeta() const noexcept final;
 
-  const FileMeta &meta() const noexcept final;
+  DocumentType documentType() const noexcept final;
+  DocumentMeta documentMeta() const noexcept final;
 
-  void save(const access::Path &path) const final;
-  void save(const access::Path &path, const std::string &password) const final;
+  std::shared_ptr<common::Document> document() const final;
 
 protected:
   std::unique_ptr<access::ReadStorage> m_storage;
@@ -36,26 +38,40 @@ protected:
 private:
   bool m_decrypted{false};
 
-  explicit OpenDocument(std::unique_ptr<access::ReadStorage> &storage);
+  explicit OpenDocumentFile(std::unique_ptr<access::ReadStorage> &storage);
 
   bool decrypt(const std::string &password);
 
-  friend PossiblyEncryptedOpenDocument;
+  friend PossiblyEncryptedOpenDocumentFile;
 };
 
-class PossiblyEncryptedOpenDocument final : common::PossiblyPasswordEncryptedFile<OpenDocument> {
+class PossiblyEncryptedOpenDocumentFile final : common::PossiblyPasswordEncryptedFile<OpenDocumentFile> {
 public:
-  const FileMeta &meta() const noexcept final;
+  FileMeta fileMeta() const noexcept final;
   EncryptionState encryptionState() const final;
 
   bool decrypt(const std::string &password) final;
 
-  std::unique_ptr<OpenDocument> unbox() final;
+  std::shared_ptr<OpenDocumentFile> unbox() final;
 
 private:
-  OpenDocument m_document;
+  OpenDocumentFile m_documentFile;
 
-  explicit PossiblyEncryptedOpenDocument(OpenDocument &&document);
+  explicit PossiblyEncryptedOpenDocumentFile(OpenDocumentFile &&documentFile);
+};
+
+class OpenDocument : public virtual common::Document {
+public:
+  bool savable(bool encrypted) const noexcept final;
+
+  DocumentType documentType() const noexcept final;
+  DocumentMeta documentMeta() const noexcept final;
+
+  void save(const access::Path &path) const final;
+  void save(const access::Path &path, const std::string &password) const final;
+
+protected:
+  std::shared_ptr<OpenDocumentFile> m_file;
 };
 
 class OpenDocumentText final : public OpenDocument, public common::TextDocument {
@@ -66,8 +82,6 @@ public:
 
 private:
   explicit OpenDocumentText(OpenDocument &&document);
-
-  friend PossiblyEncryptedOpenDocument;
 };
 
 class OpenDocumentPresentation final : public OpenDocument, public common::Presentation {
@@ -76,8 +90,6 @@ public:
 
 private:
   explicit OpenDocumentPresentation(OpenDocument &&document);
-
-  friend PossiblyEncryptedOpenDocument;
 };
 
 class OpenDocumentSpreadsheet final : public OpenDocument, public common::Spreadsheet {
@@ -86,8 +98,6 @@ public:
 
 private:
   explicit OpenDocumentSpreadsheet(OpenDocument &&document);
-
-  friend PossiblyEncryptedOpenDocument;
 };
 
 class OpenDocumentGraphics final : public OpenDocument, public common::Graphics {
@@ -96,8 +106,6 @@ public:
 
 private:
   explicit OpenDocumentGraphics(OpenDocument &&document);
-
-  friend PossiblyEncryptedOpenDocument;
 };
 
 } // namespace odf

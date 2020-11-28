@@ -8,23 +8,40 @@
 
 namespace odr::odf {
 
-OpenDocument::OpenDocument(std::unique_ptr<access::ReadStorage> &storage) {
+OpenDocumentFile::OpenDocumentFile(std::unique_ptr<access::ReadStorage> &storage) {
     m_meta = Meta::parseFileMeta(*m_storage, false);
     m_manifest = Meta::parseManifest(*m_storage);
     m_storage = std::move(storage);
 }
 
-bool OpenDocument::savable(const bool encrypted) const noexcept {
+bool OpenDocumentFile::savable(const bool encrypted) const noexcept {
     if (encrypted)
         return false;
     return m_meta.encryptionState == EncryptionState::NOT_ENCRYPTED;
 }
 
-const FileMeta & OpenDocument::meta() const noexcept {
+FileMeta OpenDocumentFile::fileMeta() const noexcept {
   return m_meta;
 }
 
-void OpenDocument::save(const access::Path &path) const {
+std::shared_ptr<common::Document> OpenDocumentFile::document() const {
+  // TODO throw if encrypted
+  switch (documentType()) {
+  case DocumentType::TEXT:
+    return std::unique_ptr<OpenDocument>(new OpenDocumentText(std::move(m_document)));
+  case DocumentType::PRESENTATION:
+    return std::unique_ptr<OpenDocument>(new OpenDocumentPresentation(std::move(m_document)));
+  case DocumentType::SPREADSHEET:
+    return std::unique_ptr<OpenDocument>(new OpenDocumentSpreadsheet(std::move(m_document)));
+  case DocumentType::GRAPHICS:
+    return std::unique_ptr<OpenDocument>(new OpenDocumentGraphics(std::move(m_document)));
+  default:
+    // TODO throw
+    return nullptr;
+  }
+}
+
+void OpenDocumentFile::save(const access::Path &path) const {
     // TODO throw if not savable
     // TODO this would decrypt/inflate and encrypt/deflate again
     access::ZipWriter writer(path);
@@ -54,48 +71,35 @@ void OpenDocument::save(const access::Path &path) const {
     });
 }
 
-void OpenDocument::save(const access::Path &path, const std::string &password) const {
+void OpenDocumentFile::save(const access::Path &path, const std::string &password) const {
   // TODO throw if not savable
 }
 
-bool OpenDocument::decrypt(const std::string &password) {
-    Meta::Manifest m_manifest; // TODO remove
+bool OpenDocumentFile::decrypt(const std::string &password) {
     const bool success = Crypto::decrypt(m_storage, m_manifest, password);
     if (success)
         m_meta = Meta::parseFileMeta(*m_storage, true);
     return success;
 }
 
-PossiblyEncryptedOpenDocument::PossiblyEncryptedOpenDocument(OpenDocument &&document) : m_document{std::move(document)} {}
+PossiblyEncryptedOpenDocumentFile::PossiblyEncryptedOpenDocumentFile(OpenDocumentFile &&documentFile) : m_documentFile{std::move(documentFile)} {}
 
-const FileMeta & PossiblyEncryptedOpenDocument::meta() const noexcept {
-  return m_document.meta();
+FileMeta PossiblyEncryptedOpenDocumentFile::fileMeta() const noexcept {
+  return m_documentFile.fileMeta();
 }
 
-EncryptionState PossiblyEncryptedOpenDocument::encryptionState() const {
-  return m_document.meta().encryptionState;
+EncryptionState PossiblyEncryptedOpenDocumentFile::encryptionState() const {
+  return m_documentFile.fileMeta().encryptionState; // TODO
 }
 
-bool PossiblyEncryptedOpenDocument::decrypt(const std::string &password) {
+bool PossiblyEncryptedOpenDocumentFile::decrypt(const std::string &password) {
   // TODO throw if not encrypted
-  return m_document.decrypt(password);
+  return m_documentFile.decrypt(password);
 }
 
-std::unique_ptr<OpenDocument> PossiblyEncryptedOpenDocument::unbox() {
+std::shared_ptr<OpenDocumentFile> PossiblyEncryptedOpenDocumentFile::unbox() {
   // TODO throw if encrypted
-  switch (m_document.meta().type) {
-  case FileType::OPENDOCUMENT_TEXT:
-    return std::unique_ptr<OpenDocument>(new OpenDocumentText(std::move(m_document)));
-  case FileType::OPENDOCUMENT_PRESENTATION:
-    return std::unique_ptr<OpenDocument>(new OpenDocumentPresentation(std::move(m_document)));
-  case FileType::OPENDOCUMENT_SPREADSHEET:
-    return std::unique_ptr<OpenDocument>(new OpenDocumentSpreadsheet(std::move(m_document)));
-  case FileType::OPENDOCUMENT_GRAPHICS:
-    return std::unique_ptr<OpenDocument>(new OpenDocumentGraphics(std::move(m_document)));
-  default:
-    // TODO throw
-    return nullptr;
-  }
+  return std::make_shared<OpenDocumentFile>(m_documentFile);
 }
 
 OpenDocumentText::OpenDocumentText(OpenDocument &&document) : OpenDocument(std::move(document)) {}

@@ -4,13 +4,6 @@
 
 namespace odr::common {
 
-std::optional<odr::Element>
-Element::convert(std::shared_ptr<const common::Element> element) {
-  if (!element)
-    return {};
-  return odr::Element(std::move(element));
-}
-
 ElementType TextElement::type() const {
   return ElementType::TEXT;
 }

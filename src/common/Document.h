@@ -1,24 +1,22 @@
 #ifndef ODR_COMMON_DOCUMENT_H
 #define ODR_COMMON_DOCUMENT_H
 
-#include <memory>
-#include <common/File.h>
-
 namespace odr {
-struct FileMeta;
+enum class DocumentType;
+struct DocumentMeta;
 struct PageProperties;
 class Element;
 class ElementSiblingRange;
 class Table;
 
-namespace access {
-class Path;
-}
-
 namespace common {
 
-class Document : public File {
+class Document {
 public:
+  virtual ~Document() = default;
+
+  virtual DocumentType documentType() const noexcept = 0;
+  virtual DocumentMeta documentMeta() const noexcept = 0;
 };
 
 class TextDocument : public virtual Document {
