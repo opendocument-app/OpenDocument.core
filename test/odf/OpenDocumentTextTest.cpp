@@ -1,11 +1,12 @@
 #include <gtest/gtest.h>
+#include <odr/File.h>
 #include <odr/Document.h>
 #include <odr/DocumentElements.h>
 
 using namespace odr;
 
 TEST(OpenDocumentText, hello) {
-  Document document("/home/andreas/workspace/OpenDocument.test/odt/test.odt");
+  DocumentFile document("/home/andreas/workspace/OpenDocument.test/odt/test.odt");
 
   std::cout << (int) document.fileType() << std::endl;
   std::cout << (int) document.documentType() << std::endl;

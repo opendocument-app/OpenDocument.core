@@ -1,4 +1,3 @@
-#include <OpenStrategy.h>
 #include <access/Path.h>
 #include <common/Document.h>
 #include <common/DocumentElements.h>
@@ -7,17 +6,9 @@
 
 namespace odr {
 
-FileType Document::type(const std::string &path) {
-  return Document(path).fileType();
+DocumentType Document::documentType() const noexcept {
+  return {}; // TODO
 }
-
-FileMeta Document::meta(const std::string &path) {
-  return Document(path).fileMeta();
-}
-
-Document::Document(const std::string &path) : File(OpenStrategy::openDocument(path)) {}
-
-DocumentType Document::documentType() const noexcept { return File::fileMeta().documentType; }
 
 bool Document::editable() const noexcept { return m_document->editable(); }
 

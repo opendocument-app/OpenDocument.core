@@ -2,9 +2,8 @@
 #define ODR_DOCUMENT_H
 
 #include <memory>
-#include <optional>
 #include <string>
-#include <odr/File.h>
+#include <vector>
 
 namespace odr {
 
@@ -24,17 +23,31 @@ class Element;
 class ElementSiblingRange;
 class TableElement;
 
-class Document : public File {
+enum class DocumentType {
+  UNKNOWN,
+  TEXT,
+  PRESENTATION,
+  SPREADSHEET,
+  GRAPHICS,
+};
+
+struct DocumentMeta final {
+  struct Entry {
+    std::string name;
+    std::uint32_t rowCount{0};
+    std::uint32_t columnCount{0};
+    std::string notes;
+  };
+
+  DocumentType documentType{DocumentType::UNKNOWN};
+  std::uint32_t entryCount{0};
+  std::vector<Entry> entries;
+};
+
+class Document {
 public:
-  static FileType type(const std::string &path);
-  static FileMeta meta(const std::string &path);
-
-  explicit Document(const std::string &path);
-
-  using File::fileType;
-  using File::fileCategory;
-  using File::fileMeta;
   DocumentType documentType() const noexcept;
+  DocumentMeta documentMeta() const noexcept;
 
   bool editable() const noexcept;
   bool savable(bool encrypted = false) const noexcept;
@@ -44,12 +57,6 @@ public:
 
 protected:
   std::shared_ptr<common::Document> m_document;
-};
-
-class PossiblyPasswordEncryptedDocument : public PossiblyPasswordEncryptedFile<Document> {
-public:
-  explicit PossiblyPasswordEncryptedDocument(const std::string &path);
-  PossiblyPasswordEncryptedDocument(File &&);
 };
 
 struct PageProperties {

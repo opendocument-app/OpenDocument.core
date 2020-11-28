@@ -1,16 +1,13 @@
 #include <odr/FileNoExcept.h>
-#include <odr/DocumentNoExcept.h>
 #include <glog/logging.h>
 
 namespace odr {
 
-FileNoExcept::FileNoExcept(File &&file) : m_impl{std::make_unique<File>(std::move(file))} {}
-
-FileNoExcept::FileNoExcept(std::unique_ptr<File> file) : m_impl{std::move(file)} {}
+FileNoExcept::FileNoExcept(File file) : m_file{std::move(file)} {}
 
 FileType FileNoExcept::fileType() const noexcept {
   try {
-    return m_impl->fileType();
+    return m_file.fileType();
   } catch (...) {
     LOG(ERROR) << "type failed";
     return FileType::UNKNOWN;
@@ -19,24 +16,60 @@ FileType FileNoExcept::fileType() const noexcept {
 
 FileCategory FileNoExcept::fileCategory() const noexcept {
   try {
-    return m_impl->fileCategory();
+    return m_file.fileCategory();
   } catch (...) {
     LOG(ERROR) << "file category failed";
     return FileCategory::UNKNOWN;
   }
 }
 
-const FileMeta &FileNoExcept::fileMeta() const noexcept {
+FileMeta FileNoExcept::fileMeta() const noexcept {
   try {
-    return m_impl->fileMeta();
+    return m_file.fileMeta();
   } catch (...) {
     LOG(ERROR) << "meta failed";
     return {};
   }
 }
 
-DocumentNoExcept FileNoExcept::document() && noexcept {
-  return DocumentNoExcept(std::move(*this));
+std::optional<DocumentFileNoExcept>
+DocumentFileNoExcept::open(const std::string &path) noexcept {
+  try {
+    return DocumentFileNoExcept(DocumentFile(path));
+  } catch (...) {
+    LOG(ERROR) << "open failed";
+    return {};
+  }
+}
+
+DocumentType DocumentFileNoExcept::type(const std::string &path) noexcept {
+  try {
+    return DocumentFile::type(path);
+  } catch (...) {
+    LOG(ERROR) << "type failed";
+    return DocumentType::UNKNOWN;
+  }
+}
+
+DocumentMeta DocumentFileNoExcept::meta(const std::string &path) noexcept {
+  try {
+    return DocumentFile::meta(path);
+  } catch (...) {
+    LOG(ERROR) << "meta failed";
+    return {};
+  }
+}
+
+DocumentFileNoExcept::DocumentFileNoExcept(DocumentFile documentFile)
+    : FileNoExcept(documentFile), m_documentFile{std::move(documentFile)} {}
+
+DocumentType DocumentFileNoExcept::documentType() const noexcept {
+  try {
+    return m_documentFile.documentType();
+  } catch (...) {
+    LOG(ERROR) << "document type failed";
+    return DocumentType::UNKNOWN;
+  }
 }
 
 }

@@ -16,17 +16,37 @@ public:
   static FileType type(const std::string &path) noexcept;
   static FileMeta meta(const std::string &path) noexcept;
 
-  explicit FileNoExcept(File &&);
-  explicit FileNoExcept(std::unique_ptr<File>);
+  explicit FileNoExcept(File);
 
-  FileType fileType() const noexcept;
-  FileCategory fileCategory() const noexcept;
-  const FileMeta &fileMeta() const noexcept;
-
-  DocumentNoExcept document() && noexcept;
+  virtual FileType fileType() const noexcept;
+  virtual FileCategory fileCategory() const noexcept;
+  virtual FileMeta fileMeta() const noexcept;
 
 protected:
-  std::unique_ptr<File> m_impl;
+  File m_file;
+};
+
+class DocumentFileNoExcept : public FileNoExcept {
+public:
+  static std::optional<DocumentFileNoExcept>
+  open(const std::string &path) noexcept;
+
+  static DocumentType type(const std::string &path) noexcept;
+  static DocumentMeta meta(const std::string &path) noexcept;
+
+  explicit DocumentFileNoExcept(DocumentFile);
+
+  DocumentType documentType() const noexcept;
+
+  bool editable() const noexcept;
+  bool savable(bool encrypted) const noexcept;
+
+  bool save(const std::string &path) const noexcept;
+  bool save(const std::string &path,
+            const std::string &password) const noexcept;
+
+protected:
+  DocumentFile m_documentFile;
 };
 
 }

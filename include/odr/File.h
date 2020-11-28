@@ -5,6 +5,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <optional>
+#include <odr/Document.h>
 
 namespace odr {
 
@@ -12,7 +14,6 @@ namespace common {
 class File;
 }
 
-class Document;
 class DocumentNoExcept;
 
 enum class FileType {
@@ -61,32 +62,13 @@ enum class EncryptionState {
   DECRYPTED,
 };
 
-enum class DocumentType {
-  UNKNOWN,
-  TEXT,
-  PRESENTATION,
-  SPREADSHEET,
-  GRAPHICS,
-};
-
-struct FileMeta {
+struct FileMeta final {
   static FileType typeByExtension(const std::string &extension) noexcept;
   static FileCategory categoryByType(FileType type) noexcept;
 
-  struct Entry {
-    std::string name;
-    std::uint32_t rowCount{0};
-    std::uint32_t columnCount{0};
-    std::string notes;
-  };
-
   FileType type{FileType::UNKNOWN};
-  FileCategory category{FileCategory::UNKNOWN};
-  DocumentType documentType{DocumentType::UNKNOWN};
-  bool confident{false};
   EncryptionState encryptionState{EncryptionState::UNKNOWN};
-  std::uint32_t entryCount{0};
-  std::vector<Entry> entries;
+  std::optional<DocumentMeta> documentMeta;
 
   std::string typeAsString() const noexcept;
 };
@@ -105,14 +87,27 @@ public:
   File &operator=(const File &);
   File &operator=(File &&) noexcept;
 
-  FileType fileType() const noexcept;
-  FileCategory fileCategory() const noexcept;
-  const FileMeta &fileMeta() const noexcept;
+  virtual FileType fileType() const noexcept;
+  virtual FileCategory fileCategory() const noexcept;
+  virtual FileMeta fileMeta() const noexcept;
 
 protected:
   explicit File(std::shared_ptr<common::File>);
 
   std::shared_ptr<common::File> m_file;
+};
+
+class DocumentFile : public File {
+public:
+  static DocumentType type(const std::string &path);
+  static DocumentMeta meta(const std::string &path);
+
+  explicit DocumentFile(const std::string &path);
+
+  virtual DocumentType documentType() const noexcept;
+  virtual DocumentMeta documentMeta() const noexcept;
+
+  virtual Document document() const;
 };
 
 class PossiblyPasswordEncryptedFileBase : public File {
@@ -126,6 +121,12 @@ template<typename F>
 class PossiblyPasswordEncryptedFile : public PossiblyPasswordEncryptedFileBase {
 public:
   virtual F unbox() = 0;
+};
+
+class PossiblyPasswordEncryptedDocumentFile : public PossiblyPasswordEncryptedFile<DocumentFile> {
+public:
+  explicit PossiblyPasswordEncryptedDocumentFile(const std::string &path);
+  PossiblyPasswordEncryptedDocumentFile(File &&);
 };
 
 }

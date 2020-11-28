@@ -126,10 +126,10 @@ FileType File::fileType() const noexcept {
 }
 
 FileCategory File::fileCategory() const noexcept {
-  return m_file->meta().category;
+  return FileMeta::categoryByType(fileType());
 }
 
-const FileMeta & File::fileMeta() const noexcept {
+FileMeta File::fileMeta() const noexcept {
   return m_file->meta();
 }
 

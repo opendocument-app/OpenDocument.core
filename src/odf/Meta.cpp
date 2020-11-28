@@ -139,7 +139,7 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
 FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
                              const bool decrypted) {
   FileMeta result;
-  result.confident = true;
+  result.documentMeta = DocumentMeta();
 
   if (!storage.isFile("content.xml"))
     throw NoOpenDocumentFileException();
@@ -180,16 +180,16 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
           const auto pageCount = statistics.attribute("meta:page-count");
           if (!pageCount)
             break;
-          result.entryCount = pageCount.as_uint();
+          result.documentMeta->entryCount = pageCount.as_uint();
         } break;
         case FileType::OPENDOCUMENT_PRESENTATION: {
-          result.entryCount = 0;
+          result.documentMeta->entryCount = 0;
         } break;
         case FileType::OPENDOCUMENT_SPREADSHEET: {
           const auto tableCount = statistics.attribute("meta:table-count");
           if (!tableCount)
             break;
-          result.entryCount = tableCount.as_uint();
+          result.documentMeta->entryCount = tableCount.as_uint();
         } break;
         case FileType::OPENDOCUMENT_GRAPHICS: {
         } break;
@@ -209,24 +209,24 @@ FileMeta Meta::parseFileMeta(const access::ReadStorage &storage,
     switch (result.type) {
     case FileType::OPENDOCUMENT_GRAPHICS:
     case FileType::OPENDOCUMENT_PRESENTATION: {
-      result.entryCount = 0;
+      result.documentMeta->entryCount = 0;
       for (auto &&e : body.select_nodes("//draw:page")) {
-        ++result.entryCount;
-        FileMeta::Entry entry;
+        ++result.documentMeta->entryCount;
+        DocumentMeta::Entry entry;
         entry.name = e.node().attribute("draw:name").as_string();
-        result.entries.emplace_back(entry);
+        result.documentMeta->entries.emplace_back(entry);
       }
     } break;
     case FileType::OPENDOCUMENT_SPREADSHEET: {
-      result.entryCount = 0;
+      result.documentMeta->entryCount = 0;
       for (auto &&e : body.select_nodes("//table:table")) {
-        ++result.entryCount;
-        FileMeta::Entry entry;
+        ++result.documentMeta->entryCount;
+        DocumentMeta::Entry entry;
         entry.name = e.node().attribute("table:name").as_string();
         // TODO configuration
         estimateTableDimensions(e.node(), entry.rowCount, entry.columnCount,
                                 10000, 500);
-        result.entries.emplace_back(entry);
+        result.documentMeta->entries.emplace_back(entry);
       }
     } break;
     default:

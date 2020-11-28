@@ -240,8 +240,8 @@ void TableTranslator(const pugi::xml_node &in, std::ostream &out,
   if ((context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) &&
       context.config->tableLimitByDimensions) {
     const common::TablePosition end{
-        context.meta->entries[context.entry].rowCount,
-        context.meta->entries[context.entry].columnCount};
+        context.meta->documentMeta->entries[context.entry].rowCount,
+        context.meta->documentMeta->entries[context.entry].columnCount};
 
     context.tableRange = {context.tableRange.from(), end};
   }

@@ -17,7 +17,7 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
   };
 
   FileMeta result;
-  result.confident = true;
+  result.documentMeta = DocumentMeta();
 
   if (storage.isFile("EncryptionInfo") && storage.isFile("EncryptedPackage")) {
     result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;
@@ -38,23 +38,23 @@ FileMeta Meta::parseFileMeta(access::ReadStorage &storage) {
     break;
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     const auto ppt = common::XmlUtil::parse(storage, "ppt/presentation.xml");
-    result.entryCount = 0;
+    result.documentMeta->entryCount = 0;
     for (auto &&e : ppt.select_nodes("//p:sldId")) {
-      ++result.entryCount;
-      FileMeta::Entry entry;
+      ++result.documentMeta->entryCount;
+      DocumentMeta::Entry entry;
       // TODO
-      result.entries.emplace_back(entry);
+      result.documentMeta->entries.emplace_back(entry);
     }
   } break;
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
     const auto xls = common::XmlUtil::parse(storage, "xl/workbook.xml");
-    result.entryCount = 0;
+    result.documentMeta->entryCount = 0;
     for (auto &&e : xls.select_nodes("//sheet")) {
-      ++result.entryCount;
-      FileMeta::Entry entry;
+      ++result.documentMeta->entryCount;
+      DocumentMeta::Entry entry;
       entry.name = e.node().attribute("name").as_string();
       // TODO dimension
-      result.entries.emplace_back(entry);
+      result.documentMeta->entries.emplace_back(entry);
     }
   } break;
   default:
