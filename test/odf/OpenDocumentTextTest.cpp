@@ -6,12 +6,15 @@
 using namespace odr;
 
 TEST(OpenDocumentText, hello) {
-  DocumentFile document("/home/andreas/workspace/OpenDocument.test/odt/test.odt");
+  DocumentFile documentFile("/home/andreas/workspace/OpenDocument.test/odt/test.odt");
 
-  std::cout << (int) document.fileType() << std::endl;
+  std::cout << (int) documentFile.fileType() << std::endl;
+
+  Document document = documentFile.document();
+
   std::cout << (int) document.documentType() << std::endl;
 
-  TextDocument textDocument(std::move(document));
+  auto textDocument = document.textDocument();
 
   auto props = textDocument.pageProperties();
 

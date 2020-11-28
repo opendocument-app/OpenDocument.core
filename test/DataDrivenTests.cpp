@@ -133,12 +133,12 @@ nlohmann::json metaToJson(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.typeAsString()},
       {"encryptionState", meta.encryptionState},
-      {"entryCount", meta.entryCount},
+      {"entryCount", meta.documentMeta->entryCount},
       {"entries", nlohmann::json::array()},
   };
 
-  if (!meta.entries.empty()) {
-    for (auto &&e : meta.entries) {
+  if (!meta.documentMeta->entries.empty()) {
+    for (auto &&e : meta.documentMeta->entries) {
       result["entries"].push_back({
           {"name", e.name},
           {"rowCount", e.rowCount},
@@ -165,22 +165,20 @@ TEST_P(DataDrivenTest, all) {
   config.entryCount = 0;
   config.editable = true;
 
-  const odr::Document document{param.input};
+  const odr::File file{param.input};
 
   // encrypted ooxml type cannot be inspected
-  if ((document.fileType() != FileType::OFFICE_OPEN_XML_ENCRYPTED))
-    EXPECT_EQ(param.type, document.fileType());
-  if (!document.fileMeta().confident)
-    return;
+  if ((file.fileType() != FileType::OFFICE_OPEN_XML_ENCRYPTED))
+    EXPECT_EQ(param.type, file.fileType());
 
   // TODO
   //EXPECT_EQ(param.encrypted, document.encrypted());
   //if (document.encrypted())
   //  EXPECT_TRUE(document.decrypt(param.password));
-  EXPECT_EQ(param.type, document.fileType());
+  EXPECT_EQ(param.type, file.fileType());
 
   {
-    const auto json = metaToJson(document.fileMeta());
+    const auto json = metaToJson(file.fileMeta());
 
     fs::create_directories(fs::path(param.metaOutput).parent_path());
     std::ofstream o(param.metaOutput);

@@ -19,6 +19,9 @@ enum class FileType;
 struct FileMeta;
 struct Config;
 class TextDocument;
+class Presentation;
+class Spreadsheet;
+class Graphics;
 class Element;
 class ElementSiblingRange;
 class TableElement;
@@ -51,6 +54,11 @@ public:
 
   bool editable() const noexcept;
   bool savable(bool encrypted = false) const noexcept;
+
+  TextDocument textDocument() const;
+  Presentation presentation() const;
+  Spreadsheet spreadsheet() const;
+  Graphics graphics() const;
 
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
