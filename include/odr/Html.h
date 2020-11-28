@@ -7,15 +7,13 @@
 namespace odr {
 class Document;
 
-namespace Html {
-
-enum class TableGridlines {
+enum class HtmlTableGridlines {
   NONE,
   SOFT,
   HARD,
 };
 
-struct Config {
+struct HtmlConfig {
   // starting sheet for spreadsheet, starting page for presentation, ignored for
   // text, ignored for graphics
   std::uint32_t entryOffset{0};
@@ -34,10 +32,12 @@ struct Config {
   std::uint32_t tableLimitCols{500};
   bool tableLimitByDimensions{true};
   // spreadsheet gridlines
-  TableGridlines tableGridlines{TableGridlines::SOFT};
+  HtmlTableGridlines tableGridlines{HtmlTableGridlines::SOFT};
 };
 
-void translate(Document document, const std::string &path, const Config &config);
+namespace Html {
+
+void translate(Document document, const std::string &path, const HtmlConfig &config);
 void edit(Document document, const std::string &diff);
 
 }

@@ -4,9 +4,7 @@
 #include <string>
 
 namespace odr {
-namespace Html {
-struct Config;
-}
+struct HtmlConfig;
 
 namespace common::Html {
 const char *doctype() noexcept;
@@ -18,7 +16,7 @@ const char *odfSpreadsheetDefaultStyle() noexcept;
 
 const char *defaultScript() noexcept;
 
-std::string bodyAttributes(const odr::Html::Config &) noexcept;
+std::string bodyAttributes(const HtmlConfig &) noexcept;
 
 std::string escapeText(std::string text) noexcept;
 } // namespace common::Html

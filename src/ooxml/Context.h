@@ -13,10 +13,7 @@
 
 namespace odr {
 struct FileMeta;
-
-namespace Html {
-struct Config;
-}
+struct HtmlConfig;
 
 namespace access {
 class ReadStorage;
@@ -26,7 +23,7 @@ class ReadStorage;
 namespace odr::ooxml {
 
 struct Context {
-  const Html::Config *config;
+  const HtmlConfig *config;
   const FileMeta *meta;
 
   const access::ReadStorage *storage;

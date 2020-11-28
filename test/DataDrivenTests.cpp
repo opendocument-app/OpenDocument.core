@@ -160,7 +160,7 @@ TEST_P(DataDrivenTest, all) {
       (param.type == FileType::PORTABLE_DOCUMENT_FORMAT))
     GTEST_SKIP();
 
-  odr::Html::Config config;
+  odr::HtmlConfig config;
   config.entryOffset = 0;
   config.entryCount = 0;
   config.editable = true;

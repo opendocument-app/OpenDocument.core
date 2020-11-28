@@ -95,18 +95,18 @@ const char *Html::defaultScript() noexcept {
   // clang-format on
 }
 
-std::string Html::bodyAttributes(const odr::Html::Config &config) noexcept {
+std::string Html::bodyAttributes(const HtmlConfig &config) noexcept {
   std::string result;
 
   result += "class=\"";
   switch (config.tableGridlines) {
-  case odr::Html::TableGridlines::SOFT:
+  case HtmlTableGridlines::SOFT:
     result += "odr-gridlines-soft";
     break;
-  case odr::Html::TableGridlines::HARD:
+  case HtmlTableGridlines::HARD:
     result += "odr-gridlines-hard";
     break;
-  case odr::Html::TableGridlines::NONE:
+  case HtmlTableGridlines::NONE:
   default:
     result += "odr-gridlines-none";
     break;

@@ -1,25 +1,25 @@
-#include <odr/Html.h>
+#include <common/Document.h>
 #include <common/Html.h>
 #include <fstream>
 #include <odr/Document.h>
 #include <odr/DocumentElements.h>
-#include <common/Document.h>
+#include <odr/Html.h>
 
 namespace odr {
 
 namespace {
 void translateElement(Element element, std::ostream &out,
-                      const Html::Config &config);
+                      const HtmlConfig &config);
 
-void translateGeneration(ElementSiblingRange siblings,
-                         std::ostream &out, const Html::Config &config) {
+void translateGeneration(ElementSiblingRange siblings, std::ostream &out,
+                         const HtmlConfig &config) {
   for (auto &&e : siblings) {
     translateElement(e, out, config);
   }
 }
 
 void translateElement(Element element, std::ostream &out,
-                      const Html::Config &config) {
+                      const HtmlConfig &config) {
   if (element.type() == ElementType::UNKNOWN) {
     translateGeneration(element.children(), out, config);
   } else if (element.type() == ElementType::TEXT) {
@@ -40,7 +40,7 @@ void translateElement(Element element, std::ostream &out,
 }
 
 void translateText(TextDocument document, std::ostream &out,
-                   const Html::Config &config) {
+                   const HtmlConfig &config) {
   // TODO out-source css
   const auto pageProperties = document.pageProperties();
   const std::string style = "width:" + pageProperties.width +
@@ -56,7 +56,7 @@ void translateText(TextDocument document, std::ostream &out,
 } // namespace
 
 void Html::translate(Document document, const std::string &path,
-                     const Config &config) {
+                     const HtmlConfig &config) {
   std::ofstream out(path);
   if (!out.is_open())
     return; // TODO throw
@@ -85,7 +85,6 @@ void Html::translate(Document document, const std::string &path,
   // TODO throw unknown document
 }
 
-void Html::edit(Document document,
-                           const std::string &diff) {}
+void Html::edit(Document document, const std::string &diff) {}
 
 } // namespace odr

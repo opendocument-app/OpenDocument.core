@@ -212,7 +212,7 @@ public:
     return true;
   }
 
-  bool translate(const access::Path &path, const Html::Config &config) {
+  bool translate(const access::Path &path, const HtmlConfig &config) {
     // TODO throw if not decrypted
     std::ofstream out(path);
     if (!out.is_open())
