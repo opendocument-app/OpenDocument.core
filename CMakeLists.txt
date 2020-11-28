@@ -26,6 +26,7 @@ add_library(odr-object OBJECT
         src/DocumentNoExcept.cpp
         src/File.cpp
         src/FileNoExcept.cpp
+        src/Html.cpp
         src/OpenDocument.cpp
         src/OpenStrategy.cpp
 
@@ -41,6 +42,7 @@ add_library(odr-object OBJECT
         src/common/Constants.cpp
         src/common/DocumentElements.cpp
         src/common/File.cpp
+        src/common/Html.cpp
         src/common/StringUtil.cpp
         src/common/TableCursor.cpp
         src/common/TablePosition.cpp
@@ -48,9 +50,6 @@ add_library(odr-object OBJECT
         src/common/XmlUtil.cpp
 
         src/crypto/CryptoUtil.cpp
-
-        src/html/Html.cpp
-        src/html/HtmlTranslation.cpp
 
         src/odf/Common.cpp
         src/odf/ContentTranslator.cpp

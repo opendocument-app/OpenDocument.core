@@ -15,9 +15,6 @@ class Spreadsheet;
 class Graphics;
 }
 
-enum class FileType;
-struct FileMeta;
-struct Config;
 class TextDocument;
 class Presentation;
 class Spreadsheet;

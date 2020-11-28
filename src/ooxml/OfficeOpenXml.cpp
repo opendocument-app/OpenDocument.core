@@ -8,10 +8,10 @@
 #include <access/Path.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
-#include <html/Html.h>
+#include <common/Html.h>
 #include <common/XmlUtil.h>
 #include <fstream>
-#include <odr/Config.h>
+#include <odr/Html.h>
 #include <odr/Exception.h>
 #include <odr/File.h>
 #include <ooxml/OfficeOpenXml.h>
@@ -22,7 +22,7 @@ namespace odr::ooxml {
 namespace {
 void generateStyle_(std::ofstream &out, Context &context) {
   // default css
-  out << html::Html::odfDefaultStyle();
+  out << common::Html::odfDefaultStyle();
 
   switch (context.meta->type) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT: {
@@ -58,7 +58,7 @@ void generateStyle_(std::ofstream &out, Context &context) {
 }
 
 void generateScript_(std::ofstream &out, Context &) {
-  out << html::Html::defaultScript();
+  out << common::Html::defaultScript();
 }
 
 void generateContent_(Context &context) {
@@ -212,7 +212,7 @@ public:
     return true;
   }
 
-  bool translate(const access::Path &path, const Config &config) {
+  bool translate(const access::Path &path, const Html::Config &config) {
     // TODO throw if not decrypted
     std::ofstream out(path);
     if (!out.is_open())
@@ -222,15 +222,15 @@ public:
     context_.storage = storage_.get();
     context_.output = &out;
 
-    out << html::Html::doctype();
+    out << common::Html::doctype();
     out << "<html><head>";
-    out << html::Html::defaultHeaders();
+    out << common::Html::defaultHeaders();
     out << "<style>";
     generateStyle_(out, context_);
     out << "</style>";
     out << "</head>";
 
-    out << "<body " << html::Html::bodyAttributes(config) << ">";
+    out << "<body " << common::Html::bodyAttributes(config) << ">";
     generateContent_(context_);
     out << "</body>";
 

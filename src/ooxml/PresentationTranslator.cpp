@@ -7,7 +7,7 @@
 #include <crypto/CryptoUtil.h>
 #include <cstring>
 #include <glog/logging.h>
-#include <odr/Config.h>
+#include <odr/Html.h>
 #include <pugixml.hpp>
 #include <string>
 #include <unordered_map>

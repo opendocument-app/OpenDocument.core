@@ -4,8 +4,8 @@
 #include <gtest/gtest.h>
 #include <map>
 #include <nlohmann/json.hpp>
-#include <odr/Config.h>
 #include <odr/Document.h>
+#include <odr/Html.h>
 #include <odr/File.h>
 #include <utility>
 
@@ -160,7 +160,7 @@ TEST_P(DataDrivenTest, all) {
       (param.type == FileType::PORTABLE_DOCUMENT_FORMAT))
     GTEST_SKIP();
 
-  odr::Config config;
+  odr::Html::Config config;
   config.entryOffset = 0;
   config.entryCount = 0;
   config.editable = true;

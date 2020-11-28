@@ -12,8 +12,11 @@
 #include <vector>
 
 namespace odr {
-struct Config;
 struct FileMeta;
+
+namespace Html {
+struct Config;
+}
 
 namespace access {
 class ReadStorage;
@@ -23,7 +26,7 @@ class ReadStorage;
 namespace odr::ooxml {
 
 struct Context {
-  const Config *config;
+  const Html::Config *config;
   const FileMeta *meta;
 
   const access::ReadStorage *storage;

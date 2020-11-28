@@ -5,7 +5,6 @@
 #include <common/File.h>
 
 namespace odr {
-struct Config;
 struct FileMeta;
 struct PageProperties;
 class Element;

@@ -6,7 +6,7 @@
 #include <common/XmlUtil.h>
 #include <cstring>
 #include <glog/logging.h>
-#include <odr/Config.h>
+#include <odr/Html.h>
 #include <odr/File.h>
 #include <pugixml.hpp>
 #include <string>

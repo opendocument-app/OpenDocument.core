@@ -3,7 +3,7 @@
 #include <odf/Crypto.h>
 #include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
-#include <html/Html.h>
+#include <common/Html.h>
 #include <odf/OpenDocument.h>
 
 namespace odr::odf {

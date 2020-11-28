@@ -1,8 +1,8 @@
-#include <html/Html.h>
+#include <common/Html.h>
 #include <common/StringUtil.h>
-#include <odr/Config.h>
+#include <odr/Html.h>
 
-namespace odr::html {
+namespace odr::common {
 
 const char *Html::doctype() noexcept {
   // clang-format off
@@ -95,18 +95,18 @@ const char *Html::defaultScript() noexcept {
   // clang-format on
 }
 
-std::string Html::bodyAttributes(const Config &config) noexcept {
+std::string Html::bodyAttributes(const odr::Html::Config &config) noexcept {
   std::string result;
 
   result += "class=\"";
   switch (config.tableGridlines) {
-  case TableGridlines::SOFT:
+  case odr::Html::TableGridlines::SOFT:
     result += "odr-gridlines-soft";
     break;
-  case TableGridlines::HARD:
+  case odr::Html::TableGridlines::HARD:
     result += "odr-gridlines-hard";
     break;
-  case TableGridlines::NONE:
+  case odr::Html::TableGridlines::NONE:
   default:
     result += "odr-gridlines-none";
     break;
