@@ -5,10 +5,6 @@
 
 namespace odr::common {
 
-FileType File::fileType() const noexcept {
-  return fileMeta().type;
-}
-
 FileCategory File::fileCategory() const noexcept {
   return FileMeta::categoryByType(fileType());
 }

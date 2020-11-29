@@ -36,7 +36,12 @@ FileType OpenDocumentFile::fileType() const noexcept {
   return m_file_meta.type;
 }
 
-FileMeta OpenDocumentFile::fileMeta() const noexcept { return m_file_meta; }
+FileMeta OpenDocumentFile::fileMeta() const noexcept {
+  FileMeta result = m_file_meta;
+  if (m_encryptionState != EncryptionState::ENCRYPTED)
+    result.documentMeta = document()->documentMeta();
+  return result;
+}
 
 std::shared_ptr<common::Document> OpenDocumentFile::document() const {
   // TODO throw if encrypted

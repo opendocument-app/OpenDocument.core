@@ -56,7 +56,6 @@ enum class FileCategory {
 };
 
 enum class EncryptionState {
-  UNKNOWN,
   NOT_ENCRYPTED,
   ENCRYPTED,
   DECRYPTED,

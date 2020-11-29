@@ -18,7 +18,7 @@ class File {
 public:
   virtual ~File() = default;
 
-  virtual FileType fileType() const noexcept;
+  virtual FileType fileType() const noexcept = 0;
   virtual FileCategory fileCategory() const noexcept;
   virtual FileMeta fileMeta() const noexcept = 0;
 };

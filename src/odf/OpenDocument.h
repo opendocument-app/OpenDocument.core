@@ -31,7 +31,6 @@ public:
 private:
   std::shared_ptr<access::ReadStorage> m_storage;
   EncryptionState m_encryptionState;
-
   FileMeta m_file_meta;
   Manifest m_manifest;
 };
@@ -49,9 +48,7 @@ public:
 
 protected:
   std::shared_ptr<access::ReadStorage> m_storage;
-
   DocumentMeta m_document_meta;
-
   pugi::xml_document m_content;
 };
 
