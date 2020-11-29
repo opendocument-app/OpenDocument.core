@@ -1,14 +1,23 @@
-#include <common/File.h>
 #include <common/Document.h>
+#include <common/File.h>
 #include <odr/Document.h>
+#include <odr/File.h>
 
 namespace odr::common {
 
-DocumentType DocumentFile::documentType() const noexcept {
+FileType File::fileType() const noexcept {
+  return fileMeta().type;
+}
+
+FileCategory File::fileCategory() const noexcept {
+  return FileMeta::categoryByType(fileType());
+}
+
+DocumentType DocumentFile::documentType() const {
   return document()->documentType();
 }
 
-DocumentMeta DocumentFile::documentMeta() const noexcept {
+DocumentMeta DocumentFile::documentMeta() const {
   return document()->documentMeta();
 }
 

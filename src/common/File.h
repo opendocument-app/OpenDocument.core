@@ -7,6 +7,7 @@ namespace odr {
 enum class FileType;
 enum class FileCategory;
 struct FileMeta;
+enum class EncryptionState;
 enum class DocumentType;
 struct DocumentMeta;
 
@@ -17,15 +18,18 @@ class File {
 public:
   virtual ~File() = default;
 
-  virtual FileType fileType() const noexcept = 0;
-  virtual FileCategory fileCategory() const noexcept = 0;
+  virtual FileType fileType() const noexcept;
+  virtual FileCategory fileCategory() const noexcept;
   virtual FileMeta fileMeta() const noexcept = 0;
 };
 
 class DocumentFile : public File {
 public:
-  virtual DocumentType documentType() const noexcept;
-  virtual DocumentMeta documentMeta() const noexcept;
+  virtual EncryptionState encryptionState() const noexcept = 0;
+  virtual bool decrypt(const std::string &password) = 0;
+
+  virtual DocumentType documentType() const;
+  virtual DocumentMeta documentMeta() const;
 
   virtual std::shared_ptr<Document> document() const = 0;
 };

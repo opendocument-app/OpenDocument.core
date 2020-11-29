@@ -2,10 +2,11 @@
 #define ODR_ODF_OPENDOCUMENT_H
 
 #include <common/Document.h>
-#include <common/Encrypted.h>
+#include <common/File.h>
 #include <memory>
-#include <odr/File.h>
+#include <odf/Manifest.h>
 #include <odf/Meta.h>
+#include <odr/File.h>
 #include <pugixml.hpp>
 
 namespace odr {
@@ -15,97 +16,77 @@ class ReadStorage;
 
 namespace odf {
 
-class PossiblyEncryptedOpenDocumentFile;
-
 class OpenDocumentFile final : public virtual common::DocumentFile {
 public:
-  FileType fileType() const noexcept final;
-  FileCategory fileCategory() const noexcept final;
-  FileMeta fileMeta() const noexcept final;
+  explicit OpenDocumentFile(std::shared_ptr<access::ReadStorage> storage);
 
-  DocumentType documentType() const noexcept final;
-  DocumentMeta documentMeta() const noexcept final;
+  EncryptionState encryptionState() const noexcept final;
+  bool decrypt(const std::string &password) final;
+
+  FileType fileType() const noexcept final;
+  FileMeta fileMeta() const noexcept final;
 
   std::shared_ptr<common::Document> document() const final;
 
-protected:
-  std::unique_ptr<access::ReadStorage> m_storage;
-
-  FileMeta m_meta;
-  Meta::Manifest m_manifest;
-  pugi::xml_document m_content;
-
 private:
-  bool m_decrypted{false};
+  std::shared_ptr<access::ReadStorage> m_storage;
+  EncryptionState m_encryptionState;
 
-  explicit OpenDocumentFile(std::unique_ptr<access::ReadStorage> &storage);
-
-  bool decrypt(const std::string &password);
-
-  friend PossiblyEncryptedOpenDocumentFile;
-};
-
-class PossiblyEncryptedOpenDocumentFile final : common::PossiblyPasswordEncryptedFile<OpenDocumentFile> {
-public:
-  FileMeta fileMeta() const noexcept final;
-  EncryptionState encryptionState() const final;
-
-  bool decrypt(const std::string &password) final;
-
-  std::shared_ptr<OpenDocumentFile> unbox() final;
-
-private:
-  OpenDocumentFile m_documentFile;
-
-  explicit PossiblyEncryptedOpenDocumentFile(OpenDocumentFile &&documentFile);
+  FileMeta m_file_meta;
+  Manifest m_manifest;
 };
 
 class OpenDocument : public virtual common::Document {
 public:
-  bool savable(bool encrypted) const noexcept final;
+  explicit OpenDocument(std::shared_ptr<access::ReadStorage> storage);
 
   DocumentType documentType() const noexcept final;
   DocumentMeta documentMeta() const noexcept final;
 
+  bool savable(bool encrypted) const noexcept final;
   void save(const access::Path &path) const final;
   void save(const access::Path &path, const std::string &password) const final;
 
 protected:
-  std::shared_ptr<OpenDocumentFile> m_file;
+  std::shared_ptr<access::ReadStorage> m_storage;
+
+  DocumentMeta m_document_meta;
+
+  pugi::xml_document m_content;
 };
 
-class OpenDocumentText final : public OpenDocument, public common::TextDocument {
+class OpenDocumentText final : public OpenDocument,
+                               public common::TextDocument {
 public:
+  explicit OpenDocumentText(std::shared_ptr<access::ReadStorage> storage);
+
   PageProperties pageProperties() const final;
 
   ElementSiblingRange content() const final;
-
-private:
-  explicit OpenDocumentText(OpenDocument &&document);
 };
 
-class OpenDocumentPresentation final : public OpenDocument, public common::Presentation {
+class OpenDocumentPresentation final : public OpenDocument,
+                                       public common::Presentation {
 public:
+  explicit OpenDocumentPresentation(std::shared_ptr<access::ReadStorage> storage);
+
   ElementSiblingRange slideContent(std::uint32_t index) const final;
-
-private:
-  explicit OpenDocumentPresentation(OpenDocument &&document);
 };
 
-class OpenDocumentSpreadsheet final : public OpenDocument, public common::Spreadsheet {
+class OpenDocumentSpreadsheet final : public OpenDocument,
+                                      public common::Spreadsheet {
 public:
+  explicit OpenDocumentSpreadsheet(std::shared_ptr<access::ReadStorage> storage);
+
   Table sheetTable(std::uint32_t index) const final;
-
-private:
-  explicit OpenDocumentSpreadsheet(OpenDocument &&document);
 };
 
-class OpenDocumentGraphics final : public OpenDocument, public common::Graphics {
+class OpenDocumentGraphics final : public OpenDocument,
+                                   public common::Graphics {
 public:
-  ElementSiblingRange pageContent(std::uint32_t index) const final;
+  explicit OpenDocumentGraphics(std::shared_ptr<access::ReadStorage> storage);
 
-private:
-  explicit OpenDocumentGraphics(OpenDocument &&document);
+  ElementSiblingRange pageContent(std::uint32_t index) const final;
 };
 
 } // namespace odf

@@ -67,7 +67,7 @@ struct FileMeta final {
   static FileCategory categoryByType(FileType type) noexcept;
 
   FileType type{FileType::UNKNOWN};
-  EncryptionState encryptionState{EncryptionState::UNKNOWN};
+  bool passwordEncrypted{false};
   std::optional<DocumentMeta> documentMeta;
 
   std::string typeAsString() const noexcept;
@@ -104,29 +104,13 @@ public:
 
   explicit DocumentFile(const std::string &path);
 
-  virtual DocumentType documentType() const noexcept;
-  virtual DocumentMeta documentMeta() const noexcept;
+  virtual EncryptionState encryptionState() const = 0;
+  virtual bool decrypt(const std::string &password) = 0;
+
+  virtual DocumentType documentType() const;
+  virtual DocumentMeta documentMeta() const;
 
   virtual Document document() const;
-};
-
-class PossiblyPasswordEncryptedFileBase : public File {
-public:
-  virtual EncryptionState encryptionState() const = 0;
-
-  virtual bool decrypt(const std::string &password) = 0;
-};
-
-template<typename F>
-class PossiblyPasswordEncryptedFile : public PossiblyPasswordEncryptedFileBase {
-public:
-  virtual F unbox() = 0;
-};
-
-class PossiblyPasswordEncryptedDocumentFile : public PossiblyPasswordEncryptedFile<DocumentFile> {
-public:
-  explicit PossiblyPasswordEncryptedDocumentFile(const std::string &path);
-  PossiblyPasswordEncryptedDocumentFile(File &&);
 };
 
 }
