@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <odr/DocumentElements.h>
 
 namespace odr {
 
@@ -19,9 +20,6 @@ class TextDocument;
 class Presentation;
 class Spreadsheet;
 class Graphics;
-class Element;
-class ElementSiblingRange;
-class TableElement;
 
 enum class DocumentType {
   UNKNOWN,
@@ -76,8 +74,6 @@ struct PageProperties {
 
 class TextDocument final : public Document {
 public:
-  explicit TextDocument(const std::string &path);
-
   PageProperties pageProperties() const;
 
   ElementSiblingRange content() const;
@@ -92,12 +88,11 @@ public:
     std::string name;
     std::string notes;
     PageProperties pageProperties;
+    ElementSiblingRange content;
   };
 
   std::uint32_t slideCount() const;
   std::vector<Slide> slides() const;
-
-  ElementSiblingRange slideContent(std::uint32_t index) const;
 
 private:
   std::shared_ptr<common::Presentation> m_presentation;
@@ -109,12 +104,11 @@ public:
     std::string name;
     std::uint32_t rowCount{0};
     std::uint32_t columnCount{0};
+    TableElement table;
   };
 
   std::uint32_t sheetCount() const;
   std::vector<Sheet> sheets() const;
-
-  TableElement sheetTable(std::uint32_t index);
 
 private:
   std::shared_ptr<common::Presentation> m_spreadsheet;
@@ -122,9 +116,14 @@ private:
 
 class Graphics final : public Document {
 public:
-  std::uint32_t pageCount() const;
+  struct Page {
+    std::string name;
+    PageProperties pageProperties;
+    ElementSiblingRange content;
+  };
 
-  ElementSiblingRange pageContent(std::uint32_t index);
+  std::uint32_t pageCount() const;
+  std::vector<Page> pages() const;
 
 private:
   std::shared_ptr<common::Graphics> m_graphics;
