@@ -57,8 +57,8 @@ add_library(odr-object OBJECT
         src/odf/Manifest.cpp
         src/odf/Meta.cpp
         src/odf/OpenDocument.cpp
+        src/odf/OpenDocumentFile.cpp
         src/odf/StyleTranslator.cpp
-        src/odf/Text.cpp
 
         src/oldms/LegacyMicrosoft.cpp
 

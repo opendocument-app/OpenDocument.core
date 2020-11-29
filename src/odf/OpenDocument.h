@@ -1,12 +1,9 @@
 #ifndef ODR_ODF_OPENDOCUMENT_H
 #define ODR_ODF_OPENDOCUMENT_H
 
+#include <odr/Document.h>
 #include <common/Document.h>
-#include <common/File.h>
 #include <memory>
-#include <odf/Manifest.h>
-#include <odf/Meta.h>
-#include <odr/File.h>
 #include <pugixml.hpp>
 
 namespace odr {
@@ -15,25 +12,6 @@ class ReadStorage;
 }
 
 namespace odf {
-
-class OpenDocumentFile final : public virtual common::DocumentFile {
-public:
-  explicit OpenDocumentFile(std::shared_ptr<access::ReadStorage> storage);
-
-  EncryptionState encryptionState() const noexcept final;
-  bool decrypt(const std::string &password) final;
-
-  FileType fileType() const noexcept final;
-  FileMeta fileMeta() const noexcept final;
-
-  std::shared_ptr<common::Document> document() const final;
-
-private:
-  std::shared_ptr<access::ReadStorage> m_storage;
-  EncryptionState m_encryptionState;
-  FileMeta m_file_meta;
-  Manifest m_manifest;
-};
 
 class OpenDocument : public virtual common::Document {
 public:
@@ -60,6 +38,9 @@ public:
   PageProperties pageProperties() const final;
 
   ElementSiblingRange content() const final;
+
+private:
+  pugi::xml_document m_style;
 };
 
 class OpenDocumentPresentation final : public OpenDocument,
