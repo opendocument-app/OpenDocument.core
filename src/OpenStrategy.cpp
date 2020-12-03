@@ -3,16 +3,20 @@
 #include <access/Path.h>
 #include <access/Storage.h>
 #include <access/ZipStorage.h>
-#include <odf/OpenDocument.h>
+#include <odf/OpenDocumentFile.h>
 #include <odr/Exception.h>
 #include <oldms/LegacyMicrosoftFile.h>
-#include <ooxml/OfficeOpenXml.h>
+#include <ooxml/OfficeOpenXmlFile.h>
 
 namespace odr {
 
 namespace {
 class UnknownFile final : public common::File {
 public:
+  explicit UnknownFile(const access::Path &path) {
+    // TODO check if file exists
+  }
+
   FileType fileType() const noexcept final {
     return FileType::UNKNOWN;
   }
@@ -27,40 +31,33 @@ std::vector<FileType> OpenStrategy::types(const access::Path &path) {
   std::vector<FileType> result;
 
   // TODO throw if not a file
-  // TODO add unknown?
 
   try {
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::ZipReader>(path);
+    auto storage = std::make_shared<access::ZipReader>(path);
     result.push_back(FileType::ZIP);
 
     try {
-      // TODO
-      //result.push_back(odf::OpenDocument(storage).meta().type);
+      result.push_back(odf::OpenDocumentFile(storage).fileType());
     } catch (...) {}
 
     try {
-      // TODO
-      //result.push_back(ooxml::OfficeOpenXml(storage).meta().type);
+      result.push_back(ooxml::OfficeOpenXmlFile(storage).fileType());
     } catch (...) {}
   } catch (...) {}
 
   try {
     FileMeta meta;
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::CfbReader>(path);
+    auto storage = std::make_shared<access::CfbReader>(path);
     result.push_back(FileType::COMPOUND_FILE_BINARY_FORMAT);
 
     // legacy microsoft
     try {
-      // TODO
-      //result.push_back(oldms::LegacyMicrosoftFile(storage).meta().type);
+      result.push_back(oldms::LegacyMicrosoftFile(storage).fileType());
     } catch (...) {}
 
     // encrypted ooxml
     try {
-      // TODO
-      //result.push_back(ooxml::OfficeOpenXml(storage).meta().type);
+      result.push_back(ooxml::OfficeOpenXmlFile(storage).fileType());
     } catch (...) {}
   } catch (...) {}
 
@@ -71,43 +68,36 @@ std::unique_ptr<common::File> OpenStrategy::openFile(const access::Path &path) {
   // TODO throw if not a file
 
   try {
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::ZipReader>(path);
+    auto storage = std::make_shared<access::ZipReader>(path);
 
     try {
-      // TODO
-      //return std::make_unique<odf::OpenDocument>(storage);
+      return std::make_unique<odf::OpenDocumentFile>(storage);
     } catch (...) {}
 
     try {
-      // TODO
-      //return std::make_unique<ooxml::OfficeOpenXml>(storage);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(storage);
     } catch (...) {}
 
-    // TODO return zip archive
+    // TODO return zip archive file
   } catch (...) {}
 
   try {
-    FileMeta meta;
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::CfbReader>(path);
+    auto storage = std::make_shared<access::CfbReader>(path);
 
     // legacy microsoft
     try {
-      // TODO
-      //return std::make_unique<oldms::LegacyMicrosoftFile>(storage);
+      return std::make_unique<oldms::LegacyMicrosoftFile>(storage);
     } catch (...) {}
 
     // encrypted ooxml
     try {
-      // TODO
-      //return std::make_unique<ooxml::OfficeOpenXml>(storage);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(storage);
     } catch (...) {}
 
-    // TODO return cfb archive
+    // TODO return cfb archive file
   } catch (...) {}
 
-  return std::make_unique<UnknownFile>();
+  return std::make_unique<UnknownFile>(path);
 }
 
 std::unique_ptr<common::File> OpenStrategy::openFile(const access::Path &path,
@@ -116,44 +106,35 @@ std::unique_ptr<common::File> OpenStrategy::openFile(const access::Path &path,
   throw UnknownFileType();
 }
 
-std::unique_ptr<common::Document> OpenStrategy::openDocument(const access::Path &path) {
+std::unique_ptr<common::DocumentFile> OpenStrategy::openDocumentFile(const access::Path &path) {
   try {
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::ZipReader>(path);
+    auto storage = std::make_shared<access::ZipReader>(path);
 
     try {
-      // TODO
-      //return std::make_unique<odf::OpenDocument>(storage);
+      return std::make_unique<odf::OpenDocumentFile>(storage);
     } catch (...) {}
 
     try {
-      // TODO
-      //return std::make_unique<ooxml::OfficeOpenXml>(storage);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(storage);
     } catch (...) {}
   } catch (...) {}
 
   try {
-    FileMeta meta;
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::CfbReader>(path);
+    auto storage = std::make_shared<access::CfbReader>(path);
 
     // legacy microsoft
     try {
-      // TODO
-      //return std::make_unique<oldms::LegacyMicrosoftFile>(storage);
+      return std::make_unique<oldms::LegacyMicrosoftFile>(storage);
     } catch (...) {}
 
     // encrypted ooxml
     try {
-      // TODO
-      //return std::make_unique<ooxml::OfficeOpenXml>(storage);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(storage);
     } catch (...) {}
   } catch (...) {}
-}
 
-std::unique_ptr<common::Document> OpenStrategy::openDocument(const access::Path &path, FileType as) {
-  // TODO implement
-  throw UnknownFileType();
+  // TODO throw
+  return {};
 }
 
 }

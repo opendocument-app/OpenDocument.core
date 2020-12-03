@@ -6,6 +6,8 @@
 
 namespace odr {
 
+Document::Document(std::shared_ptr<common::Document> document) : m_document{std::move(document)} {}
+
 DocumentType Document::documentType() const noexcept {
   return {}; // TODO
 }

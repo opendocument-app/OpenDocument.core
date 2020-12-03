@@ -42,16 +42,16 @@ DocumentFileNoExcept::open(const std::string &path) noexcept {
   }
 }
 
-DocumentType DocumentFileNoExcept::type(const std::string &path) noexcept {
+FileType DocumentFileNoExcept::type(const std::string &path) noexcept {
   try {
     return DocumentFile::type(path);
   } catch (...) {
     LOG(ERROR) << "type failed";
-    return DocumentType::UNKNOWN;
+    return FileType::UNKNOWN;
   }
 }
 
-DocumentMeta DocumentFileNoExcept::meta(const std::string &path) noexcept {
+FileMeta DocumentFileNoExcept::meta(const std::string &path) noexcept {
   try {
     return DocumentFile::meta(path);
   } catch (...) {

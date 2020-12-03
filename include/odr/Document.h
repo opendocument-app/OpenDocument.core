@@ -7,6 +7,7 @@
 #include <odr/DocumentElements.h>
 
 namespace odr {
+class DocumentFile;
 
 namespace common {
 class Document;
@@ -60,6 +61,11 @@ public:
 
 protected:
   std::shared_ptr<common::Document> m_document;
+
+private:
+  explicit Document(std::shared_ptr<common::Document>);
+
+  friend DocumentFile;
 };
 
 struct PageProperties {

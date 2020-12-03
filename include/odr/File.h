@@ -12,6 +12,7 @@ namespace odr {
 
 namespace common {
 class File;
+class DocumentFile;
 }
 
 class DocumentNoExcept;
@@ -56,6 +57,7 @@ enum class FileCategory {
 };
 
 enum class EncryptionState {
+  UNKNOWN,
   NOT_ENCRYPTED,
   ENCRYPTED,
   DECRYPTED,
@@ -98,8 +100,8 @@ protected:
 
 class DocumentFile : public File {
 public:
-  static DocumentType type(const std::string &path);
-  static DocumentMeta meta(const std::string &path);
+  static FileType type(const std::string &path);
+  static FileMeta meta(const std::string &path);
 
   explicit DocumentFile(const std::string &path);
 
@@ -111,6 +113,9 @@ public:
   virtual DocumentMeta documentMeta() const;
 
   virtual Document document() const;
+
+private:
+  common::DocumentFile &impl() const;
 };
 
 }

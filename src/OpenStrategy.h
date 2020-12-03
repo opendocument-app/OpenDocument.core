@@ -8,7 +8,7 @@ namespace odr {
 enum class FileType;
 namespace common {
 class File;
-class Document;
+class DocumentFile;
 }
 namespace access {
 class Path;
@@ -21,9 +21,7 @@ std::unique_ptr<common::File> openFile(const access::Path &path);
 std::unique_ptr<common::File> openFile(const access::Path &path,
                                        FileType as);
 
-std::unique_ptr<common::Document> openDocument(const access::Path &path);
-std::unique_ptr<common::Document> openDocument(const access::Path &path,
-                                               FileType as);
+std::unique_ptr<common::DocumentFile> openDocumentFile(const access::Path &path);
 }
 
 }

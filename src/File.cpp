@@ -133,4 +133,42 @@ FileMeta File::fileMeta() const noexcept {
   return m_file->fileMeta();
 }
 
+FileType DocumentFile::type(const std::string &path) {
+  return DocumentFile(path).fileType();
+}
+
+FileMeta DocumentFile::meta(const std::string &path) {
+  return DocumentFile(path).fileMeta();
+}
+
+DocumentFile::DocumentFile(const std::string &path) : File(OpenStrategy::openDocumentFile(path)) {}
+
+bool DocumentFile::encrypted() const {
+  return true; // TODO
+}
+
+EncryptionState DocumentFile::encryptionState() const {
+  return impl().encryptionState();
+}
+
+bool DocumentFile::decrypt(const std::string &password) {
+  return impl().decrypt(password);
+}
+
+DocumentType DocumentFile::documentType() const {
+  return impl().documentType();
+}
+
+DocumentMeta DocumentFile::documentMeta() const {
+  return impl().documentMeta();
+}
+
+Document DocumentFile::document() const {
+  return Document(impl().document());
+}
+
+common::DocumentFile & DocumentFile::impl() const {
+  return static_cast<common::DocumentFile &>(*m_file);
+}
+
 }

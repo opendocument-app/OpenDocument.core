@@ -31,8 +31,8 @@ public:
   static std::optional<DocumentFileNoExcept>
   open(const std::string &path) noexcept;
 
-  static DocumentType type(const std::string &path) noexcept;
-  static DocumentMeta meta(const std::string &path) noexcept;
+  static FileType type(const std::string &path) noexcept;
+  static FileMeta meta(const std::string &path) noexcept;
 
   explicit DocumentFileNoExcept(DocumentFile);
 
