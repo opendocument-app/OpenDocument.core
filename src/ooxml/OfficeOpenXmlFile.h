@@ -15,17 +15,18 @@ class OfficeOpenXmlFile final : public common::DocumentFile {
 public:
   explicit OfficeOpenXmlFile(std::shared_ptr<access::ReadStorage> storage);
 
-  EncryptionState encryptionState() const noexcept final;
-  bool decrypt(const std::string &password) final;
-
   FileType fileType() const noexcept final;
   FileMeta fileMeta() const noexcept final;
+
+  EncryptionState encryptionState() const noexcept final;
+  bool decrypt(const std::string &password) final;
 
   std::shared_ptr<common::Document> document() const final;
 
 private:
   std::shared_ptr<access::ReadStorage> m_storage;
   FileMeta m_meta;
+  EncryptionState m_encryptionState;
 };
 
 } // namespace ooxml
