@@ -1,28 +1,22 @@
 #include <iostream>
-#include <odr/Config.h>
+#include <odr/File.h>
 #include <odr/Document.h>
-#include <odr/Meta.h>
+#include <odr/Html.h>
 #include <string>
 
 int main(int argc, char **argv) {
   const std::string input{argv[1]};
   const std::string output{argv[2]};
 
-  bool hasPassword = argc >= 4;
-  std::string password;
-  if (hasPassword)
+  std::optional<std::string> password;
+  if (argc >= 4)
     password = argv[3];
 
-  odr::Config config;
-  config.entryOffset = 0;
-  config.entryCount = 0;
-  config.editable = true;
+  odr::DocumentFile documentFile{input};
 
-  const odr::Document document{input};
-
-  if (document.encrypted()) {
-    if (hasPassword) {
-      if (!document.decrypt(password)) {
+  if (documentFile.encrypted()) {
+    if (password) {
+      if (!documentFile.decrypt(*password)) {
         std::cerr << "wrong password" << std::endl;
         return 1;
       }
@@ -32,7 +26,10 @@ int main(int argc, char **argv) {
     }
   }
 
-  document.translate(output, config);
+  auto document = documentFile.document();
+
+  odr::HtmlConfig config;
+  odr::Html::translate(document, output, config);
 
   return 0;
 }

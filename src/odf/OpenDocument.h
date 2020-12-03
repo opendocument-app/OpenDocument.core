@@ -17,10 +17,12 @@ class OpenDocument : public virtual common::Document {
 public:
   explicit OpenDocument(std::shared_ptr<access::ReadStorage> storage);
 
+  bool editable() const noexcept final;
+  bool savable(bool encrypted) const noexcept final;
+
   DocumentType documentType() const noexcept final;
   DocumentMeta documentMeta() const noexcept final;
 
-  bool savable(bool encrypted) const noexcept final;
   void save(const access::Path &path) const final;
   void save(const access::Path &path, const std::string &password) const final;
 
@@ -56,7 +58,7 @@ class OpenDocumentSpreadsheet final : public OpenDocument,
 public:
   explicit OpenDocumentSpreadsheet(std::shared_ptr<access::ReadStorage> storage);
 
-  Table sheetTable(std::uint32_t index) const final;
+  odr::Table sheetTable(std::uint32_t index) const final;
 };
 
 class OpenDocumentGraphics final : public OpenDocument,

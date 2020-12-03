@@ -103,8 +103,9 @@ public:
 
   explicit DocumentFile(const std::string &path);
 
-  virtual EncryptionState encryptionState() const = 0;
-  virtual bool decrypt(const std::string &password) = 0;
+  bool encrypted() const;
+  EncryptionState encryptionState() const;
+  bool decrypt(const std::string &password);
 
   virtual DocumentType documentType() const;
   virtual DocumentMeta documentMeta() const;

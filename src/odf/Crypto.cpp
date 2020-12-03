@@ -7,23 +7,23 @@
 
 namespace odr::odf {
 
-bool Crypto::canDecrypt(const Meta::Manifest::Entry &entry) noexcept {
-  return entry.checksumType != Meta::ChecksumType::UNKNOWN &&
-         entry.algorithm != Meta::AlgorithmType::UNKNOWN &&
-         entry.keyDerivation != Meta::KeyDerivationType::UNKNOWN &&
-         entry.startKeyGeneration != Meta::ChecksumType::UNKNOWN;
+bool Crypto::canDecrypt(const Manifest::Entry &entry) noexcept {
+  return entry.checksumType != ChecksumType::UNKNOWN &&
+         entry.algorithm != AlgorithmType::UNKNOWN &&
+         entry.keyDerivation != KeyDerivationType::UNKNOWN &&
+         entry.startKeyGeneration != ChecksumType::UNKNOWN;
 }
 
 std::string Crypto::hash(const std::string &input,
-                         const Meta::ChecksumType checksumType) {
+                         const ChecksumType checksumType) {
   switch (checksumType) {
-  case Meta::ChecksumType::SHA256:
+  case ChecksumType::SHA256:
     return crypto::Util::sha256(input);
-  case Meta::ChecksumType::SHA1:
+  case ChecksumType::SHA1:
     return crypto::Util::sha1(input);
-  case Meta::ChecksumType::SHA256_1K:
+  case ChecksumType::SHA256_1K:
     return crypto::Util::sha256(input.substr(0, 1024));
-  case Meta::ChecksumType::SHA1_1K:
+  case ChecksumType::SHA1_1K:
     return crypto::Util::sha1(input.substr(0, 1024));
   default:
     throw std::invalid_argument("checksumType");
@@ -33,14 +33,14 @@ std::string Crypto::hash(const std::string &input,
 std::string Crypto::decrypt(const std::string &input,
                             const std::string &derivedKey,
                             const std::string &initialisationVector,
-                            const Meta::AlgorithmType algorithm) {
+                            const AlgorithmType algorithm) {
   switch (algorithm) {
-  case Meta::AlgorithmType::AES256_CBC:
+  case AlgorithmType::AES256_CBC:
     return crypto::Util::decryptAES(derivedKey, initialisationVector, input);
-  case Meta::AlgorithmType::TRIPLE_DES_CBC:
+  case AlgorithmType::TRIPLE_DES_CBC:
     return crypto::Util::decryptTripleDES(derivedKey, initialisationVector,
                                           input);
-  case Meta::AlgorithmType::BLOWFISH_CFB:
+  case AlgorithmType::BLOWFISH_CFB:
     return crypto::Util::decryptBlowfish(derivedKey, initialisationVector,
                                          input);
   default:
@@ -48,7 +48,7 @@ std::string Crypto::decrypt(const std::string &input,
   }
 }
 
-std::string Crypto::startKey(const Meta::Manifest::Entry &entry,
+std::string Crypto::startKey(const Manifest::Entry &entry,
                              const std::string &password) {
   const std::string result = hash(password, entry.startKeyGeneration);
   if (result.size() < entry.startKeySize)
@@ -56,7 +56,7 @@ std::string Crypto::startKey(const Meta::Manifest::Entry &entry,
   return result.substr(0, entry.startKeySize);
 }
 
-std::string Crypto::deriveKeyAndDecrypt(const Meta::Manifest::Entry &entry,
+std::string Crypto::deriveKeyAndDecrypt(const Manifest::Entry &entry,
                                         const std::string &startKey,
                                         const std::string &input) {
   const std::string derivedKey = crypto::Util::pbkdf2(
@@ -65,7 +65,7 @@ std::string Crypto::deriveKeyAndDecrypt(const Meta::Manifest::Entry &entry,
                  entry.algorithm);
 }
 
-bool Crypto::validatePassword(const Meta::Manifest::Entry &entry,
+bool Crypto::validatePassword(const Manifest::Entry &entry,
                               std::string decrypted) noexcept {
   try {
     const std::size_t padding = crypto::Util::padding(decrypted);
@@ -80,12 +80,12 @@ bool Crypto::validatePassword(const Meta::Manifest::Entry &entry,
 namespace {
 class CryptoOpenDocumentFile : public access::ReadStorage {
 public:
-  const std::unique_ptr<ReadStorage> parent;
-  const Meta::Manifest manifest;
+  const std::shared_ptr<ReadStorage> parent;
+  const Manifest manifest;
   const std::string startKey;
 
-  CryptoOpenDocumentFile(std::unique_ptr<ReadStorage> parent,
-                         Meta::Manifest manifest, std::string startKey)
+  CryptoOpenDocumentFile(std::shared_ptr<ReadStorage> parent,
+                         Manifest manifest, std::string startKey)
       : parent(std::move(parent)), manifest(std::move(manifest)),
         startKey(std::move(startKey)) {}
 
@@ -125,8 +125,8 @@ public:
 };
 } // namespace
 
-bool Crypto::decrypt(std::unique_ptr<access::ReadStorage> &storage,
-                     const Meta::Manifest &manifest,
+bool Crypto::decrypt(std::shared_ptr<access::ReadStorage> &storage,
+                     const Manifest &manifest,
                      const std::string &password) {
   if (!manifest.encrypted)
     return true;
@@ -140,7 +140,7 @@ bool Crypto::decrypt(std::unique_ptr<access::ReadStorage> &storage,
       deriveKeyAndDecrypt(*manifest.smallestFileEntry, startKey, input);
   if (!validatePassword(*manifest.smallestFileEntry, decrypt))
     return false;
-  storage = std::make_unique<CryptoOpenDocumentFile>(std::move(storage),
+  storage = std::make_shared<CryptoOpenDocumentFile>(std::move(storage),
                                                      manifest, startKey);
   return true;
 }

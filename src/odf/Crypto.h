@@ -2,6 +2,7 @@
 #define ODR_ODF_CRYPTO_H
 
 #include <odf/Meta.h>
+#include <odf/Manifest.h>
 #include <exception>
 #include <memory>
 #include <string>
@@ -19,20 +20,20 @@ struct UnsupportedCryptoAlgorithmException final : public std::exception {
 };
 
 namespace Crypto {
-bool canDecrypt(const Meta::Manifest::Entry &) noexcept;
-std::string hash(const std::string &input, Meta::ChecksumType checksumType);
+bool canDecrypt(const Manifest::Entry &) noexcept;
+std::string hash(const std::string &input, ChecksumType checksumType);
 std::string decrypt(const std::string &input, const std::string &derivedKey,
                     const std::string &initialisationVector,
-                    Meta::AlgorithmType algorithm);
-std::string startKey(const Meta::Manifest::Entry &,
+                    AlgorithmType algorithm);
+std::string startKey(const Manifest::Entry &,
                      const std::string &password);
-std::string deriveKeyAndDecrypt(const Meta::Manifest::Entry &,
+std::string deriveKeyAndDecrypt(const Manifest::Entry &,
                                 const std::string &startKey,
                                 const std::string &input);
-bool validatePassword(const Meta::Manifest::Entry &,
+bool validatePassword(const Manifest::Entry &,
                       std::string decrypted) noexcept;
 
-bool decrypt(std::unique_ptr<access::ReadStorage> &, const Meta::Manifest &,
+bool decrypt(std::shared_ptr<access::ReadStorage> &, const Manifest &,
              const std::string &password);
 } // namespace Crypto
 

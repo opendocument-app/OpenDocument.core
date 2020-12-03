@@ -4,6 +4,7 @@
 #include <odr/Document.h>
 #include <odr/DocumentElements.h>
 #include <odr/Html.h>
+#include <nlohmann/json.hpp>
 
 namespace odr {
 
@@ -54,6 +55,15 @@ void translateText(TextDocument document, std::ostream &out,
   out << "</div>";
 }
 } // namespace
+
+HtmlConfig Html::parseConfig(const std::string &path) {
+  HtmlConfig result;
+
+  auto json = nlohmann::json::parse(std::ifstream(path));
+  // TODO assign config values
+
+  return result;
+}
 
 void Html::translate(Document document, const std::string &path,
                      const HtmlConfig &config) {

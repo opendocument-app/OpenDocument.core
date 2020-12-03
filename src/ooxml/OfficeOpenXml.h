@@ -24,7 +24,7 @@ public:
   OfficeOpenXml &operator=(const OfficeOpenXml &) = delete;
   OfficeOpenXml &operator=(OfficeOpenXml &&) noexcept;
 
-  const FileMeta &meta() const noexcept final;
+  DocumentMeta documentMeta() const noexcept final;
   const access::ReadStorage &storage() const noexcept;
 
   bool editable() const noexcept final;

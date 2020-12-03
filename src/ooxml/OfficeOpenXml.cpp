@@ -284,7 +284,7 @@ OfficeOpenXml::~OfficeOpenXml() = default;
 
 OfficeOpenXml &OfficeOpenXml::operator=(OfficeOpenXml &&) noexcept = default;
 
-const FileMeta &OfficeOpenXml::meta() const noexcept { return impl_->meta(); }
+DocumentMeta OfficeOpenXml::documentMeta() const noexcept { return {}; }
 
 const access::ReadStorage &OfficeOpenXml::storage() const noexcept {
   return impl_->storage();

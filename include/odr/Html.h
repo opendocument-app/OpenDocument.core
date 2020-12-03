@@ -36,10 +36,10 @@ struct HtmlConfig {
 };
 
 namespace Html {
+HtmlConfig parseConfig(const std::string &path);
 
 void translate(Document document, const std::string &path, const HtmlConfig &config);
 void edit(Document document, const std::string &diff);
-
 }
 
 }

@@ -1,5 +1,5 @@
 #include <access/Path.h>
-#include <common/Document.h>
+#include <common/File.h>
 #include <odr/File.h>
 #include <utility>
 #include <OpenStrategy.h>
@@ -122,7 +122,7 @@ File & File::operator=(const File &) = default;
 File & File::operator=(File &&) noexcept = default;
 
 FileType File::fileType() const noexcept {
-  return m_file->meta().type;
+  return m_file->fileMeta().type;
 }
 
 FileCategory File::fileCategory() const noexcept {
@@ -130,7 +130,7 @@ FileCategory File::fileCategory() const noexcept {
 }
 
 FileMeta File::fileMeta() const noexcept {
-  return m_file->meta();
+  return m_file->fileMeta();
 }
 
 }

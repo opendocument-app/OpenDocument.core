@@ -59,12 +59,13 @@ add_library(odr-object OBJECT
         src/odf/OpenDocumentFile.cpp
         src/odf/StyleTranslator.cpp
 
-        src/oldms/LegacyMicrosoft.cpp
+        src/oldms/LegacyMicrosoftFile.cpp
 
         src/ooxml/Crypto.cpp
         src/ooxml/DocumentTranslator.cpp
         src/ooxml/Meta.cpp
         src/ooxml/OfficeOpenXml.cpp
+        src/ooxml/OfficeOpenXmlFile.cpp
         src/ooxml/PresentationTranslator.cpp
         src/ooxml/WorkbookTranslator.cpp
 
