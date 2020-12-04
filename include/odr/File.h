@@ -115,6 +115,9 @@ public:
   virtual Document document() const;
 
 private:
+  explicit DocumentFile(const File &);
+  explicit DocumentFile(File &&);
+
   common::DocumentFile &impl() const;
 };
 

@@ -8,9 +8,9 @@
 namespace odr::odf {
 
 OpenDocumentFile::OpenDocumentFile(
-    std::shared_ptr<access::ReadStorage> storage) {
-  if (!storage->isFile("META-INF/manifest.xml")) {
-    auto manifest = common::XmlUtil::parse(*storage, "META-INF/manifest.xml");
+    std::shared_ptr<access::ReadStorage> storage) : m_storage{std::move(storage)} {
+  if (!m_storage->isFile("META-INF/manifest.xml")) {
+    auto manifest = common::XmlUtil::parse(*m_storage, "META-INF/manifest.xml");
 
     m_file_meta = parseFileMeta(*m_storage, &manifest);
     m_manifest = parseManifest(manifest);
@@ -20,8 +20,6 @@ OpenDocumentFile::OpenDocumentFile(
 
   if (m_file_meta.passwordEncrypted)
     m_encryptionState = EncryptionState::ENCRYPTED;
-
-  m_storage = std::move(storage);
 }
 
 EncryptionState OpenDocumentFile::encryptionState() const noexcept {
@@ -46,19 +44,15 @@ FileMeta OpenDocumentFile::fileMeta() const noexcept {
 
 std::shared_ptr<common::Document> OpenDocumentFile::document() const {
   // TODO throw if encrypted
-  switch (documentType()) {
-  case DocumentType::TEXT:
-    return std::unique_ptr<OpenDocument>(
-        new OpenDocumentText(m_storage));
-  case DocumentType::PRESENTATION:
-    return std::unique_ptr<OpenDocument>(
-        new OpenDocumentPresentation(m_storage));
-  case DocumentType::SPREADSHEET:
-    return std::unique_ptr<OpenDocument>(
-        new OpenDocumentSpreadsheet(m_storage));
-  case DocumentType::GRAPHICS:
-    return std::unique_ptr<OpenDocument>(
-        new OpenDocumentGraphics(m_storage));
+  switch (fileType()) {
+  case FileType::OPENDOCUMENT_TEXT:
+    return std::make_shared<OpenDocumentText>(m_storage);
+  case FileType::OPENDOCUMENT_PRESENTATION:
+    return std::make_shared<OpenDocumentPresentation>(m_storage);
+  case FileType::OPENDOCUMENT_SPREADSHEET:
+    return std::make_shared<OpenDocumentSpreadsheet>(m_storage);
+  case FileType::OPENDOCUMENT_GRAPHICS:
+    return std::make_shared<OpenDocumentGraphics>(m_storage);
   default:
     // TODO throw
     return nullptr;

@@ -167,10 +167,10 @@ nextSiblingImpl(std::shared_ptr<const OdfElement> parent, pugi::xml_node node) {
 
 OpenDocument::OpenDocument(std::shared_ptr<access::ReadStorage> storage)
     : m_storage{std::move(storage)} {
-  m_content = common::XmlUtil::parse(*storage, "content.xml");
+  m_content = common::XmlUtil::parse(*m_storage, "content.xml");
 
-  if (!storage->isFile("meta.xml")) {
-    auto meta = common::XmlUtil::parse(*storage, "meta.xml");
+  if (!m_storage->isFile("meta.xml")) {
+    auto meta = common::XmlUtil::parse(*m_storage, "meta.xml");
     m_document_meta = parseDocumentMeta(&meta, m_content);
   } else {
     m_document_meta = parseDocumentMeta(nullptr, m_content);

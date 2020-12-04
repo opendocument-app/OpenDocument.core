@@ -3,6 +3,7 @@
 #include <odr/File.h>
 #include <utility>
 #include <OpenStrategy.h>
+#include <odr/Exception.h>
 
 namespace odr {
 
@@ -105,11 +106,13 @@ FileMeta File::meta(const std::string &path) {
   return File(path).fileMeta();
 }
 
-File::File(std::shared_ptr<common::File> file) : m_file{std::move(file)} {}
+File::File(std::shared_ptr<common::File> file) : m_file{std::move(file)} {
+  if (!m_file) throw FileNotFound();
+}
 
-File::File(const std::string &path) : m_file{OpenStrategy::openFile(path)} {}
+File::File(const std::string &path) : File(OpenStrategy::openFile(path)) {}
 
-File::File(const std::string &path, FileType as) : m_file{OpenStrategy::openFile(path, as)} {}
+File::File(const std::string &path, FileType as) : File(OpenStrategy::openFile(path, as)) {}
 
 File::File(const File &) = default;
 
@@ -142,6 +145,14 @@ FileMeta DocumentFile::meta(const std::string &path) {
 }
 
 DocumentFile::DocumentFile(const std::string &path) : File(OpenStrategy::openDocumentFile(path)) {}
+
+DocumentFile::DocumentFile(const File &file) : File(file) {
+  // TODO throw if not document file
+}
+
+DocumentFile::DocumentFile(File &&file) : File(std::move(file)) {
+  // TODO throw if not document file
+}
 
 bool DocumentFile::encrypted() const {
   return true; // TODO

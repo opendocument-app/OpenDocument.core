@@ -6,7 +6,7 @@
 using namespace odr;
 
 TEST(OpenDocumentText, hello) {
-  DocumentFile documentFile("/home/andreas/workspace/OpenDocument.test/odt/test.odt");
+  DocumentFile documentFile("/home/andreas/workspace/OpenDocument.test/odt/about.odt");
 
   std::cout << (int) documentFile.fileType() << std::endl;
 
