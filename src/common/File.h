@@ -25,6 +25,7 @@ public:
 
 class DocumentFile : public File {
 public:
+  virtual bool passwordEncrypted() const noexcept = 0;
   virtual EncryptionState encryptionState() const noexcept = 0;
   virtual bool decrypt(const std::string &password) = 0;
 

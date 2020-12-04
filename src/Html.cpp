@@ -83,6 +83,8 @@ void Html::translate(Document document, const std::string &path,
 
   if (document.documentType() == DocumentType::TEXT) {
     translateText(document.textDocument(), out, config);
+  } else {
+    // TODO throw?
   }
 
   out << "</body>";

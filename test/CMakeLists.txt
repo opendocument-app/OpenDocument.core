@@ -10,11 +10,10 @@ add_executable(odr_test
         common/TablePositionTest.cpp
         common/TableRangeTest.cpp
 
-        odf/OpenDocumentTextTest.cpp
-
         ooxml/OoxmlCryptoTest.cpp
 
         DataDrivenTests.cpp
+        DocumentTest.cpp
         FileNoExcept.cpp
         FileTest.cpp
         )

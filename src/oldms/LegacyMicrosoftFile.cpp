@@ -47,6 +47,10 @@ FileType LegacyMicrosoftFile::fileType() const noexcept { return m_meta.type; }
 
 FileMeta LegacyMicrosoftFile::fileMeta() const noexcept { return m_meta; }
 
+bool LegacyMicrosoftFile::passwordEncrypted() const noexcept {
+  return m_meta.passwordEncrypted;
+}
+
 EncryptionState LegacyMicrosoftFile::encryptionState() const noexcept {
   return EncryptionState::UNKNOWN;
 }

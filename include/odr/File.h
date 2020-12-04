@@ -105,7 +105,7 @@ public:
 
   explicit DocumentFile(const std::string &path);
 
-  bool encrypted() const;
+  bool passwordEncrypted() const;
   EncryptionState encryptionState() const;
   bool decrypt(const std::string &password);
 

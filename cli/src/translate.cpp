@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
 
   odr::DocumentFile documentFile{input};
 
-  if (documentFile.encrypted()) {
+  if (documentFile.passwordEncrypted()) {
     if (password) {
       if (!documentFile.decrypt(*password)) {
         std::cerr << "wrong password" << std::endl;

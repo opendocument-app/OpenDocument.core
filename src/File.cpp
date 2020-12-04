@@ -154,8 +154,8 @@ DocumentFile::DocumentFile(File &&file) : File(std::move(file)) {
   // TODO throw if not document file
 }
 
-bool DocumentFile::encrypted() const {
-  return true; // TODO
+bool DocumentFile::passwordEncrypted() const {
+  return impl().passwordEncrypted();
 }
 
 EncryptionState DocumentFile::encryptionState() const {

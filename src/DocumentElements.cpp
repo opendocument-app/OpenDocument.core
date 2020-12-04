@@ -36,6 +36,10 @@ Element Element::nextSibling() const {
   return Element(m_impl->nextSibling());
 }
 
+ElementSiblingRange Element::children() const {
+  return ElementSiblingRange(firstChild());
+}
+
 ElementType Element::type() const { return m_impl->type(); }
 
 Element Element::unknown() const {

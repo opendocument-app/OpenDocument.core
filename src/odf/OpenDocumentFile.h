@@ -16,11 +16,12 @@ class OpenDocumentFile final : public virtual common::DocumentFile {
 public:
   explicit OpenDocumentFile(std::shared_ptr<access::ReadStorage> storage);
 
-  EncryptionState encryptionState() const noexcept final;
-  bool decrypt(const std::string &password) final;
-
   FileType fileType() const noexcept final;
   FileMeta fileMeta() const noexcept final;
+
+  bool passwordEncrypted() const  noexcept final;
+  EncryptionState encryptionState() const noexcept final;
+  bool decrypt(const std::string &password) final;
 
   std::shared_ptr<common::Document> document() const final;
 

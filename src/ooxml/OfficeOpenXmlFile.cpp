@@ -20,6 +20,10 @@ FileMeta OfficeOpenXmlFile::fileMeta() const noexcept {
   return m_meta;
 }
 
+bool OfficeOpenXmlFile::passwordEncrypted() const noexcept {
+  return m_meta.passwordEncrypted;
+}
+
 EncryptionState OfficeOpenXmlFile::encryptionState() const noexcept {
   return m_encryptionState;
 }
