@@ -62,9 +62,9 @@ public:
 protected:
   std::shared_ptr<common::Document> m_document;
 
-private:
   explicit Document(std::shared_ptr<common::Document>);
 
+private:
   friend DocumentFile;
 };
 
@@ -86,6 +86,10 @@ public:
 
 private:
   std::shared_ptr<common::TextDocument> m_text_document;
+
+  explicit TextDocument(const Document &);
+
+  friend Document;
 };
 
 class Presentation final : public Document {
@@ -102,6 +106,10 @@ public:
 
 private:
   std::shared_ptr<common::Presentation> m_presentation;
+
+  explicit Presentation(const Document &);
+
+  friend Document;
 };
 
 class Spreadsheet final : public Document {
@@ -117,7 +125,11 @@ public:
   std::vector<Sheet> sheets() const;
 
 private:
-  std::shared_ptr<common::Presentation> m_spreadsheet;
+  std::shared_ptr<common::Spreadsheet> m_spreadsheet;
+
+  explicit Spreadsheet(const Document &);
+
+  friend Document;
 };
 
 class Graphics final : public Document {
@@ -133,6 +145,10 @@ public:
 
 private:
   std::shared_ptr<common::Graphics> m_graphics;
+
+  explicit Graphics(const Document &);
+
+  friend Document;
 };
 
 } // namespace odr

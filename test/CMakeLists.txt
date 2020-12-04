@@ -15,7 +15,8 @@ add_executable(odr_test
         ooxml/OoxmlCryptoTest.cpp
 
         DataDrivenTests.cpp
-        DocumentTest.cpp
+        FileNoExcept.cpp
+        FileTest.cpp
         )
 target_include_directories(odr_test
         PRIVATE

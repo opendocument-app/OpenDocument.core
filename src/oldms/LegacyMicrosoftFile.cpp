@@ -47,4 +47,16 @@ FileType LegacyMicrosoftFile::fileType() const noexcept { return m_meta.type; }
 
 FileMeta LegacyMicrosoftFile::fileMeta() const noexcept { return m_meta; }
 
+EncryptionState LegacyMicrosoftFile::encryptionState() const noexcept {
+  return EncryptionState::UNKNOWN;
+}
+
+bool LegacyMicrosoftFile::decrypt(const std::string &password) {
+  return false; // TODO throw
+}
+
+std::shared_ptr<common::Document> LegacyMicrosoftFile::document() const {
+  return {}; // TODO throw
+}
+
 } // namespace odr::oldms

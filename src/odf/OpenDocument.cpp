@@ -177,6 +177,12 @@ OpenDocument::OpenDocument(std::shared_ptr<access::ReadStorage> storage)
   }
 }
 
+bool OpenDocument::editable() const noexcept { return true; }
+
+bool OpenDocument::savable(bool encrypted) const noexcept {
+  return !encrypted;
+}
+
 DocumentType OpenDocument::documentType() const noexcept {
   return m_document_meta.documentType;
 }
@@ -237,10 +243,22 @@ ElementSiblingRange OpenDocumentText::content() const {
 OpenDocumentPresentation::OpenDocumentPresentation(std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
+ElementSiblingRange OpenDocumentPresentation::slideContent(std::uint32_t index) const {
+  // TODO
+}
+
 OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
+TableElement OpenDocumentSpreadsheet::sheetTable(std::uint32_t index) const {
+  // TODO
+}
+
 OpenDocumentGraphics::OpenDocumentGraphics(std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
+
+ElementSiblingRange OpenDocumentGraphics::pageContent(std::uint32_t index) const {
+  // TODO
+}
 
 } // namespace odr::odf

@@ -58,7 +58,7 @@ class OpenDocumentSpreadsheet final : public OpenDocument,
 public:
   explicit OpenDocumentSpreadsheet(std::shared_ptr<access::ReadStorage> storage);
 
-  odr::Table sheetTable(std::uint32_t index) const final;
+  TableElement sheetTable(std::uint32_t index) const final;
 };
 
 class OpenDocumentGraphics final : public OpenDocument,

@@ -10,7 +10,7 @@ struct DocumentMeta;
 struct PageProperties;
 class Element;
 class ElementSiblingRange;
-class Table;
+class TableElement;
 
 namespace access {
 class Path;
@@ -46,7 +46,7 @@ public:
 
 class Spreadsheet : public virtual Document {
 public:
-  virtual odr::Table sheetTable(std::uint32_t index) const = 0;
+  virtual TableElement sheetTable(std::uint32_t index) const = 0;
 };
 
 class Graphics : public virtual Document {

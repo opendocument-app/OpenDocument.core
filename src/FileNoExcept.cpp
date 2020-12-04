@@ -3,6 +3,42 @@
 
 namespace odr {
 
+std::optional<FileNoExcept> FileNoExcept::open(const std::string &path) noexcept {
+  try {
+    return FileNoExcept(File(path));
+  } catch (...) {
+    LOG(ERROR) << "open failed";
+    return {};
+  }
+}
+
+std::optional<FileNoExcept> FileNoExcept::open(const std::string &path, const FileType as) noexcept {
+  try {
+    return FileNoExcept(File(path, as));
+  } catch (...) {
+    LOG(ERROR) << "openas failed";
+    return {};
+  }
+}
+
+FileType FileNoExcept::type(const std::string &path) noexcept {
+  try {
+    return File(path).fileType();
+  } catch (...) {
+    LOG(ERROR) << "type failed";
+    return FileType::UNKNOWN;
+  }
+}
+
+FileMeta FileNoExcept::meta(const std::string &path) noexcept {
+  try {
+    return File(path).fileMeta();
+  } catch (...) {
+    LOG(ERROR) << "meta failed";
+    return {};
+  }
+}
+
 FileNoExcept::FileNoExcept(File file) : m_file{std::move(file)} {}
 
 FileType FileNoExcept::fileType() const noexcept {
