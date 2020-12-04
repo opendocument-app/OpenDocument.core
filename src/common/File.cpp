@@ -17,4 +17,4 @@ DocumentMeta DocumentFile::documentMeta() const {
   return document()->documentMeta();
 }
 
-}
+} // namespace odr::common

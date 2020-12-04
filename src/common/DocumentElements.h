@@ -67,7 +67,7 @@ public:
   firstContentElement(std::uint32_t row, std::uint32_t column) const = 0;
 };
 
+} // namespace common
 } // namespace odr
-}
 
 #endif // ODR_COMMON_DOCUMENTELEMENTS_H

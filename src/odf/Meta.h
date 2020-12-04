@@ -1,11 +1,11 @@
 #ifndef ODR_ODF_META_H
 #define ODR_ODF_META_H
 
+#include <access/Path.h>
 #include <cstdint>
 #include <exception>
 #include <string>
 #include <unordered_map>
-#include <access/Path.h>
 
 namespace pugi {
 class xml_document;
@@ -28,8 +28,10 @@ struct NoOpenDocumentFileException final : public std::exception {
   }
 };
 
-FileMeta parseFileMeta(const access::ReadStorage &storage, const pugi::xml_document *manifest);
-DocumentMeta parseDocumentMeta(const pugi::xml_document *meta, const pugi::xml_document &content);
+FileMeta parseFileMeta(const access::ReadStorage &storage,
+                       const pugi::xml_document *manifest);
+DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
+                               const pugi::xml_document &content);
 
 } // namespace odr::odf
 

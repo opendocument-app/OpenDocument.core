@@ -1,10 +1,10 @@
 #ifndef ODR_ODF_CRYPTO_H
 #define ODR_ODF_CRYPTO_H
 
-#include <odf/Meta.h>
-#include <odf/Manifest.h>
 #include <exception>
 #include <memory>
+#include <odf/Manifest.h>
+#include <odf/Meta.h>
 #include <string>
 
 namespace odr::access {
@@ -25,13 +25,11 @@ std::string hash(const std::string &input, ChecksumType checksumType);
 std::string decrypt(const std::string &input, const std::string &derivedKey,
                     const std::string &initialisationVector,
                     AlgorithmType algorithm);
-std::string startKey(const Manifest::Entry &,
-                     const std::string &password);
+std::string startKey(const Manifest::Entry &, const std::string &password);
 std::string deriveKeyAndDecrypt(const Manifest::Entry &,
                                 const std::string &startKey,
                                 const std::string &input);
-bool validatePassword(const Manifest::Entry &,
-                      std::string decrypted) noexcept;
+bool validatePassword(const Manifest::Entry &, std::string decrypted) noexcept;
 
 bool decrypt(std::shared_ptr<access::ReadStorage> &, const Manifest &,
              const std::string &password);

@@ -13,7 +13,7 @@ namespace Common {
 PageProperties pageProperties(const pugi::xml_document &style);
 }
 
-}
-}
+} // namespace odf
+} // namespace odr
 
 #endif // ODR_ODF_COMMON_H

@@ -1,8 +1,8 @@
 #ifndef ODR_OOXML_OFFICEOPENXMLFILE_H
 #define ODR_OOXML_OFFICEOPENXMLFILE_H
 
-#include <odr/File.h>
 #include <common/File.h>
+#include <odr/File.h>
 
 namespace odr {
 namespace access {
@@ -18,7 +18,7 @@ public:
   FileType fileType() const noexcept final;
   FileMeta fileMeta() const noexcept final;
 
-  bool passwordEncrypted() const  noexcept final;
+  bool passwordEncrypted() const noexcept final;
   EncryptionState encryptionState() const noexcept final;
   bool decrypt(const std::string &password) final;
 

@@ -1,5 +1,3 @@
-#include <ooxml/Context.h>
-#include <ooxml/PresentationTranslator.h>
 #include <access/Path.h>
 #include <access/Storage.h>
 #include <access/StreamUtil.h>
@@ -8,6 +6,8 @@
 #include <cstring>
 #include <glog/logging.h>
 #include <odr/Html.h>
+#include <ooxml/Context.h>
+#include <ooxml/PresentationTranslator.h>
 #include <pugixml.hpp>
 #include <string>
 #include <unordered_map>

@@ -1,9 +1,10 @@
-#include <odr/FileNoExcept.h>
 #include <glog/logging.h>
+#include <odr/FileNoExcept.h>
 
 namespace odr {
 
-std::optional<FileNoExcept> FileNoExcept::open(const std::string &path) noexcept {
+std::optional<FileNoExcept>
+FileNoExcept::open(const std::string &path) noexcept {
   try {
     return FileNoExcept(File(path));
   } catch (...) {
@@ -12,7 +13,8 @@ std::optional<FileNoExcept> FileNoExcept::open(const std::string &path) noexcept
   }
 }
 
-std::optional<FileNoExcept> FileNoExcept::open(const std::string &path, const FileType as) noexcept {
+std::optional<FileNoExcept> FileNoExcept::open(const std::string &path,
+                                               const FileType as) noexcept {
   try {
     return FileNoExcept(File(path, as));
   } catch (...) {
@@ -108,4 +110,4 @@ DocumentType DocumentFileNoExcept::documentType() const noexcept {
   }
 }
 
-}
+} // namespace odr

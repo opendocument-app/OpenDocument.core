@@ -38,10 +38,11 @@ struct HtmlConfig {
 namespace Html {
 HtmlConfig parseConfig(const std::string &path);
 
-void translate(Document document, const std::string &path, const HtmlConfig &config);
+void translate(Document document, const std::string &path,
+               const HtmlConfig &config);
 void edit(Document document, const std::string &diff);
-}
+} // namespace Html
 
-}
+} // namespace odr
 
 #endif // ODR_HTML_H

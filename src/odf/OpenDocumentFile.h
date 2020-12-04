@@ -1,9 +1,9 @@
 #ifndef ODR_ODF_OPENDOCUMENTFILE_H
 #define ODR_ODF_OPENDOCUMENTFILE_H
 
-#include <odr/File.h>
 #include <common/File.h>
 #include <odf/Manifest.h>
+#include <odr/File.h>
 
 namespace odr {
 namespace access {
@@ -19,7 +19,7 @@ public:
   FileType fileType() const noexcept final;
   FileMeta fileMeta() const noexcept final;
 
-  bool passwordEncrypted() const  noexcept final;
+  bool passwordEncrypted() const noexcept final;
   EncryptionState encryptionState() const noexcept final;
   bool decrypt(const std::string &password) final;
 
@@ -32,7 +32,7 @@ private:
   Manifest m_manifest;
 };
 
-}
-}
+} // namespace odf
+} // namespace odr
 
 #endif // ODR_ODF_OPENDOCUMENTFILE_H

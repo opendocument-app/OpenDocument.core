@@ -2,9 +2,9 @@
 #define ODR_DOCUMENT_H
 
 #include <memory>
+#include <odr/DocumentElements.h>
 #include <string>
 #include <vector>
-#include <odr/DocumentElements.h>
 
 namespace odr {
 class DocumentFile;
@@ -15,7 +15,7 @@ class TextDocument;
 class Presentation;
 class Spreadsheet;
 class Graphics;
-}
+} // namespace common
 
 class TextDocument;
 class Presentation;

@@ -63,17 +63,15 @@ struct ContainerProperties {
   std::string verticalAlign;
 };
 
-struct ParagraphProperties {
-
-};
+struct ParagraphProperties {};
 
 class Element final {
 public:
   Element();
   explicit Element(std::shared_ptr<const common::Element> impl);
 
-  bool operator==(const Element& rhs) const;
-  bool operator!=(const Element& rhs) const;
+  bool operator==(const Element &rhs) const;
+  bool operator!=(const Element &rhs) const;
   explicit operator bool() const;
 
   Element parent() const;
@@ -105,8 +103,8 @@ public:
   using iterator_category = std::forward_iterator_tag;
   using value_type = Element;
   using difference_type = std::ptrdiff_t;
-  using pointer = Element*;
-  using reference = Element&;
+  using pointer = Element *;
+  using reference = Element &;
 
   explicit ElementSiblingIterator(Element element);
 
@@ -114,8 +112,8 @@ public:
   ElementSiblingIterator operator++(int) &;
   reference operator*();
   pointer operator->();
-  bool operator==(const ElementSiblingIterator& rhs) const;
-  bool operator!=(const ElementSiblingIterator& rhs) const;
+  bool operator==(const ElementSiblingIterator &rhs) const;
+  bool operator!=(const ElementSiblingIterator &rhs) const;
 
 private:
   Element m_element;
@@ -152,8 +150,7 @@ private:
 class ParagraphElement final {
 public:
   ParagraphElement();
-  explicit ParagraphElement(
-      std::shared_ptr<const common::Paragraph> impl);
+  explicit ParagraphElement(std::shared_ptr<const common::Paragraph> impl);
 
   explicit operator bool() const;
 

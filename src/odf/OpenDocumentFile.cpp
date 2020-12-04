@@ -1,14 +1,14 @@
-#include <odf/OpenDocumentFile.h>
-#include <odf/OpenDocument.h>
-#include <odf/Crypto.h>
-#include <common/XmlUtil.h>
 #include <access/Storage.h>
+#include <common/XmlUtil.h>
+#include <odf/Crypto.h>
+#include <odf/OpenDocument.h>
+#include <odf/OpenDocumentFile.h>
 #include <pugixml.hpp>
 
 namespace odr::odf {
 
-OpenDocumentFile::OpenDocumentFile(
-    std::shared_ptr<access::ReadStorage> storage) : m_storage{std::move(storage)} {
+OpenDocumentFile::OpenDocumentFile(std::shared_ptr<access::ReadStorage> storage)
+    : m_storage{std::move(storage)} {
   if (!m_storage->isFile("META-INF/manifest.xml")) {
     auto manifest = common::XmlUtil::parse(*m_storage, "META-INF/manifest.xml");
 
@@ -23,14 +23,14 @@ OpenDocumentFile::OpenDocumentFile(
 }
 
 FileType OpenDocumentFile::fileType() const noexcept {
-    return m_file_meta.type;
+  return m_file_meta.type;
 }
 
 FileMeta OpenDocumentFile::fileMeta() const noexcept {
-    FileMeta result = m_file_meta;
-    if (m_encryptionState != EncryptionState::ENCRYPTED)
-        result.documentMeta = document()->documentMeta();
-    return result;
+  FileMeta result = m_file_meta;
+  if (m_encryptionState != EncryptionState::ENCRYPTED)
+    result.documentMeta = document()->documentMeta();
+  return result;
 }
 
 bool OpenDocumentFile::passwordEncrypted() const noexcept {
@@ -63,4 +63,4 @@ std::shared_ptr<common::Document> OpenDocumentFile::document() const {
   }
 }
 
-}
+} // namespace odr::odf

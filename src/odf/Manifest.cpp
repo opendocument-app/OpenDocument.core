@@ -1,33 +1,32 @@
-#include <odf/Manifest.h>
-#include <pugixml.hpp>
 #include <common/MapUtil.h>
 #include <crypto/CryptoUtil.h>
+#include <odf/Manifest.h>
+#include <pugixml.hpp>
 
 namespace odr::odf {
 
 namespace {
 bool lookupChecksumType(const std::string &checksum,
                         ChecksumType &checksumType) {
-  static const std::unordered_map<std::string, ChecksumType>
-      CHECKSUM_TYPES = {
+  static const std::unordered_map<std::string, ChecksumType> CHECKSUM_TYPES = {
       {"SHA1", ChecksumType::SHA1},
       {"SHA1/1K", ChecksumType::SHA1_1K},
       {"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0#sha256-1k",
-          ChecksumType::SHA256_1K},
+       ChecksumType::SHA256_1K},
   };
-  return common::MapUtil::lookupMapDefault(
-      CHECKSUM_TYPES, checksum, checksumType, ChecksumType::UNKNOWN);
+  return common::MapUtil::lookupMapDefault(CHECKSUM_TYPES, checksum,
+                                           checksumType, ChecksumType::UNKNOWN);
 }
 
 bool lookupAlgorithmTypes(const std::string &algorithm,
                           AlgorithmType &algorithmType) {
-  static const std::unordered_map<std::string, AlgorithmType>
-      ALGORITHM_TYPES = {
-      {"http://www.w3.org/2001/04/xmlenc#aes256-cbc",
-                       AlgorithmType::AES256_CBC},
-      {"", AlgorithmType::TRIPLE_DES_CBC},
-      {"Blowfish CFB", AlgorithmType::BLOWFISH_CFB},
-  };
+  static const std::unordered_map<std::string, AlgorithmType> ALGORITHM_TYPES =
+      {
+          {"http://www.w3.org/2001/04/xmlenc#aes256-cbc",
+           AlgorithmType::AES256_CBC},
+          {"", AlgorithmType::TRIPLE_DES_CBC},
+          {"Blowfish CFB", AlgorithmType::BLOWFISH_CFB},
+      };
   return common::MapUtil::lookupMapDefault(
       ALGORITHM_TYPES, algorithm, algorithmType, AlgorithmType::UNKNOWN);
 }
@@ -36,8 +35,8 @@ bool lookupKeyDerivationTypes(const std::string &keyDerivation,
                               KeyDerivationType &keyDerivationType) {
   static const std::unordered_map<std::string, KeyDerivationType>
       KEY_DERIVATION_TYPES = {
-      {"PBKDF2", KeyDerivationType::PBKDF2},
-  };
+          {"PBKDF2", KeyDerivationType::PBKDF2},
+      };
   return common::MapUtil::lookupMapDefault(KEY_DERIVATION_TYPES, keyDerivation,
                                            keyDerivationType,
                                            KeyDerivationType::UNKNOWN);
@@ -45,14 +44,12 @@ bool lookupKeyDerivationTypes(const std::string &keyDerivation,
 
 bool lookupStartKeyTypes(const std::string &checksum,
                          ChecksumType &checksumType) {
-  static const std::unordered_map<std::string, ChecksumType>
-      STARTKEY_TYPES = {
+  static const std::unordered_map<std::string, ChecksumType> STARTKEY_TYPES = {
       {"SHA1", ChecksumType::SHA1},
-      {"http://www.w3.org/2000/09/xmldsig#sha256",
-               ChecksumType::SHA256},
+      {"http://www.w3.org/2000/09/xmldsig#sha256", ChecksumType::SHA256},
   };
-  return common::MapUtil::lookupMapDefault(
-      STARTKEY_TYPES, checksum, checksumType, ChecksumType::UNKNOWN);
+  return common::MapUtil::lookupMapDefault(STARTKEY_TYPES, checksum,
+                                           checksumType, ChecksumType::UNKNOWN);
 }
 } // namespace
 
@@ -127,4 +124,4 @@ Manifest parseManifest(const pugi::xml_document &manifest) {
   return result;
 }
 
-}
+} // namespace odr::odf

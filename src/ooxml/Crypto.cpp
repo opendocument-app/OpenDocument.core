@@ -1,9 +1,9 @@
-#include <ooxml/Crypto.h>
 #include <codecvt>
 #include <crypto/CryptoUtil.h>
 #include <cstdint>
 #include <cstring>
 #include <locale>
+#include <ooxml/Crypto.h>
 
 namespace {
 template <typename I, typename O> void toLittleEndian(I in, O &out) {

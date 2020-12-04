@@ -1,10 +1,10 @@
-#include <odf/Meta.h>
 #include <access/Storage.h>
 #include <access/StorageUtil.h>
 #include <common/MapUtil.h>
 #include <common/TableCursor.h>
 #include <crypto/CryptoUtil.h>
 #include <cstring>
+#include <odf/Meta.h>
 #include <odr/File.h>
 #include <pugixml.hpp>
 
@@ -83,7 +83,8 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
 }
 } // namespace
 
-FileMeta parseFileMeta(const access::ReadStorage &storage, const pugi::xml_document *manifest) {
+FileMeta parseFileMeta(const access::ReadStorage &storage,
+                       const pugi::xml_document *manifest) {
   FileMeta result;
 
   if (!storage.isFile("content.xml"))
@@ -112,7 +113,8 @@ FileMeta parseFileMeta(const access::ReadStorage &storage, const pugi::xml_docum
   return result;
 }
 
-DocumentMeta parseDocumentMeta(const pugi::xml_document *meta, const pugi::xml_document &content) {
+DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
+                               const pugi::xml_document &content) {
   DocumentMeta result;
 
   const auto body =
@@ -131,8 +133,8 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta, const pugi::xml_d
 
   if (meta != nullptr) {
     const pugi::xml_node statistics = meta->child("office:document-meta")
-        .child("office:meta")
-        .child("meta:document-statistic");
+                                          .child("office:meta")
+                                          .child("meta:document-statistic");
     if (statistics) {
       switch (result.documentType) {
       case DocumentType::TEXT: {
@@ -183,7 +185,7 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta, const pugi::xml_d
     break;
   }
 
-  return  result;
+  return result;
 }
 
 } // namespace odr::odf

@@ -1,5 +1,5 @@
-#include <access/StreamUtil.h>
 #include <access/Path.h>
+#include <access/StreamUtil.h>
 #include <access/ZipStorage.h>
 #include <ooxml/Crypto.h>
 #include <ooxml/Meta.h>
@@ -7,18 +7,15 @@
 
 namespace odr::ooxml {
 
-OfficeOpenXmlFile::OfficeOpenXmlFile(std::shared_ptr<access::ReadStorage> storage) {
+OfficeOpenXmlFile::OfficeOpenXmlFile(
+    std::shared_ptr<access::ReadStorage> storage) {
   m_meta = Meta::parseFileMeta(*storage);
   m_storage = std::move(storage);
 }
 
-FileType OfficeOpenXmlFile::fileType() const noexcept {
-  return m_meta.type;
-}
+FileType OfficeOpenXmlFile::fileType() const noexcept { return m_meta.type; }
 
-FileMeta OfficeOpenXmlFile::fileMeta() const noexcept {
-  return m_meta;
-}
+FileMeta OfficeOpenXmlFile::fileMeta() const noexcept { return m_meta; }
 
 bool OfficeOpenXmlFile::passwordEncrypted() const noexcept {
   return m_meta.passwordEncrypted;
@@ -51,4 +48,4 @@ std::shared_ptr<common::Document> OfficeOpenXmlFile::document() const {
   return {}; // TODO
 }
 
-}
+} // namespace odr::ooxml

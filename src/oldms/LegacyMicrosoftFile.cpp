@@ -39,7 +39,8 @@ FileMeta parseMeta(const access::ReadStorage &storage) {
 } // namespace
 
 LegacyMicrosoftFile::LegacyMicrosoftFile(
-    std::shared_ptr<access::ReadStorage> storage) : m_storage{std::move(storage)} {
+    std::shared_ptr<access::ReadStorage> storage)
+    : m_storage{std::move(storage)} {
   m_meta = parseMeta(*m_storage);
 }
 

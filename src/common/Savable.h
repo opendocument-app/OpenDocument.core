@@ -29,7 +29,7 @@ public:
                     const std::string &password) const = 0;
 };
 
-}
-}
+} // namespace common
+} // namespace odr
 
 #endif // ODR_COMMON_SAVABLE_H

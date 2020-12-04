@@ -1,8 +1,8 @@
 #ifndef ODR_ODF_STYLE_TRANSLATOR_H
 #define ODR_ODF_STYLE_TRANSLATOR_H
 
-#include <odf/Context.h>
 #include <memory>
+#include <odf/Context.h>
 
 namespace pugi {
 class xml_node;

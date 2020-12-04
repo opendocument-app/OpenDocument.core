@@ -1,9 +1,9 @@
+#include <OpenStrategy.h>
 #include <access/Path.h>
 #include <common/File.h>
+#include <odr/Exception.h>
 #include <odr/File.h>
 #include <utility>
-#include <OpenStrategy.h>
-#include <odr/Exception.h>
 
 namespace odr {
 
@@ -98,21 +98,19 @@ std::vector<FileType> File::types(const std::string &path) {
   return OpenStrategy::types(path);
 }
 
-FileType File::type(const std::string &path) {
-  return File(path).fileType();
-}
+FileType File::type(const std::string &path) { return File(path).fileType(); }
 
-FileMeta File::meta(const std::string &path) {
-  return File(path).fileMeta();
-}
+FileMeta File::meta(const std::string &path) { return File(path).fileMeta(); }
 
 File::File(std::shared_ptr<common::File> file) : m_file{std::move(file)} {
-  if (!m_file) throw FileNotFound();
+  if (!m_file)
+    throw FileNotFound();
 }
 
 File::File(const std::string &path) : File(OpenStrategy::openFile(path)) {}
 
-File::File(const std::string &path, FileType as) : File(OpenStrategy::openFile(path, as)) {}
+File::File(const std::string &path, FileType as)
+    : File(OpenStrategy::openFile(path, as)) {}
 
 File::File(const File &) = default;
 
@@ -120,21 +118,17 @@ File::File(File &&file) noexcept = default;
 
 File::~File() = default;
 
-File & File::operator=(const File &) = default;
+File &File::operator=(const File &) = default;
 
-File & File::operator=(File &&) noexcept = default;
+File &File::operator=(File &&) noexcept = default;
 
-FileType File::fileType() const noexcept {
-  return m_file->fileMeta().type;
-}
+FileType File::fileType() const noexcept { return m_file->fileMeta().type; }
 
 FileCategory File::fileCategory() const noexcept {
   return FileMeta::categoryByType(fileType());
 }
 
-FileMeta File::fileMeta() const noexcept {
-  return m_file->fileMeta();
-}
+FileMeta File::fileMeta() const noexcept { return m_file->fileMeta(); }
 
 FileType DocumentFile::type(const std::string &path) {
   return DocumentFile(path).fileType();
@@ -144,7 +138,8 @@ FileMeta DocumentFile::meta(const std::string &path) {
   return DocumentFile(path).fileMeta();
 }
 
-DocumentFile::DocumentFile(const std::string &path) : File(OpenStrategy::openDocumentFile(path)) {}
+DocumentFile::DocumentFile(const std::string &path)
+    : File(OpenStrategy::openDocumentFile(path)) {}
 
 DocumentFile::DocumentFile(const File &file) : File(file) {
   // TODO throw if not document file
@@ -174,12 +169,10 @@ DocumentMeta DocumentFile::documentMeta() const {
   return impl().documentMeta();
 }
 
-Document DocumentFile::document() const {
-  return Document(impl().document());
-}
+Document DocumentFile::document() const { return Document(impl().document()); }
 
-common::DocumentFile & DocumentFile::impl() const {
+common::DocumentFile &DocumentFile::impl() const {
   return static_cast<common::DocumentFile &>(*m_file);
 }
 
-}
+} // namespace odr

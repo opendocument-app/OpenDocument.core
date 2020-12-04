@@ -35,7 +35,7 @@ public:
   virtual std::shared_ptr<Document> document() const = 0;
 };
 
-}
-}
+} // namespace common
+} // namespace odr
 
 #endif // ODR_COMMON_FILE_H

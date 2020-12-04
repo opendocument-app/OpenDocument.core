@@ -1,10 +1,10 @@
 #include <common/Document.h>
 #include <common/Html.h>
 #include <fstream>
+#include <nlohmann/json.hpp>
 #include <odr/Document.h>
 #include <odr/DocumentElements.h>
 #include <odr/Html.h>
-#include <nlohmann/json.hpp>
 
 namespace odr {
 

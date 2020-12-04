@@ -1,12 +1,12 @@
-#include <access/ZipStorage.h>
 #include <access/StreamUtil.h>
+#include <access/ZipStorage.h>
+#include <common/DocumentElements.h>
 #include <common/XmlUtil.h>
+#include <odf/Common.h>
 #include <odf/Crypto.h>
 #include <odf/OpenDocument.h>
-#include <odf/Common.h>
-#include <common/DocumentElements.h>
-#include <odr/DocumentElements.h>
 #include <odr/Document.h>
+#include <odr/DocumentElements.h>
 
 namespace odr::odf {
 
@@ -16,7 +16,8 @@ class OdfElement;
 std::shared_ptr<common::Element>
 firstChildImpl(std::shared_ptr<const OdfElement> parent, pugi::xml_node node);
 std::shared_ptr<common::Element>
-previousSiblingImpl(std::shared_ptr<const OdfElement> parent, pugi::xml_node node);
+previousSiblingImpl(std::shared_ptr<const OdfElement> parent,
+                    pugi::xml_node node);
 std::shared_ptr<common::Element>
 nextSiblingImpl(std::shared_ptr<const OdfElement> parent, pugi::xml_node node);
 
@@ -26,9 +27,7 @@ public:
   OdfElement(std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
       : m_parent{std::move(parent)}, m_node{node} {}
 
-  std::shared_ptr<const Element> parent() const override {
-    return m_parent;
-  }
+  std::shared_ptr<const Element> parent() const override { return m_parent; }
 
   std::shared_ptr<const Element> firstChild() const override {
     return firstChildImpl(shared_from_this(), m_node);
@@ -88,8 +87,8 @@ public:
       : OdfElement(std::move(parent), node) {}
 };
 
-std::shared_ptr<common::Element> convert(std::shared_ptr<const OdfElement> parent,
-                                         pugi::xml_node node) {
+std::shared_ptr<common::Element>
+convert(std::shared_ptr<const OdfElement> parent, pugi::xml_node node) {
   if (node.type() == pugi::node_pcdata) {
     return std::make_shared<OdfTextElement>(std::move(parent), node);
   }
@@ -179,9 +178,7 @@ OpenDocument::OpenDocument(std::shared_ptr<access::ReadStorage> storage)
 
 bool OpenDocument::editable() const noexcept { return true; }
 
-bool OpenDocument::savable(bool encrypted) const noexcept {
-  return !encrypted;
-}
+bool OpenDocument::savable(bool encrypted) const noexcept { return !encrypted; }
 
 DocumentType OpenDocument::documentType() const noexcept {
   return m_document_meta.documentType;
@@ -235,29 +232,34 @@ PageProperties OpenDocumentText::pageProperties() const {
 
 ElementSiblingRange OpenDocumentText::content() const {
   const pugi::xml_node body = m_content.child("office:document-content")
-      .child("office:body")
-      .child("office:text");
+                                  .child("office:body")
+                                  .child("office:text");
   return ElementSiblingRange(Element(firstChildImpl(nullptr, body)));
 }
 
-OpenDocumentPresentation::OpenDocumentPresentation(std::shared_ptr<access::ReadStorage> storage)
+OpenDocumentPresentation::OpenDocumentPresentation(
+    std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-ElementSiblingRange OpenDocumentPresentation::slideContent(std::uint32_t index) const {
+ElementSiblingRange
+OpenDocumentPresentation::slideContent(std::uint32_t index) const {
   // TODO
 }
 
-OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(std::shared_ptr<access::ReadStorage> storage)
+OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
+    std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 TableElement OpenDocumentSpreadsheet::sheetTable(std::uint32_t index) const {
   // TODO
 }
 
-OpenDocumentGraphics::OpenDocumentGraphics(std::shared_ptr<access::ReadStorage> storage)
+OpenDocumentGraphics::OpenDocumentGraphics(
+    std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-ElementSiblingRange OpenDocumentGraphics::pageContent(std::uint32_t index) const {
+ElementSiblingRange
+OpenDocumentGraphics::pageContent(std::uint32_t index) const {
   // TODO
 }
 

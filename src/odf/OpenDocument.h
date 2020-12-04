@@ -1,9 +1,9 @@
 #ifndef ODR_ODF_OPENDOCUMENT_H
 #define ODR_ODF_OPENDOCUMENT_H
 
-#include <odr/Document.h>
 #include <common/Document.h>
 #include <memory>
+#include <odr/Document.h>
 #include <pugixml.hpp>
 
 namespace odr {
@@ -48,7 +48,8 @@ private:
 class OpenDocumentPresentation final : public OpenDocument,
                                        public common::Presentation {
 public:
-  explicit OpenDocumentPresentation(std::shared_ptr<access::ReadStorage> storage);
+  explicit OpenDocumentPresentation(
+      std::shared_ptr<access::ReadStorage> storage);
 
   ElementSiblingRange slideContent(std::uint32_t index) const final;
 };
@@ -56,7 +57,8 @@ public:
 class OpenDocumentSpreadsheet final : public OpenDocument,
                                       public common::Spreadsheet {
 public:
-  explicit OpenDocumentSpreadsheet(std::shared_ptr<access::ReadStorage> storage);
+  explicit OpenDocumentSpreadsheet(
+      std::shared_ptr<access::ReadStorage> storage);
 
   TableElement sheetTable(std::uint32_t index) const final;
 };

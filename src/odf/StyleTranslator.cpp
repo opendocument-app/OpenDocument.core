@@ -1,7 +1,7 @@
-#include <odf/StyleTranslator.h>
 #include <common/StringUtil.h>
 #include <cstring>
 #include <glog/logging.h>
+#include <odf/StyleTranslator.h>
 #include <pugixml.hpp>
 #include <string>
 #include <unordered_map>

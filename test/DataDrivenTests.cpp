@@ -5,8 +5,8 @@
 #include <map>
 #include <nlohmann/json.hpp>
 #include <odr/Document.h>
-#include <odr/Html.h>
 #include <odr/File.h>
+#include <odr/Html.h>
 #include <utility>
 
 using namespace odr;
@@ -172,8 +172,8 @@ TEST_P(DataDrivenTest, all) {
     EXPECT_EQ(param.type, file.fileType());
 
   // TODO
-  //EXPECT_EQ(param.encrypted, document.encrypted());
-  //if (document.encrypted())
+  // EXPECT_EQ(param.encrypted, document.encrypted());
+  // if (document.encrypted())
   //  EXPECT_TRUE(document.decrypt(param.password));
   EXPECT_EQ(param.type, file.fileType());
 
@@ -188,12 +188,12 @@ TEST_P(DataDrivenTest, all) {
   EXPECT_LT(0, fs::file_size(param.metaOutput));
 
   // TODO
-  //if (!document.translatable())
+  // if (!document.translatable())
   //  return;
 
   fs::create_directories(fs::path(param.htmlOutput).parent_path());
   // TODO
-  //document.translate(param.htmlOutput, config);
+  // document.translate(param.htmlOutput, config);
   EXPECT_TRUE(fs::is_regular_file(param.htmlOutput));
   EXPECT_LT(0, fs::file_size(param.htmlOutput));
 }

@@ -1,10 +1,10 @@
 #ifndef ODR_ODF_MANIFEST_H
 #define ODR_ODF_MANIFEST_H
 
+#include <access/Path.h>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-#include <access/Path.h>
 
 namespace pugi {
 class xml_document;
@@ -12,7 +12,7 @@ class xml_document;
 
 namespace odr::access {
 class ReadStorage;
-} // namespace odr
+} // namespace odr::access
 
 namespace odr::odf {
 
@@ -46,6 +46,6 @@ struct Manifest {
 
 Manifest parseManifest(const pugi::xml_document &manifest);
 
-}
+} // namespace odr::odf
 
 #endif // ODR_ODF_MANIFEST_H

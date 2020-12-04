@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include <odr/File.h>
 #include <odr/Exception.h>
+#include <odr/File.h>
 
 using namespace odr;
 

@@ -29,7 +29,8 @@ public:
   virtual DocumentMeta documentMeta() const noexcept = 0;
 
   virtual void save(const access::Path &path) const = 0;
-  virtual void save(const access::Path &path, const std::string &password) const = 0;
+  virtual void save(const access::Path &path,
+                    const std::string &password) const = 0;
 };
 
 class TextDocument : public virtual Document {

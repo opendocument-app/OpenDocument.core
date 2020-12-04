@@ -1,8 +1,8 @@
-#include <odf/Crypto.h>
 #include <access/Storage.h>
 #include <access/StorageUtil.h>
 #include <access/StreamUtil.h>
 #include <crypto/CryptoUtil.h>
+#include <odf/Crypto.h>
 #include <sstream>
 
 namespace odr::odf {
@@ -84,8 +84,8 @@ public:
   const Manifest manifest;
   const std::string startKey;
 
-  CryptoOpenDocumentFile(std::shared_ptr<ReadStorage> parent,
-                         Manifest manifest, std::string startKey)
+  CryptoOpenDocumentFile(std::shared_ptr<ReadStorage> parent, Manifest manifest,
+                         std::string startKey)
       : parent(std::move(parent)), manifest(std::move(manifest)),
         startKey(std::move(startKey)) {}
 
@@ -126,8 +126,7 @@ public:
 } // namespace
 
 bool Crypto::decrypt(std::shared_ptr<access::ReadStorage> &storage,
-                     const Manifest &manifest,
-                     const std::string &password) {
+                     const Manifest &manifest, const std::string &password) {
   if (!manifest.encrypted)
     return true;
   if (!canDecrypt(*manifest.smallestFileEntry))

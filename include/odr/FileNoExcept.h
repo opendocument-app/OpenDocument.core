@@ -1,9 +1,9 @@
 #ifndef ODR_FILENOEXCEPT_H
 #define ODR_FILENOEXCEPT_H
 
-#include <optional>
 #include <memory>
 #include <odr/File.h>
+#include <optional>
 
 namespace odr {
 
@@ -11,7 +11,7 @@ class FileNoExcept {
 public:
   static std::optional<FileNoExcept> open(const std::string &path) noexcept;
   static std::optional<FileNoExcept> open(const std::string &path,
-                                            FileType as) noexcept;
+                                          FileType as) noexcept;
 
   static FileType type(const std::string &path) noexcept;
   static FileMeta meta(const std::string &path) noexcept;
@@ -49,6 +49,6 @@ protected:
   DocumentFile m_documentFile;
 };
 
-}
+} // namespace odr
 
 #endif // ODR_FILENOEXCEPT_H

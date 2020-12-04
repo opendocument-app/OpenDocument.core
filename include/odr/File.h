@@ -3,17 +3,17 @@
 
 #include <cstdint>
 #include <memory>
+#include <odr/Document.h>
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
-#include <odr/Document.h>
 
 namespace odr {
 
 namespace common {
 class File;
 class DocumentFile;
-}
+} // namespace common
 
 class DocumentNoExcept;
 
@@ -121,6 +121,6 @@ private:
   common::DocumentFile &impl() const;
 };
 
-}
+} // namespace odr
 
 #endif // ODR_FILE_H

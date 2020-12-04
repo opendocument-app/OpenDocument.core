@@ -4,32 +4,18 @@
 
 namespace odr::common {
 
-ElementType TextElement::type() const {
-  return ElementType::TEXT;
-}
+ElementType TextElement::type() const { return ElementType::TEXT; }
 
-ElementType Paragraph::type() const {
-  return ElementType::PARAGRAPH;
-}
+ElementType Paragraph::type() const { return ElementType::PARAGRAPH; }
 
-ElementType Span::type() const {
-  return ElementType::SPAN;
-}
+ElementType Span::type() const { return ElementType::SPAN; }
 
-ElementType Link::type() const {
-  return ElementType::LINK;
-}
+ElementType Link::type() const { return ElementType::LINK; }
 
-ElementType Image::type() const {
-  return ElementType::IMAGE;
-}
+ElementType Image::type() const { return ElementType::IMAGE; }
 
-ElementType List::type() const {
-  return ElementType::LIST;
-}
+ElementType List::type() const { return ElementType::LIST; }
 
-ElementType Table::type() const {
-  return ElementType::TABLE;
-}
+ElementType Table::type() const { return ElementType::TABLE; }
 
-}
+} // namespace odr::common

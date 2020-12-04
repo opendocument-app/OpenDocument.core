@@ -1,5 +1,3 @@
-#include <odf/ContentTranslator.h>
-#include <odf/StyleTranslator.h>
 #include <access/Path.h>
 #include <access/Storage.h>
 #include <access/StreamUtil.h>
@@ -7,8 +5,10 @@
 #include <crypto/CryptoUtil.h>
 #include <cstring>
 #include <glog/logging.h>
-#include <odr/Html.h>
+#include <odf/ContentTranslator.h>
+#include <odf/StyleTranslator.h>
 #include <odr/File.h>
+#include <odr/Html.h>
 #include <pugixml.hpp>
 #include <string>
 #include <svm/Svm2Svg.h>
