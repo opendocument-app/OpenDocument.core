@@ -7,13 +7,14 @@ class xml_document;
 
 namespace odr {
 struct PageProperties;
-namespace odf {
-
-namespace Common {
-PageProperties pageProperties(const pugi::xml_document &style);
 }
 
-} // namespace odf
-} // namespace odr
+namespace odr::odf {
+
+namespace Common {
+
+}
+
+} // namespace odr::odf
 
 #endif // ODR_ODF_COMMON_H

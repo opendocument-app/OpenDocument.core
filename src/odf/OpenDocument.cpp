@@ -174,6 +174,10 @@ OpenDocument::OpenDocument(std::shared_ptr<access::ReadStorage> storage)
   } else {
     m_document_meta = parseDocumentMeta(nullptr, m_content);
   }
+
+  pugi::xml_document styles;
+  if (m_storage->isFile("styles.xml")) styles = common::XmlUtil::parse(*m_storage, "styles.xml");
+  m_style = Style(std::move(styles), m_content.root());
 }
 
 bool OpenDocument::editable() const noexcept { return true; }
@@ -227,7 +231,7 @@ OpenDocumentText::OpenDocumentText(std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 PageProperties OpenDocumentText::pageProperties() const {
-  return Common::pageProperties(m_style);
+  return m_style.defaultPageProperties();
 }
 
 ElementSiblingRange OpenDocumentText::content() const {

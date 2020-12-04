@@ -4,6 +4,7 @@
 #include <common/Document.h>
 #include <memory>
 #include <odr/Document.h>
+#include <odf/Style.h>
 #include <pugixml.hpp>
 
 namespace odr {
@@ -30,6 +31,7 @@ protected:
   std::shared_ptr<access::ReadStorage> m_storage;
   DocumentMeta m_document_meta;
   pugi::xml_document m_content;
+  Style m_style;
 };
 
 class OpenDocumentText final : public OpenDocument,
@@ -40,9 +42,6 @@ public:
   PageProperties pageProperties() const final;
 
   ElementSiblingRange content() const final;
-
-private:
-  pugi::xml_document m_style;
 };
 
 class OpenDocumentPresentation final : public OpenDocument,
