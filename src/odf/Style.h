@@ -3,9 +3,12 @@
 
 #include <pugixml.hpp>
 #include <unordered_map>
+#include <vector>
 
 namespace odr {
 struct PageProperties;
+struct ParagraphProperties;
+struct TextProperties;
 }
 
 namespace odr::odf {
@@ -14,6 +17,10 @@ class Style {
 public:
   Style() = default;
   Style(pugi::xml_document styles, pugi::xml_node contentRoot);
+
+  ParagraphProperties paragraphProperties(const std::string &name) const;
+
+  TextProperties textProperties(const std::string &name) const;
 
   PageProperties defaultPageProperties() const;
   PageProperties pageProperties(const std::string &name) const;
@@ -32,6 +39,8 @@ private:
 
   void generateIndices();
   void generateIndices(pugi::xml_node);
+
+  std::vector<pugi::xml_node> styleHierarchy(std::string name) const;
 };
 
 } // namespace odr::odf

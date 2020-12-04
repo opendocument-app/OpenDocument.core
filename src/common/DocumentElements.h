@@ -9,6 +9,8 @@ enum class ElementType;
 enum class DocumentType;
 struct PageProperties;
 class Element;
+struct ParagraphProperties;
+struct TextProperties;
 
 namespace common {
 
@@ -34,11 +36,16 @@ public:
 class Paragraph : public virtual Element {
 public:
   ElementType type() const final;
+
+  virtual ParagraphProperties paragraphProperties() const = 0;
+  virtual TextProperties textProperties() const = 0;
 };
 
 class Span : public virtual Element {
 public:
   ElementType type() const final;
+
+  virtual TextProperties textProperties() const = 0;
 };
 
 class Link : public virtual Element {

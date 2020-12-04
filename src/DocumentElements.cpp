@@ -143,12 +143,24 @@ ParagraphElement::ParagraphElement(
 
 ParagraphElement::operator bool() const { return m_impl.operator bool(); }
 
+ParagraphProperties ParagraphElement::paragraphProperties() const {
+  return m_impl->paragraphProperties();
+}
+
+TextProperties ParagraphElement::textProperties() const {
+  return m_impl->textProperties();
+}
+
 SpanElement::SpanElement() = default;
 
-SpanElement::SpanElement(std::shared_ptr<const common::Element> impl)
+SpanElement::SpanElement(std::shared_ptr<const common::Span> impl)
     : m_impl{std::move(impl)} {}
 
 SpanElement::operator bool() const { return m_impl.operator bool(); }
+
+TextProperties SpanElement::textProperties() const {
+  return m_impl->textProperties();
+}
 
 LinkElement::LinkElement() = default;
 

@@ -3,8 +3,8 @@
 
 #include <common/Document.h>
 #include <memory>
-#include <odr/Document.h>
 #include <odf/Style.h>
+#include <odr/Document.h>
 #include <pugixml.hpp>
 
 namespace odr {
@@ -14,7 +14,14 @@ class ReadStorage;
 
 namespace odf {
 
-class OpenDocument : public virtual common::Document {
+namespace {
+class OdfElement;
+class OdfParagraph;
+class OdfSpan;
+}
+
+class OpenDocument : public virtual common::Document,
+                     public std::enable_shared_from_this<OpenDocument> {
 public:
   explicit OpenDocument(std::shared_ptr<access::ReadStorage> storage);
 
@@ -32,6 +39,10 @@ protected:
   DocumentMeta m_document_meta;
   pugi::xml_document m_content;
   Style m_style;
+
+  friend OdfElement;
+  friend OdfParagraph;
+  friend OdfSpan;
 };
 
 class OpenDocumentText final : public OpenDocument,

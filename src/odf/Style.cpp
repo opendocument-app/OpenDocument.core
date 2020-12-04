@@ -5,11 +5,30 @@
 namespace odr::odf {
 
 Style::Style(pugi::xml_document styles, pugi::xml_node contentRoot)
-    : m_styles{std::move(styles)}, m_contentRoot{contentRoot} {}
+    : m_styles{std::move(styles)}, m_contentRoot{contentRoot} {
+  generateIndices();
+}
+
+ParagraphProperties Style::paragraphProperties(const std::string &name) const {
+  auto styleIt = m_indexStyle.find(name);
+  if (styleIt == m_indexStyle.end())
+    throw 1; // TODO exception or optional
+  auto paragraphProp = styleIt->second.child("style:paragraph-properties");
+
+  ParagraphProperties result;
+
+  // TODO recurse and assign
+
+  return result;
+}
+
+TextProperties Style::textProperties(const std::string &name) const {
+  return {}; // TODO
+}
 
 PageProperties Style::defaultPageProperties() const {
   const pugi::xml_node masterStyles =
-      m_styles.root().child("office:master-styles");
+      m_styles.document_element().child("office:master-styles");
   const pugi::xml_node masterStyle = masterStyles.first_child();
   const std::string pageLayoutName =
       masterStyle.attribute("style:page-layout-name").value();
@@ -17,54 +36,54 @@ PageProperties Style::defaultPageProperties() const {
 }
 
 PageProperties Style::pageProperties(const std::string &name) const {
-  PageProperties result;
-
   auto pageLayoutIt = m_indexPageLayout.find(name);
   if (pageLayoutIt == m_indexPageLayout.end())
-    throw 1; // TODO
-  auto &&pageLayout = pageLayoutIt->second;
+    throw 1; // TODO exception or optional
+  auto pageLayoutProp = pageLayoutIt->second.child("style:page-layout-properties");
 
-  result.width = pageLayout.attribute("fo:page-width").value();
-  result.height = pageLayout.attribute("fo:page-height").value();
-  result.marginTop = pageLayout.attribute("fo:margin-top").value();
-  result.marginBottom = pageLayout.attribute("fo:margin-bottom").value();
-  result.marginLeft = pageLayout.attribute("fo:margin-left").value();
-  result.marginRight = pageLayout.attribute("fo:margin-right").value();
+  PageProperties result;
+
+  result.width = pageLayoutProp.attribute("fo:page-width").value();
+  result.height = pageLayoutProp.attribute("fo:page-height").value();
+  result.marginTop = pageLayoutProp.attribute("fo:margin-top").value();
+  result.marginBottom = pageLayoutProp.attribute("fo:margin-bottom").value();
+  result.marginLeft = pageLayoutProp.attribute("fo:margin-left").value();
+  result.marginRight = pageLayoutProp.attribute("fo:margin-right").value();
   result.printOrientation =
-      pageLayout.attribute("style:print-orientation").value();
+      pageLayoutProp.attribute("style:print-orientation").value();
 
   return result;
 }
 
 void Style::generateIndices() {
-  if (auto fontFaceDecls = m_styles.root().child("office:font-face-decls");
+  if (auto fontFaceDecls = m_styles.document_element().child("office:font-face-decls");
       fontFaceDecls) {
     generateIndices(fontFaceDecls);
   }
 
-  if (auto styles = m_styles.root().child("office:styles"); styles) {
+  if (auto styles = m_styles.document_element().child("office:styles"); styles) {
     generateIndices(styles);
   }
 
-  if (auto automaticStyles = m_styles.root().child("office:automatic-styles");
+  if (auto automaticStyles = m_styles.document_element().child("office:automatic-styles");
       automaticStyles) {
     generateIndices(automaticStyles);
   }
 
-  if (auto masterStyles = m_styles.root().child("office:master-styles");
+  if (auto masterStyles = m_styles.document_element().child("office:master-styles");
       masterStyles) {
     generateIndices(masterStyles);
   }
 
   // content styles
 
-  if (auto fontFaceDecls = m_contentRoot.root().child("office:font-face-decls");
+  if (auto fontFaceDecls = m_contentRoot.child("office:font-face-decls");
       fontFaceDecls) {
     generateIndices(fontFaceDecls);
   }
 
   if (auto automaticStyles =
-          m_contentRoot.root().child("office:automatic-styles");
+          m_contentRoot.child("office:automatic-styles");
       automaticStyles) {
     generateIndices(automaticStyles);
   }
@@ -88,6 +107,32 @@ void Style::generateIndices(pugi::xml_node node) {
       m_indexMasterPage[e.attribute("style:name").value()] = e;
     }
   }
+}
+
+std::vector<pugi::xml_node> Style::styleHierarchy(std::string name) const {
+  std::vector<pugi::xml_node> result;
+
+  while (true) {
+    const auto styleIt = m_indexStyle.find(name);
+    if (styleIt == m_indexStyle.end()) break;
+
+    const auto style = styleIt->second;
+    result.push_back(style);
+
+    const auto parent = style.attribute("style:parent-style-name");
+    if (!parent) {
+      const auto family = style.attribute("style:family-name");
+      if (family) {
+        const auto defaultStyleIt = m_indexDefaultStyle.find(name);
+        if (defaultStyleIt != m_indexDefaultStyle.end())
+          result.push_back(defaultStyleIt->second);
+      }
+      break;
+    }
+    name = parent.value();
+  }
+
+  return result;
 }
 
 } // namespace odr::odf

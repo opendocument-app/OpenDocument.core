@@ -10,6 +10,7 @@ namespace common {
 class Element;
 class TextElement;
 class Paragraph;
+class Span;
 class Table;
 } // namespace common
 
@@ -63,7 +64,14 @@ struct ContainerProperties {
   std::string verticalAlign;
 };
 
-struct ParagraphProperties {};
+struct ParagraphProperties {
+  std::string textAlign;
+};
+
+struct TextProperties {
+  FontProperties font;
+  std::string backgroundColor;
+};
 
 class Element final {
 public:
@@ -154,6 +162,9 @@ public:
 
   explicit operator bool() const;
 
+  ParagraphProperties paragraphProperties() const;
+  TextProperties textProperties() const;
+
 private:
   std::shared_ptr<const common::Paragraph> m_impl;
 };
@@ -161,12 +172,14 @@ private:
 class SpanElement final {
 public:
   SpanElement();
-  explicit SpanElement(std::shared_ptr<const common::Element> impl);
+  explicit SpanElement(std::shared_ptr<const common::Span> impl);
 
   explicit operator bool() const;
 
+  TextProperties textProperties() const;
+
 private:
-  std::shared_ptr<const common::Element> m_impl;
+  std::shared_ptr<const common::Span> m_impl;
 };
 
 class LinkElement final {
