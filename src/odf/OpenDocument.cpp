@@ -23,11 +23,12 @@ std::shared_ptr<common::Element>
 nextSiblingImpl(std::shared_ptr<const OpenDocument> root,
                 std::shared_ptr<const OdfElement> parent, pugi::xml_node node);
 
-template<typename E, typename ...Args>
-std::shared_ptr<E>
-knownElementImpl(std::shared_ptr<const OpenDocument> root,
-                    std::shared_ptr<const OdfElement> parent, pugi::xml_node node) {
-  if (!node) return {};
+template <typename E, typename... Args>
+std::shared_ptr<E> knownElementImpl(std::shared_ptr<const OpenDocument> root,
+                                    std::shared_ptr<const OdfElement> parent,
+                                    pugi::xml_node node) {
+  if (!node)
+    return {};
   return std::make_shared<E>(std::move(root), std::move(parent), node);
 }
 
@@ -191,11 +192,13 @@ public:
       : OdfElement(std::move(root), std::move(parent), node) {}
 
   std::shared_ptr<const common::Element> previousSibling() const final {
-    return knownElementImpl<OdfListItem>(m_root, shared_from_this(), m_node.previous_sibling("text:list-item"));
+    return knownElementImpl<OdfListItem>(
+        m_root, shared_from_this(), m_node.previous_sibling("text:list-item"));
   }
 
   std::shared_ptr<const common::Element> nextSibling() const final {
-    return knownElementImpl<OdfListItem>(m_root, shared_from_this(), m_node.next_sibling("text:list-item"));
+    return knownElementImpl<OdfListItem>(m_root, shared_from_this(),
+                                         m_node.next_sibling("text:list-item"));
   }
 };
 
@@ -206,7 +209,8 @@ public:
       : OdfElement(std::move(root), std::move(parent), node) {}
 
   std::shared_ptr<const common::Element> firstChild() const final {
-    return knownElementImpl<OdfListItem>(m_root, shared_from_this(), m_node.child("text:list-item"));
+    return knownElementImpl<OdfListItem>(m_root, shared_from_this(),
+                                         m_node.child("text:list-item"));
   }
 };
 
@@ -216,16 +220,17 @@ public:
                  std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
       : OdfElement(std::move(root), std::move(parent), node) {}
 
-  std::shared_ptr<const common::Element> firstChild() const final {
-    return {};
-  }
+  std::shared_ptr<const common::Element> firstChild() const final { return {}; }
 
   std::shared_ptr<const common::Element> previousSibling() const final {
-    return knownElementImpl<OdfListItem>(m_root, shared_from_this(), m_node.previous_sibling("table:table-column"));
+    return knownElementImpl<OdfListItem>(
+        m_root, shared_from_this(),
+        m_node.previous_sibling("table:table-column"));
   }
 
   std::shared_ptr<const common::Element> nextSibling() const final {
-    return knownElementImpl<OdfListItem>(m_root, shared_from_this(), m_node.next_sibling("table:table-column"));
+    return knownElementImpl<OdfListItem>(
+        m_root, shared_from_this(), m_node.next_sibling("table:table-column"));
   }
 };
 
@@ -236,11 +241,14 @@ public:
       : OdfElement(std::move(root), std::move(parent), node) {}
 
   std::shared_ptr<const common::Element> previousSibling() const final {
-      return knownElementImpl<OdfTableCell>(m_root, shared_from_this(), m_node.previous_sibling("table:table-cell"));
+    return knownElementImpl<OdfTableCell>(
+        m_root, shared_from_this(),
+        m_node.previous_sibling("table:table-cell"));
   }
 
   std::shared_ptr<const common::Element> nextSibling() const final {
-      return knownElementImpl<OdfTableCell>(m_root, shared_from_this(), m_node.next_sibling("table:table-cell"));
+    return knownElementImpl<OdfTableCell>(
+        m_root, shared_from_this(), m_node.next_sibling("table:table-cell"));
   }
 
   std::uint32_t rowSpan() const final {
@@ -258,20 +266,21 @@ public:
               std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
       : OdfElement(std::move(root), std::move(parent), node) {}
 
-  std::shared_ptr<const common::Element> firstChild() const final {
-    return {};
-  }
+  std::shared_ptr<const common::Element> firstChild() const final { return {}; }
 
   std::shared_ptr<const common::Element> previousSibling() const final {
-    return knownElementImpl<OdfTableRow>(m_root, shared_from_this(), m_node.previous_sibling("table:table-row"));
+    return knownElementImpl<OdfTableRow>(
+        m_root, shared_from_this(), m_node.previous_sibling("table:table-row"));
   }
 
   std::shared_ptr<const common::Element> nextSibling() const final {
-    return knownElementImpl<OdfTableRow>(m_root, shared_from_this(), m_node.next_sibling("table:table-row"));
+    return knownElementImpl<OdfTableRow>(
+        m_root, shared_from_this(), m_node.next_sibling("table:table-row"));
   }
 
   std::shared_ptr<const common::TableCell> firstCell() const final {
-    return knownElementImpl<OdfTableCell>(m_root, shared_from_this(), m_node.child("table:table-cell"));
+    return knownElementImpl<OdfTableCell>(m_root, shared_from_this(),
+                                          m_node.child("table:table-cell"));
   }
 };
 
@@ -289,16 +298,16 @@ public:
     return 0; // TODO
   }
 
-  std::shared_ptr<const common::Element> firstChild() const final {
-    return {};
-  }
+  std::shared_ptr<const common::Element> firstChild() const final { return {}; }
 
   std::shared_ptr<const common::TableColumn> firstColumn() const final {
-    return knownElementImpl<OdfTableColumn>(m_root, shared_from_this(), m_node.child("table:table-column"));
+    return knownElementImpl<OdfTableColumn>(m_root, shared_from_this(),
+                                            m_node.child("table:table-column"));
   }
 
   std::shared_ptr<const common::TableRow> firstRow() const final {
-    return knownElementImpl<OdfTableRow>(m_root, shared_from_this(), m_node.child("table:table-row"));
+    return knownElementImpl<OdfTableRow>(m_root, shared_from_this(),
+                                         m_node.child("table:table-row"));
   }
 };
 
