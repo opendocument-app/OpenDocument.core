@@ -101,8 +101,6 @@ public:
 class TableRow : public virtual Element {
 public:
   ElementType type() const final;
-
-  virtual std::shared_ptr<const TableCell> firstCell() const = 0;
 };
 
 class TableCell : public virtual Element {

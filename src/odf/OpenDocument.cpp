@@ -266,7 +266,10 @@ public:
               std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
       : OdfElement(std::move(root), std::move(parent), node) {}
 
-  std::shared_ptr<const common::Element> firstChild() const final { return {}; }
+  std::shared_ptr<const common::Element> firstChild() const final {
+      return knownElementImpl<OdfTableCell>(m_root, shared_from_this(),
+                                            m_node.child("table:table-cell"));
+  }
 
   std::shared_ptr<const common::Element> previousSibling() const final {
     return knownElementImpl<OdfTableRow>(
@@ -276,11 +279,6 @@ public:
   std::shared_ptr<const common::Element> nextSibling() const final {
     return knownElementImpl<OdfTableRow>(
         m_root, shared_from_this(), m_node.next_sibling("table:table-row"));
-  }
-
-  std::shared_ptr<const common::TableCell> firstCell() const final {
-    return knownElementImpl<OdfTableCell>(m_root, shared_from_this(),
-                                          m_node.child("table:table-cell"));
   }
 };
 

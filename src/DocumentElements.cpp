@@ -145,7 +145,7 @@ bool ElementIterator<E>::operator!=(const ElementIterator<E> &rhs) const {
 template class ElementIterator<Element>;
 template class ElementIterator<TableColumnElement>;
 template class ElementIterator<TableRowElement>;
-// template class ElementIterator<TableCellElement>;
+template class ElementIterator<TableCellElement>;
 
 template <typename E>
 ElementRangeTemplate<E>::ElementRangeTemplate()
@@ -273,7 +273,7 @@ TableRowElement::TableRowElement(std::shared_ptr<const common::TableRow> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TableCellElement TableRowElement::firstChild() const {
-  return Element::firstChild().tableCell();
+  return Element(m_impl->firstChild()).tableCell();
 }
 
 TableRowElement TableRowElement::previousSibling() const {

@@ -11,6 +11,10 @@ namespace odr {
 namespace {
 void translateElement(Element element, std::ostream &out,
                       const HtmlConfig &config);
+void translateList(ListElement element, std::ostream &out,
+                    const HtmlConfig &config);
+void translateTable(TableElement element, std::ostream &out,
+                    const HtmlConfig &config);
 
 std::string translateRectangularProperties(
     const RectangularProperties &rectangularProperties,
@@ -102,16 +106,45 @@ void translateElement(Element element, std::ostream &out,
     out << element.bookmark().name();
     out << "\"></a>";
   } else if (element.type() == ElementType::LIST) {
-    out << "<ul>";
-    translateGeneration(element.children(), out, config);
-    out << "</ul>";
-  } else if (element.type() == ElementType::LIST_ITEM) {
-    out << "<li>";
-    translateGeneration(element.children(), out, config);
-    out << "</li>";
+    translateList(element.list(), out, config);
+  } else if (element.type() == ElementType::TABLE) {
+    translateTable(element.table(), out, config);
   } else {
     // TODO log
   }
+}
+
+void translateList(ListElement element, std::ostream &out,
+                   const HtmlConfig &config) {
+  out << "<ul>";
+  for (auto &&i : element.children()) {
+    out << "<li>";
+    translateGeneration(i.children(), out, config);
+    out << "</li>";
+  }
+  out << "</ul>";
+}
+
+void translateTable(TableElement element, std::ostream &out,
+                    const HtmlConfig &config) {
+  out << "<table>";
+
+  for (auto &&c : element.columns()) {
+    out << "<col>";
+    out << "</col>";
+  }
+
+  for (auto &&r : element.rows()) {
+    out << "<tr>";
+    for (auto &&c : r.cells()) {
+      out << "<td>";
+      translateGeneration(c.children(), out, config);
+      out << "</td>";
+    }
+    out << "</tr>";
+  }
+
+  out << "</table>";
 }
 
 void translateText(TextDocument document, std::ostream &out,
