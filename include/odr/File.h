@@ -82,15 +82,10 @@ public:
 
   explicit File(const std::string &path);
   File(const std::string &path, FileType as);
-  File(const File &);
-  File(File &&) noexcept;
-  virtual ~File();
-  File &operator=(const File &);
-  File &operator=(File &&) noexcept;
 
-  virtual FileType fileType() const noexcept;
-  virtual FileCategory fileCategory() const noexcept;
-  virtual FileMeta fileMeta() const noexcept;
+  FileType fileType() const noexcept;
+  FileCategory fileCategory() const noexcept;
+  FileMeta fileMeta() const noexcept;
 
 protected:
   explicit File(std::shared_ptr<common::File>);
@@ -109,10 +104,10 @@ public:
   EncryptionState encryptionState() const;
   bool decrypt(const std::string &password);
 
-  virtual DocumentType documentType() const;
-  virtual DocumentMeta documentMeta() const;
+  DocumentType documentType() const;
+  DocumentMeta documentMeta() const;
 
-  virtual Document document() const;
+  Document document() const;
 
 private:
   explicit DocumentFile(const File &);

@@ -112,16 +112,6 @@ File::File(const std::string &path) : File(OpenStrategy::openFile(path)) {}
 File::File(const std::string &path, FileType as)
     : File(OpenStrategy::openFile(path, as)) {}
 
-File::File(const File &) = default;
-
-File::File(File &&file) noexcept = default;
-
-File::~File() = default;
-
-File &File::operator=(const File &) = default;
-
-File &File::operator=(File &&) noexcept = default;
-
 FileType File::fileType() const noexcept { return m_file->fileMeta().type; }
 
 FileCategory File::fileCategory() const noexcept {

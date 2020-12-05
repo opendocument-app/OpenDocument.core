@@ -82,7 +82,7 @@ class TextDocument final : public Document {
 public:
   PageProperties pageProperties() const;
 
-  ElementSiblingRange content() const;
+  ElementRange content() const;
 
 private:
   std::shared_ptr<common::TextDocument> m_text_document;
@@ -98,7 +98,7 @@ public:
     std::string name;
     std::string notes;
     PageProperties pageProperties;
-    ElementSiblingRange content;
+    ElementRange content;
   };
 
   std::uint32_t slideCount() const;
@@ -137,7 +137,7 @@ public:
   struct Page {
     std::string name;
     PageProperties pageProperties;
-    ElementSiblingRange content;
+    ElementRange content;
   };
 
   std::uint32_t pageCount() const;

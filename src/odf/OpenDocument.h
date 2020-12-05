@@ -49,7 +49,7 @@ public:
 
   PageProperties pageProperties() const final;
 
-  ElementSiblingRange content() const final;
+  ElementRange content() const final;
 };
 
 class OpenDocumentPresentation final : public OpenDocument,
@@ -58,7 +58,7 @@ public:
   explicit OpenDocumentPresentation(
       std::shared_ptr<access::ReadStorage> storage);
 
-  ElementSiblingRange slideContent(std::uint32_t index) const final;
+  ElementRange slideContent(std::uint32_t index) const final;
 };
 
 class OpenDocumentSpreadsheet final : public OpenDocument,
@@ -75,7 +75,7 @@ class OpenDocumentGraphics final : public OpenDocument,
 public:
   explicit OpenDocumentGraphics(std::shared_ptr<access::ReadStorage> storage);
 
-  ElementSiblingRange pageContent(std::uint32_t index) const final;
+  ElementRange pageContent(std::uint32_t index) const final;
 };
 
 } // namespace odf

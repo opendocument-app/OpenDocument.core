@@ -23,7 +23,6 @@ class TableCell;
 } // namespace common
 
 class Element;
-class ElementSiblingRange;
 class TextElement;
 class ParagraphElement;
 class SpanElement;
@@ -36,6 +35,11 @@ class TableElement;
 class TableColumnElement;
 class TableRowElement;
 class TableCellElement;
+template <typename E> class ElementRangeTemplate;
+using ElementRange = ElementRangeTemplate<Element>;
+using TableColumnRange = ElementRangeTemplate<TableColumnElement>;
+using TableRowRange = ElementRangeTemplate<TableRowElement>;
+using TableCellRange = ElementRangeTemplate<TableCellElement>;
 
 enum class ElementType {
   UNKNOWN,
@@ -96,7 +100,7 @@ struct TextProperties {
   std::optional<std::string> backgroundColor;
 };
 
-class Element final {
+class Element {
 public:
   Element();
   explicit Element(std::shared_ptr<const common::Element> impl);
@@ -110,7 +114,7 @@ public:
   Element previousSibling() const;
   Element nextSibling() const;
 
-  ElementSiblingRange children() const;
+  ElementRange children() const;
 
   ElementType type() const;
 
@@ -134,49 +138,47 @@ private:
   std::shared_ptr<const common::Element> m_impl;
 };
 
-class ElementSiblingIterator final {
+template <typename E> class ElementIterator final {
 public:
   using iterator_category = std::forward_iterator_tag;
-  using value_type = Element;
+  using value_type = E;
   using difference_type = std::ptrdiff_t;
-  using pointer = Element *;
-  using reference = Element &;
+  using pointer = E *;
+  using reference = E &;
 
-  explicit ElementSiblingIterator(Element element);
+  explicit ElementIterator(E element);
 
-  ElementSiblingIterator &operator++();
-  ElementSiblingIterator operator++(int) &;
+  ElementIterator<E> &operator++();
+  ElementIterator<E> operator++(int) &;
   reference operator*();
   pointer operator->();
-  bool operator==(const ElementSiblingIterator &rhs) const;
-  bool operator!=(const ElementSiblingIterator &rhs) const;
+  bool operator==(const ElementIterator<E> &rhs) const;
+  bool operator!=(const ElementIterator<E> &rhs) const;
 
 private:
-  Element m_element;
+  E m_element;
 };
 
-class ElementSiblingRange final {
+template <typename E> class ElementRangeTemplate final {
 public:
-  ElementSiblingRange();
-  explicit ElementSiblingRange(Element begin);
-  ElementSiblingRange(Element begin, Element end);
+  ElementRangeTemplate();
+  explicit ElementRangeTemplate(E begin);
+  ElementRangeTemplate(E begin, E end);
 
-  ElementSiblingIterator begin() const;
-  ElementSiblingIterator end() const;
+  ElementIterator<E> begin() const;
+  ElementIterator<E> end() const;
 
-  Element front() const;
+  E front() const;
 
 private:
-  Element m_begin;
-  Element m_end;
+  E m_begin;
+  E m_end;
 };
 
-class TextElement final {
+class TextElement final : public Element {
 public:
   TextElement();
   explicit TextElement(std::shared_ptr<const common::TextElement> impl);
-
-  explicit operator bool() const;
 
   std::string string() const;
 
@@ -184,12 +186,10 @@ private:
   std::shared_ptr<const common::TextElement> m_impl;
 };
 
-class ParagraphElement final {
+class ParagraphElement final : public Element {
 public:
   ParagraphElement();
   explicit ParagraphElement(std::shared_ptr<const common::Paragraph> impl);
-
-  explicit operator bool() const;
 
   ParagraphProperties paragraphProperties() const;
   TextProperties textProperties() const;
@@ -198,12 +198,10 @@ private:
   std::shared_ptr<const common::Paragraph> m_impl;
 };
 
-class SpanElement final {
+class SpanElement final : public Element {
 public:
   SpanElement();
   explicit SpanElement(std::shared_ptr<const common::Span> impl);
-
-  explicit operator bool() const;
 
   TextProperties textProperties() const;
 
@@ -211,12 +209,10 @@ private:
   std::shared_ptr<const common::Span> m_impl;
 };
 
-class LinkElement final {
+class LinkElement final : public Element {
 public:
   LinkElement();
   explicit LinkElement(std::shared_ptr<const common::Link> impl);
-
-  explicit operator bool() const;
 
   TextProperties textProperties() const;
 
@@ -226,12 +222,10 @@ private:
   std::shared_ptr<const common::Link> m_impl;
 };
 
-class BookmarkElement final {
+class BookmarkElement final : public Element {
 public:
   BookmarkElement();
   explicit BookmarkElement(std::shared_ptr<const common::Bookmark> impl);
-
-  explicit operator bool() const;
 
   std::string name() const;
 
@@ -239,78 +233,82 @@ private:
   std::shared_ptr<const common::Bookmark> m_impl;
 };
 
-class ImageElement final {
+class ImageElement final : public Element {
 public:
   ImageElement();
   explicit ImageElement(std::shared_ptr<const common::Image> impl);
-
-  explicit operator bool() const;
 
 private:
   std::shared_ptr<const common::Image> m_impl;
 };
 
-class ListElement final {
+class ListElement final : public Element {
 public:
   ListElement();
   explicit ListElement(std::shared_ptr<const common::List> impl);
-
-  explicit operator bool() const;
 
 private:
   std::shared_ptr<const common::List> m_impl;
 };
 
-class ListItemElement final {
+class ListItemElement final : public Element {
 public:
   ListItemElement();
   explicit ListItemElement(std::shared_ptr<const common::ListItem> impl);
-
-  explicit operator bool() const;
 
 private:
   std::shared_ptr<const common::ListItem> m_impl;
 };
 
-class TableElement final {
+class TableElement final : public Element {
 public:
   TableElement();
   explicit TableElement(std::shared_ptr<const common::Table> impl);
 
-  explicit operator bool() const;
+  TableColumnRange columns() const;
+  TableRowRange rows() const;
 
 private:
   std::shared_ptr<const common::Table> m_impl;
 };
 
-class TableColumnElement final {
+class TableColumnElement final : public Element {
 public:
   TableColumnElement();
   explicit TableColumnElement(std::shared_ptr<const common::TableColumn> impl);
 
-  explicit operator bool() const;
+  TableColumnElement previousSibling() const;
+  TableColumnElement nextSibling() const;
 
 private:
   std::shared_ptr<const common::TableColumn> m_impl;
 };
 
-class TableRowElement final {
+class TableRowElement final : public Element {
 public:
   TableRowElement();
   explicit TableRowElement(std::shared_ptr<const common::TableRow> impl);
 
-  explicit operator bool() const;
+  TableCellElement firstChild() const;
+  TableRowElement previousSibling() const;
+  TableRowElement nextSibling() const;
+
+  TableCellRange cells() const;
 
 private:
   std::shared_ptr<const common::TableRow> m_impl;
 };
 
-class TableCellElement final {
+class TableCellElement final : public Element {
 public:
   TableCellElement();
   explicit TableCellElement(std::shared_ptr<const common::TableCell> impl);
 
-  explicit operator bool() const;
+  TableCellElement previousSibling() const;
+  TableCellElement nextSibling() const;
+
+  std::uint32_t rowSpan() const;
+  std::uint32_t columnSpan() const;
 
 private:
   std::shared_ptr<const common::TableCell> m_impl;

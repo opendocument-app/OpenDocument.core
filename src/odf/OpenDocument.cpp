@@ -481,10 +481,10 @@ PageProperties OpenDocumentText::pageProperties() const {
   return m_styles.defaultPageProperties();
 }
 
-ElementSiblingRange OpenDocumentText::content() const {
+ElementRange OpenDocumentText::content() const {
   const pugi::xml_node body =
       m_contentXml.document_element().child("office:body").child("office:text");
-  return ElementSiblingRange(
+  return ElementRange(
       Element(firstChildImpl(shared_from_this(), nullptr, body)));
 }
 
@@ -492,7 +492,7 @@ OpenDocumentPresentation::OpenDocumentPresentation(
     std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-ElementSiblingRange
+ElementRange
 OpenDocumentPresentation::slideContent(const std::uint32_t index) const {
   // TODO throw if out of bounds
   const pugi::xml_node body = m_contentXml.document_element()
@@ -501,7 +501,7 @@ OpenDocumentPresentation::slideContent(const std::uint32_t index) const {
   std::uint32_t i = 0;
   for (auto &&page : body.children("draw:page")) {
     if (i == index)
-      return ElementSiblingRange(
+      return ElementRange(
           Element(firstChildImpl(shared_from_this(), nullptr, page)));
   }
   return {};
@@ -520,7 +520,7 @@ OpenDocumentGraphics::OpenDocumentGraphics(
     std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-ElementSiblingRange
+ElementRange
 OpenDocumentGraphics::pageContent(const std::uint32_t index) const {
   // TODO throw if out of bounds
   const pugi::xml_node body = m_contentXml.document_element()
@@ -529,7 +529,7 @@ OpenDocumentGraphics::pageContent(const std::uint32_t index) const {
   std::uint32_t i = 0;
   for (auto &&page : body.children("draw:page")) {
     if (i == index)
-      return ElementSiblingRange(
+      return ElementRange(
           Element(firstChildImpl(shared_from_this(), nullptr, page)));
   }
   return {};

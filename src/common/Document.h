@@ -9,8 +9,9 @@ enum class DocumentType;
 struct DocumentMeta;
 struct PageProperties;
 class Element;
-class ElementSiblingRange;
 class TableElement;
+template <typename E> class ElementRangeTemplate;
+using ElementRange = ElementRangeTemplate<Element>;
 
 namespace access {
 class Path;
@@ -37,12 +38,12 @@ class TextDocument : public virtual Document {
 public:
   virtual PageProperties pageProperties() const = 0;
 
-  virtual ElementSiblingRange content() const = 0;
+  virtual ElementRange content() const = 0;
 };
 
 class Presentation : public virtual Document {
 public:
-  virtual ElementSiblingRange slideContent(std::uint32_t index) const = 0;
+  virtual ElementRange slideContent(std::uint32_t index) const = 0;
 };
 
 class Spreadsheet : public virtual Document {
@@ -52,7 +53,7 @@ public:
 
 class Graphics : public virtual Document {
 public:
-  virtual ElementSiblingRange pageContent(std::uint32_t index) const = 0;
+  virtual ElementRange pageContent(std::uint32_t index) const = 0;
 };
 
 } // namespace common

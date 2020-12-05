@@ -12,34 +12,49 @@ namespace {
 void translateElement(Element element, std::ostream &out,
                       const HtmlConfig &config);
 
-std::string translateRectangularProperties(const RectangularProperties &rectangularProperties, const std::string &prefix) {
+std::string translateRectangularProperties(
+    const RectangularProperties &rectangularProperties,
+    const std::string &prefix) {
   std::string result;
-  if (rectangularProperties.top) result += prefix + "top:" + *rectangularProperties.top + ";";
-  if (rectangularProperties.bottom) result += prefix + "bottom:" + *rectangularProperties.bottom + ";";
-  if (rectangularProperties.left) result += prefix + "left:" + *rectangularProperties.left + ";";
-  if (rectangularProperties.right) result += prefix + "right:" + *rectangularProperties.right + ";";
+  if (rectangularProperties.top)
+    result += prefix + "top:" + *rectangularProperties.top + ";";
+  if (rectangularProperties.bottom)
+    result += prefix + "bottom:" + *rectangularProperties.bottom + ";";
+  if (rectangularProperties.left)
+    result += prefix + "left:" + *rectangularProperties.left + ";";
+  if (rectangularProperties.right)
+    result += prefix + "right:" + *rectangularProperties.right + ";";
   return result;
 }
 
-std::string translateParagraphProperties(const ParagraphProperties &paragraphProperties) {
+std::string
+translateParagraphProperties(const ParagraphProperties &paragraphProperties) {
   std::string result;
-  if (paragraphProperties.textAlign) result += "text-align:" + *paragraphProperties.textAlign + ";";
-  result += translateRectangularProperties(paragraphProperties.margin, "margin-");
+  if (paragraphProperties.textAlign)
+    result += "text-align:" + *paragraphProperties.textAlign + ";";
+  result +=
+      translateRectangularProperties(paragraphProperties.margin, "margin-");
   return result;
 }
 
 std::string translateTextProperties(const TextProperties &textProperties) {
   std::string result;
-  if (textProperties.font.font) result += "font-family:" + *textProperties.font.font + ";";
-  if (textProperties.font.size) result += "font-size:" + *textProperties.font.size + ";";
-  if (textProperties.font.weight) result += "font-weight:" + *textProperties.font.weight + ";";
-  if (textProperties.font.style) result += "font-style:" + *textProperties.font.style + ";";
-  if (textProperties.font.color) result += "color:" + *textProperties.font.color + ";";
-  if (textProperties.backgroundColor) result += "background-color:" + *textProperties.backgroundColor + ";";
+  if (textProperties.font.font)
+    result += "font-family:" + *textProperties.font.font + ";";
+  if (textProperties.font.size)
+    result += "font-size:" + *textProperties.font.size + ";";
+  if (textProperties.font.weight)
+    result += "font-weight:" + *textProperties.font.weight + ";";
+  if (textProperties.font.style)
+    result += "font-style:" + *textProperties.font.style + ";";
+  if (textProperties.font.color)
+    result += "color:" + *textProperties.font.color + ";";
+  if (textProperties.backgroundColor)
+    result += "background-color:" + *textProperties.backgroundColor + ";";
   return result;
 }
 
-void translateGeneration(ElementSiblingRange siblings, std::ostream &out,
+void translateGeneration(ElementRange siblings, std::ostream &out,
                          const HtmlConfig &config) {
   for (auto &&e : siblings) {
     translateElement(e, out, config);
@@ -56,7 +71,8 @@ void translateElement(Element element, std::ostream &out,
     out << "<br>";
   } else if (element.type() == ElementType::PARAGRAPH) {
     out << "<p style=\"";
-    out << translateParagraphProperties(element.paragraph().paragraphProperties());
+    out << translateParagraphProperties(
+        element.paragraph().paragraphProperties());
     out << "\">";
     out << "<span style=\"";
     out << translateTextProperties(element.paragraph().textProperties());
@@ -103,10 +119,11 @@ void translateText(TextDocument document, std::ostream &out,
   const auto pageProperties = document.pageProperties();
 
   const std::string outerStyle = "width:" + pageProperties.width + ";";
-  const std::string innerStyle = "margin-top:" + pageProperties.marginTop +
-                            ";margin-left:" + pageProperties.marginLeft +
-                            ";margin-bottom:" + pageProperties.marginBottom +
-                            ";margin-right:" + pageProperties.marginRight + ";";
+  const std::string innerStyle =
+      "margin-top:" + pageProperties.marginTop +
+      ";margin-left:" + pageProperties.marginLeft +
+      ";margin-bottom:" + pageProperties.marginBottom +
+      ";margin-right:" + pageProperties.marginRight + ";";
 
   out << R"(<div style=")" + outerStyle + "\">";
   out << R"(<div style=")" + innerStyle + "\">";

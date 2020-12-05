@@ -49,7 +49,7 @@ PageProperties TextDocument::pageProperties() const {
   return m_text_document->pageProperties();
 }
 
-ElementSiblingRange TextDocument::content() const {
+ElementRange TextDocument::content() const {
   return m_text_document->content();
 }
 
