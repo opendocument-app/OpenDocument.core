@@ -16,6 +16,10 @@ struct UnknownFileType : public std::runtime_error {
   UnknownFileType() : std::runtime_error("unknown file type") {}
 };
 
+struct NoDocumentFile : public std::runtime_error {
+  NoDocumentFile() : std::runtime_error("not a document file") {}
+};
+
 } // namespace odr
 
 #endif // ODR_EXCEPTION_H

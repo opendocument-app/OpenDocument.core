@@ -129,16 +129,16 @@ void translateTable(TableElement element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<table>";
 
-  for (auto &&c : element.columns()) {
+  for (auto &&col : element.columns()) {
     out << "<col>";
     out << "</col>";
   }
 
-  for (auto &&r : element.rows()) {
+  for (auto &&row : element.rows()) {
     out << "<tr>";
-    for (auto &&c : r.cells()) {
+    for (auto &&cell : row.cells()) {
       out << "<td>";
-      translateGeneration(c.children(), out, config);
+      translateGeneration(cell.children(), out, config);
       out << "</td>";
     }
     out << "</tr>";

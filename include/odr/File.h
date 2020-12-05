@@ -10,12 +10,12 @@
 
 namespace odr {
 
+class DocumentFile;
+
 namespace common {
 class File;
 class DocumentFile;
 } // namespace common
-
-class DocumentNoExcept;
 
 enum class FileType {
   UNKNOWN,
@@ -87,10 +87,12 @@ public:
   FileCategory fileCategory() const noexcept;
   FileMeta fileMeta() const noexcept;
 
+  DocumentFile documentFile() const;
+
 protected:
   explicit File(std::shared_ptr<common::File>);
 
-  std::shared_ptr<common::File> m_file;
+  std::shared_ptr<common::File> m_impl;
 };
 
 class DocumentFile : public File {
@@ -110,10 +112,11 @@ public:
   Document document() const;
 
 private:
-  explicit DocumentFile(const File &);
-  explicit DocumentFile(File &&);
+  explicit DocumentFile(std::shared_ptr<common::DocumentFile>);
 
-  common::DocumentFile &impl() const;
+  std::shared_ptr<common::DocumentFile> m_impl;
+
+  friend File;
 };
 
 } // namespace odr

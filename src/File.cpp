@@ -102,8 +102,8 @@ FileType File::type(const std::string &path) { return File(path).fileType(); }
 
 FileMeta File::meta(const std::string &path) { return File(path).fileMeta(); }
 
-File::File(std::shared_ptr<common::File> file) : m_file{std::move(file)} {
-  if (!m_file)
+File::File(std::shared_ptr<common::File> impl) : m_impl{std::move(impl)} {
+  if (!m_impl)
     throw FileNotFound();
 }
 
@@ -112,13 +112,19 @@ File::File(const std::string &path) : File(OpenStrategy::openFile(path)) {}
 File::File(const std::string &path, FileType as)
     : File(OpenStrategy::openFile(path, as)) {}
 
-FileType File::fileType() const noexcept { return m_file->fileMeta().type; }
+FileType File::fileType() const noexcept { return m_impl->fileMeta().type; }
 
 FileCategory File::fileCategory() const noexcept {
   return FileMeta::categoryByType(fileType());
 }
 
-FileMeta File::fileMeta() const noexcept { return m_file->fileMeta(); }
+FileMeta File::fileMeta() const noexcept { return m_impl->fileMeta(); }
+
+DocumentFile File::documentFile() const {
+  auto documentFile = std::dynamic_pointer_cast<common::DocumentFile>(m_impl);
+  if (!documentFile) throw NoDocumentFile();
+  return DocumentFile(documentFile);
+}
 
 FileType DocumentFile::type(const std::string &path) {
   return DocumentFile(path).fileType();
@@ -129,40 +135,30 @@ FileMeta DocumentFile::meta(const std::string &path) {
 }
 
 DocumentFile::DocumentFile(const std::string &path)
-    : File(OpenStrategy::openDocumentFile(path)) {}
+    : DocumentFile(OpenStrategy::openDocumentFile(path)) {}
 
-DocumentFile::DocumentFile(const File &file) : File(file) {
-  // TODO throw if not document file
-}
-
-DocumentFile::DocumentFile(File &&file) : File(std::move(file)) {
-  // TODO throw if not document file
-}
+DocumentFile::DocumentFile(std::shared_ptr<common::DocumentFile> impl) : File(impl), m_impl{std::move(impl)} {}
 
 bool DocumentFile::passwordEncrypted() const {
-  return impl().passwordEncrypted();
+  return m_impl->passwordEncrypted();
 }
 
 EncryptionState DocumentFile::encryptionState() const {
-  return impl().encryptionState();
+  return m_impl->encryptionState();
 }
 
 bool DocumentFile::decrypt(const std::string &password) {
-  return impl().decrypt(password);
+  return m_impl->decrypt(password);
 }
 
 DocumentType DocumentFile::documentType() const {
-  return impl().documentType();
+  return m_impl->documentType();
 }
 
 DocumentMeta DocumentFile::documentMeta() const {
-  return impl().documentMeta();
+  return m_impl->documentMeta();
 }
 
-Document DocumentFile::document() const { return Document(impl().document()); }
-
-common::DocumentFile &DocumentFile::impl() const {
-  return static_cast<common::DocumentFile &>(*m_file);
-}
+Document DocumentFile::document() const { return Document(m_impl->document()); }
 
 } // namespace odr
