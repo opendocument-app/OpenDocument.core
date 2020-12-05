@@ -44,6 +44,26 @@ public:
     return nextSiblingImpl(m_root, m_parent, m_node);
   }
 
+  ParagraphProperties paragraphProperties() const {
+    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
+      auto style = m_root->m_styles.style(styleAttr.value());
+      if (style)
+        return style->resolve().toParagraphProperties();
+      // TODO log
+    }
+    return {};
+  }
+
+  TextProperties textProperties() const {
+    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
+      auto style = m_root->m_styles.style(styleAttr.value());
+      if (style)
+        return style->resolve().toTextProperties();
+      // TODO log
+    }
+    return {};
+  }
+
 protected:
   const std::shared_ptr<const OpenDocument> m_root;
   const std::shared_ptr<const OdfElement> m_parent;
@@ -94,23 +114,11 @@ public:
       : OdfElement(std::move(root), std::move(parent), node) {}
 
   ParagraphProperties paragraphProperties() const final {
-    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
-      auto style = m_root->m_styles.style(styleAttr.value());
-      if (style)
-        return style->resolve().toParagraphProperties();
-      // TODO log
-    }
-    return {};
+    return OdfElement::paragraphProperties();
   }
 
   TextProperties textProperties() const final {
-    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
-      auto style = m_root->m_styles.style(styleAttr.value());
-      if (style)
-        return style->resolve().toTextProperties();
-      // TODO log
-    }
-    return {};
+    return OdfElement::textProperties();
   }
 };
 
@@ -121,13 +129,7 @@ public:
       : OdfElement(std::move(root), std::move(parent), node) {}
 
   TextProperties textProperties() const final {
-    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
-      auto style = m_root->m_styles.style(styleAttr.value());
-      if (style)
-        return style->resolve().toTextProperties();
-      // TODO log
-    }
-    return {};
+    return OdfElement::textProperties();
   }
 };
 
@@ -138,13 +140,7 @@ public:
       : OdfElement(std::move(root), std::move(parent), node) {}
 
   TextProperties textProperties() const final {
-    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
-      auto style = m_root->m_styles.style(styleAttr.value());
-      if (style)
-        return style->resolve().toTextProperties();
-      // TODO log
-    }
-    return {};
+    return OdfElement::textProperties();
   }
 
   std::string href() const final {
@@ -224,8 +220,6 @@ convert(std::shared_ptr<const OpenDocument> root,
 }
 
 bool isSkipper(pugi::xml_node node) {
-  // TODO this method should be removed and UNKOWN elements should be created
-  // instead
   const std::string element = node.name();
 
   if (element == "office:forms")

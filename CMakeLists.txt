@@ -50,15 +50,12 @@ add_library(odr-object OBJECT
 
         src/crypto/CryptoUtil.cpp
 
-        src/odf/Common.cpp
-        src/odf/ContentTranslator.cpp
         src/odf/Crypto.cpp
         src/odf/Manifest.cpp
         src/odf/Meta.cpp
         src/odf/OpenDocument.cpp
         src/odf/OpenDocumentFile.cpp
         src/odf/Styles.cpp
-        src/odf/StyleTranslator.cpp
 
         src/oldms/LegacyMicrosoftFile.cpp
 

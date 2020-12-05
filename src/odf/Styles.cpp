@@ -58,7 +58,8 @@ ResolvedStyle Style::resolve() const {
     result = m_parent->resolve();
 
   // TODO some property nodes have children e.g. <style:paragraph-properties>
-  // TODO some properties use relative measures of their parent's properties e.g. fo:font-size
+  // TODO some properties use relative measures of their parent's properties
+  // e.g. fo:font-size
 
   attributesToMap(m_styleNode.child("style:paragraph-properties"),
                   result.paragraphProperties);
