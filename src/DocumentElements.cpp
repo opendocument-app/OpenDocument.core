@@ -90,8 +90,24 @@ ListElement Element::list() const {
   return ListElement(std::dynamic_pointer_cast<const common::List>(m_impl));
 }
 
+ListItemElement Element::listItem() const {
+  return ListItemElement(std::dynamic_pointer_cast<const common::ListItem>(m_impl));
+}
+
 TableElement Element::table() const {
   return TableElement(std::dynamic_pointer_cast<const common::Table>(m_impl));
+}
+
+TableColumnElement Element::tableColumn() const {
+  return TableColumnElement(std::dynamic_pointer_cast<const common::TableColumn>(m_impl));
+}
+
+TableRowElement Element::tableRow() const {
+  return TableRowElement(std::dynamic_pointer_cast<const common::TableRow>(m_impl));
+}
+
+TableCellElement Element::tableCell() const {
+  return TableCellElement(std::dynamic_pointer_cast<const common::TableCell>(m_impl));
 }
 
 ElementSiblingIterator::ElementSiblingIterator(Element element)
@@ -121,6 +137,8 @@ bool ElementSiblingIterator::operator!=(
     const ElementSiblingIterator &rhs) const {
   return m_element != rhs.m_element;
 }
+
+ElementSiblingRange::ElementSiblingRange() : ElementSiblingRange({}, {}) {}
 
 ElementSiblingRange::ElementSiblingRange(Element begin)
     : ElementSiblingRange(std::move(begin), {}) {}
@@ -195,17 +213,24 @@ std::string BookmarkElement::name() const { return m_impl->name(); }
 
 ImageElement::ImageElement() = default;
 
-ImageElement::ImageElement(std::shared_ptr<const common::Element> impl)
+ImageElement::ImageElement(std::shared_ptr<const common::Image> impl)
     : m_impl{std::move(impl)} {}
 
 ImageElement::operator bool() const { return m_impl.operator bool(); }
 
 ListElement::ListElement() = default;
 
-ListElement::ListElement(std::shared_ptr<const common::Element> impl)
+ListElement::ListElement(std::shared_ptr<const common::List> impl)
     : m_impl{std::move(impl)} {}
 
 ListElement::operator bool() const { return m_impl.operator bool(); }
+
+ListItemElement::ListItemElement() = default;
+
+ListItemElement::ListItemElement(std::shared_ptr<const common::ListItem> impl)
+    : m_impl{std::move(impl)} {}
+
+ListItemElement::operator bool() const { return m_impl.operator bool(); }
 
 TableElement::TableElement() = default;
 
@@ -213,5 +238,26 @@ TableElement::TableElement(std::shared_ptr<const common::Table> impl)
     : m_impl{std::move(impl)} {}
 
 TableElement::operator bool() const { return m_impl.operator bool(); }
+
+TableColumnElement::TableColumnElement() = default;
+
+TableColumnElement::TableColumnElement(std::shared_ptr<const common::TableColumn> impl)
+    : m_impl{std::move(impl)} {}
+
+TableColumnElement::operator bool() const { return m_impl.operator bool(); }
+
+TableRowElement::TableRowElement() = default;
+
+TableRowElement::TableRowElement(std::shared_ptr<const common::TableRow> impl)
+    : m_impl{std::move(impl)} {}
+
+TableRowElement::operator bool() const { return m_impl.operator bool(); }
+
+TableCellElement::TableCellElement() = default;
+
+TableCellElement::TableCellElement(std::shared_ptr<const common::TableCell> impl)
+    : m_impl{std::move(impl)} {}
+
+TableCellElement::operator bool() const { return m_impl.operator bool(); }
 
 } // namespace odr

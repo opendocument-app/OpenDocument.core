@@ -13,7 +13,13 @@ class Paragraph;
 class Span;
 class Link;
 class Bookmark;
+class Image;
+class List;
+class ListItem;
 class Table;
+class TableColumn;
+class TableRow;
+class TableCell;
 } // namespace common
 
 class Element;
@@ -25,7 +31,11 @@ class LinkElement;
 class BookmarkElement;
 class ImageElement;
 class ListElement;
+class ListItemElement;
 class TableElement;
+class TableColumnElement;
+class TableRowElement;
+class TableCellElement;
 
 enum class ElementType {
   UNKNOWN,
@@ -38,7 +48,11 @@ enum class ElementType {
   BOOKMARK,
   IMAGE,
   LIST,
+  LIST_ITEM,
   TABLE,
+  TABLE_COLUMN,
+  TABLE_ROW,
+  TABLE_CELL,
 };
 
 struct FontProperties {
@@ -110,7 +124,11 @@ public:
   BookmarkElement bookmark() const;
   ImageElement image() const;
   ListElement list() const;
+  ListItemElement listItem() const;
   TableElement table() const;
+  TableColumnElement tableColumn() const;
+  TableRowElement tableRow() const;
+  TableCellElement tableCell() const;
 
 private:
   std::shared_ptr<const common::Element> m_impl;
@@ -139,6 +157,7 @@ private:
 
 class ElementSiblingRange final {
 public:
+  ElementSiblingRange();
   explicit ElementSiblingRange(Element begin);
   ElementSiblingRange(Element begin, Element end);
 
@@ -223,23 +242,34 @@ private:
 class ImageElement final {
 public:
   ImageElement();
-  explicit ImageElement(std::shared_ptr<const common::Element> impl);
+  explicit ImageElement(std::shared_ptr<const common::Image> impl);
 
   explicit operator bool() const;
 
 private:
-  std::shared_ptr<const common::Element> m_impl;
+  std::shared_ptr<const common::Image> m_impl;
 };
 
 class ListElement final {
 public:
   ListElement();
-  explicit ListElement(std::shared_ptr<const common::Element> impl);
+  explicit ListElement(std::shared_ptr<const common::List> impl);
 
   explicit operator bool() const;
 
 private:
-  std::shared_ptr<const common::Element> m_impl;
+  std::shared_ptr<const common::List> m_impl;
+};
+
+class ListItemElement final {
+public:
+  ListItemElement();
+  explicit ListItemElement(std::shared_ptr<const common::ListItem> impl);
+
+  explicit operator bool() const;
+
+private:
+  std::shared_ptr<const common::ListItem> m_impl;
 };
 
 class TableElement final {
@@ -251,6 +281,39 @@ public:
 
 private:
   std::shared_ptr<const common::Table> m_impl;
+};
+
+class TableColumnElement final {
+public:
+  TableColumnElement();
+  explicit TableColumnElement(std::shared_ptr<const common::TableColumn> impl);
+
+  explicit operator bool() const;
+
+private:
+  std::shared_ptr<const common::TableColumn> m_impl;
+};
+
+class TableRowElement final {
+public:
+  TableRowElement();
+  explicit TableRowElement(std::shared_ptr<const common::TableRow> impl);
+
+  explicit operator bool() const;
+
+private:
+  std::shared_ptr<const common::TableRow> m_impl;
+};
+
+class TableCellElement final {
+public:
+  TableCellElement();
+  explicit TableCellElement(std::shared_ptr<const common::TableCell> impl);
+
+  explicit operator bool() const;
+
+private:
+  std::shared_ptr<const common::TableCell> m_impl;
 };
 
 } // namespace odr

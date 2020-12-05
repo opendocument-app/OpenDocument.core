@@ -85,6 +85,14 @@ void translateElement(Element element, std::ostream &out,
     out << "<a id=\"";
     out << element.bookmark().name();
     out << "\"></a>";
+  } else if (element.type() == ElementType::LIST) {
+    out << "<ul>";
+    translateGeneration(element.children(), out, config);
+    out << "</ul>";
+  } else if (element.type() == ElementType::LIST_ITEM) {
+    out << "<li>";
+    translateGeneration(element.children(), out, config);
+    out << "</li>";
   } else {
     // TODO log
   }

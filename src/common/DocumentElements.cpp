@@ -18,6 +18,14 @@ ElementType Image::type() const { return ElementType::IMAGE; }
 
 ElementType List::type() const { return ElementType::LIST; }
 
+ElementType ListItem::type() const { return ElementType::LIST_ITEM; }
+
 ElementType Table::type() const { return ElementType::TABLE; }
+
+ElementType TableColumn::type() const { return ElementType::TABLE_COLUMN; }
+
+ElementType TableRow::type() const { return ElementType::TABLE_ROW; }
+
+ElementType TableCell::type() const { return ElementType::TABLE_CELL; }
 
 } // namespace odr::common

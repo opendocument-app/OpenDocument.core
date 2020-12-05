@@ -8,11 +8,14 @@ namespace odr {
 enum class ElementType;
 enum class DocumentType;
 struct PageProperties;
-class Element;
 struct ParagraphProperties;
 struct TextProperties;
 
 namespace common {
+
+class TableColumn;
+class TableRow;
+class TableCell;
 
 class Element {
 public:
@@ -74,15 +77,40 @@ public:
   ElementType type() const final;
 };
 
+class ListItem : public virtual Element {
+public:
+  ElementType type() const final;
+};
+
 class Table : public virtual Element {
 public:
   ElementType type() const final;
 
-  virtual std::uint32_t rows() const = 0;
-  virtual std::uint32_t columns() const = 0;
+  virtual std::uint32_t rowCount() const = 0;
+  virtual std::uint32_t columnCount() const = 0;
 
-  virtual std::shared_ptr<Element>
-  firstContentElement(std::uint32_t row, std::uint32_t column) const = 0;
+  virtual std::shared_ptr<const TableColumn> firstColumn() const = 0;
+  virtual std::shared_ptr<const TableRow> firstRow() const = 0;
+};
+
+class TableColumn : public virtual Element {
+public:
+  ElementType type() const final;
+};
+
+class TableRow : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual std::shared_ptr<const TableCell> firstCell() const = 0;
+};
+
+class TableCell : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual std::uint32_t rowSpan() const = 0;
+  virtual std::uint32_t columnSpan() const = 0;
 };
 
 } // namespace common
