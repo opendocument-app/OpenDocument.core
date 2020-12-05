@@ -12,6 +12,8 @@ ElementType Span::type() const { return ElementType::SPAN; }
 
 ElementType Link::type() const { return ElementType::LINK; }
 
+ElementType Bookmark::type() const { return ElementType::BOOKMARK; }
+
 ElementType Image::type() const { return ElementType::IMAGE; }
 
 ElementType List::type() const { return ElementType::LIST; }

@@ -11,6 +11,8 @@ class Element;
 class TextElement;
 class Paragraph;
 class Span;
+class Link;
+class Bookmark;
 class Table;
 } // namespace common
 
@@ -20,6 +22,7 @@ class TextElement;
 class ParagraphElement;
 class SpanElement;
 class LinkElement;
+class BookmarkElement;
 class ImageElement;
 class ListElement;
 class TableElement;
@@ -32,6 +35,7 @@ enum class ElementType {
   PARAGRAPH,
   SPAN,
   LINK,
+  BOOKMARK,
   IMAGE,
   LIST,
   TABLE,
@@ -103,6 +107,7 @@ public:
   ParagraphElement paragraph() const;
   SpanElement span() const;
   LinkElement link() const;
+  BookmarkElement bookmark() const;
   ImageElement image() const;
   ListElement list() const;
   TableElement table() const;
@@ -190,12 +195,29 @@ private:
 class LinkElement final {
 public:
   LinkElement();
-  explicit LinkElement(std::shared_ptr<const common::Element> impl);
+  explicit LinkElement(std::shared_ptr<const common::Link> impl);
 
   explicit operator bool() const;
 
+  TextProperties textProperties() const;
+
+  std::string href() const;
+
 private:
-  std::shared_ptr<const common::Element> m_impl;
+  std::shared_ptr<const common::Link> m_impl;
+};
+
+class BookmarkElement final {
+public:
+  BookmarkElement();
+  explicit BookmarkElement(std::shared_ptr<const common::Bookmark> impl);
+
+  explicit operator bool() const;
+
+  std::string name() const;
+
+private:
+  std::shared_ptr<const common::Bookmark> m_impl;
 };
 
 class ImageElement final {

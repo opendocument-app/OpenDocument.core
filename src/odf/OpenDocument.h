@@ -18,6 +18,7 @@ namespace {
 class OdfElement;
 class OdfParagraph;
 class OdfSpan;
+class OdfLink;
 } // namespace
 
 class OpenDocument : public virtual common::Document,
@@ -44,6 +45,7 @@ protected:
   friend OdfElement;
   friend OdfParagraph;
   friend OdfSpan;
+  friend OdfLink;
 };
 
 class OpenDocumentText final : public OpenDocument,

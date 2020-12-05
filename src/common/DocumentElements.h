@@ -51,6 +51,17 @@ public:
 class Link : public virtual Element {
 public:
   ElementType type() const final;
+
+  virtual TextProperties textProperties() const = 0;
+
+  virtual std::string href() const = 0;
+};
+
+class Bookmark : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual std::string name() const = 0;
 };
 
 class Image : public virtual Element {

@@ -194,6 +194,7 @@ std::shared_ptr<Style> Styles::generateDefaultStyle(const std::string &name,
                                                     pugi::xml_node node) {
   if (auto it = m_defaultStyles.find(name); it != m_defaultStyles.end())
     return it->second;
+
   return m_defaultStyles[name] = std::make_shared<Style>(nullptr, node);
 }
 
@@ -201,7 +202,9 @@ std::shared_ptr<Style> Styles::generateStyle(const std::string &name,
                                              pugi::xml_node node) {
   if (auto styleIt = m_styles.find(name); styleIt != m_styles.end())
     return styleIt->second;
+
   std::shared_ptr<Style> parent;
+
   if (auto parentAttr = node.attribute("style:parent-style-name"); parentAttr) {
     if (auto parentStyleIt = m_indexStyle.find(parentAttr.value());
         parentStyleIt != m_indexStyle.end())
@@ -214,6 +217,7 @@ std::shared_ptr<Style> Styles::generateStyle(const std::string &name,
       parent = generateDefaultStyle(parentAttr.value(), familyStyleIt->second);
     // TODO else throw or log?
   }
+
   return m_styles[name] = std::make_shared<Style>(parent, node);
 }
 

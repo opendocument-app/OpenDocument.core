@@ -78,6 +78,10 @@ LinkElement Element::link() const {
   return LinkElement(std::dynamic_pointer_cast<const common::Link>(m_impl));
 }
 
+BookmarkElement Element::bookmark() const {
+  return BookmarkElement(std::dynamic_pointer_cast<const common::Bookmark>(m_impl));
+}
+
 ImageElement Element::image() const {
   return ImageElement(std::dynamic_pointer_cast<const common::Image>(m_impl));
 }
@@ -172,10 +176,22 @@ TextProperties SpanElement::textProperties() const {
 
 LinkElement::LinkElement() = default;
 
-LinkElement::LinkElement(std::shared_ptr<const common::Element> impl)
+LinkElement::LinkElement(std::shared_ptr<const common::Link> impl)
     : m_impl{std::move(impl)} {}
 
 LinkElement::operator bool() const { return m_impl.operator bool(); }
+
+TextProperties LinkElement::textProperties() const { return m_impl->textProperties(); }
+
+std::string LinkElement::href() const { return m_impl->href(); }
+
+BookmarkElement::BookmarkElement() = default;
+
+BookmarkElement::BookmarkElement(std::shared_ptr<const common::Bookmark> impl) : m_impl{std::move(impl)} {}
+
+BookmarkElement::operator bool() const { return m_impl.operator bool(); }
+
+std::string BookmarkElement::name() const { return m_impl->name(); }
 
 ImageElement::ImageElement() = default;
 

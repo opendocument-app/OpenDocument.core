@@ -73,6 +73,18 @@ void translateElement(Element element, std::ostream &out,
     out << "\">";
     translateGeneration(element.children(), out, config);
     out << "</span>";
+  } else if (element.type() == ElementType::LINK) {
+    out << "<a style=\"";
+    out << translateTextProperties(element.link().textProperties());
+    out << "\" href=\"";
+    out << element.link().href();
+    out << "\">";
+    translateGeneration(element.children(), out, config);
+    out << "</a>";
+  } else if (element.type() == ElementType::BOOKMARK) {
+    out << "<a id=\"";
+    out << element.bookmark().name();
+    out << "\"></a>";
   } else {
     // TODO log
   }

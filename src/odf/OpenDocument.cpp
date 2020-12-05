@@ -63,7 +63,7 @@ private:
   const ElementType m_type;
 };
 
-class OdfTextElement : public OdfElement, public common::TextElement {
+class OdfTextElement final : public OdfElement, public common::TextElement {
 public:
   OdfTextElement(std::shared_ptr<const OpenDocument> root,
                  std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
@@ -87,7 +87,7 @@ public:
   }
 };
 
-class OdfParagraph : public OdfElement, public common::Paragraph {
+class OdfParagraph final : public OdfElement, public common::Paragraph {
 public:
   OdfParagraph(std::shared_ptr<const OpenDocument> root,
                std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
@@ -114,7 +114,7 @@ public:
   }
 };
 
-class OdfSpan : public OdfElement, public common::Span {
+class OdfSpan final : public OdfElement, public common::Span {
 public:
   OdfSpan(std::shared_ptr<const OpenDocument> root,
           std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
@@ -128,6 +128,53 @@ public:
       // TODO log
     }
     return {};
+  }
+};
+
+class OdfLink final : public OdfElement, public common::Link {
+public:
+  OdfLink(std::shared_ptr<const OpenDocument> root,
+          std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
+      : OdfElement(std::move(root), std::move(parent), node) {}
+
+  TextProperties textProperties() const final {
+    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
+      auto style = m_root->m_styles.style(styleAttr.value());
+      if (style)
+        return style->resolve().toTextProperties();
+      // TODO log
+    }
+    return {};
+  }
+
+  std::string href() const final {
+    return m_node.attribute("xlink:href").value();
+  }
+};
+
+class OdfTableOfContent final : public OdfElement {
+public:
+  OdfTableOfContent(std::shared_ptr<const OpenDocument> root,
+                    std::shared_ptr<const OdfElement> parent,
+                    pugi::xml_node node)
+      : OdfElement(std::move(root), std::move(parent), node) {}
+
+  ElementType type() const final { return ElementType::UNKNOWN; }
+
+  std::shared_ptr<const Element> firstChild() const override {
+    return firstChildImpl(m_root, shared_from_this(),
+                          m_node.child("text:index-body"));
+  }
+};
+
+class OdfBookmark final : public OdfElement, public common::Bookmark {
+public:
+  OdfBookmark(std::shared_ptr<const OpenDocument> root,
+              std::shared_ptr<const OdfElement> parent, pugi::xml_node node)
+      : OdfElement(std::move(root), std::move(parent), node) {}
+
+  std::string name() const final {
+    return m_node.attribute("text:name").value();
   }
 };
 
@@ -152,10 +199,16 @@ convert(std::shared_ptr<const OpenDocument> root,
     else if (element == "text:line-break")
       return std::make_shared<OdfPrimitive>(std::move(root), std::move(parent),
                                             node, ElementType::LINE_BREAK);
-    // else if (element == "text:a")
-    //  LinkTranslator(in, out, context);
-    // else if (element == "text:bookmark" || element == "text:bookmark-start")
-    //  BookmarkTranslator(in, out, context);
+    else if (element == "text:a")
+      return std::make_shared<OdfLink>(std::move(root), std::move(parent),
+                                       node);
+    else if (element == "text:table-of-content")
+      return std::make_shared<OdfTableOfContent>(std::move(root),
+                                                 std::move(parent), node);
+    else if (element == "text:bookmark" || element == "text:bookmark-start")
+      return std::make_shared<OdfBookmark>(std::move(root), std::move(parent),
+                                           node);
+
     // else if (element == "draw:frame" || element == "draw:custom-shape")
     //  FrameTranslator(in, out, context);
     // else if (element == "draw:image")
@@ -171,11 +224,15 @@ convert(std::shared_ptr<const OpenDocument> root,
 }
 
 bool isSkipper(pugi::xml_node node) {
+  // TODO this method should be removed and UNKOWN elements should be created
+  // instead
   const std::string element = node.name();
 
   if (element == "office:forms")
     return true;
   if (element == "text:sequence-decls")
+    return true;
+  if (element == "text:bookmark-end")
     return true;
 
   return false;
@@ -207,7 +264,7 @@ previousSiblingImpl(std::shared_ptr<const OpenDocument> root,
 std::shared_ptr<common::Element>
 nextSiblingImpl(std::shared_ptr<const OpenDocument> root,
                 std::shared_ptr<const OdfElement> parent, pugi::xml_node node) {
-  for (auto &&s = node.next_sibling(); s; s = node.next_sibling()) {
+  for (auto &&s = node.next_sibling(); s; s = s.next_sibling()) {
     if (isSkipper(s))
       continue;
     return convert(std::move(root), std::move(parent), s);
