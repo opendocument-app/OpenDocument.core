@@ -3,7 +3,7 @@
 
 #include <common/Document.h>
 #include <memory>
-#include <odf/Style.h>
+#include <odf/Styles.h>
 #include <odr/Document.h>
 #include <pugixml.hpp>
 
@@ -18,7 +18,7 @@ namespace {
 class OdfElement;
 class OdfParagraph;
 class OdfSpan;
-}
+} // namespace
 
 class OpenDocument : public virtual common::Document,
                      public std::enable_shared_from_this<OpenDocument> {
@@ -37,8 +37,9 @@ public:
 protected:
   std::shared_ptr<access::ReadStorage> m_storage;
   DocumentMeta m_document_meta;
-  pugi::xml_document m_content;
-  Style m_style;
+  pugi::xml_document m_contentXml;
+  pugi::xml_document m_stylesXml;
+  Styles m_styles;
 
   friend OdfElement;
   friend OdfParagraph;

@@ -3,6 +3,14 @@
 
 namespace odr {
 
+FontProperties::operator bool() const {
+  return font || size || weight || style || color;
+}
+
+RectangularProperties::operator bool() const {
+  return top || bottom || left || right;
+}
+
 Element::Element() = default;
 
 Element::Element(std::shared_ptr<const common::Element> impl)

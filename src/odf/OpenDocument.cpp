@@ -94,14 +94,22 @@ public:
       : OdfElement(std::move(root), std::move(parent), node) {}
 
   ParagraphProperties paragraphProperties() const final {
-    if (auto style = m_node.attribute("text:style-name"); style)
-      return m_root->m_style.paragraphProperties(style.value());
+    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
+      auto style = m_root->m_styles.style(styleAttr.value());
+      if (style)
+        return style->resolve().toParagraphProperties();
+      // TODO log
+    }
     return {};
   }
 
   TextProperties textProperties() const final {
-    if (auto style = m_node.attribute("text:style-name"); style)
-      return m_root->m_style.textProperties(style.value());
+    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
+      auto style = m_root->m_styles.style(styleAttr.value());
+      if (style)
+        return style->resolve().toTextProperties();
+      // TODO log
+    }
     return {};
   }
 };
@@ -113,9 +121,13 @@ public:
       : OdfElement(std::move(root), std::move(parent), node) {}
 
   TextProperties textProperties() const final {
-    if (auto style = m_node.attribute("text:style-name"); style)
-      return m_root->m_style.textProperties(style.value());
-    return {}; // TODO optional?
+    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
+      auto style = m_root->m_styles.style(styleAttr.value());
+      if (style)
+        return style->resolve().toTextProperties();
+      // TODO log
+    }
+    return {};
   }
 };
 
@@ -206,19 +218,19 @@ nextSiblingImpl(std::shared_ptr<const OpenDocument> root,
 
 OpenDocument::OpenDocument(std::shared_ptr<access::ReadStorage> storage)
     : m_storage{std::move(storage)} {
-  m_content = common::XmlUtil::parse(*m_storage, "content.xml");
+  m_contentXml = common::XmlUtil::parse(*m_storage, "content.xml");
 
   if (!m_storage->isFile("meta.xml")) {
     auto meta = common::XmlUtil::parse(*m_storage, "meta.xml");
-    m_document_meta = parseDocumentMeta(&meta, m_content);
+    m_document_meta = parseDocumentMeta(&meta, m_contentXml);
   } else {
-    m_document_meta = parseDocumentMeta(nullptr, m_content);
+    m_document_meta = parseDocumentMeta(nullptr, m_contentXml);
   }
 
-  pugi::xml_document styles;
   if (m_storage->isFile("styles.xml"))
-    styles = common::XmlUtil::parse(*m_storage, "styles.xml");
-  m_style = Style(std::move(styles), m_content.document_element());
+    m_stylesXml = common::XmlUtil::parse(*m_storage, "styles.xml");
+  m_styles =
+      Styles(m_stylesXml.document_element(), m_contentXml.document_element());
 }
 
 bool OpenDocument::editable() const noexcept { return true; }
@@ -256,7 +268,7 @@ void OpenDocument::save(const access::Path &path) const {
     const auto in = m_storage->read(p);
     const auto out = writer.write(p);
     if (p == "content.xml") {
-      m_content.print(*out);
+      m_contentXml.print(*out);
       return;
     }
     access::StreamUtil::pipe(*in, *out);
@@ -272,14 +284,14 @@ OpenDocumentText::OpenDocumentText(std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 PageProperties OpenDocumentText::pageProperties() const {
-  return m_style.defaultPageProperties();
+  return m_styles.defaultPageProperties();
 }
 
 ElementSiblingRange OpenDocumentText::content() const {
-  const pugi::xml_node body = m_content.child("office:document-content")
-                                  .child("office:body")
-                                  .child("office:text");
-  return ElementSiblingRange(Element(firstChildImpl(shared_from_this(), nullptr, body)));
+  const pugi::xml_node body =
+      m_contentXml.document_element().child("office:body").child("office:text");
+  return ElementSiblingRange(
+      Element(firstChildImpl(shared_from_this(), nullptr, body)));
 }
 
 OpenDocumentPresentation::OpenDocumentPresentation(

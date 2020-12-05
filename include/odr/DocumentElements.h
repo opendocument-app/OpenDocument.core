@@ -38,11 +38,13 @@ enum class ElementType {
 };
 
 struct FontProperties {
-  std::string font;
-  std::string size;
-  std::string weight;
-  std::string style;
-  std::string color;
+  std::optional<std::string> font;
+  std::optional<std::string> size;
+  std::optional<std::string> weight;
+  std::optional<std::string> style;
+  std::optional<std::string> color;
+
+  explicit operator bool() const;
 };
 
 struct RectangularProperties {
@@ -50,6 +52,8 @@ struct RectangularProperties {
   std::optional<std::string> bottom;
   std::optional<std::string> left;
   std::optional<std::string> right;
+
+  explicit operator bool() const;
 };
 
 struct ContainerProperties {
@@ -60,17 +64,18 @@ struct ContainerProperties {
   RectangularProperties padding;
   RectangularProperties border;
 
-  std::string horizontalAlign;
-  std::string verticalAlign;
+  std::optional<std::string> horizontalAlign;
+  std::optional<std::string> verticalAlign;
 };
 
 struct ParagraphProperties {
-  std::string textAlign;
+  std::optional<std::string> textAlign;
+  RectangularProperties margin;
 };
 
 struct TextProperties {
   FontProperties font;
-  std::string backgroundColor;
+  std::optional<std::string> backgroundColor;
 };
 
 class Element final {
