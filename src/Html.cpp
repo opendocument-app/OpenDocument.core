@@ -225,7 +225,7 @@ void Html::translate(Document document, const std::string &path,
   out << "<html><head>";
   out << common::Html::defaultHeaders();
   out << "<style>";
-  out << common::Html::odfDefaultStyle();
+  out << common::Html::defaultStyle();
   out << "</style>";
   out << "</head>";
 
@@ -243,8 +243,6 @@ void Html::translate(Document document, const std::string &path,
   out << common::Html::defaultScript();
   out << "</script>";
   out << "</html>";
-
-  // TODO throw unknown document
 }
 
 void Html::edit(Document document, const std::string &diff) {}
