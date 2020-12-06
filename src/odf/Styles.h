@@ -10,6 +10,10 @@ namespace odr {
 struct PageProperties;
 struct ParagraphProperties;
 struct TextProperties;
+struct TableProperties;
+struct TableColumnProperties;
+struct TableRowProperties;
+struct TableCellProperties;
 } // namespace odr
 
 namespace odr::odf {
@@ -29,6 +33,10 @@ struct ResolvedStyle {
 
   ParagraphProperties toParagraphProperties() const;
   TextProperties toTextProperties() const;
+  TableProperties toTableProperties() const;
+  TableColumnProperties toTableColumnProperties() const;
+  TableRowProperties toTableRowProperties() const;
+  TableCellProperties toTableCellProperties() const;
 };
 
 class Style final {

@@ -100,6 +100,24 @@ struct TextProperties {
   std::optional<std::string> backgroundColor;
 };
 
+struct TableProperties {
+  std::optional<std::string> width;
+};
+
+struct TableColumnProperties {
+  std::optional<std::string> width;
+};
+
+struct TableRowProperties {
+};
+
+struct TableCellProperties {
+  std::optional<std::string> padding;
+  RectangularProperties paddingRect;
+  std::optional<std::string> border;
+  RectangularProperties borderRect;
+};
+
 class Element {
 public:
   Element();
@@ -268,6 +286,8 @@ public:
   TableColumnRange columns() const;
   TableRowRange rows() const;
 
+  TableProperties tableProperties() const;
+
 private:
   std::shared_ptr<const common::Table> m_impl;
 };
@@ -279,6 +299,8 @@ public:
 
   TableColumnElement previousSibling() const;
   TableColumnElement nextSibling() const;
+
+  TableColumnProperties tableColumnProperties() const;
 
 private:
   std::shared_ptr<const common::TableColumn> m_impl;
@@ -295,6 +317,8 @@ public:
 
   TableCellRange cells() const;
 
+  TableRowProperties tableRowProperties() const;
+
 private:
   std::shared_ptr<const common::TableRow> m_impl;
 };
@@ -309,6 +333,8 @@ public:
 
   std::uint32_t rowSpan() const;
   std::uint32_t columnSpan() const;
+
+  TableCellProperties tableCellProperties() const;
 
 private:
   std::shared_ptr<const common::TableCell> m_impl;

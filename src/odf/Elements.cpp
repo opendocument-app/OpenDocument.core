@@ -3,6 +3,8 @@
 
 namespace odr::odf {
 
+// TODO possible refactor for table impl: use an internal table iterator to retrieve columns, rows and cells
+
 namespace {
 template <typename E, typename... Args>
 std::shared_ptr<E> factorizeKnownElement(pugi::xml_node node, Args... args) {
@@ -211,6 +213,16 @@ std::shared_ptr<const common::TableRow> OdfTable::firstRow() const {
       std::static_pointer_cast<const OdfTable>(shared_from_this()));
 }
 
+TableProperties OdfTable::tableProperties() const {
+  if (auto styleAttr = m_node.attribute("table:style-name"); styleAttr) {
+    auto style = m_document->styles().style(styleAttr.value());
+    if (style)
+      return style->resolve().toTableProperties();
+    // TODO log
+  }
+  return {};
+}
+
 OdfTableColumn::OdfTableColumn(std::shared_ptr<const OpenDocument> document,
                                std::shared_ptr<const OdfTable> table,
                                pugi::xml_node node)
@@ -220,11 +232,7 @@ OdfTableColumn::OdfTableColumn(const OdfTableColumn &column,
                                const std::uint32_t repeatIndex)
     : OdfElement(column), m_repeatIndex{repeatIndex} {}
 
-std::shared_ptr<const common::Element> OdfTableColumn::firstChild() const {
-  return {};
-}
-
-std::shared_ptr<const common::Element> OdfTableColumn::previousSibling() const {
+std::shared_ptr<const OdfTableColumn> OdfTableColumn::previousColumn() const {
   if (m_repeatIndex > 0) {
     return std::make_shared<OdfTableColumn>(*this, m_repeatIndex - 1);
   }
@@ -233,7 +241,7 @@ std::shared_ptr<const common::Element> OdfTableColumn::previousSibling() const {
       m_node.previous_sibling("table:table-column"), m_document, m_table);
 }
 
-std::shared_ptr<const common::Element> OdfTableColumn::nextSibling() const {
+std::shared_ptr<const OdfTableColumn> OdfTableColumn::nextColumn() const {
   const auto repeated =
       m_node.attribute("table:number-columns-repeated").as_uint(1);
   if (m_repeatIndex < repeated - 1) {
@@ -242,6 +250,28 @@ std::shared_ptr<const common::Element> OdfTableColumn::nextSibling() const {
 
   return factorizeKnownElement<OdfTableColumn>(
       m_node.next_sibling("table:table-column"), m_document, m_table);
+}
+
+std::shared_ptr<const common::Element> OdfTableColumn::firstChild() const {
+  return {};
+}
+
+std::shared_ptr<const common::Element> OdfTableColumn::previousSibling() const {
+  return previousColumn();
+}
+
+std::shared_ptr<const common::Element> OdfTableColumn::nextSibling() const {
+  return nextColumn();
+}
+
+TableColumnProperties OdfTableColumn::tableColumnProperties() const {
+  if (auto styleAttr = m_node.attribute("table:style-name"); styleAttr) {
+    auto style = m_document->styles().style(styleAttr.value());
+    if (style)
+      return style->resolve().toTableColumnProperties();
+    // TODO log
+  }
+  return {};
 }
 
 OdfTableRow::OdfTableRow(const OdfTableRow &row,
@@ -253,14 +283,14 @@ OdfTableRow::OdfTableRow(std::shared_ptr<const OpenDocument> document,
                          pugi::xml_node node)
     : OdfElement(std::move(document), table, node), m_table{std::move(table)} {}
 
-std::shared_ptr<const common::Element> OdfTableRow::firstChild() const {
+std::shared_ptr<const OdfTableCell> OdfTableRow::firstCell() const {
   return factorizeKnownElement<OdfTableCell>(
       m_node.child("table:table-cell"), m_document,
       std::static_pointer_cast<const OdfTableRow>(shared_from_this()),
       std::static_pointer_cast<const OdfTableColumn>(m_table->firstColumn()));
 }
 
-std::shared_ptr<const common::Element> OdfTableRow::previousSibling() const {
+std::shared_ptr<const OdfTableRow> OdfTableRow::previousRow() const {
   if (m_repeatIndex > 0) {
     return std::make_shared<OdfTableRow>(*this, m_repeatIndex - 1);
   }
@@ -269,7 +299,7 @@ std::shared_ptr<const common::Element> OdfTableRow::previousSibling() const {
       m_node.previous_sibling("table:table-row"), m_document, m_table);
 }
 
-std::shared_ptr<const common::Element> OdfTableRow::nextSibling() const {
+std::shared_ptr<const OdfTableRow> OdfTableRow::nextRow() const {
   const auto repeated =
       m_node.attribute("table:number-rows-repeated").as_uint(1);
   if (m_repeatIndex < repeated - 1) {
@@ -278,6 +308,28 @@ std::shared_ptr<const common::Element> OdfTableRow::nextSibling() const {
 
   return factorizeKnownElement<OdfTableRow>(
       m_node.next_sibling("table:table-row"), m_document, m_table);
+}
+
+std::shared_ptr<const common::Element> OdfTableRow::firstChild() const {
+  return firstCell();
+}
+
+std::shared_ptr<const common::Element> OdfTableRow::previousSibling() const {
+  return previousRow();
+}
+
+std::shared_ptr<const common::Element> OdfTableRow::nextSibling() const {
+  return nextRow();
+}
+
+TableRowProperties OdfTableRow::tableRowProperties() const {
+  if (auto styleAttr = m_node.attribute("table:style-name"); styleAttr) {
+    auto style = m_document->styles().style(styleAttr.value());
+    if (style)
+      return style->resolve().toTableRowProperties();
+    // TODO log
+  }
+  return {};
 }
 
 OdfTableCell::OdfTableCell(const OdfTableCell &cell, std::uint32_t repeatIndex)
@@ -290,16 +342,17 @@ OdfTableCell::OdfTableCell(std::shared_ptr<const OpenDocument> document,
     : OdfElement(std::move(document), row, node), m_row{std::move(row)},
       m_column(std::move(column)) {}
 
-std::shared_ptr<const common::Element> OdfTableCell::previousSibling() const {
+std::shared_ptr<const OdfTableCell> OdfTableCell::previousCell() const {
   if (m_repeatIndex > 0) {
     return std::make_shared<OdfTableCell>(*this, m_repeatIndex - 1);
   }
 
   return factorizeKnownElement<OdfTableCell>(
-      m_node.previous_sibling("table:table-cell"), m_document, m_row, m_column);
+      m_node.previous_sibling("table:table-cell"), m_document, m_row,
+      m_column->previousColumn());
 }
 
-std::shared_ptr<const common::Element> OdfTableCell::nextSibling() const {
+std::shared_ptr<const OdfTableCell> OdfTableCell::nextCell() const {
   const auto repeated =
       m_node.attribute("table:number-columns-repeated").as_uint(1);
   if (m_repeatIndex < repeated - 1) {
@@ -307,7 +360,16 @@ std::shared_ptr<const common::Element> OdfTableCell::nextSibling() const {
   }
 
   return factorizeKnownElement<OdfTableCell>(
-      m_node.next_sibling("table:table-cell"), m_document, m_row, m_column);
+      m_node.next_sibling("table:table-cell"), m_document, m_row,
+      m_column->nextColumn());
+}
+
+std::shared_ptr<const common::Element> OdfTableCell::previousSibling() const {
+  return previousCell();
+}
+
+std::shared_ptr<const common::Element> OdfTableCell::nextSibling() const {
+  return nextCell();
 }
 
 std::uint32_t OdfTableCell::rowSpan() const {
@@ -316,6 +378,16 @@ std::uint32_t OdfTableCell::rowSpan() const {
 
 std::uint32_t OdfTableCell::columnSpan() const {
   return m_node.attribute("table:number-columns-spanned").as_uint(1);
+}
+
+TableCellProperties OdfTableCell::tableCellProperties() const {
+  if (auto styleAttr = m_node.attribute("table:style-name"); styleAttr) {
+    auto style = m_document->styles().style(styleAttr.value());
+    if (style)
+      return style->resolve().toTableCellProperties();
+    // TODO log
+  }
+  return {};
 }
 
 std::shared_ptr<common::Element>

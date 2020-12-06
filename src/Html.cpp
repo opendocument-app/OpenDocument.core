@@ -12,49 +12,81 @@ namespace {
 void translateElement(Element element, std::ostream &out,
                       const HtmlConfig &config);
 void translateList(ListElement element, std::ostream &out,
-                    const HtmlConfig &config);
+                   const HtmlConfig &config);
 void translateTable(TableElement element, std::ostream &out,
                     const HtmlConfig &config);
 
-std::string translateRectangularProperties(
-    const RectangularProperties &rectangularProperties,
-    const std::string &prefix) {
+std::string
+translateRectangularProperties(const RectangularProperties &properties,
+                               const std::string &prefix) {
   std::string result;
-  if (rectangularProperties.top)
-    result += prefix + "top:" + *rectangularProperties.top + ";";
-  if (rectangularProperties.bottom)
-    result += prefix + "bottom:" + *rectangularProperties.bottom + ";";
-  if (rectangularProperties.left)
-    result += prefix + "left:" + *rectangularProperties.left + ";";
-  if (rectangularProperties.right)
-    result += prefix + "right:" + *rectangularProperties.right + ";";
+  if (properties.top)
+    result += prefix + "top:" + *properties.top + ";";
+  if (properties.bottom)
+    result += prefix + "bottom:" + *properties.bottom + ";";
+  if (properties.left)
+    result += prefix + "left:" + *properties.left + ";";
+  if (properties.right)
+    result += prefix + "right:" + *properties.right + ";";
   return result;
 }
 
 std::string
-translateParagraphProperties(const ParagraphProperties &paragraphProperties) {
+translateParagraphProperties(const ParagraphProperties &properties) {
   std::string result;
-  if (paragraphProperties.textAlign)
-    result += "text-align:" + *paragraphProperties.textAlign + ";";
-  result +=
-      translateRectangularProperties(paragraphProperties.margin, "margin-");
+  if (properties.textAlign)
+    result += "text-align:" + *properties.textAlign + ";";
+  result += translateRectangularProperties(properties.margin, "margin-");
   return result;
 }
 
-std::string translateTextProperties(const TextProperties &textProperties) {
+std::string translateTextProperties(const TextProperties &properties) {
   std::string result;
-  if (textProperties.font.font)
-    result += "font-family:" + *textProperties.font.font + ";";
-  if (textProperties.font.size)
-    result += "font-size:" + *textProperties.font.size + ";";
-  if (textProperties.font.weight)
-    result += "font-weight:" + *textProperties.font.weight + ";";
-  if (textProperties.font.style)
-    result += "font-style:" + *textProperties.font.style + ";";
-  if (textProperties.font.color)
-    result += "color:" + *textProperties.font.color + ";";
-  if (textProperties.backgroundColor)
-    result += "background-color:" + *textProperties.backgroundColor + ";";
+  if (properties.font.font)
+    result += "font-family:" + *properties.font.font + ";";
+  if (properties.font.size)
+    result += "font-size:" + *properties.font.size + ";";
+  if (properties.font.weight)
+    result += "font-weight:" + *properties.font.weight + ";";
+  if (properties.font.style)
+    result += "font-style:" + *properties.font.style + ";";
+  if (properties.font.color)
+    result += "color:" + *properties.font.color + ";";
+  if (properties.backgroundColor)
+    result += "background-color:" + *properties.backgroundColor + ";";
+  return result;
+}
+
+std::string translateTableProperties(const TableProperties &properties) {
+  std::string result;
+  if (properties.width)
+    result += "width:" + *properties.width + ";";
+  return result;
+}
+
+std::string
+translateTableColumnProperties(const TableColumnProperties &properties) {
+  std::string result;
+  if (properties.width)
+    result += "width:" + *properties.width + ";";
+  return result;
+}
+
+std::string translateTableRowProperties(const TableRowProperties &properties) {
+  std::string result;
+  // TODO
+  return result;
+}
+
+std::string
+translateTableCellProperties(const TableCellProperties &properties) {
+  std::string result;
+  if (properties.padding)
+    result += "padding:" + *properties.padding + ";";
+  result += translateRectangularProperties(properties.paddingRect, "padding-");
+  if (properties.border)
+    result += "border:" + *properties.border + ";";
+  result += translateRectangularProperties(properties.borderRect, "border-");
   return result;
 }
 
@@ -127,17 +159,25 @@ void translateList(ListElement element, std::ostream &out,
 
 void translateTable(TableElement element, std::ostream &out,
                     const HtmlConfig &config) {
-  out << "<table>";
+  out << "<table style=\"";
+  out << translateTableProperties(element.tableProperties());
+  out << R"(" cellpadding="0" border="0" cellspacing="0")";
+  out << ">";
 
   for (auto &&col : element.columns()) {
-    out << "<col>";
-    out << "</col>";
+    out << "<col style=\"";
+    out << translateTableColumnProperties(col.tableColumnProperties());
+    out << "\">";
   }
 
   for (auto &&row : element.rows()) {
-    out << "<tr>";
+    out << "<tr style=\"";
+    out << translateTableRowProperties(row.tableRowProperties());
+    out << "\">";
     for (auto &&cell : row.cells()) {
-      out << "<td>";
+      out << "<td style=\"";
+      out << translateTableCellProperties(cell.tableCellProperties());
+      out << "\">";
       translateGeneration(cell.children(), out, config);
       out << "</td>";
     }

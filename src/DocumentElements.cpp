@@ -253,6 +253,10 @@ TableRowRange TableElement::rows() const {
   return TableRowRange(TableRowElement(m_impl->firstRow()));
 }
 
+TableProperties TableElement::tableProperties() const {
+  return m_impl->tableProperties();
+}
+
 TableColumnElement::TableColumnElement() = default;
 
 TableColumnElement::TableColumnElement(
@@ -265,6 +269,10 @@ TableColumnElement TableColumnElement::previousSibling() const {
 
 TableColumnElement TableColumnElement::nextSibling() const {
   return Element::nextSibling().tableColumn();
+}
+
+TableColumnProperties TableColumnElement::tableColumnProperties() const {
+  return m_impl->tableColumnProperties();
 }
 
 TableRowElement::TableRowElement() = default;
@@ -288,6 +296,10 @@ TableCellRange TableRowElement::cells() const {
   return TableCellRange(firstChild());
 }
 
+TableRowProperties TableRowElement::tableRowProperties() const {
+  return m_impl->tableRowProperties();
+}
+
 TableCellElement::TableCellElement() = default;
 
 TableCellElement::TableCellElement(
@@ -306,6 +318,10 @@ std::uint32_t TableCellElement::rowSpan() const { return m_impl->rowSpan(); }
 
 std::uint32_t TableCellElement::columnSpan() const {
   return m_impl->columnSpan();
+}
+
+TableCellProperties TableCellElement::tableCellProperties() const {
+  return m_impl->tableCellProperties();
 }
 
 } // namespace odr

@@ -10,6 +10,10 @@ enum class DocumentType;
 struct PageProperties;
 struct ParagraphProperties;
 struct TextProperties;
+struct TableProperties;
+struct TableColumnProperties;
+struct TableRowProperties;
+struct TableCellProperties;
 
 namespace common {
 
@@ -94,16 +98,22 @@ public:
 
   virtual std::shared_ptr<const TableColumn> firstColumn() const = 0;
   virtual std::shared_ptr<const TableRow> firstRow() const = 0;
+
+  virtual TableProperties tableProperties() const = 0;
 };
 
 class TableColumn : public virtual Element {
 public:
   ElementType type() const final;
+
+  virtual TableColumnProperties tableColumnProperties() const = 0;
 };
 
 class TableRow : public virtual Element {
 public:
   ElementType type() const final;
+
+  virtual TableRowProperties tableRowProperties() const = 0;
 };
 
 class TableCell : public virtual Element {
@@ -112,6 +122,8 @@ public:
 
   virtual std::uint32_t rowSpan() const = 0;
   virtual std::uint32_t columnSpan() const = 0;
+
+  virtual TableCellProperties tableCellProperties() const = 0;
 };
 
 } // namespace common

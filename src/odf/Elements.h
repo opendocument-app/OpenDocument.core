@@ -8,6 +8,7 @@
 namespace odr::odf {
 class OpenDocument;
 class OdfTableRow;
+class OdfTableCell;
 
 std::shared_ptr<common::Element>
 factorizeElement(std::shared_ptr<const OpenDocument> document,
@@ -137,6 +138,8 @@ public:
   std::shared_ptr<const common::Element> firstChild() const final;
   std::shared_ptr<const common::TableColumn> firstColumn() const final;
   std::shared_ptr<const common::TableRow> firstRow() const final;
+
+  TableProperties tableProperties() const final;
 };
 
 class OdfTableColumn final : public OdfElement, public common::TableColumn {
@@ -145,9 +148,14 @@ public:
                  std::shared_ptr<const OdfTable> table, pugi::xml_node node);
   OdfTableColumn(const OdfTableColumn &column, std::uint32_t repeatIndex);
 
+  std::shared_ptr<const OdfTableColumn> previousColumn() const;
+  std::shared_ptr<const OdfTableColumn> nextColumn() const;
+
   std::shared_ptr<const common::Element> firstChild() const final;
   std::shared_ptr<const common::Element> previousSibling() const final;
   std::shared_ptr<const common::Element> nextSibling() const final;
+
+  TableColumnProperties tableColumnProperties() const final;
 
 private:
   std::shared_ptr<const OdfTable> m_table;
@@ -160,9 +168,15 @@ public:
   OdfTableRow(std::shared_ptr<const OpenDocument> document,
               std::shared_ptr<const OdfTable> table, pugi::xml_node node);
 
+  std::shared_ptr<const OdfTableCell> firstCell() const;
+  std::shared_ptr<const OdfTableRow> previousRow() const;
+  std::shared_ptr<const OdfTableRow> nextRow() const;
+
   std::shared_ptr<const common::Element> firstChild() const final;
   std::shared_ptr<const common::Element> previousSibling() const final;
   std::shared_ptr<const common::Element> nextSibling() const final;
+
+  TableRowProperties tableRowProperties() const final;
 
 private:
   std::shared_ptr<const OdfTable> m_table;
@@ -180,8 +194,13 @@ public:
   std::uint32_t rowSpan() const final;
   std::uint32_t columnSpan() const final;
 
+  std::shared_ptr<const OdfTableCell> previousCell() const;
+  std::shared_ptr<const OdfTableCell> nextCell() const;
+
   std::shared_ptr<const common::Element> previousSibling() const final;
   std::shared_ptr<const common::Element> nextSibling() const final;
+
+  TableCellProperties tableCellProperties() const final;
 
 private:
   std::shared_ptr<const OdfTableRow> m_row;

@@ -20,16 +20,24 @@ lookup(const std::unordered_map<std::string, std::string> &map,
     return {};
   return it->second;
 }
+
+RectangularProperties
+lookupRect(const std::unordered_map<std::string, std::string> &map,
+       const std::string &attributePrefix) {
+  RectangularProperties result;
+  result.top = lookup(map, attributePrefix + "top");
+  result.bottom = lookup(map, attributePrefix + "bottom");
+  result.left = lookup(map, attributePrefix + "left");
+  result.right = lookup(map, attributePrefix + "right");
+  return result;
+}
 } // namespace
 
 ParagraphProperties ResolvedStyle::toParagraphProperties() const {
   ParagraphProperties result;
 
   result.textAlign = lookup(paragraphProperties, "fo:text-align");
-  result.margin.top = lookup(paragraphProperties, "fo:margin-top");
-  result.margin.bottom = lookup(paragraphProperties, "fo:margin-bottom");
-  result.margin.left = lookup(paragraphProperties, "fo:margin-left");
-  result.margin.right = lookup(paragraphProperties, "fo:margin-right");
+  result.margin = lookupRect(paragraphProperties, "fo:margin-");
 
   return result;
 }
@@ -44,6 +52,41 @@ TextProperties ResolvedStyle::toTextProperties() const {
   result.font.color = lookup(textProperties, "fo:color");
 
   result.backgroundColor = lookup(textProperties, "fo:background-color");
+
+  return result;
+}
+
+TableProperties ResolvedStyle::toTableProperties() const {
+  TableProperties result;
+
+  result.width = lookup(tableProperties, "style:width");
+
+  return result;
+}
+
+TableColumnProperties ResolvedStyle::toTableColumnProperties() const {
+  TableColumnProperties result;
+
+  result.width = lookup(tableColumnProperties, "style:column-width");
+
+  return result;
+}
+
+TableRowProperties ResolvedStyle::toTableRowProperties() const {
+  TableRowProperties result;
+
+  // TODO
+
+  return result;
+}
+
+TableCellProperties ResolvedStyle::toTableCellProperties() const {
+  TableCellProperties result;
+
+  result.padding = lookup(tableCellProperties, "fo:padding");
+  result.paddingRect = lookupRect(tableCellProperties, "fo:padding-");
+  result.border = lookup(tableCellProperties, "fo:border");
+  result.borderRect = lookupRect(tableCellProperties, "fo:border-");
 
   return result;
 }
