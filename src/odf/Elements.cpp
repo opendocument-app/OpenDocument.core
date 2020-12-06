@@ -4,6 +4,7 @@
 namespace odr::odf {
 
 // TODO possible refactor for table impl: use an internal table iterator to retrieve columns, rows and cells
+// there was an implementation https://github.com/opendocument-app/OpenDocument.core/blob/1c30b9ed01fad491cc9ba6356f5ec6e49562eebe/common/include/common/TableCursor.h
 
 namespace {
 template <typename E, typename... Args>

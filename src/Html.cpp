@@ -202,6 +202,21 @@ void translateTextDocument(TextDocument document, std::ostream &out,
   out << "</div>";
   out << "</div>";
 }
+
+void translatePresentation(Presentation document, std::ostream &out,
+                           const HtmlConfig &config) {
+  // TODO
+}
+
+void translateSpreadsheet(Spreadsheet document, std::ostream &out,
+                           const HtmlConfig &config) {
+  // TODO
+}
+
+void translateGraphics(Graphics document, std::ostream &out,
+                           const HtmlConfig &config) {
+  // TODO
+}
 } // namespace
 
 HtmlConfig Html::parseConfig(const std::string &path) {
@@ -231,6 +246,12 @@ void Html::translate(Document document, const std::string &path,
 
   if (document.documentType() == DocumentType::TEXT) {
     translateTextDocument(document.textDocument(), out, config);
+  } else if (document.documentType() == DocumentType::PRESENTATION) {
+    translatePresentation(document.presentation(), out, config);
+  } else if (document.documentType() == DocumentType::SPREADSHEET) {
+    translateSpreadsheet(document.spreadsheet(), out, config);
+  } else if (document.documentType() == DocumentType::GRAPHICS) {
+    translateGraphics(document.graphics(), out, config);
   } else {
     // TODO throw?
   }
