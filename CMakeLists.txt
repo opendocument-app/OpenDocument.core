@@ -51,6 +51,7 @@ add_library(odr-object OBJECT
         src/crypto/CryptoUtil.cpp
 
         src/odf/Crypto.cpp
+        src/odf/Elements.cpp
         src/odf/Manifest.cpp
         src/odf/Meta.cpp
         src/odf/OpenDocument.cpp

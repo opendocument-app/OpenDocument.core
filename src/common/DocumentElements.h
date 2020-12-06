@@ -70,6 +70,9 @@ public:
 class Image : public virtual Element {
 public:
   ElementType type() const final;
+
+  virtual std::optional<std::string> url() const = 0;
+  virtual std::unique_ptr<std::istream> data() const = 0;
 };
 
 class List : public virtual Element {

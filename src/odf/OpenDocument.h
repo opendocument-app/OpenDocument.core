@@ -14,10 +14,6 @@ class ReadStorage;
 
 namespace odf {
 
-namespace {
-class OdfElement;
-} // namespace
-
 class OpenDocument : public virtual common::Document,
                      public std::enable_shared_from_this<OpenDocument> {
 public:
@@ -29,6 +25,8 @@ public:
   DocumentType documentType() const noexcept final;
   DocumentMeta documentMeta() const noexcept final;
 
+  const Styles &styles() const noexcept;
+
   void save(const access::Path &path) const final;
   void save(const access::Path &path, const std::string &password) const final;
 
@@ -38,8 +36,6 @@ protected:
   pugi::xml_document m_contentXml;
   pugi::xml_document m_stylesXml;
   Styles m_styles;
-
-  friend OdfElement;
 };
 
 class OpenDocumentText final : public OpenDocument,
