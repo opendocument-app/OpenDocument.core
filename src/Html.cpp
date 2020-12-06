@@ -9,12 +9,10 @@
 namespace odr {
 
 namespace {
+void translateGeneration(ElementRange siblings, std::ostream &out,
+                         const HtmlConfig &config);
 void translateElement(Element element, std::ostream &out,
                       const HtmlConfig &config);
-void translateList(ListElement element, std::ostream &out,
-                   const HtmlConfig &config);
-void translateTable(TableElement element, std::ostream &out,
-                    const HtmlConfig &config);
 
 std::string
 translateRectangularProperties(const RectangularProperties &properties,
@@ -90,6 +88,47 @@ translateTableCellProperties(const TableCellProperties &properties) {
   return result;
 }
 
+void translateList(ListElement element, std::ostream &out,
+                   const HtmlConfig &config) {
+  out << "<ul>";
+  for (auto &&i : element.children()) {
+    out << "<li>";
+    translateGeneration(i.children(), out, config);
+    out << "</li>";
+  }
+  out << "</ul>";
+}
+
+void translateTable(TableElement element, std::ostream &out,
+                    const HtmlConfig &config) {
+  out << "<table style=\"";
+  out << translateTableProperties(element.tableProperties());
+  out << R"(" cellpadding="0" border="0" cellspacing="0")";
+  out << ">";
+
+  for (auto &&col : element.columns()) {
+    out << "<col style=\"";
+    out << translateTableColumnProperties(col.tableColumnProperties());
+    out << "\">";
+  }
+
+  for (auto &&row : element.rows()) {
+    out << "<tr style=\"";
+    out << translateTableRowProperties(row.tableRowProperties());
+    out << "\">";
+    for (auto &&cell : row.cells()) {
+      out << "<td style=\"";
+      out << translateTableCellProperties(cell.tableCellProperties());
+      out << "\">";
+      translateGeneration(cell.children(), out, config);
+      out << "</td>";
+    }
+    out << "</tr>";
+  }
+
+  out << "</table>";
+}
+
 void translateGeneration(ElementRange siblings, std::ostream &out,
                          const HtmlConfig &config) {
   for (auto &&e : siblings) {
@@ -146,48 +185,7 @@ void translateElement(Element element, std::ostream &out,
   }
 }
 
-void translateList(ListElement element, std::ostream &out,
-                   const HtmlConfig &config) {
-  out << "<ul>";
-  for (auto &&i : element.children()) {
-    out << "<li>";
-    translateGeneration(i.children(), out, config);
-    out << "</li>";
-  }
-  out << "</ul>";
-}
-
-void translateTable(TableElement element, std::ostream &out,
-                    const HtmlConfig &config) {
-  out << "<table style=\"";
-  out << translateTableProperties(element.tableProperties());
-  out << R"(" cellpadding="0" border="0" cellspacing="0")";
-  out << ">";
-
-  for (auto &&col : element.columns()) {
-    out << "<col style=\"";
-    out << translateTableColumnProperties(col.tableColumnProperties());
-    out << "\">";
-  }
-
-  for (auto &&row : element.rows()) {
-    out << "<tr style=\"";
-    out << translateTableRowProperties(row.tableRowProperties());
-    out << "\">";
-    for (auto &&cell : row.cells()) {
-      out << "<td style=\"";
-      out << translateTableCellProperties(cell.tableCellProperties());
-      out << "\">";
-      translateGeneration(cell.children(), out, config);
-      out << "</td>";
-    }
-    out << "</tr>";
-  }
-
-  out << "</table>";
-}
-
-void translateText(TextDocument document, std::ostream &out,
+void translateTextDocument(TextDocument document, std::ostream &out,
                    const HtmlConfig &config) {
   const auto pageProperties = document.pageProperties();
 
@@ -232,7 +230,7 @@ void Html::translate(Document document, const std::string &path,
   out << "<body " << common::Html::bodyAttributes(config) << ">";
 
   if (document.documentType() == DocumentType::TEXT) {
-    translateText(document.textDocument(), out, config);
+    translateTextDocument(document.textDocument(), out, config);
   } else {
     // TODO throw?
   }
