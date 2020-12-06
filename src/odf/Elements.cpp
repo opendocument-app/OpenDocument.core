@@ -1,146 +1,15 @@
 #include <odf/Elements.h>
-#include <common/DocumentElements.h>
-#include <pugixml.hpp>
 #include <odf/OpenDocument.h>
 
 namespace odr::odf {
 
 namespace {
-class OdfElement;
-
-template <typename E, typename ...Args>
-std::shared_ptr<E> knownElementImpl(pugi::xml_node node, Args ...args) {
+template <typename E, typename... Args>
+std::shared_ptr<E> factorizeKnownElement(pugi::xml_node node, Args... args) {
   if (!node)
     return {};
   return std::make_shared<E>(std::forward<Args>(args)..., node);
 }
-
-class OdfElement : public virtual common::Element,
-                   public std::enable_shared_from_this<OdfElement> {
-public:
-  OdfElement(std::shared_ptr<const OpenDocument> document,
-             std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : m_document{std::move(document)}, m_parent{std::move(parent)}, m_node{node} {}
-
-  std::shared_ptr<const common::Element> parent() const override {
-    return m_parent;
-  }
-
-  std::shared_ptr<const common::Element> firstChild() const override {
-    return factorizeFirstChild(m_document, shared_from_this(), m_node);
-  }
-
-  std::shared_ptr<const common::Element> previousSibling() const override {
-    return factorizePreviousSibling(m_document, m_parent, m_node);
-  }
-
-  std::shared_ptr<const common::Element> nextSibling() const override {
-    return factorizeNextSibling(m_document, m_parent, m_node);
-  }
-
-  ParagraphProperties paragraphProperties() const {
-    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
-      auto style = m_document->styles().style(styleAttr.value());
-      if (style)
-        return style->resolve().toParagraphProperties();
-      // TODO log
-    }
-    return {};
-  }
-
-  TextProperties textProperties() const {
-    if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
-      auto style = m_document->styles().style(styleAttr.value());
-      if (style)
-        return style->resolve().toTextProperties();
-      // TODO log
-    }
-    return {};
-  }
-
-protected:
-  const std::shared_ptr<const OpenDocument> m_document;
-  const std::shared_ptr<const common::Element> m_parent;
-  const pugi::xml_node m_node;
-};
-
-class OdfPrimitive final : public OdfElement {
-public:
-  OdfPrimitive(std::shared_ptr<const OpenDocument> document,
-               std::shared_ptr<const common::Element> parent, pugi::xml_node node,
-               const ElementType type)
-      : OdfElement(std::move(document), std::move(parent), node), m_type{type} {}
-
-  ElementType type() const final { return m_type; }
-
-private:
-  const ElementType m_type;
-};
-
-class OdfTextElement final : public OdfElement, public common::TextElement {
-public:
-  OdfTextElement(std::shared_ptr<const OpenDocument> document,
-                 std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  std::string text() const override {
-    if (m_node.type() == pugi::node_pcdata) {
-      return m_node.text().as_string();
-    }
-
-    const std::string element = m_node.name();
-    if (element == "text:s") {
-      const auto count = m_node.attribute("text:c").as_uint(1);
-      return std::string(count, ' ');
-    } else if (element == "text:tab") {
-      return "\t";
-    }
-
-    // TODO this should never happen. log or throw?
-    return "";
-  }
-};
-
-class OdfParagraph final : public OdfElement, public common::Paragraph {
-public:
-  OdfParagraph(std::shared_ptr<const OpenDocument> document,
-               std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  ParagraphProperties paragraphProperties() const final {
-    return OdfElement::paragraphProperties();
-  }
-
-  TextProperties textProperties() const final {
-    return OdfElement::textProperties();
-  }
-};
-
-class OdfSpan final : public OdfElement, public common::Span {
-public:
-  OdfSpan(std::shared_ptr<const OpenDocument> document,
-          std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  TextProperties textProperties() const final {
-    return OdfElement::textProperties();
-  }
-};
-
-class OdfLink final : public OdfElement, public common::Link {
-public:
-  OdfLink(std::shared_ptr<const OpenDocument> document,
-          std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  TextProperties textProperties() const final {
-    return OdfElement::textProperties();
-  }
-
-  std::string href() const final {
-    return m_node.attribute("xlink:href").value();
-  }
-};
 
 class OdfTableOfContent final : public OdfElement {
 public:
@@ -157,146 +26,6 @@ public:
   }
 };
 
-class OdfBookmark final : public OdfElement, public common::Bookmark {
-public:
-  OdfBookmark(std::shared_ptr<const OpenDocument> document,
-              std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  std::string name() const final {
-    return m_node.attribute("text:name").value();
-  }
-};
-
-class OdfListItem final : public OdfElement, public common::ListItem {
-public:
-  OdfListItem(std::shared_ptr<const OpenDocument> document,
-              std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  std::shared_ptr<const common::Element> previousSibling() const final {
-    return knownElementImpl<OdfListItem>(
-        m_node.previous_sibling("text:list-item"),
-        m_document, shared_from_this());
-  }
-
-  std::shared_ptr<const common::Element> nextSibling() const final {
-    return knownElementImpl<OdfListItem>(m_node.next_sibling("text:list-item"),
-                                         m_document, shared_from_this());
-  }
-};
-
-class OdfList final : public OdfElement, public common::List {
-public:
-  OdfList(std::shared_ptr<const OpenDocument> document,
-          std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  std::shared_ptr<const common::Element> firstChild() const final {
-    return knownElementImpl<OdfListItem>(m_node.child("text:list-item"),
-                                         m_document, shared_from_this());
-  }
-};
-
-class OdfTableColumn final : public OdfElement, public common::TableColumn {
-public:
-  OdfTableColumn(std::shared_ptr<const OpenDocument> document,
-                 std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  std::shared_ptr<const common::Element> firstChild() const final { return {}; }
-
-  std::shared_ptr<const common::Element> previousSibling() const final {
-    return knownElementImpl<OdfListItem>(
-        m_node.previous_sibling("table:table-column"),
-        m_document, shared_from_this());
-  }
-
-  std::shared_ptr<const common::Element> nextSibling() const final {
-    return knownElementImpl<OdfListItem>(
-        m_node.next_sibling("table:table-column"),
-        m_document, shared_from_this());
-  }
-};
-
-class OdfTableCell final : public OdfElement, public common::TableCell {
-public:
-  OdfTableCell(std::shared_ptr<const OpenDocument> document,
-               std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  std::shared_ptr<const common::Element> previousSibling() const final {
-    return knownElementImpl<OdfTableCell>(
-        m_node.previous_sibling("table:table-cell"),
-        m_document, shared_from_this());
-  }
-
-  std::shared_ptr<const common::Element> nextSibling() const final {
-    return knownElementImpl<OdfTableCell>(
-        m_node.next_sibling("table:table-cell"),
-        m_document, shared_from_this());
-  }
-
-  std::uint32_t rowSpan() const final {
-    return m_node.attribute("table:number-rows-spanned").as_uint(1);
-  }
-
-  std::uint32_t columnSpan() const final {
-    return m_node.attribute("table:number-columns-spanned").as_uint(1);
-  }
-};
-
-class OdfTableRow final : public OdfElement, public common::TableRow {
-public:
-  OdfTableRow(std::shared_ptr<const OpenDocument> document,
-              std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  std::shared_ptr<const common::Element> firstChild() const final {
-    return knownElementImpl<OdfTableCell>(m_node.child("table:table-cell"),
-                                          m_document, shared_from_this());
-  }
-
-  std::shared_ptr<const common::Element> previousSibling() const final {
-    return knownElementImpl<OdfTableRow>(
-        m_node.previous_sibling("table:table-row"),
-        m_document, shared_from_this());
-  }
-
-  std::shared_ptr<const common::Element> nextSibling() const final {
-    return knownElementImpl<OdfTableRow>(
-        m_node.next_sibling("table:table-row"),
-        m_document, shared_from_this());
-  }
-};
-
-class OdfTable final : public OdfElement, public common::Table {
-public:
-  OdfTable(std::shared_ptr<const OpenDocument> document,
-           std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-      : OdfElement(std::move(document), std::move(parent), node) {}
-
-  std::uint32_t rowCount() const final {
-    return 0; // TODO
-  }
-
-  std::uint32_t columnCount() const final {
-    return 0; // TODO
-  }
-
-  std::shared_ptr<const common::Element> firstChild() const final { return {}; }
-
-  std::shared_ptr<const common::TableColumn> firstColumn() const final {
-    return knownElementImpl<OdfTableColumn>(m_node.child("table:table-column"),
-                                            m_document, shared_from_this());
-  }
-
-  std::shared_ptr<const common::TableRow> firstRow() const final {
-    return knownElementImpl<OdfTableRow>(m_node.child("table:table-row"),
-                                         m_document, shared_from_this());
-  }
-};
-
 bool isSkipper(pugi::xml_node node) {
   // TODO this method should be removed at some point
   const std::string element = node.name();
@@ -310,6 +39,283 @@ bool isSkipper(pugi::xml_node node) {
 
   return false;
 }
+} // namespace
+
+OdfElement::OdfElement(std::shared_ptr<const OpenDocument> document,
+                       std::shared_ptr<const common::Element> parent,
+                       pugi::xml_node node)
+    : m_document{std::move(document)}, m_parent{std::move(parent)}, m_node{
+                                                                        node} {}
+
+std::shared_ptr<const common::Element> OdfElement::parent() const {
+  return m_parent;
+}
+
+std::shared_ptr<const common::Element> OdfElement::firstChild() const {
+  return factorizeFirstChild(m_document, shared_from_this(), m_node);
+}
+
+std::shared_ptr<const common::Element> OdfElement::previousSibling() const {
+  return factorizePreviousSibling(m_document, m_parent, m_node);
+}
+
+std::shared_ptr<const common::Element> OdfElement::nextSibling() const {
+  return factorizeNextSibling(m_document, m_parent, m_node);
+}
+
+ParagraphProperties OdfElement::paragraphProperties() const {
+  if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
+    auto style = m_document->styles().style(styleAttr.value());
+    if (style)
+      return style->resolve().toParagraphProperties();
+    // TODO log
+  }
+  return {};
+}
+
+TextProperties OdfElement::textProperties() const {
+  if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
+    auto style = m_document->styles().style(styleAttr.value());
+    if (style)
+      return style->resolve().toTextProperties();
+    // TODO log
+  }
+  return {};
+}
+
+OdfPrimitive::OdfPrimitive(std::shared_ptr<const OpenDocument> document,
+                           std::shared_ptr<const common::Element> parent,
+                           pugi::xml_node node, const ElementType type)
+    : OdfElement(std::move(document), std::move(parent), node), m_type{type} {}
+
+ElementType OdfPrimitive::type() const { return m_type; }
+
+OdfTextElement::OdfTextElement(std::shared_ptr<const OpenDocument> document,
+                               std::shared_ptr<const common::Element> parent,
+                               pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::string OdfTextElement::text() const {
+  if (m_node.type() == pugi::node_pcdata) {
+    return m_node.text().as_string();
+  }
+
+  const std::string element = m_node.name();
+  if (element == "text:s") {
+    const auto count = m_node.attribute("text:c").as_uint(1);
+    return std::string(count, ' ');
+  } else if (element == "text:tab") {
+    return "\t";
+  }
+
+  // TODO this should never happen. log or throw?
+  return "";
+}
+
+OdfParagraph::OdfParagraph(std::shared_ptr<const OpenDocument> document,
+                           std::shared_ptr<const common::Element> parent,
+                           pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+ParagraphProperties OdfParagraph::paragraphProperties() const {
+  return OdfElement::paragraphProperties();
+}
+
+TextProperties OdfParagraph::textProperties() const {
+  return OdfElement::textProperties();
+}
+
+OdfSpan::OdfSpan(std::shared_ptr<const OpenDocument> document,
+                 std::shared_ptr<const common::Element> parent,
+                 pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+TextProperties OdfSpan::textProperties() const {
+  return OdfElement::textProperties();
+}
+
+OdfLink::OdfLink(std::shared_ptr<const OpenDocument> document,
+                 std::shared_ptr<const common::Element> parent,
+                 pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+TextProperties OdfLink::textProperties() const {
+  return OdfElement::textProperties();
+}
+
+std::string OdfLink::href() const {
+  return m_node.attribute("xlink:href").value();
+}
+
+OdfBookmark::OdfBookmark(std::shared_ptr<const OpenDocument> document,
+                         std::shared_ptr<const common::Element> parent,
+                         pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::string OdfBookmark::name() const {
+  return m_node.attribute("text:name").value();
+}
+
+OdfList::OdfList(std::shared_ptr<const OpenDocument> document,
+                 std::shared_ptr<const common::Element> parent,
+                 pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::shared_ptr<const common::Element> OdfList::firstChild() const {
+  return factorizeKnownElement<OdfListItem>(m_node.child("text:list-item"),
+                                            m_document, shared_from_this());
+}
+
+OdfListItem::OdfListItem(std::shared_ptr<const OpenDocument> document,
+                         std::shared_ptr<const common::Element> parent,
+                         pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::shared_ptr<const common::Element> OdfListItem::previousSibling() const {
+  return factorizeKnownElement<OdfListItem>(
+      m_node.previous_sibling("text:list-item"), m_document,
+      shared_from_this());
+}
+
+std::shared_ptr<const common::Element> OdfListItem::nextSibling() const {
+  return factorizeKnownElement<OdfListItem>(
+      m_node.next_sibling("text:list-item"), m_document, shared_from_this());
+}
+
+OdfTable::OdfTable(std::shared_ptr<const OpenDocument> document,
+                   std::shared_ptr<const common::Element> parent,
+                   pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::uint32_t OdfTable::rowCount() const {
+  return 0; // TODO
+}
+
+std::uint32_t OdfTable::columnCount() const {
+  return 0; // TODO
+}
+
+std::shared_ptr<const common::Element> OdfTable::firstChild() const {
+  return {};
+}
+
+std::shared_ptr<const common::TableColumn> OdfTable::firstColumn() const {
+  return factorizeKnownElement<OdfTableColumn>(
+      m_node.child("table:table-column"), m_document,
+      std::static_pointer_cast<const OdfTable>(shared_from_this()));
+}
+
+std::shared_ptr<const common::TableRow> OdfTable::firstRow() const {
+  return factorizeKnownElement<OdfTableRow>(
+      m_node.child("table:table-row"), m_document,
+      std::static_pointer_cast<const OdfTable>(shared_from_this()));
+}
+
+OdfTableColumn::OdfTableColumn(std::shared_ptr<const OpenDocument> document,
+                               std::shared_ptr<const OdfTable> table,
+                               pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(table), node) {}
+
+OdfTableColumn::OdfTableColumn(const OdfTableColumn &column,
+                               const std::uint32_t repeatIndex)
+    : OdfElement(column), m_repeatIndex{repeatIndex} {}
+
+std::shared_ptr<const common::Element> OdfTableColumn::firstChild() const {
+  return {};
+}
+
+std::shared_ptr<const common::Element> OdfTableColumn::previousSibling() const {
+  if (m_repeatIndex > 0) {
+    return std::make_shared<OdfTableColumn>(*this, m_repeatIndex - 1);
+  }
+
+  return factorizeKnownElement<OdfTableColumn>(
+      m_node.previous_sibling("table:table-column"), m_document, m_table);
+}
+
+std::shared_ptr<const common::Element> OdfTableColumn::nextSibling() const {
+  const auto repeated =
+      m_node.attribute("table:number-columns-repeated").as_uint(1);
+  if (m_repeatIndex < repeated - 1) {
+    return std::make_shared<OdfTableColumn>(*this, m_repeatIndex + 1);
+  }
+
+  return factorizeKnownElement<OdfTableColumn>(
+      m_node.next_sibling("table:table-column"), m_document, m_table);
+}
+
+OdfTableRow::OdfTableRow(const OdfTableRow &row,
+                         const std::uint32_t repeatIndex)
+    : OdfElement(row), m_repeatIndex{repeatIndex} {}
+
+OdfTableRow::OdfTableRow(std::shared_ptr<const OpenDocument> document,
+                         std::shared_ptr<const OdfTable> table,
+                         pugi::xml_node node)
+    : OdfElement(std::move(document), table, node), m_table{std::move(table)} {}
+
+std::shared_ptr<const common::Element> OdfTableRow::firstChild() const {
+  return factorizeKnownElement<OdfTableCell>(
+      m_node.child("table:table-cell"), m_document,
+      std::static_pointer_cast<const OdfTableRow>(shared_from_this()),
+      std::static_pointer_cast<const OdfTableColumn>(m_table->firstColumn()));
+}
+
+std::shared_ptr<const common::Element> OdfTableRow::previousSibling() const {
+  if (m_repeatIndex > 0) {
+    return std::make_shared<OdfTableRow>(*this, m_repeatIndex - 1);
+  }
+
+  return factorizeKnownElement<OdfTableRow>(
+      m_node.previous_sibling("table:table-row"), m_document, m_table);
+}
+
+std::shared_ptr<const common::Element> OdfTableRow::nextSibling() const {
+  const auto repeated =
+      m_node.attribute("table:number-rows-repeated").as_uint(1);
+  if (m_repeatIndex < repeated - 1) {
+    return std::make_shared<OdfTableRow>(*this, m_repeatIndex + 1);
+  }
+
+  return factorizeKnownElement<OdfTableRow>(
+      m_node.next_sibling("table:table-row"), m_document, m_table);
+}
+
+OdfTableCell::OdfTableCell(const OdfTableCell &cell, std::uint32_t repeatIndex)
+    : OdfElement(cell), m_repeatIndex{repeatIndex} {}
+
+OdfTableCell::OdfTableCell(std::shared_ptr<const OpenDocument> document,
+                           std::shared_ptr<const OdfTableRow> row,
+                           std::shared_ptr<const OdfTableColumn> column,
+                           pugi::xml_node node)
+    : OdfElement(std::move(document), row, node), m_row{std::move(row)},
+      m_column(std::move(column)) {}
+
+std::shared_ptr<const common::Element> OdfTableCell::previousSibling() const {
+  if (m_repeatIndex > 0) {
+    return std::make_shared<OdfTableCell>(*this, m_repeatIndex - 1);
+  }
+
+  return factorizeKnownElement<OdfTableCell>(
+      m_node.previous_sibling("table:table-cell"), m_document, m_row, m_column);
+}
+
+std::shared_ptr<const common::Element> OdfTableCell::nextSibling() const {
+  const auto repeated =
+      m_node.attribute("table:number-columns-repeated").as_uint(1);
+  if (m_repeatIndex < repeated - 1) {
+    return std::make_shared<OdfTableCell>(*this, m_repeatIndex + 1);
+  }
+
+  return factorizeKnownElement<OdfTableCell>(
+      m_node.next_sibling("table:table-cell"), m_document, m_row, m_column);
+}
+
+std::uint32_t OdfTableCell::rowSpan() const {
+  return m_node.attribute("table:number-rows-spanned").as_uint(1);
+}
+
+std::uint32_t OdfTableCell::columnSpan() const {
+  return m_node.attribute("table:number-columns-spanned").as_uint(1);
 }
 
 std::shared_ptr<common::Element>
@@ -317,14 +323,14 @@ factorizeElement(std::shared_ptr<const OpenDocument> document,
                  std::shared_ptr<const common::Element> parent,
                  pugi::xml_node node) {
   if (node.type() == pugi::node_pcdata) {
-    return std::make_shared<OdfTextElement>(std::move(document), std::move(parent),
-                                            node);
+    return std::make_shared<OdfTextElement>(std::move(document),
+                                            std::move(parent), node);
   } else if (node.type() == pugi::node_element) {
     const std::string element = node.name();
 
     if (element == "text:p" || element == "text:h")
-      return std::make_shared<OdfParagraph>(std::move(document), std::move(parent),
-                                            node);
+      return std::make_shared<OdfParagraph>(std::move(document),
+                                            std::move(parent), node);
     else if (element == "text:span")
       return std::make_shared<OdfSpan>(std::move(document), std::move(parent),
                                        node);
@@ -332,8 +338,9 @@ factorizeElement(std::shared_ptr<const OpenDocument> document,
       return std::make_shared<OdfTextElement>(std::move(document),
                                               std::move(parent), node);
     else if (element == "text:line-break")
-      return std::make_shared<OdfPrimitive>(std::move(document), std::move(parent),
-                                            node, ElementType::LINE_BREAK);
+      return std::make_shared<OdfPrimitive>(std::move(document),
+                                            std::move(parent), node,
+                                            ElementType::LINE_BREAK);
     else if (element == "text:a")
       return std::make_shared<OdfLink>(std::move(document), std::move(parent),
                                        node);
@@ -341,8 +348,8 @@ factorizeElement(std::shared_ptr<const OpenDocument> document,
       return std::make_shared<OdfTableOfContent>(std::move(document),
                                                  std::move(parent), node);
     else if (element == "text:bookmark" || element == "text:bookmark-start")
-      return std::make_shared<OdfBookmark>(std::move(document), std::move(parent),
-                                           node);
+      return std::make_shared<OdfBookmark>(std::move(document),
+                                           std::move(parent), node);
     else if (element == "text:list")
       return std::make_shared<OdfList>(std::move(document), std::move(parent),
                                        node);
@@ -356,8 +363,8 @@ factorizeElement(std::shared_ptr<const OpenDocument> document,
     //  ImageTranslator(in, out, context);
 
     // TODO this should be removed at some point
-    return std::make_shared<OdfPrimitive>(std::move(document), std::move(parent),
-                                          node, ElementType::UNKNOWN);
+    return std::make_shared<OdfPrimitive>(
+        std::move(document), std::move(parent), node, ElementType::UNKNOWN);
   }
 
   return nullptr;
@@ -377,8 +384,8 @@ factorizeFirstChild(std::shared_ptr<const OpenDocument> document,
 
 std::shared_ptr<common::Element>
 factorizePreviousSibling(std::shared_ptr<const OpenDocument> document,
-                    std::shared_ptr<const common::Element> parent,
-                    pugi::xml_node node) {
+                         std::shared_ptr<const common::Element> parent,
+                         pugi::xml_node node) {
   for (auto &&s = node.previous_sibling(); s; s = node.previous_sibling()) {
     if (isSkipper(s))
       continue;
@@ -389,7 +396,7 @@ factorizePreviousSibling(std::shared_ptr<const OpenDocument> document,
 
 std::shared_ptr<common::Element>
 factorizeNextSibling(std::shared_ptr<const OpenDocument> document,
-                std::shared_ptr<const common::Element> parent,
+                     std::shared_ptr<const common::Element> parent,
                      pugi::xml_node node) {
   for (auto &&s = node.next_sibling(); s; s = s.next_sibling()) {
     if (isSkipper(s))
@@ -399,4 +406,4 @@ factorizeNextSibling(std::shared_ptr<const OpenDocument> document,
   return {};
 }
 
-}
+} // namespace odr::odf
