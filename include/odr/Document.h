@@ -85,68 +85,68 @@ public:
   ElementRange content() const;
 
 private:
-  std::shared_ptr<common::TextDocument> m_text_document;
+  std::shared_ptr<common::TextDocument> m_textDocument;
 
-  explicit TextDocument(const Document &);
+  explicit TextDocument(std::shared_ptr<common::TextDocument>);
 
   friend Document;
 };
 
+struct Slide {
+  std::string name;
+  std::string notes;
+  PageProperties pageProperties;
+  ElementRange content;
+};
+
 class Presentation final : public Document {
 public:
-  struct Slide {
-    std::string name;
-    std::string notes;
-    PageProperties pageProperties;
-    ElementRange content;
-  };
-
   std::uint32_t slideCount() const;
   std::vector<Slide> slides() const;
 
 private:
   std::shared_ptr<common::Presentation> m_presentation;
 
-  explicit Presentation(const Document &);
+  explicit Presentation(std::shared_ptr<common::Presentation>);
 
   friend Document;
 };
 
+struct Sheet {
+  std::string name;
+  std::uint32_t rowCount{0};
+  std::uint32_t columnCount{0};
+  TableElement table;
+};
+
 class Spreadsheet final : public Document {
 public:
-  struct Sheet {
-    std::string name;
-    std::uint32_t rowCount{0};
-    std::uint32_t columnCount{0};
-    TableElement table;
-  };
-
   std::uint32_t sheetCount() const;
   std::vector<Sheet> sheets() const;
 
 private:
   std::shared_ptr<common::Spreadsheet> m_spreadsheet;
 
-  explicit Spreadsheet(const Document &);
+  explicit Spreadsheet(std::shared_ptr<common::Spreadsheet>);
 
   friend Document;
 };
 
+struct Page {
+  std::string name;
+  PageProperties pageProperties;
+  ElementRange content;
+};
+
 class Graphics final : public Document {
 public:
-  struct Page {
-    std::string name;
-    PageProperties pageProperties;
-    ElementRange content;
-  };
-
   std::uint32_t pageCount() const;
   std::vector<Page> pages() const;
 
 private:
   std::shared_ptr<common::Graphics> m_graphics;
 
-  explicit Graphics(const Document &);
+  explicit Graphics(std::shared_ptr<common::Graphics>);
 
   friend Document;
 };

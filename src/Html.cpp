@@ -186,7 +186,7 @@ void translateElement(Element element, std::ostream &out,
 }
 
 void translateTextDocument(TextDocument document, std::ostream &out,
-                   const HtmlConfig &config) {
+                           const HtmlConfig &config) {
   const auto pageProperties = document.pageProperties();
 
   const std::string outerStyle = "width:" + pageProperties.width + ";";
@@ -205,17 +205,33 @@ void translateTextDocument(TextDocument document, std::ostream &out,
 
 void translatePresentation(Presentation document, std::ostream &out,
                            const HtmlConfig &config) {
-  // TODO
+  for (auto &&slide : document.slides()) {
+    const auto pageProperties = slide.pageProperties;
+    const std::string style; // TODO
+
+    out << R"(<div style=")" + style + "\">";
+    translateGeneration(slide.content, out, config);
+    out << "</div>";
+  }
 }
 
 void translateSpreadsheet(Spreadsheet document, std::ostream &out,
-                           const HtmlConfig &config) {
-  // TODO
+                          const HtmlConfig &config) {
+  for (auto &&sheet : document.sheets()) {
+    translateTable(sheet.table, out, config);
+  }
 }
 
 void translateGraphics(Graphics document, std::ostream &out,
-                           const HtmlConfig &config) {
-  // TODO
+                       const HtmlConfig &config) {
+  for (auto &&page : document.pages()) {
+    const auto pageProperties = page.pageProperties;
+    const std::string style; // TODO
+
+    out << R"(<div style=")" + style + "\">";
+    translateGeneration(page.content, out, config);
+    out << "</div>";
+  }
 }
 } // namespace
 

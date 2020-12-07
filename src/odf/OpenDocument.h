@@ -54,7 +54,8 @@ public:
   explicit OpenDocumentPresentation(
       std::shared_ptr<access::ReadStorage> storage);
 
-  ElementRange slideContent(std::uint32_t index) const final;
+  std::uint32_t slideCount() const final;
+  std::vector<Slide> slides() const final;
 };
 
 class OpenDocumentSpreadsheet final : public OpenDocument,
@@ -63,7 +64,8 @@ public:
   explicit OpenDocumentSpreadsheet(
       std::shared_ptr<access::ReadStorage> storage);
 
-  TableElement sheetTable(std::uint32_t index) const final;
+  std::uint32_t sheetCount() const final;
+  std::vector<Sheet> sheets() const final;
 };
 
 class OpenDocumentGraphics final : public OpenDocument,
@@ -71,7 +73,8 @@ class OpenDocumentGraphics final : public OpenDocument,
 public:
   explicit OpenDocumentGraphics(std::shared_ptr<access::ReadStorage> storage);
 
-  ElementRange pageContent(std::uint32_t index) const final;
+  std::uint32_t pageCount() const final;
+  std::vector<Page> pages() const final;
 };
 
 } // namespace odf

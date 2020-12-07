@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace odr {
 enum class DocumentType;
@@ -12,6 +13,9 @@ class Element;
 class TableElement;
 template <typename E> class ElementRangeTemplate;
 using ElementRange = ElementRangeTemplate<Element>;
+struct Slide;
+struct Sheet;
+struct Page;
 
 namespace access {
 class Path;
@@ -43,17 +47,20 @@ public:
 
 class Presentation : public virtual Document {
 public:
-  virtual ElementRange slideContent(std::uint32_t index) const = 0;
+  virtual std::uint32_t slideCount() const = 0;
+  virtual std::vector<Slide> slides() const = 0;
 };
 
 class Spreadsheet : public virtual Document {
 public:
-  virtual TableElement sheetTable(std::uint32_t index) const = 0;
+  virtual std::uint32_t sheetCount() const = 0;
+  virtual std::vector<Sheet> sheets() const = 0;
 };
 
 class Graphics : public virtual Document {
 public:
-  virtual ElementRange pageContent(std::uint32_t index) const = 0;
+  virtual std::uint32_t pageCount() const = 0;
+  virtual std::vector<Page> pages() const = 0;
 };
 
 } // namespace common

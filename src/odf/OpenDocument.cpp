@@ -2,10 +2,10 @@
 #include <access/ZipStorage.h>
 #include <common/XmlUtil.h>
 #include <odf/Crypto.h>
+#include <odf/Elements.h>
 #include <odf/OpenDocument.h>
 #include <odr/Document.h>
 #include <odr/DocumentElements.h>
-#include <odf/Elements.h>
 
 namespace odr::odf {
 
@@ -38,9 +38,7 @@ DocumentMeta OpenDocument::documentMeta() const noexcept {
   return m_document_meta;
 }
 
-const Styles &OpenDocument::styles() const noexcept {
-  return m_styles;
-}
+const Styles &OpenDocument::styles() const noexcept { return m_styles; }
 
 void OpenDocument::save(const access::Path &path) const {
   // TODO throw if not savable
@@ -95,47 +93,78 @@ OpenDocumentPresentation::OpenDocumentPresentation(
     std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-ElementRange
-OpenDocumentPresentation::slideContent(const std::uint32_t index) const {
-  // TODO throw if out of bounds
+std::uint32_t OpenDocumentPresentation::slideCount() const {
+  return slides().size();
+}
+
+std::vector<Slide> OpenDocumentPresentation::slides() const {
+  std::vector<Slide> result;
+
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:presentation");
-  std::uint32_t i = 0;
-  for (auto &&page : body.children("draw:page")) {
-    if (i == index)
-      return ElementRange(
-          Element(factorizeFirstChild(shared_from_this(), nullptr, page)));
+  for (auto &&xml : body.children("draw:page")) {
+    Slide slide;
+    slide.name = xml.attribute("draw:name").value();
+    slide.notes = "";          // TODO
+    slide.pageProperties = {}; // TODO
+    slide.content = ElementRange(
+        Element(factorizeFirstChild(shared_from_this(), nullptr, xml)));
+    result.push_back(slide);
   }
-  return {};
+
+  return result;
 }
 
 OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
     std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-TableElement
-OpenDocumentSpreadsheet::sheetTable(const std::uint32_t index) const {
-  // TODO
+std::uint32_t OpenDocumentSpreadsheet::sheetCount() const {
+  return sheets().size();
+}
+
+std::vector<Sheet> OpenDocumentSpreadsheet::sheets() const {
+  std::vector<Sheet> result;
+
+  const pugi::xml_node body = m_contentXml.document_element()
+                                  .child("office:body")
+                                  .child("office:presentation");
+  for (auto &&xml : body.children("draw:page")) {
+    Sheet sheet;
+    sheet.name = xml.attribute("draw:name").value();
+    sheet.rowCount = 0;    // TODO
+    sheet.columnCount = 0; // TODO
+    sheet.table =
+        Element(factorizeFirstChild(shared_from_this(), nullptr, xml)).table();
+    result.push_back(sheet);
+  }
+
+  return result;
 }
 
 OpenDocumentGraphics::OpenDocumentGraphics(
     std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-ElementRange
-OpenDocumentGraphics::pageContent(const std::uint32_t index) const {
-  // TODO throw if out of bounds
+std::uint32_t OpenDocumentGraphics::pageCount() const { return pages().size(); }
+
+std::vector<Page> OpenDocumentGraphics::pages() const {
+  std::vector<Page> result;
+
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:drawing");
-  std::uint32_t i = 0;
-  for (auto &&page : body.children("draw:page")) {
-    if (i == index)
-      return ElementRange(
-          Element(factorizeFirstChild(shared_from_this(), nullptr, page)));
+  for (auto &&xml : body.children("draw:page")) {
+    Page page;
+    page.name = xml.attribute("draw:name").value();
+    page.pageProperties = {}; // TODO
+    page.content = ElementRange(
+        Element(factorizeFirstChild(shared_from_this(), nullptr, xml)));
+    result.push_back(page);
   }
-  return {};
+
+  return result;
 }
 
 } // namespace odr::odf
