@@ -58,6 +58,7 @@ public:
   std::shared_ptr<Style> style(const std::string &name) const;
 
   PageProperties pageProperties(const std::string &name) const;
+  PageProperties masterPageProperties(const std::string &name) const;
   PageProperties defaultPageProperties() const;
 
 private:

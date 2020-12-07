@@ -106,8 +106,9 @@ std::vector<Slide> OpenDocumentPresentation::slides() const {
   for (auto &&xml : body.children("draw:page")) {
     Slide slide;
     slide.name = xml.attribute("draw:name").value();
-    slide.notes = "";          // TODO
-    slide.pageProperties = {}; // TODO
+    slide.notes = ""; // TODO
+    slide.pageProperties = m_styles.masterPageProperties(
+        xml.attribute("draw:master-page-name").value());
     slide.content = ElementRange(
         Element(factorizeFirstChild(shared_from_this(), nullptr, xml)));
     result.push_back(slide);

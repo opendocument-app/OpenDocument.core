@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
   auto document = documentFile.document();
 
   odr::HtmlConfig config;
-  odr::Html::translate(document, output, config);
+  odr::Html::translate(document, "", output, config);
 
   return 0;
 }

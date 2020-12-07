@@ -207,10 +207,19 @@ void translatePresentation(Presentation document, std::ostream &out,
                            const HtmlConfig &config) {
   for (auto &&slide : document.slides()) {
     const auto pageProperties = slide.pageProperties;
-    const std::string style; // TODO
 
-    out << R"(<div style=")" + style + "\">";
+    const std::string outerStyle = "width:" + pageProperties.width +
+                                   ";height:" + pageProperties.height + ";";
+    const std::string innerStyle =
+        "margin-top:" + pageProperties.marginTop +
+        ";margin-left:" + pageProperties.marginLeft +
+        ";margin-bottom:" + pageProperties.marginBottom +
+        ";margin-right:" + pageProperties.marginRight + ";";
+
+    out << R"(<div style=")" + outerStyle + "\">";
+    out << R"(<div style=")" + innerStyle + "\">";
     translateGeneration(slide.content, out, config);
+    out << "</div>";
     out << "</div>";
   }
 }
@@ -226,10 +235,19 @@ void translateGraphics(Graphics document, std::ostream &out,
                        const HtmlConfig &config) {
   for (auto &&page : document.pages()) {
     const auto pageProperties = page.pageProperties;
-    const std::string style; // TODO
 
-    out << R"(<div style=")" + style + "\">";
+    const std::string outerStyle = "width:" + pageProperties.width +
+                                   ";height:" + pageProperties.height + ";";
+    const std::string innerStyle =
+        "margin-top:" + pageProperties.marginTop +
+        ";margin-left:" + pageProperties.marginLeft +
+        ";margin-bottom:" + pageProperties.marginBottom +
+        ";margin-right:" + pageProperties.marginRight + ";";
+
+    out << R"(<div style=")" + outerStyle + "\">";
+    out << R"(<div style=")" + innerStyle + "\">";
     translateGeneration(page.content, out, config);
+    out << "</div>";
     out << "</div>";
   }
 }
@@ -244,8 +262,8 @@ HtmlConfig Html::parseConfig(const std::string &path) {
   return result;
 }
 
-void Html::translate(Document document, const std::string &path,
-                     const HtmlConfig &config) {
+void Html::translate(Document document, const std::string &documentIdentifier,
+                     const std::string &path, const HtmlConfig &config) {
   std::ofstream out(path);
   if (!out.is_open())
     return; // TODO throw
@@ -280,6 +298,7 @@ void Html::translate(Document document, const std::string &path,
   out << "</html>";
 }
 
-void Html::edit(Document document, const std::string &diff) {}
+void Html::edit(Document document, const std::string &documentIdentifier,
+                const std::string &diff) {}
 
 } // namespace odr

@@ -23,7 +23,7 @@ lookup(const std::unordered_map<std::string, std::string> &map,
 
 RectangularProperties
 lookupRect(const std::unordered_map<std::string, std::string> &map,
-       const std::string &attributePrefix) {
+           const std::string &attributePrefix) {
   RectangularProperties result;
   result.top = lookup(map, attributePrefix + "top");
   result.bottom = lookup(map, attributePrefix + "bottom");
@@ -160,6 +160,15 @@ PageProperties Styles::pageProperties(const std::string &name) const {
       pageLayoutProp.attribute("style:print-orientation").value();
 
   return result;
+}
+
+PageProperties Styles::masterPageProperties(const std::string &name) const {
+  auto masterPageIt = m_indexMasterPage.find(name);
+  if (masterPageIt == m_indexMasterPage.end())
+    throw 1; // TODO exception or optional
+  const std::string pageLayoutName =
+      masterPageIt->second.attribute("style:page-layout-name").value();
+  return pageProperties(pageLayoutName);
 }
 
 PageProperties Styles::defaultPageProperties() const {
