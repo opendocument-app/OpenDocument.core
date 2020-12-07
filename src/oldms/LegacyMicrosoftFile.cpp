@@ -48,6 +48,10 @@ FileType LegacyMicrosoftFile::fileType() const noexcept { return m_meta.type; }
 
 FileMeta LegacyMicrosoftFile::fileMeta() const noexcept { return m_meta; }
 
+std::unique_ptr<std::istream> LegacyMicrosoftFile::data() const {
+  return {}; // TODO
+}
+
 bool LegacyMicrosoftFile::passwordEncrypted() const noexcept {
   return m_meta.passwordEncrypted;
 }

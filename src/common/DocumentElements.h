@@ -5,6 +5,7 @@
 #include <optional>
 
 namespace odr {
+class ImageFile;
 enum class ElementType;
 enum class DocumentType;
 struct PageProperties;
@@ -14,6 +15,7 @@ struct TableProperties;
 struct TableColumnProperties;
 struct TableRowProperties;
 struct TableCellProperties;
+struct FrameProperties;
 
 namespace common {
 
@@ -71,14 +73,6 @@ public:
   virtual std::string name() const = 0;
 };
 
-class Image : public virtual Element {
-public:
-  ElementType type() const final;
-
-  virtual std::optional<std::string> url() const = 0;
-  virtual std::unique_ptr<std::istream> data() const = 0;
-};
-
 class List : public virtual Element {
 public:
   ElementType type() const final;
@@ -124,6 +118,22 @@ public:
   virtual std::uint32_t columnSpan() const = 0;
 
   virtual TableCellProperties tableCellProperties() const = 0;
+};
+
+class Frame : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual FrameProperties frameProperties() const = 0;
+};
+
+class Image : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual bool internal() const = 0;
+  virtual std::string href() const = 0;
+  virtual odr::ImageFile imageFile() const = 0;
 };
 
 } // namespace common

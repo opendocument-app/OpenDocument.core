@@ -20,6 +20,8 @@ public:
   FileType fileType() const noexcept final { return FileType::UNKNOWN; }
 
   FileMeta fileMeta() const noexcept final { return {}; }
+
+  std::unique_ptr<std::istream> data() const final { return {}; }
 };
 } // namespace
 

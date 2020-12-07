@@ -38,6 +38,10 @@ DocumentMeta OpenDocument::documentMeta() const noexcept {
   return m_document_meta;
 }
 
+std::shared_ptr<access::ReadStorage> OpenDocument::storage() const noexcept {
+  return m_storage;
+}
+
 const Styles &OpenDocument::styles() const noexcept { return m_styles; }
 
 void OpenDocument::save(const access::Path &path) const {

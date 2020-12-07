@@ -25,6 +25,7 @@ public:
   DocumentType documentType() const noexcept final;
   DocumentMeta documentMeta() const noexcept final;
 
+  std::shared_ptr<access::ReadStorage> storage() const noexcept;
   const Styles &styles() const noexcept;
 
   void save(const access::Path &path) const final;

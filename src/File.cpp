@@ -120,11 +120,26 @@ FileCategory File::fileCategory() const noexcept {
 
 FileMeta File::fileMeta() const noexcept { return m_impl->fileMeta(); }
 
+std::unique_ptr<std::istream> File::data() const {
+  return m_impl->data();
+}
+
+ImageFile File::imageFile() const {
+  auto imageFile = std::dynamic_pointer_cast<common::ImageFile>(m_impl);
+  if (!imageFile)
+    throw NoImageFile();
+  return ImageFile(imageFile);
+}
+
 DocumentFile File::documentFile() const {
   auto documentFile = std::dynamic_pointer_cast<common::DocumentFile>(m_impl);
-  if (!documentFile) throw NoDocumentFile();
+  if (!documentFile)
+    throw NoDocumentFile();
   return DocumentFile(documentFile);
 }
+
+ImageFile::ImageFile(std::shared_ptr<common::ImageFile> impl)
+    : File(impl), m_impl{std::move(impl)} {}
 
 FileType DocumentFile::type(const std::string &path) {
   return DocumentFile(path).fileType();
@@ -134,10 +149,11 @@ FileMeta DocumentFile::meta(const std::string &path) {
   return DocumentFile(path).fileMeta();
 }
 
+DocumentFile::DocumentFile(std::shared_ptr<common::DocumentFile> impl)
+    : File(impl), m_impl{std::move(impl)} {}
+
 DocumentFile::DocumentFile(const std::string &path)
     : DocumentFile(OpenStrategy::openDocumentFile(path)) {}
-
-DocumentFile::DocumentFile(std::shared_ptr<common::DocumentFile> impl) : File(impl), m_impl{std::move(impl)} {}
 
 bool DocumentFile::passwordEncrypted() const {
   return m_impl->passwordEncrypted();

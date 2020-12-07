@@ -6,6 +6,8 @@
 #include <string>
 
 namespace odr {
+class ImageFile;
+
 namespace common {
 class Element;
 class TextElement;
@@ -13,13 +15,14 @@ class Paragraph;
 class Span;
 class Link;
 class Bookmark;
-class Image;
 class List;
 class ListItem;
 class Table;
 class TableColumn;
 class TableRow;
 class TableCell;
+class Frame;
+class Image;
 } // namespace common
 
 class Element;
@@ -28,13 +31,14 @@ class ParagraphElement;
 class SpanElement;
 class LinkElement;
 class BookmarkElement;
-class ImageElement;
 class ListElement;
 class ListItemElement;
 class TableElement;
 class TableColumnElement;
 class TableRowElement;
 class TableCellElement;
+class FrameElement;
+class ImageElement;
 template <typename E> class ElementRangeTemplate;
 using ElementRange = ElementRangeTemplate<Element>;
 using TableColumnRange = ElementRangeTemplate<TableColumnElement>;
@@ -50,13 +54,14 @@ enum class ElementType {
   SPAN,
   LINK,
   BOOKMARK,
-  IMAGE,
   LIST,
   LIST_ITEM,
   TABLE,
   TABLE_COLUMN,
   TABLE_ROW,
   TABLE_CELL,
+  FRAME,
+  IMAGE,
 };
 
 struct FontProperties {
@@ -118,6 +123,13 @@ struct TableCellProperties {
   RectangularProperties borderRect;
 };
 
+struct FrameProperties {
+  std::string anchorType;
+  std::string width;
+  std::string height;
+  std::string zIndex;
+};
+
 class Element {
 public:
   Element();
@@ -144,13 +156,14 @@ public:
   SpanElement span() const;
   LinkElement link() const;
   BookmarkElement bookmark() const;
-  ImageElement image() const;
   ListElement list() const;
   ListItemElement listItem() const;
   TableElement table() const;
   TableColumnElement tableColumn() const;
   TableRowElement tableRow() const;
   TableCellElement tableCell() const;
+  FrameElement frame() const;
+  ImageElement image() const;
 
 private:
   std::shared_ptr<const common::Element> m_impl;
@@ -251,15 +264,6 @@ private:
   std::shared_ptr<const common::Bookmark> m_impl;
 };
 
-class ImageElement final : public Element {
-public:
-  ImageElement();
-  explicit ImageElement(std::shared_ptr<const common::Image> impl);
-
-private:
-  std::shared_ptr<const common::Image> m_impl;
-};
-
 class ListElement final : public Element {
 public:
   ListElement();
@@ -338,6 +342,30 @@ public:
 
 private:
   std::shared_ptr<const common::TableCell> m_impl;
+};
+
+class FrameElement final : public Element {
+public:
+  FrameElement();
+  explicit FrameElement(std::shared_ptr<const common::Frame> impl);
+
+  FrameProperties frameProperties() const;
+
+private:
+  std::shared_ptr<const common::Frame> m_impl;
+};
+
+class ImageElement final : public Element {
+public:
+  ImageElement();
+  explicit ImageElement(std::shared_ptr<const common::Image> impl);
+
+  bool internal() const;
+  std::string href() const;
+  ImageFile imageFile() const;
+
+private:
+  std::shared_ptr<const common::Image> m_impl;
 };
 
 } // namespace odr

@@ -14,8 +14,6 @@ ElementType Link::type() const { return ElementType::LINK; }
 
 ElementType Bookmark::type() const { return ElementType::BOOKMARK; }
 
-ElementType Image::type() const { return ElementType::IMAGE; }
-
 ElementType List::type() const { return ElementType::LIST; }
 
 ElementType ListItem::type() const { return ElementType::LIST_ITEM; }
@@ -27,5 +25,9 @@ ElementType TableColumn::type() const { return ElementType::TABLE_COLUMN; }
 ElementType TableRow::type() const { return ElementType::TABLE_ROW; }
 
 ElementType TableCell::type() const { return ElementType::TABLE_CELL; }
+
+ElementType Frame::type() const { return ElementType::FRAME; }
+
+ElementType Image::type() const { return ElementType::IMAGE; }
 
 } // namespace odr::common

@@ -1,10 +1,15 @@
+#include <access/StreamUtil.h>
 #include <common/Document.h>
 #include <common/Html.h>
+#include <crypto/CryptoUtil.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <odr/Document.h>
 #include <odr/DocumentElements.h>
+#include <odr/File.h>
 #include <odr/Html.h>
+#include <sstream>
+#include <svm/Svm2Svg.h>
 
 namespace odr {
 
@@ -88,6 +93,15 @@ translateTableCellProperties(const TableCellProperties &properties) {
   return result;
 }
 
+std::string
+translateFrameProperties(const FrameProperties &properties) {
+  std::string result;
+  result += "width:" + properties.width + ";";
+  result += "height:" + properties.height + ";";
+  result += "z-index:" + properties.zIndex + ";";
+  return result;
+}
+
 void translateList(ListElement element, std::ostream &out,
                    const HtmlConfig &config) {
   out << "<ul>";
@@ -129,6 +143,52 @@ void translateTable(TableElement element, std::ostream &out,
   out << "</table>";
 }
 
+void translateImage(ImageElement element, std::ostream &out,
+                    const HtmlConfig &config) {
+  out << "<img style=\"width:100%;height:100%\"";
+  out << " alt=\"Error: image not found or unsupported\"";
+  out << " src=\"";
+
+  if (element.internal()) {
+    auto imageFile = element.imageFile();
+    auto imageStream = imageFile.data();
+    std::string image;
+
+    if (imageFile.fileType() == FileType::STARVIEW_METAFILE) {
+      std::ostringstream svgOut;
+      svm::Translator::svg(*imageStream, svgOut);
+      image = svgOut.str();
+      out << "data:image/svg+xml;base64, ";
+    } else {
+      image = access::StreamUtil::read(*imageStream);
+      // TODO hacky - `image/jpg` works for all common image types in chrome
+      out << "data:image/jpg;base64, ";
+    }
+
+    // TODO stream
+    out << crypto::Util::base64Encode(image);
+  } else {
+    out << element.href();
+  }
+
+  out << "\">";
+}
+
+void translateFrame(FrameElement element, std::ostream &out,
+                    const HtmlConfig &config) {
+  out << "<div style=\"";
+  out << translateFrameProperties(element.frameProperties());
+  out << "\">";
+
+  for (auto &&e : element.children()) {
+    if (e.type() == ElementType::IMAGE) {
+      translateImage(e.image(), out, config);
+    }
+  }
+
+  out << "</div>";
+}
+
 void translateGeneration(ElementRange siblings, std::ostream &out,
                          const HtmlConfig &config) {
   for (auto &&e : siblings) {
@@ -141,6 +201,7 @@ void translateElement(Element element, std::ostream &out,
   if (element.type() == ElementType::UNKNOWN) {
     translateGeneration(element.children(), out, config);
   } else if (element.type() == ElementType::TEXT) {
+    // TODO handle whitespace collapse
     out << common::Html::escapeText(element.text().string());
   } else if (element.type() == ElementType::LINE_BREAK) {
     out << "<br>";
@@ -180,6 +241,8 @@ void translateElement(Element element, std::ostream &out,
     translateList(element.list(), out, config);
   } else if (element.type() == ElementType::TABLE) {
     translateTable(element.table(), out, config);
+  } else if (element.type() == ElementType::FRAME) {
+    translateFrame(element.frame(), out, config);
   } else {
     // TODO log
   }

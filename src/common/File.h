@@ -21,6 +21,13 @@ public:
   virtual FileType fileType() const noexcept = 0;
   virtual FileCategory fileCategory() const noexcept;
   virtual FileMeta fileMeta() const noexcept = 0;
+
+  virtual std::unique_ptr<std::istream> data() const = 0;
+};
+
+class ImageFile : public File {
+public:
+  virtual ~ImageFile() = default;
 };
 
 class DocumentFile : public File {

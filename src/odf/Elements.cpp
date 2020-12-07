@@ -1,10 +1,16 @@
+#include <odf/OpenDocumentFile.h>
+#include <access/Path.h>
+#include <access/Storage.h>
+#include <access/StreamUtil.h>
+#include <common/File.h>
 #include <odf/Elements.h>
 #include <odf/OpenDocument.h>
 
 namespace odr::odf {
 
-// TODO possible refactor for table impl: use an internal table iterator to retrieve columns, rows and cells
-// there was an implementation https://github.com/opendocument-app/OpenDocument.core/blob/1c30b9ed01fad491cc9ba6356f5ec6e49562eebe/common/include/common/TableCursor.h
+// TODO possible refactor for table impl: use an internal table iterator to
+// retrieve columns, rows and cells there was an implementation
+// https://github.com/opendocument-app/OpenDocument.core/blob/1c30b9ed01fad491cc9ba6356f5ec6e49562eebe/common/include/common/TableCursor.h
 
 namespace {
 template <typename E, typename... Args>
@@ -27,6 +33,31 @@ public:
     return factorizeFirstChild(m_document, shared_from_this(),
                                m_node.child("text:index-body"));
   }
+};
+
+class OdfImageFile final : public common::ImageFile {
+public:
+  OdfImageFile(std::shared_ptr<access::ReadStorage> storage, access::Path path,
+               const FileType fileType)
+      : m_storage{std::move(storage)}, m_path{std::move(path)}, m_fileType{
+                                                                    fileType} {}
+
+  FileType fileType() const noexcept final { return m_fileType; }
+
+  FileMeta fileMeta() const noexcept final {
+    FileMeta result;
+    result.type = fileType();
+    return result;
+  }
+
+  std::unique_ptr<std::istream> data() const {
+    return m_storage->read(m_path);
+  }
+
+private:
+  std::shared_ptr<access::ReadStorage> m_storage;
+  access::Path m_path;
+  FileType m_fileType;
 };
 
 bool isSkipper(pugi::xml_node node) {
@@ -389,6 +420,67 @@ TableCellProperties OdfTableCell::tableCellProperties() const {
     // TODO log
   }
   return {};
+}
+
+OdfFrame::OdfFrame(std::shared_ptr<const OpenDocument> document,
+                   std::shared_ptr<const common::Element> parent,
+                   pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+FrameProperties OdfFrame::frameProperties() const {
+  FrameProperties result;
+
+  result.anchorType = m_node.attribute("text:anchor-type").value();
+  result.width = m_node.attribute("svg:width").value();
+  result.height = m_node.attribute("svg:height").value();
+  result.zIndex = m_node.attribute("draw:z-index").value();
+
+  return result;
+}
+
+OdfImage::OdfImage(std::shared_ptr<const OpenDocument> document,
+                   std::shared_ptr<const common::Element> parent,
+                   pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+bool OdfImage::internal() const {
+  const auto hrefAttr = m_node.attribute("xlink:href");
+  if (!hrefAttr)
+    return false;
+  const std::string href = hrefAttr.value();
+
+  try {
+    const access::Path path{href};
+    if (!m_document->storage()->isFile(path))
+      return false;
+
+    return true;
+  } catch (...) {
+  }
+
+  return false;
+}
+
+std::string OdfImage::href() const {
+  const auto hrefAttr = m_node.attribute("xlink:href");
+  return hrefAttr.value();
+}
+
+ImageFile OdfImage::imageFile() const {
+  if (!internal())
+    throw 1; // TODO
+
+  const std::string href = this->href();
+  const access::Path path{href};
+  FileType fileType{FileType::UNKNOWN};
+
+  if ((href.find("ObjectReplacements", 0) != std::string::npos) ||
+      (href.find(".svm", 0) != std::string::npos)) {
+    fileType = FileType::STARVIEW_METAFILE;
+  }
+
+  return ImageFile(
+      std::make_shared<OdfImageFile>(m_document->storage(), path, fileType));
 }
 
 std::shared_ptr<common::Element>

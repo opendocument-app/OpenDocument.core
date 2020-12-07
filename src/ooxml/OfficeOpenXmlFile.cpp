@@ -17,6 +17,10 @@ FileType OfficeOpenXmlFile::fileType() const noexcept { return m_meta.type; }
 
 FileMeta OfficeOpenXmlFile::fileMeta() const noexcept { return m_meta; }
 
+std::unique_ptr<std::istream> OfficeOpenXmlFile::data() const {
+  return {}; // TODO
+}
+
 bool OfficeOpenXmlFile::passwordEncrypted() const noexcept {
   return m_meta.passwordEncrypted;
 }

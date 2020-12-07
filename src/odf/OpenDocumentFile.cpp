@@ -33,6 +33,10 @@ FileMeta OpenDocumentFile::fileMeta() const noexcept {
   return result;
 }
 
+std::unique_ptr<std::istream> OpenDocumentFile::data() const {
+  return {}; // TODO
+}
+
 bool OpenDocumentFile::passwordEncrypted() const noexcept {
   return m_file_meta.passwordEncrypted;
 }

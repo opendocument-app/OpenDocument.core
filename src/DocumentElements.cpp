@@ -1,5 +1,6 @@
 #include <common/DocumentElements.h>
 #include <odr/DocumentElements.h>
+#include <odr/File.h>
 
 namespace odr {
 
@@ -225,11 +226,6 @@ BookmarkElement::BookmarkElement(std::shared_ptr<const common::Bookmark> impl)
 
 std::string BookmarkElement::name() const { return m_impl->name(); }
 
-ImageElement::ImageElement() = default;
-
-ImageElement::ImageElement(std::shared_ptr<const common::Image> impl)
-    : Element(impl), m_impl{std::move(impl)} {}
-
 ListElement::ListElement() = default;
 
 ListElement::ListElement(std::shared_ptr<const common::List> impl)
@@ -323,5 +319,25 @@ std::uint32_t TableCellElement::columnSpan() const {
 TableCellProperties TableCellElement::tableCellProperties() const {
   return m_impl->tableCellProperties();
 }
+
+FrameElement::FrameElement() = default;
+
+FrameElement::FrameElement(std::shared_ptr<const common::Frame> impl)
+    : Element(impl), m_impl{std::move(impl)} {}
+
+FrameProperties FrameElement::frameProperties() const {
+  return m_impl->frameProperties();
+}
+
+ImageElement::ImageElement() = default;
+
+ImageElement::ImageElement(std::shared_ptr<const common::Image> impl)
+    : Element(impl), m_impl{std::move(impl)} {}
+
+bool ImageElement::internal() const { return m_impl->internal(); }
+
+std::string ImageElement::href() const { return m_impl->href(); }
+
+ImageFile ImageElement::imageFile() const { return m_impl->imageFile(); }
 
 } // namespace odr

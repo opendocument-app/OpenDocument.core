@@ -208,6 +208,24 @@ private:
   std::uint32_t m_repeatIndex{0};
 };
 
+class OdfFrame final : public OdfElement, public common::Frame {
+public:
+  OdfFrame(std::shared_ptr<const OpenDocument> document,
+           std::shared_ptr<const common::Element> parent, pugi::xml_node node);
+
+  FrameProperties frameProperties() const final;
+};
+
+class OdfImage final : public OdfElement, public common::Image {
+public:
+  OdfImage(std::shared_ptr<const OpenDocument> document,
+           std::shared_ptr<const common::Element> parent, pugi::xml_node node);
+
+  bool internal() const final;
+  std::string href() const final;
+  odr::ImageFile imageFile() const final;
+};
+
 } // namespace odr::odf
 
 #endif // ODR_ODF_ELEMENTS_H
