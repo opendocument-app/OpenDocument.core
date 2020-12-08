@@ -143,6 +143,8 @@ TEST_P(DataDrivenTest, all) {
 
   odr::Config config;
   config.editable = true;
+  config.tableLimitRows = 4000;
+  config.tableLimitCols = 500;
 
   const odr::Document document{param.input};
 
