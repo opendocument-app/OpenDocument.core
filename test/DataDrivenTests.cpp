@@ -18,45 +18,39 @@ struct Param {
   FileType type{FileType::UNKNOWN};
   bool encrypted{false};
   std::string password;
-  std::string metaOutput;
-  std::string htmlOutput;
+  std::string output;
 
   Param(std::string input, const FileType type, const bool encrypted,
-        std::string password, std::string metaOutput, std::string htmlOutput)
+        std::string password, std::string output)
       : input{std::move(input)}, type{type}, encrypted{encrypted},
-        password{std::move(password)}, metaOutput{std::move(metaOutput)},
-        htmlOutput{std::move(htmlOutput)} {}
+        password{std::move(password)}, output{std::move(output)} {}
 };
 
 using Params = std::vector<Param>;
 
 class DataDrivenTest : public testing::TestWithParam<Param> {};
 
-Param getTestParam(std::string input, std::string metaOutput,
-                   std::string htmlOutput) {
+Param getTestParam(std::string input, std::string output) {
   const FileType type =
       FileMeta::typeByExtension(access::Path(input).extension());
-  const std::string outputName = fs::path(input).filename().replace_extension();
+  const std::string fileName = fs::path(input).filename();
   std::string password;
-  if (const auto left = outputName.find('$'), right = outputName.rfind('$');
+  if (const auto left = fileName.find('$'), right = fileName.rfind('$');
       (left != std::string::npos) && (left != right))
-    password = outputName.substr(left, right);
+    password = fileName.substr(left, right);
   const bool encrypted = !password.empty();
-  metaOutput += "/" + outputName + ".json";
-  htmlOutput += "/" + outputName + ".html";
+  output += "/" + fileName;
 
   return {std::move(input),
           type,
           encrypted,
           std::move(password),
-          std::move(metaOutput),
-          std::move(htmlOutput)};
+          std::move(output)};
 }
 
-Params getTestParams(const std::string &input, std::string metaOutput,
-                     std::string htmlOutput) {
+Params getTestParams(const std::string &input, std::string output) {
   if (fs::is_regular_file(input))
-    return {getTestParam(input, std::move(metaOutput), std::move(htmlOutput))};
+    return {getTestParam(input, std::move(output))};
   if (!fs::is_directory(input))
     return {};
 
@@ -69,21 +63,16 @@ Params getTestParams(const std::string &input, std::string metaOutput,
       const FileType type = FileMeta::typeByExtension(row["type"].get<>());
       std::string password = row["password"].get<>();
       const bool encrypted = !password.empty();
-      const std::string outputName =
-          fs::path(path).filename().replace_extension();
-      std::string metaOutputTmp =
-          metaOutput + "/" +
-          access::Path(row["path"].get<>()).parent().string() + "/" +
-          outputName + ".json";
-      std::string htmlOutputTmp =
-          htmlOutput + "/" +
-          access::Path(row["path"].get<>()).parent().string() + "/" +
-          outputName + ".html";
+      const std::string fileName =
+          fs::path(path).filename();
+      std::string outputTmp =
+          output + "/" +
+          access::Path(row["path"].get<>()).parent().string() + "/" + fileName;
 
       if (type == FileType::UNKNOWN)
         continue;
       result.emplace_back(path, type, encrypted, std::move(password),
-                          std::move(metaOutputTmp), std::move(htmlOutputTmp));
+                          std::move(outputTmp));
     }
   }
 
@@ -98,12 +87,10 @@ Params getTestParams(const std::string &input, std::string metaOutput,
         it != std::end(result))
       continue;
 
-    std::string metaOutputTmp =
-        metaOutput + "/" + access::Path(path).rebase(input).parent().string();
-    std::string htmlOutputTmp =
-        htmlOutput + "/" + access::Path(path).rebase(input).parent().string();
+    std::string outputTmp =
+        output + "/" + access::Path(path).rebase(input).parent().string();
     const auto param =
-        getTestParam(path, std::move(metaOutputTmp), std::move(htmlOutputTmp));
+        getTestParam(path, std::move(outputTmp));
 
     if (param.type == FileType::UNKNOWN)
       continue;
@@ -118,8 +105,7 @@ Params getTestParams() {
 
   for (const auto &e : fs::directory_iterator("./input")) {
     const auto params = getTestParams(
-        e.path().string(), "./output/meta/" + e.path().filename().string(),
-        "./output/html/" + e.path().filename().string());
+        e.path().string(), "./output/" + e.path().filename().string());
     result.insert(std::end(result), std::begin(params), std::end(params));
   }
 
@@ -154,23 +140,24 @@ nlohmann::json metaToJson(const odr::FileMeta &meta) {
 
 TEST_P(DataDrivenTest, all) {
   const auto param = GetParam();
-  std::cout << param.input << std::endl;
+  std::cout << param.input << " to " << param.output << std::endl;
 
   if ((param.type == FileType::ZIP) ||
       (param.type == FileType::PORTABLE_DOCUMENT_FORMAT))
     GTEST_SKIP();
 
   odr::Config config;
-  config.entryOffset = 0;
-  config.entryCount = 0;
   config.editable = true;
 
   const odr::Document document{param.input};
 
+  fs::create_directories(fs::path(param.output));
+  auto meta = document.meta();
+
   // encrypted ooxml type cannot be inspected
   if ((document.type() != FileType::OFFICE_OPEN_XML_ENCRYPTED))
     EXPECT_EQ(param.type, document.type());
-  if (!document.meta().confident)
+  if (!meta.confident)
     return;
 
   EXPECT_EQ(param.encrypted, document.encrypted());
@@ -178,23 +165,59 @@ TEST_P(DataDrivenTest, all) {
     EXPECT_TRUE(document.decrypt(param.password));
   EXPECT_EQ(param.type, document.type());
 
-  {
-    const auto json = metaToJson(document.meta());
+  meta = document.meta();
 
-    fs::create_directories(fs::path(param.metaOutput).parent_path());
-    std::ofstream o(param.metaOutput);
+  {
+    const std::string metaOutput = param.output + "/meta.json";
+    const auto json = metaToJson(meta);
+    std::ofstream o(metaOutput);
     o << std::setw(4) << json << std::endl;
+    EXPECT_TRUE(fs::is_regular_file(metaOutput));
+    EXPECT_LT(0, fs::file_size(metaOutput));
   }
-  EXPECT_TRUE(fs::is_regular_file(param.metaOutput));
-  EXPECT_LT(0, fs::file_size(param.metaOutput));
 
   if (!document.translatable())
     return;
 
-  fs::create_directories(fs::path(param.htmlOutput).parent_path());
-  document.translate(param.htmlOutput, config);
-  EXPECT_TRUE(fs::is_regular_file(param.htmlOutput));
-  EXPECT_LT(0, fs::file_size(param.htmlOutput));
+  if ((meta.type == FileType::OPENDOCUMENT_TEXT) ||
+      (meta.type == FileType::OFFICE_OPEN_XML_DOCUMENT)) {
+    const std::string htmlOutput = param.output + "/document.html";
+    fs::create_directories(fs::path(htmlOutput).parent_path());
+    document.translate(htmlOutput, config);
+    EXPECT_TRUE(fs::is_regular_file(htmlOutput));
+    EXPECT_LT(0, fs::file_size(htmlOutput));
+  } else if ((meta.type == FileType::OPENDOCUMENT_PRESENTATION) ||
+             (meta.type == FileType::OFFICE_OPEN_XML_PRESENTATION)) {
+    for (std::uint32_t i = 0; i < meta.entryCount; ++i) {
+      config.entryOffset = i;
+      config.entryCount = 1;
+      const std::string htmlOutput = param.output + "/slide" + std::to_string(i) + ".html";
+      document.translate(htmlOutput, config);
+      EXPECT_TRUE(fs::is_regular_file(htmlOutput));
+      EXPECT_LT(0, fs::file_size(htmlOutput));
+    }
+  } else if ((meta.type == FileType::OPENDOCUMENT_SPREADSHEET) ||
+             (meta.type == FileType::OFFICE_OPEN_XML_WORKBOOK)) {
+    for (std::uint32_t i = 0; i < meta.entryCount; ++i) {
+      config.entryOffset = i;
+      config.entryCount = 1;
+      const std::string htmlOutput = param.output + "/sheet" + std::to_string(i) + ".html";
+      document.translate(htmlOutput, config);
+      EXPECT_TRUE(fs::is_regular_file(htmlOutput));
+      EXPECT_LT(0, fs::file_size(htmlOutput));
+    }
+  } else if (meta.type == FileType::OPENDOCUMENT_GRAPHICS) {
+    for (std::uint32_t i = 0; i < meta.entryCount; ++i) {
+      config.entryOffset = i;
+      config.entryCount = 1;
+      const std::string htmlOutput = param.output + "/page" + std::to_string(i) + ".html";
+      document.translate(htmlOutput, config);
+      EXPECT_TRUE(fs::is_regular_file(htmlOutput));
+      EXPECT_LT(0, fs::file_size(htmlOutput));
+    }
+  } else {
+    EXPECT_TRUE(false);
+  }
 }
 
 INSTANTIATE_TEST_CASE_P(all, DataDrivenTest,
