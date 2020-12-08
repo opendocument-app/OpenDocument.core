@@ -521,11 +521,15 @@ factorizeElement(std::shared_ptr<const OpenDocument> document,
     else if (element == "table:table")
       return std::make_shared<OdfTable>(std::move(document), std::move(parent),
                                         node);
+    else if (element == "draw:frame")
+      return std::make_shared<OdfFrame>(std::move(document), std::move(parent),
+                                        node);
+    else if (element == "draw:image")
+      return std::make_shared<OdfImage>(std::move(document), std::move(parent),
+                                        node);
 
-    // else if (element == "draw:frame" || element == "draw:custom-shape")
+    // else if (element == "draw:custom-shape")
     //  FrameTranslator(in, out, context);
-    // else if (element == "draw:image")
-    //  ImageTranslator(in, out, context);
 
     // TODO this should be removed at some point
     return std::make_shared<OdfPrimitive>(

@@ -93,13 +93,18 @@ translateTableCellProperties(const TableCellProperties &properties) {
   return result;
 }
 
-std::string
-translateFrameProperties(const FrameProperties &properties) {
+std::string translateFrameProperties(const FrameProperties &properties) {
   std::string result;
   result += "width:" + properties.width + ";";
   result += "height:" + properties.height + ";";
   result += "z-index:" + properties.zIndex + ";";
   return result;
+}
+
+std::string optionalStyleAttribute(const std::string &style) {
+  if (style.empty())
+    return "";
+  return " style=\"" + style + "\"";
 }
 
 void translateList(ListElement element, std::ostream &out,
@@ -115,25 +120,29 @@ void translateList(ListElement element, std::ostream &out,
 
 void translateTable(TableElement element, std::ostream &out,
                     const HtmlConfig &config) {
-  out << "<table style=\"";
-  out << translateTableProperties(element.tableProperties());
-  out << R"(" cellpadding="0" border="0" cellspacing="0")";
+  out << "<table";
+  out << optionalStyleAttribute(
+      translateTableProperties(element.tableProperties()));
+  out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
   for (auto &&col : element.columns()) {
-    out << "<col style=\"";
-    out << translateTableColumnProperties(col.tableColumnProperties());
-    out << "\">";
+    out << "<col";
+    out << optionalStyleAttribute(
+        translateTableColumnProperties(col.tableColumnProperties()));
+    out << ">";
   }
 
   for (auto &&row : element.rows()) {
-    out << "<tr style=\"";
-    out << translateTableRowProperties(row.tableRowProperties());
-    out << "\">";
+    out << "<tr";
+    out << optionalStyleAttribute(
+        translateTableRowProperties(row.tableRowProperties()));
+    out << ">";
     for (auto &&cell : row.cells()) {
-      out << "<td style=\"";
-      out << translateTableCellProperties(cell.tableCellProperties());
-      out << "\">";
+      out << "<td";
+      out << optionalStyleAttribute(
+          translateTableCellProperties(cell.tableCellProperties()));
+      out << ">";
       translateGeneration(cell.children(), out, config);
       out << "</td>";
     }
@@ -176,9 +185,10 @@ void translateImage(ImageElement element, std::ostream &out,
 
 void translateFrame(FrameElement element, std::ostream &out,
                     const HtmlConfig &config) {
-  out << "<div style=\"";
-  out << translateFrameProperties(element.frameProperties());
-  out << "\">";
+  out << "<div";
+  out << optionalStyleAttribute(
+      translateFrameProperties(element.frameProperties()));
+  out << ">";
 
   for (auto &&e : element.children()) {
     if (e.type() == ElementType::IMAGE) {
@@ -206,13 +216,14 @@ void translateElement(Element element, std::ostream &out,
   } else if (element.type() == ElementType::LINE_BREAK) {
     out << "<br>";
   } else if (element.type() == ElementType::PARAGRAPH) {
-    out << "<p style=\"";
-    out << translateParagraphProperties(
-        element.paragraph().paragraphProperties());
-    out << "\">";
-    out << "<span style=\"";
-    out << translateTextProperties(element.paragraph().textProperties());
-    out << "\">";
+    out << "<p";
+    out << optionalStyleAttribute(translateParagraphProperties(
+        element.paragraph().paragraphProperties()));
+    out << ">";
+    out << "<span";
+    out << optionalStyleAttribute(
+        translateTextProperties(element.paragraph().textProperties()));
+    out << ">";
     if (element.firstChild())
       translateGeneration(element.children(), out, config);
     else
@@ -220,15 +231,17 @@ void translateElement(Element element, std::ostream &out,
     out << "</span>";
     out << "</p>";
   } else if (element.type() == ElementType::SPAN) {
-    out << "<span style=\"";
-    out << translateTextProperties(element.span().textProperties());
-    out << "\">";
+    out << "<span";
+    out << optionalStyleAttribute(
+        translateTextProperties(element.span().textProperties()));
+    out << ">";
     translateGeneration(element.children(), out, config);
     out << "</span>";
   } else if (element.type() == ElementType::LINK) {
-    out << "<a style=\"";
-    out << translateTextProperties(element.link().textProperties());
-    out << "\" href=\"";
+    out << "<a";
+    out << optionalStyleAttribute(
+        translateTextProperties(element.link().textProperties()));
+    out << " href=\"";
     out << element.link().href();
     out << "\">";
     translateGeneration(element.children(), out, config);

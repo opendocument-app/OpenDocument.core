@@ -82,10 +82,6 @@ BookmarkElement Element::bookmark() const {
       std::dynamic_pointer_cast<const common::Bookmark>(m_impl));
 }
 
-ImageElement Element::image() const {
-  return ImageElement(std::dynamic_pointer_cast<const common::Image>(m_impl));
-}
-
 ListElement Element::list() const {
   return ListElement(std::dynamic_pointer_cast<const common::List>(m_impl));
 }
@@ -112,6 +108,14 @@ TableRowElement Element::tableRow() const {
 TableCellElement Element::tableCell() const {
   return TableCellElement(
       std::dynamic_pointer_cast<const common::TableCell>(m_impl));
+}
+
+FrameElement Element::frame() const {
+  return FrameElement(std::dynamic_pointer_cast<const common::Frame>(m_impl));
+}
+
+ImageElement Element::image() const {
+  return ImageElement(std::dynamic_pointer_cast<const common::Image>(m_impl));
 }
 
 template <typename E>
