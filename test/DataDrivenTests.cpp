@@ -41,10 +41,7 @@ Param getTestParam(std::string input, std::string output) {
   const bool encrypted = !password.empty();
   output += "/" + fileName;
 
-  return {std::move(input),
-          type,
-          encrypted,
-          std::move(password),
+  return {std::move(input), type, encrypted, std::move(password),
           std::move(output)};
 }
 
@@ -63,11 +60,10 @@ Params getTestParams(const std::string &input, std::string output) {
       const FileType type = FileMeta::typeByExtension(row["type"].get<>());
       std::string password = row["password"].get<>();
       const bool encrypted = !password.empty();
-      const std::string fileName =
-          fs::path(path).filename();
+      const std::string fileName = fs::path(path).filename();
       std::string outputTmp =
-          output + "/" +
-          access::Path(row["path"].get<>()).parent().string() + "/" + fileName;
+          output + "/" + access::Path(row["path"].get<>()).parent().string() +
+          "/" + fileName;
 
       if (type == FileType::UNKNOWN)
         continue;
@@ -89,8 +85,7 @@ Params getTestParams(const std::string &input, std::string output) {
 
     std::string outputTmp =
         output + "/" + access::Path(path).rebase(input).parent().string();
-    const auto param =
-        getTestParam(path, std::move(outputTmp));
+    const auto param = getTestParam(path, std::move(outputTmp));
 
     if (param.type == FileType::UNKNOWN)
       continue;
@@ -191,7 +186,8 @@ TEST_P(DataDrivenTest, all) {
     for (std::uint32_t i = 0; i < meta.entryCount; ++i) {
       config.entryOffset = i;
       config.entryCount = 1;
-      const std::string htmlOutput = param.output + "/slide" + std::to_string(i) + ".html";
+      const std::string htmlOutput =
+          param.output + "/slide" + std::to_string(i) + ".html";
       document.translate(htmlOutput, config);
       EXPECT_TRUE(fs::is_regular_file(htmlOutput));
       EXPECT_LT(0, fs::file_size(htmlOutput));
@@ -201,7 +197,8 @@ TEST_P(DataDrivenTest, all) {
     for (std::uint32_t i = 0; i < meta.entryCount; ++i) {
       config.entryOffset = i;
       config.entryCount = 1;
-      const std::string htmlOutput = param.output + "/sheet" + std::to_string(i) + ".html";
+      const std::string htmlOutput =
+          param.output + "/sheet" + std::to_string(i) + ".html";
       document.translate(htmlOutput, config);
       EXPECT_TRUE(fs::is_regular_file(htmlOutput));
       EXPECT_LT(0, fs::file_size(htmlOutput));
@@ -210,7 +207,8 @@ TEST_P(DataDrivenTest, all) {
     for (std::uint32_t i = 0; i < meta.entryCount; ++i) {
       config.entryOffset = i;
       config.entryCount = 1;
-      const std::string htmlOutput = param.output + "/page" + std::to_string(i) + ".html";
+      const std::string htmlOutput =
+          param.output + "/page" + std::to_string(i) + ".html";
       document.translate(htmlOutput, config);
       EXPECT_TRUE(fs::is_regular_file(htmlOutput));
       EXPECT_LT(0, fs::file_size(htmlOutput));
