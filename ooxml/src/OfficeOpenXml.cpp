@@ -110,7 +110,8 @@ void generateContent_(Context &context) {
     // TODO this breaks back translation
     pugi::xml_document sharedStrings;
     if (context.storage->isFile("xl/sharedStrings.xml")) {
-      sharedStrings = common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
+      sharedStrings =
+          common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
       for (auto &&e : sharedStrings.select_nodes("//si")) {
         context.sharedStrings.push_back(e.node());
       }

@@ -71,8 +71,7 @@ void BordersTranslator(pugi::xml_node in, std::ostream &out, Context &) {
   }
 }
 
-void CellXfsTranslator(pugi::xml_node in, std::ostream &out,
-                       Context &context) {
+void CellXfsTranslator(pugi::xml_node in, std::ostream &out, Context &context) {
   std::uint32_t i = 0;
   for (auto &&e : in.children()) {
     const std::string name = "cellxf-" + std::to_string(i);
@@ -133,8 +132,7 @@ void WorkbookTranslator::css(pugi::xml_node in, Context &context) {
 }
 
 namespace {
-void TextTranslator(pugi::xml_node in, std::ostream &out,
-                    Context &context) {
+void TextTranslator(pugi::xml_node in, std::ostream &out, Context &context) {
   std::string text = in.value();
   common::StringUtil::findAndReplaceAll(text, "&", "&amp;");
   common::StringUtil::findAndReplaceAll(text, "<", "&lt;");
@@ -150,8 +148,7 @@ void TextTranslator(pugi::xml_node in, std::ostream &out,
   }
 }
 
-void StyleAttributeTranslator(pugi::xml_node in, std::ostream &out,
-                              Context &) {
+void StyleAttributeTranslator(pugi::xml_node in, std::ostream &out, Context &) {
   const std::string prefix = in.name();
 
   const auto width = in.attribute("width");
@@ -193,11 +190,9 @@ void ElementAttributeTranslator(pugi::xml_node in, std::ostream &out,
 
 void ElementChildrenTranslator(pugi::xml_node in, std::ostream &out,
                                Context &context);
-void ElementTranslator(pugi::xml_node in, std::ostream &out,
-                       Context &context);
+void ElementTranslator(pugi::xml_node in, std::ostream &out, Context &context);
 
-void TableTranslator(pugi::xml_node in, std::ostream &out,
-                     Context &context) {
+void TableTranslator(pugi::xml_node in, std::ostream &out, Context &context) {
   // TODO context.config->tableLimitByDimensions
   context.tableRange = {
       {context.config->tableOffsetRows, context.config->tableOffsetCols},
@@ -280,8 +275,7 @@ void TableCellTranslator(pugi::xml_node in, std::ostream &out,
     if (std::strcmp(t.as_string(), "s") == 0) {
       const auto sharedStringIndex = in.child("v").text().as_int(-1);
       if (sharedStringIndex >= 0) {
-        pugi::xml_node replacement =
-            context.sharedStrings[sharedStringIndex];
+        pugi::xml_node replacement = context.sharedStrings[sharedStringIndex];
         ElementChildrenTranslator(replacement, out, context);
       } else {
         DLOG(INFO) << "undefined behaviour: shared string not found";
@@ -311,8 +305,7 @@ void ElementChildrenTranslator(pugi::xml_node in, std::ostream &out,
   }
 }
 
-void ElementTranslator(pugi::xml_node in, std::ostream &out,
-                       Context &context) {
+void ElementTranslator(pugi::xml_node in, std::ostream &out, Context &context) {
   static std::unordered_map<std::string, const char *> substitution{
       {"cols", "colgroup"},
   };
