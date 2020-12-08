@@ -108,10 +108,10 @@ void generateContent_(Context &context) {
         Meta::parseRelationships(*context.storage, "xl/workbook.xml");
 
     // TODO this breaks back translation
+    pugi::xml_document sharedStrings;
     if (context.storage->isFile("xl/sharedStrings.xml")) {
-      context.sharedStringsDocument =
-          common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
-      for (auto &&e : context.sharedStringsDocument.select_nodes("//si")) {
+      sharedStrings = common::XmlUtil::parse(*context.storage, "xl/sharedStrings.xml");
+      for (auto &&e : sharedStrings.select_nodes("//si")) {
         context.sharedStrings.push_back(e.node());
       }
     }
@@ -219,6 +219,8 @@ public:
     std::ofstream out(path);
     if (!out.is_open())
       return false;
+
+    context_ = {};
     context_.config = &config;
     context_.meta = &meta_;
     context_.storage = storage_.get();

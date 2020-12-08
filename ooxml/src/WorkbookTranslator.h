@@ -12,8 +12,8 @@ namespace odr::ooxml {
 struct Context;
 
 namespace WorkbookTranslator {
-void css(const pugi::xml_node &in, Context &context);
-void html(const pugi::xml_node &in, Context &context);
+void css(pugi::xml_node in, Context &context);
+void html(pugi::xml_node in, Context &context);
 } // namespace WorkbookTranslator
 
 } // namespace odr::ooxml

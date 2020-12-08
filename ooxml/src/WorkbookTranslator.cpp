@@ -16,7 +16,7 @@
 namespace odr::ooxml {
 
 namespace {
-void FontsTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
+void FontsTranslator(pugi::xml_node in, std::ostream &out, Context &) {
   std::uint32_t i = 0;
   for (auto &&e : in.children()) {
     out << ".font-" << i << " {";
@@ -42,7 +42,7 @@ void FontsTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   }
 }
 
-void FillsTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
+void FillsTranslator(pugi::xml_node in, std::ostream &out, Context &) {
   std::uint32_t i = 0;
   for (auto &&e : in.children()) {
     out << ".fill-" << i << " {";
@@ -60,7 +60,7 @@ void FillsTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   }
 }
 
-void BordersTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
+void BordersTranslator(pugi::xml_node in, std::ostream &out, Context &) {
   std::uint32_t i = 0;
   for (auto &&e : in.children()) {
     out << ".border-" << i << " {";
@@ -71,7 +71,7 @@ void BordersTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   }
 }
 
-void CellXfsTranslator(const pugi::xml_node &in, std::ostream &out,
+void CellXfsTranslator(pugi::xml_node in, std::ostream &out,
                        Context &context) {
   std::uint32_t i = 0;
   for (auto &&e : in.children()) {
@@ -116,7 +116,7 @@ void CellXfsTranslator(const pugi::xml_node &in, std::ostream &out,
 }
 } // namespace
 
-void WorkbookTranslator::css(const pugi::xml_node &in, Context &context) {
+void WorkbookTranslator::css(pugi::xml_node in, Context &context) {
   std::ostream &out = *context.output;
 
   if (const auto fonts = in.child("fonts"); fonts)
@@ -133,9 +133,9 @@ void WorkbookTranslator::css(const pugi::xml_node &in, Context &context) {
 }
 
 namespace {
-void TextTranslator(const pugi::xml_text &in, std::ostream &out,
+void TextTranslator(pugi::xml_node in, std::ostream &out,
                     Context &context) {
-  std::string text = in.as_string();
+  std::string text = in.value();
   common::StringUtil::findAndReplaceAll(text, "&", "&amp;");
   common::StringUtil::findAndReplaceAll(text, "<", "&lt;");
   common::StringUtil::findAndReplaceAll(text, ">", "&gt;");
@@ -150,7 +150,7 @@ void TextTranslator(const pugi::xml_text &in, std::ostream &out,
   }
 }
 
-void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
+void StyleAttributeTranslator(pugi::xml_node in, std::ostream &out,
                               Context &) {
   const std::string prefix = in.name();
 
@@ -166,7 +166,7 @@ void StyleAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 }
 
-void ElementAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
+void ElementAttributeTranslator(pugi::xml_node in, std::ostream &out,
                                 Context &context) {
   if (const auto s = in.attribute("s"); s) {
     const std::string name = std::string("cellxf-") + s.as_string();
@@ -191,12 +191,12 @@ void ElementAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
   StyleAttributeTranslator(in, out, context);
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+void ElementChildrenTranslator(pugi::xml_node in, std::ostream &out,
                                Context &context);
-void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
+void ElementTranslator(pugi::xml_node in, std::ostream &out,
                        Context &context);
 
-void TableTranslator(const pugi::xml_node &in, std::ostream &out,
+void TableTranslator(pugi::xml_node in, std::ostream &out,
                      Context &context) {
   // TODO context.config->tableLimitByDimensions
   context.tableRange = {
@@ -212,7 +212,7 @@ void TableTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "</table>";
 }
 
-void TableColTranslator(const pugi::xml_node &in, std::ostream &out,
+void TableColTranslator(pugi::xml_node in, std::ostream &out,
                         Context &context) {
   // TODO if min/max is unordered we have a problem here; fail fast in that case
 
@@ -232,7 +232,7 @@ void TableColTranslator(const pugi::xml_node &in, std::ostream &out,
   }
 }
 
-void TableRowTranslator(const pugi::xml_node &in, std::ostream &out,
+void TableRowTranslator(pugi::xml_node in, std::ostream &out,
                         Context &context) {
   const auto rowIndex = in.attribute("r").as_uint() - 1;
 
@@ -259,7 +259,7 @@ void TableRowTranslator(const pugi::xml_node &in, std::ostream &out,
   context.tableCursor.addRow();
 }
 
-void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
+void TableCellTranslator(pugi::xml_node in, std::ostream &out,
                          Context &context) {
   const common::TablePosition cellIndex(in.attribute("r").as_string());
 
@@ -280,7 +280,7 @@ void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
     if (std::strcmp(t.as_string(), "s") == 0) {
       const auto sharedStringIndex = in.child("v").text().as_int(-1);
       if (sharedStringIndex >= 0) {
-        const pugi::xml_node &replacement =
+        pugi::xml_node replacement =
             context.sharedStrings[sharedStringIndex];
         ElementChildrenTranslator(replacement, out, context);
       } else {
@@ -301,17 +301,17 @@ void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
   context.tableCursor.addCell();
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
+void ElementChildrenTranslator(pugi::xml_node in, std::ostream &out,
                                Context &context) {
   for (auto &&n : in) {
     if (n.type() == pugi::node_pcdata)
-      TextTranslator(n.text(), out, context);
+      TextTranslator(n, out, context);
     else if (n.type() == pugi::node_element)
       ElementTranslator(n, out, context);
   }
 }
 
-void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
+void ElementTranslator(pugi::xml_node in, std::ostream &out,
                        Context &context) {
   static std::unordered_map<std::string, const char *> substitution{
       {"cols", "colgroup"},
@@ -348,7 +348,7 @@ void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
 }
 } // namespace
 
-void WorkbookTranslator::html(const pugi::xml_node &in, Context &context) {
+void WorkbookTranslator::html(pugi::xml_node in, Context &context) {
   ElementTranslator(in, *context.output, context);
 }
 
