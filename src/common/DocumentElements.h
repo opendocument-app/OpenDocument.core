@@ -16,6 +16,7 @@ struct TableColumnProperties;
 struct TableRowProperties;
 struct TableCellProperties;
 struct FrameProperties;
+struct DrawingProperties;
 
 namespace common {
 
@@ -134,6 +135,42 @@ public:
   virtual bool internal() const = 0;
   virtual std::string href() const = 0;
   virtual odr::ImageFile imageFile() const = 0;
+};
+
+class Rect : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual std::string x() const = 0;
+  virtual std::string y() const = 0;
+  virtual std::string width() const = 0;
+  virtual std::string height() const = 0;
+
+  virtual DrawingProperties drawingProperties() const = 0;
+};
+
+class Line : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual std::string x1() const = 0;
+  virtual std::string y1() const = 0;
+  virtual std::string x2() const = 0;
+  virtual std::string y2() const = 0;
+
+  virtual DrawingProperties drawingProperties() const = 0;
+};
+
+class Circle : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual std::string x() const = 0;
+  virtual std::string y() const = 0;
+  virtual std::string width() const = 0;
+  virtual std::string height() const = 0;
+
+  virtual DrawingProperties drawingProperties() const = 0;
 };
 
 } // namespace common

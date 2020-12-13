@@ -226,6 +226,45 @@ public:
   odr::ImageFile imageFile() const final;
 };
 
+class OdfRect final : public OdfElement, public common::Rect {
+public:
+  OdfRect(std::shared_ptr<const OpenDocument> document,
+          std::shared_ptr<const common::Element> parent, pugi::xml_node node);
+
+  std::string x() const final;
+  std::string y() const final;
+  std::string width() const final;
+  std::string height() const final;
+
+  DrawingProperties drawingProperties() const final;
+};
+
+class OdfLine final : public OdfElement, public common::Line {
+public:
+  OdfLine(std::shared_ptr<const OpenDocument> document,
+          std::shared_ptr<const common::Element> parent, pugi::xml_node node);
+
+  std::string x1() const final;
+  std::string y1() const final;
+  std::string x2() const final;
+  std::string y2() const final;
+
+  DrawingProperties drawingProperties() const final;
+};
+
+class OdfCircle final : public OdfElement, public common::Circle {
+public:
+  OdfCircle(std::shared_ptr<const OpenDocument> document,
+            std::shared_ptr<const common::Element> parent, pugi::xml_node node);
+
+  std::string x() const final;
+  std::string y() const final;
+  std::string width() const final;
+  std::string height() const final;
+
+  DrawingProperties drawingProperties() const final;
+};
+
 } // namespace odr::odf
 
 #endif // ODR_ODF_ELEMENTS_H

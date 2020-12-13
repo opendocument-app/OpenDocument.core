@@ -14,6 +14,7 @@ struct TableProperties;
 struct TableColumnProperties;
 struct TableRowProperties;
 struct TableCellProperties;
+struct DrawingProperties;
 } // namespace odr
 
 namespace odr::odf {
@@ -37,6 +38,7 @@ struct ResolvedStyle {
   TableColumnProperties toTableColumnProperties() const;
   TableRowProperties toTableRowProperties() const;
   TableCellProperties toTableCellProperties() const;
+  DrawingProperties toDrawingProperties() const;
 };
 
 class Style final {

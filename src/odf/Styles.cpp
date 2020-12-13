@@ -91,6 +91,17 @@ TableCellProperties ResolvedStyle::toTableCellProperties() const {
   return result;
 }
 
+DrawingProperties ResolvedStyle::toDrawingProperties() const {
+  DrawingProperties result;
+
+  result.strokeWidth = lookup(graphicProperties, "svg:stroke-width");
+  result.strokeColor = lookup(graphicProperties, "svg:stroke-color");
+  result.fillColor = lookup(graphicProperties, "draw:fill-color");
+  result.verticalAlign = lookup(graphicProperties, "draw:textarea-vertical-align");
+
+  return result;
+}
+
 Style::Style(std::shared_ptr<Style> parent, pugi::xml_node styleNode)
     : m_parent{std::move(parent)}, m_styleNode{styleNode} {}
 

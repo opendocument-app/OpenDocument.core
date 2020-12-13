@@ -118,6 +118,18 @@ ImageElement Element::image() const {
   return ImageElement(std::dynamic_pointer_cast<const common::Image>(m_impl));
 }
 
+RectElement Element::rect() const {
+  return RectElement(std::dynamic_pointer_cast<const common::Rect>(m_impl));
+}
+
+LineElement Element::line() const {
+  return LineElement(std::dynamic_pointer_cast<const common::Line>(m_impl));
+}
+
+CircleElement Element::circle() const {
+  return CircleElement(std::dynamic_pointer_cast<const common::Circle>(m_impl));
+}
+
 template <typename E>
 ElementIterator<E>::ElementIterator(E element)
     : m_element{std::move(element)} {}
@@ -343,5 +355,80 @@ bool ImageElement::internal() const { return m_impl->internal(); }
 std::string ImageElement::href() const { return m_impl->href(); }
 
 ImageFile ImageElement::imageFile() const { return m_impl->imageFile(); }
+
+RectElement::RectElement() = default;
+
+RectElement::RectElement(std::shared_ptr<const common::Rect> impl)
+    : Element(impl), m_impl{std::move(impl)} {}
+
+std::string RectElement::x() const {
+  return m_impl->x();
+}
+
+std::string RectElement::y() const {
+  return m_impl->y();
+}
+
+std::string RectElement::width() const {
+  return m_impl->width();
+}
+
+std::string RectElement::height() const {
+  return m_impl->height();
+}
+
+DrawingProperties RectElement::drawingProperties() const {
+  return m_impl->drawingProperties();
+}
+
+LineElement::LineElement() = default;
+
+LineElement::LineElement(std::shared_ptr<const common::Line> impl)
+    : Element(impl), m_impl{std::move(impl)} {}
+
+std::string LineElement::x1() const {
+  return m_impl->x1();
+}
+
+std::string LineElement::y1() const {
+  return m_impl->y1();
+}
+
+std::string LineElement::x2() const {
+  return m_impl->x2();
+}
+
+std::string LineElement::y2() const {
+  return m_impl->y2();
+}
+
+DrawingProperties LineElement::drawingProperties() const {
+  return m_impl->drawingProperties();
+}
+
+CircleElement::CircleElement() = default;
+
+CircleElement::CircleElement(std::shared_ptr<const common::Circle> impl)
+    : Element(impl), m_impl{std::move(impl)} {}
+
+std::string CircleElement::x() const {
+  return m_impl->x();
+}
+
+std::string CircleElement::y() const {
+  return m_impl->y();
+}
+
+std::string CircleElement::width() const {
+  return m_impl->width();
+}
+
+std::string CircleElement::height() const {
+  return m_impl->height();
+}
+
+DrawingProperties CircleElement::drawingProperties() const {
+  return m_impl->drawingProperties();
+}
 
 } // namespace odr

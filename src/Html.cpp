@@ -101,6 +101,50 @@ std::string translateFrameProperties(const FrameProperties &properties) {
   return result;
 }
 
+std::string translateDrawingProperties(const DrawingProperties &properties) {
+  std::string result;
+  if (properties.strokeWidth)
+    result += "stroke-width:" + *properties.strokeWidth + ";";
+  if (properties.strokeColor)
+    result += "stroke:" + *properties.strokeColor + ";";
+  if (properties.fillColor)
+    result += "fill:" + *properties.fillColor + ";";
+  if (properties.verticalAlign) {
+    if (properties.verticalAlign == "middle")
+      result += "display:flex;justify-content:center;flex-direction: column;";
+    // TODO else log
+  }
+  return result;
+}
+
+std::string translateRectProperties(RectElement element) {
+  std::string result;
+  result += "position:absolute;";
+  result += "left:" + element.x() + ";";
+  result += "top:" + element.y() + ";";
+  result += "width:" + element.width() + ";";
+  result += "height:" + element.height() + ";";
+  result += translateDrawingProperties(element.drawingProperties());
+  return result;
+}
+
+std::string translateLineProperties(LineElement element) {
+  std::string result;
+  result += translateDrawingProperties(element.drawingProperties());
+  return result;
+}
+
+std::string translateCircleProperties(CircleElement element) {
+  std::string result;
+  result += "position:absolute;";
+  result += "left:" + element.x() + ";";
+  result += "top:" + element.y() + ";";
+  result += "width:" + element.width() + ";";
+  result += "height:" + element.height() + ";";
+  result += translateDrawingProperties(element.drawingProperties());
+  return result;
+}
+
 std::string optionalStyleAttribute(const std::string &style) {
   if (style.empty())
     return "";
@@ -199,6 +243,43 @@ void translateFrame(FrameElement element, std::ostream &out,
   out << "</div>";
 }
 
+void translateRect(RectElement element, std::ostream &out,
+                    const HtmlConfig &config) {
+  out << "<div";
+  out << optionalStyleAttribute(
+      translateRectProperties(element));
+  out << ">";
+  translateGeneration(element.children(), out, config);
+  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
+  out << "</div>";
+}
+
+void translateLine(LineElement element, std::ostream &out,
+                   const HtmlConfig &config) {
+  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
+  out << optionalStyleAttribute("z-index:-1;position:absolute;top:0;left:0;" +
+      translateLineProperties(element));
+  out << ">";
+
+  out << "<line";
+  out << " x1=\"" << element.x1() << "\" y1=\"" << element.y1() << "\"";
+  out << " x2=\"" << element.x2() << "\" y2=\"" << element.y2() << "\"";
+  out << " />";
+
+  out << "</svg>";
+}
+
+void translateCircle(CircleElement element, std::ostream &out,
+                     const HtmlConfig &config) {
+  out << "<div";
+  out << optionalStyleAttribute(
+      translateCircleProperties(element));
+  out << ">";
+  translateGeneration(element.children(), out, config);
+  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
+  out << "</div>";
+}
+
 void translateGeneration(ElementRange siblings, std::ostream &out,
                          const HtmlConfig &config) {
   for (auto &&e : siblings) {
@@ -256,6 +337,12 @@ void translateElement(Element element, std::ostream &out,
     translateTable(element.table(), out, config);
   } else if (element.type() == ElementType::FRAME) {
     translateFrame(element.frame(), out, config);
+  } else if (element.type() == ElementType::RECT) {
+    translateRect(element.rect(), out, config);
+  } else if (element.type() == ElementType::LINE) {
+    translateLine(element.line(), out, config);
+  } else if (element.type() == ElementType::CIRCLE) {
+    translateCircle(element.circle(), out, config);
   } else {
     // TODO log
   }

@@ -30,4 +30,10 @@ ElementType Frame::type() const { return ElementType::FRAME; }
 
 ElementType Image::type() const { return ElementType::IMAGE; }
 
+ElementType Rect::type() const { return ElementType::RECT; }
+
+ElementType Line::type() const { return ElementType::LINE; }
+
+ElementType Circle::type() const { return ElementType::CIRCLE; }
+
 } // namespace odr::common

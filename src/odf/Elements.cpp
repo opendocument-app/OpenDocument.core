@@ -1,10 +1,10 @@
-#include <odf/OpenDocumentFile.h>
 #include <access/Path.h>
 #include <access/Storage.h>
 #include <access/StreamUtil.h>
 #include <common/File.h>
 #include <odf/Elements.h>
 #include <odf/OpenDocument.h>
+#include <odf/OpenDocumentFile.h>
 
 namespace odr::odf {
 
@@ -50,9 +50,7 @@ public:
     return result;
   }
 
-  std::unique_ptr<std::istream> data() const {
-    return m_storage->read(m_path);
-  }
+  std::unique_ptr<std::istream> data() const { return m_storage->read(m_path); }
 
 private:
   std::shared_ptr<access::ReadStorage> m_storage;
@@ -262,7 +260,7 @@ OdfTableColumn::OdfTableColumn(std::shared_ptr<const OpenDocument> document,
 
 OdfTableColumn::OdfTableColumn(const OdfTableColumn &column,
                                const std::uint32_t repeatIndex)
-    : OdfElement(column), m_repeatIndex{repeatIndex} {}
+    : OdfElement(column), m_table{column.m_table}, m_repeatIndex{repeatIndex} {}
 
 std::shared_ptr<const OdfTableColumn> OdfTableColumn::previousColumn() const {
   if (m_repeatIndex > 0) {
@@ -308,7 +306,7 @@ TableColumnProperties OdfTableColumn::tableColumnProperties() const {
 
 OdfTableRow::OdfTableRow(const OdfTableRow &row,
                          const std::uint32_t repeatIndex)
-    : OdfElement(row), m_repeatIndex{repeatIndex} {}
+    : OdfElement(row), m_table{row.m_table}, m_repeatIndex{repeatIndex} {}
 
 OdfTableRow::OdfTableRow(std::shared_ptr<const OpenDocument> document,
                          std::shared_ptr<const OdfTable> table,
@@ -365,23 +363,28 @@ TableRowProperties OdfTableRow::tableRowProperties() const {
 }
 
 OdfTableCell::OdfTableCell(const OdfTableCell &cell, std::uint32_t repeatIndex)
-    : OdfElement(cell), m_repeatIndex{repeatIndex} {}
+    : OdfElement(cell), m_row{cell.m_row}, m_column{cell.m_column},
+      m_repeatIndex{repeatIndex} {}
 
 OdfTableCell::OdfTableCell(std::shared_ptr<const OpenDocument> document,
                            std::shared_ptr<const OdfTableRow> row,
                            std::shared_ptr<const OdfTableColumn> column,
                            pugi::xml_node node)
     : OdfElement(std::move(document), row, node), m_row{std::move(row)},
-      m_column(std::move(column)) {}
+      m_column{std::move(column)} {}
 
 std::shared_ptr<const OdfTableCell> OdfTableCell::previousCell() const {
   if (m_repeatIndex > 0) {
     return std::make_shared<OdfTableCell>(*this, m_repeatIndex - 1);
   }
 
+  const auto previousColumn = m_column->previousColumn();
+  if (!previousColumn)
+    return {};
+
   return factorizeKnownElement<OdfTableCell>(
       m_node.previous_sibling("table:table-cell"), m_document, m_row,
-      m_column->previousColumn());
+      previousColumn);
 }
 
 std::shared_ptr<const OdfTableCell> OdfTableCell::nextCell() const {
@@ -391,9 +394,12 @@ std::shared_ptr<const OdfTableCell> OdfTableCell::nextCell() const {
     return std::make_shared<OdfTableCell>(*this, m_repeatIndex + 1);
   }
 
+  const auto nextColumn = m_column->nextColumn();
+  if (!nextColumn)
+    return {};
+
   return factorizeKnownElement<OdfTableCell>(
-      m_node.next_sibling("table:table-cell"), m_document, m_row,
-      m_column->nextColumn());
+      m_node.next_sibling("table:table-cell"), m_document, m_row, nextColumn);
 }
 
 std::shared_ptr<const common::Element> OdfTableCell::previousSibling() const {
@@ -483,6 +489,83 @@ ImageFile OdfImage::imageFile() const {
       std::make_shared<OdfImageFile>(m_document->storage(), path, fileType));
 }
 
+OdfRect::OdfRect(std::shared_ptr<const OpenDocument> document,
+                 std::shared_ptr<const common::Element> parent,
+                 pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::string OdfRect::x() const { return m_node.attribute("svg:x").value(); }
+
+std::string OdfRect::y() const { return m_node.attribute("svg:y").value(); }
+
+std::string OdfRect::width() const {
+  return m_node.attribute("svg:width").value();
+}
+
+std::string OdfRect::height() const {
+  return m_node.attribute("svg:height").value();
+}
+
+DrawingProperties OdfRect::drawingProperties() const {
+  if (auto styleAttr = m_node.attribute("draw:style-name"); styleAttr) {
+    auto style = m_document->styles().style(styleAttr.value());
+    if (style)
+      return style->resolve().toDrawingProperties();
+    // TODO log
+  }
+  return {};
+}
+
+OdfLine::OdfLine(std::shared_ptr<const OpenDocument> document,
+                 std::shared_ptr<const common::Element> parent,
+                 pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::string OdfLine::x1() const { return m_node.attribute("svg:x1").value(); }
+
+std::string OdfLine::y1() const { return m_node.attribute("svg:y1").value(); }
+
+std::string OdfLine::x2() const { return m_node.attribute("svg:x2").value(); }
+
+std::string OdfLine::y2() const { return m_node.attribute("svg:y2").value(); }
+
+DrawingProperties OdfLine::drawingProperties() const {
+  if (auto styleAttr = m_node.attribute("draw:style-name"); styleAttr) {
+    auto style = m_document->styles().style(styleAttr.value());
+    if (style)
+      return style->resolve().toDrawingProperties();
+    // TODO log
+  }
+  return {};
+}
+
+OdfCircle::OdfCircle(std::shared_ptr<const OpenDocument> document,
+                     std::shared_ptr<const common::Element> parent,
+                     pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::string OdfCircle::x() const { return m_node.attribute("svg:x").value(); }
+
+std::string OdfCircle::y() const { return m_node.attribute("svg:y").value(); }
+
+std::string OdfCircle::width() const {
+  return m_node.attribute("svg:width").value();
+}
+
+std::string OdfCircle::height() const {
+  return m_node.attribute("svg:height").value();
+}
+
+DrawingProperties OdfCircle::drawingProperties() const {
+  if (auto styleAttr = m_node.attribute("draw:style-name"); styleAttr) {
+    auto style = m_document->styles().style(styleAttr.value());
+    if (style)
+      return style->resolve().toDrawingProperties();
+    // TODO log
+  }
+  return {};
+}
+
 std::shared_ptr<common::Element>
 factorizeElement(std::shared_ptr<const OpenDocument> document,
                  std::shared_ptr<const common::Element> parent,
@@ -524,12 +607,26 @@ factorizeElement(std::shared_ptr<const OpenDocument> document,
     else if (element == "draw:frame")
       return std::make_shared<OdfFrame>(std::move(document), std::move(parent),
                                         node);
+    else if (element == "draw:g")
+      return std::make_shared<OdfPrimitive>(
+          std::move(document), std::move(parent), node,
+          ElementType::UNKNOWN); // TODO drawing group
     else if (element == "draw:image")
       return std::make_shared<OdfImage>(std::move(document), std::move(parent),
                                         node);
-
-    // else if (element == "draw:custom-shape")
-    //  FrameTranslator(in, out, context);
+    else if (element == "draw:rect")
+      return std::make_shared<OdfRect>(std::move(document), std::move(parent),
+                                       node);
+    else if (element == "draw:line")
+      return std::make_shared<OdfLine>(std::move(document), std::move(parent),
+                                       node);
+    else if (element == "draw:circle")
+      return std::make_shared<OdfCircle>(std::move(document), std::move(parent),
+                                         node);
+    else if (element == "draw:custom-shape")
+      return std::make_shared<OdfPrimitive>(std::move(document),
+                                            std::move(parent), node,
+                                            ElementType::UNKNOWN); // TODO
 
     // TODO this should be removed at some point
     return std::make_shared<OdfPrimitive>(

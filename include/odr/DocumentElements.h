@@ -23,6 +23,9 @@ class TableRow;
 class TableCell;
 class Frame;
 class Image;
+class Rect;
+class Line;
+class Circle;
 } // namespace common
 
 class Element;
@@ -39,6 +42,9 @@ class TableRowElement;
 class TableCellElement;
 class FrameElement;
 class ImageElement;
+class RectElement;
+class LineElement;
+class CircleElement;
 template <typename E> class ElementRangeTemplate;
 using ElementRange = ElementRangeTemplate<Element>;
 using TableColumnRange = ElementRangeTemplate<TableColumnElement>;
@@ -62,6 +68,9 @@ enum class ElementType {
   TABLE_CELL,
   FRAME,
   IMAGE,
+  RECT,
+  LINE,
+  CIRCLE,
 };
 
 struct FontProperties {
@@ -130,6 +139,13 @@ struct FrameProperties {
   std::string zIndex;
 };
 
+struct DrawingProperties {
+  std::optional<std::string> strokeWidth;
+  std::optional<std::string> strokeColor;
+  std::optional<std::string> fillColor;
+  std::optional<std::string> verticalAlign;
+};
+
 class Element {
 public:
   Element();
@@ -164,6 +180,9 @@ public:
   TableCellElement tableCell() const;
   FrameElement frame() const;
   ImageElement image() const;
+  RectElement rect() const;
+  LineElement line() const;
+  CircleElement circle() const;
 
 private:
   std::shared_ptr<const common::Element> m_impl;
@@ -366,6 +385,54 @@ public:
 
 private:
   std::shared_ptr<const common::Image> m_impl;
+};
+
+class RectElement final : public Element {
+public:
+  RectElement();
+  explicit RectElement(std::shared_ptr<const common::Rect> impl);
+
+  std::string x() const;
+  std::string y() const;
+  std::string width() const;
+  std::string height() const;
+
+  DrawingProperties drawingProperties() const;
+
+private:
+  std::shared_ptr<const common::Rect> m_impl;
+};
+
+class LineElement final : public Element {
+public:
+  LineElement();
+  explicit LineElement(std::shared_ptr<const common::Line> impl);
+
+  std::string x1() const;
+  std::string y1() const;
+  std::string x2() const;
+  std::string y2() const;
+
+  DrawingProperties drawingProperties() const;
+
+private:
+  std::shared_ptr<const common::Line> m_impl;
+};
+
+class CircleElement final : public Element {
+public:
+  CircleElement();
+  explicit CircleElement(std::shared_ptr<const common::Circle> impl);
+
+  std::string x() const;
+  std::string y() const;
+  std::string width() const;
+  std::string height() const;
+
+  DrawingProperties drawingProperties() const;
+
+private:
+  std::shared_ptr<const common::Circle> m_impl;
 };
 
 } // namespace odr

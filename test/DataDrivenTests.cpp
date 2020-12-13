@@ -147,7 +147,7 @@ TEST_P(DataDrivenTest, all) {
   const odr::File file{param.input};
 
   fs::create_directories(fs::path(param.output));
-  auto meta = file.fileMeta();
+  auto fileMeta = file.fileMeta();
 
   // encrypted ooxml type cannot be inspected
   if ((file.fileType() != FileType::OFFICE_OPEN_XML_ENCRYPTED))
@@ -159,7 +159,7 @@ TEST_P(DataDrivenTest, all) {
   //  EXPECT_TRUE(document.decrypt(param.password));
   EXPECT_EQ(param.type, file.fileType());
 
-  meta = file.fileMeta();
+  fileMeta = file.fileMeta();
 
   {
     const std::string metaOutput = param.output + "/meta.json";
@@ -174,51 +174,53 @@ TEST_P(DataDrivenTest, all) {
   // if (!document.translatable())
   //  return;
 
-  if ((meta.type == FileType::OPENDOCUMENT_TEXT) ||
-      (meta.type == FileType::OFFICE_OPEN_XML_DOCUMENT)) {
-    const std::string htmlOutput = param.output + "/document.html";
-    fs::create_directories(fs::path(htmlOutput).parent_path());
-    // TODO
-    //document.translate(htmlOutput, config);
-    EXPECT_TRUE(fs::is_regular_file(htmlOutput));
-    EXPECT_LT(0, fs::file_size(htmlOutput));
-  } else if ((meta.type == FileType::OPENDOCUMENT_PRESENTATION) ||
-             (meta.type == FileType::OFFICE_OPEN_XML_PRESENTATION)) {
-    for (std::uint32_t i = 0; i < meta.entryCount; ++i) {
-      config.entryOffset = i;
-      config.entryCount = 1;
-      const std::string htmlOutput =
-          param.output + "/slide" + std::to_string(i) + ".html";
+  if (file.fileCategory() == FileCategory::DOCUMENT) {
+    auto document = file.documentFile();
+    auto documentMeta = document.documentMeta();
+
+    if (document.documentType() == DocumentType::TEXT) {
+      const std::string htmlOutput = param.output + "/document.html";
+      fs::create_directories(fs::path(htmlOutput).parent_path());
       // TODO
       //document.translate(htmlOutput, config);
       EXPECT_TRUE(fs::is_regular_file(htmlOutput));
       EXPECT_LT(0, fs::file_size(htmlOutput));
+    } else if (document.documentType() == DocumentType::PRESENTATION) {
+      for (std::uint32_t i = 0; i < documentMeta.entryCount; ++i) {
+        config.entryOffset = i;
+        config.entryCount = 1;
+        const std::string htmlOutput =
+            param.output + "/slide" + std::to_string(i) + ".html";
+        // TODO
+        //document.translate(htmlOutput, config);
+        EXPECT_TRUE(fs::is_regular_file(htmlOutput));
+        EXPECT_LT(0, fs::file_size(htmlOutput));
+      }
+    } else if (document.documentType() == DocumentType::SPREADSHEET) {
+      for (std::uint32_t i = 0; i < documentMeta.entryCount; ++i) {
+        config.entryOffset = i;
+        config.entryCount = 1;
+        const std::string htmlOutput =
+            param.output + "/sheet" + std::to_string(i) + ".html";
+        // TODO
+        //document.translate(htmlOutput, config);
+        EXPECT_TRUE(fs::is_regular_file(htmlOutput));
+        EXPECT_LT(0, fs::file_size(htmlOutput));
+      }
+    } else if (document.documentType() == DocumentType::GRAPHICS) {
+      for (std::uint32_t i = 0; i < documentMeta.entryCount; ++i) {
+        config.entryOffset = i;
+        config.entryCount = 1;
+        const std::string htmlOutput =
+            param.output + "/page" + std::to_string(i) + ".html";
+        // TODO
+        //document.translate(htmlOutput, config);
+        EXPECT_TRUE(fs::is_regular_file(htmlOutput));
+        EXPECT_LT(0, fs::file_size(htmlOutput));
+      }
+    } else {
+      EXPECT_TRUE(false);
     }
-  } else if ((meta.type == FileType::OPENDOCUMENT_SPREADSHEET) ||
-             (meta.type == FileType::OFFICE_OPEN_XML_WORKBOOK)) {
-    for (std::uint32_t i = 0; i < meta.entryCount; ++i) {
-      config.entryOffset = i;
-      config.entryCount = 1;
-      const std::string htmlOutput =
-          param.output + "/sheet" + std::to_string(i) + ".html";
-      // TODO
-      //document.translate(htmlOutput, config);
-      EXPECT_TRUE(fs::is_regular_file(htmlOutput));
-      EXPECT_LT(0, fs::file_size(htmlOutput));
-    }
-  } else if (meta.type == FileType::OPENDOCUMENT_GRAPHICS) {
-    for (std::uint32_t i = 0; i < meta.entryCount; ++i) {
-      config.entryOffset = i;
-      config.entryCount = 1;
-      const std::string htmlOutput =
-          param.output + "/page" + std::to_string(i) + ".html";
-      // TODO
-      //document.translate(htmlOutput, config);
-      EXPECT_TRUE(fs::is_regular_file(htmlOutput));
-      EXPECT_LT(0, fs::file_size(htmlOutput));
-    }
-  } else {
-    EXPECT_TRUE(false);
   }
 }
 

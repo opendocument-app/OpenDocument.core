@@ -134,14 +134,14 @@ std::vector<Sheet> OpenDocumentSpreadsheet::sheets() const {
 
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
-                                  .child("office:presentation");
-  for (auto &&xml : body.children("draw:page")) {
+                                  .child("office:spreadsheet");
+  for (auto &&xml : body.children("table:table")) {
     Sheet sheet;
-    sheet.name = xml.attribute("draw:name").value();
+    sheet.name = xml.attribute("table:name").value();
     sheet.rowCount = 0;    // TODO
     sheet.columnCount = 0; // TODO
     sheet.table =
-        Element(factorizeFirstChild(shared_from_this(), nullptr, xml)).table();
+        Element(factorizeElement(shared_from_this(), nullptr, xml)).table();
     result.push_back(sheet);
   }
 
@@ -163,7 +163,8 @@ std::vector<Page> OpenDocumentGraphics::pages() const {
   for (auto &&xml : body.children("draw:page")) {
     Page page;
     page.name = xml.attribute("draw:name").value();
-    page.pageProperties = {}; // TODO
+    page.pageProperties = m_styles.masterPageProperties(
+        xml.attribute("draw:master-page-name").value());
     page.content = ElementRange(
         Element(factorizeFirstChild(shared_from_this(), nullptr, xml)));
     result.push_back(page);
