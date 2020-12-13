@@ -172,7 +172,7 @@ void FrameTranslator(const pugi::xml_node &in, std::ostream &out,
   if (const auto heightAttr = in.attribute("svg:height"); heightAttr)
     out << "height:" << heightAttr.as_string() << ";";
   if (const auto xAttr = in.attribute("svg:x"); xAttr)
-    out << "left:" << xAttr.as_string() << ";";
+    out << "position:absolute;left:" << xAttr.as_string() << ";";
   if (const auto yAttr = in.attribute("svg:y"); yAttr)
     out << "top:" << yAttr.as_string() << ";";
 
