@@ -71,6 +71,8 @@ void generateContent_(const pugi::xml_node &in, Context &context) {
   switch (context.meta->type) {
   case FileType::OPENDOCUMENT_TEXT:
   case FileType::OPENDOCUMENT_GRAPHICS:
+    content = body.child("office:drawing");
+    entryName = "draw:page";
     break;
   case FileType::OPENDOCUMENT_PRESENTATION:
     content = body.child("office:presentation");
