@@ -51,7 +51,7 @@ jobs:
         run: ./odr_test
 
       - name: tidy test outputs
-        run: test/scripts/tidy_test_outputs.py build/test/output
+        run: test/scripts/tidy_test_output.py build/test/output
 
       - name: compare test outputs
         run: test/scripts/compare_test_outputs.py test/data/reference-output build/test/output
