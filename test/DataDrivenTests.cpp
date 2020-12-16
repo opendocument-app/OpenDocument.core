@@ -7,109 +7,14 @@
 #include <odr/Config.h>
 #include <odr/Document.h>
 #include <odr/Meta.h>
-#include <utility>
 #include <test/TestMeta.h>
+#include <utility>
 
 using namespace odr;
 namespace fs = std::filesystem;
 
 namespace {
-struct Param {
-  std::string input;
-  FileType type{FileType::UNKNOWN};
-  bool encrypted{false};
-  std::string password;
-  std::string output;
-
-  Param(std::string input, const FileType type, const bool encrypted,
-        std::string password, std::string output)
-      : input{std::move(input)}, type{type}, encrypted{encrypted},
-        password{std::move(password)}, output{std::move(output)} {}
-};
-
-using Params = std::vector<Param>;
-
-class DataDrivenTest : public testing::TestWithParam<Param> {};
-
-Param getTestParam(std::string input, std::string output) {
-  const FileType type =
-      FileMeta::typeByExtension(access::Path(input).extension());
-  const std::string fileName = fs::path(input).filename();
-  std::string password;
-  if (const auto left = fileName.find('$'), right = fileName.rfind('$');
-      (left != std::string::npos) && (left != right))
-    password = fileName.substr(left, right);
-  const bool encrypted = !password.empty();
-  output += "/" + fileName;
-
-  return {std::move(input), type, encrypted, std::move(password),
-          std::move(output)};
-}
-
-Params getTestParams(const std::string &input, std::string output) {
-  if (fs::is_regular_file(input))
-    return {getTestParam(input, std::move(output))};
-  if (!fs::is_directory(input))
-    return {};
-
-  Params result;
-
-  if (const std::string index = input + "/index.csv";
-      fs::is_regular_file(index)) {
-    for (auto &&row : csv::CSVReader(index)) {
-      const std::string path = input + "/" + row["path"].get<>();
-      const FileType type = FileMeta::typeByExtension(row["type"].get<>());
-      std::string password = row["password"].get<>();
-      const bool encrypted = !password.empty();
-      const std::string fileName = fs::path(path).filename();
-      std::string outputTmp =
-          output + "/" + access::Path(row["path"].get<>()).parent().string() +
-          "/" + fileName;
-
-      if (type == FileType::UNKNOWN)
-        continue;
-      result.emplace_back(path, type, encrypted, std::move(password),
-                          std::move(outputTmp));
-    }
-  }
-
-  // TODO this will also recurse `.git`
-  for (auto &&p : fs::recursive_directory_iterator(input)) {
-    if (!p.is_regular_file())
-      continue;
-    const std::string path = p.path().string();
-    if (const auto it =
-            std::find_if(std::begin(result), std::end(result),
-                         [&](auto &&param) { return param.input == path; });
-        it != std::end(result))
-      continue;
-
-    std::string outputTmp =
-        output + "/" + access::Path(path).rebase(input).parent().string();
-    const auto param = getTestParam(path, std::move(outputTmp));
-
-    if (param.type == FileType::UNKNOWN)
-      continue;
-    result.push_back(param);
-  }
-
-  return result;
-}
-
-Params getTestParams() {
-  Params result;
-
-  for (const auto &e : fs::directory_iterator(test::TestMeta::dataInputDirectory())) {
-    const auto params = getTestParams(
-        e.path().string(), "./output/" + e.path().filename().string());
-    result.insert(std::end(result), std::begin(params), std::end(params));
-  }
-
-  std::sort(std::begin(result), std::end(result),
-            [](const auto &a, const auto &b) { return a.input < b.input; });
-
-  return result;
-}
+class DataDrivenTest : public testing::TestWithParam<std::string> {};
 
 nlohmann::json metaToJson(const odr::FileMeta &meta) {
   nlohmann::json result{
@@ -135,11 +40,14 @@ nlohmann::json metaToJson(const odr::FileMeta &meta) {
 } // namespace
 
 TEST_P(DataDrivenTest, all) {
-  const auto param = GetParam();
-  std::cout << param.input << " to " << param.output << std::endl;
+  const auto name = GetParam();
+  test::TestFile testFile = test::TestMeta::instance().testFile(name);
+  const std::string outputPath = "./output/" + name;
 
-  if ((param.type == FileType::ZIP) ||
-      (param.type == FileType::PORTABLE_DOCUMENT_FORMAT))
+  std::cout << testFile.path << " to " << outputPath << std::endl;
+
+  if ((testFile.type == FileType::ZIP) ||
+      (testFile.type == FileType::PORTABLE_DOCUMENT_FORMAT))
     GTEST_SKIP();
 
   odr::Config config;
@@ -147,26 +55,26 @@ TEST_P(DataDrivenTest, all) {
   config.tableLimitRows = 4000;
   config.tableLimitCols = 500;
 
-  const odr::Document document{param.input};
+  const odr::Document document{testFile.path};
 
-  fs::create_directories(fs::path(param.output));
+  fs::create_directories(fs::path(outputPath));
   auto meta = document.meta();
 
   // encrypted ooxml type cannot be inspected
   if ((document.type() != FileType::OFFICE_OPEN_XML_ENCRYPTED))
-    EXPECT_EQ(param.type, document.type());
+    EXPECT_EQ(testFile.type, document.type());
   if (!meta.confident)
     return;
 
-  EXPECT_EQ(param.encrypted, document.encrypted());
+  EXPECT_EQ(testFile.encrypted, document.encrypted());
   if (document.encrypted())
-    EXPECT_TRUE(document.decrypt(param.password));
-  EXPECT_EQ(param.type, document.type());
+    EXPECT_TRUE(document.decrypt(testFile.password));
+  EXPECT_EQ(testFile.type, document.type());
 
   meta = document.meta();
 
   {
-    const std::string metaOutput = param.output + "/meta.json";
+    const std::string metaOutput = outputPath + "/meta.json";
     const auto json = metaToJson(meta);
     std::ofstream o(metaOutput);
     o << std::setw(4) << json << std::endl;
@@ -179,7 +87,7 @@ TEST_P(DataDrivenTest, all) {
 
   if ((meta.type == FileType::OPENDOCUMENT_TEXT) ||
       (meta.type == FileType::OFFICE_OPEN_XML_DOCUMENT)) {
-    const std::string htmlOutput = param.output + "/document.html";
+    const std::string htmlOutput = outputPath + "/document.html";
     fs::create_directories(fs::path(htmlOutput).parent_path());
     document.translate(htmlOutput, config);
     EXPECT_TRUE(fs::is_regular_file(htmlOutput));
@@ -190,7 +98,7 @@ TEST_P(DataDrivenTest, all) {
       config.entryOffset = i;
       config.entryCount = 1;
       const std::string htmlOutput =
-          param.output + "/slide" + std::to_string(i) + ".html";
+          outputPath + "/slide" + std::to_string(i) + ".html";
       document.translate(htmlOutput, config);
       EXPECT_TRUE(fs::is_regular_file(htmlOutput));
       EXPECT_LT(0, fs::file_size(htmlOutput));
@@ -201,7 +109,7 @@ TEST_P(DataDrivenTest, all) {
       config.entryOffset = i;
       config.entryCount = 1;
       const std::string htmlOutput =
-          param.output + "/sheet" + std::to_string(i) + ".html";
+          outputPath + "/sheet" + std::to_string(i) + ".html";
       document.translate(htmlOutput, config);
       EXPECT_TRUE(fs::is_regular_file(htmlOutput));
       EXPECT_LT(0, fs::file_size(htmlOutput));
@@ -211,7 +119,7 @@ TEST_P(DataDrivenTest, all) {
       config.entryOffset = i;
       config.entryCount = 1;
       const std::string htmlOutput =
-          param.output + "/page" + std::to_string(i) + ".html";
+          outputPath + "/page" + std::to_string(i) + ".html";
       document.translate(htmlOutput, config);
       EXPECT_TRUE(fs::is_regular_file(htmlOutput));
       EXPECT_LT(0, fs::file_size(htmlOutput));
@@ -221,5 +129,6 @@ TEST_P(DataDrivenTest, all) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(all, DataDrivenTest,
-                        testing::ValuesIn(getTestParams()));
+INSTANTIATE_TEST_CASE_P(
+    all, DataDrivenTest,
+    testing::ValuesIn(test::TestMeta::instance().testFiles()));
