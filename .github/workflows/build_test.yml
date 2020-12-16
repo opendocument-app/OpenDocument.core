@@ -1,4 +1,4 @@
-name: build
+name: build_test
 
 on: [push, pull_request]
 
@@ -49,3 +49,9 @@ jobs:
       - name: test
         working-directory: build/test
         run: ./odr_test
+
+      - name: tidy test outputs
+        run: test/scripts/tidy_test_outputs.py build/test/output
+
+      - name: compare test outputs
+        run: test/scripts/compare_test_outputs.py test/data/reference-output build/test/output
