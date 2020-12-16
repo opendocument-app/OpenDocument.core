@@ -1,6 +1,9 @@
 find_package(Threads REQUIRED)
 include(GoogleTest REQUIRED)
 
+set(ODR_TEST_DATA_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/data)
+configure_file(TestMeta.cpp.in TestMeta.cpp)
+
 enable_testing()
 add_executable(odr_test
         DocumentTest.cpp
@@ -10,6 +13,7 @@ add_executable(odr_test
         TablePositionTest.cpp
         TableRangeTest.cpp
         DataDrivenTests.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/TestMeta.cpp
         ZipStorageTest.cpp
         )
 target_include_directories(odr_test

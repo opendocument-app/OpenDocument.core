@@ -8,6 +8,7 @@
 #include <odr/Document.h>
 #include <odr/Meta.h>
 #include <utility>
+#include <test/TestMeta.h>
 
 using namespace odr;
 namespace fs = std::filesystem;
@@ -98,7 +99,7 @@ Params getTestParams(const std::string &input, std::string output) {
 Params getTestParams() {
   Params result;
 
-  for (const auto &e : fs::directory_iterator("./input")) {
+  for (const auto &e : fs::directory_iterator(test::TestMeta::dataInputDirectory())) {
     const auto params = getTestParams(
         e.path().string(), "./output/" + e.path().filename().string());
     result.insert(std::end(result), std::begin(params), std::end(params));
