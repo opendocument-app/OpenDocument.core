@@ -26,7 +26,7 @@ public:
   static std::string dataDirectory();
   static std::string dataInputDirectory();
 
-  std::vector<std::string> testFiles() const;
+  std::vector<std::string> testFilePaths() const;
   TestFile testFile(const std::string &) const;
 
   TestMeta(const TestMeta &) = delete;

@@ -40,9 +40,9 @@ nlohmann::json metaToJson(const odr::FileMeta &meta) {
 } // namespace
 
 TEST_P(DataDrivenTest, all) {
-  const auto name = GetParam();
-  test::TestFile testFile = test::TestMeta::instance().testFile(name);
-  const std::string outputPath = "./output/" + name;
+  const auto testFilePath = GetParam();
+  test::TestFile testFile = test::TestMeta::instance().testFile(testFilePath);
+  const std::string outputPath = "./output/" + testFilePath;
 
   std::cout << testFile.path << " to " << outputPath << std::endl;
 
@@ -131,4 +131,4 @@ TEST_P(DataDrivenTest, all) {
 
 INSTANTIATE_TEST_CASE_P(
     all, DataDrivenTest,
-    testing::ValuesIn(test::TestMeta::instance().testFiles()));
+    testing::ValuesIn(test::TestMeta::instance().testFilePaths()));

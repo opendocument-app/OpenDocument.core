@@ -22,6 +22,11 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
+      - name: checkout submodules
+        run: |
+          git submodule update --depth 1 --init test/data/input/odr-public
+          git submodule update --depth 1 --init test/data/reference-output/odr-public
+
       - name: ccache
         uses: actions/cache@v1
         with:

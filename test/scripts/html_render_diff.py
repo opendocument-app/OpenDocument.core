@@ -29,7 +29,7 @@ def screenshot(browser, url):
 def get_browser(driver='chrome', max_width=1000, max_height=10000):
     options = webdriver.ChromeOptions()
     options.headless = True
-    browser = webdriver.Chrome('/home/andreas/chromedriver', options=options)
+    browser = webdriver.Chrome(options=options)
     browser.set_window_size(max_width, max_height)
     return browser
 
@@ -51,7 +51,7 @@ def main():
     parser.add_argument('--max-height', default=10000)
     args = parser.parse_args()
 
-    browser = get_browser(args.driver, args.max_widht, args.max_height)
+    browser = get_browser(args.driver, args.max_width, args.max_height)
     diff = html_render_diff(browser, args.a, args.b)
     browser.quit()
     bounding_box = diff.getbbox()

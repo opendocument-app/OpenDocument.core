@@ -72,9 +72,9 @@ std::unordered_map<std::string, TestFile> getTestFiles() {
        fs::directory_iterator(test::TestMeta::dataInputDirectory())) {
     const auto files = getTestFiles(e.path().string());
     for (auto &&file : files) {
-      std::string name =
+      std::string testPath =
           file.path.substr(TestMeta::dataInputDirectory().length() + 1);
-      result[name] = file;
+      result[testPath] = file;
     }
   }
 
@@ -94,7 +94,7 @@ TestMeta &TestMeta::instance() {
   return instance;
 }
 
-std::vector<std::string> TestMeta::testFiles() const {
+std::vector<std::string> TestMeta::testFilePaths() const {
   std::vector<std::string> result;
   for (auto &&file : m_testFiles) {
     result.push_back(file.first);
@@ -103,8 +103,8 @@ std::vector<std::string> TestMeta::testFiles() const {
   return result;
 }
 
-TestFile TestMeta::testFile(const std::string &path) const {
-  return m_testFiles.at(path);
+TestFile TestMeta::testFile(const std::string &testPath) const {
+  return m_testFiles.at(testPath);
 }
 
 } // namespace odr::test
