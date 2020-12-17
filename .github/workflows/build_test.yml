@@ -30,7 +30,7 @@ jobs:
       - name: install python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r test/scrips/requirements.txt
+          pip install -r test/scripts/requirements.txt
 
       - name: ccache
         uses: actions/cache@v1
