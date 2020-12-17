@@ -60,7 +60,7 @@ jobs:
         run: ./odr_test
 
       - name: tidy test outputs
-        run: test/scripts/tidy_test_output.py build/test/output
+        run: test/scripts/tidy_test_output.py build/test/output/odr-public
 
       - name: compare test outputs
-        run: test/scripts/compare_test_outputs.py test/data/reference-output build/test/output
+        run: test/scripts/compare_test_outputs.py test/data/reference-output/odr-public build/test/output/odr-public

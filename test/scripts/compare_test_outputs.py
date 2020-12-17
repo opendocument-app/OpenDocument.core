@@ -28,26 +28,27 @@ def parse_json(path):
         return json.load(f)
 
 
-def compare_json(a, b):
+def compare_json(a, b, **kwargs):
     json_a = json.dumps(parse_json(a), sort_keys=True)
     json_b = json.dumps(parse_json(b), sort_keys=True)
     return json_a == json_b
 
 
-def compare_html(a, b):
-    browser = get_browser()
+def compare_html(a, b, browser=None):
+    if browser is None:
+        browser = get_browser()
     diff = html_render_diff(browser, a, b)
     return True if diff.getbbox() is None else False
 
 
-def compare_files(a, b):
+def compare_files(a, b, **kwargs):
     if a.endswith('.json'):
         return compare_json(a, b)
     elif a.endswith('.html'):
         return compare_html(a, b)
 
 
-def comparable_file(path):
+def comparable_file(path, **kwargs):
     if path.endswith('.json'):
         return True
     if path.endswith('.html'):
@@ -55,7 +56,7 @@ def comparable_file(path):
     return False
 
 
-def compare_dirs(a, b, level=0, prefix=''):
+def compare_dirs(a, b, level=0, prefix='', **kwargs):
     prefix_file = prefix + '├── '
     if level == 0:
         print(f'compare dir {a} with {b}')
@@ -86,7 +87,7 @@ def compare_dirs(a, b, level=0, prefix=''):
     common_files = [path for path in left_files if path in right_files]
 
     for filename in [os.path.basename(path) for path in common_files]:
-        cmp = compare_files(os.path.join(a, filename), os.path.join(b, filename))
+        cmp = compare_files(os.path.join(a, filename), os.path.join(b, filename), **kwargs)
         if cmp:
             print(f'{prefix_file}{bcolors.OKGREEN}{filename} ✓{bcolors.ENDC}')
         else:
@@ -101,16 +102,16 @@ def compare_dirs(a, b, level=0, prefix=''):
         right_missing = ' '.join([os.path.basename(path) for path in left_dirs if path not in right_dirs])
         if left_missing:
             print(f'{prefix_file}{bcolors.FAIL}missing dirs left: {left_missing} ✘{bcolors.ENDC}')
-            result['left_dirs_missing'].extend([path for path in right_files if path not in left_files])
+            result['left_dirs_missing'].extend([path for path in right_dirs if path not in left_dirs])
         if right_missing:
             print(f'{prefix_file}{bcolors.FAIL}missing dirs right: {right_missing} ✘{bcolors.ENDC}')
-            result['right_dirs_missing'].extend([path for path in left_files if path not in right_files])
+            result['right_dirs_missing'].extend([path for path in left_dirs if path not in right_dirs])
     common_dirs = [path for path in left_dirs if path in right_dirs]
 
     for dirname in [os.path.basename(path) for path in common_dirs]:
         print(prefix + '├── ' + dirname)
         subresult = compare_dirs(os.path.join(a, dirname), os.path.join(b, dirname), level=level + 1,
-                                 prefix=prefix + '│   ')
+                                 prefix=prefix + '│   ', **kwargs)
         result['left_files_missing'].extend(subresult['left_files_missing'])
         result['right_files_missing'].extend(subresult['right_files_missing'])
         result['left_dirs_missing'].extend(subresult['left_dirs_missing'])
@@ -126,7 +127,8 @@ def main():
     parser.add_argument('b')
     args = parser.parse_args()
 
-    result = compare_dirs(args.a, args.b)
+    result = compare_dirs(args.a, args.b, browser=get_browser())
+    print(result)
     if result['left_files_missing'] or result['right_files_missing'] or result['left_dirs_missing'] or result[
         'right_dirs_missing'] or result['files_different']:
         return 1
