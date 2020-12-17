@@ -60,6 +60,14 @@ def compare_dirs(a, b, level=0, prefix=''):
     if level == 0:
         print(f'compare dir {a} with {b}')
 
+    result = {
+        'left_files_missing': [],
+        'right_files_missing': [],
+        'left_dirs_missing': [],
+        'right_dirs_missing': [],
+        'files_different': [],
+    }
+
     left = [os.path.join(a, name) for name in os.listdir(a)]
     right = [os.path.join(a, name) for name in os.listdir(b)]
 
@@ -71,8 +79,10 @@ def compare_dirs(a, b, level=0, prefix=''):
         right_missing = ' '.join([os.path.basename(path) for path in left_files if path not in right_files])
         if left_missing:
             print(f'{prefix_file}{bcolors.FAIL}missing files left: {left_missing} ✘{bcolors.ENDC}')
+            result['left_files_missing'].extend([path for path in right_files if path not in left_files])
         if right_missing:
             print(f'{prefix_file}{bcolors.FAIL}missing files right: {right_missing} ✘{bcolors.ENDC}')
+            result['right_files_missing'].extend([path for path in left_files if path not in right_files])
     common_files = [path for path in left_files if path in right_files]
 
     for filename in [os.path.basename(path) for path in common_files]:
@@ -81,6 +91,7 @@ def compare_dirs(a, b, level=0, prefix=''):
             print(f'{prefix_file}{bcolors.OKGREEN}{filename} ✓{bcolors.ENDC}')
         else:
             print(f'{prefix_file}{bcolors.FAIL}{filename} ✘{bcolors.ENDC}')
+            result['files_different'].append(os.path.join(a, filename))
 
     left_dirs = sorted([path for path in left if os.path.isdir(path)])
     right_dirs = sorted([path for path in right if os.path.isdir(path)])
@@ -90,13 +101,23 @@ def compare_dirs(a, b, level=0, prefix=''):
         right_missing = ' '.join([os.path.basename(path) for path in left_dirs if path not in right_dirs])
         if left_missing:
             print(f'{prefix_file}{bcolors.FAIL}missing dirs left: {left_missing} ✘{bcolors.ENDC}')
+            result['left_dirs_missing'].extend([path for path in right_files if path not in left_files])
         if right_missing:
             print(f'{prefix_file}{bcolors.FAIL}missing dirs right: {right_missing} ✘{bcolors.ENDC}')
+            result['right_dirs_missing'].extend([path for path in left_files if path not in right_files])
     common_dirs = [path for path in left_dirs if path in right_dirs]
 
     for dirname in [os.path.basename(path) for path in common_dirs]:
         print(prefix + '├── ' + dirname)
-        compare_dirs(os.path.join(a, dirname), os.path.join(b, dirname), level=level+1, prefix=prefix + '│   ')
+        subresult = compare_dirs(os.path.join(a, dirname), os.path.join(b, dirname), level=level + 1,
+                                 prefix=prefix + '│   ')
+        result['left_files_missing'].extend(subresult['left_files_missing'])
+        result['right_files_missing'].extend(subresult['right_files_missing'])
+        result['left_dirs_missing'].extend(subresult['left_dirs_missing'])
+        result['right_dirs_missing'].extend(subresult['right_dirs_missing'])
+        result['files_different'].extend(subresult['files_different'])
+
+    return result
 
 
 def main():
@@ -105,7 +126,10 @@ def main():
     parser.add_argument('b')
     args = parser.parse_args()
 
-    compare_dirs(args.a, args.b)
+    result = compare_dirs(args.a, args.b)
+    if result['left_files_missing'] or result['right_files_missing'] or result['left_dirs_missing'] or result[
+        'right_dirs_missing'] or result['files_different']:
+        return 1
 
     return 0
 

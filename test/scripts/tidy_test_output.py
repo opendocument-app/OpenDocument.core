@@ -62,22 +62,34 @@ def tidy_dir(path, level=0, prefix='', **kwargs):
     if level == 0:
         print(f'tidy dir {path}')
 
+    result = {
+        'warning': [],
+        'error': [],
+    }
+
     items = [os.path.join(path, name) for name in os.listdir(path)]
     files = sorted([path for path in items if os.path.isfile(path) and tidyable_file(path)])
     dirs = sorted([path for path in items if os.path.isdir(path)])
 
     for filename in [os.path.basename(path) for path in files]:
-        tidy = tidy_file(os.path.join(path, filename))
+        filepath = os.path.join(path, filename)
+        tidy = tidy_file(filepath)
         if tidy == 0:
             print(f'{prefix_file}{bcolors.OKGREEN}{filename} ✓{bcolors.ENDC}')
         elif tidy == 1:
             print(f'{prefix_file}{bcolors.WARNING}{filename} ✓{bcolors.ENDC}')
+            result['warning'].append(filepath)
         elif tidy > 1:
             print(f'{prefix_file}{bcolors.FAIL}{filename} ✘{bcolors.ENDC}')
+            result['error'].append(filepath)
 
     for dirname in [os.path.basename(path) for path in dirs]:
         print(prefix + '├── ' + dirname)
-        tidy_dir(os.path.join(path, dirname), level=level+1, prefix=prefix + '│   ', **kwargs)
+        subresult = tidy_dir(os.path.join(path, dirname), level=level + 1, prefix=prefix + '│   ', **kwargs)
+        result['warning'].extend(subresult['warning'])
+        result['error'].extend(subresult['error'])
+
+    return result
 
 
 def main():
@@ -85,7 +97,9 @@ def main():
     parser.add_argument('a')
     args = parser.parse_args()
 
-    tidy_dir(args.a)
+    result = tidy_dir(args.a)
+    if result['error']:
+        return 1
 
     return 0
 
