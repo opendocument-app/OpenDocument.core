@@ -21,11 +21,9 @@ jobs:
 
       - name: checkout
         uses: actions/checkout@v2
-
-      - name: checkout submodules
-        run: |
-          git submodule update --depth 1 --init test/data/input/odr-public
-          git submodule update --depth 1 --init test/data/reference-output/odr-public
+        with:
+          token: ${{ secrets.PAT_ANDIWAND }}
+          submodules: true
 
       - name: set up python 3.8
         uses: actions/setup-python@v2
@@ -59,8 +57,12 @@ jobs:
         working-directory: build/test
         run: ./odr_test
 
-      - name: tidy test outputs
+      - name: tidy public test outputs
         run: test/scripts/tidy_test_output.py build/test/output/odr-public
+      - name: tidy private test outputs
+        run: test/scripts/tidy_test_output.py build/test/output/odr-private
 
-      - name: compare test outputs
+      - name: compare public test outputs
         run: test/scripts/compare_test_outputs.py test/data/reference-output/odr-public build/test/output/odr-public
+      - name: compare private test outputs
+        run: test/scripts/compare_test_outputs.py test/data/reference-output/odr-private build/test/output/odr-private
