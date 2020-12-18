@@ -128,7 +128,6 @@ def main():
     args = parser.parse_args()
 
     result = compare_dirs(args.a, args.b, browser=get_browser())
-    print(result)
     if result['left_files_missing'] or result['right_files_missing'] or result['left_dirs_missing'] or result[
         'right_dirs_missing'] or result['files_different']:
         return 1
