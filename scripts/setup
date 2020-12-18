@@ -1,0 +1,4 @@
+#!/ bin / bash
+
+#setup git hooks
+scripts / git_hooks / git - hooks-- install
