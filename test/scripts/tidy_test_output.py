@@ -18,7 +18,7 @@ def tidy_json(path, **kwargs):
         with open(path, 'r') as f:
             parsed = json.load(f)
         with open(path, 'w') as f:
-            json.dump(f, parsed, indent=4, sort_keys=True)
+            json.dump(parsed, f, indent=4, sort_keys=True)
         return 0
     except ValueError:
         return 1
