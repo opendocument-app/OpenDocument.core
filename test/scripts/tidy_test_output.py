@@ -6,18 +6,7 @@ import argparse
 import json
 import subprocess
 import shlex
-
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+from common import bcolors
 
 
 class HtmlTidyError(Exception):
@@ -26,15 +15,18 @@ class HtmlTidyError(Exception):
 
 def tidy_json(path, **kwargs):
     try:
-        with open(path) as f:
-            json.load(f)
+        with open(path, 'r') as f:
+            parsed = json.load(f)
+        with open(path, 'w') as f:
+            json.dump(f, parsed, indent=4, sort_keys=True)
         return 0
     except ValueError:
         return 1
 
 
 def tidy_html(path, **kwargs):
-    result = subprocess.run(shlex.split('tidy -q %s' % path), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    cmd = shlex.split(f'tidy -config .html-tidy -q -m "{path}"')
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if result.returncode == 1:
         return 1
     if result.returncode > 1:
