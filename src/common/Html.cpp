@@ -58,7 +58,6 @@ table {
 }
 table td {
   vertical-align: top;
-  overflow: hidden;
 }
 
 p {

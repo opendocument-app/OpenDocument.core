@@ -1,0 +1,12 @@
+[submodule "test/data/input/odr-public"]
+	path = test/data/input/odr-public
+	url = https://github.com/opendocument-app/OpenDocument.test.git
+[submodule "test/data/reference-output/odr-public"]
+	path = test/data/reference-output/odr-public
+	url = https://github.com/opendocument-app/OpenDocument.test.output.git
+[submodule "test/data/input/odr-private"]
+	path = test/data/input/odr-private
+	url = git@github.com:opendocument-app/OpenDocument.test-private.git
+[submodule "test/data/reference-output/odr-private"]
+	path = test/data/reference-output/odr-private
+	url = git@github.com:opendocument-app/OpenDocument.test-private.output.git

@@ -1,3 +1,4 @@
+## C++
 # Prerequisites
 *.d
 
@@ -33,7 +34,7 @@
 
 .idea/
 
-bin/
+## OpenDocument.core
 build/
 cmake-build-debug/
 cmake-build-release/
@@ -50,3 +51,9 @@ cmake-build-release/
 *.doc
 *.ppt
 *.xls
+
+## Python
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class

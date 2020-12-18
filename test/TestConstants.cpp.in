@@ -1,0 +1,12 @@
+#include <access/Path.h>
+#include <test/TestMeta.h>
+
+namespace odr::test {
+
+std::string TestMeta::dataDirectory() { return "${ODR_TEST_DATA_DIRECTORY}"; }
+
+std::string TestMeta::dataInputDirectory() {
+  return access::Path(TestMeta::dataDirectory()).join("input").string();
+}
+
+} // namespace odr::test
