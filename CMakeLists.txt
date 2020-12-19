@@ -28,6 +28,7 @@ add_library(odr-object OBJECT
         src/Html.cpp
         src/OpenDocument.cpp
         src/OpenStrategy.cpp
+        src/Property.cpp
 
         src/access/CfbStorage.cpp
         src/access/ChildStorage.cpp
