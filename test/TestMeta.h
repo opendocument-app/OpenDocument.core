@@ -1,7 +1,7 @@
 #ifndef ODR_TEST_TESTMETA_H
 #define ODR_TEST_TESTMETA_H
 
-#include <odr/Meta.h>
+#include <odr/File.h>
 #include <string>
 #include <unordered_map>
 #include <vector>

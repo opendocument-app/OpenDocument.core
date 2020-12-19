@@ -4,6 +4,12 @@
 
 namespace odr::common {
 
+ElementType Slide::type() const { return ElementType::SLIDE; }
+
+ElementType Sheet::type() const { return ElementType::SHEET; }
+
+ElementType Page::type() const { return ElementType::PAGE; }
+
 ElementType TextElement::type() const { return ElementType::TEXT; }
 
 ElementType Paragraph::type() const { return ElementType::PARAGRAPH; }

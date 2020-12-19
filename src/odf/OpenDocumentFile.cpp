@@ -60,7 +60,7 @@ std::shared_ptr<common::Document> OpenDocumentFile::document() const {
   case FileType::OPENDOCUMENT_SPREADSHEET:
     return std::make_shared<OpenDocumentSpreadsheet>(m_storage);
   case FileType::OPENDOCUMENT_GRAPHICS:
-    return std::make_shared<OpenDocumentGraphics>(m_storage);
+    return std::make_shared<OpenDocumentDrawing>(m_storage);
   default:
     // TODO throw
     return nullptr;

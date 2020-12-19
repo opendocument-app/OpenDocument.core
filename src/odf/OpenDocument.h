@@ -44,9 +44,9 @@ class OpenDocumentText final : public OpenDocument,
 public:
   explicit OpenDocumentText(std::shared_ptr<access::ReadStorage> storage);
 
-  PageProperties pageProperties() const final;
+  std::shared_ptr<const common::Element> root() const final;
 
-  ElementRange content() const final;
+  PageProperties pageProperties() const final;
 };
 
 class OpenDocumentPresentation final : public OpenDocument,
@@ -56,7 +56,9 @@ public:
       std::shared_ptr<access::ReadStorage> storage);
 
   std::uint32_t slideCount() const final;
-  std::vector<Slide> slides() const final;
+
+  std::shared_ptr<const common::Element> root() const final;
+  std::shared_ptr<const common::Slide> firstSlide() const final;
 };
 
 class OpenDocumentSpreadsheet final : public OpenDocument,
@@ -66,16 +68,19 @@ public:
       std::shared_ptr<access::ReadStorage> storage);
 
   std::uint32_t sheetCount() const final;
-  std::vector<Sheet> sheets() const final;
+
+  std::shared_ptr<const common::Element> root() const final;
+  std::shared_ptr<const common::Sheet> firstSheet() const final;
 };
 
-class OpenDocumentGraphics final : public OpenDocument,
-                                   public common::Graphics {
+class OpenDocumentDrawing final : public OpenDocument, public common::Drawing {
 public:
-  explicit OpenDocumentGraphics(std::shared_ptr<access::ReadStorage> storage);
+  explicit OpenDocumentDrawing(std::shared_ptr<access::ReadStorage> storage);
 
   std::uint32_t pageCount() const final;
-  std::vector<Page> pages() const final;
+
+  std::shared_ptr<const common::Element> root() const final;
+  std::shared_ptr<const common::Page> firstPage() const final;
 };
 
 } // namespace odf

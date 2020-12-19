@@ -51,6 +51,18 @@ protected:
   TextProperties textProperties() const;
 };
 
+class OdfRoot final : public OdfElement {
+public:
+  OdfRoot(std::shared_ptr<const OpenDocument> document, pugi::xml_node node);
+
+  ElementType type() const final;
+
+  std::shared_ptr<const common::Element> parent() const final;
+  std::shared_ptr<const common::Element> firstChild() const final;
+  std::shared_ptr<const common::Element> previousSibling() const final;
+  std::shared_ptr<const common::Element> nextSibling() const final;
+};
+
 class OdfPrimitive final : public OdfElement {
 public:
   OdfPrimitive(std::shared_ptr<const OpenDocument> document,
@@ -61,6 +73,36 @@ public:
 
 private:
   const ElementType m_type;
+};
+
+class OdfSlide final : public OdfElement, public common::Slide {
+public:
+  OdfSlide(std::shared_ptr<const OpenDocument> document,
+           std::shared_ptr<const common::Element> parent, pugi::xml_node node);
+
+  std::string name() const final;
+  std::string notes() const final;
+  PageProperties pageProperties() const final;
+};
+
+class OdfSheet final : public OdfElement, public common::Sheet {
+public:
+  OdfSheet(std::shared_ptr<const OpenDocument> document,
+           std::shared_ptr<const common::Element> parent, pugi::xml_node node);
+
+  std::string name() const final;
+  std::uint32_t rowCount() const final;
+  std::uint32_t columnCount() const final;
+  std::shared_ptr<const common::Table> table() const final;
+};
+
+class OdfPage final : public OdfElement, public common::Page {
+public:
+  OdfPage(std::shared_ptr<const OpenDocument> document,
+          std::shared_ptr<const common::Element> parent, pugi::xml_node node);
+
+  std::string name() const final;
+  PageProperties pageProperties() const final;
 };
 
 class OdfTextElement final : public OdfElement, public common::TextElement {

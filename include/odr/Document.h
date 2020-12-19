@@ -14,13 +14,13 @@ class Document;
 class TextDocument;
 class Presentation;
 class Spreadsheet;
-class Graphics;
+class Drawing;
 } // namespace common
 
 class TextDocument;
 class Presentation;
 class Spreadsheet;
-class Graphics;
+class Drawing;
 
 enum class DocumentType {
   UNKNOWN,
@@ -54,7 +54,9 @@ public:
   TextDocument textDocument() const;
   Presentation presentation() const;
   Spreadsheet spreadsheet() const;
-  Graphics graphics() const;
+  Drawing drawing() const;
+
+  Element root() const;
 
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
@@ -66,16 +68,6 @@ protected:
 
 private:
   friend DocumentFile;
-};
-
-struct PageProperties {
-  std::string width;
-  std::string height;
-  std::string marginTop;
-  std::string marginBottom;
-  std::string marginLeft;
-  std::string marginRight;
-  std::string printOrientation;
 };
 
 class TextDocument final : public Document {
@@ -92,17 +84,11 @@ private:
   friend Document;
 };
 
-struct Slide {
-  std::string name;
-  std::string notes;
-  PageProperties pageProperties;
-  ElementRange content;
-};
-
 class Presentation final : public Document {
 public:
   std::uint32_t slideCount() const;
-  std::vector<Slide> slides() const;
+
+  SlideRange slides() const;
 
 private:
   std::shared_ptr<common::Presentation> m_presentation;
@@ -112,17 +98,11 @@ private:
   friend Document;
 };
 
-struct Sheet {
-  std::string name;
-  std::uint32_t rowCount{0};
-  std::uint32_t columnCount{0};
-  TableElement table;
-};
-
 class Spreadsheet final : public Document {
 public:
   std::uint32_t sheetCount() const;
-  std::vector<Sheet> sheets() const;
+
+  SheetRange sheets() const;
 
 private:
   std::shared_ptr<common::Spreadsheet> m_spreadsheet;
@@ -132,21 +112,16 @@ private:
   friend Document;
 };
 
-struct Page {
-  std::string name;
-  PageProperties pageProperties;
-  ElementRange content;
-};
-
-class Graphics final : public Document {
+class Drawing final : public Document {
 public:
   std::uint32_t pageCount() const;
-  std::vector<Page> pages() const;
+
+  PageRange pages() const;
 
 private:
-  std::shared_ptr<common::Graphics> m_graphics;
+  std::shared_ptr<common::Drawing> m_drawing;
 
-  explicit Graphics(std::shared_ptr<common::Graphics>);
+  explicit Drawing(std::shared_ptr<common::Drawing>);
 
   friend Document;
 };

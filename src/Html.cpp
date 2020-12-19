@@ -244,10 +244,9 @@ void translateFrame(FrameElement element, std::ostream &out,
 }
 
 void translateRect(RectElement element, std::ostream &out,
-                    const HtmlConfig &config) {
+                   const HtmlConfig &config) {
   out << "<div";
-  out << optionalStyleAttribute(
-      translateRectProperties(element));
+  out << optionalStyleAttribute(translateRectProperties(element));
   out << ">";
   translateGeneration(element.children(), out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
@@ -258,7 +257,7 @@ void translateLine(LineElement element, std::ostream &out,
                    const HtmlConfig &config) {
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
   out << optionalStyleAttribute("z-index:-1;position:absolute;top:0;left:0;" +
-      translateLineProperties(element));
+                                translateLineProperties(element));
   out << ">";
 
   out << "<line";
@@ -272,8 +271,7 @@ void translateLine(LineElement element, std::ostream &out,
 void translateCircle(CircleElement element, std::ostream &out,
                      const HtmlConfig &config) {
   out << "<div";
-  out << optionalStyleAttribute(
-      translateCircleProperties(element));
+  out << optionalStyleAttribute(translateCircleProperties(element));
   out << ">";
   translateGeneration(element.children(), out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
@@ -361,7 +359,7 @@ void translateTextDocument(TextDocument document, std::ostream &out,
 
   out << R"(<div style=")" + outerStyle + "\">";
   out << R"(<div style=")" + innerStyle + "\">";
-  translateGeneration(document.content(), out, config);
+  translateGeneration(document.root().children(), out, config);
   out << "</div>";
   out << "</div>";
 }
@@ -369,7 +367,7 @@ void translateTextDocument(TextDocument document, std::ostream &out,
 void translatePresentation(Presentation document, std::ostream &out,
                            const HtmlConfig &config) {
   for (auto &&slide : document.slides()) {
-    const auto pageProperties = slide.pageProperties;
+    const auto pageProperties = slide.pageProperties();
 
     const std::string outerStyle = "width:" + pageProperties.width +
                                    ";height:" + pageProperties.height + ";";
@@ -381,7 +379,7 @@ void translatePresentation(Presentation document, std::ostream &out,
 
     out << R"(<div style=")" + outerStyle + "\">";
     out << R"(<div style=")" + innerStyle + "\">";
-    translateGeneration(slide.content, out, config);
+    translateGeneration(slide.children(), out, config);
     out << "</div>";
     out << "</div>";
   }
@@ -389,15 +387,16 @@ void translatePresentation(Presentation document, std::ostream &out,
 
 void translateSpreadsheet(Spreadsheet document, std::ostream &out,
                           const HtmlConfig &config) {
-  for (auto &&sheet : document.sheets()) {
-    translateTable(sheet.table, out, config);
+  for (auto &&child : document.root().children()) {
+    const auto sheet = child.sheet();
+    translateTable(sheet.table(), out, config);
   }
 }
 
-void translateGraphics(Graphics document, std::ostream &out,
+void translateGraphics(Drawing document, std::ostream &out,
                        const HtmlConfig &config) {
   for (auto &&page : document.pages()) {
-    const auto pageProperties = page.pageProperties;
+    const auto pageProperties = page.pageProperties();
 
     const std::string outerStyle = "width:" + pageProperties.width +
                                    ";height:" + pageProperties.height + ";";
@@ -409,7 +408,7 @@ void translateGraphics(Graphics document, std::ostream &out,
 
     out << R"(<div style=")" + outerStyle + "\">";
     out << R"(<div style=")" + innerStyle + "\">";
-    translateGeneration(page.content, out, config);
+    translateGeneration(page.children(), out, config);
     out << "</div>";
     out << "</div>";
   }
@@ -448,7 +447,7 @@ void Html::translate(Document document, const std::string &documentIdentifier,
   } else if (document.documentType() == DocumentType::SPREADSHEET) {
     translateSpreadsheet(document.spreadsheet(), out, config);
   } else if (document.documentType() == DocumentType::GRAPHICS) {
-    translateGraphics(document.graphics(), out, config);
+    translateGraphics(document.drawing(), out, config);
   } else {
     // TODO throw?
   }

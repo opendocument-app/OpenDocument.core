@@ -2,6 +2,7 @@
 #define ODR_COMMON_DOCUMENT_H
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -13,15 +14,16 @@ class Element;
 class TableElement;
 template <typename E> class ElementRangeTemplate;
 using ElementRange = ElementRangeTemplate<Element>;
-struct Slide;
-struct Sheet;
-struct Page;
 
 namespace access {
 class Path;
 }
 
 namespace common {
+class Element;
+class Slide;
+class Sheet;
+class Page;
 
 class Document {
 public:
@@ -33,6 +35,8 @@ public:
   virtual DocumentType documentType() const noexcept = 0;
   virtual DocumentMeta documentMeta() const noexcept = 0;
 
+  virtual std::shared_ptr<const Element> root() const = 0;
+
   virtual void save(const access::Path &path) const = 0;
   virtual void save(const access::Path &path,
                     const std::string &password) const = 0;
@@ -41,26 +45,27 @@ public:
 class TextDocument : public virtual Document {
 public:
   virtual PageProperties pageProperties() const = 0;
-
-  virtual ElementRange content() const = 0;
 };
 
 class Presentation : public virtual Document {
 public:
   virtual std::uint32_t slideCount() const = 0;
-  virtual std::vector<Slide> slides() const = 0;
+
+  virtual std::shared_ptr<const Slide> firstSlide() const = 0;
 };
 
 class Spreadsheet : public virtual Document {
 public:
   virtual std::uint32_t sheetCount() const = 0;
-  virtual std::vector<Sheet> sheets() const = 0;
+
+  virtual std::shared_ptr<const Sheet> firstSheet() const = 0;
 };
 
-class Graphics : public virtual Document {
+class Drawing : public virtual Document {
 public:
   virtual std::uint32_t pageCount() const = 0;
-  virtual std::vector<Page> pages() const = 0;
+
+  virtual std::shared_ptr<const Page> firstPage() const = 0;
 };
 
 } // namespace common

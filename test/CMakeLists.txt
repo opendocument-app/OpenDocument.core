@@ -25,6 +25,7 @@ add_executable(odr_test
 target_include_directories(odr_test
         PRIVATE
         ..
+        ../src
         )
 target_link_libraries(odr_test
         PRIVATE

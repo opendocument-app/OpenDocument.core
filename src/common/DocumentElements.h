@@ -20,6 +20,7 @@ struct DrawingProperties;
 
 namespace common {
 
+class Table;
 class TableColumn;
 class TableRow;
 class TableCell;
@@ -34,6 +35,33 @@ public:
   virtual std::shared_ptr<const Element> nextSibling() const = 0;
 
   virtual ElementType type() const = 0;
+};
+
+class Slide : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual std::string name() const = 0;
+  virtual std::string notes() const = 0;
+  virtual PageProperties pageProperties() const = 0;
+};
+
+class Sheet : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual std::string name() const = 0;
+  virtual std::uint32_t rowCount() const = 0;
+  virtual std::uint32_t columnCount() const = 0;
+  virtual std::shared_ptr<const Table> table() const = 0;
+};
+
+class Page : public virtual Element {
+public:
+  ElementType type() const final;
+
+  virtual std::string name() const = 0;
+  virtual PageProperties pageProperties() const = 0;
 };
 
 class TextElement : public virtual Element {

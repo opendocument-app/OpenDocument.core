@@ -86,11 +86,10 @@ PageProperties OpenDocumentText::pageProperties() const {
   return m_styles.defaultPageProperties();
 }
 
-ElementRange OpenDocumentText::content() const {
+std::shared_ptr<const common::Element> OpenDocumentText::root() const {
   const pugi::xml_node body =
       m_contentXml.document_element().child("office:body").child("office:text");
-  return ElementRange(
-      Element(factorizeFirstChild(shared_from_this(), nullptr, body)));
+  return std::make_shared<OdfRoot>(shared_from_this(), body);
 }
 
 OpenDocumentPresentation::OpenDocumentPresentation(
@@ -98,27 +97,19 @@ OpenDocumentPresentation::OpenDocumentPresentation(
     : OpenDocument(std::move(storage)) {}
 
 std::uint32_t OpenDocumentPresentation::slideCount() const {
-  return slides().size();
+  return 0; // TODO
 }
 
-std::vector<Slide> OpenDocumentPresentation::slides() const {
-  std::vector<Slide> result;
-
+std::shared_ptr<const common::Element> OpenDocumentPresentation::root() const {
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:presentation");
-  for (auto &&xml : body.children("draw:page")) {
-    Slide slide;
-    slide.name = xml.attribute("draw:name").value();
-    slide.notes = ""; // TODO
-    slide.pageProperties = m_styles.masterPageProperties(
-        xml.attribute("draw:master-page-name").value());
-    slide.content = ElementRange(
-        Element(factorizeFirstChild(shared_from_this(), nullptr, xml)));
-    result.push_back(slide);
-  }
+  return std::make_shared<OdfRoot>(shared_from_this(), body);
+}
 
-  return result;
+std::shared_ptr<const common::Slide>
+OpenDocumentPresentation::firstSlide() const {
+  return std::dynamic_pointer_cast<const common::Slide>(root()->firstChild());
 }
 
 OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
@@ -126,51 +117,38 @@ OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
     : OpenDocument(std::move(storage)) {}
 
 std::uint32_t OpenDocumentSpreadsheet::sheetCount() const {
-  return sheets().size();
+  return 0; // TODO
 }
 
-std::vector<Sheet> OpenDocumentSpreadsheet::sheets() const {
-  std::vector<Sheet> result;
-
+std::shared_ptr<const common::Element> OpenDocumentSpreadsheet::root() const {
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:spreadsheet");
-  for (auto &&xml : body.children("table:table")) {
-    Sheet sheet;
-    sheet.name = xml.attribute("table:name").value();
-    sheet.rowCount = 0;    // TODO
-    sheet.columnCount = 0; // TODO
-    sheet.table =
-        Element(factorizeElement(shared_from_this(), nullptr, xml)).table();
-    result.push_back(sheet);
-  }
-
-  return result;
+  return std::make_shared<OdfRoot>(shared_from_this(), body);
 }
 
-OpenDocumentGraphics::OpenDocumentGraphics(
+std::shared_ptr<const common::Sheet>
+OpenDocumentSpreadsheet::firstSheet() const {
+  return std::dynamic_pointer_cast<const common::Sheet>(root()->firstChild());
+}
+
+OpenDocumentDrawing::OpenDocumentDrawing(
     std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-std::uint32_t OpenDocumentGraphics::pageCount() const { return pages().size(); }
+std::uint32_t OpenDocumentDrawing::pageCount() const {
+  return 0; // TODO
+}
 
-std::vector<Page> OpenDocumentGraphics::pages() const {
-  std::vector<Page> result;
-
+std::shared_ptr<const common::Element> OpenDocumentDrawing::root() const {
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:drawing");
-  for (auto &&xml : body.children("draw:page")) {
-    Page page;
-    page.name = xml.attribute("draw:name").value();
-    page.pageProperties = m_styles.masterPageProperties(
-        xml.attribute("draw:master-page-name").value());
-    page.content = ElementRange(
-        Element(factorizeFirstChild(shared_from_this(), nullptr, xml)));
-    result.push_back(page);
-  }
+  return std::make_shared<OdfRoot>(shared_from_this(), body);
+}
 
-  return result;
+std::shared_ptr<const common::Page> OpenDocumentDrawing::firstPage() const {
+  return std::dynamic_pointer_cast<const common::Page>(root()->firstChild());
 }
 
 } // namespace odr::odf

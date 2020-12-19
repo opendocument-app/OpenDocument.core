@@ -19,7 +19,7 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
        FileType::OPENDOCUMENT_PRESENTATION},
       {"application/vnd.oasis.opendocument.spreadsheet",
        FileType::OPENDOCUMENT_SPREADSHEET},
-      {"application/vnd.oasis.opendocument.graphics",
+      {"application/vnd.oasis.opendocument.drawing",
        FileType::OPENDOCUMENT_GRAPHICS},
       // TODO any difference for template files?
       {"application/vnd.oasis.opendocument.text-template",
@@ -28,7 +28,7 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
        FileType::OPENDOCUMENT_PRESENTATION},
       {"application/vnd.oasis.opendocument.spreadsheet-template",
        FileType::OPENDOCUMENT_SPREADSHEET},
-      {"application/vnd.oasis.opendocument.graphics-template",
+      {"application/vnd.oasis.opendocument.drawing-template",
        FileType::OPENDOCUMENT_GRAPHICS},
       // TODO these staroffice types might deserve their own type
       {"application/vnd.sun.xml.writer", FileType::OPENDOCUMENT_TEXT},
@@ -69,7 +69,8 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
           n.attribute("table:number-columns-repeated").as_uint(1);
       const auto colspan =
           n.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan = n.attribute("table:number-rowCount-spanned").as_uint(1);
+      const auto rowspan =
+          n.attribute("table:number-rowCount-spanned").as_uint(1);
       tl.addCell(colspan, rowspan, repeated);
 
       const auto newRows = tl.row();

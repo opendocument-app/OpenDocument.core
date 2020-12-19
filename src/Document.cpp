@@ -40,9 +40,11 @@ Spreadsheet Document::spreadsheet() const {
       std::dynamic_pointer_cast<common::Spreadsheet>(m_document));
 }
 
-Graphics Document::graphics() const {
-  return Graphics(std::dynamic_pointer_cast<common::Graphics>(m_document));
+Drawing Document::drawing() const {
+  return Drawing(std::dynamic_pointer_cast<common::Drawing>(m_document));
 }
+
+Element Document::root() const { return Element(m_document->root()); }
 
 void Document::save(const std::string &path) const { m_document->save(path); }
 
@@ -58,7 +60,7 @@ PageProperties TextDocument::pageProperties() const {
   return m_textDocument->pageProperties();
 }
 
-ElementRange TextDocument::content() const { return m_textDocument->content(); }
+ElementRange TextDocument::content() const { return root().children(); }
 
 Presentation::Presentation(std::shared_ptr<common::Presentation> presentation)
     : Document(presentation), m_presentation{std::move(presentation)} {}
@@ -67,8 +69,8 @@ std::uint32_t Presentation::slideCount() const {
   return m_presentation->slideCount();
 }
 
-std::vector<Slide> Presentation::slides() const {
-  return m_presentation->slides();
+SlideRange Presentation::slides() const {
+  return SlideRange(SlideElement(m_presentation->firstSlide()));
 }
 
 Spreadsheet::Spreadsheet(std::shared_ptr<common::Spreadsheet> spreadsheet)
@@ -78,15 +80,17 @@ std::uint32_t Spreadsheet::sheetCount() const {
   return m_spreadsheet->sheetCount();
 }
 
-std::vector<Sheet> Spreadsheet::sheets() const {
-  return m_spreadsheet->sheets();
+SheetRange Spreadsheet::sheets() const {
+  return SheetRange(SheetElement(m_spreadsheet->firstSheet()));
 }
 
-Graphics::Graphics(std::shared_ptr<common::Graphics> graphics)
-    : Document(graphics), m_graphics{std::move(graphics)} {}
+Drawing::Drawing(std::shared_ptr<common::Drawing> graphics)
+    : Document(graphics), m_drawing{std::move(graphics)} {}
 
-std::uint32_t Graphics::pageCount() const { return m_graphics->pageCount(); }
+std::uint32_t Drawing::pageCount() const { return m_drawing->pageCount(); }
 
-std::vector<Page> Graphics::pages() const { return m_graphics->pages(); }
+PageRange Drawing::pages() const {
+  return PageRange(PageElement(m_drawing->firstPage()));
+}
 
 } // namespace odr

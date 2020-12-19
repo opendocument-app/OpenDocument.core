@@ -115,12 +115,99 @@ TextProperties OdfElement::textProperties() const {
   return {};
 }
 
+OdfRoot::OdfRoot(std::shared_ptr<const OpenDocument> document,
+                 pugi::xml_node node)
+    : OdfElement(std::move(document), nullptr, node) {}
+
+ElementType OdfRoot::type() const { return ElementType::ROOT; }
+
+std::shared_ptr<const common::Element> OdfRoot::parent() const { return {}; }
+
+std::shared_ptr<const common::Element> OdfRoot::firstChild() const {
+  const std::string element = m_node.name();
+
+  if (element == "office:text")
+    return factorizeFirstChild(m_document, shared_from_this(), m_node);
+  if (element == "office:presentation")
+    return factorizeKnownElement<OdfSlide>(m_node.child("draw:page"),
+                                           m_document, shared_from_this());
+  if (element == "office:spreadsheet")
+    return factorizeKnownElement<OdfSheet>(m_node.child("table:table"),
+                                           m_document, shared_from_this());
+  if (element == "office:drawing")
+    return factorizeKnownElement<OdfPage>(m_node.child("draw:page"), m_document,
+                                          shared_from_this());
+
+  return {};
+}
+
+std::shared_ptr<const common::Element> OdfRoot::previousSibling() const {
+  return {};
+}
+
+std::shared_ptr<const common::Element> OdfRoot::nextSibling() const {
+  return {};
+}
+
 OdfPrimitive::OdfPrimitive(std::shared_ptr<const OpenDocument> document,
                            std::shared_ptr<const common::Element> parent,
                            pugi::xml_node node, const ElementType type)
     : OdfElement(std::move(document), std::move(parent), node), m_type{type} {}
 
 ElementType OdfPrimitive::type() const { return m_type; }
+
+OdfSlide::OdfSlide(std::shared_ptr<const OpenDocument> document,
+                   std::shared_ptr<const common::Element> parent,
+                   pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::string OdfSlide::name() const {
+  return m_node.attribute("draw:name").value();
+}
+
+std::string OdfSlide::notes() const {
+  return ""; // TODO
+}
+
+PageProperties OdfSlide::pageProperties() const {
+  return m_document->styles().masterPageProperties(
+      m_node.attribute("draw:master-page-name").value());
+}
+
+OdfSheet::OdfSheet(std::shared_ptr<const OpenDocument> document,
+                   std::shared_ptr<const common::Element> parent,
+                   pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::string OdfSheet::name() const {
+  return m_node.attribute("table:name").value();
+}
+
+std::uint32_t OdfSheet::rowCount() const {
+  return 0; // TODO
+}
+
+std::uint32_t OdfSheet::columnCount() const {
+  return 0; // TODO
+}
+
+std::shared_ptr<const common::Table> OdfSheet::table() const {
+  return std::make_shared<OdfTable>(m_document, shared_from_this(), m_node);
+}
+
+OdfPage::OdfPage(std::shared_ptr<const OpenDocument> document,
+                 std::shared_ptr<const common::Element> parent,
+                 pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::string OdfPage::name() const {
+  return m_node.attribute("draw:name").value();
+}
+
+PageProperties OdfPage::pageProperties() const {
+  return m_document->styles().masterPageProperties(
+      m_node.attribute("draw:master-page-name").value());
+}
 
 OdfTextElement::OdfTextElement(std::shared_ptr<const OpenDocument> document,
                                std::shared_ptr<const common::Element> parent,
@@ -579,51 +666,51 @@ factorizeElement(std::shared_ptr<const OpenDocument> document,
     if (element == "text:p" || element == "text:h")
       return std::make_shared<OdfParagraph>(std::move(document),
                                             std::move(parent), node);
-    else if (element == "text:span")
+    if (element == "text:span")
       return std::make_shared<OdfSpan>(std::move(document), std::move(parent),
                                        node);
-    else if (element == "text:s" || element == "text:tab")
+    if (element == "text:s" || element == "text:tab")
       return std::make_shared<OdfTextElement>(std::move(document),
                                               std::move(parent), node);
-    else if (element == "text:line-break")
+    if (element == "text:line-break")
       return std::make_shared<OdfPrimitive>(std::move(document),
                                             std::move(parent), node,
                                             ElementType::LINE_BREAK);
-    else if (element == "text:a")
+    if (element == "text:a")
       return std::make_shared<OdfLink>(std::move(document), std::move(parent),
                                        node);
-    else if (element == "text:table-of-content")
+    if (element == "text:table-of-content")
       return std::make_shared<OdfTableOfContent>(std::move(document),
                                                  std::move(parent), node);
-    else if (element == "text:bookmark" || element == "text:bookmark-start")
+    if (element == "text:bookmark" || element == "text:bookmark-start")
       return std::make_shared<OdfBookmark>(std::move(document),
                                            std::move(parent), node);
-    else if (element == "text:list")
+    if (element == "text:list")
       return std::make_shared<OdfList>(std::move(document), std::move(parent),
                                        node);
-    else if (element == "table:table")
+    if (element == "table:table")
       return std::make_shared<OdfTable>(std::move(document), std::move(parent),
                                         node);
-    else if (element == "draw:frame")
+    if (element == "draw:frame")
       return std::make_shared<OdfFrame>(std::move(document), std::move(parent),
                                         node);
-    else if (element == "draw:g")
+    if (element == "draw:g")
       return std::make_shared<OdfPrimitive>(
           std::move(document), std::move(parent), node,
           ElementType::UNKNOWN); // TODO drawing group
-    else if (element == "draw:image")
+    if (element == "draw:image")
       return std::make_shared<OdfImage>(std::move(document), std::move(parent),
                                         node);
-    else if (element == "draw:rect")
+    if (element == "draw:rect")
       return std::make_shared<OdfRect>(std::move(document), std::move(parent),
                                        node);
-    else if (element == "draw:line")
+    if (element == "draw:line")
       return std::make_shared<OdfLine>(std::move(document), std::move(parent),
                                        node);
-    else if (element == "draw:circle")
+    if (element == "draw:circle")
       return std::make_shared<OdfCircle>(std::move(document), std::move(parent),
                                          node);
-    else if (element == "draw:custom-shape")
+    if (element == "draw:custom-shape")
       return std::make_shared<OdfPrimitive>(std::move(document),
                                             std::move(parent), node,
                                             ElementType::UNKNOWN); // TODO

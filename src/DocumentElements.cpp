@@ -47,6 +47,18 @@ Element Element::unknown() const {
   return *this;
 }
 
+SlideElement Element::slide() const {
+  return SlideElement(std::dynamic_pointer_cast<const common::Slide>(m_impl));
+}
+
+SheetElement Element::sheet() const {
+  return SheetElement(std::dynamic_pointer_cast<const common::Sheet>(m_impl));
+}
+
+PageElement Element::page() const {
+  return PageElement(std::dynamic_pointer_cast<const common::Page>(m_impl));
+}
+
 TextElement Element::text() const {
   return TextElement(
       std::dynamic_pointer_cast<const common::TextElement>(m_impl));
@@ -190,9 +202,33 @@ template <typename E> E ElementRangeTemplate<E>::front() const {
 }
 
 template class ElementRangeTemplate<Element>;
+template class ElementRangeTemplate<SlideElement>;
+template class ElementRangeTemplate<SheetElement>;
+template class ElementRangeTemplate<PageElement>;
 template class ElementRangeTemplate<TableColumnElement>;
 template class ElementRangeTemplate<TableRowElement>;
 template class ElementRangeTemplate<TableCellElement>;
+
+SlideElement::SlideElement() = default;
+
+SlideElement::SlideElement(std::shared_ptr<const common::Slide> impl)
+    : Element(impl), m_impl{std::move(impl)} {}
+
+std::string SlideElement::name() const { return m_impl->name(); }
+
+SheetElement::SheetElement() = default;
+
+SheetElement::SheetElement(std::shared_ptr<const common::Sheet> impl)
+    : Element(impl), m_impl{std::move(impl)} {}
+
+std::string SheetElement::name() const { return m_impl->name(); }
+
+PageElement::PageElement() = default;
+
+PageElement::PageElement(std::shared_ptr<const common::Page> impl)
+    : Element(impl), m_impl{std::move(impl)} {}
+
+std::string PageElement::name() const { return m_impl->name(); }
 
 TextElement::TextElement() = default;
 
@@ -361,21 +397,13 @@ RectElement::RectElement() = default;
 RectElement::RectElement(std::shared_ptr<const common::Rect> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-std::string RectElement::x() const {
-  return m_impl->x();
-}
+std::string RectElement::x() const { return m_impl->x(); }
 
-std::string RectElement::y() const {
-  return m_impl->y();
-}
+std::string RectElement::y() const { return m_impl->y(); }
 
-std::string RectElement::width() const {
-  return m_impl->width();
-}
+std::string RectElement::width() const { return m_impl->width(); }
 
-std::string RectElement::height() const {
-  return m_impl->height();
-}
+std::string RectElement::height() const { return m_impl->height(); }
 
 DrawingProperties RectElement::drawingProperties() const {
   return m_impl->drawingProperties();
@@ -386,21 +414,13 @@ LineElement::LineElement() = default;
 LineElement::LineElement(std::shared_ptr<const common::Line> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-std::string LineElement::x1() const {
-  return m_impl->x1();
-}
+std::string LineElement::x1() const { return m_impl->x1(); }
 
-std::string LineElement::y1() const {
-  return m_impl->y1();
-}
+std::string LineElement::y1() const { return m_impl->y1(); }
 
-std::string LineElement::x2() const {
-  return m_impl->x2();
-}
+std::string LineElement::x2() const { return m_impl->x2(); }
 
-std::string LineElement::y2() const {
-  return m_impl->y2();
-}
+std::string LineElement::y2() const { return m_impl->y2(); }
 
 DrawingProperties LineElement::drawingProperties() const {
   return m_impl->drawingProperties();
@@ -411,21 +431,13 @@ CircleElement::CircleElement() = default;
 CircleElement::CircleElement(std::shared_ptr<const common::Circle> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-std::string CircleElement::x() const {
-  return m_impl->x();
-}
+std::string CircleElement::x() const { return m_impl->x(); }
 
-std::string CircleElement::y() const {
-  return m_impl->y();
-}
+std::string CircleElement::y() const { return m_impl->y(); }
 
-std::string CircleElement::width() const {
-  return m_impl->width();
-}
+std::string CircleElement::width() const { return m_impl->width(); }
 
-std::string CircleElement::height() const {
-  return m_impl->height();
-}
+std::string CircleElement::height() const { return m_impl->height(); }
 
 DrawingProperties CircleElement::drawingProperties() const {
   return m_impl->drawingProperties();

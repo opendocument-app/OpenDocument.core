@@ -10,6 +10,9 @@ class ImageFile;
 
 namespace common {
 class Element;
+class Slide;
+class Sheet;
+class Page;
 class TextElement;
 class Paragraph;
 class Span;
@@ -29,6 +32,9 @@ class Circle;
 } // namespace common
 
 class Element;
+class SlideElement;
+class SheetElement;
+class PageElement;
 class TextElement;
 class ParagraphElement;
 class SpanElement;
@@ -47,12 +53,21 @@ class LineElement;
 class CircleElement;
 template <typename E> class ElementRangeTemplate;
 using ElementRange = ElementRangeTemplate<Element>;
+using SlideRange = ElementRangeTemplate<SlideElement>;
+using SheetRange = ElementRangeTemplate<SheetElement>;
+using PageRange = ElementRangeTemplate<PageElement>;
 using TableColumnRange = ElementRangeTemplate<TableColumnElement>;
 using TableRowRange = ElementRangeTemplate<TableRowElement>;
 using TableCellRange = ElementRangeTemplate<TableCellElement>;
 
 enum class ElementType {
   UNKNOWN,
+
+  ROOT,
+  SLIDE,
+  SHEET,
+  PAGE,
+
   TEXT,
   LINE_BREAK,
   PAGE_BREAK,
@@ -60,17 +75,30 @@ enum class ElementType {
   SPAN,
   LINK,
   BOOKMARK,
+
   LIST,
   LIST_ITEM,
+
   TABLE,
   TABLE_COLUMN,
   TABLE_ROW,
   TABLE_CELL,
+
   FRAME,
   IMAGE,
   RECT,
   LINE,
   CIRCLE,
+};
+
+struct PageProperties {
+  std::string width;
+  std::string height;
+  std::string marginTop;
+  std::string marginBottom;
+  std::string marginLeft;
+  std::string marginRight;
+  std::string printOrientation;
 };
 
 struct FontProperties {
@@ -122,8 +150,7 @@ struct TableColumnProperties {
   std::optional<std::string> width;
 };
 
-struct TableRowProperties {
-};
+struct TableRowProperties {};
 
 struct TableCellProperties {
   std::optional<std::string> padding;
@@ -165,6 +192,9 @@ public:
   ElementType type() const;
 
   Element unknown() const;
+  SlideElement slide() const;
+  SheetElement sheet() const;
+  PageElement page() const;
   TextElement text() const;
   Element lineBreak() const;
   Element pageBreak() const;
@@ -223,6 +253,45 @@ public:
 private:
   E m_begin;
   E m_end;
+};
+
+class SlideElement final : public Element {
+public:
+  SlideElement();
+  explicit SlideElement(std::shared_ptr<const common::Slide> impl);
+
+  std::string name() const;
+  std::string notes() const;
+  PageProperties pageProperties() const;
+
+private:
+  std::shared_ptr<const common::Slide> m_impl;
+};
+
+class SheetElement final : public Element {
+public:
+  SheetElement();
+  explicit SheetElement(std::shared_ptr<const common::Sheet> impl);
+
+  std::string name() const;
+  std::uint32_t rowCount() const;
+  std::uint32_t columnCount() const;
+  TableElement table() const;
+
+private:
+  std::shared_ptr<const common::Sheet> m_impl;
+};
+
+class PageElement final : public Element {
+public:
+  PageElement();
+  explicit PageElement(std::shared_ptr<const common::Page> impl);
+
+  std::string name() const;
+  PageProperties pageProperties() const;
+
+private:
+  std::shared_ptr<const common::Page> m_impl;
 };
 
 class TextElement final : public Element {
