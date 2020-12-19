@@ -2,6 +2,7 @@
 #define ODR_DOCUMENTELEMENTS_H
 
 #include <memory>
+#include <odr/Property.h>
 #include <optional>
 #include <string>
 
@@ -92,85 +93,85 @@ enum class ElementType {
 };
 
 struct PageProperties {
-  std::string width;
-  std::string height;
-  std::string marginTop;
-  std::string marginBottom;
-  std::string marginLeft;
-  std::string marginRight;
-  std::string printOrientation;
+  Property width;
+  Property height;
+  Property marginTop;
+  Property marginBottom;
+  Property marginLeft;
+  Property marginRight;
+  Property printOrientation;
 };
 
 struct FontProperties {
-  std::optional<std::string> font;
-  std::optional<std::string> size;
-  std::optional<std::string> weight;
-  std::optional<std::string> style;
-  std::optional<std::string> color;
+  Property font;
+  Property size;
+  Property weight;
+  Property style;
+  Property color;
 
   explicit operator bool() const;
 };
 
 struct RectangularProperties {
-  std::optional<std::string> top;
-  std::optional<std::string> bottom;
-  std::optional<std::string> left;
-  std::optional<std::string> right;
+  Property top;
+  Property bottom;
+  Property left;
+  Property right;
 
   explicit operator bool() const;
 };
 
 struct ContainerProperties {
-  std::optional<std::string> width;
-  std::optional<std::string> height;
+  Property width;
+  Property height;
 
   RectangularProperties margin;
   RectangularProperties padding;
   RectangularProperties border;
 
-  std::optional<std::string> horizontalAlign;
-  std::optional<std::string> verticalAlign;
+  Property horizontalAlign;
+  Property verticalAlign;
 };
 
 struct ParagraphProperties {
-  std::optional<std::string> textAlign;
+  Property textAlign;
   RectangularProperties margin;
 };
 
 struct TextProperties {
   FontProperties font;
-  std::optional<std::string> backgroundColor;
+  Property backgroundColor;
 };
 
 struct TableProperties {
-  std::optional<std::string> width;
+  Property width;
 };
 
 struct TableColumnProperties {
-  std::optional<std::string> width;
+  Property width;
 };
 
 struct TableRowProperties {};
 
 struct TableCellProperties {
-  std::optional<std::string> padding;
+  Property padding;
   RectangularProperties paddingRect;
-  std::optional<std::string> border;
+  Property border;
   RectangularProperties borderRect;
 };
 
 struct FrameProperties {
-  std::string anchorType;
-  std::string width;
-  std::string height;
-  std::string zIndex;
+  Property anchorType;
+  Property width;
+  Property height;
+  Property zIndex;
 };
 
 struct DrawingProperties {
-  std::optional<std::string> strokeWidth;
-  std::optional<std::string> strokeColor;
-  std::optional<std::string> fillColor;
-  std::optional<std::string> verticalAlign;
+  Property strokeWidth;
+  Property strokeColor;
+  Property fillColor;
+  Property verticalAlign;
 };
 
 class Element {

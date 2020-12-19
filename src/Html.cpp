@@ -95,9 +95,9 @@ translateTableCellProperties(const TableCellProperties &properties) {
 
 std::string translateFrameProperties(const FrameProperties &properties) {
   std::string result;
-  result += "width:" + properties.width + ";";
-  result += "height:" + properties.height + ";";
-  result += "z-index:" + properties.zIndex + ";";
+  result += "width:" + *properties.width + ";";
+  result += "height:" + *properties.height + ";";
+  result += "z-index:" + *properties.zIndex + ";";
   return result;
 }
 
@@ -110,7 +110,7 @@ std::string translateDrawingProperties(const DrawingProperties &properties) {
   if (properties.fillColor)
     result += "fill:" + *properties.fillColor + ";";
   if (properties.verticalAlign) {
-    if (properties.verticalAlign == "middle")
+    if (*properties.verticalAlign == "middle")
       result += "display:flex;justify-content:center;flex-direction: column;";
     // TODO else log
   }
@@ -350,12 +350,12 @@ void translateTextDocument(TextDocument document, std::ostream &out,
                            const HtmlConfig &config) {
   const auto pageProperties = document.pageProperties();
 
-  const std::string outerStyle = "width:" + pageProperties.width + ";";
+  const std::string outerStyle = "width:" + *pageProperties.width + ";";
   const std::string innerStyle =
-      "margin-top:" + pageProperties.marginTop +
-      ";margin-left:" + pageProperties.marginLeft +
-      ";margin-bottom:" + pageProperties.marginBottom +
-      ";margin-right:" + pageProperties.marginRight + ";";
+      "margin-top:" + *pageProperties.marginTop +
+      ";margin-left:" + *pageProperties.marginLeft +
+      ";margin-bottom:" + *pageProperties.marginBottom +
+      ";margin-right:" + *pageProperties.marginRight + ";";
 
   out << R"(<div style=")" + outerStyle + "\">";
   out << R"(<div style=")" + innerStyle + "\">";
@@ -369,13 +369,13 @@ void translatePresentation(Presentation document, std::ostream &out,
   for (auto &&slide : document.slides()) {
     const auto pageProperties = slide.pageProperties();
 
-    const std::string outerStyle = "width:" + pageProperties.width +
-                                   ";height:" + pageProperties.height + ";";
+    const std::string outerStyle = "width:" + *pageProperties.width +
+                                   ";height:" + *pageProperties.height + ";";
     const std::string innerStyle =
-        "margin-top:" + pageProperties.marginTop +
-        ";margin-left:" + pageProperties.marginLeft +
-        ";margin-bottom:" + pageProperties.marginBottom +
-        ";margin-right:" + pageProperties.marginRight + ";";
+        "margin-top:" + *pageProperties.marginTop +
+        ";margin-left:" + *pageProperties.marginLeft +
+        ";margin-bottom:" + *pageProperties.marginBottom +
+        ";margin-right:" + *pageProperties.marginRight + ";";
 
     out << R"(<div style=")" + outerStyle + "\">";
     out << R"(<div style=")" + innerStyle + "\">";
@@ -398,13 +398,13 @@ void translateGraphics(Drawing document, std::ostream &out,
   for (auto &&page : document.pages()) {
     const auto pageProperties = page.pageProperties();
 
-    const std::string outerStyle = "width:" + pageProperties.width +
-                                   ";height:" + pageProperties.height + ";";
+    const std::string outerStyle = "width:" + *pageProperties.width +
+                                   ";height:" + *pageProperties.height + ";";
     const std::string innerStyle =
-        "margin-top:" + pageProperties.marginTop +
-        ";margin-left:" + pageProperties.marginLeft +
-        ";margin-bottom:" + pageProperties.marginBottom +
-        ";margin-right:" + pageProperties.marginRight + ";";
+        "margin-top:" + *pageProperties.marginTop +
+        ";margin-left:" + *pageProperties.marginLeft +
+        ";margin-bottom:" + *pageProperties.marginBottom +
+        ";margin-right:" + *pageProperties.marginRight + ";";
 
     out << R"(<div style=")" + outerStyle + "\">";
     out << R"(<div style=")" + innerStyle + "\">";
