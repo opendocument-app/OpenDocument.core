@@ -16,8 +16,6 @@ bool Property::operator!=(const Property &rhs) const {
 
 Property::operator bool() const { return value().operator bool(); }
 
-std::string Property::name() const { return m_impl->name(); }
-
 std::optional<std::string> Property::value() const { return m_impl->value(); }
 
 void Property::set(std::optional<std::string> value) const {

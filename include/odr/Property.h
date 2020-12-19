@@ -19,7 +19,6 @@ public:
   bool operator!=(const Property &rhs) const;
   explicit operator bool() const;
 
-  std::string name() const;
   std::optional<std::string> value() const;
 
   void set(std::optional<std::string> value) const;

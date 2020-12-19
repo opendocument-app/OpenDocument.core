@@ -10,7 +10,6 @@ class Property {
 public:
   virtual ~Property() = default;
 
-  virtual std::string name() const = 0;
   virtual std::optional<std::string> value() const = 0;
 
   virtual void set(std::optional<std::string> value) const = 0;
