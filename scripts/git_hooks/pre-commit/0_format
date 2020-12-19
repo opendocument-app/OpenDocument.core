@@ -9,7 +9,7 @@ format_file() {
 
 case "${1}" in
   --about)
-    echo "Runs RTC formatters on any files that are going to be checked in."
+    echo "Runs formatters on any files that are going to be checked in."
     ;;
   *)
     # make newlines the only separator
