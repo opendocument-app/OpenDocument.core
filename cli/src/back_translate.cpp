@@ -1,8 +1,8 @@
 #include <access/FileUtil.h>
 #include <iostream>
 #include <odr/Config.h>
-#include <odr/Document.h>
 #include <odr/Meta.h>
+#include <odr/document.h>
 #include <string>
 
 int main(int, char **argv) {

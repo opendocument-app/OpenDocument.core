@@ -1,7 +1,7 @@
 #include <iostream>
-#include <odr/Document.h>
-#include <odr/File.h>
-#include <odr/Html.h>
+#include <odr/document.h>
+#include <odr/file.h>
+#include <odr/html.h>
 #include <string>
 
 int main(int argc, char **argv) {

@@ -21,56 +21,56 @@ add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-object OBJECT
-        src/Document.cpp
-        src/DocumentElements.cpp
-        src/File.cpp
-        src/FileNoExcept.cpp
-        src/Html.cpp
-        src/OpenDocument.cpp
-        src/OpenStrategy.cpp
-        src/Property.cpp
+        src/document.cpp
+        src/document_elements.cpp
+        src/file.cpp
+        src/file_no_except.cpp
+        src/html.cpp
+        src/open_document_reader.cpp
+        src/open_strategy.cpp
+        src/property.cpp
 
-        src/access/CfbStorage.cpp
-        src/access/ChildStorage.cpp
-        src/access/FileUtil.cpp
-        src/access/Path.cpp
-        src/access/StorageUtil.cpp
-        src/access/StreamUtil.cpp
-        src/access/SystemStorage.cpp
-        src/access/ZipStorage.cpp
+        src/access/cfb_storage.cpp
+        src/access/child_storage.cpp
+        src/access/file_util.cpp
+        src/access/path.cpp
+        src/access/storage_util.cpp
+        src/access/stream_util.cpp
+        src/access/system_storage.cpp
+        src/access/zip_storage.cpp
 
-        src/common/Constants.cpp
-        src/common/DocumentElements.cpp
-        src/common/File.cpp
-        src/common/Html.cpp
-        src/common/Property.cpp
-        src/common/StringUtil.cpp
-        src/common/TableCursor.cpp
-        src/common/TablePosition.cpp
-        src/common/TableRange.cpp
-        src/common/XmlProperties.cpp
-        src/common/XmlUtil.cpp
+        src/common/constants.cpp
+        src/common/document_elements.cpp
+        src/common/file.cpp
+        src/common/html.cpp
+        src/common/property.cpp
+        src/common/string_util.cpp
+        src/common/table_cursor.cpp
+        src/common/table_position.cpp
+        src/common/table_range.cpp
+        src/common/xml_properties.cpp
+        src/common/xml_util.cpp
 
-        src/crypto/CryptoUtil.cpp
+        src/crypto/crypto_util.cpp
 
-        src/odf/Crypto.cpp
-        src/odf/Elements.cpp
-        src/odf/Manifest.cpp
-        src/odf/Meta.cpp
-        src/odf/OpenDocument.cpp
-        src/odf/OpenDocumentFile.cpp
-        src/odf/Styles.cpp
+        src/odf/odf_crypto.cpp
+        src/odf/odf_elements.cpp
+        src/odf/odf_manifest.cpp
+        src/odf/odf_meta.cpp
+        src/odf/odf_document.cpp
+        src/odf/odf_document_file.cpp
+        src/odf/odf_styles.cpp
 
-        src/oldms/LegacyMicrosoftFile.cpp
+        src/oldms/oldms_document_file.cpp
 
-        src/ooxml/Crypto.cpp
-        src/ooxml/DocumentTranslator.cpp
-        src/ooxml/Meta.cpp
-        src/ooxml/OfficeOpenXmlFile.cpp
-        src/ooxml/PresentationTranslator.cpp
-        src/ooxml/WorkbookTranslator.cpp
+        src/ooxml/ooxml_crypto.cpp
+        src/ooxml/ooxml_document_translator.cpp
+        src/ooxml/ooxml_meta.cpp
+        src/ooxml/ooxml_document_file.cpp
+        src/ooxml/ooxml_presentation_translator.cpp
+        src/ooxml/ooxml_workbook_translator.cpp
 
-        src/svm/Svm2Svg.cpp
+        src/svm/svm_to_svg.cpp
         )
 target_include_directories(odr-object
         PUBLIC
