@@ -1,8 +1,8 @@
 #ifndef ODR_COMMON_XML_UTIL_H
 #define ODR_COMMON_XML_UTIL_H
 
-#include <functional>
-#include <memory>
+#include <exception>
+#include <string>
 
 namespace pugi {
 class xml_document;

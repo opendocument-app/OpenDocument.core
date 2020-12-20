@@ -1,7 +1,7 @@
 #include <access/CfbStorage.h>
 #include <access/Path.h>
 #include <memory>
-#include <odr/Exception.h>
+#include <odr/Exceptions.h>
 #include <oldms/LegacyMicrosoftFile.h>
 #include <unordered_map>
 

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <odr/Exception.h>
+#include <odr/Exceptions.h>
 #include <odr/File.h>
 
 using namespace odr;

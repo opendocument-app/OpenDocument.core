@@ -14,7 +14,7 @@ namespace odr {
 class Property final {
 public:
   Property();
-  explicit Property(std::shared_ptr<const common::Property> impl);
+  explicit Property(std::shared_ptr<common::Property> impl);
 
   bool operator==(const Property &rhs) const;
   bool operator!=(const Property &rhs) const;
@@ -31,7 +31,7 @@ public:
   void set(std::optional<std::string> value) const;
 
 private:
-  std::shared_ptr<const common::Property> m_impl;
+  std::shared_ptr<common::Property> m_impl;
 };
 
 } // namespace odr

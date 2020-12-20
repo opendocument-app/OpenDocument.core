@@ -1,3 +1,5 @@
+#include <common/Property.h>
+#include <common/XmlProperties.h>
 #include <cstring>
 #include <odf/Styles.h>
 #include <odr/Document.h>
@@ -12,13 +14,13 @@ void attributesToMap(pugi::xml_node node,
   }
 }
 
-std::optional<std::string>
-lookup(const std::unordered_map<std::string, std::string> &map,
-       const std::string &attribute) {
+Property lookup(const std::unordered_map<std::string, std::string> &map,
+                const std::string &attribute) {
   auto it = map.find(attribute);
-  if (it == map.end())
-    return {};
-  return it->second;
+  std::optional<std::string> result;
+  if (it != map.end())
+    result = it->second;
+  return Property(std::make_shared<common::ConstProperty>(result));
 }
 
 RectangularProperties
@@ -97,7 +99,8 @@ DrawingProperties ResolvedStyle::toDrawingProperties() const {
   result.strokeWidth = lookup(graphicProperties, "svg:stroke-width");
   result.strokeColor = lookup(graphicProperties, "svg:stroke-color");
   result.fillColor = lookup(graphicProperties, "draw:fill-color");
-  result.verticalAlign = lookup(graphicProperties, "draw:textarea-vertical-align");
+  result.verticalAlign =
+      lookup(graphicProperties, "draw:textarea-vertical-align");
 
   return result;
 }
@@ -161,14 +164,21 @@ PageProperties Styles::pageProperties(const std::string &name) const {
 
   PageProperties result;
 
-  result.width = pageLayoutProp.attribute("fo:page-width").value();
-  result.height = pageLayoutProp.attribute("fo:page-height").value();
-  result.marginTop = pageLayoutProp.attribute("fo:margin-top").value();
-  result.marginBottom = pageLayoutProp.attribute("fo:margin-bottom").value();
-  result.marginLeft = pageLayoutProp.attribute("fo:margin-left").value();
-  result.marginRight = pageLayoutProp.attribute("fo:margin-right").value();
+  result.width = Property(std::make_shared<common::XmlAttributeProperty>(
+      pageLayoutProp.attribute("fo:page-width")));
+  result.height = Property(std::make_shared<common::XmlAttributeProperty>(
+      pageLayoutProp.attribute("fo:page-height")));
+  result.marginTop = Property(std::make_shared<common::XmlAttributeProperty>(
+      pageLayoutProp.attribute("fo:margin-top")));
+  result.marginBottom = Property(std::make_shared<common::XmlAttributeProperty>(
+      pageLayoutProp.attribute("fo:margin-bottom")));
+  result.marginLeft = Property(std::make_shared<common::XmlAttributeProperty>(
+      pageLayoutProp.attribute("fo:margin-left")));
+  result.marginRight = Property(std::make_shared<common::XmlAttributeProperty>(
+      pageLayoutProp.attribute("fo:margin-right")));
   result.printOrientation =
-      pageLayoutProp.attribute("style:print-orientation").value();
+      Property(std::make_shared<common::XmlAttributeProperty>(
+          pageLayoutProp.attribute("style:print-orientation")));
 
   return result;
 }

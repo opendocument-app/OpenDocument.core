@@ -1,7 +1,7 @@
 #include <OpenStrategy.h>
 #include <access/Path.h>
 #include <common/File.h>
-#include <odr/Exception.h>
+#include <odr/Exceptions.h>
 #include <odr/File.h>
 #include <utility>
 
@@ -120,9 +120,7 @@ FileCategory File::fileCategory() const noexcept {
 
 FileMeta File::fileMeta() const noexcept { return m_impl->fileMeta(); }
 
-std::unique_ptr<std::istream> File::data() const {
-  return m_impl->data();
-}
+std::unique_ptr<std::istream> File::data() const { return m_impl->data(); }
 
 ImageFile File::imageFile() const {
   auto imageFile = std::dynamic_pointer_cast<common::ImageFile>(m_impl);

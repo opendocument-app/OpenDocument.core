@@ -4,7 +4,7 @@
 #include <access/Storage.h>
 #include <access/ZipStorage.h>
 #include <odf/OpenDocumentFile.h>
-#include <odr/Exception.h>
+#include <odr/Exceptions.h>
 #include <oldms/LegacyMicrosoftFile.h>
 #include <ooxml/OfficeOpenXmlFile.h>
 

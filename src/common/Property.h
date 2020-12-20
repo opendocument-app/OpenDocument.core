@@ -15,7 +15,23 @@ public:
 
   virtual std::optional<std::string> value() const = 0;
 
-  virtual void set(std::optional<std::string> value) const = 0;
+  virtual void set(std::optional<std::string> value) = 0;
+};
+
+class ConstProperty final : public Property {
+public:
+  ConstProperty();
+  explicit ConstProperty(std::optional<std::string>);
+
+  bool readonly() const noexcept final;
+  bool optional() const noexcept final;
+
+  std::optional<std::string> value() const final;
+
+  void set(std::optional<std::string> value) final;
+
+private:
+  std::optional<std::string> m_value;
 };
 
 } // namespace odr::common

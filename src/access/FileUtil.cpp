@@ -2,7 +2,7 @@
 #include <cerrno>
 #include <cstring>
 #include <fstream>
-#include <odr/Exception.h>
+#include <odr/Exceptions.h>
 #include <streambuf>
 
 namespace odr::access {

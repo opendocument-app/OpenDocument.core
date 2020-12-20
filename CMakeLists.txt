@@ -43,10 +43,12 @@ add_library(odr-object OBJECT
         src/common/DocumentElements.cpp
         src/common/File.cpp
         src/common/Html.cpp
+        src/common/Property.cpp
         src/common/StringUtil.cpp
         src/common/TableCursor.cpp
         src/common/TablePosition.cpp
         src/common/TableRange.cpp
+        src/common/XmlProperties.cpp
         src/common/XmlUtil.cpp
 
         src/crypto/CryptoUtil.cpp

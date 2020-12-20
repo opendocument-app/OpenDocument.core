@@ -2,6 +2,7 @@
 #include <access/Storage.h>
 #include <access/StreamUtil.h>
 #include <common/File.h>
+#include <common/XmlProperties.h>
 #include <odf/Elements.h>
 #include <odf/OpenDocument.h>
 #include <odf/OpenDocumentFile.h>
@@ -523,10 +524,14 @@ OdfFrame::OdfFrame(std::shared_ptr<const OpenDocument> document,
 FrameProperties OdfFrame::frameProperties() const {
   FrameProperties result;
 
-  result.anchorType = m_node.attribute("text:anchor-type").value();
-  result.width = m_node.attribute("svg:width").value();
-  result.height = m_node.attribute("svg:height").value();
-  result.zIndex = m_node.attribute("draw:z-index").value();
+  result.anchorType = Property(std::make_shared<common::XmlAttributeProperty>(
+      m_node.attribute("text:anchor-type")));
+  result.width = Property(std::make_shared<common::XmlAttributeProperty>(
+      m_node.attribute("svg:width")));
+  result.height = Property(std::make_shared<common::XmlAttributeProperty>(
+      m_node.attribute("svg:height")));
+  result.zIndex = Property(std::make_shared<common::XmlAttributeProperty>(
+      m_node.attribute("draw:z-index")));
 
   return result;
 }

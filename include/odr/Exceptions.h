@@ -1,5 +1,5 @@
-#ifndef ODR_EXCEPTION_H
-#define ODR_EXCEPTION_H
+#ifndef ODR_EXCEPTIONS_H
+#define ODR_EXCEPTIONS_H
 
 namespace odr {
 
@@ -24,6 +24,14 @@ struct NoDocumentFile : public std::runtime_error {
   NoDocumentFile() : std::runtime_error("not a document file") {}
 };
 
+struct PropertyNotOptional : public std::runtime_error {
+  PropertyNotOptional() : std::runtime_error("property not optional") {}
+};
+
+struct PropertyReadOnly : public std::runtime_error {
+  PropertyReadOnly() : std::runtime_error("property is readonly") {}
+};
+
 } // namespace odr
 
-#endif // ODR_EXCEPTION_H
+#endif // ODR_EXCEPTIONS_H

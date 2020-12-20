@@ -1,7 +1,7 @@
 #include <access/Path.h>
 #include <access/Storage.h>
 #include <common/XmlUtil.h>
-#include <odr/Exception.h>
+#include <odr/Exceptions.h>
 #include <odr/File.h>
 #include <ooxml/Meta.h>
 #include <pugixml.hpp>
