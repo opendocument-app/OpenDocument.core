@@ -23,23 +23,23 @@ std::string
 translateRectangularProperties(const RectangularProperties &properties,
                                const std::string &prefix) {
   std::string result;
+  // TODO use shorthand if all the same
   if (properties.top)
-    result += prefix + "top:" + *properties.top + ";";
+    result += prefix + "-top:" + *properties.top + ";";
   if (properties.bottom)
-    result += prefix + "bottom:" + *properties.bottom + ";";
+    result += prefix + "-bottom:" + *properties.bottom + ";";
   if (properties.left)
-    result += prefix + "left:" + *properties.left + ";";
+    result += prefix + "-left:" + *properties.left + ";";
   if (properties.right)
-    result += prefix + "right:" + *properties.right + ";";
+    result += prefix + "-right:" + *properties.right + ";";
   return result;
 }
 
-std::string
-translateParagraphProperties(const ParagraphProperties &properties) {
+std::string translateParagraphProperties(const ParagraphElement &properties) {
   std::string result;
-  if (properties.textAlign)
-    result += "text-align:" + *properties.textAlign + ";";
-  result += translateRectangularProperties(properties.margin, "margin-");
+  if (properties.textAlign())
+    result += "text-align:" + *properties.textAlign() + ";";
+  result += translateRectangularProperties(properties.margin(), "margin");
   return result;
 }
 
@@ -60,57 +60,52 @@ std::string translateTextProperties(const TextProperties &properties) {
   return result;
 }
 
-std::string translateTableProperties(const TableProperties &properties) {
+std::string translateTableProperties(const TableElement &properties) {
   std::string result;
-  if (properties.width)
-    result += "width:" + *properties.width + ";";
+  if (properties.width())
+    result += "width:" + *properties.width() + ";";
   return result;
 }
 
 std::string
-translateTableColumnProperties(const TableColumnProperties &properties) {
+translateTableColumnProperties(const TableColumnElement &properties) {
   std::string result;
-  if (properties.width)
-    result += "width:" + *properties.width + ";";
+  if (properties.width())
+    result += "width:" + *properties.width() + ";";
   return result;
 }
 
-std::string translateTableRowProperties(const TableRowProperties &properties) {
+std::string translateTableRowProperties(const TableRowElement &properties) {
   std::string result;
   // TODO
   return result;
 }
 
-std::string
-translateTableCellProperties(const TableCellProperties &properties) {
+std::string translateTableCellProperties(const TableCellElement &properties) {
   std::string result;
-  if (properties.padding)
-    result += "padding:" + *properties.padding + ";";
-  result += translateRectangularProperties(properties.paddingRect, "padding-");
-  if (properties.border)
-    result += "border:" + *properties.border + ";";
-  result += translateRectangularProperties(properties.borderRect, "border-");
+  result += translateRectangularProperties(properties.padding(), "padding");
+  result += translateRectangularProperties(properties.border(), "border");
   return result;
 }
 
-std::string translateFrameProperties(const FrameProperties &properties) {
+std::string translateFrameProperties(const FrameElement &properties) {
   std::string result;
-  result += "width:" + *properties.width + ";";
-  result += "height:" + *properties.height + ";";
-  result += "z-index:" + *properties.zIndex + ";";
+  result += "width:" + *properties.width() + ";";
+  result += "height:" + *properties.height() + ";";
+  result += "z-index:" + *properties.zIndex() + ";";
   return result;
 }
 
-std::string translateDrawingProperties(const DrawingProperties &properties) {
+std::string translateDrawingProperties(const DrawingElement &properties) {
   std::string result;
-  if (properties.strokeWidth)
-    result += "stroke-width:" + *properties.strokeWidth + ";";
-  if (properties.strokeColor)
-    result += "stroke:" + *properties.strokeColor + ";";
-  if (properties.fillColor)
-    result += "fill:" + *properties.fillColor + ";";
-  if (properties.verticalAlign) {
-    if (*properties.verticalAlign == "middle")
+  if (properties.strokeWidth())
+    result += "stroke-width:" + *properties.strokeWidth() + ";";
+  if (properties.strokeColor())
+    result += "stroke:" + *properties.strokeColor() + ";";
+  if (properties.fillColor())
+    result += "fill:" + *properties.fillColor() + ";";
+  if (properties.verticalAlign()) {
+    if (*properties.verticalAlign() == "middle")
       result += "display:flex;justify-content:center;flex-direction: column;";
     // TODO else log
   }
@@ -124,13 +119,13 @@ std::string translateRectProperties(RectElement element) {
   result += "top:" + element.y() + ";";
   result += "width:" + element.width() + ";";
   result += "height:" + element.height() + ";";
-  result += translateDrawingProperties(element.drawingProperties());
+  result += translateDrawingProperties(element);
   return result;
 }
 
 std::string translateLineProperties(LineElement element) {
   std::string result;
-  result += translateDrawingProperties(element.drawingProperties());
+  result += translateDrawingProperties(element);
   return result;
 }
 
@@ -141,7 +136,7 @@ std::string translateCircleProperties(CircleElement element) {
   result += "top:" + element.y() + ";";
   result += "width:" + element.width() + ";";
   result += "height:" + element.height() + ";";
-  result += translateDrawingProperties(element.drawingProperties());
+  result += translateDrawingProperties(element);
   return result;
 }
 
@@ -165,27 +160,23 @@ void translateList(ListElement element, std::ostream &out,
 void translateTable(TableElement element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<table";
-  out << optionalStyleAttribute(
-      translateTableProperties(element.tableProperties()));
+  out << optionalStyleAttribute(translateTableProperties(element));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
   for (auto &&col : element.columns()) {
     out << "<col";
-    out << optionalStyleAttribute(
-        translateTableColumnProperties(col.tableColumnProperties()));
+    out << optionalStyleAttribute(translateTableColumnProperties(col));
     out << ">";
   }
 
   for (auto &&row : element.rows()) {
     out << "<tr";
-    out << optionalStyleAttribute(
-        translateTableRowProperties(row.tableRowProperties()));
+    out << optionalStyleAttribute(translateTableRowProperties(row));
     out << ">";
     for (auto &&cell : row.cells()) {
       out << "<td";
-      out << optionalStyleAttribute(
-          translateTableCellProperties(cell.tableCellProperties()));
+      out << optionalStyleAttribute(translateTableCellProperties(cell));
       out << ">";
       translateGeneration(cell.children(), out, config);
       out << "</td>";
@@ -230,8 +221,7 @@ void translateImage(ImageElement element, std::ostream &out,
 void translateFrame(FrameElement element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<div";
-  out << optionalStyleAttribute(
-      translateFrameProperties(element.frameProperties()));
+  out << optionalStyleAttribute(translateFrameProperties(element));
   out << ">";
 
   for (auto &&e : element.children()) {
@@ -296,8 +286,8 @@ void translateElement(Element element, std::ostream &out,
     out << "<br>";
   } else if (element.type() == ElementType::PARAGRAPH) {
     out << "<p";
-    out << optionalStyleAttribute(translateParagraphProperties(
-        element.paragraph().paragraphProperties()));
+    out << optionalStyleAttribute(
+        translateParagraphProperties(element.paragraph()));
     out << ">";
     out << "<span";
     out << optionalStyleAttribute(

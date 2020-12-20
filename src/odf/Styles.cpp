@@ -13,33 +13,34 @@ void attributesToMap(pugi::xml_node node,
     map[a.name()] = a.value();
   }
 }
+} // namespace
 
-Property lookup(const std::unordered_map<std::string, std::string> &map,
-                const std::string &attribute) {
+std::shared_ptr<common::Property>
+ResolvedStyle::lookup(const std::unordered_map<std::string, std::string> &map,
+                      const std::string &attribute) {
   auto it = map.find(attribute);
   std::optional<std::string> result;
   if (it != map.end())
     result = it->second;
-  return Property(std::make_shared<common::ConstProperty>(result));
+  return std::make_shared<common::ConstProperty>(result);
 }
 
-RectangularProperties
-lookupRect(const std::unordered_map<std::string, std::string> &map,
-           const std::string &attributePrefix) {
+RectangularProperties ResolvedStyle::lookupRect(
+    const std::unordered_map<std::string, std::string> &map,
+    const std::string &attributePrefix) {
   RectangularProperties result;
-  result.top = lookup(map, attributePrefix + "top");
-  result.bottom = lookup(map, attributePrefix + "bottom");
-  result.left = lookup(map, attributePrefix + "left");
-  result.right = lookup(map, attributePrefix + "right");
-  return result;
-}
-} // namespace
 
-ParagraphProperties ResolvedStyle::toParagraphProperties() const {
-  ParagraphProperties result;
+  result.top = result.bottom = result.left = result.right =
+      Property(lookup(map, attributePrefix));
 
-  result.textAlign = lookup(paragraphProperties, "fo:text-align");
-  result.margin = lookupRect(paragraphProperties, "fo:margin-");
+  if (auto top = Property(lookup(map, attributePrefix + "-top")); top)
+    result.top = top;
+  if (auto bottom = Property(lookup(map, attributePrefix + "-bottom")); bottom)
+    result.bottom = bottom;
+  if (auto left = Property(lookup(map, attributePrefix + "-left")); left)
+    result.left = left;
+  if (auto right = Property(lookup(map, attributePrefix + "-right")); right)
+    result.right = right;
 
   return result;
 }
@@ -47,60 +48,14 @@ ParagraphProperties ResolvedStyle::toParagraphProperties() const {
 TextProperties ResolvedStyle::toTextProperties() const {
   TextProperties result;
 
-  result.font.font = lookup(textProperties, "style:font-name");
-  result.font.size = lookup(textProperties, "fo:font-size");
-  result.font.weight = lookup(textProperties, "fo:font-weight");
-  result.font.style = lookup(textProperties, "fo:font-style");
-  result.font.color = lookup(textProperties, "fo:color");
+  result.font.font = Property(lookup(textProperties, "style:font-name"));
+  result.font.size = Property(lookup(textProperties, "fo:font-size"));
+  result.font.weight = Property(lookup(textProperties, "fo:font-weight"));
+  result.font.style = Property(lookup(textProperties, "fo:font-style"));
+  result.font.color = Property(lookup(textProperties, "fo:color"));
 
-  result.backgroundColor = lookup(textProperties, "fo:background-color");
-
-  return result;
-}
-
-TableProperties ResolvedStyle::toTableProperties() const {
-  TableProperties result;
-
-  result.width = lookup(tableProperties, "style:width");
-
-  return result;
-}
-
-TableColumnProperties ResolvedStyle::toTableColumnProperties() const {
-  TableColumnProperties result;
-
-  result.width = lookup(tableColumnProperties, "style:column-width");
-
-  return result;
-}
-
-TableRowProperties ResolvedStyle::toTableRowProperties() const {
-  TableRowProperties result;
-
-  // TODO
-
-  return result;
-}
-
-TableCellProperties ResolvedStyle::toTableCellProperties() const {
-  TableCellProperties result;
-
-  result.padding = lookup(tableCellProperties, "fo:padding");
-  result.paddingRect = lookupRect(tableCellProperties, "fo:padding-");
-  result.border = lookup(tableCellProperties, "fo:border");
-  result.borderRect = lookupRect(tableCellProperties, "fo:border-");
-
-  return result;
-}
-
-DrawingProperties ResolvedStyle::toDrawingProperties() const {
-  DrawingProperties result;
-
-  result.strokeWidth = lookup(graphicProperties, "svg:stroke-width");
-  result.strokeColor = lookup(graphicProperties, "svg:stroke-color");
-  result.fillColor = lookup(graphicProperties, "draw:fill-color");
-  result.verticalAlign =
-      lookup(graphicProperties, "draw:textarea-vertical-align");
+  result.backgroundColor =
+      Property(lookup(textProperties, "fo:background-color"));
 
   return result;
 }

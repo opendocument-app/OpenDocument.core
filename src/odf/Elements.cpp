@@ -51,7 +51,9 @@ public:
     return result;
   }
 
-  std::unique_ptr<std::istream> data() const { return m_storage->read(m_path); }
+  std::unique_ptr<std::istream> data() const final {
+    return m_storage->read(m_path);
+  }
 
 private:
   std::shared_ptr<access::ReadStorage> m_storage;
@@ -96,21 +98,11 @@ std::shared_ptr<const common::Element> OdfElement::nextSibling() const {
   return factorizeNextSibling(m_document, m_parent, m_node);
 }
 
-ParagraphProperties OdfElement::paragraphProperties() const {
-  if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
+ResolvedStyle OdfElement::resolvedStyle(const char *attribute) const {
+  if (auto styleAttr = m_node.attribute(attribute); styleAttr) {
     auto style = m_document->styles().style(styleAttr.value());
     if (style)
-      return style->resolve().toParagraphProperties();
-    // TODO log
-  }
-  return {};
-}
-
-TextProperties OdfElement::textProperties() const {
-  if (auto styleAttr = m_node.attribute("text:style-name"); styleAttr) {
-    auto style = m_document->styles().style(styleAttr.value());
-    if (style)
-      return style->resolve().toTextProperties();
+      return style->resolve();
     // TODO log
   }
   return {};
@@ -237,12 +229,18 @@ OdfParagraph::OdfParagraph(std::shared_ptr<const OpenDocument> document,
                            pugi::xml_node node)
     : OdfElement(std::move(document), std::move(parent), node) {}
 
-ParagraphProperties OdfParagraph::paragraphProperties() const {
-  return OdfElement::paragraphProperties();
+std::shared_ptr<common::Property> OdfParagraph::textAlign() const {
+  return ResolvedStyle::lookup(
+      resolvedStyle("text:style-name").paragraphProperties, "fo:text-align");
+}
+
+RectangularProperties OdfParagraph::margin() const {
+  return ResolvedStyle::lookupRect(
+      resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
 }
 
 TextProperties OdfParagraph::textProperties() const {
-  return OdfElement::textProperties();
+  return resolvedStyle("text:style-name").toTextProperties();
 }
 
 OdfSpan::OdfSpan(std::shared_ptr<const OpenDocument> document,
@@ -251,7 +249,7 @@ OdfSpan::OdfSpan(std::shared_ptr<const OpenDocument> document,
     : OdfElement(std::move(document), std::move(parent), node) {}
 
 TextProperties OdfSpan::textProperties() const {
-  return OdfElement::textProperties();
+  return resolvedStyle("text:style-name").toTextProperties();
 }
 
 OdfLink::OdfLink(std::shared_ptr<const OpenDocument> document,
@@ -260,7 +258,7 @@ OdfLink::OdfLink(std::shared_ptr<const OpenDocument> document,
     : OdfElement(std::move(document), std::move(parent), node) {}
 
 TextProperties OdfLink::textProperties() const {
-  return OdfElement::textProperties();
+  return resolvedStyle("text:style-name").toTextProperties();
 }
 
 std::string OdfLink::href() const {
@@ -331,14 +329,9 @@ std::shared_ptr<const common::TableRow> OdfTable::firstRow() const {
       std::static_pointer_cast<const OdfTable>(shared_from_this()));
 }
 
-TableProperties OdfTable::tableProperties() const {
-  if (auto styleAttr = m_node.attribute("table:style-name"); styleAttr) {
-    auto style = m_document->styles().style(styleAttr.value());
-    if (style)
-      return style->resolve().toTableProperties();
-    // TODO log
-  }
-  return {};
+std::shared_ptr<common::Property> OdfTable::width() const {
+  return ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").tableProperties, "style:width");
 }
 
 OdfTableColumn::OdfTableColumn(std::shared_ptr<const OpenDocument> document,
@@ -382,14 +375,9 @@ std::shared_ptr<const common::Element> OdfTableColumn::nextSibling() const {
   return nextColumn();
 }
 
-TableColumnProperties OdfTableColumn::tableColumnProperties() const {
-  if (auto styleAttr = m_node.attribute("table:style-name"); styleAttr) {
-    auto style = m_document->styles().style(styleAttr.value());
-    if (style)
-      return style->resolve().toTableColumnProperties();
-    // TODO log
-  }
-  return {};
+std::shared_ptr<common::Property> OdfTableColumn::width() const {
+  return ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").tableProperties, "style:column-width");
 }
 
 OdfTableRow::OdfTableRow(const OdfTableRow &row,
@@ -438,16 +426,6 @@ std::shared_ptr<const common::Element> OdfTableRow::previousSibling() const {
 
 std::shared_ptr<const common::Element> OdfTableRow::nextSibling() const {
   return nextRow();
-}
-
-TableRowProperties OdfTableRow::tableRowProperties() const {
-  if (auto styleAttr = m_node.attribute("table:style-name"); styleAttr) {
-    auto style = m_document->styles().style(styleAttr.value());
-    if (style)
-      return style->resolve().toTableRowProperties();
-    // TODO log
-  }
-  return {};
 }
 
 OdfTableCell::OdfTableCell(const OdfTableCell &cell, std::uint32_t repeatIndex)
@@ -506,14 +484,14 @@ std::uint32_t OdfTableCell::columnSpan() const {
   return m_node.attribute("table:number-columns-spanned").as_uint(1);
 }
 
-TableCellProperties OdfTableCell::tableCellProperties() const {
-  if (auto styleAttr = m_node.attribute("table:style-name"); styleAttr) {
-    auto style = m_document->styles().style(styleAttr.value());
-    if (style)
-      return style->resolve().toTableCellProperties();
-    // TODO log
-  }
-  return {};
+RectangularProperties OdfTableCell::padding() const {
+  return ResolvedStyle::lookupRect(
+      resolvedStyle("table:style-name").tableProperties, "fo:padding");
+}
+
+RectangularProperties OdfTableCell::border() const {
+  return ResolvedStyle::lookupRect(
+      resolvedStyle("table:style-name").tableProperties, "fo:border");
 }
 
 OdfFrame::OdfFrame(std::shared_ptr<const OpenDocument> document,
@@ -521,19 +499,24 @@ OdfFrame::OdfFrame(std::shared_ptr<const OpenDocument> document,
                    pugi::xml_node node)
     : OdfElement(std::move(document), std::move(parent), node) {}
 
-FrameProperties OdfFrame::frameProperties() const {
-  FrameProperties result;
+std::shared_ptr<common::Property> OdfFrame::anchorType() const {
+  return std::make_shared<common::XmlAttributeProperty>(
+      m_node.attribute("text:anchor-type"));
+}
 
-  result.anchorType = Property(std::make_shared<common::XmlAttributeProperty>(
-      m_node.attribute("text:anchor-type")));
-  result.width = Property(std::make_shared<common::XmlAttributeProperty>(
-      m_node.attribute("svg:width")));
-  result.height = Property(std::make_shared<common::XmlAttributeProperty>(
-      m_node.attribute("svg:height")));
-  result.zIndex = Property(std::make_shared<common::XmlAttributeProperty>(
-      m_node.attribute("draw:z-index")));
+std::shared_ptr<common::Property> OdfFrame::width() const {
+  return std::make_shared<common::XmlAttributeProperty>(
+      m_node.attribute("svg:width"));
+}
 
-  return result;
+std::shared_ptr<common::Property> OdfFrame::height() const {
+  return std::make_shared<common::XmlAttributeProperty>(
+      m_node.attribute("svg:height"));
+}
+
+std::shared_ptr<common::Property> OdfFrame::zIndex() const {
+  return std::make_shared<common::XmlAttributeProperty>(
+      m_node.attribute("draw:z-index"));
 }
 
 OdfImage::OdfImage(std::shared_ptr<const OpenDocument> document,
@@ -581,10 +564,36 @@ ImageFile OdfImage::imageFile() const {
       std::make_shared<OdfImageFile>(m_document->storage(), path, fileType));
 }
 
+OdfDrawingElement::OdfDrawingElement(
+    std::shared_ptr<const OpenDocument> document,
+    std::shared_ptr<const common::Element> parent, pugi::xml_node node)
+    : OdfElement(std::move(document), std::move(parent), node) {}
+
+std::shared_ptr<common::Property> OdfDrawingElement::strokeWidth() const {
+  return ResolvedStyle::lookup(
+      resolvedStyle("draw:style-name").graphicProperties, "svg:stroke-width");
+}
+
+std::shared_ptr<common::Property> OdfDrawingElement::strokeColor() const {
+  return ResolvedStyle::lookup(
+      resolvedStyle("draw:style-name").graphicProperties, "svg:stroke-color");
+}
+
+std::shared_ptr<common::Property> OdfDrawingElement::fillColor() const {
+  return ResolvedStyle::lookup(
+      resolvedStyle("draw:style-name").graphicProperties, "draw:fill-color");
+}
+
+std::shared_ptr<common::Property> OdfDrawingElement::verticalAlign() const {
+  return ResolvedStyle::lookup(
+      resolvedStyle("draw:style-name").graphicProperties,
+      "draw:textarea-vertical-align");
+}
+
 OdfRect::OdfRect(std::shared_ptr<const OpenDocument> document,
                  std::shared_ptr<const common::Element> parent,
                  pugi::xml_node node)
-    : OdfElement(std::move(document), std::move(parent), node) {}
+    : OdfDrawingElement(std::move(document), std::move(parent), node) {}
 
 std::string OdfRect::x() const { return m_node.attribute("svg:x").value(); }
 
@@ -598,20 +607,10 @@ std::string OdfRect::height() const {
   return m_node.attribute("svg:height").value();
 }
 
-DrawingProperties OdfRect::drawingProperties() const {
-  if (auto styleAttr = m_node.attribute("draw:style-name"); styleAttr) {
-    auto style = m_document->styles().style(styleAttr.value());
-    if (style)
-      return style->resolve().toDrawingProperties();
-    // TODO log
-  }
-  return {};
-}
-
 OdfLine::OdfLine(std::shared_ptr<const OpenDocument> document,
                  std::shared_ptr<const common::Element> parent,
                  pugi::xml_node node)
-    : OdfElement(std::move(document), std::move(parent), node) {}
+    : OdfDrawingElement(std::move(document), std::move(parent), node) {}
 
 std::string OdfLine::x1() const { return m_node.attribute("svg:x1").value(); }
 
@@ -621,20 +620,10 @@ std::string OdfLine::x2() const { return m_node.attribute("svg:x2").value(); }
 
 std::string OdfLine::y2() const { return m_node.attribute("svg:y2").value(); }
 
-DrawingProperties OdfLine::drawingProperties() const {
-  if (auto styleAttr = m_node.attribute("draw:style-name"); styleAttr) {
-    auto style = m_document->styles().style(styleAttr.value());
-    if (style)
-      return style->resolve().toDrawingProperties();
-    // TODO log
-  }
-  return {};
-}
-
 OdfCircle::OdfCircle(std::shared_ptr<const OpenDocument> document,
                      std::shared_ptr<const common::Element> parent,
                      pugi::xml_node node)
-    : OdfElement(std::move(document), std::move(parent), node) {}
+    : OdfDrawingElement(std::move(document), std::move(parent), node) {}
 
 std::string OdfCircle::x() const { return m_node.attribute("svg:x").value(); }
 
@@ -646,16 +635,6 @@ std::string OdfCircle::width() const {
 
 std::string OdfCircle::height() const {
   return m_node.attribute("svg:height").value();
-}
-
-DrawingProperties OdfCircle::drawingProperties() const {
-  if (auto styleAttr = m_node.attribute("draw:style-name"); styleAttr) {
-    auto style = m_document->styles().style(styleAttr.value());
-    if (style)
-      return style->resolve().toDrawingProperties();
-    // TODO log
-  }
-  return {};
 }
 
 std::shared_ptr<common::Element>

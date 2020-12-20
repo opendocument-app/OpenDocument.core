@@ -6,6 +6,7 @@
 #include <pugixml.hpp>
 
 namespace odr::odf {
+struct ResolvedStyle;
 class OpenDocument;
 class OdfTableRow;
 class OdfTableCell;
@@ -47,8 +48,7 @@ protected:
   const std::shared_ptr<const common::Element> m_parent;
   const pugi::xml_node m_node;
 
-  ParagraphProperties paragraphProperties() const;
-  TextProperties textProperties() const;
+  ResolvedStyle resolvedStyle(const char *attribute) const;
 };
 
 class OdfRoot final : public OdfElement {
@@ -120,7 +120,8 @@ public:
                std::shared_ptr<const common::Element> parent,
                pugi::xml_node node);
 
-  ParagraphProperties paragraphProperties() const final;
+  std::shared_ptr<common::Property> textAlign() const final;
+  RectangularProperties margin() const final;
   TextProperties textProperties() const final;
 };
 
@@ -181,7 +182,7 @@ public:
   std::shared_ptr<const common::TableColumn> firstColumn() const final;
   std::shared_ptr<const common::TableRow> firstRow() const final;
 
-  TableProperties tableProperties() const final;
+  std::shared_ptr<common::Property> width() const final;
 };
 
 class OdfTableColumn final : public OdfElement, public common::TableColumn {
@@ -197,7 +198,7 @@ public:
   std::shared_ptr<const common::Element> previousSibling() const final;
   std::shared_ptr<const common::Element> nextSibling() const final;
 
-  TableColumnProperties tableColumnProperties() const final;
+  std::shared_ptr<common::Property> width() const final;
 
 private:
   std::shared_ptr<const OdfTable> m_table;
@@ -217,8 +218,6 @@ public:
   std::shared_ptr<const common::Element> firstChild() const final;
   std::shared_ptr<const common::Element> previousSibling() const final;
   std::shared_ptr<const common::Element> nextSibling() const final;
-
-  TableRowProperties tableRowProperties() const final;
 
 private:
   std::shared_ptr<const OdfTable> m_table;
@@ -242,7 +241,8 @@ public:
   std::shared_ptr<const common::Element> previousSibling() const final;
   std::shared_ptr<const common::Element> nextSibling() const final;
 
-  TableCellProperties tableCellProperties() const final;
+  RectangularProperties padding() const final;
+  RectangularProperties border() const final;
 
 private:
   std::shared_ptr<const OdfTableRow> m_row;
@@ -255,7 +255,10 @@ public:
   OdfFrame(std::shared_ptr<const OpenDocument> document,
            std::shared_ptr<const common::Element> parent, pugi::xml_node node);
 
-  FrameProperties frameProperties() const final;
+  std::shared_ptr<common::Property> anchorType() const final;
+  std::shared_ptr<common::Property> width() const final;
+  std::shared_ptr<common::Property> height() const final;
+  std::shared_ptr<common::Property> zIndex() const final;
 };
 
 class OdfImage final : public OdfElement, public common::Image {
@@ -268,7 +271,20 @@ public:
   odr::ImageFile imageFile() const final;
 };
 
-class OdfRect final : public OdfElement, public common::Rect {
+class OdfDrawingElement : public OdfElement,
+                          public virtual common::DrawingElement {
+public:
+  OdfDrawingElement(std::shared_ptr<const OpenDocument> document,
+                    std::shared_ptr<const common::Element> parent,
+                    pugi::xml_node node);
+
+  std::shared_ptr<common::Property> strokeWidth() const final;
+  std::shared_ptr<common::Property> strokeColor() const final;
+  std::shared_ptr<common::Property> fillColor() const final;
+  std::shared_ptr<common::Property> verticalAlign() const final;
+};
+
+class OdfRect final : public OdfDrawingElement, public common::Rect {
 public:
   OdfRect(std::shared_ptr<const OpenDocument> document,
           std::shared_ptr<const common::Element> parent, pugi::xml_node node);
@@ -277,11 +293,9 @@ public:
   std::string y() const final;
   std::string width() const final;
   std::string height() const final;
-
-  DrawingProperties drawingProperties() const final;
 };
 
-class OdfLine final : public OdfElement, public common::Line {
+class OdfLine final : public OdfDrawingElement, public common::Line {
 public:
   OdfLine(std::shared_ptr<const OpenDocument> document,
           std::shared_ptr<const common::Element> parent, pugi::xml_node node);
@@ -290,11 +304,9 @@ public:
   std::string y1() const final;
   std::string x2() const final;
   std::string y2() const final;
-
-  DrawingProperties drawingProperties() const final;
 };
 
-class OdfCircle final : public OdfElement, public common::Circle {
+class OdfCircle final : public OdfDrawingElement, public common::Circle {
 public:
   OdfCircle(std::shared_ptr<const OpenDocument> document,
             std::shared_ptr<const common::Element> parent, pugi::xml_node node);
@@ -303,8 +315,6 @@ public:
   std::string y() const final;
   std::string width() const final;
   std::string height() const final;
-
-  DrawingProperties drawingProperties() const final;
 };
 
 } // namespace odr::odf

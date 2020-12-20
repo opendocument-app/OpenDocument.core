@@ -8,18 +8,24 @@
 
 namespace odr {
 struct PageProperties;
-struct ParagraphProperties;
 struct TextProperties;
-struct TableProperties;
-struct TableColumnProperties;
-struct TableRowProperties;
-struct TableCellProperties;
-struct DrawingProperties;
+struct RectangularProperties;
 } // namespace odr
+
+namespace odr::common {
+class Property;
+}
 
 namespace odr::odf {
 
 struct ResolvedStyle {
+  static std::shared_ptr<common::Property>
+  lookup(const std::unordered_map<std::string, std::string> &map,
+         const std::string &attribute);
+  static RectangularProperties
+  lookupRect(const std::unordered_map<std::string, std::string> &map,
+             const std::string &attributePrefix);
+
   std::unordered_map<std::string, std::string> paragraphProperties;
   std::unordered_map<std::string, std::string> textProperties;
 
@@ -32,20 +38,14 @@ struct ResolvedStyle {
   std::unordered_map<std::string, std::string> drawingPageProperties;
   std::unordered_map<std::string, std::string> graphicProperties;
 
-  ParagraphProperties toParagraphProperties() const;
   TextProperties toTextProperties() const;
-  TableProperties toTableProperties() const;
-  TableColumnProperties toTableColumnProperties() const;
-  TableRowProperties toTableRowProperties() const;
-  TableCellProperties toTableCellProperties() const;
-  DrawingProperties toDrawingProperties() const;
 };
 
 class Style final {
 public:
   Style(std::shared_ptr<Style> parent, pugi::xml_node styleNode);
 
-  ResolvedStyle resolve() const;
+  [[nodiscard]] ResolvedStyle resolve() const;
 
 private:
   std::shared_ptr<Style> m_parent;

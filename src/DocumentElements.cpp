@@ -243,8 +243,12 @@ ParagraphElement::ParagraphElement(
     std::shared_ptr<const common::Paragraph> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-ParagraphProperties ParagraphElement::paragraphProperties() const {
-  return m_impl->paragraphProperties();
+Property ParagraphElement::textAlign() const {
+  return Property(m_impl->textAlign());
+}
+
+RectangularProperties ParagraphElement::margin() const {
+  return m_impl->margin();
 }
 
 TextProperties ParagraphElement::textProperties() const {
@@ -301,9 +305,7 @@ TableRowRange TableElement::rows() const {
   return TableRowRange(TableRowElement(m_impl->firstRow()));
 }
 
-TableProperties TableElement::tableProperties() const {
-  return m_impl->tableProperties();
-}
+Property TableElement::width() const { return Property(m_impl->width()); }
 
 TableColumnElement::TableColumnElement() = default;
 
@@ -319,9 +321,7 @@ TableColumnElement TableColumnElement::nextSibling() const {
   return Element::nextSibling().tableColumn();
 }
 
-TableColumnProperties TableColumnElement::tableColumnProperties() const {
-  return m_impl->tableColumnProperties();
-}
+Property TableColumnElement::width() const { return Property(m_impl->width()); }
 
 TableRowElement::TableRowElement() = default;
 
@@ -344,10 +344,6 @@ TableCellRange TableRowElement::cells() const {
   return TableCellRange(firstChild());
 }
 
-TableRowProperties TableRowElement::tableRowProperties() const {
-  return m_impl->tableRowProperties();
-}
-
 TableCellElement::TableCellElement() = default;
 
 TableCellElement::TableCellElement(
@@ -368,8 +364,12 @@ std::uint32_t TableCellElement::columnSpan() const {
   return m_impl->columnSpan();
 }
 
-TableCellProperties TableCellElement::tableCellProperties() const {
-  return m_impl->tableCellProperties();
+RectangularProperties TableCellElement::padding() const {
+  return m_impl->padding();
+}
+
+RectangularProperties TableCellElement::border() const {
+  return m_impl->border();
 }
 
 FrameElement::FrameElement() = default;
@@ -377,9 +377,15 @@ FrameElement::FrameElement() = default;
 FrameElement::FrameElement(std::shared_ptr<const common::Frame> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-FrameProperties FrameElement::frameProperties() const {
-  return m_impl->frameProperties();
+Property FrameElement::anchorType() const {
+  return Property(m_impl->anchorType());
 }
+
+Property FrameElement::width() const { return Property(m_impl->width()); }
+
+Property FrameElement::height() const { return Property(m_impl->height()); }
+
+Property FrameElement::zIndex() const { return Property(m_impl->zIndex()); }
 
 ImageElement::ImageElement() = default;
 
@@ -392,10 +398,32 @@ std::string ImageElement::href() const { return m_impl->href(); }
 
 ImageFile ImageElement::imageFile() const { return m_impl->imageFile(); }
 
+DrawingElement::DrawingElement() = default;
+
+DrawingElement::DrawingElement(
+    std::shared_ptr<const common::DrawingElement> impl)
+    : Element(impl), m_impl{std::move(impl)} {}
+
+Property DrawingElement::strokeWidth() const {
+  return Property(m_impl->strokeWidth());
+}
+
+Property DrawingElement::strokeColor() const {
+  return Property(m_impl->strokeColor());
+}
+
+Property DrawingElement::fillColor() const {
+  return Property(m_impl->fillColor());
+}
+
+Property DrawingElement::verticalAlign() const {
+  return Property(m_impl->verticalAlign());
+}
+
 RectElement::RectElement() = default;
 
 RectElement::RectElement(std::shared_ptr<const common::Rect> impl)
-    : Element(impl), m_impl{std::move(impl)} {}
+    : DrawingElement(impl), m_impl{std::move(impl)} {}
 
 std::string RectElement::x() const { return m_impl->x(); }
 
@@ -405,14 +433,10 @@ std::string RectElement::width() const { return m_impl->width(); }
 
 std::string RectElement::height() const { return m_impl->height(); }
 
-DrawingProperties RectElement::drawingProperties() const {
-  return m_impl->drawingProperties();
-}
-
 LineElement::LineElement() = default;
 
 LineElement::LineElement(std::shared_ptr<const common::Line> impl)
-    : Element(impl), m_impl{std::move(impl)} {}
+    : DrawingElement(impl), m_impl{std::move(impl)} {}
 
 std::string LineElement::x1() const { return m_impl->x1(); }
 
@@ -422,14 +446,10 @@ std::string LineElement::x2() const { return m_impl->x2(); }
 
 std::string LineElement::y2() const { return m_impl->y2(); }
 
-DrawingProperties LineElement::drawingProperties() const {
-  return m_impl->drawingProperties();
-}
-
 CircleElement::CircleElement() = default;
 
 CircleElement::CircleElement(std::shared_ptr<const common::Circle> impl)
-    : Element(impl), m_impl{std::move(impl)} {}
+    : DrawingElement(impl), m_impl{std::move(impl)} {}
 
 std::string CircleElement::x() const { return m_impl->x(); }
 
@@ -438,9 +458,5 @@ std::string CircleElement::y() const { return m_impl->y(); }
 std::string CircleElement::width() const { return m_impl->width(); }
 
 std::string CircleElement::height() const { return m_impl->height(); }
-
-DrawingProperties CircleElement::drawingProperties() const {
-  return m_impl->drawingProperties();
-}
 
 } // namespace odr
