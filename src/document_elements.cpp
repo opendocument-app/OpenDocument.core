@@ -8,10 +8,6 @@ FontProperties::operator bool() const {
   return font || size || weight || style || color;
 }
 
-RectangularProperties::operator bool() const {
-  return top || bottom || left || right;
-}
-
 Element::Element() = default;
 
 Element::Element(std::shared_ptr<const common::Element> impl)
@@ -241,8 +237,20 @@ Property ParagraphElement::textAlign() const {
   return Property(m_impl->textAlign());
 }
 
-RectangularProperties ParagraphElement::margin() const {
-  return m_impl->margin();
+Property ParagraphElement::marginTop() const {
+  return Property(m_impl->marginTop());
+}
+
+Property ParagraphElement::marginBottom() const {
+  return Property(m_impl->marginBottom());
+}
+
+Property ParagraphElement::marginLeft() const {
+  return Property(m_impl->marginLeft());
+}
+
+Property ParagraphElement::marginRight() const {
+  return Property(m_impl->marginRight());
 }
 
 TextProperties ParagraphElement::textProperties() const {
@@ -358,12 +366,36 @@ std::uint32_t TableCellElement::columnSpan() const {
   return m_impl->columnSpan();
 }
 
-RectangularProperties TableCellElement::padding() const {
-  return m_impl->padding();
+Property TableCellElement::paddingTop() const {
+  return Property(m_impl->paddingTop());
 }
 
-RectangularProperties TableCellElement::border() const {
-  return m_impl->border();
+Property TableCellElement::paddingBottom() const {
+  return Property(m_impl->paddingBottom());
+}
+
+Property TableCellElement::paddingLeft() const {
+  return Property(m_impl->paddingLeft());
+}
+
+Property TableCellElement::paddingRight() const {
+  return Property(m_impl->paddingRight());
+}
+
+Property TableCellElement::borderTop() const {
+  return Property(m_impl->borderTop());
+}
+
+Property TableCellElement::borderBottom() const {
+  return Property(m_impl->borderBottom());
+}
+
+Property TableCellElement::borderLeft() const {
+  return Property(m_impl->borderLeft());
+}
+
+Property TableCellElement::borderRight() const {
+  return Property(m_impl->borderRight());
 }
 
 FrameElement::FrameElement() = default;

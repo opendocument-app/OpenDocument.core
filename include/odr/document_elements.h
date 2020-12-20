@@ -111,15 +111,6 @@ struct FontProperties {
   explicit operator bool() const;
 };
 
-struct RectangularProperties {
-  Property top;
-  Property bottom;
-  Property left;
-  Property right;
-
-  explicit operator bool() const;
-};
-
 struct TextProperties {
   FontProperties font;
   Property backgroundColor;
@@ -262,7 +253,10 @@ public:
   explicit ParagraphElement(std::shared_ptr<const common::Paragraph> impl);
 
   [[nodiscard]] Property textAlign() const;
-  [[nodiscard]] RectangularProperties margin() const;
+  [[nodiscard]] Property marginTop() const;
+  [[nodiscard]] Property marginBottom() const;
+  [[nodiscard]] Property marginLeft() const;
+  [[nodiscard]] Property marginRight() const;
   [[nodiscard]] TextProperties textProperties() const;
 
 private:
@@ -376,8 +370,14 @@ public:
   [[nodiscard]] std::uint32_t rowSpan() const;
   [[nodiscard]] std::uint32_t columnSpan() const;
 
-  [[nodiscard]] RectangularProperties padding() const;
-  [[nodiscard]] RectangularProperties border() const;
+  [[nodiscard]] Property paddingTop() const;
+  [[nodiscard]] Property paddingBottom() const;
+  [[nodiscard]] Property paddingLeft() const;
+  [[nodiscard]] Property paddingRight() const;
+  [[nodiscard]] Property borderTop() const;
+  [[nodiscard]] Property borderBottom() const;
+  [[nodiscard]] Property borderLeft() const;
+  [[nodiscard]] Property borderRight() const;
 
 private:
   std::shared_ptr<const common::TableCell> m_impl;

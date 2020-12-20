@@ -219,9 +219,40 @@ std::shared_ptr<common::Property> OdfParagraph::textAlign() const {
       resolvedStyle("text:style-name").paragraphProperties, "fo:text-align");
 }
 
-RectangularProperties OdfParagraph::margin() const {
-  return ResolvedStyle::lookupRect(
-      resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
+std::shared_ptr<common::Property> OdfParagraph::marginTop() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("text:style-name").paragraphProperties, "fo:margin-top");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
+  return result;
+}
+
+std::shared_ptr<common::Property> OdfParagraph::marginBottom() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("text:style-name").paragraphProperties, "fo:margin-bottom");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
+  return result;
+}
+
+std::shared_ptr<common::Property> OdfParagraph::marginLeft() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("text:style-name").paragraphProperties, "fo:margin-left");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
+  return result;
+}
+
+std::shared_ptr<common::Property> OdfParagraph::marginRight() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("text:style-name").paragraphProperties, "fo:margin-right");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
+  return result;
 }
 
 TextProperties OdfParagraph::textProperties() const {
@@ -469,14 +500,79 @@ std::uint32_t OdfTableCell::columnSpan() const {
   return m_node.attribute("table:number-columns-spanned").as_uint(1);
 }
 
-RectangularProperties OdfTableCell::padding() const {
-  return ResolvedStyle::lookupRect(
-      resolvedStyle("table:style-name").tableProperties, "fo:padding");
+std::shared_ptr<common::Property> OdfTableCell::paddingTop() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").paragraphProperties, "fo:padding-top");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("table:style-name").paragraphProperties, "fo:padding");
+  return result;
 }
 
-RectangularProperties OdfTableCell::border() const {
-  return ResolvedStyle::lookupRect(
-      resolvedStyle("table:style-name").tableProperties, "fo:border");
+std::shared_ptr<common::Property> OdfTableCell::paddingBottom() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").paragraphProperties,
+      "fo:padding-bottom");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("table:style-name").paragraphProperties, "fo:padding");
+  return result;
+}
+
+std::shared_ptr<common::Property> OdfTableCell::paddingLeft() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").paragraphProperties, "fo:padding-left");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("table:style-name").paragraphProperties, "fo:padding");
+  return result;
+}
+
+std::shared_ptr<common::Property> OdfTableCell::paddingRight() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").paragraphProperties,
+      "fo:padding-right");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("table:style-name").paragraphProperties, "fo:padding");
+  return result;
+}
+
+std::shared_ptr<common::Property> OdfTableCell::borderTop() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").paragraphProperties, "fo:border-top");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("table:style-name").paragraphProperties, "fo:border");
+  return result;
+}
+
+std::shared_ptr<common::Property> OdfTableCell::borderBottom() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").paragraphProperties,
+      "fo:border-bottom");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("table:style-name").paragraphProperties, "fo:border");
+  return result;
+}
+
+std::shared_ptr<common::Property> OdfTableCell::borderLeft() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").paragraphProperties, "fo:border-left");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("table:style-name").paragraphProperties, "fo:border");
+  return result;
+}
+
+std::shared_ptr<common::Property> OdfTableCell::borderRight() const {
+  auto result = ResolvedStyle::lookup(
+      resolvedStyle("table:style-name").paragraphProperties, "fo:border-right");
+  if (!result)
+    result = ResolvedStyle::lookup(
+        resolvedStyle("table:style-name").paragraphProperties, "fo:border");
+  return result;
 }
 
 OdfFrame::OdfFrame(std::shared_ptr<const OpenDocument> document,

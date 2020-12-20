@@ -9,7 +9,6 @@ class ImageFile;
 enum class ElementType;
 struct PageProperties;
 struct TextProperties;
-struct RectangularProperties;
 
 namespace common {
 class Property;
@@ -70,7 +69,10 @@ public:
   [[nodiscard]] ElementType type() const final;
 
   [[nodiscard]] virtual std::shared_ptr<Property> textAlign() const = 0;
-  [[nodiscard]] virtual RectangularProperties margin() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> marginTop() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> marginBottom() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> marginLeft() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> marginRight() const = 0;
   [[nodiscard]] virtual TextProperties textProperties() const = 0;
 };
 
@@ -140,8 +142,14 @@ public:
   [[nodiscard]] virtual std::uint32_t rowSpan() const = 0;
   [[nodiscard]] virtual std::uint32_t columnSpan() const = 0;
 
-  [[nodiscard]] virtual RectangularProperties padding() const = 0;
-  [[nodiscard]] virtual RectangularProperties border() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> paddingTop() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> paddingBottom() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> paddingLeft() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> paddingRight() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> borderTop() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> borderBottom() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> borderLeft() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> borderRight() const = 0;
 };
 
 class Frame : public virtual Element {

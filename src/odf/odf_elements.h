@@ -121,7 +121,10 @@ public:
                pugi::xml_node node);
 
   std::shared_ptr<common::Property> textAlign() const final;
-  RectangularProperties margin() const final;
+  std::shared_ptr<common::Property> marginTop() const final;
+  std::shared_ptr<common::Property> marginBottom() const final;
+  std::shared_ptr<common::Property> marginLeft() const final;
+  std::shared_ptr<common::Property> marginRight() const final;
   TextProperties textProperties() const final;
 };
 
@@ -241,8 +244,14 @@ public:
   std::shared_ptr<const common::Element> previousSibling() const final;
   std::shared_ptr<const common::Element> nextSibling() const final;
 
-  RectangularProperties padding() const final;
-  RectangularProperties border() const final;
+  std::shared_ptr<common::Property> paddingTop() const final;
+  std::shared_ptr<common::Property> paddingBottom() const final;
+  std::shared_ptr<common::Property> paddingLeft() const final;
+  std::shared_ptr<common::Property> paddingRight() const final;
+  std::shared_ptr<common::Property> borderTop() const final;
+  std::shared_ptr<common::Property> borderBottom() const final;
+  std::shared_ptr<common::Property> borderLeft() const final;
+  std::shared_ptr<common::Property> borderRight() const final;
 
 private:
   std::shared_ptr<const OdfTableRow> m_row;

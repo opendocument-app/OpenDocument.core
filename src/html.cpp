@@ -19,27 +19,18 @@ void translateGeneration(ElementRange siblings, std::ostream &out,
 void translateElement(Element element, std::ostream &out,
                       const HtmlConfig &config);
 
-std::string
-translateRectangularProperties(const RectangularProperties &properties,
-                               const std::string &prefix) {
-  std::string result;
-  // TODO use shorthand if all the same
-  if (properties.top)
-    result += prefix + "-top:" + *properties.top + ";";
-  if (properties.bottom)
-    result += prefix + "-bottom:" + *properties.bottom + ";";
-  if (properties.left)
-    result += prefix + "-left:" + *properties.left + ";";
-  if (properties.right)
-    result += prefix + "-right:" + *properties.right + ";";
-  return result;
-}
-
 std::string translateParagraphProperties(const ParagraphElement &properties) {
   std::string result;
   if (properties.textAlign())
     result += "text-align:" + *properties.textAlign() + ";";
-  result += translateRectangularProperties(properties.margin(), "margin");
+  if (properties.marginTop())
+    result += "margin-top:" + *properties.marginTop() + ";";
+  if (properties.marginBottom())
+    result += "margin-bottom:" + *properties.marginBottom() + ";";
+  if (properties.marginLeft())
+    result += "margin-left:" + *properties.marginLeft() + ";";
+  if (properties.marginRight())
+    result += "margin-right:" + *properties.marginRight() + ";";
   return result;
 }
 
@@ -83,8 +74,22 @@ std::string translateTableRowProperties(const TableRowElement &properties) {
 
 std::string translateTableCellProperties(const TableCellElement &properties) {
   std::string result;
-  result += translateRectangularProperties(properties.padding(), "padding");
-  result += translateRectangularProperties(properties.border(), "border");
+  if (properties.paddingTop())
+    result += "padding-top:" + *properties.paddingTop() + ";";
+  if (properties.paddingBottom())
+    result += "padding-bottom:" + *properties.paddingBottom() + ";";
+  if (properties.paddingLeft())
+    result += "padding-left:" + *properties.paddingLeft() + ";";
+  if (properties.paddingRight())
+    result += "padding-right:" + *properties.paddingRight() + ";";
+  if (properties.borderTop())
+    result += "border-top:" + *properties.borderTop() + ";";
+  if (properties.borderBottom())
+    result += "border-bottom:" + *properties.borderBottom() + ";";
+  if (properties.borderLeft())
+    result += "border-left:" + *properties.borderLeft() + ";";
+  if (properties.borderRight())
+    result += "border-right:" + *properties.borderRight() + ";";
   return result;
 }
 

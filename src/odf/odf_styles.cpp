@@ -25,26 +25,6 @@ ResolvedStyle::lookup(const std::unordered_map<std::string, std::string> &map,
   return std::make_shared<common::ConstProperty>(result);
 }
 
-RectangularProperties ResolvedStyle::lookupRect(
-    const std::unordered_map<std::string, std::string> &map,
-    const std::string &attributePrefix) {
-  RectangularProperties result;
-
-  result.top = result.bottom = result.left = result.right =
-      Property(lookup(map, attributePrefix));
-
-  if (auto top = Property(lookup(map, attributePrefix + "-top")); top)
-    result.top = top;
-  if (auto bottom = Property(lookup(map, attributePrefix + "-bottom")); bottom)
-    result.bottom = bottom;
-  if (auto left = Property(lookup(map, attributePrefix + "-left")); left)
-    result.left = left;
-  if (auto right = Property(lookup(map, attributePrefix + "-right")); right)
-    result.right = right;
-
-  return result;
-}
-
 TextProperties ResolvedStyle::toTextProperties() const {
   TextProperties result;
 

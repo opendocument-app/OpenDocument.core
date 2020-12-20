@@ -9,7 +9,6 @@
 namespace odr {
 struct PageProperties;
 struct TextProperties;
-struct RectangularProperties;
 } // namespace odr
 
 namespace odr::common {
@@ -22,9 +21,6 @@ struct ResolvedStyle {
   static std::shared_ptr<common::Property>
   lookup(const std::unordered_map<std::string, std::string> &map,
          const std::string &attribute);
-  static RectangularProperties
-  lookupRect(const std::unordered_map<std::string, std::string> &map,
-             const std::string &attributePrefix);
 
   std::unordered_map<std::string, std::string> paragraphProperties;
   std::unordered_map<std::string, std::string> textProperties;
