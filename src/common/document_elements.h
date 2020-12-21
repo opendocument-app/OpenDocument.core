@@ -1,5 +1,5 @@
-#ifndef ODR_COMMON_DOCUMENTELEMENTS_H
-#define ODR_COMMON_DOCUMENTELEMENTS_H
+#ifndef ODR_COMMON_DOCUMENT_ELEMENTS_H
+#define ODR_COMMON_DOCUMENT_ELEMENTS_H
 
 #include <memory>
 #include <optional>
@@ -212,4 +212,4 @@ public:
 } // namespace common
 } // namespace odr
 
-#endif // ODR_COMMON_DOCUMENTELEMENTS_H
+#endif // ODR_COMMON_DOCUMENT_ELEMENTS_H

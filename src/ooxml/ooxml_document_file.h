@@ -1,5 +1,5 @@
-#ifndef ODR_OOXML_OFFICEOPENXMLFILE_H
-#define ODR_OOXML_OFFICEOPENXMLFILE_H
+#ifndef ODR_OOXML_DOCUMENT_FILE_H
+#define ODR_OOXML_DOCUMENT_FILE_H
 
 #include <common/file.h>
 #include <odr/file.h>
@@ -35,4 +35,4 @@ private:
 } // namespace ooxml
 } // namespace odr
 
-#endif // ODR_OOXML_OFFICEOPENXMLFILE_H
+#endif // ODR_OOXML_DOCUMENT_FILE_H

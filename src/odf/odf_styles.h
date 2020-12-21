@@ -1,5 +1,5 @@
-#ifndef ODR_ODF_STYLE_H
-#define ODR_ODF_STYLE_H
+#ifndef ODR_ODF_STYLES_H
+#define ODR_ODF_STYLES_H
 
 #include <memory>
 #include <pugixml.hpp>
@@ -85,4 +85,4 @@ private:
 
 } // namespace odr::odf
 
-#endif // ODR_ODF_STYLE_H
+#endif // ODR_ODF_STYLES_H

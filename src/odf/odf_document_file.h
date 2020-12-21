@@ -1,5 +1,5 @@
-#ifndef ODR_ODF_OPENDOCUMENTFILE_H
-#define ODR_ODF_OPENDOCUMENTFILE_H
+#ifndef ODR_ODF_DOCUMENT_FILE_H
+#define ODR_ODF_DOCUMENT_FILE_H
 
 #include <common/file.h>
 #include <odf/odf_manifest.h>
@@ -37,4 +37,4 @@ private:
 } // namespace odf
 } // namespace odr
 
-#endif // ODR_ODF_OPENDOCUMENTFILE_H
+#endif // ODR_ODF_DOCUMENT_FILE_H

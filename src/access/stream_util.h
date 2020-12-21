@@ -1,5 +1,5 @@
-#ifndef ODR_ACCESS_STREAMUTIL_H
-#define ODR_ACCESS_STREAMUTIL_H
+#ifndef ODR_ACCESS_STREAM_UTIL_H
+#define ODR_ACCESS_STREAM_UTIL_H
 
 #include <iostream>
 #include <string>
@@ -12,4 +12,4 @@ extern void pipe(std::istream &, std::ostream &);
 
 } // namespace odr::access::StreamUtil
 
-#endif // ODR_ACCESS_STREAMUTIL_H
+#endif // ODR_ACCESS_STREAM_UTIL_H

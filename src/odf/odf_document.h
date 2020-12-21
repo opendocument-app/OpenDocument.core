@@ -1,5 +1,5 @@
-#ifndef ODR_ODF_OPENDOCUMENT_H
-#define ODR_ODF_OPENDOCUMENT_H
+#ifndef ODR_ODF_DOCUMENT_H
+#define ODR_ODF_DOCUMENT_H
 
 #include <common/document.h>
 #include <memory>
@@ -86,4 +86,4 @@ public:
 } // namespace odf
 } // namespace odr
 
-#endif // ODR_ODF_OPENDOCUMENT_H
+#endif // ODR_ODF_DOCUMENT_H

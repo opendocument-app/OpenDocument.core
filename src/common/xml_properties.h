@@ -1,5 +1,5 @@
-#ifndef ODR_COMMON_XMLPROPERTIES_H
-#define ODR_COMMON_XMLPROPERTIES_H
+#ifndef ODR_COMMON_XML_PROPERTIES_H
+#define ODR_COMMON_XML_PROPERTIES_H
 
 #include <common/property.h>
 #include <exception>
@@ -42,4 +42,4 @@ private:
 
 } // namespace odr::common
 
-#endif // ODR_COMMON_XMLPROPERTIES_H
+#endif // ODR_COMMON_XML_PROPERTIES_H

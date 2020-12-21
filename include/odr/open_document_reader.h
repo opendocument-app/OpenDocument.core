@@ -5,10 +5,10 @@
 
 namespace odr {
 
-namespace OpenDocument {
+namespace OpenDocumentReder {
 static std::string version() noexcept;
 static std::string commit() noexcept;
-} // namespace OpenDocument
+} // namespace OpenDocumentReder
 
 } // namespace odr
 

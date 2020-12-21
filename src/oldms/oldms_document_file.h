@@ -1,5 +1,5 @@
-#ifndef ODR_OLDMS_LEGACYMICROSOFTFILE_H
-#define ODR_OLDMS_LEGACYMICROSOFTFILE_H
+#ifndef ODR_OLDMS_DOCUMENT_FILE_H
+#define ODR_OLDMS_DOCUMENT_FILE_H
 
 #include <access/storage.h>
 #include <common/file.h>
@@ -29,4 +29,4 @@ private:
 
 } // namespace odr::oldms
 
-#endif // ODR_OLDMS_LEGACYMICROSOFTFILE_H
+#endif // ODR_OLDMS_DOCUMENT_FILE_H

@@ -1,5 +1,5 @@
-#ifndef ODR_TEST_TESTMETA_H
-#define ODR_TEST_TESTMETA_H
+#ifndef ODR_TEST_META_H
+#define ODR_TEST_META_H
 
 #include <odr/file.h>
 #include <string>
@@ -42,4 +42,4 @@ private:
 
 } // namespace odr::test
 
-#endif // ODR_TEST_TESTMETA_H
+#endif // ODR_TEST_META_H

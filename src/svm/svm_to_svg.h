@@ -1,5 +1,5 @@
-#ifndef ODR_SVM_SVM2SVG_H
-#define ODR_SVM_SVM2SVG_H
+#ifndef ODR_SVM_TO_SVG_H
+#define ODR_SVM_TO_SVG_H
 
 #include <iostream>
 #include <memory>
@@ -22,4 +22,4 @@ void svg(std::istream &in, std::ostream &out);
 
 } // namespace odr::svm
 
-#endif // ODR_SVM_SVM2SVG_H
+#endif // ODR_SVM_TO_SVG_H

@@ -1,5 +1,5 @@
-#ifndef ODR_CRYPTO_CRYPTOUTIL_H
-#define ODR_CRYPTO_CRYPTOUTIL_H
+#ifndef ODR_CRYPTO_UTIL_H
+#define ODR_CRYPTO_UTIL_H
 
 #include <string>
 
@@ -21,4 +21,4 @@ std::string inflate(const std::string &input);
 std::size_t padding(const std::string &input);
 } // namespace odr::crypto::Util
 
-#endif // ODR_CRYPTO_CRYPTOUTIL_H
+#endif // ODR_CRYPTO_UTIL_H
