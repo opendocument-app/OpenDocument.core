@@ -9,7 +9,7 @@ namespace {
 nlohmann::json metaToJson(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.typeAsString()},
-      {"encrypted", meta.encrypted},
+      {"encrypted", meta.passwordEncrypted},
       {"entryCount", meta.entryCount},
       {"entries", nlohmann::json::array()},
   };

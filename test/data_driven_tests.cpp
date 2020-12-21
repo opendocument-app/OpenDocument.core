@@ -50,6 +50,12 @@ TEST_P(DataDrivenTest, all) {
       (testFile.type == FileType::PORTABLE_DOCUMENT_FORMAT))
     GTEST_SKIP();
 
+  // TODO remove
+  if ((testFile.type == FileType::OFFICE_OPEN_XML_DOCUMENT) ||
+      (testFile.type == FileType::OFFICE_OPEN_XML_PRESENTATION) ||
+      (testFile.type == FileType::OFFICE_OPEN_XML_WORKBOOK))
+    GTEST_SKIP();
+
   odr::HtmlConfig config;
   config.editable = true;
   config.tableLimitRows = 4000;
@@ -64,36 +70,35 @@ TEST_P(DataDrivenTest, all) {
   if ((file.fileType() != FileType::OFFICE_OPEN_XML_ENCRYPTED))
     EXPECT_EQ(testFile.type, file.fileType());
 
-  // TODO
-  // EXPECT_EQ(testFile.encrypted, document.encrypted());
-  // if (document.encrypted())
-  //  EXPECT_TRUE(document.decrypt(testFile.password));
-  EXPECT_EQ(testFile.type, file.fileType());
+  if (file.fileCategory() == FileCategory::DOCUMENT) {
+    auto documentFile = file.documentFile();
+
+    EXPECT_EQ(testFile.passwordEncrypted, documentFile.passwordEncrypted());
+    if (documentFile.passwordEncrypted())
+      EXPECT_TRUE(documentFile.decrypt(testFile.password));
+    EXPECT_EQ(testFile.type, documentFile.fileType());
+  }
 
   fileMeta = file.fileMeta();
 
   {
     const std::string metaOutput = outputPath + "/meta.json";
-    const auto json = metaToJson(file.fileMeta());
+    const auto json = metaToJson(fileMeta);
     std::ofstream o(metaOutput);
     o << std::setw(4) << json << std::endl;
     EXPECT_TRUE(fs::is_regular_file(metaOutput));
     EXPECT_LT(0, fs::file_size(metaOutput));
   }
 
-  // TODO
-  // if (!document.translatable())
-  //  return;
-
   if (file.fileCategory() == FileCategory::DOCUMENT) {
-    auto document = file.documentFile();
+    auto documentFile = file.documentFile();
+    auto document = documentFile.document();
     auto documentMeta = document.documentMeta();
 
     if (document.documentType() == DocumentType::TEXT) {
       const std::string htmlOutput = outputPath + "/document.html";
       fs::create_directories(fs::path(htmlOutput).parent_path());
-      // TODO
-      // document.translate(htmlOutput, config);
+      Html::translate(document, "", htmlOutput, config);
       EXPECT_TRUE(fs::is_regular_file(htmlOutput));
       EXPECT_LT(0, fs::file_size(htmlOutput));
     } else if (document.documentType() == DocumentType::PRESENTATION) {
@@ -102,8 +107,7 @@ TEST_P(DataDrivenTest, all) {
         config.entryCount = 1;
         const std::string htmlOutput =
             outputPath + "/slide" + std::to_string(i) + ".html";
-        // TODO
-        // document.translate(htmlOutput, config);
+        Html::translate(document, "", htmlOutput, config);
         EXPECT_TRUE(fs::is_regular_file(htmlOutput));
         EXPECT_LT(0, fs::file_size(htmlOutput));
       }
@@ -114,9 +118,9 @@ TEST_P(DataDrivenTest, all) {
         const std::string htmlOutput =
             outputPath + "/sheet" + std::to_string(i) + ".html";
         // TODO
-        // document.translate(htmlOutput, config);
-        EXPECT_TRUE(fs::is_regular_file(htmlOutput));
-        EXPECT_LT(0, fs::file_size(htmlOutput));
+        // Html::translate(document, "", htmlOutput, config);
+        // EXPECT_TRUE(fs::is_regular_file(htmlOutput));
+        // EXPECT_LT(0, fs::file_size(htmlOutput));
       }
     } else if (document.documentType() == DocumentType::GRAPHICS) {
       for (std::uint32_t i = 0; i < documentMeta.entryCount; ++i) {
@@ -124,8 +128,7 @@ TEST_P(DataDrivenTest, all) {
         config.entryCount = 1;
         const std::string htmlOutput =
             outputPath + "/page" + std::to_string(i) + ".html";
-        // TODO
-        // document.translate(htmlOutput, config);
+        Html::translate(document, "", htmlOutput, config);
         EXPECT_TRUE(fs::is_regular_file(htmlOutput));
         EXPECT_LT(0, fs::file_size(htmlOutput));
       }

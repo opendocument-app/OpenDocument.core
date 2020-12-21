@@ -11,11 +11,11 @@ namespace odr::test {
 struct TestFile {
   std::string path;
   FileType type{FileType::UNKNOWN};
-  bool encrypted{false};
+  bool passwordEncrypted{false};
   std::string password;
 
   TestFile() = default;
-  TestFile(std::string path, FileType type, bool encrypted,
+  TestFile(std::string path, FileType type, bool passwordEncrypted,
            std::string password);
 };
 

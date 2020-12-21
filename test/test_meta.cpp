@@ -82,10 +82,10 @@ std::unordered_map<std::string, TestFile> getTestFiles() {
 }
 } // namespace
 
-TestFile::TestFile(std::string path, const FileType type, const bool encrypted,
-                   std::string password)
-    : path{std::move(path)}, type{type}, encrypted{encrypted},
-      password{std::move(password)} {}
+TestFile::TestFile(std::string path, const FileType type,
+                   const bool passwordEncrypted, std::string password)
+    : path{std::move(path)}, type{type},
+      passwordEncrypted{passwordEncrypted}, password{std::move(password)} {}
 
 test_meta::test_meta() { m_testFiles = getTestFiles(); }
 

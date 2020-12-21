@@ -29,7 +29,7 @@ public:
 
 private:
   std::shared_ptr<access::ReadStorage> m_storage;
-  EncryptionState m_encryptionState;
+  EncryptionState m_encryptionState{EncryptionState::NOT_ENCRYPTED};
   FileMeta m_file_meta;
   Manifest m_manifest;
 };

@@ -19,7 +19,7 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
        FileType::OPENDOCUMENT_PRESENTATION},
       {"application/vnd.oasis.opendocument.spreadsheet",
        FileType::OPENDOCUMENT_SPREADSHEET},
-      {"application/vnd.oasis.opendocument.drawing",
+      {"application/vnd.oasis.opendocument.graphics",
        FileType::OPENDOCUMENT_GRAPHICS},
       // TODO any difference for template files?
       {"application/vnd.oasis.opendocument.text-template",
@@ -28,7 +28,7 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
        FileType::OPENDOCUMENT_PRESENTATION},
       {"application/vnd.oasis.opendocument.spreadsheet-template",
        FileType::OPENDOCUMENT_SPREADSHEET},
-      {"application/vnd.oasis.opendocument.drawing-template",
+      {"application/vnd.oasis.opendocument.graphics-template",
        FileType::OPENDOCUMENT_GRAPHICS},
       // TODO these staroffice types might deserve their own type
       {"application/vnd.sun.xml.writer", FileType::OPENDOCUMENT_TEXT},

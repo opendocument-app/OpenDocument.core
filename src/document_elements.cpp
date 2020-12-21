@@ -159,6 +159,9 @@ bool ElementIterator<E>::operator!=(const ElementIterator<E> &rhs) const {
 }
 
 template class ElementIterator<Element>;
+template class ElementIterator<SlideElement>;
+template class ElementIterator<SheetElement>;
+template class ElementIterator<PageElement>;
 template class ElementIterator<TableColumnElement>;
 template class ElementIterator<TableRowElement>;
 template class ElementIterator<TableCellElement>;
@@ -201,6 +204,14 @@ SlideElement::SlideElement() = default;
 SlideElement::SlideElement(std::shared_ptr<const common::Slide> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
+SlideElement SlideElement::previousSibling() const {
+  return Element::previousSibling().slide();
+}
+
+SlideElement SlideElement::nextSibling() const {
+  return Element::nextSibling().slide();
+}
+
 std::string SlideElement::name() const { return m_impl->name(); }
 
 PageStyle SlideElement::pageStyle() const {
@@ -212,12 +223,32 @@ SheetElement::SheetElement() = default;
 SheetElement::SheetElement(std::shared_ptr<const common::Sheet> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
+SheetElement SheetElement::previousSibling() const {
+  return Element::previousSibling().sheet();
+}
+
+SheetElement SheetElement::nextSibling() const {
+  return Element::nextSibling().sheet();
+}
+
 std::string SheetElement::name() const { return m_impl->name(); }
+
+TableElement SheetElement::table() const {
+  return TableElement(m_impl->table());
+}
 
 PageElement::PageElement() = default;
 
 PageElement::PageElement(std::shared_ptr<const common::Page> impl)
     : Element(impl), m_impl{std::move(impl)} {}
+
+PageElement PageElement::previousSibling() const {
+  return Element::previousSibling().page();
+}
+
+PageElement PageElement::nextSibling() const {
+  return Element::nextSibling().page();
+}
 
 std::string PageElement::name() const { return m_impl->name(); }
 

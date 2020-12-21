@@ -185,6 +185,9 @@ public:
   SlideElement();
   explicit SlideElement(std::shared_ptr<const common::Slide> impl);
 
+  [[nodiscard]] SlideElement previousSibling() const;
+  [[nodiscard]] SlideElement nextSibling() const;
+
   [[nodiscard]] std::string name() const;
   [[nodiscard]] std::string notes() const;
 
@@ -199,6 +202,9 @@ public:
   SheetElement();
   explicit SheetElement(std::shared_ptr<const common::Sheet> impl);
 
+  [[nodiscard]] SheetElement previousSibling() const;
+  [[nodiscard]] SheetElement nextSibling() const;
+
   [[nodiscard]] std::string name() const;
   [[nodiscard]] std::uint32_t rowCount() const;
   [[nodiscard]] std::uint32_t columnCount() const;
@@ -212,6 +218,9 @@ class PageElement final : public Element {
 public:
   PageElement();
   explicit PageElement(std::shared_ptr<const common::Page> impl);
+
+  [[nodiscard]] PageElement previousSibling() const;
+  [[nodiscard]] PageElement nextSibling() const;
 
   [[nodiscard]] std::string name() const;
 
