@@ -3,6 +3,7 @@
 #include <common/document_elements.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
+#include <odr/document_style.h>
 
 namespace odr {
 
@@ -56,8 +57,8 @@ void Document::save(const std::string &path,
 TextDocument::TextDocument(std::shared_ptr<common::TextDocument> textDocument)
     : Document(textDocument), m_textDocument{std::move(textDocument)} {}
 
-PageProperties TextDocument::pageProperties() const {
-  return m_textDocument->pageProperties();
+PageStyle TextDocument::pageStyle() const {
+  return PageStyle(m_textDocument->pageStyle());
 }
 
 ElementRange TextDocument::content() const { return root().children(); }

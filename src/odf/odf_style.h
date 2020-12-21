@@ -1,19 +1,21 @@
-#ifndef ODR_ODF_STYLES_H
-#define ODR_ODF_STYLES_H
+#ifndef ODR_ODF_STYLE_H
+#define ODR_ODF_STYLE_H
 
 #include <memory>
 #include <pugixml.hpp>
 #include <unordered_map>
 #include <vector>
 
-namespace odr {
-struct PageProperties;
-struct TextProperties;
-} // namespace odr
-
 namespace odr::common {
 class Property;
-}
+class PageStyle;
+class TextStyle;
+class ParagraphStyle;
+class TableStyle;
+class TableColumnStyle;
+class TableCellStyle;
+class DrawingStyle;
+} // namespace odr::common
 
 namespace odr::odf {
 
@@ -34,7 +36,12 @@ struct ResolvedStyle {
   std::unordered_map<std::string, std::string> drawingPageProperties;
   std::unordered_map<std::string, std::string> graphicProperties;
 
-  TextProperties toTextProperties() const;
+  std::shared_ptr<common::TextStyle> toTextStyle() const;
+  std::shared_ptr<common::ParagraphStyle> toParagraphStyle() const;
+  std::shared_ptr<common::TableStyle> toTableStyle() const;
+  std::shared_ptr<common::TableColumnStyle> toTableColumnStyle() const;
+  std::shared_ptr<common::TableCellStyle> toTableCellStyle() const;
+  std::shared_ptr<common::DrawingStyle> toDrawingStyle() const;
 };
 
 class Style final {
@@ -55,9 +62,10 @@ public:
 
   std::shared_ptr<Style> style(const std::string &name) const;
 
-  PageProperties pageProperties(const std::string &name) const;
-  PageProperties masterPageProperties(const std::string &name) const;
-  PageProperties defaultPageProperties() const;
+  std::shared_ptr<common::PageStyle> pageStyle(const std::string &name) const;
+  std::shared_ptr<common::PageStyle>
+  masterPageStyle(const std::string &name) const;
+  std::shared_ptr<common::PageStyle> defaultPageStyle() const;
 
 private:
   pugi::xml_node m_stylesRoot;
@@ -85,4 +93,4 @@ private:
 
 } // namespace odr::odf
 
-#endif // ODR_ODF_STYLES_H
+#endif // ODR_ODF_STYLE_H

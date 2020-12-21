@@ -147,8 +147,8 @@ std::string OdfSlide::notes() const {
   return ""; // TODO
 }
 
-PageProperties OdfSlide::pageProperties() const {
-  return m_document->styles().masterPageProperties(
+std::shared_ptr<common::PageStyle> OdfSlide::pageStyle() const {
+  return m_document->styles().masterPageStyle(
       m_node.attribute("draw:master-page-name").value());
 }
 
@@ -182,8 +182,8 @@ std::string OdfPage::name() const {
   return m_node.attribute("draw:name").value();
 }
 
-PageProperties OdfPage::pageProperties() const {
-  return m_document->styles().masterPageProperties(
+std::shared_ptr<common::PageStyle> OdfPage::pageStyle() const {
+  return m_document->styles().masterPageStyle(
       m_node.attribute("draw:master-page-name").value());
 }
 
@@ -214,49 +214,12 @@ OdfParagraph::OdfParagraph(std::shared_ptr<const OpenDocument> document,
                            pugi::xml_node node)
     : OdfElement(std::move(document), std::move(parent), node) {}
 
-std::shared_ptr<common::Property> OdfParagraph::textAlign() const {
-  return ResolvedStyle::lookup(
-      resolvedStyle("text:style-name").paragraphProperties, "fo:text-align");
+std::shared_ptr<common::ParagraphStyle> OdfParagraph::paragraphStyle() const {
+  return resolvedStyle("text:style-name").toParagraphStyle();
 }
 
-std::shared_ptr<common::Property> OdfParagraph::marginTop() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("text:style-name").paragraphProperties, "fo:margin-top");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfParagraph::marginBottom() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("text:style-name").paragraphProperties, "fo:margin-bottom");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfParagraph::marginLeft() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("text:style-name").paragraphProperties, "fo:margin-left");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfParagraph::marginRight() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("text:style-name").paragraphProperties, "fo:margin-right");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("text:style-name").paragraphProperties, "fo:margin");
-  return result;
-}
-
-TextProperties OdfParagraph::textProperties() const {
-  return resolvedStyle("text:style-name").toTextProperties();
+std::shared_ptr<common::TextStyle> OdfParagraph::textStyle() const {
+  return resolvedStyle("text:style-name").toTextStyle();
 }
 
 OdfSpan::OdfSpan(std::shared_ptr<const OpenDocument> document,
@@ -264,8 +227,8 @@ OdfSpan::OdfSpan(std::shared_ptr<const OpenDocument> document,
                  pugi::xml_node node)
     : OdfElement(std::move(document), std::move(parent), node) {}
 
-TextProperties OdfSpan::textProperties() const {
-  return resolvedStyle("text:style-name").toTextProperties();
+std::shared_ptr<common::TextStyle> OdfSpan::textStyle() const {
+  return resolvedStyle("text:style-name").toTextStyle();
 }
 
 OdfLink::OdfLink(std::shared_ptr<const OpenDocument> document,
@@ -273,8 +236,8 @@ OdfLink::OdfLink(std::shared_ptr<const OpenDocument> document,
                  pugi::xml_node node)
     : OdfElement(std::move(document), std::move(parent), node) {}
 
-TextProperties OdfLink::textProperties() const {
-  return resolvedStyle("text:style-name").toTextProperties();
+std::shared_ptr<common::TextStyle> OdfLink::textStyle() const {
+  return resolvedStyle("text:style-name").toTextStyle();
 }
 
 std::string OdfLink::href() const {
@@ -345,9 +308,8 @@ std::shared_ptr<const common::TableRow> OdfTable::firstRow() const {
       std::static_pointer_cast<const OdfTable>(shared_from_this()));
 }
 
-std::shared_ptr<common::Property> OdfTable::width() const {
-  return ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").tableProperties, "style:width");
+std::shared_ptr<common::TableStyle> OdfTable::tableStyle() const {
+  return resolvedStyle("table:style-name").toTableStyle();
 }
 
 OdfTableColumn::OdfTableColumn(std::shared_ptr<const OpenDocument> document,
@@ -391,9 +353,9 @@ std::shared_ptr<const common::Element> OdfTableColumn::nextSibling() const {
   return nextColumn();
 }
 
-std::shared_ptr<common::Property> OdfTableColumn::width() const {
-  return ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").tableProperties, "style:column-width");
+std::shared_ptr<common::TableColumnStyle>
+OdfTableColumn::tableColumnStyle() const {
+  return resolvedStyle("table:style-name").toTableColumnStyle();
 }
 
 OdfTableRow::OdfTableRow(const OdfTableRow &row,
@@ -500,79 +462,8 @@ std::uint32_t OdfTableCell::columnSpan() const {
   return m_node.attribute("table:number-columns-spanned").as_uint(1);
 }
 
-std::shared_ptr<common::Property> OdfTableCell::paddingTop() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").paragraphProperties, "fo:padding-top");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("table:style-name").paragraphProperties, "fo:padding");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfTableCell::paddingBottom() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").paragraphProperties,
-      "fo:padding-bottom");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("table:style-name").paragraphProperties, "fo:padding");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfTableCell::paddingLeft() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").paragraphProperties, "fo:padding-left");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("table:style-name").paragraphProperties, "fo:padding");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfTableCell::paddingRight() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").paragraphProperties,
-      "fo:padding-right");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("table:style-name").paragraphProperties, "fo:padding");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfTableCell::borderTop() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").paragraphProperties, "fo:border-top");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("table:style-name").paragraphProperties, "fo:border");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfTableCell::borderBottom() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").paragraphProperties,
-      "fo:border-bottom");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("table:style-name").paragraphProperties, "fo:border");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfTableCell::borderLeft() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").paragraphProperties, "fo:border-left");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("table:style-name").paragraphProperties, "fo:border");
-  return result;
-}
-
-std::shared_ptr<common::Property> OdfTableCell::borderRight() const {
-  auto result = ResolvedStyle::lookup(
-      resolvedStyle("table:style-name").paragraphProperties, "fo:border-right");
-  if (!result)
-    result = ResolvedStyle::lookup(
-        resolvedStyle("table:style-name").paragraphProperties, "fo:border");
-  return result;
+std::shared_ptr<common::TableCellStyle> OdfTableCell::tableCellStyle() const {
+  return resolvedStyle("table:style-name").toTableCellStyle();
 }
 
 OdfFrame::OdfFrame(std::shared_ptr<const OpenDocument> document,
@@ -645,36 +536,10 @@ ImageFile OdfImage::imageFile() const {
       std::make_shared<OdfImageFile>(m_document->storage(), path, fileType));
 }
 
-OdfDrawingElement::OdfDrawingElement(
-    std::shared_ptr<const OpenDocument> document,
-    std::shared_ptr<const common::Element> parent, pugi::xml_node node)
-    : OdfElement(std::move(document), std::move(parent), node) {}
-
-std::shared_ptr<common::Property> OdfDrawingElement::strokeWidth() const {
-  return ResolvedStyle::lookup(
-      resolvedStyle("draw:style-name").graphicProperties, "svg:stroke-width");
-}
-
-std::shared_ptr<common::Property> OdfDrawingElement::strokeColor() const {
-  return ResolvedStyle::lookup(
-      resolvedStyle("draw:style-name").graphicProperties, "svg:stroke-color");
-}
-
-std::shared_ptr<common::Property> OdfDrawingElement::fillColor() const {
-  return ResolvedStyle::lookup(
-      resolvedStyle("draw:style-name").graphicProperties, "draw:fill-color");
-}
-
-std::shared_ptr<common::Property> OdfDrawingElement::verticalAlign() const {
-  return ResolvedStyle::lookup(
-      resolvedStyle("draw:style-name").graphicProperties,
-      "draw:textarea-vertical-align");
-}
-
 OdfRect::OdfRect(std::shared_ptr<const OpenDocument> document,
                  std::shared_ptr<const common::Element> parent,
                  pugi::xml_node node)
-    : OdfDrawingElement(std::move(document), std::move(parent), node) {}
+    : OdfElement(std::move(document), std::move(parent), node) {}
 
 std::string OdfRect::x() const { return m_node.attribute("svg:x").value(); }
 
@@ -688,10 +553,14 @@ std::string OdfRect::height() const {
   return m_node.attribute("svg:height").value();
 }
 
+std::shared_ptr<common::DrawingStyle> OdfRect::drawingStyle() const {
+  return resolvedStyle("draw:style-name").toDrawingStyle();
+}
+
 OdfLine::OdfLine(std::shared_ptr<const OpenDocument> document,
                  std::shared_ptr<const common::Element> parent,
                  pugi::xml_node node)
-    : OdfDrawingElement(std::move(document), std::move(parent), node) {}
+    : OdfElement(std::move(document), std::move(parent), node) {}
 
 std::string OdfLine::x1() const { return m_node.attribute("svg:x1").value(); }
 
@@ -701,10 +570,14 @@ std::string OdfLine::x2() const { return m_node.attribute("svg:x2").value(); }
 
 std::string OdfLine::y2() const { return m_node.attribute("svg:y2").value(); }
 
+std::shared_ptr<common::DrawingStyle> OdfLine::drawingStyle() const {
+  return resolvedStyle("draw:style-name").toDrawingStyle();
+}
+
 OdfCircle::OdfCircle(std::shared_ptr<const OpenDocument> document,
                      std::shared_ptr<const common::Element> parent,
                      pugi::xml_node node)
-    : OdfDrawingElement(std::move(document), std::move(parent), node) {}
+    : OdfElement(std::move(document), std::move(parent), node) {}
 
 std::string OdfCircle::x() const { return m_node.attribute("svg:x").value(); }
 
@@ -716,6 +589,10 @@ std::string OdfCircle::width() const {
 
 std::string OdfCircle::height() const {
   return m_node.attribute("svg:height").value();
+}
+
+std::shared_ptr<common::DrawingStyle> OdfCircle::drawingStyle() const {
+  return resolvedStyle("draw:style-name").toDrawingStyle();
 }
 
 std::shared_ptr<common::Element>

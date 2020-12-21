@@ -23,6 +23,7 @@ target_include_directories(odr-interface INTERFACE include)
 add_library(odr-object OBJECT
         src/document.cpp
         src/document_elements.cpp
+        src/document_style.cpp
         src/file.cpp
         src/file_no_except.cpp
         src/html.cpp
@@ -59,7 +60,7 @@ add_library(odr-object OBJECT
         src/odf/odf_meta.cpp
         src/odf/odf_document.cpp
         src/odf/odf_document_file.cpp
-        src/odf/odf_styles.cpp
+        src/odf/odf_style.cpp
 
         src/oldms/oldms_document_file.cpp
 

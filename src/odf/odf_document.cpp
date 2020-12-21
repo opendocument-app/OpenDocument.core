@@ -82,14 +82,14 @@ void OpenDocument::save(const access::Path &path,
 OpenDocumentText::OpenDocumentText(std::shared_ptr<access::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-PageProperties OpenDocumentText::pageProperties() const {
-  return m_styles.defaultPageProperties();
-}
-
 std::shared_ptr<const common::Element> OpenDocumentText::root() const {
   const pugi::xml_node body =
       m_contentXml.document_element().child("office:body").child("office:text");
   return std::make_shared<OdfRoot>(shared_from_this(), body);
+}
+
+std::shared_ptr<common::PageStyle> OpenDocumentText::pageStyle() const {
+  return m_styles.defaultPageStyle();
 }
 
 OpenDocumentPresentation::OpenDocumentPresentation(

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
+#include <odr/document_style.h>
 #include <odr/file.h>
 
 using namespace odr;
@@ -17,10 +18,10 @@ TEST(DocumentTest, odf_hello) {
 
   auto textDocument = document.textDocument();
 
-  auto props = textDocument.pageProperties();
+  auto pageStyle = textDocument.pageStyle();
 
-  std::cout << *props.width << " " << *props.height << std::endl;
-  std::cout << *props.marginTop << std::endl;
+  std::cout << *pageStyle.width() << " " << *pageStyle.height() << std::endl;
+  std::cout << *pageStyle.marginTop() << std::endl;
 
   for (auto &&e : textDocument.content()) {
     std::cout << (int)e.type() << std::endl;

@@ -24,18 +24,19 @@ class Element;
 class Slide;
 class Sheet;
 class Page;
+class PageStyle;
 
 class Document {
 public:
   virtual ~Document() = default;
 
-  virtual bool editable() const noexcept = 0;
-  virtual bool savable(bool encrypted = false) const noexcept = 0;
+  [[nodiscard]] virtual bool editable() const noexcept = 0;
+  [[nodiscard]] virtual bool savable(bool encrypted = false) const noexcept = 0;
 
-  virtual DocumentType documentType() const noexcept = 0;
-  virtual DocumentMeta documentMeta() const noexcept = 0;
+  [[nodiscard]] virtual DocumentType documentType() const noexcept = 0;
+  [[nodiscard]] virtual DocumentMeta documentMeta() const noexcept = 0;
 
-  virtual std::shared_ptr<const Element> root() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const Element> root() const = 0;
 
   virtual void save(const access::Path &path) const = 0;
   virtual void save(const access::Path &path,
@@ -44,28 +45,28 @@ public:
 
 class TextDocument : public virtual Document {
 public:
-  virtual PageProperties pageProperties() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<PageStyle> pageStyle() const = 0;
 };
 
 class Presentation : public virtual Document {
 public:
-  virtual std::uint32_t slideCount() const = 0;
+  [[nodiscard]] virtual std::uint32_t slideCount() const = 0;
 
-  virtual std::shared_ptr<const Slide> firstSlide() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const Slide> firstSlide() const = 0;
 };
 
 class Spreadsheet : public virtual Document {
 public:
-  virtual std::uint32_t sheetCount() const = 0;
+  [[nodiscard]] virtual std::uint32_t sheetCount() const = 0;
 
-  virtual std::shared_ptr<const Sheet> firstSheet() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const Sheet> firstSheet() const = 0;
 };
 
 class Drawing : public virtual Document {
 public:
-  virtual std::uint32_t pageCount() const = 0;
+  [[nodiscard]] virtual std::uint32_t pageCount() const = 0;
 
-  virtual std::shared_ptr<const Page> firstPage() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const Page> firstPage() const = 0;
 };
 
 } // namespace common

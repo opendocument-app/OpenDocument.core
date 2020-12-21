@@ -6,16 +6,18 @@
 #include <string>
 #include <vector>
 
-namespace odr {
-class DocumentFile;
-
-namespace common {
+namespace odr::common {
 class Document;
 class TextDocument;
 class Presentation;
 class Spreadsheet;
 class Drawing;
-} // namespace common
+} // namespace odr::common
+
+namespace odr {
+class DocumentFile;
+
+class PageStyle;
 
 class TextDocument;
 class Presentation;
@@ -45,18 +47,18 @@ struct DocumentMeta final {
 
 class Document {
 public:
-  DocumentType documentType() const noexcept;
-  DocumentMeta documentMeta() const noexcept;
+  [[nodiscard]] DocumentType documentType() const noexcept;
+  [[nodiscard]] DocumentMeta documentMeta() const noexcept;
 
-  bool editable() const noexcept;
-  bool savable(bool encrypted = false) const noexcept;
+  [[nodiscard]] bool editable() const noexcept;
+  [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
 
-  TextDocument textDocument() const;
-  Presentation presentation() const;
-  Spreadsheet spreadsheet() const;
-  Drawing drawing() const;
+  [[nodiscard]] TextDocument textDocument() const;
+  [[nodiscard]] Presentation presentation() const;
+  [[nodiscard]] Spreadsheet spreadsheet() const;
+  [[nodiscard]] Drawing drawing() const;
 
-  Element root() const;
+  [[nodiscard]] Element root() const;
 
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
@@ -72,9 +74,9 @@ private:
 
 class TextDocument final : public Document {
 public:
-  PageProperties pageProperties() const;
+  [[nodiscard]] PageStyle pageStyle() const;
 
-  ElementRange content() const;
+  [[nodiscard]] ElementRange content() const;
 
 private:
   std::shared_ptr<common::TextDocument> m_textDocument;
@@ -86,9 +88,9 @@ private:
 
 class Presentation final : public Document {
 public:
-  std::uint32_t slideCount() const;
+  [[nodiscard]] std::uint32_t slideCount() const;
 
-  SlideRange slides() const;
+  [[nodiscard]] SlideRange slides() const;
 
 private:
   std::shared_ptr<common::Presentation> m_presentation;
@@ -100,9 +102,9 @@ private:
 
 class Spreadsheet final : public Document {
 public:
-  std::uint32_t sheetCount() const;
+  [[nodiscard]] std::uint32_t sheetCount() const;
 
-  SheetRange sheets() const;
+  [[nodiscard]] SheetRange sheets() const;
 
 private:
   std::shared_ptr<common::Spreadsheet> m_spreadsheet;
@@ -114,9 +116,9 @@ private:
 
 class Drawing final : public Document {
 public:
-  std::uint32_t pageCount() const;
+  [[nodiscard]] std::uint32_t pageCount() const;
 
-  PageRange pages() const;
+  [[nodiscard]] PageRange pages() const;
 
 private:
   std::shared_ptr<common::Drawing> m_drawing;

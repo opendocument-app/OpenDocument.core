@@ -1,12 +1,9 @@
 #include <common/document_elements.h>
 #include <odr/document_elements.h>
+#include <odr/document_style.h>
 #include <odr/file.h>
 
 namespace odr {
-
-FontProperties::operator bool() const {
-  return font || size || weight || style || color;
-}
 
 Element::Element() = default;
 
@@ -206,6 +203,10 @@ SlideElement::SlideElement(std::shared_ptr<const common::Slide> impl)
 
 std::string SlideElement::name() const { return m_impl->name(); }
 
+PageStyle SlideElement::pageStyle() const {
+  return PageStyle(m_impl->pageStyle());
+}
+
 SheetElement::SheetElement() = default;
 
 SheetElement::SheetElement(std::shared_ptr<const common::Sheet> impl)
@@ -220,6 +221,10 @@ PageElement::PageElement(std::shared_ptr<const common::Page> impl)
 
 std::string PageElement::name() const { return m_impl->name(); }
 
+PageStyle PageElement::pageStyle() const {
+  return PageStyle(m_impl->pageStyle());
+}
+
 TextElement::TextElement() = default;
 
 TextElement::TextElement(std::shared_ptr<const common::TextElement> impl)
@@ -233,28 +238,12 @@ ParagraphElement::ParagraphElement(
     std::shared_ptr<const common::Paragraph> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-Property ParagraphElement::textAlign() const {
-  return Property(m_impl->textAlign());
+ParagraphStyle ParagraphElement::paragraphStyle() const {
+  return ParagraphStyle(m_impl->paragraphStyle());
 }
 
-Property ParagraphElement::marginTop() const {
-  return Property(m_impl->marginTop());
-}
-
-Property ParagraphElement::marginBottom() const {
-  return Property(m_impl->marginBottom());
-}
-
-Property ParagraphElement::marginLeft() const {
-  return Property(m_impl->marginLeft());
-}
-
-Property ParagraphElement::marginRight() const {
-  return Property(m_impl->marginRight());
-}
-
-TextProperties ParagraphElement::textProperties() const {
-  return m_impl->textProperties();
+TextStyle ParagraphElement::textStyle() const {
+  return TextStyle(m_impl->textStyle());
 }
 
 SpanElement::SpanElement() = default;
@@ -262,8 +251,8 @@ SpanElement::SpanElement() = default;
 SpanElement::SpanElement(std::shared_ptr<const common::Span> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-TextProperties SpanElement::textProperties() const {
-  return m_impl->textProperties();
+TextStyle SpanElement::textStyle() const {
+  return TextStyle(m_impl->textStyle());
 }
 
 LinkElement::LinkElement() = default;
@@ -271,8 +260,8 @@ LinkElement::LinkElement() = default;
 LinkElement::LinkElement(std::shared_ptr<const common::Link> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-TextProperties LinkElement::textProperties() const {
-  return m_impl->textProperties();
+TextStyle LinkElement::textStyle() const {
+  return TextStyle(m_impl->textStyle());
 }
 
 std::string LinkElement::href() const { return m_impl->href(); }
@@ -307,7 +296,9 @@ TableRowRange TableElement::rows() const {
   return TableRowRange(TableRowElement(m_impl->firstRow()));
 }
 
-Property TableElement::width() const { return Property(m_impl->width()); }
+TableStyle TableElement::tableStyle() const {
+  return TableStyle(m_impl->tableStyle());
+}
 
 TableColumnElement::TableColumnElement() = default;
 
@@ -323,7 +314,9 @@ TableColumnElement TableColumnElement::nextSibling() const {
   return Element::nextSibling().tableColumn();
 }
 
-Property TableColumnElement::width() const { return Property(m_impl->width()); }
+TableColumnStyle TableColumnElement::tableColumnStyle() const {
+  return TableColumnStyle(m_impl->tableColumnStyle());
+}
 
 TableRowElement::TableRowElement() = default;
 
@@ -366,36 +359,8 @@ std::uint32_t TableCellElement::columnSpan() const {
   return m_impl->columnSpan();
 }
 
-Property TableCellElement::paddingTop() const {
-  return Property(m_impl->paddingTop());
-}
-
-Property TableCellElement::paddingBottom() const {
-  return Property(m_impl->paddingBottom());
-}
-
-Property TableCellElement::paddingLeft() const {
-  return Property(m_impl->paddingLeft());
-}
-
-Property TableCellElement::paddingRight() const {
-  return Property(m_impl->paddingRight());
-}
-
-Property TableCellElement::borderTop() const {
-  return Property(m_impl->borderTop());
-}
-
-Property TableCellElement::borderBottom() const {
-  return Property(m_impl->borderBottom());
-}
-
-Property TableCellElement::borderLeft() const {
-  return Property(m_impl->borderLeft());
-}
-
-Property TableCellElement::borderRight() const {
-  return Property(m_impl->borderRight());
+TableCellStyle TableCellElement::tableCellStyle() const {
+  return TableCellStyle(m_impl->tableCellStyle());
 }
 
 FrameElement::FrameElement() = default;
@@ -424,32 +389,10 @@ std::string ImageElement::href() const { return m_impl->href(); }
 
 ImageFile ImageElement::imageFile() const { return m_impl->imageFile(); }
 
-DrawingElement::DrawingElement() = default;
-
-DrawingElement::DrawingElement(
-    std::shared_ptr<const common::DrawingElement> impl)
-    : Element(impl), m_impl{std::move(impl)} {}
-
-Property DrawingElement::strokeWidth() const {
-  return Property(m_impl->strokeWidth());
-}
-
-Property DrawingElement::strokeColor() const {
-  return Property(m_impl->strokeColor());
-}
-
-Property DrawingElement::fillColor() const {
-  return Property(m_impl->fillColor());
-}
-
-Property DrawingElement::verticalAlign() const {
-  return Property(m_impl->verticalAlign());
-}
-
 RectElement::RectElement() = default;
 
 RectElement::RectElement(std::shared_ptr<const common::Rect> impl)
-    : DrawingElement(impl), m_impl{std::move(impl)} {}
+    : Element(impl), m_impl{std::move(impl)} {}
 
 std::string RectElement::x() const { return m_impl->x(); }
 
@@ -459,10 +402,14 @@ std::string RectElement::width() const { return m_impl->width(); }
 
 std::string RectElement::height() const { return m_impl->height(); }
 
+DrawingStyle RectElement::drawingStyle() const {
+  return DrawingStyle(m_impl->drawingStyle());
+}
+
 LineElement::LineElement() = default;
 
 LineElement::LineElement(std::shared_ptr<const common::Line> impl)
-    : DrawingElement(impl), m_impl{std::move(impl)} {}
+    : Element(impl), m_impl{std::move(impl)} {}
 
 std::string LineElement::x1() const { return m_impl->x1(); }
 
@@ -472,10 +419,14 @@ std::string LineElement::x2() const { return m_impl->x2(); }
 
 std::string LineElement::y2() const { return m_impl->y2(); }
 
+DrawingStyle LineElement::drawingStyle() const {
+  return DrawingStyle(m_impl->drawingStyle());
+}
+
 CircleElement::CircleElement() = default;
 
 CircleElement::CircleElement(std::shared_ptr<const common::Circle> impl)
-    : DrawingElement(impl), m_impl{std::move(impl)} {}
+    : Element(impl), m_impl{std::move(impl)} {}
 
 std::string CircleElement::x() const { return m_impl->x(); }
 
@@ -484,5 +435,9 @@ std::string CircleElement::y() const { return m_impl->y(); }
 std::string CircleElement::width() const { return m_impl->width(); }
 
 std::string CircleElement::height() const { return m_impl->height(); }
+
+DrawingStyle CircleElement::drawingStyle() const {
+  return DrawingStyle(m_impl->drawingStyle());
+}
 
 } // namespace odr

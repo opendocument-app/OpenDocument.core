@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
 #include <odr/document_elements.h>
+#include <odr/document_style.h>
 #include <odr/file.h>
 #include <odr/html.h>
 #include <sstream>
@@ -19,77 +20,86 @@ void translateGeneration(ElementRange siblings, std::ostream &out,
 void translateElement(Element element, std::ostream &out,
                       const HtmlConfig &config);
 
-std::string translateParagraphProperties(const ParagraphElement &properties) {
+std::string translateParagraphStyle(const ParagraphStyle &style) {
   std::string result;
-  if (properties.textAlign())
-    result += "text-align:" + *properties.textAlign() + ";";
-  if (properties.marginTop())
-    result += "margin-top:" + *properties.marginTop() + ";";
-  if (properties.marginBottom())
-    result += "margin-bottom:" + *properties.marginBottom() + ";";
-  if (properties.marginLeft())
-    result += "margin-left:" + *properties.marginLeft() + ";";
-  if (properties.marginRight())
-    result += "margin-right:" + *properties.marginRight() + ";";
+  if (style.textAlign())
+    result += "text-align:" + *style.textAlign() + ";";
+  if (style.marginTop())
+    result += "margin-top:" + *style.marginTop() + ";";
+  if (style.marginBottom())
+    result += "margin-bottom:" + *style.marginBottom() + ";";
+  if (style.marginLeft())
+    result += "margin-left:" + *style.marginLeft() + ";";
+  if (style.marginRight())
+    result += "margin-right:" + *style.marginRight() + ";";
   return result;
 }
 
-std::string translateTextProperties(const TextProperties &properties) {
+std::string translateTextStyle(const TextStyle &style) {
   std::string result;
-  if (properties.font.font)
-    result += "font-family:" + *properties.font.font + ";";
-  if (properties.font.size)
-    result += "font-size:" + *properties.font.size + ";";
-  if (properties.font.weight)
-    result += "font-weight:" + *properties.font.weight + ";";
-  if (properties.font.style)
-    result += "font-style:" + *properties.font.style + ";";
-  if (properties.font.color)
-    result += "color:" + *properties.font.color + ";";
-  if (properties.backgroundColor)
-    result += "background-color:" + *properties.backgroundColor + ";";
+  if (style.fontName())
+    result += "font-family:" + *style.fontName() + ";";
+  if (style.fontSize())
+    result += "font-size:" + *style.fontSize() + ";";
+  if (style.fontWeight())
+    result += "font-weight:" + *style.fontWeight() + ";";
+  if (style.fontStyle())
+    result += "font-style:" + *style.fontStyle() + ";";
+  if (style.fontColor())
+    result += "color:" + *style.fontColor() + ";";
+  if (style.backgroundColor())
+    result += "background-color:" + *style.backgroundColor() + ";";
   return result;
 }
 
-std::string translateTableProperties(const TableElement &properties) {
+std::string translateTableStyle(const TableStyle &style) {
   std::string result;
-  if (properties.width())
-    result += "width:" + *properties.width() + ";";
+  if (style.width())
+    result += "width:" + *style.width() + ";";
   return result;
 }
 
-std::string
-translateTableColumnProperties(const TableColumnElement &properties) {
+std::string translateTableColumnStyle(const TableColumnStyle &style) {
   std::string result;
-  if (properties.width())
-    result += "width:" + *properties.width() + ";";
+  if (style.width())
+    result += "width:" + *style.width() + ";";
   return result;
 }
 
-std::string translateTableRowProperties(const TableRowElement &properties) {
+std::string translateTableCellStyle(const TableCellStyle &style) {
   std::string result;
-  // TODO
+  if (style.paddingTop())
+    result += "padding-top:" + *style.paddingTop() + ";";
+  if (style.paddingBottom())
+    result += "padding-bottom:" + *style.paddingBottom() + ";";
+  if (style.paddingLeft())
+    result += "padding-left:" + *style.paddingLeft() + ";";
+  if (style.paddingRight())
+    result += "padding-right:" + *style.paddingRight() + ";";
+  if (style.borderTop())
+    result += "border-top:" + *style.borderTop() + ";";
+  if (style.borderBottom())
+    result += "border-bottom:" + *style.borderBottom() + ";";
+  if (style.borderLeft())
+    result += "border-left:" + *style.borderLeft() + ";";
+  if (style.borderRight())
+    result += "border-right:" + *style.borderRight() + ";";
   return result;
 }
 
-std::string translateTableCellProperties(const TableCellElement &properties) {
+std::string translateDrawingStyle(const DrawingStyle &style) {
   std::string result;
-  if (properties.paddingTop())
-    result += "padding-top:" + *properties.paddingTop() + ";";
-  if (properties.paddingBottom())
-    result += "padding-bottom:" + *properties.paddingBottom() + ";";
-  if (properties.paddingLeft())
-    result += "padding-left:" + *properties.paddingLeft() + ";";
-  if (properties.paddingRight())
-    result += "padding-right:" + *properties.paddingRight() + ";";
-  if (properties.borderTop())
-    result += "border-top:" + *properties.borderTop() + ";";
-  if (properties.borderBottom())
-    result += "border-bottom:" + *properties.borderBottom() + ";";
-  if (properties.borderLeft())
-    result += "border-left:" + *properties.borderLeft() + ";";
-  if (properties.borderRight())
-    result += "border-right:" + *properties.borderRight() + ";";
+  if (style.strokeWidth())
+    result += "stroke-width:" + *style.strokeWidth() + ";";
+  if (style.strokeColor())
+    result += "stroke:" + *style.strokeColor() + ";";
+  if (style.fillColor())
+    result += "fill:" + *style.fillColor() + ";";
+  if (style.verticalAlign()) {
+    if (*style.verticalAlign() == "middle")
+      result += "display:flex;justify-content:center;flex-direction: column;";
+    // TODO else log
+  }
   return result;
 }
 
@@ -101,22 +111,6 @@ std::string translateFrameProperties(const FrameElement &properties) {
   return result;
 }
 
-std::string translateDrawingProperties(const DrawingElement &properties) {
-  std::string result;
-  if (properties.strokeWidth())
-    result += "stroke-width:" + *properties.strokeWidth() + ";";
-  if (properties.strokeColor())
-    result += "stroke:" + *properties.strokeColor() + ";";
-  if (properties.fillColor())
-    result += "fill:" + *properties.fillColor() + ";";
-  if (properties.verticalAlign()) {
-    if (*properties.verticalAlign() == "middle")
-      result += "display:flex;justify-content:center;flex-direction: column;";
-    // TODO else log
-  }
-  return result;
-}
-
 std::string translateRectProperties(RectElement element) {
   std::string result;
   result += "position:absolute;";
@@ -124,13 +118,6 @@ std::string translateRectProperties(RectElement element) {
   result += "top:" + element.y() + ";";
   result += "width:" + element.width() + ";";
   result += "height:" + element.height() + ";";
-  result += translateDrawingProperties(element);
-  return result;
-}
-
-std::string translateLineProperties(LineElement element) {
-  std::string result;
-  result += translateDrawingProperties(element);
   return result;
 }
 
@@ -141,7 +128,6 @@ std::string translateCircleProperties(CircleElement element) {
   result += "top:" + element.y() + ";";
   result += "width:" + element.width() + ";";
   result += "height:" + element.height() + ";";
-  result += translateDrawingProperties(element);
   return result;
 }
 
@@ -149,6 +135,50 @@ std::string optionalStyleAttribute(const std::string &style) {
   if (style.empty())
     return "";
   return " style=\"" + style + "\"";
+}
+
+void translateParagraph(ParagraphElement element, std::ostream &out,
+                        const HtmlConfig &config) {
+  out << "<p";
+  out << optionalStyleAttribute(
+      translateParagraphStyle(element.paragraphStyle()));
+  out << ">";
+  out << "<span";
+  out << optionalStyleAttribute(translateTextStyle(element.textStyle()));
+  out << ">";
+  if (element.firstChild())
+    translateGeneration(element.children(), out, config);
+  else
+    out << "<br>";
+  out << "</span>";
+  out << "</p>";
+}
+
+void translateSpan(SpanElement element, std::ostream &out,
+                   const HtmlConfig &config) {
+  out << "<span";
+  out << optionalStyleAttribute(translateTextStyle(element.textStyle()));
+  out << ">";
+  translateGeneration(element.children(), out, config);
+  out << "</span>";
+}
+
+void translateLink(LinkElement element, std::ostream &out,
+                   const HtmlConfig &config) {
+  out << "<a";
+  out << optionalStyleAttribute(translateTextStyle(element.textStyle()));
+  out << " href=\"";
+  out << element.href();
+  out << "\">";
+  translateGeneration(element.children(), out, config);
+  out << "</a>";
+}
+
+void translateBookmark(BookmarkElement element, std::ostream &out,
+                       const HtmlConfig &config) {
+  out << "<a id=\"";
+  out << element.name();
+  out << "\"></a>";
 }
 
 void translateList(ListElement element, std::ostream &out,
@@ -165,23 +195,23 @@ void translateList(ListElement element, std::ostream &out,
 void translateTable(TableElement element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<table";
-  out << optionalStyleAttribute(translateTableProperties(element));
+  out << optionalStyleAttribute(translateTableStyle(element.tableStyle()));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
   for (auto &&col : element.columns()) {
     out << "<col";
-    out << optionalStyleAttribute(translateTableColumnProperties(col));
+    out << optionalStyleAttribute(
+        translateTableColumnStyle(col.tableColumnStyle()));
     out << ">";
   }
 
   for (auto &&row : element.rows()) {
-    out << "<tr";
-    out << optionalStyleAttribute(translateTableRowProperties(row));
-    out << ">";
+    out << "<tr>";
     for (auto &&cell : row.cells()) {
       out << "<td";
-      out << optionalStyleAttribute(translateTableCellProperties(cell));
+      out << optionalStyleAttribute(
+          translateTableCellStyle(cell.tableCellStyle()));
       out << ">";
       translateGeneration(cell.children(), out, config);
       out << "</td>";
@@ -241,7 +271,8 @@ void translateFrame(FrameElement element, std::ostream &out,
 void translateRect(RectElement element, std::ostream &out,
                    const HtmlConfig &config) {
   out << "<div";
-  out << optionalStyleAttribute(translateRectProperties(element));
+  out << optionalStyleAttribute(translateRectProperties(element) +
+                                translateDrawingStyle(element.drawingStyle()));
   out << ">";
   translateGeneration(element.children(), out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
@@ -252,7 +283,7 @@ void translateLine(LineElement element, std::ostream &out,
                    const HtmlConfig &config) {
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
   out << optionalStyleAttribute("z-index:-1;position:absolute;top:0;left:0;" +
-                                translateLineProperties(element));
+                                translateDrawingStyle(element.drawingStyle()));
   out << ">";
 
   out << "<line";
@@ -266,7 +297,8 @@ void translateLine(LineElement element, std::ostream &out,
 void translateCircle(CircleElement element, std::ostream &out,
                      const HtmlConfig &config) {
   out << "<div";
-  out << optionalStyleAttribute(translateCircleProperties(element));
+  out << optionalStyleAttribute(translateCircleProperties(element) +
+                                translateDrawingStyle(element.drawingStyle()));
   out << ">";
   translateGeneration(element.children(), out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
@@ -288,40 +320,13 @@ void translateElement(Element element, std::ostream &out,
   } else if (element.type() == ElementType::LINE_BREAK) {
     out << "<br>";
   } else if (element.type() == ElementType::PARAGRAPH) {
-    out << "<p";
-    out << optionalStyleAttribute(
-        translateParagraphProperties(element.paragraph()));
-    out << ">";
-    out << "<span";
-    out << optionalStyleAttribute(
-        translateTextProperties(element.paragraph().textProperties()));
-    out << ">";
-    if (element.firstChild())
-      translateGeneration(element.children(), out, config);
-    else
-      out << "<br>";
-    out << "</span>";
-    out << "</p>";
+    translateParagraph(element.paragraph(), out, config);
   } else if (element.type() == ElementType::SPAN) {
-    out << "<span";
-    out << optionalStyleAttribute(
-        translateTextProperties(element.span().textProperties()));
-    out << ">";
-    translateGeneration(element.children(), out, config);
-    out << "</span>";
+    translateSpan(element.span(), out, config);
   } else if (element.type() == ElementType::LINK) {
-    out << "<a";
-    out << optionalStyleAttribute(
-        translateTextProperties(element.link().textProperties()));
-    out << " href=\"";
-    out << element.link().href();
-    out << "\">";
-    translateGeneration(element.children(), out, config);
-    out << "</a>";
+    translateLink(element.link(), out, config);
   } else if (element.type() == ElementType::BOOKMARK) {
-    out << "<a id=\"";
-    out << element.bookmark().name();
-    out << "\"></a>";
+    translateBookmark(element.bookmark(), out, config);
   } else if (element.type() == ElementType::LIST) {
     translateList(element.list(), out, config);
   } else if (element.type() == ElementType::TABLE) {
@@ -341,14 +346,14 @@ void translateElement(Element element, std::ostream &out,
 
 void translateTextDocument(TextDocument document, std::ostream &out,
                            const HtmlConfig &config) {
-  const auto pageProperties = document.pageProperties();
+  const auto pageStyle = document.pageStyle();
 
-  const std::string outerStyle = "width:" + *pageProperties.width + ";";
-  const std::string innerStyle =
-      "margin-top:" + *pageProperties.marginTop +
-      ";margin-left:" + *pageProperties.marginLeft +
-      ";margin-bottom:" + *pageProperties.marginBottom +
-      ";margin-right:" + *pageProperties.marginRight + ";";
+  const std::string outerStyle = "width:" + *pageStyle.width() + ";";
+  const std::string innerStyle = "margin-top:" + *pageStyle.marginTop() +
+                                 ";margin-left:" + *pageStyle.marginLeft() +
+                                 ";margin-bottom:" + *pageStyle.marginBottom() +
+                                 ";margin-right:" + *pageStyle.marginRight() +
+                                 ";";
 
   out << R"(<div style=")" + outerStyle + "\">";
   out << R"(<div style=")" + innerStyle + "\">";
@@ -360,15 +365,15 @@ void translateTextDocument(TextDocument document, std::ostream &out,
 void translatePresentation(Presentation document, std::ostream &out,
                            const HtmlConfig &config) {
   for (auto &&slide : document.slides()) {
-    const auto pageProperties = slide.pageProperties();
+    const auto pageStyle = slide.pageStyle();
 
-    const std::string outerStyle = "width:" + *pageProperties.width +
-                                   ";height:" + *pageProperties.height + ";";
+    const std::string outerStyle =
+        "width:" + *pageStyle.width() + ";height:" + *pageStyle.height() + ";";
     const std::string innerStyle =
-        "margin-top:" + *pageProperties.marginTop +
-        ";margin-left:" + *pageProperties.marginLeft +
-        ";margin-bottom:" + *pageProperties.marginBottom +
-        ";margin-right:" + *pageProperties.marginRight + ";";
+        "margin-top:" + *pageStyle.marginTop() +
+        ";margin-left:" + *pageStyle.marginLeft() +
+        ";margin-bottom:" + *pageStyle.marginBottom() +
+        ";margin-right:" + *pageStyle.marginRight() + ";";
 
     out << R"(<div style=")" + outerStyle + "\">";
     out << R"(<div style=")" + innerStyle + "\">";
@@ -389,15 +394,15 @@ void translateSpreadsheet(Spreadsheet document, std::ostream &out,
 void translateGraphics(Drawing document, std::ostream &out,
                        const HtmlConfig &config) {
   for (auto &&page : document.pages()) {
-    const auto pageProperties = page.pageProperties();
+    const auto pageStyle = page.pageStyle();
 
-    const std::string outerStyle = "width:" + *pageProperties.width +
-                                   ";height:" + *pageProperties.height + ";";
+    const std::string outerStyle =
+        "width:" + *pageStyle.width() + ";height:" + *pageStyle.height() + ";";
     const std::string innerStyle =
-        "margin-top:" + *pageProperties.marginTop +
-        ";margin-left:" + *pageProperties.marginLeft +
-        ";margin-bottom:" + *pageProperties.marginBottom +
-        ";margin-right:" + *pageProperties.marginRight + ";";
+        "margin-top:" + *pageStyle.marginTop() +
+        ";margin-left:" + *pageStyle.marginLeft() +
+        ";margin-bottom:" + *pageStyle.marginBottom() +
+        ";margin-right:" + *pageStyle.marginRight() + ";";
 
     out << R"(<div style=")" + outerStyle + "\">";
     out << R"(<div style=")" + innerStyle + "\">";

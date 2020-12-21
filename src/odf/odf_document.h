@@ -3,7 +3,7 @@
 
 #include <common/document.h>
 #include <memory>
-#include <odf/odf_styles.h>
+#include <odf/odf_style.h>
 #include <odr/document.h>
 #include <pugixml.hpp>
 
@@ -46,7 +46,7 @@ public:
 
   std::shared_ptr<const common::Element> root() const final;
 
-  PageProperties pageProperties() const final;
+  std::shared_ptr<common::PageStyle> pageStyle() const final;
 };
 
 class OpenDocumentPresentation final : public OpenDocument,

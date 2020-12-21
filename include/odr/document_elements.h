@@ -6,10 +6,7 @@
 #include <optional>
 #include <string>
 
-namespace odr {
-class ImageFile;
-
-namespace common {
+namespace odr::common {
 class Element;
 class Slide;
 class Sheet;
@@ -31,7 +28,18 @@ class DrawingElement;
 class Rect;
 class Line;
 class Circle;
-} // namespace common
+} // namespace odr::common
+
+namespace odr {
+class PageStyle;
+class TextStyle;
+class ParagraphStyle;
+class TableStyle;
+class TableColumnStyle;
+class TableCellStyle;
+class DrawingStyle;
+
+class ImageFile;
 
 class Element;
 class SlideElement;
@@ -89,31 +97,6 @@ enum class ElementType {
   RECT,
   LINE,
   CIRCLE,
-};
-
-struct PageProperties {
-  Property width;
-  Property height;
-  Property marginTop;
-  Property marginBottom;
-  Property marginLeft;
-  Property marginRight;
-  Property printOrientation;
-};
-
-struct FontProperties {
-  Property font;
-  Property size;
-  Property weight;
-  Property style;
-  Property color;
-
-  explicit operator bool() const;
-};
-
-struct TextProperties {
-  FontProperties font;
-  Property backgroundColor;
 };
 
 class Element {
@@ -204,7 +187,8 @@ public:
 
   [[nodiscard]] std::string name() const;
   [[nodiscard]] std::string notes() const;
-  [[nodiscard]] PageProperties pageProperties() const;
+
+  [[nodiscard]] PageStyle pageStyle() const;
 
 private:
   std::shared_ptr<const common::Slide> m_impl;
@@ -230,7 +214,8 @@ public:
   explicit PageElement(std::shared_ptr<const common::Page> impl);
 
   [[nodiscard]] std::string name() const;
-  [[nodiscard]] PageProperties pageProperties() const;
+
+  [[nodiscard]] PageStyle pageStyle() const;
 
 private:
   std::shared_ptr<const common::Page> m_impl;
@@ -252,12 +237,8 @@ public:
   ParagraphElement();
   explicit ParagraphElement(std::shared_ptr<const common::Paragraph> impl);
 
-  [[nodiscard]] Property textAlign() const;
-  [[nodiscard]] Property marginTop() const;
-  [[nodiscard]] Property marginBottom() const;
-  [[nodiscard]] Property marginLeft() const;
-  [[nodiscard]] Property marginRight() const;
-  [[nodiscard]] TextProperties textProperties() const;
+  [[nodiscard]] ParagraphStyle paragraphStyle() const;
+  [[nodiscard]] TextStyle textStyle() const;
 
 private:
   std::shared_ptr<const common::Paragraph> m_impl;
@@ -268,7 +249,7 @@ public:
   SpanElement();
   explicit SpanElement(std::shared_ptr<const common::Span> impl);
 
-  [[nodiscard]] TextProperties textProperties() const;
+  [[nodiscard]] TextStyle textStyle() const;
 
 private:
   std::shared_ptr<const common::Span> m_impl;
@@ -279,7 +260,7 @@ public:
   LinkElement();
   explicit LinkElement(std::shared_ptr<const common::Link> impl);
 
-  [[nodiscard]] TextProperties textProperties() const;
+  [[nodiscard]] TextStyle textStyle() const;
 
   [[nodiscard]] std::string href() const;
 
@@ -324,7 +305,7 @@ public:
   [[nodiscard]] TableColumnRange columns() const;
   [[nodiscard]] TableRowRange rows() const;
 
-  [[nodiscard]] Property width() const;
+  [[nodiscard]] TableStyle tableStyle() const;
 
 private:
   std::shared_ptr<const common::Table> m_impl;
@@ -338,7 +319,7 @@ public:
   [[nodiscard]] TableColumnElement previousSibling() const;
   [[nodiscard]] TableColumnElement nextSibling() const;
 
-  [[nodiscard]] Property width() const;
+  [[nodiscard]] TableColumnStyle tableColumnStyle() const;
 
 private:
   std::shared_ptr<const common::TableColumn> m_impl;
@@ -370,14 +351,7 @@ public:
   [[nodiscard]] std::uint32_t rowSpan() const;
   [[nodiscard]] std::uint32_t columnSpan() const;
 
-  [[nodiscard]] Property paddingTop() const;
-  [[nodiscard]] Property paddingBottom() const;
-  [[nodiscard]] Property paddingLeft() const;
-  [[nodiscard]] Property paddingRight() const;
-  [[nodiscard]] Property borderTop() const;
-  [[nodiscard]] Property borderBottom() const;
-  [[nodiscard]] Property borderLeft() const;
-  [[nodiscard]] Property borderRight() const;
+  [[nodiscard]] TableCellStyle tableCellStyle() const;
 
 private:
   std::shared_ptr<const common::TableCell> m_impl;
@@ -410,21 +384,7 @@ private:
   std::shared_ptr<const common::Image> m_impl;
 };
 
-class DrawingElement : public Element {
-public:
-  DrawingElement();
-  explicit DrawingElement(std::shared_ptr<const common::DrawingElement> impl);
-
-  [[nodiscard]] Property strokeWidth() const;
-  [[nodiscard]] Property strokeColor() const;
-  [[nodiscard]] Property fillColor() const;
-  [[nodiscard]] Property verticalAlign() const;
-
-private:
-  std::shared_ptr<const common::DrawingElement> m_impl;
-};
-
-class RectElement final : public DrawingElement {
+class RectElement final : public Element {
 public:
   RectElement();
   explicit RectElement(std::shared_ptr<const common::Rect> impl);
@@ -434,11 +394,13 @@ public:
   [[nodiscard]] std::string width() const;
   [[nodiscard]] std::string height() const;
 
+  [[nodiscard]] DrawingStyle drawingStyle() const;
+
 private:
   std::shared_ptr<const common::Rect> m_impl;
 };
 
-class LineElement final : public DrawingElement {
+class LineElement final : public Element {
 public:
   LineElement();
   explicit LineElement(std::shared_ptr<const common::Line> impl);
@@ -448,11 +410,13 @@ public:
   [[nodiscard]] std::string x2() const;
   [[nodiscard]] std::string y2() const;
 
+  [[nodiscard]] DrawingStyle drawingStyle() const;
+
 private:
   std::shared_ptr<const common::Line> m_impl;
 };
 
-class CircleElement final : public DrawingElement {
+class CircleElement final : public Element {
 public:
   CircleElement();
   explicit CircleElement(std::shared_ptr<const common::Circle> impl);
@@ -461,6 +425,8 @@ public:
   [[nodiscard]] std::string y() const;
   [[nodiscard]] std::string width() const;
   [[nodiscard]] std::string height() const;
+
+  [[nodiscard]] DrawingStyle drawingStyle() const;
 
 private:
   std::shared_ptr<const common::Circle> m_impl;
