@@ -53,7 +53,10 @@ TEST_P(DataDrivenTest, all) {
   // TODO remove
   if ((testFile.type == FileType::OFFICE_OPEN_XML_DOCUMENT) ||
       (testFile.type == FileType::OFFICE_OPEN_XML_PRESENTATION) ||
-      (testFile.type == FileType::OFFICE_OPEN_XML_WORKBOOK))
+      (testFile.type == FileType::OFFICE_OPEN_XML_WORKBOOK) ||
+      (testFile.type == FileType::LEGACY_WORD_DOCUMENT) ||
+      (testFile.type == FileType::LEGACY_POWERPOINT_PRESENTATION) ||
+      (testFile.type == FileType::LEGACY_EXCEL_WORKSHEETS))
     GTEST_SKIP();
 
   odr::HtmlConfig config;

@@ -1,31 +1,27 @@
-#include <access/FileUtil.h>
+#include <access/file_util.h>
 #include <iostream>
-#include <odr/Config.h>
-#include <odr/Meta.h>
 #include <odr/document.h>
+#include <odr/file.h>
+#include <odr/html.h>
 #include <string>
 
 int main(int, char **argv) {
   const std::string input{argv[1]};
-  const std::string diff{argv[2]};
+  const std::string diffPath{argv[2]};
   const std::string output{argv[3]};
 
-  odr::Config config;
-  config.entryOffset = 0;
-  config.entryCount = 0;
-  config.editable = true;
+  const odr::DocumentFile documentFile{input};
 
-  const odr::Document document{input};
-
-  if (document.encrypted()) {
+  if (documentFile.passwordEncrypted()) {
     std::cerr << "encrypted documents are not supported" << std::endl;
     return 1;
   }
 
-  document.translate(output, config);
+  odr::Document document = documentFile.document();
 
-  const std::string backDiff = odr::access::FileUtil::read(diff);
-  document.edit(backDiff);
+  const std::string diff = odr::access::FileUtil::read(diffPath);
+  odr::Html::edit(document, "", diff);
+
   document.save(output);
 
   return 0;

@@ -15,6 +15,9 @@ target_link_libraries(translate
 add_executable(back_translate src/back_translate.cpp)
 target_link_libraries(back_translate
         PRIVATE
-        odr_access
         odr-static
+        )
+target_include_directories(back_translate
+        PUBLIC
+        ../src
         )

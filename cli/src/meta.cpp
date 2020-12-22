@@ -1,8 +1,6 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <odr/Config.h>
-#include <odr/Meta.h>
-#include <odr/document.h>
+#include <odr/file.h>
 #include <string>
 
 namespace {
@@ -10,12 +8,12 @@ nlohmann::json metaToJson(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.typeAsString()},
       {"encrypted", meta.passwordEncrypted},
-      {"entryCount", meta.entryCount},
+      {"entryCount", meta.documentMeta->entryCount},
       {"entries", nlohmann::json::array()},
   };
 
-  if (!meta.entries.empty()) {
-    for (auto &&e : meta.entries) {
+  if (!meta.documentMeta->entries.empty()) {
+    for (auto &&e : meta.documentMeta->entries) {
       result["entries"].push_back({
           {"name", e.name},
           {"rowCount", e.rowCount},
@@ -37,16 +35,16 @@ int main(int argc, char **argv) {
   if (hasPassword)
     password = argv[2];
 
-  const odr::Document document{input};
+  odr::DocumentFile documentFile{input};
 
-  if (document.encrypted() && hasPassword) {
-    if (!document.decrypt(password)) {
+  if (documentFile.passwordEncrypted() && hasPassword) {
+    if (!documentFile.decrypt(password)) {
       std::cerr << "wrong password" << std::endl;
       return 1;
     }
   }
 
-  const auto json = metaToJson(document.meta());
+  const auto json = metaToJson(documentFile.fileMeta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;
