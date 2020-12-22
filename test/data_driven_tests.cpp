@@ -125,7 +125,7 @@ TEST_P(DataDrivenTest, all) {
         // EXPECT_TRUE(fs::is_regular_file(htmlOutput));
         // EXPECT_LT(0, fs::file_size(htmlOutput));
       }
-    } else if (document.documentType() == DocumentType::GRAPHICS) {
+    } else if (document.documentType() == DocumentType::DRAWING) {
       for (std::uint32_t i = 0; i < documentMeta.entryCount; ++i) {
         config.entryOffset = i;
         config.entryCount = 1;

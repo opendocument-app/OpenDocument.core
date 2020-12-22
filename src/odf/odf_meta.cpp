@@ -30,7 +30,7 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
        FileType::OPENDOCUMENT_SPREADSHEET},
       {"application/vnd.oasis.opendocument.graphics-template",
        FileType::OPENDOCUMENT_GRAPHICS},
-      // TODO these staroffice types might deserve their own type
+      // TODO staroffice might deserve its own types
       {"application/vnd.sun.xml.writer", FileType::OPENDOCUMENT_TEXT},
       {"application/vnd.sun.xml.impress", FileType::OPENDOCUMENT_PRESENTATION},
       {"application/vnd.sun.xml.calc", FileType::OPENDOCUMENT_SPREADSHEET},
@@ -118,8 +118,7 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
                                const pugi::xml_document &content) {
   DocumentMeta result;
 
-  const auto body =
-      content.child("office:document-content").child("office:body");
+  const auto body = content.document_element().child("office:body");
   if (!body)
     throw NoOpenDocumentFileException();
 
@@ -130,7 +129,8 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
   else if (body.child("office:spreadsheet"))
     result.documentType = DocumentType::SPREADSHEET;
   else if (body.child("office:drawing"))
-    result.documentType = DocumentType::GRAPHICS;
+    result.documentType = DocumentType::DRAWING;
+  // TODO else throw
 
   if (meta != nullptr) {
     const pugi::xml_node statistics = meta->child("office:document-meta")
@@ -153,7 +153,7 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
           break;
         result.entryCount = tableCount.as_uint();
       } break;
-      case DocumentType::GRAPHICS: {
+      case DocumentType::DRAWING: {
       } break;
       default:
         break;
@@ -162,7 +162,7 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
   }
 
   switch (result.documentType) {
-  case DocumentType::GRAPHICS:
+  case DocumentType::DRAWING:
   case DocumentType::PRESENTATION: {
     result.entryCount = 0;
     for (auto &&e : body.select_nodes("//draw:page")) {

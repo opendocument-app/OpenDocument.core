@@ -29,7 +29,7 @@ enum class DocumentType {
   TEXT,
   PRESENTATION,
   SPREADSHEET,
-  GRAPHICS,
+  DRAWING,
 };
 
 struct DocumentMeta final {

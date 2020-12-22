@@ -444,7 +444,7 @@ void Html::translate(Document document, const std::string &documentIdentifier,
     translatePresentation(document.presentation(), out, config);
   } else if (document.documentType() == DocumentType::SPREADSHEET) {
     translateSpreadsheet(document.spreadsheet(), out, config);
-  } else if (document.documentType() == DocumentType::GRAPHICS) {
+  } else if (document.documentType() == DocumentType::DRAWING) {
     translateGraphics(document.drawing(), out, config);
   } else {
     // TODO throw?
