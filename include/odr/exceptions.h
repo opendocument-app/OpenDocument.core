@@ -1,6 +1,8 @@
 #ifndef ODR_EXCEPTIONS_H
 #define ODR_EXCEPTIONS_H
 
+#include <stdexcept>
+
 namespace odr {
 
 struct UnsupportedOperation : public std::runtime_error {
