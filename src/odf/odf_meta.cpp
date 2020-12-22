@@ -30,19 +30,6 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
        FileType::OPENDOCUMENT_SPREADSHEET},
       {"application/vnd.oasis.opendocument.graphics-template",
        FileType::OPENDOCUMENT_GRAPHICS},
-      // TODO staroffice might deserve its own types
-      {"application/vnd.sun.xml.writer", FileType::OPENDOCUMENT_TEXT},
-      {"application/vnd.sun.xml.impress", FileType::OPENDOCUMENT_PRESENTATION},
-      {"application/vnd.sun.xml.calc", FileType::OPENDOCUMENT_SPREADSHEET},
-      {"application/vnd.sun.xml.draw", FileType::OPENDOCUMENT_GRAPHICS},
-      // TODO any difference for template files?
-      {"application/vnd.sun.xml.writer.template", FileType::OPENDOCUMENT_TEXT},
-      {"application/vnd.sun.xml.impress.template",
-       FileType::OPENDOCUMENT_PRESENTATION},
-      {"application/vnd.sun.xml.calc.template",
-       FileType::OPENDOCUMENT_SPREADSHEET},
-      {"application/vnd.sun.xml.draw.template",
-       FileType::OPENDOCUMENT_GRAPHICS},
   };
   return common::MapUtil::lookupMapDefault(MIME_TYPES, mimeType, fileType,
                                            FileType::UNKNOWN);
@@ -62,15 +49,14 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
     const auto &&n = e.node();
     if (std::strcmp(n.name(), "table:table-row") == 0) {
       const auto repeated =
-          n.attribute("table:number-rowCount-repeated").as_uint(1);
+          n.attribute("table:number-rows-repeated").as_uint(1);
       tl.addRow(repeated);
     } else if (std::strcmp(n.name(), "table:table-cell") == 0) {
       const auto repeated =
           n.attribute("table:number-columns-repeated").as_uint(1);
       const auto colspan =
           n.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan =
-          n.attribute("table:number-rowCount-spanned").as_uint(1);
+      const auto rowspan = n.attribute("table:number-rows-spanned").as_uint(1);
       tl.addCell(colspan, rowspan, repeated);
 
       const auto newRows = tl.row();
