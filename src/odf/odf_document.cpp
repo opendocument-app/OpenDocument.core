@@ -13,7 +13,7 @@ OpenDocument::OpenDocument(std::shared_ptr<access::ReadStorage> storage)
     : m_storage{std::move(storage)} {
   m_contentXml = common::XmlUtil::parse(*m_storage, "content.xml");
 
-  if (!m_storage->isFile("meta.xml")) {
+  if (m_storage->isFile("meta.xml")) {
     auto meta = common::XmlUtil::parse(*m_storage, "meta.xml");
     m_document_meta = parseDocumentMeta(&meta, m_contentXml);
   } else {
