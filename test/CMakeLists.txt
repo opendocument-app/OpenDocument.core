@@ -6,6 +6,13 @@ configure_file(test_constants.cpp.in test_constants.cpp)
 
 enable_testing()
 add_executable(odr_test
+        test_meta.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/test_constants.cpp
+        document_test.cpp
+        file_no_except_test.cpp
+        file_test.cpp
+        data_driven_tests.cpp
+
         access/zip_storage_test.cpp
 
         common/path_test.cpp
@@ -14,13 +21,6 @@ add_executable(odr_test
         common/table_range_test.cpp
 
         ooxml/ooxml_crypto_test.cpp
-
-        test_meta.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/test_constants.cpp
-        document_test.cpp
-        file_no_except_test.cpp
-        file_test.cpp
-        data_driven_tests.cpp
         )
 target_include_directories(odr_test
         PRIVATE

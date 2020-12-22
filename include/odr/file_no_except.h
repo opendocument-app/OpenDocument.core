@@ -1,5 +1,5 @@
-#ifndef ODR_FILE_NO_EXCEPT_TEST_H
-#define ODR_FILE_NO_EXCEPT_TEST_H
+#ifndef ODR_FILE_NO_EXCEPT_H
+#define ODR_FILE_NO_EXCEPT_H
 
 #include <memory>
 #include <odr/file.h>
@@ -51,4 +51,4 @@ protected:
 
 } // namespace odr
 
-#endif // ODR_FILE_NO_EXCEPT_TEST_H
+#endif // ODR_FILE_NO_EXCEPT_H
