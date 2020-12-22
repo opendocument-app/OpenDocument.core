@@ -1,3 +1,4 @@
+#include <access/path.h>
 #include <access/stream_util.h>
 #include <access/zip_storage.h>
 #include <common/xml_util.h>

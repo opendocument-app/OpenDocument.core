@@ -1,6 +1,5 @@
 #include <access/path.h>
 #include <access/storage.h>
-#include <access/stream_util.h>
 #include <common/file.h>
 #include <common/xml_properties.h>
 #include <odf/odf_document.h>
@@ -45,20 +44,6 @@ private:
   access::Path m_path;
   FileType m_fileType;
 };
-
-bool isSkipper(pugi::xml_node node) {
-  // TODO this method should be removed at some point
-  const std::string element = node.name();
-
-  if (element == "office:forms")
-    return true;
-  if (element == "text:sequence-decls")
-    return true;
-  if (element == "text:bookmark-end")
-    return true;
-
-  return false;
-}
 } // namespace
 
 OdfElement::OdfElement(std::shared_ptr<const OpenDocument> document,
@@ -658,7 +643,7 @@ factorizeElement(std::shared_ptr<const OpenDocument> document,
     // TODO log element
   }
 
-  return nullptr;
+  return {};
 }
 
 std::shared_ptr<common::Element>
@@ -666,9 +651,9 @@ factorizeFirstChild(std::shared_ptr<const OpenDocument> document,
                     std::shared_ptr<const common::Element> parent,
                     pugi::xml_node node) {
   for (auto &&c : node) {
-    if (isSkipper(c))
-      continue;
-    return factorizeElement(std::move(document), std::move(parent), c);
+    auto element = factorizeElement(document, parent, c);
+    if (element)
+      return element;
   }
   return {};
 }
@@ -678,9 +663,9 @@ factorizePreviousSibling(std::shared_ptr<const OpenDocument> document,
                          std::shared_ptr<const common::Element> parent,
                          pugi::xml_node node) {
   for (auto &&s = node.previous_sibling(); s; s = node.previous_sibling()) {
-    if (isSkipper(s))
-      continue;
-    return factorizeElement(std::move(document), std::move(parent), s);
+    auto element = factorizeElement(document, parent, s);
+    if (element)
+      return element;
   }
   return {};
 }
@@ -690,9 +675,9 @@ factorizeNextSibling(std::shared_ptr<const OpenDocument> document,
                      std::shared_ptr<const common::Element> parent,
                      pugi::xml_node node) {
   for (auto &&s = node.next_sibling(); s; s = s.next_sibling()) {
-    if (isSkipper(s))
-      continue;
-    return factorizeElement(std::move(document), std::move(parent), s);
+    auto element = factorizeElement(document, parent, s);
+    if (element)
+      return element;
   }
   return {};
 }

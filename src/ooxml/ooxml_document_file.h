@@ -29,7 +29,7 @@ public:
 private:
   std::shared_ptr<access::ReadStorage> m_storage;
   FileMeta m_meta;
-  EncryptionState m_encryptionState;
+  EncryptionState m_encryptionState{EncryptionState::NOT_ENCRYPTED};
 };
 
 } // namespace ooxml

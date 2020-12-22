@@ -2,6 +2,7 @@
 #include <access/stream_util.h>
 #include <access/zip_storage.h>
 #include <ooxml/ooxml_crypto.h>
+#include <ooxml/ooxml_document.h>
 #include <ooxml/ooxml_document_file.h>
 #include <ooxml/ooxml_meta.h>
 
@@ -9,7 +10,7 @@ namespace odr::ooxml {
 
 OfficeOpenXmlFile::OfficeOpenXmlFile(
     std::shared_ptr<access::ReadStorage> storage) {
-  m_meta = Meta::parseFileMeta(*storage);
+  m_meta = parseFileMeta(*storage);
   m_storage = std::move(storage);
 }
 
@@ -43,13 +44,24 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
       access::StreamUtil::read(*m_storage->read("EncryptedPackage"));
   const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
   m_storage = std::make_unique<access::ZipReader>(decryptedPackage, false);
-  m_meta = Meta::parseFileMeta(*m_storage);
+  m_meta = parseFileMeta(*m_storage);
   m_encryptionState = EncryptionState::DECRYPTED;
   return true;
 }
 
 std::shared_ptr<common::Document> OfficeOpenXmlFile::document() const {
-  return {}; // TODO
+  // TODO throw if encrypted
+  switch (fileType()) {
+  case FileType::OFFICE_OPEN_XML_DOCUMENT:
+    return std::make_shared<OfficeOpenXmlTextDocument>(m_storage);
+  case FileType::OFFICE_OPEN_XML_PRESENTATION:
+    return std::make_shared<OfficeOpenXmlPresentation>(m_storage);
+  case FileType::OFFICE_OPEN_XML_WORKBOOK:
+    return std::make_shared<OfficeOpenXmlSpreadsheet>(m_storage);
+  default:
+    // TODO throw
+    return nullptr;
+  }
 }
 
 } // namespace odr::ooxml
