@@ -67,8 +67,8 @@ add_library(odr-object OBJECT
         src/ooxml/ooxml_crypto.cpp
         src/ooxml/ooxml_document.cpp
         src/ooxml/ooxml_document_file.cpp
-        src/ooxml/ooxml_elements.cpp
         src/ooxml/ooxml_meta.cpp
+        src/ooxml/text/ooxml_text_elements.cpp
         src/ooxml/text/ooxml_text_style.cpp
 
         src/svm/svm_to_svg.cpp

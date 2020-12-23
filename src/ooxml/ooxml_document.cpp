@@ -4,7 +4,7 @@
 #include <odr/document.h>
 #include <odr/document_elements.h>
 #include <ooxml/ooxml_document.h>
-#include <ooxml/ooxml_elements.h>
+#include <ooxml/text/ooxml_text_elements.h>
 
 namespace odr::ooxml {
 
@@ -54,9 +54,13 @@ DocumentMeta OfficeOpenXmlTextDocument::documentMeta() const noexcept {
   return result;
 }
 
+const text::Styles &OfficeOpenXmlTextDocument::styles() const noexcept {
+  return m_styles;
+}
+
 std::shared_ptr<const common::Element> OfficeOpenXmlTextDocument::root() const {
   const pugi::xml_node body = m_documentXml.document_element().child("w:body");
-  return std::make_shared<OoxmlTextDocumentRoot>(shared_from_this(), body);
+  return text::factorizeRoot(shared_from_this(), body);
 }
 
 std::shared_ptr<common::PageStyle>
@@ -91,8 +95,7 @@ std::uint32_t OfficeOpenXmlPresentation::slideCount() const {
 }
 
 std::shared_ptr<const common::Element> OfficeOpenXmlPresentation::root() const {
-  return std::make_shared<OoxmlPresentationRoot>(
-      shared_from_this(), m_presentationXml.document_element());
+  return {}; // TODO
 }
 
 std::shared_ptr<const common::Slide>
@@ -128,8 +131,7 @@ std::uint32_t OfficeOpenXmlSpreadsheet::sheetCount() const {
 }
 
 std::shared_ptr<const common::Element> OfficeOpenXmlSpreadsheet::root() const {
-  return std::make_shared<OoxmlSpreadsheetRoot>(
-      shared_from_this(), m_workbookXml.document_element());
+  return {}; // TODO
 }
 
 std::shared_ptr<const common::Sheet>

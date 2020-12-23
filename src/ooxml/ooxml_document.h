@@ -14,9 +14,7 @@ class ReadStorage;
 
 namespace ooxml {
 
-class OfficeOpenXmlDocument
-    : public virtual common::Document,
-      public std::enable_shared_from_this<OfficeOpenXmlDocument> {
+class OfficeOpenXmlDocument : public virtual common::Document {
 public:
   explicit OfficeOpenXmlDocument(std::shared_ptr<access::ReadStorage> storage);
 
@@ -35,13 +33,17 @@ protected:
   DocumentMeta m_document_meta;
 };
 
-class OfficeOpenXmlTextDocument final : public OfficeOpenXmlDocument,
-                                        public common::TextDocument {
+class OfficeOpenXmlTextDocument final
+    : public OfficeOpenXmlDocument,
+      public common::TextDocument,
+      public std::enable_shared_from_this<OfficeOpenXmlTextDocument> {
 public:
   explicit OfficeOpenXmlTextDocument(
       std::shared_ptr<access::ReadStorage> storage);
 
   DocumentMeta documentMeta() const noexcept final;
+
+  const text::Styles &styles() const noexcept;
 
   std::shared_ptr<const common::Element> root() const final;
 
