@@ -4,8 +4,20 @@
 
 namespace odr {
 
+Style::Style() = default;
+
+Style::Style(std::shared_ptr<void> impl) : m_impl{std::move(impl)} {}
+
+bool Style::operator==(const Style &rhs) const { return m_impl == rhs.m_impl; }
+
+bool Style::operator!=(const Style &rhs) const { return m_impl != rhs.m_impl; }
+
+Style::operator bool() const { return m_impl.operator bool(); }
+
+PageStyle::PageStyle() = default;
+
 PageStyle::PageStyle(std::shared_ptr<common::PageStyle> impl)
-    : m_impl{std::move(impl)} {}
+    : Style(impl), m_impl{std::move(impl)} {}
 
 Property PageStyle::width() const { return Property(m_impl->width()); }
 
@@ -29,8 +41,10 @@ Property PageStyle::printOrientation() const {
   return Property(m_impl->printOrientation());
 }
 
+TextStyle::TextStyle() = default;
+
 TextStyle::TextStyle(std::shared_ptr<common::TextStyle> impl)
-    : m_impl{std::move(impl)} {}
+    : Style(impl), m_impl{std::move(impl)} {}
 
 Property TextStyle::fontName() const { return Property(m_impl->fontName()); }
 
@@ -48,8 +62,10 @@ Property TextStyle::backgroundColor() const {
   return Property(m_impl->backgroundColor());
 }
 
+ParagraphStyle::ParagraphStyle() = default;
+
 ParagraphStyle::ParagraphStyle(std::shared_ptr<common::ParagraphStyle> impl)
-    : m_impl{std::move(impl)} {}
+    : Style(impl), m_impl{std::move(impl)} {}
 
 Property ParagraphStyle::textAlign() const {
   return Property(m_impl->textAlign());
@@ -71,19 +87,25 @@ Property ParagraphStyle::marginRight() const {
   return Property(m_impl->marginRight());
 }
 
+TableStyle::TableStyle() = default;
+
 TableStyle::TableStyle(std::shared_ptr<common::TableStyle> impl)
-    : m_impl{std::move(impl)} {}
+    : Style(impl), m_impl{std::move(impl)} {}
 
 Property TableStyle::width() const { return Property(m_impl->width()); }
 
+TableColumnStyle::TableColumnStyle() = default;
+
 TableColumnStyle::TableColumnStyle(
     std::shared_ptr<common::TableColumnStyle> impl)
-    : m_impl{std::move(impl)} {}
+    : Style(impl), m_impl{std::move(impl)} {}
 
 Property TableColumnStyle::width() const { return Property(m_impl->width()); }
 
+TableCellStyle::TableCellStyle() = default;
+
 TableCellStyle::TableCellStyle(std::shared_ptr<common::TableCellStyle> impl)
-    : m_impl{std::move(impl)} {}
+    : Style(impl), m_impl{std::move(impl)} {}
 
 Property TableCellStyle::paddingTop() const {
   return Property(m_impl->paddingTop());
@@ -117,8 +139,10 @@ Property TableCellStyle::borderRight() const {
   return Property(m_impl->borderRight());
 }
 
+DrawingStyle::DrawingStyle() = default;
+
 DrawingStyle::DrawingStyle(std::shared_ptr<common::DrawingStyle> impl)
-    : m_impl{std::move(impl)} {}
+    : Style(impl), m_impl{std::move(impl)} {}
 
 Property DrawingStyle::strokeWidth() const {
   return Property(m_impl->strokeWidth());

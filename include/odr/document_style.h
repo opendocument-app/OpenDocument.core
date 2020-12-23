@@ -16,8 +16,22 @@ class DrawingStyle;
 namespace odr {
 class Property;
 
-class PageStyle final {
+class Style {
 public:
+  Style();
+  explicit Style(std::shared_ptr<void> impl);
+
+  bool operator==(const Style &rhs) const;
+  bool operator!=(const Style &rhs) const;
+  explicit operator bool() const;
+
+private:
+  std::shared_ptr<void> m_impl;
+};
+
+class PageStyle final : public Style {
+public:
+  PageStyle();
   explicit PageStyle(std::shared_ptr<common::PageStyle> impl);
 
   [[nodiscard]] Property width() const;
@@ -32,8 +46,9 @@ private:
   std::shared_ptr<common::PageStyle> m_impl;
 };
 
-class TextStyle final {
+class TextStyle final : public Style {
 public:
+  TextStyle();
   explicit TextStyle(std::shared_ptr<common::TextStyle> impl);
 
   [[nodiscard]] Property fontName() const;
@@ -48,8 +63,9 @@ private:
   std::shared_ptr<common::TextStyle> m_impl;
 };
 
-class ParagraphStyle final {
+class ParagraphStyle final : public Style {
 public:
+  ParagraphStyle();
   explicit ParagraphStyle(std::shared_ptr<common::ParagraphStyle> impl);
 
   [[nodiscard]] Property textAlign() const;
@@ -62,8 +78,9 @@ private:
   std::shared_ptr<common::ParagraphStyle> m_impl;
 };
 
-class TableStyle final {
+class TableStyle final : public Style {
 public:
+  TableStyle();
   explicit TableStyle(std::shared_ptr<common::TableStyle> impl);
 
   [[nodiscard]] Property width() const;
@@ -72,8 +89,9 @@ private:
   std::shared_ptr<common::TableStyle> m_impl;
 };
 
-class TableColumnStyle final {
+class TableColumnStyle final : public Style {
 public:
+  TableColumnStyle();
   explicit TableColumnStyle(std::shared_ptr<common::TableColumnStyle> impl);
 
   [[nodiscard]] Property width() const;
@@ -82,8 +100,9 @@ private:
   std::shared_ptr<common::TableColumnStyle> m_impl;
 };
 
-class TableCellStyle final {
+class TableCellStyle final : public Style {
 public:
+  TableCellStyle();
   explicit TableCellStyle(std::shared_ptr<common::TableCellStyle> impl);
 
   [[nodiscard]] Property paddingTop() const;
@@ -99,8 +118,9 @@ private:
   std::shared_ptr<common::TableCellStyle> m_impl;
 };
 
-class DrawingStyle final {
+class DrawingStyle final : public Style {
 public:
+  DrawingStyle();
   explicit DrawingStyle(std::shared_ptr<common::DrawingStyle> impl);
 
   [[nodiscard]] Property strokeWidth() const;

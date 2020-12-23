@@ -348,18 +348,22 @@ void translateTextDocument(TextDocument document, std::ostream &out,
                            const HtmlConfig &config) {
   const auto pageStyle = document.pageStyle();
 
-  const std::string outerStyle = "width:" + *pageStyle.width() + ";";
-  const std::string innerStyle = "margin-top:" + *pageStyle.marginTop() +
-                                 ";margin-left:" + *pageStyle.marginLeft() +
-                                 ";margin-bottom:" + *pageStyle.marginBottom() +
-                                 ";margin-right:" + *pageStyle.marginRight() +
-                                 ";";
+  if (pageStyle) {
+    const std::string outerStyle = "width:" + *pageStyle.width() + ";";
+    const std::string innerStyle =
+        "margin-top:" + *pageStyle.marginTop() +
+        ";margin-left:" + *pageStyle.marginLeft() +
+        ";margin-bottom:" + *pageStyle.marginBottom() +
+        ";margin-right:" + *pageStyle.marginRight() + ";";
 
-  out << R"(<div style=")" + outerStyle + "\">";
-  out << R"(<div style=")" + innerStyle + "\">";
-  translateGeneration(document.root().children(), out, config);
-  out << "</div>";
-  out << "</div>";
+    out << R"(<div style=")" + outerStyle + "\">";
+    out << R"(<div style=")" + innerStyle + "\">";
+    translateGeneration(document.root().children(), out, config);
+    out << "</div>";
+    out << "</div>";
+  } else {
+    translateGeneration(document.root().children(), out, config);
+  }
 }
 
 void translatePresentation(Presentation document, std::ostream &out,
