@@ -86,7 +86,7 @@ OpenDocumentText::OpenDocumentText(std::shared_ptr<access::ReadStorage> storage)
 std::shared_ptr<const common::Element> OpenDocumentText::root() const {
   const pugi::xml_node body =
       m_contentXml.document_element().child("office:body").child("office:text");
-  return std::make_shared<OdfRoot>(shared_from_this(), body);
+  return factorizeRoot(shared_from_this(), body);
 }
 
 std::shared_ptr<common::PageStyle> OpenDocumentText::pageStyle() const {
@@ -105,7 +105,7 @@ std::shared_ptr<const common::Element> OpenDocumentPresentation::root() const {
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:presentation");
-  return std::make_shared<OdfRoot>(shared_from_this(), body);
+  return factorizeRoot(shared_from_this(), body);
 }
 
 std::shared_ptr<const common::Slide>
@@ -125,7 +125,7 @@ std::shared_ptr<const common::Element> OpenDocumentSpreadsheet::root() const {
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:spreadsheet");
-  return std::make_shared<OdfRoot>(shared_from_this(), body);
+  return factorizeRoot(shared_from_this(), body);
 }
 
 std::shared_ptr<const common::Sheet>
@@ -145,7 +145,7 @@ std::shared_ptr<const common::Element> OpenDocumentDrawing::root() const {
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:drawing");
-  return std::make_shared<OdfRoot>(shared_from_this(), body);
+  return factorizeRoot(shared_from_this(), body);
 }
 
 std::shared_ptr<const common::Page> OpenDocumentDrawing::firstPage() const {
