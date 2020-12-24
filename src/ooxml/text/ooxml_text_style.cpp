@@ -6,9 +6,9 @@ namespace odr::ooxml::text {
 
 namespace {
 void attributesToMap(pugi::xml_node node,
-                     std::unordered_map<std::string, std::string> &map) {
+                     std::unordered_map<std::string, pugi::xml_node> &map) {
   for (auto &&c : node.children()) {
-    map[c.name()] = c.attribute("w:val").value();
+    map[c.name()] = c;
   }
 }
 
@@ -51,14 +51,16 @@ private:
 class ParagraphStyle final : public common::ParagraphStyle {
 public:
   explicit ParagraphStyle(
-      std::unordered_map<std::string, std::string> paragraphProperties)
+      std::unordered_map<std::string, pugi::xml_node> paragraphProperties)
       : m_paragraphProperties{std::move(paragraphProperties)} {}
 
   std::shared_ptr<common::Property> textAlign() const final {
     auto it = m_paragraphProperties.find("w:jc");
     if (it == m_paragraphProperties.end())
       return {};
-    std::string alignment = it->second;
+    std::string alignment = it->second.attribute("val").value();
+    if (alignment.empty())
+      return {};
     if (alignment == "both")
       alignment = "justify";
     return std::make_shared<common::ConstProperty>(alignment);
@@ -81,11 +83,15 @@ public:
   }
 
 private:
-  std::unordered_map<std::string, std::string> m_paragraphProperties;
+  std::unordered_map<std::string, pugi::xml_node> m_paragraphProperties;
 };
 
 class TextStyle final : public common::TextStyle {
 public:
+  explicit TextStyle(
+      std::unordered_map<std::string, pugi::xml_node> textProperties)
+      : m_textProperties{std::move(textProperties)} {}
+
   std::shared_ptr<common::Property> fontName() const final {
     return std::make_shared<common::ConstProperty>();
   }
@@ -109,12 +115,19 @@ public:
   std::shared_ptr<common::Property> backgroundColor() const final {
     return std::make_shared<common::ConstProperty>();
   }
+
+private:
+  std::unordered_map<std::string, pugi::xml_node> m_textProperties;
 };
 } // namespace
 
 std::shared_ptr<common::ParagraphStyle>
 ResolvedStyle::toParagraphStyle() const {
   return std::make_shared<ParagraphStyle>(paragraphProperties);
+}
+
+std::shared_ptr<common::TextStyle> ResolvedStyle::toTextStyle() const {
+  return std::make_shared<TextStyle>(textProperties);
 }
 
 Style::Style() = default;
@@ -181,22 +194,16 @@ std::shared_ptr<Style> Styles::generateStyle(const std::string &name,
   return m_styles[name] = std::make_shared<Style>(parent, node);
 }
 
+std::shared_ptr<Style> Styles::style(const std::string &name) const {
+  auto styleIt = m_styles.find(name);
+  if (styleIt == m_styles.end())
+    return {};
+  return styleIt->second;
+}
+
 std::shared_ptr<common::PageStyle> Styles::pageStyle() const {
   return std::make_shared<TextPageStyle>(
       m_documentRoot.child("w:body").child("w:sectPr"));
-}
-
-std::shared_ptr<common::ParagraphStyle>
-Styles::paragraphStyle(pugi::xml_node node) const {
-  auto style = std::make_shared<Style>();
-  std::string parent = node.child("w:pStyle").attribute("w:val").value();
-  if (auto styleIt = m_styles.find(parent); styleIt != m_styles.end())
-    style = styleIt->second;
-  return style->resolve(node).toParagraphStyle();
-}
-
-std::shared_ptr<common::TextStyle> Styles::textStyle() const {
-  return std::make_shared<TextStyle>();
 }
 
 } // namespace odr::ooxml::text

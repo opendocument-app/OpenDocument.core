@@ -71,6 +71,8 @@ using TableRowRange = ElementRangeTemplate<TableRowElement>;
 using TableCellRange = ElementRangeTemplate<TableCellElement>;
 
 enum class ElementType {
+  NONE,
+
   ROOT,
   SLIDE,
   SHEET,

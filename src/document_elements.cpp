@@ -20,19 +20,37 @@ bool Element::operator!=(const Element &rhs) const {
 
 Element::operator bool() const { return m_impl.operator bool(); }
 
-Element Element::parent() const { return Element(m_impl->parent()); }
+Element Element::parent() const {
+  if (!m_impl)
+    return Element();
+  return Element(m_impl->parent());
+}
 
-Element Element::firstChild() const { return Element(m_impl->firstChild()); }
+Element Element::firstChild() const {
+  if (!m_impl)
+    return Element();
+  return Element(m_impl->firstChild());
+}
 
 Element Element::previousSibling() const {
+  if (!m_impl)
+    return Element();
   return Element(m_impl->previousSibling());
 }
 
-Element Element::nextSibling() const { return Element(m_impl->nextSibling()); }
+Element Element::nextSibling() const {
+  if (!m_impl)
+    return Element();
+  return Element(m_impl->nextSibling());
+}
 
 ElementRange Element::children() const { return ElementRange(firstChild()); }
 
-ElementType Element::type() const { return m_impl->type(); }
+ElementType Element::type() const {
+  if (!m_impl)
+    return ElementType::NONE;
+  return m_impl->type();
+}
 
 SlideElement Element::slide() const {
   return SlideElement(std::dynamic_pointer_cast<const common::Slide>(m_impl));
@@ -215,6 +233,8 @@ SlideElement SlideElement::nextSibling() const {
 std::string SlideElement::name() const { return m_impl->name(); }
 
 PageStyle SlideElement::pageStyle() const {
+  if (!m_impl)
+    return PageStyle();
   return PageStyle(m_impl->pageStyle());
 }
 
@@ -234,6 +254,8 @@ SheetElement SheetElement::nextSibling() const {
 std::string SheetElement::name() const { return m_impl->name(); }
 
 TableElement SheetElement::table() const {
+  if (!m_impl)
+    return TableElement();
   return TableElement(m_impl->table());
 }
 
@@ -250,9 +272,15 @@ PageElement PageElement::nextSibling() const {
   return Element::nextSibling().page();
 }
 
-std::string PageElement::name() const { return m_impl->name(); }
+std::string PageElement::name() const {
+  if (!m_impl)
+    return "";
+  return m_impl->name();
+}
 
 PageStyle PageElement::pageStyle() const {
+  if (!m_impl)
+    return PageStyle();
   return PageStyle(m_impl->pageStyle());
 }
 
@@ -270,10 +298,14 @@ ParagraphElement::ParagraphElement(
     : Element(impl), m_impl{std::move(impl)} {}
 
 ParagraphStyle ParagraphElement::paragraphStyle() const {
+  if (!m_impl)
+    return ParagraphStyle();
   return ParagraphStyle(m_impl->paragraphStyle());
 }
 
 TextStyle ParagraphElement::textStyle() const {
+  if (!m_impl)
+    return TextStyle();
   return TextStyle(m_impl->textStyle());
 }
 
@@ -283,6 +315,8 @@ SpanElement::SpanElement(std::shared_ptr<const common::Span> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TextStyle SpanElement::textStyle() const {
+  if (!m_impl)
+    return TextStyle();
   return TextStyle(m_impl->textStyle());
 }
 
@@ -292,6 +326,8 @@ LinkElement::LinkElement(std::shared_ptr<const common::Link> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TextStyle LinkElement::textStyle() const {
+  if (!m_impl)
+    return TextStyle();
   return TextStyle(m_impl->textStyle());
 }
 
@@ -302,7 +338,11 @@ BookmarkElement::BookmarkElement() = default;
 BookmarkElement::BookmarkElement(std::shared_ptr<const common::Bookmark> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-std::string BookmarkElement::name() const { return m_impl->name(); }
+std::string BookmarkElement::name() const {
+  if (!m_impl)
+    return "";
+  return m_impl->name();
+}
 
 ListElement::ListElement() = default;
 
@@ -320,14 +360,20 @@ TableElement::TableElement(std::shared_ptr<const common::Table> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TableColumnRange TableElement::columns() const {
+  if (!m_impl)
+    return TableColumnRange();
   return TableColumnRange(TableColumnElement(m_impl->firstColumn()));
 }
 
 TableRowRange TableElement::rows() const {
+  if (!m_impl)
+    return TableRowRange();
   return TableRowRange(TableRowElement(m_impl->firstRow()));
 }
 
 TableStyle TableElement::tableStyle() const {
+  if (!m_impl)
+    return TableStyle();
   return TableStyle(m_impl->tableStyle());
 }
 
@@ -346,6 +392,8 @@ TableColumnElement TableColumnElement::nextSibling() const {
 }
 
 TableColumnStyle TableColumnElement::tableColumnStyle() const {
+  if (!m_impl)
+    return TableColumnStyle();
   return TableColumnStyle(m_impl->tableColumnStyle());
 }
 
@@ -355,6 +403,8 @@ TableRowElement::TableRowElement(std::shared_ptr<const common::TableRow> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TableCellElement TableRowElement::firstChild() const {
+  if (!m_impl)
+    return TableCellElement();
   return Element(m_impl->firstChild()).tableCell();
 }
 
@@ -384,13 +434,21 @@ TableCellElement TableCellElement::nextSibling() const {
   return Element::nextSibling().tableCell();
 }
 
-std::uint32_t TableCellElement::rowSpan() const { return m_impl->rowSpan(); }
+std::uint32_t TableCellElement::rowSpan() const {
+  if (!m_impl)
+    return 0;
+  return m_impl->rowSpan();
+}
 
 std::uint32_t TableCellElement::columnSpan() const {
+  if (!m_impl)
+    return 0;
   return m_impl->columnSpan();
 }
 
 TableCellStyle TableCellElement::tableCellStyle() const {
+  if (!m_impl)
+    return TableCellStyle();
   return TableCellStyle(m_impl->tableCellStyle());
 }
 
@@ -400,40 +458,84 @@ FrameElement::FrameElement(std::shared_ptr<const common::Frame> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 Property FrameElement::anchorType() const {
+  if (!m_impl)
+    return Property();
   return Property(m_impl->anchorType());
 }
 
-Property FrameElement::width() const { return Property(m_impl->width()); }
+Property FrameElement::width() const {
+  if (!m_impl)
+    return Property();
+  return Property(m_impl->width());
+}
 
-Property FrameElement::height() const { return Property(m_impl->height()); }
+Property FrameElement::height() const {
+  if (!m_impl)
+    return Property();
+  return Property(m_impl->height());
+}
 
-Property FrameElement::zIndex() const { return Property(m_impl->zIndex()); }
+Property FrameElement::zIndex() const {
+  if (!m_impl)
+    return Property();
+  return Property(m_impl->zIndex());
+}
 
 ImageElement::ImageElement() = default;
 
 ImageElement::ImageElement(std::shared_ptr<const common::Image> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-bool ImageElement::internal() const { return m_impl->internal(); }
+bool ImageElement::internal() const {
+  if (!m_impl)
+    return false;
+  return m_impl->internal();
+}
 
-std::string ImageElement::href() const { return m_impl->href(); }
+std::string ImageElement::href() const {
+  if (!m_impl)
+    return "";
+  return m_impl->href();
+}
 
-ImageFile ImageElement::imageFile() const { return m_impl->imageFile(); }
+ImageFile ImageElement::imageFile() const {
+  if (!m_impl)
+    return ImageFile({}); // TODO
+  return m_impl->imageFile();
+}
 
 RectElement::RectElement() = default;
 
 RectElement::RectElement(std::shared_ptr<const common::Rect> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-std::string RectElement::x() const { return m_impl->x(); }
+std::string RectElement::x() const {
+  if (!m_impl)
+    return "";
+  return m_impl->x();
+}
 
-std::string RectElement::y() const { return m_impl->y(); }
+std::string RectElement::y() const {
+  if (!m_impl)
+    return "";
+  return m_impl->y();
+}
 
-std::string RectElement::width() const { return m_impl->width(); }
+std::string RectElement::width() const {
+  if (!m_impl)
+    return "";
+  return m_impl->width();
+}
 
-std::string RectElement::height() const { return m_impl->height(); }
+std::string RectElement::height() const {
+  if (!m_impl)
+    return "";
+  return m_impl->height();
+}
 
 DrawingStyle RectElement::drawingStyle() const {
+  if (!m_impl)
+    return DrawingStyle();
   return DrawingStyle(m_impl->drawingStyle());
 }
 
@@ -442,15 +544,33 @@ LineElement::LineElement() = default;
 LineElement::LineElement(std::shared_ptr<const common::Line> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-std::string LineElement::x1() const { return m_impl->x1(); }
+std::string LineElement::x1() const {
+  if (!m_impl)
+    return "";
+  return m_impl->x1();
+}
 
-std::string LineElement::y1() const { return m_impl->y1(); }
+std::string LineElement::y1() const {
+  if (!m_impl)
+    return "";
+  return m_impl->y1();
+}
 
-std::string LineElement::x2() const { return m_impl->x2(); }
+std::string LineElement::x2() const {
+  if (!m_impl)
+    return "";
+  return m_impl->x2();
+}
 
-std::string LineElement::y2() const { return m_impl->y2(); }
+std::string LineElement::y2() const {
+  if (!m_impl)
+    return "";
+  return m_impl->y2();
+}
 
 DrawingStyle LineElement::drawingStyle() const {
+  if (!m_impl)
+    return DrawingStyle();
   return DrawingStyle(m_impl->drawingStyle());
 }
 
@@ -459,15 +579,33 @@ CircleElement::CircleElement() = default;
 CircleElement::CircleElement(std::shared_ptr<const common::Circle> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-std::string CircleElement::x() const { return m_impl->x(); }
+std::string CircleElement::x() const {
+  if (!m_impl)
+    return "";
+  return m_impl->x();
+}
 
-std::string CircleElement::y() const { return m_impl->y(); }
+std::string CircleElement::y() const {
+  if (!m_impl)
+    return "";
+  return m_impl->y();
+}
 
-std::string CircleElement::width() const { return m_impl->width(); }
+std::string CircleElement::width() const {
+  if (!m_impl)
+    return "";
+  return m_impl->width();
+}
 
-std::string CircleElement::height() const { return m_impl->height(); }
+std::string CircleElement::height() const {
+  if (!m_impl)
+    return "";
+  return m_impl->height();
+}
 
 DrawingStyle CircleElement::drawingStyle() const {
+  if (!m_impl)
+    return DrawingStyle();
   return DrawingStyle(m_impl->drawingStyle());
 }
 

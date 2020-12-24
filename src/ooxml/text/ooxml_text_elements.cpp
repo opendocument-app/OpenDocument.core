@@ -45,6 +45,14 @@ protected:
   const std::shared_ptr<const OfficeOpenXmlTextDocument> m_document;
   const std::shared_ptr<const common::Element> m_parent;
   const pugi::xml_node m_node;
+
+  ResolvedStyle resolvedStyle(pugi::xml_attribute attribute) const {
+    std::string styleId = attribute.value();
+    auto style = m_document->styles().style(styleId);
+    if (!style)
+      style = std::make_shared<Style>();
+    return style->resolve(m_node);
+  }
 };
 
 class Root final : public Element {
@@ -100,11 +108,13 @@ public:
       : Element(std::move(document), std::move(parent), node) {}
 
   std::shared_ptr<common::ParagraphStyle> paragraphStyle() const final {
-    return m_document->styles().paragraphStyle(m_node.child("w:pPr"));
+    auto styleAttr = m_node.child("w:pPr").child("w:pStyle").attribute("w:val");
+    return resolvedStyle(styleAttr).toParagraphStyle();
   }
 
   std::shared_ptr<common::TextStyle> textStyle() const final {
-    return m_document->styles().textStyle();
+    auto styleAttr = m_node.child("w:pPr").child("w:pStyle").attribute("w:val");
+    return resolvedStyle(styleAttr).toTextStyle();
   }
 };
 
@@ -114,9 +124,7 @@ public:
        std::shared_ptr<const common::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::shared_ptr<common::TextStyle> textStyle() const final {
-    return m_document->styles().textStyle();
-  }
+  std::shared_ptr<common::TextStyle> textStyle() const final { return {}; }
 };
 
 class Link final : public Element, public common::Link {
@@ -125,9 +133,7 @@ public:
        std::shared_ptr<const common::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::shared_ptr<common::TextStyle> textStyle() const final {
-    return m_document->styles().textStyle();
-  }
+  std::shared_ptr<common::TextStyle> textStyle() const final { return {}; }
 
   std::string href() const final {
     return m_node.attribute("xlink:href").value();

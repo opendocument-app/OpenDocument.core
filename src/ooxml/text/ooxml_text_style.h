@@ -16,11 +16,11 @@ class TableStyle;
 namespace odr::ooxml::text {
 
 struct ResolvedStyle {
-  std::unordered_map<std::string, std::string> paragraphProperties;
-  std::unordered_map<std::string, std::string> textProperties;
+  std::unordered_map<std::string, pugi::xml_node> paragraphProperties;
+  std::unordered_map<std::string, pugi::xml_node> textProperties;
 
-  std::shared_ptr<common::TextStyle> toTextStyle() const;
   std::shared_ptr<common::ParagraphStyle> toParagraphStyle() const;
+  std::shared_ptr<common::TextStyle> toTextStyle() const;
 };
 
 class Style final {
@@ -41,12 +41,9 @@ public:
   Styles() = default;
   Styles(pugi::xml_node stylesRoot, pugi::xml_node documentRoot);
 
+  [[nodiscard]] std::shared_ptr<Style> style(const std::string &name) const;
+
   [[nodiscard]] std::shared_ptr<common::PageStyle> pageStyle() const;
-
-  [[nodiscard]] std::shared_ptr<common::ParagraphStyle>
-  paragraphStyle(pugi::xml_node properties) const;
-
-  [[nodiscard]] std::shared_ptr<common::TextStyle> textStyle() const;
 
 private:
   pugi::xml_node m_stylesRoot;
