@@ -35,6 +35,11 @@ body {
 p {
   padding: 0 !important;
 }
+p:after {
+  content: "";
+  display: inline-block;
+  width: 0px;
+}
 span {
   margin: 0 !important;
 }

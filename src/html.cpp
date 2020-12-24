@@ -146,10 +146,7 @@ void translateParagraph(ParagraphElement element, std::ostream &out,
   out << "<span";
   out << optionalStyleAttribute(translateTextStyle(element.textStyle()));
   out << ">";
-  if (element.firstChild())
-    translateGeneration(element.children(), out, config);
-  else
-    out << "<br>";
+  translateGeneration(element.children(), out, config);
   out << "</span>";
   out << "</p>";
 }
