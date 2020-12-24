@@ -351,10 +351,10 @@ void translateTextDocument(TextDocument document, std::ostream &out,
   if (pageStyle) {
     const std::string outerStyle = "width:" + *pageStyle.width() + ";";
     const std::string innerStyle =
-        "margin-top:" + *pageStyle.marginTop() +
-        ";margin-left:" + *pageStyle.marginLeft() +
-        ";margin-bottom:" + *pageStyle.marginBottom() +
-        ";margin-right:" + *pageStyle.marginRight() + ";";
+        "margin-top:" + *pageStyle.marginTop() + ";" +
+        "margin-left:" + *pageStyle.marginLeft() + ";" +
+        "margin-bottom:" + *pageStyle.marginBottom() + ";" +
+        "margin-right:" + *pageStyle.marginRight() + ";";
 
     out << R"(<div style=")" + outerStyle + "\">";
     out << R"(<div style=")" + innerStyle + "\">";
@@ -371,13 +371,13 @@ void translatePresentation(Presentation document, std::ostream &out,
   for (auto &&slide : document.slides()) {
     const auto pageStyle = slide.pageStyle();
 
-    const std::string outerStyle =
-        "width:" + *pageStyle.width() + ";height:" + *pageStyle.height() + ";";
+    const std::string outerStyle = "width:" + *pageStyle.width() + ";" +
+                                   "height:" + *pageStyle.height() + ";";
     const std::string innerStyle =
-        "margin-top:" + *pageStyle.marginTop() +
-        ";margin-left:" + *pageStyle.marginLeft() +
-        ";margin-bottom:" + *pageStyle.marginBottom() +
-        ";margin-right:" + *pageStyle.marginRight() + ";";
+        "margin-top:" + *pageStyle.marginTop() + ";" +
+        "margin-left:" + *pageStyle.marginLeft() + ";" +
+        "margin-bottom:" + *pageStyle.marginBottom() + ";" +
+        "margin-right:" + *pageStyle.marginRight() + ";";
 
     out << R"(<div style=")" + outerStyle + "\">";
     out << R"(<div style=")" + innerStyle + "\">";
@@ -400,13 +400,13 @@ void translateGraphics(Drawing document, std::ostream &out,
   for (auto &&page : document.pages()) {
     const auto pageStyle = page.pageStyle();
 
-    const std::string outerStyle =
-        "width:" + *pageStyle.width() + ";height:" + *pageStyle.height() + ";";
+    const std::string outerStyle = "width:" + *pageStyle.width() + ";" +
+                                   "height:" + *pageStyle.height() + ";";
     const std::string innerStyle =
-        "margin-top:" + *pageStyle.marginTop() +
-        ";margin-left:" + *pageStyle.marginLeft() +
-        ";margin-bottom:" + *pageStyle.marginBottom() +
-        ";margin-right:" + *pageStyle.marginRight() + ";";
+        "margin-top:" + *pageStyle.marginTop() + ";" +
+        "margin-left:" + *pageStyle.marginLeft() + ";" +
+        "margin-bottom:" + *pageStyle.marginBottom() + ";" +
+        "margin-right:" + *pageStyle.marginRight() + ";";
 
     out << R"(<div style=")" + outerStyle + "\">";
     out << R"(<div style=")" + innerStyle + "\">";

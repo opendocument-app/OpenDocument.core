@@ -100,7 +100,7 @@ public:
       : Element(std::move(document), std::move(parent), node) {}
 
   std::shared_ptr<common::ParagraphStyle> paragraphStyle() const final {
-    return m_document->styles().paragraphStyle();
+    return m_document->styles().paragraphStyle(m_node.child("w:pPr"));
   }
 
   std::shared_ptr<common::TextStyle> textStyle() const final {
@@ -140,9 +140,7 @@ public:
            std::shared_ptr<const common::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::string name() const final {
-    return m_node.attribute("text:name").value();
-  }
+  std::string name() const final { return m_node.attribute("w:name").value(); }
 };
 
 class ListItem final : public Element, public common::ListItem {
@@ -195,6 +193,9 @@ factorizeElement(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
     if (element == "w:hyperlink")
       return std::make_shared<Link>(std::move(document), std::move(parent),
                                     node);
+    if (element == "w:bookmarkStart")
+      return std::make_shared<Bookmark>(std::move(document), std::move(parent),
+                                        node);
 
     // TODO log element
   }

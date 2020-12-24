@@ -46,13 +46,13 @@ struct ResolvedStyle {
 
 class Style final {
 public:
-  Style(std::shared_ptr<Style> parent, pugi::xml_node styleNode);
+  Style(std::shared_ptr<Style> parent, pugi::xml_node node);
 
   [[nodiscard]] ResolvedStyle resolve() const;
 
 private:
   std::shared_ptr<Style> m_parent;
-  pugi::xml_node m_styleNode;
+  pugi::xml_node m_node;
 };
 
 class Styles {

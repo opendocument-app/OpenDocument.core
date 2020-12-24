@@ -15,9 +15,9 @@ void attributesToMap(pugi::xml_node node,
   }
 }
 
-class OdfPageStyle final : public common::PageStyle {
+class PageStyle final : public common::PageStyle {
 public:
-  explicit OdfPageStyle(pugi::xml_node pageLayoutProp)
+  explicit PageStyle(pugi::xml_node pageLayoutProp)
       : m_pageLayoutProp{pageLayoutProp} {}
 
   std::shared_ptr<common::Property> width() const final {
@@ -59,9 +59,9 @@ private:
   pugi::xml_node m_pageLayoutProp;
 };
 
-class OdfTextStyle final : public common::TextStyle {
+class TextStyle final : public common::TextStyle {
 public:
-  explicit OdfTextStyle(
+  explicit TextStyle(
       std::unordered_map<std::string, std::string> textProperties)
       : m_textProperties{std::move(textProperties)} {}
 
@@ -93,9 +93,9 @@ private:
   std::unordered_map<std::string, std::string> m_textProperties;
 };
 
-class OdfParagraphStyle final : public common::ParagraphStyle {
+class ParagraphStyle final : public common::ParagraphStyle {
 public:
-  explicit OdfParagraphStyle(
+  explicit ParagraphStyle(
       std::unordered_map<std::string, std::string> paragraphProperties)
       : m_paragraphProperties{std::move(paragraphProperties)} {}
 
@@ -138,9 +138,9 @@ private:
   std::unordered_map<std::string, std::string> m_paragraphProperties;
 };
 
-class OdfTableStyle final : public common::TableStyle {
+class TableStyle final : public common::TableStyle {
 public:
-  explicit OdfTableStyle(
+  explicit TableStyle(
       std::unordered_map<std::string, std::string> tableProperties)
       : m_tableProperties{std::move(tableProperties)} {}
 
@@ -152,9 +152,9 @@ private:
   std::unordered_map<std::string, std::string> m_tableProperties;
 };
 
-class OdfTableColumnStyle final : public common::TableColumnStyle {
+class TableColumnStyle final : public common::TableColumnStyle {
 public:
-  explicit OdfTableColumnStyle(
+  explicit TableColumnStyle(
       std::unordered_map<std::string, std::string> tableColumnProperties)
       : m_tableColumnProperties{std::move(tableColumnProperties)} {}
 
@@ -166,9 +166,9 @@ private:
   std::unordered_map<std::string, std::string> m_tableColumnProperties;
 };
 
-class OdfTableCellStyle final : public common::TableCellStyle {
+class TableCellStyle final : public common::TableCellStyle {
 public:
-  explicit OdfTableCellStyle(
+  explicit TableCellStyle(
       std::unordered_map<std::string, std::string> tableCellProperties)
       : m_tableCellProperties{std::move(tableCellProperties)} {}
 
@@ -239,9 +239,9 @@ private:
   std::unordered_map<std::string, std::string> m_tableCellProperties;
 };
 
-class OdfDrawingStyle final : public common::DrawingStyle {
+class DrawingStyle final : public common::DrawingStyle {
 public:
-  explicit OdfDrawingStyle(
+  explicit DrawingStyle(
       std::unordered_map<std::string, std::string> graphicProperties)
       : m_graphicProperties{std::move(graphicProperties)} {}
 
@@ -278,34 +278,34 @@ ResolvedStyle::lookup(const std::unordered_map<std::string, std::string> &map,
 }
 
 std::shared_ptr<common::TextStyle> ResolvedStyle::toTextStyle() const {
-  return std::make_shared<OdfTextStyle>(textProperties);
+  return std::make_shared<TextStyle>(textProperties);
 }
 
 std::shared_ptr<common::ParagraphStyle>
 ResolvedStyle::toParagraphStyle() const {
-  return std::make_shared<OdfParagraphStyle>(paragraphProperties);
+  return std::make_shared<ParagraphStyle>(paragraphProperties);
 }
 
 std::shared_ptr<common::TableStyle> ResolvedStyle::toTableStyle() const {
-  return std::make_shared<OdfTableStyle>(paragraphProperties);
+  return std::make_shared<TableStyle>(paragraphProperties);
 }
 
 std::shared_ptr<common::TableColumnStyle>
 ResolvedStyle::toTableColumnStyle() const {
-  return std::make_shared<OdfTableColumnStyle>(paragraphProperties);
+  return std::make_shared<TableColumnStyle>(paragraphProperties);
 }
 
 std::shared_ptr<common::TableCellStyle>
 ResolvedStyle::toTableCellStyle() const {
-  return std::make_shared<OdfTableCellStyle>(paragraphProperties);
+  return std::make_shared<TableCellStyle>(paragraphProperties);
 }
 
 std::shared_ptr<common::DrawingStyle> ResolvedStyle::toDrawingStyle() const {
-  return std::make_shared<OdfDrawingStyle>(paragraphProperties);
+  return std::make_shared<DrawingStyle>(paragraphProperties);
 }
 
-Style::Style(std::shared_ptr<Style> parent, pugi::xml_node styleNode)
-    : m_parent{std::move(parent)}, m_styleNode{styleNode} {}
+Style::Style(std::shared_ptr<Style> parent, pugi::xml_node node)
+    : m_parent{std::move(parent)}, m_node{node} {}
 
 ResolvedStyle Style::resolve() const {
   ResolvedStyle result;
@@ -317,25 +317,24 @@ ResolvedStyle Style::resolve() const {
   // TODO some properties use relative measures of their parent's properties
   // e.g. fo:font-size
 
-  attributesToMap(m_styleNode.child("style:paragraph-properties"),
+  attributesToMap(m_node.child("style:paragraph-properties"),
                   result.paragraphProperties);
-  attributesToMap(m_styleNode.child("style:text-properties"),
-                  result.textProperties);
+  attributesToMap(m_node.child("style:text-properties"), result.textProperties);
 
-  attributesToMap(m_styleNode.child("style:table-properties"),
+  attributesToMap(m_node.child("style:table-properties"),
                   result.tableProperties);
-  attributesToMap(m_styleNode.child("style:table-column-properties"),
+  attributesToMap(m_node.child("style:table-column-properties"),
                   result.tableColumnProperties);
-  attributesToMap(m_styleNode.child("style:table-row-properties"),
+  attributesToMap(m_node.child("style:table-row-properties"),
                   result.tableRowProperties);
-  attributesToMap(m_styleNode.child("style:table-cell-properties"),
+  attributesToMap(m_node.child("style:table-cell-properties"),
                   result.tableCellProperties);
 
-  attributesToMap(m_styleNode.child("style:chart-properties"),
+  attributesToMap(m_node.child("style:chart-properties"),
                   result.chartProperties);
-  attributesToMap(m_styleNode.child("style:drawing-page-properties"),
+  attributesToMap(m_node.child("style:drawing-page-properties"),
                   result.drawingPageProperties);
-  attributesToMap(m_styleNode.child("style:graphic-properties"),
+  attributesToMap(m_node.child("style:graphic-properties"),
                   result.graphicProperties);
 
   return result;
@@ -362,7 +361,7 @@ Styles::pageStyle(const std::string &name) const {
   auto pageLayoutProp =
       pageLayoutIt->second.child("style:page-layout-properties");
 
-  return std::make_shared<OdfPageStyle>(pageLayoutProp);
+  return std::make_shared<PageStyle>(pageLayoutProp);
 }
 
 std::shared_ptr<common::PageStyle>
