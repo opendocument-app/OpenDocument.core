@@ -16,10 +16,6 @@ class TableStyle;
 namespace odr::ooxml::text {
 
 struct ResolvedStyle {
-  static std::shared_ptr<common::Property>
-  lookup(const std::unordered_map<std::string, std::string> &map,
-         const std::string &attribute);
-
   std::unordered_map<std::string, std::string> paragraphProperties;
   std::unordered_map<std::string, std::string> textProperties;
 

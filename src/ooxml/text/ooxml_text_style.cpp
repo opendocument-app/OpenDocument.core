@@ -50,14 +50,15 @@ private:
 
 class ParagraphStyle final : public common::ParagraphStyle {
 public:
-  explicit ParagraphStyle(pugi::xml_node properties)
-      : m_properties{properties} {}
+  explicit ParagraphStyle(
+      std::unordered_map<std::string, std::string> paragraphProperties)
+      : m_paragraphProperties{std::move(paragraphProperties)} {}
 
   std::shared_ptr<common::Property> textAlign() const final {
-    std::string alignment =
-        m_properties.child("w:jc").attribute("w:val").value();
-    if (alignment.empty())
+    auto it = m_paragraphProperties.find("w:jc");
+    if (it == m_paragraphProperties.end())
       return {};
+    std::string alignment = it->second;
     if (alignment == "both")
       alignment = "justify";
     return std::make_shared<common::ConstProperty>(alignment);
@@ -80,7 +81,7 @@ public:
   }
 
 private:
-  pugi::xml_node m_properties;
+  std::unordered_map<std::string, std::string> m_paragraphProperties;
 };
 
 class TextStyle final : public common::TextStyle {
@@ -110,6 +111,11 @@ public:
   }
 };
 } // namespace
+
+std::shared_ptr<common::ParagraphStyle>
+ResolvedStyle::toParagraphStyle() const {
+  return std::make_shared<ParagraphStyle>(paragraphProperties);
+}
 
 Style::Style() = default;
 
