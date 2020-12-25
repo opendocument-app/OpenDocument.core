@@ -1,4 +1,6 @@
 #include <common/string_util.h>
+#include <iomanip>
+#include <sstream>
 
 namespace odr::common {
 
@@ -21,6 +23,13 @@ void StringUtil::findAndReplaceAll(std::string &string,
     string.replace(pos, search.size(), replace);
     pos = string.find(search, pos + replace.size());
   }
+}
+
+std::string StringUtil::toString(const double d,
+                                 const std::uint32_t precision) {
+  std::stringstream stream;
+  stream << std::fixed << std::setprecision(precision) << d;
+  return stream.str();
 }
 
 } // namespace odr::common

@@ -46,6 +46,8 @@ protected:
   const std::shared_ptr<const common::Element> m_parent;
   const pugi::xml_node m_node;
 
+  ResolvedStyle resolvedStyle() const { return resolvedStyle({}); }
+
   ResolvedStyle resolvedStyle(pugi::xml_attribute attribute) const {
     std::string styleId = attribute.value();
     auto style = m_document->styles().style(styleId);
@@ -124,7 +126,9 @@ public:
        std::shared_ptr<const common::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::shared_ptr<common::TextStyle> textStyle() const final { return {}; }
+  std::shared_ptr<common::TextStyle> textStyle() const final {
+    return resolvedStyle().toTextStyle();
+  }
 };
 
 class Link final : public Element, public common::Link {

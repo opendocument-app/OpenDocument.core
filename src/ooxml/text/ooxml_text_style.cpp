@@ -1,5 +1,6 @@
 #include <common/document_style.h>
 #include <common/property.h>
+#include <common/string_util.h>
 #include <ooxml/text/ooxml_text_style.h>
 
 namespace odr::ooxml::text {
@@ -93,27 +94,62 @@ public:
       : m_textProperties{std::move(textProperties)} {}
 
   std::shared_ptr<common::Property> fontName() const final {
-    return std::make_shared<common::ConstProperty>();
+    auto it = m_textProperties.find("w:rFonts");
+    if (it == m_textProperties.end())
+      return {};
+    std::string fontName = it->second.attribute("w:ascii").value();
+    if (fontName.empty())
+      return {};
+    return std::make_shared<common::ConstProperty>(fontName);
   }
 
   std::shared_ptr<common::Property> fontSize() const final {
-    return std::make_shared<common::ConstProperty>();
+    auto it = m_textProperties.find("w:sz");
+    if (it == m_textProperties.end())
+      return {};
+    auto fontSize = it->second.attribute("w:val").as_float(0);
+    if (fontSize == 0)
+      return {};
+    return std::make_shared<common::ConstProperty>(
+        common::StringUtil::toString(fontSize * 0.5, 1) + "pt");
   }
 
   std::shared_ptr<common::Property> fontWeight() const final {
-    return std::make_shared<common::ConstProperty>();
+    auto it = m_textProperties.find("w:b");
+    if (it == m_textProperties.end())
+      return {};
+    return std::make_shared<common::ConstProperty>("bold");
   }
 
   std::shared_ptr<common::Property> fontStyle() const final {
-    return std::make_shared<common::ConstProperty>();
+    auto it = m_textProperties.find("w:i");
+    if (it == m_textProperties.end())
+      return {};
+    return std::make_shared<common::ConstProperty>("italic");
   }
 
   std::shared_ptr<common::Property> fontColor() const final {
-    return std::make_shared<common::ConstProperty>();
+    auto it = m_textProperties.find("w:color");
+    if (it == m_textProperties.end())
+      return {};
+    std::string fontColor = it->second.attribute("w:val").value();
+    if (fontColor.empty() || (fontColor == "auto"))
+      return {};
+    if (fontColor.size() == 6)
+      fontColor = "#" + fontColor;
+    return std::make_shared<common::ConstProperty>(fontColor);
   }
 
   std::shared_ptr<common::Property> backgroundColor() const final {
-    return std::make_shared<common::ConstProperty>();
+    auto it = m_textProperties.find("w:highlight");
+    if (it == m_textProperties.end())
+      return {};
+    std::string fontColor = it->second.attribute("w:val").value();
+    if (fontColor.empty() || (fontColor == "auto"))
+      return {};
+    if (fontColor.size() == 6)
+      fontColor = "#" + fontColor;
+    return std::make_shared<common::ConstProperty>(fontColor);
   }
 
 private:
