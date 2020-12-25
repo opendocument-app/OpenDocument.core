@@ -59,7 +59,7 @@ public:
     auto it = m_paragraphProperties.find("w:jc");
     if (it == m_paragraphProperties.end())
       return {};
-    std::string alignment = it->second.attribute("val").value();
+    std::string alignment = it->second.attribute("w:val").value();
     if (alignment.empty())
       return {};
     if (alignment == "both")
