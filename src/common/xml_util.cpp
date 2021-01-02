@@ -1,6 +1,6 @@
-#include <access/path.h>
-#include <access/storage.h>
-#include <access/stream_util.h>
+#include <common/path.h>
+#include <common/storage.h>
+#include <common/stream_util.h>
 #include <common/xml_util.h>
 #include <pugixml.hpp>
 
@@ -22,12 +22,12 @@ pugi::xml_document XmlUtil::parse(std::istream &in) {
   return result;
 }
 
-pugi::xml_document XmlUtil::parse(const access::ReadStorage &storage,
-                                  const access::Path &path) {
+pugi::xml_document XmlUtil::parse(const common::ReadStorage &storage,
+                                  const common::Path &path) {
   pugi::xml_document result;
   auto in = storage.read(path);
   if (!in)
-    throw access::FileNotFoundException(path.string());
+    throw common::FileNotFoundException(path.string());
   const auto success = result.load(*in);
   if (!success)
     throw NotXmlException();

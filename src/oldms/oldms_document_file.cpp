@@ -1,5 +1,5 @@
-#include <access/cfb_storage.h>
-#include <access/path.h>
+#include <cfb/cfb_storage.h>
+#include <common/path.h>
 #include <memory>
 #include <odr/exceptions.h>
 #include <oldms/oldms_document_file.h>
@@ -8,8 +8,8 @@
 namespace odr::oldms {
 
 namespace {
-FileMeta parseMeta(const access::ReadStorage &storage) {
-  static const std::unordered_map<access::Path, FileType> TYPES = {
+FileMeta parseMeta(const common::ReadStorage &storage) {
+  static const std::unordered_map<common::Path, FileType> TYPES = {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
       {"WordDocument", FileType::LEGACY_WORD_DOCUMENT},
@@ -39,7 +39,7 @@ FileMeta parseMeta(const access::ReadStorage &storage) {
 } // namespace
 
 LegacyMicrosoftFile::LegacyMicrosoftFile(
-    std::shared_ptr<access::ReadStorage> storage)
+    std::shared_ptr<common::ReadStorage> storage)
     : m_storage{std::move(storage)} {
   m_meta = parseMeta(*m_storage);
 }
@@ -47,6 +47,14 @@ LegacyMicrosoftFile::LegacyMicrosoftFile(
 FileType LegacyMicrosoftFile::fileType() const noexcept { return m_meta.type; }
 
 FileMeta LegacyMicrosoftFile::fileMeta() const noexcept { return m_meta; }
+
+FileLocation LegacyMicrosoftFile::fileLocation() const noexcept {
+  return FileLocation::UNKNOWN; // TODO
+}
+
+std::size_t LegacyMicrosoftFile::size() const {
+  return 0; // TODO
+}
 
 std::unique_ptr<std::istream> LegacyMicrosoftFile::data() const {
   return {}; // TODO

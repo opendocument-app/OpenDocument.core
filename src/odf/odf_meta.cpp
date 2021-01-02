@@ -1,6 +1,6 @@
-#include <access/storage.h>
-#include <access/storage_util.h>
 #include <common/map_util.h>
+#include <common/storage.h>
+#include <common/storage_util.h>
 #include <common/table_cursor.h>
 #include <crypto/crypto_util.h>
 #include <cstring>
@@ -70,7 +70,7 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
 }
 } // namespace
 
-FileMeta parseFileMeta(const access::ReadStorage &storage,
+FileMeta parseFileMeta(const common::ReadStorage &storage,
                        const pugi::xml_document *manifest) {
   FileMeta result;
 
@@ -78,13 +78,13 @@ FileMeta parseFileMeta(const access::ReadStorage &storage,
     throw NoOpenDocumentFileException();
 
   if (storage.isFile("mimetype")) {
-    const auto mimeType = access::StorageUtil::read(storage, "mimetype");
+    const auto mimeType = common::StorageUtil::read(storage, "mimetype");
     lookupFileType(mimeType, result.type);
   }
 
   if (manifest != nullptr) {
     for (auto &&e : manifest->select_nodes("//manifest:file-entry")) {
-      const access::Path path =
+      const common::Path path =
           e.node().attribute("manifest:full-path").as_string();
       if (path.root() && e.node().attribute("manifest:media-type")) {
         const std::string mimeType =

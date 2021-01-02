@@ -1,11 +1,11 @@
-#include <access/file_util.h>
 #include <cerrno>
+#include <common/file_util.h>
 #include <cstring>
 #include <fstream>
 #include <odr/exceptions.h>
 #include <streambuf>
 
-namespace odr::access {
+namespace odr::common {
 
 std::string FileUtil::read(const std::string &path) {
   std::ifstream in(path);
@@ -30,4 +30,4 @@ std::string FileUtil::read(const std::string &path) {
   return result;
 }
 
-} // namespace odr::access
+} // namespace odr::common

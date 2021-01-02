@@ -1,10 +1,10 @@
-#ifndef ODR_ACCESS_STORAGE_UTIL_H
-#define ODR_ACCESS_STORAGE_UTIL_H
+#ifndef ODR_COMMON_STORAGE_UTIL_H
+#define ODR_COMMON_STORAGE_UTIL_H
 
-#include <access/storage.h>
+#include <common/storage.h>
 #include <string>
 
-namespace odr::access {
+namespace odr::common {
 class Path;
 class ReadStorage;
 
@@ -12,6 +12,6 @@ namespace StorageUtil {
 std::string read(const ReadStorage &, const Path &);
 }
 
-} // namespace odr::access
+} // namespace odr::common
 
-#endif // ODR_ACCESS_STORAGE_UTIL_H
+#endif // ODR_COMMON_STORAGE_UTIL_H

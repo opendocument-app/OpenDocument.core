@@ -1,5 +1,5 @@
-#ifndef ODR_TEST_META_H
-#define ODR_TEST_META_H
+#ifndef ODR_TESTMETA_H
+#define ODR_TESTMETA_H
 
 #include <odr/file.h>
 #include <string>
@@ -19,9 +19,9 @@ struct TestFile {
            std::string password);
 };
 
-class test_meta {
+class TestMeta {
 public:
-  static test_meta &instance();
+  static TestMeta &instance();
 
   static std::string dataDirectory();
   static std::string dataInputDirectory();
@@ -29,17 +29,17 @@ public:
   std::vector<std::string> testFilePaths() const;
   TestFile testFile(const std::string &) const;
 
-  test_meta(const test_meta &) = delete;
-  test_meta &operator=(const test_meta &) = delete;
-  test_meta(test_meta &&) = delete;
-  test_meta &operator=(test_meta &&) = delete;
+  TestMeta(const TestMeta &) = delete;
+  TestMeta &operator=(const TestMeta &) = delete;
+  TestMeta(TestMeta &&) = delete;
+  TestMeta &operator=(TestMeta &&) = delete;
 
 private:
-  test_meta();
+  TestMeta();
 
   std::unordered_map<std::string, TestFile> m_testFiles;
 };
 
 } // namespace odr::test
 
-#endif // ODR_TEST_META_H
+#endif // ODR_TESTMETA_H

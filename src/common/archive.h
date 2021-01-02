@@ -3,11 +3,8 @@
 
 #include <memory>
 
-namespace odr::access {
-class Path;
-}
-
 namespace odr::common {
+class Path;
 class File;
 class ArchiveFile;
 
@@ -20,9 +17,11 @@ public:
 
   [[nodiscard]] virtual std::shared_ptr<ArchiveDirectoryEntry> root() const = 0;
   [[nodiscard]] virtual std::shared_ptr<ArchiveEntry>
-  entry(const access::Path &) const = 0;
+  entry(const common::Path &) const = 0;
 
-  virtual void save(const access::Path &) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> first() const = 0;
+
+  virtual void save(const common::Path &) const = 0;
 };
 
 enum class ArchiveEntryType {
@@ -37,12 +36,17 @@ public:
 
   [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> parent() const = 0;
   [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> first_child() const = 0;
-  [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> previous() const = 0;
-  [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> next() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<ArchiveEntry>
+  previous_sibling() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> next_sibling() const = 0;
+
+  [[nodiscard]] virtual std::shared_ptr<ArchiveEntry>
+  previous_entry() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> next_entry() const = 0;
 
   [[nodiscard]] virtual ArchiveEntryType type() const = 0;
   [[nodiscard]] virtual std::string name() const = 0;
-  [[nodiscard]] virtual access::Path path() const = 0;
+  [[nodiscard]] virtual common::Path path() const = 0;
 };
 
 class ArchiveFileEntry : public virtual ArchiveEntry {

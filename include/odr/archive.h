@@ -6,6 +6,8 @@
 namespace odr::common {
 class Archive;
 class ArchiveEntry;
+class ArchiveFileEntry;
+class ArchiveDirectoryEntry;
 } // namespace odr::common
 
 namespace odr {
@@ -27,6 +29,25 @@ public:
 
 private:
   std::shared_ptr<common::ArchiveEntry> m_impl;
+};
+
+class ArchiveFileEntry : public ArchiveEntry {
+public:
+  ArchiveFileEntry();
+  explicit ArchiveFileEntry(std::shared_ptr<common::ArchiveFileEntry> impl);
+
+private:
+  std::shared_ptr<common::ArchiveFileEntry> m_impl;
+};
+
+class ArchiveDirectoryEntry : public ArchiveEntry {
+public:
+  ArchiveDirectoryEntry();
+  explicit ArchiveDirectoryEntry(
+      std::shared_ptr<common::ArchiveDirectoryEntry> impl);
+
+private:
+  std::shared_ptr<common::ArchiveDirectoryEntry> m_impl;
 };
 
 } // namespace odr

@@ -1,4 +1,4 @@
-#include <access/path.h>
+#include <common/path.h>
 #include <csv.hpp>
 #include <filesystem>
 #include <test/test_meta.h>
@@ -10,7 +10,7 @@ namespace odr::test {
 namespace {
 TestFile getTestFile(std::string input) {
   const FileType type =
-      FileMeta::typeByExtension(access::Path(input).extension());
+      FileMeta::typeByExtension(common::Path(input).extension());
   const std::string fileName = fs::path(input).filename();
   std::string password;
   if (const auto left = fileName.find('$'), right = fileName.rfind('$');
@@ -69,11 +69,11 @@ std::unordered_map<std::string, TestFile> getTestFiles() {
   std::unordered_map<std::string, TestFile> result;
 
   for (const auto &e :
-       fs::directory_iterator(test::test_meta::dataInputDirectory())) {
+       fs::directory_iterator(test::TestMeta::dataInputDirectory())) {
     const auto files = getTestFiles(e.path().string());
     for (auto &&file : files) {
       std::string testPath =
-          file.path.substr(test_meta::dataInputDirectory().length() + 1);
+          file.path.substr(TestMeta::dataInputDirectory().length() + 1);
       result[testPath] = file;
     }
   }
@@ -87,14 +87,14 @@ TestFile::TestFile(std::string path, const FileType type,
     : path{std::move(path)}, type{type},
       passwordEncrypted{passwordEncrypted}, password{std::move(password)} {}
 
-test_meta::test_meta() { m_testFiles = getTestFiles(); }
+TestMeta::TestMeta() { m_testFiles = getTestFiles(); }
 
-test_meta &test_meta::instance() {
-  static test_meta instance;
+TestMeta &TestMeta::instance() {
+  static TestMeta instance;
   return instance;
 }
 
-std::vector<std::string> test_meta::testFilePaths() const {
+std::vector<std::string> TestMeta::testFilePaths() const {
   std::vector<std::string> result;
   for (auto &&file : m_testFiles) {
     result.push_back(file.first);
@@ -103,7 +103,7 @@ std::vector<std::string> test_meta::testFilePaths() const {
   return result;
 }
 
-TestFile test_meta::testFile(const std::string &testPath) const {
+TestFile TestMeta::testFile(const std::string &testPath) const {
   return m_testFiles.at(testPath);
 }
 

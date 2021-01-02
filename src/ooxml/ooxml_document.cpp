@@ -1,15 +1,15 @@
-#include <access/path.h>
-#include <access/zip_storage.h>
+#include <common/path.h>
 #include <common/xml_util.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
 #include <ooxml/ooxml_document.h>
 #include <ooxml/text/ooxml_text_elements.h>
+#include <zip/zip_storage.h>
 
 namespace odr::ooxml {
 
 OfficeOpenXmlDocument::OfficeOpenXmlDocument(
-    std::shared_ptr<access::ReadStorage> storage)
+    std::shared_ptr<common::ReadStorage> storage)
     : m_storage{std::move(storage)} {}
 
 bool OfficeOpenXmlDocument::editable() const noexcept { return true; }
@@ -22,22 +22,22 @@ DocumentType OfficeOpenXmlDocument::documentType() const noexcept {
   return documentMeta().documentType;
 }
 
-std::shared_ptr<access::ReadStorage>
+std::shared_ptr<common::ReadStorage>
 OfficeOpenXmlDocument::storage() const noexcept {
   return m_storage;
 }
 
-void OfficeOpenXmlDocument::save(const access::Path &path) const {
+void OfficeOpenXmlDocument::save(const common::Path &path) const {
   // TODO
 }
 
-void OfficeOpenXmlDocument::save(const access::Path &path,
+void OfficeOpenXmlDocument::save(const common::Path &path,
                                  const std::string &password) const {
   // TODO
 }
 
 OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(
-    std::shared_ptr<access::ReadStorage> storage)
+    std::shared_ptr<common::ReadStorage> storage)
     : OfficeOpenXmlDocument(std::move(storage)) {
   m_documentXml = common::XmlUtil::parse(*m_storage, "word/document.xml");
   m_stylesXml = common::XmlUtil::parse(*m_storage, "word/styles.xml");
@@ -69,7 +69,7 @@ OfficeOpenXmlTextDocument::pageStyle() const {
 }
 
 OfficeOpenXmlPresentation::OfficeOpenXmlPresentation(
-    std::shared_ptr<access::ReadStorage> storage)
+    std::shared_ptr<common::ReadStorage> storage)
     : OfficeOpenXmlDocument(std::move(storage)) {
   m_presentationXml =
       common::XmlUtil::parse(*m_storage, "ppt/presentation.xml");
@@ -104,7 +104,7 @@ OfficeOpenXmlPresentation::firstSlide() const {
 }
 
 OfficeOpenXmlSpreadsheet::OfficeOpenXmlSpreadsheet(
-    std::shared_ptr<access::ReadStorage> storage)
+    std::shared_ptr<common::ReadStorage> storage)
     : OfficeOpenXmlDocument(std::move(storage)) {
   m_workbookXml = common::XmlUtil::parse(*m_storage, "xl/workbook.xml");
   m_stylesXml = common::XmlUtil::parse(*m_storage, "xl/styles.xml");

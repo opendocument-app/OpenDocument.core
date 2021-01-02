@@ -1,4 +1,4 @@
-#include <access/storage.h>
+#include <common/storage.h>
 #include <common/xml_util.h>
 #include <odf/odf_crypto.h>
 #include <odf/odf_document.h>
@@ -7,7 +7,7 @@
 
 namespace odr::odf {
 
-OpenDocumentFile::OpenDocumentFile(std::shared_ptr<access::ReadStorage> storage)
+OpenDocumentFile::OpenDocumentFile(std::shared_ptr<common::ReadStorage> storage)
     : m_storage{std::move(storage)} {
   if (m_storage->isFile("META-INF/manifest.xml")) {
     auto manifest = common::XmlUtil::parse(*m_storage, "META-INF/manifest.xml");
@@ -31,6 +31,14 @@ FileMeta OpenDocumentFile::fileMeta() const noexcept {
   if (m_encryptionState != EncryptionState::ENCRYPTED)
     result.documentMeta = document()->documentMeta();
   return result;
+}
+
+FileLocation OpenDocumentFile::fileLocation() const noexcept {
+  return FileLocation::UNKNOWN; // TODO
+}
+
+std::size_t OpenDocumentFile::size() const {
+  return 0; // TODO
 }
 
 std::unique_ptr<std::istream> OpenDocumentFile::data() const {

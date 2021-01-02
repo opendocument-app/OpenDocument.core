@@ -1,7 +1,7 @@
 #ifndef ODR_ODF_MANIFEST_H
 #define ODR_ODF_MANIFEST_H
 
-#include <access/path.h>
+#include <common/path.h>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -9,10 +9,6 @@
 namespace pugi {
 class xml_document;
 }
-
-namespace odr::access {
-class ReadStorage;
-} // namespace odr::access
 
 namespace odr::odf {
 
@@ -37,10 +33,10 @@ struct Manifest {
   };
 
   bool encrypted{false};
-  std::unordered_map<access::Path, Entry> entries;
+  std::unordered_map<common::Path, Entry> entries;
 
   std::uint64_t smallestFileSize{0};
-  const access::Path *smallestFilePath{nullptr};
+  const common::Path *smallestFilePath{nullptr};
   const Entry *smallestFileEntry{nullptr};
 };
 

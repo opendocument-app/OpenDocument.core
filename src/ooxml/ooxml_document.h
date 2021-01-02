@@ -7,29 +7,28 @@
 #include <ooxml/text/ooxml_text_style.h>
 #include <pugixml.hpp>
 
-namespace odr {
-namespace access {
+namespace odr::common {
 class ReadStorage;
 }
 
-namespace ooxml {
+namespace odr::ooxml {
 
 class OfficeOpenXmlDocument : public virtual common::Document {
 public:
-  explicit OfficeOpenXmlDocument(std::shared_ptr<access::ReadStorage> storage);
+  explicit OfficeOpenXmlDocument(std::shared_ptr<common::ReadStorage> storage);
 
   bool editable() const noexcept final;
   bool savable(bool encrypted) const noexcept final;
 
   DocumentType documentType() const noexcept final;
 
-  std::shared_ptr<access::ReadStorage> storage() const noexcept;
+  std::shared_ptr<common::ReadStorage> storage() const noexcept;
 
-  void save(const access::Path &path) const final;
-  void save(const access::Path &path, const std::string &password) const final;
+  void save(const common::Path &path) const final;
+  void save(const common::Path &path, const std::string &password) const final;
 
 protected:
-  std::shared_ptr<access::ReadStorage> m_storage;
+  std::shared_ptr<common::ReadStorage> m_storage;
   DocumentMeta m_document_meta;
 };
 
@@ -39,7 +38,7 @@ class OfficeOpenXmlTextDocument final
       public std::enable_shared_from_this<OfficeOpenXmlTextDocument> {
 public:
   explicit OfficeOpenXmlTextDocument(
-      std::shared_ptr<access::ReadStorage> storage);
+      std::shared_ptr<common::ReadStorage> storage);
 
   DocumentMeta documentMeta() const noexcept final;
 
@@ -60,7 +59,7 @@ class OfficeOpenXmlPresentation final : public OfficeOpenXmlDocument,
                                         public common::Presentation {
 public:
   explicit OfficeOpenXmlPresentation(
-      std::shared_ptr<access::ReadStorage> storage);
+      std::shared_ptr<common::ReadStorage> storage);
 
   DocumentMeta documentMeta() const noexcept final;
 
@@ -78,7 +77,7 @@ class OfficeOpenXmlSpreadsheet final : public OfficeOpenXmlDocument,
                                        public common::Spreadsheet {
 public:
   explicit OfficeOpenXmlSpreadsheet(
-      std::shared_ptr<access::ReadStorage> storage);
+      std::shared_ptr<common::ReadStorage> storage);
 
   DocumentMeta documentMeta() const noexcept final;
 
@@ -93,7 +92,6 @@ private:
   pugi::xml_document m_stylesXml;
 };
 
-} // namespace ooxml
-} // namespace odr
+} // namespace odr::ooxml
 
 #endif // ODR_OOXML_DOCUMENT_H

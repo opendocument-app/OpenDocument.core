@@ -1,8 +1,8 @@
-#include <access/storage.h>
-#include <access/storage_util.h>
-#include <access/stream_util.h>
+#include <common/storage.h>
+#include <common/storage_util.h>
+#include <common/stream_util.h>
 
-namespace odr::access {
+namespace odr::common {
 
 std::string StorageUtil::read(const ReadStorage &storage, const Path &path) {
   std::string result;
@@ -10,4 +10,4 @@ std::string StorageUtil::read(const ReadStorage &storage, const Path &path) {
   return StreamUtil::read(*in);
 }
 
-} // namespace odr::access
+} // namespace odr::common

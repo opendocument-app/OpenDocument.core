@@ -1,13 +1,13 @@
-#ifndef ODR_ACCESS_STREAM_UTIL_H
-#define ODR_ACCESS_STREAM_UTIL_H
+#ifndef ODR_COMMON_STREAM_UTIL_H
+#define ODR_COMMON_STREAM_UTIL_H
 
 #include <iostream>
 #include <string>
 
-namespace odr::access::StreamUtil {
+namespace odr::common::StreamUtil {
 std::string read(std::istream &);
 
 void pipe(std::istream &, std::ostream &);
-} // namespace odr::access::StreamUtil
+} // namespace odr::common::StreamUtil
 
-#endif // ODR_ACCESS_STREAM_UTIL_H
+#endif // ODR_COMMON_STREAM_UTIL_H

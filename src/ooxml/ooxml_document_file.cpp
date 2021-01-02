@@ -1,15 +1,15 @@
-#include <access/path.h>
-#include <access/stream_util.h>
-#include <access/zip_storage.h>
+#include <common/path.h>
+#include <common/stream_util.h>
 #include <ooxml/ooxml_crypto.h>
 #include <ooxml/ooxml_document.h>
 #include <ooxml/ooxml_document_file.h>
 #include <ooxml/ooxml_meta.h>
+#include <zip/zip_storage.h>
 
 namespace odr::ooxml {
 
 OfficeOpenXmlFile::OfficeOpenXmlFile(
-    std::shared_ptr<access::ReadStorage> storage) {
+    std::shared_ptr<common::ReadStorage> storage) {
   m_meta = parseFileMeta(*storage);
   m_storage = std::move(storage);
 }
@@ -17,6 +17,14 @@ OfficeOpenXmlFile::OfficeOpenXmlFile(
 FileType OfficeOpenXmlFile::fileType() const noexcept { return m_meta.type; }
 
 FileMeta OfficeOpenXmlFile::fileMeta() const noexcept { return m_meta; }
+
+FileLocation OfficeOpenXmlFile::fileLocation() const noexcept {
+  return FileLocation::UNKNOWN; // TODO
+}
+
+std::size_t OfficeOpenXmlFile::size() const {
+  return 0; // TODO
+}
 
 std::unique_ptr<std::istream> OfficeOpenXmlFile::data() const {
   return {}; // TODO
@@ -34,16 +42,16 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
   // TODO throw if not encrypted
   // TODO throw if decrypted
   const std::string encryptionInfo =
-      access::StreamUtil::read(*m_storage->read("EncryptionInfo"));
+      common::StreamUtil::read(*m_storage->read("EncryptionInfo"));
   // TODO cache Crypto::Util
   Crypto::Util util(encryptionInfo);
   const std::string key = util.deriveKey(password);
   if (!util.verify(key))
     return false;
   const std::string encryptedPackage =
-      access::StreamUtil::read(*m_storage->read("EncryptedPackage"));
+      common::StreamUtil::read(*m_storage->read("EncryptedPackage"));
   const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
-  m_storage = std::make_unique<access::ZipReader>(decryptedPackage, false);
+  m_storage = std::make_unique<zip::ZipReader>(decryptedPackage, false);
   m_meta = parseFileMeta(*m_storage);
   m_encryptionState = EncryptionState::DECRYPTED;
   return true;

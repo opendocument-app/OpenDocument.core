@@ -1,7 +1,7 @@
 #ifndef ODR_ODF_META_H
 #define ODR_ODF_META_H
 
-#include <access/path.h>
+#include <common/path.h>
 #include <cstdint>
 #include <exception>
 #include <string>
@@ -14,11 +14,11 @@ class xml_document;
 namespace odr {
 struct FileMeta;
 struct DocumentMeta;
-
-namespace access {
-class ReadStorage;
-} // namespace access
 } // namespace odr
+
+namespace odr::common {
+class ReadStorage;
+} // namespace odr::common
 
 namespace odr::odf {
 
@@ -28,7 +28,7 @@ struct NoOpenDocumentFileException final : public std::exception {
   }
 };
 
-FileMeta parseFileMeta(const access::ReadStorage &storage,
+FileMeta parseFileMeta(const common::ReadStorage &storage,
                        const pugi::xml_document *manifest);
 DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
                                const pugi::xml_document &content);

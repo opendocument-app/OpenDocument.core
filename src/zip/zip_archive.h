@@ -8,49 +8,63 @@ namespace odr::zip {
 class ZipFile;
 class ZipArchiveEntry;
 
-class ZipArchive final : public common::Archive {
+class ZipArchive final : public common::Archive,
+                         public std::enable_shared_from_this<ZipArchive> {
 public:
   ZipArchive();
   explicit ZipArchive(std::shared_ptr<const ZipFile> file);
 
-  [[nodiscard]] bool is_something(const access::Path &) const final;
-  [[nodiscard]] bool is_file(const access::Path &) const final;
-  [[nodiscard]] bool is_directory(const access::Path &) const final;
-  [[nodiscard]] bool is_readable(const access::Path &) const final;
-  [[nodiscard]] bool is_writeable(const access::Path &) const final;
-
-  [[nodiscard]] std::shared_ptr<common::ArchiveEntry> root() const final;
+  [[nodiscard]] std::shared_ptr<common::ArchiveDirectoryEntry>
+  root() const final;
   [[nodiscard]] std::shared_ptr<common::ArchiveEntry>
-  entry(const access::Path &) const final;
+  entry(const common::Path &) const final;
 
-  [[nodiscard]] std::shared_ptr<common::File>
-  open(const access::Path &) const final;
+  [[nodiscard]] std::shared_ptr<common::ArchiveEntry> first() const final;
 
-  [[nodiscard]] bool remove(const access::Path &) const final;
-  [[nodiscard]] bool copy(const access::Path &from,
-                          const access::Path &to) const final;
-  [[nodiscard]] bool copy(const std::shared_ptr<common::File> &file,
-                          const access::Path &to) const final;
-  [[nodiscard]] bool move(const access::Path &from,
-                          const access::Path &to) const final;
-
-  [[nodiscard]] bool create_directory(const access::Path &) const final;
-  [[nodiscard]] std::unique_ptr<std::ostream>
-  create_file(const access::Path &) const final;
+  void save(const common::Path &) const final;
 
 private:
   std::shared_ptr<const ZipFile> m_file;
+
+  std::shared_ptr<common::ArchiveDirectoryEntry> m_root;
+  std::shared_ptr<common::ArchiveEntry> m_first;
 };
 
-class ZipArchiveEntry final : public common::ArchiveEntry {
+class ZipArchiveEntry : public virtual common::ArchiveEntry {
 public:
+  ZipArchiveEntry(std::shared_ptr<const ZipArchive> archive, mz_uint index);
+
   [[nodiscard]] std::shared_ptr<ArchiveEntry> parent() const final;
   [[nodiscard]] std::shared_ptr<ArchiveEntry> first_child() const final;
-  [[nodiscard]] std::shared_ptr<ArchiveEntry> previous() const final;
-  [[nodiscard]] std::shared_ptr<ArchiveEntry> next() const final;
+  [[nodiscard]] std::shared_ptr<ArchiveEntry> previous_sibling() const final;
+  [[nodiscard]] std::shared_ptr<ArchiveEntry> next_sibling() const final;
 
-  [[nodiscard]] access::Path path() const final;
+  [[nodiscard]] std::shared_ptr<ArchiveEntry> previous_entry() const final;
+  [[nodiscard]] std::shared_ptr<ArchiveEntry> next_entry() const final;
+
+  [[nodiscard]] std::string name() const final;
+  [[nodiscard]] common::Path path() const final;
+
+private:
+  std::shared_ptr<const ZipArchive> m_archive;
+  mz_uint m_index;
+};
+
+class ZipArchiveFileEntry final : public common::ArchiveFileEntry,
+                                  public ZipArchiveEntry {
+public:
   [[nodiscard]] std::shared_ptr<common::File> open() const final;
+
+private:
+};
+
+class ZipArchiveDirectoryEntry final : public common::ArchiveDirectoryEntry,
+                                       public ZipArchiveEntry {
+public:
+  [[nodiscard]] std::shared_ptr<common::ArchiveDirectoryEntry>
+  create_directory(const std::string &) const final;
+  [[nodiscard]] std::shared_ptr<common::ArchiveFileEntry>
+  create_file(const std::string &) const final;
 
 private:
 };

@@ -1,6 +1,6 @@
-#include <access/storage.h>
-#include <access/storage_util.h>
-#include <access/stream_util.h>
+#include <common/storage.h>
+#include <common/storage_util.h>
+#include <common/stream_util.h>
 #include <crypto/crypto_util.h>
 #include <odf/odf_crypto.h>
 #include <sstream>
@@ -78,7 +78,7 @@ bool Crypto::validatePassword(const Manifest::Entry &entry,
 }
 
 namespace {
-class CryptoOpenDocumentFile : public access::ReadStorage {
+class CryptoOpenDocumentFile : public common::ReadStorage {
 public:
   const std::shared_ptr<ReadStorage> parent;
   const Manifest manifest;
@@ -89,18 +89,18 @@ public:
       : parent(std::move(parent)), manifest(std::move(manifest)),
         startKey(std::move(startKey)) {}
 
-  bool isSomething(const access::Path &p) const final {
+  bool isSomething(const common::Path &p) const final {
     return parent->isSomething(p);
   }
-  bool isFile(const access::Path &p) const final {
+  bool isFile(const common::Path &p) const final {
     return parent->isSomething(p);
   }
-  bool isDirectory(const access::Path &p) const final {
+  bool isDirectory(const common::Path &p) const final {
     return parent->isSomething(p);
   }
-  bool isReadable(const access::Path &p) const final { return isFile(p); }
+  bool isReadable(const common::Path &p) const final { return isFile(p); }
 
-  std::uint64_t size(const access::Path &p) const final {
+  std::uint64_t size(const common::Path &p) const final {
     const auto it = manifest.entries.find(p);
     if (it == manifest.entries.end())
       return parent->size(p);
@@ -109,7 +109,7 @@ public:
 
   void visit(Visitor v) const final { parent->visit(v); }
 
-  std::unique_ptr<std::istream> read(const access::Path &path) const final {
+  std::unique_ptr<std::istream> read(const common::Path &path) const final {
     const auto it = manifest.entries.find(path);
     if (it == manifest.entries.end())
       return parent->read(path);
@@ -117,7 +117,7 @@ public:
       throw UnsupportedCryptoAlgorithmException();
     // TODO stream
     auto source = parent->read(path);
-    const std::string input = access::StreamUtil::read(*source);
+    const std::string input = common::StreamUtil::read(*source);
     std::string result = crypto::Util::inflate(
         Crypto::deriveKeyAndDecrypt(it->second, startKey, input));
     return std::make_unique<std::istringstream>(std::move(result));
@@ -125,7 +125,7 @@ public:
 };
 } // namespace
 
-bool Crypto::decrypt(std::shared_ptr<access::ReadStorage> &storage,
+bool Crypto::decrypt(std::shared_ptr<common::ReadStorage> &storage,
                      const Manifest &manifest, const std::string &password) {
   if (!manifest.encrypted)
     return true;
@@ -134,7 +134,7 @@ bool Crypto::decrypt(std::shared_ptr<access::ReadStorage> &storage,
   const std::string startKey =
       Crypto::startKey(*manifest.smallestFileEntry, password);
   const std::string input =
-      access::StorageUtil::read(*storage, *manifest.smallestFilePath);
+      common::StorageUtil::read(*storage, *manifest.smallestFilePath);
   const std::string decrypt =
       deriveKeyAndDecrypt(*manifest.smallestFileEntry, startKey, input);
   if (!validatePassword(*manifest.smallestFileEntry, decrypt))

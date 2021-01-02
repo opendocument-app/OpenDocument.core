@@ -1,4 +1,4 @@
-#include <access/path.h>
+#include <common/path.h>
 #include <csv.hpp>
 #include <filesystem>
 #include <gtest/gtest.h>
@@ -41,7 +41,7 @@ nlohmann::json metaToJson(const odr::FileMeta &meta) {
 
 TEST_P(DataDrivenTest, all) {
   const auto testFilePath = GetParam();
-  test::TestFile testFile = test::test_meta::instance().testFile(testFilePath);
+  test::TestFile testFile = test::TestMeta::instance().testFile(testFilePath);
   const std::string outputPath = "./output/" + testFilePath;
 
   std::cout << testFile.path << " to " << outputPath << std::endl;
@@ -143,4 +143,4 @@ TEST_P(DataDrivenTest, all) {
 
 INSTANTIATE_TEST_CASE_P(
     all, DataDrivenTest,
-    testing::ValuesIn(test::test_meta::instance().testFilePaths()));
+    testing::ValuesIn(test::TestMeta::instance().testFilePaths()));

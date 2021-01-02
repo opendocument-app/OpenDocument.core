@@ -1,13 +1,14 @@
-#include <access/path.h>
-#include <access/zip_storage.h>
+#include <common/path.h>
 #include <gtest/gtest.h>
+#include <odr/exceptions.h>
 #include <string>
+#include <zip/zip_storage.h>
 
-using namespace odr::access;
+using namespace odr::zip;
 
 // TODO visit test
 
-TEST(ZipReader, exception) { EXPECT_THROW(ZipReader("/"), NoZipFileException); }
+TEST(ZipReader, exception) { EXPECT_THROW(ZipReader("/"), odr::NoZipFile); }
 
 TEST(ZipWriter, create) {
   const std::string file = "created.zip";

@@ -1,16 +1,16 @@
-#include <access/path.h>
-#include <access/stream_util.h>
-#include <access/zip_storage.h>
+#include <common/path.h>
+#include <common/stream_util.h>
 #include <common/xml_util.h>
 #include <odf/odf_crypto.h>
 #include <odf/odf_document.h>
 #include <odf/odf_elements.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
+#include <zip/zip_storage.h>
 
 namespace odr::odf {
 
-OpenDocument::OpenDocument(std::shared_ptr<access::ReadStorage> storage)
+OpenDocument::OpenDocument(std::shared_ptr<common::ReadStorage> storage)
     : m_storage{std::move(storage)} {
   m_contentXml = common::XmlUtil::parse(*m_storage, "content.xml");
 
@@ -39,22 +39,22 @@ DocumentMeta OpenDocument::documentMeta() const noexcept {
   return m_document_meta;
 }
 
-std::shared_ptr<access::ReadStorage> OpenDocument::storage() const noexcept {
+std::shared_ptr<common::ReadStorage> OpenDocument::storage() const noexcept {
   return m_storage;
 }
 
 const Styles &OpenDocument::styles() const noexcept { return m_styles; }
 
-void OpenDocument::save(const access::Path &path) const {
+void OpenDocument::save(const common::Path &path) const {
   // TODO throw if not savable
   // TODO this would decrypt/inflate and encrypt/deflate again
-  access::ZipWriter writer(path);
+  zip::ZipWriter writer(path);
 
   // `mimetype` has to be the first file and uncompressed
   if (m_storage->isFile("mimetype")) {
     const auto in = m_storage->read("mimetype");
     const auto out = writer.write("mimetype", 0);
-    access::StreamUtil::pipe(*in, *out);
+    common::StreamUtil::pipe(*in, *out);
   }
 
   m_storage->visit([&](const auto &p) {
@@ -71,16 +71,16 @@ void OpenDocument::save(const access::Path &path) const {
       m_contentXml.print(*out);
       return;
     }
-    access::StreamUtil::pipe(*in, *out);
+    common::StreamUtil::pipe(*in, *out);
   });
 }
 
-void OpenDocument::save(const access::Path &path,
+void OpenDocument::save(const common::Path &path,
                         const std::string &password) const {
   // TODO throw if not savable
 }
 
-OpenDocumentText::OpenDocumentText(std::shared_ptr<access::ReadStorage> storage)
+OpenDocumentText::OpenDocumentText(std::shared_ptr<common::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 std::shared_ptr<const common::Element> OpenDocumentText::root() const {
@@ -94,7 +94,7 @@ std::shared_ptr<common::PageStyle> OpenDocumentText::pageStyle() const {
 }
 
 OpenDocumentPresentation::OpenDocumentPresentation(
-    std::shared_ptr<access::ReadStorage> storage)
+    std::shared_ptr<common::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 std::uint32_t OpenDocumentPresentation::slideCount() const {
@@ -114,7 +114,7 @@ OpenDocumentPresentation::firstSlide() const {
 }
 
 OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
-    std::shared_ptr<access::ReadStorage> storage)
+    std::shared_ptr<common::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 std::uint32_t OpenDocumentSpreadsheet::sheetCount() const {
@@ -134,7 +134,7 @@ OpenDocumentSpreadsheet::firstSheet() const {
 }
 
 OpenDocumentDrawing::OpenDocumentDrawing(
-    std::shared_ptr<access::ReadStorage> storage)
+    std::shared_ptr<common::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 std::uint32_t OpenDocumentDrawing::pageCount() const {

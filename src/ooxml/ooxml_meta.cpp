@@ -1,5 +1,5 @@
-#include <access/path.h>
-#include <access/storage.h>
+#include <common/path.h>
+#include <common/storage.h>
 #include <common/xml_util.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -9,8 +9,8 @@
 
 namespace odr::ooxml {
 
-FileMeta parseFileMeta(access::ReadStorage &storage) {
-  static const std::unordered_map<access::Path, FileType> TYPES = {
+FileMeta parseFileMeta(common::ReadStorage &storage) {
+  static const std::unordered_map<common::Path, FileType> TYPES = {
       {"word/document.xml", FileType::OFFICE_OPEN_XML_DOCUMENT},
       {"ppt/presentation.xml", FileType::OFFICE_OPEN_XML_PRESENTATION},
       {"xl/workbook.xml", FileType::OFFICE_OPEN_XML_WORKBOOK},
@@ -46,8 +46,8 @@ parseRelationships(const pugi::xml_document &rels) {
 }
 
 std::unordered_map<std::string, std::string>
-parseRelationships(const access::ReadStorage &storage,
-                   const access::Path &path) {
+parseRelationships(const common::ReadStorage &storage,
+                   const common::Path &path) {
   const auto relPath =
       path.parent().join("_rels").join(path.basename() + ".rels");
   if (!storage.isFile(relPath))

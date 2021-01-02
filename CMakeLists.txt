@@ -34,6 +34,7 @@ add_library(odr-object OBJECT
 
         src/cfb/cfb_archive.cpp
         src/cfb/cfb_file.cpp
+        src/cfb/cfb_storage.cpp
 
         src/common/archive.cpp
         src/common/constants.cpp
@@ -75,6 +76,7 @@ add_library(odr-object OBJECT
 
         src/zip/zip_archive.cpp
         src/zip/zip_file.cpp
+        src/zip/zip_storage.cpp
         )
 target_include_directories(odr-object
         PUBLIC

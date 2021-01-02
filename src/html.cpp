@@ -1,6 +1,6 @@
-#include <access/stream_util.h>
 #include <common/document.h>
 #include <common/html.h>
+#include <common/stream_util.h>
 #include <crypto/crypto_util.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -236,7 +236,7 @@ void translateImage(ImageElement element, std::ostream &out,
       image = svgOut.str();
       out << "data:image/svg+xml;base64, ";
     } else {
-      image = access::StreamUtil::read(*imageStream);
+      image = common::StreamUtil::read(*imageStream);
       // TODO hacky - `image/jpg` works for all common image types in chrome
       out << "data:image/jpg;base64, ";
     }

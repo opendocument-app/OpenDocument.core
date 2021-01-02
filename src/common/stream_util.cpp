@@ -1,6 +1,6 @@
-#include <access/stream_util.h>
+#include <common/stream_util.h>
 
-namespace odr::access {
+namespace odr::common {
 
 namespace {
 constexpr std::uint32_t BUFFER_SIZE = 4096;
@@ -22,4 +22,4 @@ void StreamUtil::pipe(std::istream &in, std::ostream &out) {
   }
 }
 
-} // namespace odr::access
+} // namespace odr::common

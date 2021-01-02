@@ -1,10 +1,10 @@
-#ifndef ODR_ACCESS_FILE_UTIL_H
-#define ODR_ACCESS_FILE_UTIL_H
+#ifndef ODR_COMMON_FILE_UTIL_H
+#define ODR_COMMON_FILE_UTIL_H
 
 #include <string>
 
-namespace odr::access::FileUtil {
+namespace odr::common::FileUtil {
 std::string read(const std::string &path);
-} // namespace odr::access::FileUtil
+} // namespace odr::common::FileUtil
 
-#endif // ODR_ACCESS_FILE_UTIL_H
+#endif // ODR_COMMON_FILE_UTIL_H

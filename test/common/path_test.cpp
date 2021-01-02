@@ -1,7 +1,7 @@
-#include <access/path.h>
+#include <common/path.h>
 #include <gtest/gtest.h>
 
-using namespace odr::access;
+using namespace odr::common;
 
 TEST(Path, empty) { EXPECT_EQ("", Path().string()); }
 

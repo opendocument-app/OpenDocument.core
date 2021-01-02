@@ -44,7 +44,7 @@ public:
 
   [[nodiscard]] std::size_t size() const final;
 
-  [[nodiscard]] access::Path path() const;
+  [[nodiscard]] common::Path path() const;
   [[nodiscard]] std::unique_ptr<std::istream> data() const final;
 
 private:

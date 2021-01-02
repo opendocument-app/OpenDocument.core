@@ -15,11 +15,8 @@ template <typename E> class ElementRangeTemplate;
 using ElementRange = ElementRangeTemplate<Element>;
 } // namespace odr
 
-namespace odr::access {
-class Path;
-}
-
 namespace odr::common {
+class Path;
 class DocumentFile;
 
 class Element;
@@ -40,8 +37,8 @@ public:
 
   [[nodiscard]] virtual std::shared_ptr<const Element> root() const = 0;
 
-  virtual void save(const access::Path &path) const = 0;
-  virtual void save(const access::Path &path,
+  virtual void save(const common::Path &path) const = 0;
+  virtual void save(const common::Path &path,
                     const std::string &password) const = 0;
 };
 

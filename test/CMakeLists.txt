@@ -13,8 +13,6 @@ add_executable(odr_test
         file_test.cpp
         data_driven_tests.cpp
 
-        access/zip_storage_test.cpp
-
         common/cache_test.cpp
         common/path_test.cpp
         common/table_cursor_test.cpp
@@ -22,6 +20,9 @@ add_executable(odr_test
         common/table_range_test.cpp
 
         ooxml/ooxml_crypto_test.cpp
+
+        zip/zip_file_test.cpp
+        zip/zip_storage_test.cpp
         )
 target_include_directories(odr_test
         PRIVATE

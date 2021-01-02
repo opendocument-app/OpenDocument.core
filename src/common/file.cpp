@@ -16,7 +16,7 @@ DiscFile::DiscFile(const char *path) : m_path{path} {}
 
 DiscFile::DiscFile(std::string path) : m_path{std::move(path)} {}
 
-DiscFile::DiscFile(access::Path path) : m_path{std::move(path)} {}
+DiscFile::DiscFile(common::Path path) : m_path{std::move(path)} {}
 
 FileType DiscFile::fileType() const noexcept { return FileType::UNKNOWN; }
 
@@ -30,7 +30,7 @@ std::size_t DiscFile::size() const {
   return std::filesystem::file_size(m_path.string());
 }
 
-access::Path DiscFile::path() const { return m_path; }
+common::Path DiscFile::path() const { return m_path; }
 
 std::unique_ptr<std::istream> DiscFile::data() const {
   return std::make_unique<std::ifstream>(m_path, std::ifstream::binary);

@@ -5,7 +5,7 @@
 
 namespace odr::cfb {
 
-class CfbArchive final : public Archive {
+class CfbArchive final : public common::Archive {
 public:
 };
 

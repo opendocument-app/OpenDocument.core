@@ -1,6 +1,6 @@
-#include <access/path.h>
-#include <access/storage.h>
 #include <common/file.h>
+#include <common/path.h>
+#include <common/storage.h>
 #include <common/xml_properties.h>
 #include <odf/odf_document.h>
 #include <odf/odf_document_file.h>
@@ -22,7 +22,7 @@ std::shared_ptr<E> factorizeKnownElement(pugi::xml_node node, Args... args) {
 
 class ImageFile final : public common::ImageFile {
 public:
-  ImageFile(std::shared_ptr<access::ReadStorage> storage, access::Path path,
+  ImageFile(std::shared_ptr<common::ReadStorage> storage, common::Path path,
             const FileType fileType)
       : m_storage{std::move(storage)}, m_path{std::move(path)}, m_fileType{
                                                                     fileType} {}
@@ -35,13 +35,25 @@ public:
     return result;
   }
 
+  FileLocation fileLocation() const noexcept final {
+    return FileLocation::UNKNOWN; // TODO
+  }
+
+  std::size_t size() const final {
+    return 0; // TODO
+  }
+
   std::unique_ptr<std::istream> data() const final {
     return m_storage->read(m_path);
   }
 
+  std::shared_ptr<common::Image> image() const final {
+    return {}; // TODO
+  }
+
 private:
-  std::shared_ptr<access::ReadStorage> m_storage;
-  access::Path m_path;
+  std::shared_ptr<common::ReadStorage> m_storage;
+  common::Path m_path;
   FileType m_fileType;
 };
 
@@ -446,7 +458,7 @@ public:
     const std::string href = hrefAttr.value();
 
     try {
-      const access::Path path{href};
+      const common::Path path{href};
       if (!m_document->storage()->isFile(path))
         return false;
 
@@ -467,7 +479,7 @@ public:
       throw 1; // TODO
 
     const std::string href = this->href();
-    const access::Path path{href};
+    const common::Path path{href};
     FileType fileType{FileType::UNKNOWN};
 
     if ((href.find("ObjectReplacements", 0) != std::string::npos) ||

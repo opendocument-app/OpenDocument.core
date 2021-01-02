@@ -12,12 +12,12 @@ class xml_document;
 
 namespace odr {
 struct FileMeta;
+}
 
-namespace access {
+namespace odr::common {
 class Path;
 class ReadStorage;
-} // namespace access
-} // namespace odr
+} // namespace odr::common
 
 namespace odr::ooxml {
 
@@ -26,13 +26,13 @@ struct NoOfficeOpenXmlFileException final : public std::runtime_error {
       : std::runtime_error("not a open document file") {}
 };
 
-FileMeta parseFileMeta(access::ReadStorage &storage);
+FileMeta parseFileMeta(common::ReadStorage &storage);
 
 std::unordered_map<std::string, std::string>
 parseRelationships(const pugi::xml_document &relations);
 std::unordered_map<std::string, std::string>
-parseRelationships(const access::ReadStorage &storage,
-                   const access::Path &path);
+parseRelationships(const common::ReadStorage &storage,
+                   const common::Path &path);
 
 } // namespace odr::ooxml
 

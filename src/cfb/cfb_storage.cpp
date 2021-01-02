@@ -1,14 +1,14 @@
-#include <access/cfb_storage.h>
-#include <access/file_util.h>
-#include <access/path.h>
+#include <cfb/cfb_storage.h>
 #include <codecvt>
+#include <common/file_util.h>
+#include <common/path.h>
 #include <cstdint>
 #include <cstring>
 #include <functional>
 #include <locale>
 #include <stdexcept>
 
-namespace odr::access {
+namespace odr::cfb {
 
 namespace {
 namespace CFB {
@@ -457,13 +457,15 @@ private:
 };
 } // namespace
 
-typedef std::function<void(const CFB::CompoundFileEntry *, const Path &)>
+typedef std::function<void(const CFB::CompoundFileEntry *,
+                           const common::Path &)>
     CfbVisitor;
 
 class CfbReader::Impl final {
 public:
-  explicit Impl(const Path &path)
-      : buffer(FileUtil::read(path)), reader(buffer.data(), buffer.size()) {}
+  explicit Impl(const common::Path &path)
+      : buffer(common::FileUtil::read(path)),
+        reader(buffer.data(), buffer.size()) {}
 
   void visit(CfbVisitor visitor) const {
     reader.EnumFiles(
@@ -476,34 +478,34 @@ public:
           // const std::string dir = convert.to_bytes(directory);
           const std::string name = convert.to_bytes(std::u16string(
               (const char16_t *)entry->name, (entry->nameLen - 1) / 2));
-          visitor(entry, Path(name));
+          visitor(entry, common::Path(name));
         });
   }
 
-  const CFB::CompoundFileEntry *find(const Path &p) const {
+  const CFB::CompoundFileEntry *find(const common::Path &p) const {
     const CFB::CompoundFileEntry *result = nullptr;
-    visit([&](const CFB::CompoundFileEntry *entry, const Path &path) {
+    visit([&](const CFB::CompoundFileEntry *entry, const common::Path &path) {
       if (p == path)
         result = entry;
     });
     return result;
   }
 
-  bool isSomething(const Path &p) const { return find(p) != nullptr; }
+  bool isSomething(const common::Path &p) const { return find(p) != nullptr; }
 
-  bool isFile(const Path &p) const {
+  bool isFile(const common::Path &p) const {
     const auto entry = find(p);
     return (entry != nullptr) && reader.IsStream(entry);
   }
 
-  bool isDirectory(const Path &p) const {
+  bool isDirectory(const common::Path &p) const {
     const auto entry = find(p);
     return (entry != nullptr) && !reader.IsStream(entry);
   }
 
-  bool isReadable(const Path &p) const { return isFile(p); }
+  bool isReadable(const common::Path &p) const { return isFile(p); }
 
-  std::uint64_t size(const Path &p) const {
+  std::uint64_t size(const common::Path &p) const {
     const auto entry = find(p);
     if (entry == nullptr)
       return 0; // TODO throw?
@@ -511,12 +513,12 @@ public:
   }
 
   void visit(Visitor visitor) const {
-    visit([&](const CFB::CompoundFileEntry *, const Path &path) {
+    visit([&](const CFB::CompoundFileEntry *, const common::Path &path) {
       visitor(path);
     });
   }
 
-  std::unique_ptr<std::istream> read(const Path &p) const {
+  std::unique_ptr<std::istream> read(const common::Path &p) const {
     const auto entry = find(p);
     if (entry == nullptr)
       return nullptr;
@@ -528,32 +530,35 @@ private:
   CFB::CompoundFileReader reader;
 };
 
-CfbReader::CfbReader(const Path &path) : impl(std::make_unique<Impl>(path)) {}
+CfbReader::CfbReader(const common::Path &path)
+    : impl(std::make_unique<Impl>(path)) {}
 
 CfbReader::~CfbReader() = default;
 
-bool CfbReader::isSomething(const Path &path) const {
+bool CfbReader::isSomething(const common::Path &path) const {
   return impl->isSomething(path);
 }
 
-bool CfbReader::isFile(const Path &path) const { return impl->isFile(path); }
+bool CfbReader::isFile(const common::Path &path) const {
+  return impl->isFile(path);
+}
 
-bool CfbReader::isDirectory(const Path &path) const {
+bool CfbReader::isDirectory(const common::Path &path) const {
   return impl->isDirectory(path);
 }
 
-bool CfbReader::isReadable(const Path &path) const {
+bool CfbReader::isReadable(const common::Path &path) const {
   return impl->isReadable(path);
 }
 
-std::uint64_t CfbReader::size(const Path &path) const {
+std::uint64_t CfbReader::size(const common::Path &path) const {
   return impl->size(path);
 }
 
 void CfbReader::visit(Visitor visitor) const { impl->visit(visitor); }
 
-std::unique_ptr<std::istream> CfbReader::read(const Path &path) const {
+std::unique_ptr<std::istream> CfbReader::read(const common::Path &path) const {
   return impl->read(path);
 }
 
-} // namespace odr::access
+} // namespace odr::cfb

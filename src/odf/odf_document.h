@@ -7,17 +7,16 @@
 #include <odr/document.h>
 #include <pugixml.hpp>
 
-namespace odr {
-namespace access {
+namespace odr::common {
 class ReadStorage;
 }
 
-namespace odf {
+namespace odr::odf {
 
 class OpenDocument : public virtual common::Document,
                      public std::enable_shared_from_this<OpenDocument> {
 public:
-  explicit OpenDocument(std::shared_ptr<access::ReadStorage> storage);
+  explicit OpenDocument(std::shared_ptr<common::ReadStorage> storage);
 
   bool editable() const noexcept final;
   bool savable(bool encrypted) const noexcept final;
@@ -25,14 +24,14 @@ public:
   DocumentType documentType() const noexcept final;
   DocumentMeta documentMeta() const noexcept final;
 
-  std::shared_ptr<access::ReadStorage> storage() const noexcept;
+  std::shared_ptr<common::ReadStorage> storage() const noexcept;
   const Styles &styles() const noexcept;
 
-  void save(const access::Path &path) const final;
-  void save(const access::Path &path, const std::string &password) const final;
+  void save(const common::Path &path) const final;
+  void save(const common::Path &path, const std::string &password) const final;
 
 protected:
-  std::shared_ptr<access::ReadStorage> m_storage;
+  std::shared_ptr<common::ReadStorage> m_storage;
   DocumentMeta m_document_meta;
   pugi::xml_document m_contentXml;
   pugi::xml_document m_stylesXml;
@@ -42,7 +41,7 @@ protected:
 class OpenDocumentText final : public OpenDocument,
                                public common::TextDocument {
 public:
-  explicit OpenDocumentText(std::shared_ptr<access::ReadStorage> storage);
+  explicit OpenDocumentText(std::shared_ptr<common::ReadStorage> storage);
 
   std::shared_ptr<const common::Element> root() const final;
 
@@ -53,7 +52,7 @@ class OpenDocumentPresentation final : public OpenDocument,
                                        public common::Presentation {
 public:
   explicit OpenDocumentPresentation(
-      std::shared_ptr<access::ReadStorage> storage);
+      std::shared_ptr<common::ReadStorage> storage);
 
   std::uint32_t slideCount() const final;
 
@@ -65,7 +64,7 @@ class OpenDocumentSpreadsheet final : public OpenDocument,
                                       public common::Spreadsheet {
 public:
   explicit OpenDocumentSpreadsheet(
-      std::shared_ptr<access::ReadStorage> storage);
+      std::shared_ptr<common::ReadStorage> storage);
 
   std::uint32_t sheetCount() const final;
 
@@ -75,7 +74,7 @@ public:
 
 class OpenDocumentDrawing final : public OpenDocument, public common::Drawing {
 public:
-  explicit OpenDocumentDrawing(std::shared_ptr<access::ReadStorage> storage);
+  explicit OpenDocumentDrawing(std::shared_ptr<common::ReadStorage> storage);
 
   std::uint32_t pageCount() const final;
 
@@ -83,7 +82,6 @@ public:
   std::shared_ptr<const common::Page> firstPage() const final;
 };
 
-} // namespace odf
-} // namespace odr
+} // namespace odr::odf
 
 #endif // ODR_ODF_DOCUMENT_H

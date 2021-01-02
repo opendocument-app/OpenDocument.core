@@ -1,37 +1,21 @@
-#include <access/cfb_storage.h>
-#include <access/path.h>
-#include <access/storage.h>
-#include <access/zip_storage.h>
+#include <cfb/cfb_storage.h>
+#include <common/path.h>
 #include <odf/odf_document_file.h>
 #include <odr/exceptions.h>
 #include <oldms/oldms_document_file.h>
 #include <ooxml/ooxml_document_file.h>
 #include <open_strategy.h>
+#include <zip/zip_storage.h>
 
 namespace odr {
 
-namespace {
-class UnknownFile final : public common::File {
-public:
-  explicit UnknownFile(const access::Path &path) {
-    // TODO check if file exists
-  }
-
-  FileType fileType() const noexcept final { return FileType::UNKNOWN; }
-
-  FileMeta fileMeta() const noexcept final { return {}; }
-
-  std::unique_ptr<std::istream> data() const final { return {}; }
-};
-} // namespace
-
-std::vector<FileType> OpenStrategy::types(const access::Path &path) {
+std::vector<FileType> OpenStrategy::types(const common::Path &path) {
   std::vector<FileType> result;
 
   // TODO throw if not a file
 
   try {
-    auto storage = std::make_shared<access::ZipReader>(path);
+    auto storage = std::make_shared<zip::ZipReader>(path);
     result.push_back(FileType::ZIP);
 
     try {
@@ -48,7 +32,7 @@ std::vector<FileType> OpenStrategy::types(const access::Path &path) {
 
   try {
     FileMeta meta;
-    auto storage = std::make_shared<access::CfbReader>(path);
+    auto storage = std::make_shared<cfb::CfbReader>(path);
     result.push_back(FileType::COMPOUND_FILE_BINARY_FORMAT);
 
     // legacy microsoft
@@ -68,11 +52,11 @@ std::vector<FileType> OpenStrategy::types(const access::Path &path) {
   return result;
 }
 
-std::unique_ptr<common::File> OpenStrategy::openFile(const access::Path &path) {
+std::unique_ptr<common::File> OpenStrategy::openFile(const common::Path &path) {
   // TODO throw if not a file
 
   try {
-    auto storage = std::make_shared<access::ZipReader>(path);
+    auto storage = std::make_shared<zip::ZipReader>(path);
 
     try {
       return std::make_unique<odf::OpenDocumentFile>(storage);
@@ -89,7 +73,7 @@ std::unique_ptr<common::File> OpenStrategy::openFile(const access::Path &path) {
   }
 
   try {
-    auto storage = std::make_shared<access::CfbReader>(path);
+    auto storage = std::make_shared<cfb::CfbReader>(path);
 
     // legacy microsoft
     try {
@@ -107,19 +91,19 @@ std::unique_ptr<common::File> OpenStrategy::openFile(const access::Path &path) {
   } catch (...) {
   }
 
-  return std::make_unique<UnknownFile>(path);
+  return std::make_unique<common::DiscFile>(path);
 }
 
-std::unique_ptr<common::File> OpenStrategy::openFile(const access::Path &path,
+std::unique_ptr<common::File> OpenStrategy::openFile(const common::Path &path,
                                                      const FileType as) {
   // TODO implement
   throw UnknownFileType();
 }
 
 std::unique_ptr<common::DocumentFile>
-OpenStrategy::openDocumentFile(const access::Path &path) {
+OpenStrategy::openDocumentFile(const common::Path &path) {
   try {
-    auto storage = std::make_shared<access::ZipReader>(path);
+    auto storage = std::make_shared<zip::ZipReader>(path);
 
     try {
       return std::make_unique<odf::OpenDocumentFile>(storage);
@@ -134,7 +118,7 @@ OpenStrategy::openDocumentFile(const access::Path &path) {
   }
 
   try {
-    auto storage = std::make_shared<access::CfbReader>(path);
+    auto storage = std::make_shared<cfb::CfbReader>(path);
 
     // legacy microsoft
     try {
