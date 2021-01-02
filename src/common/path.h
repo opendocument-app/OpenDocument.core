@@ -1,12 +1,12 @@
-#ifndef ODR_ACCESS_PATH_H
-#define ODR_ACCESS_PATH_H
+#ifndef ODR_COMMON_PATH_H
+#define ODR_COMMON_PATH_H
 
 #include <cstdint>
 #include <iostream>
 #include <string>
 #include <typeindex>
 
-namespace odr::access {
+namespace odr::common {
 
 class Path final {
 public:
@@ -60,14 +60,14 @@ private:
   void join_(const std::string &);
 };
 
-} // namespace odr::access
+} // namespace odr::common
 
 namespace std {
-template <> struct hash<::odr::access::Path> {
-  std::size_t operator()(const ::odr::access::Path &p) const {
+template <> struct hash<::odr::common::Path> {
+  std::size_t operator()(const ::odr::common::Path &p) const {
     return p.hash();
   }
 };
 } // namespace std
 
-#endif // ODR_ACCESS_PATH_H
+#endif // ODR_COMMON_PATH_H

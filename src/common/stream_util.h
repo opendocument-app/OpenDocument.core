@@ -5,11 +5,9 @@
 #include <string>
 
 namespace odr::access::StreamUtil {
+std::string read(std::istream &);
 
-extern std::string read(std::istream &);
-
-extern void pipe(std::istream &, std::ostream &);
-
+void pipe(std::istream &, std::ostream &);
 } // namespace odr::access::StreamUtil
 
 #endif // ODR_ACCESS_STREAM_UTIL_H

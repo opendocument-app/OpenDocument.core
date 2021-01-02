@@ -8,16 +8,6 @@ namespace odr::access {
 
 class ZipWriter;
 
-class NoZipFileException : public std::exception {
-public:
-  explicit NoZipFileException(std::string path) : path_(std::move(path)) {}
-  const std::string &path() const { return path_; }
-  const char *what() const noexcept override { return "not a zip file"; }
-
-private:
-  std::string path_;
-};
-
 class ZipReader final : public ReadStorage {
 public:
   ZipReader(const void *, std::uint64_t size);

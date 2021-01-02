@@ -1,8 +1,8 @@
-#include <access/path.h>
 #include <algorithm>
+#include <common/path.h>
 #include <stdexcept>
 
-namespace odr::access {
+namespace odr::common {
 
 Path::Path() noexcept : Path("") {}
 
@@ -162,4 +162,4 @@ std::ostream &operator<<(std::ostream &os, const Path &p) {
   return os << p.path_;
 }
 
-} // namespace odr::access
+} // namespace odr::common

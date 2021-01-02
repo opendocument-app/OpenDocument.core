@@ -18,6 +18,10 @@ struct UnknownFileType final : public std::runtime_error {
   UnknownFileType() : std::runtime_error("unknown file type") {}
 };
 
+struct NoZipFile : public std::runtime_error {
+  NoZipFile() : std::runtime_error("not a zip file") {}
+};
+
 struct NoImageFile final : public std::runtime_error {
   NoImageFile() : std::runtime_error("not an image file") {}
 };

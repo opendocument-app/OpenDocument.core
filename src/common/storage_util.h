@@ -5,12 +5,11 @@
 #include <string>
 
 namespace odr::access {
-
 class Path;
 class ReadStorage;
 
 namespace StorageUtil {
-extern std::string read(const ReadStorage &, const Path &);
+std::string read(const ReadStorage &, const Path &);
 }
 
 } // namespace odr::access

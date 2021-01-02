@@ -9,17 +9,19 @@
 namespace odr {
 enum class DocumentType;
 struct DocumentMeta;
-struct PageProperties;
 class Element;
 class TableElement;
 template <typename E> class ElementRangeTemplate;
 using ElementRange = ElementRangeTemplate<Element>;
+} // namespace odr
 
-namespace access {
+namespace odr::access {
 class Path;
 }
 
-namespace common {
+namespace odr::common {
+class DocumentFile;
+
 class Element;
 class Slide;
 class Sheet;
@@ -69,7 +71,6 @@ public:
   [[nodiscard]] virtual std::shared_ptr<const Page> firstPage() const = 0;
 };
 
-} // namespace common
-} // namespace odr
+} // namespace odr::common
 
 #endif // ODR_COMMON_DOCUMENT_H

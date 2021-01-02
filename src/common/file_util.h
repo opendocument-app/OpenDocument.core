@@ -4,7 +4,7 @@
 #include <string>
 
 namespace odr::access::FileUtil {
-extern std::string read(const std::string &);
+std::string read(const std::string &path);
 } // namespace odr::access::FileUtil
 
 #endif // ODR_ACCESS_FILE_UTIL_H

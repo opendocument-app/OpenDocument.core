@@ -9,7 +9,6 @@
 #include <vector>
 
 namespace odr {
-
 class ImageFile;
 class DocumentFile;
 
@@ -62,9 +61,17 @@ enum class FileType {
 
 enum class FileCategory {
   UNKNOWN,
-  DOCUMENT,
+  TEXT,
   IMAGE,
   ARCHIVE,
+  DOCUMENT,
+};
+
+enum class FileLocation {
+  UNKNOWN,
+  MEMORY,
+  DISC,
+  NETWORK,
 };
 
 enum class EncryptionState {
