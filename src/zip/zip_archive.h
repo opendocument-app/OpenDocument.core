@@ -2,11 +2,12 @@
 #define ODR_ZIP_ARCHIVE_H
 
 #include <common/archive.h>
+#include <common/path.h>
 #include <miniz.h>
+#include <vector>
 
 namespace odr::zip {
 class ZipFile;
-class ZipArchiveEntry;
 
 class ZipArchive final : public common::Archive,
                          public std::enable_shared_from_this<ZipArchive> {
@@ -14,59 +15,42 @@ public:
   ZipArchive();
   explicit ZipArchive(std::shared_ptr<const ZipFile> file);
 
-  [[nodiscard]] std::shared_ptr<common::ArchiveDirectoryEntry>
-  root() const final;
-  [[nodiscard]] std::shared_ptr<common::ArchiveEntry>
-  entry(const common::Path &) const final;
-
   [[nodiscard]] std::shared_ptr<common::ArchiveEntry> first() const final;
+  [[nodiscard]] std::shared_ptr<common::ArchiveEntry>
+  find(const common::Path &path) const final;
 
-  void save(const common::Path &) const final;
+  [[nodiscard]] std::shared_ptr<common::ArchiveFileEntry>
+  create_default_file(const common::Path &path,
+                      std::shared_ptr<common::File> file) const final;
+  [[nodiscard]] std::shared_ptr<common::ArchiveDirectoryEntry>
+  create_default_directory(const common::Path &path) const final;
+
+  std::shared_ptr<common::ArchiveEntry>
+  append(std::shared_ptr<common::ArchiveEntry> entry) final;
+  void rename(std::shared_ptr<common::ArchiveEntry> entry,
+              const common::Path &path) const final;
+  void remove(std::shared_ptr<common::ArchiveEntry> entry) final;
+
+  void save(const common::Path &path) const final;
 
 private:
   std::shared_ptr<const ZipFile> m_file;
-
-  std::shared_ptr<common::ArchiveDirectoryEntry> m_root;
-  std::shared_ptr<common::ArchiveEntry> m_first;
+  std::shared_ptr<common::ArchiveFileEntry> m_first;
 };
 
-class ZipArchiveEntry : public virtual common::ArchiveEntry {
+class ZipArchiveFileEntry final : public common::ArchiveFileEntry {
 public:
-  ZipArchiveEntry(std::shared_ptr<const ZipArchive> archive, mz_uint index);
+  ZipArchiveFileEntry(common::Path path, std::shared_ptr<common::File> file);
 
-  [[nodiscard]] std::shared_ptr<ArchiveEntry> parent() const final;
-  [[nodiscard]] std::shared_ptr<ArchiveEntry> first_child() const final;
-  [[nodiscard]] std::shared_ptr<ArchiveEntry> previous_sibling() const final;
-  [[nodiscard]] std::shared_ptr<ArchiveEntry> next_sibling() const final;
+  [[nodiscard]] std::uint8_t compression_level() const;
+  void compression_level(std::uint8_t);
 
-  [[nodiscard]] std::shared_ptr<ArchiveEntry> previous_entry() const final;
-  [[nodiscard]] std::shared_ptr<ArchiveEntry> next_entry() const final;
-
-  [[nodiscard]] std::string name() const final;
-  [[nodiscard]] common::Path path() const final;
-
-private:
-  std::shared_ptr<const ZipArchive> m_archive;
-  mz_uint m_index;
-};
-
-class ZipArchiveFileEntry final : public common::ArchiveFileEntry,
-                                  public ZipArchiveEntry {
-public:
   [[nodiscard]] std::shared_ptr<common::File> open() const final;
 
 private:
-};
-
-class ZipArchiveDirectoryEntry final : public common::ArchiveDirectoryEntry,
-                                       public ZipArchiveEntry {
-public:
-  [[nodiscard]] std::shared_ptr<common::ArchiveDirectoryEntry>
-  create_directory(const std::string &) const final;
-  [[nodiscard]] std::shared_ptr<common::ArchiveFileEntry>
-  create_file(const std::string &) const final;
-
-private:
+  common::Path m_path;
+  std::shared_ptr<common::File> m_file;
+  std::uint8_t m_compression_level{6};
 };
 
 } // namespace odr::zip

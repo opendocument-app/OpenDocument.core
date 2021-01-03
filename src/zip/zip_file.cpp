@@ -10,8 +10,7 @@ namespace odr::zip {
 ZipFile::ZipFile(const common::Path &path)
     : ZipFile(std::make_shared<common::DiscFile>(path)) {}
 
-ZipFile::ZipFile(std::shared_ptr<common::DiscFile> file)
-    : m_file{std::move(file)} {
+ZipFile::ZipFile(std::shared_ptr<common::DiscFile> file) : m_file{file} {
   memset(&m_zip, 0, sizeof(m_zip));
   const mz_bool status =
       mz_zip_reader_init_file(&m_zip, file->path().string().data(),
