@@ -98,6 +98,7 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
+  explicit File(std::shared_ptr<common::File>);
   explicit File(const std::string &path);
   File(const std::string &path, FileType as);
 
@@ -111,8 +112,6 @@ public:
   DocumentFile documentFile() const;
 
 protected:
-  explicit File(std::shared_ptr<common::File>);
-
   std::shared_ptr<common::File> m_impl;
 };
 

@@ -19,10 +19,10 @@ public:
   [[nodiscard]] std::shared_ptr<common::ArchiveEntry>
   find(const common::Path &path) const final;
 
-  [[nodiscard]] std::shared_ptr<common::ArchiveFileEntry>
+  [[nodiscard]] std::shared_ptr<common::ArchiveEntry>
   create_default_file(const common::Path &path,
                       std::shared_ptr<common::File> file) const final;
-  [[nodiscard]] std::shared_ptr<common::ArchiveDirectoryEntry>
+  [[nodiscard]] std::shared_ptr<common::ArchiveEntry>
   create_default_directory(const common::Path &path) const final;
 
   std::shared_ptr<common::ArchiveEntry>
@@ -35,12 +35,12 @@ public:
 
 private:
   std::shared_ptr<const ZipFile> m_file;
-  std::shared_ptr<common::ArchiveFileEntry> m_first;
+  std::shared_ptr<common::ArchiveEntry> m_first;
 };
 
-class ZipArchiveFileEntry final : public common::ArchiveFileEntry {
+class ZipArchiveEntry final : public common::ArchiveEntry {
 public:
-  ZipArchiveFileEntry(common::Path path, std::shared_ptr<common::File> file);
+  ZipArchiveEntry(common::Path path, std::shared_ptr<common::File> file);
 
   [[nodiscard]] std::uint8_t compression_level() const;
   void compression_level(std::uint8_t);
