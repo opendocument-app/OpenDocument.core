@@ -1,12 +1,11 @@
-#include <common/archive.h>
-#include <odr/archive.h>
-
 #include <algorithm>
+#include <common/archive.h>
+#include <common/pointer_util.h>
+#include <odr/archive.h>
 #include <utility>
 
 namespace odr::common {
 
-namespace {
 class DefaultArchiveEntryIterator : public ArchiveEntryIterator {
 public:
   DefaultArchiveEntryIterator(
@@ -40,18 +39,6 @@ private:
 
   friend DefaultArchive;
 };
-} // namespace
-
-std::unique_ptr<ArchiveEntry>
-DefaultArchive::create_file(const common::Path &path,
-                            std::shared_ptr<File> file) const {
-  return std::make_unique<DefaultArchiveEntry>(path, std::move(file));
-}
-
-std::unique_ptr<ArchiveEntry>
-DefaultArchive::create_directory(const common::Path &path) const {
-  return std::make_unique<DefaultArchiveEntry>(path);
-}
 
 std::unique_ptr<ArchiveEntryIterator> DefaultArchive::begin() const {
   return std::make_unique<DefaultArchiveEntryIterator>(shared_from_this(),
@@ -68,55 +55,47 @@ DefaultArchive::find(const common::Path &path) const {
   auto result = std::find_if(std::begin(m_entries), std::end(m_entries),
                              [&path](const auto &e) {
                                // TODO deal with relative vs absolute paths
-                               return path == e.path();
+                               return path == e->path();
                              });
   return std::make_unique<DefaultArchiveEntryIterator>(shared_from_this(),
                                                        result);
 }
 
 std::unique_ptr<ArchiveEntryIterator>
-DefaultArchive::prepend(std::unique_ptr<ArchiveEntry> entry,
-                        std::unique_ptr<ArchiveEntryIterator> to) {
-  auto entry_tmp = std::dynamic_pointer_cast<DefaultArchiveEntry>(
-      std::shared_ptr<ArchiveEntry>(std::move(entry)));
+DefaultArchive::insert(std::unique_ptr<ArchiveEntryIterator> at,
+                       std::unique_ptr<ArchiveEntry> entry) {
+  auto at_tmp =
+      dynamic_pointer_cast<DefaultArchiveEntryIterator>(std::move(at));
+  if (!at_tmp)
+    return {}; // TODO throw
+
+  auto entry_tmp = dynamic_pointer_cast<DefaultArchiveEntry>(std::move(entry));
   if (!entry_tmp)
     return {}; // TODO throw
-  auto insert_it = m_entries.cbegin();
-  if (to) {
-    auto to_tmp = std::dynamic_pointer_cast<DefaultArchiveEntryIterator>(
-        std::shared_ptr<ArchiveEntryIterator>(std::move(to)));
-    if (!to_tmp)
-      return {}; // TODO throw
-    insert_it = to_tmp->m_iterator;
-  }
 
-  auto result = m_entries.insert(insert_it, std::move(entry_tmp));
+  return insert(std::move(at_tmp), std::move(entry_tmp));
+}
+
+std::unique_ptr<DefaultArchiveEntryIterator>
+DefaultArchive::insert(std::unique_ptr<DefaultArchiveEntryIterator> at,
+                       std::unique_ptr<DefaultArchiveEntry> entry) {
+  auto result = m_entries.insert(at->m_iterator, std::move(entry));
   return std::make_unique<DefaultArchiveEntryIterator>(shared_from_this(),
                                                        result);
 }
 
 std::unique_ptr<ArchiveEntryIterator>
-DefaultArchive::append(std::unique_ptr<ArchiveEntry> entry,
-                       std::unique_ptr<ArchiveEntryIterator> to) {
-  // TODO mostly duplicated from `prepend`
-  auto entry_tmp = std::dynamic_pointer_cast<DefaultArchiveEntry>(
-      std::shared_ptr<ArchiveEntry>(std::move(entry)));
-  if (!entry_tmp)
-    return {}; // TODO throw
-  auto insert_it = m_entries.cend();
-  if (to) {
-    auto to_tmp = std::dynamic_pointer_cast<DefaultArchiveEntryIterator>(
-        std::shared_ptr<ArchiveEntryIterator>(std::move(to)));
-    if (!to_tmp)
-      return {}; // TODO throw
-    insert_it = to_tmp->m_iterator;
-  }
-  if (insert_it != m_entries.cend())
-    ++insert_it;
+DefaultArchive::insert_file(std::unique_ptr<ArchiveEntryIterator> at,
+                            common::Path path, std::shared_ptr<File> file) {
+  return insert(std::move(at), std::make_unique<DefaultArchiveEntry>(
+                                   std::move(path), std::move(file)));
+}
 
-  auto result = m_entries.insert(insert_it, std::move(entry_tmp));
-  return std::make_unique<DefaultArchiveEntryIterator>(shared_from_this(),
-                                                       result);
+std::unique_ptr<ArchiveEntryIterator>
+DefaultArchive::insert_directory(std::unique_ptr<ArchiveEntryIterator> at,
+                                 common::Path path) {
+  return insert(std::move(at),
+                std::make_unique<DefaultArchiveEntry>(std::move(path)));
 }
 
 void DefaultArchive::move(std::shared_ptr<ArchiveEntry> entry,
@@ -124,6 +103,7 @@ void DefaultArchive::move(std::shared_ptr<ArchiveEntry> entry,
   auto tmp = std::dynamic_pointer_cast<DefaultArchiveEntry>(entry);
   if (!tmp)
     return; // TODO throw
+  // TODO check if entry is in `m_entry`
   if (*find(path) != *end())
     return; // TODO throw
   tmp->m_path = path;

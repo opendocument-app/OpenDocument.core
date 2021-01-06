@@ -49,7 +49,7 @@ std::size_t ZipFile::size() const { return m_file->size(); }
 
 std::unique_ptr<std::istream> ZipFile::data() const { return m_file->data(); }
 
-mz_zip_archive &ZipFile::impl() { return m_zip; }
+mz_zip_archive *ZipFile::impl() const { return &m_zip; }
 
 std::shared_ptr<ZipArchive> ZipFile::archive() const {
   return std::make_shared<ZipArchive>(shared_from_this());

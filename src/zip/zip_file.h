@@ -28,14 +28,14 @@ public:
 
   [[nodiscard]] std::unique_ptr<std::istream> data() const final;
 
-  [[nodiscard]] mz_zip_archive &impl();
+  [[nodiscard]] mz_zip_archive *impl() const;
 
   [[nodiscard]] std::shared_ptr<ZipArchive> archive() const;
 
 private:
   std::shared_ptr<common::File> m_file;
 
-  mz_zip_archive m_zip{};
+  mutable mz_zip_archive m_zip{};
 };
 
 } // namespace odr::zip

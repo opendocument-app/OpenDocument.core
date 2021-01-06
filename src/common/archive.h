@@ -21,22 +21,17 @@ class Archive {
 public:
   virtual ~Archive() = default;
 
-  [[nodiscard]] virtual std::unique_ptr<ArchiveEntry>
-  create_file(const common::Path &path, std::shared_ptr<File> file) const = 0;
-  [[nodiscard]] virtual std::unique_ptr<ArchiveEntry>
-  create_directory(const common::Path &path) const = 0;
-
   [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator> begin() const = 0;
   [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator> end() const = 0;
 
   [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator>
   find(const common::Path &path) const = 0;
   virtual std::unique_ptr<ArchiveEntryIterator>
-  prepend(std::unique_ptr<ArchiveEntry> entry,
-          std::unique_ptr<ArchiveEntryIterator> to) = 0;
+  insert_file(std::unique_ptr<ArchiveEntryIterator> at, common::Path path,
+              std::shared_ptr<File> file) = 0;
   virtual std::unique_ptr<ArchiveEntryIterator>
-  append(std::unique_ptr<ArchiveEntry> entry,
-         std::unique_ptr<ArchiveEntryIterator> to) = 0;
+  insert_directory(std::unique_ptr<ArchiveEntryIterator> at,
+                   common::Path path) = 0;
   virtual void move(std::shared_ptr<ArchiveEntry> entry,
                     const common::Path &path) const = 0;
   virtual void remove(std::shared_ptr<ArchiveEntry> entry) = 0;
@@ -66,33 +61,35 @@ public:
 };
 
 class DefaultArchiveEntry;
+class DefaultArchiveEntryIterator;
 
 class DefaultArchive : public Archive,
                        public std::enable_shared_from_this<DefaultArchive> {
 public:
-  [[nodiscard]] std::unique_ptr<ArchiveEntry>
-  create_file(const common::Path &path,
-              std::shared_ptr<File> file) const override;
-  [[nodiscard]] std::unique_ptr<ArchiveEntry>
-  create_directory(const common::Path &path) const override;
-
   [[nodiscard]] std::unique_ptr<ArchiveEntryIterator> begin() const override;
   [[nodiscard]] std::unique_ptr<ArchiveEntryIterator> end() const override;
 
   [[nodiscard]] std::unique_ptr<ArchiveEntryIterator>
   find(const common::Path &path) const override;
   std::unique_ptr<ArchiveEntryIterator>
-  prepend(std::unique_ptr<ArchiveEntry> entry,
-          std::unique_ptr<ArchiveEntryIterator> to) override;
+  insert_file(std::unique_ptr<ArchiveEntryIterator> at, common::Path path,
+              std::shared_ptr<File> file) override;
   std::unique_ptr<ArchiveEntryIterator>
-  append(std::unique_ptr<ArchiveEntry> entry,
-         std::unique_ptr<ArchiveEntryIterator> to) override;
+  insert_directory(std::unique_ptr<ArchiveEntryIterator> at,
+                   common::Path path) override;
   void move(std::shared_ptr<ArchiveEntry> entry,
             const common::Path &path) const override;
   void remove(std::shared_ptr<ArchiveEntry> entry) override;
 
-private:
+protected:
   std::vector<std::shared_ptr<DefaultArchiveEntry>> m_entries;
+
+  virtual std::unique_ptr<ArchiveEntryIterator>
+  insert(std::unique_ptr<ArchiveEntryIterator> at,
+         std::unique_ptr<ArchiveEntry> entry);
+  virtual std::unique_ptr<DefaultArchiveEntryIterator>
+  insert(std::unique_ptr<DefaultArchiveEntryIterator> at,
+         std::unique_ptr<DefaultArchiveEntry> entry);
 };
 
 class DefaultArchiveEntry : public virtual ArchiveEntry {
