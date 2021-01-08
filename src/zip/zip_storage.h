@@ -1,13 +1,13 @@
 #ifndef ODR_ZIP_STORAGE_H
 #define ODR_ZIP_STORAGE_H
 
-#include <common/storage.h>
+#include <abstract/storage.h>
 #include <exception>
 
 namespace odr::zip {
 class ZipWriter;
 
-class ZipReader final : public common::ReadStorage {
+class ZipReader final : public abstract::ReadStorage {
 public:
   ZipReader(const void *, std::uint64_t size);
   ZipReader(const std::string &zip, bool dummy);
@@ -32,7 +32,7 @@ private:
   friend ZipWriter;
 };
 
-class ZipWriter final : public common::WriteStorage {
+class ZipWriter final : public abstract::WriteStorage {
 public:
   explicit ZipWriter(const common::Path &);
   ~ZipWriter() final;

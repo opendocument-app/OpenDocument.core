@@ -6,7 +6,7 @@ namespace odr {
 
 Archive::Archive() = default;
 
-Archive::Archive(std::shared_ptr<common::Archive> impl)
+Archive::Archive(std::shared_ptr<abstract::Archive> impl)
     : m_impl{std::move(impl)} {}
 
 ArchiveEntryIterator Archive::begin() const {
@@ -31,7 +31,7 @@ void Archive::save(const std::string &path) const { return m_impl->save(path); }
 
 ArchiveEntry::ArchiveEntry() = default;
 
-ArchiveEntry::ArchiveEntry(std::shared_ptr<common::ArchiveEntry> impl)
+ArchiveEntry::ArchiveEntry(std::shared_ptr<abstract::ArchiveEntry> impl)
     : m_impl{std::move(impl)} {}
 
 bool ArchiveEntry::operator==(const ArchiveEntry &rhs) const {
@@ -56,7 +56,7 @@ std::optional<File> ArchiveEntry::open() const {
 }
 
 ArchiveEntryIterator::ArchiveEntryIterator(
-    std::shared_ptr<common::ArchiveEntryIterator> impl)
+    std::shared_ptr<abstract::ArchiveEntryIterator> impl)
     : m_impl{std::move(impl)} {}
 
 ArchiveEntryIterator &ArchiveEntryIterator::operator++() {

@@ -1,12 +1,12 @@
 #include <algorithm>
 #include <common/archive.h>
-#include <common/pointer_util.h>
 #include <odr/archive.h>
+#include <util/pointer_util.h>
 #include <utility>
 
 namespace odr::common {
 
-class DefaultArchiveEntryIterator : public ArchiveEntryIterator {
+class DefaultArchiveEntryIterator : public abstract::ArchiveEntryIterator {
 public:
   DefaultArchiveEntryIterator(
       std::shared_ptr<const DefaultArchive> archive,
@@ -29,7 +29,7 @@ public:
 
   void next() override { ++m_iterator; }
 
-  [[nodiscard]] std::shared_ptr<ArchiveEntry> entry() const override {
+  [[nodiscard]] std::shared_ptr<abstract::ArchiveEntry> entry() const override {
     return *m_iterator;
   }
 
@@ -40,17 +40,17 @@ private:
   friend DefaultArchive;
 };
 
-std::unique_ptr<ArchiveEntryIterator> DefaultArchive::begin() const {
+std::unique_ptr<abstract::ArchiveEntryIterator> DefaultArchive::begin() const {
   return std::make_unique<DefaultArchiveEntryIterator>(shared_from_this(),
                                                        std::begin(m_entries));
 }
 
-std::unique_ptr<ArchiveEntryIterator> DefaultArchive::end() const {
+std::unique_ptr<abstract::ArchiveEntryIterator> DefaultArchive::end() const {
   return std::make_unique<DefaultArchiveEntryIterator>(shared_from_this(),
                                                        std::end(m_entries));
 }
 
-std::unique_ptr<ArchiveEntryIterator>
+std::unique_ptr<abstract::ArchiveEntryIterator>
 DefaultArchive::find(const common::Path &path) const {
   auto result = std::find_if(std::begin(m_entries), std::end(m_entries),
                              [&path](const auto &e) {
@@ -61,15 +61,16 @@ DefaultArchive::find(const common::Path &path) const {
                                                        result);
 }
 
-std::unique_ptr<ArchiveEntryIterator>
-DefaultArchive::insert(std::unique_ptr<ArchiveEntryIterator> at,
-                       std::unique_ptr<ArchiveEntry> entry) {
+std::unique_ptr<abstract::ArchiveEntryIterator>
+DefaultArchive::insert(std::unique_ptr<abstract::ArchiveEntryIterator> at,
+                       std::unique_ptr<abstract::ArchiveEntry> entry) {
   auto at_tmp =
-      dynamic_pointer_cast<DefaultArchiveEntryIterator>(std::move(at));
+      util::dynamic_pointer_cast<DefaultArchiveEntryIterator>(std::move(at));
   if (!at_tmp)
     return {}; // TODO throw
 
-  auto entry_tmp = dynamic_pointer_cast<DefaultArchiveEntry>(std::move(entry));
+  auto entry_tmp =
+      util::dynamic_pointer_cast<DefaultArchiveEntry>(std::move(entry));
   if (!entry_tmp)
     return {}; // TODO throw
 
@@ -84,21 +85,22 @@ DefaultArchive::insert(std::unique_ptr<DefaultArchiveEntryIterator> at,
                                                        result);
 }
 
-std::unique_ptr<ArchiveEntryIterator>
-DefaultArchive::insert_file(std::unique_ptr<ArchiveEntryIterator> at,
-                            common::Path path, std::shared_ptr<File> file) {
+std::unique_ptr<abstract::ArchiveEntryIterator>
+DefaultArchive::insert_file(std::unique_ptr<abstract::ArchiveEntryIterator> at,
+                            common::Path path,
+                            std::shared_ptr<abstract::File> file) {
   return insert(std::move(at), std::make_unique<DefaultArchiveEntry>(
                                    std::move(path), std::move(file)));
 }
 
-std::unique_ptr<ArchiveEntryIterator>
-DefaultArchive::insert_directory(std::unique_ptr<ArchiveEntryIterator> at,
-                                 common::Path path) {
+std::unique_ptr<abstract::ArchiveEntryIterator>
+DefaultArchive::insert_directory(
+    std::unique_ptr<abstract::ArchiveEntryIterator> at, common::Path path) {
   return insert(std::move(at),
                 std::make_unique<DefaultArchiveEntry>(std::move(path)));
 }
 
-void DefaultArchive::move(std::shared_ptr<ArchiveEntry> entry,
+void DefaultArchive::move(std::shared_ptr<abstract::ArchiveEntry> entry,
                           const common::Path &path) const {
   auto tmp = std::dynamic_pointer_cast<DefaultArchiveEntry>(entry);
   if (!tmp)
@@ -109,7 +111,7 @@ void DefaultArchive::move(std::shared_ptr<ArchiveEntry> entry,
   tmp->m_path = path;
 }
 
-void DefaultArchive::remove(std::shared_ptr<ArchiveEntry> entry) {
+void DefaultArchive::remove(std::shared_ptr<abstract::ArchiveEntry> entry) {
   auto it = std::find_if(std::begin(m_entries), std::end(m_entries),
                          [&entry](const auto &e) { return entry = e; });
 
@@ -121,7 +123,7 @@ DefaultArchiveEntry::DefaultArchiveEntry(common::Path path)
     : DefaultArchiveEntry(std::move(path), {}) {}
 
 DefaultArchiveEntry::DefaultArchiveEntry(common::Path path,
-                                         std::shared_ptr<File> file)
+                                         std::shared_ptr<abstract::File> file)
     : m_path{std::move(path)}, m_file{std::move(file)} {}
 
 ArchiveEntryType DefaultArchiveEntry::type() const {
@@ -132,6 +134,8 @@ ArchiveEntryType DefaultArchiveEntry::type() const {
 
 common::Path DefaultArchiveEntry::path() const { return m_path; }
 
-std::shared_ptr<File> DefaultArchiveEntry::open() const { return m_file; }
+std::shared_ptr<abstract::File> DefaultArchiveEntry::open() const {
+  return m_file;
+}
 
 } // namespace odr::common

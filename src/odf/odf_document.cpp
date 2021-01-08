@@ -1,28 +1,28 @@
 #include <common/path.h>
-#include <common/stream_util.h>
-#include <common/xml_util.h>
 #include <odf/odf_crypto.h>
 #include <odf/odf_document.h>
 #include <odf/odf_elements.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
+#include <util/stream_util.h>
+#include <util/xml_util.h>
 #include <zip/zip_storage.h>
 
 namespace odr::odf {
 
-OpenDocument::OpenDocument(std::shared_ptr<common::ReadStorage> storage)
+OpenDocument::OpenDocument(std::shared_ptr<abstract::ReadStorage> storage)
     : m_storage{std::move(storage)} {
-  m_contentXml = common::XmlUtil::parse(*m_storage, "content.xml");
+  m_contentXml = util::xml::parse(*m_storage, "content.xml");
 
   if (m_storage->isFile("meta.xml")) {
-    auto meta = common::XmlUtil::parse(*m_storage, "meta.xml");
+    auto meta = util::xml::parse(*m_storage, "meta.xml");
     m_document_meta = parseDocumentMeta(&meta, m_contentXml);
   } else {
     m_document_meta = parseDocumentMeta(nullptr, m_contentXml);
   }
 
   if (m_storage->isFile("styles.xml"))
-    m_stylesXml = common::XmlUtil::parse(*m_storage, "styles.xml");
+    m_stylesXml = util::xml::parse(*m_storage, "styles.xml");
   m_styles =
       Styles(m_stylesXml.document_element(), m_contentXml.document_element());
 }
@@ -39,7 +39,7 @@ DocumentMeta OpenDocument::documentMeta() const noexcept {
   return m_document_meta;
 }
 
-std::shared_ptr<common::ReadStorage> OpenDocument::storage() const noexcept {
+std::shared_ptr<abstract::ReadStorage> OpenDocument::storage() const noexcept {
   return m_storage;
 }
 
@@ -54,7 +54,7 @@ void OpenDocument::save(const common::Path &path) const {
   if (m_storage->isFile("mimetype")) {
     const auto in = m_storage->read("mimetype");
     const auto out = writer.write("mimetype", 0);
-    common::StreamUtil::pipe(*in, *out);
+    util::stream::pipe(*in, *out);
   }
 
   m_storage->visit([&](const auto &p) {
@@ -71,7 +71,7 @@ void OpenDocument::save(const common::Path &path) const {
       m_contentXml.print(*out);
       return;
     }
-    common::StreamUtil::pipe(*in, *out);
+    util::stream::pipe(*in, *out);
   });
 }
 
@@ -80,76 +80,78 @@ void OpenDocument::save(const common::Path &path,
   // TODO throw if not savable
 }
 
-OpenDocumentText::OpenDocumentText(std::shared_ptr<common::ReadStorage> storage)
+OpenDocumentText::OpenDocumentText(
+    std::shared_ptr<abstract::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
-std::shared_ptr<const common::Element> OpenDocumentText::root() const {
+std::shared_ptr<const abstract::Element> OpenDocumentText::root() const {
   const pugi::xml_node body =
       m_contentXml.document_element().child("office:body").child("office:text");
   return factorizeRoot(shared_from_this(), body);
 }
 
-std::shared_ptr<common::PageStyle> OpenDocumentText::pageStyle() const {
+std::shared_ptr<abstract::PageStyle> OpenDocumentText::pageStyle() const {
   return m_styles.defaultPageStyle();
 }
 
 OpenDocumentPresentation::OpenDocumentPresentation(
-    std::shared_ptr<common::ReadStorage> storage)
+    std::shared_ptr<abstract::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 std::uint32_t OpenDocumentPresentation::slideCount() const {
   return 0; // TODO
 }
 
-std::shared_ptr<const common::Element> OpenDocumentPresentation::root() const {
+std::shared_ptr<const abstract::Element>
+OpenDocumentPresentation::root() const {
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:presentation");
   return factorizeRoot(shared_from_this(), body);
 }
 
-std::shared_ptr<const common::Slide>
+std::shared_ptr<const abstract::Slide>
 OpenDocumentPresentation::firstSlide() const {
-  return std::dynamic_pointer_cast<const common::Slide>(root()->firstChild());
+  return std::dynamic_pointer_cast<const abstract::Slide>(root()->firstChild());
 }
 
 OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
-    std::shared_ptr<common::ReadStorage> storage)
+    std::shared_ptr<abstract::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 std::uint32_t OpenDocumentSpreadsheet::sheetCount() const {
   return 0; // TODO
 }
 
-std::shared_ptr<const common::Element> OpenDocumentSpreadsheet::root() const {
+std::shared_ptr<const abstract::Element> OpenDocumentSpreadsheet::root() const {
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:spreadsheet");
   return factorizeRoot(shared_from_this(), body);
 }
 
-std::shared_ptr<const common::Sheet>
+std::shared_ptr<const abstract::Sheet>
 OpenDocumentSpreadsheet::firstSheet() const {
-  return std::dynamic_pointer_cast<const common::Sheet>(root()->firstChild());
+  return std::dynamic_pointer_cast<const abstract::Sheet>(root()->firstChild());
 }
 
 OpenDocumentDrawing::OpenDocumentDrawing(
-    std::shared_ptr<common::ReadStorage> storage)
+    std::shared_ptr<abstract::ReadStorage> storage)
     : OpenDocument(std::move(storage)) {}
 
 std::uint32_t OpenDocumentDrawing::pageCount() const {
   return 0; // TODO
 }
 
-std::shared_ptr<const common::Element> OpenDocumentDrawing::root() const {
+std::shared_ptr<const abstract::Element> OpenDocumentDrawing::root() const {
   const pugi::xml_node body = m_contentXml.document_element()
                                   .child("office:body")
                                   .child("office:drawing");
   return factorizeRoot(shared_from_this(), body);
 }
 
-std::shared_ptr<const common::Page> OpenDocumentDrawing::firstPage() const {
-  return std::dynamic_pointer_cast<const common::Page>(root()->firstChild());
+std::shared_ptr<const abstract::Page> OpenDocumentDrawing::firstPage() const {
+  return std::dynamic_pointer_cast<const abstract::Page>(root()->firstChild());
 }
 
 } // namespace odr::odf

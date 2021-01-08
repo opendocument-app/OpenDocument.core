@@ -1,16 +1,10 @@
-#include <common/document.h>
 #include <common/file.h>
 #include <filesystem>
 #include <fstream>
-#include <odr/document.h>
 #include <odr/file.h>
 #include <sstream>
 
 namespace odr::common {
-
-FileCategory File::fileCategory() const noexcept {
-  return FileMeta::categoryByType(fileType());
-}
 
 DiscFile::DiscFile(const char *path) : m_path{path} {}
 
@@ -36,6 +30,18 @@ std::unique_ptr<std::istream> DiscFile::data() const {
   return std::make_unique<std::ifstream>(m_path, std::ifstream::binary);
 }
 
+TemporaryDiscFile::TemporaryDiscFile(const char *path) : DiscFile{path} {}
+
+TemporaryDiscFile::TemporaryDiscFile(std::string path)
+    : DiscFile{std::move(path)} {}
+
+TemporaryDiscFile::TemporaryDiscFile(common::Path path)
+    : DiscFile{std::move(path)} {}
+
+TemporaryDiscFile::~TemporaryDiscFile() {
+  std::filesystem::remove(path().string());
+}
+
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
 
 FileType MemoryFile::fileType() const noexcept { return FileType::UNKNOWN; }
@@ -52,26 +58,6 @@ const std::string &MemoryFile::content() const { return m_data; }
 
 std::unique_ptr<std::istream> MemoryFile::data() const {
   return std::make_unique<std::istringstream>(m_data);
-}
-
-FileCategory TextFile::fileCategory() const noexcept {
-  return FileCategory::TEXT;
-}
-
-FileCategory ImageFile::fileCategory() const noexcept {
-  return FileCategory::IMAGE;
-}
-
-FileCategory ArchiveFile::fileCategory() const noexcept {
-  return FileCategory::ARCHIVE;
-}
-
-DocumentType DocumentFile::documentType() const {
-  return document()->documentType();
-}
-
-DocumentMeta DocumentFile::documentMeta() const {
-  return document()->documentMeta();
 }
 
 } // namespace odr::common

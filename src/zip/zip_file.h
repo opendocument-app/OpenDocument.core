@@ -11,7 +11,7 @@ class Path;
 namespace odr::zip {
 class ZipArchive;
 
-class ZipFile final : public common::File,
+class ZipFile final : public abstract::File,
                       public std::enable_shared_from_this<ZipFile> {
 public:
   explicit ZipFile(const common::Path &path);
@@ -33,7 +33,7 @@ public:
   [[nodiscard]] std::shared_ptr<ZipArchive> archive() const;
 
 private:
-  std::shared_ptr<common::File> m_file;
+  std::shared_ptr<abstract::File> m_file;
 
   mutable mz_zip_archive m_zip{};
 };

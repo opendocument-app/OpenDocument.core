@@ -1,21 +1,20 @@
-#include <common/storage.h>
-#include <common/storage_util.h>
-#include <common/stream_util.h>
+#include <abstract/storage.h>
 #include <crypto/crypto_util.h>
 #include <odf/odf_crypto.h>
+#include <odr/exceptions.h>
 #include <sstream>
+#include <util/stream_util.h>
 
 namespace odr::odf {
 
-bool Crypto::canDecrypt(const Manifest::Entry &entry) noexcept {
+bool can_decrypt(const Manifest::Entry &entry) noexcept {
   return entry.checksumType != ChecksumType::UNKNOWN &&
          entry.algorithm != AlgorithmType::UNKNOWN &&
          entry.keyDerivation != KeyDerivationType::UNKNOWN &&
          entry.startKeyGeneration != ChecksumType::UNKNOWN;
 }
 
-std::string Crypto::hash(const std::string &input,
-                         const ChecksumType checksumType) {
+std::string hash(const std::string &input, const ChecksumType checksumType) {
   switch (checksumType) {
   case ChecksumType::SHA256:
     return crypto::Util::sha256(input);
@@ -30,10 +29,9 @@ std::string Crypto::hash(const std::string &input,
   }
 }
 
-std::string Crypto::decrypt(const std::string &input,
-                            const std::string &derivedKey,
-                            const std::string &initialisationVector,
-                            const AlgorithmType algorithm) {
+std::string decrypt(const std::string &input, const std::string &derivedKey,
+                    const std::string &initialisationVector,
+                    const AlgorithmType algorithm) {
   switch (algorithm) {
   case AlgorithmType::AES256_CBC:
     return crypto::Util::decryptAES(derivedKey, initialisationVector, input);
@@ -48,25 +46,25 @@ std::string Crypto::decrypt(const std::string &input,
   }
 }
 
-std::string Crypto::startKey(const Manifest::Entry &entry,
-                             const std::string &password) {
+std::string start_key(const Manifest::Entry &entry,
+                      const std::string &password) {
   const std::string result = hash(password, entry.startKeyGeneration);
   if (result.size() < entry.startKeySize)
     throw std::invalid_argument("hash too small");
   return result.substr(0, entry.startKeySize);
 }
 
-std::string Crypto::deriveKeyAndDecrypt(const Manifest::Entry &entry,
-                                        const std::string &startKey,
-                                        const std::string &input) {
+std::string derive_key_and_decrypt(const Manifest::Entry &entry,
+                                   const std::string &startKey,
+                                   const std::string &input) {
   const std::string derivedKey = crypto::Util::pbkdf2(
       entry.keySize, startKey, entry.keySalt, entry.keyIterationCount);
   return decrypt(input, derivedKey, entry.initialisationVector,
                  entry.algorithm);
 }
 
-bool Crypto::validatePassword(const Manifest::Entry &entry,
-                              std::string decrypted) noexcept {
+bool validate_password(const Manifest::Entry &entry,
+                       std::string decrypted) noexcept {
   try {
     const std::size_t padding = crypto::Util::padding(decrypted);
     decrypted = decrypted.substr(0, decrypted.size() - padding);
@@ -78,14 +76,14 @@ bool Crypto::validatePassword(const Manifest::Entry &entry,
 }
 
 namespace {
-class CryptoOpenDocumentFile : public common::ReadStorage {
+class CryptoOpenDocumentFile : public abstract::ReadStorage {
 public:
-  const std::shared_ptr<ReadStorage> parent;
+  const std::shared_ptr<abstract::ReadStorage> parent;
   const Manifest manifest;
   const std::string startKey;
 
-  CryptoOpenDocumentFile(std::shared_ptr<ReadStorage> parent, Manifest manifest,
-                         std::string startKey)
+  CryptoOpenDocumentFile(std::shared_ptr<abstract::ReadStorage> parent,
+                         Manifest manifest, std::string startKey)
       : parent(std::move(parent)), manifest(std::move(manifest)),
         startKey(std::move(startKey)) {}
 
@@ -113,31 +111,31 @@ public:
     const auto it = manifest.entries.find(path);
     if (it == manifest.entries.end())
       return parent->read(path);
-    if (!Crypto::canDecrypt(it->second))
-      throw UnsupportedCryptoAlgorithmException();
+    if (!can_decrypt(it->second))
+      throw UnsupportedCryptoAlgorithm();
     // TODO stream
     auto source = parent->read(path);
-    const std::string input = common::StreamUtil::read(*source);
+    const std::string input = util::stream::read(*source);
     std::string result = crypto::Util::inflate(
-        Crypto::deriveKeyAndDecrypt(it->second, startKey, input));
+        derive_key_and_decrypt(it->second, startKey, input));
     return std::make_unique<std::istringstream>(std::move(result));
   }
 };
 } // namespace
 
-bool Crypto::decrypt(std::shared_ptr<common::ReadStorage> &storage,
-                     const Manifest &manifest, const std::string &password) {
+bool decrypt(std::shared_ptr<abstract::ReadStorage> &storage,
+             const Manifest &manifest, const std::string &password) {
   if (!manifest.encrypted)
     return true;
-  if (!canDecrypt(*manifest.smallestFileEntry))
-    throw UnsupportedCryptoAlgorithmException();
+  if (!can_decrypt(*manifest.smallestFileEntry))
+    throw UnsupportedCryptoAlgorithm();
   const std::string startKey =
-      Crypto::startKey(*manifest.smallestFileEntry, password);
+      odf::start_key(*manifest.smallestFileEntry, password);
   const std::string input =
-      common::StorageUtil::read(*storage, *manifest.smallestFilePath);
+      util::stream::read(*storage->read(*manifest.smallestFilePath));
   const std::string decrypt =
-      deriveKeyAndDecrypt(*manifest.smallestFileEntry, startKey, input);
-  if (!validatePassword(*manifest.smallestFileEntry, decrypt))
+      derive_key_and_decrypt(*manifest.smallestFileEntry, startKey, input);
+  if (!validate_password(*manifest.smallestFileEntry, decrypt))
     return false;
   storage = std::make_shared<CryptoOpenDocumentFile>(std::move(storage),
                                                      manifest, startKey);

@@ -4,11 +4,11 @@
 #include <memory>
 #include <optional>
 
-namespace odr::common {
+namespace odr::abstract {
 class Archive;
 class ArchiveEntry;
 class ArchiveEntryIterator;
-} // namespace odr::common
+} // namespace odr::abstract
 
 namespace odr {
 class File;
@@ -25,7 +25,7 @@ enum class ArchiveEntryType {
 class Archive final {
 public:
   Archive();
-  explicit Archive(std::shared_ptr<common::Archive> impl);
+  explicit Archive(std::shared_ptr<abstract::Archive> impl);
 
   [[nodiscard]] ArchiveEntryIterator begin() const;
   [[nodiscard]] ArchiveEntryIterator end() const;
@@ -37,13 +37,13 @@ public:
   void save(const std::string &path) const;
 
 private:
-  std::shared_ptr<common::Archive> m_impl;
+  std::shared_ptr<abstract::Archive> m_impl;
 };
 
 class ArchiveEntry final {
 public:
   ArchiveEntry();
-  explicit ArchiveEntry(std::shared_ptr<common::ArchiveEntry> impl);
+  explicit ArchiveEntry(std::shared_ptr<abstract::ArchiveEntry> impl);
 
   bool operator==(const ArchiveEntry &rhs) const;
   bool operator!=(const ArchiveEntry &rhs) const;
@@ -55,7 +55,7 @@ public:
   [[nodiscard]] std::optional<File> open() const;
 
 private:
-  std::shared_ptr<common::ArchiveEntry> m_impl;
+  std::shared_ptr<abstract::ArchiveEntry> m_impl;
 
   friend Archive;
 };
@@ -69,7 +69,7 @@ public:
   using reference = ArchiveEntry &;
 
   explicit ArchiveEntryIterator(
-      std::shared_ptr<common::ArchiveEntryIterator> impl);
+      std::shared_ptr<abstract::ArchiveEntryIterator> impl);
 
   ArchiveEntryIterator &operator++();
   ArchiveEntryIterator operator++(int) &;
@@ -79,7 +79,7 @@ public:
   bool operator!=(const ArchiveEntryIterator &rhs) const;
 
 private:
-  std::shared_ptr<common::ArchiveEntryIterator> m_impl;
+  std::shared_ptr<abstract::ArchiveEntryIterator> m_impl;
   ArchiveEntry m_entry;
 };
 

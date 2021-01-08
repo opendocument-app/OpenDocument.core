@@ -1,12 +1,13 @@
 #include <cfb/cfb_storage.h>
 #include <codecvt>
-#include <common/file_util.h>
 #include <common/path.h>
 #include <cstdint>
 #include <cstring>
 #include <functional>
 #include <locale>
+#include <odr/exceptions.h>
 #include <stdexcept>
+#include <util/file_util.h>
 
 namespace odr::cfb {
 
@@ -97,18 +98,18 @@ public:
 
     if (m_bufferLen < sizeof(*m_hdr) ||
         std::memcmp(m_hdr->signature, MAGIC, 8) != 0) {
-      throw NoCfbFileException();
+      throw NoCfbFile();
     }
 
     m_sectorSize = m_hdr->majorVersion == 3 ? 512 : 4096;
 
     // The file must contains at least 3 sectors
     if (m_bufferLen < m_sectorSize * 3)
-      throw CfbFileCorruptedException();
+      throw CfbFileCorrupted();
 
     const CompoundFileEntry *root = GetEntry(0);
     if (root == nullptr)
-      throw CfbFileCorruptedException();
+      throw CfbFileCorrupted();
 
     m_miniStreamStartSector = root->startSectorLocation;
   }
@@ -207,7 +208,7 @@ private:
       const std::uint8_t *src = SectorOffsetToAddress(sector, offset);
       std::size_t copylen = std::min(len, m_sectorSize - offset);
       if (m_buffer + m_bufferLen < src + copylen)
-        throw CfbFileCorruptedException();
+        throw CfbFileCorrupted();
 
       std::memcpy(buffer, src, copylen);
       buffer += copylen;
@@ -229,7 +230,7 @@ private:
       const std::uint8_t *src = MiniSectorOffsetToAddress(sector, offset);
       std::size_t copylen = std::min(len, m_miniSectorSize - offset);
       if (m_buffer + m_bufferLen < src + copylen)
-        throw CfbFileCorruptedException();
+        throw CfbFileCorrupted();
 
       std::memcpy(buffer, src, copylen);
       buffer += copylen;
@@ -261,7 +262,7 @@ private:
     if (sector >= MAX_REG_SECT || offset >= m_sectorSize ||
         m_bufferLen <= static_cast<std::uint64_t>(m_sectorSize) * sector +
                            m_sectorSize + offset) {
-      throw CfbFileCorruptedException();
+      throw CfbFileCorrupted();
     }
 
     return m_buffer + m_sectorSize + m_sectorSize * sector + offset;
@@ -272,7 +273,7 @@ private:
     if (sector >= MAX_REG_SECT || offset >= m_miniSectorSize ||
         m_bufferLen <=
             static_cast<std::uint64_t>(m_miniSectorSize) * sector + offset) {
-      throw CfbFileCorruptedException();
+      throw CfbFileCorrupted();
     }
 
     LocateFinalSector(m_miniStreamStartSector,
@@ -342,7 +343,7 @@ public:
         m_bufferLen < sizeof(*m_hdr) +
                           (m_hdr->numProperties - 1) *
                               sizeof(m_hdr->propertyIdentifierAndOffset[0])) {
-      throw CfbFileCorruptedException();
+      throw CfbFileCorrupted();
     }
   }
 
@@ -352,10 +353,10 @@ public:
       if (m_hdr->propertyIdentifierAndOffset[i].id == propertyID) {
         std::uint32_t offset = m_hdr->propertyIdentifierAndOffset[i].offset;
         if (m_bufferLen < offset + 8)
-          throw CfbFileCorruptedException();
+          throw CfbFileCorrupted();
         std::uint32_t stringLengthInChar = ParseUint32(m_buffer + offset + 4);
         if (m_bufferLen < offset + 8 + stringLengthInChar * 2)
-          throw CfbFileCorruptedException();
+          throw CfbFileCorrupted();
         return reinterpret_cast<const std::uint16_t *>(m_buffer + offset + 8);
       }
     }
@@ -385,7 +386,7 @@ public:
     if (m_bufferLen < sizeof(*m_hdr) ||
         m_bufferLen < sizeof(*m_hdr) + (m_hdr->numPropertySets - 1) *
                                            sizeof(m_hdr->propertySetInfo[0])) {
-      throw CfbFileCorruptedException();
+      throw CfbFileCorrupted();
     }
   }
 
@@ -393,13 +394,13 @@ public:
 
   PropertySet GetPropertySet(std::size_t index) {
     if (index >= GetPropertySetCount())
-      throw CfbFileCorruptedException();
+      throw CfbFileCorrupted();
     std::uint32_t offset = m_hdr->propertySetInfo[index].offset;
     if (m_bufferLen < offset + 4)
-      throw CfbFileCorruptedException();
+      throw CfbFileCorrupted();
     std::uint32_t size = ParseUint32(m_buffer + offset);
     if (m_bufferLen < offset + size)
-      throw CfbFileCorruptedException();
+      throw CfbFileCorrupted();
     return {m_buffer + offset, size, m_hdr->propertySetInfo[index].fmtid};
   }
 
@@ -464,8 +465,7 @@ typedef std::function<void(const CFB::CompoundFileEntry *,
 class CfbReader::Impl final {
 public:
   explicit Impl(const common::Path &path)
-      : buffer(common::FileUtil::read(path)),
-        reader(buffer.data(), buffer.size()) {}
+      : buffer{util::file::read(path)}, reader{buffer.data(), buffer.size()} {}
 
   void visit(CfbVisitor visitor) const {
     reader.EnumFiles(

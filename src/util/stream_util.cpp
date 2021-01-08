@@ -1,16 +1,16 @@
-#include <common/stream_util.h>
+#include <util/stream_util.h>
 
-namespace odr::common {
+namespace odr::util {
 
 namespace {
 constexpr std::uint32_t BUFFER_SIZE = 4096;
 }
 
-std::string StreamUtil::read(std::istream &in) {
+std::string stream::read(std::istream &in) {
   return std::string{std::istreambuf_iterator<char>(in), {}};
 }
 
-void StreamUtil::pipe(std::istream &in, std::ostream &out) {
+void stream::pipe(std::istream &in, std::ostream &out) {
   char buffer[BUFFER_SIZE];
 
   while (true) {
@@ -22,4 +22,4 @@ void StreamUtil::pipe(std::istream &in, std::ostream &out) {
   }
 }
 
-} // namespace odr::common
+} // namespace odr::util

@@ -1,6 +1,5 @@
-#include <common/document_style.h>
+#include <abstract/document_style.h>
 #include <common/property.h>
-#include <common/xml_properties.h>
 #include <cstring>
 #include <odf/odf_style.h>
 #include <odr/document.h>
@@ -15,42 +14,42 @@ void attributesToMap(pugi::xml_node node,
   }
 }
 
-class PageStyle final : public common::PageStyle {
+class PageStyle final : public abstract::PageStyle {
 public:
   explicit PageStyle(pugi::xml_node pageLayoutProp)
       : m_pageLayoutProp{pageLayoutProp} {}
 
-  std::shared_ptr<common::Property> width() const final {
+  std::shared_ptr<abstract::Property> width() const final {
     return std::make_shared<common::XmlAttributeProperty>(
         m_pageLayoutProp.attribute("fo:page-width"));
   }
 
-  std::shared_ptr<common::Property> height() const final {
+  std::shared_ptr<abstract::Property> height() const final {
     return std::make_shared<common::XmlAttributeProperty>(
         m_pageLayoutProp.attribute("fo:page-height"));
   }
 
-  std::shared_ptr<common::Property> marginTop() const final {
+  std::shared_ptr<abstract::Property> marginTop() const final {
     return std::make_shared<common::XmlAttributeProperty>(
         m_pageLayoutProp.attribute("fo:margin-top"));
   }
 
-  std::shared_ptr<common::Property> marginBottom() const final {
+  std::shared_ptr<abstract::Property> marginBottom() const final {
     return std::make_shared<common::XmlAttributeProperty>(
         m_pageLayoutProp.attribute("fo:margin-bottom"));
   }
 
-  std::shared_ptr<common::Property> marginLeft() const final {
+  std::shared_ptr<abstract::Property> marginLeft() const final {
     return std::make_shared<common::XmlAttributeProperty>(
         m_pageLayoutProp.attribute("fo:margin-left"));
   }
 
-  std::shared_ptr<common::Property> marginRight() const final {
+  std::shared_ptr<abstract::Property> marginRight() const final {
     return std::make_shared<common::XmlAttributeProperty>(
         m_pageLayoutProp.attribute("fo:margin-right"));
   }
 
-  std::shared_ptr<common::Property> printOrientation() const final {
+  std::shared_ptr<abstract::Property> printOrientation() const final {
     return std::make_shared<common::XmlAttributeProperty>(
         m_pageLayoutProp.attribute("style:print-orientation"));
   }
@@ -59,33 +58,33 @@ private:
   pugi::xml_node m_pageLayoutProp;
 };
 
-class TextStyle final : public common::TextStyle {
+class TextStyle final : public abstract::TextStyle {
 public:
   explicit TextStyle(
       std::unordered_map<std::string, std::string> textProperties)
       : m_textProperties{std::move(textProperties)} {}
 
-  std::shared_ptr<common::Property> fontName() const final {
+  std::shared_ptr<abstract::Property> fontName() const final {
     return ResolvedStyle::lookup(m_textProperties, "style:font-name");
   }
 
-  std::shared_ptr<common::Property> fontSize() const final {
+  std::shared_ptr<abstract::Property> fontSize() const final {
     return ResolvedStyle::lookup(m_textProperties, "fo:font-size");
   }
 
-  std::shared_ptr<common::Property> fontWeight() const final {
+  std::shared_ptr<abstract::Property> fontWeight() const final {
     return ResolvedStyle::lookup(m_textProperties, "fo:font-weight");
   }
 
-  std::shared_ptr<common::Property> fontStyle() const final {
+  std::shared_ptr<abstract::Property> fontStyle() const final {
     return ResolvedStyle::lookup(m_textProperties, "fo:font-style");
   }
 
-  std::shared_ptr<common::Property> fontColor() const final {
+  std::shared_ptr<abstract::Property> fontColor() const final {
     return ResolvedStyle::lookup(m_textProperties, "fo:color");
   }
 
-  std::shared_ptr<common::Property> backgroundColor() const final {
+  std::shared_ptr<abstract::Property> backgroundColor() const final {
     return ResolvedStyle::lookup(m_textProperties, "fo:background-color");
   }
 
@@ -93,24 +92,24 @@ private:
   std::unordered_map<std::string, std::string> m_textProperties;
 };
 
-class ParagraphStyle final : public common::ParagraphStyle {
+class ParagraphStyle final : public abstract::ParagraphStyle {
 public:
   explicit ParagraphStyle(
       std::unordered_map<std::string, std::string> paragraphProperties)
       : m_paragraphProperties{std::move(paragraphProperties)} {}
 
-  std::shared_ptr<common::Property> textAlign() const final {
+  std::shared_ptr<abstract::Property> textAlign() const final {
     return ResolvedStyle::lookup(m_paragraphProperties, "fo:text-align");
   }
 
-  std::shared_ptr<common::Property> marginTop() const final {
+  std::shared_ptr<abstract::Property> marginTop() const final {
     auto result = ResolvedStyle::lookup(m_paragraphProperties, "fo:margin-top");
     if (!result)
       result = ResolvedStyle::lookup(m_paragraphProperties, "fo:margin");
     return result;
   }
 
-  std::shared_ptr<common::Property> marginBottom() const final {
+  std::shared_ptr<abstract::Property> marginBottom() const final {
     auto result =
         ResolvedStyle::lookup(m_paragraphProperties, "fo:margin-bottom");
     if (!result)
@@ -118,7 +117,7 @@ public:
     return result;
   }
 
-  std::shared_ptr<common::Property> marginLeft() const final {
+  std::shared_ptr<abstract::Property> marginLeft() const final {
     auto result =
         ResolvedStyle::lookup(m_paragraphProperties, "fo:margin-left");
     if (!result)
@@ -126,7 +125,7 @@ public:
     return result;
   }
 
-  std::shared_ptr<common::Property> marginRight() const final {
+  std::shared_ptr<abstract::Property> marginRight() const final {
     auto result =
         ResolvedStyle::lookup(m_paragraphProperties, "fo:margin-right");
     if (!result)
@@ -138,13 +137,13 @@ private:
   std::unordered_map<std::string, std::string> m_paragraphProperties;
 };
 
-class TableStyle final : public common::TableStyle {
+class TableStyle final : public abstract::TableStyle {
 public:
   explicit TableStyle(
       std::unordered_map<std::string, std::string> tableProperties)
       : m_tableProperties{std::move(tableProperties)} {}
 
-  std::shared_ptr<common::Property> width() const final {
+  std::shared_ptr<abstract::Property> width() const final {
     return ResolvedStyle::lookup(m_tableProperties, "style:width");
   }
 
@@ -152,13 +151,13 @@ private:
   std::unordered_map<std::string, std::string> m_tableProperties;
 };
 
-class TableColumnStyle final : public common::TableColumnStyle {
+class TableColumnStyle final : public abstract::TableColumnStyle {
 public:
   explicit TableColumnStyle(
       std::unordered_map<std::string, std::string> tableColumnProperties)
       : m_tableColumnProperties{std::move(tableColumnProperties)} {}
 
-  std::shared_ptr<common::Property> width() const final {
+  std::shared_ptr<abstract::Property> width() const final {
     return ResolvedStyle::lookup(m_tableColumnProperties, "style:column-width");
   }
 
@@ -166,13 +165,13 @@ private:
   std::unordered_map<std::string, std::string> m_tableColumnProperties;
 };
 
-class TableCellStyle final : public common::TableCellStyle {
+class TableCellStyle final : public abstract::TableCellStyle {
 public:
   explicit TableCellStyle(
       std::unordered_map<std::string, std::string> tableCellProperties)
       : m_tableCellProperties{std::move(tableCellProperties)} {}
 
-  std::shared_ptr<common::Property> paddingTop() const final {
+  std::shared_ptr<abstract::Property> paddingTop() const final {
     auto result =
         ResolvedStyle::lookup(m_tableCellProperties, "fo:padding-top");
     if (!result)
@@ -180,7 +179,7 @@ public:
     return result;
   }
 
-  std::shared_ptr<common::Property> paddingBottom() const final {
+  std::shared_ptr<abstract::Property> paddingBottom() const final {
     auto result =
         ResolvedStyle::lookup(m_tableCellProperties, "fo:padding-bottom");
     if (!result)
@@ -188,7 +187,7 @@ public:
     return result;
   }
 
-  std::shared_ptr<common::Property> paddingLeft() const final {
+  std::shared_ptr<abstract::Property> paddingLeft() const final {
     auto result =
         ResolvedStyle::lookup(m_tableCellProperties, "fo:padding-left");
     if (!result)
@@ -196,7 +195,7 @@ public:
     return result;
   }
 
-  std::shared_ptr<common::Property> paddingRight() const final {
+  std::shared_ptr<abstract::Property> paddingRight() const final {
     auto result =
         ResolvedStyle::lookup(m_tableCellProperties, "fo:padding-right");
     if (!result)
@@ -204,14 +203,14 @@ public:
     return result;
   }
 
-  std::shared_ptr<common::Property> borderTop() const final {
+  std::shared_ptr<abstract::Property> borderTop() const final {
     auto result = ResolvedStyle::lookup(m_tableCellProperties, "fo:border-top");
     if (!result)
       result = ResolvedStyle::lookup(m_tableCellProperties, "fo:border");
     return result;
   }
 
-  std::shared_ptr<common::Property> borderBottom() const final {
+  std::shared_ptr<abstract::Property> borderBottom() const final {
     auto result =
         ResolvedStyle::lookup(m_tableCellProperties, "fo:border-bottom");
     if (!result)
@@ -219,7 +218,7 @@ public:
     return result;
   }
 
-  std::shared_ptr<common::Property> borderLeft() const final {
+  std::shared_ptr<abstract::Property> borderLeft() const final {
     auto result =
         ResolvedStyle::lookup(m_tableCellProperties, "fo:border-left");
     if (!result)
@@ -227,7 +226,7 @@ public:
     return result;
   }
 
-  std::shared_ptr<common::Property> borderRight() const final {
+  std::shared_ptr<abstract::Property> borderRight() const final {
     auto result =
         ResolvedStyle::lookup(m_tableCellProperties, "fo:border-right");
     if (!result)
@@ -239,25 +238,25 @@ private:
   std::unordered_map<std::string, std::string> m_tableCellProperties;
 };
 
-class DrawingStyle final : public common::DrawingStyle {
+class DrawingStyle final : public abstract::DrawingStyle {
 public:
   explicit DrawingStyle(
       std::unordered_map<std::string, std::string> graphicProperties)
       : m_graphicProperties{std::move(graphicProperties)} {}
 
-  std::shared_ptr<common::Property> strokeWidth() const final {
+  std::shared_ptr<abstract::Property> strokeWidth() const final {
     return ResolvedStyle::lookup(m_graphicProperties, "svg:stroke-width");
   }
 
-  std::shared_ptr<common::Property> strokeColor() const final {
+  std::shared_ptr<abstract::Property> strokeColor() const final {
     return ResolvedStyle::lookup(m_graphicProperties, "svg:stroke-color");
   }
 
-  std::shared_ptr<common::Property> fillColor() const final {
+  std::shared_ptr<abstract::Property> fillColor() const final {
     return ResolvedStyle::lookup(m_graphicProperties, "draw:fill-color");
   }
 
-  std::shared_ptr<common::Property> verticalAlign() const final {
+  std::shared_ptr<abstract::Property> verticalAlign() const final {
     return ResolvedStyle::lookup(m_graphicProperties,
                                  "draw:textarea-vertical-align");
   }
@@ -267,40 +266,40 @@ private:
 };
 } // namespace
 
-std::shared_ptr<common::Property>
+std::shared_ptr<abstract::Property>
 ResolvedStyle::lookup(const std::unordered_map<std::string, std::string> &map,
                       const std::string &attribute) {
   auto it = map.find(attribute);
   std::optional<std::string> result;
   if (it != map.end())
     result = it->second;
-  return std::make_shared<common::ConstProperty>(result);
+  return std::make_shared<abstract::ConstProperty>(result);
 }
 
-std::shared_ptr<common::TextStyle> ResolvedStyle::toTextStyle() const {
+std::shared_ptr<abstract::TextStyle> ResolvedStyle::toTextStyle() const {
   return std::make_shared<TextStyle>(textProperties);
 }
 
-std::shared_ptr<common::ParagraphStyle>
+std::shared_ptr<abstract::ParagraphStyle>
 ResolvedStyle::toParagraphStyle() const {
   return std::make_shared<ParagraphStyle>(paragraphProperties);
 }
 
-std::shared_ptr<common::TableStyle> ResolvedStyle::toTableStyle() const {
+std::shared_ptr<abstract::TableStyle> ResolvedStyle::toTableStyle() const {
   return std::make_shared<TableStyle>(paragraphProperties);
 }
 
-std::shared_ptr<common::TableColumnStyle>
+std::shared_ptr<abstract::TableColumnStyle>
 ResolvedStyle::toTableColumnStyle() const {
   return std::make_shared<TableColumnStyle>(paragraphProperties);
 }
 
-std::shared_ptr<common::TableCellStyle>
+std::shared_ptr<abstract::TableCellStyle>
 ResolvedStyle::toTableCellStyle() const {
   return std::make_shared<TableCellStyle>(paragraphProperties);
 }
 
-std::shared_ptr<common::DrawingStyle> ResolvedStyle::toDrawingStyle() const {
+std::shared_ptr<abstract::DrawingStyle> ResolvedStyle::toDrawingStyle() const {
   return std::make_shared<DrawingStyle>(paragraphProperties);
 }
 
@@ -353,7 +352,7 @@ std::shared_ptr<Style> Styles::style(const std::string &name) const {
   return styleIt->second;
 }
 
-std::shared_ptr<common::PageStyle>
+std::shared_ptr<abstract::PageStyle>
 Styles::pageStyle(const std::string &name) const {
   auto pageLayoutIt = m_indexPageLayout.find(name);
   if (pageLayoutIt == m_indexPageLayout.end())
@@ -364,7 +363,7 @@ Styles::pageStyle(const std::string &name) const {
   return std::make_shared<PageStyle>(pageLayoutProp);
 }
 
-std::shared_ptr<common::PageStyle>
+std::shared_ptr<abstract::PageStyle>
 Styles::masterPageStyle(const std::string &name) const {
   auto masterPageIt = m_indexMasterPage.find(name);
   if (masterPageIt == m_indexMasterPage.end())
@@ -374,7 +373,7 @@ Styles::masterPageStyle(const std::string &name) const {
   return pageStyle(pageLayoutName);
 }
 
-std::shared_ptr<common::PageStyle> Styles::defaultPageStyle() const {
+std::shared_ptr<abstract::PageStyle> Styles::defaultPageStyle() const {
   const pugi::xml_node masterStyles =
       m_stylesRoot.child("office:master-styles");
   const pugi::xml_node masterStyle = masterStyles.first_child();

@@ -28,7 +28,7 @@ void ZipArchive::save(const common::Path &path) const {
 }
 
 ZipArchiveEntry::ZipArchiveEntry(common::Path path,
-                                 std::shared_ptr<common::File> file)
+                                 std::shared_ptr<abstract::File> file)
     : DefaultArchiveEntry(std::move(path), std::move(file)) {}
 
 std::uint8_t ZipArchiveEntry::compression_level() const {

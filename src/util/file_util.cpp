@@ -1,13 +1,13 @@
 #include <cerrno>
-#include <common/file_util.h>
 #include <cstring>
 #include <fstream>
 #include <odr/exceptions.h>
 #include <streambuf>
+#include <util/file_util.h>
 
-namespace odr::common {
+namespace odr::util {
 
-std::string FileUtil::read(const std::string &path) {
+std::string file::read(const std::string &path) {
   std::ifstream in(path);
   if (!in.is_open() || in.fail()) {
     throw FileNotFound(std::strerror(errno));
@@ -30,4 +30,4 @@ std::string FileUtil::read(const std::string &path) {
   return result;
 }
 
-} // namespace odr::common
+} // namespace odr::util

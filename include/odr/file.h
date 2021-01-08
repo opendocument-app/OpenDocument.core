@@ -8,15 +8,15 @@
 #include <string>
 #include <vector>
 
-namespace odr {
-class ImageFile;
-class DocumentFile;
-
-namespace common {
+namespace odr::abstract {
 class File;
 class ImageFile;
 class DocumentFile;
-} // namespace common
+} // namespace odr::abstract
+
+namespace odr {
+class ImageFile;
+class DocumentFile;
 
 enum class FileType {
   UNKNOWN,
@@ -98,7 +98,7 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit File(std::shared_ptr<common::File>);
+  explicit File(std::shared_ptr<abstract::File>);
   explicit File(const std::string &path);
   File(const std::string &path, FileType as);
 
@@ -112,15 +112,15 @@ public:
   DocumentFile documentFile() const;
 
 protected:
-  std::shared_ptr<common::File> m_impl;
+  std::shared_ptr<abstract::File> m_impl;
 };
 
 class ImageFile : public File {
 public:
-  explicit ImageFile(std::shared_ptr<common::ImageFile>);
+  explicit ImageFile(std::shared_ptr<abstract::ImageFile>);
 
 private:
-  std::shared_ptr<common::ImageFile> m_impl;
+  std::shared_ptr<abstract::ImageFile> m_impl;
 };
 
 class DocumentFile : public File {
@@ -128,7 +128,7 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DocumentFile(std::shared_ptr<common::DocumentFile>);
+  explicit DocumentFile(std::shared_ptr<abstract::DocumentFile>);
   explicit DocumentFile(const std::string &path);
 
   bool passwordEncrypted() const;
@@ -141,7 +141,7 @@ public:
   Document document() const;
 
 private:
-  std::shared_ptr<common::DocumentFile> m_impl;
+  std::shared_ptr<abstract::DocumentFile> m_impl;
 };
 
 } // namespace odr

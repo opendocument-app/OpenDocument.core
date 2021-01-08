@@ -1,5 +1,5 @@
-#ifndef ODR_COMMON_DOCUMENT_ELEMENTS_H
-#define ODR_COMMON_DOCUMENT_ELEMENTS_H
+#ifndef ODR_ABSTRACT_DOCUMENT_ELEMENTS_H
+#define ODR_ABSTRACT_DOCUMENT_ELEMENTS_H
 
 #include <memory>
 #include <optional>
@@ -7,8 +7,9 @@
 namespace odr {
 class ImageFile;
 enum class ElementType;
+} // namespace odr
 
-namespace common {
+namespace odr::abstract {
 class Property;
 class PageStyle;
 class TextStyle;
@@ -207,7 +208,6 @@ public:
   [[nodiscard]] virtual std::shared_ptr<DrawingStyle> drawingStyle() const = 0;
 };
 
-} // namespace common
-} // namespace odr
+} // namespace odr::abstract
 
-#endif // ODR_COMMON_DOCUMENT_ELEMENTS_H
+#endif // ODR_ABSTRACT_DOCUMENT_ELEMENTS_H

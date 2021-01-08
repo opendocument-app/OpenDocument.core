@@ -1,7 +1,7 @@
-#ifndef ODR_COMMON_POINTER_UTIL_H
-#define ODR_COMMON_POINTER_UTIL_H
+#ifndef ODR_UTIL_POINTER_H
+#define ODR_UTIL_POINTER_H
 
-namespace odr::common {
+namespace odr::util {
 
 template <typename To, typename From, typename Deleter>
 std::unique_ptr<To, Deleter>
@@ -14,6 +14,6 @@ dynamic_pointer_cast(std::unique_ptr<From, Deleter> &&p) {
   return result;
 }
 
-} // namespace odr::common
+} // namespace odr::util
 
-#endif // ODR_COMMON_POINTER_UTIL_H
+#endif // ODR_UTIL_POINTER_H

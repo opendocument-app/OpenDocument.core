@@ -1,15 +1,15 @@
 #include <common/path.h>
-#include <common/stream_util.h>
 #include <ooxml/ooxml_crypto.h>
 #include <ooxml/ooxml_document.h>
 #include <ooxml/ooxml_document_file.h>
 #include <ooxml/ooxml_meta.h>
+#include <util/stream_util.h>
 #include <zip/zip_storage.h>
 
 namespace odr::ooxml {
 
 OfficeOpenXmlFile::OfficeOpenXmlFile(
-    std::shared_ptr<common::ReadStorage> storage) {
+    std::shared_ptr<abstract::ReadStorage> storage) {
   m_meta = parseFileMeta(*storage);
   m_storage = std::move(storage);
 }
@@ -42,14 +42,14 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
   // TODO throw if not encrypted
   // TODO throw if decrypted
   const std::string encryptionInfo =
-      common::StreamUtil::read(*m_storage->read("EncryptionInfo"));
+      util::stream::read(*m_storage->read("EncryptionInfo"));
   // TODO cache Crypto::Util
   Crypto::Util util(encryptionInfo);
   const std::string key = util.deriveKey(password);
   if (!util.verify(key))
     return false;
   const std::string encryptedPackage =
-      common::StreamUtil::read(*m_storage->read("EncryptedPackage"));
+      util::stream::read(*m_storage->read("EncryptedPackage"));
   const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
   m_storage = std::make_unique<zip::ZipReader>(decryptedPackage, false);
   m_meta = parseFileMeta(*m_storage);
@@ -57,7 +57,7 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
   return true;
 }
 
-std::shared_ptr<common::Document> OfficeOpenXmlFile::document() const {
+std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
   // TODO throw if encrypted
   switch (fileType()) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT:

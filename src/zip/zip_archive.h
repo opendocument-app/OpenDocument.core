@@ -22,7 +22,7 @@ private:
 
 class ZipArchiveEntry final : public common::DefaultArchiveEntry {
 public:
-  ZipArchiveEntry(common::Path path, std::shared_ptr<common::File> file);
+  ZipArchiveEntry(common::Path path, std::shared_ptr<abstract::File> file);
 
   [[nodiscard]] std::uint8_t compression_level() const;
   void compression_level(std::uint8_t);

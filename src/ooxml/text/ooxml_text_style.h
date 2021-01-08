@@ -5,13 +5,13 @@
 #include <pugixml.hpp>
 #include <unordered_map>
 
-namespace odr::common {
+namespace odr::abstract {
 class Property;
 class PageStyle;
 class TextStyle;
 class ParagraphStyle;
 class TableStyle;
-} // namespace odr::common
+} // namespace odr::abstract
 
 namespace odr::ooxml::text {
 
@@ -19,8 +19,8 @@ struct ResolvedStyle {
   std::unordered_map<std::string, pugi::xml_node> paragraphProperties;
   std::unordered_map<std::string, pugi::xml_node> textProperties;
 
-  std::shared_ptr<common::ParagraphStyle> toParagraphStyle() const;
-  std::shared_ptr<common::TextStyle> toTextStyle() const;
+  std::shared_ptr<abstract::ParagraphStyle> toParagraphStyle() const;
+  std::shared_ptr<abstract::TextStyle> toTextStyle() const;
 };
 
 class Style final {
@@ -43,7 +43,7 @@ public:
 
   [[nodiscard]] std::shared_ptr<Style> style(const std::string &name) const;
 
-  [[nodiscard]] std::shared_ptr<common::PageStyle> pageStyle() const;
+  [[nodiscard]] std::shared_ptr<abstract::PageStyle> pageStyle() const;
 
 private:
   pugi::xml_node m_stylesRoot;

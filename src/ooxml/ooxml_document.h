@@ -1,52 +1,53 @@
 #ifndef ODR_OOXML_DOCUMENT_H
 #define ODR_OOXML_DOCUMENT_H
 
-#include <common/document.h>
+#include <abstract/document.h>
 #include <memory>
 #include <odr/document.h>
 #include <ooxml/text/ooxml_text_style.h>
 #include <pugixml.hpp>
 
-namespace odr::common {
+namespace odr::abstract {
 class ReadStorage;
 }
 
 namespace odr::ooxml {
 
-class OfficeOpenXmlDocument : public virtual common::Document {
+class OfficeOpenXmlDocument : public virtual abstract::Document {
 public:
-  explicit OfficeOpenXmlDocument(std::shared_ptr<common::ReadStorage> storage);
+  explicit OfficeOpenXmlDocument(
+      std::shared_ptr<abstract::ReadStorage> storage);
 
   bool editable() const noexcept final;
   bool savable(bool encrypted) const noexcept final;
 
   DocumentType documentType() const noexcept final;
 
-  std::shared_ptr<common::ReadStorage> storage() const noexcept;
+  std::shared_ptr<abstract::ReadStorage> storage() const noexcept;
 
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const std::string &password) const final;
 
 protected:
-  std::shared_ptr<common::ReadStorage> m_storage;
+  std::shared_ptr<abstract::ReadStorage> m_storage;
   DocumentMeta m_document_meta;
 };
 
 class OfficeOpenXmlTextDocument final
     : public OfficeOpenXmlDocument,
-      public common::TextDocument,
+      public abstract::TextDocument,
       public std::enable_shared_from_this<OfficeOpenXmlTextDocument> {
 public:
   explicit OfficeOpenXmlTextDocument(
-      std::shared_ptr<common::ReadStorage> storage);
+      std::shared_ptr<abstract::ReadStorage> storage);
 
   DocumentMeta documentMeta() const noexcept final;
 
   const text::Styles &styles() const noexcept;
 
-  std::shared_ptr<const common::Element> root() const final;
+  std::shared_ptr<const abstract::Element> root() const final;
 
-  std::shared_ptr<common::PageStyle> pageStyle() const final;
+  std::shared_ptr<abstract::PageStyle> pageStyle() const final;
 
 private:
   pugi::xml_document m_documentXml;
@@ -56,36 +57,36 @@ private:
 };
 
 class OfficeOpenXmlPresentation final : public OfficeOpenXmlDocument,
-                                        public common::Presentation {
+                                        public abstract::Presentation {
 public:
   explicit OfficeOpenXmlPresentation(
-      std::shared_ptr<common::ReadStorage> storage);
+      std::shared_ptr<abstract::ReadStorage> storage);
 
   DocumentMeta documentMeta() const noexcept final;
 
   std::uint32_t slideCount() const final;
 
-  std::shared_ptr<const common::Element> root() const final;
+  std::shared_ptr<const abstract::Element> root() const final;
 
-  std::shared_ptr<const common::Slide> firstSlide() const final;
+  std::shared_ptr<const abstract::Slide> firstSlide() const final;
 
 private:
   pugi::xml_document m_presentationXml;
 };
 
 class OfficeOpenXmlSpreadsheet final : public OfficeOpenXmlDocument,
-                                       public common::Spreadsheet {
+                                       public abstract::Spreadsheet {
 public:
   explicit OfficeOpenXmlSpreadsheet(
-      std::shared_ptr<common::ReadStorage> storage);
+      std::shared_ptr<abstract::ReadStorage> storage);
 
   DocumentMeta documentMeta() const noexcept final;
 
   std::uint32_t sheetCount() const final;
 
-  std::shared_ptr<const common::Element> root() const final;
+  std::shared_ptr<const abstract::Element> root() const final;
 
-  std::shared_ptr<const common::Sheet> firstSheet() const final;
+  std::shared_ptr<const abstract::Sheet> firstSheet() const final;
 
 private:
   pugi::xml_document m_workbookXml;

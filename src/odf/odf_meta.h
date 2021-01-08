@@ -16,19 +16,13 @@ struct FileMeta;
 struct DocumentMeta;
 } // namespace odr
 
-namespace odr::common {
+namespace odr::abstract {
 class ReadStorage;
-} // namespace odr::common
+} // namespace odr::abstract
 
 namespace odr::odf {
 
-struct NoOpenDocumentFileException final : public std::exception {
-  const char *what() const noexcept final {
-    return "not an open document file";
-  }
-};
-
-FileMeta parseFileMeta(const common::ReadStorage &storage,
+FileMeta parseFileMeta(const abstract::ReadStorage &storage,
                        const pugi::xml_document *manifest);
 DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
                                const pugi::xml_document &content);

@@ -6,13 +6,13 @@
 #include <string>
 #include <vector>
 
-namespace odr::common {
+namespace odr::abstract {
 class Document;
 class TextDocument;
 class Presentation;
 class Spreadsheet;
 class Drawing;
-} // namespace odr::common
+} // namespace odr::abstract
 
 namespace odr {
 class DocumentFile;
@@ -64,9 +64,9 @@ public:
   void save(const std::string &path, const std::string &password) const;
 
 protected:
-  std::shared_ptr<common::Document> m_document;
+  std::shared_ptr<abstract::Document> m_document;
 
-  explicit Document(std::shared_ptr<common::Document>);
+  explicit Document(std::shared_ptr<abstract::Document>);
 
 private:
   friend DocumentFile;
@@ -79,9 +79,9 @@ public:
   [[nodiscard]] ElementRange content() const;
 
 private:
-  std::shared_ptr<common::TextDocument> m_textDocument;
+  std::shared_ptr<abstract::TextDocument> m_textDocument;
 
-  explicit TextDocument(std::shared_ptr<common::TextDocument>);
+  explicit TextDocument(std::shared_ptr<abstract::TextDocument>);
 
   friend Document;
 };
@@ -93,9 +93,9 @@ public:
   [[nodiscard]] SlideRange slides() const;
 
 private:
-  std::shared_ptr<common::Presentation> m_presentation;
+  std::shared_ptr<abstract::Presentation> m_presentation;
 
-  explicit Presentation(std::shared_ptr<common::Presentation>);
+  explicit Presentation(std::shared_ptr<abstract::Presentation>);
 
   friend Document;
 };
@@ -107,9 +107,9 @@ public:
   [[nodiscard]] SheetRange sheets() const;
 
 private:
-  std::shared_ptr<common::Spreadsheet> m_spreadsheet;
+  std::shared_ptr<abstract::Spreadsheet> m_spreadsheet;
 
-  explicit Spreadsheet(std::shared_ptr<common::Spreadsheet>);
+  explicit Spreadsheet(std::shared_ptr<abstract::Spreadsheet>);
 
   friend Document;
 };
@@ -121,9 +121,9 @@ public:
   [[nodiscard]] PageRange pages() const;
 
 private:
-  std::shared_ptr<common::Drawing> m_drawing;
+  std::shared_ptr<abstract::Drawing> m_drawing;
 
-  explicit Drawing(std::shared_ptr<common::Drawing>);
+  explicit Drawing(std::shared_ptr<abstract::Drawing>);
 
   friend Document;
 };

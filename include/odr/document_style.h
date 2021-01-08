@@ -3,7 +3,7 @@
 
 #include <memory>
 
-namespace odr::common {
+namespace odr::abstract {
 class PageStyle;
 class TextStyle;
 class ParagraphStyle;
@@ -11,7 +11,7 @@ class TableStyle;
 class TableColumnStyle;
 class TableCellStyle;
 class DrawingStyle;
-} // namespace odr::common
+} // namespace odr::abstract
 
 namespace odr {
 class Property;
@@ -32,7 +32,7 @@ private:
 class PageStyle final : public Style {
 public:
   PageStyle();
-  explicit PageStyle(std::shared_ptr<common::PageStyle> impl);
+  explicit PageStyle(std::shared_ptr<abstract::PageStyle> impl);
 
   [[nodiscard]] Property width() const;
   [[nodiscard]] Property height() const;
@@ -43,13 +43,13 @@ public:
   [[nodiscard]] Property printOrientation() const;
 
 private:
-  std::shared_ptr<common::PageStyle> m_impl;
+  std::shared_ptr<abstract::PageStyle> m_impl;
 };
 
 class TextStyle final : public Style {
 public:
   TextStyle();
-  explicit TextStyle(std::shared_ptr<common::TextStyle> impl);
+  explicit TextStyle(std::shared_ptr<abstract::TextStyle> impl);
 
   [[nodiscard]] Property fontName() const;
   [[nodiscard]] Property fontSize() const;
@@ -60,13 +60,13 @@ public:
   [[nodiscard]] Property backgroundColor() const;
 
 private:
-  std::shared_ptr<common::TextStyle> m_impl;
+  std::shared_ptr<abstract::TextStyle> m_impl;
 };
 
 class ParagraphStyle final : public Style {
 public:
   ParagraphStyle();
-  explicit ParagraphStyle(std::shared_ptr<common::ParagraphStyle> impl);
+  explicit ParagraphStyle(std::shared_ptr<abstract::ParagraphStyle> impl);
 
   [[nodiscard]] Property textAlign() const;
   [[nodiscard]] Property marginTop() const;
@@ -75,35 +75,35 @@ public:
   [[nodiscard]] Property marginRight() const;
 
 private:
-  std::shared_ptr<common::ParagraphStyle> m_impl;
+  std::shared_ptr<abstract::ParagraphStyle> m_impl;
 };
 
 class TableStyle final : public Style {
 public:
   TableStyle();
-  explicit TableStyle(std::shared_ptr<common::TableStyle> impl);
+  explicit TableStyle(std::shared_ptr<abstract::TableStyle> impl);
 
   [[nodiscard]] Property width() const;
 
 private:
-  std::shared_ptr<common::TableStyle> m_impl;
+  std::shared_ptr<abstract::TableStyle> m_impl;
 };
 
 class TableColumnStyle final : public Style {
 public:
   TableColumnStyle();
-  explicit TableColumnStyle(std::shared_ptr<common::TableColumnStyle> impl);
+  explicit TableColumnStyle(std::shared_ptr<abstract::TableColumnStyle> impl);
 
   [[nodiscard]] Property width() const;
 
 private:
-  std::shared_ptr<common::TableColumnStyle> m_impl;
+  std::shared_ptr<abstract::TableColumnStyle> m_impl;
 };
 
 class TableCellStyle final : public Style {
 public:
   TableCellStyle();
-  explicit TableCellStyle(std::shared_ptr<common::TableCellStyle> impl);
+  explicit TableCellStyle(std::shared_ptr<abstract::TableCellStyle> impl);
 
   [[nodiscard]] Property paddingTop() const;
   [[nodiscard]] Property paddingBottom() const;
@@ -115,13 +115,13 @@ public:
   [[nodiscard]] Property borderRight() const;
 
 private:
-  std::shared_ptr<common::TableCellStyle> m_impl;
+  std::shared_ptr<abstract::TableCellStyle> m_impl;
 };
 
 class DrawingStyle final : public Style {
 public:
   DrawingStyle();
-  explicit DrawingStyle(std::shared_ptr<common::DrawingStyle> impl);
+  explicit DrawingStyle(std::shared_ptr<abstract::DrawingStyle> impl);
 
   [[nodiscard]] Property strokeWidth() const;
   [[nodiscard]] Property strokeColor() const;
@@ -129,7 +129,7 @@ public:
   [[nodiscard]] Property verticalAlign() const;
 
 private:
-  std::shared_ptr<common::DrawingStyle> m_impl;
+  std::shared_ptr<abstract::DrawingStyle> m_impl;
 };
 
 } // namespace odr

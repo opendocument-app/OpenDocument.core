@@ -1,25 +1,13 @@
 #ifndef ODR_COMMON_PROPERTY_H
 #define ODR_COMMON_PROPERTY_H
 
-#include <optional>
-#include <string>
+#include <abstract/property.h>
+#include <pugixml.hpp>
 
 namespace odr::common {
 
-class Property {
-public:
-  virtual ~Property() = default;
-
-  [[nodiscard]] virtual bool readonly() const noexcept = 0;
-  [[nodiscard]] virtual bool optional() const noexcept = 0;
-
-  [[nodiscard]] virtual std::optional<std::string> value() const = 0;
-
-  virtual void set(std::optional<std::string> value) = 0;
-};
-
 // TODO remove
-class ConstProperty final : public Property {
+class ConstProperty final : public abstract::Property {
 public:
   ConstProperty();
   explicit ConstProperty(std::optional<std::string>);
@@ -36,7 +24,7 @@ private:
 };
 
 template <typename Get = void, typename Set = void>
-class LambdaProperty final : public Property {
+class LambdaProperty final : public abstract::Property {
 public:
   // TODO if no `Get`
   LambdaProperty() = default;
@@ -61,6 +49,39 @@ public:
 private:
   Get m_get;
   Set m_set;
+};
+
+class XmlAttributeProperty final : public abstract::Property {
+public:
+  explicit XmlAttributeProperty(pugi::xml_attribute attribute);
+
+  bool readonly() const noexcept final;
+  bool optional() const noexcept final;
+
+  std::optional<std::string> value() const final;
+
+  void set(std::optional<std::string> value) final;
+
+private:
+  mutable pugi::xml_attribute m_attribute;
+};
+
+class XmlOptionalAttributeProperty final : public abstract::Property {
+public:
+  XmlOptionalAttributeProperty(pugi::xml_node node, std::string attributeName);
+
+  bool readonly() const noexcept final;
+  bool optional() const noexcept final;
+
+  std::optional<std::string> value() const final;
+
+  void set(std::optional<std::string> value) final;
+
+private:
+  pugi::xml_node m_node;
+  std::string m_attributeName;
+
+  pugi::xml_attribute attribute() const;
 };
 
 } // namespace odr::common

@@ -12,29 +12,19 @@ class ReadStorage;
 } // namespace odr::common
 
 namespace odr::odf {
-
-struct UnsupportedCryptoAlgorithmException final : public std::exception {
-  const char *what() const noexcept final {
-    return "unsupported crypto algorithm";
-  }
-};
-
-namespace Crypto {
-bool canDecrypt(const Manifest::Entry &) noexcept;
+bool can_decrypt(const Manifest::Entry &) noexcept;
 std::string hash(const std::string &input, ChecksumType checksumType);
 std::string decrypt(const std::string &input, const std::string &derivedKey,
                     const std::string &initialisationVector,
                     AlgorithmType algorithm);
-std::string startKey(const Manifest::Entry &, const std::string &password);
-std::string deriveKeyAndDecrypt(const Manifest::Entry &,
-                                const std::string &startKey,
-                                const std::string &input);
-bool validatePassword(const Manifest::Entry &, std::string decrypted) noexcept;
+std::string start_key(const Manifest::Entry &, const std::string &password);
+std::string derive_key_and_decrypt(const Manifest::Entry &,
+                                   const std::string &startKey,
+                                   const std::string &input);
+bool validate_password(const Manifest::Entry &, std::string decrypted) noexcept;
 
-bool decrypt(std::shared_ptr<common::ReadStorage> &, const Manifest &,
+bool decrypt(std::shared_ptr<abstract::ReadStorage> &, const Manifest &,
              const std::string &password);
-} // namespace Crypto
-
 } // namespace odr::odf
 
 #endif // ODR_ODF_CRYPTO_H

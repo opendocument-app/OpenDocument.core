@@ -1,7 +1,7 @@
-#ifndef ODR_COMMON_MAP_UTIL_H
-#define ODR_COMMON_MAP_UTIL_H
+#ifndef ODR_UTIL_MAP_H
+#define ODR_UTIL_MAP_H
 
-namespace odr::common::MapUtil {
+namespace odr::util::map {
 template <typename Map, typename Key, typename Value>
 bool lookupMap(const Map &map, const Key &key, Value &value) {
   const auto it = map.find(key);
@@ -21,6 +21,6 @@ bool lookupMapDefault(const Map &map, const Key &key, Value &value,
   }
   return true;
 }
-} // namespace odr::common::MapUtil
+} // namespace odr::util::map
 
-#endif // ODR_COMMON_MAP_UTIL_H
+#endif // ODR_UTIL_MAP_H

@@ -1,18 +1,18 @@
 #ifndef ODR_OOXML_DOCUMENT_FILE_H
 #define ODR_OOXML_DOCUMENT_FILE_H
 
-#include <common/file.h>
+#include <abstract/file.h>
 #include <odr/file.h>
 
-namespace odr::common {
+namespace odr::abstract {
 class ReadStorage;
 }
 
 namespace odr::ooxml {
 
-class OfficeOpenXmlFile final : public common::DocumentFile {
+class OfficeOpenXmlFile final : public abstract::DocumentFile {
 public:
-  explicit OfficeOpenXmlFile(std::shared_ptr<common::ReadStorage> storage);
+  explicit OfficeOpenXmlFile(std::shared_ptr<abstract::ReadStorage> storage);
 
   FileType fileType() const noexcept final;
   FileMeta fileMeta() const noexcept final;
@@ -26,10 +26,10 @@ public:
   EncryptionState encryptionState() const noexcept final;
   bool decrypt(const std::string &password) final;
 
-  std::shared_ptr<common::Document> document() const final;
+  std::shared_ptr<abstract::Document> document() const final;
 
 private:
-  std::shared_ptr<common::ReadStorage> m_storage;
+  std::shared_ptr<abstract::ReadStorage> m_storage;
   FileMeta m_meta;
   EncryptionState m_encryptionState{EncryptionState::NOT_ENCRYPTED};
 };

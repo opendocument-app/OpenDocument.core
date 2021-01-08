@@ -1,6 +1,6 @@
 #include <common/html.h>
-#include <common/string_util.h>
 #include <odr/html.h>
+#include <util/string_util.h>
 
 namespace odr::common {
 
@@ -121,9 +121,9 @@ std::string Html::bodyAttributes(const HtmlConfig &config) noexcept {
 }
 
 std::string Html::escapeText(std::string text) noexcept {
-  common::StringUtil::findAndReplaceAll(text, "&", "&amp;");
-  common::StringUtil::findAndReplaceAll(text, "<", "&lt;");
-  common::StringUtil::findAndReplaceAll(text, ">", "&gt;");
+  util::string::replace_all(text, "&", "&amp;");
+  util::string::replace_all(text, "<", "&lt;");
+  util::string::replace_all(text, ">", "&gt;");
 
   return text;
 }

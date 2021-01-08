@@ -1,9 +1,9 @@
-#ifndef ODR_COMMON_DOCUMENT_STYLE_H
-#define ODR_COMMON_DOCUMENT_STYLE_H
+#ifndef ODR_ABSTRACT_DOCUMENT_STYLE_H
+#define ODR_ABSTRACT_DOCUMENT_STYLE_H
 
 #include <memory>
 
-namespace odr::common {
+namespace odr::abstract {
 class Property;
 
 class PageStyle {
@@ -81,6 +81,6 @@ public:
   [[nodiscard]] virtual std::shared_ptr<Property> verticalAlign() const = 0;
 };
 
-} // namespace odr::common
+} // namespace odr::abstract
 
-#endif // ODR_COMMON_DOCUMENT_STYLE_H
+#endif // ODR_ABSTRACT_DOCUMENT_STYLE_H

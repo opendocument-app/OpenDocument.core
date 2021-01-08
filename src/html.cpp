@@ -1,6 +1,5 @@
-#include <common/document.h>
+#include <abstract/document.h>
 #include <common/html.h>
-#include <common/stream_util.h>
 #include <crypto/crypto_util.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -11,6 +10,7 @@
 #include <odr/html.h>
 #include <sstream>
 #include <svm/svm_to_svg.h>
+#include <util/stream_util.h>
 
 namespace odr {
 
@@ -236,7 +236,7 @@ void translateImage(ImageElement element, std::ostream &out,
       image = svgOut.str();
       out << "data:image/svg+xml;base64, ";
     } else {
-      image = common::StreamUtil::read(*imageStream);
+      image = util::stream::read(*imageStream);
       // TODO hacky - `image/jpg` works for all common image types in chrome
       out << "data:image/jpg;base64, ";
     }

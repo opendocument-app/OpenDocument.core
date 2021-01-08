@@ -1,7 +1,7 @@
-#include <common/document_style.h>
+#include <abstract/document_style.h>
 #include <common/property.h>
-#include <common/string_util.h>
 #include <ooxml/text/ooxml_text_style.h>
+#include <util/string_util.h>
 
 namespace odr::ooxml::text {
 
@@ -13,35 +13,35 @@ void attributesToMap(pugi::xml_node node,
   }
 }
 
-class TextPageStyle final : public common::PageStyle {
+class TextPageStyle final : public abstract::PageStyle {
 public:
   explicit TextPageStyle(pugi::xml_node node) : m_node{node} {}
 
-  std::shared_ptr<common::Property> width() const final {
+  std::shared_ptr<abstract::Property> width() const final {
     return std::make_shared<common::ConstProperty>("8.5in");
   }
 
-  std::shared_ptr<common::Property> height() const final {
+  std::shared_ptr<abstract::Property> height() const final {
     return std::make_shared<common::ConstProperty>("11.7in");
   }
 
-  std::shared_ptr<common::Property> marginTop() const final {
+  std::shared_ptr<abstract::Property> marginTop() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
-  std::shared_ptr<common::Property> marginBottom() const final {
+  std::shared_ptr<abstract::Property> marginBottom() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
-  std::shared_ptr<common::Property> marginLeft() const final {
+  std::shared_ptr<abstract::Property> marginLeft() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
-  std::shared_ptr<common::Property> marginRight() const final {
+  std::shared_ptr<abstract::Property> marginRight() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
-  std::shared_ptr<common::Property> printOrientation() const final {
+  std::shared_ptr<abstract::Property> printOrientation() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
@@ -49,13 +49,13 @@ private:
   pugi::xml_node m_node;
 };
 
-class ParagraphStyle final : public common::ParagraphStyle {
+class ParagraphStyle final : public abstract::ParagraphStyle {
 public:
   explicit ParagraphStyle(
       std::unordered_map<std::string, pugi::xml_node> paragraphProperties)
       : m_paragraphProperties{std::move(paragraphProperties)} {}
 
-  std::shared_ptr<common::Property> textAlign() const final {
+  std::shared_ptr<abstract::Property> textAlign() const final {
     auto it = m_paragraphProperties.find("w:jc");
     if (it == m_paragraphProperties.end())
       return {};
@@ -67,19 +67,19 @@ public:
     return std::make_shared<common::ConstProperty>(alignment);
   }
 
-  std::shared_ptr<common::Property> marginTop() const final {
+  std::shared_ptr<abstract::Property> marginTop() const final {
     return std::make_shared<common::ConstProperty>();
   }
 
-  std::shared_ptr<common::Property> marginBottom() const final {
+  std::shared_ptr<abstract::Property> marginBottom() const final {
     return std::make_shared<common::ConstProperty>();
   }
 
-  std::shared_ptr<common::Property> marginLeft() const final {
+  std::shared_ptr<abstract::Property> marginLeft() const final {
     return std::make_shared<common::ConstProperty>();
   }
 
-  std::shared_ptr<common::Property> marginRight() const final {
+  std::shared_ptr<abstract::Property> marginRight() const final {
     return std::make_shared<common::ConstProperty>();
   }
 
@@ -87,13 +87,13 @@ private:
   std::unordered_map<std::string, pugi::xml_node> m_paragraphProperties;
 };
 
-class TextStyle final : public common::TextStyle {
+class TextStyle final : public abstract::TextStyle {
 public:
   explicit TextStyle(
       std::unordered_map<std::string, pugi::xml_node> textProperties)
       : m_textProperties{std::move(textProperties)} {}
 
-  std::shared_ptr<common::Property> fontName() const final {
+  std::shared_ptr<abstract::Property> fontName() const final {
     auto it = m_textProperties.find("w:rFonts");
     if (it == m_textProperties.end())
       return {};
@@ -103,7 +103,7 @@ public:
     return std::make_shared<common::ConstProperty>(fontName);
   }
 
-  std::shared_ptr<common::Property> fontSize() const final {
+  std::shared_ptr<abstract::Property> fontSize() const final {
     auto it = m_textProperties.find("w:sz");
     if (it == m_textProperties.end())
       return {};
@@ -111,24 +111,24 @@ public:
     if (fontSize == 0)
       return {};
     return std::make_shared<common::ConstProperty>(
-        common::StringUtil::toString(fontSize * 0.5, 1) + "pt");
+        util::string::to_string(fontSize * 0.5, 1) + "pt");
   }
 
-  std::shared_ptr<common::Property> fontWeight() const final {
+  std::shared_ptr<abstract::Property> fontWeight() const final {
     auto it = m_textProperties.find("w:b");
     if (it == m_textProperties.end())
       return {};
     return std::make_shared<common::ConstProperty>("bold");
   }
 
-  std::shared_ptr<common::Property> fontStyle() const final {
+  std::shared_ptr<abstract::Property> fontStyle() const final {
     auto it = m_textProperties.find("w:i");
     if (it == m_textProperties.end())
       return {};
     return std::make_shared<common::ConstProperty>("italic");
   }
 
-  std::shared_ptr<common::Property> fontColor() const final {
+  std::shared_ptr<abstract::Property> fontColor() const final {
     auto it = m_textProperties.find("w:color");
     if (it == m_textProperties.end())
       return {};
@@ -140,7 +140,7 @@ public:
     return std::make_shared<common::ConstProperty>(fontColor);
   }
 
-  std::shared_ptr<common::Property> backgroundColor() const final {
+  std::shared_ptr<abstract::Property> backgroundColor() const final {
     auto it = m_textProperties.find("w:highlight");
     if (it == m_textProperties.end())
       return {};
@@ -157,12 +157,12 @@ private:
 };
 } // namespace
 
-std::shared_ptr<common::ParagraphStyle>
+std::shared_ptr<abstract::ParagraphStyle>
 ResolvedStyle::toParagraphStyle() const {
   return std::make_shared<ParagraphStyle>(paragraphProperties);
 }
 
-std::shared_ptr<common::TextStyle> ResolvedStyle::toTextStyle() const {
+std::shared_ptr<abstract::TextStyle> ResolvedStyle::toTextStyle() const {
   return std::make_shared<TextStyle>(textProperties);
 }
 
@@ -237,7 +237,7 @@ std::shared_ptr<Style> Styles::style(const std::string &name) const {
   return styleIt->second;
 }
 
-std::shared_ptr<common::PageStyle> Styles::pageStyle() const {
+std::shared_ptr<abstract::PageStyle> Styles::pageStyle() const {
   return std::make_shared<TextPageStyle>(
       m_documentRoot.child("w:body").child("w:sectPr"));
 }

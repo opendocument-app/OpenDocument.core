@@ -1,15 +1,15 @@
 #include <common/path.h>
-#include <common/xml_util.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
 #include <ooxml/ooxml_document.h>
 #include <ooxml/text/ooxml_text_elements.h>
+#include <util/xml_util.h>
 #include <zip/zip_storage.h>
 
 namespace odr::ooxml {
 
 OfficeOpenXmlDocument::OfficeOpenXmlDocument(
-    std::shared_ptr<common::ReadStorage> storage)
+    std::shared_ptr<abstract::ReadStorage> storage)
     : m_storage{std::move(storage)} {}
 
 bool OfficeOpenXmlDocument::editable() const noexcept { return true; }
@@ -22,7 +22,7 @@ DocumentType OfficeOpenXmlDocument::documentType() const noexcept {
   return documentMeta().documentType;
 }
 
-std::shared_ptr<common::ReadStorage>
+std::shared_ptr<abstract::ReadStorage>
 OfficeOpenXmlDocument::storage() const noexcept {
   return m_storage;
 }
@@ -37,10 +37,10 @@ void OfficeOpenXmlDocument::save(const common::Path &path,
 }
 
 OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(
-    std::shared_ptr<common::ReadStorage> storage)
+    std::shared_ptr<abstract::ReadStorage> storage)
     : OfficeOpenXmlDocument(std::move(storage)) {
-  m_documentXml = common::XmlUtil::parse(*m_storage, "word/document.xml");
-  m_stylesXml = common::XmlUtil::parse(*m_storage, "word/styles.xml");
+  m_documentXml = util::xml::parse(*m_storage, "word/document.xml");
+  m_stylesXml = util::xml::parse(*m_storage, "word/styles.xml");
 
   m_styles = text::Styles(m_stylesXml.document_element(),
                           m_documentXml.document_element());
@@ -58,21 +58,21 @@ const text::Styles &OfficeOpenXmlTextDocument::styles() const noexcept {
   return m_styles;
 }
 
-std::shared_ptr<const common::Element> OfficeOpenXmlTextDocument::root() const {
+std::shared_ptr<const abstract::Element>
+OfficeOpenXmlTextDocument::root() const {
   const pugi::xml_node body = m_documentXml.document_element().child("w:body");
   return text::factorizeRoot(shared_from_this(), body);
 }
 
-std::shared_ptr<common::PageStyle>
+std::shared_ptr<abstract::PageStyle>
 OfficeOpenXmlTextDocument::pageStyle() const {
   return m_styles.pageStyle();
 }
 
 OfficeOpenXmlPresentation::OfficeOpenXmlPresentation(
-    std::shared_ptr<common::ReadStorage> storage)
+    std::shared_ptr<abstract::ReadStorage> storage)
     : OfficeOpenXmlDocument(std::move(storage)) {
-  m_presentationXml =
-      common::XmlUtil::parse(*m_storage, "ppt/presentation.xml");
+  m_presentationXml = util::xml::parse(*m_storage, "ppt/presentation.xml");
 }
 
 DocumentMeta OfficeOpenXmlPresentation::documentMeta() const noexcept {
@@ -94,20 +94,21 @@ std::uint32_t OfficeOpenXmlPresentation::slideCount() const {
   return 0; // TODO
 }
 
-std::shared_ptr<const common::Element> OfficeOpenXmlPresentation::root() const {
+std::shared_ptr<const abstract::Element>
+OfficeOpenXmlPresentation::root() const {
   return {}; // TODO
 }
 
-std::shared_ptr<const common::Slide>
+std::shared_ptr<const abstract::Slide>
 OfficeOpenXmlPresentation::firstSlide() const {
-  return std::dynamic_pointer_cast<const common::Slide>(root()->firstChild());
+  return std::dynamic_pointer_cast<const abstract::Slide>(root()->firstChild());
 }
 
 OfficeOpenXmlSpreadsheet::OfficeOpenXmlSpreadsheet(
-    std::shared_ptr<common::ReadStorage> storage)
+    std::shared_ptr<abstract::ReadStorage> storage)
     : OfficeOpenXmlDocument(std::move(storage)) {
-  m_workbookXml = common::XmlUtil::parse(*m_storage, "xl/workbook.xml");
-  m_stylesXml = common::XmlUtil::parse(*m_storage, "xl/styles.xml");
+  m_workbookXml = util::xml::parse(*m_storage, "xl/workbook.xml");
+  m_stylesXml = util::xml::parse(*m_storage, "xl/styles.xml");
 }
 
 DocumentMeta OfficeOpenXmlSpreadsheet::documentMeta() const noexcept {
@@ -130,13 +131,14 @@ std::uint32_t OfficeOpenXmlSpreadsheet::sheetCount() const {
   return 0; // TODO
 }
 
-std::shared_ptr<const common::Element> OfficeOpenXmlSpreadsheet::root() const {
+std::shared_ptr<const abstract::Element>
+OfficeOpenXmlSpreadsheet::root() const {
   return {}; // TODO
 }
 
-std::shared_ptr<const common::Sheet>
+std::shared_ptr<const abstract::Sheet>
 OfficeOpenXmlSpreadsheet::firstSheet() const {
-  return std::dynamic_pointer_cast<const common::Sheet>(root()->firstChild());
+  return std::dynamic_pointer_cast<const abstract::Sheet>(root()->firstChild());
 }
 
 } // namespace odr::ooxml

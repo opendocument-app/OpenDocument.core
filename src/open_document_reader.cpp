@@ -3,11 +3,11 @@
 
 namespace odr {
 
-std::string OpenDocumentReder::version() noexcept {
+std::string OpenDocumentReader::version() noexcept {
   return common::Constants::version();
 }
 
-std::string OpenDocumentReder::commit() noexcept {
+std::string OpenDocumentReader::commit() noexcept {
   return common::Constants::commit();
 }
 

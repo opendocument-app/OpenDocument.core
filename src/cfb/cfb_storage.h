@@ -1,21 +1,11 @@
 #ifndef ODR_CFB_STORAGE_H
 #define ODR_CFB_STORAGE_H
 
-#include <common/storage.h>
+#include <abstract/storage.h>
 
 namespace odr::cfb {
 
-struct CfbException : public std::runtime_error {
-  explicit CfbException(const char *desc) : std::runtime_error(desc) {}
-};
-struct NoCfbFileException : public CfbException {
-  NoCfbFileException() : CfbException("no cfb file") {}
-};
-struct CfbFileCorruptedException : public CfbException {
-  CfbFileCorruptedException() : CfbException("cfb file corrupted") {}
-};
-
-class CfbReader final : public common::ReadStorage {
+class CfbReader final : public abstract::ReadStorage {
 public:
   explicit CfbReader(const common::Path &);
   ~CfbReader() final;

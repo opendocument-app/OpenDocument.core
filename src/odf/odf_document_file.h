@@ -1,19 +1,19 @@
 #ifndef ODR_ODF_DOCUMENT_FILE_H
 #define ODR_ODF_DOCUMENT_FILE_H
 
-#include <common/file.h>
+#include <abstract/file.h>
 #include <odf/odf_manifest.h>
 #include <odr/file.h>
 
-namespace odr::common {
+namespace odr::abstract {
 class ReadStorage;
 }
 
 namespace odr::odf {
 
-class OpenDocumentFile final : public virtual common::DocumentFile {
+class OpenDocumentFile final : public virtual abstract::DocumentFile {
 public:
-  explicit OpenDocumentFile(std::shared_ptr<common::ReadStorage> storage);
+  explicit OpenDocumentFile(std::shared_ptr<abstract::ReadStorage> storage);
 
   FileType fileType() const noexcept final;
   FileMeta fileMeta() const noexcept final;
@@ -27,10 +27,10 @@ public:
   EncryptionState encryptionState() const noexcept final;
   bool decrypt(const std::string &password) final;
 
-  std::shared_ptr<common::Document> document() const final;
+  std::shared_ptr<abstract::Document> document() const final;
 
 private:
-  std::shared_ptr<common::ReadStorage> m_storage;
+  std::shared_ptr<abstract::ReadStorage> m_storage;
   EncryptionState m_encryptionState{EncryptionState::NOT_ENCRYPTED};
   FileMeta m_file_meta;
   Manifest m_manifest;

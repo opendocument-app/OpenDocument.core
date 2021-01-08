@@ -1,22 +1,22 @@
 #ifndef ODR_ODF_DOCUMENT_H
 #define ODR_ODF_DOCUMENT_H
 
-#include <common/document.h>
+#include <abstract/document.h>
 #include <memory>
 #include <odf/odf_style.h>
 #include <odr/document.h>
 #include <pugixml.hpp>
 
-namespace odr::common {
+namespace odr::abstract {
 class ReadStorage;
 }
 
 namespace odr::odf {
 
-class OpenDocument : public virtual common::Document,
+class OpenDocument : public virtual abstract::Document,
                      public std::enable_shared_from_this<OpenDocument> {
 public:
-  explicit OpenDocument(std::shared_ptr<common::ReadStorage> storage);
+  explicit OpenDocument(std::shared_ptr<abstract::ReadStorage> storage);
 
   bool editable() const noexcept final;
   bool savable(bool encrypted) const noexcept final;
@@ -24,14 +24,14 @@ public:
   DocumentType documentType() const noexcept final;
   DocumentMeta documentMeta() const noexcept final;
 
-  std::shared_ptr<common::ReadStorage> storage() const noexcept;
+  std::shared_ptr<abstract::ReadStorage> storage() const noexcept;
   const Styles &styles() const noexcept;
 
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const std::string &password) const final;
 
 protected:
-  std::shared_ptr<common::ReadStorage> m_storage;
+  std::shared_ptr<abstract::ReadStorage> m_storage;
   DocumentMeta m_document_meta;
   pugi::xml_document m_contentXml;
   pugi::xml_document m_stylesXml;
@@ -39,47 +39,48 @@ protected:
 };
 
 class OpenDocumentText final : public OpenDocument,
-                               public common::TextDocument {
+                               public abstract::TextDocument {
 public:
-  explicit OpenDocumentText(std::shared_ptr<common::ReadStorage> storage);
+  explicit OpenDocumentText(std::shared_ptr<abstract::ReadStorage> storage);
 
-  std::shared_ptr<const common::Element> root() const final;
+  std::shared_ptr<const abstract::Element> root() const final;
 
-  std::shared_ptr<common::PageStyle> pageStyle() const final;
+  std::shared_ptr<abstract::PageStyle> pageStyle() const final;
 };
 
 class OpenDocumentPresentation final : public OpenDocument,
-                                       public common::Presentation {
+                                       public abstract::Presentation {
 public:
   explicit OpenDocumentPresentation(
-      std::shared_ptr<common::ReadStorage> storage);
+      std::shared_ptr<abstract::ReadStorage> storage);
 
   std::uint32_t slideCount() const final;
 
-  std::shared_ptr<const common::Element> root() const final;
-  std::shared_ptr<const common::Slide> firstSlide() const final;
+  std::shared_ptr<const abstract::Element> root() const final;
+  std::shared_ptr<const abstract::Slide> firstSlide() const final;
 };
 
 class OpenDocumentSpreadsheet final : public OpenDocument,
-                                      public common::Spreadsheet {
+                                      public abstract::Spreadsheet {
 public:
   explicit OpenDocumentSpreadsheet(
-      std::shared_ptr<common::ReadStorage> storage);
+      std::shared_ptr<abstract::ReadStorage> storage);
 
   std::uint32_t sheetCount() const final;
 
-  std::shared_ptr<const common::Element> root() const final;
-  std::shared_ptr<const common::Sheet> firstSheet() const final;
+  std::shared_ptr<const abstract::Element> root() const final;
+  std::shared_ptr<const abstract::Sheet> firstSheet() const final;
 };
 
-class OpenDocumentDrawing final : public OpenDocument, public common::Drawing {
+class OpenDocumentDrawing final : public OpenDocument,
+                                  public abstract::Drawing {
 public:
-  explicit OpenDocumentDrawing(std::shared_ptr<common::ReadStorage> storage);
+  explicit OpenDocumentDrawing(std::shared_ptr<abstract::ReadStorage> storage);
 
   std::uint32_t pageCount() const final;
 
-  std::shared_ptr<const common::Element> root() const final;
-  std::shared_ptr<const common::Page> firstPage() const final;
+  std::shared_ptr<const abstract::Element> root() const final;
+  std::shared_ptr<const abstract::Page> firstPage() const final;
 };
 
 } // namespace odr::odf

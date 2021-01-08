@@ -1,15 +1,15 @@
 #ifndef ODR_OLDMS_DOCUMENT_FILE_H
 #define ODR_OLDMS_DOCUMENT_FILE_H
 
-#include <common/file.h>
-#include <common/storage.h>
+#include <abstract/file.h>
+#include <abstract/storage.h>
 #include <odr/file.h>
 
 namespace odr::oldms {
 
-class LegacyMicrosoftFile final : public common::DocumentFile {
+class LegacyMicrosoftFile final : public abstract::DocumentFile {
 public:
-  explicit LegacyMicrosoftFile(std::shared_ptr<common::ReadStorage> storage);
+  explicit LegacyMicrosoftFile(std::shared_ptr<abstract::ReadStorage> storage);
 
   FileType fileType() const noexcept final;
   FileMeta fileMeta() const noexcept final;
@@ -23,10 +23,10 @@ public:
   EncryptionState encryptionState() const noexcept final;
   bool decrypt(const std::string &password) final;
 
-  std::shared_ptr<common::Document> document() const final;
+  std::shared_ptr<abstract::Document> document() const final;
 
 private:
-  std::shared_ptr<common::ReadStorage> m_storage;
+  std::shared_ptr<abstract::ReadStorage> m_storage;
   FileMeta m_meta;
 };
 

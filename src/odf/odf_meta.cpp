@@ -1,12 +1,13 @@
-#include <common/map_util.h>
-#include <common/storage.h>
-#include <common/storage_util.h>
+#include <abstract/storage.h>
 #include <common/table_cursor.h>
 #include <crypto/crypto_util.h>
 #include <cstring>
 #include <odf/odf_meta.h>
+#include <odr/exceptions.h>
 #include <odr/file.h>
 #include <pugixml.hpp>
+#include <util/map_util.h>
+#include <util/stream_util.h>
 
 namespace odr::odf {
 
@@ -31,8 +32,8 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
       {"application/vnd.oasis.opendocument.graphics-template",
        FileType::OPENDOCUMENT_GRAPHICS},
   };
-  return common::MapUtil::lookupMapDefault(MIME_TYPES, mimeType, fileType,
-                                           FileType::UNKNOWN);
+  return util::map::lookupMapDefault(MIME_TYPES, mimeType, fileType,
+                                     FileType::UNKNOWN);
 }
 
 void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
@@ -70,15 +71,15 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
 }
 } // namespace
 
-FileMeta parseFileMeta(const common::ReadStorage &storage,
+FileMeta parseFileMeta(const abstract::ReadStorage &storage,
                        const pugi::xml_document *manifest) {
   FileMeta result;
 
   if (!storage.isFile("content.xml"))
-    throw NoOpenDocumentFileException();
+    throw NoOpenDocumentFile();
 
   if (storage.isFile("mimetype")) {
-    const auto mimeType = common::StorageUtil::read(storage, "mimetype");
+    const auto mimeType = util::stream::read(*storage.read("mimetype"));
     lookupFileType(mimeType, result.type);
   }
 
@@ -106,7 +107,7 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
 
   const auto body = content.document_element().child("office:body");
   if (!body)
-    throw NoOpenDocumentFileException();
+    throw NoOpenDocumentFile();
 
   if (body.child("office:text"))
     result.documentType = DocumentType::TEXT;

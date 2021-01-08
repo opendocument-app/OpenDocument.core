@@ -32,26 +32,23 @@ add_library(odr-object OBJECT
         src/open_strategy.cpp
         src/property.cpp
 
+        src/abstract/document_elements.cpp
+        src/abstract/file.cpp
+        src/abstract/property.cpp
+
         src/cfb/cfb_archive.cpp
         src/cfb/cfb_file.cpp
         src/cfb/cfb_storage.cpp
 
         src/common/archive.cpp
         src/common/constants.cpp
-        src/common/document_elements.cpp
         src/common/file.cpp
-        src/common/file_util.cpp
         src/common/html.cpp
         src/common/path.cpp
         src/common/property.cpp
-        src/common/storage_util.cpp
-        src/common/stream_util.cpp
-        src/common/string_util.cpp
         src/common/table_cursor.cpp
         src/common/table_position.cpp
         src/common/table_range.cpp
-        src/common/xml_properties.cpp
-        src/common/xml_util.cpp
 
         src/crypto/crypto_util.cpp
 
@@ -73,6 +70,11 @@ add_library(odr-object OBJECT
         src/ooxml/text/ooxml_text_style.cpp
 
         src/svm/svm_to_svg.cpp
+
+        src/util/file_util.cpp
+        src/util/stream_util.cpp
+        src/util/string_util.cpp
+        src/util/xml_util.cpp
 
         src/zip/zip_archive.cpp
         src/zip/zip_file.cpp

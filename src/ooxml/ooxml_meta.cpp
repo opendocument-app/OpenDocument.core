@@ -1,15 +1,14 @@
+#include <abstract/storage.h>
 #include <common/path.h>
-#include <common/storage.h>
-#include <common/xml_util.h>
-#include <odr/exceptions.h>
 #include <odr/file.h>
 #include <ooxml/ooxml_meta.h>
 #include <pugixml.hpp>
 #include <unordered_map>
+#include <util/xml_util.h>
 
 namespace odr::ooxml {
 
-FileMeta parseFileMeta(common::ReadStorage &storage) {
+FileMeta parseFileMeta(abstract::ReadStorage &storage) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       {"word/document.xml", FileType::OFFICE_OPEN_XML_DOCUMENT},
       {"ppt/presentation.xml", FileType::OFFICE_OPEN_XML_PRESENTATION},
@@ -46,14 +45,14 @@ parseRelationships(const pugi::xml_document &rels) {
 }
 
 std::unordered_map<std::string, std::string>
-parseRelationships(const common::ReadStorage &storage,
+parseRelationships(const abstract::ReadStorage &storage,
                    const common::Path &path) {
   const auto relPath =
       path.parent().join("_rels").join(path.basename() + ".rels");
   if (!storage.isFile(relPath))
     return {};
 
-  const auto relationships = common::XmlUtil::parse(storage, relPath);
+  const auto relationships = util::xml::parse(storage, relPath);
   return parseRelationships(relationships);
 }
 

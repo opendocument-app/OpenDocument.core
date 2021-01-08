@@ -1,11 +1,11 @@
 #ifndef ODR_CFB_ARCHIVE_H
 #define ODR_CFB_ARCHIVE_H
 
-#include <common/archive.h>
+#include <abstract/archive.h>
 
 namespace odr::cfb {
 
-class CfbArchive final : public common::Archive {
+class CfbArchive final : public abstract::Archive {
 public:
 };
 

@@ -1,5 +1,5 @@
-#include <common/document.h>
-#include <common/document_elements.h>
+#include <abstract/document.h>
+#include <abstract/document_elements.h>
 #include <common/path.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
@@ -7,7 +7,7 @@
 
 namespace odr {
 
-Document::Document(std::shared_ptr<common::Document> document)
+Document::Document(std::shared_ptr<abstract::Document> document)
     : m_document{std::move(document)} {
   // TODO null check
 }
@@ -28,21 +28,21 @@ bool Document::savable(const bool encrypted) const noexcept {
 
 TextDocument Document::textDocument() const {
   return TextDocument(
-      std::dynamic_pointer_cast<common::TextDocument>(m_document));
+      std::dynamic_pointer_cast<abstract::TextDocument>(m_document));
 }
 
 Presentation Document::presentation() const {
   return Presentation(
-      std::dynamic_pointer_cast<common::Presentation>(m_document));
+      std::dynamic_pointer_cast<abstract::Presentation>(m_document));
 }
 
 Spreadsheet Document::spreadsheet() const {
   return Spreadsheet(
-      std::dynamic_pointer_cast<common::Spreadsheet>(m_document));
+      std::dynamic_pointer_cast<abstract::Spreadsheet>(m_document));
 }
 
 Drawing Document::drawing() const {
-  return Drawing(std::dynamic_pointer_cast<common::Drawing>(m_document));
+  return Drawing(std::dynamic_pointer_cast<abstract::Drawing>(m_document));
 }
 
 Element Document::root() const { return Element(m_document->root()); }
@@ -54,7 +54,7 @@ void Document::save(const std::string &path,
   m_document->save(path, password);
 }
 
-TextDocument::TextDocument(std::shared_ptr<common::TextDocument> textDocument)
+TextDocument::TextDocument(std::shared_ptr<abstract::TextDocument> textDocument)
     : Document(textDocument), m_textDocument{std::move(textDocument)} {}
 
 PageStyle TextDocument::pageStyle() const {
@@ -63,7 +63,7 @@ PageStyle TextDocument::pageStyle() const {
 
 ElementRange TextDocument::content() const { return root().children(); }
 
-Presentation::Presentation(std::shared_ptr<common::Presentation> presentation)
+Presentation::Presentation(std::shared_ptr<abstract::Presentation> presentation)
     : Document(presentation), m_presentation{std::move(presentation)} {}
 
 std::uint32_t Presentation::slideCount() const {
@@ -74,7 +74,7 @@ SlideRange Presentation::slides() const {
   return SlideRange(SlideElement(m_presentation->firstSlide()));
 }
 
-Spreadsheet::Spreadsheet(std::shared_ptr<common::Spreadsheet> spreadsheet)
+Spreadsheet::Spreadsheet(std::shared_ptr<abstract::Spreadsheet> spreadsheet)
     : Document(spreadsheet), m_spreadsheet{std::move(spreadsheet)} {}
 
 std::uint32_t Spreadsheet::sheetCount() const {
@@ -85,7 +85,7 @@ SheetRange Spreadsheet::sheets() const {
   return SheetRange(SheetElement(m_spreadsheet->firstSheet()));
 }
 
-Drawing::Drawing(std::shared_ptr<common::Drawing> graphics)
+Drawing::Drawing(std::shared_ptr<abstract::Drawing> graphics)
     : Document(graphics), m_drawing{std::move(graphics)} {}
 
 std::uint32_t Drawing::pageCount() const { return m_drawing->pageCount(); }

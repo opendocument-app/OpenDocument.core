@@ -1,8 +1,7 @@
-#include <common/document_elements.h>
-#include <odr/document.h>
+#include <abstract/document_elements.h>
 #include <odr/document_elements.h>
 
-namespace odr::common {
+namespace odr::abstract {
 
 ElementType Slide::type() const { return ElementType::SLIDE; }
 
@@ -42,4 +41,4 @@ ElementType Line::type() const { return ElementType::LINE; }
 
 ElementType Circle::type() const { return ElementType::CIRCLE; }
 
-} // namespace odr::common
+} // namespace odr::abstract

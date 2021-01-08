@@ -5,10 +5,14 @@
 
 namespace odr {
 
-namespace OpenDocumentReder {
-static std::string version() noexcept;
-static std::string commit() noexcept;
-} // namespace OpenDocumentReder
+class OpenDocumentReader {
+public:
+  static std::string version() noexcept;
+  static std::string commit() noexcept;
+
+private:
+  OpenDocumentReader() = default;
+};
 
 } // namespace odr
 

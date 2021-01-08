@@ -1,16 +1,17 @@
-#include <common/storage.h>
-#include <common/xml_util.h>
+#include <abstract/storage.h>
 #include <odf/odf_crypto.h>
 #include <odf/odf_document.h>
 #include <odf/odf_document_file.h>
 #include <pugixml.hpp>
+#include <util/xml_util.h>
 
 namespace odr::odf {
 
-OpenDocumentFile::OpenDocumentFile(std::shared_ptr<common::ReadStorage> storage)
+OpenDocumentFile::OpenDocumentFile(
+    std::shared_ptr<abstract::ReadStorage> storage)
     : m_storage{std::move(storage)} {
   if (m_storage->isFile("META-INF/manifest.xml")) {
-    auto manifest = common::XmlUtil::parse(*m_storage, "META-INF/manifest.xml");
+    auto manifest = util::xml::parse(*m_storage, "META-INF/manifest.xml");
 
     m_file_meta = parseFileMeta(*m_storage, &manifest);
     m_manifest = parseManifest(manifest);
@@ -55,13 +56,13 @@ EncryptionState OpenDocumentFile::encryptionState() const noexcept {
 
 bool OpenDocumentFile::decrypt(const std::string &password) {
   // TODO throw if not encrypted or already decrypted
-  if (!Crypto::decrypt(m_storage, m_manifest, password))
+  if (!odf::decrypt(m_storage, m_manifest, password))
     return false;
   m_encryptionState = EncryptionState::DECRYPTED;
   return true;
 }
 
-std::shared_ptr<common::Document> OpenDocumentFile::document() const {
+std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
   // TODO throw if encrypted
   switch (fileType()) {
   case FileType::OPENDOCUMENT_TEXT:

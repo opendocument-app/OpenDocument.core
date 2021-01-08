@@ -8,7 +8,7 @@
 namespace odr::oldms {
 
 namespace {
-FileMeta parseMeta(const common::ReadStorage &storage) {
+FileMeta parseMeta(const abstract::ReadStorage &storage) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
@@ -39,7 +39,7 @@ FileMeta parseMeta(const common::ReadStorage &storage) {
 } // namespace
 
 LegacyMicrosoftFile::LegacyMicrosoftFile(
-    std::shared_ptr<common::ReadStorage> storage)
+    std::shared_ptr<abstract::ReadStorage> storage)
     : m_storage{std::move(storage)} {
   m_meta = parseMeta(*m_storage);
 }
@@ -72,7 +72,7 @@ bool LegacyMicrosoftFile::decrypt(const std::string &password) {
   return false; // TODO throw
 }
 
-std::shared_ptr<common::Document> LegacyMicrosoftFile::document() const {
+std::shared_ptr<abstract::Document> LegacyMicrosoftFile::document() const {
   return {}; // TODO throw
 }
 

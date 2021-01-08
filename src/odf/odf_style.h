@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace odr::common {
+namespace odr::abstract {
 class Property;
 class PageStyle;
 class TextStyle;
@@ -15,12 +15,12 @@ class TableStyle;
 class TableColumnStyle;
 class TableCellStyle;
 class DrawingStyle;
-} // namespace odr::common
+} // namespace odr::abstract
 
 namespace odr::odf {
 
 struct ResolvedStyle {
-  static std::shared_ptr<common::Property>
+  static std::shared_ptr<abstract::Property>
   lookup(const std::unordered_map<std::string, std::string> &map,
          const std::string &attribute);
 
@@ -36,12 +36,12 @@ struct ResolvedStyle {
   std::unordered_map<std::string, std::string> drawingPageProperties;
   std::unordered_map<std::string, std::string> graphicProperties;
 
-  std::shared_ptr<common::TextStyle> toTextStyle() const;
-  std::shared_ptr<common::ParagraphStyle> toParagraphStyle() const;
-  std::shared_ptr<common::TableStyle> toTableStyle() const;
-  std::shared_ptr<common::TableColumnStyle> toTableColumnStyle() const;
-  std::shared_ptr<common::TableCellStyle> toTableCellStyle() const;
-  std::shared_ptr<common::DrawingStyle> toDrawingStyle() const;
+  std::shared_ptr<abstract::TextStyle> toTextStyle() const;
+  std::shared_ptr<abstract::ParagraphStyle> toParagraphStyle() const;
+  std::shared_ptr<abstract::TableStyle> toTableStyle() const;
+  std::shared_ptr<abstract::TableColumnStyle> toTableColumnStyle() const;
+  std::shared_ptr<abstract::TableCellStyle> toTableCellStyle() const;
+  std::shared_ptr<abstract::DrawingStyle> toDrawingStyle() const;
 };
 
 class Style final {
@@ -62,10 +62,10 @@ public:
 
   std::shared_ptr<Style> style(const std::string &name) const;
 
-  std::shared_ptr<common::PageStyle> pageStyle(const std::string &name) const;
-  std::shared_ptr<common::PageStyle>
+  std::shared_ptr<abstract::PageStyle> pageStyle(const std::string &name) const;
+  std::shared_ptr<abstract::PageStyle>
   masterPageStyle(const std::string &name) const;
-  std::shared_ptr<common::PageStyle> defaultPageStyle() const;
+  std::shared_ptr<abstract::PageStyle> defaultPageStyle() const;
 
 private:
   pugi::xml_node m_stylesRoot;

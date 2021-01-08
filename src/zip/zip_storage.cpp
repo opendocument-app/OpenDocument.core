@@ -180,7 +180,7 @@ public:
     memset(&zip, 0, sizeof(zip));
     const mz_bool status = mz_zip_writer_init_file(&zip, path.data(), 0);
     if (!status)
-      throw common::FileNotCreatedException(path);
+      throw FileNotCreated();
   }
 
   ~Impl() {

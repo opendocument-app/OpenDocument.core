@@ -8,20 +8,24 @@ namespace odr {
 enum class FileType;
 }
 
-namespace odr::common {
-class Path;
+namespace odr::abstract {
 class File;
 class DocumentFile;
+} // namespace odr::abstract
+
+namespace odr::common {
+class Path;
 } // namespace odr::common
 
-namespace odr::OpenStrategy {
+namespace odr::open_strategy {
 std::vector<FileType> types(const common::Path &path);
 
-std::unique_ptr<common::File> openFile(const common::Path &path);
-std::unique_ptr<common::File> openFile(const common::Path &path, FileType as);
+std::unique_ptr<abstract::File> open_file(const common::Path &path);
+std::unique_ptr<abstract::File> open_file(const common::Path &path,
+                                          FileType as);
 
-std::unique_ptr<common::DocumentFile>
-openDocumentFile(const common::Path &path);
-} // namespace odr::OpenStrategy
+std::unique_ptr<abstract::DocumentFile>
+open_document_file(const common::Path &path);
+} // namespace odr::open_strategy
 
 #endif // ODR_OPEN_STRATEGY_H

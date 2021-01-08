@@ -5,7 +5,7 @@ namespace odr {
 
 Property::Property() = default;
 
-Property::Property(std::shared_ptr<common::Property> impl)
+Property::Property(std::shared_ptr<abstract::Property> impl)
     : m_impl{std::move(impl)} {}
 
 bool Property::operator==(const Property &rhs) const {

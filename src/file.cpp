@@ -1,4 +1,4 @@
-#include <common/file.h>
+#include <abstract/file.h>
 #include <common/path.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -95,22 +95,22 @@ std::string FileMeta::typeAsString() const noexcept {
 }
 
 std::vector<FileType> File::types(const std::string &path) {
-  return OpenStrategy::types(path);
+  return open_strategy::types(path);
 }
 
 FileType File::type(const std::string &path) { return File(path).fileType(); }
 
 FileMeta File::meta(const std::string &path) { return File(path).fileMeta(); }
 
-File::File(std::shared_ptr<common::File> impl) : m_impl{std::move(impl)} {
+File::File(std::shared_ptr<abstract::File> impl) : m_impl{std::move(impl)} {
   if (!m_impl)
     throw FileNotFound();
 }
 
-File::File(const std::string &path) : File(OpenStrategy::openFile(path)) {}
+File::File(const std::string &path) : File(open_strategy::open_file(path)) {}
 
 File::File(const std::string &path, FileType as)
-    : File(OpenStrategy::openFile(path, as)) {}
+    : File(open_strategy::open_file(path, as)) {}
 
 FileType File::fileType() const noexcept { return m_impl->fileMeta().type; }
 
@@ -123,20 +123,20 @@ FileMeta File::fileMeta() const noexcept { return m_impl->fileMeta(); }
 std::unique_ptr<std::istream> File::data() const { return m_impl->data(); }
 
 ImageFile File::imageFile() const {
-  auto imageFile = std::dynamic_pointer_cast<common::ImageFile>(m_impl);
+  auto imageFile = std::dynamic_pointer_cast<abstract::ImageFile>(m_impl);
   if (!imageFile)
     throw NoImageFile();
   return ImageFile(imageFile);
 }
 
 DocumentFile File::documentFile() const {
-  auto documentFile = std::dynamic_pointer_cast<common::DocumentFile>(m_impl);
+  auto documentFile = std::dynamic_pointer_cast<abstract::DocumentFile>(m_impl);
   if (!documentFile)
     throw NoDocumentFile();
   return DocumentFile(documentFile);
 }
 
-ImageFile::ImageFile(std::shared_ptr<common::ImageFile> impl)
+ImageFile::ImageFile(std::shared_ptr<abstract::ImageFile> impl)
     : File(impl), m_impl{std::move(impl)} {}
 
 FileType DocumentFile::type(const std::string &path) {
@@ -147,11 +147,11 @@ FileMeta DocumentFile::meta(const std::string &path) {
   return DocumentFile(path).fileMeta();
 }
 
-DocumentFile::DocumentFile(std::shared_ptr<common::DocumentFile> impl)
+DocumentFile::DocumentFile(std::shared_ptr<abstract::DocumentFile> impl)
     : File(impl), m_impl{std::move(impl)} {}
 
 DocumentFile::DocumentFile(const std::string &path)
-    : DocumentFile(OpenStrategy::openDocumentFile(path)) {}
+    : DocumentFile(open_strategy::open_document_file(path)) {}
 
 bool DocumentFile::passwordEncrypted() const {
   return m_impl->passwordEncrypted();

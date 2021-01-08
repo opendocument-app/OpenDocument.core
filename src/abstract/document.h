@@ -1,5 +1,5 @@
-#ifndef ODR_COMMON_DOCUMENT_H
-#define ODR_COMMON_DOCUMENT_H
+#ifndef ODR_ABSTRACT_DOCUMENT_H
+#define ODR_ABSTRACT_DOCUMENT_H
 
 #include <cstdint>
 #include <memory>
@@ -17,6 +17,9 @@ using ElementRange = ElementRangeTemplate<Element>;
 
 namespace odr::common {
 class Path;
+}
+
+namespace odr::abstract {
 class DocumentFile;
 
 class Element;
@@ -68,6 +71,6 @@ public:
   [[nodiscard]] virtual std::shared_ptr<const Page> firstPage() const = 0;
 };
 
-} // namespace odr::common
+} // namespace odr::abstract
 
-#endif // ODR_COMMON_DOCUMENT_H
+#endif // ODR_ABSTRACT_DOCUMENT_H
