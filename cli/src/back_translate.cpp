@@ -1,9 +1,9 @@
-#include <common/file_util.h>
 #include <iostream>
 #include <odr/document.h>
 #include <odr/file.h>
 #include <odr/html.h>
 #include <string>
+#include <util/file_util.h>
 
 int main(int, char **argv) {
   const std::string input{argv[1]};
@@ -19,7 +19,7 @@ int main(int, char **argv) {
 
   odr::Document document = documentFile.document();
 
-  const std::string diff = odr::common::FileUtil::read(diffPath);
+  const std::string diff = odr::util::file::read(diffPath);
   odr::Html::edit(document, "", diff);
 
   document.save(output);
