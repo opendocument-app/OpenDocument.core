@@ -65,7 +65,7 @@ ArchiveEntryIterator &ArchiveEntryIterator::operator++() {
 }
 
 ArchiveEntryIterator ArchiveEntryIterator::operator++(int) & {
-  ArchiveEntryIterator result = *this;
+  ArchiveEntryIterator result(m_impl->copy());
   m_impl->next();
   return result;
 }

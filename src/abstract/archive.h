@@ -59,6 +59,8 @@ public:
   virtual bool operator==(const ArchiveEntryIterator &rhs) const = 0;
   virtual bool operator!=(const ArchiveEntryIterator &rhs) const = 0;
 
+  [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator> copy() const = 0;
+
   virtual void next() = 0;
   [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> entry() const = 0;
 };

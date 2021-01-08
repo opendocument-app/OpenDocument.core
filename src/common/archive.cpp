@@ -6,7 +6,8 @@
 
 namespace odr::common {
 
-class DefaultArchiveEntryIterator : public abstract::ArchiveEntryIterator {
+class DefaultArchiveEntryIterator final
+    : public abstract::ArchiveEntryIterator {
 public:
   DefaultArchiveEntryIterator(
       std::shared_ptr<const DefaultArchive> archive,
@@ -14,7 +15,7 @@ public:
           iterator)
       : m_archive{std::move(archive)}, m_iterator{std::move(iterator)} {}
 
-  bool operator==(const ArchiveEntryIterator &rhs) const override {
+  bool operator==(const ArchiveEntryIterator &rhs) const final {
     auto tmp = dynamic_cast<const DefaultArchiveEntryIterator *>(&rhs);
     if (tmp == nullptr)
       return false;
@@ -23,13 +24,17 @@ public:
     return m_iterator == tmp->m_iterator;
   }
 
-  bool operator!=(const ArchiveEntryIterator &rhs) const override {
+  bool operator!=(const ArchiveEntryIterator &rhs) const final {
     return !operator==(rhs);
   }
 
-  void next() override { ++m_iterator; }
+  [[nodiscard]] std::unique_ptr<ArchiveEntryIterator> copy() const final {
+    return std::make_unique<DefaultArchiveEntryIterator>(*this);
+  }
 
-  [[nodiscard]] std::shared_ptr<abstract::ArchiveEntry> entry() const override {
+  void next() final { ++m_iterator; }
+
+  [[nodiscard]] std::shared_ptr<abstract::ArchiveEntry> entry() const final {
     return *m_iterator;
   }
 
