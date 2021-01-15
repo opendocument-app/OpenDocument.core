@@ -19,10 +19,10 @@ public:
   explicit ZipFile(std::shared_ptr<common::MemoryFile> file);
   ~ZipFile() final;
 
-  [[nodiscard]] FileType fileType() const noexcept final;
-  [[nodiscard]] FileCategory fileCategory() const noexcept final;
-  [[nodiscard]] FileMeta fileMeta() const noexcept final;
-  [[nodiscard]] FileLocation fileLocation() const noexcept final;
+  [[nodiscard]] FileType file_type() const noexcept final;
+  [[nodiscard]] FileCategory file_category() const noexcept final;
+  [[nodiscard]] FileMeta file_meta() const noexcept final;
+  [[nodiscard]] FileLocation file_location() const noexcept final;
 
   [[nodiscard]] std::size_t size() const final;
 

@@ -31,18 +31,18 @@ ZipFile::ZipFile(std::shared_ptr<common::MemoryFile> file)
 
 ZipFile::~ZipFile() { mz_zip_reader_end(&m_zip); }
 
-FileType ZipFile::fileType() const noexcept { return FileType::ZIP; }
+FileType ZipFile::file_type() const noexcept { return FileType::ZIP; }
 
-FileCategory ZipFile::fileCategory() const noexcept {
+FileCategory ZipFile::file_category() const noexcept {
   return FileCategory::ARCHIVE;
 }
 
-FileMeta ZipFile::fileMeta() const noexcept {
+FileMeta ZipFile::file_meta() const noexcept {
   return {}; // TODO
 }
 
-FileLocation ZipFile::fileLocation() const noexcept {
-  return m_file->fileLocation();
+FileLocation ZipFile::file_location() const noexcept {
+  return m_file->file_location();
 }
 
 std::size_t ZipFile::size() const { return m_file->size(); }

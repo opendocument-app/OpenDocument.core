@@ -23,18 +23,18 @@ OpenDocumentFile::OpenDocumentFile(
     m_encryptionState = EncryptionState::ENCRYPTED;
 }
 
-FileType OpenDocumentFile::fileType() const noexcept {
+FileType OpenDocumentFile::file_type() const noexcept {
   return m_file_meta.type;
 }
 
-FileMeta OpenDocumentFile::fileMeta() const noexcept {
+FileMeta OpenDocumentFile::file_meta() const noexcept {
   FileMeta result = m_file_meta;
   if (m_encryptionState != EncryptionState::ENCRYPTED)
     result.documentMeta = document()->documentMeta();
   return result;
 }
 
-FileLocation OpenDocumentFile::fileLocation() const noexcept {
+FileLocation OpenDocumentFile::file_location() const noexcept {
   return FileLocation::UNKNOWN; // TODO
 }
 
@@ -64,7 +64,7 @@ bool OpenDocumentFile::decrypt(const std::string &password) {
 
 std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
   // TODO throw if encrypted
-  switch (fileType()) {
+  switch (file_type()) {
   case FileType::OPENDOCUMENT_TEXT:
     return std::make_shared<OpenDocumentText>(m_storage);
   case FileType::OPENDOCUMENT_PRESENTATION:

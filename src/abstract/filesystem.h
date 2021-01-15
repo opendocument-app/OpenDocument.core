@@ -4,11 +4,11 @@
 #include <memory>
 
 namespace odr::common {
-class File;
 class Path;
 } // namespace odr::common
 
 namespace odr::abstract {
+class File;
 
 class FileWalker;
 

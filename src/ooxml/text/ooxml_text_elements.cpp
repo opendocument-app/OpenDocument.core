@@ -25,15 +25,15 @@ public:
       : m_storage{std::move(storage)}, m_path{std::move(path)}, m_fileType{
                                                                     fileType} {}
 
-  FileType fileType() const noexcept final { return m_fileType; }
+  FileType file_type() const noexcept final { return m_fileType; }
 
-  FileMeta fileMeta() const noexcept final {
+  FileMeta file_meta() const noexcept final {
     FileMeta result;
-    result.type = fileType();
+    result.type = file_type();
     return result;
   }
 
-  FileLocation fileLocation() const noexcept final {
+  FileLocation file_location() const noexcept final {
     return FileLocation::UNKNOWN; // TODO
   }
 

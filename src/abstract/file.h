@@ -22,10 +22,10 @@ class File {
 public:
   virtual ~File() = default;
 
-  [[nodiscard]] virtual FileType fileType() const noexcept = 0;
-  [[nodiscard]] virtual FileCategory fileCategory() const noexcept;
-  [[nodiscard]] virtual FileMeta fileMeta() const noexcept = 0;
-  [[nodiscard]] virtual FileLocation fileLocation() const noexcept = 0;
+  [[nodiscard]] virtual FileType file_type() const noexcept = 0;
+  [[nodiscard]] virtual FileCategory file_category() const noexcept;
+  [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;
+  [[nodiscard]] virtual FileLocation file_location() const noexcept = 0;
 
   [[nodiscard]] virtual std::size_t size() const = 0;
 
@@ -34,19 +34,19 @@ public:
 
 class ImageFile : public File {
 public:
-  [[nodiscard]] FileCategory fileCategory() const noexcept final;
+  [[nodiscard]] FileCategory file_category() const noexcept final;
 
   [[nodiscard]] virtual std::shared_ptr<Image> image() const = 0;
 };
 
 class TextFile : public File {
 public:
-  [[nodiscard]] FileCategory fileCategory() const noexcept final;
+  [[nodiscard]] FileCategory file_category() const noexcept final;
 };
 
 class ArchiveFile : public File {
 public:
-  [[nodiscard]] FileCategory fileCategory() const noexcept final;
+  [[nodiscard]] FileCategory file_category() const noexcept final;
 
   [[nodiscard]] virtual std::shared_ptr<Archive> archive() const = 0;
 };

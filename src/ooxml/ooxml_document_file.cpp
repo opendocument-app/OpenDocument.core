@@ -14,11 +14,11 @@ OfficeOpenXmlFile::OfficeOpenXmlFile(
   m_storage = std::move(storage);
 }
 
-FileType OfficeOpenXmlFile::fileType() const noexcept { return m_meta.type; }
+FileType OfficeOpenXmlFile::file_type() const noexcept { return m_meta.type; }
 
-FileMeta OfficeOpenXmlFile::fileMeta() const noexcept { return m_meta; }
+FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_meta; }
 
-FileLocation OfficeOpenXmlFile::fileLocation() const noexcept {
+FileLocation OfficeOpenXmlFile::file_location() const noexcept {
   return FileLocation::UNKNOWN; // TODO
 }
 
@@ -59,7 +59,7 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
 
 std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
   // TODO throw if encrypted
-  switch (fileType()) {
+  switch (file_type()) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT:
     return std::make_shared<OfficeOpenXmlTextDocument>(m_storage);
   case FileType::OFFICE_OPEN_XML_PRESENTATION:

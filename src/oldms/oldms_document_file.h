@@ -11,9 +11,9 @@ class LegacyMicrosoftFile final : public abstract::DocumentFile {
 public:
   explicit LegacyMicrosoftFile(std::shared_ptr<abstract::ReadStorage> storage);
 
-  FileType fileType() const noexcept final;
-  FileMeta fileMeta() const noexcept final;
-  FileLocation fileLocation() const noexcept final;
+  FileType file_type() const noexcept final;
+  FileMeta file_meta() const noexcept final;
+  FileLocation file_location() const noexcept final;
 
   std::size_t size() const final;
 

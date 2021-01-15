@@ -112,13 +112,13 @@ File::File(const std::string &path) : File(open_strategy::open_file(path)) {}
 File::File(const std::string &path, FileType as)
     : File(open_strategy::open_file(path, as)) {}
 
-FileType File::fileType() const noexcept { return m_impl->fileMeta().type; }
+FileType File::fileType() const noexcept { return m_impl->file_meta().type; }
 
 FileCategory File::fileCategory() const noexcept {
   return FileMeta::categoryByType(fileType());
 }
 
-FileMeta File::fileMeta() const noexcept { return m_impl->fileMeta(); }
+FileMeta File::fileMeta() const noexcept { return m_impl->file_meta(); }
 
 std::unique_ptr<std::istream> File::data() const { return m_impl->data(); }
 

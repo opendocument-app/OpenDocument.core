@@ -44,11 +44,11 @@ LegacyMicrosoftFile::LegacyMicrosoftFile(
   m_meta = parseMeta(*m_storage);
 }
 
-FileType LegacyMicrosoftFile::fileType() const noexcept { return m_meta.type; }
+FileType LegacyMicrosoftFile::file_type() const noexcept { return m_meta.type; }
 
-FileMeta LegacyMicrosoftFile::fileMeta() const noexcept { return m_meta; }
+FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_meta; }
 
-FileLocation LegacyMicrosoftFile::fileLocation() const noexcept {
+FileLocation LegacyMicrosoftFile::file_location() const noexcept {
   return FileLocation::UNKNOWN; // TODO
 }
 

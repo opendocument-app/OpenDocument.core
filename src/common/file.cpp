@@ -12,11 +12,11 @@ DiscFile::DiscFile(std::string path) : m_path{std::move(path)} {}
 
 DiscFile::DiscFile(common::Path path) : m_path{std::move(path)} {}
 
-FileType DiscFile::fileType() const noexcept { return FileType::UNKNOWN; }
+FileType DiscFile::file_type() const noexcept { return FileType::UNKNOWN; }
 
-FileMeta DiscFile::fileMeta() const noexcept { return {}; }
+FileMeta DiscFile::file_meta() const noexcept { return {}; }
 
-FileLocation DiscFile::fileLocation() const noexcept {
+FileLocation DiscFile::file_location() const noexcept {
   return FileLocation::DISC;
 }
 
@@ -44,11 +44,11 @@ TemporaryDiscFile::~TemporaryDiscFile() {
 
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
 
-FileType MemoryFile::fileType() const noexcept { return FileType::UNKNOWN; }
+FileType MemoryFile::file_type() const noexcept { return FileType::UNKNOWN; }
 
-FileMeta MemoryFile::fileMeta() const noexcept { return {}; }
+FileMeta MemoryFile::file_meta() const noexcept { return {}; }
 
-FileLocation MemoryFile::fileLocation() const noexcept {
+FileLocation MemoryFile::file_location() const noexcept {
   return FileLocation::MEMORY;
 }
 

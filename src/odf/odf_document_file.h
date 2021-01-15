@@ -15,9 +15,9 @@ class OpenDocumentFile final : public virtual abstract::DocumentFile {
 public:
   explicit OpenDocumentFile(std::shared_ptr<abstract::ReadStorage> storage);
 
-  FileType fileType() const noexcept final;
-  FileMeta fileMeta() const noexcept final;
-  FileLocation fileLocation() const noexcept final;
+  FileType file_type() const noexcept final;
+  FileMeta file_meta() const noexcept final;
+  FileLocation file_location() const noexcept final;
 
   std::size_t size() const final;
 

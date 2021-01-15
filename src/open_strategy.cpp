@@ -20,12 +20,12 @@ std::vector<FileType> open_strategy::types(const common::Path &path) {
     result.push_back(FileType::ZIP);
 
     try {
-      result.push_back(odf::OpenDocumentFile(storage).fileType());
+      result.push_back(odf::OpenDocumentFile(storage).file_type());
     } catch (...) {
     }
 
     try {
-      result.push_back(ooxml::OfficeOpenXmlFile(storage).fileType());
+      result.push_back(ooxml::OfficeOpenXmlFile(storage).file_type());
     } catch (...) {
     }
   } catch (...) {
@@ -38,13 +38,13 @@ std::vector<FileType> open_strategy::types(const common::Path &path) {
 
     // legacy microsoft
     try {
-      result.push_back(oldms::LegacyMicrosoftFile(storage).fileType());
+      result.push_back(oldms::LegacyMicrosoftFile(storage).file_type());
     } catch (...) {
     }
 
     // encrypted ooxml
     try {
-      result.push_back(ooxml::OfficeOpenXmlFile(storage).fileType());
+      result.push_back(ooxml::OfficeOpenXmlFile(storage).file_type());
     } catch (...) {
     }
   } catch (...) {

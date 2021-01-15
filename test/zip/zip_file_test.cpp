@@ -22,13 +22,14 @@ TEST(miniz, list) {
     mz_zip_reader_file_stat(&zip, i, &stat);
     std::cout << stat.m_is_directory << std::endl;
     std::cout << stat.m_filename << std::endl;
+    std::cout << stat.m_method << std::endl;
     std::cout << std::endl;
   }
 }
 
-TEST(ZipFile, create_fail) { EXPECT_THROW(ZipFile("/"), odr::NoZipFile); }
+TEST(ZipFile, open_fail) { EXPECT_THROW(ZipFile("/"), odr::NoZipFile); }
 
-TEST(ZipFile, create) {
+TEST(ZipFile, open) {
   auto zip = std::make_shared<ZipFile>(
       "/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt");
 
