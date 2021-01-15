@@ -17,7 +17,7 @@ TEST(miniz, list) {
 
   // TODO remove
   auto num_files = mz_zip_reader_get_num_files(&zip);
-  for (int i = 0; i < num_files; ++i) {
+  for (std::uint32_t i = 0; i < num_files; ++i) {
     mz_zip_archive_file_stat stat{};
     mz_zip_reader_file_stat(&zip, i, &stat);
     std::cout << stat.m_is_directory << std::endl;

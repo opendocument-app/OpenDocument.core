@@ -43,6 +43,7 @@ add_library(odr-object OBJECT
         src/common/archive.cpp
         src/common/constants.cpp
         src/common/file.cpp
+        src/common/filesystem.cpp
         src/common/html.cpp
         src/common/path.cpp
         src/common/property.cpp

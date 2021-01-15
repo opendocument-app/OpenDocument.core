@@ -20,15 +20,15 @@ public:
   [[nodiscard]] virtual bool is_file(const common::Path &path) const = 0;
   [[nodiscard]] virtual bool is_directory(const common::Path &path) const = 0;
 
-  [[nodiscard]] virtual std::unique_prt<abstract::File>
+  [[nodiscard]] virtual std::unique_ptr<abstract::File>
   file_walker(const common::Path &path) const = 0;
 
-  [[nodiscard]] virtual std::shared_prt<abstract::File>
+  [[nodiscard]] virtual std::unique_ptr<abstract::File>
   open(const common::Path &path) const = 0;
 
   virtual bool remove(const common::Path &path) const = 0;
   virtual bool copy(const common::Path &from, const common::Path &to) const = 0;
-  virtual std::shared_prt<abstract::File>
+  virtual std::shared_ptr<abstract::File>
   copy(abstract::File &from, const common::Path &to) const = 0;
   virtual bool move(const common::Path &from, const common::Path &to) const = 0;
 
@@ -51,7 +51,7 @@ public:
   virtual void parent() = 0;
   virtual void open_directory() = 0;
   virtual void next_sibling() = 0;
-}
+};
 
 } // namespace odr::abstract
 
