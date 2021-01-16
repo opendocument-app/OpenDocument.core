@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <string>
 
 namespace odr::cfb::impl {
 
@@ -94,18 +95,14 @@ public:
   void read_file(const CompoundFileEntry *entry, std::size_t offset,
                  char *buffer, std::size_t len) const;
 
-  bool is_property_stream(const CompoundFileEntry *entry) const;
-
-  bool is_stream(const CompoundFileEntry *entry) const;
-
   void enum_files(const CompoundFileEntry *entry, int max_level,
                   EnumFilesCallback callback) const;
 
 private:
   // Enum entries with same level, including 'entry' itself
-  void EnumNodes(const CompoundFileEntry *entry, std::int32_t current_level,
-                 std::int32_t max_level, const std::u16string &dir,
-                 const EnumFilesCallback &callback) const;
+  void enum_nodes(const CompoundFileEntry *entry, std::int32_t current_level,
+                  std::int32_t max_level, const std::u16string &dir,
+                  const EnumFilesCallback &callback) const;
 
   void read_stream(std::size_t sector, std::size_t offset, char *buffer,
                    std::size_t len) const;
@@ -168,9 +165,9 @@ private:
   const char *m_fmtid; // 16 bytes
 };
 
-class property_set_stream final {
+class PropertySetStream final {
 public:
-  property_set_stream(const void *buffer, std::size_t len);
+  PropertySetStream(const void *buffer, std::size_t len);
 
   std::size_t get_property_set_count();
 

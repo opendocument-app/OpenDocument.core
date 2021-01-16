@@ -33,9 +33,8 @@ public:
   [[nodiscard]] std::shared_ptr<ZipArchive> archive() const;
 
 private:
-  std::shared_ptr<abstract::File> m_file;
-
   mutable mz_zip_archive m_zip{};
+  std::shared_ptr<abstract::File> m_file;
 };
 
 } // namespace odr::zip

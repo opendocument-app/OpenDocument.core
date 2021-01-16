@@ -62,12 +62,12 @@ public:
 
   bool isFile(const common::Path &p) const {
     const auto entry = find(p);
-    return (entry != nullptr) && reader.is_stream(entry);
+    return (entry != nullptr) && entry->is_stream();
   }
 
   bool isDirectory(const common::Path &p) const {
     const auto entry = find(p);
-    return (entry != nullptr) && !reader.is_stream(entry);
+    return (entry != nullptr) && !entry->is_stream();
   }
 
   bool isReadable(const common::Path &p) const { return isFile(p); }

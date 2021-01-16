@@ -11,11 +11,11 @@ class CompoundFileEntry;
 
 namespace odr::cfb::util {
 
-class ReaderBuffer final : public std::streambuf {
+class ReaderBuffer : public std::streambuf {
 public:
   ReaderBuffer(const impl::CompoundFileReader &reader,
                const impl::CompoundFileEntry &entry);
-  ~ReaderBuffer() final;
+  ~ReaderBuffer();
 
   int underflow() final;
 

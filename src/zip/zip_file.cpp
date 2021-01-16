@@ -12,21 +12,23 @@ ZipFile::ZipFile(const common::Path &path)
 
 ZipFile::ZipFile(std::shared_ptr<common::DiscFile> file) : m_file{file} {
   memset(&m_zip, 0, sizeof(m_zip));
-  const mz_bool status =
+  const bool state =
       mz_zip_reader_init_file(&m_zip, file->path().string().data(),
                               MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
-  if (!status)
+  if (!state) {
     throw NoZipFile();
+  }
 }
 
 ZipFile::ZipFile(std::shared_ptr<common::MemoryFile> file)
     : m_file{std::move(file)} {
   memset(&m_zip, 0, sizeof(m_zip));
-  const mz_bool status = mz_zip_reader_init_mem(
+  const bool state = mz_zip_reader_init_mem(
       &m_zip, file->content().data(), file->content().size(),
       MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
-  if (!status)
+  if (!state) {
     throw NoZipFile();
+  }
 }
 
 ZipFile::~ZipFile() { mz_zip_reader_end(&m_zip); }

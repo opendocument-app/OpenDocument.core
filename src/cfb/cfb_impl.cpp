@@ -94,14 +94,15 @@ void CompoundFileReader::enum_files(const CompoundFileEntry *entry,
                                     int max_level,
                                     EnumFilesCallback callback) const {
   std::u16string dir;
-  EnumNodes(get_entry(entry->child_id), 0, max_level, dir, std::move(callback));
+  enum_nodes(get_entry(entry->child_id), 0, max_level, dir,
+             std::move(callback));
 }
 
-void CompoundFileReader::EnumNodes(const CompoundFileEntry *entry,
-                                   const std::int32_t current_level,
-                                   const std::int32_t max_level,
-                                   const std::u16string &dir,
-                                   const EnumFilesCallback &callback) const {
+void CompoundFileReader::enum_nodes(const CompoundFileEntry *entry,
+                                    const std::int32_t current_level,
+                                    const std::int32_t max_level,
+                                    const std::u16string &dir,
+                                    const EnumFilesCallback &callback) const {
   if (max_level > 0 && current_level >= max_level) {
     return;
   }
@@ -118,14 +119,14 @@ void CompoundFileReader::EnumNodes(const CompoundFileEntry *entry,
       newDir.append(1, '\n');
     }
     newDir.append((char16_t *)entry->name, entry->name_len / 2);
-    EnumNodes(get_entry(entry->child_id), current_level + 1, max_level, newDir,
-              callback);
+    enum_nodes(get_entry(entry->child_id), current_level + 1, max_level, newDir,
+               callback);
   }
 
-  EnumNodes(get_entry(entry->left_sibling_id), current_level, max_level, dir,
-            callback);
-  EnumNodes(get_entry(entry->right_sibling_id), current_level, max_level, dir,
-            callback);
+  enum_nodes(get_entry(entry->left_sibling_id), current_level, max_level, dir,
+             callback);
+  enum_nodes(get_entry(entry->right_sibling_id), current_level, max_level, dir,
+             callback);
 }
 
 void CompoundFileReader::read_stream(std::size_t sector, std::size_t offset,
@@ -289,8 +290,7 @@ const std::uint16_t *PropertySet::get_string_property(uint32_t property_id) {
 
 const char *PropertySet::get_fmt_id() { return m_fmtid; }
 
-property_set_stream::property_set_stream(const void *buffer,
-                                         const std::size_t len)
+PropertySetStream::PropertySetStream(const void *buffer, const std::size_t len)
     : m_buffer{static_cast<const std::uint8_t *>(buffer)}, m_buffer_len{len},
       m_hdr{static_cast<const PropertySetStreamHeader *>(buffer)} {
   if (m_buffer_len < sizeof(*m_hdr) ||
@@ -300,11 +300,11 @@ property_set_stream::property_set_stream(const void *buffer,
   }
 }
 
-std::size_t property_set_stream::get_property_set_count() {
+std::size_t PropertySetStream::get_property_set_count() {
   return m_hdr->num_property_sets;
 }
 
-PropertySet property_set_stream::get_property_set(size_t index) {
+PropertySet PropertySetStream::get_property_set(size_t index) {
   if (index >= get_property_set_count()) {
     throw CfbFileCorrupted();
   }
