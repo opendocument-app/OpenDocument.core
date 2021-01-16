@@ -92,10 +92,9 @@ void CompoundFileReader::read_file(const CompoundFileEntry *entry,
 
 void CompoundFileReader::enum_files(const CompoundFileEntry *entry,
                                     int max_level,
-                                    EnumFilesCallback callback) const {
+                                    const EnumFilesCallback &callback) const {
   std::u16string dir;
-  enum_nodes(get_entry(entry->child_id), 0, max_level, dir,
-             std::move(callback));
+  enum_nodes(get_entry(entry->child_id), 0, max_level, dir, callback);
 }
 
 void CompoundFileReader::enum_nodes(const CompoundFileEntry *entry,

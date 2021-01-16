@@ -13,6 +13,9 @@ add_executable(odr_test
         file_test.cpp
         data_driven_tests.cpp
 
+        cfb/cfb_archive_test.cpp
+        cfb/cfb_file_test.cpp
+
         common/cache_test.cpp
         common/path_test.cpp
         common/table_cursor_test.cpp

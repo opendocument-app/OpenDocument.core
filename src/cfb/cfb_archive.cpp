@@ -74,8 +74,8 @@ CfbArchive::CfbArchive(std::shared_ptr<const CfbFile> file)
   auto reader = m_file->impl();
   reader->enum_files(
       reader->get_root_entry(), -1,
-      [&](const impl::CompoundFileEntry *entry, const std::u16string &directory,
-          const int level) {
+      [&](const impl::CompoundFileEntry *entry,
+          const std::u16string & /*directory*/, const std::uint32_t /*level*/) {
         std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>
             convert;
         // TODO not sure what directory is; was empty so far

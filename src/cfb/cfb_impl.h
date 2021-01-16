@@ -72,8 +72,9 @@ struct PropertySetHeader {
 
 #pragma pack(pop)
 
-using EnumFilesCallback = std::function<void(
-    const CompoundFileEntry *, const std::u16string &dir, int level)>;
+using EnumFilesCallback =
+    std::function<void(const CompoundFileEntry *entry,
+                       const std::u16string &dir, std::uint32_t level)>;
 
 class CompoundFileReader final {
 public:
@@ -96,7 +97,7 @@ public:
                  char *buffer, std::size_t len) const;
 
   void enum_files(const CompoundFileEntry *entry, int max_level,
-                  EnumFilesCallback callback) const;
+                  const EnumFilesCallback &callback) const;
 
 private:
   // Enum entries with same level, including 'entry' itself
