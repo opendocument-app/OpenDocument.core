@@ -25,7 +25,7 @@ int ReaderBuffer::underflow() {
   const std::uint32_t result =
       mz_zip_reader_extract_iter_read(m_iter, m_buffer, amount);
   m_remaining -= result;
-  this->setg(this->m_buffer, this->m_buffer, this->m_buffer + result);
+  setg(m_buffer, m_buffer, m_buffer + result);
 
   return std::char_traits<char>::to_int_type(*gptr());
 }
