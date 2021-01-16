@@ -69,9 +69,8 @@ private:
 
 CfbArchive::CfbArchive() = default;
 
-CfbArchive::CfbArchive(std::shared_ptr<const CfbFile> file)
-    : m_file{std::move(file)} {
-  auto reader = m_file->impl();
+CfbArchive::CfbArchive(const std::shared_ptr<const CfbFile> &file) {
+  auto reader = file->impl();
   reader->enum_files(
       reader->get_root_entry(), -1,
       [&](const impl::CompoundFileEntry *entry,

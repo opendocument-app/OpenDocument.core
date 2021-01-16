@@ -3,7 +3,7 @@
 #include <odr/exceptions.h>
 #include <string>
 
-using namespace odr::zip;
+using namespace odr::cfb;
 
 TEST(CfbFile, open_fail) { EXPECT_THROW(CfbFile("/"), odr::NoCfbFile); }
 

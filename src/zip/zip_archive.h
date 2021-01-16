@@ -12,7 +12,7 @@ class ZipFile;
 class ZipArchive final : public common::DefaultArchive {
 public:
   ZipArchive();
-  explicit ZipArchive(std::shared_ptr<const ZipFile> file);
+  explicit ZipArchive(const std::shared_ptr<const ZipFile> &file);
 
   std::unique_ptr<abstract::ArchiveEntryIterator>
   insert_file(std::unique_ptr<abstract::ArchiveEntryIterator> at,
@@ -23,9 +23,6 @@ public:
               std::uint8_t compression_level);
 
   void save(std::ostream &) const final;
-
-private:
-  std::shared_ptr<const ZipFile> m_file;
 };
 
 class ZipArchiveEntry final : public common::DefaultArchiveEntry {

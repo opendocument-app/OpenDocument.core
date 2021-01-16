@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <string>
 
-using namespace odr::zip;
+using namespace odr::cfb;
 
 TEST(CfbArchive, open) {
   auto cfb = std::make_shared<CfbFile>(

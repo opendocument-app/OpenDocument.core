@@ -72,12 +72,11 @@ private:
 
 ZipArchive::ZipArchive() = default;
 
-ZipArchive::ZipArchive(std::shared_ptr<const ZipFile> file)
-    : m_file{std::move(file)} {
-  auto num_files = mz_zip_reader_get_num_files(m_file->impl());
+ZipArchive::ZipArchive(const std::shared_ptr<const ZipFile> &file) {
+  auto num_files = mz_zip_reader_get_num_files(file->impl());
   for (std::uint32_t i = 0; i < num_files; ++i) {
     mz_zip_archive_file_stat stat{};
-    mz_zip_reader_file_stat(m_file->impl(), i, &stat);
+    mz_zip_reader_file_stat(file->impl(), i, &stat);
 
     if (stat.m_is_directory) {
       DefaultArchive::insert_directory(DefaultArchive::end(), stat.m_filename);
@@ -88,7 +87,7 @@ ZipArchive::ZipArchive(std::shared_ptr<const ZipFile> file)
       }
       ZipArchive::insert_file(
           DefaultArchive::end(), stat.m_filename,
-          std::make_shared<FileInZip>(m_file, i, stat.m_uncomp_size),
+          std::make_shared<FileInZip>(file, i, stat.m_uncomp_size),
           compression_level);
     }
   }
