@@ -1,17 +1,17 @@
 #ifndef ODR_ABSTRACT_FILEABLE_H
 #define ODR_ABSTRACT_FILEABLE_H
 
-namespace odr::common {
-class Path;
-}
+#include <memory>
+#include <ostream>
 
 namespace odr::abstract {
+class File;
 
 class Fileable {
 public:
   virtual ~Fileable() = default;
 
-  void save(const common::Path &path) const final;
+  virtual void save(std::ostream &) const = 0;
 };
 
 } // namespace odr::abstract

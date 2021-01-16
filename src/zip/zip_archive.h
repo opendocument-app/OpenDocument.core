@@ -22,7 +22,7 @@ public:
               common::Path path, std::shared_ptr<abstract::File> file,
               std::uint8_t compression_level);
 
-  void save(const common::Path &path) const final;
+  void save(std::ostream &) const final;
 
 private:
   std::shared_ptr<const ZipFile> m_file;

@@ -27,7 +27,7 @@ void Archive::move(ArchiveEntry entry, const std::string &path) const {
 
 void Archive::remove(ArchiveEntry entry) { m_impl->remove(entry.m_impl); }
 
-void Archive::save(const std::string &path) const { return m_impl->save(path); }
+void Archive::save(std::ostream &out) const { return m_impl->save(out); }
 
 ArchiveEntry::ArchiveEntry() = default;
 
@@ -81,11 +81,11 @@ ArchiveEntry *ArchiveEntryIterator::operator->() {
 }
 
 bool ArchiveEntryIterator::operator==(const ArchiveEntryIterator &rhs) const {
-  return m_impl->operator==(*rhs.m_impl);
+  return m_impl->equals(*rhs.m_impl);
 }
 
 bool ArchiveEntryIterator::operator!=(const ArchiveEntryIterator &rhs) const {
-  return m_impl->operator==(*rhs.m_impl);
+  return !m_impl->equals(*rhs.m_impl);
 }
 
 } // namespace odr

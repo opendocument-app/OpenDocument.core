@@ -26,6 +26,10 @@ struct NoZipFile : public std::runtime_error {
   NoZipFile() : std::runtime_error("not a zip file") {}
 };
 
+struct ZipSaveError : public std::runtime_error {
+  ZipSaveError() : std::runtime_error("zip save error") {}
+};
+
 struct CfbError : public std::runtime_error {
   explicit CfbError(const char *desc) : std::runtime_error(desc) {}
 };

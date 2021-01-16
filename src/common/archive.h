@@ -2,6 +2,7 @@
 #define ODR_COMMON_ARCHIVE_H
 
 #include <abstract/archive.h>
+#include <common/path.h>
 #include <memory>
 #include <vector>
 
@@ -41,7 +42,7 @@ protected:
          std::unique_ptr<DefaultArchiveEntry> entry);
 };
 
-class DefaultArchiveEntry : public virtual abstract::ArchiveEntry {
+class DefaultArchiveEntry : public abstract::ArchiveEntry {
 public:
   explicit DefaultArchiveEntry(common::Path path);
   DefaultArchiveEntry(common::Path path, std::shared_ptr<abstract::File> file);

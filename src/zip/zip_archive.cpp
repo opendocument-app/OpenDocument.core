@@ -1,47 +1,24 @@
 #include <abstract/file.h>
+#include <chrono>
 #include <common/path.h>
+#include <odr/archive.h>
+#include <odr/exceptions.h>
 #include <odr/file.h>
-#include <streambuf>
+#include <zip/miniz_util.h>
 #include <zip/zip_archive.h>
 #include <zip/zip_file.h>
 
 namespace odr::zip {
 
 namespace {
-constexpr std::uint64_t buffer_size = 4098;
-
-class FileInZipStreambuf final : public std::streambuf {
+class FileInZipStreambuf final : public miniz::ReaderBuffer {
 public:
   FileInZipStreambuf(std::shared_ptr<const ZipFile> file,
                      mz_zip_reader_extract_iter_state *iter)
-      : m_file{std::move(file)}, m_iter{iter},
-        m_remaining{iter->file_stat.m_uncomp_size},
-        m_buffer{new char[buffer_size]} {}
-
-  ~FileInZipStreambuf() final {
-    mz_zip_reader_extract_iter_free(m_iter);
-    delete[] m_buffer;
-  }
-
-  int underflow() final {
-    if (m_remaining <= 0)
-      return std::char_traits<char>::eof();
-
-    const std::uint64_t amount = std::min(m_remaining, buffer_size);
-    const std::uint32_t result =
-        mz_zip_reader_extract_iter_read(m_iter, m_buffer, amount);
-    m_remaining -= result;
-    this->setg(this->m_buffer, this->m_buffer, this->m_buffer + result);
-
-    return std::char_traits<char>::to_int_type(*gptr());
-  }
+      : ReaderBuffer(iter), m_file(std::move(file)) {}
 
 private:
   std::shared_ptr<const ZipFile> m_file;
-
-  mz_zip_reader_extract_iter_state *m_iter;
-  std::uint64_t m_remaining;
-  char *m_buffer;
 };
 
 class FileInZipIstream final : public std::istream {
@@ -134,8 +111,59 @@ ZipArchive::insert_file(std::unique_ptr<abstract::ArchiveEntryIterator> at,
                     std::move(path), std::move(file), compression_level));
 }
 
-void ZipArchive::save(const common::Path &path) const {
-  // TODO
+void ZipArchive::save(std::ostream &out) const {
+  bool state;
+  const auto time =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+  mz_zip_archive archive{};
+  archive.m_pIO_opaque = &out;
+  archive.m_pWrite = [](void *opaque, std::uint64_t /*offset*/,
+                        const void *buffer, std::size_t size) {
+    auto out = static_cast<std::ostream *>(opaque);
+    out->write(static_cast<const char *>(buffer), size);
+    return size;
+  };
+  state = mz_zip_writer_init(&archive, 0);
+  if (!state) {
+    throw ZipSaveError();
+  }
+
+  for (auto it = begin(); !it->equals(*end()); it->next()) {
+    auto entry = it->entry();
+    auto type = entry->type();
+    auto path = entry->path();
+
+    if (type == ArchiveEntryType::FILE) {
+      auto file = entry->open();
+      auto istream = file->data();
+      auto size = file->size();
+
+      // TODO use level of entry
+      state = miniz::append_file(archive, path.string(), *istream, size, time,
+                                 "", 6);
+      if (!state) {
+        throw ZipSaveError();
+      }
+    } else if (type == ArchiveEntryType::DIRECTORY) {
+      state = mz_zip_writer_add_mem(&archive, (path.string() + "/").c_str(),
+                                    nullptr, 0, 0);
+      if (!state) {
+        throw ZipSaveError();
+      }
+    } else {
+      throw ZipSaveError();
+    }
+  }
+
+  state = mz_zip_writer_finalize_archive(&archive);
+  if (!state) {
+    throw ZipSaveError();
+  }
+  state = mz_zip_writer_end(&archive);
+  if (!state) {
+    throw ZipSaveError();
+  }
 }
 
 ZipArchiveEntry::ZipArchiveEntry(common::Path path,

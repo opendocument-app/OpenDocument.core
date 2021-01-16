@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <common/archive.h>
+#include <common/path.h>
 #include <odr/archive.h>
 #include <util/pointer_util.h>
 #include <utility>
@@ -15,21 +16,17 @@ public:
           iterator)
       : m_archive{std::move(archive)}, m_iterator{std::move(iterator)} {}
 
-  bool operator==(const ArchiveEntryIterator &rhs) const final {
+  [[nodiscard]] std::unique_ptr<ArchiveEntryIterator> copy() const final {
+    return std::make_unique<DefaultArchiveEntryIterator>(*this);
+  }
+
+  [[nodiscard]] bool equals(const ArchiveEntryIterator &rhs) const final {
     auto tmp = dynamic_cast<const DefaultArchiveEntryIterator *>(&rhs);
     if (tmp == nullptr)
       return false;
     if (m_archive != tmp->m_archive)
       return false;
     return m_iterator == tmp->m_iterator;
-  }
-
-  bool operator!=(const ArchiveEntryIterator &rhs) const final {
-    return !operator==(rhs);
-  }
-
-  [[nodiscard]] std::unique_ptr<ArchiveEntryIterator> copy() const final {
-    return std::make_unique<DefaultArchiveEntryIterator>(*this);
   }
 
   void next() final { ++m_iterator; }
@@ -111,7 +108,7 @@ void DefaultArchive::move(std::shared_ptr<abstract::ArchiveEntry> entry,
   if (!tmp)
     return; // TODO throw
   // TODO check if entry is in `m_entry`
-  if (*find(path) != *end())
+  if (!find(path)->equals(*end()))
     return; // TODO throw
   tmp->m_path = path;
 }

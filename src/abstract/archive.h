@@ -1,7 +1,7 @@
 #ifndef ODR_ABSTRACT_ARCHIVE_H
 #define ODR_ABSTRACT_ARCHIVE_H
 
-#include <common/path.h>
+#include <abstract/fileable.h>
 #include <memory>
 #include <vector>
 
@@ -20,10 +20,8 @@ class ArchiveFile;
 class ArchiveEntry;
 class ArchiveEntryIterator;
 
-class Archive {
+class Archive : public Fileable {
 public:
-  virtual ~Archive() = default;
-
   [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator> begin() const = 0;
   [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator> end() const = 0;
 
@@ -38,8 +36,6 @@ public:
   virtual void move(std::shared_ptr<ArchiveEntry> entry,
                     const common::Path &path) const = 0;
   virtual void remove(std::shared_ptr<ArchiveEntry> entry) = 0;
-
-  virtual void save(const common::Path &path) const = 0;
 };
 
 class ArchiveEntry {
@@ -56,12 +52,11 @@ class ArchiveEntryIterator {
 public:
   virtual ~ArchiveEntryIterator() = default;
 
-  virtual bool operator==(const ArchiveEntryIterator &rhs) const = 0;
-  virtual bool operator!=(const ArchiveEntryIterator &rhs) const = 0;
-
   [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator> copy() const = 0;
 
+  [[nodiscard]] virtual bool equals(const ArchiveEntryIterator &rhs) const = 0;
   virtual void next() = 0;
+
   [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> entry() const = 0;
 };
 

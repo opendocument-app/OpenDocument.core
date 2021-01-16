@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <optional>
+#include <ostream>
 
 namespace odr::abstract {
 class Archive;
@@ -34,7 +35,7 @@ public:
   void move(ArchiveEntry entry, const std::string &path) const;
   void remove(ArchiveEntry entry);
 
-  void save(const std::string &path) const;
+  void save(std::ostream &) const;
 
 private:
   std::shared_ptr<abstract::Archive> m_impl;
