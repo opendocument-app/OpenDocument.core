@@ -11,8 +11,7 @@ namespace odr::common {
 class DefaultArchiveEntry;
 class DefaultArchiveEntryIterator;
 
-class DefaultArchive : public abstract::Archive,
-                       public std::enable_shared_from_this<DefaultArchive> {
+class DefaultArchive : public abstract::Archive {
 public:
   [[nodiscard]] std::unique_ptr<abstract::ArchiveEntryIterator>
   begin() const override;

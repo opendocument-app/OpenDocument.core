@@ -7,8 +7,9 @@
 using namespace odr::cfb;
 
 TEST(CfbArchive, open) {
-  auto cfb = std::make_shared<CfbFile>(
-      "/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt");
+  // TODO
+  // auto cfb =
+  // std::make_shared<CfbFile>("/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt");
 
-  auto archive = cfb->archive();
+  // auto archive = cfb->archive();
 }

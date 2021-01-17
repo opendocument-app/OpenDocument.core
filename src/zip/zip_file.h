@@ -15,7 +15,7 @@ class ZipFile final : public abstract::File,
                       public std::enable_shared_from_this<ZipFile> {
 public:
   explicit ZipFile(const common::Path &path);
-  explicit ZipFile(std::shared_ptr<common::DiscFile> file);
+  explicit ZipFile(const std::shared_ptr<common::DiscFile> &file);
   explicit ZipFile(std::shared_ptr<common::MemoryFile> file);
   ~ZipFile() final;
 
