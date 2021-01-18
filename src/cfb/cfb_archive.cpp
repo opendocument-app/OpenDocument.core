@@ -92,6 +92,13 @@ CfbArchive::CfbArchive(const std::shared_ptr<const CfbFile> &file) {
       });
 }
 
+std::unique_ptr<abstract::ArchiveEntryIterator>
+CfbArchive::insert_file(std::unique_ptr<abstract::ArchiveEntryIterator> at,
+                        common::Path path,
+                        std::shared_ptr<abstract::File> file) {
+  return nullptr;
+}
+
 void CfbArchive::save(std::ostream &) const { throw UnsupportedOperation(); }
 
 } // namespace odr::cfb

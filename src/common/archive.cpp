@@ -130,8 +130,12 @@ ArchiveEntryType DefaultArchiveEntry::type() const {
 
 common::Path DefaultArchiveEntry::path() const { return m_path; }
 
-std::shared_ptr<abstract::File> DefaultArchiveEntry::open() const {
+std::shared_ptr<abstract::File> DefaultArchiveEntry::file() const {
   return m_file;
+}
+
+void DefaultArchiveEntry::file(std::shared_ptr<abstract::File> file) {
+  m_file = std::move(file);
 }
 
 } // namespace odr::common

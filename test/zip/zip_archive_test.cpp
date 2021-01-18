@@ -8,8 +8,8 @@
 using namespace odr::zip;
 
 TEST(ZipArchive, open) {
-  auto zip = std::make_shared<ZipFile>(
-      "/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt");
+  auto zip = std::make_shared<ZipFile>(std::make_shared<odr::common::DiscFile>(
+      "/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt"));
 
   auto archive = zip->archive();
 

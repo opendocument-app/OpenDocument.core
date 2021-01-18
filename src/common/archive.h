@@ -48,8 +48,9 @@ public:
 
   [[nodiscard]] ArchiveEntryType type() const override;
   [[nodiscard]] common::Path path() const override;
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const override;
 
-  [[nodiscard]] std::shared_ptr<abstract::File> open() const override;
+  void file(std::shared_ptr<abstract::File> file) override;
 
 protected:
   common::Path m_path;

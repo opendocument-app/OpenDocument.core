@@ -48,8 +48,8 @@ ArchiveEntryType ArchiveEntry::type() const { return m_impl->type(); }
 
 std::string ArchiveEntry::path() const { return m_impl->path().string(); }
 
-std::optional<File> ArchiveEntry::open() const {
-  auto result = m_impl->open();
+std::optional<File> ArchiveEntry::file() const {
+  auto result = m_impl->file();
   if (!result)
     return {};
   return File(result);

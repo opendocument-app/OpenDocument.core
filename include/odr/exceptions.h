@@ -22,6 +22,10 @@ struct UnknownFileType final : public std::runtime_error {
   UnknownFileType() : std::runtime_error("unknown file type") {}
 };
 
+struct FileReadError final : public std::runtime_error {
+  FileReadError() : std::runtime_error("file read error") {}
+};
+
 struct NoZipFile : public std::runtime_error {
   NoZipFile() : std::runtime_error("not a zip file") {}
 };

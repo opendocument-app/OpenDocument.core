@@ -44,8 +44,9 @@ public:
 
   [[nodiscard]] virtual ArchiveEntryType type() const = 0;
   [[nodiscard]] virtual common::Path path() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<File> file() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<File> open() const = 0;
+  virtual void file(std::shared_ptr<File> file) = 0;
 };
 
 class ArchiveEntryIterator {

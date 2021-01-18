@@ -36,6 +36,7 @@ public:
 class MemoryFile final : public abstract::File {
 public:
   explicit MemoryFile(std::string data);
+  explicit MemoryFile(const abstract::File &file);
 
   [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] FileMeta file_meta() const noexcept final;

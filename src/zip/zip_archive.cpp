@@ -134,7 +134,7 @@ void ZipArchive::save(std::ostream &out) const {
     auto path = entry->path();
 
     if (type == ArchiveEntryType::FILE) {
-      auto file = entry->open();
+      auto file = entry->file();
       auto istream = file->data();
       auto size = file->size();
 

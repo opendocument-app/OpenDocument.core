@@ -1,6 +1,7 @@
 #include <common/file.h>
 #include <filesystem>
 #include <fstream>
+#include <odr/exceptions.h>
 #include <odr/file.h>
 #include <sstream>
 
@@ -43,6 +44,14 @@ TemporaryDiscFile::~TemporaryDiscFile() {
 }
 
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
+
+MemoryFile::MemoryFile(const abstract::File &file) : m_data(file.size(), ' ') {
+  auto istream = file.data();
+  istream->read(m_data.data(), file.size());
+  if (istream->gcount() != file.size()) {
+    throw FileReadError();
+  }
+}
 
 FileType MemoryFile::file_type() const noexcept { return FileType::UNKNOWN; }
 

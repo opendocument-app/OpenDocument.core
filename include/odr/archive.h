@@ -52,8 +52,7 @@ public:
 
   [[nodiscard]] ArchiveEntryType type() const;
   [[nodiscard]] std::string path() const;
-
-  [[nodiscard]] std::optional<File> open() const;
+  [[nodiscard]] std::optional<File> file() const;
 
 private:
   std::shared_ptr<abstract::ArchiveEntry> m_impl;
