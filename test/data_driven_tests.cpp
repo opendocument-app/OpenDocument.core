@@ -19,8 +19,8 @@ class DataDrivenTest : public testing::TestWithParam<std::string> {};
 nlohmann::json metaToJson(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.typeAsString()},
-      {"passwordEncrypted", meta.passwordEncrypted},
-      {"entryCount", meta.documentMeta->entryCount},
+      {"password_encrypted", meta.passwordEncrypted},
+      {"entryCount", meta.documentMeta->entry_count},
       {"entries", nlohmann::json::array()},
   };
 
@@ -28,8 +28,8 @@ nlohmann::json metaToJson(const odr::FileMeta &meta) {
     for (auto &&e : meta.documentMeta->entries) {
       result["entries"].push_back({
           {"name", e.name},
-          {"rowCount", e.rowCount},
-          {"columnCount", e.columnCount},
+          {"rowCount", e.row_count},
+          {"columnCount", e.column_count},
           {"notes", e.notes},
       });
     }
@@ -96,16 +96,16 @@ TEST_P(DataDrivenTest, all) {
   if (file.fileCategory() == FileCategory::DOCUMENT) {
     auto documentFile = file.documentFile();
     auto document = documentFile.document();
-    auto documentMeta = document.documentMeta();
+    auto documentMeta = document.document_meta();
 
-    if (document.documentType() == DocumentType::TEXT) {
+    if (document.document_type() == DocumentType::TEXT) {
       const std::string htmlOutput = outputPath + "/document.html";
       fs::create_directories(fs::path(htmlOutput).parent_path());
       Html::translate(document, "", htmlOutput, config);
       EXPECT_TRUE(fs::is_regular_file(htmlOutput));
       EXPECT_LT(0, fs::file_size(htmlOutput));
-    } else if (document.documentType() == DocumentType::PRESENTATION) {
-      for (std::uint32_t i = 0; i < documentMeta.entryCount; ++i) {
+    } else if (document.document_type() == DocumentType::PRESENTATION) {
+      for (std::uint32_t i = 0; i < documentMeta.entry_count; ++i) {
         config.entryOffset = i;
         config.entryCount = 1;
         const std::string htmlOutput =
@@ -114,8 +114,8 @@ TEST_P(DataDrivenTest, all) {
         EXPECT_TRUE(fs::is_regular_file(htmlOutput));
         EXPECT_LT(0, fs::file_size(htmlOutput));
       }
-    } else if (document.documentType() == DocumentType::SPREADSHEET) {
-      for (std::uint32_t i = 0; i < documentMeta.entryCount; ++i) {
+    } else if (document.document_type() == DocumentType::SPREADSHEET) {
+      for (std::uint32_t i = 0; i < documentMeta.entry_count; ++i) {
         config.entryOffset = i;
         config.entryCount = 1;
         const std::string htmlOutput =
@@ -125,8 +125,8 @@ TEST_P(DataDrivenTest, all) {
         // EXPECT_TRUE(fs::is_regular_file(htmlOutput));
         // EXPECT_LT(0, fs::file_size(htmlOutput));
       }
-    } else if (document.documentType() == DocumentType::DRAWING) {
-      for (std::uint32_t i = 0; i < documentMeta.entryCount; ++i) {
+    } else if (document.document_type() == DocumentType::DRAWING) {
+      for (std::uint32_t i = 0; i < documentMeta.entry_count; ++i) {
         config.entryOffset = i;
         config.entryCount = 1;
         const std::string htmlOutput =

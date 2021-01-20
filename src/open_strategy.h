@@ -18,14 +18,14 @@ class Path;
 } // namespace odr::common
 
 namespace odr::open_strategy {
-std::vector<FileType> types(const common::Path &path);
+std::vector<FileType> types(std::shared_ptr<abstract::File> file);
 
-std::unique_ptr<abstract::File> open_file(const common::Path &path);
-std::unique_ptr<abstract::File> open_file(const common::Path &path,
+std::shared_ptr<abstract::File> open_file(std::shared_ptr<abstract::File> file);
+std::shared_ptr<abstract::File> open_file(std::shared_ptr<abstract::File> file,
                                           FileType as);
 
 std::unique_ptr<abstract::DocumentFile>
-open_document_file(const common::Path &path);
+open_document_file(std::shared_ptr<abstract::File> file);
 } // namespace odr::open_strategy
 
 #endif // ODR_OPEN_STRATEGY_H

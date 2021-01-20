@@ -14,11 +14,11 @@ TEST(DocumentTest, odf_hello) {
 
   Document document = documentFile.document();
 
-  std::cout << (int)document.documentType() << std::endl;
+  std::cout << (int)document.document_type() << std::endl;
 
-  auto textDocument = document.textDocument();
+  auto textDocument = document.text_tocument();
 
-  auto pageStyle = textDocument.pageStyle();
+  auto pageStyle = textDocument.page_style();
 
   std::cout << *pageStyle.width() << " " << *pageStyle.height() << std::endl;
   std::cout << *pageStyle.marginTop() << std::endl;

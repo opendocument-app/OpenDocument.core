@@ -21,11 +21,11 @@ FileCategory ArchiveFile::file_category() const noexcept {
   return FileCategory::ARCHIVE;
 }
 
-DocumentType DocumentFile::documentType() const {
+DocumentType DocumentFile::document_type() const {
   return document()->documentType();
 }
 
-DocumentMeta DocumentFile::documentMeta() const {
+DocumentMeta DocumentFile::document_meta() const {
   return document()->documentMeta();
 }
 

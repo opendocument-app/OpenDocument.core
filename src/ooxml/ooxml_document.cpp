@@ -19,7 +19,7 @@ bool OfficeOpenXmlDocument::savable(bool encrypted) const noexcept {
 }
 
 DocumentType OfficeOpenXmlDocument::documentType() const noexcept {
-  return documentMeta().documentType;
+  return documentMeta().document_type;
 }
 
 std::shared_ptr<abstract::ReadStorage>
@@ -49,7 +49,7 @@ OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(
 DocumentMeta OfficeOpenXmlTextDocument::documentMeta() const noexcept {
   DocumentMeta result;
 
-  result.documentType = DocumentType::TEXT;
+  result.document_type = DocumentType::TEXT;
 
   return result;
 }
@@ -78,10 +78,10 @@ OfficeOpenXmlPresentation::OfficeOpenXmlPresentation(
 DocumentMeta OfficeOpenXmlPresentation::documentMeta() const noexcept {
   DocumentMeta result;
 
-  result.documentType = DocumentType::PRESENTATION;
-  result.entryCount = 0;
+  result.document_type = DocumentType::PRESENTATION;
+  result.entry_count = 0;
   for (auto &&e : m_presentationXml.select_nodes("//p:sldId")) {
-    ++result.entryCount;
+    ++result.entry_count;
     DocumentMeta::Entry entry;
     // TODO
     result.entries.emplace_back(entry);
@@ -114,10 +114,10 @@ OfficeOpenXmlSpreadsheet::OfficeOpenXmlSpreadsheet(
 DocumentMeta OfficeOpenXmlSpreadsheet::documentMeta() const noexcept {
   DocumentMeta result;
 
-  result.documentType = DocumentType::SPREADSHEET;
-  result.entryCount = 0;
+  result.document_type = DocumentType::SPREADSHEET;
+  result.entry_count = 0;
   for (auto &&e : m_workbookXml.select_nodes("//sheet")) {
-    ++result.entryCount;
+    ++result.entry_count;
     DocumentMeta::Entry entry;
     entry.name = e.node().attribute("name").as_string();
     // TODO dimension

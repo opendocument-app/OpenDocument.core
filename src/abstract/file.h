@@ -53,12 +53,12 @@ public:
 
 class DocumentFile : public File {
 public:
-  [[nodiscard]] virtual bool passwordEncrypted() const noexcept = 0;
-  [[nodiscard]] virtual EncryptionState encryptionState() const noexcept = 0;
+  [[nodiscard]] virtual bool password_encrypted() const noexcept = 0;
+  [[nodiscard]] virtual EncryptionState encryption_state() const noexcept = 0;
   [[nodiscard]] virtual bool decrypt(const std::string &password) = 0;
 
-  [[nodiscard]] virtual DocumentType documentType() const;
-  [[nodiscard]] virtual DocumentMeta documentMeta() const;
+  [[nodiscard]] virtual DocumentType document_type() const;
+  [[nodiscard]] virtual DocumentMeta document_meta() const;
 
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };

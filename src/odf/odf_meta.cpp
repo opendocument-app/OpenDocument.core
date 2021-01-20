@@ -110,13 +110,13 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
     throw NoOpenDocumentFile();
 
   if (body.child("office:text"))
-    result.documentType = DocumentType::TEXT;
+    result.document_type = DocumentType::TEXT;
   else if (body.child("office:presentation"))
-    result.documentType = DocumentType::PRESENTATION;
+    result.document_type = DocumentType::PRESENTATION;
   else if (body.child("office:spreadsheet"))
-    result.documentType = DocumentType::SPREADSHEET;
+    result.document_type = DocumentType::SPREADSHEET;
   else if (body.child("office:drawing"))
-    result.documentType = DocumentType::DRAWING;
+    result.document_type = DocumentType::DRAWING;
   // TODO else throw
 
   if (meta != nullptr) {
@@ -124,21 +124,21 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
                                           .child("office:meta")
                                           .child("meta:document-statistic");
     if (statistics) {
-      switch (result.documentType) {
+      switch (result.document_type) {
       case DocumentType::TEXT: {
         const auto pageCount = statistics.attribute("meta:page-count");
         if (!pageCount)
           break;
-        result.entryCount = pageCount.as_uint();
+        result.entry_count = pageCount.as_uint();
       } break;
       case DocumentType::PRESENTATION: {
-        result.entryCount = 0;
+        result.entry_count = 0;
       } break;
       case DocumentType::SPREADSHEET: {
         const auto tableCount = statistics.attribute("meta:table-count");
         if (!tableCount)
           break;
-        result.entryCount = tableCount.as_uint();
+        result.entry_count = tableCount.as_uint();
       } break;
       case DocumentType::DRAWING: {
       } break;
@@ -148,24 +148,24 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
     }
   }
 
-  switch (result.documentType) {
+  switch (result.document_type) {
   case DocumentType::DRAWING:
   case DocumentType::PRESENTATION: {
-    result.entryCount = 0;
+    result.entry_count = 0;
     for (auto &&e : body.select_nodes("//draw:page")) {
-      ++result.entryCount;
+      ++result.entry_count;
       DocumentMeta::Entry entry;
       entry.name = e.node().attribute("draw:name").as_string();
       result.entries.emplace_back(entry);
     }
   } break;
   case DocumentType::SPREADSHEET: {
-    result.entryCount = 0;
+    result.entry_count = 0;
     for (auto &&e : body.select_nodes("//table:table")) {
-      ++result.entryCount;
+      ++result.entry_count;
       DocumentMeta::Entry entry;
       entry.name = e.node().attribute("table:name").as_string();
-      estimateTableDimensions(e.node(), entry.rowCount, entry.columnCount);
+      estimateTableDimensions(e.node(), entry.row_count, entry.column_count);
       result.entries.emplace_back(entry);
     }
   } break;

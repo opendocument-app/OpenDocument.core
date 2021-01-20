@@ -236,7 +236,7 @@ std::string SlideElement::name() const { return m_impl->name(); }
 PageStyle SlideElement::pageStyle() const {
   if (!m_impl)
     return PageStyle();
-  return PageStyle(m_impl->pageStyle());
+  return PageStyle(m_impl->page_style());
 }
 
 SheetElement::SheetElement() = default;
@@ -282,7 +282,7 @@ std::string PageElement::name() const {
 PageStyle PageElement::pageStyle() const {
   if (!m_impl)
     return PageStyle();
-  return PageStyle(m_impl->pageStyle());
+  return PageStyle(m_impl->page_style());
 }
 
 TextElement::TextElement() = default;

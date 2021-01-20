@@ -60,11 +60,11 @@ std::unique_ptr<std::istream> LegacyMicrosoftFile::data() const {
   return {}; // TODO
 }
 
-bool LegacyMicrosoftFile::passwordEncrypted() const noexcept {
+bool LegacyMicrosoftFile::password_encrypted() const noexcept {
   return m_meta.passwordEncrypted;
 }
 
-EncryptionState LegacyMicrosoftFile::encryptionState() const noexcept {
+EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {
   return EncryptionState::UNKNOWN;
 }
 

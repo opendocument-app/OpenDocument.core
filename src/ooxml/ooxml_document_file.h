@@ -22,8 +22,8 @@ public:
 
   std::unique_ptr<std::istream> data() const final;
 
-  bool passwordEncrypted() const noexcept final;
-  EncryptionState encryptionState() const noexcept final;
+  bool password_encrypted() const noexcept final;
+  EncryptionState encryption_state() const noexcept final;
   bool decrypt(const std::string &password) final;
 
   std::shared_ptr<abstract::Document> document() const final;

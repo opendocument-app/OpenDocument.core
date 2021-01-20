@@ -343,7 +343,7 @@ void translateElement(Element element, std::ostream &out,
 
 void translateTextDocument(TextDocument document, std::ostream &out,
                            const HtmlConfig &config) {
-  const auto pageStyle = document.pageStyle();
+  const auto pageStyle = document.page_style();
 
   if (pageStyle) {
     const std::string outerStyle = "width:" + *pageStyle.width() + ";";
@@ -439,13 +439,13 @@ void Html::translate(Document document, const std::string &documentIdentifier,
 
   out << "<body " << common::Html::bodyAttributes(config) << ">";
 
-  if (document.documentType() == DocumentType::TEXT) {
-    translateTextDocument(document.textDocument(), out, config);
-  } else if (document.documentType() == DocumentType::PRESENTATION) {
+  if (document.document_type() == DocumentType::TEXT) {
+    translateTextDocument(document.text_tocument(), out, config);
+  } else if (document.document_type() == DocumentType::PRESENTATION) {
     translatePresentation(document.presentation(), out, config);
-  } else if (document.documentType() == DocumentType::SPREADSHEET) {
+  } else if (document.document_type() == DocumentType::SPREADSHEET) {
     translateSpreadsheet(document.spreadsheet(), out, config);
-  } else if (document.documentType() == DocumentType::DRAWING) {
+  } else if (document.document_type() == DocumentType::DRAWING) {
     translateGraphics(document.drawing(), out, config);
   } else {
     // TODO throw?

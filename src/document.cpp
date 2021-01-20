@@ -12,11 +12,11 @@ Document::Document(std::shared_ptr<abstract::Document> document)
   // TODO null check
 }
 
-DocumentType Document::documentType() const noexcept {
+DocumentType Document::document_type() const noexcept {
   return m_document->documentType();
 }
 
-DocumentMeta Document::documentMeta() const noexcept {
+DocumentMeta Document::document_meta() const noexcept {
   return m_document->documentMeta();
 }
 
@@ -26,7 +26,7 @@ bool Document::savable(const bool encrypted) const noexcept {
   return m_document->savable(encrypted);
 }
 
-TextDocument Document::textDocument() const {
+TextDocument Document::text_tocument() const {
   return TextDocument(
       std::dynamic_pointer_cast<abstract::TextDocument>(m_document));
 }
@@ -55,10 +55,10 @@ void Document::save(const std::string &path,
 }
 
 TextDocument::TextDocument(std::shared_ptr<abstract::TextDocument> textDocument)
-    : Document(textDocument), m_textDocument{std::move(textDocument)} {}
+    : Document(textDocument), m_text_document{std::move(textDocument)} {}
 
-PageStyle TextDocument::pageStyle() const {
-  return PageStyle(m_textDocument->pageStyle());
+PageStyle TextDocument::page_style() const {
+  return PageStyle(m_text_document->pageStyle());
 }
 
 ElementRange TextDocument::content() const { return root().children(); }
@@ -66,7 +66,7 @@ ElementRange TextDocument::content() const { return root().children(); }
 Presentation::Presentation(std::shared_ptr<abstract::Presentation> presentation)
     : Document(presentation), m_presentation{std::move(presentation)} {}
 
-std::uint32_t Presentation::slideCount() const {
+std::uint32_t Presentation::slide_count() const {
   return m_presentation->slideCount();
 }
 
@@ -77,7 +77,7 @@ SlideRange Presentation::slides() const {
 Spreadsheet::Spreadsheet(std::shared_ptr<abstract::Spreadsheet> spreadsheet)
     : Document(spreadsheet), m_spreadsheet{std::move(spreadsheet)} {}
 
-std::uint32_t Spreadsheet::sheetCount() const {
+std::uint32_t Spreadsheet::sheet_count() const {
   return m_spreadsheet->sheetCount();
 }
 
@@ -88,7 +88,7 @@ SheetRange Spreadsheet::sheets() const {
 Drawing::Drawing(std::shared_ptr<abstract::Drawing> graphics)
     : Document(graphics), m_drawing{std::move(graphics)} {}
 
-std::uint32_t Drawing::pageCount() const { return m_drawing->pageCount(); }
+std::uint32_t Drawing::page_count() const { return m_drawing->pageCount(); }
 
 PageRange Drawing::pages() const {
   return PageRange(PageElement(m_drawing->firstPage()));

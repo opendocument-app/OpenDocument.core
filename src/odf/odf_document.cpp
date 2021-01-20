@@ -32,7 +32,7 @@ bool OpenDocument::editable() const noexcept { return true; }
 bool OpenDocument::savable(bool encrypted) const noexcept { return !encrypted; }
 
 DocumentType OpenDocument::documentType() const noexcept {
-  return m_document_meta.documentType;
+  return m_document_meta.document_type;
 }
 
 DocumentMeta OpenDocument::documentMeta() const noexcept {

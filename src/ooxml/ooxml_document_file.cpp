@@ -30,11 +30,11 @@ std::unique_ptr<std::istream> OfficeOpenXmlFile::data() const {
   return {}; // TODO
 }
 
-bool OfficeOpenXmlFile::passwordEncrypted() const noexcept {
+bool OfficeOpenXmlFile::password_encrypted() const noexcept {
   return m_meta.passwordEncrypted;
 }
 
-EncryptionState OfficeOpenXmlFile::encryptionState() const noexcept {
+EncryptionState OfficeOpenXmlFile::encryption_state() const noexcept {
   return m_encryptionState;
 }
 

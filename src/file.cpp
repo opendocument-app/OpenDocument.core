@@ -154,11 +154,11 @@ DocumentFile::DocumentFile(const std::string &path)
     : DocumentFile(open_strategy::open_document_file(path)) {}
 
 bool DocumentFile::passwordEncrypted() const {
-  return m_impl->passwordEncrypted();
+  return m_impl->password_encrypted();
 }
 
 EncryptionState DocumentFile::encryptionState() const {
-  return m_impl->encryptionState();
+  return m_impl->encryption_state();
 }
 
 bool DocumentFile::decrypt(const std::string &password) {
@@ -166,11 +166,11 @@ bool DocumentFile::decrypt(const std::string &password) {
 }
 
 DocumentType DocumentFile::documentType() const {
-  return m_impl->documentType();
+  return m_impl->document_type();
 }
 
 DocumentMeta DocumentFile::documentMeta() const {
-  return m_impl->documentMeta();
+  return m_impl->document_meta();
 }
 
 Document DocumentFile::document() const { return Document(m_impl->document()); }

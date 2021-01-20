@@ -8,7 +8,7 @@ nlohmann::json metaToJson(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.typeAsString()},
       {"encrypted", meta.passwordEncrypted},
-      {"entryCount", meta.documentMeta->entryCount},
+      {"entryCount", meta.documentMeta->entry_count},
       {"entries", nlohmann::json::array()},
   };
 
@@ -16,8 +16,8 @@ nlohmann::json metaToJson(const odr::FileMeta &meta) {
     for (auto &&e : meta.documentMeta->entries) {
       result["entries"].push_back({
           {"name", e.name},
-          {"rowCount", e.rowCount},
-          {"columnCount", e.columnCount},
+          {"rowCount", e.row_count},
+          {"columnCount", e.column_count},
           {"notes", e.notes},
       });
     }

@@ -35,25 +35,25 @@ enum class DocumentType {
 struct DocumentMeta final {
   struct Entry {
     std::string name;
-    std::uint32_t rowCount{0};
-    std::uint32_t columnCount{0};
+    std::uint32_t row_count{0};
+    std::uint32_t column_count{0};
     std::string notes;
   };
 
-  DocumentType documentType{DocumentType::UNKNOWN};
-  std::uint32_t entryCount{0};
+  DocumentType document_type{DocumentType::UNKNOWN};
+  std::uint32_t entry_count{0};
   std::vector<Entry> entries;
 };
 
 class Document {
 public:
-  [[nodiscard]] DocumentType documentType() const noexcept;
-  [[nodiscard]] DocumentMeta documentMeta() const noexcept;
+  [[nodiscard]] DocumentType document_type() const noexcept;
+  [[nodiscard]] DocumentMeta document_meta() const noexcept;
 
   [[nodiscard]] bool editable() const noexcept;
   [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
 
-  [[nodiscard]] TextDocument textDocument() const;
+  [[nodiscard]] TextDocument text_tocument() const;
   [[nodiscard]] Presentation presentation() const;
   [[nodiscard]] Spreadsheet spreadsheet() const;
   [[nodiscard]] Drawing drawing() const;
@@ -74,12 +74,12 @@ private:
 
 class TextDocument final : public Document {
 public:
-  [[nodiscard]] PageStyle pageStyle() const;
+  [[nodiscard]] PageStyle page_style() const;
 
   [[nodiscard]] ElementRange content() const;
 
 private:
-  std::shared_ptr<abstract::TextDocument> m_textDocument;
+  std::shared_ptr<abstract::TextDocument> m_text_document;
 
   explicit TextDocument(std::shared_ptr<abstract::TextDocument>);
 
@@ -88,7 +88,7 @@ private:
 
 class Presentation final : public Document {
 public:
-  [[nodiscard]] std::uint32_t slideCount() const;
+  [[nodiscard]] std::uint32_t slide_count() const;
 
   [[nodiscard]] SlideRange slides() const;
 
@@ -102,7 +102,7 @@ private:
 
 class Spreadsheet final : public Document {
 public:
-  [[nodiscard]] std::uint32_t sheetCount() const;
+  [[nodiscard]] std::uint32_t sheet_count() const;
 
   [[nodiscard]] SheetRange sheets() const;
 
@@ -116,7 +116,7 @@ private:
 
 class Drawing final : public Document {
 public:
-  [[nodiscard]] std::uint32_t pageCount() const;
+  [[nodiscard]] std::uint32_t page_count() const;
 
   [[nodiscard]] PageRange pages() const;
 

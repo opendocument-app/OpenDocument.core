@@ -6,14 +6,15 @@
 #include <odr/file.h>
 
 namespace odr::abstract {
-class ReadStorage;
+class ArchiveFile;
 }
 
 namespace odr::odf {
 
 class OpenDocumentFile final : public virtual abstract::DocumentFile {
 public:
-  explicit OpenDocumentFile(std::shared_ptr<abstract::ReadStorage> storage);
+  explicit OpenDocumentFile(
+      std::shared_ptr<abstract::ArchiveFile> archive_file);
 
   FileType file_type() const noexcept final;
   FileMeta file_meta() const noexcept final;
@@ -23,15 +24,16 @@ public:
 
   std::unique_ptr<std::istream> data() const final;
 
-  bool passwordEncrypted() const noexcept final;
-  EncryptionState encryptionState() const noexcept final;
+  bool password_encrypted() const noexcept final;
+  EncryptionState encryption_state() const noexcept final;
   bool decrypt(const std::string &password) final;
 
   std::shared_ptr<abstract::Document> document() const final;
 
 private:
-  std::shared_ptr<abstract::ReadStorage> m_storage;
-  EncryptionState m_encryptionState{EncryptionState::NOT_ENCRYPTED};
+  std::shared_ptr<abstract::ArchiveFile> m_archive_file;
+  std::shared_ptr<abstract::Archive> m_archive;
+  EncryptionState m_encryption_state{EncryptionState::NOT_ENCRYPTED};
   FileMeta m_file_meta;
   Manifest m_manifest;
 };
