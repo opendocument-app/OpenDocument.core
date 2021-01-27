@@ -237,7 +237,7 @@ std::shared_ptr<Style> Styles::style(const std::string &name) const {
   return styleIt->second;
 }
 
-std::shared_ptr<abstract::PageStyle> Styles::pageStyle() const {
+std::shared_ptr<abstract::PageStyle> Styles::page_style() const {
   return std::make_shared<TextPageStyle>(
       m_documentRoot.child("w:body").child("w:sectPr"));
 }

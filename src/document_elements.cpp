@@ -32,16 +32,16 @@ Element Element::firstChild() const {
   return Element(m_impl->firstChild());
 }
 
-Element Element::previousSibling() const {
+Element Element::previous_sibling() const {
   if (!m_impl)
     return Element();
-  return Element(m_impl->previousSibling());
+  return Element(m_impl->previous_sibling());
 }
 
-Element Element::nextSibling() const {
+Element Element::next_sibling() const {
   if (!m_impl)
     return Element();
-  return Element(m_impl->nextSibling());
+  return Element(m_impl->next_sibling());
 }
 
 ElementRange Element::children() const { return ElementRange(firstChild()); }
@@ -153,7 +153,7 @@ ElementIterator<E>::ElementIterator(E element)
     : m_element{std::move(element)} {}
 
 template <typename E> ElementIterator<E> &ElementIterator<E>::operator++() {
-  m_element = m_element.nextSibling();
+  m_element = m_element.next_sibling();
   return *this;
 }
 
@@ -223,17 +223,17 @@ SlideElement::SlideElement() = default;
 SlideElement::SlideElement(std::shared_ptr<const abstract::Slide> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-SlideElement SlideElement::previousSibling() const {
-  return Element::previousSibling().slide();
+SlideElement SlideElement::previous_sibling() const {
+  return Element::previous_sibling().slide();
 }
 
-SlideElement SlideElement::nextSibling() const {
-  return Element::nextSibling().slide();
+SlideElement SlideElement::next_sibling() const {
+  return Element::next_sibling().slide();
 }
 
 std::string SlideElement::name() const { return m_impl->name(); }
 
-PageStyle SlideElement::pageStyle() const {
+PageStyle SlideElement::page_style() const {
   if (!m_impl)
     return PageStyle();
   return PageStyle(m_impl->page_style());
@@ -244,12 +244,12 @@ SheetElement::SheetElement() = default;
 SheetElement::SheetElement(std::shared_ptr<const abstract::Sheet> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-SheetElement SheetElement::previousSibling() const {
-  return Element::previousSibling().sheet();
+SheetElement SheetElement::previous_sibling() const {
+  return Element::previous_sibling().sheet();
 }
 
-SheetElement SheetElement::nextSibling() const {
-  return Element::nextSibling().sheet();
+SheetElement SheetElement::next_sibling() const {
+  return Element::next_sibling().sheet();
 }
 
 std::string SheetElement::name() const { return m_impl->name(); }
@@ -265,12 +265,12 @@ PageElement::PageElement() = default;
 PageElement::PageElement(std::shared_ptr<const abstract::Page> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-PageElement PageElement::previousSibling() const {
-  return Element::previousSibling().page();
+PageElement PageElement::previous_sibling() const {
+  return Element::previous_sibling().page();
 }
 
-PageElement PageElement::nextSibling() const {
-  return Element::nextSibling().page();
+PageElement PageElement::next_sibling() const {
+  return Element::next_sibling().page();
 }
 
 std::string PageElement::name() const {
@@ -279,7 +279,7 @@ std::string PageElement::name() const {
   return m_impl->name();
 }
 
-PageStyle PageElement::pageStyle() const {
+PageStyle PageElement::page_style() const {
   if (!m_impl)
     return PageStyle();
   return PageStyle(m_impl->page_style());
@@ -304,10 +304,10 @@ ParagraphStyle ParagraphElement::paragraphStyle() const {
   return ParagraphStyle(m_impl->paragraphStyle());
 }
 
-TextStyle ParagraphElement::textStyle() const {
+TextStyle ParagraphElement::text_style() const {
   if (!m_impl)
     return TextStyle();
-  return TextStyle(m_impl->textStyle());
+  return TextStyle(m_impl->text_style());
 }
 
 SpanElement::SpanElement() = default;
@@ -315,10 +315,10 @@ SpanElement::SpanElement() = default;
 SpanElement::SpanElement(std::shared_ptr<const abstract::Span> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-TextStyle SpanElement::textStyle() const {
+TextStyle SpanElement::text_style() const {
   if (!m_impl)
     return TextStyle();
-  return TextStyle(m_impl->textStyle());
+  return TextStyle(m_impl->text_style());
 }
 
 LinkElement::LinkElement() = default;
@@ -326,10 +326,10 @@ LinkElement::LinkElement() = default;
 LinkElement::LinkElement(std::shared_ptr<const abstract::Link> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-TextStyle LinkElement::textStyle() const {
+TextStyle LinkElement::text_style() const {
   if (!m_impl)
     return TextStyle();
-  return TextStyle(m_impl->textStyle());
+  return TextStyle(m_impl->text_style());
 }
 
 std::string LinkElement::href() const { return m_impl->href(); }
@@ -384,12 +384,12 @@ TableColumnElement::TableColumnElement(
     std::shared_ptr<const abstract::TableColumn> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-TableColumnElement TableColumnElement::previousSibling() const {
-  return Element::previousSibling().tableColumn();
+TableColumnElement TableColumnElement::previous_sibling() const {
+  return Element::previous_sibling().tableColumn();
 }
 
-TableColumnElement TableColumnElement::nextSibling() const {
-  return Element::nextSibling().tableColumn();
+TableColumnElement TableColumnElement::next_sibling() const {
+  return Element::next_sibling().tableColumn();
 }
 
 TableColumnStyle TableColumnElement::tableColumnStyle() const {
@@ -409,12 +409,12 @@ TableCellElement TableRowElement::firstChild() const {
   return Element(m_impl->firstChild()).tableCell();
 }
 
-TableRowElement TableRowElement::previousSibling() const {
-  return Element::previousSibling().tableRow();
+TableRowElement TableRowElement::previous_sibling() const {
+  return Element::previous_sibling().tableRow();
 }
 
-TableRowElement TableRowElement::nextSibling() const {
-  return Element::nextSibling().tableRow();
+TableRowElement TableRowElement::next_sibling() const {
+  return Element::next_sibling().tableRow();
 }
 
 TableCellRange TableRowElement::cells() const {
@@ -427,12 +427,12 @@ TableCellElement::TableCellElement(
     std::shared_ptr<const abstract::TableCell> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
-TableCellElement TableCellElement::previousSibling() const {
-  return Element::previousSibling().tableCell();
+TableCellElement TableCellElement::previous_sibling() const {
+  return Element::previous_sibling().tableCell();
 }
 
-TableCellElement TableCellElement::nextSibling() const {
-  return Element::nextSibling().tableCell();
+TableCellElement TableCellElement::next_sibling() const {
+  return Element::next_sibling().tableCell();
 }
 
 std::uint32_t TableCellElement::rowSpan() const {

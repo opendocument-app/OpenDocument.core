@@ -18,8 +18,8 @@ bool OfficeOpenXmlDocument::savable(bool encrypted) const noexcept {
   return false;
 }
 
-DocumentType OfficeOpenXmlDocument::documentType() const noexcept {
-  return documentMeta().document_type;
+DocumentType OfficeOpenXmlDocument::document_type() const noexcept {
+  return document_meta().document_type;
 }
 
 std::shared_ptr<abstract::ReadStorage>
@@ -46,7 +46,7 @@ OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(
                           m_documentXml.document_element());
 }
 
-DocumentMeta OfficeOpenXmlTextDocument::documentMeta() const noexcept {
+DocumentMeta OfficeOpenXmlTextDocument::document_meta() const noexcept {
   DocumentMeta result;
 
   result.document_type = DocumentType::TEXT;
@@ -65,8 +65,8 @@ OfficeOpenXmlTextDocument::root() const {
 }
 
 std::shared_ptr<abstract::PageStyle>
-OfficeOpenXmlTextDocument::pageStyle() const {
-  return m_styles.pageStyle();
+OfficeOpenXmlTextDocument::page_style() const {
+  return m_styles.page_style();
 }
 
 OfficeOpenXmlPresentation::OfficeOpenXmlPresentation(
@@ -75,7 +75,7 @@ OfficeOpenXmlPresentation::OfficeOpenXmlPresentation(
   m_presentationXml = util::xml::parse(*m_storage, "ppt/presentation.xml");
 }
 
-DocumentMeta OfficeOpenXmlPresentation::documentMeta() const noexcept {
+DocumentMeta OfficeOpenXmlPresentation::document_meta() const noexcept {
   DocumentMeta result;
 
   result.document_type = DocumentType::PRESENTATION;
@@ -111,7 +111,7 @@ OfficeOpenXmlSpreadsheet::OfficeOpenXmlSpreadsheet(
   m_stylesXml = util::xml::parse(*m_storage, "xl/styles.xml");
 }
 
-DocumentMeta OfficeOpenXmlSpreadsheet::documentMeta() const noexcept {
+DocumentMeta OfficeOpenXmlSpreadsheet::document_meta() const noexcept {
   DocumentMeta result;
 
   result.document_type = DocumentType::SPREADSHEET;

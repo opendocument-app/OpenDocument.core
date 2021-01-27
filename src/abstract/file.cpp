@@ -22,11 +22,11 @@ FileCategory ArchiveFile::file_category() const noexcept {
 }
 
 DocumentType DocumentFile::document_type() const {
-  return document()->documentType();
+  return document()->document_type();
 }
 
 DocumentMeta DocumentFile::document_meta() const {
-  return document()->documentMeta();
+  return document()->document_meta();
 }
 
 } // namespace odr::abstract

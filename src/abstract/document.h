@@ -35,8 +35,8 @@ public:
   [[nodiscard]] virtual bool editable() const noexcept = 0;
   [[nodiscard]] virtual bool savable(bool encrypted = false) const noexcept = 0;
 
-  [[nodiscard]] virtual DocumentType documentType() const noexcept = 0;
-  [[nodiscard]] virtual DocumentMeta documentMeta() const noexcept = 0;
+  [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;
+  [[nodiscard]] virtual DocumentMeta document_meta() const noexcept = 0;
 
   [[nodiscard]] virtual std::shared_ptr<const Element> root() const = 0;
 
@@ -47,28 +47,28 @@ public:
 
 class TextDocument : public virtual Document {
 public:
-  [[nodiscard]] virtual std::shared_ptr<PageStyle> pageStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<PageStyle> page_style() const = 0;
 };
 
 class Presentation : public virtual Document {
 public:
-  [[nodiscard]] virtual std::uint32_t slideCount() const = 0;
+  [[nodiscard]] virtual std::uint32_t slide_count() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<const Slide> firstSlide() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const Slide> first_slide() const = 0;
 };
 
 class Spreadsheet : public virtual Document {
 public:
-  [[nodiscard]] virtual std::uint32_t sheetCount() const = 0;
+  [[nodiscard]] virtual std::uint32_t sheet_count() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<const Sheet> firstSheet() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const Sheet> first_sheet() const = 0;
 };
 
 class Drawing : public virtual Document {
 public:
-  [[nodiscard]] virtual std::uint32_t pageCount() const = 0;
+  [[nodiscard]] virtual std::uint32_t page_count() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<const Page> firstPage() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const Page> first_page() const = 0;
 };
 
 } // namespace odr::abstract

@@ -13,11 +13,11 @@ Document::Document(std::shared_ptr<abstract::Document> document)
 }
 
 DocumentType Document::document_type() const noexcept {
-  return m_document->documentType();
+  return m_document->document_type();
 }
 
 DocumentMeta Document::document_meta() const noexcept {
-  return m_document->documentMeta();
+  return m_document->document_meta();
 }
 
 bool Document::editable() const noexcept { return m_document->editable(); }
@@ -58,7 +58,7 @@ TextDocument::TextDocument(std::shared_ptr<abstract::TextDocument> textDocument)
     : Document(textDocument), m_text_document{std::move(textDocument)} {}
 
 PageStyle TextDocument::page_style() const {
-  return PageStyle(m_text_document->pageStyle());
+  return PageStyle(m_text_document->page_style());
 }
 
 ElementRange TextDocument::content() const { return root().children(); }
@@ -67,31 +67,31 @@ Presentation::Presentation(std::shared_ptr<abstract::Presentation> presentation)
     : Document(presentation), m_presentation{std::move(presentation)} {}
 
 std::uint32_t Presentation::slide_count() const {
-  return m_presentation->slideCount();
+  return m_presentation->slide_count();
 }
 
 SlideRange Presentation::slides() const {
-  return SlideRange(SlideElement(m_presentation->firstSlide()));
+  return SlideRange(SlideElement(m_presentation->first_slide()));
 }
 
 Spreadsheet::Spreadsheet(std::shared_ptr<abstract::Spreadsheet> spreadsheet)
     : Document(spreadsheet), m_spreadsheet{std::move(spreadsheet)} {}
 
 std::uint32_t Spreadsheet::sheet_count() const {
-  return m_spreadsheet->sheetCount();
+  return m_spreadsheet->sheet_count();
 }
 
 SheetRange Spreadsheet::sheets() const {
-  return SheetRange(SheetElement(m_spreadsheet->firstSheet()));
+  return SheetRange(SheetElement(m_spreadsheet->first_sheet()));
 }
 
 Drawing::Drawing(std::shared_ptr<abstract::Drawing> graphics)
     : Document(graphics), m_drawing{std::move(graphics)} {}
 
-std::uint32_t Drawing::page_count() const { return m_drawing->pageCount(); }
+std::uint32_t Drawing::page_count() const { return m_drawing->page_count(); }
 
 PageRange Drawing::pages() const {
-  return PageRange(PageElement(m_drawing->firstPage()));
+  return PageRange(PageElement(m_drawing->first_page()));
 }
 
 } // namespace odr

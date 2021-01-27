@@ -111,9 +111,9 @@ public:
   explicit operator bool() const;
 
   [[nodiscard]] Element parent() const;
-  [[nodiscard]] Element firstChild() const;
-  [[nodiscard]] Element previousSibling() const;
-  [[nodiscard]] Element nextSibling() const;
+  [[nodiscard]] Element first_child() const;
+  [[nodiscard]] Element previous_sibling() const;
+  [[nodiscard]] Element next_Sibling() const;
 
   [[nodiscard]] ElementRange children() const;
 
@@ -123,18 +123,18 @@ public:
   [[nodiscard]] SheetElement sheet() const;
   [[nodiscard]] PageElement page() const;
   [[nodiscard]] TextElement text() const;
-  [[nodiscard]] Element lineBreak() const;
-  [[nodiscard]] Element pageBreak() const;
+  [[nodiscard]] Element line_break() const;
+  [[nodiscard]] Element page_break() const;
   [[nodiscard]] ParagraphElement paragraph() const;
   [[nodiscard]] SpanElement span() const;
   [[nodiscard]] LinkElement link() const;
   [[nodiscard]] BookmarkElement bookmark() const;
   [[nodiscard]] ListElement list() const;
-  [[nodiscard]] ListItemElement listItem() const;
+  [[nodiscard]] ListItemElement list_item() const;
   [[nodiscard]] TableElement table() const;
-  [[nodiscard]] TableColumnElement tableColumn() const;
-  [[nodiscard]] TableRowElement tableRow() const;
-  [[nodiscard]] TableCellElement tableCell() const;
+  [[nodiscard]] TableColumnElement table_column() const;
+  [[nodiscard]] TableRowElement table_row() const;
+  [[nodiscard]] TableCellElement table_cell() const;
   [[nodiscard]] FrameElement frame() const;
   [[nodiscard]] ImageElement image() const;
   [[nodiscard]] RectElement rect() const;
@@ -187,13 +187,13 @@ public:
   SlideElement();
   explicit SlideElement(std::shared_ptr<const abstract::Slide> impl);
 
-  [[nodiscard]] SlideElement previousSibling() const;
-  [[nodiscard]] SlideElement nextSibling() const;
+  [[nodiscard]] SlideElement previous_sibling() const;
+  [[nodiscard]] SlideElement next_sibling() const;
 
   [[nodiscard]] std::string name() const;
   [[nodiscard]] std::string notes() const;
 
-  [[nodiscard]] PageStyle pageStyle() const;
+  [[nodiscard]] PageStyle page_style() const;
 
 private:
   std::shared_ptr<const abstract::Slide> m_impl;
@@ -204,12 +204,12 @@ public:
   SheetElement();
   explicit SheetElement(std::shared_ptr<const abstract::Sheet> impl);
 
-  [[nodiscard]] SheetElement previousSibling() const;
-  [[nodiscard]] SheetElement nextSibling() const;
+  [[nodiscard]] SheetElement previous_sibling() const;
+  [[nodiscard]] SheetElement next_sibling() const;
 
   [[nodiscard]] std::string name() const;
-  [[nodiscard]] std::uint32_t rowCount() const;
-  [[nodiscard]] std::uint32_t columnCount() const;
+  [[nodiscard]] std::uint32_t row_count() const;
+  [[nodiscard]] std::uint32_t column_count() const;
   [[nodiscard]] TableElement table() const;
 
 private:
@@ -221,12 +221,12 @@ public:
   PageElement();
   explicit PageElement(std::shared_ptr<const abstract::Page> impl);
 
-  [[nodiscard]] PageElement previousSibling() const;
-  [[nodiscard]] PageElement nextSibling() const;
+  [[nodiscard]] PageElement previous_sibling() const;
+  [[nodiscard]] PageElement next_sibling() const;
 
   [[nodiscard]] std::string name() const;
 
-  [[nodiscard]] PageStyle pageStyle() const;
+  [[nodiscard]] PageStyle page_style() const;
 
 private:
   std::shared_ptr<const abstract::Page> m_impl;
@@ -248,8 +248,8 @@ public:
   ParagraphElement();
   explicit ParagraphElement(std::shared_ptr<const abstract::Paragraph> impl);
 
-  [[nodiscard]] ParagraphStyle paragraphStyle() const;
-  [[nodiscard]] TextStyle textStyle() const;
+  [[nodiscard]] ParagraphStyle paragraph_style() const;
+  [[nodiscard]] TextStyle text_style() const;
 
 private:
   std::shared_ptr<const abstract::Paragraph> m_impl;
@@ -260,7 +260,7 @@ public:
   SpanElement();
   explicit SpanElement(std::shared_ptr<const abstract::Span> impl);
 
-  [[nodiscard]] TextStyle textStyle() const;
+  [[nodiscard]] TextStyle text_style() const;
 
 private:
   std::shared_ptr<const abstract::Span> m_impl;
@@ -271,7 +271,7 @@ public:
   LinkElement();
   explicit LinkElement(std::shared_ptr<const abstract::Link> impl);
 
-  [[nodiscard]] TextStyle textStyle() const;
+  [[nodiscard]] TextStyle text_style() const;
 
   [[nodiscard]] std::string href() const;
 
@@ -316,7 +316,7 @@ public:
   [[nodiscard]] TableColumnRange columns() const;
   [[nodiscard]] TableRowRange rows() const;
 
-  [[nodiscard]] TableStyle tableStyle() const;
+  [[nodiscard]] TableStyle table_style() const;
 
 private:
   std::shared_ptr<const abstract::Table> m_impl;
@@ -328,10 +328,10 @@ public:
   explicit TableColumnElement(
       std::shared_ptr<const abstract::TableColumn> impl);
 
-  [[nodiscard]] TableColumnElement previousSibling() const;
-  [[nodiscard]] TableColumnElement nextSibling() const;
+  [[nodiscard]] TableColumnElement previous_sibling() const;
+  [[nodiscard]] TableColumnElement next_sibling() const;
 
-  [[nodiscard]] TableColumnStyle tableColumnStyle() const;
+  [[nodiscard]] TableColumnStyle table_column_style() const;
 
 private:
   std::shared_ptr<const abstract::TableColumn> m_impl;
@@ -342,9 +342,9 @@ public:
   TableRowElement();
   explicit TableRowElement(std::shared_ptr<const abstract::TableRow> impl);
 
-  [[nodiscard]] TableCellElement firstChild() const;
-  [[nodiscard]] TableRowElement previousSibling() const;
-  [[nodiscard]] TableRowElement nextSibling() const;
+  [[nodiscard]] TableCellElement first_child() const;
+  [[nodiscard]] TableRowElement previous_sibling() const;
+  [[nodiscard]] TableRowElement next_sibling() const;
 
   [[nodiscard]] TableCellRange cells() const;
 
@@ -357,13 +357,13 @@ public:
   TableCellElement();
   explicit TableCellElement(std::shared_ptr<const abstract::TableCell> impl);
 
-  [[nodiscard]] TableCellElement previousSibling() const;
-  [[nodiscard]] TableCellElement nextSibling() const;
+  [[nodiscard]] TableCellElement previous_sibling() const;
+  [[nodiscard]] TableCellElement next_sibling() const;
 
-  [[nodiscard]] std::uint32_t rowSpan() const;
-  [[nodiscard]] std::uint32_t columnSpan() const;
+  [[nodiscard]] std::uint32_t row_sspan() const;
+  [[nodiscard]] std::uint32_t column_span() const;
 
-  [[nodiscard]] TableCellStyle tableCellStyle() const;
+  [[nodiscard]] TableCellStyle table_cell_style() const;
 
 private:
   std::shared_ptr<const abstract::TableCell> m_impl;
@@ -374,7 +374,7 @@ public:
   FrameElement();
   explicit FrameElement(std::shared_ptr<const abstract::Frame> impl);
 
-  [[nodiscard]] Property anchorType() const;
+  [[nodiscard]] Property anchor_type() const;
   [[nodiscard]] Property width() const;
   [[nodiscard]] Property height() const;
   [[nodiscard]] Property zIndex() const;
@@ -390,7 +390,7 @@ public:
 
   [[nodiscard]] bool internal() const;
   [[nodiscard]] std::string href() const;
-  [[nodiscard]] ImageFile imageFile() const;
+  [[nodiscard]] ImageFile image_file() const;
 
 private:
   std::shared_ptr<const abstract::Image> m_impl;
@@ -406,7 +406,7 @@ public:
   [[nodiscard]] std::string width() const;
   [[nodiscard]] std::string height() const;
 
-  [[nodiscard]] DrawingStyle drawingStyle() const;
+  [[nodiscard]] DrawingStyle drawing_style() const;
 
 private:
   std::shared_ptr<const abstract::Rect> m_impl;
@@ -422,7 +422,7 @@ public:
   [[nodiscard]] std::string x2() const;
   [[nodiscard]] std::string y2() const;
 
-  [[nodiscard]] DrawingStyle drawingStyle() const;
+  [[nodiscard]] DrawingStyle drawing_style() const;
 
 private:
   std::shared_ptr<const abstract::Line> m_impl;
@@ -438,7 +438,7 @@ public:
   [[nodiscard]] std::string width() const;
   [[nodiscard]] std::string height() const;
 
-  [[nodiscard]] DrawingStyle drawingStyle() const;
+  [[nodiscard]] DrawingStyle drawing_style() const;
 
 private:
   std::shared_ptr<const abstract::Circle> m_impl;

@@ -1,4 +1,4 @@
-#include <cfb/cfb_file.h>
+#include <cfb/cfb_archive.h>
 #include <common/file.h>
 #include <common/path.h>
 #include <odf/odf_document_file.h>
@@ -6,7 +6,7 @@
 #include <oldms/oldms_document_file.h>
 #include <ooxml/ooxml_document_file.h>
 #include <open_strategy.h>
-#include <zip/zip_file.h>
+#include <zip/zip_archive.h>
 
 namespace odr {
 
@@ -17,16 +17,16 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
   // TODO throw if not a file
 
   try {
-    auto zip_file = std::make_shared<zip::ZipFile>(file);
+    auto zip_archive = std::make_shared<zip::ZipArchive>(file);
     result.push_back(FileType::ZIP);
 
     try {
-      result.push_back(odf::OpenDocumentFile(zip_file).file_type());
+      result.push_back(odf::OpenDocumentFile(zip_archive).file_type());
     } catch (...) {
     }
 
     try {
-      result.push_back(ooxml::OfficeOpenXmlFile(zip_file).file_type());
+      result.push_back(ooxml::OfficeOpenXmlFile(zip_archive).file_type());
     } catch (...) {
     }
   } catch (...) {
@@ -34,7 +34,7 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
 
   try {
     FileMeta meta;
-    auto cfb_file = std::make_shared<cfb::CfbFile>(file);
+    auto cfb_file = std::make_shared<cfb::ReadonlyCfbArchive>(file);
     result.push_back(FileType::COMPOUND_FILE_BINARY_FORMAT);
 
     // legacy microsoft

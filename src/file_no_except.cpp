@@ -101,9 +101,9 @@ FileMeta DocumentFileNoExcept::meta(const std::string &path) noexcept {
 DocumentFileNoExcept::DocumentFileNoExcept(DocumentFile documentFile)
     : FileNoExcept(documentFile), m_documentFile{std::move(documentFile)} {}
 
-DocumentType DocumentFileNoExcept::documentType() const noexcept {
+DocumentType DocumentFileNoExcept::document_type() const noexcept {
   try {
-    return m_documentFile.documentType();
+    return m_documentFile.document_type();
   } catch (...) {
     LOG(ERROR) << "document type failed";
     return DocumentType::UNKNOWN;

@@ -21,7 +21,7 @@ public:
   bool editable() const noexcept final;
   bool savable(bool encrypted) const noexcept final;
 
-  DocumentType documentType() const noexcept final;
+  DocumentType document_type() const noexcept final;
 
   std::shared_ptr<abstract::ReadStorage> storage() const noexcept;
 
@@ -41,13 +41,13 @@ public:
   explicit OfficeOpenXmlTextDocument(
       std::shared_ptr<abstract::ReadStorage> storage);
 
-  DocumentMeta documentMeta() const noexcept final;
+  DocumentMeta document_meta() const noexcept final;
 
   const text::Styles &styles() const noexcept;
 
   std::shared_ptr<const abstract::Element> root() const final;
 
-  std::shared_ptr<abstract::PageStyle> pageStyle() const final;
+  std::shared_ptr<abstract::PageStyle> page_style() const final;
 
 private:
   pugi::xml_document m_documentXml;
@@ -62,7 +62,7 @@ public:
   explicit OfficeOpenXmlPresentation(
       std::shared_ptr<abstract::ReadStorage> storage);
 
-  DocumentMeta documentMeta() const noexcept final;
+  DocumentMeta document_meta() const noexcept final;
 
   std::uint32_t slideCount() const final;
 
@@ -80,7 +80,7 @@ public:
   explicit OfficeOpenXmlSpreadsheet(
       std::shared_ptr<abstract::ReadStorage> storage);
 
-  DocumentMeta documentMeta() const noexcept final;
+  DocumentMeta document_meta() const noexcept final;
 
   std::uint32_t sheetCount() const final;
 

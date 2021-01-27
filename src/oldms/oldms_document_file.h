@@ -2,7 +2,7 @@
 #define ODR_OLDMS_DOCUMENT_FILE_H
 
 #include <abstract/file.h>
-#include <abstract/storage.h>
+#include <abstract/filesystem.h>
 #include <odr/file.h>
 
 namespace odr::oldms {

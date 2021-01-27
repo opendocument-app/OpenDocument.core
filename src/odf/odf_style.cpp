@@ -353,7 +353,7 @@ std::shared_ptr<Style> Styles::style(const std::string &name) const {
 }
 
 std::shared_ptr<abstract::PageStyle>
-Styles::pageStyle(const std::string &name) const {
+Styles::page_style(const std::string &name) const {
   auto pageLayoutIt = m_indexPageLayout.find(name);
   if (pageLayoutIt == m_indexPageLayout.end())
     throw 1; // TODO exception or optional
@@ -370,7 +370,7 @@ Styles::masterPageStyle(const std::string &name) const {
     throw 1; // TODO exception or optional
   const std::string pageLayoutName =
       masterPageIt->second.attribute("style:page-layout-name").value();
-  return pageStyle(pageLayoutName);
+  return page_style(pageLayoutName);
 }
 
 std::shared_ptr<abstract::PageStyle> Styles::defaultPageStyle() const {
@@ -379,7 +379,7 @@ std::shared_ptr<abstract::PageStyle> Styles::defaultPageStyle() const {
   const pugi::xml_node masterStyle = masterStyles.first_child();
   const std::string pageLayoutName =
       masterStyle.attribute("style:page-layout-name").value();
-  return pageStyle(pageLayoutName);
+  return page_style(pageLayoutName);
 }
 
 void Styles::generateIndices() {

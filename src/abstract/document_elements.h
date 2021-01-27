@@ -31,8 +31,8 @@ public:
   [[nodiscard]] virtual std::shared_ptr<const Element> parent() const = 0;
   [[nodiscard]] virtual std::shared_ptr<const Element> firstChild() const = 0;
   [[nodiscard]] virtual std::shared_ptr<const Element>
-  previousSibling() const = 0;
-  [[nodiscard]] virtual std::shared_ptr<const Element> nextSibling() const = 0;
+  previous_sibling() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const Element> next_sibling() const = 0;
 
   [[nodiscard]] virtual ElementType type() const = 0;
 };
@@ -44,7 +44,7 @@ public:
   [[nodiscard]] virtual std::string name() const = 0;
   [[nodiscard]] virtual std::string notes() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<PageStyle> pageStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<PageStyle> page_style() const = 0;
 };
 
 class Sheet : public virtual Element {
@@ -63,7 +63,7 @@ public:
 
   [[nodiscard]] virtual std::string name() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<PageStyle> pageStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<PageStyle> page_style() const = 0;
 };
 
 class TextElement : public virtual Element {
@@ -79,21 +79,21 @@ public:
 
   [[nodiscard]] virtual std::shared_ptr<ParagraphStyle>
   paragraphStyle() const = 0;
-  [[nodiscard]] virtual std::shared_ptr<TextStyle> textStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<TextStyle> text_style() const = 0;
 };
 
 class Span : public virtual Element {
 public:
   [[nodiscard]] ElementType type() const final;
 
-  [[nodiscard]] virtual std::shared_ptr<TextStyle> textStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<TextStyle> text_style() const = 0;
 };
 
 class Link : public virtual Element {
 public:
   [[nodiscard]] ElementType type() const final;
 
-  [[nodiscard]] virtual std::shared_ptr<TextStyle> textStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<TextStyle> text_style() const = 0;
 
   [[nodiscard]] virtual std::string href() const = 0;
 };

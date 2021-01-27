@@ -37,12 +37,9 @@ add_library(odr-object OBJECT
         src/abstract/property.cpp
 
         src/cfb/cfb_archive.cpp
-        src/cfb/cfb_file.cpp
         src/cfb/cfb_impl.cpp
-        src/cfb/cfb_storage.cpp
         src/cfb/cfb_util.cpp
 
-        src/common/archive.cpp
         src/common/constants.cpp
         src/common/file.cpp
         src/common/filesystem.cpp
@@ -81,8 +78,7 @@ add_library(odr-object OBJECT
 
         src/zip/miniz_util.cpp
         src/zip/zip_archive.cpp
-        src/zip/zip_file.cpp
-        src/zip/zip_storage.cpp
+        src/zip/zip_impl.cpp
         )
 target_include_directories(odr-object
         PUBLIC

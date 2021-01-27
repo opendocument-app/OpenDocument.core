@@ -62,7 +62,8 @@ public:
 
   std::shared_ptr<Style> style(const std::string &name) const;
 
-  std::shared_ptr<abstract::PageStyle> pageStyle(const std::string &name) const;
+  std::shared_ptr<abstract::PageStyle>
+  page_style(const std::string &name) const;
   std::shared_ptr<abstract::PageStyle>
   masterPageStyle(const std::string &name) const;
   std::shared_ptr<abstract::PageStyle> defaultPageStyle() const;

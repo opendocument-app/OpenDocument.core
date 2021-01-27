@@ -73,11 +73,11 @@ public:
     return factorizeFirstChild(m_document, shared_from_this(), m_node);
   }
 
-  std::shared_ptr<const abstract::Element> previousSibling() const override {
+  std::shared_ptr<const abstract::Element> previous_sibling() const override {
     return factorizePreviousSibling(m_document, m_parent, m_node);
   }
 
-  std::shared_ptr<const abstract::Element> nextSibling() const override {
+  std::shared_ptr<const abstract::Element> next_sibling() const override {
     return factorizeNextSibling(m_document, m_parent, m_node);
   }
 
@@ -146,7 +146,7 @@ public:
     return resolvedStyle("text:style-name").toParagraphStyle();
   }
 
-  std::shared_ptr<abstract::TextStyle> textStyle() const final {
+  std::shared_ptr<abstract::TextStyle> text_style() const final {
     return resolvedStyle("text:style-name").toTextStyle();
   }
 };
@@ -157,7 +157,7 @@ public:
        std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::shared_ptr<abstract::TextStyle> textStyle() const final {
+  std::shared_ptr<abstract::TextStyle> text_style() const final {
     return resolvedStyle("text:style-name").toTextStyle();
   }
 };
@@ -168,7 +168,7 @@ public:
        std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::shared_ptr<abstract::TextStyle> textStyle() const final {
+  std::shared_ptr<abstract::TextStyle> text_style() const final {
     return resolvedStyle("text:style-name").toTextStyle();
   }
 
@@ -194,13 +194,13 @@ public:
            std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::shared_ptr<const abstract::Element> previousSibling() const final {
+  std::shared_ptr<const abstract::Element> previous_sibling() const final {
     return factorizeKnownElement<ListItem>(
         m_node.previous_sibling("text:list-item"), m_document,
         shared_from_this());
   }
 
-  std::shared_ptr<const abstract::Element> nextSibling() const final {
+  std::shared_ptr<const abstract::Element> next_sibling() const final {
     return factorizeKnownElement<ListItem>(
         m_node.next_sibling("text:list-item"), m_document, shared_from_this());
   }
@@ -251,11 +251,11 @@ public:
     return {};
   }
 
-  std::shared_ptr<const abstract::Element> previousSibling() const final {
+  std::shared_ptr<const abstract::Element> previous_sibling() const final {
     return previousColumn();
   }
 
-  std::shared_ptr<const abstract::Element> nextSibling() const final {
+  std::shared_ptr<const abstract::Element> next_sibling() const final {
     return nextColumn();
   }
 
@@ -309,11 +309,11 @@ public:
         m_node.next_sibling("table:table-cell"), m_document, m_row, nextColumn);
   }
 
-  std::shared_ptr<const abstract::Element> previousSibling() const final {
+  std::shared_ptr<const abstract::Element> previous_sibling() const final {
     return previousCell();
   }
 
-  std::shared_ptr<const abstract::Element> nextSibling() const final {
+  std::shared_ptr<const abstract::Element> next_sibling() const final {
     return nextCell();
   }
 
@@ -375,11 +375,11 @@ public:
     return firstCell();
   }
 
-  std::shared_ptr<const abstract::Element> previousSibling() const final {
+  std::shared_ptr<const abstract::Element> previous_sibling() const final {
     return previousRow();
   }
 
-  std::shared_ptr<const abstract::Element> nextSibling() const final {
+  std::shared_ptr<const abstract::Element> next_sibling() const final {
     return nextRow();
   }
 
@@ -576,7 +576,7 @@ public:
     return ""; // TODO
   }
 
-  std::shared_ptr<abstract::PageStyle> pageStyle() const final {
+  std::shared_ptr<abstract::PageStyle> page_style() const final {
     return m_document->styles().masterPageStyle(
         m_node.attribute("draw:master-page-name").value());
   }
@@ -615,7 +615,7 @@ public:
     return m_node.attribute("draw:name").value();
   }
 
-  std::shared_ptr<abstract::PageStyle> pageStyle() const final {
+  std::shared_ptr<abstract::PageStyle> page_style() const final {
     return m_document->styles().masterPageStyle(
         m_node.attribute("draw:master-page-name").value());
   }
@@ -648,11 +648,11 @@ public:
     return {};
   }
 
-  std::shared_ptr<const abstract::Element> previousSibling() const final {
+  std::shared_ptr<const abstract::Element> previous_sibling() const final {
     return {};
   }
 
-  std::shared_ptr<const abstract::Element> nextSibling() const final {
+  std::shared_ptr<const abstract::Element> next_sibling() const final {
     return {};
   }
 };

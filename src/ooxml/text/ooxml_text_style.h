@@ -43,7 +43,7 @@ public:
 
   [[nodiscard]] std::shared_ptr<Style> style(const std::string &name) const;
 
-  [[nodiscard]] std::shared_ptr<abstract::PageStyle> pageStyle() const;
+  [[nodiscard]] std::shared_ptr<abstract::PageStyle> page_style() const;
 
 private:
   pugi::xml_node m_stylesRoot;

@@ -10,6 +10,7 @@
 
 namespace odr::abstract {
 class File;
+class DecodedFile;
 class ImageFile;
 class DocumentFile;
 } // namespace odr::abstract
@@ -98,21 +99,19 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit File(std::shared_ptr<abstract::File>);
+  explicit File(std::shared_ptr<abstract::DecodedFile>);
   explicit File(const std::string &path);
   File(const std::string &path, FileType as);
 
-  FileType fileType() const noexcept;
-  FileCategory fileCategory() const noexcept;
-  FileMeta fileMeta() const noexcept;
+  [[nodiscard]] FileType fileType() const noexcept;
+  [[nodiscard]] FileCategory fileCategory() const noexcept;
+  [[nodiscard]] FileMeta fileMeta() const noexcept;
 
-  std::unique_ptr<std::istream> data() const;
-
-  ImageFile imageFile() const;
-  DocumentFile documentFile() const;
+  [[nodiscard]] ImageFile imageFile() const;
+  [[nodiscard]] DocumentFile documentFile() const;
 
 protected:
-  std::shared_ptr<abstract::File> m_impl;
+  std::shared_ptr<abstract::DecodedFile> m_impl;
 };
 
 class ImageFile : public File {
@@ -131,14 +130,14 @@ public:
   explicit DocumentFile(std::shared_ptr<abstract::DocumentFile>);
   explicit DocumentFile(const std::string &path);
 
-  bool passwordEncrypted() const;
-  EncryptionState encryptionState() const;
+  [[nodiscard]] bool password_encrypted() const;
+  [[nodiscard]] EncryptionState encryption_state() const;
   bool decrypt(const std::string &password);
 
-  DocumentType documentType() const;
-  DocumentMeta documentMeta() const;
+  [[nodiscard]] DocumentType document_type() const;
+  [[nodiscard]] DocumentMeta document_meta() const;
 
-  Document document() const;
+  [[nodiscard]] Document document() const;
 
 private:
   std::shared_ptr<abstract::DocumentFile> m_impl;

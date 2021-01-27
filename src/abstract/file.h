@@ -34,8 +34,6 @@ public:
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
   [[nodiscard]] virtual FileCategory file_category() const noexcept = 0;
   [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;
-
-  virtual void encode(std::ostream &) const = 0;
 };
 
 class ImageFile : public DecodedFile {

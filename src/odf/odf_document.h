@@ -8,7 +8,7 @@
 #include <pugixml.hpp>
 
 namespace odr::abstract {
-class ReadStorage;
+class ReadableFilesystem;
 }
 
 namespace odr::odf {
@@ -16,13 +16,13 @@ namespace odr::odf {
 class OpenDocument : public virtual abstract::Document,
                      public std::enable_shared_from_this<OpenDocument> {
 public:
-  explicit OpenDocument(std::shared_ptr<abstract::ReadStorage> storage);
+  explicit OpenDocument(std::shared_ptr<abstract::ReadableFilesystem> files);
 
   bool editable() const noexcept final;
   bool savable(bool encrypted) const noexcept final;
 
-  DocumentType documentType() const noexcept final;
-  DocumentMeta documentMeta() const noexcept final;
+  DocumentType document_type() const noexcept final;
+  DocumentMeta document_meta() const noexcept final;
 
   std::shared_ptr<abstract::ReadStorage> storage() const noexcept;
   const Styles &styles() const noexcept;
@@ -31,7 +31,7 @@ public:
   void save(const common::Path &path, const std::string &password) const final;
 
 protected:
-  std::shared_ptr<abstract::ReadStorage> m_storage;
+  std::shared_ptr<abstract::ReadStorage> m_files;
   DocumentMeta m_document_meta;
   pugi::xml_document m_contentXml;
   pugi::xml_document m_stylesXml;
@@ -45,7 +45,7 @@ public:
 
   std::shared_ptr<const abstract::Element> root() const final;
 
-  std::shared_ptr<abstract::PageStyle> pageStyle() const final;
+  std::shared_ptr<abstract::PageStyle> page_style() const final;
 };
 
 class OpenDocumentPresentation final : public OpenDocument,
@@ -54,10 +54,10 @@ public:
   explicit OpenDocumentPresentation(
       std::shared_ptr<abstract::ReadStorage> storage);
 
-  std::uint32_t slideCount() const final;
+  std::uint32_t slide_count() const final;
 
   std::shared_ptr<const abstract::Element> root() const final;
-  std::shared_ptr<const abstract::Slide> firstSlide() const final;
+  std::shared_ptr<const abstract::Slide> first_slide() const final;
 };
 
 class OpenDocumentSpreadsheet final : public OpenDocument,
@@ -66,10 +66,10 @@ public:
   explicit OpenDocumentSpreadsheet(
       std::shared_ptr<abstract::ReadStorage> storage);
 
-  std::uint32_t sheetCount() const final;
+  std::uint32_t sheet_count() const final;
 
   std::shared_ptr<const abstract::Element> root() const final;
-  std::shared_ptr<const abstract::Sheet> firstSheet() const final;
+  std::shared_ptr<const abstract::Sheet> first_sheet() const final;
 };
 
 class OpenDocumentDrawing final : public OpenDocument,
@@ -77,10 +77,10 @@ class OpenDocumentDrawing final : public OpenDocument,
 public:
   explicit OpenDocumentDrawing(std::shared_ptr<abstract::ReadStorage> storage);
 
-  std::uint32_t pageCount() const final;
+  std::uint32_t page_count() const final;
 
   std::shared_ptr<const abstract::Element> root() const final;
-  std::shared_ptr<const abstract::Page> firstPage() const final;
+  std::shared_ptr<const abstract::Page> first_page() const final;
 };
 
 } // namespace odr::odf
