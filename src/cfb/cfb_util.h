@@ -6,16 +6,18 @@
 
 namespace odr::cfb::impl {
 class CompoundFileReader;
-class CompoundFileEntry;
+struct CompoundFileEntry;
 } // namespace odr::cfb::impl
 
 namespace odr::cfb::util {
+
+std::string name_to_string(const std::uint16_t *name, std::size_t length);
 
 class ReaderBuffer : public std::streambuf {
 public:
   ReaderBuffer(const impl::CompoundFileReader &reader,
                const impl::CompoundFileEntry &entry);
-  ~ReaderBuffer();
+  ~ReaderBuffer() override;
 
   int underflow() final;
 

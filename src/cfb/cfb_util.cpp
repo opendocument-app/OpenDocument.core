@@ -1,7 +1,16 @@
 #include <cfb/cfb_impl.h>
 #include <cfb/cfb_util.h>
+#include <codecvt>
+#include <locale>
 
 namespace odr::cfb::util {
+
+std::string name_to_string(const std::uint16_t *name, std::size_t length) {
+  static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>
+      convert;
+  return convert.to_bytes(std::u16string(
+      reinterpret_cast<const char16_t *>(name), (length - 1) / 2));
+}
 
 ReaderBuffer::ReaderBuffer(const impl::CompoundFileReader &reader,
                            const impl::CompoundFileEntry &entry)

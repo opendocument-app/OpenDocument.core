@@ -134,7 +134,7 @@ private:
                                 std::size_t *final_offset) const;
 
   [[nodiscard]] std::size_t
-  GetFATSectorLocation(std::size_t fat_sector_number) const;
+  get_fat_sector_location(std::size_t fat_sector_number) const;
 
 private:
   const std::uint8_t *m_buffer;

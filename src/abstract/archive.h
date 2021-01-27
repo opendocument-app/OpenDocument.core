@@ -1,7 +1,6 @@
 #ifndef ODR_ABSTRACT_ARCHIVE_H
 #define ODR_ABSTRACT_ARCHIVE_H
 
-#include <abstract/fileable.h>
 #include <memory>
 #include <vector>
 
@@ -15,27 +14,30 @@ class Path;
 
 namespace odr::abstract {
 class File;
-class ArchiveFile;
 
 class ArchiveEntry;
-class ArchiveEntryIterator;
+class ArchiveIterator;
 
-class Archive : public Fileable {
+class Archive {
 public:
-  [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator> begin() const = 0;
-  [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator> end() const = 0;
+  virtual ~Archive() = 0;
 
-  [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator>
-  find(const common::Path &path) const = 0;
-  virtual std::unique_ptr<ArchiveEntryIterator>
-  insert_file(std::unique_ptr<ArchiveEntryIterator> at, common::Path path,
+  [[nodiscard]] virtual std::unique_ptr<ArchiveIterator> being() const = 0;
+  [[nodiscard]] virtual std::unique_ptr<ArchiveIterator> end() const = 0;
+
+  [[nodiscard]] virtual std::unique_ptr<ArchiveIterator>
+  find(common::Path path) const = 0;
+
+  virtual std::unique_ptr<ArchiveIterator>
+  insert_file(std::unique_ptr<ArchiveIterator> at, common::Path path,
               std::shared_ptr<File> file) = 0;
-  virtual std::unique_ptr<ArchiveEntryIterator>
-  insert_directory(std::unique_ptr<ArchiveEntryIterator> at,
-                   common::Path path) = 0;
-  virtual void move(std::shared_ptr<ArchiveEntry> entry,
-                    const common::Path &path) const = 0;
-  virtual void remove(std::shared_ptr<ArchiveEntry> entry) = 0;
+
+  virtual std::unique_ptr<ArchiveIterator>
+  insert_directory(std::unique_ptr<ArchiveIterator> at, common::Path path) = 0;
+
+  virtual bool move(common::Path from, common::Path to) = 0;
+
+  virtual bool remove(common::Path path) = 0;
 };
 
 class ArchiveEntry {
@@ -49,16 +51,18 @@ public:
   virtual void file(std::shared_ptr<File> file) = 0;
 };
 
-class ArchiveEntryIterator {
+class ArchiveIterator {
 public:
-  virtual ~ArchiveEntryIterator() = default;
+  virtual ~ArchiveIterator() = default;
 
-  [[nodiscard]] virtual std::unique_ptr<ArchiveEntryIterator> copy() const = 0;
-
-  [[nodiscard]] virtual bool equals(const ArchiveEntryIterator &rhs) const = 0;
-  virtual void next() = 0;
+  [[nodiscard]] virtual std::unique_ptr<ArchiveIterator> clone() const = 0;
+  [[nodiscard]] virtual bool equals(const ArchiveIterator &rhs) const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<ArchiveEntry> entry() const = 0;
+
+  [[nodiscard]] virtual bool has_next() const = 0;
+
+  virtual void next() = 0;
 };
 
 } // namespace odr::abstract

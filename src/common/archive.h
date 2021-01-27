@@ -8,55 +8,112 @@
 
 namespace odr::common {
 
-class DefaultArchiveEntry;
-class DefaultArchiveEntryIterator;
-
-class DefaultArchive : public abstract::Archive {
-public:
-  [[nodiscard]] std::unique_ptr<abstract::ArchiveEntryIterator>
-  begin() const override;
-  [[nodiscard]] std::unique_ptr<abstract::ArchiveEntryIterator>
-  end() const override;
-
-  [[nodiscard]] std::unique_ptr<abstract::ArchiveEntryIterator>
-  find(const common::Path &path) const override;
-  std::unique_ptr<abstract::ArchiveEntryIterator>
-  insert_file(std::unique_ptr<abstract::ArchiveEntryIterator> at,
-              common::Path path, std::shared_ptr<abstract::File> file) override;
-  std::unique_ptr<abstract::ArchiveEntryIterator>
-  insert_directory(std::unique_ptr<abstract::ArchiveEntryIterator> at,
-                   common::Path path) override;
-  void move(std::shared_ptr<abstract::ArchiveEntry> entry,
-            const common::Path &path) const override;
-  void remove(std::shared_ptr<abstract::ArchiveEntry> entry) override;
-
-protected:
-  std::vector<std::shared_ptr<DefaultArchiveEntry>> m_entries;
-
-  virtual std::unique_ptr<abstract::ArchiveEntryIterator>
-  insert(std::unique_ptr<abstract::ArchiveEntryIterator> at,
-         std::unique_ptr<abstract::ArchiveEntry> entry);
-  virtual std::unique_ptr<DefaultArchiveEntryIterator>
-  insert(std::unique_ptr<DefaultArchiveEntryIterator> at,
-         std::unique_ptr<DefaultArchiveEntry> entry);
+struct ArchiveInternalEntryTemplate {
+  common::Path path;
+  ArchiveEntryType type;
+  std::shared_ptr<abstract::File> file;
 };
 
-class DefaultArchiveEntry : public abstract::ArchiveEntry {
+template <typename InternalEntry>
+class ArchiveEntryTemplate : public abstract::ArchiveEntry {
 public:
-  explicit DefaultArchiveEntry(common::Path path);
-  DefaultArchiveEntry(common::Path path, std::shared_ptr<abstract::File> file);
+  ArchiveEntryTemplate(std::shared_ptr<abstract::ArchiveFile> archive,
+                       InternalEntry &entry)
+      : m_archive{std::move(archive)}, m_entry{entry} {}
 
-  [[nodiscard]] ArchiveEntryType type() const override;
-  [[nodiscard]] common::Path path() const override;
-  [[nodiscard]] std::shared_ptr<abstract::File> file() const override;
+  [[nodiscard]] bool equals(const ArchiveEntry &rhs) const override {
+    auto *other = dynamic_cast<ArchiveEntryTemplate<InternalEntry>>(&rhs);
+    if (other == nullptr) {
+      return false;
+    }
+    if (m_archive != other->m_archive) {
+      return false;
+    }
+    if (&m_entry != &other->m_entry) {
+      return false;
+    }
+    return true;
+  }
 
-  void file(std::shared_ptr<abstract::File> file) override;
+  [[nodiscard]] std::shared_ptr<abstract::ArchiveEntry> next() const override {
+    if (m_entry.next == nullptr) {
+      return {};
+    }
+    return std::make_shared<ArchiveEntryTemplate<InternalEntry>>(m_archive,
+                                                                 *m_entry.next);
+  }
 
-protected:
-  common::Path m_path;
-  std::shared_ptr<abstract::File> m_file;
+  [[nodiscard]] ArchiveEntryType type() const override { return m_entry.type; }
 
-  friend DefaultArchive;
+  [[nodiscard]] common::Path path() const override { return m_entry.path; }
+
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const override {
+    return m_entry.file;
+  }
+
+  void file(std::shared_ptr<abstract::File> file) override {
+    m_entry.file = file;
+  }
+
+private:
+  std::shared_ptr<abstract::ArchiveFile> m_archive;
+  InternalEntry &m_entry;
+};
+
+template <typename InternalEntry = ArchiveInternalEntryTemplate,
+          typename Entry = ArchiveEntryTemplate<InternalEntry>>
+class ArchiveTemplate : public abstract::Archive {
+public:
+  [[nodiscard]] std::shared_ptr<abstract::ArchiveEntry> front() const override {
+    return front2();
+  }
+
+  [[nodiscard]] virtual std::shared_ptr<Entry> front2() const = 0;
+
+  [[nodiscard]] std::shared_ptr<abstract::ArchiveEntry>
+  find(const common::Path &path) const override {
+    return find2(path);
+  }
+
+  [[nodiscard]] virtual std::shared_ptr<Entry>
+  find2(const common::Path &path) const = 0;
+
+  std::shared_ptr<abstract::ArchiveEntry>
+  insert_file(std::shared_ptr<abstract::ArchiveEntry> at, common::Path path,
+              std::shared_ptr<abstract::File> file) override {
+    return insert_file2(std::dynamic_pointer_cast<Entry>(at), path,
+                        std::move(file));
+  }
+
+  virtual std::shared_ptr<Entry>
+  insert_file2(std::shared_ptr<Entry> at, common::Path path,
+               std::shared_ptr<abstract::File> file) = 0;
+
+  std::shared_ptr<abstract::ArchiveEntry>
+  insert_directory(std::shared_ptr<abstract::ArchiveEntry> at,
+                   common::Path path) override {
+    return insert_directory2(std::dynamic_pointer_cast<Entry>(at),
+                             std::move(path));
+  }
+
+  virtual std::shared_ptr<Entry> insert_directory2(std::shared_ptr<Entry> at,
+                                                   common::Path path) = 0;
+
+  void move(std::shared_ptr<abstract::ArchiveEntry> entry,
+            common::Path path) const override {
+    move2(std::dynamic_pointer_cast<Entry>(entry), std::move(path));
+  }
+
+  virtual void move2(std::shared_ptr<abstract::ArchiveEntry> entry,
+                     common::Path path) const = 0;
+
+  void remove(std::shared_ptr<abstract::ArchiveEntry> entry) override {
+    remove2(std::dynamic_pointer_cast<Entry>(entry));
+  }
+
+  virtual void remove2(std::shared_ptr<Entry> entry) = 0;
+
+private:
 };
 
 } // namespace odr::common

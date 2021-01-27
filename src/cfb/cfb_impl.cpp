@@ -113,13 +113,14 @@ void CompoundFileReader::enum_nodes(const CompoundFileEntry *entry,
 
   const CompoundFileEntry *child = get_entry(entry->child_id);
   if (child != nullptr) {
-    std::u16string newDir = dir;
+    std::u16string new_dir = dir;
     if (dir.length() != 0) {
-      newDir.append(1, '\n');
+      new_dir.push_back('/');
     }
-    newDir.append((char16_t *)entry->name, entry->name_len / 2);
-    enum_nodes(get_entry(entry->child_id), current_level + 1, max_level, newDir,
-               callback);
+    new_dir.append(reinterpret_cast<const char16_t *>(entry->name),
+                   entry->name_len / 2);
+    enum_nodes(get_entry(entry->child_id), current_level + 1, max_level,
+               new_dir, callback);
   }
 
   enum_nodes(get_entry(entry->left_sibling_id), current_level, max_level, dir,
@@ -177,7 +178,7 @@ std::size_t CompoundFileReader::get_next_sector(size_t sector) const {
   // lookup FAT
   std::size_t entriesPerSector = m_sector_size / 4;
   std::size_t fatSectorNumber = sector / entriesPerSector;
-  std::size_t fatSectorLocation = GetFATSectorLocation(fatSectorNumber);
+  std::size_t fatSectorLocation = get_fat_sector_location(fatSectorNumber);
   return parse_uint32(sector_offset_to_address(fatSectorLocation,
                                                sector % entriesPerSector * 4));
 }
@@ -238,8 +239,8 @@ void CompoundFileReader::locate_final_mini_sector(
   *final_offset = offset;
 }
 
-std::size_t
-CompoundFileReader::GetFATSectorLocation(std::size_t fat_sector_number) const {
+std::size_t CompoundFileReader::get_fat_sector_location(
+    std::size_t fat_sector_number) const {
   if (fat_sector_number < 109) {
     return m_hdr->header_difat[fat_sector_number];
   }

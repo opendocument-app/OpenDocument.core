@@ -22,36 +22,42 @@ class File {
 public:
   virtual ~File() = default;
 
-  [[nodiscard]] virtual FileType file_type() const noexcept = 0;
-  [[nodiscard]] virtual FileCategory file_category() const noexcept;
-  [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;
-  [[nodiscard]] virtual FileLocation file_location() const noexcept = 0;
-
+  [[nodiscard]] virtual FileLocation location() const noexcept = 0;
   [[nodiscard]] virtual std::size_t size() const = 0;
-
-  [[nodiscard]] virtual std::unique_ptr<std::istream> data() const = 0;
+  [[nodiscard]] virtual std::unique_ptr<std::istream> read() const = 0;
 };
 
-class ImageFile : public File {
+class DecodedFile {
+public:
+  virtual ~DecodedFile() = default;
+
+  [[nodiscard]] virtual FileType file_type() const noexcept = 0;
+  [[nodiscard]] virtual FileCategory file_category() const noexcept = 0;
+  [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;
+
+  virtual void encode(std::ostream &) const = 0;
+};
+
+class ImageFile : public DecodedFile {
 public:
   [[nodiscard]] FileCategory file_category() const noexcept final;
 
   [[nodiscard]] virtual std::shared_ptr<Image> image() const = 0;
 };
 
-class TextFile : public File {
+class TextFile : public DecodedFile {
 public:
   [[nodiscard]] FileCategory file_category() const noexcept final;
 };
 
-class ArchiveFile : public File {
+class ArchiveFile : public DecodedFile {
 public:
   [[nodiscard]] FileCategory file_category() const noexcept final;
 
   [[nodiscard]] virtual std::shared_ptr<Archive> archive() const = 0;
 };
 
-class DocumentFile : public File {
+class DocumentFile : public DecodedFile {
 public:
   [[nodiscard]] virtual bool password_encrypted() const noexcept = 0;
   [[nodiscard]] virtual EncryptionState encryption_state() const noexcept = 0;

@@ -10,6 +10,7 @@ enum class FileType;
 
 namespace odr::abstract {
 class File;
+class DecodedFile;
 class DocumentFile;
 } // namespace odr::abstract
 
@@ -20,9 +21,10 @@ class Path;
 namespace odr::open_strategy {
 std::vector<FileType> types(std::shared_ptr<abstract::File> file);
 
-std::shared_ptr<abstract::File> open_file(std::shared_ptr<abstract::File> file);
-std::shared_ptr<abstract::File> open_file(std::shared_ptr<abstract::File> file,
-                                          FileType as);
+std::shared_ptr<abstract::DecodedFile>
+open_file(std::shared_ptr<abstract::File> file);
+std::shared_ptr<abstract::DecodedFile>
+open_file(std::shared_ptr<abstract::File> file, FileType as);
 
 std::unique_ptr<abstract::DocumentFile>
 open_document_file(std::shared_ptr<abstract::File> file);

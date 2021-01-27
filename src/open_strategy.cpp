@@ -54,7 +54,7 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
   return result;
 }
 
-std::shared_ptr<abstract::File>
+std::shared_ptr<abstract::DecodedFile>
 open_strategy::open_file(std::shared_ptr<abstract::File> file) {
   // TODO throw if not a file
 
@@ -97,7 +97,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
   return file;
 }
 
-std::shared_ptr<abstract::File>
+std::shared_ptr<abstract::DecodedFile>
 open_strategy::open_file(std::shared_ptr<abstract::File> file,
                          const FileType as) {
   // TODO implement

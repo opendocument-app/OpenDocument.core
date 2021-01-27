@@ -1,6 +1,5 @@
 #include <abstract/file.h>
 #include <cfb/cfb_archive.h>
-#include <cfb/cfb_file.h>
 #include <cfb/cfb_util.h>
 #include <codecvt>
 #include <locale>
@@ -10,95 +9,171 @@
 namespace odr::cfb {
 
 namespace {
-class FileInCfbStreambuf final : public util::ReaderBuffer {
-public:
-  FileInCfbStreambuf(std::shared_ptr<const CfbFile> file,
-                     const impl::CompoundFileEntry *entry)
-      : ReaderBuffer(*file->impl(), *entry), m_file(std::move(file)) {}
-
-private:
-  std::shared_ptr<const CfbFile> m_file;
-};
-
 class FileInCfbIstream final : public std::istream {
 public:
-  explicit FileInCfbIstream(std::unique_ptr<FileInCfbStreambuf> sbuf)
-      : std::istream(sbuf.get()), m_sbuf{std::move(sbuf)} {}
-  FileInCfbIstream(std::shared_ptr<const CfbFile> file,
-                   const impl::CompoundFileEntry *entry)
-      : FileInCfbIstream(
-            std::make_unique<FileInCfbStreambuf>(std::move(file), entry)) {}
+  FileInCfbIstream(std::shared_ptr<const ReadonlyCfbArchive> persist,
+                   std::unique_ptr<util::ReaderBuffer> sbuf)
+      : std::istream(sbuf.get()), m_persist{std::move(persist)},
+        m_sbuf{std::move(sbuf)} {}
+  FileInCfbIstream(std::shared_ptr<const ReadonlyCfbArchive> persist,
+                   const impl::CompoundFileReader &reader,
+                   const impl::CompoundFileEntry &entry)
+      : FileInCfbIstream(std::move(persist),
+                         std::make_unique<util::ReaderBuffer>(reader, entry)) {}
 
 private:
-  std::unique_ptr<FileInCfbStreambuf> m_sbuf;
+  std::shared_ptr<const ReadonlyCfbArchive> m_persist;
+  std::unique_ptr<util::ReaderBuffer> m_sbuf;
 };
 
 class FileInCfb final : public abstract::File {
 public:
-  FileInCfb(std::shared_ptr<const CfbFile> file,
-            const impl::CompoundFileEntry *entry)
-      : m_file{std::move(file)}, m_entry{entry} {}
+  FileInCfb(std::shared_ptr<const ReadonlyCfbArchive> persist,
+            const FileLocation location, const impl::CompoundFileReader &reader,
+            const impl::CompoundFileEntry &entry)
+      : m_persist{std::move(persist)},
+        m_location{location}, m_reader{reader}, m_entry{entry} {}
 
-  [[nodiscard]] FileType file_type() const noexcept final {
-    return FileType::UNKNOWN;
+  [[nodiscard]] FileLocation location() const noexcept final {
+    return m_location;
   }
 
-  [[nodiscard]] FileCategory file_category() const noexcept final {
-    return FileCategory::UNKNOWN;
-  }
+  [[nodiscard]] std::size_t size() const final { return m_entry.size; }
 
-  [[nodiscard]] FileMeta file_meta() const noexcept final {
-    return {}; // TODO
-  }
-
-  [[nodiscard]] FileLocation file_location() const noexcept final {
-    return m_file->file_location();
-  }
-
-  [[nodiscard]] std::size_t size() const final { return m_entry->size; }
-
-  [[nodiscard]] std::unique_ptr<std::istream> data() const final {
-    return std::make_unique<FileInCfbIstream>(m_file, m_entry);
+  [[nodiscard]] std::unique_ptr<std::istream> read() const final {
+    return std::make_unique<FileInCfbIstream>(m_persist, m_reader, m_entry);
   }
 
 private:
-  std::shared_ptr<const CfbFile> m_file;
-  const impl::CompoundFileEntry *m_entry;
+  std::shared_ptr<const ReadonlyCfbArchive> m_persist;
+  FileLocation m_location;
+  const impl::CompoundFileReader &m_reader;
+  const impl::CompoundFileEntry &m_entry;
 };
 } // namespace
 
-CfbArchive::CfbArchive() = default;
+ReadonlyCfbArchive::Entry::Entry(const impl::CompoundFileReader &reader,
+                                 const impl::CompoundFileEntry *entry,
+                                 common::Path path)
+    : m_reader{reader}, m_entry{entry}, m_path{std::move(path)} {}
 
-CfbArchive::CfbArchive(const std::shared_ptr<const CfbFile> &file) {
-  auto reader = file->impl();
-  reader->enum_files(
-      reader->get_root_entry(), -1,
-      [&](const impl::CompoundFileEntry *entry,
-          const std::u16string & /*directory*/, const std::uint32_t /*level*/) {
-        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>
-            convert;
-        // TODO not sure what directory is; was empty so far
-        // const std::string dir = convert.to_bytes(directory);
-        const std::string path = convert.to_bytes(
-            std::u16string(reinterpret_cast<const char16_t *>(entry->name),
-                           (entry->name_len - 1) / 2));
-
-        if (entry->is_stream()) {
-          CfbArchive::insert_file(DefaultArchive::end(), path,
-                                  nullptr); // TODO file
-        } else {
-          CfbArchive::insert_directory(DefaultArchive::end(), path);
-        }
-      });
+ArchiveEntryType ReadonlyCfbArchive::Entry::type() const {
+  if (m_entry->is_stream()) {
+    return ArchiveEntryType::FILE;
+  }
+  return ArchiveEntryType::DIRECTORY;
 }
 
-std::unique_ptr<abstract::ArchiveEntryIterator>
-CfbArchive::insert_file(std::unique_ptr<abstract::ArchiveEntryIterator> at,
-                        common::Path path,
-                        std::shared_ptr<abstract::File> file) {
-  return nullptr;
+common::Path ReadonlyCfbArchive::Entry::path() const { return m_path; }
+
+std::unique_ptr<abstract::File> ReadonlyCfbArchive::Entry::file() const {
+  return file({});
 }
 
-void CfbArchive::save(std::ostream &) const { throw UnsupportedOperation(); }
+std::unique_ptr<abstract::File> ReadonlyCfbArchive::Entry::file(
+    std::shared_ptr<ReadonlyCfbArchive> persist) const {
+  if (type() != ArchiveEntryType::FILE) {
+    return {};
+  }
+  return std::make_unique<FileInCfb>(std::move(persist), FileLocation::MEMORY,
+                                     m_reader, *m_entry);
+}
+
+ReadonlyCfbArchive::Iterator::Iterator(const impl::CompoundFileReader &reader,
+                                       const impl::CompoundFileEntry *entry,
+                                       common::Path path)
+    : m_entry{reader, entry, std::move(path)} {
+  dig_left_();
+}
+
+void ReadonlyCfbArchive::Iterator::dig_left_() {
+  while (true) {
+    auto left = m_entry.m_reader.get_entry(m_entry.m_entry->left_sibling_id);
+    if (left == nullptr) {
+      break;
+    }
+    m_ancestors.push_back(m_entry.m_entry);
+    m_entry.m_entry = left;
+  }
+}
+
+ReadonlyCfbArchive::Iterator::reference
+ReadonlyCfbArchive::Iterator::operator*() const {
+  return m_entry;
+}
+
+ReadonlyCfbArchive::Iterator::pointer
+ReadonlyCfbArchive::Iterator::operator->() const {
+  return &m_entry;
+}
+
+bool ReadonlyCfbArchive::Iterator::operator==(const Iterator &other) const {
+  return &m_entry.m_entry == &other.m_entry.m_entry;
+};
+
+bool ReadonlyCfbArchive::Iterator::operator!=(const Iterator &other) const {
+  return &m_entry.m_entry != &other.m_entry.m_entry;
+};
+
+ReadonlyCfbArchive::Iterator &ReadonlyCfbArchive::Iterator::operator++() {
+  auto child = m_entry.m_reader.get_entry(m_entry.m_entry->child_id);
+  if (child != nullptr) {
+    m_directories.push_back(m_entry.m_entry);
+    m_entry.m_entry = child;
+    dig_left_();
+    return *this;
+  }
+
+  auto right = m_entry.m_reader.get_entry(m_entry.m_entry->right_sibling_id);
+  if (right != nullptr) {
+    m_entry.m_entry = right;
+    dig_left_();
+    return *this;
+  }
+
+  if (!m_ancestors.empty()) {
+    m_entry.m_entry = m_ancestors.back();
+    m_ancestors.pop_back();
+    return *this;
+  }
+
+  if (!m_directories.empty()) {
+    m_entry.m_entry = m_directories.back();
+    m_directories.pop_back();
+    return *this;
+  }
+
+  m_entry.m_entry = nullptr;
+  return *this;
+}
+
+ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::Iterator::operator++(int) {
+  Iterator tmp = *this;
+  ++(*this);
+  return tmp;
+}
+
+ReadonlyCfbArchive::ReadonlyCfbArchive(std::shared_ptr<common::MemoryFile> file)
+    : m_file{std::move(file)}, m_reader{m_file->content().data(),
+                                        m_file->size()} {}
+
+ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::begin() const {
+  return Iterator(m_reader, m_reader.get_root_entry(), "/");
+}
+
+ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::end() const {
+  return Iterator(m_reader, nullptr, "");
+}
+
+ReadonlyCfbArchive::Iterator
+ReadonlyCfbArchive::find(const common::Path &path) const {
+  for (auto it = begin(); it != end(); ++it) {
+    if (it->path() == path) {
+      return it;
+    }
+  }
+
+  return end();
+}
 
 } // namespace odr::cfb
