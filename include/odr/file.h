@@ -83,14 +83,14 @@ enum class EncryptionState {
 };
 
 struct FileMeta final {
-  static FileType typeByExtension(const std::string &extension) noexcept;
-  static FileCategory categoryByType(FileType type) noexcept;
+  static FileType type_by_extension(const std::string &extension) noexcept;
+  static FileCategory category_by_type(FileType type) noexcept;
 
   FileType type{FileType::UNKNOWN};
-  bool passwordEncrypted{false};
-  std::optional<DocumentMeta> documentMeta;
+  bool password_encrypted{false};
+  std::optional<DocumentMeta> document_meta;
 
-  std::string typeAsString() const noexcept;
+  std::string type_as_string() const noexcept;
 };
 
 class File {
@@ -103,12 +103,12 @@ public:
   explicit File(const std::string &path);
   File(const std::string &path, FileType as);
 
-  [[nodiscard]] FileType fileType() const noexcept;
-  [[nodiscard]] FileCategory fileCategory() const noexcept;
-  [[nodiscard]] FileMeta fileMeta() const noexcept;
+  [[nodiscard]] FileType file_type() const noexcept;
+  [[nodiscard]] FileCategory file_category() const noexcept;
+  [[nodiscard]] FileMeta file_meta() const noexcept;
 
-  [[nodiscard]] ImageFile imageFile() const;
-  [[nodiscard]] DocumentFile documentFile() const;
+  [[nodiscard]] ImageFile image_file() const;
+  [[nodiscard]] DocumentFile document_file() const;
 
 protected:
   std::shared_ptr<abstract::DecodedFile> m_impl;

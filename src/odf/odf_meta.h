@@ -17,15 +17,15 @@ struct DocumentMeta;
 } // namespace odr
 
 namespace odr::abstract {
-class ReadStorage;
+class ReadableFilesystem;
 } // namespace odr::abstract
 
 namespace odr::odf {
 
-FileMeta parseFileMeta(const abstract::ReadStorage &storage,
-                       const pugi::xml_document *manifest);
-DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
-                               const pugi::xml_document &content);
+FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
+                         const pugi::xml_document *manifest);
+DocumentMeta parse_document_meta(const pugi::xml_document *meta,
+                                 const pugi::xml_document &content);
 
 } // namespace odr::odf
 

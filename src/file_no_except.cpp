@@ -25,7 +25,7 @@ std::optional<FileNoExcept> FileNoExcept::open(const std::string &path,
 
 FileType FileNoExcept::type(const std::string &path) noexcept {
   try {
-    return File(path).fileType();
+    return File(path).file_type();
   } catch (...) {
     LOG(ERROR) << "type failed";
     return FileType::UNKNOWN;
@@ -34,7 +34,7 @@ FileType FileNoExcept::type(const std::string &path) noexcept {
 
 FileMeta FileNoExcept::meta(const std::string &path) noexcept {
   try {
-    return File(path).fileMeta();
+    return File(path).file_meta();
   } catch (...) {
     LOG(ERROR) << "meta failed";
     return {};
@@ -43,27 +43,27 @@ FileMeta FileNoExcept::meta(const std::string &path) noexcept {
 
 FileNoExcept::FileNoExcept(File file) : m_file{std::move(file)} {}
 
-FileType FileNoExcept::fileType() const noexcept {
+FileType FileNoExcept::file_type() const noexcept {
   try {
-    return m_file.fileType();
+    return m_file.file_type();
   } catch (...) {
     LOG(ERROR) << "type failed";
     return FileType::UNKNOWN;
   }
 }
 
-FileCategory FileNoExcept::fileCategory() const noexcept {
+FileCategory FileNoExcept::file_category() const noexcept {
   try {
-    return m_file.fileCategory();
+    return m_file.file_category();
   } catch (...) {
     LOG(ERROR) << "file category failed";
     return FileCategory::UNKNOWN;
   }
 }
 
-FileMeta FileNoExcept::fileMeta() const noexcept {
+FileMeta FileNoExcept::file_meta() const noexcept {
   try {
-    return m_file.fileMeta();
+    return m_file.file_meta();
   } catch (...) {
     LOG(ERROR) << "meta failed";
     return {};
@@ -98,12 +98,12 @@ FileMeta DocumentFileNoExcept::meta(const std::string &path) noexcept {
   }
 }
 
-DocumentFileNoExcept::DocumentFileNoExcept(DocumentFile documentFile)
-    : FileNoExcept(documentFile), m_documentFile{std::move(documentFile)} {}
+DocumentFileNoExcept::DocumentFileNoExcept(DocumentFile document_file)
+    : FileNoExcept(document_file), m_document_file{std::move(document_file)} {}
 
 DocumentType DocumentFileNoExcept::document_type() const noexcept {
   try {
-    return m_documentFile.document_type();
+    return m_document_file.document_type();
   } catch (...) {
     LOG(ERROR) << "document type failed";
     return DocumentType::UNKNOWN;

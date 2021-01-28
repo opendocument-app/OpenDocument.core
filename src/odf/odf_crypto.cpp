@@ -1,3 +1,4 @@
+#include <abstract/file.h>
 #include <abstract/filesystem.h>
 #include <crypto/crypto_util.h>
 #include <odf/odf_crypto.h>
@@ -135,8 +136,9 @@ bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
     throw UnsupportedCryptoAlgorithm();
   const std::string startKey =
       odf::start_key(*manifest.smallest_file_entry, password);
+  // TODO stream decrypt
   const std::string input =
-      util::stream::read(*storage->read(*manifest.smallest_file_path));
+      util::stream::read(*storage->open(*manifest.smallest_file_path)->read());
   const std::string decrypt =
       derive_key_and_decrypt(*manifest.smallest_file_entry, startKey, input);
   if (!validate_password(*manifest.smallest_file_entry, decrypt))

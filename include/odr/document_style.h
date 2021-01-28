@@ -36,11 +36,11 @@ public:
 
   [[nodiscard]] Property width() const;
   [[nodiscard]] Property height() const;
-  [[nodiscard]] Property marginTop() const;
-  [[nodiscard]] Property marginBottom() const;
-  [[nodiscard]] Property marginLeft() const;
-  [[nodiscard]] Property marginRight() const;
-  [[nodiscard]] Property printOrientation() const;
+  [[nodiscard]] Property margin_top() const;
+  [[nodiscard]] Property margin_bottom() const;
+  [[nodiscard]] Property margin_left() const;
+  [[nodiscard]] Property margin_right() const;
+  [[nodiscard]] Property print_orientation() const;
 
 private:
   std::shared_ptr<abstract::PageStyle> m_impl;
@@ -51,13 +51,13 @@ public:
   TextStyle();
   explicit TextStyle(std::shared_ptr<abstract::TextStyle> impl);
 
-  [[nodiscard]] Property fontName() const;
-  [[nodiscard]] Property fontSize() const;
-  [[nodiscard]] Property fontWeight() const;
-  [[nodiscard]] Property fontStyle() const;
-  [[nodiscard]] Property fontColor() const;
+  [[nodiscard]] Property font_name() const;
+  [[nodiscard]] Property font_size() const;
+  [[nodiscard]] Property font_weight() const;
+  [[nodiscard]] Property font_style() const;
+  [[nodiscard]] Property font_color() const;
 
-  [[nodiscard]] Property backgroundColor() const;
+  [[nodiscard]] Property background_color() const;
 
 private:
   std::shared_ptr<abstract::TextStyle> m_impl;
@@ -68,11 +68,11 @@ public:
   ParagraphStyle();
   explicit ParagraphStyle(std::shared_ptr<abstract::ParagraphStyle> impl);
 
-  [[nodiscard]] Property textAlign() const;
-  [[nodiscard]] Property marginTop() const;
-  [[nodiscard]] Property marginBottom() const;
-  [[nodiscard]] Property marginLeft() const;
-  [[nodiscard]] Property marginRight() const;
+  [[nodiscard]] Property text_align() const;
+  [[nodiscard]] Property margin_top() const;
+  [[nodiscard]] Property margin_bottom() const;
+  [[nodiscard]] Property margin_left() const;
+  [[nodiscard]] Property margin_right() const;
 
 private:
   std::shared_ptr<abstract::ParagraphStyle> m_impl;
@@ -105,14 +105,14 @@ public:
   TableCellStyle();
   explicit TableCellStyle(std::shared_ptr<abstract::TableCellStyle> impl);
 
-  [[nodiscard]] Property paddingTop() const;
-  [[nodiscard]] Property paddingBottom() const;
-  [[nodiscard]] Property paddingLeft() const;
-  [[nodiscard]] Property paddingRight() const;
-  [[nodiscard]] Property borderTop() const;
-  [[nodiscard]] Property borderBottom() const;
-  [[nodiscard]] Property borderLeft() const;
-  [[nodiscard]] Property borderRight() const;
+  [[nodiscard]] Property padding_top() const;
+  [[nodiscard]] Property padding_bottom() const;
+  [[nodiscard]] Property padding_left() const;
+  [[nodiscard]] Property padding_right() const;
+  [[nodiscard]] Property border_top() const;
+  [[nodiscard]] Property border_bottom() const;
+  [[nodiscard]] Property border_left() const;
+  [[nodiscard]] Property border_right() const;
 
 private:
   std::shared_ptr<abstract::TableCellStyle> m_impl;
@@ -123,10 +123,10 @@ public:
   DrawingStyle();
   explicit DrawingStyle(std::shared_ptr<abstract::DrawingStyle> impl);
 
-  [[nodiscard]] Property strokeWidth() const;
-  [[nodiscard]] Property strokeColor() const;
-  [[nodiscard]] Property fillColor() const;
-  [[nodiscard]] Property verticalAlign() const;
+  [[nodiscard]] Property stroke_width() const;
+  [[nodiscard]] Property stroke_color() const;
+  [[nodiscard]] Property fill_color() const;
+  [[nodiscard]] Property vertical_align() const;
 
 private:
   std::shared_ptr<abstract::DrawingStyle> m_impl;

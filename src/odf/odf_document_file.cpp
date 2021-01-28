@@ -13,13 +13,13 @@ OpenDocumentFile::OpenDocumentFile(
   if (m_files->exists("META-INF/manifest.xml")) {
     auto manifest = util::xml::parse(*m_files, "META-INF/manifest.xml");
 
-    m_file_meta = parseFileMeta(*m_files, &manifest);
+    m_file_meta = parse_file_meta(*m_files, &manifest);
     m_manifest = parseManifest(manifest);
   } else {
-    m_file_meta = parseFileMeta(*m_files, nullptr);
+    m_file_meta = parse_file_meta(*m_files, nullptr);
   }
 
-  if (m_file_meta.passwordEncrypted) {
+  if (m_file_meta.password_encrypted) {
     m_encryption_state = EncryptionState::ENCRYPTED;
   }
 }
@@ -37,7 +37,7 @@ FileMeta OpenDocumentFile::file_meta() const noexcept {
 }
 
 bool OpenDocumentFile::password_encrypted() const noexcept {
-  return m_file_meta.passwordEncrypted;
+  return m_file_meta.password_encrypted;
 }
 
 EncryptionState OpenDocumentFile::encryption_state() const noexcept {
@@ -57,13 +57,13 @@ std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
   // TODO throw if encrypted
   switch (file_type()) {
   case FileType::OPENDOCUMENT_TEXT:
-    return std::make_shared<OpenDocumentText>(m_archive);
+    return std::make_shared<OpenDocumentText>(m_files);
   case FileType::OPENDOCUMENT_PRESENTATION:
-    return std::make_shared<OpenDocumentPresentation>(m_archive);
+    return std::make_shared<OpenDocumentPresentation>(m_files);
   case FileType::OPENDOCUMENT_SPREADSHEET:
-    return std::make_shared<OpenDocumentSpreadsheet>(m_archive);
+    return std::make_shared<OpenDocumentSpreadsheet>(m_files);
   case FileType::OPENDOCUMENT_GRAPHICS:
-    return std::make_shared<OpenDocumentDrawing>(m_archive);
+    return std::make_shared<OpenDocumentDrawing>(m_files);
   default:
     // TODO throw
     return nullptr;

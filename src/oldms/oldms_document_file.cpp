@@ -1,4 +1,4 @@
-#include <cfb/cfb_storage.h>
+#include <cfb/cfb_archive.h>
 #include <common/path.h>
 #include <memory>
 #include <odr/exceptions.h>
@@ -8,7 +8,7 @@
 namespace odr::oldms {
 
 namespace {
-FileMeta parseMeta(const abstract::ReadStorage &storage) {
+FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
@@ -24,7 +24,7 @@ FileMeta parseMeta(const abstract::ReadStorage &storage) {
   FileMeta result;
 
   for (auto &&t : TYPES) {
-    if (storage.isFile(t.first)) {
+    if (storage.is_file(t.first)) {
       result.type = t.second;
       break;
     }
@@ -39,29 +39,17 @@ FileMeta parseMeta(const abstract::ReadStorage &storage) {
 } // namespace
 
 LegacyMicrosoftFile::LegacyMicrosoftFile(
-    std::shared_ptr<abstract::ReadStorage> storage)
+    std::shared_ptr<abstract::ReadableFilesystem> storage)
     : m_storage{std::move(storage)} {
-  m_meta = parseMeta(*m_storage);
+  m_meta = parse_meta(*m_storage);
 }
 
 FileType LegacyMicrosoftFile::file_type() const noexcept { return m_meta.type; }
 
 FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_meta; }
 
-FileLocation LegacyMicrosoftFile::file_location() const noexcept {
-  return FileLocation::UNKNOWN; // TODO
-}
-
-std::size_t LegacyMicrosoftFile::size() const {
-  return 0; // TODO
-}
-
-std::unique_ptr<std::istream> LegacyMicrosoftFile::data() const {
-  return {}; // TODO
-}
-
 bool LegacyMicrosoftFile::password_encrypted() const noexcept {
-  return m_meta.passwordEncrypted;
+  return m_meta.password_encrypted;
 }
 
 EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {

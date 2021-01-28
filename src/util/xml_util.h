@@ -19,7 +19,8 @@ class Path;
 namespace odr::util::xml {
 pugi::xml_document parse(const std::string &);
 pugi::xml_document parse(std::istream &);
-pugi::xml_document parse(const abstract::ReadStorage &, const common::Path &);
+pugi::xml_document parse(const abstract::ReadableFilesystem &,
+                         const common::Path &);
 } // namespace odr::util::xml
 
 #endif // ODR_COMMON_XML_UTIL_H

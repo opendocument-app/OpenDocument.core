@@ -7,8 +7,8 @@
 namespace odr::odf {
 
 namespace {
-void attributesToMap(pugi::xml_node node,
-                     std::unordered_map<std::string, std::string> &map) {
+void attributes_to_map(pugi::xml_node node,
+                       std::unordered_map<std::string, std::string> &map) {
   for (auto &&a : node.attributes()) {
     map[a.name()] = a.value();
   }
@@ -16,247 +16,270 @@ void attributesToMap(pugi::xml_node node,
 
 class PageStyle final : public abstract::PageStyle {
 public:
-  explicit PageStyle(pugi::xml_node pageLayoutProp)
-      : m_pageLayoutProp{pageLayoutProp} {}
+  explicit PageStyle(pugi::xml_node page_layout_prop)
+      : m_page_layout_prop{page_layout_prop} {}
 
-  std::shared_ptr<abstract::Property> width() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> width() const final {
     return std::make_shared<common::XmlAttributeProperty>(
-        m_pageLayoutProp.attribute("fo:page-width"));
+        m_page_layout_prop.attribute("fo:page-width"));
   }
 
-  std::shared_ptr<abstract::Property> height() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> height() const final {
     return std::make_shared<common::XmlAttributeProperty>(
-        m_pageLayoutProp.attribute("fo:page-height"));
+        m_page_layout_prop.attribute("fo:page-height"));
   }
 
-  std::shared_ptr<abstract::Property> marginTop() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> margin_top() const final {
     return std::make_shared<common::XmlAttributeProperty>(
-        m_pageLayoutProp.attribute("fo:margin-top"));
+        m_page_layout_prop.attribute("fo:margin-top"));
   }
 
-  std::shared_ptr<abstract::Property> marginBottom() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  margin_bottom() const final {
     return std::make_shared<common::XmlAttributeProperty>(
-        m_pageLayoutProp.attribute("fo:margin-bottom"));
+        m_page_layout_prop.attribute("fo:margin-bottom"));
   }
 
-  std::shared_ptr<abstract::Property> marginLeft() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> margin_left() const final {
     return std::make_shared<common::XmlAttributeProperty>(
-        m_pageLayoutProp.attribute("fo:margin-left"));
+        m_page_layout_prop.attribute("fo:margin-left"));
   }
 
-  std::shared_ptr<abstract::Property> marginRight() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> margin_right() const final {
     return std::make_shared<common::XmlAttributeProperty>(
-        m_pageLayoutProp.attribute("fo:margin-right"));
+        m_page_layout_prop.attribute("fo:margin-right"));
   }
 
-  std::shared_ptr<abstract::Property> printOrientation() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  print_orientation() const final {
     return std::make_shared<common::XmlAttributeProperty>(
-        m_pageLayoutProp.attribute("style:print-orientation"));
+        m_page_layout_prop.attribute("style:print-orientation"));
   }
 
 private:
-  pugi::xml_node m_pageLayoutProp;
+  pugi::xml_node m_page_layout_prop;
 };
 
 class TextStyle final : public abstract::TextStyle {
 public:
   explicit TextStyle(
-      std::unordered_map<std::string, std::string> textProperties)
-      : m_textProperties{std::move(textProperties)} {}
+      std::unordered_map<std::string, std::string> text_properties)
+      : m_text_properties{std::move(text_properties)} {}
 
-  std::shared_ptr<abstract::Property> fontName() const final {
-    return ResolvedStyle::lookup(m_textProperties, "style:font-name");
+  [[nodiscard]] std::shared_ptr<abstract::Property> font_name() const final {
+    return ResolvedStyle::lookup(m_text_properties, "style:font-name");
   }
 
-  std::shared_ptr<abstract::Property> fontSize() const final {
-    return ResolvedStyle::lookup(m_textProperties, "fo:font-size");
+  [[nodiscard]] std::shared_ptr<abstract::Property> font_size() const final {
+    return ResolvedStyle::lookup(m_text_properties, "fo:font-size");
   }
 
-  std::shared_ptr<abstract::Property> fontWeight() const final {
-    return ResolvedStyle::lookup(m_textProperties, "fo:font-weight");
+  [[nodiscard]] std::shared_ptr<abstract::Property> font_weight() const final {
+    return ResolvedStyle::lookup(m_text_properties, "fo:font-weight");
   }
 
-  std::shared_ptr<abstract::Property> fontStyle() const final {
-    return ResolvedStyle::lookup(m_textProperties, "fo:font-style");
+  [[nodiscard]] std::shared_ptr<abstract::Property> font_style() const final {
+    return ResolvedStyle::lookup(m_text_properties, "fo:font-style");
   }
 
-  std::shared_ptr<abstract::Property> fontColor() const final {
-    return ResolvedStyle::lookup(m_textProperties, "fo:color");
+  [[nodiscard]] std::shared_ptr<abstract::Property> font_color() const final {
+    return ResolvedStyle::lookup(m_text_properties, "fo:color");
   }
 
-  std::shared_ptr<abstract::Property> backgroundColor() const final {
-    return ResolvedStyle::lookup(m_textProperties, "fo:background-color");
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  background_color() const final {
+    return ResolvedStyle::lookup(m_text_properties, "fo:background-color");
   }
 
 private:
-  std::unordered_map<std::string, std::string> m_textProperties;
+  std::unordered_map<std::string, std::string> m_text_properties;
 };
 
 class ParagraphStyle final : public abstract::ParagraphStyle {
 public:
   explicit ParagraphStyle(
-      std::unordered_map<std::string, std::string> paragraphProperties)
-      : m_paragraphProperties{std::move(paragraphProperties)} {}
+      std::unordered_map<std::string, std::string> paragraph_properties)
+      : m_paragraph_properties{std::move(paragraph_properties)} {}
 
-  std::shared_ptr<abstract::Property> textAlign() const final {
-    return ResolvedStyle::lookup(m_paragraphProperties, "fo:text-align");
+  [[nodiscard]] std::shared_ptr<abstract::Property> text_align() const final {
+    return ResolvedStyle::lookup(m_paragraph_properties, "fo:text-align");
   }
 
-  std::shared_ptr<abstract::Property> marginTop() const final {
-    auto result = ResolvedStyle::lookup(m_paragraphProperties, "fo:margin-top");
-    if (!result)
-      result = ResolvedStyle::lookup(m_paragraphProperties, "fo:margin");
+  [[nodiscard]] std::shared_ptr<abstract::Property> margin_top() const final {
+    auto result =
+        ResolvedStyle::lookup(m_paragraph_properties, "fo:margin-top");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_paragraph_properties, "fo:margin");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> marginBottom() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  margin_bottom() const final {
     auto result =
-        ResolvedStyle::lookup(m_paragraphProperties, "fo:margin-bottom");
-    if (!result)
-      result = ResolvedStyle::lookup(m_paragraphProperties, "fo:margin");
+        ResolvedStyle::lookup(m_paragraph_properties, "fo:margin-bottom");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_paragraph_properties, "fo:margin");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> marginLeft() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> margin_left() const final {
     auto result =
-        ResolvedStyle::lookup(m_paragraphProperties, "fo:margin-left");
-    if (!result)
-      result = ResolvedStyle::lookup(m_paragraphProperties, "fo:margin");
+        ResolvedStyle::lookup(m_paragraph_properties, "fo:margin-left");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_paragraph_properties, "fo:margin");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> marginRight() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> margin_right() const final {
     auto result =
-        ResolvedStyle::lookup(m_paragraphProperties, "fo:margin-right");
-    if (!result)
-      result = ResolvedStyle::lookup(m_paragraphProperties, "fo:margin");
+        ResolvedStyle::lookup(m_paragraph_properties, "fo:margin-right");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_paragraph_properties, "fo:margin");
+    }
     return result;
   }
 
 private:
-  std::unordered_map<std::string, std::string> m_paragraphProperties;
+  std::unordered_map<std::string, std::string> m_paragraph_properties;
 };
 
 class TableStyle final : public abstract::TableStyle {
 public:
   explicit TableStyle(
-      std::unordered_map<std::string, std::string> tableProperties)
-      : m_tableProperties{std::move(tableProperties)} {}
+      std::unordered_map<std::string, std::string> table_properties)
+      : m_table_properties{std::move(table_properties)} {}
 
-  std::shared_ptr<abstract::Property> width() const final {
-    return ResolvedStyle::lookup(m_tableProperties, "style:width");
+  [[nodiscard]] std::shared_ptr<abstract::Property> width() const final {
+    return ResolvedStyle::lookup(m_table_properties, "style:width");
   }
 
 private:
-  std::unordered_map<std::string, std::string> m_tableProperties;
+  std::unordered_map<std::string, std::string> m_table_properties;
 };
 
 class TableColumnStyle final : public abstract::TableColumnStyle {
 public:
   explicit TableColumnStyle(
-      std::unordered_map<std::string, std::string> tableColumnProperties)
-      : m_tableColumnProperties{std::move(tableColumnProperties)} {}
+      std::unordered_map<std::string, std::string> table_column_properties)
+      : m_table_column_properties{std::move(table_column_properties)} {}
 
-  std::shared_ptr<abstract::Property> width() const final {
-    return ResolvedStyle::lookup(m_tableColumnProperties, "style:column-width");
+  [[nodiscard]] std::shared_ptr<abstract::Property> width() const final {
+    return ResolvedStyle::lookup(m_table_column_properties,
+                                 "style:column-width");
   }
 
 private:
-  std::unordered_map<std::string, std::string> m_tableColumnProperties;
+  std::unordered_map<std::string, std::string> m_table_column_properties;
 };
 
 class TableCellStyle final : public abstract::TableCellStyle {
 public:
   explicit TableCellStyle(
-      std::unordered_map<std::string, std::string> tableCellProperties)
-      : m_tableCellProperties{std::move(tableCellProperties)} {}
+      std::unordered_map<std::string, std::string> table_cell_properties)
+      : m_table_cell_properties{std::move(table_cell_properties)} {}
 
-  std::shared_ptr<abstract::Property> paddingTop() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> padding_top() const final {
     auto result =
-        ResolvedStyle::lookup(m_tableCellProperties, "fo:padding-top");
-    if (!result)
-      result = ResolvedStyle::lookup(m_tableCellProperties, "fo:padding");
+        ResolvedStyle::lookup(m_table_cell_properties, "fo:padding-top");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_table_cell_properties, "fo:padding");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> paddingBottom() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  padding_bottom() const final {
     auto result =
-        ResolvedStyle::lookup(m_tableCellProperties, "fo:padding-bottom");
-    if (!result)
-      result = ResolvedStyle::lookup(m_tableCellProperties, "fo:padding");
+        ResolvedStyle::lookup(m_table_cell_properties, "fo:padding-bottom");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_table_cell_properties, "fo:padding");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> paddingLeft() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> padding_left() const final {
     auto result =
-        ResolvedStyle::lookup(m_tableCellProperties, "fo:padding-left");
-    if (!result)
-      result = ResolvedStyle::lookup(m_tableCellProperties, "fo:padding");
+        ResolvedStyle::lookup(m_table_cell_properties, "fo:padding-left");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_table_cell_properties, "fo:padding");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> paddingRight() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  padding_right() const final {
     auto result =
-        ResolvedStyle::lookup(m_tableCellProperties, "fo:padding-right");
-    if (!result)
-      result = ResolvedStyle::lookup(m_tableCellProperties, "fo:padding");
+        ResolvedStyle::lookup(m_table_cell_properties, "fo:padding-right");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_table_cell_properties, "fo:padding");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> borderTop() const final {
-    auto result = ResolvedStyle::lookup(m_tableCellProperties, "fo:border-top");
-    if (!result)
-      result = ResolvedStyle::lookup(m_tableCellProperties, "fo:border");
+  [[nodiscard]] std::shared_ptr<abstract::Property> border_top() const final {
+    auto result =
+        ResolvedStyle::lookup(m_table_cell_properties, "fo:border-top");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_table_cell_properties, "fo:border");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> borderBottom() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  border_bottom() const final {
     auto result =
-        ResolvedStyle::lookup(m_tableCellProperties, "fo:border-bottom");
-    if (!result)
-      result = ResolvedStyle::lookup(m_tableCellProperties, "fo:border");
+        ResolvedStyle::lookup(m_table_cell_properties, "fo:border-bottom");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_table_cell_properties, "fo:border");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> borderLeft() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> border_left() const final {
     auto result =
-        ResolvedStyle::lookup(m_tableCellProperties, "fo:border-left");
-    if (!result)
-      result = ResolvedStyle::lookup(m_tableCellProperties, "fo:border");
+        ResolvedStyle::lookup(m_table_cell_properties, "fo:border-left");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_table_cell_properties, "fo:border");
+    }
     return result;
   }
 
-  std::shared_ptr<abstract::Property> borderRight() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> border_right() const final {
     auto result =
-        ResolvedStyle::lookup(m_tableCellProperties, "fo:border-right");
-    if (!result)
-      result = ResolvedStyle::lookup(m_tableCellProperties, "fo:border");
+        ResolvedStyle::lookup(m_table_cell_properties, "fo:border-right");
+    if (!result) {
+      result = ResolvedStyle::lookup(m_table_cell_properties, "fo:border");
+    }
     return result;
   }
 
 private:
-  std::unordered_map<std::string, std::string> m_tableCellProperties;
+  std::unordered_map<std::string, std::string> m_table_cell_properties;
 };
 
 class DrawingStyle final : public abstract::DrawingStyle {
 public:
   explicit DrawingStyle(
-      std::unordered_map<std::string, std::string> graphicProperties)
-      : m_graphicProperties{std::move(graphicProperties)} {}
+      std::unordered_map<std::string, std::string> graphic_properties)
+      : m_graphicProperties{std::move(graphic_properties)} {}
 
-  std::shared_ptr<abstract::Property> strokeWidth() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> stroke_width() const final {
     return ResolvedStyle::lookup(m_graphicProperties, "svg:stroke-width");
   }
 
-  std::shared_ptr<abstract::Property> strokeColor() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> stroke_color() const final {
     return ResolvedStyle::lookup(m_graphicProperties, "svg:stroke-color");
   }
 
-  std::shared_ptr<abstract::Property> fillColor() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> fill_color() const final {
     return ResolvedStyle::lookup(m_graphicProperties, "draw:fill-color");
   }
 
-  std::shared_ptr<abstract::Property> verticalAlign() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  vertical_align() const final {
     return ResolvedStyle::lookup(m_graphicProperties,
                                  "draw:textarea-vertical-align");
   }
@@ -271,36 +294,38 @@ ResolvedStyle::lookup(const std::unordered_map<std::string, std::string> &map,
                       const std::string &attribute) {
   auto it = map.find(attribute);
   std::optional<std::string> result;
-  if (it != map.end())
+  if (it != std::end(map)) {
     result = it->second;
+  }
   return std::make_shared<abstract::ConstProperty>(result);
 }
 
-std::shared_ptr<abstract::TextStyle> ResolvedStyle::toTextStyle() const {
-  return std::make_shared<TextStyle>(textProperties);
+std::shared_ptr<abstract::TextStyle> ResolvedStyle::to_text_style() const {
+  return std::make_shared<TextStyle>(text_properties);
 }
 
 std::shared_ptr<abstract::ParagraphStyle>
-ResolvedStyle::toParagraphStyle() const {
-  return std::make_shared<ParagraphStyle>(paragraphProperties);
+ResolvedStyle::to_paragraph_style() const {
+  return std::make_shared<ParagraphStyle>(paragraph_properties);
 }
 
-std::shared_ptr<abstract::TableStyle> ResolvedStyle::toTableStyle() const {
-  return std::make_shared<TableStyle>(paragraphProperties);
+std::shared_ptr<abstract::TableStyle> ResolvedStyle::to_table_style() const {
+  return std::make_shared<TableStyle>(paragraph_properties);
 }
 
 std::shared_ptr<abstract::TableColumnStyle>
-ResolvedStyle::toTableColumnStyle() const {
-  return std::make_shared<TableColumnStyle>(paragraphProperties);
+ResolvedStyle::to_table_column_style() const {
+  return std::make_shared<TableColumnStyle>(paragraph_properties);
 }
 
 std::shared_ptr<abstract::TableCellStyle>
-ResolvedStyle::toTableCellStyle() const {
-  return std::make_shared<TableCellStyle>(paragraphProperties);
+ResolvedStyle::to_table_cell_style() const {
+  return std::make_shared<TableCellStyle>(paragraph_properties);
 }
 
-std::shared_ptr<abstract::DrawingStyle> ResolvedStyle::toDrawingStyle() const {
-  return std::make_shared<DrawingStyle>(paragraphProperties);
+std::shared_ptr<abstract::DrawingStyle>
+ResolvedStyle::to_drawing_style() const {
+  return std::make_shared<DrawingStyle>(paragraph_properties);
 }
 
 Style::Style(std::shared_ptr<Style> parent, pugi::xml_node node)
@@ -309,167 +334,178 @@ Style::Style(std::shared_ptr<Style> parent, pugi::xml_node node)
 ResolvedStyle Style::resolve() const {
   ResolvedStyle result;
 
-  if (m_parent)
+  if (m_parent) {
     result = m_parent->resolve();
+  }
 
   // TODO some property nodes have children e.g. <style:paragraph-properties>
   // TODO some properties use relative measures of their parent's properties
   // e.g. fo:font-size
 
-  attributesToMap(m_node.child("style:paragraph-properties"),
-                  result.paragraphProperties);
-  attributesToMap(m_node.child("style:text-properties"), result.textProperties);
+  attributes_to_map(m_node.child("style:paragraph-properties"),
+                    result.paragraph_properties);
+  attributes_to_map(m_node.child("style:text-properties"),
+                    result.text_properties);
 
-  attributesToMap(m_node.child("style:table-properties"),
-                  result.tableProperties);
-  attributesToMap(m_node.child("style:table-column-properties"),
-                  result.tableColumnProperties);
-  attributesToMap(m_node.child("style:table-row-properties"),
-                  result.tableRowProperties);
-  attributesToMap(m_node.child("style:table-cell-properties"),
-                  result.tableCellProperties);
+  attributes_to_map(m_node.child("style:table-properties"),
+                    result.table_properties);
+  attributes_to_map(m_node.child("style:table-column-properties"),
+                    result.table_column_properties);
+  attributes_to_map(m_node.child("style:table-row-properties"),
+                    result.table_row_properties);
+  attributes_to_map(m_node.child("style:table-cell-properties"),
+                    result.table_cell_properties);
 
-  attributesToMap(m_node.child("style:chart-properties"),
-                  result.chartProperties);
-  attributesToMap(m_node.child("style:drawing-page-properties"),
-                  result.drawingPageProperties);
-  attributesToMap(m_node.child("style:graphic-properties"),
-                  result.graphicProperties);
+  attributes_to_map(m_node.child("style:chart-properties"),
+                    result.chart_properties);
+  attributes_to_map(m_node.child("style:drawing-page-properties"),
+                    result.drawing_page_properties);
+  attributes_to_map(m_node.child("style:graphic-properties"),
+                    result.graphic_properties);
 
   return result;
 }
 
-Styles::Styles(pugi::xml_node stylesRoot, pugi::xml_node contentRoot)
-    : m_stylesRoot{stylesRoot}, m_contentRoot{contentRoot} {
-  generateIndices();
-  generateStyles();
+Styles::Styles(pugi::xml_node styles_root, pugi::xml_node content_root)
+    : m_styles_root{styles_root}, m_content_root{content_root} {
+  generate_indices();
+  generate_styles();
 }
 
 std::shared_ptr<Style> Styles::style(const std::string &name) const {
   auto styleIt = m_styles.find(name);
-  if (styleIt == m_styles.end())
+  if (styleIt == std::end(m_styles)) {
     return {};
+  }
   return styleIt->second;
 }
 
 std::shared_ptr<abstract::PageStyle>
 Styles::page_style(const std::string &name) const {
-  auto pageLayoutIt = m_indexPageLayout.find(name);
-  if (pageLayoutIt == m_indexPageLayout.end())
+  auto page_layout_it = m_index_page_layout.find(name);
+  if (page_layout_it == std::end(m_index_page_layout)) {
     throw 1; // TODO exception or optional
-  auto pageLayoutProp =
-      pageLayoutIt->second.child("style:page-layout-properties");
+  }
+  auto page_layout_prop =
+      page_layout_it->second.child("style:page-layout-properties");
 
-  return std::make_shared<PageStyle>(pageLayoutProp);
+  return std::make_shared<PageStyle>(page_layout_prop);
 }
 
 std::shared_ptr<abstract::PageStyle>
-Styles::masterPageStyle(const std::string &name) const {
-  auto masterPageIt = m_indexMasterPage.find(name);
-  if (masterPageIt == m_indexMasterPage.end())
+Styles::master_page_style(const std::string &name) const {
+  auto master_page_it = m_index_master_page.find(name);
+  if (master_page_it == std::end(m_index_master_page)) {
     throw 1; // TODO exception or optional
-  const std::string pageLayoutName =
-      masterPageIt->second.attribute("style:page-layout-name").value();
-  return page_style(pageLayoutName);
+  }
+  const std::string page_layout_name =
+      master_page_it->second.attribute("style:page-layout-name").value();
+  return page_style(page_layout_name);
 }
 
-std::shared_ptr<abstract::PageStyle> Styles::defaultPageStyle() const {
-  const pugi::xml_node masterStyles =
-      m_stylesRoot.child("office:master-styles");
-  const pugi::xml_node masterStyle = masterStyles.first_child();
-  const std::string pageLayoutName =
-      masterStyle.attribute("style:page-layout-name").value();
-  return page_style(pageLayoutName);
+std::shared_ptr<abstract::PageStyle> Styles::default_page_style() const {
+  const pugi::xml_node master_styles =
+      m_styles_root.child("office:master-styles");
+  const pugi::xml_node master_style = master_styles.first_child();
+  const std::string page_layout_name =
+      master_style.attribute("style:page-layout-name").value();
+  return page_style(page_layout_name);
 }
 
-void Styles::generateIndices() {
-  if (auto fontFaceDecls = m_stylesRoot.child("office:font-face-decls");
-      fontFaceDecls) {
-    generateIndices(fontFaceDecls);
+void Styles::generate_indices() {
+  if (auto font_face_decls = m_styles_root.child("office:font-face-decls");
+      font_face_decls) {
+    generate_indices(font_face_decls);
   }
 
-  if (auto styles = m_stylesRoot.child("office:styles"); styles) {
-    generateIndices(styles);
+  if (auto styles = m_styles_root.child("office:styles"); styles) {
+    generate_indices(styles);
   }
 
-  if (auto automaticStyles = m_stylesRoot.child("office:automatic-styles");
-      automaticStyles) {
-    generateIndices(automaticStyles);
+  if (auto automatic_styles = m_styles_root.child("office:automatic-styles");
+      automatic_styles) {
+    generate_indices(automatic_styles);
   }
 
-  if (auto masterStyles = m_stylesRoot.child("office:master-styles");
-      masterStyles) {
-    generateIndices(masterStyles);
+  if (auto master_styles = m_styles_root.child("office:master-styles");
+      master_styles) {
+    generate_indices(master_styles);
   }
 
   // content styles
 
-  if (auto fontFaceDecls = m_contentRoot.child("office:font-face-decls");
-      fontFaceDecls) {
-    generateIndices(fontFaceDecls);
+  if (auto font_face_decls = m_content_root.child("office:font-face-decls");
+      font_face_decls) {
+    generate_indices(font_face_decls);
   }
 
-  if (auto automaticStyles = m_contentRoot.child("office:automatic-styles");
-      automaticStyles) {
-    generateIndices(automaticStyles);
+  if (auto automatic_styles = m_content_root.child("office:automatic-styles");
+      automatic_styles) {
+    generate_indices(automatic_styles);
   }
 }
 
-void Styles::generateIndices(pugi::xml_node node) {
+void Styles::generate_indices(pugi::xml_node node) {
   for (auto &&e : node) {
     if (std::strcmp("style:font-face", e.name()) == 0) {
-      m_indexFontFace[e.attribute("style:name").value()] = e;
+      m_index_font_face[e.attribute("style:name").value()] = e;
     } else if (std::strcmp("style:default-style", e.name()) == 0) {
-      m_indexDefaultStyle[e.attribute("style:family").value()] = e;
+      m_index_default_style[e.attribute("style:family").value()] = e;
     } else if (std::strcmp("style:style", e.name()) == 0) {
-      m_indexStyle[e.attribute("style:name").value()] = e;
+      m_index_style[e.attribute("style:name").value()] = e;
     } else if (std::strcmp("style:list-style", e.name()) == 0) {
-      m_indexListStyle[e.attribute("style:name").value()] = e;
+      m_index_list_style[e.attribute("style:name").value()] = e;
     } else if (std::strcmp("style:outline-style", e.name()) == 0) {
-      m_indexOutlineStyle[e.attribute("style:name").value()] = e;
+      m_index_outline_style[e.attribute("style:name").value()] = e;
     } else if (std::strcmp("style:page-layout", e.name()) == 0) {
-      m_indexPageLayout[e.attribute("style:name").value()] = e;
+      m_index_page_layout[e.attribute("style:name").value()] = e;
     } else if (std::strcmp("style:master-page", e.name()) == 0) {
-      m_indexMasterPage[e.attribute("style:name").value()] = e;
+      m_index_master_page[e.attribute("style:name").value()] = e;
     }
   }
 }
 
-void Styles::generateStyles() {
-  for (auto &&e : m_indexDefaultStyle) {
-    generateDefaultStyle(e.first, e.second);
+void Styles::generate_styles() {
+  for (auto &&e : m_index_default_style) {
+    generate_default_style(e.first, e.second);
   }
 
-  for (auto &&e : m_indexStyle) {
-    generateStyle(e.first, e.second);
+  for (auto &&e : m_index_style) {
+    generate_style(e.first, e.second);
   }
 }
 
-std::shared_ptr<Style> Styles::generateDefaultStyle(const std::string &name,
-                                                    pugi::xml_node node) {
-  if (auto it = m_defaultStyles.find(name); it != m_defaultStyles.end())
+std::shared_ptr<Style> Styles::generate_default_style(const std::string &name,
+                                                      pugi::xml_node node) {
+  if (auto it = m_default_styles.find(name); it != std::end(m_default_styles)) {
     return it->second;
+  }
 
-  return m_defaultStyles[name] = std::make_shared<Style>(nullptr, node);
+  return m_default_styles[name] = std::make_shared<Style>(nullptr, node);
 }
 
-std::shared_ptr<Style> Styles::generateStyle(const std::string &name,
-                                             pugi::xml_node node) {
-  if (auto styleIt = m_styles.find(name); styleIt != m_styles.end())
+std::shared_ptr<Style> Styles::generate_style(const std::string &name,
+                                              pugi::xml_node node) {
+  if (auto styleIt = m_styles.find(name); styleIt != std::end(m_styles)) {
     return styleIt->second;
+  }
 
   std::shared_ptr<Style> parent;
 
-  if (auto parentAttr = node.attribute("style:parent-style-name"); parentAttr) {
-    if (auto parentStyleIt = m_indexStyle.find(parentAttr.value());
-        parentStyleIt != m_indexStyle.end())
-      parent = generateStyle(parentAttr.value(), parentStyleIt->second);
+  if (auto parent_attr = node.attribute("style:parent-style-name");
+      parent_attr) {
+    if (auto parent_style_it = m_index_style.find(parent_attr.value());
+        parent_style_it != std::end(m_index_style)) {
+      parent = generate_style(parent_attr.value(), parent_style_it->second);
+    }
     // TODO else throw or log?
-  } else if (auto familyAttr = node.attribute("style:family-name");
-             familyAttr) {
-    if (auto familyStyleIt = m_indexDefaultStyle.find(name);
-        familyStyleIt != m_indexDefaultStyle.end())
-      parent = generateDefaultStyle(parentAttr.value(), familyStyleIt->second);
+  } else if (auto family_attr = node.attribute("style:family-name");
+             family_attr) {
+    if (auto family_style_it = m_index_default_style.find(name);
+        family_style_it != std::end(m_index_default_style)) {
+      parent =
+          generate_default_style(parent_attr.value(), family_style_it->second);
+    }
     // TODO else throw or log?
   }
 

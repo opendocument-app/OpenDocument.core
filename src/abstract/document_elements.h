@@ -29,7 +29,7 @@ public:
   virtual ~Element() = default;
 
   [[nodiscard]] virtual std::shared_ptr<const Element> parent() const = 0;
-  [[nodiscard]] virtual std::shared_ptr<const Element> firstChild() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const Element> first_child() const = 0;
   [[nodiscard]] virtual std::shared_ptr<const Element>
   previous_sibling() const = 0;
   [[nodiscard]] virtual std::shared_ptr<const Element> next_sibling() const = 0;
@@ -52,8 +52,8 @@ public:
   [[nodiscard]] ElementType type() const final;
 
   [[nodiscard]] virtual std::string name() const = 0;
-  [[nodiscard]] virtual std::uint32_t rowCount() const = 0;
-  [[nodiscard]] virtual std::uint32_t columnCount() const = 0;
+  [[nodiscard]] virtual std::uint32_t row_count() const = 0;
+  [[nodiscard]] virtual std::uint32_t column_count() const = 0;
   [[nodiscard]] virtual std::shared_ptr<const Table> table() const = 0;
 };
 
@@ -78,7 +78,7 @@ public:
   [[nodiscard]] ElementType type() const final;
 
   [[nodiscard]] virtual std::shared_ptr<ParagraphStyle>
-  paragraphStyle() const = 0;
+  paragraph_style() const = 0;
   [[nodiscard]] virtual std::shared_ptr<TextStyle> text_style() const = 0;
 };
 
@@ -119,14 +119,14 @@ class Table : public virtual Element {
 public:
   [[nodiscard]] ElementType type() const final;
 
-  [[nodiscard]] virtual std::uint32_t rowCount() const = 0;
-  [[nodiscard]] virtual std::uint32_t columnCount() const = 0;
+  [[nodiscard]] virtual std::uint32_t row_count() const = 0;
+  [[nodiscard]] virtual std::uint32_t column_count() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<const TableColumn>
-  firstColumn() const = 0;
-  [[nodiscard]] virtual std::shared_ptr<const TableRow> firstRow() const = 0;
+  first_column() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<const TableRow> first_row() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<TableStyle> tableStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<TableStyle> table_style() const = 0;
 };
 
 class TableColumn : public virtual Element {
@@ -134,7 +134,7 @@ public:
   [[nodiscard]] ElementType type() const final;
 
   [[nodiscard]] virtual std::shared_ptr<TableColumnStyle>
-  tableColumnStyle() const = 0;
+  table_column_style() const = 0;
 };
 
 class TableRow : public virtual Element {
@@ -146,21 +146,21 @@ class TableCell : public virtual Element {
 public:
   [[nodiscard]] ElementType type() const final;
 
-  [[nodiscard]] virtual std::uint32_t rowSpan() const = 0;
-  [[nodiscard]] virtual std::uint32_t columnSpan() const = 0;
+  [[nodiscard]] virtual std::uint32_t row_span() const = 0;
+  [[nodiscard]] virtual std::uint32_t column_span() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<TableCellStyle>
-  tableCellStyle() const = 0;
+  table_cell_style() const = 0;
 };
 
 class Frame : public virtual Element {
 public:
   [[nodiscard]] ElementType type() const final;
 
-  [[nodiscard]] virtual std::shared_ptr<Property> anchorType() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> anchor_type() const = 0;
   [[nodiscard]] virtual std::shared_ptr<Property> width() const = 0;
   [[nodiscard]] virtual std::shared_ptr<Property> height() const = 0;
-  [[nodiscard]] virtual std::shared_ptr<Property> zIndex() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property> z_index() const = 0;
 };
 
 class Image : public virtual Element {
@@ -169,7 +169,7 @@ public:
 
   [[nodiscard]] virtual bool internal() const = 0;
   [[nodiscard]] virtual std::string href() const = 0;
-  [[nodiscard]] virtual odr::ImageFile imageFile() const = 0;
+  [[nodiscard]] virtual odr::ImageFile image_file() const = 0;
 };
 
 class Rect : public virtual Element {
@@ -181,7 +181,7 @@ public:
   [[nodiscard]] virtual std::string width() const = 0;
   [[nodiscard]] virtual std::string height() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<DrawingStyle> drawingStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<DrawingStyle> drawing_style() const = 0;
 };
 
 class Line : public virtual Element {
@@ -193,7 +193,7 @@ public:
   [[nodiscard]] virtual std::string x2() const = 0;
   [[nodiscard]] virtual std::string y2() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<DrawingStyle> drawingStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<DrawingStyle> drawing_style() const = 0;
 };
 
 class Circle : public virtual Element {
@@ -205,7 +205,7 @@ public:
   [[nodiscard]] virtual std::string width() const = 0;
   [[nodiscard]] virtual std::string height() const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<DrawingStyle> drawingStyle() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<DrawingStyle> drawing_style() const = 0;
 };
 
 } // namespace odr::abstract

@@ -18,9 +18,9 @@ public:
 
   explicit FileNoExcept(File);
 
-  virtual FileType fileType() const noexcept;
-  virtual FileCategory fileCategory() const noexcept;
-  virtual FileMeta fileMeta() const noexcept;
+  virtual FileType file_type() const noexcept;
+  virtual FileCategory file_category() const noexcept;
+  virtual FileMeta file_meta() const noexcept;
 
 protected:
   File m_file;
@@ -36,7 +36,7 @@ public:
 
   explicit DocumentFileNoExcept(DocumentFile);
 
-  DocumentType documentType() const noexcept;
+  DocumentType document_type() const noexcept;
 
   bool editable() const noexcept;
   bool savable(bool encrypted) const noexcept;
@@ -46,7 +46,7 @@ public:
             const std::string &password) const noexcept;
 
 protected:
-  DocumentFile m_documentFile;
+  DocumentFile m_document_file;
 };
 
 } // namespace odr

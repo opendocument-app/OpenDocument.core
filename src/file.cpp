@@ -40,7 +40,7 @@ std::string typeToString(const FileType type) {
 }
 } // namespace
 
-FileType FileMeta::typeByExtension(const std::string &extension) noexcept {
+FileType FileMeta::type_by_extension(const std::string &extension) noexcept {
   if (extension == "zip")
     return FileType::ZIP;
   if (extension == "cfb")
@@ -69,7 +69,7 @@ FileType FileMeta::typeByExtension(const std::string &extension) noexcept {
   return FileType::UNKNOWN;
 }
 
-FileCategory FileMeta::categoryByType(const FileType type) noexcept {
+FileCategory FileMeta::category_by_type(const FileType type) noexcept {
   switch (type) {
   case FileType::ZIP:
   case FileType::COMPOUND_FILE_BINARY_FORMAT:
@@ -90,7 +90,7 @@ FileCategory FileMeta::categoryByType(const FileType type) noexcept {
   }
 }
 
-std::string FileMeta::typeAsString() const noexcept {
+std::string FileMeta::type_as_string() const noexcept {
   return typeToString(type);
 }
 
@@ -98,9 +98,9 @@ std::vector<FileType> File::types(const std::string &path) {
   return open_strategy::types(std::make_shared<common::DiscFile>(path));
 }
 
-FileType File::type(const std::string &path) { return File(path).fileType(); }
+FileType File::type(const std::string &path) { return File(path).file_type(); }
 
-FileMeta File::meta(const std::string &path) { return File(path).fileMeta(); }
+FileMeta File::meta(const std::string &path) { return File(path).file_meta(); }
 
 File::File(std::shared_ptr<abstract::DecodedFile> impl)
     : m_impl{std::move(impl)} {
@@ -116,22 +116,22 @@ File::File(const std::string &path, FileType as)
     : File(open_strategy::open_file(std::make_shared<common::DiscFile>(path),
                                     as)) {}
 
-FileType File::fileType() const noexcept { return m_impl->file_meta().type; }
+FileType File::file_type() const noexcept { return m_impl->file_meta().type; }
 
-FileCategory File::fileCategory() const noexcept {
-  return FileMeta::categoryByType(fileType());
+FileCategory File::file_category() const noexcept {
+  return FileMeta::category_by_type(file_type());
 }
 
-FileMeta File::fileMeta() const noexcept { return m_impl->file_meta(); }
+FileMeta File::file_meta() const noexcept { return m_impl->file_meta(); }
 
-ImageFile File::imageFile() const {
+ImageFile File::image_file() const {
   auto imageFile = std::dynamic_pointer_cast<abstract::ImageFile>(m_impl);
   if (!imageFile)
     throw NoImageFile();
   return ImageFile(imageFile);
 }
 
-DocumentFile File::documentFile() const {
+DocumentFile File::document_file() const {
   auto documentFile = std::dynamic_pointer_cast<abstract::DocumentFile>(m_impl);
   if (!documentFile)
     throw NoDocumentFile();
@@ -142,11 +142,11 @@ ImageFile::ImageFile(std::shared_ptr<abstract::ImageFile> impl)
     : File(impl), m_impl{std::move(impl)} {}
 
 FileType DocumentFile::type(const std::string &path) {
-  return DocumentFile(path).fileType();
+  return DocumentFile(path).file_type();
 }
 
 FileMeta DocumentFile::meta(const std::string &path) {
-  return DocumentFile(path).fileMeta();
+  return DocumentFile(path).file_meta();
 }
 
 DocumentFile::DocumentFile(std::shared_ptr<abstract::DocumentFile> impl)

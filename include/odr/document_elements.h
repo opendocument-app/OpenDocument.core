@@ -113,7 +113,7 @@ public:
   [[nodiscard]] Element parent() const;
   [[nodiscard]] Element first_child() const;
   [[nodiscard]] Element previous_sibling() const;
-  [[nodiscard]] Element next_Sibling() const;
+  [[nodiscard]] Element next_sibling() const;
 
   [[nodiscard]] ElementRange children() const;
 
@@ -360,7 +360,7 @@ public:
   [[nodiscard]] TableCellElement previous_sibling() const;
   [[nodiscard]] TableCellElement next_sibling() const;
 
-  [[nodiscard]] std::uint32_t row_sspan() const;
+  [[nodiscard]] std::uint32_t row_span() const;
   [[nodiscard]] std::uint32_t column_span() const;
 
   [[nodiscard]] TableCellStyle table_cell_style() const;
@@ -377,7 +377,7 @@ public:
   [[nodiscard]] Property anchor_type() const;
   [[nodiscard]] Property width() const;
   [[nodiscard]] Property height() const;
-  [[nodiscard]] Property zIndex() const;
+  [[nodiscard]] Property z_index() const;
 
 private:
   std::shared_ptr<const abstract::Frame> m_impl;

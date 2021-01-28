@@ -13,8 +13,8 @@ bool lookupMap(const Map &map, const Key &key, Value &value) {
 }
 
 template <typename Map, typename Key, typename Value>
-bool lookupMapDefault(const Map &map, const Key &key, Value &value,
-                      const Value &defaultValue) {
+bool lookup_map_default(const Map &map, const Key &key, Value &value,
+                        const Value &defaultValue) {
   if (!lookupMap(map, key, value)) {
     value = defaultValue;
     return false;

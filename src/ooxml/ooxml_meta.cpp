@@ -1,4 +1,4 @@
-#include <abstract/storage.h>
+#include <abstract/filesystem.h>
 #include <common/path.h>
 #include <odr/file.h>
 #include <ooxml/ooxml_meta.h>
@@ -8,7 +8,7 @@
 
 namespace odr::ooxml {
 
-FileMeta parseFileMeta(abstract::ReadStorage &storage) {
+FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       {"word/document.xml", FileType::OFFICE_OPEN_XML_DOCUMENT},
       {"ppt/presentation.xml", FileType::OFFICE_OPEN_XML_PRESENTATION},
@@ -17,14 +17,15 @@ FileMeta parseFileMeta(abstract::ReadStorage &storage) {
 
   FileMeta result;
 
-  if (storage.isFile("EncryptionInfo") && storage.isFile("EncryptedPackage")) {
+  if (filesystem.is_file("EncryptionInfo") &&
+      filesystem.is_file("EncryptedPackage")) {
     result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;
-    result.passwordEncrypted = true;
+    result.password_encrypted = true;
     return result;
   }
 
   for (auto &&t : TYPES) {
-    if (storage.isFile(t.first)) {
+    if (filesystem.is_file(t.first)) {
       result.type = t.second;
       break;
     }
@@ -34,7 +35,7 @@ FileMeta parseFileMeta(abstract::ReadStorage &storage) {
 }
 
 std::unordered_map<std::string, std::string>
-parseRelationships(const pugi::xml_document &rels) {
+parse_relationships(const pugi::xml_document &rels) {
   std::unordered_map<std::string, std::string> result;
   for (auto &&e : rels.select_nodes("//Relationship")) {
     const std::string rId = e.node().attribute("Id").as_string();
@@ -45,15 +46,15 @@ parseRelationships(const pugi::xml_document &rels) {
 }
 
 std::unordered_map<std::string, std::string>
-parseRelationships(const abstract::ReadStorage &storage,
-                   const common::Path &path) {
+parse_relationships(const abstract::ReadableFilesystem &filesystem,
+                    const common::Path &path) {
   const auto relPath =
       path.parent().join("_rels").join(path.basename() + ".rels");
-  if (!storage.isFile(relPath))
+  if (!filesystem.is_file(relPath))
     return {};
 
-  const auto relationships = util::xml::parse(storage, relPath);
-  return parseRelationships(relationships);
+  const auto relationships = util::xml::parse(filesystem, relPath);
+  return parse_relationships(relationships);
 }
 
 } // namespace odr::ooxml

@@ -158,11 +158,11 @@ private:
 } // namespace
 
 std::shared_ptr<abstract::ParagraphStyle>
-ResolvedStyle::toParagraphStyle() const {
+ResolvedStyle::to_paragraph_style() const {
   return std::make_shared<ParagraphStyle>(paragraphProperties);
 }
 
-std::shared_ptr<abstract::TextStyle> ResolvedStyle::toTextStyle() const {
+std::shared_ptr<abstract::TextStyle> ResolvedStyle::to_text_style() const {
   return std::make_shared<TextStyle>(textProperties);
 }
 

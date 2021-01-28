@@ -24,24 +24,24 @@ struct ResolvedStyle {
   lookup(const std::unordered_map<std::string, std::string> &map,
          const std::string &attribute);
 
-  std::unordered_map<std::string, std::string> paragraphProperties;
-  std::unordered_map<std::string, std::string> textProperties;
+  std::unordered_map<std::string, std::string> paragraph_properties;
+  std::unordered_map<std::string, std::string> text_properties;
 
-  std::unordered_map<std::string, std::string> tableProperties;
-  std::unordered_map<std::string, std::string> tableColumnProperties;
-  std::unordered_map<std::string, std::string> tableRowProperties;
-  std::unordered_map<std::string, std::string> tableCellProperties;
+  std::unordered_map<std::string, std::string> table_properties;
+  std::unordered_map<std::string, std::string> table_column_properties;
+  std::unordered_map<std::string, std::string> table_row_properties;
+  std::unordered_map<std::string, std::string> table_cell_properties;
 
-  std::unordered_map<std::string, std::string> chartProperties;
-  std::unordered_map<std::string, std::string> drawingPageProperties;
-  std::unordered_map<std::string, std::string> graphicProperties;
+  std::unordered_map<std::string, std::string> chart_properties;
+  std::unordered_map<std::string, std::string> drawing_page_properties;
+  std::unordered_map<std::string, std::string> graphic_properties;
 
-  std::shared_ptr<abstract::TextStyle> toTextStyle() const;
-  std::shared_ptr<abstract::ParagraphStyle> toParagraphStyle() const;
-  std::shared_ptr<abstract::TableStyle> toTableStyle() const;
-  std::shared_ptr<abstract::TableColumnStyle> toTableColumnStyle() const;
-  std::shared_ptr<abstract::TableCellStyle> toTableCellStyle() const;
-  std::shared_ptr<abstract::DrawingStyle> toDrawingStyle() const;
+  std::shared_ptr<abstract::TextStyle> to_text_style() const;
+  std::shared_ptr<abstract::ParagraphStyle> to_paragraph_style() const;
+  std::shared_ptr<abstract::TableStyle> to_table_style() const;
+  std::shared_ptr<abstract::TableColumnStyle> to_table_column_style() const;
+  std::shared_ptr<abstract::TableCellStyle> to_table_cell_style() const;
+  std::shared_ptr<abstract::DrawingStyle> to_drawing_style() const;
 };
 
 class Style final {
@@ -58,38 +58,38 @@ private:
 class Styles {
 public:
   Styles() = default;
-  Styles(pugi::xml_node stylesRoot, pugi::xml_node contentRoot);
+  Styles(pugi::xml_node styles_root, pugi::xml_node content_root);
 
   std::shared_ptr<Style> style(const std::string &name) const;
 
   std::shared_ptr<abstract::PageStyle>
   page_style(const std::string &name) const;
   std::shared_ptr<abstract::PageStyle>
-  masterPageStyle(const std::string &name) const;
-  std::shared_ptr<abstract::PageStyle> defaultPageStyle() const;
+  master_page_style(const std::string &name) const;
+  std::shared_ptr<abstract::PageStyle> default_page_style() const;
 
 private:
-  pugi::xml_node m_stylesRoot;
-  pugi::xml_node m_contentRoot;
+  pugi::xml_node m_styles_root;
+  pugi::xml_node m_content_root;
 
-  std::unordered_map<std::string, pugi::xml_node> m_indexFontFace;
-  std::unordered_map<std::string, pugi::xml_node> m_indexDefaultStyle;
-  std::unordered_map<std::string, pugi::xml_node> m_indexStyle;
-  std::unordered_map<std::string, pugi::xml_node> m_indexListStyle;
-  std::unordered_map<std::string, pugi::xml_node> m_indexOutlineStyle;
-  std::unordered_map<std::string, pugi::xml_node> m_indexPageLayout;
-  std::unordered_map<std::string, pugi::xml_node> m_indexMasterPage;
+  std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
+  std::unordered_map<std::string, pugi::xml_node> m_index_default_style;
+  std::unordered_map<std::string, pugi::xml_node> m_index_style;
+  std::unordered_map<std::string, pugi::xml_node> m_index_list_style;
+  std::unordered_map<std::string, pugi::xml_node> m_index_outline_style;
+  std::unordered_map<std::string, pugi::xml_node> m_index_page_layout;
+  std::unordered_map<std::string, pugi::xml_node> m_index_master_page;
 
-  std::unordered_map<std::string, std::shared_ptr<Style>> m_defaultStyles;
+  std::unordered_map<std::string, std::shared_ptr<Style>> m_default_styles;
   std::unordered_map<std::string, std::shared_ptr<Style>> m_styles;
 
-  void generateIndices();
-  void generateIndices(pugi::xml_node);
+  void generate_indices();
+  void generate_indices(pugi::xml_node);
 
-  void generateStyles();
-  std::shared_ptr<Style> generateDefaultStyle(const std::string &,
-                                              pugi::xml_node);
-  std::shared_ptr<Style> generateStyle(const std::string &, pugi::xml_node);
+  void generate_styles();
+  std::shared_ptr<Style> generate_default_style(const std::string &,
+                                                pugi::xml_node);
+  std::shared_ptr<Style> generate_style(const std::string &, pugi::xml_node);
 };
 
 } // namespace odr::odf

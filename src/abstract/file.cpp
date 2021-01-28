@@ -17,6 +17,10 @@ FileCategory ArchiveFile::file_category() const noexcept {
   return FileCategory::ARCHIVE;
 }
 
+FileCategory DocumentFile::file_category() const noexcept {
+  return FileCategory::DOCUMENT;
+}
+
 DocumentType DocumentFile::document_type() const {
   return document()->document_type();
 }

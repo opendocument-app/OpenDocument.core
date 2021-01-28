@@ -24,24 +24,25 @@ public:
   DocumentType document_type() const noexcept final;
   DocumentMeta document_meta() const noexcept final;
 
-  std::shared_ptr<abstract::ReadStorage> storage() const noexcept;
+  std::shared_ptr<abstract::ReadableFilesystem> filesystem() const noexcept;
   const Styles &styles() const noexcept;
 
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const std::string &password) const final;
 
 protected:
-  std::shared_ptr<abstract::ReadStorage> m_files;
+  std::shared_ptr<abstract::ReadableFilesystem> m_files;
   DocumentMeta m_document_meta;
-  pugi::xml_document m_contentXml;
-  pugi::xml_document m_stylesXml;
+  pugi::xml_document m_content_xml;
+  pugi::xml_document m_styles_xml;
   Styles m_styles;
 };
 
 class OpenDocumentText final : public OpenDocument,
                                public abstract::TextDocument {
 public:
-  explicit OpenDocumentText(std::shared_ptr<abstract::ReadStorage> storage);
+  explicit OpenDocumentText(
+      std::shared_ptr<abstract::ReadableFilesystem> files);
 
   std::shared_ptr<const abstract::Element> root() const final;
 
@@ -52,7 +53,7 @@ class OpenDocumentPresentation final : public OpenDocument,
                                        public abstract::Presentation {
 public:
   explicit OpenDocumentPresentation(
-      std::shared_ptr<abstract::ReadStorage> storage);
+      std::shared_ptr<abstract::ReadableFilesystem> files);
 
   std::uint32_t slide_count() const final;
 
@@ -64,7 +65,7 @@ class OpenDocumentSpreadsheet final : public OpenDocument,
                                       public abstract::Spreadsheet {
 public:
   explicit OpenDocumentSpreadsheet(
-      std::shared_ptr<abstract::ReadStorage> storage);
+      std::shared_ptr<abstract::ReadableFilesystem> files);
 
   std::uint32_t sheet_count() const final;
 
@@ -75,7 +76,8 @@ public:
 class OpenDocumentDrawing final : public OpenDocument,
                                   public abstract::Drawing {
 public:
-  explicit OpenDocumentDrawing(std::shared_ptr<abstract::ReadStorage> storage);
+  explicit OpenDocumentDrawing(
+      std::shared_ptr<abstract::ReadableFilesystem> files);
 
   std::uint32_t page_count() const final;
 

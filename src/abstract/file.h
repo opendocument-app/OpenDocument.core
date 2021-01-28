@@ -57,6 +57,8 @@ public:
 
 class DocumentFile : public DecodedFile {
 public:
+  [[nodiscard]] FileCategory file_category() const noexcept final;
+
   [[nodiscard]] virtual bool password_encrypted() const noexcept = 0;
   [[nodiscard]] virtual EncryptionState encryption_state() const noexcept = 0;
   [[nodiscard]] virtual bool decrypt(const std::string &password) = 0;

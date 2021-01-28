@@ -1,4 +1,4 @@
-#include <abstract/storage.h>
+#include <abstract/filesystem.h>
 #include <common/file.h>
 #include <common/path.h>
 #include <common/property.h>
@@ -11,48 +11,39 @@ namespace odr::ooxml::text {
 
 namespace {
 template <typename E, typename... Args>
-std::shared_ptr<E> factorizeKnownElement(pugi::xml_node node, Args... args) {
-  if (!node)
+std::shared_ptr<E> factorize_known_element(pugi::xml_node node, Args... args) {
+  if (!node) {
     return {};
+  }
   return std::make_shared<E>(std::forward<Args>(args)..., node);
 }
 
 // TODO duplication in ODF
 class ImageFile final : public abstract::ImageFile {
 public:
-  ImageFile(std::shared_ptr<abstract::ReadStorage> storage, common::Path path,
-            const FileType fileType)
-      : m_storage{std::move(storage)}, m_path{std::move(path)}, m_fileType{
-                                                                    fileType} {}
+  ImageFile(std::shared_ptr<abstract::ReadableFilesystem> files,
+            common::Path path, const FileType file_type)
+      : m_files{std::move(files)}, m_path{std::move(path)}, m_file_type{
+                                                                file_type} {}
 
-  FileType file_type() const noexcept final { return m_fileType; }
+  [[nodiscard]] FileType file_type() const noexcept final {
+    return m_file_type;
+  }
 
-  FileMeta file_meta() const noexcept final {
+  [[nodiscard]] FileMeta file_meta() const noexcept final {
     FileMeta result;
     result.type = file_type();
     return result;
   }
 
-  FileLocation file_location() const noexcept final {
-    return FileLocation::UNKNOWN; // TODO
-  }
-
-  std::size_t size() const final {
-    return 0; // TODO
-  }
-
-  std::unique_ptr<std::istream> data() const final {
-    return m_storage->read(m_path);
-  }
-
-  std::shared_ptr<abstract::Image> image() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Image> image() const final {
     return {}; // TODO
   }
 
 private:
-  std::shared_ptr<abstract::ReadStorage> m_storage;
+  std::shared_ptr<abstract::ReadableFilesystem> m_files;
   common::Path m_path;
-  FileType m_fileType;
+  FileType m_file_type;
 };
 
 class Element : public virtual abstract::Element,
@@ -67,16 +58,16 @@ public:
     return m_parent;
   }
 
-  std::shared_ptr<const abstract::Element> firstChild() const override {
-    return factorizeFirstChild(m_document, shared_from_this(), m_node);
+  std::shared_ptr<const abstract::Element> first_child() const override {
+    return factorize_first_child(m_document, shared_from_this(), m_node);
   }
 
   std::shared_ptr<const abstract::Element> previous_sibling() const override {
-    return factorizePreviousSibling(m_document, m_parent, m_node);
+    return factorize_previous_sibling(m_document, m_parent, m_node);
   }
 
   std::shared_ptr<const abstract::Element> next_sibling() const override {
-    return factorizeNextSibling(m_document, m_parent, m_node);
+    return factorize_next_sibling(m_document, m_parent, m_node);
   }
 
 protected:
@@ -84,13 +75,14 @@ protected:
   const std::shared_ptr<const abstract::Element> m_parent;
   const pugi::xml_node m_node;
 
-  ResolvedStyle resolvedStyle() const { return resolvedStyle({}); }
+  ResolvedStyle resolved_style() const { return resolved_style({}); }
 
-  ResolvedStyle resolvedStyle(pugi::xml_attribute attribute) const {
-    std::string styleId = attribute.value();
-    auto style = m_document->styles().style(styleId);
-    if (!style)
+  ResolvedStyle resolved_style(pugi::xml_attribute attribute) const {
+    std::string style_id = attribute.value();
+    auto style = m_document->styles().style(style_id);
+    if (!style) {
       style = std::make_shared<Style>();
+    }
     return style->resolve(m_node);
   }
 };
@@ -105,8 +97,8 @@ public:
 
   std::shared_ptr<const abstract::Element> parent() const final { return {}; }
 
-  std::shared_ptr<const abstract::Element> firstChild() const final {
-    return factorizeFirstChild(m_document, shared_from_this(), m_node);
+  std::shared_ptr<const abstract::Element> first_child() const final {
+    return factorize_first_child(m_document, shared_from_this(), m_node);
   }
 
   std::shared_ptr<const abstract::Element> previous_sibling() const final {
@@ -148,14 +140,16 @@ public:
             pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::shared_ptr<abstract::ParagraphStyle> paragraphStyle() const final {
-    auto styleAttr = m_node.child("w:pPr").child("w:pStyle").attribute("w:val");
-    return resolvedStyle(styleAttr).toParagraphStyle();
+  std::shared_ptr<abstract::ParagraphStyle> paragraph_style() const final {
+    auto style_attr =
+        m_node.child("w:pPr").child("w:pStyle").attribute("w:val");
+    return resolved_style(style_attr).to_paragraph_style();
   }
 
   std::shared_ptr<abstract::TextStyle> text_style() const final {
-    auto styleAttr = m_node.child("w:pPr").child("w:pStyle").attribute("w:val");
-    return resolvedStyle(styleAttr).toTextStyle();
+    auto style_attr =
+        m_node.child("w:pPr").child("w:pStyle").attribute("w:val");
+    return resolved_style(style_attr).to_text_style();
   }
 };
 
@@ -166,7 +160,7 @@ public:
       : Element(std::move(document), std::move(parent), node) {}
 
   std::shared_ptr<abstract::TextStyle> text_style() const final {
-    return resolvedStyle().toTextStyle();
+    return resolved_style().to_text_style();
   }
 };
 
@@ -199,13 +193,13 @@ public:
       : Element(std::move(document), std::move(parent), node) {}
 
   std::shared_ptr<const abstract::Element> previous_sibling() const final {
-    return factorizeKnownElement<ListItem>(
+    return factorize_known_element<ListItem>(
         m_node.previous_sibling("text:list-item"), m_document,
         shared_from_this());
   }
 
   std::shared_ptr<const abstract::Element> next_sibling() const final {
-    return factorizeKnownElement<ListItem>(
+    return factorize_known_element<ListItem>(
         m_node.next_sibling("text:list-item"), m_document, shared_from_this());
   }
 };
@@ -216,9 +210,9 @@ public:
        std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::shared_ptr<const abstract::Element> firstChild() const final {
-    return factorizeKnownElement<ListItem>(m_node.child("text:list-item"),
-                                           m_document, shared_from_this());
+  std::shared_ptr<const abstract::Element> first_child() const final {
+    return factorize_known_element<ListItem>(m_node.child("text:list-item"),
+                                             m_document, shared_from_this());
   }
 };
 
@@ -228,29 +222,29 @@ public:
               std::shared_ptr<const abstract::Table> table, pugi::xml_node node)
       : Element(std::move(document), std::move(table), node) {}
 
-  std::shared_ptr<const TableColumn> previousColumn() const {
-    return factorizeKnownElement<TableColumn>(
+  std::shared_ptr<const TableColumn> previous_column() const {
+    return factorize_known_element<TableColumn>(
         m_node.previous_sibling("table:table-column"), m_document, m_table);
   }
 
-  std::shared_ptr<const TableColumn> nextColumn() const {
-    return factorizeKnownElement<TableColumn>(
+  std::shared_ptr<const TableColumn> next_column() const {
+    return factorize_known_element<TableColumn>(
         m_node.next_sibling("table:table-column"), m_document, m_table);
   }
 
-  std::shared_ptr<const abstract::Element> firstChild() const final {
+  std::shared_ptr<const abstract::Element> first_child() const final {
     return {};
   }
 
   std::shared_ptr<const abstract::Element> previous_sibling() const final {
-    return previousColumn();
+    return previous_column();
   }
 
   std::shared_ptr<const abstract::Element> next_sibling() const final {
-    return nextColumn();
+    return next_column();
   }
 
-  std::shared_ptr<abstract::TableColumnStyle> tableColumnStyle() const final {
+  std::shared_ptr<abstract::TableColumnStyle> table_column_style() const final {
     return {}; // TODO
   }
 
@@ -264,35 +258,35 @@ public:
             std::shared_ptr<const Element> row, pugi::xml_node node)
       : Element(std::move(document), row, node), m_row{std::move(row)} {}
 
-  std::shared_ptr<const TableCell> previousCell() const {
-    return factorizeKnownElement<TableCell>(m_node.previous_sibling("w:tc"),
-                                            m_document, m_row);
+  std::shared_ptr<const TableCell> previous_cell() const {
+    return factorize_known_element<TableCell>(m_node.previous_sibling("w:tc"),
+                                              m_document, m_row);
   }
 
-  std::shared_ptr<const TableCell> nextCell() const {
-    return factorizeKnownElement<TableCell>(m_node.next_sibling("w:tc"),
-                                            m_document, m_row);
+  std::shared_ptr<const TableCell> next_cell() const {
+    return factorize_known_element<TableCell>(m_node.next_sibling("w:tc"),
+                                              m_document, m_row);
   }
 
   std::shared_ptr<const abstract::Element> previous_sibling() const final {
-    return previousCell();
+    return previous_cell();
   }
 
   std::shared_ptr<const abstract::Element> next_sibling() const final {
-    return nextCell();
+    return next_cell();
   }
 
-  std::uint32_t rowSpan() const final {
+  std::uint32_t row_span() const final {
     // TODO
     return m_node.attribute("table:number-rows-spanned").as_uint(1);
   }
 
-  std::uint32_t columnSpan() const final {
+  std::uint32_t column_span() const final {
     // TODO
     return m_node.attribute("table:number-columns-spanned").as_uint(1);
   }
 
-  std::shared_ptr<abstract::TableCellStyle> tableCellStyle() const final {
+  std::shared_ptr<abstract::TableCellStyle> table_cell_style() const final {
     return {}; // TODO
   }
 
@@ -306,32 +300,32 @@ public:
            std::shared_ptr<const abstract::Table> table, pugi::xml_node node)
       : Element(std::move(document), table, node), m_table{std::move(table)} {}
 
-  std::shared_ptr<const TableCell> firstCell() const {
-    return factorizeKnownElement<TableCell>(
+  std::shared_ptr<const TableCell> first_cell() const {
+    return factorize_known_element<TableCell>(
         m_node.child("w:tc"), m_document,
         std::static_pointer_cast<const TableRow>(shared_from_this()));
   }
 
-  std::shared_ptr<const TableRow> previousRow() const {
-    return factorizeKnownElement<TableRow>(m_node.previous_sibling("w:tr"),
-                                           m_document, m_table);
+  std::shared_ptr<const TableRow> previous_row() const {
+    return factorize_known_element<TableRow>(m_node.previous_sibling("w:tr"),
+                                             m_document, m_table);
   }
 
-  std::shared_ptr<const TableRow> nextRow() const {
-    return factorizeKnownElement<TableRow>(m_node.next_sibling("w:tr"),
-                                           m_document, m_table);
+  std::shared_ptr<const TableRow> next_row() const {
+    return factorize_known_element<TableRow>(m_node.next_sibling("w:tr"),
+                                             m_document, m_table);
   }
 
-  std::shared_ptr<const abstract::Element> firstChild() const final {
-    return firstCell();
+  std::shared_ptr<const abstract::Element> first_child() const final {
+    return first_cell();
   }
 
   std::shared_ptr<const abstract::Element> previous_sibling() const final {
-    return previousRow();
+    return previous_row();
   }
 
   std::shared_ptr<const abstract::Element> next_sibling() const final {
-    return nextRow();
+    return next_row();
   }
 
 private:
@@ -344,32 +338,32 @@ public:
         std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::uint32_t rowCount() const final {
+  std::uint32_t row_count() const final {
     return 0; // TODO
   }
 
-  std::uint32_t columnCount() const final {
+  std::uint32_t column_count() const final {
     return 0; // TODO
   }
 
-  std::shared_ptr<const abstract::Element> firstChild() const final {
+  std::shared_ptr<const abstract::Element> first_child() const final {
     return {};
   }
 
-  std::shared_ptr<const abstract::TableColumn> firstColumn() const final {
+  std::shared_ptr<const abstract::TableColumn> first_column() const final {
     // TODO
-    return factorizeKnownElement<TableColumn>(
+    return factorize_known_element<TableColumn>(
         m_node.child("table:table-column"), m_document,
         std::static_pointer_cast<const Table>(shared_from_this()));
   }
 
-  std::shared_ptr<const abstract::TableRow> firstRow() const final {
-    return factorizeKnownElement<TableRow>(
+  std::shared_ptr<const abstract::TableRow> first_row() const final {
+    return factorize_known_element<TableRow>(
         m_node.child("w:tr"), m_document,
         std::static_pointer_cast<const Table>(shared_from_this()));
   }
 
-  std::shared_ptr<abstract::TableStyle> tableStyle() const final {
+  std::shared_ptr<abstract::TableStyle> table_style() const final {
     return {}; // TODO
   }
 };
@@ -380,7 +374,7 @@ public:
         std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::shared_ptr<abstract::Property> anchorType() const final {
+  std::shared_ptr<abstract::Property> anchor_type() const final {
     return std::make_shared<common::XmlAttributeProperty>(
         m_node.attribute("text:anchor-type"));
   }
@@ -395,7 +389,7 @@ public:
         m_node.attribute("svg:height"));
   }
 
-  std::shared_ptr<abstract::Property> zIndex() const final {
+  std::shared_ptr<abstract::Property> z_index() const final {
     return std::make_shared<common::XmlAttributeProperty>(
         m_node.attribute("draw:z-index"));
   }
@@ -409,14 +403,16 @@ public:
 
   bool internal() const final {
     const auto hrefAttr = m_node.attribute("xlink:href");
-    if (!hrefAttr)
+    if (!hrefAttr) {
       return false;
+    }
     const std::string href = hrefAttr.value();
 
     try {
       const common::Path path{href};
-      if (!m_document->storage()->isFile(path))
+      if (!m_document->filesystem()->is_file(path)) {
         return false;
+      }
 
       return true;
     } catch (...) {
@@ -430,9 +426,10 @@ public:
     return hrefAttr.value();
   }
 
-  odr::ImageFile imageFile() const final {
-    if (!internal())
+  odr::ImageFile image_file() const final {
+    if (!internal()) {
       throw 1; // TODO
+    }
 
     const std::string href = this->href();
     const common::Path path{href};
@@ -444,36 +441,42 @@ public:
     }
 
     return odr::ImageFile(
-        std::make_shared<ImageFile>(m_document->storage(), path, fileType));
+        std::make_shared<ImageFile>(m_document->filesystem(), path, fileType));
   }
 };
 } // namespace
 
 std::shared_ptr<abstract::Element>
-factorizeElement(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
-                 std::shared_ptr<const abstract::Element> parent,
-                 pugi::xml_node node) {
+factorize_element(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
+                  std::shared_ptr<const abstract::Element> parent,
+                  pugi::xml_node node) {
   if (node.type() == pugi::node_element) {
     const std::string element = node.name();
 
-    if (element == "w:t")
+    if (element == "w:t") {
       return std::make_shared<TextElement>(std::move(document),
                                            std::move(parent), node);
-    if (element == "w:p")
+    }
+    if (element == "w:p") {
       return std::make_shared<Paragraph>(std::move(document), std::move(parent),
                                          node);
-    if (element == "w:r")
+    }
+    if (element == "w:r") {
       return std::make_shared<Span>(std::move(document), std::move(parent),
                                     node);
-    if (element == "w:hyperlink")
+    }
+    if (element == "w:hyperlink") {
       return std::make_shared<Link>(std::move(document), std::move(parent),
                                     node);
-    if (element == "w:bookmarkStart")
+    }
+    if (element == "w:bookmarkStart") {
       return std::make_shared<Bookmark>(std::move(document), std::move(parent),
                                         node);
-    if (element == "w:tbl")
+    }
+    if (element == "w:tbl") {
       return std::make_shared<Table>(std::move(document), std::move(parent),
                                      node);
+    }
 
     // TODO log element
   }
@@ -482,42 +485,44 @@ factorizeElement(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
 }
 
 std::shared_ptr<abstract::Element>
-factorizeRoot(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
-              pugi::xml_node node) {
+factorize_root(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
+               pugi::xml_node node) {
   return std::make_shared<Root>(std::move(document), node);
 }
 
 std::shared_ptr<abstract::Element>
-factorizeFirstChild(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
-                    std::shared_ptr<const abstract::Element> parent,
-                    pugi::xml_node node) {
+factorize_first_child(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
+                      std::shared_ptr<const abstract::Element> parent,
+                      pugi::xml_node node) {
   for (auto &&c : node) {
-    auto element = factorizeElement(document, parent, c);
-    if (element)
+    auto element = factorize_element(document, parent, c);
+    if (element) {
       return element;
+    }
   }
   return {};
 }
 
-std::shared_ptr<abstract::Element> factorizePreviousSibling(
+std::shared_ptr<abstract::Element> factorize_previous_sibling(
     std::shared_ptr<const OfficeOpenXmlTextDocument> document,
     std::shared_ptr<const abstract::Element> parent, pugi::xml_node node) {
   for (auto &&s = node.previous_sibling(); s; s = node.previous_sibling()) {
-    auto element = factorizeElement(document, parent, s);
-    if (element)
+    auto element = factorize_element(document, parent, s);
+    if (element) {
       return element;
+    }
   }
   return {};
 }
 
-std::shared_ptr<abstract::Element>
-factorizeNextSibling(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
-                     std::shared_ptr<const abstract::Element> parent,
-                     pugi::xml_node node) {
+std::shared_ptr<abstract::Element> factorize_next_sibling(
+    std::shared_ptr<const OfficeOpenXmlTextDocument> document,
+    std::shared_ptr<const abstract::Element> parent, pugi::xml_node node) {
   for (auto &&s = node.next_sibling(); s; s = s.next_sibling()) {
-    auto element = factorizeElement(document, parent, s);
-    if (element)
+    auto element = factorize_element(document, parent, s);
+    if (element) {
       return element;
+    }
   }
   return {};
 }

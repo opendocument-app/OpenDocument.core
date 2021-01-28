@@ -20,45 +20,52 @@ PageStyle::PageStyle(std::shared_ptr<abstract::PageStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
 Property PageStyle::width() const {
-  if (!m_impl)
+  if (!m_impl) {
     return Property();
+  }
   return Property(m_impl->width());
 }
 
 Property PageStyle::height() const {
-  if (!m_impl)
+  if (!m_impl) {
     return Property();
+  }
   return Property(m_impl->height());
 }
 
-Property PageStyle::marginTop() const {
-  if (!m_impl)
+Property PageStyle::margin_top() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->marginTop());
+  }
+  return Property(m_impl->margin_top());
 }
 
-Property PageStyle::marginBottom() const {
-  if (!m_impl)
+Property PageStyle::margin_bottom() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->marginBottom());
+  }
+  return Property(m_impl->margin_bottom());
 }
 
-Property PageStyle::marginLeft() const {
-  if (!m_impl)
+Property PageStyle::margin_left() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->marginLeft());
+  }
+  return Property(m_impl->margin_left());
 }
 
-Property PageStyle::marginRight() const {
-  if (!m_impl)
+Property PageStyle::margin_right() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->marginRight());
+  }
+  return Property(m_impl->margin_right());
 }
 
-Property PageStyle::printOrientation() const {
-  if (!m_impl)
+Property PageStyle::print_orientation() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->printOrientation());
+  }
+  return Property(m_impl->print_orientation());
 }
 
 TextStyle::TextStyle() = default;
@@ -66,40 +73,46 @@ TextStyle::TextStyle() = default;
 TextStyle::TextStyle(std::shared_ptr<abstract::TextStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
-Property TextStyle::fontName() const {
-  if (!m_impl)
+Property TextStyle::font_name() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->fontName());
+  }
+  return Property(m_impl->font_name());
 }
 
-Property TextStyle::fontSize() const {
-  if (!m_impl)
+Property TextStyle::font_size() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->fontSize());
+  }
+  return Property(m_impl->font_size());
 }
 
-Property TextStyle::fontWeight() const {
-  if (!m_impl)
+Property TextStyle::font_weight() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->fontWeight());
+  }
+  return Property(m_impl->font_weight());
 }
 
-Property TextStyle::fontStyle() const {
-  if (!m_impl)
+Property TextStyle::font_style() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->fontStyle());
+  }
+  return Property(m_impl->font_style());
 }
 
-Property TextStyle::fontColor() const {
-  if (!m_impl)
+Property TextStyle::font_color() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->fontColor());
+  }
+  return Property(m_impl->font_color());
 }
 
-Property TextStyle::backgroundColor() const {
-  if (!m_impl)
+Property TextStyle::background_color() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->backgroundColor());
+  }
+  return Property(m_impl->background_color());
 }
 
 ParagraphStyle::ParagraphStyle() = default;
@@ -107,34 +120,39 @@ ParagraphStyle::ParagraphStyle() = default;
 ParagraphStyle::ParagraphStyle(std::shared_ptr<abstract::ParagraphStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
-Property ParagraphStyle::textAlign() const {
-  if (!m_impl)
+Property ParagraphStyle::text_align() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->textAlign());
+  }
+  return Property(m_impl->text_align());
 }
 
-Property ParagraphStyle::marginTop() const {
-  if (!m_impl)
+Property ParagraphStyle::margin_top() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->marginTop());
+  }
+  return Property(m_impl->margin_top());
 }
 
-Property ParagraphStyle::marginBottom() const {
-  if (!m_impl)
+Property ParagraphStyle::margin_bottom() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->marginBottom());
+  }
+  return Property(m_impl->margin_bottom());
 }
 
-Property ParagraphStyle::marginLeft() const {
-  if (!m_impl)
+Property ParagraphStyle::margin_left() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->marginLeft());
+  }
+  return Property(m_impl->margin_left());
 }
 
-Property ParagraphStyle::marginRight() const {
-  if (!m_impl)
+Property ParagraphStyle::margin_right() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->marginRight());
+  }
+  return Property(m_impl->margin_right());
 }
 
 TableStyle::TableStyle() = default;
@@ -143,8 +161,9 @@ TableStyle::TableStyle(std::shared_ptr<abstract::TableStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
 Property TableStyle::width() const {
-  if (!m_impl)
+  if (!m_impl) {
     return Property();
+  }
   return Property(m_impl->width());
 }
 
@@ -161,52 +180,60 @@ TableCellStyle::TableCellStyle() = default;
 TableCellStyle::TableCellStyle(std::shared_ptr<abstract::TableCellStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
-Property TableCellStyle::paddingTop() const {
-  if (!m_impl)
+Property TableCellStyle::padding_top() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->paddingTop());
+  }
+  return Property(m_impl->padding_top());
 }
 
-Property TableCellStyle::paddingBottom() const {
-  if (!m_impl)
+Property TableCellStyle::padding_bottom() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->paddingBottom());
+  }
+  return Property(m_impl->padding_bottom());
 }
 
-Property TableCellStyle::paddingLeft() const {
-  if (!m_impl)
+Property TableCellStyle::padding_left() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->paddingLeft());
+  }
+  return Property(m_impl->padding_left());
 }
 
-Property TableCellStyle::paddingRight() const {
-  if (!m_impl)
+Property TableCellStyle::padding_right() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->paddingRight());
+  }
+  return Property(m_impl->padding_right());
 }
 
-Property TableCellStyle::borderTop() const {
-  if (!m_impl)
+Property TableCellStyle::border_top() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->borderTop());
+  }
+  return Property(m_impl->border_top());
 }
 
-Property TableCellStyle::borderBottom() const {
-  if (!m_impl)
+Property TableCellStyle::border_bottom() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->borderBottom());
+  }
+  return Property(m_impl->border_bottom());
 }
 
-Property TableCellStyle::borderLeft() const {
-  if (!m_impl)
+Property TableCellStyle::border_left() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->borderLeft());
+  }
+  return Property(m_impl->border_left());
 }
 
-Property TableCellStyle::borderRight() const {
-  if (!m_impl)
+Property TableCellStyle::border_right() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->borderRight());
+  }
+  return Property(m_impl->border_right());
 }
 
 DrawingStyle::DrawingStyle() = default;
@@ -214,28 +241,32 @@ DrawingStyle::DrawingStyle() = default;
 DrawingStyle::DrawingStyle(std::shared_ptr<abstract::DrawingStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
-Property DrawingStyle::strokeWidth() const {
-  if (!m_impl)
+Property DrawingStyle::stroke_width() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->strokeWidth());
+  }
+  return Property(m_impl->stroke_width());
 }
 
-Property DrawingStyle::strokeColor() const {
-  if (!m_impl)
+Property DrawingStyle::stroke_color() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->strokeColor());
+  }
+  return Property(m_impl->stroke_color());
 }
 
-Property DrawingStyle::fillColor() const {
-  if (!m_impl)
+Property DrawingStyle::fill_color() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->fillColor());
+  }
+  return Property(m_impl->fill_color());
 }
 
-Property DrawingStyle::verticalAlign() const {
-  if (!m_impl)
+Property DrawingStyle::vertical_align() const {
+  if (!m_impl) {
     return Property();
-  return Property(m_impl->verticalAlign());
+  }
+  return Property(m_impl->vertical_align());
 }
 
 } // namespace odr

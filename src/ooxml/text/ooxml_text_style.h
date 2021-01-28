@@ -19,8 +19,8 @@ struct ResolvedStyle {
   std::unordered_map<std::string, pugi::xml_node> paragraphProperties;
   std::unordered_map<std::string, pugi::xml_node> textProperties;
 
-  std::shared_ptr<abstract::ParagraphStyle> toParagraphStyle() const;
-  std::shared_ptr<abstract::TextStyle> toTextStyle() const;
+  std::shared_ptr<abstract::ParagraphStyle> to_paragraph_style() const;
+  std::shared_ptr<abstract::TextStyle> to_text_style() const;
 };
 
 class Style final {

@@ -1,4 +1,5 @@
-#include <abstract/storage.h>
+#include <abstract/file.h>
+#include <abstract/filesystem.h>
 #include <common/table_cursor.h>
 #include <crypto/crypto_util.h>
 #include <cstring>
@@ -12,7 +13,7 @@
 namespace odr::odf {
 
 namespace {
-bool lookupFileType(const std::string &mimeType, FileType &fileType) {
+bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
   // https://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
   static const std::unordered_map<std::string, FileType> MIME_TYPES = {
       {"application/vnd.oasis.opendocument.text", FileType::OPENDOCUMENT_TEXT},
@@ -32,12 +33,12 @@ bool lookupFileType(const std::string &mimeType, FileType &fileType) {
       {"application/vnd.oasis.opendocument.graphics-template",
        FileType::OPENDOCUMENT_GRAPHICS},
   };
-  return util::map::lookupMapDefault(MIME_TYPES, mimeType, fileType,
-                                     FileType::UNKNOWN);
+  return util::map::lookup_map_default(MIME_TYPES, mime_type, file_type,
+                                       FileType::UNKNOWN);
 }
 
-void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
-                             std::uint32_t &cols) {
+void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
+                               std::uint32_t &cols) {
   rows = 0;
   cols = 0;
 
@@ -60,27 +61,29 @@ void estimateTableDimensions(const pugi::xml_node &table, std::uint32_t &rows,
       const auto rowspan = n.attribute("table:number-rows-spanned").as_uint(1);
       tl.addCell(colspan, rowspan, repeated);
 
-      const auto newRows = tl.row();
-      const auto newCols = std::max(cols, tl.col());
+      const auto new_rows = tl.row();
+      const auto new_cols = std::max(cols, tl.col());
       if (n.first_child()) {
-        rows = newRows;
-        cols = newCols;
+        rows = new_rows;
+        cols = new_cols;
       }
     }
   }
 }
 } // namespace
 
-FileMeta parseFileMeta(const abstract::ReadStorage &storage,
-                       const pugi::xml_document *manifest) {
+FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
+                         const pugi::xml_document *manifest) {
   FileMeta result;
 
-  if (!storage.isFile("content.xml"))
+  if (!filesystem.is_file("content.xml")) {
     throw NoOpenDocumentFile();
+  }
 
-  if (storage.isFile("mimetype")) {
-    const auto mimeType = util::stream::read(*storage.read("mimetype"));
-    lookupFileType(mimeType, result.type);
+  if (filesystem.is_file("mimetype")) {
+    const auto mimeType =
+        util::stream::read(*filesystem.open("mimetype")->read());
+    lookup_file_type(mimeType, result.type);
   }
 
   if (manifest != nullptr) {
@@ -90,33 +93,35 @@ FileMeta parseFileMeta(const abstract::ReadStorage &storage,
       if (path.root() && e.node().attribute("manifest:media-type")) {
         const std::string mimeType =
             e.node().attribute("manifest:media-type").as_string();
-        lookupFileType(mimeType, result.type);
+        lookup_file_type(mimeType, result.type);
       }
     }
     if (!manifest->select_nodes("//manifest:encryption-data").empty()) {
-      result.passwordEncrypted = true;
+      result.password_encrypted = true;
     }
   }
 
   return result;
 }
 
-DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
-                               const pugi::xml_document &content) {
+DocumentMeta parse_document_meta(const pugi::xml_document *meta,
+                                 const pugi::xml_document &content) {
   DocumentMeta result;
 
   const auto body = content.document_element().child("office:body");
-  if (!body)
+  if (!body) {
     throw NoOpenDocumentFile();
+  }
 
-  if (body.child("office:text"))
+  if (body.child("office:text")) {
     result.document_type = DocumentType::TEXT;
-  else if (body.child("office:presentation"))
+  } else if (body.child("office:presentation")) {
     result.document_type = DocumentType::PRESENTATION;
-  else if (body.child("office:spreadsheet"))
+  } else if (body.child("office:spreadsheet")) {
     result.document_type = DocumentType::SPREADSHEET;
-  else if (body.child("office:drawing"))
+  } else if (body.child("office:drawing")) {
     result.document_type = DocumentType::DRAWING;
+  }
   // TODO else throw
 
   if (meta != nullptr) {
@@ -126,19 +131,21 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
     if (statistics) {
       switch (result.document_type) {
       case DocumentType::TEXT: {
-        const auto pageCount = statistics.attribute("meta:page-count");
-        if (!pageCount)
+        const auto page_count = statistics.attribute("meta:page-count");
+        if (!page_count) {
           break;
-        result.entry_count = pageCount.as_uint();
+        }
+        result.entry_count = page_count.as_uint();
       } break;
       case DocumentType::PRESENTATION: {
         result.entry_count = 0;
       } break;
       case DocumentType::SPREADSHEET: {
-        const auto tableCount = statistics.attribute("meta:table-count");
-        if (!tableCount)
+        const auto table_count = statistics.attribute("meta:table-count");
+        if (!table_count) {
           break;
-        result.entry_count = tableCount.as_uint();
+        }
+        result.entry_count = table_count.as_uint();
       } break;
       case DocumentType::DRAWING: {
       } break;
@@ -165,7 +172,7 @@ DocumentMeta parseDocumentMeta(const pugi::xml_document *meta,
       ++result.entry_count;
       DocumentMeta::Entry entry;
       entry.name = e.node().attribute("table:name").as_string();
-      estimateTableDimensions(e.node(), entry.row_count, entry.column_count);
+      estimate_table_dimensions(e.node(), entry.row_count, entry.column_count);
       result.entries.emplace_back(entry);
     }
   } break;
