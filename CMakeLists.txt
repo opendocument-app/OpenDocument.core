@@ -21,7 +21,6 @@ add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-object OBJECT
-        src/archive.cpp
         src/document.cpp
         src/document_elements.cpp
         src/document_style.cpp
@@ -78,7 +77,6 @@ add_library(odr-object OBJECT
 
         src/zip/miniz_util.cpp
         src/zip/zip_archive.cpp
-        src/zip/zip_impl.cpp
         )
 target_include_directories(odr-object
         PUBLIC

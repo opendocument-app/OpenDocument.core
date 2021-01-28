@@ -36,8 +36,8 @@ struct Manifest {
   std::unordered_map<common::Path, Entry> entries;
 
   std::uint64_t smallestFileSize{0};
-  const common::Path *smallestFilePath{nullptr};
-  const Entry *smallestFileEntry{nullptr};
+  const common::Path *smallest_file_path{nullptr};
+  const Entry *smallest_file_entry{nullptr};
 };
 
 Manifest parseManifest(const pugi::xml_document &manifest);

@@ -1,7 +1,6 @@
 #include <abstract/file.h>
 #include <chrono>
 #include <common/path.h>
-#include <odr/archive.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <zip/miniz_util.h>
@@ -61,11 +60,12 @@ ReadonlyZipArchive::Entry::Entry(const ReadonlyZipArchive &parent,
                                  std::uint32_t index)
     : m_parent{parent}, m_index{index} {}
 
-ArchiveEntryType ReadonlyZipArchive::Entry::type() const {
-  if (mz_zip_reader_is_file_a_directory(&m_parent.m_zip, m_index)) {
-    return ArchiveEntryType::DIRECTORY;
-  }
-  return ArchiveEntryType::FILE;
+bool ReadonlyZipArchive::Entry::is_file() const {
+  return !mz_zip_reader_is_file_a_directory(&m_parent.m_zip, m_index);
+}
+
+bool ReadonlyZipArchive::Entry::is_directory() const {
+  return mz_zip_reader_is_file_a_directory(&m_parent.m_zip, m_index);
 }
 
 common::Path ReadonlyZipArchive::Entry::path() const {
@@ -93,7 +93,7 @@ std::unique_ptr<abstract::File> ReadonlyZipArchive::Entry::file() const {
 
 std::unique_ptr<abstract::File> ReadonlyZipArchive::Entry::file(
     std::shared_ptr<ReadonlyZipArchive> persist) const {
-  if (type() != ArchiveEntryType::FILE) {
+  if (!is_file()) {
     return {};
   }
   return std::make_unique<FileInZip>(
@@ -175,12 +175,9 @@ ZipArchive::Entry::Entry(common::Path path,
     : m_path{std::move(path)}, m_file{std::move(file)},
       m_compression_level{compression_level} {}
 
-ArchiveEntryType ZipArchive::Entry::type() const {
-  if (m_file) {
-    return ArchiveEntryType::FILE;
-  }
-  return ArchiveEntryType::DIRECTORY;
-}
+bool ZipArchive::Entry::is_file() const { return m_file.operator bool(); }
+
+bool ZipArchive::Entry::is_directory() const { return !m_file; }
 
 common::Path ZipArchive::Entry::path() const { return m_path; }
 
@@ -202,13 +199,13 @@ ZipArchive::ZipArchive(ReadonlyZipArchive archive)
 
 ZipArchive::ZipArchive(const std::shared_ptr<ReadonlyZipArchive> &archive) {
   for (auto &&entry : *archive) {
-    if (entry.type() == ArchiveEntryType::FILE) {
+    if (entry.is_file()) {
       std::uint8_t compression_level = 6;
       if (entry.method() == Method::STORED) {
         compression_level = 0;
       }
       insert_file(end(), entry.path(), entry.file(archive), compression_level);
-    } else if (entry.type() == ArchiveEntryType::DIRECTORY) {
+    } else if (entry.is_directory()) {
       insert_directory(end(), entry.path());
     }
   }
@@ -262,10 +259,9 @@ void ZipArchive::save(std::ostream &out) const {
   }
 
   for (auto &&entry : *this) {
-    auto type = entry.type();
     auto path = entry.path();
 
-    if (type == ArchiveEntryType::FILE) {
+    if (entry.is_file()) {
       auto file = entry.file();
       auto istream = file->read();
       auto size = file->size();
@@ -276,7 +272,7 @@ void ZipArchive::save(std::ostream &out) const {
       if (!state) {
         throw ZipSaveError();
       }
-    } else if (type == ArchiveEntryType::DIRECTORY) {
+    } else if (entry.is_directory()) {
       state = mz_zip_writer_add_mem(&archive, (path.string() + "/").c_str(),
                                     nullptr, 0, 0);
       if (!state) {

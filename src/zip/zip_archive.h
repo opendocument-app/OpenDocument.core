@@ -1,7 +1,6 @@
 #ifndef ODR_ZIP_ARCHIVE_H
 #define ODR_ZIP_ARCHIVE_H
 
-#include <abstract/archive.h>
 #include <common/path.h>
 #include <miniz.h>
 #include <vector>
@@ -29,7 +28,8 @@ public:
   public:
     Entry(const ReadonlyZipArchive &parent, std::uint32_t index);
 
-    [[nodiscard]] ArchiveEntryType type() const;
+    [[nodiscard]] bool is_file() const;
+    [[nodiscard]] bool is_directory() const;
     [[nodiscard]] common::Path path() const;
     [[nodiscard]] Method method() const;
     [[nodiscard]] std::unique_ptr<abstract::File> file() const;
@@ -103,7 +103,8 @@ public:
     Entry(common::Path path, std::shared_ptr<abstract::File> file,
           std::uint32_t compression_level);
 
-    [[nodiscard]] ArchiveEntryType type() const;
+    [[nodiscard]] bool is_file() const;
+    [[nodiscard]] bool is_directory() const;
     [[nodiscard]] common::Path path() const;
     [[nodiscard]] std::shared_ptr<abstract::File> file() const;
 

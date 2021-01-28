@@ -4,7 +4,6 @@
 #include <cfb/cfb_impl.h>
 #include <common/file.h>
 #include <common/path.h>
-#include <odr/archive.h>
 
 namespace odr::cfb {
 
@@ -24,7 +23,8 @@ public:
     Entry(const impl::CompoundFileReader &reader,
           const impl::CompoundFileEntry *entry, common::Path path);
 
-    [[nodiscard]] ArchiveEntryType type() const;
+    [[nodiscard]] bool is_file() const;
+    [[nodiscard]] bool is_directory() const;
     [[nodiscard]] common::Path path() const;
     [[nodiscard]] std::unique_ptr<abstract::File> file() const;
     [[nodiscard]] std::unique_ptr<abstract::File>

@@ -5,10 +5,6 @@
 
 namespace odr::abstract {
 
-FileCategory File::file_category() const noexcept {
-  return FileMeta::categoryByType(file_type());
-}
-
 FileCategory TextFile::file_category() const noexcept {
   return FileCategory::TEXT;
 }

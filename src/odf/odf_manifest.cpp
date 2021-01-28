@@ -113,11 +113,11 @@ Manifest parseManifest(const pugi::xml_document &manifest) {
     entry.keySalt = crypto::Util::base64Decode(entry.keySalt);
 
     const auto it = result.entries.emplace(path, entry).first;
-    if ((result.smallestFilePath == nullptr) ||
+    if ((result.smallest_file_path == nullptr) ||
         (entry.size < result.smallestFileSize)) {
       result.smallestFileSize = entry.size;
-      result.smallestFilePath = &it->first;
-      result.smallestFileEntry = &it->second;
+      result.smallest_file_path = &it->first;
+      result.smallest_file_entry = &it->second;
     }
   }
 

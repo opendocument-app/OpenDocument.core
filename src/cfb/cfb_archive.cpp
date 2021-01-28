@@ -57,11 +57,10 @@ ReadonlyCfbArchive::Entry::Entry(const impl::CompoundFileReader &reader,
                                  common::Path path)
     : m_reader{reader}, m_entry{entry}, m_path{std::move(path)} {}
 
-ArchiveEntryType ReadonlyCfbArchive::Entry::type() const {
-  if (m_entry->is_stream()) {
-    return ArchiveEntryType::FILE;
-  }
-  return ArchiveEntryType::DIRECTORY;
+bool ReadonlyCfbArchive::Entry::is_file() const { return m_entry->is_stream(); }
+
+bool ReadonlyCfbArchive::Entry::is_directory() const {
+  return !m_entry->is_stream();
 }
 
 common::Path ReadonlyCfbArchive::Entry::path() const { return m_path; }
@@ -72,7 +71,7 @@ std::unique_ptr<abstract::File> ReadonlyCfbArchive::Entry::file() const {
 
 std::unique_ptr<abstract::File> ReadonlyCfbArchive::Entry::file(
     std::shared_ptr<ReadonlyCfbArchive> persist) const {
-  if (type() != ArchiveEntryType::FILE) {
+  if (!is_file()) {
     return {};
   }
   return std::make_unique<FileInCfb>(std::move(persist), FileLocation::MEMORY,

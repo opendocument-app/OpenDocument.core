@@ -1,4 +1,4 @@
-#include <abstract/storage.h>
+#include <abstract/filesystem.h>
 #include <crypto/crypto_util.h>
 #include <odf/odf_crypto.h>
 #include <odr/exceptions.h>
@@ -76,66 +76,70 @@ bool validate_password(const Manifest::Entry &entry,
 }
 
 namespace {
-class CryptoOpenDocumentFile : public abstract::ReadStorage {
+class CryptoOpenDocumentFile final : public abstract::ReadableFilesystem {
 public:
-  const std::shared_ptr<abstract::ReadStorage> parent;
-  const Manifest manifest;
-  const std::string startKey;
+  CryptoOpenDocumentFile(std::shared_ptr<abstract::ReadableFilesystem> parent,
+                         Manifest manifest, std::string start_key)
+      : m_parent(std::move(parent)), m_manifest(std::move(manifest)),
+        m_start_key(std::move(start_key)) {}
 
-  CryptoOpenDocumentFile(std::shared_ptr<abstract::ReadStorage> parent,
-                         Manifest manifest, std::string startKey)
-      : parent(std::move(parent)), manifest(std::move(manifest)),
-        startKey(std::move(startKey)) {}
-
-  bool isSomething(const common::Path &p) const final {
-    return parent->isSomething(p);
-  }
-  bool isFile(const common::Path &p) const final {
-    return parent->isSomething(p);
-  }
-  bool isDirectory(const common::Path &p) const final {
-    return parent->isSomething(p);
-  }
-  bool isReadable(const common::Path &p) const final { return isFile(p); }
-
-  std::uint64_t size(const common::Path &p) const final {
-    const auto it = manifest.entries.find(p);
-    if (it == manifest.entries.end())
-      return parent->size(p);
-    return it->second.size;
+  [[nodiscard]] bool exists(common::Path p) const final {
+    return m_parent->exists(std::move(p));
   }
 
-  void visit(Visitor v) const final { parent->visit(v); }
+  [[nodiscard]] bool is_file(common::Path p) const final {
+    return m_parent->is_file(std::move(p));
+  }
 
-  std::unique_ptr<std::istream> read(const common::Path &path) const final {
-    const auto it = manifest.entries.find(path);
-    if (it == manifest.entries.end())
-      return parent->read(path);
+  [[nodiscard]] bool is_directory(common::Path p) const final {
+    return m_parent->is_directory(std::move(p));
+  }
+
+  [[nodiscard]] std::unique_ptr<abstract::FileWalker>
+  file_walker(common::Path path) const final {
+    return m_parent->file_walker(path);
+  }
+
+  [[nodiscard]] std::shared_ptr<abstract::File>
+  open(common::Path path) const final {
+    // TODO
+    return {};
+
+    /*
+    const auto it = m_manifest.entries.find(path);
+    if (it == m_manifest.entries.end())
+      return m_parent->read(path);
     if (!can_decrypt(it->second))
       throw UnsupportedCryptoAlgorithm();
     // TODO stream
-    auto source = parent->read(path);
+    auto source = m_parent->read(path);
     const std::string input = util::stream::read(*source);
     std::string result = crypto::Util::inflate(
-        derive_key_and_decrypt(it->second, startKey, input));
+        derive_key_and_decrypt(it->second, m_start_key, input));
     return std::make_unique<std::istringstream>(std::move(result));
+     */
   }
+
+private:
+  const std::shared_ptr<abstract::ReadableFilesystem> m_parent;
+  const Manifest m_manifest;
+  const std::string m_start_key;
 };
 } // namespace
 
-bool decrypt(std::shared_ptr<abstract::ReadStorage> &storage,
+bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
              const Manifest &manifest, const std::string &password) {
   if (!manifest.encrypted)
     return true;
-  if (!can_decrypt(*manifest.smallestFileEntry))
+  if (!can_decrypt(*manifest.smallest_file_entry))
     throw UnsupportedCryptoAlgorithm();
   const std::string startKey =
-      odf::start_key(*manifest.smallestFileEntry, password);
+      odf::start_key(*manifest.smallest_file_entry, password);
   const std::string input =
-      util::stream::read(*storage->read(*manifest.smallestFilePath));
+      util::stream::read(*storage->read(*manifest.smallest_file_path));
   const std::string decrypt =
-      derive_key_and_decrypt(*manifest.smallestFileEntry, startKey, input);
-  if (!validate_password(*manifest.smallestFileEntry, decrypt))
+      derive_key_and_decrypt(*manifest.smallest_file_entry, startKey, input);
+  if (!validate_password(*manifest.smallest_file_entry, decrypt))
     return false;
   storage = std::make_shared<CryptoOpenDocumentFile>(std::move(storage),
                                                      manifest, startKey);

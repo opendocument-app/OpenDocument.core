@@ -8,16 +8,6 @@ namespace odr::abstract {
 class Archive;
 }
 
-namespace odr::common {
-
-class ArchiveFilesystem : public abstract::Filesystem {
-public:
-  explicit ArchiveFilesystem(std::shared_ptr<abstract::Archive> archive);
-
-private:
-  std::shared_ptr<abstract::Archive> m_archive;
-};
-
-} // namespace odr::common
+namespace odr::common {} // namespace odr::common
 
 #endif // ODR_COMMON_FILESYSTEM_H

@@ -7,9 +7,9 @@
 #include <odf/odf_meta.h>
 #include <string>
 
-namespace odr::common {
-class ReadStorage;
-} // namespace odr::common
+namespace odr::abstract {
+class ReadableFilesystem;
+} // namespace odr::abstract
 
 namespace odr::odf {
 bool can_decrypt(const Manifest::Entry &) noexcept;
@@ -23,7 +23,7 @@ std::string derive_key_and_decrypt(const Manifest::Entry &,
                                    const std::string &input);
 bool validate_password(const Manifest::Entry &, std::string decrypted) noexcept;
 
-bool decrypt(std::shared_ptr<abstract::ReadStorage> &, const Manifest &,
+bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &, const Manifest &,
              const std::string &password);
 } // namespace odr::odf
 
