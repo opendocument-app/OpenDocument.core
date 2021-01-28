@@ -457,7 +457,7 @@ public:
 
     try {
       const common::Path path{href};
-      if (!m_document->storage()->isFile(path)) {
+      if (!m_document->filesystem()->is_file(path)) {
         return false;
       }
 
@@ -488,7 +488,7 @@ public:
     }
 
     return odr::ImageFile(
-        std::make_shared<ImageFile>(m_document->storage(), path, fileType));
+        std::make_shared<ImageFile>(m_document->filesystem(), path, fileType));
   }
 };
 

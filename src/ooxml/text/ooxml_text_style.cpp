@@ -6,8 +6,8 @@
 namespace odr::ooxml::text {
 
 namespace {
-void attributesToMap(pugi::xml_node node,
-                     std::unordered_map<std::string, pugi::xml_node> &map) {
+void attributes_to_map(pugi::xml_node node,
+                       std::unordered_map<std::string, pugi::xml_node> &map) {
   for (auto &&c : node.children()) {
     map[c.name()] = c;
   }
@@ -17,31 +17,33 @@ class TextPageStyle final : public abstract::PageStyle {
 public:
   explicit TextPageStyle(pugi::xml_node node) : m_node{node} {}
 
-  std::shared_ptr<abstract::Property> width() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> width() const final {
     return std::make_shared<common::ConstProperty>("8.5in");
   }
 
-  std::shared_ptr<abstract::Property> height() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> height() const final {
     return std::make_shared<common::ConstProperty>("11.7in");
   }
 
-  std::shared_ptr<abstract::Property> marginTop() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> margin_top() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
-  std::shared_ptr<abstract::Property> marginBottom() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  margin_bottom() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
-  std::shared_ptr<abstract::Property> marginLeft() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> margin_left() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
-  std::shared_ptr<abstract::Property> marginRight() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property> margin_right() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
-  std::shared_ptr<abstract::Property> printOrientation() const final {
+  [[nodiscard]] std::shared_ptr<abstract::Property>
+  print_orientation() const final {
     return std::make_shared<common::ConstProperty>("");
   }
 
@@ -52,108 +54,123 @@ private:
 class ParagraphStyle final : public abstract::ParagraphStyle {
 public:
   explicit ParagraphStyle(
-      std::unordered_map<std::string, pugi::xml_node> paragraphProperties)
-      : m_paragraphProperties{std::move(paragraphProperties)} {}
+      std::unordered_map<std::string, pugi::xml_node> paragraph_properties)
+      : m_paragraph_properties{std::move(paragraph_properties)} {}
 
-  std::shared_ptr<abstract::Property> textAlign() const final {
-    auto it = m_paragraphProperties.find("w:jc");
-    if (it == m_paragraphProperties.end())
+  std::shared_ptr<abstract::Property> text_align() const final {
+    auto it = m_paragraph_properties.find("w:jc");
+    if (it == std::end(m_paragraph_properties)) {
       return {};
+    }
     std::string alignment = it->second.attribute("w:val").value();
-    if (alignment.empty())
+    if (alignment.empty()) {
       return {};
-    if (alignment == "both")
+    }
+    if (alignment == "both") {
       alignment = "justify";
+    }
     return std::make_shared<common::ConstProperty>(alignment);
   }
 
-  std::shared_ptr<abstract::Property> marginTop() const final {
+  std::shared_ptr<abstract::Property> margin_top() const final {
     return std::make_shared<common::ConstProperty>();
   }
 
-  std::shared_ptr<abstract::Property> marginBottom() const final {
+  std::shared_ptr<abstract::Property> margin_bottom() const final {
     return std::make_shared<common::ConstProperty>();
   }
 
-  std::shared_ptr<abstract::Property> marginLeft() const final {
+  std::shared_ptr<abstract::Property> margin_left() const final {
     return std::make_shared<common::ConstProperty>();
   }
 
-  std::shared_ptr<abstract::Property> marginRight() const final {
+  std::shared_ptr<abstract::Property> margin_right() const final {
     return std::make_shared<common::ConstProperty>();
   }
 
 private:
-  std::unordered_map<std::string, pugi::xml_node> m_paragraphProperties;
+  std::unordered_map<std::string, pugi::xml_node> m_paragraph_properties;
 };
 
 class TextStyle final : public abstract::TextStyle {
 public:
   explicit TextStyle(
-      std::unordered_map<std::string, pugi::xml_node> textProperties)
-      : m_textProperties{std::move(textProperties)} {}
+      std::unordered_map<std::string, pugi::xml_node> text_properties)
+      : m_text_properties{std::move(text_properties)} {}
 
-  std::shared_ptr<abstract::Property> fontName() const final {
-    auto it = m_textProperties.find("w:rFonts");
-    if (it == m_textProperties.end())
+  std::shared_ptr<abstract::Property> font_name() const final {
+    auto it = m_text_properties.find("w:rFonts");
+    if (it == std::end(m_text_properties)) {
       return {};
+    }
     std::string fontName = it->second.attribute("w:ascii").value();
-    if (fontName.empty())
+    if (fontName.empty()) {
       return {};
+    }
     return std::make_shared<common::ConstProperty>(fontName);
   }
 
-  std::shared_ptr<abstract::Property> fontSize() const final {
-    auto it = m_textProperties.find("w:sz");
-    if (it == m_textProperties.end())
+  std::shared_ptr<abstract::Property> font_size() const final {
+    auto it = m_text_properties.find("w:sz");
+    if (it == std::end(m_text_properties)) {
       return {};
-    auto fontSize = it->second.attribute("w:val").as_float(0);
-    if (fontSize == 0)
+    }
+    auto font_size = it->second.attribute("w:val").as_float(0);
+    if (font_size == 0) {
       return {};
+    }
     return std::make_shared<common::ConstProperty>(
-        util::string::to_string(fontSize * 0.5, 1) + "pt");
+        util::string::to_string(font_size * 0.5, 1) + "pt");
   }
 
-  std::shared_ptr<abstract::Property> fontWeight() const final {
-    auto it = m_textProperties.find("w:b");
-    if (it == m_textProperties.end())
+  std::shared_ptr<abstract::Property> font_weight() const final {
+    auto it = m_text_properties.find("w:b");
+    if (it == std::end(m_text_properties)) {
       return {};
+    }
     return std::make_shared<common::ConstProperty>("bold");
   }
 
-  std::shared_ptr<abstract::Property> fontStyle() const final {
-    auto it = m_textProperties.find("w:i");
-    if (it == m_textProperties.end())
+  std::shared_ptr<abstract::Property> font_style() const final {
+    auto it = m_text_properties.find("w:i");
+    if (it == std::end(m_text_properties)) {
       return {};
+    }
     return std::make_shared<common::ConstProperty>("italic");
   }
 
-  std::shared_ptr<abstract::Property> fontColor() const final {
-    auto it = m_textProperties.find("w:color");
-    if (it == m_textProperties.end())
+  std::shared_ptr<abstract::Property> font_color() const final {
+    auto it = m_text_properties.find("w:color");
+    if (it == std::end(m_text_properties)) {
       return {};
-    std::string fontColor = it->second.attribute("w:val").value();
-    if (fontColor.empty() || (fontColor == "auto"))
+    }
+    std::string font_color = it->second.attribute("w:val").value();
+    if (font_color.empty() || (font_color == "auto")) {
       return {};
-    if (fontColor.size() == 6)
-      fontColor = "#" + fontColor;
-    return std::make_shared<common::ConstProperty>(fontColor);
+    }
+    if (font_color.size() == 6) {
+      font_color = "#" + font_color;
+    }
+    return std::make_shared<common::ConstProperty>(font_color);
   }
 
-  std::shared_ptr<abstract::Property> backgroundColor() const final {
-    auto it = m_textProperties.find("w:highlight");
-    if (it == m_textProperties.end())
+  std::shared_ptr<abstract::Property> background_color() const final {
+    auto it = m_text_properties.find("w:highlight");
+    if (it == std::end(m_text_properties)) {
       return {};
+    }
     std::string fontColor = it->second.attribute("w:val").value();
-    if (fontColor.empty() || (fontColor == "auto"))
+    if (fontColor.empty() || (fontColor == "auto")) {
       return {};
-    if (fontColor.size() == 6)
+    }
+    if (fontColor.size() == 6) {
       fontColor = "#" + fontColor;
+    }
     return std::make_shared<common::ConstProperty>(fontColor);
   }
 
 private:
-  std::unordered_map<std::string, pugi::xml_node> m_textProperties;
+  std::unordered_map<std::string, pugi::xml_node> m_text_properties;
 };
 } // namespace
 
@@ -174,11 +191,12 @@ Style::Style(std::shared_ptr<Style> parent, pugi::xml_node styleNode)
 ResolvedStyle Style::resolve() const {
   ResolvedStyle result;
 
-  if (m_parent)
+  if (m_parent) {
     result = m_parent->resolve();
+  }
 
-  attributesToMap(m_styleNode.child("w:pPr"), result.paragraphProperties);
-  attributesToMap(m_styleNode.child("w:rPr"), result.textProperties);
+  attributes_to_map(m_styleNode.child("w:pPr"), result.paragraphProperties);
+  attributes_to_map(m_styleNode.child("w:rPr"), result.textProperties);
 
   return result;
 }
@@ -186,9 +204,9 @@ ResolvedStyle Style::resolve() const {
 ResolvedStyle Style::resolve(pugi::xml_node node) const {
   ResolvedStyle result = resolve();
 
-  attributesToMap(node.child("w:pPr"), result.paragraphProperties);
-  attributesToMap(node.child("w:pPr").child("w:rPr"), result.textProperties);
-  attributesToMap(node.child("w:rPr"), result.textProperties);
+  attributes_to_map(node.child("w:pPr"), result.paragraphProperties);
+  attributes_to_map(node.child("w:pPr").child("w:rPr"), result.textProperties);
+  attributes_to_map(node.child("w:rPr"), result.textProperties);
 
   return result;
 }
@@ -214,16 +232,18 @@ void Styles::generateStyles() {
 
 std::shared_ptr<Style> Styles::generateStyle(const std::string &name,
                                              pugi::xml_node node) {
-  if (auto styleIt = m_styles.find(name); styleIt != m_styles.end())
+  if (auto styleIt = m_styles.find(name); styleIt != std::end(m_styles)) {
     return styleIt->second;
+  }
 
   std::shared_ptr<Style> parent;
 
   if (auto parentAttr = node.child("w:basedOn").attribute("w:val");
       parentAttr) {
     if (auto parentStyleIt = m_indexStyle.find(parentAttr.value());
-        parentStyleIt != m_indexStyle.end())
+        parentStyleIt != std::end(m_indexStyle)) {
       parent = generateStyle(parentAttr.value(), parentStyleIt->second);
+    }
     // TODO else throw or log?
   }
 
@@ -232,8 +252,9 @@ std::shared_ptr<Style> Styles::generateStyle(const std::string &name,
 
 std::shared_ptr<Style> Styles::style(const std::string &name) const {
   auto styleIt = m_styles.find(name);
-  if (styleIt == m_styles.end())
+  if (styleIt == std::end(m_styles)) {
     return {};
+  }
   return styleIt->second;
 }
 
