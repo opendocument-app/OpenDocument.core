@@ -2,6 +2,7 @@
 #include <cstring>
 #include <glog/logging.h>
 #include <locale>
+#include <odr/exceptions.h>
 #include <string>
 #include <svm/svm_to_svg.h>
 #include <vector>
@@ -312,7 +313,7 @@ struct Header final {
     char magic[6];
     in.read(magic, sizeof(magic));
     if (std::strncmp("VCLMTF", magic, sizeof(magic)) != 0) {
-      throw NoSvmFileException();
+      throw NoSvmFile();
     }
     vl.read(in);
     std::size_t start = in.tellg();
@@ -740,7 +741,7 @@ void Translator::svg(std::istream &in, std::ostream &out) {
     } else if (left < 0) {
       LOG(ERROR) << -left << " bytes missing action " << action.type
                  << " version " << action.vl.version;
-      throw MalformedSvmFileException();
+      throw MalformedSvmFile();
     }
   }
 

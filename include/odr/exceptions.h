@@ -75,6 +75,14 @@ struct UnsupportedCryptoAlgorithm final : public std::runtime_error {
       : std::runtime_error("unsupported crypto algorithm") {}
 };
 
+struct NoSvmFile : public std::runtime_error {
+  NoSvmFile() : std::runtime_error("not a svm file") {}
+};
+
+struct MalformedSvmFile : public std::runtime_error {
+  MalformedSvmFile() : std::runtime_error("malformed svm file") {}
+};
+
 } // namespace odr
 
 #endif // ODR_EXCEPTIONS_H
