@@ -17,19 +17,17 @@ public:
   [[nodiscard]] virtual std::unique_ptr<FileWalker> clone() const = 0;
   [[nodiscard]] virtual bool equals(const FileWalker &rhs) const = 0;
 
+  [[nodiscard]] virtual std::uint32_t depth() const = 0;
   [[nodiscard]] virtual common::Path path() const = 0;
   [[nodiscard]] virtual bool is_file() const = 0;
   [[nodiscard]] virtual bool is_directory() const = 0;
 
-  [[nodiscard]] virtual bool has_parent() const = 0;
-  [[nodiscard]] virtual bool has_child() const = 0;
-  [[nodiscard]] virtual bool has_previous_sibling() const = 0;
-  [[nodiscard]] virtual bool has_next_sibling() const = 0;
+  [[nodiscard]] virtual bool has_next() const = 0;
+  [[nodiscard]] virtual bool has_flat_next() const = 0;
 
-  virtual void parent() = 0;
-  virtual void first_child() = 0;
-  virtual void previous_sibling() = 0;
-  virtual void next_sibling() = 0;
+  virtual void pop() = 0;
+  virtual void next() = 0;
+  virtual void flat_next() = 0;
 };
 
 class ReadableFilesystem {

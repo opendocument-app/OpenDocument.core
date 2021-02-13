@@ -44,6 +44,10 @@ LegacyMicrosoftFile::LegacyMicrosoftFile(
   m_meta = parse_meta(*m_storage);
 }
 
+std::shared_ptr<abstract::File> LegacyMicrosoftFile::file() const noexcept {
+  return {};
+}
+
 FileType LegacyMicrosoftFile::file_type() const noexcept { return m_meta.type; }
 
 FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_meta; }

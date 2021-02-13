@@ -15,6 +15,8 @@ public:
   explicit OfficeOpenXmlFile(
       std::shared_ptr<abstract::ReadableFilesystem> storage);
 
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
+
   FileType file_type() const noexcept final;
   FileMeta file_meta() const noexcept final;
 

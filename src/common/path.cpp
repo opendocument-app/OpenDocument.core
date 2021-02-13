@@ -2,6 +2,11 @@
 #include <common/path.h>
 #include <stdexcept>
 
+std::size_t
+std::hash<::odr::common::Path>::operator()(const odr::common::Path &p) const {
+  return p.hash();
+}
+
 namespace odr::common {
 
 Path::Path() noexcept : Path("") {}
@@ -11,129 +16,151 @@ Path::Path(const char *path) : Path(std::string(path)) {}
 Path::Path(const std::string &path) {
   // TODO throw on illegal chars
   // TODO remove forward slash
-  if (path.rfind("/..", 0) == 0)
+  if (path.rfind("/..", 0) == 0) {
     throw std::invalid_argument("path");
+  }
 
-  absolute_ = !path.empty() && (path[0] == '/');
-  path_ = absolute_ ? "/" : "";
-  upwards_ = 0;
-  downwards_ = 0;
+  m_absolute = !path.empty() && (path[0] == '/');
+  m_path = m_absolute ? "/" : "";
+  m_upwards = 0;
+  m_downwards = 0;
 
-  std::size_t pos = absolute_ ? 1 : 0;
+  std::size_t pos = m_absolute ? 1 : 0;
   while (pos < path.size()) {
     std::size_t next = path.find('/', pos);
-    if (next == std::string::npos)
+    if (next == std::string::npos) {
       next = path.size();
+    }
     join_(path.substr(pos, next - pos));
     pos = next + 1;
   }
 }
 
+Path::Path(const std::filesystem::path &path) : Path(path.string()) {}
+
 void Path::parent_() {
-  if (downwards_ > 0) {
-    --downwards_;
-    if (downwards_ == 0)
-      path_ = "";
-    else {
-      const auto pos = path_.rfind('/');
-      path_ = path_.substr(0, pos);
+  if (m_downwards > 0) {
+    --m_downwards;
+    if (m_downwards == 0) {
+      m_path = "";
+    } else {
+      const auto pos = m_path.rfind('/');
+      m_path = m_path.substr(0, pos);
     }
-  } else if (!absolute_) {
-    ++upwards_;
-    path_ = "../" + path_;
+  } else if (!m_absolute) {
+    ++m_upwards;
+    m_path = "../" + m_path;
   } else {
     throw std::invalid_argument("absolute path violation");
   }
 }
 
 void Path::join_(const std::string &child) {
-  if (child == ".")
+  if (child == ".") {
     return;
-  if (child == "..")
+  }
+  if (child == "..") {
     parent_();
-  else {
-    if (downwards_ == 0)
-      path_ += child;
-    else
-      path_ += "/" + child;
-    ++downwards_;
+  } else {
+    if (m_downwards == 0) {
+      m_path += child;
+    } else {
+      m_path += "/" + child;
+    }
+    ++m_downwards;
   }
 }
 
 bool Path::operator==(const Path &b) const noexcept {
-  if (absolute_ != b.absolute_)
+  if (m_absolute != b.m_absolute) {
     return false;
-  if (!absolute_ && (upwards_ != b.upwards_))
+  }
+  if (!m_absolute && (m_upwards != b.m_upwards)) {
     return false;
-  return (downwards_ == b.downwards_) && (path_ == b.path_);
+  }
+  return (m_downwards == b.m_downwards) && (m_path == b.m_path);
 }
 
 bool Path::operator!=(const Path &b) const noexcept {
-  if (absolute_ != b.absolute_)
+  if (m_absolute != b.m_absolute) {
     return true;
-  if (!absolute_ && (upwards_ != b.upwards_))
+  }
+  if (!m_absolute && (m_upwards != b.m_upwards)) {
     return true;
-  return (downwards_ != b.downwards_) || (path_ != b.path_);
+  }
+  return (m_downwards != b.m_downwards) || (m_path != b.m_path);
 }
 
 bool Path::operator<(const Path &b) const noexcept {
   // TODO could be improved
-  return path_ < b.path_;
+  return m_path < b.m_path;
 }
 
 bool Path::operator>(const Path &b) const noexcept {
   // TODO could be improved
-  return path_ > b.path_;
+  return m_path > b.m_path;
 }
 
-Path::operator std::string() const noexcept { return path_; }
+Path::operator std::string() const noexcept { return m_path; }
 
-Path::operator const std::string &() const noexcept { return path_; }
+Path::operator std::filesystem::path() const noexcept { return m_path; }
 
-const std::string &Path::string() const noexcept { return path_; }
+Path::operator const std::string &() const noexcept { return m_path; }
+
+const std::string &Path::string() const noexcept { return m_path; }
+
+std::filesystem::path Path::path() const noexcept { return m_path; }
 
 std::size_t Path::hash() const noexcept {
-  return std::hash<std::string>{}(path_);
+  return std::hash<std::string>{}(m_path);
 }
 
 bool Path::root() const noexcept {
-  return (upwards_ == 0) && (downwards_ == 0);
+  return (m_upwards == 0) && (m_downwards == 0);
 }
 
-bool Path::visible() const noexcept { return absolute_ || (upwards_ == 0); }
+bool Path::absolute() const noexcept { return m_absolute; }
 
-bool Path::escaping() const noexcept { return !absolute_ && (upwards_ > 0); }
+bool Path::relative() const noexcept { return !m_absolute; }
 
-bool Path::childOf(const Path &b) const { return b.parentOf(*this); }
+bool Path::visible() const noexcept { return m_absolute || (m_upwards == 0); }
 
-bool Path::parentOf(const Path &b) const {
-  if (absolute_ != b.absolute_)
+bool Path::escaping() const noexcept { return !m_absolute && (m_upwards > 0); }
+
+bool Path::child_of(const Path &b) const { return b.parent_of(*this); }
+
+bool Path::parent_of(const Path &b) const {
+  if (m_absolute != b.m_absolute) {
     throw std::invalid_argument("cannot compare absolute and relative path");
+  }
   // TODO we need to check upwards as well
-  return (downwards_ + 1 == b.downwards_) && (b.path_.rfind(path_, 0) == 0);
+  return (m_downwards + 1 == b.m_downwards) && (b.m_path.rfind(m_path, 0) == 0);
 }
 
-bool Path::ancestorOf(const Path &b) const { return b.descendantOf(*this); }
+bool Path::ancestor_of(const Path &b) const { return b.descendant_of(*this); }
 
-bool Path::descendantOf(const Path &b) const {
-  if (absolute_ != b.absolute_)
+bool Path::descendant_of(const Path &b) const {
+  if (m_absolute != b.m_absolute) {
     throw std::invalid_argument("cannot compare absolute and relative path");
+  }
   // TODO we need to check upwards as well
-  return (downwards_ < b.downwards_) && (b.path_.rfind(path_, 0) == 0);
+  return (m_downwards < b.m_downwards) && (b.m_path.rfind(m_path, 0) == 0);
 }
 
 std::string Path::basename() const noexcept {
-  const auto find = path_.rfind('/');
-  if (find == std::string::npos)
-    return path_;
-  return path_.substr(find + 1);
+  const auto find = m_path.rfind('/');
+  if (find == std::string::npos) {
+    return m_path;
+  }
+  return m_path.substr(find + 1);
 }
 
 std::string Path::extension() const noexcept {
   auto bn = basename();
   const auto pos = bn.find('.');
-  if (pos == std::string::npos)
+  if (pos == std::string::npos) {
     return "";
+  }
   return bn.substr(pos + 1);
 }
 
@@ -144,22 +171,24 @@ Path Path::parent() const {
 }
 
 Path Path::join(const Path &b) const {
-  if (b.absolute_)
+  if (b.m_absolute) {
     throw std::invalid_argument("cannot join an absolute path");
+  }
   // TODO could be done directly
-  const std::string result = path_ + "/" + b.path_;
+  const std::string result = m_path + "/" + b.m_path;
   return Path(result);
 }
 
 Path Path::rebase(const Path &on) const {
-  if (!ancestorOf(on))
+  if (!ancestor_of(on)) {
     throw std::invalid_argument("cannot rebase without ancestor");
-  const std::string result = path_.substr(on.path_.size() + 1);
+  }
+  const std::string result = m_path.substr(on.m_path.size() + 1);
   return Path(result);
 }
 
 std::ostream &operator<<(std::ostream &os, const Path &p) {
-  return os << p.path_;
+  return os << p.m_path;
 }
 
 } // namespace odr::common

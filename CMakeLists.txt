@@ -69,6 +69,7 @@ add_library(odr-object OBJECT
         src/ooxml/text/ooxml_text_style.cpp
 
         src/svm/svm_file.cpp
+        src/svm/svm_format.cpp
         src/svm/svm_to_svg.cpp
 
         src/util/file_util.cpp

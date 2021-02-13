@@ -45,8 +45,8 @@ struct CompoundFileEntry {
   std::uint32_t start_sector_location;
   std::uint64_t size;
 
-  bool is_property_stream() const;
-  bool is_stream() const;
+  [[nodiscard]] bool is_property_stream() const;
+  [[nodiscard]] bool is_stream() const;
 };
 
 struct PropertySetStreamHeader {

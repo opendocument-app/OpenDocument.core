@@ -16,6 +16,8 @@ public:
   explicit OpenDocumentFile(
       std::shared_ptr<abstract::ReadableFilesystem> files);
 
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
+
   FileType file_type() const noexcept final;
   FileMeta file_meta() const noexcept final;
 

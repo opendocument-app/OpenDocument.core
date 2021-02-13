@@ -24,6 +24,10 @@ OpenDocumentFile::OpenDocumentFile(
   }
 }
 
+std::shared_ptr<abstract::File> OpenDocumentFile::file() const noexcept {
+  return {};
+}
+
 FileType OpenDocumentFile::file_type() const noexcept {
   return m_file_meta.type;
 }

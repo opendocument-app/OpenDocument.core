@@ -31,6 +31,8 @@ class DecodedFile {
 public:
   virtual ~DecodedFile() = default;
 
+  [[nodiscard]] virtual std::shared_ptr<File> file() const noexcept = 0;
+
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
   [[nodiscard]] virtual FileCategory file_category() const noexcept = 0;
   [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;

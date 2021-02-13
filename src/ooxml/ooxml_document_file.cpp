@@ -6,7 +6,6 @@
 #include <ooxml/ooxml_document_file.h>
 #include <ooxml/ooxml_meta.h>
 #include <util/stream_util.h>
-#include <zip/zip_archive.h>
 
 namespace odr::ooxml {
 
@@ -14,6 +13,10 @@ OfficeOpenXmlFile::OfficeOpenXmlFile(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem) {
   m_meta = parse_file_meta(*filesystem);
   m_filesystem = std::move(filesystem);
+}
+
+std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
+  return {};
 }
 
 FileType OfficeOpenXmlFile::file_type() const noexcept { return m_meta.type; }

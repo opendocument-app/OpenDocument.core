@@ -5,11 +5,11 @@
 #include <memory>
 
 namespace odr::svm {
+class SvmFile;
 
 namespace Translator {
-void svg(std::istream &in, std::ostream &out);
+void svg(const SvmFile &file, std::ostream &out);
 }
-
 } // namespace odr::svm
 
 #endif // ODR_SVM_TO_SVG_H
