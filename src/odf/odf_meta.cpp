@@ -52,14 +52,14 @@ void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
     if (std::strcmp(n.name(), "table:table-row") == 0) {
       const auto repeated =
           n.attribute("table:number-rows-repeated").as_uint(1);
-      tl.addRow(repeated);
+      tl.add_row(repeated);
     } else if (std::strcmp(n.name(), "table:table-cell") == 0) {
       const auto repeated =
           n.attribute("table:number-columns-repeated").as_uint(1);
       const auto colspan =
           n.attribute("table:number-columns-spanned").as_uint(1);
       const auto rowspan = n.attribute("table:number-rows-spanned").as_uint(1);
-      tl.addCell(colspan, rowspan, repeated);
+      tl.add_cell(colspan, rowspan, repeated);
 
       const auto new_rows = tl.row();
       const auto new_cols = std::max(cols, tl.col());

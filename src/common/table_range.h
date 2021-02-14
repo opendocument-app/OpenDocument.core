@@ -13,15 +13,15 @@ public:
              std::uint32_t cols) noexcept;
   explicit TableRange(const std::string &);
 
-  const TablePosition &from() const noexcept { return from_; }
-  const TablePosition &to() const noexcept { return to_; }
-  std::string toString() const noexcept;
+  [[nodiscard]] const TablePosition &from() const noexcept;
+  [[nodiscard]] const TablePosition &to() const noexcept;
+  [[nodiscard]] std::string to_string() const noexcept;
 
-  bool contains(const TablePosition &position) const noexcept;
+  [[nodiscard]] bool contains(const TablePosition &position) const noexcept;
 
 private:
-  TablePosition from_;
-  TablePosition to_;
+  TablePosition m_from;
+  TablePosition m_to;
 };
 
 } // namespace odr::common

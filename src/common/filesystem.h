@@ -37,11 +37,13 @@ public:
 private:
   common::Path m_root;
 
-  [[nodiscard]] common::Path to_system_path(const common::Path& path) const;
+  [[nodiscard]] common::Path to_system_path(const common::Path &path) const;
 };
 
 class VirtualFilesystem final : public abstract::Filesystem {
 public:
+  VirtualFilesystem();
+
   [[nodiscard]] bool exists(common::Path path) const final;
   [[nodiscard]] bool is_file(common::Path path) const final;
   [[nodiscard]] bool is_directory(common::Path path) const final;
@@ -64,18 +66,30 @@ public:
   bool move(common::Path from, common::Path to) final;
 
 private:
+  enum class NodeType {
+    FILE,
+    DIRECTORY,
+  };
   struct Node {
     std::string name;
+    NodeType type;
+
+    Node(std::string name, NodeType type);
   };
   struct FileNode : Node {
     std::shared_ptr<abstract::File> file;
+
+    FileNode(std::string name, std::shared_ptr<abstract::File> file);
   };
   struct DirectoryNode : Node {
-    DirectoryNode *parent{};
     std::vector<std::variant<FileNode, DirectoryNode>> children;
+
+    explicit DirectoryNode(std::string name);
   };
 
   DirectoryNode m_root;
+
+  [[nodiscard]] Node *node_(const common::Path &path) const;
 };
 
 } // namespace odr::common

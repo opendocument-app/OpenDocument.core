@@ -2,49 +2,54 @@
 
 namespace odr::common {
 
-TableCursor::TableCursor() noexcept { sparse_.emplace_back(); }
+TableCursor::TableCursor() noexcept { m_sparse.emplace_back(); }
 
-void TableCursor::addCol(const std::uint32_t repeat) noexcept {
-  col_ += repeat;
+void TableCursor::add_col(uint32_t repeat) noexcept {
+  m_col += repeat;
 }
 
-void TableCursor::addRow(const std::uint32_t repeat) noexcept {
-  row_ += repeat;
-  col_ = 0;
+void TableCursor::add_row(uint32_t repeat) noexcept {
+  m_row += repeat;
+  m_col = 0;
   if (repeat > 1) {
     // TODO assert trivial
-    sparse_.clear();
+    m_sparse.clear();
   } else if (repeat == 1) {
-    sparse_.pop_front();
+    m_sparse.pop_front();
   }
-  if (sparse_.empty())
-    sparse_.emplace_back();
-  handleRowspan();
+  if (m_sparse.empty())
+    m_sparse.emplace_back();
+  handle_rowspan_();
 }
 
-void TableCursor::addCell(const std::uint32_t colspan,
-                          const std::uint32_t rowspan,
-                          const std::uint32_t repeat) noexcept {
-  const auto newNextCols = col_ + colspan * repeat;
+void TableCursor::add_cell(uint32_t colspan, uint32_t rowspan,
+                           uint32_t repeat) noexcept {
+  const auto newNextCols = m_col + colspan * repeat;
 
   // handle rowspan
-  auto it = sparse_.begin();
+  auto it = m_sparse.begin();
   for (std::uint32_t i = 1; i < rowspan; ++i) {
-    if (std::next(it) == sparse_.end())
-      sparse_.emplace_back();
+    if (std::next(it) == m_sparse.end())
+      m_sparse.emplace_back();
     ++it;
-    it->emplace_back(Range{col_, newNextCols});
+    it->emplace_back(Range{m_col, newNextCols});
   }
 
-  col_ = newNextCols;
-  handleRowspan();
+  m_col = newNextCols;
+  handle_rowspan_();
 }
 
-void TableCursor::handleRowspan() noexcept {
-  auto &s = sparse_.front();
+TablePosition TableCursor::position() const noexcept { return {m_row, m_col}; }
+
+std::uint32_t TableCursor::row() const noexcept { return m_row; }
+
+std::uint32_t TableCursor::col() const noexcept { return m_col; }
+
+void TableCursor::handle_rowspan_() noexcept {
+  auto &s = m_sparse.front();
   auto it = s.begin();
-  while ((it != s.end()) && (col_ == it->start)) {
-    col_ = it->end;
+  while ((it != s.end()) && (m_col == it->start)) {
+    m_col = it->end;
     ++it;
   }
   s.erase(s.begin(), it);

@@ -3,20 +3,21 @@
 
 namespace odr::common {
 
-std::uint32_t TablePosition::toColNum(const std::string &s) {
-  if (s.empty())
+std::uint32_t TablePosition::to_col_num(const std::string &string) {
+  if (string.empty())
     throw std::invalid_argument("s is empty");
 
   std::uint32_t result = 0;
-  for (std::size_t i = 0; i < s.size(); ++i) {
-    if ((s[i] < 'A') || (s[i] > 'Z'))
-      throw std::invalid_argument("illegal character in \"" + s + "\"");
-    result = result * 26 + (s[i] - 'A' + 1);
+  for (std::size_t i = 0; i < string.size(); ++i) {
+    if ((string[i] < 'A') || (string[i] > 'Z')) {
+      throw std::invalid_argument("illegal character in \"" + string + "\"");
+    }
+    result = result * 26 + (string[i] - 'A' + 1);
   }
   return result - 1;
 }
 
-std::string TablePosition::toColString(std::uint32_t col) {
+std::string TablePosition::to_col_string(std::uint32_t col) {
   std::string result;
 
   col += 1;
@@ -38,22 +39,28 @@ TablePosition::TablePosition() noexcept = default;
 
 TablePosition::TablePosition(const std::uint32_t row,
                              const std::uint32_t col) noexcept
-    : row_(row), col_(col) {}
+    : m_row{row}, m_col{col} {}
 
 TablePosition::TablePosition(const std::string &s) {
   const auto pos = s.find_first_of("0123456789");
-  if (pos == std::string::npos)
+  if (pos == std::string::npos) {
     throw std::invalid_argument("malformed table position " + s);
-  row_ = std::stoul(s.substr(pos));
-  if (row_ <= 0)
+  }
+  m_row = std::stoul(s.substr(pos));
+  if (m_row <= 0) {
     throw std::invalid_argument("row number needs to be at least 1 " +
                                 s.substr(pos));
-  --row_;
-  col_ = toColNum(s.substr(0, pos));
+  }
+  --m_row;
+  m_col = to_col_num(s.substr(0, pos));
 }
 
-std::string TablePosition::toString() const noexcept {
-  return toColString(col_) + std::to_string(row_ + 1);
+std::uint32_t TablePosition::row() const noexcept { return m_row; }
+
+std::uint32_t TablePosition::col() const noexcept { return m_col; }
+
+std::string TablePosition::to_string() const noexcept {
+  return to_col_string(m_col) + std::to_string(m_row + 1);
 }
 
 } // namespace odr::common

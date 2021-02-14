@@ -11,14 +11,14 @@ class TableCursor final {
 public:
   TableCursor() noexcept;
 
-  void addCol(std::uint32_t repeat = 1) noexcept;
-  void addRow(std::uint32_t repeat = 1) noexcept;
-  void addCell(std::uint32_t colspan = 1, std::uint32_t rowspan = 1,
+  void add_col(std::uint32_t repeat = 1) noexcept;
+  void add_row(std::uint32_t repeat = 1) noexcept;
+  void add_cell(std::uint32_t colspan = 1, std::uint32_t rowspan = 1,
                std::uint32_t repeat = 1) noexcept;
 
-  TablePosition position() const noexcept { return {row_, col_}; }
-  std::uint32_t row() const noexcept { return row_; }
-  std::uint32_t col() const noexcept { return col_; }
+  TablePosition position() const noexcept;
+  std::uint32_t row() const noexcept;
+  std::uint32_t col() const noexcept;
 
 private:
   struct Range {
@@ -26,11 +26,11 @@ private:
     std::uint32_t end;
   };
 
-  std::uint32_t row_{0};
-  std::uint32_t col_{0};
-  std::list<std::list<Range>> sparse_;
+  std::uint32_t m_row{0};
+  std::uint32_t m_col{0};
+  std::list<std::list<Range>> m_sparse;
 
-  void handleRowspan() noexcept;
+  void handle_rowspan_() noexcept;
 };
 
 } // namespace odr::common

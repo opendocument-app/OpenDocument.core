@@ -24,7 +24,7 @@ TEST(TablePosition, string2) {
   odr::common::TablePosition tp(input);
   EXPECT_EQ(tp.row(), 10);
   EXPECT_EQ(tp.col(), 26);
-  EXPECT_EQ(tp.toString(), input);
+  EXPECT_EQ(tp.to_string(), input);
 }
 
 TEST(TablePosition, string3) {
@@ -32,7 +32,7 @@ TEST(TablePosition, string3) {
   odr::common::TablePosition tp(input);
   EXPECT_EQ(tp.row(), 0);
   EXPECT_EQ(tp.col(), 701);
-  EXPECT_EQ(tp.toString(), input);
+  EXPECT_EQ(tp.to_string(), input);
 }
 
 TEST(TablePosition, string4) {
@@ -40,5 +40,5 @@ TEST(TablePosition, string4) {
   odr::common::TablePosition tp(input);
   EXPECT_EQ(tp.row(), 0);
   EXPECT_EQ(tp.col(), 702);
-  EXPECT_EQ(tp.toString(), input);
+  EXPECT_EQ(tp.to_string(), input);
 }
