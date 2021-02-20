@@ -2,8 +2,8 @@
 #include <common/path.h>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <string>
 #include <miniz.h>
+#include <string>
 
 TEST(miniz, list) {
   bool state;

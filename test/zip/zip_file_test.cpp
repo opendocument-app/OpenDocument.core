@@ -8,7 +8,8 @@
 using namespace odr::zip;
 
 TEST(ReadonlyZipArchive, open_directory) {
-  EXPECT_ANY_THROW(ReadonlyZipArchive(std::make_shared<odr::common::DiscFile>("/")));
+  EXPECT_ANY_THROW(
+      ReadonlyZipArchive(std::make_shared<odr::common::DiscFile>("/")));
 }
 
 TEST(ReadonlyZipArchive, open_encrypted_docx) {
@@ -37,9 +38,8 @@ TEST(ZipArchive, create_and_save) {
 
   zip.insert_file(std::end(zip), "a",
                   std::make_shared<odr::common::MemoryFile>("abc"));
-  zip.insert_file(
-      std::end(zip), "hi",
-      std::make_shared<odr::common::MemoryFile>("hello world!"));
+  zip.insert_file(std::end(zip), "hi",
+                  std::make_shared<odr::common::MemoryFile>("hello world!"));
   zip.insert_directory(std::end(zip), "b");
 
   std::ofstream out("test.zip");

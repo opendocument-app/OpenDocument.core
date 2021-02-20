@@ -9,7 +9,7 @@ namespace odr::common {
 class DiscFile : public abstract::File {
 public:
   explicit DiscFile(const char *path);
-  explicit DiscFile(std::string path);
+  explicit DiscFile(const std::string &path);
   explicit DiscFile(common::Path path);
 
   [[nodiscard]] FileLocation location() const noexcept final;

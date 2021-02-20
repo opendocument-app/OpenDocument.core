@@ -144,7 +144,7 @@ ReadonlyZipArchive::ReadonlyZipArchive(std::shared_ptr<abstract::File> file)
     return size;
   };
   const bool state = mz_zip_reader_init(
-      &m_zip, file->size(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
+      &m_zip, m_file->size(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
   if (!state) {
     throw NoZipFile();
   }

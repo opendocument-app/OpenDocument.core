@@ -7,11 +7,15 @@
 
 namespace odr::common {
 
-DiscFile::DiscFile(const char *path) : m_path{path} {}
+DiscFile::DiscFile(const char *path) : DiscFile{common::Path(path)} {}
 
-DiscFile::DiscFile(std::string path) : m_path{std::move(path)} {}
+DiscFile::DiscFile(const std::string &path) : DiscFile{common::Path(path)} {}
 
-DiscFile::DiscFile(common::Path path) : m_path{std::move(path)} {}
+DiscFile::DiscFile(common::Path path) : m_path{std::move(path)} {
+  if (std::filesystem::is_regular_file(m_path)) {
+    throw FileNotFound();
+  }
+}
 
 FileLocation DiscFile::location() const noexcept { return FileLocation::DISC; }
 

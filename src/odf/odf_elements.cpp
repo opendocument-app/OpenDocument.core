@@ -627,15 +627,15 @@ public:
 } // namespace
 
 std::shared_ptr<abstract::Element>
-factorizeRoot(std::shared_ptr<const OpenDocument> document,
-              pugi::xml_node node) {
+factorize_root(std::shared_ptr<const OpenDocument> document,
+               pugi::xml_node node) {
   return std::make_shared<Root>(std::move(document), node);
 }
 
 std::shared_ptr<abstract::Element>
-factorizeElement(std::shared_ptr<const OpenDocument> document,
-                 std::shared_ptr<const abstract::Element> parent,
-                 pugi::xml_node node) {
+factorize_element(std::shared_ptr<const OpenDocument> document,
+                  std::shared_ptr<const abstract::Element> parent,
+                  pugi::xml_node node) {
   if (node.type() == pugi::node_pcdata) {
     return std::make_shared<TextElement>(std::move(document), std::move(parent),
                                          node);
@@ -719,7 +719,7 @@ factorize_first_child(std::shared_ptr<const OpenDocument> document,
                       std::shared_ptr<const abstract::Element> parent,
                       pugi::xml_node node) {
   for (auto &&c : node) {
-    auto element = factorizeElement(document, parent, c);
+    auto element = factorize_element(document, parent, c);
     if (element) {
       return element;
     }
@@ -732,7 +732,7 @@ factorize_previous_sibling(std::shared_ptr<const OpenDocument> document,
                            std::shared_ptr<const abstract::Element> parent,
                            pugi::xml_node node) {
   for (auto &&s = node.previous_sibling(); s; s = node.previous_sibling()) {
-    auto element = factorizeElement(document, parent, s);
+    auto element = factorize_element(document, parent, s);
     if (element) {
       return element;
     }
@@ -745,7 +745,7 @@ factorize_next_sibling(std::shared_ptr<const OpenDocument> document,
                        std::shared_ptr<const abstract::Element> parent,
                        pugi::xml_node node) {
   for (auto &&s = node.next_sibling(); s; s = s.next_sibling()) {
-    auto element = factorizeElement(document, parent, s);
+    auto element = factorize_element(document, parent, s);
     if (element) {
       return element;
     }

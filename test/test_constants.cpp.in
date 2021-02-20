@@ -3,10 +3,12 @@
 
 namespace odr::test {
 
-std::string TestMeta::dataDirectory() { return "${ODR_TEST_DATA_DIRECTORY}"; }
+std::string TestMeta::data_directory() {
+  return "${ODR_TEST_DATA_DIRECTORY}";
+}
 
-std::string TestMeta::dataInputDirectory() {
-  return common::Path(TestMeta::dataDirectory()).join("input").string();
+std::string TestMeta::data_input_directory() {
+  return common::Path(TestMeta::data_directory()).join("input").string();
 }
 
 } // namespace odr::test
