@@ -9,6 +9,7 @@
 #include <odr/file.h>
 #include <odr/html.h>
 #include <sstream>
+#include <svm/svm_file.h>
 #include <svm/svm_to_svg.h>
 #include <util/stream_util.h>
 
@@ -253,16 +254,21 @@ void translate_image(ImageElement element, std::ostream &out,
 
   if (element.internal()) {
     auto image_file = element.image_file();
-    auto image_stream = image_file.read();
+
+    // TODO use stream
     std::string image;
 
-    if (image_file.file_type() == FileType::STARVIEW_METAFILE) {
+    try {
+      // try svm
+      // TODO we need public api for svm here
+      svm::SvmFile svm_file(nullptr);
       std::ostringstream svg_out;
-      svm::Translator::svg(*image_stream, svg_out);
+      svm::Translator::svg(svm_file, svg_out);
       image = svg_out.str();
       out << "data:image/svg+xml;base64, ";
-    } else {
-      image = util::stream::read(*image_stream);
+    } catch (...) {
+      // else we guess that it is a usual image
+      image = util::stream::read(*image_file.read());
       // TODO hacky - `image/jpg` works for all common image types in chrome
       out << "data:image/jpg;base64, ";
     }
@@ -452,7 +458,7 @@ HtmlConfig Html::parseConfig(const std::string &path) {
   return result;
 }
 
-void Html::translate(Document document, const std::string &documentIdentifier,
+void Html::translate(Document document, const std::string &document_identifier,
                      const std::string &path, const HtmlConfig &config) {
   std::ofstream out(path);
   if (!out.is_open())

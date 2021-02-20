@@ -31,6 +31,8 @@ class Circle;
 } // namespace odr::abstract
 
 namespace odr {
+class File;
+
 class PageStyle;
 class TextStyle;
 class ParagraphStyle;
@@ -38,8 +40,6 @@ class TableStyle;
 class TableColumnStyle;
 class TableCellStyle;
 class DrawingStyle;
-
-class ImageFile;
 
 class Element;
 class SlideElement;
@@ -390,7 +390,7 @@ public:
 
   [[nodiscard]] bool internal() const;
   [[nodiscard]] std::string href() const;
-  [[nodiscard]] ImageFile image_file() const;
+  [[nodiscard]] File image_file() const;
 
 private:
   std::shared_ptr<const abstract::Image> m_impl;

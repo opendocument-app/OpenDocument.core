@@ -5,6 +5,10 @@
 #include <miniz.h>
 #include <vector>
 
+namespace odr::abstract {
+class File;
+}
+
 namespace odr::zip {
 
 enum class Method {
@@ -89,7 +93,7 @@ public:
 
   Iterator insert_file(Iterator at, common::Path path,
                        std::shared_ptr<abstract::File> file,
-                       std::uint32_t compression_level);
+                       std::uint32_t compression_level = 6);
   Iterator insert_directory(Iterator at, common::Path path);
 
   bool move(common::Path from, common::Path to);

@@ -69,47 +69,47 @@ private:
 SystemFilesystem::SystemFilesystem(common::Path root)
     : m_root{std::move(root)} {}
 
-common::Path SystemFilesystem::to_system_path(const common::Path &path) const {
+common::Path SystemFilesystem::to_system_path_(const common::Path &path) const {
   return m_root.join(path.rebase("/"));
 }
 
 bool SystemFilesystem::exists(common::Path path) const {
-  return std::filesystem::exists(to_system_path(path));
+  return std::filesystem::exists(to_system_path_(path));
 }
 
 bool SystemFilesystem::is_file(common::Path path) const {
-  return std::filesystem::is_regular_file(to_system_path(path));
+  return std::filesystem::is_regular_file(to_system_path_(path));
 }
 
 bool SystemFilesystem::is_directory(common::Path path) const {
-  return std::filesystem::is_directory(to_system_path(path));
+  return std::filesystem::is_directory(to_system_path_(path));
 }
 
 std::unique_ptr<abstract::FileWalker>
 SystemFilesystem::file_walker(common::Path path) const {
-  return std::make_unique<SystemFileWalker>(m_root, to_system_path(path));
+  return std::make_unique<SystemFileWalker>(m_root, to_system_path_(path));
 }
 
 std::shared_ptr<abstract::File>
 SystemFilesystem::open(common::Path path) const {
-  return std::make_unique<common::DiscFile>(to_system_path(path));
+  return std::make_unique<common::DiscFile>(to_system_path_(path));
 }
 
 std::unique_ptr<std::ostream> SystemFilesystem::create_file(common::Path path) {
-  return std::make_unique<std::ofstream>(to_system_path(path));
+  return std::make_unique<std::ofstream>(to_system_path_(path));
 }
 
 bool SystemFilesystem::create_directory(common::Path path) {
-  return std::filesystem::create_directory(to_system_path(path));
+  return std::filesystem::create_directory(to_system_path_(path));
 }
 
 bool SystemFilesystem::remove(common::Path path) {
-  return std::filesystem::remove(to_system_path(path));
+  return std::filesystem::remove(to_system_path_(path));
 }
 
 bool SystemFilesystem::copy(common::Path from, common::Path to) {
   std::error_code error_code;
-  std::filesystem::copy(to_system_path(from), to_system_path(to), error_code);
+  std::filesystem::copy(to_system_path_(from), to_system_path_(to), error_code);
   if (error_code) {
     return false;
   }
@@ -119,21 +119,21 @@ bool SystemFilesystem::copy(common::Path from, common::Path to) {
 std::shared_ptr<abstract::File> SystemFilesystem::copy(abstract::File &from,
                                                        common::Path to) {
   auto istream = from.read();
-  auto ostream = create_file(to_system_path(to));
+  auto ostream = create_file(to_system_path_(to));
 
   util::stream::pipe(*istream, *ostream);
 
-  return open(to_system_path(to));
+  return open(to_system_path_(to));
 }
 
 std::shared_ptr<abstract::File>
 SystemFilesystem::copy(std::shared_ptr<abstract::File> from, common::Path to) {
-  return copy(*from, to_system_path(to));
+  return copy(*from, to_system_path_(to));
 }
 
 bool SystemFilesystem::move(common::Path from, common::Path to) {
   std::error_code error_code;
-  std::filesystem::rename(to_system_path(from), to_system_path(to), error_code);
+  std::filesystem::rename(to_system_path_(from), to_system_path_(to), error_code);
   if (error_code) {
     return false;
   }

@@ -10,7 +10,7 @@ TEST(DocumentTest, odf_hello) {
   DocumentFile documentFile(
       "/home/andreas/workspace/OpenDocument.test/odt/about.odt");
 
-  std::cout << (int)documentFile.fileType() << std::endl;
+  std::cout << (int)documentFile.file_type() << std::endl;
 
   Document document = documentFile.document();
 
@@ -21,7 +21,7 @@ TEST(DocumentTest, odf_hello) {
   auto pageStyle = textDocument.page_style();
 
   std::cout << *pageStyle.width() << " " << *pageStyle.height() << std::endl;
-  std::cout << *pageStyle.marginTop() << std::endl;
+  std::cout << *pageStyle.margin_top() << std::endl;
 
   for (auto &&e : textDocument.content()) {
     std::cout << (int)e.type() << std::endl;

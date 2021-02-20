@@ -529,11 +529,12 @@ std::string ImageElement::href() const {
   return m_impl->href();
 }
 
-ImageFile ImageElement::image_file() const {
+File ImageElement::image_file() const {
   if (!m_impl) {
-    return ImageFile({}); // TODO
+    // TODO there is no "empty" file
+    return File(std::shared_ptr<abstract::File>());
   }
-  return m_impl->image_file();
+  return File(m_impl->image_file());
 }
 
 RectElement::RectElement() = default;

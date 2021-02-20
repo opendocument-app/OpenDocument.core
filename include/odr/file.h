@@ -95,13 +95,26 @@ struct FileMeta final {
 
 class File {
 public:
+  explicit File(std::shared_ptr<abstract::File>);
+  explicit File(const std::string &path);
+
+  [[nodiscard]] FileLocation location() const noexcept;
+  [[nodiscard]] std::size_t size() const;
+  [[nodiscard]] std::unique_ptr<std::istream> read() const;
+
+protected:
+  std::shared_ptr<abstract::File> m_impl;
+};
+
+class DecodedFile {
+public:
   static std::vector<FileType> types(const std::string &path);
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit File(std::shared_ptr<abstract::DecodedFile>);
-  explicit File(const std::string &path);
-  File(const std::string &path, FileType as);
+  explicit DecodedFile(std::shared_ptr<abstract::DecodedFile>);
+  explicit DecodedFile(const std::string &path);
+  DecodedFile(const std::string &path, FileType as);
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] FileCategory file_category() const noexcept;
@@ -114,7 +127,7 @@ protected:
   std::shared_ptr<abstract::DecodedFile> m_impl;
 };
 
-class ImageFile : public File {
+class ImageFile : public DecodedFile {
 public:
   explicit ImageFile(std::shared_ptr<abstract::ImageFile>);
 
@@ -122,7 +135,7 @@ private:
   std::shared_ptr<abstract::ImageFile> m_impl;
 };
 
-class DocumentFile : public File {
+class DocumentFile : public DecodedFile {
 public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);

@@ -9,12 +9,11 @@ add_executable(odr_test
         test_meta.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/test_constants.cpp
         document_test.cpp
-        file_no_except_test.cpp
+        #file_no_except_test.cpp
         file_test.cpp
         data_driven_tests.cpp
 
         cfb/cfb_archive_test.cpp
-        cfb/cfb_file_test.cpp
 
         common/cache_test.cpp
         common/path_test.cpp
@@ -25,9 +24,8 @@ add_executable(odr_test
         ooxml/ooxml_crypto_test.cpp
 
         zip/miniz_test.cpp
-        zip/zip_archive_test.cpp
         zip/zip_file_test.cpp
-        zip/zip_storage_test.cpp
+        #zip/zip_storage_test.cpp
         )
 target_include_directories(odr_test
         PRIVATE

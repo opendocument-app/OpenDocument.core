@@ -4,7 +4,7 @@
 #include <string>
 
 namespace {
-nlohmann::json metaToJson(const odr::FileMeta &meta) {
+nlohmann::json meta_to_json(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.typeAsString()},
       {"encrypted", meta.passwordEncrypted},
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  const auto json = metaToJson(documentFile.fileMeta());
+  const auto json = meta_to_json(documentFile.fileMeta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;

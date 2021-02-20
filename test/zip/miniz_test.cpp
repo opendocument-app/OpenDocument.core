@@ -3,9 +3,7 @@
 #include <fstream>
 #include <gtest/gtest.h>
 #include <string>
-#include <zip/zip_file.h>
-
-using namespace odr::zip;
+#include <miniz.h>
 
 TEST(miniz, list) {
   bool state;

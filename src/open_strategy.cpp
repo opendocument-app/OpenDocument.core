@@ -1,6 +1,7 @@
 #include <cfb/cfb_archive.h>
 #include <common/file.h>
 #include <common/path.h>
+#include <common/filesystem.h>
 #include <odf/odf_document_file.h>
 #include <odr/exceptions.h>
 #include <oldms/oldms_document_file.h>
@@ -15,35 +16,42 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
   std::vector<FileType> result;
 
   try {
-    auto zip = std::make_shared<zip::ZipArchive>(file);
+    auto zip = std::make_shared<zip::ReadonlyZipArchive>(file);
     result.push_back(FileType::ZIP);
 
+    // TODO
+    auto filesystem = std::make_shared<common::VirtualFilesystem>();
+
     try {
-      result.push_back(odf::OpenDocumentFile(zip).file_type());
+      result.push_back(odf::OpenDocumentFile(filesystem).file_type());
     } catch (...) {
     }
 
     try {
-      result.push_back(ooxml::OfficeOpenXmlFile(zip).file_type());
+      result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
     } catch (...) {
     }
   } catch (...) {
   }
 
   try {
-    FileMeta meta;
-    auto cfb_file = std::make_shared<cfb::ReadonlyCfbArchive>(file);
+    auto memory_file = std::make_shared<common::MemoryFile>(*file);
+
+    auto cfb = std::make_shared<cfb::ReadonlyCfbArchive>(memory_file);
     result.push_back(FileType::COMPOUND_FILE_BINARY_FORMAT);
+
+    // TODO
+    auto filesystem = std::make_shared<common::VirtualFilesystem>();
 
     // legacy microsoft
     try {
-      result.push_back(oldms::LegacyMicrosoftFile(cfb_file).file_type());
+      result.push_back(oldms::LegacyMicrosoftFile(filesystem).file_type());
     } catch (...) {
     }
 
     // encrypted ooxml
     try {
-      result.push_back(ooxml::OfficeOpenXmlFile(cfb_file).file_type());
+      result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
     } catch (...) {
     }
   } catch (...) {
@@ -57,15 +65,18 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
   // TODO throw if not a file
 
   try {
-    auto zip = std::make_shared<zip::ZipFile>(file);
+    auto zip = std::make_shared<zip::ReadonlyZipArchive>(file);
+
+    // TODO
+    auto filesystem = std::make_shared<common::VirtualFilesystem>();
 
     try {
-      return std::make_unique<odf::OpenDocumentFile>(zip);
+      return std::make_unique<odf::OpenDocumentFile>(filesystem);
     } catch (...) {
     }
 
     try {
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(zip);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
     }
 
@@ -74,17 +85,22 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
   }
 
   try {
-    auto cfb = std::make_shared<cfb::CfbFile>(file);
+    auto memory_file = std::make_shared<common::MemoryFile>(*file);
+
+    auto cfb = std::make_shared<cfb::ReadonlyCfbArchive>(memory_file);
+
+    // TODO
+    auto filesystem = std::make_shared<common::VirtualFilesystem>();
 
     // legacy microsoft
     try {
-      return std::make_unique<oldms::LegacyMicrosoftFile>(cfb);
+      return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
     } catch (...) {
     }
 
     // encrypted ooxml
     try {
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(cfb);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
     }
 
@@ -105,32 +121,40 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
 std::unique_ptr<abstract::DocumentFile>
 open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
   try {
-    auto zip = std::make_shared<zip::ZipFile>(file);
+    auto zip = std::make_shared<zip::ReadonlyZipArchive>(file);
+
+    // TODO
+    auto filesystem = std::make_shared<common::VirtualFilesystem>();
 
     try {
-      return std::make_unique<odf::OpenDocumentFile>(zip);
+      return std::make_unique<odf::OpenDocumentFile>(filesystem);
     } catch (...) {
     }
 
     try {
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(zip);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
     }
   } catch (...) {
   }
 
   try {
-    auto cfb = std::make_shared<cfb::CfbFile>(file);
+    auto memory_file = std::make_shared<common::MemoryFile>(*file);
+
+    auto cfb = std::make_shared<cfb::ReadonlyCfbArchive>(memory_file);
+
+    // TODO
+    auto filesystem = std::make_shared<common::VirtualFilesystem>();
 
     // legacy microsoft
     try {
-      return std::make_unique<oldms::LegacyMicrosoftFile>(cfb);
+      return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
     } catch (...) {
     }
 
     // encrypted ooxml
     try {
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(cfb);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
     }
   } catch (...) {

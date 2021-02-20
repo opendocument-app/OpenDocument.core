@@ -18,34 +18,6 @@ std::shared_ptr<E> factorize_known_element(pugi::xml_node node, Args... args) {
   return std::make_shared<E>(std::forward<Args>(args)..., node);
 }
 
-// TODO duplication in ODF
-class ImageFile final : public abstract::ImageFile {
-public:
-  ImageFile(std::shared_ptr<abstract::ReadableFilesystem> files,
-            common::Path path, const FileType file_type)
-      : m_files{std::move(files)}, m_path{std::move(path)}, m_file_type{
-                                                                file_type} {}
-
-  [[nodiscard]] FileType file_type() const noexcept final {
-    return m_file_type;
-  }
-
-  [[nodiscard]] FileMeta file_meta() const noexcept final {
-    FileMeta result;
-    result.type = file_type();
-    return result;
-  }
-
-  [[nodiscard]] std::shared_ptr<abstract::Image> image() const final {
-    return {}; // TODO
-  }
-
-private:
-  std::shared_ptr<abstract::ReadableFilesystem> m_files;
-  common::Path m_path;
-  FileType m_file_type;
-};
-
 class Element : public virtual abstract::Element,
                 public std::enable_shared_from_this<Element> {
 public:
@@ -426,22 +398,16 @@ public:
     return hrefAttr.value();
   }
 
-  odr::ImageFile image_file() const final {
+  std::shared_ptr<abstract::File> image_file() const final {
     if (!internal()) {
-      throw 1; // TODO
+      // TODO support external files
+      throw std::runtime_error("not internal image");
     }
 
     const std::string href = this->href();
     const common::Path path{href};
-    FileType fileType{FileType::UNKNOWN};
 
-    if ((href.find("ObjectReplacements", 0) != std::string::npos) ||
-        (href.find(".svm", 0) != std::string::npos)) {
-      fileType = FileType::STARVIEW_METAFILE;
-    }
-
-    return odr::ImageFile(
-        std::make_shared<ImageFile>(m_document->filesystem(), path, fileType));
+    return m_document->filesystem()->open(path);
   }
 };
 } // namespace

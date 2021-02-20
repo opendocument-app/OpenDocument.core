@@ -41,30 +41,42 @@ std::string typeToString(const FileType type) {
 } // namespace
 
 FileType FileMeta::type_by_extension(const std::string &extension) noexcept {
-  if (extension == "zip")
+  if (extension == "zip") {
     return FileType::ZIP;
-  if (extension == "cfb")
+  }
+  if (extension == "cfb") {
     return FileType::COMPOUND_FILE_BINARY_FORMAT;
-  if (extension == "odt" || extension == "sxw")
+  }
+  if (extension == "odt" || extension == "sxw") {
     return FileType::OPENDOCUMENT_TEXT;
-  if (extension == "odp" || extension == "sxi")
+  }
+  if (extension == "odp" || extension == "sxi") {
     return FileType::OPENDOCUMENT_PRESENTATION;
-  if (extension == "ods" || extension == "sxc")
+  }
+  if (extension == "ods" || extension == "sxc") {
     return FileType::OPENDOCUMENT_SPREADSHEET;
-  if (extension == "odg" || extension == "sxd")
+  }
+  if (extension == "odg" || extension == "sxd") {
     return FileType::OPENDOCUMENT_GRAPHICS;
-  if (extension == "docx")
+  }
+  if (extension == "docx") {
     return FileType::OFFICE_OPEN_XML_DOCUMENT;
-  if (extension == "pptx")
+  }
+  if (extension == "pptx") {
     return FileType::OFFICE_OPEN_XML_PRESENTATION;
-  if (extension == "xlsx")
+  }
+  if (extension == "xlsx") {
     return FileType::OFFICE_OPEN_XML_WORKBOOK;
-  if (extension == "doc")
+  }
+  if (extension == "doc") {
     return FileType::LEGACY_WORD_DOCUMENT;
-  if (extension == "ppt")
+  }
+  if (extension == "ppt") {
     return FileType::LEGACY_POWERPOINT_PRESENTATION;
-  if (extension == "xls")
+  }
+  if (extension == "xls") {
     return FileType::LEGACY_EXCEL_WORKSHEETS;
+  }
 
   return FileType::UNKNOWN;
 }
@@ -94,52 +106,79 @@ std::string FileMeta::type_as_string() const noexcept {
   return typeToString(type);
 }
 
-std::vector<FileType> File::types(const std::string &path) {
+File::File(std::shared_ptr<abstract::File> impl)
+    : m_impl{std::move(impl)} {}
+
+File::File(const std::string &path)
+    : m_impl{std::make_shared<common::DiscFile>(path)} {}
+
+FileLocation File::location() const noexcept {
+  return m_impl->location();
+}
+
+std::size_t File::size() const {
+  return m_impl->size();
+}
+
+std::unique_ptr<std::istream> File::read() const {
+  return m_impl->read();
+}
+
+std::vector<FileType> DecodedFile::types(const std::string &path) {
   return open_strategy::types(std::make_shared<common::DiscFile>(path));
 }
 
-FileType File::type(const std::string &path) { return File(path).file_type(); }
+FileType DecodedFile::type(const std::string &path) {
+  return DecodedFile(path).file_type();
+}
 
-FileMeta File::meta(const std::string &path) { return File(path).file_meta(); }
+FileMeta DecodedFile::meta(const std::string &path) {
+  return DecodedFile(path).file_meta();
+}
 
-File::File(std::shared_ptr<abstract::DecodedFile> impl)
+DecodedFile::DecodedFile(std::shared_ptr<abstract::DecodedFile> impl)
     : m_impl{std::move(impl)} {
-  if (!m_impl)
+  if (!m_impl) {
     throw FileNotFound();
+  }
 }
 
-File::File(const std::string &path)
-    : File(open_strategy::open_file(std::make_shared<common::DiscFile>(path))) {
+DecodedFile::DecodedFile(const std::string &path)
+    : DecodedFile(
+          open_strategy::open_file(std::make_shared<common::DiscFile>(path))) {}
+
+DecodedFile::DecodedFile(const std::string &path, FileType as)
+    : DecodedFile(open_strategy::open_file(
+          std::make_shared<common::DiscFile>(path), as)) {}
+
+FileType DecodedFile::file_type() const noexcept {
+  return m_impl->file_meta().type;
 }
 
-File::File(const std::string &path, FileType as)
-    : File(open_strategy::open_file(std::make_shared<common::DiscFile>(path),
-                                    as)) {}
-
-FileType File::file_type() const noexcept { return m_impl->file_meta().type; }
-
-FileCategory File::file_category() const noexcept {
+FileCategory DecodedFile::file_category() const noexcept {
   return FileMeta::category_by_type(file_type());
 }
 
-FileMeta File::file_meta() const noexcept { return m_impl->file_meta(); }
+FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
 
-ImageFile File::image_file() const {
+ImageFile DecodedFile::image_file() const {
   auto imageFile = std::dynamic_pointer_cast<abstract::ImageFile>(m_impl);
-  if (!imageFile)
+  if (!imageFile) {
     throw NoImageFile();
+  }
   return ImageFile(imageFile);
 }
 
-DocumentFile File::document_file() const {
+DocumentFile DecodedFile::document_file() const {
   auto documentFile = std::dynamic_pointer_cast<abstract::DocumentFile>(m_impl);
-  if (!documentFile)
+  if (!documentFile) {
     throw NoDocumentFile();
+  }
   return DocumentFile(documentFile);
 }
 
 ImageFile::ImageFile(std::shared_ptr<abstract::ImageFile> impl)
-    : File(impl), m_impl{std::move(impl)} {}
+    : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 FileType DocumentFile::type(const std::string &path) {
   return DocumentFile(path).file_type();
@@ -150,7 +189,7 @@ FileMeta DocumentFile::meta(const std::string &path) {
 }
 
 DocumentFile::DocumentFile(std::shared_ptr<abstract::DocumentFile> impl)
-    : File(impl), m_impl{std::move(impl)} {}
+    : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 DocumentFile::DocumentFile(const std::string &path)
     : DocumentFile(open_strategy::open_document_file(

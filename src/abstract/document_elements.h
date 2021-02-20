@@ -5,11 +5,12 @@
 #include <optional>
 
 namespace odr {
-class ImageFile;
 enum class ElementType;
 } // namespace odr
 
 namespace odr::abstract {
+class File;
+
 class Property;
 class PageStyle;
 class TextStyle;
@@ -169,7 +170,7 @@ public:
 
   [[nodiscard]] virtual bool internal() const = 0;
   [[nodiscard]] virtual std::string href() const = 0;
-  [[nodiscard]] virtual odr::ImageFile image_file() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<File> image_file() const = 0;
 };
 
 class Rect : public virtual Element {

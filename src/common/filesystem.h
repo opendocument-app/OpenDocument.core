@@ -37,7 +37,7 @@ public:
 private:
   common::Path m_root;
 
-  [[nodiscard]] common::Path to_system_path(const common::Path &path) const;
+  [[nodiscard]] common::Path to_system_path_(const common::Path &path) const;
 };
 
 class VirtualFilesystem final : public abstract::Filesystem {

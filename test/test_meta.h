@@ -11,11 +11,11 @@ namespace odr::test {
 struct TestFile {
   std::string path;
   FileType type{FileType::UNKNOWN};
-  bool passwordEncrypted{false};
+  bool password_encrypted{false};
   std::string password;
 
   TestFile() = default;
-  TestFile(std::string path, FileType type, bool passwordEncrypted,
+  TestFile(std::string path, FileType type, bool password_encrypted,
            std::string password);
 };
 
@@ -23,11 +23,11 @@ class TestMeta {
 public:
   static TestMeta &instance();
 
-  static std::string dataDirectory();
-  static std::string dataInputDirectory();
+  static std::string data_directory();
+  static std::string data_input_directory();
 
-  std::vector<std::string> testFilePaths() const;
-  TestFile testFile(const std::string &) const;
+  std::vector<std::string> test_file_paths() const;
+  TestFile test_file(const std::string &path) const;
 
   TestMeta(const TestMeta &) = delete;
   TestMeta &operator=(const TestMeta &) = delete;
