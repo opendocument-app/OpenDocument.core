@@ -3,6 +3,7 @@
 #include <common/path.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
+#include <utility>
 #include <zip/miniz_util.h>
 #include <zip/zip_archive.h>
 
@@ -231,13 +232,15 @@ ZipArchive::Iterator
 ZipArchive::insert_file(Iterator at, common::Path path,
                         std::shared_ptr<abstract::File> file,
                         std::uint32_t compression_level) {
-  m_entries.insert(at, ZipArchive::Entry(std::move(path), std::move(file),
-                                         compression_level));
+  return m_entries.insert(
+      std::move(at),
+      ZipArchive::Entry(std::move(path), std::move(file), compression_level));
 }
 
 ZipArchive::Iterator ZipArchive::insert_directory(Iterator at,
                                                   common::Path path) {
-  m_entries.insert(at, ZipArchive::Entry(std::move(path), {}, 0));
+  return m_entries.insert(std::move(at),
+                          ZipArchive::Entry(std::move(path), {}, 0));
 }
 
 void ZipArchive::save(std::ostream &out) const {
