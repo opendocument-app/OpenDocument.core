@@ -24,8 +24,7 @@ add_executable(odr_test
         ooxml/ooxml_crypto_test.cpp
 
         zip/miniz_test.cpp
-        zip/zip_file_test.cpp
-        #zip/zip_storage_test.cpp
+        zip/zip_archive_test.cpp
         )
 target_include_directories(odr_test
         PRIVATE
