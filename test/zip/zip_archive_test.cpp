@@ -6,26 +6,26 @@
 #include <zip/zip_archive.h>
 
 using namespace odr::zip;
+using namespace odr::common;
 
 TEST(ReadonlyZipArchive, open_directory) {
-  EXPECT_ANY_THROW(
-      ReadonlyZipArchive(std::make_shared<odr::common::DiscFile>("/")));
+  EXPECT_ANY_THROW(ReadonlyZipArchive(std::make_shared<DiscFile>("/")));
 }
 
 TEST(ReadonlyZipArchive, open_encrypted_docx) {
   EXPECT_THROW(
-      ReadonlyZipArchive(std::make_shared<odr::common::DiscFile>(
+      ReadonlyZipArchive(std::make_shared<DiscFile>(
           "/home/andreas/workspace/OpenDocument.test/docx/encrypted.docx")),
       odr::NoZipFile);
 }
 
 TEST(ReadonlyZipArchive, open_odt) {
-  ReadonlyZipArchive(std::make_shared<odr::common::DiscFile>(
+  ReadonlyZipArchive(std::make_shared<DiscFile>(
       "/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt"));
 }
 
 TEST(ReadonlyZipArchive, open) {
-  ReadonlyZipArchive zip(std::make_shared<odr::common::DiscFile>(
+  ReadonlyZipArchive zip(std::make_shared<DiscFile>(
       "/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt"));
 
   for (auto &&e : zip) {
@@ -36,10 +36,9 @@ TEST(ReadonlyZipArchive, open) {
 TEST(ZipArchive, create_and_save) {
   ZipArchive zip;
 
-  zip.insert_file(std::end(zip), "a",
-                  std::make_shared<odr::common::MemoryFile>("abc"));
+  zip.insert_file(std::end(zip), "a", std::make_shared<MemoryFile>("abc"));
   zip.insert_file(std::end(zip), "hi",
-                  std::make_shared<odr::common::MemoryFile>("hello world!"));
+                  std::make_shared<MemoryFile>("hello world!"));
   zip.insert_directory(std::end(zip), "b");
 
   std::ofstream out("test.zip");
@@ -52,71 +51,65 @@ TEST(ZipArchive, create) {
   {
     ZipArchive zip;
 
-    {
-      const auto sink = zip.write("one.txt");
-      sink->write("this is written at once", 23);
-    }
+    zip.insert_file(std::end(zip), "one.txt",
+                    std::make_shared<MemoryFile>("this is written at once"));
+    zip.insert_file(
+        std::end(zip), "two.txt",
+        std::make_shared<MemoryFile>("this is written at two stages"));
 
-    {
-      const auto sink = zip.write("two.txt");
-      sink->write("this is written ", 15);
-      sink->write("at two stages", 13);
-    }
+    zip.insert_directory(std::end(zip), "empty");
+    zip.insert_directory(std::end(zip), "notempty");
 
-    zip.createDirectory("empty");
-    zip.createDirectory("notempty");
+    zip.insert_file(std::end(zip), "notempty/three.txt",
+                    std::make_shared<MemoryFile>("asdf"));
+    zip.insert_file(std::end(zip), "./notempty/four.txt",
+                    std::make_shared<MemoryFile>("1234"));
 
-    {
-      const auto sink = zip.write("notempty/three.txt");
-      sink->write("asdf", 4);
-    }
-
-    {
-      const auto sink = zip.write("./notempty/four.txt");
-      sink->write("1234", 4);
-    }
-
-    zip.save(path);
+    std::ofstream out(path);
+    zip.save(out);
   }
 
   {
-    ReadonlyZipArchive zip(path);
+    ReadonlyZipArchive zip(std::make_shared<DiscFile>(path));
 
-    EXPECT_TRUE(reader.isFile("one.txt"));
-    EXPECT_TRUE(reader.isFile("two.txt"));
-    EXPECT_TRUE(reader.isDirectory("empty"));
-    EXPECT_TRUE(reader.isDirectory("notempty"));
-    EXPECT_TRUE(reader.isFile("notempty/three.txt"));
-    EXPECT_TRUE(reader.isFile("notempty/four.txt"));
-    EXPECT_TRUE(reader.isFile("./notempty/four.txt"));
+    EXPECT_TRUE(zip.find("one.txt")->is_file());
+    EXPECT_TRUE(zip.find("two.txt")->is_file());
+    EXPECT_TRUE(zip.find("empty")->is_directory());
+    EXPECT_TRUE(zip.find("notempty")->is_directory());
+    EXPECT_TRUE(zip.find("notempty/three.txt")->is_file());
+    EXPECT_TRUE(zip.find("notempty/four.txt")->is_file());
+    EXPECT_TRUE(zip.find("./notempty/four.txt")->is_file());
 
-    EXPECT_EQ(23, reader.size("one.txt"));
-    EXPECT_EQ(28, reader.size("two.txt"));
-    EXPECT_EQ(4, reader.size("notempty/three.txt"));
-    EXPECT_EQ(4, reader.size("notempty/four.txt"));
-    EXPECT_EQ(4, reader.size("./notempty/four.txt"));
+    EXPECT_EQ(23, zip.find("one.txt")->file()->size());
+    EXPECT_EQ(29, zip.find("two.txt")->file()->size());
+    EXPECT_EQ(4, zip.find("notempty/three.txt")->file()->size());
+    EXPECT_EQ(4, zip.find("notempty/four.txt")->file()->size());
+    EXPECT_EQ(4, zip.find("./notempty/four.txt")->file()->size());
   }
 }
 
 TEST(ZipArchive, create_order) {
-  const std::string file = "created.zip";
+  const std::string path = "created.zip";
   const std::vector<std::string> entries{"z", "one", "two", "three", "a", "0"};
 
   {
-    ZipArchive writer(file);
+    ZipArchive zip;
 
     for (auto &&e : entries) {
-      writer.write(e);
+      zip.insert_file(std::end(zip), e, std::make_shared<MemoryFile>(""));
     }
+
+    std::ofstream out(path);
+    zip.save(out);
   }
 
   {
-    ReadonlyZipArchive reader(file);
+    ReadonlyZipArchive zip(std::make_shared<DiscFile>(path));
 
     auto it = entries.begin();
-    reader.visit([&](const auto &path) {
-      EXPECT_EQ(*it, path.string());
+    for (auto &&e : zip) {
+      EXPECT_EQ(*it, e.path().string());
       ++it;
-    });
+    }
   }
 }
