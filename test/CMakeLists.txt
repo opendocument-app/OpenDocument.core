@@ -9,7 +9,7 @@ add_executable(odr_test
         test_meta.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/test_constants.cpp
         document_test.cpp
-        #file_no_except_test.cpp
+        file_no_except_test.cpp
         file_test.cpp
         data_driven_tests.cpp
 

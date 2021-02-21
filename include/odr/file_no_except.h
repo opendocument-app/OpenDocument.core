@@ -9,9 +9,13 @@ namespace odr {
 
 class FileNoExcept {
 public:
+  static std::optional<FileNoExcept> open(const std::string &path) noexcept;
+
   explicit FileNoExcept(File);
 
-  virtual FileLocation file_location() const noexcept;
+  [[nodiscard]] FileLocation location() const noexcept;
+  [[nodiscard]] std::size_t size() const;
+  [[nodiscard]] std::unique_ptr<std::istream> read() const;
 
 protected:
   File m_file;

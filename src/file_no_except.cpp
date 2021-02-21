@@ -3,6 +3,28 @@
 
 namespace odr {
 
+std::optional<FileNoExcept>
+FileNoExcept::open(const std::string &path) noexcept {
+  try {
+    return FileNoExcept(File(path));
+  } catch (...) {
+    LOG(ERROR) << "open failed";
+    return {};
+  }
+}
+
+FileNoExcept::FileNoExcept(File file) : m_file{std::move(file)} {}
+
+FileLocation FileNoExcept::location() const noexcept {
+  return m_file.location();
+}
+
+std::size_t FileNoExcept::size() const { return m_file.size(); }
+
+std::unique_ptr<std::istream> FileNoExcept::read() const {
+  return m_file.read();
+}
+
 std::optional<DecodedFileNoExcept>
 DecodedFileNoExcept::open(const std::string &path) noexcept {
   try {
