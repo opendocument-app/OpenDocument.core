@@ -9,16 +9,16 @@ struct HtmlConfig;
 namespace common::Html {
 const char *doctype() noexcept;
 
-const char *defaultHeaders() noexcept;
+const char *default_headers() noexcept;
 
-const char *defaultStyle() noexcept;
-const char *defaultSpreadsheetStyle() noexcept;
+const char *default_style() noexcept;
+const char *default_spreadsheet_style() noexcept;
 
-const char *defaultScript() noexcept;
+const char *default_script() noexcept;
 
-std::string bodyAttributes(const HtmlConfig &) noexcept;
+std::string body_attributes(const HtmlConfig &config) noexcept;
 
-std::string escapeText(std::string text) noexcept;
+std::string escape_text(std::string text) noexcept;
 } // namespace common::Html
 } // namespace odr
 

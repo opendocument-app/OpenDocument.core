@@ -7,7 +7,7 @@ TEST(TableRange, default) {
   EXPECT_EQ(0, tr.from().col());
   EXPECT_EQ(0, tr.to().row());
   EXPECT_EQ(0, tr.to().col());
-  EXPECT_EQ("A1:C55", tr.to_string());
+  EXPECT_EQ("A1:A1", tr.to_string());
 }
 
 TEST(TableRange, string1) {

@@ -64,8 +64,8 @@ TEST_P(DataDrivenTest, all) {
 
   odr::HtmlConfig config;
   config.editable = true;
-  config.tableLimitRows = 4000;
-  config.tableLimitCols = 500;
+  config.table_limit_rows = 4000;
+  config.table_limit_cols = 500;
 
   // const odr::File file{test_file.path};
   const odr::DecodedFile file{test_file.path};
@@ -111,8 +111,8 @@ TEST_P(DataDrivenTest, all) {
       EXPECT_LT(0, fs::file_size(html_output));
     } else if (document.document_type() == DocumentType::PRESENTATION) {
       for (std::uint32_t i = 0; i < document_meta.entry_count; ++i) {
-        config.entryOffset = i;
-        config.entryCount = 1;
+        config.entry_offset = i;
+        config.entry_count = 1;
         const std::string html_output =
             output_path + "/slide" + std::to_string(i) + ".html";
         Html::translate(document, "", html_output, config);
@@ -121,8 +121,8 @@ TEST_P(DataDrivenTest, all) {
       }
     } else if (document.document_type() == DocumentType::SPREADSHEET) {
       for (std::uint32_t i = 0; i < document_meta.entry_count; ++i) {
-        config.entryOffset = i;
-        config.entryCount = 1;
+        config.entry_offset = i;
+        config.entry_count = 1;
         const std::string html_output =
             output_path + "/sheet" + std::to_string(i) + ".html";
         // TODO
@@ -132,8 +132,8 @@ TEST_P(DataDrivenTest, all) {
       }
     } else if (document.document_type() == DocumentType::DRAWING) {
       for (std::uint32_t i = 0; i < document_meta.entry_count; ++i) {
-        config.entryOffset = i;
-        config.entryCount = 1;
+        config.entry_offset = i;
+        config.entry_count = 1;
         const std::string html_output =
             output_path + "/page" + std::to_string(i) + ".html";
         Html::translate(document, "", html_output, config);

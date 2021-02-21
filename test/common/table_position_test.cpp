@@ -12,7 +12,7 @@ TEST(TablePosition, direct) {
   odr::common::TablePosition tp(1, 2);
   EXPECT_EQ(1, tp.row());
   EXPECT_EQ(2, tp.col());
-  EXPECT_EQ("A2", tp.to_string());
+  EXPECT_EQ("C2", tp.to_string());
 }
 
 TEST(TablePosition, string1) {

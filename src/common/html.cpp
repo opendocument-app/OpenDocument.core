@@ -11,7 +11,7 @@ const char *Html::doctype() noexcept {
   // clang-format on
 }
 
-const char *Html::defaultHeaders() noexcept {
+const char *Html::default_headers() noexcept {
   // clang-format off
   return R"V0G0N(
 <meta charset="UTF-8"/>
@@ -22,7 +22,7 @@ const char *Html::defaultHeaders() noexcept {
   // clang-format on
 }
 
-const char *Html::defaultStyle() noexcept {
+const char *Html::default_style() noexcept {
   // clang-format off
   return R"V0G0N(
 * {
@@ -54,7 +54,7 @@ mark.current { background: orange; }
   // clang-format on
 }
 
-const char *Html::defaultSpreadsheetStyle() noexcept {
+const char *Html::default_spreadsheet_style() noexcept {
   // clang-format off
   return R"V0G0N(
 table {
@@ -85,7 +85,7 @@ table td.odr-value-type-float {
   // clang-format on
 }
 
-const char *Html::defaultScript() noexcept {
+const char *Html::default_script() noexcept {
   // clang-format off
   return R"V0G0N(
   // babel from `resources/edit.js`
@@ -99,11 +99,11 @@ const char *Html::defaultScript() noexcept {
   // clang-format on
 }
 
-std::string Html::bodyAttributes(const HtmlConfig &config) noexcept {
+std::string Html::body_attributes(const HtmlConfig &config) noexcept {
   std::string result;
 
   result += "class=\"";
-  switch (config.tableGridlines) {
+  switch (config.table_gridlines) {
   case HtmlTableGridlines::SOFT:
     result += "odr-gridlines-soft";
     break;
@@ -120,7 +120,7 @@ std::string Html::bodyAttributes(const HtmlConfig &config) noexcept {
   return result;
 }
 
-std::string Html::escapeText(std::string text) noexcept {
+std::string Html::escape_text(std::string text) noexcept {
   util::string::replace_all(text, "&", "&amp;");
   util::string::replace_all(text, "<", "&lt;");
   util::string::replace_all(text, ">", "&gt;");

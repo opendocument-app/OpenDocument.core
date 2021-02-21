@@ -6,6 +6,7 @@
 #include <odr/document.h>
 #include <odr/document_elements.h>
 #include <odr/document_style.h>
+#include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
 #include <sstream>
@@ -282,8 +283,8 @@ void translate_image(ImageElement element, std::ostream &out,
   out << "\">";
 }
 
-void translateFrame(FrameElement element, std::ostream &out,
-                    const HtmlConfig &config) {
+void translate_frame(FrameElement element, std::ostream &out,
+                     const HtmlConfig &config) {
   out << "<div";
   out << optional_style_attribute(translate_frame_properties(element));
   out << ">";
@@ -297,8 +298,8 @@ void translateFrame(FrameElement element, std::ostream &out,
   out << "</div>";
 }
 
-void translateRect(RectElement element, std::ostream &out,
-                   const HtmlConfig &config) {
+void translate_rect(RectElement element, std::ostream &out,
+                    const HtmlConfig &config) {
   out << "<div";
   out << optional_style_attribute(
       translate_rect_properties(element) +
@@ -309,8 +310,8 @@ void translateRect(RectElement element, std::ostream &out,
   out << "</div>";
 }
 
-void translateLine(LineElement element, std::ostream &out,
-                   const HtmlConfig &config) {
+void translate_line(LineElement element, std::ostream &out,
+                    const HtmlConfig &config) {
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
   out << optional_style_attribute(
       "z-index:-1;position:absolute;top:0;left:0;" +
@@ -325,8 +326,8 @@ void translateLine(LineElement element, std::ostream &out,
   out << "</svg>";
 }
 
-void translateCircle(CircleElement element, std::ostream &out,
-                     const HtmlConfig &config) {
+void translate_circle(CircleElement element, std::ostream &out,
+                      const HtmlConfig &config) {
   out << "<div";
   out << optional_style_attribute(
       translate_circle_properties(element) +
@@ -348,7 +349,7 @@ void translate_element(Element element, std::ostream &out,
                        const HtmlConfig &config) {
   if (element.type() == ElementType::TEXT) {
     // TODO handle whitespace collapse
-    out << common::Html::escapeText(element.text().string());
+    out << common::Html::escape_text(element.text().string());
   } else if (element.type() == ElementType::LINE_BREAK) {
     out << "<br>";
   } else if (element.type() == ElementType::PARAGRAPH) {
@@ -364,32 +365,32 @@ void translate_element(Element element, std::ostream &out,
   } else if (element.type() == ElementType::TABLE) {
     translate_table(element.table(), out, config);
   } else if (element.type() == ElementType::FRAME) {
-    translateFrame(element.frame(), out, config);
+    translate_frame(element.frame(), out, config);
   } else if (element.type() == ElementType::RECT) {
-    translateRect(element.rect(), out, config);
+    translate_rect(element.rect(), out, config);
   } else if (element.type() == ElementType::LINE) {
-    translateLine(element.line(), out, config);
+    translate_line(element.line(), out, config);
   } else if (element.type() == ElementType::CIRCLE) {
-    translateCircle(element.circle(), out, config);
+    translate_circle(element.circle(), out, config);
   } else {
     // TODO log
   }
 }
 
-void translateTextDocument(TextDocument document, std::ostream &out,
-                           const HtmlConfig &config) {
+void translate_text_document(TextDocument document, std::ostream &out,
+                             const HtmlConfig &config) {
   const auto page_style = document.page_style();
 
   if (page_style) {
-    const std::string outerStyle = "width:" + *page_style.width() + ";";
-    const std::string innerStyle =
+    const std::string outer_style = "width:" + *page_style.width() + ";";
+    const std::string inner_style =
         "margin-top:" + *page_style.margin_top() + ";" +
         "margin-left:" + *page_style.margin_left() + ";" +
         "margin-bottom:" + *page_style.margin_bottom() + ";" +
         "margin-right:" + *page_style.margin_right() + ";";
 
-    out << R"(<div style=")" + outerStyle + "\">";
-    out << R"(<div style=")" + innerStyle + "\">";
+    out << R"(<div style=")" + outer_style + "\">";
+    out << R"(<div style=")" + inner_style + "\">";
     translate_generation(document.root().children(), out, config);
     out << "</div>";
     out << "</div>";
@@ -398,50 +399,50 @@ void translateTextDocument(TextDocument document, std::ostream &out,
   }
 }
 
-void translatePresentation(Presentation document, std::ostream &out,
-                           const HtmlConfig &config) {
+void translate_presentation(Presentation document, std::ostream &out,
+                            const HtmlConfig &config) {
   for (auto &&slide : document.slides()) {
     const auto page_style = slide.page_style();
 
-    const std::string outerStyle = "width:" + *page_style.width() + ";" +
-                                   "height:" + *page_style.height() + ";";
-    const std::string innerStyle =
+    const std::string outer_style = "width:" + *page_style.width() + ";" +
+                                    "height:" + *page_style.height() + ";";
+    const std::string inner_style =
         "margin-top:" + *page_style.margin_top() + ";" +
         "margin-left:" + *page_style.margin_left() + ";" +
         "margin-bottom:" + *page_style.margin_bottom() + ";" +
         "margin-right:" + *page_style.margin_right() + ";";
 
-    out << R"(<div style=")" + outerStyle + "\">";
-    out << R"(<div style=")" + innerStyle + "\">";
+    out << R"(<div style=")" + outer_style + "\">";
+    out << R"(<div style=")" + inner_style + "\">";
     translate_generation(slide.children(), out, config);
     out << "</div>";
     out << "</div>";
   }
 }
 
-void translateSpreadsheet(Spreadsheet document, std::ostream &out,
-                          const HtmlConfig &config) {
+void translate_spreadsheet(Spreadsheet document, std::ostream &out,
+                           const HtmlConfig &config) {
   for (auto &&child : document.root().children()) {
     const auto sheet = child.sheet();
     translate_table(sheet.table(), out, config);
   }
 }
 
-void translateGraphics(Drawing document, std::ostream &out,
+void translate_drawing(Drawing document, std::ostream &out,
                        const HtmlConfig &config) {
   for (auto &&page : document.pages()) {
     const auto page_style = page.page_style();
 
-    const std::string outerStyle = "width:" + *page_style.width() + ";" +
-                                   "height:" + *page_style.height() + ";";
-    const std::string innerStyle =
+    const std::string outer_style = "width:" + *page_style.width() + ";" +
+                                    "height:" + *page_style.height() + ";";
+    const std::string inner_style =
         "margin-top:" + *page_style.margin_top() + ";" +
         "margin-left:" + *page_style.margin_left() + ";" +
         "margin-bottom:" + *page_style.margin_bottom() + ";" +
         "margin-right:" + *page_style.margin_right() + ";";
 
-    out << R"(<div style=")" + outerStyle + "\">";
-    out << R"(<div style=")" + innerStyle + "\">";
+    out << R"(<div style=")" + outer_style + "\">";
+    out << R"(<div style=")" + inner_style + "\">";
     translate_generation(page.children(), out, config);
     out << "</div>";
     out << "</div>";
@@ -449,7 +450,7 @@ void translateGraphics(Drawing document, std::ostream &out,
 }
 } // namespace
 
-HtmlConfig Html::parseConfig(const std::string &path) {
+HtmlConfig Html::parse_config(const std::string &path) {
   HtmlConfig result;
 
   auto json = nlohmann::json::parse(std::ifstream(path));
@@ -466,22 +467,22 @@ void Html::translate(Document document, const std::string &document_identifier,
 
   out << common::Html::doctype();
   out << "<html><head>";
-  out << common::Html::defaultHeaders();
+  out << common::Html::default_headers();
   out << "<style>";
-  out << common::Html::defaultStyle();
+  out << common::Html::default_style();
   out << "</style>";
   out << "</head>";
 
-  out << "<body " << common::Html::bodyAttributes(config) << ">";
+  out << "<body " << common::Html::body_attributes(config) << ">";
 
   if (document.document_type() == DocumentType::TEXT) {
-    translateTextDocument(document.text_tocument(), out, config);
+    translate_text_document(document.text_tocument(), out, config);
   } else if (document.document_type() == DocumentType::PRESENTATION) {
-    translatePresentation(document.presentation(), out, config);
+    translate_presentation(document.presentation(), out, config);
   } else if (document.document_type() == DocumentType::SPREADSHEET) {
-    translateSpreadsheet(document.spreadsheet(), out, config);
+    translate_spreadsheet(document.spreadsheet(), out, config);
   } else if (document.document_type() == DocumentType::DRAWING) {
-    translateGraphics(document.drawing(), out, config);
+    translate_drawing(document.drawing(), out, config);
   } else {
     // TODO throw?
   }
@@ -489,12 +490,14 @@ void Html::translate(Document document, const std::string &document_identifier,
   out << "</body>";
 
   out << "<script>";
-  out << common::Html::defaultScript();
+  out << common::Html::default_script();
   out << "</script>";
   out << "</html>";
 }
 
-void Html::edit(Document document, const std::string &documentIdentifier,
-                const std::string &diff) {}
+void Html::edit(Document document, const std::string &document_identifier,
+                const std::string &diff) {
+  throw UnsupportedOperation();
+}
 
 } // namespace odr
