@@ -3,47 +3,48 @@
 
 namespace odr {
 
-std::optional<FileNoExcept>
-FileNoExcept::open(const std::string &path) noexcept {
+std::optional<DecodedFileNoExcept>
+DecodedFileNoExcept::open(const std::string &path) noexcept {
   try {
-    return FileNoExcept(File(path));
+    return DecodedFileNoExcept(DecodedFile(path));
   } catch (...) {
     LOG(ERROR) << "open failed";
     return {};
   }
 }
 
-std::optional<FileNoExcept> FileNoExcept::open(const std::string &path,
-                                               const FileType as) noexcept {
+std::optional<DecodedFileNoExcept>
+DecodedFileNoExcept::open(const std::string &path, const FileType as) noexcept {
   try {
-    return FileNoExcept(File(path, as));
+    return DecodedFileNoExcept(DecodedFile(path, as));
   } catch (...) {
     LOG(ERROR) << "openas failed";
     return {};
   }
 }
 
-FileType FileNoExcept::type(const std::string &path) noexcept {
+FileType DecodedFileNoExcept::type(const std::string &path) noexcept {
   try {
-    return File(path).file_type();
+    return DecodedFile(path).file_type();
   } catch (...) {
     LOG(ERROR) << "type failed";
     return FileType::UNKNOWN;
   }
 }
 
-FileMeta FileNoExcept::meta(const std::string &path) noexcept {
+FileMeta DecodedFileNoExcept::meta(const std::string &path) noexcept {
   try {
-    return File(path).file_meta();
+    return DecodedFile(path).file_meta();
   } catch (...) {
     LOG(ERROR) << "meta failed";
     return {};
   }
 }
 
-FileNoExcept::FileNoExcept(File file) : m_file{std::move(file)} {}
+DecodedFileNoExcept::DecodedFileNoExcept(DecodedFile file)
+    : m_file{std::move(file)} {}
 
-FileType FileNoExcept::file_type() const noexcept {
+FileType DecodedFileNoExcept::file_type() const noexcept {
   try {
     return m_file.file_type();
   } catch (...) {
@@ -52,7 +53,7 @@ FileType FileNoExcept::file_type() const noexcept {
   }
 }
 
-FileCategory FileNoExcept::file_category() const noexcept {
+FileCategory DecodedFileNoExcept::file_category() const noexcept {
   try {
     return m_file.file_category();
   } catch (...) {
@@ -61,7 +62,7 @@ FileCategory FileNoExcept::file_category() const noexcept {
   }
 }
 
-FileMeta FileNoExcept::file_meta() const noexcept {
+FileMeta DecodedFileNoExcept::file_meta() const noexcept {
   try {
     return m_file.file_meta();
   } catch (...) {
@@ -99,7 +100,8 @@ FileMeta DocumentFileNoExcept::meta(const std::string &path) noexcept {
 }
 
 DocumentFileNoExcept::DocumentFileNoExcept(DocumentFile document_file)
-    : FileNoExcept(document_file), m_document_file{std::move(document_file)} {}
+    : DecodedFileNoExcept(document_file), m_document_file{
+                                              std::move(document_file)} {}
 
 DocumentType DocumentFileNoExcept::document_type() const noexcept {
   try {

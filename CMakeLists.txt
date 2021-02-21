@@ -25,7 +25,7 @@ add_library(odr-object OBJECT
         src/document_elements.cpp
         src/document_style.cpp
         src/file.cpp
-        #src/file_no_except.cpp
+        src/file_no_except.cpp
         src/html.cpp
         src/open_document_reader.cpp
         src/open_strategy.cpp

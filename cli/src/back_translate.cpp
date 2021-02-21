@@ -7,19 +7,19 @@
 
 int main(int, char **argv) {
   const std::string input{argv[1]};
-  const std::string diffPath{argv[2]};
+  const std::string diff_path{argv[2]};
   const std::string output{argv[3]};
 
-  const odr::DocumentFile documentFile{input};
+  const odr::DocumentFile document_file{input};
 
-  if (documentFile.passwordEncrypted()) {
+  if (document_file.password_encrypted()) {
     std::cerr << "encrypted documents are not supported" << std::endl;
     return 1;
   }
 
-  odr::Document document = documentFile.document();
+  odr::Document document = document_file.document();
 
-  const std::string diff = odr::util::file::read(diffPath);
+  const std::string diff = odr::util::file::read(diff_path);
   odr::Html::edit(document, "", diff);
 
   document.save(output);

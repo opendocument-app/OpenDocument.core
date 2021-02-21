@@ -9,14 +9,15 @@ int main(int argc, char **argv) {
   const std::string output{argv[2]};
 
   std::optional<std::string> password;
-  if (argc >= 4)
+  if (argc >= 4) {
     password = argv[3];
+  }
 
-  odr::DocumentFile documentFile{input};
+  odr::DocumentFile document_file{input};
 
-  if (documentFile.passwordEncrypted()) {
+  if (document_file.password_encrypted()) {
     if (password) {
-      if (!documentFile.decrypt(*password)) {
+      if (!document_file.decrypt(*password)) {
         std::cerr << "wrong password" << std::endl;
         return 1;
       }
@@ -26,7 +27,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  auto document = documentFile.document();
+  auto document = document_file.document();
 
   odr::HtmlConfig config;
   odr::Html::translate(document, "", output, config);

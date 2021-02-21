@@ -6,14 +6,14 @@
 namespace {
 nlohmann::json meta_to_json(const odr::FileMeta &meta) {
   nlohmann::json result{
-      {"type", meta.typeAsString()},
-      {"encrypted", meta.passwordEncrypted},
-      {"entryCount", meta.documentMeta->entry_count},
+      {"type", meta.type_as_string()},
+      {"encrypted", meta.password_encrypted},
+      {"entryCount", meta.document_meta->entry_count},
       {"entries", nlohmann::json::array()},
   };
 
-  if (!meta.documentMeta->entries.empty()) {
-    for (auto &&e : meta.documentMeta->entries) {
+  if (!meta.document_meta->entries.empty()) {
+    for (auto &&e : meta.document_meta->entries) {
       result["entries"].push_back({
           {"name", e.name},
           {"rowCount", e.row_count},
@@ -30,21 +30,22 @@ nlohmann::json meta_to_json(const odr::FileMeta &meta) {
 int main(int argc, char **argv) {
   const std::string input{argv[1]};
 
-  bool hasPassword = argc >= 4;
+  bool has_password = argc >= 4;
   std::string password;
-  if (hasPassword)
+  if (has_password) {
     password = argv[2];
+  }
 
-  odr::DocumentFile documentFile{input};
+  odr::DocumentFile document_file{input};
 
-  if (documentFile.passwordEncrypted() && hasPassword) {
-    if (!documentFile.decrypt(password)) {
+  if (document_file.password_encrypted() && has_password) {
+    if (!document_file.decrypt(password)) {
       std::cerr << "wrong password" << std::endl;
       return 1;
     }
   }
 
-  const auto json = meta_to_json(documentFile.fileMeta());
+  const auto json = meta_to_json(document_file.file_meta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;
