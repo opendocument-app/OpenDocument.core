@@ -67,7 +67,7 @@ TEST_P(DataDrivenTest, all) {
   config.tableLimitRows = 4000;
   config.tableLimitCols = 500;
 
-  //const odr::File file{test_file.path};
+  // const odr::File file{test_file.path};
   const odr::DecodedFile file{test_file.path};
 
   fs::create_directories(fs::path(output_path));

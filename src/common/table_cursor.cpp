@@ -4,9 +4,7 @@ namespace odr::common {
 
 TableCursor::TableCursor() noexcept { m_sparse.emplace_back(); }
 
-void TableCursor::add_col(uint32_t repeat) noexcept {
-  m_col += repeat;
-}
+void TableCursor::add_col(uint32_t repeat) noexcept { m_col += repeat; }
 
 void TableCursor::add_row(uint32_t repeat) noexcept {
   m_row += repeat;

@@ -1,7 +1,7 @@
 #include <cfb/cfb_archive.h>
 #include <common/file.h>
-#include <common/path.h>
 #include <common/filesystem.h>
+#include <common/path.h>
 #include <odf/odf_document_file.h>
 #include <odr/exceptions.h>
 #include <oldms/oldms_document_file.h>

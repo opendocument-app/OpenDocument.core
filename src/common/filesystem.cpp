@@ -133,7 +133,8 @@ SystemFilesystem::copy(std::shared_ptr<abstract::File> from, common::Path to) {
 
 bool SystemFilesystem::move(common::Path from, common::Path to) {
   std::error_code error_code;
-  std::filesystem::rename(to_system_path_(from), to_system_path_(to), error_code);
+  std::filesystem::rename(to_system_path_(from), to_system_path_(to),
+                          error_code);
   if (error_code) {
     return false;
   }
@@ -152,7 +153,8 @@ VirtualFilesystem::DirectoryNode::DirectoryNode(std::string name)
 
 VirtualFilesystem::VirtualFilesystem() : m_root{""} {}
 
-VirtualFilesystem::Node *VirtualFilesystem::node_(const common::Path &path) const {
+VirtualFilesystem::Node *
+VirtualFilesystem::node_(const common::Path &path) const {
   return {}; // TODO
 }
 

@@ -106,23 +106,16 @@ std::string FileMeta::type_as_string() const noexcept {
   return typeToString(type);
 }
 
-File::File(std::shared_ptr<abstract::File> impl)
-    : m_impl{std::move(impl)} {}
+File::File(std::shared_ptr<abstract::File> impl) : m_impl{std::move(impl)} {}
 
 File::File(const std::string &path)
     : m_impl{std::make_shared<common::DiscFile>(path)} {}
 
-FileLocation File::location() const noexcept {
-  return m_impl->location();
-}
+FileLocation File::location() const noexcept { return m_impl->location(); }
 
-std::size_t File::size() const {
-  return m_impl->size();
-}
+std::size_t File::size() const { return m_impl->size(); }
 
-std::unique_ptr<std::istream> File::read() const {
-  return m_impl->read();
-}
+std::unique_ptr<std::istream> File::read() const { return m_impl->read(); }
 
 std::vector<FileType> DecodedFile::types(const std::string &path) {
   return open_strategy::types(std::make_shared<common::DiscFile>(path));
