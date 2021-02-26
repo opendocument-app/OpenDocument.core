@@ -9,7 +9,9 @@ namespace odr {
 
 Document::Document(std::shared_ptr<abstract::Document> document)
     : m_document{std::move(document)} {
-  // TODO null check
+  if (!m_document) {
+    throw std::runtime_error("document is null");
+  }
 }
 
 DocumentType Document::document_type() const noexcept {
