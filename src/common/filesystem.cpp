@@ -215,7 +215,7 @@ std::unique_ptr<abstract::FileWalker>
 VirtualFilesystem::file_walker(Path path) const {
   throw UnsupportedOperation();
   // TODO
-  //return std::make_unique<VirtualFileWalker>(std::move(path), m_files);
+  // return std::make_unique<VirtualFileWalker>(std::move(path), m_files);
 }
 
 std::shared_ptr<abstract::File> VirtualFilesystem::open(Path path) const {
