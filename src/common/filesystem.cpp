@@ -142,7 +142,7 @@ public:
       }
     }
 
-    m_it = std::begin(m_files);
+    m_iterator = std::begin(m_files);
   }
 
   [[nodiscard]] std::unique_ptr<FileWalker> clone() const final {
@@ -154,7 +154,7 @@ public:
   }
 
   [[nodiscard]] bool end() const final {
-    return true; // TODO
+    return m_iterator == std::end(m_files);
   }
 
   [[nodiscard]] std::uint32_t depth() const final {
@@ -177,7 +177,7 @@ public:
     // TODO
   }
 
-  void next() final { ++m_it; }
+  void next() final { ++m_iterator; }
 
   void flat_next() final {
     // TODO
@@ -187,7 +187,7 @@ private:
   using Files = std::map<Path, std::shared_ptr<abstract::File>>;
 
   Files m_files;
-  Files::iterator m_it;
+  Files::iterator m_iterator;
 };
 } // namespace
 
@@ -213,7 +213,9 @@ bool VirtualFilesystem::is_directory(Path path) const {
 
 std::unique_ptr<abstract::FileWalker>
 VirtualFilesystem::file_walker(Path path) const {
-  return {}; // TODO
+  throw UnsupportedOperation();
+  // TODO
+  //return std::make_unique<VirtualFileWalker>(std::move(path), m_files);
 }
 
 std::shared_ptr<abstract::File> VirtualFilesystem::open(Path path) const {
