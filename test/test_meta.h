@@ -37,7 +37,7 @@ public:
 private:
   TestMeta();
 
-  std::unordered_map<std::string, TestFile> m_testFiles;
+  std::unordered_map<std::string, TestFile> m_test_files;
 };
 
 } // namespace odr::test

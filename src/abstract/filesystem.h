@@ -17,13 +17,11 @@ public:
   [[nodiscard]] virtual std::unique_ptr<FileWalker> clone() const = 0;
   [[nodiscard]] virtual bool equals(const FileWalker &rhs) const = 0;
 
+  [[nodiscard]] virtual bool end() const = 0;
   [[nodiscard]] virtual std::uint32_t depth() const = 0;
   [[nodiscard]] virtual common::Path path() const = 0;
   [[nodiscard]] virtual bool is_file() const = 0;
   [[nodiscard]] virtual bool is_directory() const = 0;
-
-  [[nodiscard]] virtual bool has_next() const = 0;
-  [[nodiscard]] virtual bool has_flat_next() const = 0;
 
   virtual void pop() = 0;
   virtual void next() = 0;
@@ -54,7 +52,7 @@ public:
 
   virtual bool remove(common::Path path) = 0;
   virtual bool copy(common::Path from, common::Path to) = 0;
-  virtual std::shared_ptr<abstract::File> copy(abstract::File &from,
+  virtual std::shared_ptr<abstract::File> copy(const abstract::File &from,
                                                common::Path to) = 0;
   virtual std::shared_ptr<abstract::File>
   copy(std::shared_ptr<abstract::File> from, common::Path to) = 0;

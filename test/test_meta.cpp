@@ -65,7 +65,7 @@ std::vector<TestFile> get_test_files(const std::string &input) {
   return result;
 }
 
-std::unordered_map<std::string, TestFile> getTestFiles() {
+std::unordered_map<std::string, TestFile> get_test_files() {
   std::unordered_map<std::string, TestFile> result;
 
   for (const auto &e :
@@ -87,7 +87,7 @@ TestFile::TestFile(std::string path, const FileType type,
     : path{std::move(path)}, type{type},
       password_encrypted{password_encrypted}, password{std::move(password)} {}
 
-TestMeta::TestMeta() { m_testFiles = getTestFiles(); }
+TestMeta::TestMeta() { m_test_files = get_test_files(); }
 
 TestMeta &TestMeta::instance() {
   static TestMeta instance;
@@ -96,7 +96,7 @@ TestMeta &TestMeta::instance() {
 
 std::vector<std::string> TestMeta::test_file_paths() const {
   std::vector<std::string> result;
-  for (auto &&file : m_testFiles) {
+  for (auto &&file : m_test_files) {
     result.push_back(file.first);
   }
   std::sort(std::begin(result), std::end(result));
@@ -104,7 +104,7 @@ std::vector<std::string> TestMeta::test_file_paths() const {
 }
 
 TestFile TestMeta::test_file(const std::string &path) const {
-  return m_testFiles.at(path);
+  return m_test_files.at(path);
 }
 
 } // namespace odr::test
