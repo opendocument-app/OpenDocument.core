@@ -107,10 +107,10 @@ Manifest parseManifest(const pugi::xml_document &manifest) {
       }
     }
 
-    entry.checksum = crypto::Util::base64Decode(entry.checksum);
+    entry.checksum = crypto::Util::base64_decode(entry.checksum);
     entry.initialisationVector =
-        crypto::Util::base64Decode(entry.initialisationVector);
-    entry.keySalt = crypto::Util::base64Decode(entry.keySalt);
+        crypto::Util::base64_decode(entry.initialisationVector);
+    entry.keySalt = crypto::Util::base64_decode(entry.keySalt);
 
     const auto it = result.entries.emplace(path, entry).first;
     if ((result.smallest_file_path == nullptr) ||

@@ -38,7 +38,7 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
       util::stream::read(*m_filesystem->open("EncryptionInfo")->read());
   // TODO cache Crypto::Util
   Crypto::Util util(encryptionInfo);
-  const std::string key = util.deriveKey(password);
+  const std::string key = util.derive_key(password);
   if (!util.verify(key)) {
     return false;
   }

@@ -5,6 +5,7 @@
 #include <abstract/file.h>
 #include <common/filesystem.h>
 #include <odr/exceptions.h>
+#include <odr/file.h>
 
 namespace odr::common {
 
@@ -24,6 +25,7 @@ public:
   }
 
 private:
+  // TODO a different `VirtualFilesystem` would be necessary for saving
   std::shared_ptr<VirtualFilesystem> m_filesystem;
 
   void fill_(const Impl &impl) {
@@ -38,12 +40,24 @@ private:
   }
 };
 
+// TODO `ArchiveFile` should use readonly interfaces
 template <typename Impl> class ArchiveFile : public abstract::ArchiveFile {
 public:
   template <typename... Args>
   explicit ArchiveFile(Args... args) : m_impl{std::forward(args)...} {}
-
   explicit ArchiveFile(Impl impl) : m_impl{std::move(impl)} {}
+
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] FileType file_type() const noexcept final {
+    return FileType::UNKNOWN; // TODO
+  }
+
+  [[nodiscard]] FileMeta file_meta() const noexcept final {
+    return {}; // TODO
+  }
 
   [[nodiscard]] std::shared_ptr<abstract::Archive> archive() const final {
     return std::make_shared<Archive<Impl>>(m_impl);

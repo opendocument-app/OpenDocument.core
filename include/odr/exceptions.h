@@ -83,6 +83,15 @@ struct MalformedSvmFile : public std::runtime_error {
   MalformedSvmFile() : std::runtime_error("malformed svm file") {}
 };
 
+struct UnsupportedEndian final : public std::runtime_error {
+  UnsupportedEndian() : std::runtime_error("unsupported endian") {}
+};
+
+struct MsUnsupportedCryptoAlgorithm final : public std::runtime_error {
+  MsUnsupportedCryptoAlgorithm()
+      : std::runtime_error("unsupported crypto algorithm") {}
+};
+
 } // namespace odr
 
 #endif // ODR_EXCEPTIONS_H

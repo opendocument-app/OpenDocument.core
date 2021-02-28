@@ -4,19 +4,19 @@
 #include <string>
 
 namespace odr::crypto::Util {
-std::string base64Encode(const std::string &);
-std::string base64Decode(const std::string &);
+std::string base64_encode(const std::string &in);
+std::string base64_decode(const std::string &in);
 std::string sha1(const std::string &);
 std::string sha256(const std::string &);
 std::string pbkdf2(std::size_t keySize, const std::string &startKey,
                    const std::string &salt, std::size_t iterationCount);
-std::string decryptAES(const std::string &key, const std::string &input);
-std::string decryptAES(const std::string &key, const std::string &iv,
-                       const std::string &input);
-std::string decryptTripleDES(const std::string &key, const std::string &iv,
+std::string decrypt_AES(const std::string &key, const std::string &input);
+std::string decrypt_AES(const std::string &key, const std::string &iv,
+                        const std::string &input);
+std::string decrypt_TripleDES(const std::string &key, const std::string &iv,
+                              const std::string &input);
+std::string decrypt_Blowfish(const std::string &key, const std::string &iv,
                              const std::string &input);
-std::string decryptBlowfish(const std::string &key, const std::string &iv,
-                            const std::string &input);
 std::string inflate(const std::string &input);
 std::size_t padding(const std::string &input);
 } // namespace odr::crypto::Util

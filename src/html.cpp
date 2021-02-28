@@ -275,7 +275,7 @@ void translate_image(ImageElement element, std::ostream &out,
     }
 
     // TODO stream
-    out << crypto::Util::base64Encode(image);
+    out << crypto::Util::base64_encode(image);
   } else {
     out << element.href();
   }

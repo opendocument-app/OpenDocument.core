@@ -13,7 +13,7 @@ namespace odr::crypto {
 
 typedef unsigned char byte;
 
-std::string Util::base64Encode(const std::string &in) {
+std::string Util::base64_encode(const std::string &in) {
   std::string out;
   CryptoPP::Base64Encoder b(new CryptoPP::StringSink(out), false);
   b.Put((const byte *)in.data(), in.size());
@@ -21,7 +21,7 @@ std::string Util::base64Encode(const std::string &in) {
   return out;
 }
 
-std::string Util::base64Decode(const std::string &in) {
+std::string Util::base64_decode(const std::string &in) {
   std::string out;
   CryptoPP::Base64Decoder b(new CryptoPP::StringSink(out));
   b.Put((const byte *)in.data(), in.size());
@@ -52,7 +52,8 @@ std::string Util::pbkdf2(const std::size_t keySize, const std::string &startKey,
   return result;
 }
 
-std::string Util::decryptAES(const std::string &key, const std::string &input) {
+std::string Util::decrypt_AES(const std::string &key,
+                              const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption decryptor;
   decryptor.SetKey((byte *)key.data(), key.size());
@@ -61,8 +62,8 @@ std::string Util::decryptAES(const std::string &key, const std::string &input) {
   return result;
 }
 
-std::string Util::decryptAES(const std::string &key, const std::string &iv,
-                             const std::string &input) {
+std::string Util::decrypt_AES(const std::string &key, const std::string &iv,
+                              const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption decryptor;
   decryptor.SetKeyWithIV((byte *)key.data(), key.size(), (byte *)iv.data(),
@@ -72,9 +73,9 @@ std::string Util::decryptAES(const std::string &key, const std::string &iv,
   return result;
 }
 
-std::string Util::decryptTripleDES(const std::string &key,
-                                   const std::string &iv,
-                                   const std::string &input) {
+std::string Util::decrypt_TripleDES(const std::string &key,
+                                    const std::string &iv,
+                                    const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::DES_EDE3>::Decryption decryptor;
   decryptor.SetKeyWithIV((byte *)key.data(), key.size(), (byte *)iv.data(),
@@ -84,8 +85,9 @@ std::string Util::decryptTripleDES(const std::string &key,
   return result;
 }
 
-std::string Util::decryptBlowfish(const std::string &key, const std::string &iv,
-                                  const std::string &input) {
+std::string Util::decrypt_Blowfish(const std::string &key,
+                                   const std::string &iv,
+                                   const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::CFB_Mode<CryptoPP::Blowfish>::Decryption decryptor;
   decryptor.SetKeyWithIV((byte *)key.data(), key.size(), (byte *)iv.data(),
@@ -97,22 +99,22 @@ std::string Util::decryptBlowfish(const std::string &key, const std::string &iv,
 
 namespace {
 // discard non deflated content caused by padding
-class MyInflator : public CryptoPP::Inflator {
+class MyInflator final : public CryptoPP::Inflator {
 public:
   MyInflator(BufferedTransformation *attachment = nullptr, bool repeat = false,
-             int autoSignalPropagation = -1)
-      : Inflator(attachment, repeat, autoSignalPropagation) {}
+             int auto_signal_propagation = -1)
+      : Inflator(attachment, repeat, auto_signal_propagation) {}
 
-  virtual unsigned int GetPadding() const { return m_padding; }
+  std::uint32_t GetPadding() const { return m_padding; }
 
 protected:
-  virtual void ProcessPoststreamTail() {
+  void ProcessPoststreamTail() final {
     m_padding = m_inQueue.CurrentSize();
     m_inQueue.Clear();
   }
 
 private:
-  unsigned int m_padding = 0;
+  std::uint32_t m_padding{0};
 };
 } // namespace
 

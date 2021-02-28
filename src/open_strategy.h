@@ -21,9 +21,9 @@ class Path;
 namespace odr::open_strategy {
 std::vector<FileType> types(std::shared_ptr<abstract::File> file);
 
-std::shared_ptr<abstract::DecodedFile>
+std::unique_ptr<abstract::DecodedFile>
 open_file(std::shared_ptr<abstract::File> file);
-std::shared_ptr<abstract::DecodedFile>
+std::unique_ptr<abstract::DecodedFile>
 open_file(std::shared_ptr<abstract::File> file, FileType as);
 
 std::unique_ptr<abstract::DocumentFile>

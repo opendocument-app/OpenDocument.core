@@ -35,13 +35,13 @@ std::string decrypt(const std::string &input, const std::string &derivedKey,
                     const AlgorithmType algorithm) {
   switch (algorithm) {
   case AlgorithmType::AES256_CBC:
-    return crypto::Util::decryptAES(derivedKey, initialisationVector, input);
+    return crypto::Util::decrypt_AES(derivedKey, initialisationVector, input);
   case AlgorithmType::TRIPLE_DES_CBC:
-    return crypto::Util::decryptTripleDES(derivedKey, initialisationVector,
-                                          input);
+    return crypto::Util::decrypt_TripleDES(derivedKey, initialisationVector,
+                                           input);
   case AlgorithmType::BLOWFISH_CFB:
-    return crypto::Util::decryptBlowfish(derivedKey, initialisationVector,
-                                         input);
+    return crypto::Util::decrypt_Blowfish(derivedKey, initialisationVector,
+                                          input);
   default:
     throw std::invalid_argument("algorithm");
   }
