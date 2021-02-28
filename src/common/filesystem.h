@@ -1,12 +1,9 @@
 #ifndef ODR_COMMON_FILESYSTEM_H
 #define ODR_COMMON_FILESYSTEM_H
 
-#include <abstract/filesystem.h>
 #include <map>
-#include <memory>
-#include <string>
-#include <variant>
-#include <vector>
+#include <abstract/filesystem.h>
+#include <common/path.h>
 
 namespace odr::common {
 

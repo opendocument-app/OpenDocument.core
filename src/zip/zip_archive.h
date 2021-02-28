@@ -123,9 +123,6 @@ public:
   };
 
 private:
-  // TODO this will persist the zip even if everything is deleted
-  // TODO entry file could also do that but it's tricky with
-  // `ReadonlyZipArchive`
   std::vector<Entry> m_entries;
 };
 

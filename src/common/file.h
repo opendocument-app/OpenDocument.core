@@ -28,7 +28,11 @@ public:
   explicit TemporaryDiscFile(const char *path);
   explicit TemporaryDiscFile(std::string path);
   explicit TemporaryDiscFile(common::Path path);
+  TemporaryDiscFile(const TemporaryDiscFile &);
+  TemporaryDiscFile(TemporaryDiscFile &&) noexcept;
   ~TemporaryDiscFile() override;
+  TemporaryDiscFile& operator=(const TemporaryDiscFile&);
+  TemporaryDiscFile& operator=(TemporaryDiscFile&&) noexcept;
 };
 
 class MemoryFile final : public abstract::File {

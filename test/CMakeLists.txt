@@ -15,6 +15,7 @@ add_executable(odr_test
 
         cfb/cfb_archive_test.cpp
 
+        common/archive_test.cpp
         common/cache_test.cpp
         common/path_test.cpp
         common/table_cursor_test.cpp

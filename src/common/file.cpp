@@ -37,9 +37,17 @@ TemporaryDiscFile::TemporaryDiscFile(std::string path)
 TemporaryDiscFile::TemporaryDiscFile(common::Path path)
     : DiscFile{std::move(path)} {}
 
+TemporaryDiscFile::TemporaryDiscFile(const TemporaryDiscFile &) = default;
+
+TemporaryDiscFile::TemporaryDiscFile(TemporaryDiscFile &&) noexcept = default;
+
 TemporaryDiscFile::~TemporaryDiscFile() {
   std::filesystem::remove(path().string());
 }
+
+TemporaryDiscFile& TemporaryDiscFile::operator=(const TemporaryDiscFile&) = default;
+
+TemporaryDiscFile& TemporaryDiscFile::operator=(TemporaryDiscFile&&) noexcept = default;
 
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
 
