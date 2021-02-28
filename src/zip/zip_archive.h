@@ -15,6 +15,9 @@ class DiscFile;
 } // namespace odr::common
 
 namespace odr::zip {
+namespace miniz {
+class Archive;
+}
 
 enum class Method {
   UNSUPPORTED,
@@ -43,8 +46,6 @@ public:
     [[nodiscard]] common::Path path() const;
     [[nodiscard]] Method method() const;
     [[nodiscard]] std::unique_ptr<abstract::File> file() const;
-    [[nodiscard]] std::unique_ptr<abstract::File>
-    file(std::shared_ptr<ReadonlyZipArchive> persist) const;
 
   private:
     const ReadonlyZipArchive &m_parent;
@@ -77,11 +78,7 @@ public:
   };
 
 private:
-  mutable mz_zip_archive m_zip{};
-  std::shared_ptr<abstract::File> m_file;
-  std::unique_ptr<std::istream> m_data;
-
-  explicit ReadonlyZipArchive(std::shared_ptr<abstract::File> file);
+  std::shared_ptr<miniz::Archive> m_zip;
 };
 
 class ZipArchive final {
@@ -120,6 +117,7 @@ public:
     [[nodiscard]] bool is_directory() const;
     [[nodiscard]] common::Path path() const;
     [[nodiscard]] std::shared_ptr<abstract::File> file() const;
+    [[nodiscard]] std::uint32_t compression_level() const;
 
     void file(std::shared_ptr<abstract::File> file);
 
