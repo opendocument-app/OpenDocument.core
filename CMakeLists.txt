@@ -94,6 +94,7 @@ target_link_libraries(odr-object
         cryptopp-static
         nlohmann_json::nlohmann_json
         )
+set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_library(odr-static STATIC
         $<TARGET_OBJECTS:odr-object>
