@@ -11,6 +11,7 @@
 #include <utility>
 
 using namespace odr;
+using namespace odr::test;
 namespace fs = std::filesystem;
 
 namespace {
@@ -41,8 +42,7 @@ nlohmann::json meta_to_json(const odr::FileMeta &meta) {
 
 TEST_P(DataDrivenTest, all) {
   const auto test_file_path = GetParam();
-  test::TestFile test_file =
-      test::TestMeta::instance().test_file(test_file_path);
+  TestFile test_file = TestMeta::test_file(test_file_path);
   const std::string output_path = "./output/" + test_file_path;
 
   std::cout << test_file.path << " to " << output_path << std::endl;
@@ -146,6 +146,5 @@ TEST_P(DataDrivenTest, all) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-    all, DataDrivenTest,
-    testing::ValuesIn(test::TestMeta::instance().test_file_paths()));
+INSTANTIATE_TEST_CASE_P(all, DataDrivenTest,
+                        testing::ValuesIn(TestMeta::test_file_paths()));
