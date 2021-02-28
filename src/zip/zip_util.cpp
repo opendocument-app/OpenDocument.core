@@ -1,9 +1,9 @@
 #include <common/file.h>
 #include <odr/exceptions.h>
 #include <streambuf>
-#include <zip/miniz_util.h>
+#include <zip/zip_util.h>
 
-namespace odr::zip::miniz {
+namespace odr::zip::util {
 
 namespace {
 
@@ -157,4 +157,4 @@ bool append_file(mz_zip_archive &archive, const std::string &path,
       comment.c_str(), comment.size(), level_and_flags, nullptr, 0, nullptr, 0);
 }
 
-} // namespace odr::zip::miniz
+} // namespace odr::zip::util

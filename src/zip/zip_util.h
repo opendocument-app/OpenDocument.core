@@ -1,5 +1,5 @@
-#ifndef ODR_ZIP_MINIZ_UTIL_H
-#define ODR_ZIP_MINIZ_UTIL_H
+#ifndef ODR_ZIP_UTIL_H
+#define ODR_ZIP_UTIL_H
 
 #include <abstract/file.h>
 #include <chrono>
@@ -13,7 +13,7 @@ class MemoryFile;
 class DiscFile;
 } // namespace odr::common
 
-namespace odr::zip::miniz {
+namespace odr::zip::util {
 
 class Archive final {
 public:
@@ -57,6 +57,6 @@ bool append_file(mz_zip_archive &archive, const std::string &path,
                  const std::time_t &time, const std::string &comment,
                  std::uint32_t level_and_flags);
 
-} // namespace odr::zip::miniz
+} // namespace odr::zip::util
 
-#endif // ODR_ZIP_MINIZ_UTIL_H
+#endif // ODR_ZIP_UTIL_H

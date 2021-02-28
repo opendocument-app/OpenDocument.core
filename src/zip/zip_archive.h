@@ -15,7 +15,7 @@ class DiscFile;
 } // namespace odr::common
 
 namespace odr::zip {
-namespace miniz {
+namespace util {
 class Archive;
 }
 
@@ -78,7 +78,7 @@ public:
   };
 
 private:
-  std::shared_ptr<miniz::Archive> m_zip;
+  std::shared_ptr<util::Archive> m_zip;
 };
 
 class ZipArchive final {

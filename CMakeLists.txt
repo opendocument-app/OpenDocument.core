@@ -77,7 +77,7 @@ add_library(odr-object OBJECT
         src/util/string_util.cpp
         src/util/xml_util.cpp
 
-        src/zip/miniz_util.cpp
+        src/zip/zip_util.cpp
         src/zip/zip_archive.cpp
         )
 target_include_directories(odr-object

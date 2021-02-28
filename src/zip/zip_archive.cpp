@@ -5,8 +5,8 @@
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <utility>
-#include <zip/miniz_util.h>
 #include <zip/zip_archive.h>
+#include <zip/zip_util.h>
 
 namespace odr::zip {
 
@@ -45,7 +45,7 @@ std::unique_ptr<abstract::File> ReadonlyZipArchive::Entry::file() const {
   if (!is_file()) {
     return {};
   }
-  return std::make_unique<miniz::FileInZip>(m_parent.m_zip, m_index);
+  return std::make_unique<util::FileInZip>(m_parent.m_zip, m_index);
 }
 
 ReadonlyZipArchive::Iterator::Iterator(const ReadonlyZipArchive &zip,
@@ -83,11 +83,11 @@ ReadonlyZipArchive::Iterator ReadonlyZipArchive::Iterator::operator++(int) {
 
 ReadonlyZipArchive::ReadonlyZipArchive(
     const std::shared_ptr<common::MemoryFile> &file)
-    : m_zip{std::make_shared<miniz::Archive>(file)} {}
+    : m_zip{std::make_shared<util::Archive>(file)} {}
 
 ReadonlyZipArchive::ReadonlyZipArchive(
     const std::shared_ptr<common::DiscFile> &file)
-    : m_zip{std::make_shared<miniz::Archive>(file)} {}
+    : m_zip{std::make_shared<util::Archive>(file)} {}
 
 ReadonlyZipArchive::Iterator ReadonlyZipArchive::begin() const {
   return Iterator(*this, 0);
@@ -214,8 +214,8 @@ void ZipArchive::save(std::ostream &out) const {
       auto istream = file->read();
       auto size = file->size();
 
-      state = miniz::append_file(archive, path.string(), *istream, size, time,
-                                 "", entry.compression_level());
+      state = util::append_file(archive, path.string(), *istream, size, time,
+                                "", entry.compression_level());
       if (!state) {
         throw ZipSaveError();
       }
