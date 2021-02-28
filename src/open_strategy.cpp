@@ -15,7 +15,10 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
   std::vector<FileType> result;
 
   try {
-    auto zip = common::ArchiveFile(zip::ReadonlyZipArchive(file));
+    // TODO if `file` is in memory we would copy it unnecessarily
+    auto memory_file = std::make_shared<common::MemoryFile>(*file);
+
+    auto zip = common::ArchiveFile(zip::ReadonlyZipArchive(memory_file));
     result.push_back(FileType::ZIP);
 
     auto filesystem = zip.archive()->filesystem();
@@ -65,8 +68,11 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
 std::unique_ptr<abstract::DecodedFile>
 open_strategy::open_file(std::shared_ptr<abstract::File> file) {
   try {
+    // TODO if `file` is in memory we would copy it unnecessarily
+    auto memory_file = std::make_shared<common::MemoryFile>(*file);
+
     auto zip = std::make_unique<common::ArchiveFile<zip::ReadonlyZipArchive>>(
-        zip::ReadonlyZipArchive(file));
+        zip::ReadonlyZipArchive(memory_file));
 
     auto filesystem = zip->archive()->filesystem();
 
@@ -122,8 +128,11 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
 std::unique_ptr<abstract::DocumentFile>
 open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
   try {
+    // TODO if `file` is in memory we would copy it unnecessarily
+    auto memory_file = std::make_shared<common::MemoryFile>(*file);
+
     auto zip = std::make_unique<common::ArchiveFile<zip::ReadonlyZipArchive>>(
-        zip::ReadonlyZipArchive(file));
+        zip::ReadonlyZipArchive(memory_file));
 
     auto filesystem = zip->archive()->filesystem();
 

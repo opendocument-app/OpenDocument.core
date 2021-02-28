@@ -1,8 +1,58 @@
+#include <abstract/file.h>
+#include <common/file.h>
+#include <odr/exceptions.h>
 #include <zip/miniz_util.h>
 
 namespace odr::zip {
 
 namespace miniz {
+Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)
+    : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
+
+Archive::Archive(const std::shared_ptr<common::DiscFile> &file)
+    : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
+
+Archive::Archive(std::shared_ptr<abstract::File> file)
+    : m_file{std::move(file)}, m_data{m_file->read()} {
+  init_();
+}
+
+Archive::Archive(const Archive &other) : Archive(other.m_file) {}
+
+Archive::Archive(Archive &&other) noexcept = default;
+
+Archive::~Archive() { mz_zip_end(&m_zip); }
+
+Archive &Archive::operator=(const Archive &other) {
+  if (&other != this) {
+    m_zip = other.m_zip;
+    m_file = other.m_file;
+    m_data = m_file->read();
+    init_();
+  }
+  return *this;
+}
+
+Archive &Archive::operator=(Archive &&) noexcept = default;
+
+void Archive::init_() {
+  m_zip.m_pIO_opaque = m_data.get();
+  m_zip.m_pRead = [](void *opaque, std::uint64_t offset, void *buffer,
+                     std::size_t size) {
+    auto in = static_cast<std::istream *>(opaque);
+    in->seekg(offset);
+    in->read(static_cast<char *>(buffer), size);
+    return size;
+  };
+  const bool state = mz_zip_reader_init(
+      &m_zip, m_file->size(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
+  if (!state) {
+    throw NoZipFile();
+  }
+}
+
+std::shared_ptr<abstract::File> Archive::file() const { return m_file; }
+
 ReaderBuffer::ReaderBuffer(mz_zip_reader_extract_iter_state *iter)
     : ReaderBuffer(iter, 4098) {}
 

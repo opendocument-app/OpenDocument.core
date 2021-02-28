@@ -3,16 +3,50 @@
 
 #include <chrono>
 #include <istream>
+#include <memory>
 #include <miniz.h>
 #include <string>
 
+namespace odr::abstract {
+class File;
+}
+
+namespace odr::common {
+class MemoryFile;
+class DiscFile;
+} // namespace odr::common
+
 namespace odr::zip::miniz {
 
-class ReaderBuffer : public std::streambuf {
+class Archive final {
+public:
+  explicit Archive(const std::shared_ptr<common::MemoryFile> &file);
+  explicit Archive(const std::shared_ptr<common::DiscFile> &file);
+  Archive(const Archive &);
+  Archive(Archive &&) noexcept;
+  ~Archive();
+  Archive &operator=(const Archive &);
+  Archive &operator=(Archive &&) noexcept;
+
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const;
+
+private:
+  mz_zip_archive m_zip{};
+  std::shared_ptr<abstract::File> m_file;
+  std::unique_ptr<std::istream> m_data;
+
+  explicit Archive(std::shared_ptr<abstract::File> file);
+
+  void init_();
+};
+
+// TODO encapsulate `mz_zip_reader_extract_iter_state`?
+
+class ReaderBuffer final : public std::streambuf {
 public:
   explicit ReaderBuffer(mz_zip_reader_extract_iter_state *iter);
   ReaderBuffer(mz_zip_reader_extract_iter_state *iter, std::size_t buffer_size);
-  ~ReaderBuffer() override;
+  ~ReaderBuffer() final;
 
   int underflow() final;
 

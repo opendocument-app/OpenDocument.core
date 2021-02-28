@@ -1,5 +1,6 @@
 #include <abstract/file.h>
 #include <chrono>
+#include <common/file.h>
 #include <common/path.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -134,6 +135,14 @@ ReadonlyZipArchive::Iterator ReadonlyZipArchive::Iterator::operator++(int) {
   return tmp;
 }
 
+ReadonlyZipArchive::ReadonlyZipArchive(
+    const std::shared_ptr<common::MemoryFile> &file)
+    : ReadonlyZipArchive(std::dynamic_pointer_cast<abstract::File>(file)) {}
+
+ReadonlyZipArchive::ReadonlyZipArchive(
+    const std::shared_ptr<common::DiscFile> &file)
+    : ReadonlyZipArchive(std::dynamic_pointer_cast<abstract::File>(file)) {}
+
 ReadonlyZipArchive::ReadonlyZipArchive(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)}, m_data{m_file->read()} {
   m_zip.m_pIO_opaque = m_data.get();
@@ -192,8 +201,11 @@ void ZipArchive::Entry::file(std::shared_ptr<abstract::File> file) {
 
 ZipArchive::ZipArchive() = default;
 
-ZipArchive::ZipArchive(std::shared_ptr<abstract::File> file)
-    : ZipArchive(ReadonlyZipArchive(std::move(file))) {}
+ZipArchive::ZipArchive(const std::shared_ptr<common::MemoryFile> &file)
+    : ZipArchive(ReadonlyZipArchive(file)) {}
+
+ZipArchive::ZipArchive(const std::shared_ptr<common::DiscFile> &file)
+    : ZipArchive(ReadonlyZipArchive(file)) {}
 
 ZipArchive::ZipArchive(ReadonlyZipArchive archive)
     : ZipArchive(std::make_shared<ReadonlyZipArchive>(std::move(archive))) {}

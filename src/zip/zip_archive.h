@@ -9,6 +9,11 @@ namespace odr::abstract {
 class File;
 }
 
+namespace odr::common {
+class MemoryFile;
+class DiscFile;
+} // namespace odr::common
+
 namespace odr::zip {
 
 enum class Method {
@@ -19,7 +24,8 @@ enum class Method {
 
 class ReadonlyZipArchive final {
 public:
-  explicit ReadonlyZipArchive(std::shared_ptr<abstract::File> file);
+  explicit ReadonlyZipArchive(const std::shared_ptr<common::MemoryFile> &file);
+  explicit ReadonlyZipArchive(const std::shared_ptr<common::DiscFile> &file);
 
   class Iterator;
 
@@ -74,12 +80,15 @@ private:
   mutable mz_zip_archive m_zip{};
   std::shared_ptr<abstract::File> m_file;
   std::unique_ptr<std::istream> m_data;
+
+  explicit ReadonlyZipArchive(std::shared_ptr<abstract::File> file);
 };
 
 class ZipArchive final {
 public:
   ZipArchive();
-  explicit ZipArchive(std::shared_ptr<abstract::File> file);
+  explicit ZipArchive(const std::shared_ptr<common::MemoryFile> &file);
+  explicit ZipArchive(const std::shared_ptr<common::DiscFile> &file);
   explicit ZipArchive(ReadonlyZipArchive archive);
   explicit ZipArchive(const std::shared_ptr<ReadonlyZipArchive> &archive);
 
