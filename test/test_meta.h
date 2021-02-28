@@ -21,13 +21,12 @@ struct TestFile {
 
 class TestMeta {
 public:
-  static TestMeta &instance();
-
   static std::string data_directory();
   static std::string data_input_directory();
 
-  std::vector<std::string> test_file_paths() const;
-  TestFile test_file(const std::string &path) const;
+  static std::vector<std::string> test_file_paths();
+  static TestFile test_file(const std::string &path);
+  static std::string test_file_path(const std::string &path);
 
   TestMeta(const TestMeta &) = delete;
   TestMeta &operator=(const TestMeta &) = delete;
@@ -36,6 +35,10 @@ public:
 
 private:
   TestMeta();
+
+  static TestMeta &instance_();
+  std::vector<std::string> test_file_paths_() const;
+  TestFile test_file_(const std::string &path) const;
 
   std::unordered_map<std::string, TestFile> m_test_files;
 };

@@ -7,8 +7,4 @@ std::string TestMeta::data_directory() {
   return "${ODR_TEST_DATA_DIRECTORY}";
 }
 
-std::string TestMeta::data_input_directory() {
-  return common::Path(TestMeta::data_directory()).join("input").string();
-}
-
 } // namespace odr::test

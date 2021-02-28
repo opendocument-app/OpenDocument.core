@@ -87,14 +87,30 @@ TestFile::TestFile(std::string path, const FileType type,
     : path{std::move(path)}, type{type},
       password_encrypted{password_encrypted}, password{std::move(password)} {}
 
-TestMeta::TestMeta() { m_test_files = get_test_files(); }
+std::string TestMeta::data_input_directory() {
+  return common::Path(TestMeta::data_directory()).join("input").string();
+}
 
-TestMeta &TestMeta::instance() {
+TestMeta &TestMeta::instance_() {
   static TestMeta instance;
   return instance;
 }
 
-std::vector<std::string> TestMeta::test_file_paths() const {
+std::vector<std::string> TestMeta::test_file_paths() {
+  return instance_().test_file_paths_();
+}
+
+TestFile TestMeta::test_file(const std::string &path) {
+  return instance_().test_file_(path);
+}
+
+std::string TestMeta::test_file_path(const std::string &path) {
+  return test_file(path).path;
+}
+
+TestMeta::TestMeta() : m_test_files{get_test_files()} {}
+
+std::vector<std::string> TestMeta::test_file_paths_() const {
   std::vector<std::string> result;
   for (auto &&file : m_test_files) {
     result.push_back(file.first);
@@ -103,7 +119,7 @@ std::vector<std::string> TestMeta::test_file_paths() const {
   return result;
 }
 
-TestFile TestMeta::test_file(const std::string &path) const {
+TestFile TestMeta::test_file_(const std::string &path) const {
   return m_test_files.at(path);
 }
 
