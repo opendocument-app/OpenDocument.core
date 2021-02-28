@@ -1,8 +1,16 @@
 #ifndef ODR_CFB_UTIL_H
 #define ODR_CFB_UTIL_H
 
+#include <abstract/file.h>
+#include <cfb/cfb_impl.h>
+#include <istream>
 #include <memory>
-#include <streambuf>
+#include <string>
+
+namespace odr::common {
+class MemoryFile;
+class DiscFile;
+} // namespace odr::common
 
 namespace odr::cfb::impl {
 class CompoundFileReader;
@@ -13,20 +21,31 @@ namespace odr::cfb::util {
 
 std::string name_to_string(const std::uint16_t *name, std::size_t length);
 
-class ReaderBuffer : public std::streambuf {
+class Archive final {
 public:
-  ReaderBuffer(const impl::CompoundFileReader &reader,
-               const impl::CompoundFileEntry &entry);
-  ~ReaderBuffer() override;
+  explicit Archive(const std::shared_ptr<common::MemoryFile> &file);
 
-  int underflow() final;
+  [[nodiscard]] const impl::CompoundFileReader &cfb() const;
+
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const;
 
 private:
-  const impl::CompoundFileReader &m_reader;
+  impl::CompoundFileReader m_cfb;
+  std::shared_ptr<abstract::File> m_file;
+};
+
+class FileInCfb final : public abstract::File {
+public:
+  FileInCfb(std::shared_ptr<Archive> archive,
+            const impl::CompoundFileEntry &entry);
+
+  [[nodiscard]] FileLocation location() const noexcept final;
+  [[nodiscard]] std::size_t size() const final;
+  [[nodiscard]] std::unique_ptr<std::istream> read() const final;
+
+private:
+  std::shared_ptr<Archive> m_archive;
   const impl::CompoundFileEntry &m_entry;
-  std::uint64_t m_offset{0};
-  std::size_t m_buffer_size{4098};
-  char *m_buffer;
 };
 
 } // namespace odr::cfb::util

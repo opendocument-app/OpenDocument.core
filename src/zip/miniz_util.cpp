@@ -1,6 +1,6 @@
-#include <abstract/file.h>
 #include <common/file.h>
 #include <odr/exceptions.h>
+#include <streambuf>
 #include <zip/miniz_util.h>
 
 namespace odr::zip::miniz {
@@ -25,13 +25,13 @@ private:
 class FileInZipIstream final : public std::istream {
 public:
   FileInZipIstream(std::shared_ptr<Archive> archive,
-                   std::unique_ptr<miniz::ReaderBuffer> sbuf);
+                   std::unique_ptr<ReaderBuffer> sbuf);
   FileInZipIstream(std::shared_ptr<Archive> archive,
                    mz_zip_reader_extract_iter_state *iter);
 
 private:
   std::shared_ptr<Archive> m_archive;
-  std::unique_ptr<miniz::ReaderBuffer> m_sbuf;
+  std::unique_ptr<ReaderBuffer> m_sbuf;
 };
 
 ReaderBuffer::ReaderBuffer(mz_zip_reader_extract_iter_state *iter)
@@ -62,14 +62,15 @@ int ReaderBuffer::underflow() {
 }
 
 FileInZipIstream::FileInZipIstream(std::shared_ptr<Archive> archive,
-                                   std::unique_ptr<miniz::ReaderBuffer> sbuf)
+                                   std::unique_ptr<ReaderBuffer> sbuf)
     : std::istream(sbuf.get()), m_archive{std::move(archive)}, m_sbuf{std::move(
                                                                    sbuf)} {}
 
 FileInZipIstream::FileInZipIstream(std::shared_ptr<Archive> archive,
                                    mz_zip_reader_extract_iter_state *iter)
     : FileInZipIstream(std::move(archive),
-                       std::make_unique<miniz::ReaderBuffer>(iter)) {}
+                       std::make_unique<ReaderBuffer>(iter)) {}
+
 } // namespace
 
 Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)

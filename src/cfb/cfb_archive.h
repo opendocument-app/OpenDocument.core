@@ -6,10 +6,13 @@
 #include <common/path.h>
 
 namespace odr::cfb {
+namespace util {
+class Archive;
+}
 
 class ReadonlyCfbArchive final {
 public:
-  explicit ReadonlyCfbArchive(std::shared_ptr<common::MemoryFile> file);
+  explicit ReadonlyCfbArchive(const std::shared_ptr<common::MemoryFile> &file);
 
   class Iterator;
 
@@ -20,18 +23,16 @@ public:
 
   class Entry {
   public:
-    Entry(const impl::CompoundFileReader &reader,
+    Entry(const ReadonlyCfbArchive &parent,
           const impl::CompoundFileEntry *entry, common::Path path);
 
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
     [[nodiscard]] common::Path path() const;
     [[nodiscard]] std::unique_ptr<abstract::File> file() const;
-    [[nodiscard]] std::unique_ptr<abstract::File>
-    file(std::shared_ptr<ReadonlyCfbArchive> persist) const;
 
   private:
-    const impl::CompoundFileReader &m_reader;
+    const ReadonlyCfbArchive &m_parent;
     const impl::CompoundFileEntry *m_entry;
     common::Path m_path;
 
@@ -46,7 +47,7 @@ public:
     using pointer = const Entry *;
     using reference = const Entry &;
 
-    Iterator(const impl::CompoundFileReader &reader,
+    Iterator(const ReadonlyCfbArchive &parent,
              const impl::CompoundFileEntry *entry, common::Path path);
 
     reference operator*() const;
@@ -67,8 +68,7 @@ public:
   };
 
 private:
-  std::shared_ptr<common::MemoryFile> m_file;
-  impl::CompoundFileReader m_reader;
+  std::shared_ptr<util::Archive> m_cfb;
 };
 
 } // namespace odr::cfb
