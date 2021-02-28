@@ -26,7 +26,8 @@ std::size_t DiscFile::size() const {
 common::Path DiscFile::path() const { return m_path; }
 
 std::unique_ptr<std::istream> DiscFile::read() const {
-  return std::make_unique<std::ifstream>(m_path, std::ifstream::binary);
+  return std::make_unique<std::ifstream>(m_path.string(),
+                                         std::ifstream::binary);
 }
 
 TemporaryDiscFile::TemporaryDiscFile(const char *path) : DiscFile{path} {}

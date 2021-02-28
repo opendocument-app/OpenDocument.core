@@ -85,7 +85,7 @@ std::shared_ptr<abstract::File> SystemFilesystem::open(Path path) const {
 }
 
 std::unique_ptr<std::ostream> SystemFilesystem::create_file(Path path) {
-  return std::make_unique<std::ofstream>(to_system_path_(path));
+  return std::make_unique<std::ofstream>(to_system_path_(path).string());
 }
 
 bool SystemFilesystem::create_directory(Path path) {
