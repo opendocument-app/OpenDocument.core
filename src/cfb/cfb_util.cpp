@@ -22,7 +22,7 @@ private:
   const impl::CompoundFileReader &m_reader;
   const impl::CompoundFileEntry &m_entry;
   std::uint64_t m_offset{0};
-  std::size_t m_buffer_size{4098};
+  std::uint64_t m_buffer_size{4098};
   char *m_buffer;
 };
 
