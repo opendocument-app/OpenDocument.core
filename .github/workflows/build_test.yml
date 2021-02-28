@@ -38,7 +38,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.ccache
-          key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.compiler }}-rev2
+          key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.compiler }}-rev3
 
       - name: cmake
         env:
