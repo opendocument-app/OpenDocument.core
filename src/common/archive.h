@@ -5,15 +5,12 @@
 
 namespace odr::common {
 
-template<typename Impl>
-class Archive : public abstract::Archive {
+template <typename Impl> class Archive : public abstract::Archive {
 public:
-
-
 private:
   Impl m_impl;
 };
 
-}
+} // namespace odr::common
 
 #endif // ODR_COMMON_ARCHIVE_H

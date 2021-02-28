@@ -13,6 +13,6 @@ public:
   virtual void save(const common::Path &path) const = 0;
 };
 
-}
+} // namespace odr::abstract
 
 #endif // ODR_ABSTRACT_ARCHIVE_H

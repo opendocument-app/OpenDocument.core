@@ -1,6 +1,6 @@
+#include <cfb/cfb_archive.h>
 #include <common/archive.h>
 #include <zip/zip_archive.h>
-#include <cfb/cfb_archive.h>
 
 namespace odr::common {
 
@@ -8,4 +8,4 @@ namespace odr::common {
 template class Archive<zip::ZipArchive>;
 template class Archive<cfb::ReadonlyCfbArchive>;
 
-}
+} // namespace odr::common
