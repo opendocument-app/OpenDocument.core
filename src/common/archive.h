@@ -1,10 +1,10 @@
 #ifndef ODR_COMMON_ARCHIVE_H
 #define ODR_COMMON_ARCHIVE_H
 
-#include <odr/exceptions.h>
 #include <abstract/archive.h>
 #include <abstract/file.h>
 #include <common/filesystem.h>
+#include <odr/exceptions.h>
 
 namespace odr::common {
 
@@ -40,8 +40,8 @@ private:
 
 template <typename Impl> class ArchiveFile : public abstract::ArchiveFile {
 public:
-  template<typename ...Args>
-  explicit ArchiveFile(Args ...args) : m_impl{std::forward(args)...} {}
+  template <typename... Args>
+  explicit ArchiveFile(Args... args) : m_impl{std::forward(args)...} {}
 
   explicit ArchiveFile(Impl impl) : m_impl{std::move(impl)} {}
 

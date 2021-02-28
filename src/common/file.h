@@ -31,8 +31,8 @@ public:
   TemporaryDiscFile(const TemporaryDiscFile &);
   TemporaryDiscFile(TemporaryDiscFile &&) noexcept;
   ~TemporaryDiscFile() override;
-  TemporaryDiscFile& operator=(const TemporaryDiscFile&);
-  TemporaryDiscFile& operator=(TemporaryDiscFile&&) noexcept;
+  TemporaryDiscFile &operator=(const TemporaryDiscFile &);
+  TemporaryDiscFile &operator=(TemporaryDiscFile &&) noexcept;
 };
 
 class MemoryFile final : public abstract::File {

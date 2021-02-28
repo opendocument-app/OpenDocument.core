@@ -45,9 +45,11 @@ TemporaryDiscFile::~TemporaryDiscFile() {
   std::filesystem::remove(path().string());
 }
 
-TemporaryDiscFile& TemporaryDiscFile::operator=(const TemporaryDiscFile&) = default;
+TemporaryDiscFile &
+TemporaryDiscFile::operator=(const TemporaryDiscFile &) = default;
 
-TemporaryDiscFile& TemporaryDiscFile::operator=(TemporaryDiscFile&&) noexcept = default;
+TemporaryDiscFile &
+TemporaryDiscFile::operator=(TemporaryDiscFile &&) noexcept = default;
 
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
 
