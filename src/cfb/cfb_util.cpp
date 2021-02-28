@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cfb/cfb_impl.h>
 #include <cfb/cfb_util.h>
 #include <codecvt>
