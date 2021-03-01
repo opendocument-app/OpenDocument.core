@@ -102,6 +102,9 @@ public:
   [[nodiscard]] std::size_t size() const;
   [[nodiscard]] std::unique_ptr<std::istream> read() const;
 
+  // TODO `impl()` might be a bit dirty
+  [[nodiscard]] std::shared_ptr<abstract::File> impl() const;
+
 protected:
   std::shared_ptr<abstract::File> m_impl;
 };

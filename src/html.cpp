@@ -261,8 +261,8 @@ void translate_image(ImageElement element, std::ostream &out,
 
     try {
       // try svm
-      // TODO we need public api for svm here
-      svm::SvmFile svm_file(nullptr);
+      // TODO `impl()` might be a bit dirty
+      svm::SvmFile svm_file(image_file.impl());
       std::ostringstream svg_out;
       svm::Translator::svg(svm_file, svg_out);
       image = svg_out.str();

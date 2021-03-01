@@ -1,5 +1,6 @@
 #include <abstract/file.h>
 #include <abstract/filesystem.h>
+#include <common/file.h>
 #include <crypto/crypto_util.h>
 #include <odf/odf_crypto.h>
 #include <odr/exceptions.h>
@@ -50,8 +51,9 @@ std::string decrypt(const std::string &input, const std::string &derivedKey,
 std::string start_key(const Manifest::Entry &entry,
                       const std::string &password) {
   const std::string result = hash(password, entry.startKeyGeneration);
-  if (result.size() < entry.startKeySize)
+  if (result.size() < entry.startKeySize) {
     throw std::invalid_argument("hash too small");
+  }
   return result.substr(0, entry.startKeySize);
 }
 
@@ -103,22 +105,19 @@ public:
 
   [[nodiscard]] std::shared_ptr<abstract::File>
   open(common::Path path) const final {
-    // TODO
-    return {};
-
-    /*
     const auto it = m_manifest.entries.find(path);
-    if (it == m_manifest.entries.end())
-      return m_parent->read(path);
-    if (!can_decrypt(it->second))
+    if (it == m_manifest.entries.end()) {
+      return m_parent->open(path);
+    }
+    if (!can_decrypt(it->second)) {
       throw UnsupportedCryptoAlgorithm();
+    }
     // TODO stream
-    auto source = m_parent->read(path);
+    auto source = m_parent->open(path)->read();
     const std::string input = util::stream::read(*source);
     std::string result = crypto::Util::inflate(
         derive_key_and_decrypt(it->second, m_start_key, input));
-    return std::make_unique<std::istringstream>(std::move(result));
-     */
+    return std::make_shared<common::MemoryFile>(result);
   }
 
 private:
@@ -130,10 +129,12 @@ private:
 
 bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
              const Manifest &manifest, const std::string &password) {
-  if (!manifest.encrypted)
+  if (!manifest.encrypted) {
     return true;
-  if (!can_decrypt(*manifest.smallest_file_entry))
+  }
+  if (!can_decrypt(*manifest.smallest_file_entry)) {
     throw UnsupportedCryptoAlgorithm();
+  }
   const std::string startKey =
       odf::start_key(*manifest.smallest_file_entry, password);
   // TODO stream decrypt
@@ -141,8 +142,9 @@ bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
       util::stream::read(*storage->open(*manifest.smallest_file_path)->read());
   const std::string decrypt =
       derive_key_and_decrypt(*manifest.smallest_file_entry, startKey, input);
-  if (!validate_password(*manifest.smallest_file_entry, decrypt))
+  if (!validate_password(*manifest.smallest_file_entry, decrypt)) {
     return false;
+  }
   storage = std::make_shared<CryptoOpenDocumentFile>(std::move(storage),
                                                      manifest, startKey);
   return true;

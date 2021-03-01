@@ -82,8 +82,9 @@ TEST_P(DataDrivenTest, all) {
     auto document_file = file.document_file();
 
     EXPECT_EQ(test_file.password_encrypted, document_file.password_encrypted());
-    if (document_file.password_encrypted())
+    if (document_file.password_encrypted()) {
       EXPECT_TRUE(document_file.decrypt(test_file.password));
+    }
     EXPECT_EQ(test_file.type, document_file.file_type());
   }
 

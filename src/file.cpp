@@ -117,6 +117,8 @@ std::size_t File::size() const { return m_impl->size(); }
 
 std::unique_ptr<std::istream> File::read() const { return m_impl->read(); }
 
+std::shared_ptr<abstract::File> File::impl() const { return m_impl; }
+
 std::vector<FileType> DecodedFile::types(const std::string &path) {
   return open_strategy::types(std::make_shared<common::DiscFile>(path));
 }
