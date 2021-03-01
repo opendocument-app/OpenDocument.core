@@ -44,26 +44,27 @@ void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
 
   common::TableCursor tl;
 
-  auto range = table.select_nodes(
-      ".//self::table:table-row | .//self::table:table-cell");
-  range.sort();
-  for (auto &&e : range) {
-    const auto &&n = e.node();
-    if (std::strcmp(n.name(), "table:table-row") == 0) {
-      const auto repeated =
-          n.attribute("table:number-rows-repeated").as_uint(1);
-      tl.add_row(repeated);
-    } else if (std::strcmp(n.name(), "table:table-cell") == 0) {
-      const auto repeated =
-          n.attribute("table:number-columns-repeated").as_uint(1);
+  for (auto &&r : table.select_nodes(".//self::table:table-row")) {
+    const auto &&row = r.node();
+
+    const auto rows_repeated =
+        row.attribute("table:number-rows-repeated").as_uint(1);
+    tl.add_row(rows_repeated);
+
+    for (auto &&c : row.select_nodes(".//self::table:table-cell")) {
+      const auto &&cell = c.node();
+
+      const auto columns_repeated =
+          cell.attribute("table:number-columns-repeated").as_uint(1);
       const auto colspan =
-          n.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan = n.attribute("table:number-rows-spanned").as_uint(1);
-      tl.add_cell(colspan, rowspan, repeated);
+          cell.attribute("table:number-columns-spanned").as_uint(1);
+      const auto rowspan =
+          cell.attribute("table:number-rows-spanned").as_uint(1);
+      tl.add_cell(colspan, rowspan, columns_repeated);
 
       const auto new_rows = tl.row();
       const auto new_cols = std::max(cols, tl.col());
-      if (n.first_child()) {
+      if (cell.first_child()) {
         rows = new_rows;
         cols = new_cols;
       }

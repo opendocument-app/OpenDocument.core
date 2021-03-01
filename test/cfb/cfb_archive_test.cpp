@@ -2,8 +2,10 @@
 #include <gtest/gtest.h>
 #include <odr/exceptions.h>
 #include <string>
+#include <test/test_meta.h>
 
 using namespace odr::cfb;
+using namespace odr::test;
 
 TEST(ReadonlyCfbArchive, open_directory) {
   EXPECT_ANY_THROW(ReadonlyCfbArchive(
@@ -11,15 +13,14 @@ TEST(ReadonlyCfbArchive, open_directory) {
 }
 
 TEST(ReadonlyCfbArchive, open_odt) {
-  EXPECT_THROW(
-      ReadonlyCfbArchive(std::make_shared<odr::common::MemoryFile>(
-          odr::common::DiscFile("/home/andreas/workspace/OpenDocument.test/odt/"
-                                "style-various-1.odt"))),
-      odr::NoCfbFile);
+  EXPECT_THROW(ReadonlyCfbArchive(std::make_shared<odr::common::MemoryFile>(
+                   odr::common::DiscFile(TestMeta::test_file_path(
+                       "odr-public/odt/style-various-1.odt")))),
+               odr::NoCfbFile);
 }
 
 TEST(ReadonlyCfbArchive, open_encrypted_docx) {
   ReadonlyCfbArchive(
       std::make_shared<odr::common::MemoryFile>(odr::common::DiscFile(
-          "/home/andreas/workspace/OpenDocument.test/docx/encrypted.docx")));
+          TestMeta::test_file_path("odr-public/docx/encrypted.docx"))));
 }

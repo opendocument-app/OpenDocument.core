@@ -4,14 +4,17 @@
 #include <gtest/gtest.h>
 #include <miniz.h>
 #include <string>
+#include <test/test_meta.h>
+
+using namespace odr::test;
 
 TEST(miniz, list) {
   bool state;
 
   mz_zip_archive zip{};
-  memset(&zip, 0, sizeof(zip));
   state = mz_zip_reader_init_file(
-      &zip, "/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt",
+      &zip,
+      TestMeta::test_file_path("odr-public/odt/style-various-1.odt").c_str(),
       0);
   EXPECT_TRUE(state);
 
@@ -34,8 +37,6 @@ TEST(miniz, create) {
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
   mz_zip_archive archive{};
-  memset(&archive, 0, sizeof(archive));
-
   archive.m_pIO_opaque = &out;
   archive.m_pWrite = [](void *opaque, std::uint64_t offset, const void *buffer,
                         std::size_t size) {

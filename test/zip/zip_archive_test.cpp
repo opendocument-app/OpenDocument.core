@@ -3,30 +3,32 @@
 #include <gtest/gtest.h>
 #include <odr/exceptions.h>
 #include <string>
+#include <test/test_meta.h>
 #include <zip/zip_archive.h>
 
+using namespace odr;
 using namespace odr::zip;
 using namespace odr::common;
+using namespace odr::test;
 
 TEST(ReadonlyZipArchive, open_directory) {
   EXPECT_ANY_THROW(ReadonlyZipArchive(std::make_shared<DiscFile>("/")));
 }
 
 TEST(ReadonlyZipArchive, open_encrypted_docx) {
-  EXPECT_THROW(
-      ReadonlyZipArchive(std::make_shared<DiscFile>(
-          "/home/andreas/workspace/OpenDocument.test/docx/encrypted.docx")),
-      odr::NoZipFile);
+  EXPECT_THROW(ReadonlyZipArchive(std::make_shared<DiscFile>(
+                   TestMeta::test_file_path("odr-public/docx/encrypted.docx"))),
+               NoZipFile);
 }
 
 TEST(ReadonlyZipArchive, open_odt) {
   ReadonlyZipArchive(std::make_shared<DiscFile>(
-      "/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt"));
+      TestMeta::test_file_path("odr-public/odt/style-various-1.odt")));
 }
 
 TEST(ReadonlyZipArchive, open) {
   ReadonlyZipArchive zip(std::make_shared<DiscFile>(
-      "/home/andreas/workspace/OpenDocument.test/odt/style-various-1.odt"));
+      TestMeta::test_file_path("odr-public/odt/style-various-1.odt")));
 
   for (auto &&e : zip) {
     std::cout << e.path() << std::endl;

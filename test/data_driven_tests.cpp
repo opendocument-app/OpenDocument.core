@@ -8,6 +8,7 @@
 #include <odr/file.h>
 #include <odr/html.h>
 #include <test/test_meta.h>
+#include <util/string_util.h>
 #include <utility>
 
 using namespace odr;
@@ -53,7 +54,8 @@ TEST_P(DataDrivenTest, all) {
   }
 
   // TODO remove
-  if ((test_file.type == FileType::OFFICE_OPEN_XML_DOCUMENT) ||
+  if (util::string::ends_with(test_file.path, ".sxw") ||
+      (test_file.type == FileType::OFFICE_OPEN_XML_DOCUMENT) ||
       (test_file.type == FileType::OFFICE_OPEN_XML_PRESENTATION) ||
       (test_file.type == FileType::OFFICE_OPEN_XML_WORKBOOK) ||
       (test_file.type == FileType::LEGACY_WORD_DOCUMENT) ||
@@ -99,6 +101,11 @@ TEST_P(DataDrivenTest, all) {
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
+  // TODO remove
+  if (test_file.type != FileType::OPENDOCUMENT_TEXT) {
+    GTEST_SKIP();
+  }
+
   if (file.file_category() == FileCategory::DOCUMENT) {
     auto document_file = file.document_file();
     auto document = document_file.document();
@@ -126,10 +133,9 @@ TEST_P(DataDrivenTest, all) {
         config.entry_count = 1;
         const std::string html_output =
             output_path + "/sheet" + std::to_string(i) + ".html";
-        // TODO
-        // Html::translate(document, "", htmlOutput, config);
-        // EXPECT_TRUE(fs::is_regular_file(htmlOutput));
-        // EXPECT_LT(0, fs::file_size(htmlOutput));
+        Html::translate(document, "", html_output, config);
+        EXPECT_TRUE(fs::is_regular_file(html_output));
+        EXPECT_LT(0, fs::file_size(html_output));
       }
     } else if (document.document_type() == DocumentType::DRAWING) {
       for (std::uint32_t i = 0; i < document_meta.entry_count; ++i) {

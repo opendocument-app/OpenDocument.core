@@ -4,6 +4,6 @@
 
 using namespace odr;
 
-TEST(File, open) { EXPECT_THROW(File("/"), UnknownFileType); }
+TEST(File, open) { EXPECT_THROW(File("/"), FileNotFound); }
 
-TEST(DocumentFile, open) { EXPECT_THROW(DocumentFile("/"), UnknownFileType); }
+TEST(DocumentFile, open) { EXPECT_THROW(DocumentFile("/"), FileNotFound); }
