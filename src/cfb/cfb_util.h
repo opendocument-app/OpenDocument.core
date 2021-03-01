@@ -19,8 +19,6 @@ struct CompoundFileEntry;
 
 namespace odr::cfb::util {
 
-std::string name_to_string(const std::uint16_t *name, std::size_t length);
-
 class Archive final {
 public:
   explicit Archive(const std::shared_ptr<common::MemoryFile> &file);

@@ -42,7 +42,11 @@ void Path::parent_() {
   if (m_downwards > 0) {
     --m_downwards;
     if (m_downwards == 0) {
-      m_path = "";
+      if (m_absolute) {
+        m_path = "/";
+      } else {
+        m_path = "";
+      }
     } else {
       const auto pos = m_path.rfind('/');
       m_path = m_path.substr(0, pos);
@@ -174,9 +178,11 @@ Path Path::join(const Path &b) const {
   if (b.m_absolute) {
     throw std::invalid_argument("cannot join an absolute path");
   }
+  if (root()) {
+    return Path("/" + b.m_path);
+  }
   // TODO could be done directly
-  const std::string result = m_path + "/" + b.m_path;
-  return Path(result);
+  return Path(m_path + "/" + b.m_path);
 }
 
 Path Path::rebase(const Path &on) const {

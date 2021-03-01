@@ -5,6 +5,7 @@
 #include <locale>
 #include <odr/exceptions.h>
 #include <ooxml/ooxml_crypto.h>
+#include <util/string_util.h>
 
 namespace {
 template <typename I, typename O> void to_little_endian(I in, O &out) {
@@ -53,10 +54,8 @@ ECMA376Standard::ECMA376Standard(const std::string &encryption_info) {
 
   std::memcpy(&m_encryption_header, offset, sizeof(m_encryption_header));
   std::u16string csp_name_u16(
-      (char16_t *)(offset + sizeof(m_encryption_header)));
-  const std::string csp_name =
-      std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>()
-          .to_bytes(csp_name_u16);
+      reinterpret_cast<const char16_t *>(offset + sizeof(m_encryption_header)));
+  const std::string csp_name = util::string::u16string_to_string(csp_name_u16);
   offset += standard_header.encryption_header_size;
 
   std::memcpy(&m_encryption_verifier, offset, sizeof(m_encryption_verifier));
@@ -73,10 +72,10 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
   std::string hash;
   {
     const std::u16string password_u16 =
-        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>()
-            .from_bytes(password);
-    const std::string password_u16_bytes((char *)password_u16.data(),
-                                         2 * password_u16.size());
+        util::string::string_to_u16string(password);
+    const std::string password_u16_bytes(
+        reinterpret_cast<const char *>(password_u16.data()),
+        2 * password_u16.size());
 
     hash = crypto::Util::sha1(std::string(m_encryption_verifier.salt,
                                           m_encryption_verifier.salt_size) +
@@ -126,7 +125,7 @@ bool ECMA376Standard::verify(const std::string &key) const noexcept {
 std::string ECMA376Standard::decrypt(const std::string &encrypted_package,
                                      const std::string &key) const noexcept {
   const std::uint64_t total_size =
-      *((const std::uint64_t *)encrypted_package.data());
+      *(reinterpret_cast<const std::uint64_t *>(encrypted_package.data()));
   std::string result =
       crypto::Util::decrypt_AES(key, encrypted_package.substr(8))
           .substr(0, total_size);
@@ -138,7 +137,7 @@ Util::Util(const std::string &encryption_info) {
   {
     // big endian is not supported
     const std::uint16_t num = 1;
-    if (*((std::uint8_t *)&num) != 1) {
+    if (*(reinterpret_cast<const std::uint8_t *>(&num)) != 1) {
       throw UnsupportedEndian();
     }
   }

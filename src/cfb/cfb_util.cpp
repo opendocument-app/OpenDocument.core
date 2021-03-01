@@ -1,9 +1,7 @@
 #include <algorithm>
 #include <cfb/cfb_impl.h>
 #include <cfb/cfb_util.h>
-#include <codecvt>
 #include <common/file.h>
-#include <locale>
 #include <streambuf>
 
 namespace odr::cfb::util {
@@ -71,14 +69,6 @@ int ReaderBuffer::underflow() {
 }
 
 } // namespace
-
-std::string name_to_string(const std::uint16_t *name,
-                           const std::size_t length) {
-  static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>
-      convert;
-  return convert.to_bytes(std::u16string(
-      reinterpret_cast<const char16_t *>(name), (length - 1) / 2));
-}
 
 Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)
     : m_cfb{file->content().data(), file->content().size()}, m_file{file} {}

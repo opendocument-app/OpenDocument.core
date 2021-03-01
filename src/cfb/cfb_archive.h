@@ -25,15 +25,26 @@ public:
   class Entry {
   public:
     Entry(const ReadonlyCfbArchive &parent,
-          const impl::CompoundFileEntry *entry, common::Path path);
+          const impl::CompoundFileEntry &entry);
+    Entry(const ReadonlyCfbArchive &parent,
+          const impl::CompoundFileEntry &entry,
+          const common::Path &parent_path);
+
+    bool operator==(const Entry &other) const;
+    bool operator!=(const Entry &other) const;
 
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
     [[nodiscard]] common::Path path() const;
     [[nodiscard]] std::unique_ptr<abstract::File> file() const;
 
+    [[nodiscard]] std::string name() const;
+    [[nodiscard]] std::optional<Entry> left() const;
+    [[nodiscard]] std::optional<Entry> right() const;
+    [[nodiscard]] std::optional<Entry> child() const;
+
   private:
-    const ReadonlyCfbArchive &m_parent;
+    const ReadonlyCfbArchive *m_parent;
     const impl::CompoundFileEntry *m_entry;
     common::Path m_path;
 
@@ -48,8 +59,12 @@ public:
     using pointer = const Entry *;
     using reference = const Entry &;
 
+    Iterator();
     Iterator(const ReadonlyCfbArchive &parent,
-             const impl::CompoundFileEntry *entry, common::Path path);
+             const impl::CompoundFileEntry &entry);
+    Iterator(const ReadonlyCfbArchive &parent,
+             const impl::CompoundFileEntry &entry,
+             const common::Path &parent_path);
 
     reference operator*() const;
     pointer operator->() const;
@@ -61,11 +76,13 @@ public:
     Iterator operator++(int);
 
   private:
-    std::vector<const impl::CompoundFileEntry *> m_ancestors;
-    std::vector<const impl::CompoundFileEntry *> m_directories;
-    Entry m_entry;
+    std::optional<Entry> m_entry;
+    std::vector<Entry> m_ancestors;
+    std::vector<Entry> m_directories;
 
     void dig_left_();
+    void next_();
+    void next_flat_();
   };
 
 private:

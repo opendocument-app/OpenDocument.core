@@ -4,6 +4,7 @@
 #include <locale>
 #include <odr/exceptions.h>
 #include <svm/svm_format.h>
+#include <util/string_util.h>
 
 namespace odr::svm {
 std::string read_ascii_string(std::istream &in, const std::uint32_t length) {
@@ -13,10 +14,9 @@ std::string read_ascii_string(std::istream &in, const std::uint32_t length) {
 }
 
 std::string read_utf16_string(std::istream &in, const std::uint32_t length) {
-  std::u16string resultU16(length, ' ');
-  in.read(reinterpret_cast<char *>(resultU16.data()), length * 2);
-  std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> conversion;
-  return conversion.to_bytes(resultU16);
+  std::u16string result_u16(length, ' ');
+  in.read(reinterpret_cast<char *>(result_u16.data()), length * 2);
+  return util::string::u16string_to_string(result_u16);
 }
 
 std::string read_uint16_prefixed_ascii_string(std::istream &in) {
