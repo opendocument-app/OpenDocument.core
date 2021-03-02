@@ -10,7 +10,7 @@ namespace odr {
 nlohmann::json test::meta_to_json(const odr::FileMeta &meta) {
   nlohmann::json result{
       {"type", meta.type_as_string()},
-      {"password_encrypted", meta.password_encrypted},
+      {"passwordEncrypted", meta.password_encrypted},
       {"entryCount", meta.document_meta->entry_count},
       {"entries", nlohmann::json::array()},
   };
