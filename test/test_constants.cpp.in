@@ -1,9 +1,9 @@
 #include <common/path.h>
-#include <test/test_meta.h>
+#include <test/test_util.h>
 
 namespace odr::test {
 
-std::string TestMeta::data_directory() {
+std::string TestData::data_directory() {
   return "${ODR_TEST_DATA_DIRECTORY}";
 }
 
