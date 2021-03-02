@@ -4,6 +4,7 @@
 #include <cfb/cfb_impl.h>
 #include <common/file.h>
 #include <common/path.h>
+#include <optional>
 #include <vector>
 
 namespace odr::cfb {
