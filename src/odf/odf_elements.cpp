@@ -192,7 +192,7 @@ public:
   TableColumn(const TableColumn &column, const std::uint32_t repeatIndex)
       : Element(column), m_table{column.m_table}, m_repeatIndex{repeatIndex} {}
 
-  std::shared_ptr<const TableColumn> previousColumn() const {
+  std::shared_ptr<const TableColumn> previous_column() const {
     if (m_repeatIndex > 0) {
       return std::make_shared<TableColumn>(*this, m_repeatIndex - 1);
     }
@@ -201,7 +201,7 @@ public:
         m_node.previous_sibling("table:table-column"), m_document, m_table);
   }
 
-  std::shared_ptr<const TableColumn> nextColumn() const {
+  std::shared_ptr<const TableColumn> next_column() const {
     const auto repeated =
         m_node.attribute("table:number-columns-repeated").as_uint(1);
     if (m_repeatIndex < repeated - 1) {
@@ -217,11 +217,11 @@ public:
   }
 
   std::shared_ptr<const abstract::Element> previous_sibling() const final {
-    return previousColumn();
+    return previous_column();
   }
 
   std::shared_ptr<const abstract::Element> next_sibling() const final {
-    return nextColumn();
+    return next_column();
   }
 
   std::shared_ptr<abstract::TableColumnStyle> table_column_style() const final {
@@ -245,43 +245,44 @@ public:
       : Element(std::move(document), row, node), m_row{std::move(row)},
         m_column{std::move(column)} {}
 
-  std::shared_ptr<const TableCell> previousCell() const {
+  std::shared_ptr<const TableCell> previous_cell() const {
     if (m_repeatIndex > 0) {
       return std::make_shared<TableCell>(*this, m_repeatIndex - 1);
     }
 
-    const auto previousColumn = m_column->previousColumn();
-    if (!previousColumn) {
+    const auto previous_column = m_column->previous_column();
+    if (!previous_column) {
       return {};
     }
 
     return factorize_known_element<TableCell>(
         m_node.previous_sibling("table:table-cell"), m_document, m_row,
-        previousColumn);
+        previous_column);
   }
 
-  std::shared_ptr<const TableCell> nextCell() const {
+  std::shared_ptr<const TableCell> next_cell() const {
     const auto repeated =
         m_node.attribute("table:number-columns-repeated").as_uint(1);
     if (m_repeatIndex < repeated - 1) {
       return std::make_shared<TableCell>(*this, m_repeatIndex + 1);
     }
 
-    const auto nextColumn = m_column->nextColumn();
-    if (!nextColumn) {
+    const auto next_column = m_column->next_column();
+    if (!next_column) {
       return {};
     }
 
     return factorize_known_element<TableCell>(
-        m_node.next_sibling("table:table-cell"), m_document, m_row, nextColumn);
+        m_node.next_sibling("table:table-cell"), m_document, m_row,
+        next_column);
   }
 
   std::shared_ptr<const abstract::Element> previous_sibling() const final {
-    return previousCell();
+    return previous_cell();
   }
 
   std::shared_ptr<const abstract::Element> next_sibling() const final {
-    return nextCell();
+    return next_cell();
   }
 
   std::uint32_t row_span() const final {
@@ -544,6 +545,16 @@ public:
     return m_document->styles().master_page_style(
         m_node.attribute("draw:master-page-name").value());
   }
+
+  std::shared_ptr<const abstract::Element> previous_sibling() const final {
+    return factorize_known_element<Slide>(m_node.previous_sibling("draw:page"),
+                                          m_document, m_parent);
+  }
+
+  std::shared_ptr<const abstract::Element> next_sibling() const final {
+    return factorize_known_element<Slide>(m_node.next_sibling("draw:page"),
+                                          m_document, m_parent);
+  }
 };
 
 class Sheet final : public Element, public abstract::Sheet {
@@ -567,6 +578,16 @@ public:
   std::shared_ptr<const abstract::Table> table() const final {
     return std::make_shared<Table>(m_document, shared_from_this(), m_node);
   }
+
+  std::shared_ptr<const abstract::Element> previous_sibling() const final {
+    return factorize_known_element<Sheet>(
+        m_node.previous_sibling("table:table"), m_document, m_parent);
+  }
+
+  std::shared_ptr<const abstract::Element> next_sibling() const final {
+    return factorize_known_element<Sheet>(m_node.next_sibling("table:table"),
+                                          m_document, m_parent);
+  }
 };
 
 class Page final : public Element, public abstract::Page {
@@ -582,6 +603,16 @@ public:
   std::shared_ptr<abstract::PageStyle> page_style() const final {
     return m_document->styles().master_page_style(
         m_node.attribute("draw:master-page-name").value());
+  }
+
+  std::shared_ptr<const abstract::Element> previous_sibling() const final {
+    return factorize_known_element<Page>(m_node.previous_sibling("draw:page"),
+                                         m_document, m_parent);
+  }
+
+  std::shared_ptr<const abstract::Element> next_sibling() const final {
+    return factorize_known_element<Page>(m_node.next_sibling("draw:page"),
+                                         m_document, m_parent);
   }
 };
 

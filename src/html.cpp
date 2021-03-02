@@ -17,9 +17,9 @@
 namespace odr {
 
 namespace {
-void translate_generation(ElementRange siblings, std::ostream &out,
+void translate_generation(const ElementRange &siblings, std::ostream &out,
                           const HtmlConfig &config);
-void translate_element(Element element, std::ostream &out,
+void translate_element(const Element &element, std::ostream &out,
                        const HtmlConfig &config);
 
 std::string translate_paragraph_style(const ParagraphStyle &style) {
@@ -138,7 +138,7 @@ std::string translate_frame_properties(const FrameElement &properties) {
   return result;
 }
 
-std::string translate_rect_properties(RectElement element) {
+std::string translate_rect_properties(const RectElement &element) {
   std::string result;
   result += "position:absolute;";
   result += "left:" + element.x() + ";";
@@ -148,7 +148,7 @@ std::string translate_rect_properties(RectElement element) {
   return result;
 }
 
-std::string translate_circle_properties(CircleElement element) {
+std::string translate_circle_properties(const CircleElement &element) {
   std::string result;
   result += "position:absolute;";
   result += "left:" + element.x() + ";";
@@ -165,7 +165,7 @@ std::string optional_style_attribute(const std::string &style) {
   return " style=\"" + style + "\"";
 }
 
-void translate_paragraph(ParagraphElement element, std::ostream &out,
+void translate_paragraph(const ParagraphElement &element, std::ostream &out,
                          const HtmlConfig &config) {
   out << "<p";
   out << optional_style_attribute(
@@ -179,7 +179,7 @@ void translate_paragraph(ParagraphElement element, std::ostream &out,
   out << "</p>";
 }
 
-void translate_span(SpanElement element, std::ostream &out,
+void translate_span(const SpanElement &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<span";
   out << optional_style_attribute(translate_text_style(element.text_style()));
@@ -188,7 +188,7 @@ void translate_span(SpanElement element, std::ostream &out,
   out << "</span>";
 }
 
-void translate_link(LinkElement element, std::ostream &out,
+void translate_link(const LinkElement &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<a";
   out << optional_style_attribute(translate_text_style(element.text_style()));
@@ -199,14 +199,14 @@ void translate_link(LinkElement element, std::ostream &out,
   out << "</a>";
 }
 
-void translate_bookmark(BookmarkElement element, std::ostream &out,
+void translate_bookmark(const BookmarkElement &element, std::ostream &out,
                         const HtmlConfig &config) {
   out << "<a id=\"";
   out << element.name();
   out << "\"></a>";
 }
 
-void translate_list(ListElement element, std::ostream &out,
+void translate_list(const ListElement &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<ul>";
   for (auto &&i : element.children()) {
@@ -217,7 +217,7 @@ void translate_list(ListElement element, std::ostream &out,
   out << "</ul>";
 }
 
-void translate_table(TableElement element, std::ostream &out,
+void translate_table(const TableElement &element, std::ostream &out,
                      const HtmlConfig &config) {
   out << "<table";
   out << optional_style_attribute(translate_table_style(element.table_style()));
@@ -247,7 +247,7 @@ void translate_table(TableElement element, std::ostream &out,
   out << "</table>";
 }
 
-void translate_image(ImageElement element, std::ostream &out,
+void translate_image(const ImageElement &element, std::ostream &out,
                      const HtmlConfig &config) {
   out << "<img style=\"width:100%;height:100%\"";
   out << " alt=\"Error: image not found or unsupported\"";
@@ -283,7 +283,7 @@ void translate_image(ImageElement element, std::ostream &out,
   out << "\">";
 }
 
-void translate_frame(FrameElement element, std::ostream &out,
+void translate_frame(const FrameElement &element, std::ostream &out,
                      const HtmlConfig &config) {
   out << "<div";
   out << optional_style_attribute(translate_frame_properties(element));
@@ -298,7 +298,7 @@ void translate_frame(FrameElement element, std::ostream &out,
   out << "</div>";
 }
 
-void translate_rect(RectElement element, std::ostream &out,
+void translate_rect(const RectElement &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<div";
   out << optional_style_attribute(
@@ -310,7 +310,7 @@ void translate_rect(RectElement element, std::ostream &out,
   out << "</div>";
 }
 
-void translate_line(LineElement element, std::ostream &out,
+void translate_line(const LineElement &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
   out << optional_style_attribute(
@@ -326,7 +326,7 @@ void translate_line(LineElement element, std::ostream &out,
   out << "</svg>";
 }
 
-void translate_circle(CircleElement element, std::ostream &out,
+void translate_circle(const CircleElement &element, std::ostream &out,
                       const HtmlConfig &config) {
   out << "<div";
   out << optional_style_attribute(
@@ -338,14 +338,14 @@ void translate_circle(CircleElement element, std::ostream &out,
   out << "</div>";
 }
 
-void translate_generation(ElementRange siblings, std::ostream &out,
+void translate_generation(const ElementRange &siblings, std::ostream &out,
                           const HtmlConfig &config) {
   for (auto &&e : siblings) {
     translate_element(e, out, config);
   }
 }
 
-void translate_element(Element element, std::ostream &out,
+void translate_element(const Element &element, std::ostream &out,
                        const HtmlConfig &config) {
   if (element.type() == ElementType::TEXT) {
     // TODO handle whitespace collapse
@@ -377,7 +377,7 @@ void translate_element(Element element, std::ostream &out,
   }
 }
 
-void translate_text_document(TextDocument document, std::ostream &out,
+void translate_text_document(const TextDocument &document, std::ostream &out,
                              const HtmlConfig &config) {
   const auto page_style = document.page_style();
 
@@ -399,9 +399,17 @@ void translate_text_document(TextDocument document, std::ostream &out,
   }
 }
 
-void translate_presentation(Presentation document, std::ostream &out,
+void translate_presentation(const Presentation &document, std::ostream &out,
                             const HtmlConfig &config) {
+  std::uint32_t i = 0;
   for (auto &&slide : document.slides()) {
+    if ((i < config.entry_offset) ||
+        (i >= config.entry_offset + config.entry_count)) {
+      ++i;
+      continue;
+    }
+    ++i;
+
     const auto page_style = slide.page_style();
 
     const std::string outer_style = "width:" + *page_style.width() + ";" +
@@ -420,20 +428,29 @@ void translate_presentation(Presentation document, std::ostream &out,
   }
 }
 
-void translate_spreadsheet(Spreadsheet document, std::ostream &out,
+void translate_spreadsheet(const Spreadsheet &document, std::ostream &out,
                            const HtmlConfig &config) {
-  for (auto &&child : document.root().children()) {
+  std::uint32_t i = 0;
+  for (auto &&child : document.sheets()) {
+    if ((i < config.entry_offset) ||
+        (i >= config.entry_offset + config.entry_count)) {
+      ++i;
+      continue;
+    }
+    ++i;
+
     const auto sheet = child.sheet();
     translate_table(sheet.table(), out, config);
   }
 }
 
-void translate_drawing(Drawing document, std::ostream &out,
+void translate_drawing(const Drawing &document, std::ostream &out,
                        const HtmlConfig &config) {
   std::uint32_t i = 0;
   for (auto &&page : document.pages()) {
     if ((i < config.entry_offset) ||
         (i >= config.entry_offset + config.entry_count)) {
+      ++i;
       continue;
     }
     ++i;
@@ -466,11 +483,13 @@ HtmlConfig Html::parse_config(const std::string &path) {
   return result;
 }
 
-void Html::translate(Document document, const std::string &document_identifier,
+void Html::translate(const Document &document,
+                     const std::string &document_identifier,
                      const std::string &path, const HtmlConfig &config) {
   std::ofstream out(path);
-  if (!out.is_open())
+  if (!out.is_open()) {
     return; // TODO throw
+  }
 
   out << common::Html::doctype();
   out << "<html><head>";
@@ -502,7 +521,8 @@ void Html::translate(Document document, const std::string &document_identifier,
   out << "</html>";
 }
 
-void Html::edit(Document document, const std::string &document_identifier,
+void Html::edit(const Document &document,
+                const std::string &document_identifier,
                 const std::string &diff) {
   throw UnsupportedOperation();
 }
