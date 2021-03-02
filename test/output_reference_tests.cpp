@@ -79,7 +79,6 @@ TEST_P(OutputReferenceTests, all) {
   // TODO remove
   if ((test_file.type != FileType::OPENDOCUMENT_TEXT) &&
       (test_file.type != FileType::OPENDOCUMENT_PRESENTATION) &&
-      (test_file.type != FileType::OPENDOCUMENT_SPREADSHEET) &&
       (test_file.type != FileType::OPENDOCUMENT_GRAPHICS)) {
     GTEST_SKIP();
   }
