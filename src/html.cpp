@@ -430,7 +430,14 @@ void translate_spreadsheet(Spreadsheet document, std::ostream &out,
 
 void translate_drawing(Drawing document, std::ostream &out,
                        const HtmlConfig &config) {
+  std::uint32_t i = 0;
   for (auto &&page : document.pages()) {
+    if ((i < config.entry_offset) ||
+        (i >= config.entry_offset + config.entry_count)) {
+      continue;
+    }
+    ++i;
+
     const auto page_style = page.page_style();
 
     const std::string outer_style = "width:" + *page_style.width() + ";" +
