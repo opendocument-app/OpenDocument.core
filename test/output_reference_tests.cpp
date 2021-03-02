@@ -1,13 +1,12 @@
 #include <common/path.h>
-#include <csv.hpp>
 #include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
-#include <map>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
 #include <odr/file.h>
 #include <odr/html.h>
-#include <test/test_meta.h>
+#include <test/test_util.h>
 #include <util/string_util.h>
 #include <utility>
 
@@ -15,35 +14,11 @@ using namespace odr;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
-namespace {
-class DataDrivenTest : public testing::TestWithParam<std::string> {};
+class OutputReferenceTests : public testing::TestWithParam<std::string> {};
 
-nlohmann::json meta_to_json(const odr::FileMeta &meta) {
-  nlohmann::json result{
-      {"type", meta.type_as_string()},
-      {"password_encrypted", meta.password_encrypted},
-      {"entryCount", meta.document_meta->entry_count},
-      {"entries", nlohmann::json::array()},
-  };
-
-  if (!meta.document_meta->entries.empty()) {
-    for (auto &&e : meta.document_meta->entries) {
-      result["entries"].push_back({
-          {"name", e.name},
-          {"rowCount", e.row_count},
-          {"columnCount", e.column_count},
-          {"notes", e.notes},
-      });
-    }
-  }
-
-  return result;
-}
-} // namespace
-
-TEST_P(DataDrivenTest, all) {
+TEST_P(OutputReferenceTests, all) {
   const auto test_file_path = GetParam();
-  TestFile test_file = TestMeta::test_file(test_file_path);
+  TestFile test_file = TestData::test_file(test_file_path);
   const std::string output_path = "./output/" + test_file_path;
 
   std::cout << test_file.path << " to " << output_path << std::endl;
@@ -102,7 +77,8 @@ TEST_P(DataDrivenTest, all) {
   }
 
   // TODO remove
-  if (test_file.type != FileType::OPENDOCUMENT_TEXT) {
+  if ((test_file.type != FileType::OPENDOCUMENT_TEXT) &&
+      (test_file.type != FileType::OPENDOCUMENT_PRESENTATION)) {
     GTEST_SKIP();
   }
 
@@ -153,5 +129,5 @@ TEST_P(DataDrivenTest, all) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(all, DataDrivenTest,
-                        testing::ValuesIn(TestMeta::test_file_paths()));
+INSTANTIATE_TEST_CASE_P(all, OutputReferenceTests,
+                        testing::ValuesIn(TestData::test_file_paths()));

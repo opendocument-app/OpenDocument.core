@@ -1,9 +1,34 @@
 #include <common/path.h>
 #include <csv.hpp>
 #include <filesystem>
-#include <test/test_meta.h>
+#include <nlohmann/json.hpp>
+#include <test/test_util.h>
 
 namespace fs = std::filesystem;
+
+namespace odr {
+nlohmann::json test::meta_to_json(const odr::FileMeta &meta) {
+  nlohmann::json result{
+      {"type", meta.type_as_string()},
+      {"password_encrypted", meta.password_encrypted},
+      {"entryCount", meta.document_meta->entry_count},
+      {"entries", nlohmann::json::array()},
+  };
+
+  if (!meta.document_meta->entries.empty()) {
+    for (auto &&e : meta.document_meta->entries) {
+      result["entries"].push_back({
+          {"name", e.name},
+          {"rowCount", e.row_count},
+          {"columnCount", e.column_count},
+          {"notes", e.notes},
+      });
+    }
+  }
+
+  return result;
+}
+} // namespace odr
 
 namespace odr::test {
 
@@ -69,11 +94,11 @@ std::unordered_map<std::string, TestFile> get_test_files() {
   std::unordered_map<std::string, TestFile> result;
 
   for (const auto &e :
-       fs::directory_iterator(test::TestMeta::data_input_directory())) {
+       fs::directory_iterator(test::TestData::data_input_directory())) {
     const auto files = get_test_files(e.path().string());
     for (auto &&file : files) {
       std::string testPath =
-          file.path.substr(TestMeta::data_input_directory().length() + 1);
+          file.path.substr(TestData::data_input_directory().length() + 1);
       result[testPath] = file;
     }
   }
@@ -87,30 +112,30 @@ TestFile::TestFile(std::string path, const FileType type,
     : path{std::move(path)}, type{type},
       password_encrypted{password_encrypted}, password{std::move(password)} {}
 
-std::string TestMeta::data_input_directory() {
-  return common::Path(TestMeta::data_directory()).join("input").string();
+std::string TestData::data_input_directory() {
+  return common::Path(TestData::data_directory()).join("input").string();
 }
 
-TestMeta &TestMeta::instance_() {
-  static TestMeta instance;
+TestData &TestData::instance_() {
+  static TestData instance;
   return instance;
 }
 
-std::vector<std::string> TestMeta::test_file_paths() {
+std::vector<std::string> TestData::test_file_paths() {
   return instance_().test_file_paths_();
 }
 
-TestFile TestMeta::test_file(const std::string &path) {
+TestFile TestData::test_file(const std::string &path) {
   return instance_().test_file_(path);
 }
 
-std::string TestMeta::test_file_path(const std::string &path) {
+std::string TestData::test_file_path(const std::string &path) {
   return test_file(path).path;
 }
 
-TestMeta::TestMeta() : m_test_files{get_test_files()} {}
+TestData::TestData() : m_test_files{get_test_files()} {}
 
-std::vector<std::string> TestMeta::test_file_paths_() const {
+std::vector<std::string> TestData::test_file_paths_() const {
   std::vector<std::string> result;
   for (auto &&file : m_test_files) {
     result.push_back(file.first);
@@ -119,7 +144,7 @@ std::vector<std::string> TestMeta::test_file_paths_() const {
   return result;
 }
 
-TestFile TestMeta::test_file_(const std::string &path) const {
+TestFile TestData::test_file_(const std::string &path) const {
   return m_test_files.at(path);
 }
 

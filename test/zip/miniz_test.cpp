@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <miniz.h>
 #include <string>
-#include <test/test_meta.h>
+#include <test/test_util.h>
 
 using namespace odr::test;
 
@@ -14,7 +14,7 @@ TEST(miniz, list) {
   mz_zip_archive zip{};
   state = mz_zip_reader_init_file(
       &zip,
-      TestMeta::test_file_path("odr-public/odt/style-various-1.odt").c_str(),
+      TestData::test_file_path("odr-public/odt/style-various-1.odt").c_str(),
       0);
   EXPECT_TRUE(state);
 

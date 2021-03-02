@@ -6,12 +6,12 @@ configure_file(test_constants.cpp.in test_constants.cpp)
 
 enable_testing()
 add_executable(odr_test
-        test_meta.cpp
+        test_util.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/test_constants.cpp
         document_test.cpp
         file_no_except_test.cpp
         file_test.cpp
-        data_driven_tests.cpp
+        output_reference_tests.cpp
 
         cfb/cfb_archive_test.cpp
 

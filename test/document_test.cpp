@@ -3,14 +3,14 @@
 #include <odr/document_elements.h>
 #include <odr/document_style.h>
 #include <odr/file.h>
-#include <test/test_meta.h>
+#include <test/test_util.h>
 
 using namespace odr;
 using namespace odr::test;
 
 TEST(DocumentTest, odf_hello) {
   DocumentFile document_file(
-      TestMeta::test_file_path("odr-public/odt/about.odt"));
+      TestData::test_file_path("odr-public/odt/about.odt"));
 
   std::cout << (int)document_file.file_type() << std::endl;
 
