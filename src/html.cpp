@@ -401,6 +401,7 @@ void translate_text_document(const TextDocument &document, std::ostream &out,
 
 void translate_presentation(const Presentation &document, std::ostream &out,
                             const HtmlConfig &config) {
+  // TODO indexing is kind of ugly here and duplicated
   std::uint32_t i = 0;
   for (auto &&slide : document.slides()) {
     if ((i < config.entry_offset) ||

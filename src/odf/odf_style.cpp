@@ -310,7 +310,7 @@ ResolvedStyle::to_paragraph_style() const {
 }
 
 std::shared_ptr<abstract::TableStyle> ResolvedStyle::to_table_style() const {
-  return std::make_shared<TableStyle>(paragraph_properties);
+  return std::make_shared<TableStyle>(table_properties);
 }
 
 std::shared_ptr<abstract::TableColumnStyle>
@@ -320,12 +320,12 @@ ResolvedStyle::to_table_column_style() const {
 
 std::shared_ptr<abstract::TableCellStyle>
 ResolvedStyle::to_table_cell_style() const {
-  return std::make_shared<TableCellStyle>(paragraph_properties);
+  return std::make_shared<TableCellStyle>(table_cell_properties);
 }
 
 std::shared_ptr<abstract::DrawingStyle>
 ResolvedStyle::to_drawing_style() const {
-  return std::make_shared<DrawingStyle>(paragraph_properties);
+  return std::make_shared<DrawingStyle>(graphic_properties);
 }
 
 Style::Style(std::shared_ptr<Style> parent, pugi::xml_node node)
