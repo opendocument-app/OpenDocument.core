@@ -22,11 +22,15 @@ TEST(DocumentTest, odt) {
 
   auto page_style = text_document.page_style();
 
-  std::cout << *page_style.width() << " " << *page_style.height() << std::endl;
-  std::cout << *page_style.margin_top() << std::endl;
+  EXPECT_TRUE(page_style.width());
+  EXPECT_EQ("8.2673in", *page_style.width());
+  EXPECT_TRUE(page_style.height());
+  EXPECT_EQ("11.6925in", *page_style.height());
+  EXPECT_TRUE(page_style.margin_top());
+  EXPECT_EQ("0.7874in", *page_style.margin_top());
 
   for (auto &&e : text_document.content()) {
-    std::cout << (int)e.type() << std::endl;
+    EXPECT_TRUE(e);
   }
 }
 
@@ -48,8 +52,11 @@ TEST(DocumentTest, odg) {
   for (auto &&e : drawing.pages()) {
     auto page_style = e.page_style();
 
-    std::cout << *page_style.width() << " " << *page_style.height()
-              << std::endl;
-    std::cout << *page_style.margin_top() << std::endl;
+    EXPECT_TRUE(page_style.width());
+    EXPECT_EQ("21cm", *page_style.width());
+    EXPECT_TRUE(page_style.height());
+    EXPECT_EQ("29.7cm", *page_style.height());
+    EXPECT_TRUE(page_style.margin_top());
+    EXPECT_EQ("1cm", *page_style.margin_top());
   }
 }

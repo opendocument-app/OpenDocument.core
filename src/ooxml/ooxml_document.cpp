@@ -1,6 +1,7 @@
 #include <common/path.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
+#include <odr/exceptions.h>
 #include <ooxml/ooxml_document.h>
 #include <ooxml/text/ooxml_text_elements.h>
 #include <util/xml_util.h>
@@ -27,12 +28,12 @@ OfficeOpenXmlDocument::filesystem() const noexcept {
 }
 
 void OfficeOpenXmlDocument::save(const common::Path &path) const {
-  // TODO
+  throw UnsupportedOperation();
 }
 
 void OfficeOpenXmlDocument::save(const common::Path &path,
                                  const std::string &password) const {
-  // TODO
+  throw UnsupportedOperation();
 }
 
 OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(

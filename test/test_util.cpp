@@ -8,14 +8,16 @@ namespace fs = std::filesystem;
 
 namespace odr {
 nlohmann::json test::meta_to_json(const odr::FileMeta &meta) {
-  nlohmann::json result{
-      {"type", meta.type_as_string()},
-      {"encrypted", meta.password_encrypted},
-      {"entryCount", meta.document_meta->entry_count},
-      {"entries", nlohmann::json::array()},
-  };
+  nlohmann::json result;
 
-  if (!meta.document_meta->entries.empty()) {
+  result["type"] = meta.type_as_string();
+  result["encrypted"] = meta.password_encrypted;
+  result["entryCount"] = 0;
+  result["entries"] = nlohmann::json::array();
+
+  if (meta.document_meta) {
+    result["entryCount"] = meta.document_meta->entries.size();
+
     for (auto &&e : meta.document_meta->entries) {
       result["entries"].push_back({
           {"name", e.name},

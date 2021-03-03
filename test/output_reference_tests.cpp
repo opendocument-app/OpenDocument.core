@@ -30,9 +30,6 @@ TEST_P(OutputReferenceTests, all) {
 
   // TODO remove
   if (util::string::ends_with(test_file.path, ".sxw") ||
-      (test_file.type == FileType::OFFICE_OPEN_XML_DOCUMENT) ||
-      (test_file.type == FileType::OFFICE_OPEN_XML_PRESENTATION) ||
-      (test_file.type == FileType::OFFICE_OPEN_XML_WORKBOOK) ||
       (test_file.type == FileType::LEGACY_WORD_DOCUMENT) ||
       (test_file.type == FileType::LEGACY_POWERPOINT_PRESENTATION) ||
       (test_file.type == FileType::LEGACY_EXCEL_WORKSHEETS)) {
@@ -79,7 +76,8 @@ TEST_P(OutputReferenceTests, all) {
   // TODO remove
   if ((test_file.type != FileType::OPENDOCUMENT_TEXT) &&
       (test_file.type != FileType::OPENDOCUMENT_PRESENTATION) &&
-      (test_file.type != FileType::OPENDOCUMENT_GRAPHICS)) {
+      (test_file.type != FileType::OPENDOCUMENT_GRAPHICS) &&
+      (test_file.type != FileType::OFFICE_OPEN_XML_DOCUMENT)) {
     GTEST_SKIP();
   }
 

@@ -17,8 +17,8 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
 
   FileMeta result;
 
-  if (filesystem.is_file("EncryptionInfo") &&
-      filesystem.is_file("EncryptedPackage")) {
+  if (filesystem.is_file("/EncryptionInfo") &&
+      filesystem.is_file("/EncryptedPackage")) {
     result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;
     result.password_encrypted = true;
     return result;
@@ -30,6 +30,9 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
       break;
     }
   }
+
+  // TODO
+  result.document_meta = DocumentMeta();
 
   return result;
 }

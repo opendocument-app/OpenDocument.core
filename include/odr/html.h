@@ -24,6 +24,9 @@ struct HtmlConfig {
   // create editable output
   bool editable{false};
 
+  // text document margin
+  bool text_document_margin{false};
+
   // spreadsheet table offset
   std::uint32_t table_offset_rows{0};
   std::uint32_t table_offset_cols{0};

@@ -381,7 +381,7 @@ void translate_text_document(const TextDocument &document, std::ostream &out,
                              const HtmlConfig &config) {
   const auto page_style = document.page_style();
 
-  if (page_style) {
+  if (config.text_document_margin && page_style) {
     const std::string outer_style = "width:" + *page_style.width() + ";";
     const std::string inner_style =
         "margin-top:" + *page_style.margin_top() + ";" +
