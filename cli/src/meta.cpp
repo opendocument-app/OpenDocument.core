@@ -1,31 +1,7 @@
 #include <iostream>
-#include <nlohmann/json.hpp>
 #include <odr/file.h>
 #include <string>
-
-namespace {
-nlohmann::json meta_to_json(const odr::FileMeta &meta) {
-  nlohmann::json result{
-      {"type", meta.type_as_string()},
-      {"encrypted", meta.password_encrypted},
-      {"entryCount", meta.document_meta->entry_count},
-      {"entries", nlohmann::json::array()},
-  };
-
-  if (!meta.document_meta->entries.empty()) {
-    for (auto &&e : meta.document_meta->entries) {
-      result["entries"].push_back({
-          {"name", e.name},
-          {"rowCount", e.row_count},
-          {"columnCount", e.column_count},
-          {"notes", e.notes},
-      });
-    }
-  }
-
-  return result;
-}
-} // namespace
+#include <util/odr_meta_util.h>
 
 int main(int argc, char **argv) {
   const std::string input{argv[1]};
@@ -45,7 +21,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  const auto json = meta_to_json(document_file.file_meta());
+  const auto json = odr::util::meta::meta_to_json(document_file.file_meta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;

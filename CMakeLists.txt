@@ -74,6 +74,7 @@ add_library(odr-object OBJECT
         src/svm/svm_to_svg.cpp
 
         src/util/file_util.cpp
+        src/util/odr_meta_util.cpp
         src/util/stream_util.cpp
         src/util/string_util.cpp
         src/util/xml_util.cpp

@@ -7,6 +7,7 @@
 #include <odr/file.h>
 #include <odr/html.h>
 #include <test/test_util.h>
+#include <util/odr_meta_util.h>
 #include <util/string_util.h>
 #include <utility>
 
@@ -66,7 +67,7 @@ TEST_P(OutputReferenceTests, all) {
 
   {
     const std::string meta_output = output_path + "/meta.json";
-    const auto json = meta_to_json(file_meta);
+    const auto json = odr::util::meta::meta_to_json(file_meta);
     std::ofstream o(meta_output);
     o << std::setw(4) << json << std::endl;
     EXPECT_TRUE(fs::is_regular_file(meta_output));

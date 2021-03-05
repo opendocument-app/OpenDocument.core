@@ -5,6 +5,10 @@ target_link_libraries(meta
 
         odr-static
         )
+target_include_directories(meta
+        PRIVATE
+        ../src
+        )
 
 add_executable(translate src/translate.cpp)
 target_link_libraries(translate
@@ -18,6 +22,6 @@ target_link_libraries(back_translate
         odr-static
         )
 target_include_directories(back_translate
-        PUBLIC
+        PRIVATE
         ../src
         )

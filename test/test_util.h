@@ -9,8 +9,6 @@
 
 namespace odr::test {
 
-nlohmann::json meta_to_json(const odr::FileMeta &meta);
-
 struct TestFile {
   std::string path;
   FileType type{FileType::UNKNOWN};
