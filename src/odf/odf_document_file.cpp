@@ -32,14 +32,6 @@ FileType OpenDocumentFile::file_type() const noexcept {
   return m_file_meta.type;
 }
 
-FileMeta OpenDocumentFile::file_meta() const noexcept {
-  FileMeta result = m_file_meta;
-  if (m_encryption_state != EncryptionState::ENCRYPTED) {
-    result.document_meta = document()->document_meta();
-  }
-  return result;
-}
-
 bool OpenDocumentFile::password_encrypted() const noexcept {
   return m_file_meta.password_encrypted;
 }
@@ -57,6 +49,14 @@ bool OpenDocumentFile::decrypt(const std::string &password) {
   return true;
 }
 
+FileMeta OpenDocumentFile::file_meta() const noexcept {
+  FileMeta result = m_file_meta;
+  if (m_encryption_state != EncryptionState::ENCRYPTED) {
+    result.document_meta = document()->document_meta();
+  }
+  return result;
+}
+
 std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
   // TODO throw if encrypted
   switch (file_type()) {
@@ -70,7 +70,7 @@ std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
     return std::make_shared<OpenDocumentDrawing>(m_files);
   default:
     // TODO throw
-    return nullptr;
+    return {};
   }
 }
 
