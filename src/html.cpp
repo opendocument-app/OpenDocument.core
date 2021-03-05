@@ -224,16 +224,42 @@ void translate_table(const TableElement &element, std::ostream &out,
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
+  std::uint32_t end_column = config.table_offset_cols + config.table_limit_cols;
+  std::uint32_t end_row = config.table_offset_rows + config.table_limit_rows;
+
+  std::uint32_t column_index = 0;
   for (auto &&col : element.columns()) {
+    if ((column_index < config.table_offset_cols) ||
+        (column_index >= end_column)) {
+      ++column_index;
+      continue;
+    }
+    ++column_index;
+
     out << "<col";
     out << optional_style_attribute(
         translate_table_column_style(col.table_column_style()));
     out << ">";
   }
 
+  std::uint32_t row_index = 0;
   for (auto &&row : element.rows()) {
+    if ((row_index < config.table_offset_rows) || (row_index >= end_row)) {
+      ++row_index;
+      continue;
+    }
+    ++row_index;
+
     out << "<tr>";
+    std::uint32_t column_index = 0;
     for (auto &&cell : row.cells()) {
+      if ((column_index < config.table_offset_cols) ||
+          (column_index >= end_column)) {
+        ++column_index;
+        continue;
+      }
+      ++column_index;
+
       out << "<td";
       out << optional_style_attribute(
           translate_table_cell_style(cell.table_cell_style()));

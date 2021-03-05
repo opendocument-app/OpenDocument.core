@@ -42,7 +42,6 @@ TEST_P(OutputReferenceTests, all) {
   config.table_limit_rows = 4000;
   config.table_limit_cols = 500;
 
-  // const odr::File file{test_file.path};
   const odr::DecodedFile file{test_file.path};
 
   fs::create_directories(fs::path(output_path));
@@ -77,6 +76,7 @@ TEST_P(OutputReferenceTests, all) {
   // TODO remove
   if ((test_file.type != FileType::OPENDOCUMENT_TEXT) &&
       (test_file.type != FileType::OPENDOCUMENT_PRESENTATION) &&
+      (test_file.type != FileType::OPENDOCUMENT_SPREADSHEET) &&
       (test_file.type != FileType::OPENDOCUMENT_GRAPHICS) &&
       (test_file.type != FileType::OFFICE_OPEN_XML_DOCUMENT)) {
     GTEST_SKIP();
