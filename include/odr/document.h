@@ -32,13 +32,26 @@ enum class DocumentType {
   DRAWING,
 };
 
+struct TableDimensions {
+  std::uint32_t rows{0};
+  std::uint32_t columns{0};
+
+  TableDimensions();
+  TableDimensions(std::uint32_t rows, std::uint32_t columns);
+};
+
 struct DocumentMeta final {
   struct Entry {
-    std::string name;
-    std::uint32_t row_count{0};
-    std::uint32_t column_count{0};
-    std::string notes;
+    std::optional<std::string> name;
+    std::optional<TableDimensions> table_dimensions;
+    std::optional<std::string> notes;
+
+    Entry();
   };
+
+  DocumentMeta();
+  DocumentMeta(DocumentType document_type, std::uint32_t entry_count,
+               std::vector<Entry> entries);
 
   DocumentType document_type{DocumentType::UNKNOWN};
   std::uint32_t entry_count{0};

@@ -32,6 +32,7 @@ class Circle;
 
 namespace odr {
 class File;
+struct TableDimensions;
 
 class PageStyle;
 class TextStyle;
@@ -208,8 +209,6 @@ public:
   [[nodiscard]] SheetElement next_sibling() const;
 
   [[nodiscard]] std::string name() const;
-  [[nodiscard]] std::uint32_t row_count() const;
-  [[nodiscard]] std::uint32_t column_count() const;
   [[nodiscard]] TableElement table() const;
 
 private:
@@ -312,6 +311,8 @@ class TableElement final : public Element {
 public:
   TableElement();
   explicit TableElement(std::shared_ptr<const abstract::Table> impl);
+
+  [[nodiscard]] TableDimensions dimensions() const;
 
   [[nodiscard]] TableColumnRange columns() const;
   [[nodiscard]] TableRowRange rows() const;

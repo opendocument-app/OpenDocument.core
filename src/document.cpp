@@ -7,6 +7,21 @@
 
 namespace odr {
 
+TableDimensions::TableDimensions() = default;
+
+TableDimensions::TableDimensions(std::uint32_t rows, std::uint32_t columns)
+    : rows{rows}, columns{columns} {}
+
+DocumentMeta::Entry::Entry() = default;
+
+DocumentMeta::DocumentMeta() = default;
+
+DocumentMeta::DocumentMeta(const DocumentType document_type,
+                           const std::uint32_t entry_count,
+                           std::vector<Entry> entries)
+    : document_type{document_type}, entry_count{entry_count}, entries{std::move(
+                                                                  entries)} {}
+
 Document::Document(std::shared_ptr<abstract::Document> document)
     : m_document{std::move(document)} {
   if (!m_document) {

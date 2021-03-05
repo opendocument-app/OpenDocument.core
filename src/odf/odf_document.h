@@ -21,9 +21,6 @@ public:
   bool editable() const noexcept final;
   bool savable(bool encrypted) const noexcept final;
 
-  DocumentType document_type() const noexcept final;
-  DocumentMeta document_meta() const noexcept final;
-
   std::shared_ptr<abstract::ReadableFilesystem> filesystem() const noexcept;
   const Styles &styles() const noexcept;
 
@@ -32,7 +29,6 @@ public:
 
 protected:
   std::shared_ptr<abstract::ReadableFilesystem> m_files;
-  DocumentMeta m_document_meta;
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
   Styles m_styles;
@@ -44,6 +40,8 @@ public:
   explicit OpenDocumentText(
       std::shared_ptr<abstract::ReadableFilesystem> files);
 
+  DocumentMeta document_meta() const noexcept final;
+
   std::shared_ptr<const abstract::Element> root() const final;
 
   std::shared_ptr<abstract::PageStyle> page_style() const final;
@@ -54,6 +52,8 @@ class OpenDocumentPresentation final : public OpenDocument,
 public:
   explicit OpenDocumentPresentation(
       std::shared_ptr<abstract::ReadableFilesystem> files);
+
+  DocumentMeta document_meta() const noexcept final;
 
   std::uint32_t slide_count() const final;
 
@@ -67,6 +67,8 @@ public:
   explicit OpenDocumentSpreadsheet(
       std::shared_ptr<abstract::ReadableFilesystem> files);
 
+  DocumentMeta document_meta() const noexcept final;
+
   std::uint32_t sheet_count() const final;
 
   std::shared_ptr<const abstract::Element> root() const final;
@@ -78,6 +80,8 @@ class OpenDocumentDrawing final : public OpenDocument,
 public:
   explicit OpenDocumentDrawing(
       std::shared_ptr<abstract::ReadableFilesystem> files);
+
+  DocumentMeta document_meta() const noexcept final;
 
   std::uint32_t page_count() const final;
 

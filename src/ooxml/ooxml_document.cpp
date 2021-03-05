@@ -18,10 +18,6 @@ bool OfficeOpenXmlDocument::savable(bool encrypted) const noexcept {
   return false;
 }
 
-DocumentType OfficeOpenXmlDocument::document_type() const noexcept {
-  return document_meta().document_type;
-}
-
 std::shared_ptr<abstract::ReadableFilesystem>
 OfficeOpenXmlDocument::filesystem() const noexcept {
   return m_filesystem;
@@ -49,7 +45,7 @@ OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(
 DocumentMeta OfficeOpenXmlTextDocument::document_meta() const noexcept {
   DocumentMeta result;
 
-  result.document_type = DocumentType::TEXT;
+  result.document_type = document_type();
 
   return result;
 }
@@ -78,7 +74,8 @@ OfficeOpenXmlPresentation::OfficeOpenXmlPresentation(
 DocumentMeta OfficeOpenXmlPresentation::document_meta() const noexcept {
   DocumentMeta result;
 
-  result.document_type = DocumentType::PRESENTATION;
+  result.document_type = document_type();
+
   result.entry_count = 0;
   for (auto &&e : m_presentation_xml.select_nodes("//p:sldId")) {
     ++result.entry_count;
@@ -91,7 +88,7 @@ DocumentMeta OfficeOpenXmlPresentation::document_meta() const noexcept {
 }
 
 std::uint32_t OfficeOpenXmlPresentation::slide_count() const {
-  return 0; // TODO
+  return document_meta().entry_count;
 }
 
 std::shared_ptr<const abstract::Element>
@@ -115,7 +112,8 @@ OfficeOpenXmlSpreadsheet::OfficeOpenXmlSpreadsheet(
 DocumentMeta OfficeOpenXmlSpreadsheet::document_meta() const noexcept {
   DocumentMeta result;
 
-  result.document_type = DocumentType::SPREADSHEET;
+  result.document_type = document_type();
+
   result.entry_count = 0;
   for (auto &&e : m_workbook_xml.select_nodes("//sheet")) {
     ++result.entry_count;
@@ -129,7 +127,7 @@ DocumentMeta OfficeOpenXmlSpreadsheet::document_meta() const noexcept {
 }
 
 std::uint32_t OfficeOpenXmlSpreadsheet::sheet_count() const {
-  return 0; // TODO
+  return document_meta().entry_count;
 }
 
 std::shared_ptr<const abstract::Element>

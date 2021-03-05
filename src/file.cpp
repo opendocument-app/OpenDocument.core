@@ -102,6 +102,13 @@ FileCategory FileMeta::category_by_type(const FileType type) noexcept {
   }
 }
 
+FileMeta::FileMeta() = default;
+
+FileMeta::FileMeta(const FileType type, const bool password_encrypted,
+                   std::optional<DocumentMeta> document_meta)
+    : type{type}, password_encrypted{password_encrypted},
+      document_meta{std::move(document_meta)} {}
+
 std::string FileMeta::type_as_string() const noexcept {
   return typeToString(type);
 }

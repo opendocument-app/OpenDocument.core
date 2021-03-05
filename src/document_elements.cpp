@@ -376,6 +376,13 @@ TableElement::TableElement() = default;
 TableElement::TableElement(std::shared_ptr<const abstract::Table> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
+TableDimensions TableElement::dimensions() const {
+  if (!m_impl) {
+    return TableDimensions(); // TODO
+  }
+  return m_impl->dimensions();
+}
+
 TableColumnRange TableElement::columns() const {
   if (!m_impl) {
     return TableColumnRange();

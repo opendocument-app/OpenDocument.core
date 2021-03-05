@@ -31,6 +31,7 @@ add_library(odr-object OBJECT
         src/open_strategy.cpp
         src/property.cpp
 
+        src/abstract/document.cpp
         src/abstract/document_elements.cpp
         src/abstract/file.cpp
         src/abstract/property.cpp

@@ -21,8 +21,6 @@ public:
   bool editable() const noexcept final;
   bool savable(bool encrypted) const noexcept final;
 
-  DocumentType document_type() const noexcept final;
-
   std::shared_ptr<abstract::ReadableFilesystem> filesystem() const noexcept;
 
   void save(const common::Path &path) const final;

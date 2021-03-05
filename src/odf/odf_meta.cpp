@@ -36,41 +36,6 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
   return util::map::lookup_map_default(MIME_TYPES, mime_type, file_type,
                                        FileType::UNKNOWN);
 }
-
-void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
-                               std::uint32_t &cols) {
-  rows = 0;
-  cols = 0;
-
-  common::TableCursor tl;
-
-  for (auto &&r : table.select_nodes(".//self::table:table-row")) {
-    const auto &&row = r.node();
-
-    const auto rows_repeated =
-        row.attribute("table:number-rows-repeated").as_uint(1);
-    tl.add_row(rows_repeated);
-
-    for (auto &&c : row.select_nodes(".//self::table:table-cell")) {
-      const auto &&cell = c.node();
-
-      const auto columns_repeated =
-          cell.attribute("table:number-columns-repeated").as_uint(1);
-      const auto colspan =
-          cell.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan =
-          cell.attribute("table:number-rows-spanned").as_uint(1);
-      tl.add_cell(colspan, rowspan, columns_repeated);
-
-      const auto new_rows = tl.row();
-      const auto new_cols = std::max(cols, tl.col());
-      if (cell.first_child()) {
-        rows = new_rows;
-        cols = new_cols;
-      }
-    }
-  }
-}
 } // namespace
 
 FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
@@ -105,83 +70,39 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
   return result;
 }
 
-DocumentMeta parse_document_meta(const pugi::xml_document *meta,
-                                 const pugi::xml_document &content) {
-  DocumentMeta result;
+void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
+                               std::uint32_t &cols) {
+  rows = 0;
+  cols = 0;
 
-  const auto body = content.document_element().child("office:body");
-  if (!body) {
-    throw NoOpenDocumentFile();
-  }
+  common::TableCursor tl;
 
-  if (body.child("office:text")) {
-    result.document_type = DocumentType::TEXT;
-  } else if (body.child("office:presentation")) {
-    result.document_type = DocumentType::PRESENTATION;
-  } else if (body.child("office:spreadsheet")) {
-    result.document_type = DocumentType::SPREADSHEET;
-  } else if (body.child("office:drawing")) {
-    result.document_type = DocumentType::DRAWING;
-  }
-  // TODO else throw
+  for (auto &&r : table.select_nodes(".//self::table:table-row")) {
+    const auto &&row = r.node();
 
-  if (meta != nullptr) {
-    const pugi::xml_node statistics = meta->child("office:document-meta")
-                                          .child("office:meta")
-                                          .child("meta:document-statistic");
-    if (statistics) {
-      switch (result.document_type) {
-      case DocumentType::TEXT: {
-        const auto page_count = statistics.attribute("meta:page-count");
-        if (!page_count) {
-          break;
-        }
-        result.entry_count = page_count.as_uint();
-      } break;
-      case DocumentType::PRESENTATION: {
-        result.entry_count = 0;
-      } break;
-      case DocumentType::SPREADSHEET: {
-        const auto table_count = statistics.attribute("meta:table-count");
-        if (!table_count) {
-          break;
-        }
-        result.entry_count = table_count.as_uint();
-      } break;
-      case DocumentType::DRAWING: {
-      } break;
-      default:
-        break;
+    const auto rows_repeated =
+        row.attribute("table:number-rows-repeated").as_uint(1);
+    tl.add_row(rows_repeated);
+
+    for (auto &&c : row.select_nodes(".//self::table:table-cell")) {
+      const auto &&cell = c.node();
+
+      const auto columns_repeated =
+          cell.attribute("table:number-columns-repeated").as_uint(1);
+      const auto colspan =
+          cell.attribute("table:number-columns-spanned").as_uint(1);
+      const auto rowspan =
+          cell.attribute("table:number-rows-spanned").as_uint(1);
+      tl.add_cell(colspan, rowspan, columns_repeated);
+
+      const auto new_rows = tl.row();
+      const auto new_cols = std::max(cols, tl.col());
+      if (cell.first_child()) {
+        rows = new_rows;
+        cols = new_cols;
       }
     }
   }
-
-  switch (result.document_type) {
-  case DocumentType::DRAWING:
-  case DocumentType::PRESENTATION: {
-    result.entry_count = 0;
-    for (auto &&e : body.select_nodes("//draw:page")) {
-      ++result.entry_count;
-      DocumentMeta::Entry entry;
-      entry.name = e.node().attribute("draw:name").as_string();
-      result.entries.emplace_back(entry);
-    }
-  } break;
-  case DocumentType::SPREADSHEET: {
-    result.entry_count = 0;
-    for (auto &&e : body.select_nodes("//table:table")) {
-      ++result.entry_count;
-      DocumentMeta::Entry entry;
-      entry.name = e.node().attribute("table:name").as_string();
-      estimate_table_dimensions(e.node(), entry.row_count, entry.column_count);
-      result.entries.emplace_back(entry);
-    }
-  } break;
-  default:
-    break;
-  }
-
-  return result;
 }
 
 } // namespace odr::odf

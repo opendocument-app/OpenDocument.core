@@ -310,12 +310,8 @@ public:
         std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::uint32_t row_count() const final {
-    return 0; // TODO
-  }
-
-  std::uint32_t column_count() const final {
-    return 0; // TODO
+  TableDimensions dimensions() const final {
+    return {}; // TODO
   }
 
   std::shared_ptr<const abstract::Element> first_child() const final {

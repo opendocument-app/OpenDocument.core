@@ -47,11 +47,15 @@ public:
 
 class TextDocument : public virtual Document {
 public:
+  [[nodiscard]] DocumentType document_type() const noexcept final;
+
   [[nodiscard]] virtual std::shared_ptr<PageStyle> page_style() const = 0;
 };
 
 class Presentation : public virtual Document {
 public:
+  [[nodiscard]] DocumentType document_type() const noexcept final;
+
   [[nodiscard]] virtual std::uint32_t slide_count() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<const Slide> first_slide() const = 0;
@@ -59,6 +63,8 @@ public:
 
 class Spreadsheet : public virtual Document {
 public:
+  [[nodiscard]] DocumentType document_type() const noexcept final;
+
   [[nodiscard]] virtual std::uint32_t sheet_count() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<const Sheet> first_sheet() const = 0;
@@ -66,6 +72,8 @@ public:
 
 class Drawing : public virtual Document {
 public:
+  [[nodiscard]] DocumentType document_type() const noexcept final;
+
   [[nodiscard]] virtual std::uint32_t page_count() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<const Page> first_page() const = 0;

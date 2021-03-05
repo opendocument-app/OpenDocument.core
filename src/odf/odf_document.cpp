@@ -14,13 +14,6 @@ OpenDocument::OpenDocument(std::shared_ptr<abstract::ReadableFilesystem> files)
     : m_files{std::move(files)} {
   m_content_xml = util::xml::parse(*m_files, "content.xml");
 
-  if (m_files->exists("meta.xml")) {
-    auto meta = util::xml::parse(*m_files, "meta.xml");
-    m_document_meta = parse_document_meta(&meta, m_content_xml);
-  } else {
-    m_document_meta = parse_document_meta(nullptr, m_content_xml);
-  }
-
   if (m_files->exists("styles.xml")) {
     m_styles_xml = util::xml::parse(*m_files, "styles.xml");
   }
@@ -31,14 +24,6 @@ OpenDocument::OpenDocument(std::shared_ptr<abstract::ReadableFilesystem> files)
 bool OpenDocument::editable() const noexcept { return true; }
 
 bool OpenDocument::savable(bool encrypted) const noexcept { return !encrypted; }
-
-DocumentType OpenDocument::document_type() const noexcept {
-  return m_document_meta.document_type;
-}
-
-DocumentMeta OpenDocument::document_meta() const noexcept {
-  return m_document_meta;
-}
 
 std::shared_ptr<abstract::ReadableFilesystem>
 OpenDocument::filesystem() const noexcept {
@@ -91,6 +76,24 @@ OpenDocumentText::OpenDocumentText(
     std::shared_ptr<abstract::ReadableFilesystem> files)
     : OpenDocument(std::move(files)) {}
 
+DocumentMeta OpenDocumentText::document_meta() const noexcept {
+  DocumentMeta result;
+
+  result.document_type = document_type();
+
+  // TODO reading from meta might not make a lot of sense since it can be
+  // outdated
+  if (m_files->exists("meta.xml")) {
+    auto meta = util::xml::parse(*m_files, "meta.xml");
+    const pugi::xml_node statistics = meta.child("office:document-meta")
+                                          .child("office:meta")
+                                          .child("meta:document-statistic");
+    result.entry_count = statistics.attribute("meta:page-count").as_uint(0);
+  }
+
+  return result;
+}
+
 std::shared_ptr<const abstract::Element> OpenDocumentText::root() const {
   const pugi::xml_node body = m_content_xml.document_element()
                                   .child("office:body")
@@ -106,8 +109,26 @@ OpenDocumentPresentation::OpenDocumentPresentation(
     std::shared_ptr<abstract::ReadableFilesystem> files)
     : OpenDocument(std::move(files)) {}
 
+DocumentMeta OpenDocumentPresentation::document_meta() const noexcept {
+  DocumentMeta result;
+
+  result.document_type = document_type();
+
+  for (auto slide = first_slide(); slide;
+       slide = std::dynamic_pointer_cast<const abstract::Slide>(
+           slide->next_sibling())) {
+    ++result.entry_count;
+
+    DocumentMeta::Entry entry;
+    entry.name = slide->name();
+    result.entries.emplace_back(entry);
+  }
+
+  return result;
+}
+
 std::uint32_t OpenDocumentPresentation::slide_count() const {
-  return 0; // TODO
+  return document_meta().entry_count;
 }
 
 std::shared_ptr<const abstract::Element>
@@ -128,8 +149,27 @@ OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
     std::shared_ptr<abstract::ReadableFilesystem> files)
     : OpenDocument(std::move(files)) {}
 
+DocumentMeta OpenDocumentSpreadsheet::document_meta() const noexcept {
+  DocumentMeta result;
+
+  result.document_type = document_type();
+
+  for (auto sheet = first_sheet(); sheet;
+       sheet = std::dynamic_pointer_cast<const abstract::Sheet>(
+           sheet->next_sibling())) {
+    ++result.entry_count;
+
+    DocumentMeta::Entry entry;
+    entry.name = sheet->name();
+    entry.table_dimensions = sheet->table()->dimensions();
+    result.entries.emplace_back(entry);
+  }
+
+  return result;
+}
+
 std::uint32_t OpenDocumentSpreadsheet::sheet_count() const {
-  return 0; // TODO
+  return document_meta().entry_count;
 }
 
 std::shared_ptr<const abstract::Element> OpenDocumentSpreadsheet::root() const {
@@ -149,8 +189,26 @@ OpenDocumentDrawing::OpenDocumentDrawing(
     std::shared_ptr<abstract::ReadableFilesystem> files)
     : OpenDocument(std::move(files)) {}
 
+DocumentMeta OpenDocumentDrawing::document_meta() const noexcept {
+  DocumentMeta result;
+
+  result.document_type = document_type();
+
+  for (auto page = first_page(); page;
+       page = std::dynamic_pointer_cast<const abstract::Page>(
+           page->next_sibling())) {
+    ++result.entry_count;
+
+    DocumentMeta::Entry entry;
+    entry.name = page->name();
+    result.entries.emplace_back(entry);
+  }
+
+  return result;
+}
+
 std::uint32_t OpenDocumentDrawing::page_count() const {
-  return 0; // TODO
+  return document_meta().entry_count;
 }
 
 std::shared_ptr<const abstract::Element> OpenDocumentDrawing::root() const {

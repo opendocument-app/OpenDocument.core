@@ -19,12 +19,25 @@ nlohmann::json test::meta_to_json(const odr::FileMeta &meta) {
     result["entryCount"] = meta.document_meta->entries.size();
 
     for (auto &&e : meta.document_meta->entries) {
-      result["entries"].push_back({
-          {"name", e.name},
-          {"rowCount", e.row_count},
-          {"columnCount", e.column_count},
-          {"notes", e.notes},
-      });
+      nlohmann::json entry;
+
+      entry["name"] = "";
+      entry["rowCount"] = 0;
+      entry["columnCount"] = 0;
+      entry["notes"] = "";
+
+      if (e.name) {
+        entry["name"] = *e.name;
+      }
+      if (e.table_dimensions) {
+        entry["rowCount"] = e.table_dimensions->rows;
+        entry["columnCount"] = e.table_dimensions->columns;
+      }
+      if (e.notes) {
+        entry["notes"] = *e.notes;
+      }
+
+      result["entries"].push_back(entry);
     }
   }
 

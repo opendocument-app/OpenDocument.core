@@ -6,6 +6,7 @@
 
 namespace odr {
 enum class ElementType;
+struct TableDimensions;
 } // namespace odr
 
 namespace odr::abstract {
@@ -53,8 +54,6 @@ public:
   [[nodiscard]] ElementType type() const final;
 
   [[nodiscard]] virtual std::string name() const = 0;
-  [[nodiscard]] virtual std::uint32_t row_count() const = 0;
-  [[nodiscard]] virtual std::uint32_t column_count() const = 0;
   [[nodiscard]] virtual std::shared_ptr<const Table> table() const = 0;
 };
 
@@ -120,8 +119,7 @@ class Table : public virtual Element {
 public:
   [[nodiscard]] ElementType type() const final;
 
-  [[nodiscard]] virtual std::uint32_t row_count() const = 0;
-  [[nodiscard]] virtual std::uint32_t column_count() const = 0;
+  [[nodiscard]] virtual TableDimensions dimensions() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<const TableColumn>
   first_column() const = 0;

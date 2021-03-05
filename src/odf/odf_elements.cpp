@@ -5,6 +5,7 @@
 #include <odf/odf_document.h>
 #include <odf/odf_document_file.h>
 #include <odf/odf_elements.h>
+#include <odf/odf_meta.h>
 
 namespace odr::odf {
 
@@ -362,12 +363,13 @@ public:
         std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  std::uint32_t row_count() const final {
-    return 0; // TODO
-  }
+  TableDimensions dimensions() const final {
+    std::uint32_t rows;
+    std::uint32_t columns;
 
-  std::uint32_t column_count() const final {
-    return 0; // TODO
+    estimate_table_dimensions(m_node, rows, columns);
+
+    return {rows, columns};
   }
 
   std::shared_ptr<const abstract::Element> first_child() const final {
@@ -565,14 +567,6 @@ public:
 
   std::string name() const final {
     return m_node.attribute("table:name").value();
-  }
-
-  std::uint32_t row_count() const final {
-    return 0; // TODO
-  }
-
-  std::uint32_t column_count() const final {
-    return 0; // TODO
   }
 
   std::shared_ptr<const abstract::Table> table() const final {
