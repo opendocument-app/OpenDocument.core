@@ -23,10 +23,10 @@ public:
   explicit operator const char *() const;
   explicit operator std::string() const;
 
-  bool readonly() const noexcept;
-  bool optional() const noexcept;
+  [[nodiscard]] bool readonly() const noexcept;
+  [[nodiscard]] bool optional() const noexcept;
 
-  std::optional<std::string> value() const;
+  [[nodiscard]] std::optional<std::string> value() const;
 
   void set(std::optional<std::string> value) const;
 

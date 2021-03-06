@@ -7,8 +7,8 @@ namespace odr {
 
 class OpenDocumentReader {
 public:
-  static std::string version() noexcept;
-  static std::string commit() noexcept;
+  [[nodiscard]] static std::string version() noexcept;
+  [[nodiscard]] static std::string commit() noexcept;
 
 private:
   OpenDocumentReader() = default;
