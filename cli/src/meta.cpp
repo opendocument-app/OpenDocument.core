@@ -1,6 +1,7 @@
 #include <internal/util/odr_meta_util.h>
 #include <iostream>
 #include <odr/file.h>
+#include <odr/file_meta.h>
 #include <string>
 
 int main(int argc, char **argv) {
@@ -21,7 +22,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  const auto json = odr::util::meta::meta_to_json(document_file.file_meta());
+  const auto json =
+      odr::internal::util::meta::meta_to_json(document_file.file_meta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;

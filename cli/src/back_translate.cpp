@@ -19,7 +19,7 @@ int main(int, char **argv) {
 
   odr::Document document = document_file.document();
 
-  const std::string diff = odr::util::file::read(diff_path);
+  const std::string diff = odr::internal::util::file::read(diff_path);
   odr::Html::edit(document, "", diff);
 
   document.save(output);
