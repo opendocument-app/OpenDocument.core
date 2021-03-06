@@ -1,11 +1,11 @@
-#include <common/property.h>
+#include <internal/common/property.h>
 #include <odr/property.h>
 
 namespace odr {
 
 Property::Property() = default;
 
-Property::Property(std::shared_ptr<abstract::Property> impl)
+Property::Property(std::shared_ptr<internal::abstract::Property> impl)
     : m_impl{std::move(impl)} {}
 
 bool Property::operator==(const Property &rhs) const {

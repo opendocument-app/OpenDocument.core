@@ -6,90 +6,87 @@
 namespace odr {
 
 struct UnsupportedOperation final : public std::runtime_error {
-  UnsupportedOperation() : std::runtime_error("unsupported operation") {}
+  UnsupportedOperation();
 };
 
 struct FileNotFound final : public std::runtime_error {
-  FileNotFound() : std::runtime_error("file not found") {}
-  explicit FileNotFound(const char *desc) : std::runtime_error(desc) {}
+  FileNotFound();
 };
 
 struct FileNotCreated final : public std::runtime_error {
-  FileNotCreated() : std::runtime_error("file not created") {}
+  FileNotCreated();
 };
 
 struct UnknownFileType final : public std::runtime_error {
-  UnknownFileType() : std::runtime_error("unknown file type") {}
+  UnknownFileType();
 };
 
 struct FileReadError final : public std::runtime_error {
-  FileReadError() : std::runtime_error("file read error") {}
+  FileReadError();
 };
 
 struct NoZipFile : public std::runtime_error {
-  NoZipFile() : std::runtime_error("not a zip file") {}
+  NoZipFile();
 };
 
 struct ZipSaveError : public std::runtime_error {
-  ZipSaveError() : std::runtime_error("zip save error") {}
+  ZipSaveError();
 };
 
 struct CfbError : public std::runtime_error {
-  explicit CfbError(const char *desc) : std::runtime_error(desc) {}
+  explicit CfbError(const char *desc);
 };
 
 struct NoCfbFile : public CfbError {
-  NoCfbFile() : CfbError("no cfb file") {}
+  NoCfbFile();
 };
 
 struct CfbFileCorrupted : public CfbError {
-  CfbFileCorrupted() : CfbError("cfb file corrupted") {}
+  CfbFileCorrupted();
 };
 
 struct NoImageFile final : public std::runtime_error {
-  NoImageFile() : std::runtime_error("not an image file") {}
+  NoImageFile();
 };
 
 struct NoDocumentFile final : public std::runtime_error {
-  NoDocumentFile() : std::runtime_error("not a document file") {}
+  NoDocumentFile();
 };
 
 struct NoOpenDocumentFile final : public std::runtime_error {
-  NoOpenDocumentFile() : std::runtime_error("not an open document file") {}
+  NoOpenDocumentFile();
 };
 
 struct NoXml final : public std::runtime_error {
-  NoXml() : std::runtime_error("not xml") {}
+  NoXml();
 };
 
 struct PropertyNotOptional final : public std::runtime_error {
-  PropertyNotOptional() : std::runtime_error("property not optional") {}
+  PropertyNotOptional();
 };
 
 struct PropertyReadOnly final : public std::runtime_error {
-  PropertyReadOnly() : std::runtime_error("property is readonly") {}
+  PropertyReadOnly();
 };
 
 struct UnsupportedCryptoAlgorithm final : public std::runtime_error {
-  UnsupportedCryptoAlgorithm()
-      : std::runtime_error("unsupported crypto algorithm") {}
+  UnsupportedCryptoAlgorithm();
 };
 
 struct NoSvmFile : public std::runtime_error {
-  NoSvmFile() : std::runtime_error("not a svm file") {}
+  NoSvmFile();
 };
 
 struct MalformedSvmFile : public std::runtime_error {
-  MalformedSvmFile() : std::runtime_error("malformed svm file") {}
+  MalformedSvmFile();
 };
 
 struct UnsupportedEndian final : public std::runtime_error {
-  UnsupportedEndian() : std::runtime_error("unsupported endian") {}
+  UnsupportedEndian();
 };
 
 struct MsUnsupportedCryptoAlgorithm final : public std::runtime_error {
-  MsUnsupportedCryptoAlgorithm()
-      : std::runtime_error("unsupported crypto algorithm") {}
+  MsUnsupportedCryptoAlgorithm();
 };
 
 } // namespace odr

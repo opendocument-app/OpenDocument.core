@@ -1,12 +1,14 @@
-#include <cfb/cfb_archive.h>
-#include <common/archive.h>
-#include <common/file.h>
-#include <odf/odf_document_file.h>
+#include <internal/cfb/cfb_archive.h>
+#include <internal/common/archive.h>
+#include <internal/common/file.h>
+#include <internal/odf/odf_document_file.h>
+#include <internal/oldms/oldms_document_file.h>
+#include <internal/ooxml/ooxml_document_file.h>
+#include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
-#include <oldms/oldms_document_file.h>
-#include <ooxml/ooxml_document_file.h>
 #include <open_strategy.h>
-#include <zip/zip_archive.h>
+
+using namespace odr::internal;
 
 namespace odr {
 

@@ -1,7 +1,10 @@
-#include <abstract/document.h>
-#include <common/html.h>
-#include <crypto/crypto_util.h>
 #include <fstream>
+#include <internal/abstract/document.h>
+#include <internal/common/html.h>
+#include <internal/crypto/crypto_util.h>
+#include <internal/svm/svm_file.h>
+#include <internal/svm/svm_to_svg.h>
+#include <internal/util/stream_util.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
 #include <odr/document_elements.h>
@@ -10,9 +13,6 @@
 #include <odr/file.h>
 #include <odr/html.h>
 #include <sstream>
-#include <svm/svm_file.h>
-#include <svm/svm_to_svg.h>
-#include <util/stream_util.h>
 
 namespace odr {
 

@@ -1,6 +1,6 @@
-#include <abstract/document.h>
-#include <abstract/document_elements.h>
-#include <common/path.h>
+#include <internal/abstract/document.h>
+#include <internal/abstract/document_elements.h>
+#include <internal/common/path.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
 #include <odr/document_style.h>
@@ -22,7 +22,7 @@ DocumentMeta::DocumentMeta(const DocumentType document_type,
     : document_type{document_type}, entry_count{entry_count}, entries{std::move(
                                                                   entries)} {}
 
-Document::Document(std::shared_ptr<abstract::Document> document)
+Document::Document(std::shared_ptr<internal::abstract::Document> document)
     : m_document{std::move(document)} {
   if (!m_document) {
     throw std::runtime_error("document is null");
@@ -45,21 +45,22 @@ bool Document::savable(const bool encrypted) const noexcept {
 
 TextDocument Document::text_tocument() const {
   return TextDocument(
-      std::dynamic_pointer_cast<abstract::TextDocument>(m_document));
+      std::dynamic_pointer_cast<internal::abstract::TextDocument>(m_document));
 }
 
 Presentation Document::presentation() const {
   return Presentation(
-      std::dynamic_pointer_cast<abstract::Presentation>(m_document));
+      std::dynamic_pointer_cast<internal::abstract::Presentation>(m_document));
 }
 
 Spreadsheet Document::spreadsheet() const {
   return Spreadsheet(
-      std::dynamic_pointer_cast<abstract::Spreadsheet>(m_document));
+      std::dynamic_pointer_cast<internal::abstract::Spreadsheet>(m_document));
 }
 
 Drawing Document::drawing() const {
-  return Drawing(std::dynamic_pointer_cast<abstract::Drawing>(m_document));
+  return Drawing(
+      std::dynamic_pointer_cast<internal::abstract::Drawing>(m_document));
 }
 
 Element Document::root() const { return Element(m_document->root()); }
@@ -71,7 +72,8 @@ void Document::save(const std::string &path,
   m_document->save(path, password);
 }
 
-TextDocument::TextDocument(std::shared_ptr<abstract::TextDocument> textDocument)
+TextDocument::TextDocument(
+    std::shared_ptr<internal::abstract::TextDocument> textDocument)
     : Document(textDocument), m_text_document{std::move(textDocument)} {}
 
 PageStyle TextDocument::page_style() const {
@@ -80,7 +82,8 @@ PageStyle TextDocument::page_style() const {
 
 ElementRange TextDocument::content() const { return root().children(); }
 
-Presentation::Presentation(std::shared_ptr<abstract::Presentation> presentation)
+Presentation::Presentation(
+    std::shared_ptr<internal::abstract::Presentation> presentation)
     : Document(presentation), m_presentation{std::move(presentation)} {}
 
 std::uint32_t Presentation::slide_count() const {
@@ -91,7 +94,8 @@ SlideRange Presentation::slides() const {
   return SlideRange(SlideElement(m_presentation->first_slide()));
 }
 
-Spreadsheet::Spreadsheet(std::shared_ptr<abstract::Spreadsheet> spreadsheet)
+Spreadsheet::Spreadsheet(
+    std::shared_ptr<internal::abstract::Spreadsheet> spreadsheet)
     : Document(spreadsheet), m_spreadsheet{std::move(spreadsheet)} {}
 
 std::uint32_t Spreadsheet::sheet_count() const {
@@ -102,7 +106,7 @@ SheetRange Spreadsheet::sheets() const {
   return SheetRange(SheetElement(m_spreadsheet->first_sheet()));
 }
 
-Drawing::Drawing(std::shared_ptr<abstract::Drawing> graphics)
+Drawing::Drawing(std::shared_ptr<internal::abstract::Drawing> graphics)
     : Document(graphics), m_drawing{std::move(graphics)} {}
 
 std::uint32_t Drawing::page_count() const { return m_drawing->page_count(); }

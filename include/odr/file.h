@@ -8,12 +8,12 @@
 #include <string>
 #include <vector>
 
-namespace odr::abstract {
+namespace odr::internal::abstract {
 class File;
 class DecodedFile;
 class ImageFile;
 class DocumentFile;
-} // namespace odr::abstract
+} // namespace odr::internal::abstract
 
 namespace odr {
 class ImageFile;
@@ -99,7 +99,7 @@ struct FileMeta final {
 
 class File {
 public:
-  explicit File(std::shared_ptr<abstract::File>);
+  explicit File(std::shared_ptr<internal::abstract::File>);
   explicit File(const std::string &path);
 
   [[nodiscard]] FileLocation location() const noexcept;
@@ -107,10 +107,10 @@ public:
   [[nodiscard]] std::unique_ptr<std::istream> read() const;
 
   // TODO `impl()` might be a bit dirty
-  [[nodiscard]] std::shared_ptr<abstract::File> impl() const;
+  [[nodiscard]] std::shared_ptr<internal::abstract::File> impl() const;
 
 protected:
-  std::shared_ptr<abstract::File> m_impl;
+  std::shared_ptr<internal::abstract::File> m_impl;
 };
 
 class DecodedFile {
@@ -119,7 +119,7 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DecodedFile(std::shared_ptr<abstract::DecodedFile>);
+  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile>);
   explicit DecodedFile(const std::string &path);
   DecodedFile(const std::string &path, FileType as);
 
@@ -131,15 +131,15 @@ public:
   [[nodiscard]] DocumentFile document_file() const;
 
 protected:
-  std::shared_ptr<abstract::DecodedFile> m_impl;
+  std::shared_ptr<internal::abstract::DecodedFile> m_impl;
 };
 
 class ImageFile : public DecodedFile {
 public:
-  explicit ImageFile(std::shared_ptr<abstract::ImageFile>);
+  explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile>);
 
 private:
-  std::shared_ptr<abstract::ImageFile> m_impl;
+  std::shared_ptr<internal::abstract::ImageFile> m_impl;
 };
 
 class DocumentFile : public DecodedFile {
@@ -147,7 +147,7 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DocumentFile(std::shared_ptr<abstract::DocumentFile>);
+  explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
   explicit DocumentFile(const std::string &path);
 
   [[nodiscard]] bool password_encrypted() const;
@@ -160,7 +160,7 @@ public:
   [[nodiscard]] Document document() const;
 
 private:
-  std::shared_ptr<abstract::DocumentFile> m_impl;
+  std::shared_ptr<internal::abstract::DocumentFile> m_impl;
 };
 
 } // namespace odr

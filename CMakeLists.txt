@@ -24,6 +24,7 @@ add_library(odr-object OBJECT
         src/document.cpp
         src/document_elements.cpp
         src/document_style.cpp
+        src/exceptions.cpp
         src/file.cpp
         src/file_no_except.cpp
         src/html.cpp
@@ -31,56 +32,61 @@ add_library(odr-object OBJECT
         src/open_strategy.cpp
         src/property.cpp
 
-        src/abstract/document.cpp
-        src/abstract/document_elements.cpp
-        src/abstract/file.cpp
-        src/abstract/property.cpp
+        src/internal/exceptions.cpp
+        src/internal/file_meta.cpp
+        src/internal/table_dimensions.cpp
 
-        src/cfb/cfb_archive.cpp
-        src/cfb/cfb_impl.cpp
-        src/cfb/cfb_util.cpp
+        src/internal/abstract/document.cpp
+        src/internal/abstract/document_elements.cpp
+        src/internal/abstract/file.cpp
+        src/internal/abstract/property.cpp
 
-        src/common/constants.cpp
-        src/common/file.cpp
-        src/common/filesystem.cpp
-        src/common/html.cpp
-        src/common/path.cpp
-        src/common/property.cpp
-        src/common/table_cursor.cpp
-        src/common/table_position.cpp
-        src/common/table_range.cpp
+        src/internal/cfb/cfb_archive.cpp
+        src/internal/cfb/cfb_impl.cpp
+        src/internal/cfb/cfb_util.cpp
 
-        src/crypto/crypto_util.cpp
+        src/internal/common/constants.cpp
+        src/internal/common/file.cpp
+        src/internal/common/filesystem.cpp
+        src/internal/common/html.cpp
+        src/internal/common/path.cpp
+        src/internal/common/property.cpp
+        src/internal/common/table_cursor.cpp
+        src/internal/common/table_position.cpp
+        src/internal/common/table_range.cpp
 
-        src/odf/odf_crypto.cpp
-        src/odf/odf_elements.cpp
-        src/odf/odf_manifest.cpp
-        src/odf/odf_meta.cpp
-        src/odf/odf_document.cpp
-        src/odf/odf_document_file.cpp
-        src/odf/odf_style.cpp
+        src/internal/crypto/crypto_util.cpp
 
-        src/oldms/oldms_document_file.cpp
+        src/internal/odf/odf_crypto.cpp
+        src/internal/odf/odf_elements.cpp
+        src/internal/odf/odf_elements_impl.cpp
+        src/internal/odf/odf_manifest.cpp
+        src/internal/odf/odf_meta.cpp
+        src/internal/odf/odf_document.cpp
+        src/internal/odf/odf_document_file.cpp
+        src/internal/odf/odf_style.cpp
 
-        src/ooxml/ooxml_crypto.cpp
-        src/ooxml/ooxml_document.cpp
-        src/ooxml/ooxml_document_file.cpp
-        src/ooxml/ooxml_meta.cpp
-        src/ooxml/text/ooxml_text_elements.cpp
-        src/ooxml/text/ooxml_text_style.cpp
+        src/internal/oldms/oldms_document_file.cpp
 
-        src/svm/svm_file.cpp
-        src/svm/svm_format.cpp
-        src/svm/svm_to_svg.cpp
+        src/internal/ooxml/ooxml_crypto.cpp
+        src/internal/ooxml/ooxml_document.cpp
+        src/internal/ooxml/ooxml_document_file.cpp
+        src/internal/ooxml/ooxml_meta.cpp
+        src/internal/ooxml/text/ooxml_text_elements.cpp
+        src/internal/ooxml/text/ooxml_text_style.cpp
 
-        src/util/file_util.cpp
-        src/util/odr_meta_util.cpp
-        src/util/stream_util.cpp
-        src/util/string_util.cpp
-        src/util/xml_util.cpp
+        src/internal/svm/svm_file.cpp
+        src/internal/svm/svm_format.cpp
+        src/internal/svm/svm_to_svg.cpp
 
-        src/zip/zip_util.cpp
-        src/zip/zip_archive.cpp
+        src/internal/util/file_util.cpp
+        src/internal/util/odr_meta_util.cpp
+        src/internal/util/stream_util.cpp
+        src/internal/util/string_util.cpp
+        src/internal/util/xml_util.cpp
+
+        src/internal/zip/zip_util.cpp
+        src/internal/zip/zip_archive.cpp
         )
 target_include_directories(odr-object
         PUBLIC

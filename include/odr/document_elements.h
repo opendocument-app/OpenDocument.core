@@ -6,7 +6,7 @@
 #include <optional>
 #include <string>
 
-namespace odr::abstract {
+namespace odr::internal::abstract {
 class Element;
 class Slide;
 class Sheet;
@@ -28,7 +28,7 @@ class DrawingElement;
 class Rect;
 class Line;
 class Circle;
-} // namespace odr::abstract
+} // namespace odr::internal::abstract
 
 namespace odr {
 class File;
@@ -105,7 +105,7 @@ enum class ElementType {
 class Element {
 public:
   Element();
-  explicit Element(std::shared_ptr<const abstract::Element> impl);
+  explicit Element(std::shared_ptr<const internal::abstract::Element> impl);
 
   bool operator==(const Element &rhs) const;
   bool operator!=(const Element &rhs) const;
@@ -143,7 +143,7 @@ public:
   [[nodiscard]] CircleElement circle() const;
 
 private:
-  std::shared_ptr<const abstract::Element> m_impl;
+  std::shared_ptr<const internal::abstract::Element> m_impl;
 };
 
 template <typename E> class ElementIterator final {
@@ -186,7 +186,7 @@ private:
 class SlideElement final : public Element {
 public:
   SlideElement();
-  explicit SlideElement(std::shared_ptr<const abstract::Slide> impl);
+  explicit SlideElement(std::shared_ptr<const internal::abstract::Slide> impl);
 
   [[nodiscard]] SlideElement previous_sibling() const;
   [[nodiscard]] SlideElement next_sibling() const;
@@ -197,13 +197,13 @@ public:
   [[nodiscard]] PageStyle page_style() const;
 
 private:
-  std::shared_ptr<const abstract::Slide> m_impl;
+  std::shared_ptr<const internal::abstract::Slide> m_impl;
 };
 
 class SheetElement final : public Element {
 public:
   SheetElement();
-  explicit SheetElement(std::shared_ptr<const abstract::Sheet> impl);
+  explicit SheetElement(std::shared_ptr<const internal::abstract::Sheet> impl);
 
   [[nodiscard]] SheetElement previous_sibling() const;
   [[nodiscard]] SheetElement next_sibling() const;
@@ -212,13 +212,13 @@ public:
   [[nodiscard]] TableElement table() const;
 
 private:
-  std::shared_ptr<const abstract::Sheet> m_impl;
+  std::shared_ptr<const internal::abstract::Sheet> m_impl;
 };
 
 class PageElement final : public Element {
 public:
   PageElement();
-  explicit PageElement(std::shared_ptr<const abstract::Page> impl);
+  explicit PageElement(std::shared_ptr<const internal::abstract::Page> impl);
 
   [[nodiscard]] PageElement previous_sibling() const;
   [[nodiscard]] PageElement next_sibling() const;
@@ -228,89 +228,93 @@ public:
   [[nodiscard]] PageStyle page_style() const;
 
 private:
-  std::shared_ptr<const abstract::Page> m_impl;
+  std::shared_ptr<const internal::abstract::Page> m_impl;
 };
 
 class TextElement final : public Element {
 public:
   TextElement();
-  explicit TextElement(std::shared_ptr<const abstract::TextElement> impl);
+  explicit TextElement(
+      std::shared_ptr<const internal::abstract::TextElement> impl);
 
   [[nodiscard]] std::string string() const;
 
 private:
-  std::shared_ptr<const abstract::TextElement> m_impl;
+  std::shared_ptr<const internal::abstract::TextElement> m_impl;
 };
 
 class ParagraphElement final : public Element {
 public:
   ParagraphElement();
-  explicit ParagraphElement(std::shared_ptr<const abstract::Paragraph> impl);
+  explicit ParagraphElement(
+      std::shared_ptr<const internal::abstract::Paragraph> impl);
 
   [[nodiscard]] ParagraphStyle paragraph_style() const;
   [[nodiscard]] TextStyle text_style() const;
 
 private:
-  std::shared_ptr<const abstract::Paragraph> m_impl;
+  std::shared_ptr<const internal::abstract::Paragraph> m_impl;
 };
 
 class SpanElement final : public Element {
 public:
   SpanElement();
-  explicit SpanElement(std::shared_ptr<const abstract::Span> impl);
+  explicit SpanElement(std::shared_ptr<const internal::abstract::Span> impl);
 
   [[nodiscard]] TextStyle text_style() const;
 
 private:
-  std::shared_ptr<const abstract::Span> m_impl;
+  std::shared_ptr<const internal::abstract::Span> m_impl;
 };
 
 class LinkElement final : public Element {
 public:
   LinkElement();
-  explicit LinkElement(std::shared_ptr<const abstract::Link> impl);
+  explicit LinkElement(std::shared_ptr<const internal::abstract::Link> impl);
 
   [[nodiscard]] TextStyle text_style() const;
 
   [[nodiscard]] std::string href() const;
 
 private:
-  std::shared_ptr<const abstract::Link> m_impl;
+  std::shared_ptr<const internal::abstract::Link> m_impl;
 };
 
 class BookmarkElement final : public Element {
 public:
   BookmarkElement();
-  explicit BookmarkElement(std::shared_ptr<const abstract::Bookmark> impl);
+  explicit BookmarkElement(
+      std::shared_ptr<const internal::abstract::Bookmark> impl);
 
   [[nodiscard]] std::string name() const;
 
 private:
-  std::shared_ptr<const abstract::Bookmark> m_impl;
+  std::shared_ptr<const internal::abstract::Bookmark> m_impl;
 };
 
 class ListElement final : public Element {
 public:
   ListElement();
-  explicit ListElement(std::shared_ptr<const abstract::List> impl);
+  explicit ListElement(std::shared_ptr<const internal::abstract::List> impl);
 
 private:
-  std::shared_ptr<const abstract::List> m_impl;
+  std::shared_ptr<const internal::abstract::List> m_impl;
 };
 
 class ListItemElement final : public Element {
 public:
   ListItemElement();
-  explicit ListItemElement(std::shared_ptr<const abstract::ListItem> impl);
+  explicit ListItemElement(
+      std::shared_ptr<const internal::abstract::ListItem> impl);
 
 private:
-  std::shared_ptr<const abstract::ListItem> m_impl;
+  std::shared_ptr<const internal::abstract::ListItem> m_impl;
 };
 
 class TableElement final : public Element {
 public:
   TableElement();
-  explicit TableElement(std::shared_ptr<const abstract::Table> impl);
+  explicit TableElement(std::shared_ptr<const internal::abstract::Table> impl);
 
   [[nodiscard]] TableDimensions dimensions() const;
 
@@ -320,14 +324,14 @@ public:
   [[nodiscard]] TableStyle table_style() const;
 
 private:
-  std::shared_ptr<const abstract::Table> m_impl;
+  std::shared_ptr<const internal::abstract::Table> m_impl;
 };
 
 class TableColumnElement final : public Element {
 public:
   TableColumnElement();
   explicit TableColumnElement(
-      std::shared_ptr<const abstract::TableColumn> impl);
+      std::shared_ptr<const internal::abstract::TableColumn> impl);
 
   [[nodiscard]] TableColumnElement previous_sibling() const;
   [[nodiscard]] TableColumnElement next_sibling() const;
@@ -335,13 +339,14 @@ public:
   [[nodiscard]] TableColumnStyle table_column_style() const;
 
 private:
-  std::shared_ptr<const abstract::TableColumn> m_impl;
+  std::shared_ptr<const internal::abstract::TableColumn> m_impl;
 };
 
 class TableRowElement final : public Element {
 public:
   TableRowElement();
-  explicit TableRowElement(std::shared_ptr<const abstract::TableRow> impl);
+  explicit TableRowElement(
+      std::shared_ptr<const internal::abstract::TableRow> impl);
 
   [[nodiscard]] TableCellElement first_child() const;
   [[nodiscard]] TableRowElement previous_sibling() const;
@@ -350,13 +355,14 @@ public:
   [[nodiscard]] TableCellRange cells() const;
 
 private:
-  std::shared_ptr<const abstract::TableRow> m_impl;
+  std::shared_ptr<const internal::abstract::TableRow> m_impl;
 };
 
 class TableCellElement final : public Element {
 public:
   TableCellElement();
-  explicit TableCellElement(std::shared_ptr<const abstract::TableCell> impl);
+  explicit TableCellElement(
+      std::shared_ptr<const internal::abstract::TableCell> impl);
 
   [[nodiscard]] TableCellElement previous_sibling() const;
   [[nodiscard]] TableCellElement next_sibling() const;
@@ -367,13 +373,13 @@ public:
   [[nodiscard]] TableCellStyle table_cell_style() const;
 
 private:
-  std::shared_ptr<const abstract::TableCell> m_impl;
+  std::shared_ptr<const internal::abstract::TableCell> m_impl;
 };
 
 class FrameElement final : public Element {
 public:
   FrameElement();
-  explicit FrameElement(std::shared_ptr<const abstract::Frame> impl);
+  explicit FrameElement(std::shared_ptr<const internal::abstract::Frame> impl);
 
   [[nodiscard]] Property anchor_type() const;
   [[nodiscard]] Property width() const;
@@ -381,26 +387,26 @@ public:
   [[nodiscard]] Property z_index() const;
 
 private:
-  std::shared_ptr<const abstract::Frame> m_impl;
+  std::shared_ptr<const internal::abstract::Frame> m_impl;
 };
 
 class ImageElement final : public Element {
 public:
   ImageElement();
-  explicit ImageElement(std::shared_ptr<const abstract::Image> impl);
+  explicit ImageElement(std::shared_ptr<const internal::abstract::Image> impl);
 
   [[nodiscard]] bool internal() const;
   [[nodiscard]] std::string href() const;
   [[nodiscard]] File image_file() const;
 
 private:
-  std::shared_ptr<const abstract::Image> m_impl;
+  std::shared_ptr<const internal::abstract::Image> m_impl;
 };
 
 class RectElement final : public Element {
 public:
   RectElement();
-  explicit RectElement(std::shared_ptr<const abstract::Rect> impl);
+  explicit RectElement(std::shared_ptr<const internal::abstract::Rect> impl);
 
   [[nodiscard]] std::string x() const;
   [[nodiscard]] std::string y() const;
@@ -410,13 +416,13 @@ public:
   [[nodiscard]] DrawingStyle drawing_style() const;
 
 private:
-  std::shared_ptr<const abstract::Rect> m_impl;
+  std::shared_ptr<const internal::abstract::Rect> m_impl;
 };
 
 class LineElement final : public Element {
 public:
   LineElement();
-  explicit LineElement(std::shared_ptr<const abstract::Line> impl);
+  explicit LineElement(std::shared_ptr<const internal::abstract::Line> impl);
 
   [[nodiscard]] std::string x1() const;
   [[nodiscard]] std::string y1() const;
@@ -426,13 +432,14 @@ public:
   [[nodiscard]] DrawingStyle drawing_style() const;
 
 private:
-  std::shared_ptr<const abstract::Line> m_impl;
+  std::shared_ptr<const internal::abstract::Line> m_impl;
 };
 
 class CircleElement final : public Element {
 public:
   CircleElement();
-  explicit CircleElement(std::shared_ptr<const abstract::Circle> impl);
+  explicit CircleElement(
+      std::shared_ptr<const internal::abstract::Circle> impl);
 
   [[nodiscard]] std::string x() const;
   [[nodiscard]] std::string y() const;
@@ -442,7 +449,7 @@ public:
   [[nodiscard]] DrawingStyle drawing_style() const;
 
 private:
-  std::shared_ptr<const abstract::Circle> m_impl;
+  std::shared_ptr<const internal::abstract::Circle> m_impl;
 };
 
 } // namespace odr

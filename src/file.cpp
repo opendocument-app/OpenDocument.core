@@ -1,5 +1,5 @@
-#include <abstract/file.h>
-#include <common/file.h>
+#include <internal/abstract/file.h>
+#include <internal/common/file.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <open_strategy.h>
@@ -113,10 +113,11 @@ std::string FileMeta::type_as_string() const noexcept {
   return typeToString(type);
 }
 
-File::File(std::shared_ptr<abstract::File> impl) : m_impl{std::move(impl)} {}
+File::File(std::shared_ptr<internal::abstract::File> impl)
+    : m_impl{std::move(impl)} {}
 
 File::File(const std::string &path)
-    : m_impl{std::make_shared<common::DiscFile>(path)} {}
+    : m_impl{std::make_shared<internal::common::DiscFile>(path)} {}
 
 FileLocation File::location() const noexcept { return m_impl->location(); }
 
@@ -124,10 +125,11 @@ std::size_t File::size() const { return m_impl->size(); }
 
 std::unique_ptr<std::istream> File::read() const { return m_impl->read(); }
 
-std::shared_ptr<abstract::File> File::impl() const { return m_impl; }
+std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
 std::vector<FileType> DecodedFile::types(const std::string &path) {
-  return open_strategy::types(std::make_shared<common::DiscFile>(path));
+  return open_strategy::types(
+      std::make_shared<internal::common::DiscFile>(path));
 }
 
 FileType DecodedFile::type(const std::string &path) {
@@ -138,7 +140,7 @@ FileMeta DecodedFile::meta(const std::string &path) {
   return DecodedFile(path).file_meta();
 }
 
-DecodedFile::DecodedFile(std::shared_ptr<abstract::DecodedFile> impl)
+DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
     : m_impl{std::move(impl)} {
   if (!m_impl) {
     throw FileNotFound();
@@ -146,12 +148,12 @@ DecodedFile::DecodedFile(std::shared_ptr<abstract::DecodedFile> impl)
 }
 
 DecodedFile::DecodedFile(const std::string &path)
-    : DecodedFile(
-          open_strategy::open_file(std::make_shared<common::DiscFile>(path))) {}
+    : DecodedFile(open_strategy::open_file(
+          std::make_shared<internal::common::DiscFile>(path))) {}
 
 DecodedFile::DecodedFile(const std::string &path, FileType as)
     : DecodedFile(open_strategy::open_file(
-          std::make_shared<common::DiscFile>(path), as)) {}
+          std::make_shared<internal::common::DiscFile>(path), as)) {}
 
 FileType DecodedFile::file_type() const noexcept {
   return m_impl->file_meta().type;
@@ -164,7 +166,8 @@ FileCategory DecodedFile::file_category() const noexcept {
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
 
 ImageFile DecodedFile::image_file() const {
-  auto imageFile = std::dynamic_pointer_cast<abstract::ImageFile>(m_impl);
+  auto imageFile =
+      std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl);
   if (!imageFile) {
     throw NoImageFile();
   }
@@ -172,14 +175,15 @@ ImageFile DecodedFile::image_file() const {
 }
 
 DocumentFile DecodedFile::document_file() const {
-  auto documentFile = std::dynamic_pointer_cast<abstract::DocumentFile>(m_impl);
+  auto documentFile =
+      std::dynamic_pointer_cast<internal::abstract::DocumentFile>(m_impl);
   if (!documentFile) {
     throw NoDocumentFile();
   }
   return DocumentFile(documentFile);
 }
 
-ImageFile::ImageFile(std::shared_ptr<abstract::ImageFile> impl)
+ImageFile::ImageFile(std::shared_ptr<internal::abstract::ImageFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 FileType DocumentFile::type(const std::string &path) {
@@ -190,12 +194,13 @@ FileMeta DocumentFile::meta(const std::string &path) {
   return DocumentFile(path).file_meta();
 }
 
-DocumentFile::DocumentFile(std::shared_ptr<abstract::DocumentFile> impl)
+DocumentFile::DocumentFile(
+    std::shared_ptr<internal::abstract::DocumentFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 DocumentFile::DocumentFile(const std::string &path)
     : DocumentFile(open_strategy::open_document_file(
-          std::make_shared<common::DiscFile>(path))) {}
+          std::make_shared<internal::common::DiscFile>(path))) {}
 
 bool DocumentFile::password_encrypted() const {
   return m_impl->password_encrypted();

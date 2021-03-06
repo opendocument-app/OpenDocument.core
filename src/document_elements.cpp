@@ -1,4 +1,4 @@
-#include <abstract/document_elements.h>
+#include <internal/abstract/document_elements.h>
 #include <odr/document_elements.h>
 #include <odr/document_style.h>
 #include <odr/file.h>
@@ -7,7 +7,7 @@ namespace odr {
 
 Element::Element() = default;
 
-Element::Element(std::shared_ptr<const abstract::Element> impl)
+Element::Element(std::shared_ptr<const internal::abstract::Element> impl)
     : m_impl{std::move(impl)} {}
 
 bool Element::operator==(const Element &rhs) const {
@@ -58,20 +58,23 @@ ElementType Element::type() const {
 }
 
 SlideElement Element::slide() const {
-  return SlideElement(std::dynamic_pointer_cast<const abstract::Slide>(m_impl));
+  return SlideElement(
+      std::dynamic_pointer_cast<const internal::abstract::Slide>(m_impl));
 }
 
 SheetElement Element::sheet() const {
-  return SheetElement(std::dynamic_pointer_cast<const abstract::Sheet>(m_impl));
+  return SheetElement(
+      std::dynamic_pointer_cast<const internal::abstract::Sheet>(m_impl));
 }
 
 PageElement Element::page() const {
-  return PageElement(std::dynamic_pointer_cast<const abstract::Page>(m_impl));
+  return PageElement(
+      std::dynamic_pointer_cast<const internal::abstract::Page>(m_impl));
 }
 
 TextElement Element::text() const {
   return TextElement(
-      std::dynamic_pointer_cast<const abstract::TextElement>(m_impl));
+      std::dynamic_pointer_cast<const internal::abstract::TextElement>(m_impl));
 }
 
 Element Element::line_break() const {
@@ -90,69 +93,77 @@ Element Element::page_break() const {
 
 ParagraphElement Element::paragraph() const {
   return ParagraphElement(
-      std::dynamic_pointer_cast<const abstract::Paragraph>(m_impl));
+      std::dynamic_pointer_cast<const internal::abstract::Paragraph>(m_impl));
 }
 
 SpanElement Element::span() const {
-  return SpanElement(std::dynamic_pointer_cast<const abstract::Span>(m_impl));
+  return SpanElement(
+      std::dynamic_pointer_cast<const internal::abstract::Span>(m_impl));
 }
 
 LinkElement Element::link() const {
-  return LinkElement(std::dynamic_pointer_cast<const abstract::Link>(m_impl));
+  return LinkElement(
+      std::dynamic_pointer_cast<const internal::abstract::Link>(m_impl));
 }
 
 BookmarkElement Element::bookmark() const {
   return BookmarkElement(
-      std::dynamic_pointer_cast<const abstract::Bookmark>(m_impl));
+      std::dynamic_pointer_cast<const internal::abstract::Bookmark>(m_impl));
 }
 
 ListElement Element::list() const {
-  return ListElement(std::dynamic_pointer_cast<const abstract::List>(m_impl));
+  return ListElement(
+      std::dynamic_pointer_cast<const internal::abstract::List>(m_impl));
 }
 
 ListItemElement Element::list_item() const {
   return ListItemElement(
-      std::dynamic_pointer_cast<const abstract::ListItem>(m_impl));
+      std::dynamic_pointer_cast<const internal::abstract::ListItem>(m_impl));
 }
 
 TableElement Element::table() const {
-  return TableElement(std::dynamic_pointer_cast<const abstract::Table>(m_impl));
+  return TableElement(
+      std::dynamic_pointer_cast<const internal::abstract::Table>(m_impl));
 }
 
 TableColumnElement Element::table_column() const {
   return TableColumnElement(
-      std::dynamic_pointer_cast<const abstract::TableColumn>(m_impl));
+      std::dynamic_pointer_cast<const internal::abstract::TableColumn>(m_impl));
 }
 
 TableRowElement Element::table_row() const {
   return TableRowElement(
-      std::dynamic_pointer_cast<const abstract::TableRow>(m_impl));
+      std::dynamic_pointer_cast<const internal::abstract::TableRow>(m_impl));
 }
 
 TableCellElement Element::table_cell() const {
   return TableCellElement(
-      std::dynamic_pointer_cast<const abstract::TableCell>(m_impl));
+      std::dynamic_pointer_cast<const internal::abstract::TableCell>(m_impl));
 }
 
 FrameElement Element::frame() const {
-  return FrameElement(std::dynamic_pointer_cast<const abstract::Frame>(m_impl));
+  return FrameElement(
+      std::dynamic_pointer_cast<const internal::abstract::Frame>(m_impl));
 }
 
 ImageElement Element::image() const {
-  return ImageElement(std::dynamic_pointer_cast<const abstract::Image>(m_impl));
+  return ImageElement(
+      std::dynamic_pointer_cast<const internal::abstract::Image>(m_impl));
 }
 
 RectElement Element::rect() const {
-  return RectElement(std::dynamic_pointer_cast<const abstract::Rect>(m_impl));
+  return RectElement(
+      std::dynamic_pointer_cast<const internal::abstract::Rect>(m_impl));
 }
 
 LineElement Element::line() const {
-  return LineElement(std::dynamic_pointer_cast<const abstract::Line>(m_impl));
+  return LineElement(
+      std::dynamic_pointer_cast<const internal::abstract::Line>(m_impl));
 }
 
 CircleElement Element::circle() const {
   return CircleElement(
-      std::dynamic_pointer_cast<const abstract::Circle>(m_impl));
+      std::dynamic_pointer_cast<const internal::abstract::Circle>(m_impl));
 }
 
 template <typename E>
@@ -227,7 +238,8 @@ template class ElementRangeTemplate<TableCellElement>;
 
 SlideElement::SlideElement() = default;
 
-SlideElement::SlideElement(std::shared_ptr<const abstract::Slide> impl)
+SlideElement::SlideElement(
+    std::shared_ptr<const internal::abstract::Slide> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 SlideElement SlideElement::previous_sibling() const {
@@ -249,7 +261,8 @@ PageStyle SlideElement::page_style() const {
 
 SheetElement::SheetElement() = default;
 
-SheetElement::SheetElement(std::shared_ptr<const abstract::Sheet> impl)
+SheetElement::SheetElement(
+    std::shared_ptr<const internal::abstract::Sheet> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 SheetElement SheetElement::previous_sibling() const {
@@ -271,7 +284,7 @@ TableElement SheetElement::table() const {
 
 PageElement::PageElement() = default;
 
-PageElement::PageElement(std::shared_ptr<const abstract::Page> impl)
+PageElement::PageElement(std::shared_ptr<const internal::abstract::Page> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 PageElement PageElement::previous_sibling() const {
@@ -298,7 +311,8 @@ PageStyle PageElement::page_style() const {
 
 TextElement::TextElement() = default;
 
-TextElement::TextElement(std::shared_ptr<const abstract::TextElement> impl)
+TextElement::TextElement(
+    std::shared_ptr<const internal::abstract::TextElement> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 std::string TextElement::string() const { return m_impl->text(); }
@@ -306,7 +320,7 @@ std::string TextElement::string() const { return m_impl->text(); }
 ParagraphElement::ParagraphElement() = default;
 
 ParagraphElement::ParagraphElement(
-    std::shared_ptr<const abstract::Paragraph> impl)
+    std::shared_ptr<const internal::abstract::Paragraph> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 ParagraphStyle ParagraphElement::paragraph_style() const {
@@ -325,7 +339,7 @@ TextStyle ParagraphElement::text_style() const {
 
 SpanElement::SpanElement() = default;
 
-SpanElement::SpanElement(std::shared_ptr<const abstract::Span> impl)
+SpanElement::SpanElement(std::shared_ptr<const internal::abstract::Span> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TextStyle SpanElement::text_style() const {
@@ -337,7 +351,7 @@ TextStyle SpanElement::text_style() const {
 
 LinkElement::LinkElement() = default;
 
-LinkElement::LinkElement(std::shared_ptr<const abstract::Link> impl)
+LinkElement::LinkElement(std::shared_ptr<const internal::abstract::Link> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TextStyle LinkElement::text_style() const {
@@ -351,7 +365,8 @@ std::string LinkElement::href() const { return m_impl->href(); }
 
 BookmarkElement::BookmarkElement() = default;
 
-BookmarkElement::BookmarkElement(std::shared_ptr<const abstract::Bookmark> impl)
+BookmarkElement::BookmarkElement(
+    std::shared_ptr<const internal::abstract::Bookmark> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 std::string BookmarkElement::name() const {
@@ -363,17 +378,19 @@ std::string BookmarkElement::name() const {
 
 ListElement::ListElement() = default;
 
-ListElement::ListElement(std::shared_ptr<const abstract::List> impl)
+ListElement::ListElement(std::shared_ptr<const internal::abstract::List> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 ListItemElement::ListItemElement() = default;
 
-ListItemElement::ListItemElement(std::shared_ptr<const abstract::ListItem> impl)
+ListItemElement::ListItemElement(
+    std::shared_ptr<const internal::abstract::ListItem> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TableElement::TableElement() = default;
 
-TableElement::TableElement(std::shared_ptr<const abstract::Table> impl)
+TableElement::TableElement(
+    std::shared_ptr<const internal::abstract::Table> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TableDimensions TableElement::dimensions() const {
@@ -407,7 +424,7 @@ TableStyle TableElement::table_style() const {
 TableColumnElement::TableColumnElement() = default;
 
 TableColumnElement::TableColumnElement(
-    std::shared_ptr<const abstract::TableColumn> impl)
+    std::shared_ptr<const internal::abstract::TableColumn> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TableColumnElement TableColumnElement::previous_sibling() const {
@@ -427,7 +444,8 @@ TableColumnStyle TableColumnElement::table_column_style() const {
 
 TableRowElement::TableRowElement() = default;
 
-TableRowElement::TableRowElement(std::shared_ptr<const abstract::TableRow> impl)
+TableRowElement::TableRowElement(
+    std::shared_ptr<const internal::abstract::TableRow> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TableCellElement TableRowElement::first_child() const {
@@ -452,7 +470,7 @@ TableCellRange TableRowElement::cells() const {
 TableCellElement::TableCellElement() = default;
 
 TableCellElement::TableCellElement(
-    std::shared_ptr<const abstract::TableCell> impl)
+    std::shared_ptr<const internal::abstract::TableCell> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 TableCellElement TableCellElement::previous_sibling() const {
@@ -486,7 +504,8 @@ TableCellStyle TableCellElement::table_cell_style() const {
 
 FrameElement::FrameElement() = default;
 
-FrameElement::FrameElement(std::shared_ptr<const abstract::Frame> impl)
+FrameElement::FrameElement(
+    std::shared_ptr<const internal::abstract::Frame> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 Property FrameElement::anchor_type() const {
@@ -519,7 +538,8 @@ Property FrameElement::z_index() const {
 
 ImageElement::ImageElement() = default;
 
-ImageElement::ImageElement(std::shared_ptr<const abstract::Image> impl)
+ImageElement::ImageElement(
+    std::shared_ptr<const internal::abstract::Image> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 bool ImageElement::internal() const {
@@ -539,14 +559,14 @@ std::string ImageElement::href() const {
 File ImageElement::image_file() const {
   if (!m_impl) {
     // TODO there is no "empty" file
-    return File(std::shared_ptr<abstract::File>());
+    return File(std::shared_ptr<internal::abstract::File>());
   }
   return File(m_impl->image_file());
 }
 
 RectElement::RectElement() = default;
 
-RectElement::RectElement(std::shared_ptr<const abstract::Rect> impl)
+RectElement::RectElement(std::shared_ptr<const internal::abstract::Rect> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 std::string RectElement::x() const {
@@ -586,7 +606,7 @@ DrawingStyle RectElement::drawing_style() const {
 
 LineElement::LineElement() = default;
 
-LineElement::LineElement(std::shared_ptr<const abstract::Line> impl)
+LineElement::LineElement(std::shared_ptr<const internal::abstract::Line> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 std::string LineElement::x1() const {
@@ -626,7 +646,8 @@ DrawingStyle LineElement::drawing_style() const {
 
 CircleElement::CircleElement() = default;
 
-CircleElement::CircleElement(std::shared_ptr<const abstract::Circle> impl)
+CircleElement::CircleElement(
+    std::shared_ptr<const internal::abstract::Circle> impl)
     : Element(impl), m_impl{std::move(impl)} {}
 
 std::string CircleElement::x() const {

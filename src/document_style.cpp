@@ -1,4 +1,4 @@
-#include <abstract/document_style.h>
+#include <internal/abstract/document_style.h>
 #include <odr/document_style.h>
 #include <odr/property.h>
 
@@ -16,7 +16,7 @@ Style::operator bool() const { return m_impl.operator bool(); }
 
 PageStyle::PageStyle() = default;
 
-PageStyle::PageStyle(std::shared_ptr<abstract::PageStyle> impl)
+PageStyle::PageStyle(std::shared_ptr<internal::abstract::PageStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
 Property PageStyle::width() const {
@@ -70,7 +70,7 @@ Property PageStyle::print_orientation() const {
 
 TextStyle::TextStyle() = default;
 
-TextStyle::TextStyle(std::shared_ptr<abstract::TextStyle> impl)
+TextStyle::TextStyle(std::shared_ptr<internal::abstract::TextStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
 Property TextStyle::font_name() const {
@@ -117,7 +117,8 @@ Property TextStyle::background_color() const {
 
 ParagraphStyle::ParagraphStyle() = default;
 
-ParagraphStyle::ParagraphStyle(std::shared_ptr<abstract::ParagraphStyle> impl)
+ParagraphStyle::ParagraphStyle(
+    std::shared_ptr<internal::abstract::ParagraphStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
 Property ParagraphStyle::text_align() const {
@@ -157,7 +158,7 @@ Property ParagraphStyle::margin_right() const {
 
 TableStyle::TableStyle() = default;
 
-TableStyle::TableStyle(std::shared_ptr<abstract::TableStyle> impl)
+TableStyle::TableStyle(std::shared_ptr<internal::abstract::TableStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
 Property TableStyle::width() const {
@@ -170,14 +171,15 @@ Property TableStyle::width() const {
 TableColumnStyle::TableColumnStyle() = default;
 
 TableColumnStyle::TableColumnStyle(
-    std::shared_ptr<abstract::TableColumnStyle> impl)
+    std::shared_ptr<internal::abstract::TableColumnStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
 Property TableColumnStyle::width() const { return Property(m_impl->width()); }
 
 TableCellStyle::TableCellStyle() = default;
 
-TableCellStyle::TableCellStyle(std::shared_ptr<abstract::TableCellStyle> impl)
+TableCellStyle::TableCellStyle(
+    std::shared_ptr<internal::abstract::TableCellStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
 Property TableCellStyle::padding_top() const {
@@ -238,7 +240,8 @@ Property TableCellStyle::border_right() const {
 
 DrawingStyle::DrawingStyle() = default;
 
-DrawingStyle::DrawingStyle(std::shared_ptr<abstract::DrawingStyle> impl)
+DrawingStyle::DrawingStyle(
+    std::shared_ptr<internal::abstract::DrawingStyle> impl)
     : Style(impl), m_impl{std::move(impl)} {}
 
 Property DrawingStyle::stroke_width() const {

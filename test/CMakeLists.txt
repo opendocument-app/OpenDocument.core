@@ -8,24 +8,25 @@ enable_testing()
 add_executable(odr_test
         test_util.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/test_constants.cpp
+
         document_test.cpp
         file_no_except_test.cpp
         file_test.cpp
         output_reference_tests.cpp
 
-        cfb/cfb_archive_test.cpp
+        internal/cfb/cfb_archive_test.cpp
 
-        common/archive_test.cpp
-        common/cache_test.cpp
-        common/path_test.cpp
-        common/table_cursor_test.cpp
-        common/table_position_test.cpp
-        common/table_range_test.cpp
+        internal/common/archive_test.cpp
+        internal/common/cache_test.cpp
+        internal/common/path_test.cpp
+        internal/common/table_cursor_test.cpp
+        internal/common/table_position_test.cpp
+        internal/common/table_range_test.cpp
 
-        ooxml/ooxml_crypto_test.cpp
+        internal/ooxml/ooxml_crypto_test.cpp
 
-        zip/miniz_test.cpp
-        zip/zip_archive_test.cpp
+        internal/zip/miniz_test.cpp
+        internal/zip/zip_archive_test.cpp
         )
 target_include_directories(odr_test
         PRIVATE

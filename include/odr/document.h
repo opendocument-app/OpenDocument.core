@@ -6,13 +6,13 @@
 #include <string>
 #include <vector>
 
-namespace odr::abstract {
+namespace odr::internal::abstract {
 class Document;
 class TextDocument;
 class Presentation;
 class Spreadsheet;
 class Drawing;
-} // namespace odr::abstract
+} // namespace odr::internal::abstract
 
 namespace odr {
 class DocumentFile;
@@ -77,9 +77,9 @@ public:
   void save(const std::string &path, const std::string &password) const;
 
 protected:
-  std::shared_ptr<abstract::Document> m_document;
+  std::shared_ptr<internal::abstract::Document> m_document;
 
-  explicit Document(std::shared_ptr<abstract::Document>);
+  explicit Document(std::shared_ptr<internal::abstract::Document>);
 
 private:
   friend DocumentFile;
@@ -92,9 +92,9 @@ public:
   [[nodiscard]] ElementRange content() const;
 
 private:
-  std::shared_ptr<abstract::TextDocument> m_text_document;
+  std::shared_ptr<internal::abstract::TextDocument> m_text_document;
 
-  explicit TextDocument(std::shared_ptr<abstract::TextDocument>);
+  explicit TextDocument(std::shared_ptr<internal::abstract::TextDocument>);
 
   friend Document;
 };
@@ -106,9 +106,9 @@ public:
   [[nodiscard]] SlideRange slides() const;
 
 private:
-  std::shared_ptr<abstract::Presentation> m_presentation;
+  std::shared_ptr<internal::abstract::Presentation> m_presentation;
 
-  explicit Presentation(std::shared_ptr<abstract::Presentation>);
+  explicit Presentation(std::shared_ptr<internal::abstract::Presentation>);
 
   friend Document;
 };
@@ -120,9 +120,9 @@ public:
   [[nodiscard]] SheetRange sheets() const;
 
 private:
-  std::shared_ptr<abstract::Spreadsheet> m_spreadsheet;
+  std::shared_ptr<internal::abstract::Spreadsheet> m_spreadsheet;
 
-  explicit Spreadsheet(std::shared_ptr<abstract::Spreadsheet>);
+  explicit Spreadsheet(std::shared_ptr<internal::abstract::Spreadsheet>);
 
   friend Document;
 };
@@ -134,9 +134,9 @@ public:
   [[nodiscard]] PageRange pages() const;
 
 private:
-  std::shared_ptr<abstract::Drawing> m_drawing;
+  std::shared_ptr<internal::abstract::Drawing> m_drawing;
 
-  explicit Drawing(std::shared_ptr<abstract::Drawing>);
+  explicit Drawing(std::shared_ptr<internal::abstract::Drawing>);
 
   friend Document;
 };
