@@ -3,7 +3,7 @@
 #include <internal/common/path.h>
 #include <nlohmann/json.hpp>
 #include <odr/file_meta.h>
-#include <test/test_util.h>
+#include <test_util.h>
 
 using namespace odr::internal;
 namespace fs = std::filesystem;

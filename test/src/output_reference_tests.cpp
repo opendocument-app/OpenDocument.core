@@ -10,7 +10,7 @@
 #include <odr/file_category.h>
 #include <odr/file_meta.h>
 #include <odr/html.h>
-#include <test/test_util.h>
+#include <test_util.h>
 #include <utility>
 
 using namespace odr;

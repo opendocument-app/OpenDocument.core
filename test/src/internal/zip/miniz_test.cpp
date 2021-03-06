@@ -4,7 +4,7 @@
 #include <internal/common/path.h>
 #include <miniz.h>
 #include <string>
-#include <test/test_util.h>
+#include <test_util.h>
 
 using namespace odr::test;
 

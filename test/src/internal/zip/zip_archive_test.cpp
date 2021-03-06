@@ -4,7 +4,7 @@
 #include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
 #include <string>
-#include <test/test_util.h>
+#include <test_util.h>
 
 using namespace odr;
 using namespace odr::internal;

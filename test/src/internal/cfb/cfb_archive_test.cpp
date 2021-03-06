@@ -2,7 +2,7 @@
 #include <internal/cfb/cfb_archive.h>
 #include <odr/exceptions.h>
 #include <string>
-#include <test/test_util.h>
+#include <test_util.h>
 
 using namespace odr::internal;
 using namespace odr::test;

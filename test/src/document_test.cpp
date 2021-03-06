@@ -4,7 +4,7 @@
 #include <odr/document_type.h>
 #include <odr/file.h>
 #include <odr/property.h>
-#include <test/test_util.h>
+#include <test_util.h>
 
 using namespace odr;
 using namespace odr::test;
