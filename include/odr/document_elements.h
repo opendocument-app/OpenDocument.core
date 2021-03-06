@@ -2,7 +2,6 @@
 #define ODR_DOCUMENT_ELEMENTS_H
 
 #include <memory>
-#include <odr/property.h>
 #include <optional>
 #include <string>
 
@@ -33,6 +32,8 @@ class Circle;
 namespace odr {
 class File;
 struct TableDimensions;
+class Property;
+enum class ElementType;
 
 class PageStyle;
 class TextStyle;
@@ -70,37 +71,6 @@ using PageRange = ElementRangeTemplate<PageElement>;
 using TableColumnRange = ElementRangeTemplate<TableColumnElement>;
 using TableRowRange = ElementRangeTemplate<TableRowElement>;
 using TableCellRange = ElementRangeTemplate<TableCellElement>;
-
-enum class ElementType {
-  NONE,
-
-  ROOT,
-  SLIDE,
-  SHEET,
-  PAGE,
-
-  TEXT,
-  LINE_BREAK,
-  PAGE_BREAK,
-  PARAGRAPH,
-  SPAN,
-  LINK,
-  BOOKMARK,
-
-  LIST,
-  LIST_ITEM,
-
-  TABLE,
-  TABLE_COLUMN,
-  TABLE_ROW,
-  TABLE_CELL,
-
-  FRAME,
-  IMAGE,
-  RECT,
-  LINE,
-  CIRCLE,
-};
 
 class Element {
 public:

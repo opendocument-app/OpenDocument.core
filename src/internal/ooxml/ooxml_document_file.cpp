@@ -28,7 +28,7 @@ bool OfficeOpenXmlFile::password_encrypted() const noexcept {
 }
 
 EncryptionState OfficeOpenXmlFile::encryption_state() const noexcept {
-  return m_encryptionState;
+  return m_encryption_state;
 }
 
 bool OfficeOpenXmlFile::decrypt(const std::string &password) {
@@ -48,7 +48,7 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
   // TODO
   // m_filesystem = std::make_unique<zip::ZipReader>(decryptedPackage, false);
   m_meta = parse_file_meta(*m_filesystem);
-  m_encryptionState = EncryptionState::DECRYPTED;
+  m_encryption_state = EncryptionState::DECRYPTED;
   return true;
 }
 

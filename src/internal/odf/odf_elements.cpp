@@ -6,6 +6,7 @@
 #include <internal/odf/odf_document_file.h>
 #include <internal/odf/odf_elements.h>
 #include <internal/odf/odf_meta.h>
+#include <odr/element_type.h>
 
 namespace odr::internal::odf {
 

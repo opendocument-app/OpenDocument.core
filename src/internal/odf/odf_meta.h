@@ -14,7 +14,6 @@ class xml_node;
 
 namespace odr {
 struct FileMeta;
-struct DocumentMeta;
 } // namespace odr
 
 namespace odr::internal::abstract {

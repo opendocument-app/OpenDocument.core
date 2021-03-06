@@ -2,7 +2,8 @@
 #define ODR_INTERNAL_OOXML_DOCUMENT_FILE_H
 
 #include <internal/abstract/file.h>
-#include <odr/file.h>
+#include <odr/encryption_state.h>
+#include <odr/file_meta.h>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -17,19 +18,19 @@ public:
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 
-  FileType file_type() const noexcept final;
-  FileMeta file_meta() const noexcept final;
+  [[nodiscard]] FileType file_type() const noexcept final;
+  [[nodiscard]] FileMeta file_meta() const noexcept final;
 
-  bool password_encrypted() const noexcept final;
-  EncryptionState encryption_state() const noexcept final;
+  [[nodiscard]] bool password_encrypted() const noexcept final;
+  [[nodiscard]] EncryptionState encryption_state() const noexcept final;
   bool decrypt(const std::string &password) final;
 
-  std::shared_ptr<abstract::Document> document() const final;
+  [[nodiscard]] std::shared_ptr<abstract::Document> document() const final;
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
   FileMeta m_meta;
-  EncryptionState m_encryptionState{EncryptionState::NOT_ENCRYPTED};
+  EncryptionState m_encryption_state{EncryptionState::NOT_ENCRYPTED};
 };
 
 } // namespace odr::internal::ooxml

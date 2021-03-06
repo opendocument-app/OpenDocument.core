@@ -5,8 +5,9 @@
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_elements_impl.h>
 #include <internal/odf/odf_meta.h>
-#include <odr/document_elements.h>
-
+#include <odr/document_type.h>
+#include <odr/element_type.h>
+#include <odr/table_dimensions.h>
 #include <utility>
 
 namespace odr::internal::odf {

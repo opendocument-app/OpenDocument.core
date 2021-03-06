@@ -1,14 +1,15 @@
-#include <common/file.h>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <internal/common/file.h>
+#include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
 #include <string>
 #include <test/test_util.h>
-#include <zip/zip_archive.h>
 
 using namespace odr;
-using namespace odr::zip;
-using namespace odr::common;
+using namespace odr::internal;
+using namespace odr::internal::zip;
+using namespace odr::internal::common;
 using namespace odr::test;
 
 TEST(ReadonlyZipArchive, open_directory) {

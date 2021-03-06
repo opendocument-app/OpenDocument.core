@@ -1,7 +1,7 @@
 #include <chrono>
-#include <common/path.h>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <internal/common/path.h>
 #include <miniz.h>
 #include <string>
 #include <test/test_util.h>

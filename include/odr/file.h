@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <odr/document.h>
+#include <odr/file_type.h>
 #include <optional>
 #include <string>
 #include <vector>
@@ -16,86 +17,12 @@ class DocumentFile;
 } // namespace odr::internal::abstract
 
 namespace odr {
+enum class FileCategory;
+enum class FileLocation;
+enum class EncryptionState;
+struct FileMeta;
 class ImageFile;
 class DocumentFile;
-
-enum class FileType {
-  UNKNOWN,
-
-  // https://en.wikipedia.org/wiki/OpenDocument
-  OPENDOCUMENT_TEXT,
-  OPENDOCUMENT_PRESENTATION,
-  OPENDOCUMENT_SPREADSHEET,
-  OPENDOCUMENT_GRAPHICS,
-
-  // https://en.wikipedia.org/wiki/Office_Open_XML
-  OFFICE_OPEN_XML_DOCUMENT,
-  OFFICE_OPEN_XML_PRESENTATION,
-  OFFICE_OPEN_XML_WORKBOOK,
-  OFFICE_OPEN_XML_ENCRYPTED,
-
-  // https://en.wikipedia.org/wiki/List_of_Microsoft_Office_filename_extensions
-  LEGACY_WORD_DOCUMENT,
-  LEGACY_POWERPOINT_PRESENTATION,
-  LEGACY_EXCEL_WORKSHEETS,
-
-  // https://en.wikipedia.org/wiki/Rich_Text_Format
-  RICH_TEXT_FORMAT,
-
-  // https://en.wikipedia.org/wiki/PDF
-  PORTABLE_DOCUMENT_FORMAT,
-
-  // https://en.wikipedia.org/wiki/Text_file
-  TEXT_FILE,
-  // https://en.wikipedia.org/wiki/Comma-separated_values
-  COMMA_SEPARATED_VALUES,
-  // https://en.wikipedia.org/wiki/Markdown
-  MARKDOWN,
-
-  // https://en.wikipedia.org/wiki/Zip_(file_format)
-  ZIP,
-  // https://en.wikipedia.org/wiki/Compound_File_Binary_Format
-  COMPOUND_FILE_BINARY_FORMAT,
-
-  STARVIEW_METAFILE,
-};
-
-enum class FileCategory {
-  UNKNOWN,
-  TEXT,
-  IMAGE,
-  ARCHIVE,
-  DOCUMENT,
-};
-
-enum class FileLocation {
-  UNKNOWN,
-  MEMORY,
-  DISC,
-  NETWORK,
-};
-
-enum class EncryptionState {
-  UNKNOWN,
-  NOT_ENCRYPTED,
-  ENCRYPTED,
-  DECRYPTED,
-};
-
-struct FileMeta final {
-  static FileType type_by_extension(const std::string &extension) noexcept;
-  static FileCategory category_by_type(FileType type) noexcept;
-
-  FileMeta();
-  FileMeta(FileType type, bool password_encrypted,
-           std::optional<DocumentMeta> document_meta);
-
-  FileType type{FileType::UNKNOWN};
-  bool password_encrypted{false};
-  std::optional<DocumentMeta> document_meta;
-
-  std::string type_as_string() const noexcept;
-};
 
 class File {
 public:

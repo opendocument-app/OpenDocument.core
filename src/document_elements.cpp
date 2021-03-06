@@ -1,7 +1,10 @@
 #include <internal/abstract/document_elements.h>
 #include <odr/document_elements.h>
 #include <odr/document_style.h>
+#include <odr/element_type.h>
 #include <odr/file.h>
+#include <odr/property.h>
+#include <odr/table_dimensions.h>
 
 namespace odr {
 

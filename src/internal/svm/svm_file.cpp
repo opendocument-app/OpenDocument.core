@@ -1,6 +1,6 @@
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_format.h>
-#include <odr/file.h>
+#include <odr/file_meta.h>
 
 namespace odr::internal::svm {
 

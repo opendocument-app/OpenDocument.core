@@ -39,7 +39,7 @@ std::unique_ptr<abstract::File> ReadonlyCfbArchive::Entry::file() const {
 }
 
 std::string ReadonlyCfbArchive::Entry::name() const {
-  return odr::util::string::c16str_to_string(
+  return odr::internal::util::string::c16str_to_string(
       reinterpret_cast<const char16_t *>(m_entry->name), m_entry->name_len - 2);
 }
 

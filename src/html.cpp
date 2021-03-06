@@ -9,10 +9,15 @@
 #include <odr/document.h>
 #include <odr/document_elements.h>
 #include <odr/document_style.h>
+#include <odr/document_type.h>
+#include <odr/element_type.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
+#include <odr/property.h>
 #include <sstream>
+
+using namespace odr::internal;
 
 namespace odr {
 
@@ -529,7 +534,7 @@ void Html::translate(const Document &document,
   out << "<body " << common::Html::body_attributes(config) << ">";
 
   if (document.document_type() == DocumentType::TEXT) {
-    translate_text_document(document.text_tocument(), out, config);
+    translate_text_document(document.text_document(), out, config);
   } else if (document.document_type() == DocumentType::PRESENTATION) {
     translate_presentation(document.presentation(), out, config);
   } else if (document.document_type() == DocumentType::SPREADSHEET) {

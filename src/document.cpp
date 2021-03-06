@@ -3,24 +3,10 @@
 #include <internal/common/path.h>
 #include <odr/document.h>
 #include <odr/document_elements.h>
+#include <odr/document_meta.h>
 #include <odr/document_style.h>
 
 namespace odr {
-
-TableDimensions::TableDimensions() = default;
-
-TableDimensions::TableDimensions(std::uint32_t rows, std::uint32_t columns)
-    : rows{rows}, columns{columns} {}
-
-DocumentMeta::Entry::Entry() = default;
-
-DocumentMeta::DocumentMeta() = default;
-
-DocumentMeta::DocumentMeta(const DocumentType document_type,
-                           const std::uint32_t entry_count,
-                           std::vector<Entry> entries)
-    : document_type{document_type}, entry_count{entry_count}, entries{std::move(
-                                                                  entries)} {}
 
 Document::Document(std::shared_ptr<internal::abstract::Document> document)
     : m_document{std::move(document)} {
@@ -43,7 +29,7 @@ bool Document::savable(const bool encrypted) const noexcept {
   return m_document->savable(encrypted);
 }
 
-TextDocument Document::text_tocument() const {
+TextDocument Document::text_document() const {
   return TextDocument(
       std::dynamic_pointer_cast<internal::abstract::TextDocument>(m_document));
 }

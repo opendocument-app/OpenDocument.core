@@ -1,7 +1,7 @@
-#include <common/path.h>
 #include <gtest/gtest.h>
+#include <internal/common/path.h>
 
-using namespace odr::common;
+using namespace odr::internal::common;
 
 TEST(Path, empty) { EXPECT_EQ("", Path().string()); }
 

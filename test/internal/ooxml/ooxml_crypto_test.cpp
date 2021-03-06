@@ -1,9 +1,9 @@
 #include <cstring>
 #include <gtest/gtest.h>
-#include <ooxml/ooxml_crypto.h>
+#include <internal/ooxml/ooxml_crypto.h>
 #include <string>
 
-using namespace odr::ooxml;
+using namespace odr::internal::ooxml;
 
 TEST(OoxmlCrypto, ECMA376Standard_derive_key) {
   Crypto::EncryptionHeader encryption_header{};

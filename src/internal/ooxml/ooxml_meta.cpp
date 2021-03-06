@@ -2,7 +2,7 @@
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_meta.h>
 #include <internal/util/xml_util.h>
-#include <odr/file.h>
+#include <odr/file_meta.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 

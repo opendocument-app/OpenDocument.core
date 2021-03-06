@@ -6,6 +6,7 @@
 #include <internal/ooxml/ooxml_document_file.h>
 #include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
+#include <odr/file.h>
 #include <open_strategy.h>
 
 using namespace odr::internal;

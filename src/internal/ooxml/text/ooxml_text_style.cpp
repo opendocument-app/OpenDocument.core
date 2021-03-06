@@ -3,7 +3,7 @@
 #include <internal/ooxml/text/ooxml_text_style.h>
 #include <internal/util/string_util.h>
 
-namespace odr::ooxml::text {
+namespace odr::internal::ooxml::text {
 
 namespace {
 void attributes_to_map(pugi::xml_node node,
@@ -263,4 +263,4 @@ std::shared_ptr<abstract::PageStyle> Styles::page_style() const {
       m_documentRoot.child("w:body").child("w:sectPr"));
 }
 
-} // namespace odr::ooxml::text
+} // namespace odr::internal::ooxml::text

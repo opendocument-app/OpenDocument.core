@@ -4,8 +4,7 @@
 #include <internal/common/property.h>
 #include <internal/ooxml/ooxml_document.h>
 #include <internal/ooxml/text/ooxml_text_elements.h>
-#include <odr/document_elements.h>
-#include <odr/file.h>
+#include <odr/element_type.h>
 
 namespace odr::internal::ooxml::text {
 

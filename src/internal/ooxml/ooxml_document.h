@@ -4,7 +4,7 @@
 #include <internal/abstract/document.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
 #include <memory>
-#include <odr/document.h>
+#include <odr/document_meta.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {

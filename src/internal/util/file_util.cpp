@@ -10,7 +10,7 @@ namespace odr::internal::util {
 std::string file::read(const std::string &path) {
   std::ifstream in(path);
   if (!in.is_open() || in.fail()) {
-    throw FileNotFound(std::strerror(errno));
+    throw FileNotFound();
   }
 
   std::string result;

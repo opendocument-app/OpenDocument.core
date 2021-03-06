@@ -10,15 +10,8 @@ namespace odr {
 enum class DocumentType;
 struct DocumentMeta;
 enum class ElementType;
-class Element;
-class TableElement;
-template <typename E> class ElementRangeTemplate;
-using ElementRange = ElementRangeTemplate<Element>;
-} // namespace odr
-
-namespace odr::internal {
 struct TableDimensions;
-}
+} // namespace odr
 
 namespace odr::internal::common {
 class Path;

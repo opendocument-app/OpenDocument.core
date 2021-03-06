@@ -1,7 +1,7 @@
+#include <internal/util/odr_meta_util.h>
 #include <iostream>
 #include <odr/file.h>
 #include <string>
-#include <util/odr_meta_util.h>
 
 int main(int argc, char **argv) {
   const std::string input{argv[1]};

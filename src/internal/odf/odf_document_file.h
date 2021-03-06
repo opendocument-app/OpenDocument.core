@@ -3,7 +3,8 @@
 
 #include <internal/abstract/file.h>
 #include <internal/odf/odf_manifest.h>
-#include <odr/file.h>
+#include <odr/encryption_state.h>
+#include <odr/file_meta.h>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;

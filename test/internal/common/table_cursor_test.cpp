@@ -1,8 +1,10 @@
-#include <common/table_cursor.h>
 #include <gtest/gtest.h>
+#include <internal/common/table_cursor.h>
+
+using namespace odr::internal::common;
 
 TEST(TableCursor, test) {
-  odr::common::TableCursor tl;
+  TableCursor tl;
   EXPECT_EQ(0, tl.row());
   EXPECT_EQ(0, tl.col());
   tl.add_row(1);

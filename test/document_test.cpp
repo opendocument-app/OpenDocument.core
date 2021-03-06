@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
 #include <odr/document.h>
-#include <odr/document_elements.h>
 #include <odr/document_style.h>
+#include <odr/document_type.h>
 #include <odr/file.h>
+#include <odr/property.h>
 #include <test/test_util.h>
 
 using namespace odr;
@@ -18,7 +19,7 @@ TEST(DocumentTest, odt) {
 
   EXPECT_EQ(document.document_type(), DocumentType::TEXT);
 
-  auto text_document = document.text_tocument();
+  auto text_document = document.text_document();
 
   auto page_style = text_document.page_style();
 

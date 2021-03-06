@@ -1,18 +1,21 @@
-#include <common/path.h>
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <internal/common/path.h>
+#include <internal/util/odr_meta_util.h>
+#include <internal/util/string_util.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
 #include <odr/file.h>
+#include <odr/file_category.h>
+#include <odr/file_meta.h>
 #include <odr/html.h>
 #include <test/test_util.h>
-#include <util/odr_meta_util.h>
-#include <util/string_util.h>
 #include <utility>
 
 using namespace odr;
 using namespace odr::test;
+using namespace odr::internal;
 namespace fs = std::filesystem;
 
 class OutputReferenceTests : public testing::TestWithParam<std::string> {};
@@ -66,7 +69,7 @@ TEST_P(OutputReferenceTests, all) {
 
   {
     const std::string meta_output = output_path + "/meta.json";
-    const auto json = odr::util::meta::meta_to_json(file_meta);
+    const auto json = odr::internal::util::meta::meta_to_json(file_meta);
     std::ofstream o(meta_output);
     o << std::setw(4) << json << std::endl;
     EXPECT_TRUE(fs::is_regular_file(meta_output));

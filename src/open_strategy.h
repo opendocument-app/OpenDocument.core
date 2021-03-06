@@ -14,9 +14,9 @@ class DecodedFile;
 class DocumentFile;
 } // namespace odr::internal::abstract
 
-namespace odr::common {
+namespace odr::internal::common {
 class Path;
-} // namespace odr::common
+} // namespace odr::internal::common
 
 namespace odr::open_strategy {
 std::vector<FileType> types(std::shared_ptr<internal::abstract::File> file);

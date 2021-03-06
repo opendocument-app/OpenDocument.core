@@ -5,7 +5,8 @@
 #include <internal/abstract/file.h>
 #include <internal/common/filesystem.h>
 #include <odr/exceptions.h>
-#include <odr/file.h>
+#include <odr/file_meta.h>
+#include <odr/file_type.h>
 
 namespace odr::internal::common {
 

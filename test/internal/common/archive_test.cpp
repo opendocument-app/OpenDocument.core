@@ -1,11 +1,11 @@
-#include <cfb/cfb_archive.h>
-#include <common/archive.h>
 #include <gtest/gtest.h>
+#include <internal/cfb/cfb_archive.h>
+#include <internal/common/archive.h>
+#include <internal/zip/zip_archive.h>
 #include <test/test_util.h>
-#include <zip/zip_archive.h>
 
-using namespace odr;
-using namespace odr::common;
+using namespace odr::internal;
+using namespace odr::internal::common;
 using namespace odr::test;
 
 TEST(Archive, smoke_zip) {

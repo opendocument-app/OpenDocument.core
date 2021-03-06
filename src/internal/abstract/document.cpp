@@ -1,5 +1,5 @@
 #include <internal/abstract/document.h>
-#include <odr/document.h>
+#include <odr/document_type.h>
 
 namespace odr::internal::abstract {
 

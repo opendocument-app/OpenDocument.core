@@ -3,11 +3,10 @@
 #include <internal/odf/odf_crypto.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_elements.h>
-#include <internal/table_dimensions.h>
 #include <internal/util/stream_util.h>
 #include <internal/util/xml_util.h>
-#include <odr/document.h>
-#include <odr/document_elements.h>
+#include <odr/document_meta.h>
+#include <odr/table_dimensions.h>
 
 namespace odr::internal::odf {
 

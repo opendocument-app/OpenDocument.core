@@ -6,8 +6,10 @@
 #include <internal/odf/odf_meta.h>
 #include <internal/util/map_util.h>
 #include <internal/util/stream_util.h>
+#include <odr/element_type.h>
 #include <odr/exceptions.h>
-#include <odr/file.h>
+#include <odr/file_meta.h>
+#include <odr/file_type.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::odf {

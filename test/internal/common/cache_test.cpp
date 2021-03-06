@@ -1,7 +1,7 @@
-#include <common/cache.h>
 #include <gtest/gtest.h>
+#include <internal/common/cache.h>
 
-using namespace odr::common;
+using namespace odr::internal::common;
 
 TEST(Cache, empty) {
   // TODO

@@ -15,6 +15,8 @@ class Drawing;
 } // namespace odr::internal::abstract
 
 namespace odr {
+enum class DocumentType;
+struct DocumentMeta;
 class DocumentFile;
 
 class PageStyle;
@@ -24,40 +26,6 @@ class Presentation;
 class Spreadsheet;
 class Drawing;
 
-enum class DocumentType {
-  UNKNOWN,
-  TEXT,
-  PRESENTATION,
-  SPREADSHEET,
-  DRAWING,
-};
-
-struct TableDimensions {
-  std::uint32_t rows{0};
-  std::uint32_t columns{0};
-
-  TableDimensions();
-  TableDimensions(std::uint32_t rows, std::uint32_t columns);
-};
-
-struct DocumentMeta final {
-  struct Entry {
-    std::optional<std::string> name;
-    std::optional<TableDimensions> table_dimensions;
-    std::optional<std::string> notes;
-
-    Entry();
-  };
-
-  DocumentMeta();
-  DocumentMeta(DocumentType document_type, std::uint32_t entry_count,
-               std::vector<Entry> entries);
-
-  DocumentType document_type{DocumentType::UNKNOWN};
-  std::uint32_t entry_count{0};
-  std::vector<Entry> entries;
-};
-
 class Document {
 public:
   [[nodiscard]] DocumentType document_type() const noexcept;
@@ -66,7 +34,7 @@ public:
   [[nodiscard]] bool editable() const noexcept;
   [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
 
-  [[nodiscard]] TextDocument text_tocument() const;
+  [[nodiscard]] TextDocument text_document() const;
   [[nodiscard]] Presentation presentation() const;
   [[nodiscard]] Spreadsheet spreadsheet() const;
   [[nodiscard]] Drawing drawing() const;

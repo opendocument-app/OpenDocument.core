@@ -1,9 +1,9 @@
+#include <internal/util/file_util.h>
 #include <iostream>
 #include <odr/document.h>
 #include <odr/file.h>
 #include <odr/html.h>
 #include <string>
-#include <util/file_util.h>
 
 int main(int, char **argv) {
   const std::string input{argv[1]};
