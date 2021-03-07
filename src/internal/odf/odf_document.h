@@ -40,7 +40,7 @@ public:
   explicit OpenDocumentText(
       std::shared_ptr<abstract::ReadableFilesystem> files);
 
-  DocumentMeta document_meta() const noexcept final;
+  experimental::DocumentMeta document_meta() const noexcept final;
 
   std::shared_ptr<const abstract::Element> root() const final;
 
@@ -53,7 +53,7 @@ public:
   explicit OpenDocumentPresentation(
       std::shared_ptr<abstract::ReadableFilesystem> files);
 
-  DocumentMeta document_meta() const noexcept final;
+  experimental::DocumentMeta document_meta() const noexcept final;
 
   std::uint32_t slide_count() const final;
 
@@ -67,7 +67,7 @@ public:
   explicit OpenDocumentSpreadsheet(
       std::shared_ptr<abstract::ReadableFilesystem> files);
 
-  DocumentMeta document_meta() const noexcept final;
+  experimental::DocumentMeta document_meta() const noexcept final;
 
   std::uint32_t sheet_count() const final;
 
@@ -81,7 +81,7 @@ public:
   explicit OpenDocumentDrawing(
       std::shared_ptr<abstract::ReadableFilesystem> files);
 
-  DocumentMeta document_meta() const noexcept final;
+  experimental::DocumentMeta document_meta() const noexcept final;
 
   std::uint32_t page_count() const final;
 

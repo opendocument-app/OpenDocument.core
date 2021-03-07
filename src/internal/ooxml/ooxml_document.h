@@ -4,7 +4,7 @@
 #include <internal/abstract/document.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
 #include <memory>
-#include <odr/document_meta.h>
+#include <odr/experimental/document_meta.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {
@@ -18,17 +18,18 @@ public:
   explicit OfficeOpenXmlDocument(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
-  bool editable() const noexcept final;
-  bool savable(bool encrypted) const noexcept final;
+  [[nodiscard]] bool editable() const noexcept final;
+  [[nodiscard]] bool savable(bool encrypted) const noexcept final;
 
-  std::shared_ptr<abstract::ReadableFilesystem> filesystem() const noexcept;
+  [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
+  filesystem() const noexcept;
 
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const std::string &password) const final;
 
 protected:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
-  DocumentMeta m_document_meta;
+  experimental::DocumentMeta m_document_meta;
 };
 
 class OfficeOpenXmlTextDocument final
@@ -39,7 +40,7 @@ public:
   explicit OfficeOpenXmlTextDocument(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
-  DocumentMeta document_meta() const noexcept final;
+  experimental::DocumentMeta document_meta() const noexcept final;
 
   const text::Styles &styles() const noexcept;
 
@@ -60,13 +61,14 @@ public:
   explicit OfficeOpenXmlPresentation(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
-  DocumentMeta document_meta() const noexcept final;
+  [[nodiscard]] experimental::DocumentMeta document_meta() const noexcept final;
 
-  std::uint32_t slide_count() const final;
+  [[nodiscard]] std::uint32_t slide_count() const final;
 
-  std::shared_ptr<const abstract::Element> root() const final;
+  [[nodiscard]] std::shared_ptr<const abstract::Element> root() const final;
 
-  std::shared_ptr<const abstract::Slide> first_slide() const final;
+  [[nodiscard]] std::shared_ptr<const abstract::Slide>
+  first_slide() const final;
 
 private:
   pugi::xml_document m_presentation_xml;
@@ -78,13 +80,14 @@ public:
   explicit OfficeOpenXmlSpreadsheet(
       std::shared_ptr<abstract::ReadableFilesystem> storage);
 
-  DocumentMeta document_meta() const noexcept final;
+  [[nodiscard]] experimental::DocumentMeta document_meta() const noexcept final;
 
-  std::uint32_t sheet_count() const final;
+  [[nodiscard]] std::uint32_t sheet_count() const final;
 
-  std::shared_ptr<const abstract::Element> root() const final;
+  [[nodiscard]] std::shared_ptr<const abstract::Element> root() const final;
 
-  std::shared_ptr<const abstract::Sheet> first_sheet() const final;
+  [[nodiscard]] std::shared_ptr<const abstract::Sheet>
+  first_sheet() const final;
 
 private:
   pugi::xml_document m_workbook_xml;

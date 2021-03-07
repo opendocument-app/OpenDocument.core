@@ -5,11 +5,11 @@
 #include <optional>
 #include <pugixml.hpp>
 
-namespace odr {
+namespace odr::experimental {
 enum class ElementType;
 enum class DocumentType;
 struct TableDimensions;
-} // namespace odr
+} // namespace odr::experimental
 
 namespace odr::internal::abstract {
 class File;
@@ -54,7 +54,7 @@ public:
   static std::optional<Element>
   create(std::shared_ptr<const OpenDocument> document, pugi::xml_node node);
 
-  [[nodiscard]] ElementType type() const;
+  [[nodiscard]] experimental::ElementType type() const;
 
   [[nodiscard]] std::optional<Root> root() const;
   [[nodiscard]] std::optional<Slide> slide() const;
@@ -81,11 +81,11 @@ public:
 
 protected:
   Element(std::shared_ptr<const OpenDocument> document, pugi::xml_node node,
-          ElementType type);
+          experimental::ElementType type);
 
   std::shared_ptr<const OpenDocument> m_document;
   pugi::xml_node m_node;
-  ElementType m_type;
+  experimental::ElementType m_type;
 };
 
 class SpecificElement {
@@ -113,9 +113,9 @@ public:
 
 private:
   Root(std::shared_ptr<const OpenDocument> document, pugi::xml_node node,
-       DocumentType type);
+       experimental::DocumentType type);
 
-  DocumentType m_type;
+  experimental::DocumentType m_type;
 };
 
 class Slide final : private SpecificElement {
@@ -221,7 +221,7 @@ class Table final : private SpecificElement {
 public:
   Table(std::shared_ptr<const OpenDocument> document, pugi::xml_node node);
 
-  [[nodiscard]] TableDimensions dimensions() const;
+  [[nodiscard]] experimental::TableDimensions dimensions() const;
 
   [[nodiscard]] std::optional<TableColumn> first_column() const;
   [[nodiscard]] std::optional<TableRow> first_row() const;

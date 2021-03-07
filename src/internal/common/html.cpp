@@ -1,6 +1,6 @@
 #include <internal/common/html.h>
 #include <internal/util/string_util.h>
-#include <odr/html.h>
+#include <odr/html_config.h>
 
 namespace odr::internal::common {
 

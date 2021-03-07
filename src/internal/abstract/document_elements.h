@@ -4,10 +4,10 @@
 #include <memory>
 #include <optional>
 
-namespace odr {
+namespace odr::experimental {
 enum class ElementType;
 struct TableDimensions;
-} // namespace odr
+} // namespace odr::experimental
 
 namespace odr::internal::abstract {
 class File;
@@ -36,12 +36,12 @@ public:
   previous_sibling() const = 0;
   [[nodiscard]] virtual std::shared_ptr<const Element> next_sibling() const = 0;
 
-  [[nodiscard]] virtual ElementType type() const = 0;
+  [[nodiscard]] virtual experimental::ElementType type() const = 0;
 };
 
 class Slide : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::string name() const = 0;
   [[nodiscard]] virtual std::string notes() const = 0;
@@ -51,7 +51,7 @@ public:
 
 class Sheet : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::string name() const = 0;
   [[nodiscard]] virtual std::shared_ptr<const Table> table() const = 0;
@@ -59,7 +59,7 @@ public:
 
 class Page : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::string name() const = 0;
 
@@ -68,14 +68,14 @@ public:
 
 class TextElement : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::string text() const = 0;
 };
 
 class Paragraph : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::shared_ptr<ParagraphStyle>
   paragraph_style() const = 0;
@@ -84,14 +84,14 @@ public:
 
 class Span : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::shared_ptr<TextStyle> text_style() const = 0;
 };
 
 class Link : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::shared_ptr<TextStyle> text_style() const = 0;
 
@@ -100,26 +100,26 @@ public:
 
 class Bookmark : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::string name() const = 0;
 };
 
 class List : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 };
 
 class ListItem : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 };
 
 class Table : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
-  [[nodiscard]] virtual TableDimensions dimensions() const = 0;
+  [[nodiscard]] virtual experimental::TableDimensions dimensions() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<const TableColumn>
   first_column() const = 0;
@@ -130,7 +130,7 @@ public:
 
 class TableColumn : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::shared_ptr<TableColumnStyle>
   table_column_style() const = 0;
@@ -138,12 +138,12 @@ public:
 
 class TableRow : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 };
 
 class TableCell : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::uint32_t row_span() const = 0;
   [[nodiscard]] virtual std::uint32_t column_span() const = 0;
@@ -154,7 +154,7 @@ public:
 
 class Frame : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::shared_ptr<Property> anchor_type() const = 0;
   [[nodiscard]] virtual std::shared_ptr<Property> width() const = 0;
@@ -164,7 +164,7 @@ public:
 
 class Image : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual bool internal() const = 0;
   [[nodiscard]] virtual std::string href() const = 0;
@@ -173,7 +173,7 @@ public:
 
 class Rect : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::string x() const = 0;
   [[nodiscard]] virtual std::string y() const = 0;
@@ -185,7 +185,7 @@ public:
 
 class Line : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::string x1() const = 0;
   [[nodiscard]] virtual std::string y1() const = 0;
@@ -197,7 +197,7 @@ public:
 
 class Circle : public virtual Element {
 public:
-  [[nodiscard]] ElementType type() const final;
+  [[nodiscard]] experimental::ElementType type() const final;
 
   [[nodiscard]] virtual std::string x() const = 0;
   [[nodiscard]] virtual std::string y() const = 0;

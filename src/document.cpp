@@ -1,56 +1,76 @@
 #include <glog/logging.h>
-#include <internal/abstract/document.h>
+#include <internal/abstract/document_translator.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/cfb/cfb_archive.h>
+#include <internal/common/archive.h>
 #include <internal/common/constants.h>
 #include <internal/common/path.h>
-#include <internal/odf/odf_document.h>
-#include <internal/oldms/oldms_file.h>
-#include <internal/ooxml/ooxml_document.h>
+#include <internal/odf/odf_translator.h>
 #include <internal/zip/zip_archive.h>
 #include <memory>
-#include <odr/config.h>
 #include <odr/document.h>
-#include <odr/exception.h>
-#include <odr/meta.h>
+#include <odr/exceptions.h>
+#include <odr/file_meta.h>
+#include <odr/html_config.h>
 #include <utility>
+
+using namespace odr::internal;
 
 namespace odr {
 
 namespace {
-std::unique_ptr<common::Document> open_impl(const std::string &path) {
+std::unique_ptr<internal::abstract::DocumentTranslator>
+open_impl(const std::string &path) {
+  std::shared_ptr<common::DiscFile> disc_file;
+
   try {
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::ZipReader>(path);
+    disc_file = std::make_shared<common::DiscFile>(path);
+  } catch (...) {
+    // TODO
+  }
+
+  try {
+    auto zip = std::make_unique<common::ArchiveFile<zip::ReadonlyZipArchive>>(
+        zip::ReadonlyZipArchive(disc_file));
+
+    auto filesystem = zip->archive()->filesystem();
 
     try {
-      return std::make_unique<odf::OpenDocument>(storage);
+      odf::OpenDocumentTranslator tmp(filesystem);
+      return std::make_unique<odf::OpenDocumentTranslator>(filesystem);
     } catch (...) {
       // TODO
     }
     try {
-      return std::make_unique<ooxml::OfficeOpenXml>(storage);
+      // TODO
+      // return std::make_unique<ooxml::OfficeOpenXml>(filesystem);
     } catch (...) {
       // TODO
     }
   } catch (...) {
     // TODO
   }
+
   try {
-    FileMeta meta;
-    std::unique_ptr<access::ReadStorage> storage =
-        std::make_unique<access::CfbReader>(path);
+    auto memory_file = std::make_shared<common::MemoryFile>(*disc_file);
+
+    auto cfb = std::make_unique<common::ArchiveFile<cfb::ReadonlyCfbArchive>>(
+        cfb::ReadonlyCfbArchive(memory_file));
+
+    auto filesystem = cfb->archive()->filesystem();
 
     // legacy microsoft
     try {
-      return std::make_unique<oldms::LegacyMicrosoft>(storage);
+      // TODO
+      // return std::make_unique<oldms::LegacyMicrosoft>(storage);
     } catch (...) {
       // TODO
     }
 
     // encrypted ooxml
     try {
-      return std::make_unique<ooxml::OfficeOpenXml>(storage);
+      // TODO
+      // return std::make_unique<ooxml::OfficeOpenXml>(storage);
     } catch (...) {
       // TODO
     }
@@ -61,18 +81,20 @@ std::unique_ptr<common::Document> open_impl(const std::string &path) {
   throw UnknownFileType();
 }
 
-std::unique_ptr<common::Document> open_impl(const std::string &path,
-                                            const FileType as) {
+std::unique_ptr<internal::abstract::DocumentTranslator>
+open_impl(const std::string &path, const FileType as) {
   // TODO implement
   throw UnknownFileType();
 }
 } // namespace
 
 std::string Document::version() noexcept {
-  return common::Constants::version();
+  return internal::common::constants::version();
 }
 
-std::string Document::commit() noexcept { return common::Constants::commit(); }
+std::string Document::commit() noexcept {
+  return internal::common::constants::commit();
+}
 
 FileType Document::type(const std::string &path) {
   const auto document = open_impl(path);
@@ -115,7 +137,8 @@ bool Document::decrypt(const std::string &password) const {
   return m_impl->decrypt(password);
 }
 
-void Document::translate(const std::string &path, const Config &config) const {
+void Document::translate(const std::string &path,
+                         const HtmlConfig &config) const {
   m_impl->translate(path, config);
 }
 
@@ -244,7 +267,7 @@ bool DocumentNoExcept::decrypt(const std::string &password) const noexcept {
 }
 
 bool DocumentNoExcept::translate(const std::string &path,
-                                 const Config &config) const noexcept {
+                                 const HtmlConfig &config) const noexcept {
   try {
     m_impl->translate(path, config);
     return true;

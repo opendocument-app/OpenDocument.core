@@ -1,29 +1,32 @@
-#include <ContentTranslator.h>
-#include <Context.h>
-#include <Crypto.h>
-#include <Meta.h>
-#include <StyleTranslator.h>
-#include <access/StreamUtil.h>
-#include <access/ZipStorage.h>
-#include <common/Html.h>
-#include <common/XmlUtil.h>
 #include <fstream>
+#include <internal/abstract/filesystem.h>
+#include <internal/common/file.h>
+#include <internal/common/html.h>
+#include <internal/common/path.h>
+#include <internal/odf/odf_crypto.h>
+#include <internal/odf/odf_manifest.h>
+#include <internal/odf/odf_meta.h>
 #include <internal/odf/odf_translator.h>
+#include <internal/odf/odf_translator_content.h>
+#include <internal/odf/odf_translator_context.h>
+#include <internal/odf/odf_translator_style.h>
+#include <internal/util/stream_util.h>
+#include <internal/util/xml_util.h>
+#include <internal/zip/zip_archive.h>
 #include <nlohmann/json.hpp>
-#include <odr/config.h>
-#include <odr/meta.h>
+#include <odr/html_config.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::odf {
 
 namespace {
 void generate_style(std::ofstream &out, Context &context) {
-  out << common::Html::odfDefaultStyle();
+  out << common::Html::default_style();
 
   if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET)
-    out << common::Html::odfSpreadsheetDefaultStyle();
+    out << common::Html::default_spreadsheet_style();
 
-  const auto stylesXml = common::XmlUtil::parse(*context.storage, "styles.xml");
+  const auto stylesXml = util::xml::parse(*context.storage, "styles.xml");
 
   const auto fontFaceDecls =
       stylesXml.child("office:document-styles").child("office:font-face-decls");
@@ -59,7 +62,7 @@ void generateContentStyle_(const pugi::xml_node &in, Context &context) {
 }
 
 void generate_script(std::ofstream &out, Context &) {
-  out << common::Html::defaultScript();
+  out << common::Html::default_script();
 }
 
 void generate_content(const pugi::xml_node &in, Context &context) {
@@ -88,15 +91,15 @@ void generate_content(const pugi::xml_node &in, Context &context) {
 
   context.entry = 0;
 
-  if (content &&
-      ((context.config->entryOffset > 0) || (context.config->entryCount > 0))) {
+  if (content && ((context.config->entry_offset > 0) ||
+                  (context.config->entry_count > 0))) {
     std::uint32_t i = 0;
     for (auto &&e : content) {
       if (e.name() != entryName)
         continue;
-      if ((i >= context.config->entryOffset) &&
-          ((context.config->entryCount == 0) ||
-           (i < context.config->entryOffset + context.config->entryCount))) {
+      if ((i >= context.config->entry_offset) &&
+          ((context.config->entry_count == 0) ||
+           (i < context.config->entry_offset + context.config->entry_count))) {
         ContentTranslator::html(e, context);
       } else {
         ++context.entry; // TODO hacky
@@ -110,33 +113,20 @@ void generate_content(const pugi::xml_node &in, Context &context) {
 } // namespace
 
 OpenDocumentTranslator::OpenDocumentTranslator(
+    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+    : m_filesystem{std::move(filesystem)} {
+  if (m_filesystem->exists("META-INF/manifest.xml")) {
+    auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
+
+    m_meta = parse_file_meta(*m_filesystem, &manifest);
+    m_manifest = parse_manifest(manifest);
+  } else {
+    m_meta = parse_file_meta(*m_filesystem, nullptr);
+  }
+}
+
+OpenDocumentTranslator::OpenDocumentTranslator(
     OpenDocumentTranslator &&) noexcept = default;
-
-OpenDocumentTranslator::OpenDocumentTranslator(const char *path)
-    : OpenDocumentTranslator(common::Path(path)) {}
-
-OpenDocumentTranslator::OpenDocumentTranslator(const std::string &path)
-    : OpenDocumentTranslator(common::Path(path)) {}
-
-OpenDocumentTranslator::OpenDocumentTranslator(const common::Path &path)
-    : OpenDocumentTranslator(
-          std::unique_ptr<access::ReadStorage>(new access::ZipReader(path))) {}
-
-OpenDocumentTranslator::OpenDocumentTranslator(
-    std::unique_ptr<access::ReadStorage> &&filesystem) {
-  m_meta = Meta::parseFileMeta(*filesystem, false);
-  m_manifest = Meta::parseManifest(*filesystem);
-
-  m_filesystem = std::move(filesystem);
-}
-
-OpenDocumentTranslator::OpenDocumentTranslator(
-    std::unique_ptr<access::ReadStorage> &filesystem) {
-  m_meta = Meta::parseFileMeta(*filesystem, false);
-  m_manifest = Meta::parseManifest(*filesystem);
-
-  m_filesystem = std::move(filesystem);
-}
 
 OpenDocumentTranslator::~OpenDocumentTranslator() = default;
 
@@ -145,7 +135,7 @@ OpenDocumentTranslator::operator=(OpenDocumentTranslator &&) noexcept = default;
 
 const FileMeta &OpenDocumentTranslator::meta() const noexcept { return m_meta; }
 
-const abstract::ReadFilesystem &
+const abstract::ReadableFilesystem &
 OpenDocumentTranslator::filesystem() const noexcept {
   return *m_filesystem;
 }
@@ -165,15 +155,15 @@ bool OpenDocumentTranslator::savable(const bool encrypted) const noexcept {
 bool OpenDocumentTranslator::decrypt(const std::string &password) {
   // TODO throw if not encrypted
   // TODO throw if decrypted
-  const bool success = Crypto::decrypt(m_filesystem, m_manifest, password);
+  const bool success = odf::decrypt(m_filesystem, m_manifest, password);
   if (success)
-    m_meta = Meta::parseFileMeta(*m_filesystem, true);
+    m_meta = parse_file_meta(*m_filesystem, true);
   m_decrypted = success;
   return success;
 }
 
 bool OpenDocumentTranslator::translate(const common::Path &path,
-                                       const Config &config) {
+                                       const HtmlConfig &config) {
   // TODO throw if not decrypted
   std::ofstream out(path);
   if (!out.is_open())
@@ -183,18 +173,18 @@ bool OpenDocumentTranslator::translate(const common::Path &path,
   m_context.storage = m_filesystem.get();
   m_context.output = &out;
 
-  m_content = common::XmlUtil::parse(*m_filesystem, "content.xml");
+  m_content = util::xml::parse(*m_filesystem, "content.xml");
 
   out << common::Html::doctype();
   out << "<html><head>";
-  out << common::Html::defaultHeaders();
+  out << common::Html::default_headers();
   out << "<style>";
   generate_style(out, m_context);
   generateContentStyle_(m_content, m_context);
   out << "</style>";
   out << "</head>";
 
-  out << "<body " << common::Html::bodyAttributes(config) << ">";
+  out << "<body " << common::Html::body_attributes(config) << ">";
   generate_content(m_content, m_context);
   out << "</body>";
 
@@ -215,9 +205,9 @@ bool OpenDocumentTranslator::edit(const std::string &diff) {
 
   if (json.contains("modifiedText")) {
     for (auto &&i : json["modifiedText"].items()) {
-      const auto it = m_context.textTranslation.find(std::stoi(i.key()));
+      const auto it = m_context.text_translation.find(std::stoi(i.key()));
       // TODO dirty const off-cast
-      if (it == m_context.textTranslation.end())
+      if (it == m_context.text_translation.end())
         continue;
       it->second.set(i.value().get<std::string>().c_str());
     }
@@ -229,32 +219,36 @@ bool OpenDocumentTranslator::edit(const std::string &diff) {
 bool OpenDocumentTranslator::save(const common::Path &path) const {
   // TODO throw if not decrypted
   // TODO this would decrypt/inflate and encrypt/deflate again
-  access::ZipWriter writer(path);
+  zip::ZipArchive archive;
 
   // `mimetype` has to be the first file and uncompressed
-  if (m_filesystem->isFile("mimetype")) {
-    const auto in = m_filesystem->read("mimetype");
-    const auto out = writer.write("mimetype", 0);
-    access::StreamUtil::pipe(*in, *out);
+  if (m_filesystem->is_file("mimetype")) {
+    archive.insert_file(std::end(archive), "mimetype",
+                        m_filesystem->open("mimetype"), 0);
   }
 
-  m_filesystem->visit([&](const auto &p) {
-    std::cout << p.string() << std::endl;
+  for (auto walker = m_filesystem->file_walker("/"); !walker->end();
+       walker->next()) {
+    auto p = walker->path();
     if (p == "mimetype")
-      return;
-    if (m_filesystem->isDirectory(p)) {
-      writer.createDirectory(p);
-      return;
+      continue;
+    if (m_filesystem->is_directory(p)) {
+      archive.insert_directory(std::end(archive), p);
+      continue;
     }
-    const auto in = m_filesystem->read(p);
-    const auto out = writer.write(p);
     if (p == "content.xml") {
-      m_content.print(*out);
-      return;
+      // TODO stream
+      std::stringstream out;
+      m_content.print(out);
+      auto tmp = std::make_shared<common::MemoryFile>(out.str());
+      archive.insert_file(std::end(archive), p, tmp);
+      continue;
     }
-    access::StreamUtil::pipe(*in, *out);
-  });
+    archive.insert_file(std::end(archive), p, m_filesystem->open(p));
+  }
 
+  std::ofstream ostream(path);
+  archive.save(ostream);
   return true;
 }
 

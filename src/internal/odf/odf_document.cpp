@@ -5,8 +5,8 @@
 #include <internal/odf/odf_elements.h>
 #include <internal/util/stream_util.h>
 #include <internal/util/xml_util.h>
-#include <odr/document_meta.h>
-#include <odr/table_dimensions.h>
+#include <odr/experimental/document_meta.h>
+#include <odr/experimental/table_dimensions.h>
 
 namespace odr::internal::odf {
 
@@ -76,8 +76,8 @@ OpenDocumentText::OpenDocumentText(
     std::shared_ptr<abstract::ReadableFilesystem> files)
     : OpenDocument(std::move(files)) {}
 
-DocumentMeta OpenDocumentText::document_meta() const noexcept {
-  DocumentMeta result;
+experimental::DocumentMeta OpenDocumentText::document_meta() const noexcept {
+  experimental::DocumentMeta result;
 
   result.document_type = document_type();
 
@@ -109,8 +109,9 @@ OpenDocumentPresentation::OpenDocumentPresentation(
     std::shared_ptr<abstract::ReadableFilesystem> files)
     : OpenDocument(std::move(files)) {}
 
-DocumentMeta OpenDocumentPresentation::document_meta() const noexcept {
-  DocumentMeta result;
+experimental::DocumentMeta
+OpenDocumentPresentation::document_meta() const noexcept {
+  experimental::DocumentMeta result;
 
   result.document_type = document_type();
 
@@ -119,7 +120,7 @@ DocumentMeta OpenDocumentPresentation::document_meta() const noexcept {
            slide->next_sibling())) {
     ++result.entry_count;
 
-    DocumentMeta::Entry entry;
+    experimental::DocumentMeta::Entry entry;
     entry.name = slide->name();
     result.entries.emplace_back(entry);
   }
@@ -149,8 +150,9 @@ OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
     std::shared_ptr<abstract::ReadableFilesystem> files)
     : OpenDocument(std::move(files)) {}
 
-DocumentMeta OpenDocumentSpreadsheet::document_meta() const noexcept {
-  DocumentMeta result;
+experimental::DocumentMeta
+OpenDocumentSpreadsheet::document_meta() const noexcept {
+  experimental::DocumentMeta result;
 
   result.document_type = document_type();
 
@@ -159,7 +161,7 @@ DocumentMeta OpenDocumentSpreadsheet::document_meta() const noexcept {
            sheet->next_sibling())) {
     ++result.entry_count;
 
-    DocumentMeta::Entry entry;
+    experimental::DocumentMeta::Entry entry;
     entry.name = sheet->name();
     entry.table_dimensions = sheet->table()->dimensions();
     result.entries.emplace_back(entry);
@@ -189,8 +191,8 @@ OpenDocumentDrawing::OpenDocumentDrawing(
     std::shared_ptr<abstract::ReadableFilesystem> files)
     : OpenDocument(std::move(files)) {}
 
-DocumentMeta OpenDocumentDrawing::document_meta() const noexcept {
-  DocumentMeta result;
+experimental::DocumentMeta OpenDocumentDrawing::document_meta() const noexcept {
+  experimental::DocumentMeta result;
 
   result.document_type = document_type();
 
@@ -199,7 +201,7 @@ DocumentMeta OpenDocumentDrawing::document_meta() const noexcept {
            page->next_sibling())) {
     ++result.entry_count;
 
-    DocumentMeta::Entry entry;
+    experimental::DocumentMeta::Entry entry;
     entry.name = page->name();
     result.entries.emplace_back(entry);
   }

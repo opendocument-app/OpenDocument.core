@@ -4,7 +4,7 @@
 #include <internal/common/property.h>
 #include <internal/ooxml/ooxml_document.h>
 #include <internal/ooxml/text/ooxml_text_elements.h>
-#include <odr/element_type.h>
+#include <odr/experimental/element_type.h>
 
 namespace odr::internal::ooxml::text {
 
@@ -64,7 +64,9 @@ public:
        pugi::xml_node node)
       : Element(std::move(document), nullptr, node) {}
 
-  ElementType type() const final { return ElementType::ROOT; }
+  experimental::ElementType type() const final {
+    return experimental::ElementType::ROOT;
+  }
 
   std::shared_ptr<const abstract::Element> parent() const final { return {}; }
 
@@ -85,13 +87,13 @@ class Primitive final : public Element {
 public:
   Primitive(std::shared_ptr<const OfficeOpenXmlTextDocument> document,
             std::shared_ptr<const abstract::Element> parent,
-            pugi::xml_node node, const ElementType type)
+            pugi::xml_node node, const experimental::ElementType type)
       : Element(std::move(document), std::move(parent), node), m_type{type} {}
 
-  ElementType type() const final { return m_type; }
+  experimental::ElementType type() const final { return m_type; }
 
 private:
-  const ElementType m_type;
+  experimental::ElementType m_type;
 };
 
 class TextElement final : public Element, public abstract::TextElement {
@@ -309,7 +311,7 @@ public:
         std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  TableDimensions dimensions() const final {
+  experimental::TableDimensions dimensions() const final {
     return {}; // TODO
   }
 

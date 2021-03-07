@@ -7,15 +7,17 @@
 #include <internal/util/stream_util.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
+#include <odr/exceptions.h>
+#include <odr/experimental/document.h>
 #include <odr/experimental/document_elements.h>
 #include <odr/experimental/document_style.h>
 #include <odr/experimental/document_type.h>
 #include <odr/experimental/element_type.h>
-#include <odr/experimental/exceptions.h>
 #include <odr/experimental/file.h>
 #include <odr/experimental/html.h>
 #include <odr/experimental/property.h>
 #include <odr/experimental/table_dimensions.h>
+#include <odr/html_config.h>
 #include <sstream>
 
 using namespace odr::internal;
@@ -318,7 +320,7 @@ void translate_image(const ImageElement &element, std::ostream &out,
     }
 
     // TODO stream
-    out << crypto::Util::base64_encode(image);
+    out << crypto::util::base64_encode(image);
   } else {
     out << element.href();
   }

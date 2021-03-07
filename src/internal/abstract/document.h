@@ -6,12 +6,12 @@
 #include <string>
 #include <vector>
 
-namespace odr {
+namespace odr::experimental {
 enum class DocumentType;
 struct DocumentMeta;
 enum class ElementType;
 struct TableDimensions;
-} // namespace odr
+} // namespace odr::experimental
 
 namespace odr::internal::common {
 class Path;
@@ -41,8 +41,10 @@ public:
   [[nodiscard]] virtual bool editable() const noexcept = 0;
   [[nodiscard]] virtual bool savable(bool encrypted = false) const noexcept = 0;
 
-  [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;
-  [[nodiscard]] virtual DocumentMeta document_meta() const noexcept = 0;
+  [[nodiscard]] virtual experimental::DocumentType
+  document_type() const noexcept = 0;
+  [[nodiscard]] virtual experimental::DocumentMeta
+  document_meta() const noexcept = 0;
 
   [[nodiscard]] virtual std::shared_ptr<const Element> root() const = 0;
 
@@ -53,14 +55,14 @@ public:
 
 class TextDocument : public virtual Document {
 public:
-  [[nodiscard]] DocumentType document_type() const noexcept final;
+  [[nodiscard]] experimental::DocumentType document_type() const noexcept final;
 
   [[nodiscard]] virtual std::shared_ptr<PageStyle> page_style() const = 0;
 };
 
 class Presentation : public virtual Document {
 public:
-  [[nodiscard]] DocumentType document_type() const noexcept final;
+  [[nodiscard]] experimental::DocumentType document_type() const noexcept final;
 
   [[nodiscard]] virtual std::uint32_t slide_count() const = 0;
 
@@ -69,7 +71,7 @@ public:
 
 class Spreadsheet : public virtual Document {
 public:
-  [[nodiscard]] DocumentType document_type() const noexcept final;
+  [[nodiscard]] experimental::DocumentType document_type() const noexcept final;
 
   [[nodiscard]] virtual std::uint32_t sheet_count() const = 0;
 
@@ -78,7 +80,7 @@ public:
 
 class Drawing : public virtual Document {
 public:
-  [[nodiscard]] DocumentType document_type() const noexcept final;
+  [[nodiscard]] experimental::DocumentType document_type() const noexcept final;
 
   [[nodiscard]] virtual std::uint32_t page_count() const = 0;
 
@@ -90,7 +92,7 @@ class ElementIterator {
 
   [[nodiscard]] virtual std::unique_ptr<ElementIterator> clone() const = 0;
 
-  [[nodiscard]] virtual ElementType type() const = 0;
+  [[nodiscard]] virtual experimental::ElementType type() const = 0;
 
   // valid for type = SLIDE, SHEET, PAGE, BOOKMARK
   [[nodiscard]] virtual std::string name() const = 0;
@@ -99,7 +101,8 @@ class ElementIterator {
   // valid for type = TEXT
   [[nodiscard]] virtual std::string text() const = 0;
   // valid for type = TABLE
-  [[nodiscard]] virtual TableDimensions table_dimensions() const = 0;
+  [[nodiscard]] virtual experimental::TableDimensions
+  table_dimensions() const = 0;
   // valid for type = TABLE_CELL
   [[nodiscard]] virtual std::uint32_t row_span() const = 0;
   // valid for type = TABLE_CELL

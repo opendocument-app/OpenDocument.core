@@ -1,8 +1,8 @@
 #ifndef ODR_EXPERIMENTAL_DOCUMENT_META_H
 #define ODR_EXPERIMENTAL_DOCUMENT_META_H
 
-#include <odr/document_type.h>
-#include <odr/table_dimensions.h>
+#include <odr/experimental/document_type.h>
+#include <odr/experimental/table_dimensions.h>
 #include <optional>
 #include <string>
 #include <vector>

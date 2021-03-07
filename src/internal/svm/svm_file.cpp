@@ -1,6 +1,6 @@
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_format.h>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 
 namespace odr::internal::svm {
 
@@ -19,8 +19,8 @@ FileType SvmFile::file_type() const noexcept {
   return FileType::STARVIEW_METAFILE;
 }
 
-FileMeta SvmFile::file_meta() const noexcept {
-  FileMeta result;
+experimental::FileMeta SvmFile::file_meta() const noexcept {
+  experimental::FileMeta result;
   result.type = FileType::STARVIEW_METAFILE;
   return result;
 }

@@ -3,7 +3,7 @@
 
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 
 namespace odr::internal::oldms {
 
@@ -14,18 +14,19 @@ public:
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 
-  FileType file_type() const noexcept final;
-  FileMeta file_meta() const noexcept final;
+  [[nodiscard]] FileType file_type() const noexcept final;
+  [[nodiscard]] experimental::FileMeta file_meta() const noexcept final;
 
-  bool password_encrypted() const noexcept final;
-  EncryptionState encryption_state() const noexcept final;
+  [[nodiscard]] bool password_encrypted() const noexcept final;
+  [[nodiscard]] experimental::EncryptionState
+  encryption_state() const noexcept final;
   bool decrypt(const std::string &password) final;
 
-  std::shared_ptr<abstract::Document> document() const final;
+  [[nodiscard]] std::shared_ptr<abstract::Document> document() const final;
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_storage;
-  FileMeta m_meta;
+  experimental::FileMeta m_meta;
 };
 
 } // namespace odr::internal::oldms

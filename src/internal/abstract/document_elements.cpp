@@ -1,44 +1,82 @@
 #include <internal/abstract/document_elements.h>
-#include <odr/element_type.h>
+#include <odr/experimental/element_type.h>
 
 namespace odr::internal::abstract {
 
-ElementType Slide::type() const { return ElementType::SLIDE; }
+experimental::ElementType Slide::type() const {
+  return experimental::ElementType::SLIDE;
+}
 
-ElementType Sheet::type() const { return ElementType::SHEET; }
+experimental::ElementType Sheet::type() const {
+  return experimental::ElementType::SHEET;
+}
 
-ElementType Page::type() const { return ElementType::PAGE; }
+experimental::ElementType Page::type() const {
+  return experimental::ElementType::PAGE;
+}
 
-ElementType TextElement::type() const { return ElementType::TEXT; }
+experimental::ElementType TextElement::type() const {
+  return experimental::ElementType::TEXT;
+}
 
-ElementType Paragraph::type() const { return ElementType::PARAGRAPH; }
+experimental::ElementType Paragraph::type() const {
+  return experimental::ElementType::PARAGRAPH;
+}
 
-ElementType Span::type() const { return ElementType::SPAN; }
+experimental::ElementType Span::type() const {
+  return experimental::ElementType::SPAN;
+}
 
-ElementType Link::type() const { return ElementType::LINK; }
+experimental::ElementType Link::type() const {
+  return experimental::ElementType::LINK;
+}
 
-ElementType Bookmark::type() const { return ElementType::BOOKMARK; }
+experimental::ElementType Bookmark::type() const {
+  return experimental::ElementType::BOOKMARK;
+}
 
-ElementType List::type() const { return ElementType::LIST; }
+experimental::ElementType List::type() const {
+  return experimental::ElementType::LIST;
+}
 
-ElementType ListItem::type() const { return ElementType::LIST_ITEM; }
+experimental::ElementType ListItem::type() const {
+  return experimental::ElementType::LIST_ITEM;
+}
 
-ElementType Table::type() const { return ElementType::TABLE; }
+experimental::ElementType Table::type() const {
+  return experimental::ElementType::TABLE;
+}
 
-ElementType TableColumn::type() const { return ElementType::TABLE_COLUMN; }
+experimental::ElementType TableColumn::type() const {
+  return experimental::ElementType::TABLE_COLUMN;
+}
 
-ElementType TableRow::type() const { return ElementType::TABLE_ROW; }
+experimental::ElementType TableRow::type() const {
+  return experimental::ElementType::TABLE_ROW;
+}
 
-ElementType TableCell::type() const { return ElementType::TABLE_CELL; }
+experimental::ElementType TableCell::type() const {
+  return experimental::ElementType::TABLE_CELL;
+}
 
-ElementType Frame::type() const { return ElementType::FRAME; }
+experimental::ElementType Frame::type() const {
+  return experimental::ElementType::FRAME;
+}
 
-ElementType Image::type() const { return ElementType::IMAGE; }
+experimental::ElementType Image::type() const {
+  return experimental::ElementType::IMAGE;
+}
 
-ElementType Rect::type() const { return ElementType::RECT; }
+experimental::ElementType Rect::type() const {
+  return experimental::ElementType::RECT;
+}
 
-ElementType Line::type() const { return ElementType::LINE; }
+experimental::ElementType Line::type() const {
+  return experimental::ElementType::LINE;
+}
 
-ElementType Circle::type() const { return ElementType::CIRCLE; }
+experimental::ElementType Circle::type() const {
+  return experimental::ElementType::CIRCLE;
+}
 
 } // namespace odr::internal::abstract

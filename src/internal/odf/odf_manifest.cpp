@@ -53,14 +53,15 @@ bool lookupStartKeyTypes(const std::string &checksum,
 }
 } // namespace
 
-Manifest parseManifest(const pugi::xml_document &manifest) {
+Manifest parse_manifest(const pugi::xml_document &manifest) {
   Manifest result;
 
   for (auto &&e : manifest.child("manifest:manifest").children()) {
     const common::Path path = e.attribute("manifest:full-path").as_string();
     const pugi::xml_node crypto = e.child("manifest:encryption-data");
-    if (!crypto)
+    if (!crypto) {
       continue;
+    }
     result.encrypted = true;
 
     Manifest::Entry entry;
@@ -107,10 +108,10 @@ Manifest parseManifest(const pugi::xml_document &manifest) {
       }
     }
 
-    entry.checksum = crypto::Util::base64_decode(entry.checksum);
+    entry.checksum = crypto::util::base64_decode(entry.checksum);
     entry.initialisation_vector =
-        crypto::Util::base64_decode(entry.initialisation_vector);
-    entry.key_salt = crypto::Util::base64_decode(entry.key_salt);
+        crypto::util::base64_decode(entry.initialisation_vector);
+    entry.key_salt = crypto::util::base64_decode(entry.key_salt);
 
     const auto it = result.entries.emplace(path, entry).first;
     if ((result.smallest_file_path == nullptr) ||

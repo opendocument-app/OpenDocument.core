@@ -5,14 +5,14 @@
 #include <optional>
 #include <string>
 
-namespace odr::internal::common {
-class Document;
+namespace odr::internal::abstract {
+class DocumentTranslator;
 }
 
 namespace odr {
 enum class FileType;
 struct FileMeta;
-struct Config;
+struct HtmlConfig;
 
 class Document final {
 public:
@@ -41,14 +41,14 @@ public:
 
   [[nodiscard]] bool decrypt(const std::string &password) const;
 
-  void translate(const std::string &path, const Config &config) const;
+  void translate(const std::string &path, const HtmlConfig &config) const;
   void edit(const std::string &diff) const;
 
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
 
 private:
-  std::unique_ptr<common::Document> m_impl;
+  std::unique_ptr<internal::abstract::DocumentTranslator> m_impl;
 };
 
 class DocumentNoExcept final {
@@ -74,7 +74,7 @@ public:
   [[nodiscard]] bool decrypt(const std::string &password) const noexcept;
 
   [[nodiscard]] bool translate(const std::string &path,
-                               const Config &config) const noexcept;
+                               const HtmlConfig &config) const noexcept;
   [[nodiscard]] bool edit(const std::string &diff) const noexcept;
 
   [[nodiscard]] bool save(const std::string &path) const noexcept;

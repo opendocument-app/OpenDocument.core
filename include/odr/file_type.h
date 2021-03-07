@@ -1,7 +1,7 @@
-#ifndef ODR_EXPERIMENTAL_FILE_TYPE_H
-#define ODR_EXPERIMENTAL_FILE_TYPE_H
+#ifndef ODR_FILE_TYPE_H
+#define ODR_FILE_TYPE_H
 
-namespace odr::experimental {
+namespace odr {
 
 enum class FileType {
   UNKNOWN,
@@ -46,4 +46,4 @@ enum class FileType {
 
 }
 
-#endif // ODR_EXPERIMENTAL_FILE_TYPE_H
+#endif // ODR_FILE_TYPE_H

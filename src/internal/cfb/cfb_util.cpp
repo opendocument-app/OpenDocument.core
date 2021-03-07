@@ -81,7 +81,7 @@ FileInCfb::FileInCfb(std::shared_ptr<Archive> archive,
                      const impl::CompoundFileEntry &entry)
     : m_archive{std::move(archive)}, m_entry{entry} {}
 
-[[nodiscard]] FileLocation FileInCfb::location() const noexcept {
+[[nodiscard]] experimental::FileLocation FileInCfb::location() const noexcept {
   return m_archive->file()->location();
 }
 

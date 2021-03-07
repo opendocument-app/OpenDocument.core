@@ -4,11 +4,11 @@
 namespace odr::experimental {
 
 std::string OpenDocumentReader::version() noexcept {
-  return internal::common::Constants::version();
+  return internal::common::constants::version();
 }
 
 std::string OpenDocumentReader::commit() noexcept {
-  return internal::common::Constants::commit();
+  return internal::common::constants::commit();
 }
 
 } // namespace odr::experimental

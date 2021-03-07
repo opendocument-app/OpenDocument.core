@@ -1,9 +1,9 @@
-#ifndef ODR_EXPERIMENTAL_EXCEPTIONS_H
-#define ODR_EXPERIMENTAL_EXCEPTIONS_H
+#ifndef ODR_EXCEPTIONS_H
+#define ODR_EXCEPTIONS_H
 
 #include <stdexcept>
 
-namespace odr::experimental {
+namespace odr {
 
 struct UnsupportedOperation final : public std::runtime_error {
   UnsupportedOperation();
@@ -89,6 +89,6 @@ struct MsUnsupportedCryptoAlgorithm final : public std::runtime_error {
   MsUnsupportedCryptoAlgorithm();
 };
 
-} // namespace odr::experimental
+} // namespace odr
 
-#endif // ODR_EXPERIMENTAL_EXCEPTIONS_H
+#endif // ODR_EXCEPTIONS_H

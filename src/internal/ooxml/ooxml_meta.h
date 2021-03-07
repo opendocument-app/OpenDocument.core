@@ -10,7 +10,7 @@ namespace pugi {
 class xml_document;
 }
 
-namespace odr {
+namespace odr::experimental {
 struct FileMeta;
 }
 
@@ -29,7 +29,8 @@ struct NoOfficeOpenXmlFileException final : public std::runtime_error {
       : std::runtime_error("not a open document file") {}
 };
 
-FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem);
+experimental::FileMeta
+parse_file_meta(abstract::ReadableFilesystem &filesystem);
 
 std::unordered_map<std::string, std::string>
 parse_relationships(const pugi::xml_document &relations);

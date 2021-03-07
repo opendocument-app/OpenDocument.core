@@ -22,13 +22,13 @@ target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-object OBJECT
         src/document.cpp
-        src/meta.cpp
+        src/exceptions.cpp
+        src/file_meta.cpp
 
         src/experimental/document.cpp
         src/experimental/document_elements.cpp
         src/experimental/document_meta.cpp
         src/experimental/document_style.cpp
-        src/experimental/exceptions.cpp
         src/experimental/file.cpp
         src/experimental/file_meta.cpp
         src/experimental/file_no_except.cpp
@@ -62,12 +62,14 @@ add_library(odr-object OBJECT
         src/internal/odf/odf_crypto.cpp
         src/internal/odf/odf_elements.cpp
         src/internal/odf/odf_elements_impl.cpp
+        src/internal/odf/odf_file.cpp
         src/internal/odf/odf_manifest.cpp
         src/internal/odf/odf_meta.cpp
         src/internal/odf/odf_document.cpp
-        src/internal/odf/odf_file.cpp
-        src/internal/odf/odf_translator.cpp
         src/internal/odf/odf_style.cpp
+        src/internal/odf/odf_translator.cpp
+        src/internal/odf/odf_translator_content.cpp
+        src/internal/odf/odf_translator_style.cpp
 
         src/internal/oldms/oldms_file.cpp
 

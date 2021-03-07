@@ -6,7 +6,7 @@
 #include <internal/oldms/oldms_file.h>
 #include <internal/ooxml/ooxml_file.h>
 #include <internal/zip/zip_archive.h>
-#include <odr/experimental/exceptions.h>
+#include <odr/exceptions.h>
 #include <odr/experimental/file.h>
 
 using namespace odr::internal;

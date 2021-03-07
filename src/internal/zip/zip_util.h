@@ -43,7 +43,7 @@ class FileInZip final : public abstract::File {
 public:
   FileInZip(std::shared_ptr<Archive> archive, std::uint32_t index);
 
-  [[nodiscard]] FileLocation location() const noexcept final;
+  [[nodiscard]] experimental::FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
   [[nodiscard]] std::unique_ptr<std::istream> read() const final;
 

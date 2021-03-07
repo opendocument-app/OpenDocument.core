@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <odr/document.h>
 #include <odr/file_type.h>
 #include <optional>
 #include <string>
@@ -22,7 +21,10 @@ enum class FileLocation;
 enum class EncryptionState;
 struct FileMeta;
 class ImageFile;
+enum class DocumentType;
 class DocumentFile;
+struct DocumentMeta;
+class Document;
 
 class File {
 public:

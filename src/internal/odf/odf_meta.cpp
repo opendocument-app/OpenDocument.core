@@ -1,14 +1,11 @@
-#include <cstring>
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/table_cursor.h>
-#include <internal/crypto/crypto_util.h>
 #include <internal/odf/odf_meta.h>
 #include <internal/util/map_util.h>
 #include <internal/util/stream_util.h>
-#include <odr/element_type.h>
 #include <odr/exceptions.h>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 #include <odr/file_type.h>
 #include <pugixml.hpp>
 
@@ -40,9 +37,10 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
 }
 } // namespace
 
-FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
-                         const pugi::xml_document *manifest) {
-  FileMeta result;
+experimental::FileMeta
+parse_file_meta(const abstract::ReadableFilesystem &filesystem,
+                const pugi::xml_document *manifest) {
+  experimental::FileMeta result;
 
   if (!filesystem.is_file("content.xml")) {
     throw NoOpenDocumentFile();

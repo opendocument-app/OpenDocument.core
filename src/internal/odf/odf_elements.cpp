@@ -6,7 +6,8 @@
 #include <internal/odf/odf_elements.h>
 #include <internal/odf/odf_file.h>
 #include <internal/odf/odf_meta.h>
-#include <odr/element_type.h>
+#include <odr/experimental/element_type.h>
+#include <odr/experimental/table_dimensions.h>
 
 namespace odr::internal::odf {
 
@@ -68,13 +69,13 @@ class Primitive final : public Element {
 public:
   Primitive(std::shared_ptr<const OpenDocument> document,
             std::shared_ptr<const abstract::Element> parent,
-            pugi::xml_node node, const ElementType type)
+            pugi::xml_node node, const experimental::ElementType type)
       : Element(std::move(document), std::move(parent), node), m_type{type} {}
 
-  ElementType type() const final { return m_type; }
+  experimental::ElementType type() const final { return m_type; }
 
 private:
-  const ElementType m_type;
+  experimental::ElementType m_type;
 };
 
 class TextElement final : public Element, public abstract::TextElement {
@@ -364,7 +365,7 @@ public:
         std::shared_ptr<const abstract::Element> parent, pugi::xml_node node)
       : Element(std::move(document), std::move(parent), node) {}
 
-  TableDimensions dimensions() const final {
+  experimental::TableDimensions dimensions() const final {
     std::uint32_t rows;
     std::uint32_t columns;
 
@@ -616,7 +617,9 @@ public:
   Root(std::shared_ptr<const OpenDocument> document, pugi::xml_node node)
       : Element(std::move(document), nullptr, node) {}
 
-  ElementType type() const final { return ElementType::ROOT; }
+  experimental::ElementType type() const final {
+    return experimental::ElementType::ROOT;
+  }
 
   std::shared_ptr<const abstract::Element> parent() const final { return {}; }
 
@@ -684,7 +687,8 @@ factorize_element(std::shared_ptr<const OpenDocument> document,
     }
     if (element == "text:line-break") {
       return std::make_shared<Primitive>(std::move(document), std::move(parent),
-                                         node, ElementType::LINE_BREAK);
+                                         node,
+                                         experimental::ElementType::LINE_BREAK);
     }
     if (element == "text:a") {
       return std::make_shared<Link>(std::move(document), std::move(parent),

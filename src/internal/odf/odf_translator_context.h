@@ -1,8 +1,8 @@
-#ifndef ODR_INTERNAL_ODF_TRANSLATOR ^ _CONTEXT_H
-#define ODR_INTERNAL_ODF_CONTEXT_H
+#ifndef ODR_INTERNAL_ODF_TRANSLATOR_CONTEXT_H
+#define ODR_INTERNAL_ODF_TRANSLATOR_CONTEXT_H
 
-#include <common/TableCursor.h>
-#include <common/TableRange.h>
+#include <internal/common/table_cursor.h>
+#include <internal/common/table_range.h>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -15,36 +15,36 @@ class xml_text;
 }
 
 namespace odr {
-struct Config;
+struct HtmlConfig;
 struct FileMeta;
-
-namespace access {
-class ReadStorage;
-}
 } // namespace odr
 
-namespace odr::odf {
+namespace odr::internal::abstract {
+class ReadableFilesystem;
+}
+
+namespace odr::internal::odf {
 
 struct Context {
-  const Config *config;
+  const HtmlConfig *config;
   const FileMeta *meta;
 
-  const access::ReadStorage *storage;
+  const abstract::ReadableFilesystem *storage;
 
   std::ostream *output;
 
-  std::unordered_map<std::string, std::list<std::string>> styleDependencies;
+  std::unordered_map<std::string, std::list<std::string>> style_dependencies;
 
   std::uint32_t entry{0};
-  common::TableRange tableRange;
-  common::TableCursor tableCursor;
-  std::unordered_map<std::uint32_t, std::string> defaultCellStyles;
+  common::TableRange table_range;
+  common::TableCursor table_cursor;
+  std::unordered_map<std::uint32_t, std::string> default_cell_styles;
 
   // editing
-  std::uint32_t currentTextTranslationIndex{0};
-  std::unordered_map<std::uint32_t, pugi::xml_text> textTranslation;
+  std::uint32_t current_text_translation_index{0};
+  std::unordered_map<std::uint32_t, pugi::xml_text> text_translation;
 };
 
-} // namespace odr::odf
+} // namespace odr::internal::odf
 
-#endif // ODR_ODF_CONTEXT_H
+#endif // ODR_INTERNAL_ODF_TRANSLATOR_CONTEXT_H

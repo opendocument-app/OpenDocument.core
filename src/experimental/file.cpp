@@ -1,7 +1,8 @@
 #include <experimental/open_strategy.h>
 #include <internal/abstract/file.h>
 #include <internal/common/file.h>
-#include <odr/experimental/exceptions.h>
+#include <odr/exceptions.h>
+#include <odr/experimental/document.h>
 #include <odr/experimental/file.h>
 #include <odr/experimental/file_meta.h>
 #include <utility>

@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace odr::internal::crypto::Util {
+namespace odr::internal::crypto::util {
 std::string base64_encode(const std::string &in);
 std::string base64_decode(const std::string &in);
 std::string sha1(const std::string &);
@@ -19,6 +19,6 @@ std::string decrypt_Blowfish(const std::string &key, const std::string &iv,
                              const std::string &input);
 std::string inflate(const std::string &input);
 std::size_t padding(const std::string &input);
-} // namespace odr::internal::crypto::Util
+} // namespace odr::internal::crypto::util
 
 #endif // ODR_INTERNAL_CRYPTO_UTIL_H

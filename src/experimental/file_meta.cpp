@@ -1,6 +1,6 @@
 #include <odr/experimental/file_category.h>
 #include <odr/experimental/file_meta.h>
-#include <odr/experimental/file_type.h>
+#include <odr/file_type.h>
 
 namespace odr::experimental {
 

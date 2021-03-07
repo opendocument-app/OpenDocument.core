@@ -40,7 +40,7 @@ struct Manifest {
   const Entry *smallest_file_entry{nullptr};
 };
 
-Manifest parseManifest(const pugi::xml_document &manifest);
+Manifest parse_manifest(const pugi::xml_document &manifest);
 
 } // namespace odr::internal::odf
 

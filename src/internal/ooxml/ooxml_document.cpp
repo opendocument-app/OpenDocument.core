@@ -3,8 +3,8 @@
 #include <internal/ooxml/text/ooxml_text_elements.h>
 #include <internal/util/xml_util.h>
 #include <odr/document.h>
-#include <odr/document_elements.h>
 #include <odr/exceptions.h>
+#include <odr/experimental/document_elements.h>
 
 namespace odr::internal::ooxml {
 
@@ -42,8 +42,9 @@ OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(
                           m_document_xml.document_element());
 }
 
-DocumentMeta OfficeOpenXmlTextDocument::document_meta() const noexcept {
-  DocumentMeta result;
+experimental::DocumentMeta
+OfficeOpenXmlTextDocument::document_meta() const noexcept {
+  experimental::DocumentMeta result;
 
   result.document_type = document_type();
 
@@ -71,15 +72,16 @@ OfficeOpenXmlPresentation::OfficeOpenXmlPresentation(
   m_presentation_xml = util::xml::parse(*m_filesystem, "ppt/presentation.xml");
 }
 
-DocumentMeta OfficeOpenXmlPresentation::document_meta() const noexcept {
-  DocumentMeta result;
+experimental::DocumentMeta
+OfficeOpenXmlPresentation::document_meta() const noexcept {
+  experimental::DocumentMeta result;
 
   result.document_type = document_type();
 
   result.entry_count = 0;
   for (auto &&e : m_presentation_xml.select_nodes("//p:sldId")) {
     ++result.entry_count;
-    DocumentMeta::Entry entry;
+    experimental::DocumentMeta::Entry entry;
     // TODO
     result.entries.emplace_back(entry);
   }
@@ -109,15 +111,16 @@ OfficeOpenXmlSpreadsheet::OfficeOpenXmlSpreadsheet(
   m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
 }
 
-DocumentMeta OfficeOpenXmlSpreadsheet::document_meta() const noexcept {
-  DocumentMeta result;
+experimental::DocumentMeta
+OfficeOpenXmlSpreadsheet::document_meta() const noexcept {
+  experimental::DocumentMeta result;
 
   result.document_type = document_type();
 
   result.entry_count = 0;
   for (auto &&e : m_workbook_xml.select_nodes("//sheet")) {
     ++result.entry_count;
-    DocumentMeta::Entry entry;
+    experimental::DocumentMeta::Entry entry;
     entry.name = e.node().attribute("name").as_string();
     // TODO dimension
     result.entries.emplace_back(entry);

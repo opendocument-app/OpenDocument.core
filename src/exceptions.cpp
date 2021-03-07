@@ -1,6 +1,6 @@
-#include <odr/experimental/exceptions.h>
+#include <odr/exceptions.h>
 
-namespace odr::experimental {
+namespace odr {
 
 UnsupportedOperation::UnsupportedOperation()
     : std::runtime_error("unsupported operation") {}
@@ -52,4 +52,4 @@ UnsupportedEndian::UnsupportedEndian()
 MsUnsupportedCryptoAlgorithm::MsUnsupportedCryptoAlgorithm()
     : std::runtime_error("unsupported crypto algorithm") {}
 
-} // namespace odr::experimental
+} // namespace odr

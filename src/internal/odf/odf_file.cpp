@@ -14,13 +14,13 @@ OpenDocumentFile::OpenDocumentFile(
     auto manifest = util::xml::parse(*m_files, "META-INF/manifest.xml");
 
     m_file_meta = parse_file_meta(*m_files, &manifest);
-    m_manifest = parseManifest(manifest);
+    m_manifest = parse_manifest(manifest);
   } else {
     m_file_meta = parse_file_meta(*m_files, nullptr);
   }
 
   if (m_file_meta.password_encrypted) {
-    m_encryption_state = EncryptionState::ENCRYPTED;
+    m_encryption_state = experimental::EncryptionState::ENCRYPTED;
   }
 }
 
@@ -36,7 +36,8 @@ bool OpenDocumentFile::password_encrypted() const noexcept {
   return m_file_meta.password_encrypted;
 }
 
-EncryptionState OpenDocumentFile::encryption_state() const noexcept {
+experimental::EncryptionState
+OpenDocumentFile::encryption_state() const noexcept {
   return m_encryption_state;
 }
 
@@ -45,13 +46,13 @@ bool OpenDocumentFile::decrypt(const std::string &password) {
   if (!odf::decrypt(m_files, m_manifest, password)) {
     return false;
   }
-  m_encryption_state = EncryptionState::DECRYPTED;
+  m_encryption_state = experimental::EncryptionState::DECRYPTED;
   return true;
 }
 
-FileMeta OpenDocumentFile::file_meta() const noexcept {
-  FileMeta result = m_file_meta;
-  if (m_encryption_state != EncryptionState::ENCRYPTED) {
+experimental::FileMeta OpenDocumentFile::file_meta() const noexcept {
+  experimental::FileMeta result = m_file_meta;
+  if (m_encryption_state != experimental::EncryptionState::ENCRYPTED) {
     result.document_meta = document()->document_meta();
   }
   return result;

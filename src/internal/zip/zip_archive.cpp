@@ -5,7 +5,6 @@
 #include <internal/zip/zip_archive.h>
 #include <internal/zip/zip_util.h>
 #include <odr/exceptions.h>
-#include <odr/file.h>
 #include <utility>
 
 namespace odr::internal::zip {

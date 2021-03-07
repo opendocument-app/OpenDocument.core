@@ -1,11 +1,10 @@
 #ifndef ODR_ABSTRACT_DOCUMENT_TRANSLATOR_H
 #define ODR_ABSTRACT_DOCUMENT_TRANSLATOR_H
 
-#include <odr/meta.h>
-
 namespace odr {
-struct Config;
-}
+struct HtmlConfig;
+struct FileMeta;
+} // namespace odr
 
 namespace odr::internal::common {
 class Path;
@@ -17,16 +16,17 @@ class DocumentTranslator {
 public:
   virtual ~DocumentTranslator() = default;
 
-  virtual const FileMeta &meta() const noexcept = 0;
+  [[nodiscard]] virtual const FileMeta &meta() const noexcept = 0;
 
-  virtual bool decrypted() const noexcept = 0;
-  virtual bool translatable() const noexcept = 0;
-  virtual bool editable() const noexcept = 0;
-  virtual bool savable(bool encrypted) const noexcept = 0;
+  [[nodiscard]] virtual bool decrypted() const noexcept = 0;
+  [[nodiscard]] virtual bool translatable() const noexcept = 0;
+  [[nodiscard]] virtual bool editable() const noexcept = 0;
+  [[nodiscard]] virtual bool savable(bool encrypted) const noexcept = 0;
 
   virtual bool decrypt(const std::string &password) = 0;
 
-  virtual bool translate(const common::Path &path, const Config &config) = 0;
+  virtual bool translate(const common::Path &path,
+                         const HtmlConfig &config) = 0;
 
   virtual bool edit(const std::string &diff) = 0;
 

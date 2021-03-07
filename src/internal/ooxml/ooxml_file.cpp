@@ -21,13 +21,16 @@ std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
 
 FileType OfficeOpenXmlFile::file_type() const noexcept { return m_meta.type; }
 
-FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_meta; }
+experimental::FileMeta OfficeOpenXmlFile::file_meta() const noexcept {
+  return m_meta;
+}
 
 bool OfficeOpenXmlFile::password_encrypted() const noexcept {
   return m_meta.password_encrypted;
 }
 
-EncryptionState OfficeOpenXmlFile::encryption_state() const noexcept {
+experimental::EncryptionState
+OfficeOpenXmlFile::encryption_state() const noexcept {
   return m_encryption_state;
 }
 
@@ -48,7 +51,7 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
   // TODO
   // m_filesystem = std::make_unique<zip::ZipReader>(decryptedPackage, false);
   m_meta = parse_file_meta(*m_filesystem);
-  m_encryption_state = EncryptionState::DECRYPTED;
+  m_encryption_state = experimental::EncryptionState::DECRYPTED;
   return true;
 }
 

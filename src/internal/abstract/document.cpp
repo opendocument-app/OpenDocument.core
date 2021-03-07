@@ -1,22 +1,22 @@
 #include <internal/abstract/document.h>
-#include <odr/document_type.h>
+#include <odr/experimental/document_type.h>
 
 namespace odr::internal::abstract {
 
-DocumentType TextDocument::document_type() const noexcept {
-  return DocumentType::TEXT;
+experimental::DocumentType TextDocument::document_type() const noexcept {
+  return experimental::DocumentType::TEXT;
 }
 
-DocumentType Presentation::document_type() const noexcept {
-  return DocumentType::PRESENTATION;
+experimental::DocumentType Presentation::document_type() const noexcept {
+  return experimental::DocumentType::PRESENTATION;
 }
 
-DocumentType Spreadsheet::document_type() const noexcept {
-  return DocumentType::SPREADSHEET;
+experimental::DocumentType Spreadsheet::document_type() const noexcept {
+  return experimental::DocumentType::SPREADSHEET;
 }
 
-DocumentType Drawing::document_type() const noexcept {
-  return DocumentType::DRAWING;
+experimental::DocumentType Drawing::document_type() const noexcept {
+  return experimental::DocumentType::DRAWING;
 }
 
 } // namespace odr::internal::abstract

@@ -19,13 +19,13 @@ bool can_decrypt(const Manifest::Entry &entry) noexcept {
 std::string hash(const std::string &input, const ChecksumType checksum_type) {
   switch (checksum_type) {
   case ChecksumType::SHA256:
-    return crypto::Util::sha256(input);
+    return crypto::util::sha256(input);
   case ChecksumType::SHA1:
-    return crypto::Util::sha1(input);
+    return crypto::util::sha1(input);
   case ChecksumType::SHA256_1K:
-    return crypto::Util::sha256(input.substr(0, 1024));
+    return crypto::util::sha256(input.substr(0, 1024));
   case ChecksumType::SHA1_1K:
-    return crypto::Util::sha1(input.substr(0, 1024));
+    return crypto::util::sha1(input.substr(0, 1024));
   default:
     throw std::invalid_argument("checksumType");
   }
@@ -36,12 +36,12 @@ std::string decrypt(const std::string &input, const std::string &derived_key,
                     const AlgorithmType algorithm) {
   switch (algorithm) {
   case AlgorithmType::AES256_CBC:
-    return crypto::Util::decrypt_AES(derived_key, initialisation_vector, input);
+    return crypto::util::decrypt_AES(derived_key, initialisation_vector, input);
   case AlgorithmType::TRIPLE_DES_CBC:
-    return crypto::Util::decrypt_TripleDES(derived_key, initialisation_vector,
+    return crypto::util::decrypt_TripleDES(derived_key, initialisation_vector,
                                            input);
   case AlgorithmType::BLOWFISH_CFB:
-    return crypto::Util::decrypt_Blowfish(derived_key, initialisation_vector,
+    return crypto::util::decrypt_Blowfish(derived_key, initialisation_vector,
                                           input);
   default:
     throw std::invalid_argument("algorithm");
@@ -60,7 +60,7 @@ std::string start_key(const Manifest::Entry &entry,
 std::string derive_key_and_decrypt(const Manifest::Entry &entry,
                                    const std::string &start_key,
                                    const std::string &input) {
-  const std::string derivedKey = crypto::Util::pbkdf2(
+  const std::string derivedKey = crypto::util::pbkdf2(
       entry.key_size, start_key, entry.key_salt, entry.key_iteration_count);
   return decrypt(input, derivedKey, entry.initialisation_vector,
                  entry.algorithm);
@@ -69,7 +69,7 @@ std::string derive_key_and_decrypt(const Manifest::Entry &entry,
 bool validate_password(const Manifest::Entry &entry,
                        std::string decrypted) noexcept {
   try {
-    const std::size_t padding = crypto::Util::padding(decrypted);
+    const std::size_t padding = crypto::util::padding(decrypted);
     decrypted = decrypted.substr(0, decrypted.size() - padding);
     const std::string checksum = hash(decrypted, entry.checksum_type);
     return checksum == entry.checksum;
@@ -115,7 +115,7 @@ public:
     // TODO stream
     auto source = m_parent->open(path)->read();
     const std::string input = util::stream::read(*source);
-    std::string result = crypto::Util::inflate(
+    std::string result = crypto::util::inflate(
         derive_key_and_decrypt(it->second, m_start_key, input));
     return std::make_shared<common::MemoryFile>(result);
   }

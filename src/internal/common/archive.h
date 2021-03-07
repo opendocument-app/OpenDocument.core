@@ -5,7 +5,7 @@
 #include <internal/abstract/file.h>
 #include <internal/common/filesystem.h>
 #include <odr/exceptions.h>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 #include <odr/file_type.h>
 
 namespace odr::internal::common {
@@ -56,7 +56,7 @@ public:
     return FileType::UNKNOWN; // TODO
   }
 
-  [[nodiscard]] FileMeta file_meta() const noexcept final {
+  [[nodiscard]] experimental::FileMeta file_meta() const noexcept final {
     return {}; // TODO
   }
 

@@ -13,7 +13,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 
   [[nodiscard]] FileType file_type() const noexcept final;
-  [[nodiscard]] FileMeta file_meta() const noexcept final;
+  [[nodiscard]] experimental::FileMeta file_meta() const noexcept final;
 
   [[nodiscard]] std::shared_ptr<abstract::Image> image() const final;
 

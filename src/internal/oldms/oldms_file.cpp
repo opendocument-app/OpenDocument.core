@@ -2,14 +2,14 @@
 #include <internal/common/path.h>
 #include <internal/oldms/oldms_file.h>
 #include <memory>
-#include <odr/encryption_state.h>
 #include <odr/exceptions.h>
+#include <odr/experimental/encryption_state.h>
 #include <unordered_map>
 
 namespace odr::internal::oldms {
 
 namespace {
-FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
+experimental::FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
@@ -22,7 +22,7 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
       {"Workbook", FileType::LEGACY_EXCEL_WORKSHEETS},
   };
 
-  FileMeta result;
+  experimental::FileMeta result;
 
   for (auto &&t : TYPES) {
     if (storage.is_file(t.first)) {
@@ -51,14 +51,17 @@ std::shared_ptr<abstract::File> LegacyMicrosoftFile::file() const noexcept {
 
 FileType LegacyMicrosoftFile::file_type() const noexcept { return m_meta.type; }
 
-FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_meta; }
+experimental::FileMeta LegacyMicrosoftFile::file_meta() const noexcept {
+  return m_meta;
+}
 
 bool LegacyMicrosoftFile::password_encrypted() const noexcept {
   return m_meta.password_encrypted;
 }
 
-EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {
-  return EncryptionState::UNKNOWN;
+experimental::EncryptionState
+LegacyMicrosoftFile::encryption_state() const noexcept {
+  return experimental::EncryptionState::UNKNOWN;
 }
 
 bool LegacyMicrosoftFile::decrypt(const std::string &password) {
