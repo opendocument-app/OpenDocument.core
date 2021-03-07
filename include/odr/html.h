@@ -27,9 +27,6 @@ struct HtmlConfig {
   // text document margin
   bool text_document_margin{false};
 
-  // spreadsheet table offset
-  std::uint32_t table_offset_rows{0};
-  std::uint32_t table_offset_cols{0};
   // spreadsheet table limit
   std::uint32_t table_limit_rows{10000};
   std::uint32_t table_limit_cols{500};

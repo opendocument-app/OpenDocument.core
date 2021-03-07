@@ -15,6 +15,7 @@
 #include <odr/file.h>
 #include <odr/html.h>
 #include <odr/property.h>
+#include <odr/table_dimensions.h>
 #include <sstream>
 
 using namespace odr::internal;
@@ -229,13 +230,25 @@ void translate_table(const TableElement &element, std::ostream &out,
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
-  std::uint32_t end_column = config.table_offset_cols + config.table_limit_cols;
-  std::uint32_t end_row = config.table_offset_rows + config.table_limit_rows;
+  std::optional<std::uint32_t> end_column;
+  std::optional<std::uint32_t> end_row;
+
+  if (config.table_limit_cols > 0) {
+    end_column = config.table_limit_cols;
+  }
+  if (config.table_limit_rows > 0) {
+    end_row = config.table_limit_rows;
+  }
+
+  if (config.table_limit_by_dimensions) {
+    const auto dimensions = element.dimensions();
+    end_column = dimensions.columns;
+    end_row = dimensions.rows;
+  }
 
   std::uint32_t column_index = 0;
   for (auto &&col : element.columns()) {
-    if ((column_index < config.table_offset_cols) ||
-        (column_index >= end_column)) {
+    if (end_column && (column_index >= end_column)) {
       ++column_index;
       continue;
     }
@@ -249,7 +262,7 @@ void translate_table(const TableElement &element, std::ostream &out,
 
   std::uint32_t row_index = 0;
   for (auto &&row : element.rows()) {
-    if ((row_index < config.table_offset_rows) || (row_index >= end_row)) {
+    if (end_row && (row_index >= end_row)) {
       ++row_index;
       continue;
     }
@@ -258,8 +271,7 @@ void translate_table(const TableElement &element, std::ostream &out,
     out << "<tr>";
     std::uint32_t column_index = 0;
     for (auto &&cell : row.cells()) {
-      if ((column_index < config.table_offset_cols) ||
-          (column_index >= end_column)) {
+      if (end_column && (column_index >= end_column)) {
         ++column_index;
         continue;
       }
@@ -433,10 +445,16 @@ void translate_text_document(const TextDocument &document, std::ostream &out,
 void translate_presentation(const Presentation &document, std::ostream &out,
                             const HtmlConfig &config) {
   // TODO indexing is kind of ugly here and duplicated
+  std::uint32_t begin_entry = config.entry_offset;
+  std::optional<std::uint32_t> end_entry;
+
+  if (config.entry_count > 0) {
+    end_entry = begin_entry + config.entry_count;
+  }
+
   std::uint32_t i = 0;
   for (auto &&slide : document.slides()) {
-    if ((i < config.entry_offset) ||
-        (i >= config.entry_offset + config.entry_count)) {
+    if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
       ++i;
       continue;
     }
@@ -462,26 +480,37 @@ void translate_presentation(const Presentation &document, std::ostream &out,
 
 void translate_spreadsheet(const Spreadsheet &document, std::ostream &out,
                            const HtmlConfig &config) {
+  std::uint32_t begin_entry = config.entry_offset;
+  std::optional<std::uint32_t> end_entry;
+
+  if (config.entry_count > 0) {
+    end_entry = begin_entry + config.entry_count;
+  }
+
   std::uint32_t i = 0;
-  for (auto &&child : document.sheets()) {
-    if ((i < config.entry_offset) ||
-        (i >= config.entry_offset + config.entry_count)) {
+  for (auto &&sheet : document.sheets()) {
+    if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
       ++i;
       continue;
     }
     ++i;
 
-    const auto sheet = child.sheet();
     translate_table(sheet.table(), out, config);
   }
 }
 
 void translate_drawing(const Drawing &document, std::ostream &out,
                        const HtmlConfig &config) {
+  std::uint32_t begin_entry = config.entry_offset;
+  std::optional<std::uint32_t> end_entry;
+
+  if (config.entry_count > 0) {
+    end_entry = begin_entry + config.entry_count;
+  }
+
   std::uint32_t i = 0;
   for (auto &&page : document.pages()) {
-    if ((i < config.entry_offset) ||
-        (i >= config.entry_offset + config.entry_count)) {
+    if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
       ++i;
       continue;
     }
