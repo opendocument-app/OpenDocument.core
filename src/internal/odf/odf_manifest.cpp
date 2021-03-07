@@ -69,7 +69,7 @@ Manifest parseManifest(const pugi::xml_document &manifest) {
     { // checksum
       const std::string checksumType =
           crypto.attribute("manifest:checksum-type").as_string();
-      lookupChecksumType(checksumType, entry.checksumType);
+      lookupChecksumType(checksumType, entry.checksum_type);
       entry.checksum = crypto.attribute("manifest:checksum").as_string();
     }
 
@@ -78,7 +78,7 @@ Manifest parseManifest(const pugi::xml_document &manifest) {
       const std::string algorithmName =
           algorithm.attribute("manifest:algorithm-name").as_string();
       lookupAlgorithmTypes(algorithmName, entry.algorithm);
-      entry.initialisationVector =
+      entry.initialisation_vector =
           algorithm.attribute("manifest:initialisation-vector").as_string();
     }
 
@@ -86,11 +86,11 @@ Manifest parseManifest(const pugi::xml_document &manifest) {
       const pugi::xml_node key = crypto.child("manifest:key-derivation");
       const std::string keyDerivationName =
           key.attribute("manifest:key-derivation-name").as_string();
-      lookupKeyDerivationTypes(keyDerivationName, entry.keyDerivation);
-      entry.keySize = key.attribute("manifest:key-size").as_uint(16);
-      entry.keyIterationCount =
+      lookupKeyDerivationTypes(keyDerivationName, entry.key_derivation);
+      entry.key_size = key.attribute("manifest:key-size").as_uint(16);
+      entry.key_iteration_count =
           key.attribute("manifest:iteration-count").as_uint();
-      entry.keySalt = key.attribute("manifest:salt").as_string();
+      entry.key_salt = key.attribute("manifest:salt").as_string();
     }
 
     { // start key generation
@@ -99,23 +99,23 @@ Manifest parseManifest(const pugi::xml_document &manifest) {
       if (start) {
         const std::string startKeyGenerationName =
             start.attribute("manifest:start-key-generation-name").as_string();
-        lookupStartKeyTypes(startKeyGenerationName, entry.startKeyGeneration);
-        entry.startKeySize = start.attribute("manifest:key-size").as_uint();
+        lookupStartKeyTypes(startKeyGenerationName, entry.start_key_generation);
+        entry.start_key_size = start.attribute("manifest:key-size").as_uint();
       } else {
-        entry.startKeyGeneration = ChecksumType::SHA1;
-        entry.startKeySize = 20;
+        entry.start_key_generation = ChecksumType::SHA1;
+        entry.start_key_size = 20;
       }
     }
 
     entry.checksum = crypto::Util::base64_decode(entry.checksum);
-    entry.initialisationVector =
-        crypto::Util::base64_decode(entry.initialisationVector);
-    entry.keySalt = crypto::Util::base64_decode(entry.keySalt);
+    entry.initialisation_vector =
+        crypto::Util::base64_decode(entry.initialisation_vector);
+    entry.key_salt = crypto::Util::base64_decode(entry.key_salt);
 
     const auto it = result.entries.emplace(path, entry).first;
     if ((result.smallest_file_path == nullptr) ||
-        (entry.size < result.smallestFileSize)) {
-      result.smallestFileSize = entry.size;
+        (entry.size < result.smallest_file_size)) {
+      result.smallest_file_size = entry.size;
       result.smallest_file_path = &it->first;
       result.smallest_file_entry = &it->second;
     }

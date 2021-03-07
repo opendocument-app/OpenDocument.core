@@ -20,22 +20,22 @@ struct Manifest {
   struct Entry {
     std::size_t size{0};
 
-    ChecksumType checksumType{ChecksumType::UNKNOWN};
+    ChecksumType checksum_type{ChecksumType::UNKNOWN};
     std::string checksum;
     AlgorithmType algorithm{AlgorithmType::UNKNOWN};
-    std::string initialisationVector{0};
-    KeyDerivationType keyDerivation{KeyDerivationType::UNKNOWN};
-    std::uint64_t keySize{0};
-    std::uint64_t keyIterationCount{0};
-    std::string keySalt{0};
-    ChecksumType startKeyGeneration{ChecksumType::UNKNOWN};
-    std::uint64_t startKeySize{0};
+    std::string initialisation_vector;
+    KeyDerivationType key_derivation{KeyDerivationType::UNKNOWN};
+    std::uint64_t key_size{0};
+    std::uint64_t key_iteration_count{0};
+    std::string key_salt;
+    ChecksumType start_key_generation{ChecksumType::UNKNOWN};
+    std::uint64_t start_key_size{0};
   };
 
   bool encrypted{false};
   std::unordered_map<common::Path, Entry> entries;
 
-  std::uint64_t smallestFileSize{0};
+  std::uint64_t smallest_file_size{0};
   const common::Path *smallest_file_path{nullptr};
   const Entry *smallest_file_entry{nullptr};
 };

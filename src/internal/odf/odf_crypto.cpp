@@ -10,14 +10,14 @@
 namespace odr::internal::odf {
 
 bool can_decrypt(const Manifest::Entry &entry) noexcept {
-  return entry.checksumType != ChecksumType::UNKNOWN &&
+  return entry.checksum_type != ChecksumType::UNKNOWN &&
          entry.algorithm != AlgorithmType::UNKNOWN &&
-         entry.keyDerivation != KeyDerivationType::UNKNOWN &&
-         entry.startKeyGeneration != ChecksumType::UNKNOWN;
+         entry.key_derivation != KeyDerivationType::UNKNOWN &&
+         entry.start_key_generation != ChecksumType::UNKNOWN;
 }
 
-std::string hash(const std::string &input, const ChecksumType checksumType) {
-  switch (checksumType) {
+std::string hash(const std::string &input, const ChecksumType checksum_type) {
+  switch (checksum_type) {
   case ChecksumType::SHA256:
     return crypto::Util::sha256(input);
   case ChecksumType::SHA1:
@@ -31,17 +31,17 @@ std::string hash(const std::string &input, const ChecksumType checksumType) {
   }
 }
 
-std::string decrypt(const std::string &input, const std::string &derivedKey,
-                    const std::string &initialisationVector,
+std::string decrypt(const std::string &input, const std::string &derived_key,
+                    const std::string &initialisation_vector,
                     const AlgorithmType algorithm) {
   switch (algorithm) {
   case AlgorithmType::AES256_CBC:
-    return crypto::Util::decrypt_AES(derivedKey, initialisationVector, input);
+    return crypto::Util::decrypt_AES(derived_key, initialisation_vector, input);
   case AlgorithmType::TRIPLE_DES_CBC:
-    return crypto::Util::decrypt_TripleDES(derivedKey, initialisationVector,
+    return crypto::Util::decrypt_TripleDES(derived_key, initialisation_vector,
                                            input);
   case AlgorithmType::BLOWFISH_CFB:
-    return crypto::Util::decrypt_Blowfish(derivedKey, initialisationVector,
+    return crypto::Util::decrypt_Blowfish(derived_key, initialisation_vector,
                                           input);
   default:
     throw std::invalid_argument("algorithm");
@@ -50,19 +50,19 @@ std::string decrypt(const std::string &input, const std::string &derivedKey,
 
 std::string start_key(const Manifest::Entry &entry,
                       const std::string &password) {
-  const std::string result = hash(password, entry.startKeyGeneration);
-  if (result.size() < entry.startKeySize) {
+  const std::string result = hash(password, entry.start_key_generation);
+  if (result.size() < entry.start_key_size) {
     throw std::invalid_argument("hash too small");
   }
-  return result.substr(0, entry.startKeySize);
+  return result.substr(0, entry.start_key_size);
 }
 
 std::string derive_key_and_decrypt(const Manifest::Entry &entry,
-                                   const std::string &startKey,
+                                   const std::string &start_key,
                                    const std::string &input) {
   const std::string derivedKey = crypto::Util::pbkdf2(
-      entry.keySize, startKey, entry.keySalt, entry.keyIterationCount);
-  return decrypt(input, derivedKey, entry.initialisationVector,
+      entry.key_size, start_key, entry.key_salt, entry.key_iteration_count);
+  return decrypt(input, derivedKey, entry.initialisation_vector,
                  entry.algorithm);
 }
 
@@ -71,7 +71,7 @@ bool validate_password(const Manifest::Entry &entry,
   try {
     const std::size_t padding = crypto::Util::padding(decrypted);
     decrypted = decrypted.substr(0, decrypted.size() - padding);
-    const std::string checksum = hash(decrypted, entry.checksumType);
+    const std::string checksum = hash(decrypted, entry.checksum_type);
     return checksum == entry.checksum;
   } catch (...) {
     return false;
