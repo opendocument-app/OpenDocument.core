@@ -3,8 +3,8 @@
 #include <internal/common/path.h>
 #include <internal/common/property.h>
 #include <internal/odf/odf_document.h>
-#include <internal/odf/odf_document_file.h>
 #include <internal/odf/odf_elements.h>
+#include <internal/odf/odf_file.h>
 #include <internal/odf/odf_meta.h>
 #include <odr/element_type.h>
 

@@ -2,111 +2,87 @@
 #define ODR_DOCUMENT_H
 
 #include <memory>
-#include <odr/document_elements.h>
+#include <optional>
 #include <string>
-#include <vector>
 
-namespace odr::internal::abstract {
+namespace odr::internal::common {
 class Document;
-class TextDocument;
-class Presentation;
-class Spreadsheet;
-class Drawing;
-} // namespace odr::internal::abstract
+}
 
 namespace odr {
-enum class DocumentType;
-struct DocumentMeta;
-class DocumentFile;
+enum class FileType;
+struct FileMeta;
+struct Config;
 
-class PageStyle;
-
-class TextDocument;
-class Presentation;
-class Spreadsheet;
-class Drawing;
-
-class Document {
+class Document final {
 public:
-  [[nodiscard]] DocumentType document_type() const noexcept;
-  [[nodiscard]] DocumentMeta document_meta() const noexcept;
+  static std::string version() noexcept;
+  static std::string commit() noexcept;
 
+  static FileType type(const std::string &path);
+  static FileMeta meta(const std::string &path);
+
+  explicit Document(const std::string &path);
+  Document(const std::string &path, FileType as);
+  Document(const Document &) = delete;
+  Document(Document &&) noexcept;
+  ~Document();
+  Document &operator=(Document &) = delete;
+  Document &operator=(Document &&) noexcept;
+
+  [[nodiscard]] FileType type() const noexcept;
+  [[nodiscard]] bool encrypted() const noexcept;
+  [[nodiscard]] const FileMeta &meta() const noexcept;
+
+  [[nodiscard]] bool decrypted() const noexcept;
+  [[nodiscard]] bool translatable() const noexcept;
   [[nodiscard]] bool editable() const noexcept;
   [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
 
-  [[nodiscard]] TextDocument text_document() const;
-  [[nodiscard]] Presentation presentation() const;
-  [[nodiscard]] Spreadsheet spreadsheet() const;
-  [[nodiscard]] Drawing drawing() const;
+  [[nodiscard]] bool decrypt(const std::string &password) const;
 
-  [[nodiscard]] Element root() const;
+  void translate(const std::string &path, const Config &config) const;
+  void edit(const std::string &diff) const;
 
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
 
-protected:
-  std::shared_ptr<internal::abstract::Document> m_document;
-
-  explicit Document(std::shared_ptr<internal::abstract::Document>);
-
 private:
-  friend DocumentFile;
+  std::unique_ptr<common::Document> m_impl;
 };
 
-class TextDocument final : public Document {
+class DocumentNoExcept final {
 public:
-  [[nodiscard]] PageStyle page_style() const;
+  static std::optional<DocumentNoExcept> open(const std::string &path) noexcept;
+  static std::optional<DocumentNoExcept> open(const std::string &path,
+                                              FileType as) noexcept;
 
-  [[nodiscard]] ElementRange content() const;
+  static FileType type(const std::string &path) noexcept;
+  static FileMeta meta(const std::string &path) noexcept;
+
+  explicit DocumentNoExcept(std::unique_ptr<Document>);
+
+  [[nodiscard]] FileType type() const noexcept;
+  [[nodiscard]] bool encrypted() const noexcept;
+  [[nodiscard]] const FileMeta &meta() const noexcept;
+
+  [[nodiscard]] bool decrypted() const noexcept;
+  [[nodiscard]] bool translatable() const noexcept;
+  [[nodiscard]] bool editable() const noexcept;
+  [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
+
+  [[nodiscard]] bool decrypt(const std::string &password) const noexcept;
+
+  [[nodiscard]] bool translate(const std::string &path,
+                               const Config &config) const noexcept;
+  [[nodiscard]] bool edit(const std::string &diff) const noexcept;
+
+  [[nodiscard]] bool save(const std::string &path) const noexcept;
+  [[nodiscard]] bool save(const std::string &path,
+                          const std::string &password) const noexcept;
 
 private:
-  std::shared_ptr<internal::abstract::TextDocument> m_text_document;
-
-  explicit TextDocument(std::shared_ptr<internal::abstract::TextDocument>);
-
-  friend Document;
-};
-
-class Presentation final : public Document {
-public:
-  [[nodiscard]] std::uint32_t slide_count() const;
-
-  [[nodiscard]] SlideRange slides() const;
-
-private:
-  std::shared_ptr<internal::abstract::Presentation> m_presentation;
-
-  explicit Presentation(std::shared_ptr<internal::abstract::Presentation>);
-
-  friend Document;
-};
-
-class Spreadsheet final : public Document {
-public:
-  [[nodiscard]] std::uint32_t sheet_count() const;
-
-  [[nodiscard]] SheetRange sheets() const;
-
-private:
-  std::shared_ptr<internal::abstract::Spreadsheet> m_spreadsheet;
-
-  explicit Spreadsheet(std::shared_ptr<internal::abstract::Spreadsheet>);
-
-  friend Document;
-};
-
-class Drawing final : public Document {
-public:
-  [[nodiscard]] std::uint32_t page_count() const;
-
-  [[nodiscard]] PageRange pages() const;
-
-private:
-  std::shared_ptr<internal::abstract::Drawing> m_drawing;
-
-  explicit Drawing(std::shared_ptr<internal::abstract::Drawing>);
-
-  friend Document;
+  std::unique_ptr<Document> m_impl;
 };
 
 } // namespace odr

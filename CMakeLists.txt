@@ -22,18 +22,21 @@ target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-object OBJECT
         src/document.cpp
-        src/document_elements.cpp
-        src/document_meta.cpp
-        src/document_style.cpp
-        src/exceptions.cpp
-        src/file.cpp
-        src/file_meta.cpp
-        src/file_no_except.cpp
-        src/html.cpp
-        src/open_document_reader.cpp
-        src/open_strategy.cpp
-        src/property.cpp
-        src/table_dimensions.cpp
+        src/meta.cpp
+
+        src/experimental/document.cpp
+        src/experimental/document_elements.cpp
+        src/experimental/document_meta.cpp
+        src/experimental/document_style.cpp
+        src/experimental/exceptions.cpp
+        src/experimental/file.cpp
+        src/experimental/file_meta.cpp
+        src/experimental/file_no_except.cpp
+        src/experimental/html.cpp
+        src/experimental/open_document_reader.cpp
+        src/experimental/open_strategy.cpp
+        src/experimental/property.cpp
+        src/experimental/table_dimensions.cpp
 
         src/internal/abstract/document.cpp
         src/internal/abstract/document_elements.cpp
@@ -62,14 +65,15 @@ add_library(odr-object OBJECT
         src/internal/odf/odf_manifest.cpp
         src/internal/odf/odf_meta.cpp
         src/internal/odf/odf_document.cpp
-        src/internal/odf/odf_document_file.cpp
+        src/internal/odf/odf_file.cpp
+        src/internal/odf/odf_translator.cpp
         src/internal/odf/odf_style.cpp
 
-        src/internal/oldms/oldms_document_file.cpp
+        src/internal/oldms/oldms_file.cpp
 
         src/internal/ooxml/ooxml_crypto.cpp
         src/internal/ooxml/ooxml_document.cpp
-        src/internal/ooxml/ooxml_document_file.cpp
+        src/internal/ooxml/ooxml_file.cpp
         src/internal/ooxml/ooxml_meta.cpp
         src/internal/ooxml/text/ooxml_text_elements.cpp
         src/internal/ooxml/text/ooxml_text_style.cpp
