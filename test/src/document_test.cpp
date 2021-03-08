@@ -1,12 +1,13 @@
 #include <gtest/gtest.h>
-#include <odr/document.h>
-#include <odr/document_style.h>
-#include <odr/document_type.h>
-#include <odr/file.h>
-#include <odr/property.h>
+#include <odr/experimental/document.h>
+#include <odr/experimental/document_style.h>
+#include <odr/experimental/document_type.h>
+#include <odr/experimental/file.h>
+#include <odr/experimental/property.h>
 #include <test_util.h>
 
 using namespace odr;
+using namespace odr::experimental;
 using namespace odr::test;
 
 TEST(DocumentTest, odt) {

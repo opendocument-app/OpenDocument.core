@@ -2,9 +2,11 @@
 #include <filesystem>
 #include <internal/common/path.h>
 #include <nlohmann/json.hpp>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 #include <test_util.h>
 
+using namespace odr;
+using namespace odr::experimental;
 using namespace odr::internal;
 namespace fs = std::filesystem;
 

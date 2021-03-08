@@ -1,3 +1,4 @@
+#include <experimental/interface.h>
 #include <fstream>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/file.h>
@@ -14,6 +15,7 @@
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
 #include <nlohmann/json.hpp>
+#include <odr/experimental/file_meta.h>
 #include <odr/html_config.h>
 #include <pugixml.hpp>
 
@@ -118,10 +120,10 @@ OpenDocumentTranslator::OpenDocumentTranslator(
   if (m_filesystem->exists("META-INF/manifest.xml")) {
     auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
 
-    m_meta = parse_file_meta(*m_filesystem, &manifest);
+    m_meta = experimental::convert(parse_file_meta(*m_filesystem, &manifest));
     m_manifest = parse_manifest(manifest);
   } else {
-    m_meta = parse_file_meta(*m_filesystem, nullptr);
+    m_meta = experimental::convert(parse_file_meta(*m_filesystem, nullptr));
   }
 }
 
@@ -156,8 +158,11 @@ bool OpenDocumentTranslator::decrypt(const std::string &password) {
   // TODO throw if not encrypted
   // TODO throw if decrypted
   const bool success = odf::decrypt(m_filesystem, m_manifest, password);
-  if (success)
-    m_meta = parse_file_meta(*m_filesystem, true);
+  if (success) {
+    auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
+    m_meta = experimental::convert(parse_file_meta(*m_filesystem, &manifest));
+    m_manifest = parse_manifest(manifest);
+  }
   m_decrypted = success;
   return success;
 }

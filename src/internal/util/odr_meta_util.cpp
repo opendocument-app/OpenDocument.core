@@ -1,9 +1,9 @@
 #include <internal/util/odr_meta_util.h>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 
 namespace odr::internal::util::meta {
 
-nlohmann::json meta_to_json(const odr::FileMeta &meta) {
+nlohmann::json meta_to_json(const odr::experimental::FileMeta &meta) {
   nlohmann::json result;
 
   result["type"] = meta.type_as_string();

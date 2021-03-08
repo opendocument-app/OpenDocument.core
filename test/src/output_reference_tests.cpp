@@ -5,17 +5,19 @@
 #include <internal/util/odr_meta_util.h>
 #include <internal/util/string_util.h>
 #include <nlohmann/json.hpp>
-#include <odr/document.h>
-#include <odr/file.h>
-#include <odr/file_category.h>
-#include <odr/file_meta.h>
-#include <odr/html.h>
+#include <odr/experimental/document.h>
+#include <odr/experimental/file.h>
+#include <odr/experimental/file_category.h>
+#include <odr/experimental/file_meta.h>
+#include <odr/experimental/html.h>
+#include <odr/html_config.h>
 #include <test_util.h>
 #include <utility>
 
 using namespace odr;
-using namespace odr::test;
 using namespace odr::internal;
+using namespace odr::experimental;
+using namespace odr::test;
 namespace fs = std::filesystem;
 
 class OutputReferenceTests : public testing::TestWithParam<std::string> {};
@@ -40,12 +42,12 @@ TEST_P(OutputReferenceTests, all) {
     GTEST_SKIP();
   }
 
-  odr::HtmlConfig config;
+  HtmlConfig config;
   config.editable = true;
   config.table_limit_rows = 4000;
   config.table_limit_cols = 500;
 
-  const odr::DecodedFile file{test_file.path};
+  const DecodedFile file{test_file.path};
 
   fs::create_directories(fs::path(output_path));
   auto file_meta = file.file_meta();

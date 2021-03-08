@@ -1,8 +1,11 @@
 #include <internal/util/odr_meta_util.h>
 #include <iostream>
-#include <odr/file.h>
-#include <odr/file_meta.h>
+#include <odr/experimental/file.h>
+#include <odr/experimental/file_meta.h>
 #include <string>
+
+using namespace odr;
+using namespace odr::experimental;
 
 int main(int argc, char **argv) {
   const std::string input{argv[1]};
@@ -13,7 +16,7 @@ int main(int argc, char **argv) {
     password = argv[2];
   }
 
-  odr::DocumentFile document_file{input};
+  DocumentFile document_file{input};
 
   if (document_file.password_encrypted() && has_password) {
     if (!document_file.decrypt(password)) {

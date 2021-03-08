@@ -33,6 +33,7 @@ add_library(odr-object OBJECT
         src/experimental/file_meta.cpp
         src/experimental/file_no_except.cpp
         src/experimental/html.cpp
+        src/experimental/interface.cpp
         src/experimental/open_document_reader.cpp
         src/experimental/open_strategy.cpp
         src/experimental/property.cpp
