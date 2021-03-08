@@ -87,7 +87,39 @@ public:
   [[nodiscard]] virtual std::shared_ptr<const Page> first_page() const = 0;
 };
 
+template <typename _> struct Identifier {
+  Identifier() = default;
+  Identifier(std::uint64_t id) : id{id} {}
+
+  operator bool() const { return id == 0; }
+  operator std::uint64_t() const { return id; }
+
+  std::uint64_t id{0};
+};
+
+struct element_identifier_tag {};
+
+using ElementIdentifier = Identifier<element_identifier_tag>;
+
+class Elements {
+public:
+  virtual ~Elements() = default;
+
+  [[nodiscard]] virtual ElementIdentifier
+  parent(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  first_child(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  previous_sibling(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  next_sibling(ElementIdentifier elementId) const = 0;
+
+  [[nodiscard]] virtual experimental::ElementType
+  type(ElementIdentifier elementId) const = 0;
+};
+
 class ElementIterator {
+public:
   virtual ~ElementIterator() = default;
 
   [[nodiscard]] virtual std::unique_ptr<ElementIterator> clone() const = 0;
