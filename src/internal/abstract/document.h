@@ -87,19 +87,19 @@ public:
   [[nodiscard]] virtual std::shared_ptr<const Page> first_page() const = 0;
 };
 
-template <typename _> struct Identifier {
+template <typename Number, typename Tag> struct Identifier {
   Identifier() = default;
-  Identifier(std::uint64_t id) : id{id} {}
+  Identifier(Number id) : id{id} {}
 
   operator bool() const { return id == 0; }
-  operator std::uint64_t() const { return id; }
+  operator Number() const { return id; }
 
-  std::uint64_t id{0};
+  Number id{0};
 };
 
 struct element_identifier_tag {};
 
-using ElementIdentifier = Identifier<element_identifier_tag>;
+using ElementIdentifier = Identifier<std::uint64_t, element_identifier_tag>;
 
 class Elements {
 public:
@@ -116,85 +116,117 @@ public:
 
   [[nodiscard]] virtual experimental::ElementType
   type(ElementIdentifier elementId) const = 0;
-};
 
-class ElementIterator {
-public:
-  virtual ~ElementIterator() = default;
+  // slide
+  [[nodiscard]] virtual std::string
+  slide_name(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::string
+  slide_notes(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<PageStyle>
+  slide_style(ElementIdentifier elementId) const = 0;
 
-  [[nodiscard]] virtual std::unique_ptr<ElementIterator> clone() const = 0;
+  // sheet
+  [[nodiscard]] virtual std::string
+  sheet_name(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  sheet_table(ElementIdentifier elementId) const = 0;
 
-  [[nodiscard]] virtual experimental::ElementType type() const = 0;
+  // page
+  [[nodiscard]] virtual std::string
+  page_name(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<PageStyle>
+  page_style(ElementIdentifier elementId) const = 0;
 
-  // valid for type = SLIDE, SHEET, PAGE, BOOKMARK
-  [[nodiscard]] virtual std::string name() const = 0;
-  // valid for type = SLIDE
-  [[nodiscard]] virtual std::string notes() const = 0;
-  // valid for type = TEXT
-  [[nodiscard]] virtual std::string text() const = 0;
-  // valid for type = TABLE
-  [[nodiscard]] virtual experimental::TableDimensions
-  table_dimensions() const = 0;
-  // valid for type = TABLE_CELL
-  [[nodiscard]] virtual std::uint32_t row_span() const = 0;
-  // valid for type = TABLE_CELL
-  [[nodiscard]] virtual std::uint32_t column_span() const = 0;
-  // valid for type = FRAME
-  [[nodiscard]] virtual std::shared_ptr<Property> anchor_type() const = 0;
-  // valid for type = RECT, CIRCLE
-  [[nodiscard]] virtual std::string x() const = 0;
-  // valid for type = RECT, CIRCLE
-  [[nodiscard]] virtual std::string y() const = 0;
-  // valid for type = FRAME, RECT, CIRCLE
-  [[nodiscard]] virtual std::shared_ptr<Property> width() const = 0;
-  // valid for type = FRAME, RECT, CIRCLE
-  [[nodiscard]] virtual std::shared_ptr<Property> height() const = 0;
-  // valid for type = FRAME
-  [[nodiscard]] virtual std::shared_ptr<Property> z_index() const = 0;
-  // valid for type = IMAGE
-  [[nodiscard]] virtual bool internal() const = 0;
-  // valid for type = LINK, IMAGE
-  [[nodiscard]] virtual std::string href() const = 0;
-  // valid for type = IMAGE
-  [[nodiscard]] virtual std::shared_ptr<File> image_file() const = 0;
-  // valid for type = LINE
-  [[nodiscard]] virtual std::string x1() const = 0;
-  // valid for type = LINE
-  [[nodiscard]] virtual std::string y1() const = 0;
-  // valid for type = LINE
-  [[nodiscard]] virtual std::string x2() const = 0;
-  // valid for type = LINE
-  [[nodiscard]] virtual std::string y2() const = 0;
+  // text
+  [[nodiscard]] virtual std::string text(ElementIdentifier elementId) const = 0;
 
-  // valid for type = SLIDE, PAGE
-  [[nodiscard]] virtual std::shared_ptr<PageStyle> page_style() const = 0;
-  // valid for type = PARAGRAPH
+  // paragraph
   [[nodiscard]] virtual std::shared_ptr<ParagraphStyle>
-  paragraph_style() const = 0;
-  // valid for type = PARAGRAPH, SPAN, LINK
-  [[nodiscard]] virtual std::shared_ptr<TextStyle> text_style() const = 0;
-  // valid for type = TABLE
-  [[nodiscard]] virtual std::shared_ptr<TableStyle> table_style() const = 0;
-  // valid for type = TABLE_COLUMN
+  paragraph_style(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<TextStyle>
+  paragraph_text_style(ElementIdentifier elementId) const = 0;
+
+  // span
+  [[nodiscard]] virtual std::shared_ptr<TextStyle>
+  span_text_style(ElementIdentifier elementId) const = 0;
+
+  // bookmark
+  [[nodiscard]] virtual std::string
+  bookmark_name(ElementIdentifier elementId) const = 0;
+
+  // link
+  [[nodiscard]] virtual std::string
+  link_href(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<TextStyle>
+  link_text_style(ElementIdentifier elementId) const = 0;
+
+  // table
+  [[nodiscard]] virtual ElementIdentifier
+  first_column(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  first_row(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<TableStyle>
+  table_style(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual experimental::TableDimensions
+  table_dimensions(ElementIdentifier elementId) const = 0;
+
+  // table column
   [[nodiscard]] virtual std::shared_ptr<TableColumnStyle>
-  table_column_style() const = 0;
-  // valid for type = TABLE_CELL
+  table_column_style(ElementIdentifier elementId) const = 0;
+
+  // table cell
+  [[nodiscard]] virtual std::uint32_t
+  table_cell_row_span(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::uint32_t
+  table_cell_column_span(ElementIdentifier elementId) const = 0;
   [[nodiscard]] virtual std::shared_ptr<TableCellStyle>
-  table_cell_style() const = 0;
-  // valid for type = RECT, LINE, CIRCLE
-  [[nodiscard]] virtual std::shared_ptr<DrawingStyle> drawing_style() const = 0;
+  table_cell_style(ElementIdentifier elementId) const = 0;
 
-  virtual bool parent() = 0;
-  virtual bool first_child() = 0;
-  virtual bool previous_sibling() = 0;
-  virtual bool next_sibling() = 0;
+  // frame
+  [[nodiscard]] virtual std::shared_ptr<Property>
+  frame_anchor_type(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property>
+  frame_width(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property>
+  frame_height(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Property>
+  frame_z_index(ElementIdentifier elementId) const = 0;
 
-  // valid for type = SHEET
-  virtual bool table() = 0;
-  // valid for type = TABLE
-  virtual bool first_column() = 0;
-  // valid for type = TABLE
-  virtual bool first_row() = 0;
+  // image
+  [[nodiscard]] virtual bool
+  image_internal(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::string
+  image_href(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<File>
+  image_file(ElementIdentifier elementId) const = 0;
+
+  // rect
+  [[nodiscard]] virtual std::string
+  rect_x(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::string
+  rect_y(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<DrawingStyle>
+  rect_style(ElementIdentifier elementId) const = 0;
+
+  // circle
+  [[nodiscard]] virtual std::string
+  circle_x(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::string
+  circle_y(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<DrawingStyle>
+  circle_style(ElementIdentifier elementId) const = 0;
+
+  // line
+  [[nodiscard]] virtual std::string
+  line_x1(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::string
+  line_y1(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::string
+  line_x2(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::string
+  line_y2(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<DrawingStyle>
+  line_style(ElementIdentifier elementId) const = 0;
 };
 
 } // namespace odr::internal::abstract
