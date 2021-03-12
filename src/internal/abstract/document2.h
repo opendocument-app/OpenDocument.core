@@ -22,7 +22,7 @@ class File;
 
 template <typename Number, typename Tag> struct Identifier {
   Identifier() = default;
-  Identifier(Number id) : id{id} {}
+  Identifier(const Number id) : id{id} {}
 
   operator bool() const { return id == 0; }
   operator Number() const { return id; }
@@ -34,6 +34,7 @@ struct element_identifier_tag {};
 
 using ElementIdentifier = Identifier<std::uint64_t, element_identifier_tag>;
 
+// TODO the property handle could reflect the type
 // TODO it might be possible to strongly type these properties
 enum class DocumentElementProperty {
   NAME,
