@@ -1,6 +1,7 @@
 #include <cstring>
 #include <glog/logging.h>
 #include <internal/abstract/filesystem.h>
+#include <internal/common/file.h>
 #include <internal/common/path.h>
 #include <internal/crypto/crypto_util.h>
 #include <internal/odf/odf_translator_content.h>
@@ -211,16 +212,17 @@ void image_translator(const pugi::xml_node &in, std::ostream &out,
         // TODO sometimes `ObjectReplacements` does not exist
         out << path;
       } else {
-        std::string image;
+        std::string image =
+            util::stream::read(*context.filesystem->open(path)->read());
         if ((href.find("ObjectReplacements", 0) != std::string::npos) ||
             (href.find(".svm", 0) != std::string::npos)) {
-          svm::SvmFile svm_file(context.filesystem->open(path));
+          // TODO tellg does not work on the istream of a zip file
+          svm::SvmFile svm_file(std::make_shared<common::MemoryFile>(image));
           std::ostringstream svg_out;
           svm::Translator::svg(svm_file, svg_out);
           image = svg_out.str();
           out << "data:image/svg+xml;base64, ";
         } else {
-          image = util::stream::read(*context.filesystem->open(path)->read());
           // hacky image/jpg working according to tom
           out << "data:image/jpg;base64, ";
         }

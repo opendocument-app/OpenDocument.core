@@ -12,7 +12,7 @@ nlohmann::json meta_to_json(const odr::FileMeta &meta) {
   result["entries"] = nlohmann::json::array();
 
   {
-    result["entryCount"] = meta.entries.size();
+    result["entryCount"] = meta.entry_count;
 
     for (auto &&e : meta.entries) {
       nlohmann::json entry;

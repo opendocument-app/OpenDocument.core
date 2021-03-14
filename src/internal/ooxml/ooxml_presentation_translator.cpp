@@ -266,7 +266,7 @@ void paragraph_translator(const pugi::xml_node &in, std::ostream &out,
 void span_translator(const pugi::xml_node &in, std::ostream &out,
                      Context &context) {
   bool link = false;
-  const auto hlink_click = in.child("a:rPr").child("a:hlink_click");
+  const auto hlink_click = in.child("a:rPr").child("a:hlinkClick");
   if (hlink_click && hlink_click.attribute("r:id")) {
     const auto r_id_attr = hlink_click.attribute("r:id");
     const std::string href = context.relations[r_id_attr.as_string()];

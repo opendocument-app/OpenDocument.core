@@ -103,6 +103,7 @@ Header read_header(std::istream &in) {
   Header result;
 
   char magic[6];
+  std::cout << in.tellg() << std::endl;
   in.read(magic, sizeof(magic));
   if (std::strncmp("VCLMTF", magic, sizeof(magic)) != 0) {
     throw NoSvmFile();
