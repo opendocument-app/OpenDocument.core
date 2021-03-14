@@ -4,7 +4,7 @@
 #include <internal/abstract/file.h>
 #include <internal/common/path.h>
 
-namespace odr::experimental {
+namespace odr {
 enum class FileLocation;
 }
 
@@ -16,7 +16,7 @@ public:
   explicit DiscFile(const std::string &path);
   explicit DiscFile(common::Path path);
 
-  [[nodiscard]] experimental::FileLocation location() const noexcept final;
+  [[nodiscard]] FileLocation location() const noexcept final;
 
   [[nodiscard]] std::size_t size() const final;
 
@@ -44,7 +44,7 @@ public:
   explicit MemoryFile(std::string data);
   explicit MemoryFile(const abstract::File &file);
 
-  [[nodiscard]] experimental::FileLocation location() const noexcept final;
+  [[nodiscard]] FileLocation location() const noexcept final;
 
   [[nodiscard]] std::size_t size() const final;
 

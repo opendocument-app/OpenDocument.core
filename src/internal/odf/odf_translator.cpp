@@ -1,4 +1,3 @@
-#include <experimental/interface.h>
 #include <fstream>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/file.h>
@@ -15,7 +14,7 @@
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
 #include <nlohmann/json.hpp>
-#include <odr/experimental/file_meta.h>
+#include <odr/file_meta.h>
 #include <odr/html_config.h>
 #include <pugixml.hpp>
 
@@ -28,7 +27,7 @@ void generate_style(std::ofstream &out, Context &context) {
   if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET)
     out << common::Html::default_spreadsheet_style();
 
-  const auto stylesXml = util::xml::parse(*context.storage, "styles.xml");
+  const auto stylesXml = util::xml::parse(*context.filesystem, "styles.xml");
 
   const auto fontFaceDecls =
       stylesXml.child("office:document-styles").child("office:font-face-decls");
@@ -120,10 +119,10 @@ OpenDocumentTranslator::OpenDocumentTranslator(
   if (m_filesystem->exists("META-INF/manifest.xml")) {
     auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
 
-    m_meta = experimental::convert(parse_file_meta(*m_filesystem, &manifest));
+    m_meta = parse_file_meta(*m_filesystem, &manifest);
     m_manifest = parse_manifest(manifest);
   } else {
-    m_meta = experimental::convert(parse_file_meta(*m_filesystem, nullptr));
+    m_meta = parse_file_meta(*m_filesystem, nullptr);
   }
 }
 
@@ -160,7 +159,7 @@ bool OpenDocumentTranslator::decrypt(const std::string &password) {
   const bool success = odf::decrypt(m_filesystem, m_manifest, password);
   if (success) {
     auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
-    m_meta = experimental::convert(parse_file_meta(*m_filesystem, &manifest));
+    m_meta = parse_file_meta(*m_filesystem, &manifest);
     m_manifest = parse_manifest(manifest);
   }
   m_decrypted = success;
@@ -175,7 +174,7 @@ bool OpenDocumentTranslator::translate(const common::Path &path,
     return false;
   m_context.config = &config;
   m_context.meta = &m_meta;
-  m_context.storage = m_filesystem.get();
+  m_context.filesystem = m_filesystem.get();
   m_context.output = &out;
 
   m_content = util::xml::parse(*m_filesystem, "content.xml");

@@ -197,20 +197,20 @@ void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
     out << " src=\"";
     try {
       const common::Path path{href};
-      if (!context.storage->is_file(path)) {
+      if (!context.filesystem->is_file(path)) {
         // TODO sometimes `ObjectReplacements` does not exist
         out << path;
       } else {
         std::string image;
         if ((href.find("ObjectReplacements", 0) != std::string::npos) ||
             (href.find(".svm", 0) != std::string::npos)) {
-          svm::SvmFile svm_file(context.storage->open(path));
+          svm::SvmFile svm_file(context.filesystem->open(path));
           std::ostringstream svg_out;
           svm::Translator::svg(svm_file, svg_out);
           image = svg_out.str();
           out << "data:image/svg+xml;base64, ";
         } else {
-          image = util::stream::read(*context.storage->open(path)->read());
+          image = util::stream::read(*context.filesystem->open(path)->read());
           // hacky image/jpg working according to tom
           out << "data:image/jpg;base64, ";
         }

@@ -126,7 +126,7 @@ FileInZip::FileInZip(std::shared_ptr<Archive> archive,
                      const std::uint32_t index)
     : m_archive{std::move(archive)}, m_index{index} {}
 
-experimental::FileLocation FileInZip::location() const noexcept {
+FileLocation FileInZip::location() const noexcept {
   return m_archive->file()->location();
 }
 

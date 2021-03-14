@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_ODF_TRANSLATOR_CONTEXT_H
-#define ODR_INTERNAL_ODF_TRANSLATOR_CONTEXT_H
+#ifndef ODR_INTERNAL_OOXML_TRANSLATOR_CONTEXT_H
+#define ODR_INTERNAL_OOXML_TRANSLATOR_CONTEXT_H
 
 #include <internal/common/table_cursor.h>
 #include <internal/common/table_range.h>
@@ -9,6 +9,7 @@
 #include <pugixml.hpp>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace odr {
 struct HtmlConfig;
@@ -19,7 +20,7 @@ namespace odr::internal::abstract {
 class ReadableFilesystem;
 }
 
-namespace odr::internal::odf {
+namespace odr::internal::ooxml {
 
 struct Context {
   const HtmlConfig *config;
@@ -30,17 +31,18 @@ struct Context {
   std::ostream *output;
 
   std::unordered_map<std::string, std::list<std::string>> style_dependencies;
+  std::unordered_map<std::string, std::string> relations;
+  std::vector<pugi::xml_node> shared_strings; // xlsx
 
   std::uint32_t entry{0};
   common::TableRange table_range;
   common::TableCursor table_cursor;
-  std::unordered_map<std::uint32_t, std::string> default_cell_styles;
 
   // editing
   std::uint32_t current_text_translation_index{0};
   std::unordered_map<std::uint32_t, pugi::xml_text> text_translation;
 };
 
-} // namespace odr::internal::odf
+} // namespace odr::internal::ooxml
 
-#endif // ODR_INTERNAL_ODF_TRANSLATOR_CONTEXT_H
+#endif // ODR_INTERNAL_OOXML_TRANSLATOR_CONTEXT_H

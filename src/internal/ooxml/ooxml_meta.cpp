@@ -2,26 +2,25 @@
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_meta.h>
 #include <internal/util/xml_util.h>
-#include <odr/experimental/file_meta.h>
+#include <odr/file_meta.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 
 namespace odr::internal::ooxml {
 
-experimental::FileMeta
-parse_file_meta(abstract::ReadableFilesystem &filesystem) {
+FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       {"word/document.xml", FileType::OFFICE_OPEN_XML_DOCUMENT},
       {"ppt/presentation.xml", FileType::OFFICE_OPEN_XML_PRESENTATION},
       {"xl/workbook.xml", FileType::OFFICE_OPEN_XML_WORKBOOK},
   };
 
-  experimental::FileMeta result;
+  FileMeta result;
 
   if (filesystem.is_file("/EncryptionInfo") &&
       filesystem.is_file("/EncryptedPackage")) {
     result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;
-    result.password_encrypted = true;
+    result.encrypted = true;
     return result;
   }
 
@@ -31,9 +30,6 @@ parse_file_meta(abstract::ReadableFilesystem &filesystem) {
       break;
     }
   }
-
-  // TODO
-  result.document_meta = experimental::DocumentMeta();
 
   return result;
 }

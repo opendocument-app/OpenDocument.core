@@ -2,7 +2,7 @@
 #include <fstream>
 #include <internal/common/file.h>
 #include <odr/exceptions.h>
-#include <odr/experimental/file_location.h>
+#include <odr/file_location.h>
 #include <sstream>
 
 namespace odr::internal::common {
@@ -17,9 +17,7 @@ DiscFile::DiscFile(common::Path path) : m_path{std::move(path)} {
   }
 }
 
-experimental::FileLocation DiscFile::location() const noexcept {
-  return experimental::FileLocation::DISC;
-}
+FileLocation DiscFile::location() const noexcept { return FileLocation::DISC; }
 
 std::size_t DiscFile::size() const {
   return std::filesystem::file_size(m_path.string());
@@ -64,8 +62,8 @@ MemoryFile::MemoryFile(const abstract::File &file) : m_data(file.size(), ' ') {
   }
 }
 
-experimental::FileLocation MemoryFile::location() const noexcept {
-  return experimental::FileLocation::MEMORY;
+FileLocation MemoryFile::location() const noexcept {
+  return FileLocation::MEMORY;
 }
 
 std::size_t MemoryFile::size() const { return m_data.size(); }

@@ -3,12 +3,12 @@
 
 #include <nlohmann/json.hpp>
 
-namespace odr::experimental {
+namespace odr {
 struct FileMeta;
 }
 
 namespace odr::internal::util::meta {
-nlohmann::json meta_to_json(const experimental::FileMeta &meta);
+nlohmann::json meta_to_json(const FileMeta &meta);
 }
 
 #endif // ODR_INTERNAL_META_UTIL_H

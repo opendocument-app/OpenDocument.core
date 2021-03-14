@@ -5,7 +5,7 @@
 #include <internal/util/map_util.h>
 #include <internal/util/stream_util.h>
 #include <odr/exceptions.h>
-#include <odr/experimental/file_meta.h>
+#include <odr/file_meta.h>
 #include <odr/file_type.h>
 #include <pugixml.hpp>
 
@@ -37,10 +37,9 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
 }
 } // namespace
 
-experimental::FileMeta
-parse_file_meta(const abstract::ReadableFilesystem &filesystem,
-                const pugi::xml_document *manifest) {
-  experimental::FileMeta result;
+FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
+                         const pugi::xml_document *manifest) {
+  FileMeta result;
 
   if (!filesystem.is_file("content.xml")) {
     throw NoOpenDocumentFile();
@@ -63,7 +62,7 @@ parse_file_meta(const abstract::ReadableFilesystem &filesystem,
       }
     }
     if (!manifest->select_nodes("//manifest:encryption-data").empty()) {
-      result.password_encrypted = true;
+      result.encrypted = true;
     }
   }
 

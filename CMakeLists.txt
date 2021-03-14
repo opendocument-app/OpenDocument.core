@@ -25,24 +25,7 @@ add_library(odr-object OBJECT
         src/exceptions.cpp
         src/file_meta.cpp
 
-        src/experimental/document.cpp
-        src/experimental/document_elements.cpp
-        src/experimental/document_meta.cpp
-        src/experimental/document_style.cpp
-        src/experimental/file.cpp
-        src/experimental/file_meta.cpp
-        src/experimental/file_no_except.cpp
-        src/experimental/html.cpp
-        src/experimental/interface.cpp
-        src/experimental/open_document_reader.cpp
-        src/experimental/open_strategy.cpp
-        src/experimental/property.cpp
-        src/experimental/table_dimensions.cpp
-
-        src/internal/abstract/document.cpp
-        src/internal/abstract/document_elements.cpp
         src/internal/abstract/file.cpp
-        src/internal/abstract/property.cpp
 
         src/internal/cfb/cfb_archive.cpp
         src/internal/cfb/cfb_impl.cpp
@@ -53,7 +36,6 @@ add_library(odr-object OBJECT
         src/internal/common/filesystem.cpp
         src/internal/common/html.cpp
         src/internal/common/path.cpp
-        src/internal/common/property.cpp
         src/internal/common/table_cursor.cpp
         src/internal/common/table_position.cpp
         src/internal/common/table_range.cpp
@@ -61,25 +43,20 @@ add_library(odr-object OBJECT
         src/internal/crypto/crypto_util.cpp
 
         src/internal/odf/odf_crypto.cpp
-        src/internal/odf/odf_elements.cpp
-        src/internal/odf/odf_elements_impl.cpp
-        src/internal/odf/odf_file.cpp
         src/internal/odf/odf_manifest.cpp
         src/internal/odf/odf_meta.cpp
-        src/internal/odf/odf_document.cpp
-        src/internal/odf/odf_style.cpp
         src/internal/odf/odf_translator.cpp
         src/internal/odf/odf_translator_content.cpp
         src/internal/odf/odf_translator_style.cpp
 
-        src/internal/oldms/oldms_file.cpp
+        src/internal/oldms/oldms_translator.cpp
 
         src/internal/ooxml/ooxml_crypto.cpp
-        src/internal/ooxml/ooxml_document.cpp
-        src/internal/ooxml/ooxml_file.cpp
+        src/internal/ooxml/ooxml_document_translator.cpp
         src/internal/ooxml/ooxml_meta.cpp
-        src/internal/ooxml/text/ooxml_text_elements.cpp
-        src/internal/ooxml/text/ooxml_text_style.cpp
+        src/internal/ooxml/ooxml_presentation_translator.cpp
+        src/internal/ooxml/ooxml_translator.cpp
+        src/internal/ooxml/ooxml_workbook_translator.cpp
 
         src/internal/svm/svm_file.cpp
         src/internal/svm/svm_format.cpp
