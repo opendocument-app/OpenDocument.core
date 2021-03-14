@@ -31,12 +31,12 @@ public:
 
   bool decrypt(const std::string &password) final;
 
-  bool translate(const common::Path &path, const HtmlConfig &config) final;
+  void translate(const common::Path &path, const HtmlConfig &config) final;
 
-  bool edit(const std::string &diff) final;
+  void edit(const std::string &diff) final;
 
-  bool save(const common::Path &path) const final;
-  bool save(const common::Path &path, const std::string &password) const final;
+  void save(const common::Path &path) const final;
+  void save(const common::Path &path, const std::string &password) const final;
 
 private:
   FileMeta m_meta;

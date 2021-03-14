@@ -25,13 +25,13 @@ public:
 
   virtual bool decrypt(const std::string &password) = 0;
 
-  virtual bool translate(const common::Path &path,
+  virtual void translate(const common::Path &path,
                          const HtmlConfig &config) = 0;
 
-  virtual bool edit(const std::string &diff) = 0;
+  virtual void edit(const std::string &diff) = 0;
 
-  virtual bool save(const common::Path &path) const = 0;
-  virtual bool save(const common::Path &path,
+  virtual void save(const common::Path &path) const = 0;
+  virtual void save(const common::Path &path,
                     const std::string &password) const = 0;
 };
 

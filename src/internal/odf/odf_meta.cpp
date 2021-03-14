@@ -4,6 +4,7 @@
 #include <internal/odf/odf_meta.h>
 #include <internal/util/map_util.h>
 #include <internal/util/stream_util.h>
+#include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
 #include <odr/file_meta.h>
 #include <odr/file_type.h>
@@ -51,7 +52,8 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
 } // namespace
 
 FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
-                         const pugi::xml_document *manifest) {
+                         const pugi::xml_document *manifest,
+                         const bool decrypted) {
   FileMeta result;
 
   if (!filesystem.is_file("content.xml")) {
@@ -76,6 +78,75 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
     }
     if (!manifest->select_nodes("//manifest:encryption-data").empty()) {
       result.encrypted = true;
+    }
+  }
+
+  if (result.encrypted == decrypted) {
+    if (filesystem.is_file("meta.xml")) {
+      const auto meta_xml = util::xml::parse(filesystem, "meta.xml");
+
+      const pugi::xml_node statistics = meta_xml.child("office:document-meta")
+          .child("office:meta")
+          .child("meta:document-statistic");
+      if (statistics) {
+        switch (result.type) {
+        case FileType::OPENDOCUMENT_TEXT: {
+          const auto page_count = statistics.attribute("meta:page-count");
+          if (!page_count) {
+            break;
+          }
+          result.entry_count = page_count.as_uint();
+        } break;
+        case FileType::OPENDOCUMENT_PRESENTATION: {
+          result.entry_count = 0;
+        } break;
+        case FileType::OPENDOCUMENT_SPREADSHEET: {
+          const auto table_count = statistics.attribute("meta:table-count");
+          if (!table_count) {
+            break;
+          }
+          result.entry_count = table_count.as_uint();
+        } break;
+        case FileType::OPENDOCUMENT_GRAPHICS: {
+        } break;
+        default:
+          break;
+        }
+      }
+    }
+
+    // TODO dont load content twice (happens in case of translation)
+    const auto content_xml = util::xml::parse(filesystem, "content.xml");
+    const auto body =
+        content_xml.child("office:document-content").child("office:body");
+    if (!body) {
+      throw NoOpenDocumentFile();
+    }
+
+    switch (result.type) {
+    case FileType::OPENDOCUMENT_GRAPHICS:
+    case FileType::OPENDOCUMENT_PRESENTATION: {
+      result.entry_count = 0;
+      for (auto &&e : body.select_nodes("//draw:page")) {
+        ++result.entry_count;
+        FileMeta::Entry entry;
+        entry.name = e.node().attribute("draw:name").as_string();
+        result.entries.emplace_back(entry);
+      }
+    } break;
+    case FileType::OPENDOCUMENT_SPREADSHEET: {
+      result.entry_count = 0;
+      for (auto &&e : body.select_nodes("//table:table")) {
+        ++result.entry_count;
+        FileMeta::Entry entry;
+        entry.name = e.node().attribute("table:name").as_string();
+        // TODO configuration
+        estimate_table_dimensions(e.node(), entry.row_count, entry.column_count);
+        result.entries.emplace_back(entry);
+      }
+    } break;
+    default:
+      break;
     }
   }
 

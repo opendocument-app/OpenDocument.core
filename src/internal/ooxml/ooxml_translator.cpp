@@ -22,7 +22,7 @@
 namespace odr::internal::ooxml {
 
 namespace {
-void generateStyle_(std::ofstream &out, Context &context) {
+void generate_style(std::ofstream &out, Context &context) {
   // default css
   out << common::Html::default_style();
 
@@ -35,18 +35,19 @@ void generateStyle_(std::ofstream &out, Context &context) {
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     // TODO that should go to `PresentationTranslator::css`
 
-    // TODO duplication in generateContent_
+    // TODO duplication in generate_content
     const auto ppt =
         util::xml::parse(*context.filesystem, "ppt/presentation.xml");
-    const auto sizeEle = ppt.select_node("//p:sldSz").node();
-    if (!sizeEle)
+    const auto size_ele = ppt.select_node("//p:sldSz").node();
+    if (!size_ele) {
       break;
-    const float widthIn = sizeEle.attribute("cx").as_float() / 914400.0f;
-    const float heightIn = sizeEle.attribute("cy").as_float() / 914400.0f;
+    }
+    const float width_in = size_ele.attribute("cx").as_float() / 914400.0f;
+    const float height_in = size_ele.attribute("cy").as_float() / 914400.0f;
 
     out << ".slide {";
-    out << "width:" << widthIn << "in;";
-    out << "height:" << heightIn << "in;";
+    out << "width:" << width_in << "in;";
+    out << "height:" << height_in << "in;";
     out << "}";
   } break;
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
@@ -58,11 +59,11 @@ void generateStyle_(std::ofstream &out, Context &context) {
   }
 }
 
-void generateScript_(std::ofstream &out, Context &) {
+void generate_script(std::ofstream &out, Context &) {
   out << common::Html::default_script();
 }
 
-void generateContent_(Context &context) {
+void generate_content(Context &context) {
   context.entry = 0;
 
   switch (context.meta->type) {
@@ -78,13 +79,13 @@ void generateContent_(Context &context) {
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     const auto ppt =
         util::xml::parse(*context.filesystem, "ppt/presentation.xml");
-    const auto pptRelations =
+    const auto ppt_relations =
         parse_relationships(*context.filesystem, "ppt/presentation.xml");
 
     for (auto &&e : ppt.select_nodes("//p:sldId")) {
       const std::string rId = e.node().attribute("r:id").as_string();
 
-      const auto path = common::Path("ppt").join(pptRelations.at(rId));
+      const auto path = common::Path("ppt").join(ppt_relations.at(rId));
       const auto content = util::xml::parse(*context.filesystem, path);
       context.relations = parse_relationships(*context.filesystem, path);
 
@@ -104,15 +105,15 @@ void generateContent_(Context &context) {
   } break;
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
     const auto xls = util::xml::parse(*context.filesystem, "xl/workbook.xml");
-    const auto xlsRelations =
+    const auto xls_relations =
         parse_relationships(*context.filesystem, "xl/workbook.xml");
 
     // TODO this breaks back translation
-    pugi::xml_document sharedStrings;
-    if (context.filesystem->is_file("xl/shared_strings.xml")) {
-      sharedStrings =
-          util::xml::parse(*context.filesystem, "xl/shared_strings.xml");
-      for (auto &&e : sharedStrings.select_nodes("//si")) {
+    pugi::xml_document shared_strings;
+    if (context.filesystem->is_file("xl/sharedStrings.xml")) {
+      shared_strings =
+          util::xml::parse(*context.filesystem, "xl/sharedStrings.xml");
+      for (auto &&e : shared_strings.select_nodes("//si")) {
         context.shared_strings.push_back(e.node());
       }
     }
@@ -120,7 +121,7 @@ void generateContent_(Context &context) {
     for (auto &&e : xls.select_nodes("//sheet")) {
       const std::string rId = e.node().attribute("r:id").as_string();
 
-      const auto path = common::Path("xl").join(xlsRelations.at(rId));
+      const auto path = common::Path("xl").join(xls_relations.at(rId));
       const auto content = util::xml::parse(*context.filesystem, path);
       context.relations = parse_relationships(*context.filesystem, path);
 
@@ -194,12 +195,12 @@ bool OfficeOpenXmlTranslator::decrypt(const std::string &password) {
   return true;
 }
 
-bool OfficeOpenXmlTranslator::translate(const common::Path &path,
+void OfficeOpenXmlTranslator::translate(const common::Path &path,
                                         const HtmlConfig &config) {
   // TODO throw if not decrypted
   std::ofstream out(path);
   if (!out.is_open()) {
-    return false;
+    throw FileNotCreated();
   }
 
   m_context = {};
@@ -212,32 +213,31 @@ bool OfficeOpenXmlTranslator::translate(const common::Path &path,
   out << "<html><head>";
   out << common::Html::default_headers();
   out << "<style>";
-  generateStyle_(out, m_context);
+  generate_style(out, m_context);
   out << "</style>";
   out << "</head>";
 
   out << "<body " << common::Html::body_attributes(config) << ">";
-  generateContent_(m_context);
+  generate_content(m_context);
   out << "</body>";
 
   out << "<script>";
-  generateScript_(out, m_context);
+  generate_script(out, m_context);
   out << "</script>";
   out << "</html>";
 
   m_context.config = nullptr;
   m_context.output = nullptr;
   out.close();
-  return true;
 }
 
-bool OfficeOpenXmlTranslator::edit(const std::string &) { return false; }
+void OfficeOpenXmlTranslator::edit(const std::string &) { throw UnsupportedOperation(); }
 
-bool OfficeOpenXmlTranslator::save(const common::Path &) const { return false; }
+void OfficeOpenXmlTranslator::save(const common::Path &) const { throw UnsupportedOperation(); }
 
-bool OfficeOpenXmlTranslator::save(const common::Path &,
+void OfficeOpenXmlTranslator::save(const common::Path &,
                                    const std::string &) const {
-  return false;
+  throw UnsupportedOperation();
 }
 
 } // namespace odr::internal::ooxml

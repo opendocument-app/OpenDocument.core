@@ -71,20 +71,20 @@ bool LegacyMicrosoftTranslator::decrypt(const std::string &) {
   throw UnsupportedOperation();
 }
 
-bool LegacyMicrosoftTranslator::translate(const common::Path &,
+void LegacyMicrosoftTranslator::translate(const common::Path &,
                                           const HtmlConfig &) {
   throw UnsupportedOperation();
 }
 
-bool LegacyMicrosoftTranslator::edit(const std::string &) {
+void LegacyMicrosoftTranslator::edit(const std::string &) {
   throw UnsupportedOperation();
 }
 
-bool LegacyMicrosoftTranslator::save(const common::Path &) const {
+void LegacyMicrosoftTranslator::save(const common::Path &) const {
   throw UnsupportedOperation();
 }
 
-bool LegacyMicrosoftTranslator::save(const common::Path &,
+void LegacyMicrosoftTranslator::save(const common::Path &,
                                      const std::string &) const {
   throw UnsupportedOperation();
 }

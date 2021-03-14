@@ -16,6 +16,7 @@
 #include <nlohmann/json.hpp>
 #include <odr/file_meta.h>
 #include <odr/html_config.h>
+#include <odr/exceptions.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::odf {
@@ -119,10 +120,10 @@ OpenDocumentTranslator::OpenDocumentTranslator(
   if (m_filesystem->exists("META-INF/manifest.xml")) {
     auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
 
-    m_meta = parse_file_meta(*m_filesystem, &manifest);
+    m_meta = parse_file_meta(*m_filesystem, &manifest, false);
     m_manifest = parse_manifest(manifest);
   } else {
-    m_meta = parse_file_meta(*m_filesystem, nullptr);
+    m_meta = parse_file_meta(*m_filesystem, nullptr, false);
   }
 }
 
@@ -159,19 +160,21 @@ bool OpenDocumentTranslator::decrypt(const std::string &password) {
   const bool success = odf::decrypt(m_filesystem, m_manifest, password);
   if (success) {
     auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
-    m_meta = parse_file_meta(*m_filesystem, &manifest);
+    m_meta = parse_file_meta(*m_filesystem, &manifest, true);
     m_manifest = parse_manifest(manifest);
   }
   m_decrypted = success;
   return success;
 }
 
-bool OpenDocumentTranslator::translate(const common::Path &path,
+void OpenDocumentTranslator::translate(const common::Path &path,
                                        const HtmlConfig &config) {
   // TODO throw if not decrypted
   std::ofstream out(path);
-  if (!out.is_open())
-    return false;
+  if (!out.is_open()) {
+    throw FileNotCreated();
+  }
+
   m_context.config = &config;
   m_context.meta = &m_meta;
   m_context.filesystem = m_filesystem.get();
@@ -200,10 +203,9 @@ bool OpenDocumentTranslator::translate(const common::Path &path,
   m_context.config = nullptr;
   m_context.output = nullptr;
   out.close();
-  return true;
 }
 
-bool OpenDocumentTranslator::edit(const std::string &diff) {
+void OpenDocumentTranslator::edit(const std::string &diff) {
   // TODO throw if not decrypted
   const auto json = nlohmann::json::parse(diff);
 
@@ -216,11 +218,9 @@ bool OpenDocumentTranslator::edit(const std::string &diff) {
       it->second.set(i.value().get<std::string>().c_str());
     }
   }
-
-  return true;
 }
 
-bool OpenDocumentTranslator::save(const common::Path &path) const {
+void OpenDocumentTranslator::save(const common::Path &path) const {
   // TODO throw if not decrypted
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
@@ -253,13 +253,12 @@ bool OpenDocumentTranslator::save(const common::Path &path) const {
 
   std::ofstream ostream(path);
   archive.save(ostream);
-  return true;
 }
 
-bool OpenDocumentTranslator::save(const common::Path &path,
+void OpenDocumentTranslator::save(const common::Path &path,
                                   const std::string &password) const {
   // TODO throw if not decrypted
-  return false;
+  throw UnsupportedOperation();
 }
 
 } // namespace odr::internal::odf

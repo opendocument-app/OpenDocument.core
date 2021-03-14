@@ -23,7 +23,7 @@ class ReadableFilesystem;
 namespace odr::internal::odf {
 
 FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
-                         const pugi::xml_document *manifest);
+                         const pugi::xml_document *manifest, bool decrypted);
 
 void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
                                std::uint32_t &cols);

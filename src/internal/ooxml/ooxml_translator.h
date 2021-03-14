@@ -24,7 +24,6 @@ public:
   OfficeOpenXmlTranslator &operator=(OfficeOpenXmlTranslator &&) noexcept;
 
   [[nodiscard]] const FileMeta &meta() const noexcept final;
-  [[nodiscard]] const abstract::ReadableFilesystem &storage() const noexcept;
 
   [[nodiscard]] bool decrypted() const noexcept final;
   [[nodiscard]] bool translatable() const noexcept final;
@@ -33,12 +32,12 @@ public:
 
   bool decrypt(const std::string &password) final;
 
-  bool translate(const common::Path &path, const HtmlConfig &config) final;
+  void translate(const common::Path &path, const HtmlConfig &config) final;
 
-  bool edit(const std::string &diff) final;
+  void edit(const std::string &diff) final;
 
-  bool save(const common::Path &path) const final;
-  bool save(const common::Path &path, const std::string &password) const final;
+  void save(const common::Path &path) const final;
+  void save(const common::Path &path, const std::string &password) const final;
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
