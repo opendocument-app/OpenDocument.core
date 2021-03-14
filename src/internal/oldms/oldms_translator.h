@@ -11,15 +11,16 @@ class ReadableFilesystem;
 
 namespace odr::internal::oldms {
 
-class LegacyMicrosoft final : public abstract::DocumentTranslator {
+class LegacyMicrosoftTranslator final : public abstract::DocumentTranslator {
 public:
-  explicit LegacyMicrosoft(
+  explicit LegacyMicrosoftTranslator(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem);
-  LegacyMicrosoft(const LegacyMicrosoft &) = delete;
-  LegacyMicrosoft(LegacyMicrosoft &&) noexcept;
-  ~LegacyMicrosoft() final;
-  LegacyMicrosoft &operator=(const LegacyMicrosoft &) = delete;
-  LegacyMicrosoft &operator=(LegacyMicrosoft &&) noexcept;
+  LegacyMicrosoftTranslator(const LegacyMicrosoftTranslator &) = delete;
+  LegacyMicrosoftTranslator(LegacyMicrosoftTranslator &&) noexcept;
+  ~LegacyMicrosoftTranslator() final;
+  LegacyMicrosoftTranslator &
+  operator=(const LegacyMicrosoftTranslator &) = delete;
+  LegacyMicrosoftTranslator &operator=(LegacyMicrosoftTranslator &&) noexcept;
 
   [[nodiscard]] const FileMeta &meta() const noexcept final;
 

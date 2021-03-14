@@ -6,6 +6,8 @@
 #include <internal/common/constants.h>
 #include <internal/common/path.h>
 #include <internal/odf/odf_translator.h>
+#include <internal/oldms/oldms_translator.h>
+#include <internal/ooxml/ooxml_translator.h>
 #include <internal/zip/zip_archive.h>
 #include <memory>
 #include <odr/document.h>
@@ -35,9 +37,9 @@ open_impl(const std::string &path) {
     } catch (...) {
       // TODO
     }
+
     try {
-      // TODO
-      // return std::make_unique<ooxml::OfficeOpenXml>(filesystem);
+      return std::make_unique<ooxml::OfficeOpenXmlTranslator>(filesystem);
     } catch (...) {
       // TODO
     }
@@ -54,16 +56,14 @@ open_impl(const std::string &path) {
 
     // legacy microsoft
     try {
-      // TODO
-      // return std::make_unique<oldms::LegacyMicrosoft>(storage);
+      return std::make_unique<oldms::LegacyMicrosoftTranslator>(filesystem);
     } catch (...) {
       // TODO
     }
 
     // encrypted ooxml
     try {
-      // TODO
-      // return std::make_unique<ooxml::OfficeOpenXml>(storage);
+      return std::make_unique<ooxml::OfficeOpenXmlTranslator>(filesystem);
     } catch (...) {
       // TODO
     }

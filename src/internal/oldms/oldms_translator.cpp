@@ -14,13 +14,13 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
-      {"WordDocument", FileType::LEGACY_WORD_DOCUMENT},
+      {"/WordDocument", FileType::LEGACY_WORD_DOCUMENT},
       // MS-PPT: The "PowerPoint Document" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd911009(v=office.12).aspx
-      {"PowerPoint Document", FileType::LEGACY_POWERPOINT_PRESENTATION},
+      {"/PowerPoint Document", FileType::LEGACY_POWERPOINT_PRESENTATION},
       // MS-XLS: The "Workbook" stream MUST be present in the file.
       // https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt/1fc22d56-28f9-4818-bd45-67c2bf721ccf
-      {"Workbook", FileType::LEGACY_EXCEL_WORKSHEETS},
+      {"/Workbook", FileType::LEGACY_EXCEL_WORKSHEETS},
   };
 
   FileMeta result;
@@ -40,45 +40,52 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
 }
 } // namespace
 
-LegacyMicrosoft::LegacyMicrosoft(
+LegacyMicrosoftTranslator::LegacyMicrosoftTranslator(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem) {
   m_meta = parse_meta(*filesystem);
 }
 
-LegacyMicrosoft::LegacyMicrosoft(LegacyMicrosoft &&) noexcept = default;
+LegacyMicrosoftTranslator::LegacyMicrosoftTranslator(
+    LegacyMicrosoftTranslator &&) noexcept = default;
 
-LegacyMicrosoft::~LegacyMicrosoft() = default;
+LegacyMicrosoftTranslator::~LegacyMicrosoftTranslator() = default;
 
-LegacyMicrosoft &
-LegacyMicrosoft::operator=(LegacyMicrosoft &&) noexcept = default;
+LegacyMicrosoftTranslator &LegacyMicrosoftTranslator::operator=(
+    LegacyMicrosoftTranslator &&) noexcept = default;
 
-const FileMeta &LegacyMicrosoft::meta() const noexcept { return m_meta; }
+const FileMeta &LegacyMicrosoftTranslator::meta() const noexcept {
+  return m_meta;
+}
 
-bool LegacyMicrosoft::decrypted() const noexcept { return false; }
+bool LegacyMicrosoftTranslator::decrypted() const noexcept { return false; }
 
-bool LegacyMicrosoft::translatable() const noexcept { return false; }
+bool LegacyMicrosoftTranslator::translatable() const noexcept { return false; }
 
-bool LegacyMicrosoft::editable() const noexcept { return false; }
+bool LegacyMicrosoftTranslator::editable() const noexcept { return false; }
 
-bool LegacyMicrosoft::savable(const bool) const noexcept { return false; }
+bool LegacyMicrosoftTranslator::savable(const bool) const noexcept {
+  return false;
+}
 
-bool LegacyMicrosoft::decrypt(const std::string &) {
+bool LegacyMicrosoftTranslator::decrypt(const std::string &) {
   throw UnsupportedOperation();
 }
 
-bool LegacyMicrosoft::translate(const common::Path &, const HtmlConfig &) {
+bool LegacyMicrosoftTranslator::translate(const common::Path &,
+                                          const HtmlConfig &) {
   throw UnsupportedOperation();
 }
 
-bool LegacyMicrosoft::edit(const std::string &) {
+bool LegacyMicrosoftTranslator::edit(const std::string &) {
   throw UnsupportedOperation();
 }
 
-bool LegacyMicrosoft::save(const common::Path &) const {
+bool LegacyMicrosoftTranslator::save(const common::Path &) const {
   throw UnsupportedOperation();
 }
 
-bool LegacyMicrosoft::save(const common::Path &, const std::string &) const {
+bool LegacyMicrosoftTranslator::save(const common::Path &,
+                                     const std::string &) const {
   throw UnsupportedOperation();
 }
 

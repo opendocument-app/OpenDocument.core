@@ -13,15 +13,15 @@ class ReadableFilesystem;
 
 namespace odr::internal::ooxml {
 
-class OfficeOpenXml final : public abstract::DocumentTranslator {
+class OfficeOpenXmlTranslator final : public abstract::DocumentTranslator {
 public:
-  explicit OfficeOpenXml(
+  explicit OfficeOpenXmlTranslator(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem);
-  OfficeOpenXml(const OfficeOpenXml &) = delete;
-  OfficeOpenXml(OfficeOpenXml &&) noexcept;
-  ~OfficeOpenXml() final;
-  OfficeOpenXml &operator=(const OfficeOpenXml &) = delete;
-  OfficeOpenXml &operator=(OfficeOpenXml &&) noexcept;
+  OfficeOpenXmlTranslator(const OfficeOpenXmlTranslator &) = delete;
+  OfficeOpenXmlTranslator(OfficeOpenXmlTranslator &&) noexcept;
+  ~OfficeOpenXmlTranslator() final;
+  OfficeOpenXmlTranslator &operator=(const OfficeOpenXmlTranslator &) = delete;
+  OfficeOpenXmlTranslator &operator=(OfficeOpenXmlTranslator &&) noexcept;
 
   [[nodiscard]] const FileMeta &meta() const noexcept final;
   [[nodiscard]] const abstract::ReadableFilesystem &storage() const noexcept;

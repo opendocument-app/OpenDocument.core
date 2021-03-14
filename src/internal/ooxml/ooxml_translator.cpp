@@ -144,33 +144,39 @@ void generateContent_(Context &context) {
 }
 } // namespace
 
-OfficeOpenXml::OfficeOpenXml(
+OfficeOpenXmlTranslator::OfficeOpenXmlTranslator(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   m_meta = parse_file_meta(*m_filesystem);
 }
 
-OfficeOpenXml::OfficeOpenXml(OfficeOpenXml &&) noexcept = default;
+OfficeOpenXmlTranslator::OfficeOpenXmlTranslator(
+    OfficeOpenXmlTranslator &&) noexcept = default;
 
-OfficeOpenXml::~OfficeOpenXml() = default;
+OfficeOpenXmlTranslator::~OfficeOpenXmlTranslator() = default;
 
-OfficeOpenXml &OfficeOpenXml::operator=(OfficeOpenXml &&) noexcept = default;
+OfficeOpenXmlTranslator &OfficeOpenXmlTranslator::operator=(
+    OfficeOpenXmlTranslator &&) noexcept = default;
 
-const FileMeta &OfficeOpenXml::meta() const noexcept { return m_meta; }
+const FileMeta &OfficeOpenXmlTranslator::meta() const noexcept {
+  return m_meta;
+}
 
-bool OfficeOpenXml::decrypted() const noexcept { return m_decrypted; }
+bool OfficeOpenXmlTranslator::decrypted() const noexcept { return m_decrypted; }
 
-bool OfficeOpenXml::translatable() const noexcept { return true; }
+bool OfficeOpenXmlTranslator::translatable() const noexcept { return true; }
 
-bool OfficeOpenXml::editable() const noexcept { return false; }
+bool OfficeOpenXmlTranslator::editable() const noexcept { return false; }
 
-bool OfficeOpenXml::savable(const bool) const noexcept { return false; }
+bool OfficeOpenXmlTranslator::savable(const bool) const noexcept {
+  return false;
+}
 
-bool OfficeOpenXml::decrypt(const std::string &password) {
+bool OfficeOpenXmlTranslator::decrypt(const std::string &password) {
   // TODO throw if not encrypted
   // TODO throw if decrypted
   const std::string encryption_info =
-      util::stream::read(*m_filesystem->open("EncryptionInfo")->read());
+      util::stream::read(*m_filesystem->open("/EncryptionInfo")->read());
   // TODO cache Crypto::Util
   Crypto::Util util(encryption_info);
   const std::string key = util.derive_key(password);
@@ -178,7 +184,7 @@ bool OfficeOpenXml::decrypt(const std::string &password) {
     return false;
   }
   const std::string encrypted_package =
-      util::stream::read(*m_filesystem->open("EncryptedPackage")->read());
+      util::stream::read(*m_filesystem->open("/EncryptedPackage")->read());
   const std::string decrypted_package = util.decrypt(encrypted_package, key);
   common::ArchiveFile<zip::ReadonlyZipArchive> zip(
       std::make_shared<common::MemoryFile>(decrypted_package));
@@ -188,8 +194,8 @@ bool OfficeOpenXml::decrypt(const std::string &password) {
   return true;
 }
 
-bool OfficeOpenXml::translate(const common::Path &path,
-                              const HtmlConfig &config) {
+bool OfficeOpenXmlTranslator::translate(const common::Path &path,
+                                        const HtmlConfig &config) {
   // TODO throw if not decrypted
   std::ofstream out(path);
   if (!out.is_open()) {
@@ -225,11 +231,12 @@ bool OfficeOpenXml::translate(const common::Path &path,
   return true;
 }
 
-bool OfficeOpenXml::edit(const std::string &) { return false; }
+bool OfficeOpenXmlTranslator::edit(const std::string &) { return false; }
 
-bool OfficeOpenXml::save(const common::Path &) const { return false; }
+bool OfficeOpenXmlTranslator::save(const common::Path &) const { return false; }
 
-bool OfficeOpenXml::save(const common::Path &, const std::string &) const {
+bool OfficeOpenXmlTranslator::save(const common::Path &,
+                                   const std::string &) const {
   return false;
 }
 

@@ -20,6 +20,10 @@ TEST(ReadonlyCfbArchive, open_odt) {
 }
 
 TEST(ReadonlyCfbArchive, open_encrypted_docx) {
-  cfb::ReadonlyCfbArchive(std::make_shared<common::MemoryFile>(common::DiscFile(
-      TestData::test_file_path("odr-public/docx/encrypted.docx"))));
+  cfb::ReadonlyCfbArchive cfb(
+      std::make_shared<common::MemoryFile>(common::DiscFile(
+          TestData::test_file_path("odr-public/docx/encrypted.docx"))));
+
+  EXPECT_TRUE(cfb.find("EncryptionInfo") == std::end(cfb));
+  EXPECT_TRUE(cfb.find("/EncryptionInfo") != std::end(cfb));
 }

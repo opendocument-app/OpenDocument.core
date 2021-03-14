@@ -30,14 +30,6 @@ TEST_P(OutputReferenceTests, all) {
     GTEST_SKIP();
   }
 
-  // TODO remove
-  if (util::string::ends_with(test_file.path, ".sxw") ||
-      (test_file.type == FileType::LEGACY_WORD_DOCUMENT) ||
-      (test_file.type == FileType::LEGACY_POWERPOINT_PRESENTATION) ||
-      (test_file.type == FileType::LEGACY_EXCEL_WORKSHEETS)) {
-    GTEST_SKIP();
-  }
-
   HtmlConfig config;
   config.editable = true;
   config.table_limit_rows = 4000;
@@ -49,11 +41,14 @@ TEST_P(OutputReferenceTests, all) {
   auto meta = document.meta();
 
   // encrypted ooxml type cannot be inspected
-  if ((document.type() != FileType::OFFICE_OPEN_XML_ENCRYPTED)) {
+  if (document.type() != FileType::OFFICE_OPEN_XML_ENCRYPTED) {
     EXPECT_EQ(test_file.type, document.type());
   }
-  if (!meta.confident) {
-    return;
+
+  if ((test_file.type == FileType::LEGACY_WORD_DOCUMENT) ||
+      (test_file.type == FileType::LEGACY_POWERPOINT_PRESENTATION) ||
+      (test_file.type == FileType::LEGACY_EXCEL_WORKSHEETS)) {
+    GTEST_SKIP();
   }
 
   EXPECT_EQ(test_file.password_encrypted, document.encrypted());

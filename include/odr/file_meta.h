@@ -19,7 +19,6 @@ struct FileMeta {
   };
 
   FileType type{FileType::UNKNOWN};
-  bool confident{false};
   bool encrypted{false};
   std::uint32_t entry_count{0};
   std::vector<Entry> entries;
