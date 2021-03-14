@@ -21,13 +21,8 @@ namespace odr {
 namespace {
 std::unique_ptr<internal::abstract::DocumentTranslator>
 open_impl(const std::string &path) {
-  std::shared_ptr<common::DiscFile> disc_file;
-
-  try {
-    disc_file = std::make_shared<common::DiscFile>(path);
-  } catch (...) {
-    // TODO
-  }
+  std::shared_ptr<common::DiscFile> disc_file =
+      std::make_shared<common::DiscFile>(path);
 
   try {
     common::ArchiveFile<zip::ReadonlyZipArchive> zip(disc_file);
