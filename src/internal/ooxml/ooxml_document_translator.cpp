@@ -235,11 +235,11 @@ void style_class_translator(const pugi::xml_node &in, std::ostream &out,
 
   out << "." << name << " {";
 
-  if (const auto p_pr = in.child("w:p_pr"); p_pr) {
+  if (const auto p_pr = in.child("w:pPr"); p_pr) {
     translate_style_inline(p_pr, out, context);
   }
 
-  if (const auto r_pr = in.child("w:r_pr"); r_pr) {
+  if (const auto r_pr = in.child("w:rPr"); r_pr) {
     translate_style_inline(r_pr, out, context);
   }
 
@@ -272,7 +272,7 @@ void text_translator(const pugi::xml_text &in, std::ostream &out,
   } else {
     out << R"(<span contenteditable="true" data-odr-cid=")"
         << context.current_text_translation_index << "\">" << text << "</span>";
-    context.text_translation[context.current_text_translation_index] = &in;
+    context.text_translation[context.current_text_translation_index] = in;
     ++context.current_text_translation_index;
   }
 }
