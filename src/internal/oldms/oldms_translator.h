@@ -3,6 +3,7 @@
 
 #include <internal/abstract/document_translator.h>
 #include <memory>
+#include <odr/file_meta.h>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;

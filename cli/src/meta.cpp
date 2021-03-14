@@ -1,32 +1,30 @@
 #include <internal/util/odr_meta_util.h>
 #include <iostream>
-#include <odr/experimental/file.h>
-#include <odr/experimental/file_meta.h>
+#include <odr/document.h>
+#include <optional>
 #include <string>
 
 using namespace odr;
-using namespace odr::experimental;
 
 int main(int argc, char **argv) {
   const std::string input{argv[1]};
 
-  bool has_password = argc >= 4;
-  std::string password;
-  if (has_password) {
+  std::optional<std::string> password;
+  if (argc >= 3) {
     password = argv[2];
   }
 
-  DocumentFile document_file{input};
+  const odr::Document document{input};
 
-  if (document_file.password_encrypted() && has_password) {
-    if (!document_file.decrypt(password)) {
+  if (document.encrypted() && password) {
+    if (!document.decrypt(*password)) {
       std::cerr << "wrong password" << std::endl;
       return 1;
     }
   }
 
   const auto json =
-      odr::internal::util::meta::meta_to_json(document_file.file_meta());
+      odr::internal::util::meta::meta_to_json(document.file_meta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;

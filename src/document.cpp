@@ -30,10 +30,9 @@ open_impl(const std::string &path) {
   }
 
   try {
-    auto zip = std::make_unique<common::ArchiveFile<zip::ReadonlyZipArchive>>(
-        zip::ReadonlyZipArchive(disc_file));
+    common::ArchiveFile<zip::ReadonlyZipArchive> zip(disc_file);
 
-    auto filesystem = zip->archive()->filesystem();
+    auto filesystem = zip.archive()->filesystem();
 
     try {
       odf::OpenDocumentTranslator tmp(filesystem);
@@ -54,10 +53,9 @@ open_impl(const std::string &path) {
   try {
     auto memory_file = std::make_shared<common::MemoryFile>(*disc_file);
 
-    auto cfb = std::make_unique<common::ArchiveFile<cfb::ReadonlyCfbArchive>>(
-        cfb::ReadonlyCfbArchive(memory_file));
+    common::ArchiveFile<cfb::ReadonlyCfbArchive> cfb(memory_file);
 
-    auto filesystem = cfb->archive()->filesystem();
+    auto filesystem = cfb.archive()->filesystem();
 
     // legacy microsoft
     try {

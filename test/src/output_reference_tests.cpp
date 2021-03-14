@@ -5,18 +5,14 @@
 #include <internal/util/odr_meta_util.h>
 #include <internal/util/string_util.h>
 #include <nlohmann/json.hpp>
-#include <odr/experimental/document.h>
-#include <odr/experimental/file.h>
-#include <odr/experimental/file_category.h>
-#include <odr/experimental/file_meta.h>
-#include <odr/experimental/html.h>
+#include <odr/document.h>
+#include <odr/file_meta.h>
 #include <odr/html_config.h>
 #include <test_util.h>
 #include <utility>
 
 using namespace odr;
 using namespace odr::internal;
-using namespace odr::experimental;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
@@ -47,31 +43,30 @@ TEST_P(OutputReferenceTests, all) {
   config.table_limit_rows = 4000;
   config.table_limit_cols = 500;
 
-  const DecodedFile file{test_file.path};
+  const Document document{test_file.path};
 
   fs::create_directories(fs::path(output_path));
-  auto file_meta = file.file_meta();
+  auto meta = document.meta();
 
   // encrypted ooxml type cannot be inspected
-  if ((file.file_type() != FileType::OFFICE_OPEN_XML_ENCRYPTED)) {
-    EXPECT_EQ(test_file.type, file.file_type());
+  if ((document.type() != FileType::OFFICE_OPEN_XML_ENCRYPTED)) {
+    EXPECT_EQ(test_file.type, document.type());
+  }
+  if (!meta.confident) {
+    return;
   }
 
-  if (file.file_category() == FileCategory::DOCUMENT) {
-    auto document_file = file.document_file();
-
-    EXPECT_EQ(test_file.password_encrypted, document_file.password_encrypted());
-    if (document_file.password_encrypted()) {
-      EXPECT_TRUE(document_file.decrypt(test_file.password));
-    }
-    EXPECT_EQ(test_file.type, document_file.file_type());
+  EXPECT_EQ(test_file.password_encrypted, document.encrypted());
+  if (document.encrypted()) {
+    EXPECT_TRUE(document.decrypt(test_file.password));
   }
+  EXPECT_EQ(test_file.type, document.type());
 
-  file_meta = file.file_meta();
+  meta = document.meta();
 
   {
     const std::string meta_output = output_path + "/meta.json";
-    const auto json = odr::internal::util::meta::meta_to_json(file_meta);
+    const auto json = internal::util::meta::meta_to_json(meta);
     std::ofstream o(meta_output);
     o << std::setw(4) << json << std::endl;
     EXPECT_TRUE(fs::is_regular_file(meta_output));
@@ -87,50 +82,51 @@ TEST_P(OutputReferenceTests, all) {
     GTEST_SKIP();
   }
 
-  if (file.file_category() == FileCategory::DOCUMENT) {
-    auto document_file = file.document_file();
-    auto document = document_file.document();
-    auto document_meta = document.document_meta();
+  if (!document.translatable()) {
+    return;
+  }
 
-    if (document.document_type() == DocumentType::TEXT) {
-      const std::string html_output = output_path + "/document.html";
-      fs::create_directories(fs::path(html_output).parent_path());
-      Html::translate(document, "", html_output, config);
+  if ((meta.type == FileType::OPENDOCUMENT_TEXT) ||
+      (meta.type == FileType::OFFICE_OPEN_XML_DOCUMENT)) {
+    const std::string html_output = output_path + "/document.html";
+    fs::create_directories(fs::path(html_output).parent_path());
+    document.translate(html_output, config);
+    EXPECT_TRUE(fs::is_regular_file(html_output));
+    EXPECT_LT(0, fs::file_size(html_output));
+  } else if ((meta.type == FileType::OPENDOCUMENT_PRESENTATION) ||
+             (meta.type == FileType::OFFICE_OPEN_XML_PRESENTATION)) {
+    for (std::uint32_t i = 0; i < meta.entry_count; ++i) {
+      config.entry_offset = i;
+      config.entry_count = 1;
+      const std::string html_output =
+          output_path + "/slide" + std::to_string(i) + ".html";
+      document.translate(html_output, config);
       EXPECT_TRUE(fs::is_regular_file(html_output));
       EXPECT_LT(0, fs::file_size(html_output));
-    } else if (document.document_type() == DocumentType::PRESENTATION) {
-      for (std::uint32_t i = 0; i < document_meta.entry_count; ++i) {
-        config.entry_offset = i;
-        config.entry_count = 1;
-        const std::string html_output =
-            output_path + "/slide" + std::to_string(i) + ".html";
-        Html::translate(document, "", html_output, config);
-        EXPECT_TRUE(fs::is_regular_file(html_output));
-        EXPECT_LT(0, fs::file_size(html_output));
-      }
-    } else if (document.document_type() == DocumentType::SPREADSHEET) {
-      for (std::uint32_t i = 0; i < document_meta.entry_count; ++i) {
-        config.entry_offset = i;
-        config.entry_count = 1;
-        const std::string html_output =
-            output_path + "/sheet" + std::to_string(i) + ".html";
-        Html::translate(document, "", html_output, config);
-        EXPECT_TRUE(fs::is_regular_file(html_output));
-        EXPECT_LT(0, fs::file_size(html_output));
-      }
-    } else if (document.document_type() == DocumentType::DRAWING) {
-      for (std::uint32_t i = 0; i < document_meta.entry_count; ++i) {
-        config.entry_offset = i;
-        config.entry_count = 1;
-        const std::string html_output =
-            output_path + "/page" + std::to_string(i) + ".html";
-        Html::translate(document, "", html_output, config);
-        EXPECT_TRUE(fs::is_regular_file(html_output));
-        EXPECT_LT(0, fs::file_size(html_output));
-      }
-    } else {
-      EXPECT_TRUE(false);
     }
+  } else if ((meta.type == FileType::OPENDOCUMENT_SPREADSHEET) ||
+             (meta.type == FileType::OFFICE_OPEN_XML_WORKBOOK)) {
+    for (std::uint32_t i = 0; i < meta.entry_count; ++i) {
+      config.entry_offset = i;
+      config.entry_count = 1;
+      const std::string html_output =
+          output_path + "/sheet" + std::to_string(i) + ".html";
+      document.translate(html_output, config);
+      EXPECT_TRUE(fs::is_regular_file(html_output));
+      EXPECT_LT(0, fs::file_size(html_output));
+    }
+  } else if (meta.type == FileType::OPENDOCUMENT_GRAPHICS) {
+    for (std::uint32_t i = 0; i < meta.entry_count; ++i) {
+      config.entry_offset = i;
+      config.entry_count = 1;
+      const std::string html_output =
+          output_path + "/page" + std::to_string(i) + ".html";
+      document.translate(html_output, config);
+      EXPECT_TRUE(fs::is_regular_file(html_output));
+      EXPECT_LT(0, fs::file_size(html_output));
+    }
+  } else {
+    EXPECT_TRUE(false);
   }
 }
 

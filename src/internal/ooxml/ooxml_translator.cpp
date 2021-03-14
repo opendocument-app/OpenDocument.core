@@ -1,6 +1,7 @@
 #include <fstream>
 #include <internal/abstract/filesystem.h>
 #include <internal/cfb/cfb_archive.h>
+#include <internal/common/archive.h>
 #include <internal/common/html.h>
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_crypto.h>
@@ -168,18 +169,20 @@ bool OfficeOpenXml::savable(const bool) const noexcept { return false; }
 bool OfficeOpenXml::decrypt(const std::string &password) {
   // TODO throw if not encrypted
   // TODO throw if decrypted
-  const std::string encryptionInfo =
+  const std::string encryption_info =
       util::stream::read(*m_filesystem->open("EncryptionInfo")->read());
   // TODO cache Crypto::Util
-  Crypto::Util util(encryptionInfo);
+  Crypto::Util util(encryption_info);
   const std::string key = util.derive_key(password);
   if (!util.verify(key)) {
     return false;
   }
-  const std::string encryptedPackage =
+  const std::string encrypted_package =
       util::stream::read(*m_filesystem->open("EncryptedPackage")->read());
-  const std::string decryptedPackage = util.decrypt(encryptedPackage, key);
-  m_filesystem = std::make_unique<access::ZipReader>(decryptedPackage, false);
+  const std::string decrypted_package = util.decrypt(encrypted_package, key);
+  common::ArchiveFile<zip::ReadonlyZipArchive> zip(
+      std::make_shared<common::MemoryFile>(decrypted_package));
+  m_filesystem = zip.archive()->filesystem();
   m_meta = parse_file_meta(*m_filesystem);
   m_decrypted = true;
   return true;
