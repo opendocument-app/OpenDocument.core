@@ -198,7 +198,7 @@ bool OfficeOpenXmlTranslator::decrypt(const std::string &password) {
 void OfficeOpenXmlTranslator::translate(const common::Path &path,
                                         const HtmlConfig &config) {
   // TODO throw if not decrypted
-  std::ofstream out(path);
+  std::ofstream out(path.path());
   if (!out.is_open()) {
     throw FileNotCreated();
   }
