@@ -18,6 +18,7 @@
 #include <odr/file_meta.h>
 #include <odr/html_config.h>
 #include <pugixml.hpp>
+#include <sstream>
 
 namespace odr::internal::odf {
 
@@ -170,7 +171,7 @@ bool OpenDocumentTranslator::decrypt(const std::string &password) {
 void OpenDocumentTranslator::translate(const common::Path &path,
                                        const HtmlConfig &config) {
   // TODO throw if not decrypted
-  std::ofstream out(path);
+  std::ofstream out(path.path());
   if (!out.is_open()) {
     throw FileNotCreated();
   }
@@ -251,7 +252,7 @@ void OpenDocumentTranslator::save(const common::Path &path) const {
     archive.insert_file(std::end(archive), p, m_filesystem->open(p));
   }
 
-  std::ofstream ostream(path);
+  std::ofstream ostream(path.path());
   archive.save(ostream);
 }
 

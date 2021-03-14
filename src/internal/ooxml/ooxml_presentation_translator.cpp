@@ -166,11 +166,11 @@ void text_translator(const pugi::xml_text &in, std::ostream &out,
 
 void style_attribute_translator(const pugi::xml_node &in, std::ostream &out,
                                 Context &context) {
-  const auto p_pr = in.child("a:p_pr");
-  const auto r_pr = in.child("a:r_pr");
-  const auto sp_pr = in.child("p:sp_pr");
-  const auto tc_pr = in.child("a:tc_pr");
-  const auto end_para_r_pr = in.child("a:end_para_r_pr");
+  const auto p_pr = in.child("a:pPr");
+  const auto r_pr = in.child("a:rPr");
+  const auto sp_pr = in.child("p:spPr");
+  const auto tc_pr = in.child("a:tcPr");
+  const auto end_para_r_pr = in.child("a:endParaRPr");
   const auto xfrm_pr = in.child("p:xfrm");
   const auto w_attr = in.attribute("w");
   const auto h_attr = in.attribute("h");
