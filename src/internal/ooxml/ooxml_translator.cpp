@@ -231,9 +231,13 @@ void OfficeOpenXmlTranslator::translate(const common::Path &path,
   out.close();
 }
 
-void OfficeOpenXmlTranslator::edit(const std::string &) { throw UnsupportedOperation(); }
+void OfficeOpenXmlTranslator::edit(const std::string &) {
+  throw UnsupportedOperation();
+}
 
-void OfficeOpenXmlTranslator::save(const common::Path &) const { throw UnsupportedOperation(); }
+void OfficeOpenXmlTranslator::save(const common::Path &) const {
+  throw UnsupportedOperation();
+}
 
 void OfficeOpenXmlTranslator::save(const common::Path &,
                                    const std::string &) const {

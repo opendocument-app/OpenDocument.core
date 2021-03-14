@@ -3,8 +3,6 @@
 
 namespace odr::test {
 
-std::string TestData::data_directory() {
-  return "${ODR_TEST_DATA_DIRECTORY}";
-}
+std::string TestData::data_directory() { return "${ODR_TEST_DATA_DIRECTORY}"; }
 
 } // namespace odr::test

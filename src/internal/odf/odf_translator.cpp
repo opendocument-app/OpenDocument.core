@@ -14,9 +14,9 @@
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
 #include <nlohmann/json.hpp>
+#include <odr/exceptions.h>
 #include <odr/file_meta.h>
 #include <odr/html_config.h>
-#include <odr/exceptions.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::odf {

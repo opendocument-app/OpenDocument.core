@@ -86,8 +86,8 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
       const auto meta_xml = util::xml::parse(filesystem, "meta.xml");
 
       const pugi::xml_node statistics = meta_xml.child("office:document-meta")
-          .child("office:meta")
-          .child("meta:document-statistic");
+                                            .child("office:meta")
+                                            .child("meta:document-statistic");
       if (statistics) {
         switch (result.type) {
         case FileType::OPENDOCUMENT_TEXT: {
@@ -141,7 +141,8 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
         FileMeta::Entry entry;
         entry.name = e.node().attribute("table:name").as_string();
         // TODO configuration
-        estimate_table_dimensions(e.node(), entry.row_count, entry.column_count);
+        estimate_table_dimensions(e.node(), entry.row_count,
+                                  entry.column_count);
         result.entries.emplace_back(entry);
       }
     } break;
