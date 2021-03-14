@@ -37,7 +37,7 @@ TEST_P(OutputReferenceTests, all) {
 
   const Document document{test_file.path};
 
-  fs::create_directories(fs::path(output_path));
+  fs::create_directories(output_path);
   auto meta = document.meta();
 
   // encrypted ooxml type cannot be inspected

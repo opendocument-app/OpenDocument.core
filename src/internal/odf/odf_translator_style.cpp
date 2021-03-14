@@ -10,8 +10,8 @@
 namespace odr::internal::odf {
 
 namespace {
-void StylePropertiesTranslator(const pugi::xml_attribute &in,
-                               std::ostream &out) {
+void style_properties_translator(const pugi::xml_attribute &in,
+                                 std::ostream &out) {
   static std::unordered_map<std::string, const char *> substitution{
       {"fo:text-align", "text-align"},
       {"fo:font-size", "font-size"},
@@ -67,9 +67,9 @@ void StylePropertiesTranslator(const pugi::xml_attribute &in,
   }
 }
 
-void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
-                          Context &context) {
-  static std::unordered_map<std::string, const char *> elementToNameAttr{
+void style_class_translator(const pugi::xml_node &in, std::ostream &out,
+                            Context &context) {
+  static std::unordered_map<std::string, const char *> element_to_name_attr{
       {"style:default-style", "style:family"},
       {"style:style", "style:name"},
       {"style:page-layout", "style:name"},
@@ -77,43 +77,52 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
   };
 
   const std::string element = in.name();
-  const auto it = elementToNameAttr.find(element);
-  if (it == elementToNameAttr.end())
+  const auto it = element_to_name_attr.find(element);
+  if (it == element_to_name_attr.end()) {
     return;
+  }
 
-  const auto nameAttr = in.attribute(it->second);
-  if (!nameAttr) {
+  const auto name_attr = in.attribute(it->second);
+  if (!name_attr) {
     LOG(WARNING) << "skipped style " << in.name() << ". no name attribute.";
     return;
   }
-  std::string name = StyleTranslator::escapeStyleName(nameAttr.as_string());
+  std::string name = style_translator::escape_style_name(name_attr.as_string());
   // master page
-  if (std::strcmp(in.name(), "style:master-page") == 0)
-    name = StyleTranslator::escapeMasterStyleName(nameAttr.as_string());
+  if (std::strcmp(in.name(), "style:master-page") == 0) {
+    name = style_translator::escape_master_style_name(name_attr.as_string());
+  }
 
-  if (const auto parentStyleNameAttr = in.attribute("style:parent-style-name");
-      parentStyleNameAttr)
+  if (const auto parent_style_name_attr =
+          in.attribute("style:parent-style-name");
+      parent_style_name_attr) {
     context.style_dependencies[name].push_back(
-        StyleTranslator::escapeStyleName(parentStyleNameAttr.as_string()));
-  if (const auto familyAttr = in.attribute("style:family"); familyAttr)
+        style_translator::escape_style_name(
+            parent_style_name_attr.as_string()));
+  }
+  if (const auto family_attr = in.attribute("style:family"); family_attr) {
     context.style_dependencies[name].push_back(
-        StyleTranslator::escapeStyleName(familyAttr.as_string()));
+        style_translator::escape_style_name(family_attr.as_string()));
+  }
 
   // master page
-  if (const auto pageLayoutAttr = in.attribute("style:page-layout-name");
-      pageLayoutAttr)
+  if (const auto page_layout_attr = in.attribute("style:page-layout-name");
+      page_layout_attr) {
     context.style_dependencies[name].push_back(
-        StyleTranslator::escapeStyleName(pageLayoutAttr.as_string()));
+        style_translator::escape_style_name(page_layout_attr.as_string()));
+  }
   // master page
-  if (const auto drawStyleAttr = in.attribute("draw:style-name"); drawStyleAttr)
+  if (const auto draw_style_attr = in.attribute("draw:style-name");
+      draw_style_attr) {
     context.style_dependencies[name].push_back(
-        StyleTranslator::escapeStyleName(drawStyleAttr.as_string()));
+        style_translator::escape_style_name(draw_style_attr.as_string()));
+  }
 
   out << "." << name << "." << name << " {";
 
   for (auto &&e : in) {
     for (auto &&a : e.attributes()) {
-      StylePropertiesTranslator(a, out);
+      style_properties_translator(a, out);
     }
   }
 
@@ -121,43 +130,43 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
 }
 
 // TODO
-void ListStyleTranslator(const pugi::xml_node &in, std::ostream &,
-                         Context &context) {
+void list_style_translator(const pugi::xml_node &in, std::ostream &,
+                           Context &context) {
   // addElementDelegation("text:list-level-style-number", propertiesTranslator);
   // addElementDelegation("text:list-level-style-bullet", propertiesTranslator);
 
-  const auto styleNameAttr = in.parent().attribute("style:name");
-  if (styleNameAttr == nullptr) {
+  const auto style_name_attr = in.parent().attribute("style:name");
+  if (style_name_attr == nullptr) {
     LOG(WARNING) << "skipped style " << in.parent().name()
                  << ". no name attribute.";
     return;
   }
-  const std::string styleName =
-      StyleTranslator::escapeStyleName(styleNameAttr.as_string());
-  context.style_dependencies[styleName] = {};
+  const std::string style_name =
+      style_translator::escape_style_name(style_name_attr.as_string());
+  context.style_dependencies[style_name] = {};
 
-  const auto listLevelAttr = in.attribute("text:level");
-  if (!listLevelAttr) {
+  const auto list_level_attr = in.attribute("text:level");
+  if (!list_level_attr) {
     LOG(WARNING) << "cannot find level attribute";
     return;
   }
-  const std::uint32_t listLevel = listLevelAttr.as_uint();
+  const std::uint32_t listLevel = list_level_attr.as_uint();
 
-  std::string selector = "ul." + styleName;
+  std::string selector = "ul." + style_name;
   for (std::uint32_t i = 1; i < listLevel; ++i) {
     selector += " li";
   }
 
-  const auto bulletCharAttr = in.attribute("text:bullet-char");
-  const auto numFormatAttr = in.attribute("text:num-format");
-  if (bulletCharAttr) {
+  const auto bullet_char_attr = in.attribute("text:bullet-char");
+  const auto num_format_attr = in.attribute("text:num-format");
+  if (bullet_char_attr) {
     *context.output << selector << " {";
     *context.output << "list-style: none;";
     *context.output << "}\n";
     *context.output << selector << " li:before {";
-    *context.output << "content: \"" << bulletCharAttr.as_string() << "\";";
+    *context.output << "content: \"" << bullet_char_attr.as_string() << "\";";
     *context.output << "}\n";
-  } else if (numFormatAttr != nullptr) {
+  } else if (num_format_attr != nullptr) {
     // TODO check attribute value and switch
     *context.output << selector << " {";
     *context.output << "list-style: decimal;";
@@ -168,19 +177,20 @@ void ListStyleTranslator(const pugi::xml_node &in, std::ostream &,
 }
 } // namespace
 
-std::string StyleTranslator::escapeStyleName(const std::string &name) {
+std::string style_translator::escape_style_name(const std::string &name) {
   std::string result = name;
   util::string::replace_all(result, ".", "_");
   return result;
 }
 
-std::string StyleTranslator::escapeMasterStyleName(const std::string &name) {
-  return "master_" + escapeStyleName(name);
+std::string
+style_translator::escape_master_style_name(const std::string &name) {
+  return "master_" + escape_style_name(name);
 }
 
-void StyleTranslator::css(const pugi::xml_node &in, Context &context) {
+void style_translator::css(const pugi::xml_node &in, Context &context) {
   for (auto &&e : in) {
-    StyleClassTranslator(e, *context.output, context);
+    style_class_translator(e, *context.output, context);
   }
 }
 

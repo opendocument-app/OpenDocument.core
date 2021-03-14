@@ -10,9 +10,9 @@ class xml_node;
 namespace odr::internal::odf {
 struct Context;
 
-namespace ContentTranslator {
+namespace content_translator {
 void html(const pugi::xml_node &in, Context &context);
-} // namespace ContentTranslator
+} // namespace content_translator
 
 } // namespace odr::internal::odf
 

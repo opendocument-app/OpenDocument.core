@@ -20,8 +20,8 @@
 namespace odr::internal::odf {
 
 namespace {
-void TextTranslator(const pugi::xml_text &in, std::ostream &out,
-                    Context &context) {
+void text_translator(const pugi::xml_text &in, std::ostream &out,
+                     Context &context) {
   std::string text = in.as_string();
   util::string::replace_all(text, "&", "&amp;");
   util::string::replace_all(text, "<", "&lt;");
@@ -37,8 +37,8 @@ void TextTranslator(const pugi::xml_text &in, std::ostream &out,
   }
 }
 
-void StyleClassTranslator(const std::string &name, std::ostream &out,
-                          Context &context) {
+void style_class_translator(const std::string &name, std::ostream &out,
+                            Context &context) {
   out << name;
 
   { // handle style dependencies
@@ -54,8 +54,8 @@ void StyleClassTranslator(const std::string &name, std::ostream &out,
   }
 }
 
-void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
-                          Context &context) {
+void style_class_translator(const pugi::xml_node &in, std::ostream &out,
+                            Context &context) {
   static std::unordered_set<std::string> styleAttributes{
       "text:style-name",         "table:style-name",
       "draw:style-name",         "draw:text-style-name",
@@ -69,55 +69,54 @@ void StyleClassTranslator(const pugi::xml_node &in, std::ostream &out,
     const auto it =
         context.default_cell_styles.find(context.table_cursor.col());
     if (it != context.default_cell_styles.end()) {
-      StyleClassTranslator(it->second, out, context);
+      style_class_translator(it->second, out, context);
       out << " ";
     }
   }
-  if (const auto valueTypeAttr = in.attribute("office:value-type");
-      valueTypeAttr)
-    out << "odr-value-type-" << valueTypeAttr.as_string() << " ";
+  if (const auto value_type_attr = in.attribute("office:value-type");
+      value_type_attr) {
+    out << "odr-value-type-" << value_type_attr.as_string() << " ";
+  }
 
   for (auto &&a : in.attributes()) {
     const std::string attribute = a.name();
-    if (styleAttributes.find(attribute) == styleAttributes.end())
+    if (styleAttributes.find(attribute) == styleAttributes.end()) {
       continue;
-    std::string name = StyleTranslator::escapeStyleName(a.as_string());
-    if (attribute == "draw:master-page-name")
-      name = StyleTranslator::escapeMasterStyleName(a.as_string());
-    StyleClassTranslator(name, out, context);
+    }
+    std::string name = style_translator::escape_style_name(a.as_string());
+    if (attribute == "draw:master-page-name") {
+      name = style_translator::escape_master_style_name(a.as_string());
+    }
+    style_class_translator(name, out, context);
     out << " ";
   }
   out << "\"";
 }
 
-void ElementAttributeTranslator(const pugi::xml_node &in, std::ostream &out,
-                                Context &context) {
-  StyleClassTranslator(in, out, context);
+void element_attribute_translator(const pugi::xml_node &in, std::ostream &out,
+                                  Context &context) {
+  style_class_translator(in, out, context);
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
-                               Context &context);
-void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
-                       Context &context);
+void element_children_translator(const pugi::xml_node &in, std::ostream &out,
+                                 Context &context);
+void element_translator(const pugi::xml_node &in, std::ostream &out,
+                        Context &context);
 
-void ParagraphTranslator(const pugi::xml_node &in, std::ostream &out,
-                         Context &context) {
+void paragraph_translator(const pugi::xml_node &in, std::ostream &out,
+                          Context &context) {
   out << "<p";
-  ElementAttributeTranslator(in, out, context);
+  element_attribute_translator(in, out, context);
   out << ">";
-
-  if (in.first_child())
-    ElementChildrenTranslator(in, out, context);
-  else
-    out << "<br>";
-
+  element_children_translator(in, out, context);
   out << "</p>";
 }
 
-void SpaceTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
+void space_translator(const pugi::xml_node &in, std::ostream &out, Context &) {
   const auto count = in.attribute("text:c").as_uint(1);
-  if (count <= 0)
+  if (count <= 0) {
     return;
+  }
 
   out << "<span class=\"odr-whitespace\">";
   for (std::uint32_t i = 0; i < count; ++i) {
@@ -126,16 +125,17 @@ void SpaceTranslator(const pugi::xml_node &in, std::ostream &out, Context &) {
   out << "</span>";
 }
 
-void TabTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
+void tab_translator(const pugi::xml_node &, std::ostream &out, Context &) {
   out << "<span class=\"odr-whitespace\">&emsp;</span>";
 }
 
-void LineBreakTranslator(const pugi::xml_node &, std::ostream &out, Context &) {
+void line_break_translator(const pugi::xml_node &, std::ostream &out,
+                           Context &) {
   out << "<br>";
 }
 
-void LinkTranslator(const pugi::xml_node &in, std::ostream &out,
-                    Context &context) {
+void link_translator(const pugi::xml_node &in, std::ostream &out,
+                     Context &context) {
   out << "<a";
   if (const auto href = in.attribute("xlink:href"); href) {
     out << " href=\"" << href.as_string() << "\"";
@@ -146,53 +146,57 @@ void LinkTranslator(const pugi::xml_node &in, std::ostream &out,
   } else {
     LOG(WARNING) << "empty link";
   }
-  ElementAttributeTranslator(in, out, context);
+  element_attribute_translator(in, out, context);
   out << ">";
-  ElementChildrenTranslator(in, out, context);
+  element_children_translator(in, out, context);
   out << "</a>";
 }
 
-void BookmarkTranslator(const pugi::xml_node &in, std::ostream &out,
-                        Context &context) {
+void bookmark_translator(const pugi::xml_node &in, std::ostream &out,
+                         Context &context) {
   out << "<a";
   if (const auto id = in.attribute("text:name"); id) {
     out << " id=\"" << id.as_string() << "\"";
   } else {
     LOG(WARNING) << "empty bookmark";
   }
-  ElementAttributeTranslator(in, out, context);
+  element_attribute_translator(in, out, context);
   out << ">";
 
   out << "</a>";
 }
 
-void FrameTranslator(const pugi::xml_node &in, std::ostream &out,
-                     Context &context) {
+void frame_translator(const pugi::xml_node &in, std::ostream &out,
+                      Context &context) {
   out << "<div style=\"";
 
-  if (const auto widthAttr = in.attribute("svg:width"); widthAttr)
-    out << "width:" << widthAttr.as_string() << ";";
-  if (const auto heightAttr = in.attribute("svg:height"); heightAttr)
-    out << "height:" << heightAttr.as_string() << ";";
-  if (const auto xAttr = in.attribute("svg:x"); xAttr)
-    out << "position:absolute;left:" << xAttr.as_string() << ";";
-  if (const auto yAttr = in.attribute("svg:y"); yAttr)
-    out << "top:" << yAttr.as_string() << ";";
+  if (const auto width_attr = in.attribute("svg:width"); width_attr) {
+    out << "width:" << width_attr.as_string() << ";";
+  }
+  if (const auto height_attr = in.attribute("svg:height"); height_attr) {
+    out << "height:" << height_attr.as_string() << ";";
+  }
+  if (const auto x_attr = in.attribute("svg:x"); x_attr) {
+    out << "position:absolute;left:" << x_attr.as_string() << ";";
+  }
+  if (const auto y_attr = in.attribute("svg:y"); y_attr) {
+    out << "top:" << y_attr.as_string() << ";";
+  }
 
   out << "\"";
 
-  ElementAttributeTranslator(in, out, context);
+  element_attribute_translator(in, out, context);
   out << ">";
-  ElementChildrenTranslator(in, out, context);
+  element_children_translator(in, out, context);
   out << "</div>";
 }
 
-void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
-                     Context &context) {
+void image_translator(const pugi::xml_node &in, std::ostream &out,
+                      Context &context) {
   out << "<img style=\"width:100%;height:100%\"";
 
-  if (const auto hrefAttr = in.attribute("xlink:href"); hrefAttr) {
-    const std::string href = hrefAttr.as_string();
+  if (const auto href_attr = in.attribute("xlink:href"); href_attr) {
+    const std::string href = href_attr.as_string();
     out << " alt=\"Error: image not found or unsupported: " << href << "\"";
     out << " src=\"";
     try {
@@ -225,15 +229,15 @@ void ImageTranslator(const pugi::xml_node &in, std::ostream &out,
     LOG(ERROR) << "image href not found";
   }
 
-  ElementAttributeTranslator(in, out, context);
+  element_attribute_translator(in, out, context);
   out << ">";
   // TODO children for image?
-  ElementChildrenTranslator(in, out, context);
+  element_children_translator(in, out, context);
   out << "</img>";
 }
 
-void TableTranslator(const pugi::xml_node &in, std::ostream &out,
-                     Context &context) {
+void table_translator(const pugi::xml_node &in, std::ostream &out,
+                      Context &context) {
   context.table_range = {{0, 0},
                          context.config->table_limit_rows,
                          context.config->table_limit_cols};
@@ -254,17 +258,17 @@ void TableTranslator(const pugi::xml_node &in, std::ostream &out,
   context.default_cell_styles.clear();
 
   out << "<table";
-  ElementAttributeTranslator(in, out, context);
+  element_attribute_translator(in, out, context);
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
-  ElementChildrenTranslator(in, out, context);
+  element_children_translator(in, out, context);
   out << "</table>";
 
   ++context.entry;
 }
 
-void TableColumnTranslator(const pugi::xml_node &in, std::ostream &out,
-                           Context &context) {
+void table_column_translator(const pugi::xml_node &in, std::ostream &out,
+                             Context &context) {
   const auto repeated =
       in.attribute("table:number-columns-repeated").as_uint(1);
   const auto default_cell_style_attribute =
@@ -274,73 +278,79 @@ void TableColumnTranslator(const pugi::xml_node &in, std::ostream &out,
     if (context.table_cursor.col() >= context.table_range.to().col())
       break;
     if (context.table_cursor.col() >= context.table_range.from().col()) {
-      if (default_cell_style_attribute)
+      if (default_cell_style_attribute) {
         context.default_cell_styles[context.table_cursor.col()] =
             default_cell_style_attribute.as_string();
+      }
       out << "<col";
-      ElementAttributeTranslator(in, out, context);
+      element_attribute_translator(in, out, context);
       out << ">";
     }
     context.table_cursor.add_col();
   }
 }
 
-void TableRowTranslator(const pugi::xml_node &in, std::ostream &out,
-                        Context &context) {
+void table_row_translator(const pugi::xml_node &in, std::ostream &out,
+                          Context &context) {
   const auto repeated = in.attribute("table:number-rows-repeated").as_uint(1);
   context.table_cursor.add_row(0); // TODO hacky
   for (std::uint32_t i = 0; i < repeated; ++i) {
-    if (context.table_cursor.row() >= context.table_range.to().row())
+    if (context.table_cursor.row() >= context.table_range.to().row()) {
       break;
+    }
     if (context.table_cursor.row() >= context.table_range.from().row()) {
       out << "<tr";
-      ElementAttributeTranslator(in, out, context);
+      element_attribute_translator(in, out, context);
       out << ">";
-      ElementChildrenTranslator(in, out, context);
+      element_children_translator(in, out, context);
       out << "</tr>";
     }
     context.table_cursor.add_row();
   }
 }
 
-void TableCellTranslator(const pugi::xml_node &in, std::ostream &out,
-                         Context &context) {
+void table_cell_translator(const pugi::xml_node &in, std::ostream &out,
+                           Context &context) {
   const auto repeated =
       in.attribute("table:number-columns-repeated").as_uint(1);
   const auto colspan = in.attribute("table:number-columns-spanned").as_uint(1);
   const auto rowspan = in.attribute("table:number-rows-spanned").as_uint(1);
   for (std::uint32_t i = 0; i < repeated; ++i) {
-    if (context.table_cursor.col() >= context.table_range.to().col())
+    if (context.table_cursor.col() >= context.table_range.to().col()) {
       break;
+    }
     if (context.table_cursor.col() >= context.table_range.from().col()) {
       out << "<td";
-      ElementAttributeTranslator(in, out, context);
+      element_attribute_translator(in, out, context);
       // TODO check for >1?
-      if (in.attribute("table:number-columns-spanned"))
+      if (in.attribute("table:number-columns-spanned")) {
         out << " colspan=\"" << colspan << "\"";
-      if (in.attribute("table:number-rows-spanned"))
+      }
+      if (in.attribute("table:number-rows-spanned")) {
         out << " rowspan=\"" << rowspan << "\"";
+      }
       out << ">";
-      ElementChildrenTranslator(in, out, context);
+      element_children_translator(in, out, context);
       out << "</td>";
     }
     context.table_cursor.add_cell(colspan, rowspan);
   }
 }
 
-void DrawLineTranslator(const pugi::xml_node &in, std::ostream &out,
-                        Context &context) {
+void draw_line_translator(const pugi::xml_node &in, std::ostream &out,
+                          Context &context) {
   const auto x1 = in.attribute("svg:x1");
   const auto y1 = in.attribute("svg:y1");
   const auto x2 = in.attribute("svg:x2");
   const auto y2 = in.attribute("svg:y2");
 
-  if (!x1 || !y1 || !x2 || !y2)
+  if (!x1 || !y1 || !x2 || !y2) {
     return;
+  }
 
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" style="z-index:-1;position:absolute;top:0;left:0;")";
 
-  ElementAttributeTranslator(in, out, context);
+  element_attribute_translator(in, out, context);
   out << ">";
 
   out << "<line";
@@ -354,62 +364,71 @@ void DrawLineTranslator(const pugi::xml_node &in, std::ostream &out,
   out << "</svg>";
 }
 
-void DrawRectTranslator(const pugi::xml_node &in, std::ostream &out,
-                        Context &context) {
-  out << "<div style=\"";
-
-  out << "position:absolute;";
-  if (const auto width = in.attribute("svg:width"); width)
-    out << "width:" << width.as_string() << ";";
-  if (const auto height = in.attribute("svg:height"); height)
-    out << "height:" << height.as_string() << ";";
-  if (const auto x = in.attribute("svg:x"); x)
-    out << "left:" << x.as_string() << ";";
-  if (const auto y = in.attribute("svg:y"); y)
-    out << "top:" << y.as_string() << ";";
-  out << "\"";
-
-  ElementAttributeTranslator(in, out, context);
-  out << ">";
-  ElementChildrenTranslator(in, out, context);
-  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%"></rect></svg>)";
-  out << "</div>";
-}
-
-void DrawCircleTranslator(const pugi::xml_node &in, std::ostream &out,
+void draw_rect_translator(const pugi::xml_node &in, std::ostream &out,
                           Context &context) {
   out << "<div style=\"";
 
   out << "position:absolute;";
-  if (const auto width = in.attribute("svg:width"); width)
+  if (const auto width = in.attribute("svg:width"); width) {
     out << "width:" << width.as_string() << ";";
-  if (const auto height = in.attribute("svg:height"); height)
+  }
+  if (const auto height = in.attribute("svg:height"); height) {
     out << "height:" << height.as_string() << ";";
-  if (const auto x = in.attribute("svg:x"); x)
+  }
+  if (const auto x = in.attribute("svg:x"); x) {
     out << "left:" << x.as_string() << ";";
-  if (const auto y = in.attribute("svg:y"); y)
+  }
+  if (const auto y = in.attribute("svg:y"); y) {
     out << "top:" << y.as_string() << ";";
+  }
   out << "\"";
 
-  ElementAttributeTranslator(in, out, context);
+  element_attribute_translator(in, out, context);
   out << ">";
-  ElementChildrenTranslator(in, out, context);
+  element_children_translator(in, out, context);
+  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%"></rect></svg>)";
+  out << "</div>";
+}
+
+void draw_circle_translator(const pugi::xml_node &in, std::ostream &out,
+                            Context &context) {
+  out << "<div style=\"";
+
+  out << "position:absolute;";
+  if (const auto width = in.attribute("svg:width"); width) {
+    out << "width:" << width.as_string() << ";";
+  }
+  if (const auto height = in.attribute("svg:height"); height) {
+    out << "height:" << height.as_string() << ";";
+  }
+  if (const auto x = in.attribute("svg:x"); x) {
+    out << "left:" << x.as_string() << ";";
+  }
+  if (const auto y = in.attribute("svg:y"); y) {
+    out << "top:" << y.as_string() << ";";
+  }
+  out << "\"";
+
+  element_attribute_translator(in, out, context);
+  out << ">";
+  element_children_translator(in, out, context);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%"></rect></svg>)";
   out << "</div>";
 }
 
-void ElementChildrenTranslator(const pugi::xml_node &in, std::ostream &out,
-                               Context &context) {
+void element_children_translator(const pugi::xml_node &in, std::ostream &out,
+                                 Context &context) {
   for (auto &&n : in) {
-    if (n.type() == pugi::node_pcdata)
-      TextTranslator(n.text(), out, context);
-    else if (n.type() == pugi::node_element)
-      ElementTranslator(n, out, context);
+    if (n.type() == pugi::node_pcdata) {
+      text_translator(n.text(), out, context);
+    } else if (n.type() == pugi::node_element) {
+      element_translator(n, out, context);
+    }
   }
 }
 
-void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
-                       Context &context) {
+void element_translator(const pugi::xml_node &in, std::ostream &out,
+                        Context &context) {
   static std::unordered_map<std::string, const char *> substitution{
       {"text:span", "span"},
       {"text:list", "ul"},
@@ -429,55 +448,57 @@ void ElementTranslator(const pugi::xml_node &in, std::ostream &out,
   };
 
   const std::string element = in.name();
-  if (skippers.find(element) != skippers.end())
+  if (skippers.find(element) != skippers.end()) {
     return;
+  }
 
-  if (element == "text:p" || element == "text:h")
-    ParagraphTranslator(in, out, context);
-  else if (element == "text:s")
-    SpaceTranslator(in, out, context);
-  else if (element == "text:tab")
-    TabTranslator(in, out, context);
-  else if (element == "text:line-break")
-    LineBreakTranslator(in, out, context);
-  else if (element == "text:a")
-    LinkTranslator(in, out, context);
-  else if (element == "text:bookmark" || element == "text:bookmark-start")
-    BookmarkTranslator(in, out, context);
-  else if (element == "draw:frame" || element == "draw:custom-shape")
-    FrameTranslator(in, out, context);
-  else if (element == "draw:image")
-    ImageTranslator(in, out, context);
-  else if (element == "table:table")
-    TableTranslator(in, out, context);
-  else if (element == "table:table-column")
-    TableColumnTranslator(in, out, context);
-  else if (element == "table:table-row")
-    TableRowTranslator(in, out, context);
-  else if (element == "table:table-cell")
-    TableCellTranslator(in, out, context);
-  else if (element == "draw:line")
-    DrawLineTranslator(in, out, context);
-  else if (element == "draw:rect")
-    DrawRectTranslator(in, out, context);
-  else if (element == "draw:circle")
-    DrawCircleTranslator(in, out, context);
-  else {
+  if (element == "text:p" || element == "text:h") {
+    paragraph_translator(in, out, context);
+  } else if (element == "text:s") {
+    space_translator(in, out, context);
+  } else if (element == "text:tab") {
+    tab_translator(in, out, context);
+  } else if (element == "text:line-break") {
+    line_break_translator(in, out, context);
+  } else if (element == "text:a") {
+    link_translator(in, out, context);
+  } else if (element == "text:bookmark" || element == "text:bookmark-start") {
+    bookmark_translator(in, out, context);
+  } else if (element == "draw:frame" || element == "draw:custom-shape") {
+    frame_translator(in, out, context);
+  } else if (element == "draw:image") {
+    image_translator(in, out, context);
+  } else if (element == "table:table") {
+    table_translator(in, out, context);
+  } else if (element == "table:table-column") {
+    table_column_translator(in, out, context);
+  } else if (element == "table:table-row") {
+    table_row_translator(in, out, context);
+  } else if (element == "table:table-cell") {
+    table_cell_translator(in, out, context);
+  } else if (element == "draw:line") {
+    draw_line_translator(in, out, context);
+  } else if (element == "draw:rect") {
+    draw_rect_translator(in, out, context);
+  } else if (element == "draw:circle") {
+    draw_circle_translator(in, out, context);
+  } else {
     const auto it = substitution.find(element);
     if (it != substitution.end()) {
       out << "<" << it->second;
-      ElementAttributeTranslator(in, out, context);
+      element_attribute_translator(in, out, context);
       out << ">";
     }
-    ElementChildrenTranslator(in, out, context);
-    if (it != substitution.end())
+    element_children_translator(in, out, context);
+    if (it != substitution.end()) {
       out << "</" << it->second << ">";
+    }
   }
 }
 } // namespace
 
-void ContentTranslator::html(const pugi::xml_node &in, Context &context) {
-  ElementTranslator(in, *context.output, context);
+void content_translator::html(const pugi::xml_node &in, Context &context) {
+  element_translator(in, *context.output, context);
 }
 
 } // namespace odr::internal::odf

@@ -33,34 +33,34 @@ void generate_style(std::ofstream &out, Context &context) {
   const auto fontFaceDecls =
       stylesXml.child("office:document-styles").child("office:font-face-decls");
   if (fontFaceDecls)
-    StyleTranslator::css(fontFaceDecls, context);
+    style_translator::css(fontFaceDecls, context);
 
   const auto styles =
       stylesXml.child("office:document-styles").child("office:styles");
   if (styles)
-    StyleTranslator::css(styles, context);
+    style_translator::css(styles, context);
 
   const auto automaticStyles = stylesXml.child("office:document-styles")
                                    .child("office:automatic-styles");
   if (automaticStyles)
-    StyleTranslator::css(automaticStyles, context);
+    style_translator::css(automaticStyles, context);
 
   const auto masterStyles =
       stylesXml.child("office:document-styles").child("office:master-styles");
   if (masterStyles)
-    StyleTranslator::css(masterStyles, context);
+    style_translator::css(masterStyles, context);
 }
 
 void generateContentStyle_(const pugi::xml_node &in, Context &context) {
   const auto fontFaceDecls =
       in.child("office:document-content").child("office:font-face-decls");
   if (fontFaceDecls)
-    StyleTranslator::css(fontFaceDecls, context);
+    style_translator::css(fontFaceDecls, context);
 
   const auto automaticStyles =
       in.child("office:document-content").child("office:automatic-styles");
   if (automaticStyles)
-    StyleTranslator::css(automaticStyles, context);
+    style_translator::css(automaticStyles, context);
 }
 
 void generate_script(std::ofstream &out, Context &) {
@@ -102,14 +102,14 @@ void generate_content(const pugi::xml_node &in, Context &context) {
       if ((i >= context.config->entry_offset) &&
           ((context.config->entry_count == 0) ||
            (i < context.config->entry_offset + context.config->entry_count))) {
-        ContentTranslator::html(e, context);
+        content_translator::html(e, context);
       } else {
         ++context.entry; // TODO hacky
       }
       ++i;
     }
   } else {
-    ContentTranslator::html(body, context);
+    content_translator::html(body, context);
   }
 }
 } // namespace
