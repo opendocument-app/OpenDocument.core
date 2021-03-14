@@ -108,7 +108,13 @@ void paragraph_translator(const pugi::xml_node &in, std::ostream &out,
   out << "<p";
   element_attribute_translator(in, out, context);
   out << ">";
-  element_children_translator(in, out, context);
+
+  if (in.first_child()) {
+    element_children_translator(in, out, context);
+  } else {
+    out << "<br>";
+  }
+
   out << "</p>";
 }
 
