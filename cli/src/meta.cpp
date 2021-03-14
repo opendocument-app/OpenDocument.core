@@ -23,8 +23,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  const auto json =
-      odr::internal::util::meta::meta_to_json(document.file_meta());
+  const auto json = internal::util::meta::meta_to_json(document.meta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;
