@@ -8,8 +8,8 @@ std::string base64_encode(const std::string &in);
 std::string base64_decode(const std::string &in);
 std::string sha1(const std::string &);
 std::string sha256(const std::string &);
-std::string pbkdf2(std::size_t keySize, const std::string &startKey,
-                   const std::string &salt, std::size_t iterationCount);
+std::string pbkdf2(std::size_t key_size, const std::string &start_key,
+                   const std::string &salt, std::size_t iteration_count);
 std::string decrypt_AES(const std::string &key, const std::string &input);
 std::string decrypt_AES(const std::string &key, const std::string &iv,
                         const std::string &input);
