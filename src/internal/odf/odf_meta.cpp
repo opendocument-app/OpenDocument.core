@@ -159,14 +159,14 @@ void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
   rows = 0;
   cols = 0;
 
-  common::TableCursor tl;
+  common::TableCursor cursor;
 
   for (auto &&r : table.select_nodes(".//self::table:table-row")) {
     const auto &&row = r.node();
 
     const auto rows_repeated =
         row.attribute("table:number-rows-repeated").as_uint(1);
-    tl.add_row(rows_repeated);
+    cursor.add_row(rows_repeated);
 
     for (auto &&c : row.select_nodes(".//self::table:table-cell")) {
       const auto &&cell = c.node();
@@ -177,10 +177,10 @@ void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
           cell.attribute("table:number-columns-spanned").as_uint(1);
       const auto rowspan =
           cell.attribute("table:number-rows-spanned").as_uint(1);
-      tl.add_cell(colspan, rowspan, columns_repeated);
+      cursor.add_cell(colspan, rowspan, columns_repeated);
 
-      const auto new_rows = tl.row();
-      const auto new_cols = std::max(cols, tl.col());
+      const auto new_rows = cursor.row();
+      const auto new_cols = std::max(cols, cursor.col());
       if (cell.first_child()) {
         rows = new_rows;
         cols = new_cols;
