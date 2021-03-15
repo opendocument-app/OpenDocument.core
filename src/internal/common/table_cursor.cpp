@@ -27,10 +27,11 @@ void TableCursor::add_cell(const std::uint32_t colspan,
   const auto new_next_cols = m_col + colspan * repeat;
 
   // handle rowspan
-  auto it = m_sparse.begin();
+  auto it = std::begin(m_sparse);
   for (std::uint32_t i = 1; i < rowspan; ++i) {
-    if (std::next(it) == m_sparse.end())
+    if (std::next(it) == std::end(m_sparse)) {
       m_sparse.emplace_back();
+    }
     ++it;
     it->emplace_back(Range{m_col, new_next_cols});
   }
