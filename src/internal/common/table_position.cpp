@@ -4,8 +4,9 @@
 namespace odr::internal::common {
 
 std::uint32_t TablePosition::to_col_num(const std::string &string) {
-  if (string.empty())
+  if (string.empty()) {
     throw std::invalid_argument("s is empty");
+  }
 
   std::uint32_t result = 0;
   for (std::size_t i = 0; i < string.size(); ++i) {
