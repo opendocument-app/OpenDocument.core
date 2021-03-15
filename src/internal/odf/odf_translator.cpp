@@ -26,42 +26,49 @@ namespace {
 void generate_style(std::ofstream &out, Context &context) {
   out << common::Html::default_style();
 
-  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET)
+  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) {
     out << common::Html::default_spreadsheet_style();
+  }
 
-  const auto stylesXml = util::xml::parse(*context.filesystem, "styles.xml");
+  const auto styles_xml = util::xml::parse(*context.filesystem, "styles.xml");
 
-  const auto fontFaceDecls =
-      stylesXml.child("office:document-styles").child("office:font-face-decls");
-  if (fontFaceDecls)
-    style_translator::css(fontFaceDecls, context);
+  const auto font_face_decls = styles_xml.child("office:document-styles")
+                                   .child("office:font-face-decls");
+  if (font_face_decls) {
+    style_translator::css(font_face_decls, context);
+  }
 
   const auto styles =
-      stylesXml.child("office:document-styles").child("office:styles");
-  if (styles)
+      styles_xml.child("office:document-styles").child("office:styles");
+  if (styles) {
     style_translator::css(styles, context);
+  }
 
-  const auto automaticStyles = stylesXml.child("office:document-styles")
-                                   .child("office:automatic-styles");
-  if (automaticStyles)
-    style_translator::css(automaticStyles, context);
+  const auto automatic_styles = styles_xml.child("office:document-styles")
+                                    .child("office:automatic-styles");
+  if (automatic_styles) {
+    style_translator::css(automatic_styles, context);
+  }
 
-  const auto masterStyles =
-      stylesXml.child("office:document-styles").child("office:master-styles");
-  if (masterStyles)
-    style_translator::css(masterStyles, context);
+  const auto master_styles =
+      styles_xml.child("office:document-styles").child("office:master-styles");
+  if (master_styles) {
+    style_translator::css(master_styles, context);
+  }
 }
 
-void generateContentStyle_(const pugi::xml_node &in, Context &context) {
-  const auto fontFaceDecls =
+void generate_content_style(const pugi::xml_node &in, Context &context) {
+  const auto font_face_decls =
       in.child("office:document-content").child("office:font-face-decls");
-  if (fontFaceDecls)
-    style_translator::css(fontFaceDecls, context);
+  if (font_face_decls) {
+    style_translator::css(font_face_decls, context);
+  }
 
-  const auto automaticStyles =
+  const auto automatic_styles =
       in.child("office:document-content").child("office:automatic-styles");
-  if (automaticStyles)
-    style_translator::css(automaticStyles, context);
+  if (automatic_styles) {
+    style_translator::css(automatic_styles, context);
+  }
 }
 
 void generate_script(std::ofstream &out, Context &) {
@@ -73,20 +80,20 @@ void generate_content(const pugi::xml_node &in, Context &context) {
       in.child("office:document-content").child("office:body");
 
   pugi::xml_node content;
-  std::string entryName;
+  std::string entry_name;
   switch (context.meta->type) {
   case FileType::OPENDOCUMENT_TEXT:
   case FileType::OPENDOCUMENT_GRAPHICS:
     content = body.child("office:drawing");
-    entryName = "draw:page";
+    entry_name = "draw:page";
     break;
   case FileType::OPENDOCUMENT_PRESENTATION:
     content = body.child("office:presentation");
-    entryName = "draw:page";
+    entry_name = "draw:page";
     break;
   case FileType::OPENDOCUMENT_SPREADSHEET:
     content = body.child("office:spreadsheet");
-    entryName = "table:table";
+    entry_name = "table:table";
     break;
   default:
     throw std::invalid_argument("type");
@@ -98,7 +105,7 @@ void generate_content(const pugi::xml_node &in, Context &context) {
                   (context.config->entry_count > 0))) {
     std::uint32_t i = 0;
     for (auto &&e : content) {
-      if (e.name() != entryName)
+      if (e.name() != entry_name)
         continue;
       if ((i >= context.config->entry_offset) &&
           ((context.config->entry_count == 0) ||
@@ -188,7 +195,7 @@ void OpenDocumentTranslator::translate(const common::Path &path,
   out << common::Html::default_headers();
   out << "<style>";
   generate_style(out, m_context);
-  generateContentStyle_(m_content, m_context);
+  generate_content_style(m_content, m_context);
   out << "</style>";
   out << "</head>";
 
@@ -214,8 +221,9 @@ void OpenDocumentTranslator::edit(const std::string &diff) {
     for (auto &&i : json["modifiedText"].items()) {
       const auto it = m_context.text_translation.find(std::stoi(i.key()));
       // TODO dirty const off-cast
-      if (it == m_context.text_translation.end())
+      if (it == std::end(m_context.text_translation)) {
         continue;
+      }
       it->second.set(i.value().get<std::string>().c_str());
     }
   }
