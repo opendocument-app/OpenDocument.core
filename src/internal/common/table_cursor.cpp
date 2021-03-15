@@ -4,7 +4,9 @@ namespace odr::internal::common {
 
 TableCursor::TableCursor() noexcept { m_sparse.emplace_back(); }
 
-void TableCursor::add_col(const std::uint32_t repeat) noexcept { m_col += repeat; }
+void TableCursor::add_col(const std::uint32_t repeat) noexcept {
+  m_col += repeat;
+}
 
 void TableCursor::add_row(const std::uint32_t repeat) noexcept {
   m_row += repeat;

@@ -100,7 +100,8 @@ Manifest parse_manifest(const pugi::xml_document &manifest) {
       if (start) {
         const std::string start_key_generation_name =
             start.attribute("manifest:start-key-generation-name").as_string();
-        lookup_start_key_types(start_key_generation_name, entry.start_key_generation);
+        lookup_start_key_types(start_key_generation_name,
+                               entry.start_key_generation);
         entry.start_key_size = start.attribute("manifest:key-size").as_uint();
       } else {
         entry.start_key_generation = ChecksumType::SHA1;
