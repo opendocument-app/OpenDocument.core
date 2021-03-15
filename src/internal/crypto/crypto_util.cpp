@@ -41,13 +41,13 @@ std::string util::sha256(const std::string &in) {
   return std::string(reinterpret_cast<char *>(out), CryptoPP::SHA256::DIGESTSIZE);
 }
 
-std::string util::pbkdf2(const std::size_t keySize, const std::string &startKey,
+std::string util::pbkdf2(const std::size_t key_size, const std::string &start_key,
                          const std::string &salt,
                          const std::size_t iteration_count) {
-  std::string result(keySize, '\0');
+  std::string result(key_size, '\0');
   CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
   pbkdf2.DeriveKey(reinterpret_cast<byte *>(result.data()), result.size(), false,
-                   reinterpret_cast<byte *>(startKey.data()), startKey.size(),
+                   reinterpret_cast<byte *>(start_key.data()), start_key.size(),
                    reinterpret_cast<byte *>(salt.data()), salt.size(), iteration_count);
   return result;
 }
