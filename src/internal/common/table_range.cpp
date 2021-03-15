@@ -9,8 +9,8 @@ TableRange::TableRange(const TablePosition &from,
                        const TablePosition &to) noexcept
     : m_from(from), m_to(to) {}
 
-TableRange::TableRange(const TablePosition &from, std::uint32_t rows,
-                       std::uint32_t cols) noexcept
+TableRange::TableRange(const TablePosition &from, const std::uint32_t rows,
+                       const std::uint32_t cols) noexcept
     : m_from(from), m_to{from.row() + rows, from.col() + cols} {}
 
 TableRange::TableRange(const std::string &s) {
