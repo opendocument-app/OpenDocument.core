@@ -105,8 +105,9 @@ void generate_content(const pugi::xml_node &in, Context &context) {
                   (context.config->entry_count > 0))) {
     std::uint32_t i = 0;
     for (auto &&e : content) {
-      if (e.name() != entry_name)
+      if (e.name() != entry_name) {
         continue;
+      }
       if ((i >= context.config->entry_offset) &&
           ((context.config->entry_count == 0) ||
            (i < context.config->entry_offset + context.config->entry_count))) {
@@ -157,8 +158,9 @@ bool OpenDocumentTranslator::translatable() const noexcept { return true; }
 bool OpenDocumentTranslator::editable() const noexcept { return true; }
 
 bool OpenDocumentTranslator::savable(const bool encrypted) const noexcept {
-  if (encrypted)
+  if (encrypted) {
     return false;
+  }
   return !m_meta.encrypted;
 }
 
@@ -243,8 +245,9 @@ void OpenDocumentTranslator::save(const common::Path &path) const {
   for (auto walker = m_filesystem->file_walker("/"); !walker->end();
        walker->next()) {
     auto p = walker->path();
-    if (p == "mimetype")
+    if (p == "mimetype") {
       continue;
+    }
     if (m_filesystem->is_directory(p)) {
       archive.insert_directory(std::end(archive), p);
       continue;

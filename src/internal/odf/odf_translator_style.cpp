@@ -51,7 +51,7 @@ void style_properties_translator(const pugi::xml_attribute &in,
 
   const std::string property = in.name();
   const auto it = substitution.find(property);
-  if (it != substitution.end()) {
+  if (it != std::end(substitution)) {
     out << it->second << ":" << in.as_string() << ";";
   } else if (property == "style:text-underline-style") {
     // TODO breaks line-through
@@ -78,7 +78,7 @@ void style_class_translator(const pugi::xml_node &in, std::ostream &out,
 
   const std::string element = in.name();
   const auto it = element_to_name_attr.find(element);
-  if (it == element_to_name_attr.end()) {
+  if (it == std::end(element_to_name_attr)) {
     return;
   }
 

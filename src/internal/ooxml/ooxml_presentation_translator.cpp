@@ -128,18 +128,22 @@ void default_property_translator(const pugi::xml_node &in, std::ostream &out,
   const auto algn_attr = in.attribute("algn");
   if (algn_attr) {
     out << "text-align:";
-    if (std::strcmp(algn_attr.as_string(), "l") == 0)
+    if (std::strcmp(algn_attr.as_string(), "l") == 0) {
       out << "left";
-    if (std::strcmp(algn_attr.as_string(), "ctr") == 0)
+    }
+    if (std::strcmp(algn_attr.as_string(), "ctr") == 0) {
       out << "center";
-    if (std::strcmp(algn_attr.as_string(), "r") == 0)
+    }
+    if (std::strcmp(algn_attr.as_string(), "r") == 0) {
       out << "right";
+    }
     out << ";";
   }
 
   for (auto &&e : in) {
-    if (std::strcmp(e.name(), "a:xfrm") == 0)
+    if (std::strcmp(e.name(), "a:xfrm") == 0) {
       xfrm_translator(e, out, context);
+    }
   }
 }
 } // namespace
@@ -352,7 +356,7 @@ void element_translator(const pugi::xml_node &in, std::ostream &out,
   static std::unordered_set<std::string> skippers{};
 
   const std::string element = in.name();
-  if (skippers.find(element) != skippers.end()) {
+  if (skippers.find(element) != std::end(skippers)) {
     return;
   }
 
@@ -368,13 +372,13 @@ void element_translator(const pugi::xml_node &in, std::ostream &out,
     image_translator(in, out, context);
   } else {
     const auto it = substitution.find(element);
-    if (it != substitution.end()) {
+    if (it != std::end(substitution)) {
       out << "<" << it->second;
       element_attribute_translator(in, out, context);
       out << ">";
     }
     element_children_translator(in, out, context);
-    if (it != substitution.end()) {
+    if (it != std::end(substitution)) {
       out << "</" << it->second << ">";
     }
   }

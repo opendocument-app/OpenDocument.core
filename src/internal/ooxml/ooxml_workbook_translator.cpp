@@ -188,7 +188,7 @@ void element_attribute_translator(pugi::xml_node in, std::ostream &out,
 
     { // handle style dependencies
       const auto it = context.style_dependencies.find(name);
-      if (it == context.style_dependencies.end()) {
+      if (it == std::end(context.style_dependencies)) {
         // TODO remove ?
         LOG(WARNING) << "unknown style: " << name;
       } else {
@@ -337,7 +337,7 @@ void element_translator(pugi::xml_node in, std::ostream &out,
   };
 
   const std::string element = in.name();
-  if (skippers.find(element) != skippers.end()) {
+  if (skippers.find(element) != std::end(skippers)) {
     return;
   }
 
@@ -351,13 +351,13 @@ void element_translator(pugi::xml_node in, std::ostream &out,
     table_cell_translator(in, out, context);
   } else {
     const auto it = substitution.find(element);
-    if (it != substitution.end()) {
+    if (it != std::end(substitution)) {
       out << "<" << it->second;
       element_attribute_translator(in, out, context);
       out << ">";
     }
     element_children_translator(in, out, context);
-    if (it != substitution.end()) {
+    if (it != std::end(substitution)) {
       out << "</" << it->second << ">";
     }
   }

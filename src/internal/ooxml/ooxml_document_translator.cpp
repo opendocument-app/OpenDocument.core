@@ -470,7 +470,7 @@ void element_translator(const pugi::xml_node &in, std::ostream &out,
   };
 
   const std::string element = in.name();
-  if (skippers.find(element) != skippers.end()) {
+  if (skippers.find(element) != std::end(skippers)) {
     return;
   }
 
@@ -492,13 +492,13 @@ void element_translator(const pugi::xml_node &in, std::ostream &out,
     image_translator(in, out, context);
   } else {
     const auto it = substitution.find(element);
-    if (it != substitution.end()) {
+    if (it != std::end(substitution)) {
       out << "<" << it->second;
       element_attribute_translator(in, out, context);
       out << ">";
     }
     element_children_translator(in, out, context);
-    if (it != substitution.end()) {
+    if (it != std::end(substitution)) {
       out << "</" << it->second << ">";
     }
   }

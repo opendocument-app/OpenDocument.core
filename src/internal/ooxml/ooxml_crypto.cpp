@@ -41,9 +41,9 @@ namespace odr::internal::ooxml::Crypto {
 ECMA376Standard::ECMA376Standard(const EncryptionHeader &encryption_header,
                                  const EncryptionVerifier &encryption_verifier,
                                  std::string encrypted_verifier_hash)
-    : m_encryption_header(encryption_header),
-      m_encryption_verifier(encryption_verifier),
-      m_encrypted_verifier_hash(std::move(encrypted_verifier_hash)) {}
+    : m_encryption_header{encryption_header},
+      m_encryption_verifier{encryption_verifier},
+      m_encrypted_verifier_hash{std::move(encrypted_verifier_hash)} {}
 
 ECMA376Standard::ECMA376Standard(const std::string &encryption_info) {
   const char *offset = encryption_info.data() + sizeof(VersionInfo);

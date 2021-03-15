@@ -82,7 +82,7 @@ namespace {
 class DecryptedFilesystem final : public abstract::ReadableFilesystem {
 public:
   DecryptedFilesystem(std::shared_ptr<abstract::ReadableFilesystem> parent,
-                         Manifest manifest, std::string start_key)
+                      Manifest manifest, std::string start_key)
       : m_parent(std::move(parent)), m_manifest(std::move(manifest)),
         m_start_key(std::move(start_key)) {}
 
@@ -106,7 +106,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::File>
   open(common::Path path) const final {
     const auto it = m_manifest.entries.find(path);
-    if (it == m_manifest.entries.end()) {
+    if (it == std::end(m_manifest.entries)) {
       return m_parent->open(path);
     }
     if (!can_decrypt(it->second)) {
@@ -145,8 +145,8 @@ bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
   if (!validate_password(*manifest.smallest_file_entry, decrypt)) {
     return false;
   }
-  storage = std::make_shared<DecryptedFilesystem>(std::move(storage),
-                                                  manifest, start_key);
+  storage = std::make_shared<DecryptedFilesystem>(std::move(storage), manifest,
+                                                  start_key);
   return true;
 }
 

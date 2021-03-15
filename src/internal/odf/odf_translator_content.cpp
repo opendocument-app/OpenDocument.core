@@ -44,7 +44,7 @@ void style_class_translator(const std::string &name, std::ostream &out,
 
   { // handle style dependencies
     const auto it = context.style_dependencies.find(name);
-    if (it == context.style_dependencies.end()) {
+    if (it == std::end(context.style_dependencies)) {
       // TODO remove ?
       LOG(WARNING) << "unknown style: " << name;
     } else {
@@ -57,7 +57,7 @@ void style_class_translator(const std::string &name, std::ostream &out,
 
 void style_class_translator(const pugi::xml_node &in, std::ostream &out,
                             Context &context) {
-  static std::unordered_set<std::string> styleAttributes{
+  static std::unordered_set<std::string> style_attributes{
       "text:style-name",         "table:style-name",
       "draw:style-name",         "draw:text-style-name",
       "presentation:style-name", "draw:master-page-name",
@@ -69,7 +69,7 @@ void style_class_translator(const pugi::xml_node &in, std::ostream &out,
   if (!in.attribute("table:style-name")) {
     const auto it =
         context.default_cell_styles.find(context.table_cursor.col());
-    if (it != context.default_cell_styles.end()) {
+    if (it != std::end(context.default_cell_styles)) {
       style_class_translator(it->second, out, context);
       out << " ";
     }
@@ -81,7 +81,7 @@ void style_class_translator(const pugi::xml_node &in, std::ostream &out,
 
   for (auto &&a : in.attributes()) {
     const std::string attribute = a.name();
-    if (styleAttributes.find(attribute) == styleAttributes.end()) {
+    if (style_attributes.find(attribute) == std::end(style_attributes)) {
       continue;
     }
     std::string name = style_translator::escape_style_name(a.as_string());
@@ -456,7 +456,7 @@ void element_translator(const pugi::xml_node &in, std::ostream &out,
   };
 
   const std::string element = in.name();
-  if (skippers.find(element) != skippers.end()) {
+  if (skippers.find(element) != std::end(skippers)) {
     return;
   }
 
@@ -492,13 +492,13 @@ void element_translator(const pugi::xml_node &in, std::ostream &out,
     draw_circle_translator(in, out, context);
   } else {
     const auto it = substitution.find(element);
-    if (it != substitution.end()) {
+    if (it != std::end(substitution)) {
       out << "<" << it->second;
       element_attribute_translator(in, out, context);
       out << ">";
     }
     element_children_translator(in, out, context);
-    if (it != substitution.end()) {
+    if (it != std::end(substitution)) {
       out << "</" << it->second << ">";
     }
   }

@@ -16,8 +16,9 @@ void stream::pipe(std::istream &in, std::ostream &out) {
   while (true) {
     in.read(buffer, BUFFER_SIZE);
     const auto read = in.gcount();
-    if (read == 0)
+    if (read == 0) {
       break;
+    }
     out.write(buffer, read);
   }
 }
