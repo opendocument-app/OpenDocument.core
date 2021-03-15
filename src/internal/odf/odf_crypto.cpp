@@ -27,7 +27,7 @@ std::string hash(const std::string &input, const ChecksumType checksum_type) {
   case ChecksumType::SHA1_1K:
     return crypto::util::sha1(input.substr(0, 1024));
   default:
-    throw std::invalid_argument("checksumType");
+    throw std::invalid_argument("checksum type");
   }
 }
 
@@ -79,9 +79,9 @@ bool validate_password(const Manifest::Entry &entry,
 }
 
 namespace {
-class CryptoOpenDocumentFile final : public abstract::ReadableFilesystem {
+class DecryptedFilesystem final : public abstract::ReadableFilesystem {
 public:
-  CryptoOpenDocumentFile(std::shared_ptr<abstract::ReadableFilesystem> parent,
+  DecryptedFilesystem(std::shared_ptr<abstract::ReadableFilesystem> parent,
                          Manifest manifest, std::string start_key)
       : m_parent(std::move(parent)), m_manifest(std::move(manifest)),
         m_start_key(std::move(start_key)) {}
@@ -135,18 +135,18 @@ bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
   if (!can_decrypt(*manifest.smallest_file_entry)) {
     throw UnsupportedCryptoAlgorithm();
   }
-  const std::string startKey =
+  const std::string start_key =
       odf::start_key(*manifest.smallest_file_entry, password);
   // TODO stream decrypt
   const std::string input =
       util::stream::read(*storage->open(*manifest.smallest_file_path)->read());
   const std::string decrypt =
-      derive_key_and_decrypt(*manifest.smallest_file_entry, startKey, input);
+      derive_key_and_decrypt(*manifest.smallest_file_entry, start_key, input);
   if (!validate_password(*manifest.smallest_file_entry, decrypt)) {
     return false;
   }
-  storage = std::make_shared<CryptoOpenDocumentFile>(std::move(storage),
-                                                     manifest, startKey);
+  storage = std::make_shared<DecryptedFilesystem>(std::move(storage),
+                                                  manifest, start_key);
   return true;
 }
 
