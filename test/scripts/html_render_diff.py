@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -6,15 +7,12 @@ import argparse
 import io
 from PIL import Image, ImageChops
 from selenium import webdriver
-
-
-def path_to_url(path):
-    return 'file://' + path
+import pathlib
 
 
 def to_url(something):
     if os.path.isfile(something):
-        return path_to_url(something)
+        return pathlib.Path(os.path.abspath(something)).as_uri()
     return something
 
 
@@ -35,8 +33,8 @@ def get_browser(driver='chrome', max_width=1000, max_height=10000):
 
 
 def html_render_diff(browser, a, b):
-    image_a = screenshot(browser, to_url(a))
-    image_b = screenshot(browser, to_url(b))
+    image_a = screenshot(browser, to_url(a)).convert('RGB')
+    image_b = screenshot(browser, to_url(b)).convert('RGB')
 
     diff = ImageChops.difference(image_a, image_b)
     return diff

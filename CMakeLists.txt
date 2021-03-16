@@ -17,15 +17,108 @@ endif (CCACHE_FOUND)
 
 add_subdirectory(3rdparty)
 
-add_subdirectory(access)
-add_subdirectory(common)
-add_subdirectory(crypto)
-add_subdirectory(odf)
-add_subdirectory(oldms)
-add_subdirectory(ooxml)
-add_subdirectory(svm)
+add_library(odr-interface INTERFACE)
+target_include_directories(odr-interface INTERFACE include)
 
-add_subdirectory(odr)
+add_library(odr-object OBJECT
+        src/document.cpp
+        src/exceptions.cpp
+        src/file_meta.cpp
+
+        src/internal/abstract/file.cpp
+
+        src/internal/cfb/cfb_archive.cpp
+        src/internal/cfb/cfb_impl.cpp
+        src/internal/cfb/cfb_util.cpp
+
+        src/internal/common/constants.cpp
+        src/internal/common/file.cpp
+        src/internal/common/filesystem.cpp
+        src/internal/common/html.cpp
+        src/internal/common/path.cpp
+        src/internal/common/table_cursor.cpp
+        src/internal/common/table_position.cpp
+        src/internal/common/table_range.cpp
+
+        src/internal/crypto/crypto_util.cpp
+
+        src/internal/odf/odf_crypto.cpp
+        src/internal/odf/odf_manifest.cpp
+        src/internal/odf/odf_meta.cpp
+        src/internal/odf/odf_translator.cpp
+        src/internal/odf/odf_translator_content.cpp
+        src/internal/odf/odf_translator_style.cpp
+
+        src/internal/oldms/oldms_translator.cpp
+
+        src/internal/ooxml/ooxml_crypto.cpp
+        src/internal/ooxml/ooxml_document_translator.cpp
+        src/internal/ooxml/ooxml_meta.cpp
+        src/internal/ooxml/ooxml_presentation_translator.cpp
+        src/internal/ooxml/ooxml_translator.cpp
+        src/internal/ooxml/ooxml_workbook_translator.cpp
+
+        src/internal/svm/svm_file.cpp
+        src/internal/svm/svm_format.cpp
+        src/internal/svm/svm_to_svg.cpp
+
+        src/internal/util/file_util.cpp
+        src/internal/util/odr_meta_util.cpp
+        src/internal/util/stream_util.cpp
+        src/internal/util/string_util.cpp
+        src/internal/util/xml_util.cpp
+
+        src/internal/zip/zip_util.cpp
+        src/internal/zip/zip_archive.cpp
+        )
+target_include_directories(odr-object
+        PUBLIC
+        include
+        PRIVATE
+        src
+        )
+target_link_libraries(odr-object
+        PRIVATE
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
+        )
+set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+add_library(odr-static STATIC
+        $<TARGET_OBJECTS:odr-object>
+        )
+target_include_directories(odr-static
+        PUBLIC
+        include
+        )
+target_link_libraries(odr-static
+        PRIVATE
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
+        )
+
+add_library(odr-shared SHARED
+        $<TARGET_OBJECTS:odr-object>
+        )
+target_include_directories(odr-shared
+        PUBLIC
+        include
+        )
+target_link_libraries(odr-shared
+        PRIVATE
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
+        )
+
 add_subdirectory(cli)
 
 if (ODR_TEST)
@@ -33,7 +126,12 @@ if (ODR_TEST)
 endif ()
 
 install(
-        TARGETS odr-shared meta translate back_translate
+        TARGETS
+        odr-static
+        odr-shared
+        meta
+        translate
+        back_translate
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION bin
         LIBRARY DESTINATION lib
