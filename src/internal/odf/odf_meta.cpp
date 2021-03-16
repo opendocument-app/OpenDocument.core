@@ -141,8 +141,8 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
         FileMeta::Entry entry;
         entry.name = e.node().attribute("table:name").as_string();
         // TODO configuration
-        estimate_table_dimensions(e.node(), entry.row_count,
-                                  entry.column_count);
+        estimate_table_dimensions(e.node(), entry.row_count, entry.column_count,
+                                  10000, 500);
         result.entries.emplace_back(entry);
       }
     } break;
@@ -155,7 +155,9 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
 }
 
 void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
-                               std::uint32_t &cols) {
+                               std::uint32_t &cols,
+                               const std::uint32_t limit_rows,
+                               const std::uint32_t limit_cols) {
   rows = 0;
   cols = 0;
 
@@ -181,7 +183,9 @@ void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
 
       const auto new_rows = cursor.row();
       const auto new_cols = std::max(cols, cursor.col());
-      if (cell.first_child()) {
+      if (cell.first_child() &&
+          (((limit_rows != 0) && (new_rows < limit_rows)) &&
+           ((limit_cols != 0) && (new_cols < limit_cols)))) {
         rows = new_rows;
         cols = new_cols;
       }

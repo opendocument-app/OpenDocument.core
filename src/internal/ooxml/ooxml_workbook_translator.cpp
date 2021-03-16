@@ -51,8 +51,8 @@ void fills_translator(pugi::xml_node in, std::ostream &out, Context &) {
   for (auto &&e : in.children()) {
     out << ".fill-" << i << " {";
 
-    if (const auto pattern_fill = e.child("pattern_fill"); pattern_fill) {
-      if (const auto bg_color = pattern_fill.child("bg_color"); bg_color) {
+    if (const auto pattern_fill = e.child("patternFill"); pattern_fill) {
+      if (const auto bg_color = pattern_fill.child("bgColor"); bg_color) {
         out << "background-color: #"
             << std::string(bg_color.attribute("rgb").as_string()).substr(2)
             << ";";
@@ -82,14 +82,14 @@ void cell_xfs_translator(pugi::xml_node in, std::ostream &out,
   for (auto &&e : in.children()) {
     const std::string name = "cellxf-" + std::to_string(i);
 
-    if (const auto apply_font = e.attribute("apply_font");
+    if (const auto apply_font = e.attribute("applyFont");
         apply_font && (std::strcmp(apply_font.as_string(), "true") == 0 ||
                        std::strcmp(apply_font.as_string(), "1") == 0)) {
       context.style_dependencies[name].push_back(
           std::string("font-") + e.attribute("fontId").as_string());
     }
 
-    if (const auto fill_id = e.attribute("fill_id"); fill_id) {
+    if (const auto fill_id = e.attribute("fillId"); fill_id) {
       context.style_dependencies[name].push_back(std::string("fill-") +
                                                  fill_id.as_string());
     }
@@ -103,7 +103,7 @@ void cell_xfs_translator(pugi::xml_node in, std::ostream &out,
 
     out << "." << name << " {";
 
-    if (const auto apply_alignment = e.attribute("apply_alignment");
+    if (const auto apply_alignment = e.attribute("applyAlignment");
         apply_alignment &&
         (std::strcmp(apply_alignment.as_string(), "true") == 0 ||
          std::strcmp(apply_alignment.as_string(), "1") == 0)) {
@@ -139,7 +139,7 @@ void workbook_translator::css(const pugi::xml_node &in, Context &context) {
     borders_translator(borders, out, context);
   }
 
-  if (const auto cell_xfs = in.child("cell_xfs"); cell_xfs) {
+  if (const auto cell_xfs = in.child("cellXfs"); cell_xfs) {
     cell_xfs_translator(cell_xfs, out, context);
   }
 }
