@@ -8,6 +8,11 @@
 #include <string>
 #include <vector>
 
+namespace odr {
+enum class FileCategory;
+enum class FileLocation;
+} // namespace odr
+
 namespace odr::internal::abstract {
 class File;
 class DecodedFile;
@@ -16,8 +21,6 @@ class DocumentFile;
 } // namespace odr::internal::abstract
 
 namespace odr::experimental {
-enum class FileCategory;
-enum class FileLocation;
 enum class EncryptionState;
 struct FileMeta;
 class ImageFile;

@@ -10,11 +10,11 @@ class xml_node;
 namespace odr::internal::odf {
 struct Context;
 
-namespace StyleTranslator {
-std::string escapeStyleName(const std::string &name);
-std::string escapeMasterStyleName(const std::string &name);
+namespace style_translator {
+std::string escape_style_name(const std::string &name);
+std::string escape_master_style_name(const std::string &name);
 void css(const pugi::xml_node &in, Context &context);
-} // namespace StyleTranslator
+} // namespace style_translator
 
 } // namespace odr::internal::odf
 

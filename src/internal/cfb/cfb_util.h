@@ -37,7 +37,7 @@ public:
   FileInCfb(std::shared_ptr<Archive> archive,
             const impl::CompoundFileEntry &entry);
 
-  [[nodiscard]] experimental::FileLocation location() const noexcept final;
+  [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
   [[nodiscard]] std::unique_ptr<std::istream> read() const final;
 

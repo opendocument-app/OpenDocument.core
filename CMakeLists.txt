@@ -73,11 +73,16 @@ add_library(odr-object OBJECT
         src/internal/odf/odf_translator_style.cpp
 
         src/internal/oldms/oldms_file.cpp
+        src/internal/oldms/oldms_translator.cpp
 
         src/internal/ooxml/ooxml_crypto.cpp
         src/internal/ooxml/ooxml_document.cpp
+        src/internal/ooxml/ooxml_document_translator.cpp
         src/internal/ooxml/ooxml_file.cpp
         src/internal/ooxml/ooxml_meta.cpp
+        src/internal/ooxml/ooxml_presentation_translator.cpp
+        src/internal/ooxml/ooxml_translator.cpp
+        src/internal/ooxml/ooxml_workbook_translator.cpp
         src/internal/ooxml/text/ooxml_text_elements.cpp
         src/internal/ooxml/text/ooxml_text_style.cpp
 

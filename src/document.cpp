@@ -56,16 +56,14 @@ open_impl(const std::string &path) {
 
     // legacy microsoft
     try {
-      // TODO
-      // return std::make_unique<oldms::LegacyMicrosoftTranslator>(filesystem);
+      return std::make_unique<oldms::LegacyMicrosoftTranslator>(filesystem);
     } catch (...) {
       // TODO
     }
 
     // encrypted ooxml
     try {
-      // TODO
-      // return std::make_unique<ooxml::OfficeOpenXmlTranslator>(filesystem);
+      return std::make_unique<ooxml::OfficeOpenXmlTranslator>(filesystem);
     } catch (...) {
       // TODO
     }

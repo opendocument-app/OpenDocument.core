@@ -6,8 +6,11 @@
 #include <optional>
 #include <string>
 
-namespace odr::experimental {
+namespace odr {
 enum class FileCategory;
+}
+
+namespace odr::experimental {
 
 struct FileMeta final {
   static FileType type_by_extension(const std::string &extension) noexcept;

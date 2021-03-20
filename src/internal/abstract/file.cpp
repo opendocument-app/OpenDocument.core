@@ -1,24 +1,24 @@
 #include <internal/abstract/document.h>
 #include <internal/abstract/file.h>
 #include <odr/experimental/document_meta.h>
-#include <odr/experimental/file_category.h>
+#include <odr/file_category.h>
 
 namespace odr::internal::abstract {
 
-experimental::FileCategory TextFile::file_category() const noexcept {
-  return experimental::FileCategory::TEXT;
+FileCategory TextFile::file_category() const noexcept {
+  return FileCategory::TEXT;
 }
 
-experimental::FileCategory ImageFile::file_category() const noexcept {
-  return experimental::FileCategory::IMAGE;
+FileCategory ImageFile::file_category() const noexcept {
+  return FileCategory::IMAGE;
 }
 
-experimental::FileCategory ArchiveFile::file_category() const noexcept {
-  return experimental::FileCategory::ARCHIVE;
+FileCategory ArchiveFile::file_category() const noexcept {
+  return FileCategory::ARCHIVE;
 }
 
-experimental::FileCategory DocumentFile::file_category() const noexcept {
-  return experimental::FileCategory::DOCUMENT;
+FileCategory DocumentFile::file_category() const noexcept {
+  return FileCategory::DOCUMENT;
 }
 
 experimental::DocumentType DocumentFile::document_type() const {
