@@ -13,10 +13,10 @@ OpenDocumentFile::OpenDocumentFile(
   if (m_files->exists("META-INF/manifest.xml")) {
     auto manifest = util::xml::parse(*m_files, "META-INF/manifest.xml");
 
-    m_file_meta = parse_file_meta(*m_files, &manifest);
+    m_file_meta = parse_file_meta(*m_files, &manifest, true);
     m_manifest = parse_manifest(manifest);
   } else {
-    m_file_meta = parse_file_meta(*m_files, nullptr);
+    m_file_meta = parse_file_meta(*m_files, nullptr, true);
   }
 
   if (m_file_meta.password_encrypted) {

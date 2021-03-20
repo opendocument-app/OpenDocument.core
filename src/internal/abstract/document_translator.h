@@ -3,8 +3,11 @@
 
 namespace odr {
 struct HtmlConfig;
-struct FileMeta;
 } // namespace odr
+
+namespace odr::experimental {
+struct FileMeta;
+}
 
 namespace odr::internal::common {
 class Path;
@@ -16,7 +19,7 @@ class DocumentTranslator {
 public:
   virtual ~DocumentTranslator() = default;
 
-  [[nodiscard]] virtual const FileMeta &meta() const noexcept = 0;
+  [[nodiscard]] virtual const experimental::FileMeta &meta() const noexcept = 0;
 
   [[nodiscard]] virtual bool decrypted() const noexcept = 0;
   [[nodiscard]] virtual bool translatable() const noexcept = 0;

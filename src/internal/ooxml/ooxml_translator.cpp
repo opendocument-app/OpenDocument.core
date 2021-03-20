@@ -159,7 +159,7 @@ OfficeOpenXmlTranslator::~OfficeOpenXmlTranslator() = default;
 OfficeOpenXmlTranslator &OfficeOpenXmlTranslator::operator=(
     OfficeOpenXmlTranslator &&) noexcept = default;
 
-const FileMeta &OfficeOpenXmlTranslator::meta() const noexcept {
+const experimental::FileMeta &OfficeOpenXmlTranslator::meta() const noexcept {
   return m_meta;
 }
 

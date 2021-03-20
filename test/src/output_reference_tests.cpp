@@ -7,9 +7,9 @@
 #include <nlohmann/json.hpp>
 #include <odr/experimental/document.h>
 #include <odr/experimental/file.h>
-#include <odr/experimental/file_category.h>
 #include <odr/experimental/file_meta.h>
 #include <odr/experimental/html.h>
+#include <odr/file_category.h>
 #include <odr/html_config.h>
 #include <test_util.h>
 #include <utility>

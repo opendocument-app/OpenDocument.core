@@ -4,7 +4,7 @@
 #include <internal/abstract/document_translator.h>
 #include <internal/ooxml/ooxml_translator_context.h>
 #include <memory>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {
@@ -23,7 +23,7 @@ public:
   OfficeOpenXmlTranslator &operator=(const OfficeOpenXmlTranslator &) = delete;
   OfficeOpenXmlTranslator &operator=(OfficeOpenXmlTranslator &&) noexcept;
 
-  [[nodiscard]] const FileMeta &meta() const noexcept final;
+  [[nodiscard]] const experimental::FileMeta &meta() const noexcept final;
 
   [[nodiscard]] bool decrypted() const noexcept final;
   [[nodiscard]] bool translatable() const noexcept final;
@@ -42,7 +42,7 @@ public:
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
 
-  FileMeta m_meta;
+  experimental::FileMeta m_meta;
 
   bool m_decrypted{false};
 

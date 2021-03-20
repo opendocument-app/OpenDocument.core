@@ -13,8 +13,11 @@
 
 namespace odr {
 struct HtmlConfig;
-struct FileMeta;
 } // namespace odr
+
+namespace odr::experimental {
+struct FileMeta;
+}
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -24,7 +27,7 @@ namespace odr::internal::ooxml {
 
 struct Context {
   const HtmlConfig *config;
-  const FileMeta *meta;
+  const experimental::FileMeta *meta;
 
   const abstract::ReadableFilesystem *filesystem;
 

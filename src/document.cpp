@@ -1,3 +1,4 @@
+#include <experimental/interface.h>
 #include <glog/logging.h>
 #include <internal/abstract/document_translator.h>
 #include <internal/abstract/filesystem.h>
@@ -96,7 +97,7 @@ FileType Document::type(const std::string &path) {
 
 FileMeta Document::meta(const std::string &path) {
   const auto document = open_impl(path);
-  return document->meta();
+  return experimental::convert(document->meta());
 }
 
 Document::Document(const std::string &path) : m_impl(open_impl(path)) {}
@@ -112,9 +113,13 @@ Document &Document::operator=(Document &&) noexcept = default;
 
 FileType Document::type() const noexcept { return m_impl->meta().type; }
 
-bool Document::encrypted() const noexcept { return m_impl->meta().encrypted; }
+bool Document::encrypted() const noexcept {
+  return m_impl->meta().password_encrypted;
+}
 
-const FileMeta &Document::meta() const noexcept { return m_impl->meta(); }
+const FileMeta &Document::meta() const noexcept {
+  return experimental::convert(m_impl->meta());
+}
 
 bool Document::decrypted() const noexcept { return m_impl->decrypted(); }
 
@@ -177,7 +182,7 @@ FileType DocumentNoExcept::type(const std::string &path) noexcept {
 FileMeta DocumentNoExcept::meta(const std::string &path) noexcept {
   try {
     auto document = open_impl(path);
-    return document->meta();
+    return experimental::convert(document->meta());
   } catch (...) {
     LOG(ERROR) << "readMeta failed";
     return {};

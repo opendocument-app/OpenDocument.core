@@ -5,7 +5,7 @@
 #include <internal/odf/odf_manifest.h>
 #include <internal/odf/odf_translator_context.h>
 #include <memory>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {
@@ -28,7 +28,7 @@ public:
   OpenDocumentTranslator &operator=(const OpenDocumentTranslator &) = delete;
   OpenDocumentTranslator &operator=(OpenDocumentTranslator &&) noexcept;
 
-  [[nodiscard]] const FileMeta &meta() const noexcept final;
+  [[nodiscard]] const experimental::FileMeta &meta() const noexcept final;
   [[nodiscard]] const abstract::ReadableFilesystem &filesystem() const noexcept;
 
   [[nodiscard]] bool decrypted() const noexcept final;
@@ -48,7 +48,7 @@ public:
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
 
-  FileMeta m_meta;
+  experimental::FileMeta m_meta;
   Manifest m_manifest;
 
   bool m_decrypted{false};

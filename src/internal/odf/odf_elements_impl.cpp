@@ -516,7 +516,7 @@ experimental::TableDimensions Table::dimensions() const {
   std::uint32_t rows;
   std::uint32_t columns;
 
-  estimate_table_dimensions(m_node, rows, columns);
+  estimate_table_dimensions(m_node, rows, columns, 0, 0);
 
   return {rows, columns};
 }

@@ -53,8 +53,7 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
 
 experimental::FileMeta
 parse_file_meta(const abstract::ReadableFilesystem &filesystem,
-                         const pugi::xml_document *manifest,
-                         const bool decrypted) {
+                const pugi::xml_document *manifest, const bool decrypted) {
   experimental::FileMeta result;
 
   if (!filesystem.is_file("content.xml")) {
@@ -82,11 +81,87 @@ parse_file_meta(const abstract::ReadableFilesystem &filesystem,
     }
   }
 
+  experimental::DocumentMeta document_meta;
+
+  if (result.password_encrypted == decrypted) {
+    if (filesystem.is_file("meta.xml")) {
+      const auto meta_xml = util::xml::parse(filesystem, "meta.xml");
+
+      const pugi::xml_node statistics = meta_xml.child("office:document-meta")
+                                            .child("office:meta")
+                                            .child("meta:document-statistic");
+      if (statistics) {
+        switch (result.type) {
+        case FileType::OPENDOCUMENT_TEXT: {
+          const auto page_count = statistics.attribute("meta:page-count");
+          if (!page_count) {
+            break;
+          }
+          document_meta.entry_count = page_count.as_uint();
+        } break;
+        case FileType::OPENDOCUMENT_PRESENTATION: {
+          document_meta.entry_count = 0;
+        } break;
+        case FileType::OPENDOCUMENT_SPREADSHEET: {
+          const auto table_count = statistics.attribute("meta:table-count");
+          if (!table_count) {
+            break;
+          }
+          document_meta.entry_count = table_count.as_uint();
+        } break;
+        case FileType::OPENDOCUMENT_GRAPHICS: {
+        } break;
+        default:
+          break;
+        }
+      }
+    }
+
+    // TODO dont load content twice (happens in case of translation)
+    const auto content_xml = util::xml::parse(filesystem, "content.xml");
+    const auto body =
+        content_xml.child("office:document-content").child("office:body");
+    if (!body) {
+      throw NoOpenDocumentFile();
+    }
+
+    switch (result.type) {
+    case FileType::OPENDOCUMENT_GRAPHICS:
+    case FileType::OPENDOCUMENT_PRESENTATION: {
+      document_meta.entry_count = 0;
+      for (auto &&e : body.select_nodes("//draw:page")) {
+        ++document_meta.entry_count;
+        experimental::DocumentMeta::Entry entry;
+        entry.name = e.node().attribute("draw:name").as_string();
+        document_meta.entries.emplace_back(entry);
+      }
+    } break;
+    case FileType::OPENDOCUMENT_SPREADSHEET: {
+      document_meta.entry_count = 0;
+      for (auto &&e : body.select_nodes("//table:table")) {
+        ++document_meta.entry_count;
+        experimental::DocumentMeta::Entry entry;
+        entry.name = e.node().attribute("table:name").as_string();
+        // TODO configuration
+        estimate_table_dimensions(e.node(), entry.table_dimensions->rows,
+                                  entry.table_dimensions->columns, 10000, 500);
+        document_meta.entries.emplace_back(entry);
+      }
+    } break;
+    default:
+      break;
+    }
+  }
+
+  result.document_meta = std::move(document_meta);
+
   return result;
 }
 
 void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
-                               std::uint32_t &cols) {
+                               std::uint32_t &cols,
+                               const std::uint32_t limit_rows,
+                               const std::uint32_t limit_cols) {
   rows = 0;
   cols = 0;
 
@@ -112,7 +187,9 @@ void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
 
       const auto new_rows = cursor.row();
       const auto new_cols = std::max(cols, cursor.col());
-      if (cell.first_child()) {
+      if (cell.first_child() &&
+          (((limit_rows != 0) && (new_rows < limit_rows)) &&
+           ((limit_cols != 0) && (new_cols < limit_cols)))) {
         rows = new_rows;
         cols = new_cols;
       }

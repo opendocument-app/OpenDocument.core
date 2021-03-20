@@ -11,7 +11,7 @@
 #include <internal/svm/svm_to_svg.h>
 #include <internal/util/stream_util.h>
 #include <internal/util/string_util.h>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 #include <odr/html_config.h>
 #include <pugixml.hpp>
 #include <string>
@@ -255,9 +255,11 @@ void table_translator(const pugi::xml_node &in, std::ostream &out,
       context.config->table_limit_by_dimensions) {
     const common::TablePosition end{
         std::min(context.config->table_limit_rows,
-                 context.meta->entries[context.entry].row_count),
+                 context.meta->document_meta->entries[context.entry]
+                     .table_dimensions->rows),
         std::min(context.config->table_limit_cols,
-                 context.meta->entries[context.entry].column_count)};
+                 context.meta->document_meta->entries[context.entry]
+                     .table_dimensions->columns)};
 
     context.table_range = {context.table_range.from(), end};
   }

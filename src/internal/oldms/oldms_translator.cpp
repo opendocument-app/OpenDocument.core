@@ -4,13 +4,13 @@
 #include <internal/oldms/oldms_translator.h>
 #include <memory>
 #include <odr/exceptions.h>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 #include <unordered_map>
 
 namespace odr::internal::oldms {
 
 namespace {
-FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
+experimental::FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
@@ -23,7 +23,7 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
       {"/Workbook", FileType::LEGACY_EXCEL_WORKSHEETS},
   };
 
-  FileMeta result;
+  experimental::FileMeta result;
 
   for (auto &&t : TYPES) {
     if (storage.is_file(t.first)) {
@@ -53,7 +53,7 @@ LegacyMicrosoftTranslator::~LegacyMicrosoftTranslator() = default;
 LegacyMicrosoftTranslator &LegacyMicrosoftTranslator::operator=(
     LegacyMicrosoftTranslator &&) noexcept = default;
 
-const FileMeta &LegacyMicrosoftTranslator::meta() const noexcept {
+const experimental::FileMeta &LegacyMicrosoftTranslator::meta() const noexcept {
   return m_meta;
 }
 

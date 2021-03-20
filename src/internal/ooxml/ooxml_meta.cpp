@@ -3,25 +3,26 @@
 #include <internal/ooxml/ooxml_meta.h>
 #include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 
 namespace odr::internal::ooxml {
 
-FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
+experimental::FileMeta
+parse_file_meta(abstract::ReadableFilesystem &filesystem) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       {"word/document.xml", FileType::OFFICE_OPEN_XML_DOCUMENT},
       {"ppt/presentation.xml", FileType::OFFICE_OPEN_XML_PRESENTATION},
       {"xl/workbook.xml", FileType::OFFICE_OPEN_XML_WORKBOOK},
   };
 
-  FileMeta result;
+  experimental::FileMeta result;
 
   if (filesystem.is_file("/EncryptionInfo") &&
       filesystem.is_file("/EncryptedPackage")) {
     result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;
-    result.encrypted = true;
+    result.password_encrypted = true;
     return result;
   }
 
@@ -32,34 +33,38 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
     }
   }
 
+  experimental::DocumentMeta document_meta;
+
   // TODO dont load content twice (happens in case of translation)
   switch (result.type) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT:
     break;
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     const auto ppt = util::xml::parse(filesystem, "ppt/presentation.xml");
-    result.entry_count = 0;
+    document_meta.entry_count = 0;
     for (auto &&e : ppt.select_nodes("//p:sldId")) {
-      ++result.entry_count;
-      FileMeta::Entry entry;
+      ++document_meta.entry_count;
+      experimental::DocumentMeta::Entry entry;
       // TODO
-      result.entries.emplace_back(entry);
+      document_meta.entries.emplace_back(entry);
     }
   } break;
   case FileType::OFFICE_OPEN_XML_WORKBOOK: {
     const auto xls = util::xml::parse(filesystem, "xl/workbook.xml");
-    result.entry_count = 0;
+    document_meta.entry_count = 0;
     for (auto &&e : xls.select_nodes("//sheet")) {
-      ++result.entry_count;
-      FileMeta::Entry entry;
+      ++document_meta.entry_count;
+      experimental::DocumentMeta::Entry entry;
       entry.name = e.node().attribute("name").as_string();
       // TODO dimension
-      result.entries.emplace_back(entry);
+      document_meta.entries.emplace_back(entry);
     }
   } break;
   default:
     throw UnknownFileType();
   }
+
+  result.document_meta = std::move(document_meta);
 
   return result;
 }

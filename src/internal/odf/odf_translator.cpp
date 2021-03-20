@@ -145,7 +145,9 @@ OpenDocumentTranslator::~OpenDocumentTranslator() = default;
 OpenDocumentTranslator &
 OpenDocumentTranslator::operator=(OpenDocumentTranslator &&) noexcept = default;
 
-const FileMeta &OpenDocumentTranslator::meta() const noexcept { return m_meta; }
+const experimental::FileMeta &OpenDocumentTranslator::meta() const noexcept {
+  return m_meta;
+}
 
 const abstract::ReadableFilesystem &
 OpenDocumentTranslator::filesystem() const noexcept {
@@ -162,7 +164,7 @@ bool OpenDocumentTranslator::savable(const bool encrypted) const noexcept {
   if (encrypted) {
     return false;
   }
-  return !m_meta.encrypted;
+  return !m_meta.password_encrypted;
 }
 
 bool OpenDocumentTranslator::decrypt(const std::string &password) {

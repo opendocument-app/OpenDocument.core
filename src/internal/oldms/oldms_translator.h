@@ -3,7 +3,7 @@
 
 #include <internal/abstract/document_translator.h>
 #include <memory>
-#include <odr/file_meta.h>
+#include <odr/experimental/file_meta.h>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -22,7 +22,7 @@ public:
   operator=(const LegacyMicrosoftTranslator &) = delete;
   LegacyMicrosoftTranslator &operator=(LegacyMicrosoftTranslator &&) noexcept;
 
-  [[nodiscard]] const FileMeta &meta() const noexcept final;
+  [[nodiscard]] const experimental::FileMeta &meta() const noexcept final;
 
   [[nodiscard]] bool decrypted() const noexcept final;
   [[nodiscard]] bool translatable() const noexcept final;
@@ -39,7 +39,7 @@ public:
   void save(const common::Path &path, const std::string &password) const final;
 
 private:
-  FileMeta m_meta;
+  experimental::FileMeta m_meta;
 };
 
 } // namespace odr::internal::oldms
