@@ -8,10 +8,6 @@
 
 namespace odr::internal::abstract {
 class Document;
-class TextDocument;
-class Presentation;
-class Spreadsheet;
-class Drawing;
 } // namespace odr::internal::abstract
 
 namespace odr::experimental {
@@ -29,7 +25,6 @@ class Drawing;
 class Document {
 public:
   [[nodiscard]] DocumentType document_type() const noexcept;
-  [[nodiscard]] DocumentMeta document_meta() const noexcept;
 
   [[nodiscard]] bool editable() const noexcept;
   [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
@@ -60,9 +55,7 @@ public:
   [[nodiscard]] ElementRange content() const;
 
 private:
-  std::shared_ptr<internal::abstract::TextDocument> m_text_document;
-
-  explicit TextDocument(std::shared_ptr<internal::abstract::TextDocument>);
+  explicit TextDocument(std::shared_ptr<internal::abstract::Document>);
 
   friend Document;
 };
@@ -74,9 +67,7 @@ public:
   [[nodiscard]] SlideRange slides() const;
 
 private:
-  std::shared_ptr<internal::abstract::Presentation> m_presentation;
-
-  explicit Presentation(std::shared_ptr<internal::abstract::Presentation>);
+  explicit Presentation(std::shared_ptr<internal::abstract::Document>);
 
   friend Document;
 };
@@ -88,9 +79,7 @@ public:
   [[nodiscard]] SheetRange sheets() const;
 
 private:
-  std::shared_ptr<internal::abstract::Spreadsheet> m_spreadsheet;
-
-  explicit Spreadsheet(std::shared_ptr<internal::abstract::Spreadsheet>);
+  explicit Spreadsheet(std::shared_ptr<internal::abstract::Document>);
 
   friend Document;
 };
@@ -102,9 +91,7 @@ public:
   [[nodiscard]] PageRange pages() const;
 
 private:
-  std::shared_ptr<internal::abstract::Drawing> m_drawing;
-
-  explicit Drawing(std::shared_ptr<internal::abstract::Drawing>);
+  explicit Drawing(std::shared_ptr<internal::abstract::Document>);
 
   friend Document;
 };

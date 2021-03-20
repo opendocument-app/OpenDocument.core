@@ -1,7 +1,6 @@
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
-#include <internal/common/property.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_elements_impl.h>
 #include <internal/odf/odf_meta.h>

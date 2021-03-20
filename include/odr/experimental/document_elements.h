@@ -5,43 +5,19 @@
 #include <optional>
 #include <string>
 
+namespace odr::experimental {
+enum class ElementProperty;
+} // namespace odr::experimental
+
 namespace odr::internal::abstract {
-class Element;
-class Slide;
-class Sheet;
-class Page;
-class TextElement;
-class Paragraph;
-class Span;
-class Link;
-class Bookmark;
-class List;
-class ListItem;
-class Table;
-class TableColumn;
-class TableRow;
-class TableCell;
-class Frame;
-class Image;
-class DrawingElement;
-class Rect;
-class Line;
-class Circle;
+class Document;
 } // namespace odr::internal::abstract
 
 namespace odr::experimental {
 class File;
+class Document;
 struct TableDimensions;
-class Property;
 enum class ElementType;
-
-class PageStyle;
-class TextStyle;
-class ParagraphStyle;
-class TableStyle;
-class TableColumnStyle;
-class TableCellStyle;
-class DrawingStyle;
 
 class Element;
 class SlideElement;
@@ -63,6 +39,7 @@ class ImageElement;
 class RectElement;
 class LineElement;
 class CircleElement;
+
 template <typename E> class ElementRangeTemplate;
 using ElementRange = ElementRangeTemplate<Element>;
 using SlideRange = ElementRangeTemplate<SlideElement>;
@@ -74,12 +51,11 @@ using TableCellRange = ElementRangeTemplate<TableCellElement>;
 
 class Element {
 public:
-  Element();
-  explicit Element(std::shared_ptr<const internal::abstract::Element> impl);
-
   bool operator==(const Element &rhs) const;
   bool operator!=(const Element &rhs) const;
   explicit operator bool() const;
+
+  [[nodiscard]] ElementType type() const;
 
   [[nodiscard]] Element parent() const;
   [[nodiscard]] Element first_child() const;
@@ -88,7 +64,23 @@ public:
 
   [[nodiscard]] ElementRange children() const;
 
-  [[nodiscard]] ElementType type() const;
+  [[nodiscard]] std::any
+  element_property(experimental::ElementProperty property) const;
+  [[nodiscard]] const char *
+  element_string_property(experimental::ElementProperty property) const;
+  [[nodiscard]] std::uint32_t
+  element_uint32_property(experimental::ElementProperty property) const;
+  [[nodiscard]] bool
+  element_bool_property(experimental::ElementProperty property) const;
+  [[nodiscard]] const char *element_optional_string_property(
+      experimental::ElementProperty property) const;
+
+  void set_element_property(experimental::ElementProperty property,
+                            const std::any &value) const;
+  void set_element_string_property(experimental::ElementProperty property,
+                                   const char *value) const;
+
+  void remove_element_property(experimental::ElementProperty property) const;
 
   [[nodiscard]] SlideElement slide() const;
   [[nodiscard]] SheetElement sheet() const;
@@ -112,8 +104,16 @@ public:
   [[nodiscard]] LineElement line() const;
   [[nodiscard]] CircleElement circle() const;
 
-private:
-  std::shared_ptr<const internal::abstract::Element> m_impl;
+protected:
+  std::shared_ptr<const internal::abstract::Document> m_impl;
+  std::uint64_t m_id{0};
+
+  Element();
+  Element(std::shared_ptr<const internal::abstract::Document> impl,
+          std::uint64_t id);
+
+  friend Document;
+  template <typename E> friend class ElementRangeTemplate;
 };
 
 template <typename E> class ElementIterator final {
@@ -155,26 +155,23 @@ private:
 
 class SlideElement final : public Element {
 public:
-  SlideElement();
-  explicit SlideElement(std::shared_ptr<const internal::abstract::Slide> impl);
-
   [[nodiscard]] SlideElement previous_sibling() const;
   [[nodiscard]] SlideElement next_sibling() const;
 
   [[nodiscard]] std::string name() const;
   [[nodiscard]] std::string notes() const;
 
-  [[nodiscard]] PageStyle page_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::Slide> m_impl;
+  SlideElement();
+  SlideElement(std::shared_ptr<const internal::abstract::Document> impl,
+               std::uint64_t id);
+
+  friend Element;
+  template <typename E> friend class ElementRangeTemplate;
 };
 
 class SheetElement final : public Element {
 public:
-  SheetElement();
-  explicit SheetElement(std::shared_ptr<const internal::abstract::Sheet> impl);
-
   [[nodiscard]] SheetElement previous_sibling() const;
   [[nodiscard]] SheetElement next_sibling() const;
 
@@ -182,142 +179,138 @@ public:
   [[nodiscard]] TableElement table() const;
 
 private:
-  std::shared_ptr<const internal::abstract::Sheet> m_impl;
+  SheetElement();
+  SheetElement(std::shared_ptr<const internal::abstract::Document> impl,
+               std::uint64_t id);
+
+  friend Element;
+  template <typename E> friend class ElementRangeTemplate;
 };
 
 class PageElement final : public Element {
 public:
-  PageElement();
-  explicit PageElement(std::shared_ptr<const internal::abstract::Page> impl);
-
   [[nodiscard]] PageElement previous_sibling() const;
   [[nodiscard]] PageElement next_sibling() const;
 
   [[nodiscard]] std::string name() const;
 
-  [[nodiscard]] PageStyle page_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::Page> m_impl;
+  PageElement();
+  PageElement(std::shared_ptr<const internal::abstract::Document> impl,
+              std::uint64_t id);
+
+  friend Element;
+  template <typename E> friend class ElementRangeTemplate;
 };
 
 class TextElement final : public Element {
 public:
-  TextElement();
-  explicit TextElement(
-      std::shared_ptr<const internal::abstract::TextElement> impl);
-
   [[nodiscard]] std::string string() const;
 
 private:
-  std::shared_ptr<const internal::abstract::TextElement> m_impl;
+  TextElement();
+  TextElement(std::shared_ptr<const internal::abstract::Document> impl,
+              std::uint64_t id);
+
+  friend Element;
 };
 
 class ParagraphElement final : public Element {
 public:
-  ParagraphElement();
-  explicit ParagraphElement(
-      std::shared_ptr<const internal::abstract::Paragraph> impl);
-
-  [[nodiscard]] ParagraphStyle paragraph_style() const;
-  [[nodiscard]] TextStyle text_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::Paragraph> m_impl;
+  ParagraphElement();
+  ParagraphElement(std::shared_ptr<const internal::abstract::Document> impl,
+                   std::uint64_t id);
+
+  friend Element;
 };
 
 class SpanElement final : public Element {
 public:
-  SpanElement();
-  explicit SpanElement(std::shared_ptr<const internal::abstract::Span> impl);
-
-  [[nodiscard]] TextStyle text_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::Span> m_impl;
+  SpanElement();
+  SpanElement(std::shared_ptr<const internal::abstract::Document> impl,
+              std::uint64_t id);
+
+  friend Element;
 };
 
 class LinkElement final : public Element {
 public:
-  LinkElement();
-  explicit LinkElement(std::shared_ptr<const internal::abstract::Link> impl);
-
-  [[nodiscard]] TextStyle text_style() const;
-
   [[nodiscard]] std::string href() const;
 
 private:
-  std::shared_ptr<const internal::abstract::Link> m_impl;
+  LinkElement();
+  LinkElement(std::shared_ptr<const internal::abstract::Document> impl,
+              std::uint64_t id);
+
+  friend Element;
 };
 
 class BookmarkElement final : public Element {
 public:
-  BookmarkElement();
-  explicit BookmarkElement(
-      std::shared_ptr<const internal::abstract::Bookmark> impl);
-
   [[nodiscard]] std::string name() const;
 
 private:
-  std::shared_ptr<const internal::abstract::Bookmark> m_impl;
+  BookmarkElement();
+  BookmarkElement(std::shared_ptr<const internal::abstract::Document> impl,
+                  std::uint64_t id);
+
+  friend Element;
 };
 
 class ListElement final : public Element {
 public:
-  ListElement();
-  explicit ListElement(std::shared_ptr<const internal::abstract::List> impl);
-
 private:
-  std::shared_ptr<const internal::abstract::List> m_impl;
+  ListElement();
+  ListElement(std::shared_ptr<const internal::abstract::Document> impl,
+              std::uint64_t id);
+
+  friend Element;
 };
 
 class ListItemElement final : public Element {
 public:
-  ListItemElement();
-  explicit ListItemElement(
-      std::shared_ptr<const internal::abstract::ListItem> impl);
-
 private:
-  std::shared_ptr<const internal::abstract::ListItem> m_impl;
+  ListItemElement();
+  ListItemElement(std::shared_ptr<const internal::abstract::Document> impl,
+                  std::uint64_t id);
+
+  friend Element;
 };
 
 class TableElement final : public Element {
 public:
-  TableElement();
-  explicit TableElement(std::shared_ptr<const internal::abstract::Table> impl);
-
   [[nodiscard]] TableDimensions dimensions() const;
 
   [[nodiscard]] TableColumnRange columns() const;
   [[nodiscard]] TableRowRange rows() const;
 
-  [[nodiscard]] TableStyle table_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::Table> m_impl;
+  TableElement();
+  TableElement(std::shared_ptr<const internal::abstract::Document> impl,
+               std::uint64_t id);
+
+  friend Element;
+  friend SheetElement;
 };
 
 class TableColumnElement final : public Element {
 public:
-  TableColumnElement();
-  explicit TableColumnElement(
-      std::shared_ptr<const internal::abstract::TableColumn> impl);
-
   [[nodiscard]] TableColumnElement previous_sibling() const;
   [[nodiscard]] TableColumnElement next_sibling() const;
 
-  [[nodiscard]] TableColumnStyle table_column_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::TableColumn> m_impl;
+  TableColumnElement();
+  TableColumnElement(std::shared_ptr<const internal::abstract::Document> impl,
+                     std::uint64_t id);
+
+  friend Element;
+  template <typename E> friend class ElementRangeTemplate;
 };
 
 class TableRowElement final : public Element {
 public:
-  TableRowElement();
-  explicit TableRowElement(
-      std::shared_ptr<const internal::abstract::TableRow> impl);
-
   [[nodiscard]] TableCellElement first_child() const;
   [[nodiscard]] TableRowElement previous_sibling() const;
   [[nodiscard]] TableRowElement next_sibling() const;
@@ -325,101 +318,104 @@ public:
   [[nodiscard]] TableCellRange cells() const;
 
 private:
-  std::shared_ptr<const internal::abstract::TableRow> m_impl;
+  TableRowElement();
+  TableRowElement(std::shared_ptr<const internal::abstract::Document> impl,
+                  std::uint64_t id);
+
+  friend Element;
+  template <typename E> friend class ElementRangeTemplate;
 };
 
 class TableCellElement final : public Element {
 public:
-  TableCellElement();
-  explicit TableCellElement(
-      std::shared_ptr<const internal::abstract::TableCell> impl);
-
   [[nodiscard]] TableCellElement previous_sibling() const;
   [[nodiscard]] TableCellElement next_sibling() const;
 
   [[nodiscard]] std::uint32_t row_span() const;
   [[nodiscard]] std::uint32_t column_span() const;
 
-  [[nodiscard]] TableCellStyle table_cell_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::TableCell> m_impl;
+  TableCellElement();
+  TableCellElement(std::shared_ptr<const internal::abstract::Document> impl,
+                   std::uint64_t id);
+
+  friend Element;
+  template <typename E> friend class ElementRangeTemplate;
+  friend TableRowElement;
 };
 
 class FrameElement final : public Element {
 public:
-  FrameElement();
-  explicit FrameElement(std::shared_ptr<const internal::abstract::Frame> impl);
-
-  [[nodiscard]] Property anchor_type() const;
-  [[nodiscard]] Property width() const;
-  [[nodiscard]] Property height() const;
-  [[nodiscard]] Property z_index() const;
+  [[nodiscard]] std::string anchor_type() const;
+  [[nodiscard]] std::string width() const;
+  [[nodiscard]] std::string height() const;
+  [[nodiscard]] std::string z_index() const;
 
 private:
-  std::shared_ptr<const internal::abstract::Frame> m_impl;
+  FrameElement();
+  FrameElement(std::shared_ptr<const internal::abstract::Document> impl,
+               std::uint64_t id);
+
+  friend Element;
 };
 
 class ImageElement final : public Element {
 public:
-  ImageElement();
-  explicit ImageElement(std::shared_ptr<const internal::abstract::Image> impl);
-
   [[nodiscard]] bool internal() const;
   [[nodiscard]] std::string href() const;
   [[nodiscard]] File image_file() const;
 
 private:
-  std::shared_ptr<const internal::abstract::Image> m_impl;
+  ImageElement();
+  ImageElement(std::shared_ptr<const internal::abstract::Document> impl,
+               std::uint64_t id);
+
+  friend Element;
 };
 
 class RectElement final : public Element {
 public:
-  RectElement();
-  explicit RectElement(std::shared_ptr<const internal::abstract::Rect> impl);
-
   [[nodiscard]] std::string x() const;
   [[nodiscard]] std::string y() const;
   [[nodiscard]] std::string width() const;
   [[nodiscard]] std::string height() const;
 
-  [[nodiscard]] DrawingStyle drawing_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::Rect> m_impl;
+  RectElement();
+  RectElement(std::shared_ptr<const internal::abstract::Document> impl,
+              std::uint64_t id);
+
+  friend Element;
 };
 
 class LineElement final : public Element {
 public:
-  LineElement();
-  explicit LineElement(std::shared_ptr<const internal::abstract::Line> impl);
-
   [[nodiscard]] std::string x1() const;
   [[nodiscard]] std::string y1() const;
   [[nodiscard]] std::string x2() const;
   [[nodiscard]] std::string y2() const;
 
-  [[nodiscard]] DrawingStyle drawing_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::Line> m_impl;
+  LineElement();
+  LineElement(std::shared_ptr<const internal::abstract::Document> impl,
+              std::uint64_t id);
+
+  friend Element;
 };
 
 class CircleElement final : public Element {
 public:
-  CircleElement();
-  explicit CircleElement(
-      std::shared_ptr<const internal::abstract::Circle> impl);
-
   [[nodiscard]] std::string x() const;
   [[nodiscard]] std::string y() const;
   [[nodiscard]] std::string width() const;
   [[nodiscard]] std::string height() const;
 
-  [[nodiscard]] DrawingStyle drawing_style() const;
-
 private:
-  std::shared_ptr<const internal::abstract::Circle> m_impl;
+  CircleElement();
+  CircleElement(std::shared_ptr<const internal::abstract::Document> impl,
+                std::uint64_t id);
+
+  friend Element;
 };
 
 } // namespace odr::experimental

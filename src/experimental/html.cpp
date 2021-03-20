@@ -6,7 +6,6 @@
 #include <internal/svm/svm_to_svg.h>
 #include <internal/util/stream_util.h>
 #include <nlohmann/json.hpp>
-#include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/experimental/document.h>
 #include <odr/experimental/document_elements.h>

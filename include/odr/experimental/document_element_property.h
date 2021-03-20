@@ -1,0 +1,69 @@
+#ifndef ODR_EXPERIMENTAL_ELEMENT_PROPERTY_H
+#define ODR_EXPERIMENTAL_ELEMENT_PROPERTY_H
+
+namespace odr::experimental {
+
+// TODO the property handle could reflect the type
+// TODO it might be possible to strongly type these properties
+enum class ElementProperty {
+  NAME,
+  NOTES,
+  TEXT,
+  HREF,
+  ANCHOR_TYPE,
+
+  X,
+  Y,
+  WIDTH,
+  HEIGHT,
+
+  X1,
+  Y1,
+  X2,
+  Y2,
+
+  Z_INDEX,
+
+  TABLE_ROW_COUNT,
+  TABLE_COLUMN_COUNT,
+  TABLE_CELL_ROW_SPAN,
+  TABLE_CELL_COLUMN_SPAN,
+
+  MARGIN_TOP,
+  MARGIN_BOTTOM,
+  MARGIN_LEFT,
+  MARGIN_RIGHT,
+
+  PADDING_TOP,
+  PADDING_BOTTOM,
+  PADDING_LEFT,
+  PADDING_RIGHT,
+
+  BORDER_TOP,
+  BORDER_BOTTOM,
+  BORDER_LEFT,
+  BORDER_RIGHT,
+
+  PRINT_ORIENTATION,
+
+  FONT_NAME,
+  FONT_SIZE,
+  FONT_WEIGHT,
+  FONT_STYLE,
+  FONT_COLOR,
+
+  BACKGROUND_COLOR,
+
+  TEXT_ALIGN,
+
+  STROKE_WIDTH,
+  STROKE_COLOR,
+  FILL_COLOR,
+  VERTICAL_ALIGN,
+
+  IMAGE_INTERNAL,
+};
+
+} // namespace odr::experimental
+
+#endif // ODR_EXPERIMENTAL_ELEMENT_PROPERTY_H

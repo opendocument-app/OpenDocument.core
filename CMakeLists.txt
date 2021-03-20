@@ -28,7 +28,6 @@ add_library(odr-object OBJECT
         src/experimental/document.cpp
         src/experimental/document_elements.cpp
         src/experimental/document_meta.cpp
-        src/experimental/document_style.cpp
         src/experimental/file.cpp
         src/experimental/file_meta.cpp
         src/experimental/file_no_except.cpp
@@ -36,13 +35,9 @@ add_library(odr-object OBJECT
         src/experimental/interface.cpp
         src/experimental/open_document_reader.cpp
         src/experimental/open_strategy.cpp
-        src/experimental/property.cpp
         src/experimental/table_dimensions.cpp
 
-        src/internal/abstract/document.cpp
-        src/internal/abstract/document_elements.cpp
         src/internal/abstract/file.cpp
-        src/internal/abstract/property.cpp
 
         src/internal/cfb/cfb_archive.cpp
         src/internal/cfb/cfb_impl.cpp
@@ -53,7 +48,6 @@ add_library(odr-object OBJECT
         src/internal/common/filesystem.cpp
         src/internal/common/html.cpp
         src/internal/common/path.cpp
-        src/internal/common/property.cpp
         src/internal/common/table_cursor.cpp
         src/internal/common/table_position.cpp
         src/internal/common/table_range.cpp
