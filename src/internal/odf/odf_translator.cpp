@@ -15,9 +15,11 @@
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
 #include <nlohmann/json.hpp>
+#include <odr/exceptions.h>
 #include <odr/experimental/file_meta.h>
 #include <odr/html_config.h>
 #include <pugixml.hpp>
+#include <sstream>
 
 namespace odr::internal::odf {
 
@@ -25,42 +27,49 @@ namespace {
 void generate_style(std::ofstream &out, Context &context) {
   out << common::Html::default_style();
 
-  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET)
+  if (context.meta->type == FileType::OPENDOCUMENT_SPREADSHEET) {
     out << common::Html::default_spreadsheet_style();
+  }
 
-  const auto stylesXml = util::xml::parse(*context.storage, "styles.xml");
+  const auto styles_xml = util::xml::parse(*context.filesystem, "styles.xml");
 
-  const auto fontFaceDecls =
-      stylesXml.child("office:document-styles").child("office:font-face-decls");
-  if (fontFaceDecls)
-    StyleTranslator::css(fontFaceDecls, context);
+  const auto font_face_decls = styles_xml.child("office:document-styles")
+                                   .child("office:font-face-decls");
+  if (font_face_decls) {
+    style_translator::css(font_face_decls, context);
+  }
 
   const auto styles =
-      stylesXml.child("office:document-styles").child("office:styles");
-  if (styles)
-    StyleTranslator::css(styles, context);
+      styles_xml.child("office:document-styles").child("office:styles");
+  if (styles) {
+    style_translator::css(styles, context);
+  }
 
-  const auto automaticStyles = stylesXml.child("office:document-styles")
-                                   .child("office:automatic-styles");
-  if (automaticStyles)
-    StyleTranslator::css(automaticStyles, context);
+  const auto automatic_styles = styles_xml.child("office:document-styles")
+                                    .child("office:automatic-styles");
+  if (automatic_styles) {
+    style_translator::css(automatic_styles, context);
+  }
 
-  const auto masterStyles =
-      stylesXml.child("office:document-styles").child("office:master-styles");
-  if (masterStyles)
-    StyleTranslator::css(masterStyles, context);
+  const auto master_styles =
+      styles_xml.child("office:document-styles").child("office:master-styles");
+  if (master_styles) {
+    style_translator::css(master_styles, context);
+  }
 }
 
-void generateContentStyle_(const pugi::xml_node &in, Context &context) {
-  const auto fontFaceDecls =
+void generate_content_style(const pugi::xml_node &in, Context &context) {
+  const auto font_face_decls =
       in.child("office:document-content").child("office:font-face-decls");
-  if (fontFaceDecls)
-    StyleTranslator::css(fontFaceDecls, context);
+  if (font_face_decls) {
+    style_translator::css(font_face_decls, context);
+  }
 
-  const auto automaticStyles =
+  const auto automatic_styles =
       in.child("office:document-content").child("office:automatic-styles");
-  if (automaticStyles)
-    StyleTranslator::css(automaticStyles, context);
+  if (automatic_styles) {
+    style_translator::css(automatic_styles, context);
+  }
 }
 
 void generate_script(std::ofstream &out, Context &) {
@@ -72,20 +81,20 @@ void generate_content(const pugi::xml_node &in, Context &context) {
       in.child("office:document-content").child("office:body");
 
   pugi::xml_node content;
-  std::string entryName;
+  std::string entry_name;
   switch (context.meta->type) {
   case FileType::OPENDOCUMENT_TEXT:
   case FileType::OPENDOCUMENT_GRAPHICS:
     content = body.child("office:drawing");
-    entryName = "draw:page";
+    entry_name = "draw:page";
     break;
   case FileType::OPENDOCUMENT_PRESENTATION:
     content = body.child("office:presentation");
-    entryName = "draw:page";
+    entry_name = "draw:page";
     break;
   case FileType::OPENDOCUMENT_SPREADSHEET:
     content = body.child("office:spreadsheet");
-    entryName = "table:table";
+    entry_name = "table:table";
     break;
   default:
     throw std::invalid_argument("type");
@@ -97,19 +106,20 @@ void generate_content(const pugi::xml_node &in, Context &context) {
                   (context.config->entry_count > 0))) {
     std::uint32_t i = 0;
     for (auto &&e : content) {
-      if (e.name() != entryName)
+      if (e.name() != entry_name) {
         continue;
+      }
       if ((i >= context.config->entry_offset) &&
           ((context.config->entry_count == 0) ||
            (i < context.config->entry_offset + context.config->entry_count))) {
-        ContentTranslator::html(e, context);
+        content_translator::html(e, context);
       } else {
         ++context.entry; // TODO hacky
       }
       ++i;
     }
   } else {
-    ContentTranslator::html(body, context);
+    content_translator::html(body, context);
   }
 }
 } // namespace
@@ -120,10 +130,10 @@ OpenDocumentTranslator::OpenDocumentTranslator(
   if (m_filesystem->exists("META-INF/manifest.xml")) {
     auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
 
-    m_meta = experimental::convert(parse_file_meta(*m_filesystem, &manifest));
+    m_meta = parse_file_meta(*m_filesystem, &manifest, false);
     m_manifest = parse_manifest(manifest);
   } else {
-    m_meta = experimental::convert(parse_file_meta(*m_filesystem, nullptr));
+    m_meta = parse_file_meta(*m_filesystem, nullptr, false);
   }
 }
 
@@ -149,8 +159,9 @@ bool OpenDocumentTranslator::translatable() const noexcept { return true; }
 bool OpenDocumentTranslator::editable() const noexcept { return true; }
 
 bool OpenDocumentTranslator::savable(const bool encrypted) const noexcept {
-  if (encrypted)
+  if (encrypted) {
     return false;
+  }
   return !m_meta.encrypted;
 }
 
@@ -160,22 +171,24 @@ bool OpenDocumentTranslator::decrypt(const std::string &password) {
   const bool success = odf::decrypt(m_filesystem, m_manifest, password);
   if (success) {
     auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
-    m_meta = experimental::convert(parse_file_meta(*m_filesystem, &manifest));
+    m_meta = parse_file_meta(*m_filesystem, &manifest, true);
     m_manifest = parse_manifest(manifest);
   }
   m_decrypted = success;
   return success;
 }
 
-bool OpenDocumentTranslator::translate(const common::Path &path,
+void OpenDocumentTranslator::translate(const common::Path &path,
                                        const HtmlConfig &config) {
   // TODO throw if not decrypted
-  std::ofstream out(path);
-  if (!out.is_open())
-    return false;
+  std::ofstream out(path.path());
+  if (!out.is_open()) {
+    throw FileNotCreated();
+  }
+
   m_context.config = &config;
   m_context.meta = &m_meta;
-  m_context.storage = m_filesystem.get();
+  m_context.filesystem = m_filesystem.get();
   m_context.output = &out;
 
   m_content = util::xml::parse(*m_filesystem, "content.xml");
@@ -185,7 +198,7 @@ bool OpenDocumentTranslator::translate(const common::Path &path,
   out << common::Html::default_headers();
   out << "<style>";
   generate_style(out, m_context);
-  generateContentStyle_(m_content, m_context);
+  generate_content_style(m_content, m_context);
   out << "</style>";
   out << "</head>";
 
@@ -201,10 +214,9 @@ bool OpenDocumentTranslator::translate(const common::Path &path,
   m_context.config = nullptr;
   m_context.output = nullptr;
   out.close();
-  return true;
 }
 
-bool OpenDocumentTranslator::edit(const std::string &diff) {
+void OpenDocumentTranslator::edit(const std::string &diff) {
   // TODO throw if not decrypted
   const auto json = nlohmann::json::parse(diff);
 
@@ -212,16 +224,15 @@ bool OpenDocumentTranslator::edit(const std::string &diff) {
     for (auto &&i : json["modifiedText"].items()) {
       const auto it = m_context.text_translation.find(std::stoi(i.key()));
       // TODO dirty const off-cast
-      if (it == m_context.text_translation.end())
+      if (it == std::end(m_context.text_translation)) {
         continue;
+      }
       it->second.set(i.value().get<std::string>().c_str());
     }
   }
-
-  return true;
 }
 
-bool OpenDocumentTranslator::save(const common::Path &path) const {
+void OpenDocumentTranslator::save(const common::Path &path) const {
   // TODO throw if not decrypted
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
@@ -235,8 +246,9 @@ bool OpenDocumentTranslator::save(const common::Path &path) const {
   for (auto walker = m_filesystem->file_walker("/"); !walker->end();
        walker->next()) {
     auto p = walker->path();
-    if (p == "mimetype")
+    if (p == "mimetype") {
       continue;
+    }
     if (m_filesystem->is_directory(p)) {
       archive.insert_directory(std::end(archive), p);
       continue;
@@ -252,15 +264,14 @@ bool OpenDocumentTranslator::save(const common::Path &path) const {
     archive.insert_file(std::end(archive), p, m_filesystem->open(p));
   }
 
-  std::ofstream ostream(path);
+  std::ofstream ostream(path.path());
   archive.save(ostream);
-  return true;
 }
 
-bool OpenDocumentTranslator::save(const common::Path &path,
+void OpenDocumentTranslator::save(const common::Path &path,
                                   const std::string &password) const {
   // TODO throw if not decrypted
-  return false;
+  throw UnsupportedOperation();
 }
 
 } // namespace odr::internal::odf

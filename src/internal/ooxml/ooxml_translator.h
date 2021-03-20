@@ -1,9 +1,8 @@
-#ifndef ODR_INTERNAL_ODF_TRANSLATOR_H
-#define ODR_INTERNAL_ODF_TRANSLATOR_H
+#ifndef ODR_INTERNAL_OOXML_TRANSLATOR_H
+#define ODR_INTERNAL_OOXML_TRANSLATOR_H
 
 #include <internal/abstract/document_translator.h>
-#include <internal/odf/odf_manifest.h>
-#include <internal/odf/odf_translator_context.h>
+#include <internal/ooxml/ooxml_translator_context.h>
 #include <memory>
 #include <odr/file_meta.h>
 #include <pugixml.hpp>
@@ -12,24 +11,19 @@ namespace odr::internal::abstract {
 class ReadableFilesystem;
 }
 
-namespace odr::internal::common {
-class Path;
-}
+namespace odr::internal::ooxml {
 
-namespace odr::internal::odf {
-
-class OpenDocumentTranslator final : public abstract::DocumentTranslator {
+class OfficeOpenXmlTranslator final : public abstract::DocumentTranslator {
 public:
-  explicit OpenDocumentTranslator(
+  explicit OfficeOpenXmlTranslator(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem);
-  OpenDocumentTranslator(const OpenDocumentTranslator &) = delete;
-  OpenDocumentTranslator(OpenDocumentTranslator &&) noexcept;
-  ~OpenDocumentTranslator() final;
-  OpenDocumentTranslator &operator=(const OpenDocumentTranslator &) = delete;
-  OpenDocumentTranslator &operator=(OpenDocumentTranslator &&) noexcept;
+  OfficeOpenXmlTranslator(const OfficeOpenXmlTranslator &) = delete;
+  OfficeOpenXmlTranslator(OfficeOpenXmlTranslator &&) noexcept;
+  ~OfficeOpenXmlTranslator() final;
+  OfficeOpenXmlTranslator &operator=(const OfficeOpenXmlTranslator &) = delete;
+  OfficeOpenXmlTranslator &operator=(OfficeOpenXmlTranslator &&) noexcept;
 
   [[nodiscard]] const FileMeta &meta() const noexcept final;
-  [[nodiscard]] const abstract::ReadableFilesystem &filesystem() const noexcept;
 
   [[nodiscard]] bool decrypted() const noexcept final;
   [[nodiscard]] bool translatable() const noexcept final;
@@ -49,7 +43,6 @@ private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
 
   FileMeta m_meta;
-  Manifest m_manifest;
 
   bool m_decrypted{false};
 
@@ -58,6 +51,6 @@ private:
   pugi::xml_document m_content;
 };
 
-} // namespace odr::internal::odf
+} // namespace odr::internal::ooxml
 
-#endif // ODR_INTERNAL_ODF_TRANSLATOR_H
+#endif // ODR_INTERNAL_OOXML_TRANSLATOR_H

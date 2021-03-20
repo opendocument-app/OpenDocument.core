@@ -6,6 +6,8 @@
 #include <internal/common/constants.h>
 #include <internal/common/path.h>
 #include <internal/odf/odf_translator.h>
+#include <internal/oldms/oldms_translator.h>
+#include <internal/ooxml/ooxml_translator.h>
 #include <internal/zip/zip_archive.h>
 #include <memory>
 #include <odr/document.h>
@@ -21,19 +23,13 @@ namespace odr {
 namespace {
 std::unique_ptr<internal::abstract::DocumentTranslator>
 open_impl(const std::string &path) {
-  std::shared_ptr<common::DiscFile> disc_file;
+  std::shared_ptr<common::DiscFile> disc_file =
+      std::make_shared<common::DiscFile>(path);
 
   try {
-    disc_file = std::make_shared<common::DiscFile>(path);
-  } catch (...) {
-    // TODO
-  }
+    common::ArchiveFile<zip::ReadonlyZipArchive> zip(disc_file);
 
-  try {
-    auto zip = std::make_unique<common::ArchiveFile<zip::ReadonlyZipArchive>>(
-        zip::ReadonlyZipArchive(disc_file));
-
-    auto filesystem = zip->archive()->filesystem();
+    auto filesystem = zip.archive()->filesystem();
 
     try {
       odf::OpenDocumentTranslator tmp(filesystem);
@@ -41,9 +37,9 @@ open_impl(const std::string &path) {
     } catch (...) {
       // TODO
     }
+
     try {
-      // TODO
-      // return std::make_unique<ooxml::OfficeOpenXml>(filesystem);
+      return std::make_unique<ooxml::OfficeOpenXmlTranslator>(filesystem);
     } catch (...) {
       // TODO
     }
@@ -54,15 +50,14 @@ open_impl(const std::string &path) {
   try {
     auto memory_file = std::make_shared<common::MemoryFile>(*disc_file);
 
-    auto cfb = std::make_unique<common::ArchiveFile<cfb::ReadonlyCfbArchive>>(
-        cfb::ReadonlyCfbArchive(memory_file));
+    common::ArchiveFile<cfb::ReadonlyCfbArchive> cfb(memory_file);
 
-    auto filesystem = cfb->archive()->filesystem();
+    auto filesystem = cfb.archive()->filesystem();
 
     // legacy microsoft
     try {
       // TODO
-      // return std::make_unique<oldms::LegacyMicrosoft>(storage);
+      // return std::make_unique<oldms::LegacyMicrosoftTranslator>(filesystem);
     } catch (...) {
       // TODO
     }
@@ -70,7 +65,7 @@ open_impl(const std::string &path) {
     // encrypted ooxml
     try {
       // TODO
-      // return std::make_unique<ooxml::OfficeOpenXml>(storage);
+      // return std::make_unique<ooxml::OfficeOpenXmlTranslator>(filesystem);
     } catch (...) {
       // TODO
     }

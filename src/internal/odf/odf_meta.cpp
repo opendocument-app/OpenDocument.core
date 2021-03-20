@@ -4,6 +4,7 @@
 #include <internal/odf/odf_meta.h>
 #include <internal/util/map_util.h>
 #include <internal/util/stream_util.h>
+#include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
 #include <odr/experimental/file_meta.h>
 #include <odr/file_type.h>
@@ -31,6 +32,19 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
        FileType::OPENDOCUMENT_SPREADSHEET},
       {"application/vnd.oasis.opendocument.graphics-template",
        FileType::OPENDOCUMENT_GRAPHICS},
+      // TODO these staroffice types might deserve their own type
+      {"application/vnd.sun.xml.writer", FileType::OPENDOCUMENT_TEXT},
+      {"application/vnd.sun.xml.impress", FileType::OPENDOCUMENT_PRESENTATION},
+      {"application/vnd.sun.xml.calc", FileType::OPENDOCUMENT_SPREADSHEET},
+      {"application/vnd.sun.xml.draw", FileType::OPENDOCUMENT_GRAPHICS},
+      // TODO any difference for template files?
+      {"application/vnd.sun.xml.writer.template", FileType::OPENDOCUMENT_TEXT},
+      {"application/vnd.sun.xml.impress.template",
+       FileType::OPENDOCUMENT_PRESENTATION},
+      {"application/vnd.sun.xml.calc.template",
+       FileType::OPENDOCUMENT_SPREADSHEET},
+      {"application/vnd.sun.xml.draw.template",
+       FileType::OPENDOCUMENT_GRAPHICS},
   };
   return util::map::lookup_map_default(MIME_TYPES, mime_type, file_type,
                                        FileType::UNKNOWN);
@@ -39,7 +53,8 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
 
 experimental::FileMeta
 parse_file_meta(const abstract::ReadableFilesystem &filesystem,
-                const pugi::xml_document *manifest) {
+                         const pugi::xml_document *manifest,
+                         const bool decrypted) {
   experimental::FileMeta result;
 
   if (!filesystem.is_file("content.xml")) {
@@ -75,14 +90,14 @@ void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
   rows = 0;
   cols = 0;
 
-  common::TableCursor tl;
+  common::TableCursor cursor;
 
   for (auto &&r : table.select_nodes(".//self::table:table-row")) {
     const auto &&row = r.node();
 
     const auto rows_repeated =
         row.attribute("table:number-rows-repeated").as_uint(1);
-    tl.add_row(rows_repeated);
+    cursor.add_row(rows_repeated);
 
     for (auto &&c : row.select_nodes(".//self::table:table-cell")) {
       const auto &&cell = c.node();
@@ -93,10 +108,10 @@ void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
           cell.attribute("table:number-columns-spanned").as_uint(1);
       const auto rowspan =
           cell.attribute("table:number-rows-spanned").as_uint(1);
-      tl.add_cell(colspan, rowspan, columns_repeated);
+      cursor.add_cell(colspan, rowspan, columns_repeated);
 
-      const auto new_rows = tl.row();
-      const auto new_cols = std::max(cols, tl.col());
+      const auto new_rows = cursor.row();
+      const auto new_cols = std::max(cols, cursor.col());
       if (cell.first_child()) {
         rows = new_rows;
         cols = new_cols;

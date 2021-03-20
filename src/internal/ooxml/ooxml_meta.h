@@ -24,11 +24,6 @@ class Path;
 
 namespace odr::internal::ooxml {
 
-struct NoOfficeOpenXmlFileException final : public std::runtime_error {
-  NoOfficeOpenXmlFileException()
-      : std::runtime_error("not a open document file") {}
-};
-
 experimental::FileMeta
 parse_file_meta(abstract::ReadableFilesystem &filesystem);
 
