@@ -1,10 +1,8 @@
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_document.h>
-#include <internal/ooxml/text/ooxml_text_elements.h>
 #include <internal/util/xml_util.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
-#include <odr/experimental/document_elements.h>
 
 namespace odr::internal::ooxml {
 

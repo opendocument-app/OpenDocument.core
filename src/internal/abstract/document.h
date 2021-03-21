@@ -32,9 +32,9 @@ template <typename Number, typename Tag> struct Identifier {
   Number id{0};
 };
 
-struct element_identifier_tag {};
+struct ElementIdentifierTag {};
 
-using element_identifier = Identifier<std::uint64_t, element_identifier_tag>;
+using ElementIdentifier = Identifier<std::uint64_t, ElementIdentifierTag>;
 
 class Document {
 public:
@@ -62,41 +62,41 @@ public:
   [[nodiscard]] virtual std::uint32_t entry_count() const = 0;
 
   /// \return the root element of the document.
-  [[nodiscard]] virtual element_identifier root_element() const = 0;
+  [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
 
   /// \return the first entry element of the document.
-  [[nodiscard]] virtual element_identifier first_entry_element() const = 0;
+  [[nodiscard]] virtual ElementIdentifier first_entry_element() const = 0;
 
   /// \param element_id the element to query.
   /// \return the type of the element.
   [[nodiscard]] virtual ElementType
-  element_type(element_identifier element_id) const = 0;
+  element_type(ElementIdentifier element_id) const = 0;
 
   /// \param element_id the element to query.
   /// \return the parent of the element.
-  [[nodiscard]] virtual element_identifier
-  element_parent(element_identifier element_id) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  element_parent(ElementIdentifier element_id) const = 0;
 
   /// \param element_id the element to query.
   /// \return the first child of the element.
-  [[nodiscard]] virtual element_identifier
-  element_first_child(element_identifier element_id) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  element_first_child(ElementIdentifier element_id) const = 0;
 
   /// \param element_id the element to query.
   /// \return the previous sibling of the element.
-  [[nodiscard]] virtual element_identifier
-  element_previous_sibling(element_identifier element_id) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  element_previous_sibling(ElementIdentifier element_id) const = 0;
 
   /// \param element_id the element to query.
   /// \return the next sibling of the element.
-  [[nodiscard]] virtual element_identifier
-  element_next_sibling(element_identifier element_id) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  element_next_sibling(ElementIdentifier element_id) const = 0;
 
   /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested optional value.
   [[nodiscard]] virtual std::any
-  element_property(element_identifier element_id,
+  element_property(ElementIdentifier element_id,
                    ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
@@ -106,21 +106,21 @@ public:
   ///         - lifetime of the return value only guaranteed until next
   ///           function call on the interface.
   [[nodiscard]] virtual const char *
-  element_string_property(element_identifier element_id,
+  element_string_property(ElementIdentifier element_id,
                           ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested integer.
   [[nodiscard]] virtual std::uint32_t
-  element_uint32_property(element_identifier element_id,
+  element_uint32_property(ElementIdentifier element_id,
                           ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested bool.
   [[nodiscard]] virtual bool
-  element_bool_property(element_identifier element_id,
+  element_bool_property(ElementIdentifier element_id,
                         ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
@@ -130,7 +130,7 @@ public:
   ///         - lifetime of the return value only guaranteed until next
   ///           function call on the interface.
   [[nodiscard]] virtual const char *
-  element_optional_string_property(element_identifier element_id,
+  element_optional_string_property(ElementIdentifier element_id,
                                    ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
@@ -138,7 +138,7 @@ public:
   /// \param limit_cols
   /// \return the requested table dimensions.
   [[nodiscard]] virtual TableDimensions
-  table_dimensions(element_identifier element_id, std::uint32_t limit_rows,
+  table_dimensions(ElementIdentifier element_id, std::uint32_t limit_rows,
                    std::uint32_t limit_cols) const = 0;
 
   /// \param element_id the element to query.
@@ -146,12 +146,12 @@ public:
   ///         - return value should not be null
   ///         - in case of external images it might be null for now.
   [[nodiscard]] virtual std::shared_ptr<File>
-  image_file(element_identifier element_id) const = 0;
+  image_file(ElementIdentifier element_id) const = 0;
 
   /// \param element_id the element.
   /// \param property the property to set.
   /// \param value the value to set.
-  virtual void set_element_property(element_identifier element_id,
+  virtual void set_element_property(ElementIdentifier element_id,
                                     ElementProperty property,
                                     const std::any &value) const = 0;
 
@@ -160,13 +160,13 @@ public:
   /// \param value the value to set.
   ///        - lifetime of `value` must be guaranteed until the function
   ///          completes.
-  virtual void set_element_string_property(element_identifier element_id,
+  virtual void set_element_string_property(ElementIdentifier element_id,
                                            ElementProperty property,
                                            const char *value) const = 0;
 
   /// \param element_id the element.
   /// \param property the property to remove.
-  virtual void remove_element_property(element_identifier element_id,
+  virtual void remove_element_property(ElementIdentifier element_id,
                                        ElementProperty property) const = 0;
 };
 

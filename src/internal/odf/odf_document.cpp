@@ -1,10 +1,9 @@
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
-#include <internal/odf/odf_crypto.h>
 #include <internal/odf/odf_document.h>
-#include <internal/util/stream_util.h>
 #include <internal/util/xml_util.h>
 #include <odr/document_meta.h>
+#include <odr/element_type.h>
 #include <odr/table_dimensions.h>
 
 namespace odr::internal::odf {
@@ -16,20 +15,14 @@ OpenDocument::OpenDocument(std::shared_ptr<abstract::ReadableFilesystem> files)
   if (m_files->exists("styles.xml")) {
     m_styles_xml = util::xml::parse(*m_files, "styles.xml");
   }
-  m_styles =
-      Styles(m_styles_xml.document_element(), m_content_xml.document_element());
+  // TODO
+  // m_styles = Styles(m_styles_xml.document_element(),
+  // m_content_xml.document_element());
 }
 
 bool OpenDocument::editable() const noexcept { return true; }
 
 bool OpenDocument::savable(bool encrypted) const noexcept { return !encrypted; }
-
-std::shared_ptr<abstract::ReadableFilesystem>
-OpenDocument::filesystem() const noexcept {
-  return m_files;
-}
-
-const Styles &OpenDocument::styles() const noexcept { return m_styles; }
 
 void OpenDocument::save(const common::Path &path) const {
   // TODO
@@ -70,156 +63,105 @@ void OpenDocument::save(const common::Path &path, const char *password) const {
   // TODO throw if not savable
 }
 
-OpenDocumentText::OpenDocumentText(
-    std::shared_ptr<abstract::ReadableFilesystem> files)
-    : OpenDocument(std::move(files)) {}
-
-experimental::DocumentMeta OpenDocumentText::document_meta() const noexcept {
-  experimental::DocumentMeta result;
-
-  result.document_type = document_type();
-
-  // TODO reading from meta might not make a lot of sense since it can be
-  // outdated
-  if (m_files->exists("meta.xml")) {
-    auto meta = util::xml::parse(*m_files, "meta.xml");
-    const pugi::xml_node statistics = meta.child("office:document-meta")
-                                          .child("office:meta")
-                                          .child("meta:document-statistic");
-    result.entry_count = statistics.attribute("meta:page-count").as_uint(0);
-  }
-
-  return result;
+DocumentType OpenDocument::document_type() const noexcept {
+  return DocumentType::UNKNOWN; // TODO
 }
 
-std::shared_ptr<const abstract::Element> OpenDocumentText::root() const {
-  const pugi::xml_node body = m_content_xml.document_element()
-                                  .child("office:body")
-                                  .child("office:text");
-  return factorize_root(shared_from_this(), body);
+std::uint32_t OpenDocument::entry_count() const {
+  return 0; // TODO
 }
 
-std::shared_ptr<abstract::PageStyle> OpenDocumentText::page_style() const {
-  return m_styles.default_page_style();
+abstract::ElementIdentifier OpenDocument::root_element() const {
+  return 0; // TODO
 }
 
-OpenDocumentPresentation::OpenDocumentPresentation(
-    std::shared_ptr<abstract::ReadableFilesystem> files)
-    : OpenDocument(std::move(files)) {}
-
-experimental::DocumentMeta
-OpenDocumentPresentation::document_meta() const noexcept {
-  experimental::DocumentMeta result;
-
-  result.document_type = document_type();
-
-  for (auto slide = first_slide(); slide;
-       slide = std::dynamic_pointer_cast<const abstract::Slide>(
-           slide->next_sibling())) {
-    ++result.entry_count;
-
-    experimental::DocumentMeta::Entry entry;
-    entry.name = slide->name();
-    result.entries.emplace_back(entry);
-  }
-
-  return result;
+abstract::ElementIdentifier OpenDocument::first_entry_element() const {
+  return 0; // TODO
 }
 
-std::uint32_t OpenDocumentPresentation::slide_count() const {
-  return document_meta().entry_count;
+ElementType
+OpenDocument::element_type(const abstract::ElementIdentifier element_id) const {
+  return ElementType::NONE; // TODO
 }
 
-std::shared_ptr<const abstract::Element>
-OpenDocumentPresentation::root() const {
-  const pugi::xml_node body = m_content_xml.document_element()
-                                  .child("office:body")
-                                  .child("office:presentation");
-  return factorize_root(shared_from_this(), body);
+abstract::ElementIdentifier OpenDocument::element_parent(
+    const abstract::ElementIdentifier element_id) const {
+  return 0; // TODO
 }
 
-std::shared_ptr<const abstract::Slide>
-OpenDocumentPresentation::first_slide() const {
-  return std::dynamic_pointer_cast<const abstract::Slide>(
-      root()->first_child());
+abstract::ElementIdentifier OpenDocument::element_first_child(
+    const abstract::ElementIdentifier element_id) const {
+  return 0; // TODO
 }
 
-OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
-    std::shared_ptr<abstract::ReadableFilesystem> files)
-    : OpenDocument(std::move(files)) {}
-
-experimental::DocumentMeta
-OpenDocumentSpreadsheet::document_meta() const noexcept {
-  experimental::DocumentMeta result;
-
-  result.document_type = document_type();
-
-  for (auto sheet = first_sheet(); sheet;
-       sheet = std::dynamic_pointer_cast<const abstract::Sheet>(
-           sheet->next_sibling())) {
-    ++result.entry_count;
-
-    experimental::DocumentMeta::Entry entry;
-    entry.name = sheet->name();
-    entry.table_dimensions = sheet->table()->dimensions();
-    result.entries.emplace_back(entry);
-  }
-
-  return result;
+abstract::ElementIdentifier OpenDocument::element_previous_sibling(
+    const abstract::ElementIdentifier element_id) const {
+  return 0; // TODO
 }
 
-std::uint32_t OpenDocumentSpreadsheet::sheet_count() const {
-  return document_meta().entry_count;
+abstract::ElementIdentifier OpenDocument::element_next_sibling(
+    const abstract::ElementIdentifier element_id) const {
+  return 0; // TODO
 }
 
-std::shared_ptr<const abstract::Element> OpenDocumentSpreadsheet::root() const {
-  const pugi::xml_node body = m_content_xml.document_element()
-                                  .child("office:body")
-                                  .child("office:spreadsheet");
-  return factorize_root(shared_from_this(), body);
+std::any
+OpenDocument::element_property(const abstract::ElementIdentifier element_id,
+                               const ElementProperty property) const {
+  return {}; // TODO
 }
 
-std::shared_ptr<const abstract::Sheet>
-OpenDocumentSpreadsheet::first_sheet() const {
-  return std::dynamic_pointer_cast<const abstract::Sheet>(
-      root()->first_child());
+const char *OpenDocument::element_string_property(
+    const abstract::ElementIdentifier element_id,
+    const ElementProperty property) const {
+  return ""; // TODO
 }
 
-OpenDocumentDrawing::OpenDocumentDrawing(
-    std::shared_ptr<abstract::ReadableFilesystem> files)
-    : OpenDocument(std::move(files)) {}
-
-experimental::DocumentMeta OpenDocumentDrawing::document_meta() const noexcept {
-  experimental::DocumentMeta result;
-
-  result.document_type = document_type();
-
-  for (auto page = first_page(); page;
-       page = std::dynamic_pointer_cast<const abstract::Page>(
-           page->next_sibling())) {
-    ++result.entry_count;
-
-    experimental::DocumentMeta::Entry entry;
-    entry.name = page->name();
-    result.entries.emplace_back(entry);
-  }
-
-  return result;
+std::uint32_t OpenDocument::element_uint32_property(
+    const abstract::ElementIdentifier element_id,
+    const ElementProperty property) const {
+  return 0; // TODO
 }
 
-std::uint32_t OpenDocumentDrawing::page_count() const {
-  return document_meta().entry_count;
+bool OpenDocument::element_bool_property(
+    const abstract::ElementIdentifier element_id,
+    const ElementProperty property) const {
+  return false; // TODO
 }
 
-std::shared_ptr<const abstract::Element> OpenDocumentDrawing::root() const {
-  const pugi::xml_node body = m_content_xml.document_element()
-                                  .child("office:body")
-                                  .child("office:drawing");
-  return factorize_root(shared_from_this(), body);
+const char *OpenDocument::element_optional_string_property(
+    const abstract::ElementIdentifier element_id,
+    const ElementProperty property) const {
+  return ""; // TODO
 }
 
-std::shared_ptr<const abstract::Page> OpenDocumentDrawing::first_page() const {
-  return std::dynamic_pointer_cast<const abstract::Page>(root()->first_child());
+TableDimensions
+OpenDocument::table_dimensions(const abstract::ElementIdentifier element_id,
+                               const std::uint32_t limit_rows,
+                               const std::uint32_t limit_cols) const {
+  return {}; // TODO
+}
+
+std::shared_ptr<abstract::File>
+OpenDocument::image_file(const abstract::ElementIdentifier element_id) const {
+  return {}; // TODO
+}
+
+void OpenDocument::set_element_property(
+    const abstract::ElementIdentifier element_id,
+    const ElementProperty property, const std::any &value) const {
+  // TODO
+}
+
+void OpenDocument::set_element_string_property(
+    const abstract::ElementIdentifier element_id,
+    const ElementProperty property, const char *value) const {
+  // TODO
+}
+
+void OpenDocument::remove_element_property(
+    const abstract::ElementIdentifier element_id,
+    const ElementProperty property) const {
+  // TODO
 }
 
 } // namespace odr::internal::odf

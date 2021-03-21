@@ -116,41 +116,6 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
         }
       }
     }
-
-    // TODO dont load content twice (happens in case of translation)
-    const auto content_xml = util::xml::parse(filesystem, "content.xml");
-    const auto body =
-        content_xml.child("office:document-content").child("office:body");
-    if (!body) {
-      throw NoOpenDocumentFile();
-    }
-
-    switch (result.type) {
-    case FileType::OPENDOCUMENT_GRAPHICS:
-    case FileType::OPENDOCUMENT_PRESENTATION: {
-      document_meta.entry_count = 0;
-      for (auto &&e : body.select_nodes("//draw:page")) {
-        ++document_meta.entry_count;
-        DocumentMeta::Entry entry;
-        entry.name = e.node().attribute("draw:name").as_string();
-        document_meta.entries.emplace_back(entry);
-      }
-    } break;
-    case FileType::OPENDOCUMENT_SPREADSHEET: {
-      document_meta.entry_count = 0;
-      for (auto &&e : body.select_nodes("//table:table")) {
-        ++document_meta.entry_count;
-        DocumentMeta::Entry entry;
-        entry.name = e.node().attribute("table:name").as_string();
-        // TODO configuration
-        estimate_table_dimensions(e.node(), entry.table_dimensions->rows,
-                                  entry.table_dimensions->columns, 10000, 500);
-        document_meta.entries.emplace_back(entry);
-      }
-    } break;
-    default:
-      break;
-    }
   }
 
   result.document_meta = std::move(document_meta);

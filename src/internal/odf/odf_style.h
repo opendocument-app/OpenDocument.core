@@ -9,17 +9,6 @@
 namespace odr::internal::odf {
 
 struct ResolvedStyle {
-  static std::shared_ptr<abstract::Property>
-  lookup(const std::unordered_map<std::string, std::string> &map,
-         const std::string &attribute);
-
-  std::shared_ptr<abstract::TextStyle> to_text_style() const;
-  std::shared_ptr<abstract::ParagraphStyle> to_paragraph_style() const;
-  std::shared_ptr<abstract::TableStyle> to_table_style() const;
-  std::shared_ptr<abstract::TableColumnStyle> to_table_column_style() const;
-  std::shared_ptr<abstract::TableCellStyle> to_table_cell_style() const;
-  std::shared_ptr<abstract::DrawingStyle> to_drawing_style() const;
-
   std::unordered_map<std::string, std::string> paragraph_properties;
   std::unordered_map<std::string, std::string> text_properties;
 
