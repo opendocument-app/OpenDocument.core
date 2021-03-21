@@ -7,12 +7,13 @@
 #include <optional>
 #include <string>
 
-namespace odr::experimental {
+namespace odr {
 enum class DocumentType;
 struct DocumentMeta;
 enum class ElementType;
 enum class ElementProperty;
-} // namespace odr::experimental
+struct TableDimensions;
+} // namespace odr
 
 namespace odr::internal::common {
 class Path;
@@ -54,8 +55,7 @@ public:
   virtual void save(const common::Path &path, const char *password) const = 0;
 
   /// \return the type of the document.
-  [[nodiscard]] virtual experimental::DocumentType
-  document_type() const noexcept = 0;
+  [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;
 
   /// \return the amount of entities in the document
   ///         (e.g. slides, sheets and pages).
@@ -69,7 +69,7 @@ public:
 
   /// \param element_id the element to query.
   /// \return the type of the element.
-  [[nodiscard]] virtual experimental::ElementType
+  [[nodiscard]] virtual ElementType
   element_type(element_identifier element_id) const = 0;
 
   /// \param element_id the element to query.
@@ -97,7 +97,7 @@ public:
   /// \return the requested optional value.
   [[nodiscard]] virtual std::any
   element_property(element_identifier element_id,
-                   experimental::ElementProperty property) const = 0;
+                   ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
   /// \param property the requested property.
@@ -107,21 +107,21 @@ public:
   ///           function call on the interface.
   [[nodiscard]] virtual const char *
   element_string_property(element_identifier element_id,
-                          experimental::ElementProperty property) const = 0;
+                          ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested integer.
   [[nodiscard]] virtual std::uint32_t
   element_uint32_property(element_identifier element_id,
-                          experimental::ElementProperty property) const = 0;
+                          ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested bool.
   [[nodiscard]] virtual bool
   element_bool_property(element_identifier element_id,
-                        experimental::ElementProperty property) const = 0;
+                        ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
   /// \param property the requested property.
@@ -129,9 +129,17 @@ public:
   ///         - return value might be null
   ///         - lifetime of the return value only guaranteed until next
   ///           function call on the interface.
-  [[nodiscard]] virtual const char *element_optional_string_property(
-      element_identifier element_id,
-      experimental::ElementProperty property) const = 0;
+  [[nodiscard]] virtual const char *
+  element_optional_string_property(element_identifier element_id,
+                                   ElementProperty property) const = 0;
+
+  /// \param element_id the element to query.
+  /// \param limit_rows
+  /// \param limit_cols
+  /// \return the requested table dimensions.
+  [[nodiscard]] virtual TableDimensions
+  table_dimensions(element_identifier element_id, std::uint32_t limit_rows,
+                   std::uint32_t limit_cols) const = 0;
 
   /// \param element_id the element to query.
   /// \return the requested file object.
@@ -144,7 +152,7 @@ public:
   /// \param property the property to set.
   /// \param value the value to set.
   virtual void set_element_property(element_identifier element_id,
-                                    experimental::ElementProperty property,
+                                    ElementProperty property,
                                     const std::any &value) const = 0;
 
   /// \param element_id the element.
@@ -152,16 +160,14 @@ public:
   /// \param value the value to set.
   ///        - lifetime of `value` must be guaranteed until the function
   ///          completes.
-  virtual void
-  set_element_string_property(element_identifier element_id,
-                              experimental::ElementProperty property,
-                              const char *value) const = 0;
+  virtual void set_element_string_property(element_identifier element_id,
+                                           ElementProperty property,
+                                           const char *value) const = 0;
 
   /// \param element_id the element.
   /// \param property the property to remove.
-  virtual void
-  remove_element_property(element_identifier element_id,
-                          experimental::ElementProperty property) const = 0;
+  virtual void remove_element_property(element_identifier element_id,
+                                       ElementProperty property) const = 0;
 };
 
 } // namespace odr::internal::abstract

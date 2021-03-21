@@ -1,32 +1,32 @@
 #ifndef ODR_FILE_META_H
 #define ODR_FILE_META_H
 
-#include <cstdint>
+#include <odr/document_meta.h>
 #include <odr/file_type.h>
+#include <optional>
 #include <string>
-#include <vector>
+
+namespace odr {
+enum class FileCategory;
+}
 
 namespace odr {
 
-struct FileMeta {
+struct FileMeta final {
   static FileType type_by_extension(const std::string &extension) noexcept;
+  static FileCategory category_by_type(FileType type) noexcept;
 
-  struct Entry {
-    std::string name;
-    std::uint32_t row_count{0};
-    std::uint32_t column_count{0};
-    std::string notes;
-  };
+  FileMeta();
+  FileMeta(FileType type, bool password_encrypted,
+           std::optional<DocumentMeta> document_meta);
 
   FileType type{FileType::UNKNOWN};
-  bool confident{false};
-  bool encrypted{false};
-  std::uint32_t entry_count{0};
-  std::vector<Entry> entries;
+  bool password_encrypted{false};
+  std::optional<DocumentMeta> document_meta;
 
-  std::string type_as_string() const noexcept;
+  [[nodiscard]] std::string type_as_string() const noexcept;
 };
 
 } // namespace odr
 
-#endif // ODR_FILE_META_H
+#endif // ODR_EXPERIMENTAL_FILE_META_H

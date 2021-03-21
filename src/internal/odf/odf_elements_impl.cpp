@@ -4,9 +4,9 @@
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_elements_impl.h>
 #include <internal/odf/odf_meta.h>
-#include <odr/experimental/document_type.h>
-#include <odr/experimental/element_type.h>
-#include <odr/experimental/table_dimensions.h>
+#include <odr/document_type.h>
+#include <odr/element_type.h>
+#include <odr/table_dimensions.h>
 #include <utility>
 
 namespace odr::internal::odf {
@@ -64,31 +64,26 @@ Element::create(std::shared_ptr<const OpenDocument> document,
   }
 
   if (node.type() == pugi::node_pcdata) {
-    return Element(std::move(document), node, experimental::ElementType::TEXT);
+    return Element(std::move(document), node, ElementType::TEXT);
   }
 
   if (node.type() == pugi::node_element) {
     const std::string element = node.name();
 
     if (element == "text:p" || element == "text:h") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::PARAGRAPH);
+      return Element(std::move(document), node, ElementType::PARAGRAPH);
     }
     if (element == "text:span") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::SPAN);
+      return Element(std::move(document), node, ElementType::SPAN);
     }
     if (element == "text:s" || element == "text:tab") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::TEXT);
+      return Element(std::move(document), node, ElementType::TEXT);
     }
     if (element == "text:line-break") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::LINE_BREAK);
+      return Element(std::move(document), node, ElementType::LINE_BREAK);
     }
     if (element == "text:a") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::LINK);
+      return Element(std::move(document), node, ElementType::LINK);
     }
     if (element == "text:table-of-content") {
       // TODO
@@ -96,40 +91,32 @@ Element::create(std::shared_ptr<const OpenDocument> document,
                     node.child("text:index-body").first_child());
     }
     if (element == "text:bookmark" || element == "text:bookmark-start") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::BOOKMARK);
+      return Element(std::move(document), node, ElementType::BOOKMARK);
     }
     if (element == "text:list") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::LIST);
+      return Element(std::move(document), node, ElementType::LIST);
     }
     if (element == "table:table") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::TABLE);
+      return Element(std::move(document), node, ElementType::TABLE);
     }
     if (element == "draw:frame") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::FRAME);
+      return Element(std::move(document), node, ElementType::FRAME);
     }
     if (element == "draw:g") {
       // drawing group not supported
       return create(std::move(document), node.first_child());
     }
     if (element == "draw:image") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::IMAGE);
+      return Element(std::move(document), node, ElementType::IMAGE);
     }
     if (element == "draw:rect") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::RECT);
+      return Element(std::move(document), node, ElementType::RECT);
     }
     if (element == "draw:line") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::LINE);
+      return Element(std::move(document), node, ElementType::LINE);
     }
     if (element == "draw:circle") {
-      return Element(std::move(document), node,
-                     experimental::ElementType::CIRCLE);
+      return Element(std::move(document), node, ElementType::CIRCLE);
     }
     // TODO if (element == "draw:custom-shape")
 
@@ -140,137 +127,136 @@ Element::create(std::shared_ptr<const OpenDocument> document,
 }
 
 Element::Element(std::shared_ptr<const OpenDocument> document,
-                 const pugi::xml_node node,
-                 const experimental::ElementType type)
+                 const pugi::xml_node node, const ElementType type)
     : m_document{std::move(document)}, m_node{node}, m_type{type} {
   if (!node) {
     throw std::runtime_error("element does not exist");
   }
-  if (type == experimental::ElementType::NONE) {
+  if (type == ElementType::NONE) {
     throw std::runtime_error("invalid type: none");
   }
 }
 
-experimental::ElementType Element::type() const { return m_type; }
+ElementType Element::type() const { return m_type; }
 
 std::optional<Root> Element::root() const {
   return Root::create(m_document, m_node);
 }
 
 std::optional<Slide> Element::slide() const {
-  if (m_type != experimental::ElementType::SLIDE) {
+  if (m_type != ElementType::SLIDE) {
     return {};
   }
   return create_specific_element<Slide>(m_document, m_node);
 }
 
 std::optional<Sheet> Element::sheet() const {
-  if (m_type != experimental::ElementType::SHEET) {
+  if (m_type != ElementType::SHEET) {
     return {};
   }
   return create_specific_element<Sheet>(m_document, m_node);
 }
 
 std::optional<Page> Element::page() const {
-  if (m_type != experimental::ElementType::PAGE) {
+  if (m_type != ElementType::PAGE) {
     return {};
   }
   return create_specific_element<Page>(m_document, m_node);
 }
 
 std::optional<Text> Element::text() const {
-  if (m_type != experimental::ElementType::TEXT) {
+  if (m_type != ElementType::TEXT) {
     return {};
   }
   return create_specific_element<Text>(m_document, m_node);
 }
 
 std::optional<SpecificElement> Element::line_break() const {
-  if (m_type != experimental::ElementType::LINE_BREAK) {
+  if (m_type != ElementType::LINE_BREAK) {
     return {};
   }
   return create_specific_element<SpecificElement>(m_document, m_node);
 }
 
 std::optional<SpecificElement> Element::page_break() const {
-  if (m_type != experimental::ElementType::PAGE_BREAK) {
+  if (m_type != ElementType::PAGE_BREAK) {
     return {};
   }
   return create_specific_element<SpecificElement>(m_document, m_node);
 }
 
 std::optional<Paragraph> Element::paragraph() const {
-  if (m_type != experimental::ElementType::PARAGRAPH) {
+  if (m_type != ElementType::PARAGRAPH) {
     return {};
   }
   return create_specific_element<Paragraph>(m_document, m_node);
 }
 
 std::optional<Span> Element::span() const {
-  if (m_type != experimental::ElementType::SPAN) {
+  if (m_type != ElementType::SPAN) {
     return {};
   }
   return create_specific_element<Span>(m_document, m_node);
 }
 
 std::optional<Link> Element::link() const {
-  if (m_type != experimental::ElementType::LINK) {
+  if (m_type != ElementType::LINK) {
     return {};
   }
   return create_specific_element<Link>(m_document, m_node);
 }
 
 std::optional<Bookmark> Element::bookmark() const {
-  if (m_type != experimental::ElementType::BOOKMARK) {
+  if (m_type != ElementType::BOOKMARK) {
     return {};
   }
   return create_specific_element<Bookmark>(m_document, m_node);
 }
 
 std::optional<List> Element::list() const {
-  if (m_type != experimental::ElementType::LIST) {
+  if (m_type != ElementType::LIST) {
     return {};
   }
   return create_specific_element<List>(m_document, m_node);
 }
 
 std::optional<Table> Element::table() const {
-  if (m_type != experimental::ElementType::TABLE) {
+  if (m_type != ElementType::TABLE) {
     return {};
   }
   return create_specific_element<Table>(m_document, m_node);
 }
 
 std::optional<Frame> Element::frame() const {
-  if (m_type != experimental::ElementType::FRAME) {
+  if (m_type != ElementType::FRAME) {
     return {};
   }
   return create_specific_element<Frame>(m_document, m_node);
 }
 
 std::optional<Image> Element::image() const {
-  if (m_type != experimental::ElementType::IMAGE) {
+  if (m_type != ElementType::IMAGE) {
     return {};
   }
   return create_specific_element<Image>(m_document, m_node);
 }
 
 std::optional<Rect> Element::rect() const {
-  if (m_type != experimental::ElementType::RECT) {
+  if (m_type != ElementType::RECT) {
     return {};
   }
   return create_specific_element<Rect>(m_document, m_node);
 }
 
 std::optional<Line> Element::line() const {
-  if (m_type != experimental::ElementType::LINE) {
+  if (m_type != ElementType::LINE) {
     return {};
   }
   return create_specific_element<Line>(m_document, m_node);
 }
 
 std::optional<Circle> Element::circle() const {
-  if (m_type != experimental::ElementType::CIRCLE) {
+  if (m_type != ElementType::CIRCLE) {
     return {};
   }
   return create_specific_element<Circle>(m_document, m_node);
@@ -320,43 +306,41 @@ std::optional<Root> Root::create(std::shared_ptr<const OpenDocument> document,
   const std::string element = node.name();
 
   if (element == "office:text") {
-    return Root(std::move(document), node, experimental::DocumentType::TEXT);
+    return Root(std::move(document), node, DocumentType::TEXT);
   }
   if (element == "office:presentation") {
-    return Root(std::move(document), node,
-                experimental::DocumentType::PRESENTATION);
+    return Root(std::move(document), node, DocumentType::PRESENTATION);
   }
   if (element == "office:spreadsheet") {
-    return Root(std::move(document), node,
-                experimental::DocumentType::SPREADSHEET);
+    return Root(std::move(document), node, DocumentType::SPREADSHEET);
   }
   if (element == "office:drawing") {
-    return Root(std::move(document), node, experimental::DocumentType::DRAWING);
+    return Root(std::move(document), node, DocumentType::DRAWING);
   }
 
   return {};
 }
 
 Root::Root(std::shared_ptr<const OpenDocument> document, pugi::xml_node node,
-           experimental::DocumentType type)
+           DocumentType type)
     : SpecificElement(std::move(document), node), m_type{type} {
   if (!node) {
     throw std::runtime_error("element does not exist");
   }
-  if (type == experimental::DocumentType::UNKNOWN) {
+  if (type == DocumentType::UNKNOWN) {
     throw std::runtime_error("invalid type: none");
   }
 }
 
 std::optional<Element> Root::first_child() const {
   switch (m_type) {
-  case experimental::DocumentType::TEXT:
+  case DocumentType::TEXT:
     return Element::create(m_document, m_node.first_child());
-  case experimental::DocumentType::PRESENTATION:
+  case DocumentType::PRESENTATION:
     return Element::create(m_document, m_node.child("draw:page"));
-  case experimental::DocumentType::SPREADSHEET:
+  case DocumentType::SPREADSHEET:
     return Element::create(m_document, m_node.child("table:table"));
-  case experimental::DocumentType::DRAWING:
+  case DocumentType::DRAWING:
     return Element::create(m_document, m_node.child("draw:page"));
   default:
     return {};
@@ -511,7 +495,7 @@ std::optional<ListItem> ListItem::next_sibling() const {
 Table::Table(std::shared_ptr<const OpenDocument> document, pugi::xml_node node)
     : SpecificElement(std::move(document), node) {}
 
-experimental::TableDimensions Table::dimensions() const {
+TableDimensions Table::dimensions() const {
   std::uint32_t rows;
   std::uint32_t columns;
 

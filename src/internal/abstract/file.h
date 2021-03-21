@@ -7,14 +7,11 @@ namespace odr {
 enum class FileType;
 enum class FileCategory;
 enum class FileLocation;
-} // namespace odr
-
-namespace odr::experimental {
 struct FileMeta;
 enum class EncryptionState;
 enum class DocumentType;
 struct DocumentMeta;
-} // namespace odr::experimental
+} // namespace odr
 
 namespace odr::internal::abstract {
 class Image;
@@ -38,7 +35,7 @@ public:
 
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
   [[nodiscard]] virtual FileCategory file_category() const noexcept = 0;
-  [[nodiscard]] virtual experimental::FileMeta file_meta() const noexcept = 0;
+  [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;
 };
 
 class ImageFile : public DecodedFile {
@@ -65,12 +62,11 @@ public:
   [[nodiscard]] FileCategory file_category() const noexcept final;
 
   [[nodiscard]] virtual bool password_encrypted() const noexcept = 0;
-  [[nodiscard]] virtual experimental::EncryptionState
-  encryption_state() const noexcept = 0;
+  [[nodiscard]] virtual EncryptionState encryption_state() const noexcept = 0;
   [[nodiscard]] virtual bool decrypt(const std::string &password) = 0;
 
-  [[nodiscard]] virtual experimental::DocumentType document_type() const;
-  [[nodiscard]] virtual experimental::DocumentMeta document_meta() const;
+  [[nodiscard]] virtual DocumentType document_type() const;
+  [[nodiscard]] virtual DocumentMeta document_meta() const;
 
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };

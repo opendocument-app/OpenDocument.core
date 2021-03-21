@@ -1,129 +1,17 @@
-#include <experimental/interface.h>
-#include <glog/logging.h>
-#include <internal/abstract/document_translator.h>
-#include <internal/abstract/filesystem.h>
-#include <internal/cfb/cfb_archive.h>
-#include <internal/common/archive.h>
-#include <internal/common/constants.h>
+#include <internal/abstract/document.h>
 #include <internal/common/path.h>
-#include <internal/odf/odf_translator.h>
-#include <internal/oldms/oldms_translator.h>
-#include <internal/ooxml/ooxml_translator.h>
-#include <internal/zip/zip_archive.h>
-#include <memory>
 #include <odr/document.h>
-#include <odr/exceptions.h>
-#include <odr/file_meta.h>
-#include <odr/html_config.h>
-#include <utility>
-
-using namespace odr::internal;
+#include <odr/document_elements.h>
+#include <odr/document_meta.h>
 
 namespace odr {
 
-namespace {
-std::unique_ptr<internal::abstract::DocumentTranslator>
-open_impl(const std::string &path) {
-  std::shared_ptr<common::DiscFile> disc_file =
-      std::make_shared<common::DiscFile>(path);
-
-  try {
-    common::ArchiveFile<zip::ReadonlyZipArchive> zip(disc_file);
-
-    auto filesystem = zip.archive()->filesystem();
-
-    try {
-      odf::OpenDocumentTranslator tmp(filesystem);
-      return std::make_unique<odf::OpenDocumentTranslator>(filesystem);
-    } catch (...) {
-      // TODO
-    }
-
-    try {
-      return std::make_unique<ooxml::OfficeOpenXmlTranslator>(filesystem);
-    } catch (...) {
-      // TODO
-    }
-  } catch (...) {
-    // TODO
+Document::Document(std::shared_ptr<internal::abstract::Document> document)
+    : m_impl{std::move(document)} {
+  if (!m_impl) {
+    throw std::runtime_error("document is null");
   }
-
-  try {
-    auto memory_file = std::make_shared<common::MemoryFile>(*disc_file);
-
-    common::ArchiveFile<cfb::ReadonlyCfbArchive> cfb(memory_file);
-
-    auto filesystem = cfb.archive()->filesystem();
-
-    // legacy microsoft
-    try {
-      return std::make_unique<oldms::LegacyMicrosoftTranslator>(filesystem);
-    } catch (...) {
-      // TODO
-    }
-
-    // encrypted ooxml
-    try {
-      return std::make_unique<ooxml::OfficeOpenXmlTranslator>(filesystem);
-    } catch (...) {
-      // TODO
-    }
-  } catch (...) {
-    // TODO
-  }
-
-  throw UnknownFileType();
 }
-
-std::unique_ptr<internal::abstract::DocumentTranslator>
-open_impl(const std::string &path, const FileType as) {
-  // TODO implement
-  throw UnknownFileType();
-}
-} // namespace
-
-std::string Document::version() noexcept {
-  return internal::common::constants::version();
-}
-
-std::string Document::commit() noexcept {
-  return internal::common::constants::commit();
-}
-
-FileType Document::type(const std::string &path) {
-  const auto document = open_impl(path);
-  return document->meta().type;
-}
-
-FileMeta Document::meta(const std::string &path) {
-  const auto document = open_impl(path);
-  return experimental::convert(document->meta());
-}
-
-Document::Document(const std::string &path) : m_impl(open_impl(path)) {}
-
-Document::Document(const std::string &path, const FileType as)
-    : m_impl(open_impl(path, as)) {}
-
-Document::Document(Document &&) noexcept = default;
-
-Document::~Document() = default;
-
-Document &Document::operator=(Document &&) noexcept = default;
-
-FileType Document::type() const noexcept { return m_impl->meta().type; }
-
-bool Document::encrypted() const noexcept {
-  return m_impl->meta().password_encrypted;
-}
-
-const FileMeta &Document::meta() const noexcept {
-  return experimental::convert(m_impl->meta());
-}
-
-bool Document::decrypted() const noexcept { return m_impl->decrypted(); }
-
-bool Document::translatable() const noexcept { return m_impl->translatable(); }
 
 bool Document::editable() const noexcept { return m_impl->editable(); }
 
@@ -131,179 +19,86 @@ bool Document::savable(const bool encrypted) const noexcept {
   return m_impl->savable(encrypted);
 }
 
-bool Document::decrypt(const std::string &password) const {
-  return m_impl->decrypt(password);
-}
-
-void Document::translate(const std::string &path,
-                         const HtmlConfig &config) const {
-  m_impl->translate(path, config);
-}
-
-void Document::edit(const std::string &diff) const { m_impl->edit(diff); }
-
 void Document::save(const std::string &path) const { m_impl->save(path); }
 
 void Document::save(const std::string &path,
                     const std::string &password) const {
-  m_impl->save(path, password);
+  m_impl->save(path, password.c_str());
 }
 
-std::optional<DocumentNoExcept>
-DocumentNoExcept::open(const std::string &path) noexcept {
-  try {
-    return DocumentNoExcept(std::make_unique<Document>(path));
-  } catch (...) {
-    LOG(ERROR) << "open failed";
-    return {};
+DocumentType Document::document_type() const noexcept {
+  return m_impl->document_type();
+}
+
+std::uint32_t Document::entry_count() const { return m_impl->entry_count(); }
+
+Element Document::root() const {
+  return Element(m_impl, m_impl->root_element());
+}
+
+Element Document::first_entry() const {
+  return Element(m_impl, m_impl->first_entry_element());
+}
+
+TextDocument Document::text_document() const { return TextDocument(m_impl); }
+
+Presentation Document::presentation() const { return Presentation(m_impl); }
+
+Spreadsheet Document::spreadsheet() const { return Spreadsheet(m_impl); }
+
+Drawing Document::drawing() const { return Drawing(m_impl); }
+
+TextDocument::TextDocument(
+    std::shared_ptr<internal::abstract::Document> text_document)
+    : Document(std::move(text_document)) {
+  if (m_impl->document_type() != DocumentType::TEXT) {
+    throw std::runtime_error("not a text document");
   }
 }
 
-std::optional<DocumentNoExcept>
-DocumentNoExcept::open(const std::string &path, const FileType as) noexcept {
-  try {
-    return DocumentNoExcept(std::make_unique<Document>(path, as));
-  } catch (...) {
-    LOG(ERROR) << "open failed";
-    return {};
+ElementRange TextDocument::content() const { return root().children(); }
+
+Presentation::Presentation(
+    std::shared_ptr<internal::abstract::Document> presentation)
+    : Document(std::move(presentation)) {
+  if (m_impl->document_type() != DocumentType::PRESENTATION) {
+    throw std::runtime_error("not a presentation");
   }
 }
 
-FileType DocumentNoExcept::type(const std::string &path) noexcept {
-  try {
-    auto document = open_impl(path);
-    return document->meta().type;
-  } catch (...) {
-    LOG(ERROR) << "readType failed";
-    return FileType::UNKNOWN;
+std::uint32_t Presentation::slide_count() const {
+  return m_impl->entry_count();
+}
+
+SlideRange Presentation::slides() const {
+  return SlideRange(SlideElement(m_impl, m_impl->first_entry_element()));
+}
+
+Spreadsheet::Spreadsheet(
+    std::shared_ptr<internal::abstract::Document> spreadsheet)
+    : Document(std::move(spreadsheet)) {
+  if (m_impl->document_type() != DocumentType::SPREADSHEET) {
+    throw std::runtime_error("not a spreadsheet");
   }
 }
 
-FileMeta DocumentNoExcept::meta(const std::string &path) noexcept {
-  try {
-    auto document = open_impl(path);
-    return experimental::convert(document->meta());
-  } catch (...) {
-    LOG(ERROR) << "readMeta failed";
-    return {};
+std::uint32_t Spreadsheet::sheet_count() const { return m_impl->entry_count(); }
+
+SheetRange Spreadsheet::sheets() const {
+  return SheetRange(SheetElement(m_impl, m_impl->first_entry_element()));
+}
+
+Drawing::Drawing(std::shared_ptr<internal::abstract::Document> drawing)
+    : Document(std::move(drawing)) {
+  if (m_impl->document_type() != DocumentType::DRAWING) {
+    throw std::runtime_error("not a drawing");
   }
 }
 
-DocumentNoExcept::DocumentNoExcept(std::unique_ptr<Document> impl)
-    : m_impl{std::move(impl)} {}
+std::uint32_t Drawing::page_count() const { return m_impl->entry_count(); }
 
-FileType DocumentNoExcept::type() const noexcept {
-  try {
-    return m_impl->type();
-  } catch (...) {
-    LOG(ERROR) << "type failed";
-    return FileType::UNKNOWN;
-  }
-}
-
-bool DocumentNoExcept::encrypted() const noexcept {
-  try {
-    return m_impl->encrypted();
-  } catch (...) {
-    LOG(ERROR) << "encrypted failed";
-    return false;
-  }
-}
-
-const FileMeta &DocumentNoExcept::meta() const noexcept {
-  try {
-    return m_impl->meta();
-  } catch (...) {
-    LOG(ERROR) << "meta failed";
-    return {};
-  }
-}
-
-bool DocumentNoExcept::decrypted() const noexcept {
-  try {
-    return m_impl->decrypted();
-  } catch (...) {
-    LOG(ERROR) << "decrypted failed";
-    return false;
-  }
-}
-
-bool DocumentNoExcept::translatable() const noexcept {
-  try {
-    return m_impl->translatable();
-  } catch (...) {
-    LOG(ERROR) << "canTranslate failed";
-    return false;
-  }
-}
-
-bool DocumentNoExcept::editable() const noexcept {
-  try {
-    return m_impl->editable();
-  } catch (...) {
-    LOG(ERROR) << "canEdit failed";
-    return false;
-  }
-}
-
-bool DocumentNoExcept::savable(const bool encrypted) const noexcept {
-  try {
-    return m_impl->savable(encrypted);
-  } catch (...) {
-    LOG(ERROR) << "canSave failed";
-    return false;
-  }
-}
-
-bool DocumentNoExcept::decrypt(const std::string &password) const noexcept {
-  try {
-    return m_impl->decrypt(password);
-  } catch (...) {
-    LOG(ERROR) << "decrypt failed";
-    return false;
-  }
-}
-
-bool DocumentNoExcept::translate(const std::string &path,
-                                 const HtmlConfig &config) const noexcept {
-  try {
-    m_impl->translate(path, config);
-    return true;
-  } catch (...) {
-    LOG(ERROR) << "translate failed";
-    return false;
-  }
-}
-
-bool DocumentNoExcept::edit(const std::string &diff) const noexcept {
-  try {
-    m_impl->edit(diff);
-    return true;
-  } catch (...) {
-    LOG(ERROR) << "edit failed";
-    return false;
-  }
-}
-
-bool DocumentNoExcept::save(const std::string &path) const noexcept {
-  try {
-    m_impl->save(path);
-    return true;
-  } catch (...) {
-    LOG(ERROR) << "save failed";
-    return false;
-  }
-}
-
-bool DocumentNoExcept::save(const std::string &path,
-                            const std::string &password) const noexcept {
-  try {
-    m_impl->save(path, password);
-    return true;
-  } catch (...) {
-    LOG(ERROR) << "saveEncrypted failed";
-    return false;
-  }
+PageRange Drawing::pages() const {
+  return PageRange(PageElement(m_impl, m_impl->first_entry_element()));
 }
 
 } // namespace odr
