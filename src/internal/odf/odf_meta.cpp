@@ -6,7 +6,7 @@
 #include <internal/util/stream_util.h>
 #include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
-#include <odr/experimental/file_meta.h>
+#include <odr/file_meta.h>
 #include <odr/file_type.h>
 #include <pugixml.hpp>
 
@@ -51,10 +51,10 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
 }
 } // namespace
 
-experimental::FileMeta
-parse_file_meta(const abstract::ReadableFilesystem &filesystem,
-                const pugi::xml_document *manifest, const bool decrypted) {
-  experimental::FileMeta result;
+FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
+                         const pugi::xml_document *manifest,
+                         const bool decrypted) {
+  FileMeta result;
 
   if (!filesystem.is_file("content.xml")) {
     throw NoOpenDocumentFile();
@@ -81,7 +81,7 @@ parse_file_meta(const abstract::ReadableFilesystem &filesystem,
     }
   }
 
-  experimental::DocumentMeta document_meta;
+  DocumentMeta document_meta;
 
   if (result.password_encrypted == decrypted) {
     if (filesystem.is_file("meta.xml")) {
@@ -131,7 +131,7 @@ parse_file_meta(const abstract::ReadableFilesystem &filesystem,
       document_meta.entry_count = 0;
       for (auto &&e : body.select_nodes("//draw:page")) {
         ++document_meta.entry_count;
-        experimental::DocumentMeta::Entry entry;
+        DocumentMeta::Entry entry;
         entry.name = e.node().attribute("draw:name").as_string();
         document_meta.entries.emplace_back(entry);
       }
@@ -140,7 +140,7 @@ parse_file_meta(const abstract::ReadableFilesystem &filesystem,
       document_meta.entry_count = 0;
       for (auto &&e : body.select_nodes("//table:table")) {
         ++document_meta.entry_count;
-        experimental::DocumentMeta::Entry entry;
+        DocumentMeta::Entry entry;
         entry.name = e.node().attribute("table:name").as_string();
         // TODO configuration
         estimate_table_dimensions(e.node(), entry.table_dimensions->rows,

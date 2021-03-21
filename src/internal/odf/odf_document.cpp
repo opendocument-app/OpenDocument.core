@@ -2,11 +2,10 @@
 #include <internal/common/path.h>
 #include <internal/odf/odf_crypto.h>
 #include <internal/odf/odf_document.h>
-#include <internal/odf/odf_elements.h>
 #include <internal/util/stream_util.h>
 #include <internal/util/xml_util.h>
-#include <odr/experimental/document_meta.h>
-#include <odr/experimental/table_dimensions.h>
+#include <odr/document_meta.h>
+#include <odr/table_dimensions.h>
 
 namespace odr::internal::odf {
 
@@ -67,8 +66,7 @@ void OpenDocument::save(const common::Path &path) const {
    */
 }
 
-void OpenDocument::save(const common::Path &path,
-                        const std::string &password) const {
+void OpenDocument::save(const common::Path &path, const char *password) const {
   // TODO throw if not savable
 }
 
