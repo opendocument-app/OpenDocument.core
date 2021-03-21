@@ -1,5 +1,3 @@
-#include <internal/abstract/document_style.h>
-#include <internal/common/property.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
 #include <internal/util/string_util.h>
 

@@ -1,6 +1,4 @@
 #include <cstring>
-#include <internal/abstract/document_style.h>
-#include <internal/common/property.h>
 #include <internal/odf/odf_style.h>
 #include <odr/document.h>
 

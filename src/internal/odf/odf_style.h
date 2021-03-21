@@ -6,23 +6,19 @@
 #include <unordered_map>
 #include <vector>
 
-namespace odr::internal::abstract {
-class Property;
-class PageStyle;
-class TextStyle;
-class ParagraphStyle;
-class TableStyle;
-class TableColumnStyle;
-class TableCellStyle;
-class DrawingStyle;
-} // namespace odr::internal::abstract
-
 namespace odr::internal::odf {
 
 struct ResolvedStyle {
   static std::shared_ptr<abstract::Property>
   lookup(const std::unordered_map<std::string, std::string> &map,
          const std::string &attribute);
+
+  std::shared_ptr<abstract::TextStyle> to_text_style() const;
+  std::shared_ptr<abstract::ParagraphStyle> to_paragraph_style() const;
+  std::shared_ptr<abstract::TableStyle> to_table_style() const;
+  std::shared_ptr<abstract::TableColumnStyle> to_table_column_style() const;
+  std::shared_ptr<abstract::TableCellStyle> to_table_cell_style() const;
+  std::shared_ptr<abstract::DrawingStyle> to_drawing_style() const;
 
   std::unordered_map<std::string, std::string> paragraph_properties;
   std::unordered_map<std::string, std::string> text_properties;
@@ -35,13 +31,6 @@ struct ResolvedStyle {
   std::unordered_map<std::string, std::string> chart_properties;
   std::unordered_map<std::string, std::string> drawing_page_properties;
   std::unordered_map<std::string, std::string> graphic_properties;
-
-  std::shared_ptr<abstract::TextStyle> to_text_style() const;
-  std::shared_ptr<abstract::ParagraphStyle> to_paragraph_style() const;
-  std::shared_ptr<abstract::TableStyle> to_table_style() const;
-  std::shared_ptr<abstract::TableColumnStyle> to_table_column_style() const;
-  std::shared_ptr<abstract::TableCellStyle> to_table_cell_style() const;
-  std::shared_ptr<abstract::DrawingStyle> to_drawing_style() const;
 };
 
 class Style final {
@@ -61,12 +50,6 @@ public:
   Styles(pugi::xml_node styles_root, pugi::xml_node content_root);
 
   std::shared_ptr<Style> style(const std::string &name) const;
-
-  std::shared_ptr<abstract::PageStyle>
-  page_style(const std::string &name) const;
-  std::shared_ptr<abstract::PageStyle>
-  master_page_style(const std::string &name) const;
-  std::shared_ptr<abstract::PageStyle> default_page_style() const;
 
 private:
   pugi::xml_node m_styles_root;

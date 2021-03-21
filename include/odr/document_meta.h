@@ -10,21 +10,11 @@
 namespace odr {
 
 struct DocumentMeta final {
-  struct Entry {
-    std::optional<std::string> name;
-    std::optional<TableDimensions> table_dimensions;
-    std::optional<std::string> notes;
-
-    Entry();
-  };
-
   DocumentMeta();
-  DocumentMeta(DocumentType document_type, std::uint32_t entry_count,
-               std::vector<Entry> entries);
+  DocumentMeta(DocumentType document_type, std::uint32_t entry_count);
 
   DocumentType document_type{DocumentType::UNKNOWN};
   std::uint32_t entry_count{0};
-  std::vector<Entry> entries;
 };
 
 } // namespace odr

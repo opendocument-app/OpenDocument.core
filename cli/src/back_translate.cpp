@@ -1,12 +1,11 @@
 #include <internal/util/file_util.h>
 #include <iostream>
-#include <odr/experimental/document.h>
-#include <odr/experimental/file.h>
-#include <odr/experimental/html.h>
+#include <odr/document.h>
+#include <odr/file.h>
+#include <odr/html.h>
 #include <string>
 
 using namespace odr;
-using namespace odr::experimental;
 
 int main(int, char **argv) {
   const std::string input{argv[1]};

@@ -1,6 +1,9 @@
 #ifndef ODR_ELEMENT_PROPERTY_VALUE_H
 #define ODR_ELEMENT_PROPERTY_VALUE_H
 
+#include <cstdint>
+#include <memory>
+
 namespace odr {
 class Element;
 
