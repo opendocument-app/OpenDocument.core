@@ -26,7 +26,7 @@ experimental::DocumentType DocumentFile::document_type() const {
 }
 
 experimental::DocumentMeta DocumentFile::document_meta() const {
-  return document()->document_meta();
+  return {}; // TODO
 }
 
 } // namespace odr::internal::abstract

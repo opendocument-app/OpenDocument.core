@@ -1,6 +1,7 @@
 #ifndef ODR_EXPERIMENTAL_DOCUMENT_ELEMENTS_H
 #define ODR_EXPERIMENTAL_DOCUMENT_ELEMENTS_H
 
+#include <any>
 #include <memory>
 #include <optional>
 #include <string>
@@ -16,8 +17,13 @@ class Document;
 namespace odr::experimental {
 class File;
 class Document;
+class TextDocument;
+class Presentation;
+class Spreadsheet;
+class Drawing;
 struct TableDimensions;
 enum class ElementType;
+class ElementPropertyValue;
 
 class Element;
 class SlideElement;
@@ -64,23 +70,8 @@ public:
 
   [[nodiscard]] ElementRange children() const;
 
-  [[nodiscard]] std::any
-  element_property(experimental::ElementProperty property) const;
-  [[nodiscard]] const char *
-  element_string_property(experimental::ElementProperty property) const;
-  [[nodiscard]] std::uint32_t
-  element_uint32_property(experimental::ElementProperty property) const;
-  [[nodiscard]] bool
-  element_bool_property(experimental::ElementProperty property) const;
-  [[nodiscard]] const char *element_optional_string_property(
-      experimental::ElementProperty property) const;
-
-  void set_element_property(experimental::ElementProperty property,
-                            const std::any &value) const;
-  void set_element_string_property(experimental::ElementProperty property,
-                                   const char *value) const;
-
-  void remove_element_property(experimental::ElementProperty property) const;
+  [[nodiscard]] ElementPropertyValue
+  property(experimental::ElementProperty property) const;
 
   [[nodiscard]] SlideElement slide() const;
   [[nodiscard]] SheetElement sheet() const;
@@ -166,6 +157,7 @@ private:
   SlideElement(std::shared_ptr<const internal::abstract::Document> impl,
                std::uint64_t id);
 
+  friend Presentation;
   friend Element;
   template <typename E> friend class ElementRangeTemplate;
 };
@@ -183,6 +175,7 @@ private:
   SheetElement(std::shared_ptr<const internal::abstract::Document> impl,
                std::uint64_t id);
 
+  friend Spreadsheet;
   friend Element;
   template <typename E> friend class ElementRangeTemplate;
 };
@@ -199,6 +192,7 @@ private:
   PageElement(std::shared_ptr<const internal::abstract::Document> impl,
               std::uint64_t id);
 
+  friend Drawing;
   friend Element;
   template <typename E> friend class ElementRangeTemplate;
 };

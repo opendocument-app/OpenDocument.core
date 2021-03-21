@@ -15,8 +15,6 @@ enum class DocumentType;
 struct DocumentMeta;
 class DocumentFile;
 
-class PageStyle;
-
 class TextDocument;
 class Presentation;
 class Spreadsheet;
@@ -24,23 +22,27 @@ class Drawing;
 
 class Document {
 public:
-  [[nodiscard]] DocumentType document_type() const noexcept;
-
   [[nodiscard]] bool editable() const noexcept;
   [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
+
+  void save(const std::string &path) const;
+  void save(const std::string &path, const std::string &password) const;
+
+  [[nodiscard]] DocumentType document_type() const noexcept;
+
+  [[nodiscard]] std::uint32_t entry_count() const;
+
+  [[nodiscard]] Element root() const;
+
+  [[nodiscard]] Element first_entry() const;
 
   [[nodiscard]] TextDocument text_document() const;
   [[nodiscard]] Presentation presentation() const;
   [[nodiscard]] Spreadsheet spreadsheet() const;
   [[nodiscard]] Drawing drawing() const;
 
-  [[nodiscard]] Element root() const;
-
-  void save(const std::string &path) const;
-  void save(const std::string &path, const std::string &password) const;
-
 protected:
-  std::shared_ptr<internal::abstract::Document> m_document;
+  std::shared_ptr<internal::abstract::Document> m_impl;
 
   explicit Document(std::shared_ptr<internal::abstract::Document>);
 
@@ -50,8 +52,6 @@ private:
 
 class TextDocument final : public Document {
 public:
-  [[nodiscard]] PageStyle page_style() const;
-
   [[nodiscard]] ElementRange content() const;
 
 private:

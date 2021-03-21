@@ -33,7 +33,7 @@ template <typename Number, typename Tag> struct Identifier {
 
 struct element_identifier_tag {};
 
-using ElementIdentifier = Identifier<std::uint64_t, element_identifier_tag>;
+using element_identifier = Identifier<std::uint64_t, element_identifier_tag>;
 
 class Document {
 public:
@@ -62,104 +62,106 @@ public:
   [[nodiscard]] virtual std::uint32_t entry_count() const = 0;
 
   /// \return the root element of the document.
-  [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
+  [[nodiscard]] virtual element_identifier root_element() const = 0;
 
-  /// \param elementId the element to query.
+  /// \return the first entry element of the document.
+  [[nodiscard]] virtual element_identifier first_entry_element() const = 0;
+
+  /// \param element_id the element to query.
   /// \return the type of the element.
   [[nodiscard]] virtual experimental::ElementType
-  element_type(ElementIdentifier elementId) const = 0;
+  element_type(element_identifier element_id) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \return the parent of the element.
-  [[nodiscard]] virtual ElementIdentifier
-  element_parent(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual element_identifier
+  element_parent(element_identifier element_id) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \return the first child of the element.
-  [[nodiscard]] virtual ElementIdentifier
-  element_first_child(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual element_identifier
+  element_first_child(element_identifier element_id) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \return the previous sibling of the element.
-  [[nodiscard]] virtual ElementIdentifier
-  element_previous_sibling(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual element_identifier
+  element_previous_sibling(element_identifier element_id) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \return the next sibling of the element.
-  [[nodiscard]] virtual ElementIdentifier
-  element_next_sibling(ElementIdentifier elementId) const = 0;
+  [[nodiscard]] virtual element_identifier
+  element_next_sibling(element_identifier element_id) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested optional value.
   [[nodiscard]] virtual std::any
-  element_property(ElementIdentifier elementId,
-                   experimental::DocumentElementProperty property) const = 0;
+  element_property(element_identifier element_id,
+                   experimental::ElementProperty property) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested optional string.
   ///         - return value must not be null
   ///         - lifetime of the return value only guaranteed until next
   ///           function call on the interface.
-  [[nodiscard]] virtual const char *element_string_property(
-      ElementIdentifier elementId,
-      experimental::DocumentElementProperty property) const = 0;
+  [[nodiscard]] virtual const char *
+  element_string_property(element_identifier element_id,
+                          experimental::ElementProperty property) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested integer.
-  [[nodiscard]] virtual std::uint32_t element_uint32_property(
-      ElementIdentifier elementId,
-      experimental::DocumentElementProperty property) const = 0;
+  [[nodiscard]] virtual std::uint32_t
+  element_uint32_property(element_identifier element_id,
+                          experimental::ElementProperty property) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested bool.
-  [[nodiscard]] virtual bool element_bool_property(
-      ElementIdentifier elementId,
-      experimental::DocumentElementProperty property) const = 0;
+  [[nodiscard]] virtual bool
+  element_bool_property(element_identifier element_id,
+                        experimental::ElementProperty property) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \param property the requested property.
   /// \return the requested optional string.
   ///         - return value might be null
   ///         - lifetime of the return value only guaranteed until next
   ///           function call on the interface.
   [[nodiscard]] virtual const char *element_optional_string_property(
-      ElementIdentifier elementId,
-      experimental::DocumentElementProperty property) const = 0;
+      element_identifier element_id,
+      experimental::ElementProperty property) const = 0;
 
-  /// \param elementId the element to query.
+  /// \param element_id the element to query.
   /// \return the requested file object.
   ///         - return value should not be null
   ///         - in case of external images it might be null for now.
   [[nodiscard]] virtual std::shared_ptr<File>
-  image_file(ElementIdentifier elementId) const = 0;
+  image_file(element_identifier element_id) const = 0;
 
-  /// \param elementId the element.
+  /// \param element_id the element.
   /// \param property the property to set.
   /// \param value the value to set.
-  virtual void
-  set_element_property(ElementIdentifier elementId,
-                       experimental::DocumentElementProperty property,
-                       const std::any &value) const = 0;
+  virtual void set_element_property(element_identifier element_id,
+                                    experimental::ElementProperty property,
+                                    const std::any &value) const = 0;
 
-  /// \param elementId the element.
+  /// \param element_id the element.
   /// \param property the property to set.
   /// \param value the value to set.
   ///        - lifetime of `value` must be guaranteed until the function
   ///          completes.
   virtual void
-  set_element_string_property(ElementIdentifier elementId,
-                              experimental::DocumentElementProperty property,
+  set_element_string_property(element_identifier element_id,
+                              experimental::ElementProperty property,
                               const char *value) const = 0;
 
-  /// \param elementId the element.
+  /// \param element_id the element.
   /// \param property the property to remove.
-  virtual void remove_element_property(
-      ElementIdentifier elementId,
-      experimental::DocumentElementProperty property) const = 0;
+  virtual void
+  remove_element_property(element_identifier element_id,
+                          experimental::ElementProperty property) const = 0;
 };
 
 } // namespace odr::internal::abstract

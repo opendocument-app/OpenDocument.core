@@ -27,6 +27,7 @@ add_library(odr-object OBJECT
 
         src/experimental/document.cpp
         src/experimental/document_elements.cpp
+        src/experimental/document_element_property_value.cpp
         src/experimental/document_meta.cpp
         src/experimental/file.cpp
         src/experimental/file_meta.cpp

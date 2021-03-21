@@ -1,5 +1,6 @@
 #include <internal/abstract/document.h>
 #include <odr/experimental/document_element_property.h>
+#include <odr/experimental/document_element_property_value.h>
 #include <odr/experimental/document_elements.h>
 #include <odr/experimental/element_type.h>
 #include <odr/experimental/file.h>
@@ -22,6 +23,13 @@ bool Element::operator!=(const Element &rhs) const {
 }
 
 Element::operator bool() const { return m_id != 0; }
+
+ElementType Element::type() const {
+  if (!m_impl) {
+    return ElementType::NONE;
+  }
+  return m_impl->element_type(m_id);
+}
 
 Element Element::parent() const {
   if (!m_impl) {
@@ -53,51 +61,9 @@ Element Element::next_sibling() const {
 
 ElementRange Element::children() const { return ElementRange(first_child()); }
 
-ElementType Element::type() const {
-  if (!m_impl) {
-    return ElementType::NONE;
-  }
-  return m_impl->element_type(m_id);
-}
-
-std::any
-Element::element_property(const experimental::ElementProperty property) const {
-  return m_impl->element_property(m_id, property);
-}
-
-const char *Element::element_string_property(
-    const experimental::ElementProperty property) const {
-  return m_impl->element_string_property(m_id, property);
-}
-
-std::uint32_t Element::element_uint32_property(
-    const experimental::ElementProperty property) const {
-  return m_impl->element_uint32_property(m_id, property);
-}
-
-bool Element::element_bool_property(
-    const experimental::ElementProperty property) const {
-  return m_impl->element_bool_property(m_id, property);
-}
-
-const char *Element::element_optional_string_property(
-    const experimental::ElementProperty property) const {
-  return m_impl->element_optional_string_property(m_id, property);
-}
-
-void Element::set_element_property(const experimental::ElementProperty property,
-                                   const std::any &value) const {
-  m_impl->set_element_property(m_id, property, value);
-}
-
-void Element::set_element_string_property(
-    const experimental::ElementProperty property, const char *value) const {
-  m_impl->set_element_string_property(m_id, property, value);
-}
-
-void Element::remove_element_property(
-    const experimental::ElementProperty property) const {
-  m_impl->remove_element_property(m_id, property);
+ElementPropertyValue
+Element::property(experimental::ElementProperty property) const {
+  return ElementPropertyValue(m_impl, m_id, property);
 }
 
 SlideElement Element::slide() const { return SlideElement(m_impl, m_id); }

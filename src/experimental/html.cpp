@@ -8,13 +8,13 @@
 #include <nlohmann/json.hpp>
 #include <odr/exceptions.h>
 #include <odr/experimental/document.h>
+#include <odr/experimental/document_element_property.h>
+#include <odr/experimental/document_element_property_value.h>
 #include <odr/experimental/document_elements.h>
-#include <odr/experimental/document_style.h>
 #include <odr/experimental/document_type.h>
 #include <odr/experimental/element_type.h>
 #include <odr/experimental/file.h>
 #include <odr/experimental/html.h>
-#include <odr/experimental/property.h>
 #include <odr/experimental/table_dimensions.h>
 #include <odr/html_config.h>
 #include <sstream>
@@ -29,107 +29,131 @@ void translate_generation(const ElementRange &siblings, std::ostream &out,
 void translate_element(const Element &element, std::ostream &out,
                        const HtmlConfig &config);
 
-std::string translate_paragraph_style(const ParagraphStyle &style) {
+std::string translate_paragraph_style(const Element &element) {
   std::string result;
-  if (style.text_align()) {
-    result += "text-align:" + *style.text_align() + ";";
+  if (auto text_align = element.property(ElementProperty::TEXT_ALIGN);
+      text_align) {
+    result += "text-align:" + text_align.get_string() + ";";
   }
-  if (style.margin_top()) {
-    result += "margin-top:" + *style.margin_top() + ";";
+  if (auto margin_top = element.property(ElementProperty::MARGIN_TOP);
+      margin_top) {
+    result += "margin-top:" + margin_top.get_string() + ";";
   }
-  if (style.margin_bottom()) {
-    result += "margin-bottom:" + *style.margin_bottom() + ";";
+  if (auto margin_bottom = element.property(ElementProperty::MARGIN_BOTTOM);
+      margin_bottom) {
+    result += "margin-bottom:" + margin_bottom.get_string() + ";";
   }
-  if (style.margin_left()) {
-    result += "margin-left:" + *style.margin_left() + ";";
+  if (auto margin_left = element.property(ElementProperty::MARGIN_LEFT);
+      margin_left) {
+    result += "margin-left:" + margin_left.get_string() + ";";
   }
-  if (style.margin_right()) {
-    result += "margin-right:" + *style.margin_right() + ";";
+  if (auto margin_right = element.property(ElementProperty::MARGIN_RIGHT);
+      margin_right) {
+    result += "margin-right:" + margin_right.get_string() + ";";
   }
   return result;
 }
 
-std::string translate_text_style(const TextStyle &style) {
+std::string translate_text_style(const Element &element) {
   std::string result;
-  if (style.font_name()) {
-    result += "font-family:" + *style.font_name() + ";";
+  if (auto font_name = element.property(ElementProperty::FONT_NAME);
+      font_name) {
+    result += "font-family:" + font_name.get_string() + ";";
   }
-  if (style.font_size()) {
-    result += "font-size:" + *style.font_size() + ";";
+  if (auto font_size = element.property(ElementProperty::FONT_SIZE);
+      font_size) {
+    result += "font-size:" + font_size.get_string() + ";";
   }
-  if (style.font_weight()) {
-    result += "font-weight:" + *style.font_weight() + ";";
+  if (auto font_weight = element.property(ElementProperty::FONT_WEIGHT);
+      font_weight) {
+    result += "font-weight:" + font_weight.get_string() + ";";
   }
-  if (style.font_style()) {
-    result += "font-style:" + *style.font_style() + ";";
+  if (auto font_style = element.property(ElementProperty::FONT_STYLE);
+      font_style) {
+    result += "font-style:" + font_style.get_string() + ";";
   }
-  if (style.font_color()) {
-    result += "color:" + *style.font_color() + ";";
+  if (auto font_color = element.property(ElementProperty::FONT_COLOR);
+      font_color) {
+    result += "color:" + font_color.get_string() + ";";
   }
-  if (style.background_color()) {
-    result += "background-color:" + *style.background_color() + ";";
+  if (auto background_color =
+          element.property(ElementProperty::BACKGROUND_COLOR);
+      background_color) {
+    result += "background-color:" + background_color.get_string() + ";";
   }
   return result;
 }
 
-std::string translate_table_style(const TableStyle &style) {
+std::string translate_table_style(const Element &element) {
   std::string result;
-  if (style.width()) {
-    result += "width:" + *style.width() + ";";
+  if (auto width = element.property(ElementProperty::WIDTH); width) {
+    result += "width:" + width.get_string() + ";";
   }
   return result;
 }
 
-std::string translate_table_column_style(const TableColumnStyle &style) {
+std::string translate_table_column_style(const Element &element) {
   std::string result;
-  if (style.width()) {
-    result += "width:" + *style.width() + ";";
+  if (auto width = element.property(ElementProperty::WIDTH); width) {
+    result += "width:" + width.get_string() + ";";
   }
   return result;
 }
 
-std::string translate_table_cell_style(const TableCellStyle &style) {
+std::string translate_table_cell_style(const Element &element) {
   std::string result;
-  if (style.padding_top()) {
-    result += "padding-top:" + *style.padding_top() + ";";
+  if (auto padding_top = element.property(ElementProperty::PADDING_TOP);
+      padding_top) {
+    result += "padding-top:" + padding_top.get_string() + ";";
   }
-  if (style.padding_bottom()) {
-    result += "padding-bottom:" + *style.padding_bottom() + ";";
+  if (auto padding_bottom = element.property(ElementProperty::PADDING_BOTTOM);
+      padding_bottom) {
+    result += "padding-bottom:" + padding_bottom.get_string() + ";";
   }
-  if (style.padding_left()) {
-    result += "padding-left:" + *style.padding_left() + ";";
+  if (auto padding_left = element.property(ElementProperty::PADDING_LEFT);
+      padding_left) {
+    result += "padding-left:" + padding_left.get_string() + ";";
   }
-  if (style.padding_right()) {
-    result += "padding-right:" + *style.padding_right() + ";";
+  if (auto padding_right = element.property(ElementProperty::PADDING_RIGHT);
+      padding_right) {
+    result += "padding-right:" + padding_right.get_string() + ";";
   }
-  if (style.border_top()) {
-    result += "border-top:" + *style.border_top() + ";";
+  if (auto border_top = element.property(ElementProperty::BORDER_TOP);
+      border_top) {
+    result += "padding-top:" + border_top.get_string() + ";";
   }
-  if (style.border_bottom()) {
-    result += "border-bottom:" + *style.border_bottom() + ";";
+  if (auto border_bottom = element.property(ElementProperty::BORDER_BOTTOM);
+      border_bottom) {
+    result += "padding-bottom:" + border_bottom.get_string() + ";";
   }
-  if (style.border_left()) {
-    result += "border-left:" + *style.border_left() + ";";
+  if (auto border_left = element.property(ElementProperty::BORDER_LEFT);
+      border_left) {
+    result += "padding-left:" + border_left.get_string() + ";";
   }
-  if (style.border_right()) {
-    result += "border-right:" + *style.border_right() + ";";
+  if (auto border_right = element.property(ElementProperty::BORDER_RIGHT);
+      border_right) {
+    result += "padding-right:" + border_right.get_string() + ";";
   }
   return result;
 }
 
-std::string translate_drawing_style(const DrawingStyle &style) {
+std::string translate_drawing_style(const Element &element) {
   std::string result;
-  if (style.stroke_width()) {
-    result += "stroke-width:" + *style.stroke_width() + ";";
+  if (auto stroke_width = element.property(ElementProperty::STROKE_WIDTH);
+      stroke_width) {
+    result += "stroke-width:" + stroke_width.get_string() + ";";
   }
-  if (style.stroke_color()) {
-    result += "stroke:" + *style.stroke_color() + ";";
+  if (auto stroke_color = element.property(ElementProperty::STROKE_COLOR);
+      stroke_color) {
+    result += "stroke:" + stroke_color.get_string() + ";";
   }
-  if (style.fill_color()) {
-    result += "fill:" + *style.fill_color() + ";";
+  if (auto fill_color = element.property(ElementProperty::FILL_COLOR);
+      fill_color) {
+    result += "fill:" + fill_color.get_string() + ";";
   }
-  if (style.vertical_align()) {
-    if (*style.vertical_align() == "middle") {
+  if (auto vertical_align = element.property(ElementProperty::VERTICAL_ALIGN);
+      vertical_align) {
+    if (vertical_align.get_string() == "middle") {
       result += "display:flex;justify-content:center;flex-direction: column;";
     }
     // TODO else log
@@ -139,9 +163,9 @@ std::string translate_drawing_style(const DrawingStyle &style) {
 
 std::string translate_frame_properties(const FrameElement &properties) {
   std::string result;
-  result += "width:" + *properties.width() + ";";
-  result += "height:" + *properties.height() + ";";
-  result += "z-index:" + *properties.z_index() + ";";
+  result += "width:" + properties.width() + ";";
+  result += "height:" + properties.height() + ";";
+  result += "z-index:" + properties.z_index() + ";";
   return result;
 }
 
@@ -175,11 +199,10 @@ std::string optional_style_attribute(const std::string &style) {
 void translate_paragraph(const ParagraphElement &element, std::ostream &out,
                          const HtmlConfig &config) {
   out << "<p";
-  out << optional_style_attribute(
-      translate_paragraph_style(element.paragraph_style()));
+  out << optional_style_attribute(translate_paragraph_style(element));
   out << ">";
   out << "<span";
-  out << optional_style_attribute(translate_text_style(element.text_style()));
+  out << optional_style_attribute(translate_text_style(element));
   out << ">";
   translate_generation(element.children(), out, config);
   out << "</span>";
@@ -189,7 +212,7 @@ void translate_paragraph(const ParagraphElement &element, std::ostream &out,
 void translate_span(const SpanElement &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<span";
-  out << optional_style_attribute(translate_text_style(element.text_style()));
+  out << optional_style_attribute(translate_text_style(element));
   out << ">";
   translate_generation(element.children(), out, config);
   out << "</span>";
@@ -198,7 +221,7 @@ void translate_span(const SpanElement &element, std::ostream &out,
 void translate_link(const LinkElement &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<a";
-  out << optional_style_attribute(translate_text_style(element.text_style()));
+  out << optional_style_attribute(translate_text_style(element));
   out << " href=\"";
   out << element.href();
   out << "\">";
@@ -227,7 +250,7 @@ void translate_list(const ListElement &element, std::ostream &out,
 void translate_table(const TableElement &element, std::ostream &out,
                      const HtmlConfig &config) {
   out << "<table";
-  out << optional_style_attribute(translate_table_style(element.table_style()));
+  out << optional_style_attribute(translate_table_style(element));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
@@ -256,8 +279,7 @@ void translate_table(const TableElement &element, std::ostream &out,
     ++column_index;
 
     out << "<col";
-    out << optional_style_attribute(
-        translate_table_column_style(col.table_column_style()));
+    out << optional_style_attribute(translate_table_column_style(col));
     out << ">";
   }
 
@@ -279,8 +301,7 @@ void translate_table(const TableElement &element, std::ostream &out,
       ++column_index;
 
       out << "<td";
-      out << optional_style_attribute(
-          translate_table_cell_style(cell.table_cell_style()));
+      out << optional_style_attribute(translate_table_cell_style(cell));
       out << ">";
       translate_generation(cell.children(), out, config);
       out << "</td>";
@@ -345,9 +366,8 @@ void translate_frame(const FrameElement &element, std::ostream &out,
 void translate_rect(const RectElement &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<div";
-  out << optional_style_attribute(
-      translate_rect_properties(element) +
-      translate_drawing_style(element.drawing_style()));
+  out << optional_style_attribute(translate_rect_properties(element) +
+                                  translate_drawing_style(element));
   out << ">";
   translate_generation(element.children(), out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
@@ -357,9 +377,8 @@ void translate_rect(const RectElement &element, std::ostream &out,
 void translate_line(const LineElement &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
-  out << optional_style_attribute(
-      "z-index:-1;position:absolute;top:0;left:0;" +
-      translate_drawing_style(element.drawing_style()));
+  out << optional_style_attribute("z-index:-1;position:absolute;top:0;left:0;" +
+                                  translate_drawing_style(element));
   out << ">";
 
   out << "<line";
@@ -373,9 +392,8 @@ void translate_line(const LineElement &element, std::ostream &out,
 void translate_circle(const CircleElement &element, std::ostream &out,
                       const HtmlConfig &config) {
   out << "<div";
-  out << optional_style_attribute(
-      translate_circle_properties(element) +
-      translate_drawing_style(element.drawing_style()));
+  out << optional_style_attribute(translate_circle_properties(element) +
+                                  translate_drawing_style(element));
   out << ">";
   translate_generation(element.children(), out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
@@ -423,15 +441,21 @@ void translate_element(const Element &element, std::ostream &out,
 
 void translate_text_document(const TextDocument &document, std::ostream &out,
                              const HtmlConfig &config) {
-  const auto page_style = document.page_style();
+  const auto root = document.root();
 
-  if (config.text_document_margin && page_style) {
-    const std::string outer_style = "width:" + *page_style.width() + ";";
+  if (config.text_document_margin) {
+    // TODO check if props are available
+    const std::string outer_style =
+        "width:" + root.property(ElementProperty::WIDTH).get_string() + ";";
     const std::string inner_style =
-        "margin-top:" + *page_style.margin_top() + ";" +
-        "margin-left:" + *page_style.margin_left() + ";" +
-        "margin-bottom:" + *page_style.margin_bottom() + ";" +
-        "margin-right:" + *page_style.margin_right() + ";";
+        "margin-top:" +
+        root.property(ElementProperty::MARGIN_TOP).get_string() + ";" +
+        "margin-left:" +
+        root.property(ElementProperty::MARGIN_LEFT).get_string() + ";" +
+        "margin-bottom:" +
+        root.property(ElementProperty::MARGIN_BOTTOM).get_string() + ";" +
+        "margin-right:" +
+        root.property(ElementProperty::MARGIN_RIGHT).get_string() + ";";
 
     out << R"(<div style=")" + outer_style + "\">";
     out << R"(<div style=")" + inner_style + "\">";
@@ -461,15 +485,18 @@ void translate_presentation(const Presentation &document, std::ostream &out,
     }
     ++i;
 
-    const auto page_style = slide.page_style();
-
-    const std::string outer_style = "width:" + *page_style.width() + ";" +
-                                    "height:" + *page_style.height() + ";";
+    const std::string outer_style =
+        "width:" + slide.property(ElementProperty::WIDTH).get_string() + ";" +
+        "height:" + slide.property(ElementProperty::HEIGHT).get_string() + ";";
     const std::string inner_style =
-        "margin-top:" + *page_style.margin_top() + ";" +
-        "margin-left:" + *page_style.margin_left() + ";" +
-        "margin-bottom:" + *page_style.margin_bottom() + ";" +
-        "margin-right:" + *page_style.margin_right() + ";";
+        "margin-top:" +
+        slide.property(ElementProperty::MARGIN_TOP).get_string() + ";" +
+        "margin-left:" +
+        slide.property(ElementProperty::MARGIN_LEFT).get_string() + ";" +
+        "margin-bottom:" +
+        slide.property(ElementProperty::MARGIN_BOTTOM).get_string() + ";" +
+        "margin-right:" +
+        slide.property(ElementProperty::MARGIN_RIGHT).get_string() + ";";
 
     out << R"(<div style=")" + outer_style + "\">";
     out << R"(<div style=")" + inner_style + "\">";
@@ -517,15 +544,18 @@ void translate_drawing(const Drawing &document, std::ostream &out,
     }
     ++i;
 
-    const auto page_style = page.page_style();
-
-    const std::string outer_style = "width:" + *page_style.width() + ";" +
-                                    "height:" + *page_style.height() + ";";
+    const std::string outer_style =
+        "width:" + page.property(ElementProperty::WIDTH).get_string() + ";" +
+        "height:" + page.property(ElementProperty::HEIGHT).get_string() + ";";
     const std::string inner_style =
-        "margin-top:" + *page_style.margin_top() + ";" +
-        "margin-left:" + *page_style.margin_left() + ";" +
-        "margin-bottom:" + *page_style.margin_bottom() + ";" +
-        "margin-right:" + *page_style.margin_right() + ";";
+        "margin-top:" +
+        page.property(ElementProperty::MARGIN_TOP).get_string() + ";" +
+        "margin-left:" +
+        page.property(ElementProperty::MARGIN_LEFT).get_string() + ";" +
+        "margin-bottom:" +
+        page.property(ElementProperty::MARGIN_BOTTOM).get_string() + ";" +
+        "margin-right:" +
+        page.property(ElementProperty::MARGIN_RIGHT).get_string() + ";";
 
     out << R"(<div style=")" + outer_style + "\">";
     out << R"(<div style=")" + inner_style + "\">";
