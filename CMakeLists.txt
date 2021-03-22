@@ -23,7 +23,6 @@ target_include_directories(odr-interface INTERFACE include)
 add_library(odr-object OBJECT
         src/document.cpp
         src/document_elements.cpp
-        src/document_element_property_value.cpp
         src/document_meta.cpp
         src/document_style.cpp
         src/exceptions.cpp

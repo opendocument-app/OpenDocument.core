@@ -1,9 +1,7 @@
 #include <internal/abstract/document.h>
-#include <odr/document_element_property.h>
-#include <odr/document_element_property_value.h>
+#include <odr/document.h>
 #include <odr/document_elements.h>
 #include <odr/document_style.h>
-#include <odr/element_type.h>
 #include <odr/file.h>
 #include <odr/table_dimensions.h>
 

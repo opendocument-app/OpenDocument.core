@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 #include <odr/document.h>
-#include <odr/document_element_property_value.h>
 #include <odr/document_style.h>
 #include <odr/document_type.h>
 #include <odr/file.h>

@@ -7,11 +7,8 @@
 #include <internal/util/stream_util.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
-#include <odr/document_element_property.h>
-#include <odr/document_element_property_value.h>
 #include <odr/document_elements.h>
 #include <odr/document_type.h>
-#include <odr/element_type.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>

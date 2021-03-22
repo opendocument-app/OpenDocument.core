@@ -1,6 +1,5 @@
 #include <internal/abstract/document.h>
-#include <odr/document_element_property.h>
-#include <odr/document_element_property_value.h>
+#include <odr/document.h>
 #include <odr/document_style.h>
 
 namespace odr {

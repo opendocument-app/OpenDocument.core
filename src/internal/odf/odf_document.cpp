@@ -3,7 +3,6 @@
 #include <internal/odf/odf_document.h>
 #include <internal/util/xml_util.h>
 #include <odr/document_meta.h>
-#include <odr/element_type.h>
 #include <odr/table_dimensions.h>
 
 namespace odr::internal::odf {
