@@ -25,6 +25,7 @@ add_library(odr-object OBJECT
         src/document_elements.cpp
         src/document_element_property_value.cpp
         src/document_meta.cpp
+        src/document_style.cpp
         src/exceptions.cpp
         src/file.cpp
         src/file_meta.cpp

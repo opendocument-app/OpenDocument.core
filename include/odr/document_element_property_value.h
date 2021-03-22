@@ -4,8 +4,14 @@
 #include <cstdint>
 #include <memory>
 
+namespace odr::internal::abstract {
+class Document;
+} // namespace odr::internal::abstract
+
 namespace odr {
 class Element;
+enum class ElementProperty;
+class PageStyle;
 
 class ElementPropertyValue {
 public:
@@ -34,6 +40,7 @@ private:
                        std::uint64_t id, ElementProperty property);
 
   friend Element;
+  friend PageStyle;
 };
 
 } // namespace odr

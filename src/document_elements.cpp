@@ -2,6 +2,7 @@
 #include <odr/document_element_property.h>
 #include <odr/document_element_property_value.h>
 #include <odr/document_elements.h>
+#include <odr/document_style.h>
 #include <odr/element_type.h>
 #include <odr/file.h>
 #include <odr/table_dimensions.h>
@@ -222,6 +223,8 @@ std::string SlideElement::notes() const {
   return m_impl->element_string_property(m_id, ElementProperty::NOTES);
 }
 
+PageStyle SlideElement::page_style() const { return PageStyle(m_impl, m_id); }
+
 SheetElement::SheetElement() = default;
 
 SheetElement::SheetElement(
@@ -269,6 +272,8 @@ std::string PageElement::name() const {
   }
   return m_impl->element_string_property(m_id, ElementProperty::NAME);
 }
+
+PageStyle PageElement::page_style() const { return PageStyle(m_impl, m_id); }
 
 TextElement::TextElement() = default;
 

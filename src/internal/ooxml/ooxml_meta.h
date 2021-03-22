@@ -10,7 +10,7 @@ namespace pugi {
 class xml_document;
 }
 
-namespace odr::experimental {
+namespace odr {
 struct FileMeta;
 }
 
@@ -24,8 +24,7 @@ class Path;
 
 namespace odr::internal::ooxml {
 
-experimental::FileMeta
-parse_file_meta(abstract::ReadableFilesystem &filesystem);
+FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem);
 
 std::unordered_map<std::string, std::string>
 parse_relationships(const pugi::xml_document &relations);

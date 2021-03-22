@@ -1,9 +1,8 @@
 #include <gtest/gtest.h>
 #include <odr/exceptions.h>
-#include <odr/experimental/file.h>
+#include <odr/file.h>
 
 using namespace odr;
-using namespace odr::experimental;
 
 TEST(File, open) { EXPECT_THROW(File("/"), FileNotFound); }
 

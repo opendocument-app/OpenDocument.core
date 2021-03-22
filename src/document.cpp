@@ -3,6 +3,7 @@
 #include <odr/document.h>
 #include <odr/document_elements.h>
 #include <odr/document_meta.h>
+#include <odr/document_style.h>
 
 namespace odr {
 
@@ -57,6 +58,10 @@ TextDocument::TextDocument(
 }
 
 ElementRange TextDocument::content() const { return root().children(); }
+
+PageStyle TextDocument::page_style() const {
+  return PageStyle(m_impl, m_impl->root_element());
+}
 
 Presentation::Presentation(
     std::shared_ptr<internal::abstract::Document> presentation)

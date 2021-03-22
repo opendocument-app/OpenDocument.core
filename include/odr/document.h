@@ -14,6 +14,7 @@ namespace odr {
 enum class DocumentType;
 struct DocumentMeta;
 class DocumentFile;
+class PageStyle;
 
 class TextDocument;
 class Presentation;
@@ -53,6 +54,8 @@ private:
 class TextDocument final : public Document {
 public:
   [[nodiscard]] ElementRange content() const;
+
+  [[nodiscard]] PageStyle page_style() const;
 
 private:
   explicit TextDocument(std::shared_ptr<internal::abstract::Document>);

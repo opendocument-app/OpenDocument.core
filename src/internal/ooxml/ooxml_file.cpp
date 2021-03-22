@@ -21,16 +21,13 @@ std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
 
 FileType OfficeOpenXmlFile::file_type() const noexcept { return m_meta.type; }
 
-experimental::FileMeta OfficeOpenXmlFile::file_meta() const noexcept {
-  return m_meta;
-}
+FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_meta; }
 
 bool OfficeOpenXmlFile::password_encrypted() const noexcept {
   return m_meta.password_encrypted;
 }
 
-experimental::EncryptionState
-OfficeOpenXmlFile::encryption_state() const noexcept {
+EncryptionState OfficeOpenXmlFile::encryption_state() const noexcept {
   return m_encryption_state;
 }
 
@@ -51,23 +48,13 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
   // TODO
   // m_filesystem = std::make_unique<zip::ZipReader>(decryptedPackage, false);
   m_meta = parse_file_meta(*m_filesystem);
-  m_encryption_state = experimental::EncryptionState::DECRYPTED;
+  m_encryption_state = EncryptionState::DECRYPTED;
   return true;
 }
 
 std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
   // TODO throw if encrypted
-  switch (file_type()) {
-  case FileType::OFFICE_OPEN_XML_DOCUMENT:
-    return std::make_shared<OfficeOpenXmlTextDocument>(m_filesystem);
-  case FileType::OFFICE_OPEN_XML_PRESENTATION:
-    return std::make_shared<OfficeOpenXmlPresentation>(m_filesystem);
-  case FileType::OFFICE_OPEN_XML_WORKBOOK:
-    return std::make_shared<OfficeOpenXmlSpreadsheet>(m_filesystem);
-  default:
-    // TODO throw
-    return nullptr;
-  }
+  return std::make_shared<OfficeOpenXmlDocument>(m_filesystem);
 }
 
 } // namespace odr::internal::ooxml

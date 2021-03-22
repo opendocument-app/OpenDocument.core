@@ -8,9 +8,6 @@
 namespace odr::internal::ooxml::text {
 
 struct ResolvedStyle {
-  std::shared_ptr<abstract::ParagraphStyle> to_paragraph_style() const;
-  std::shared_ptr<abstract::TextStyle> to_text_style() const;
-
   std::unordered_map<std::string, pugi::xml_node> paragraphProperties;
   std::unordered_map<std::string, pugi::xml_node> textProperties;
 };

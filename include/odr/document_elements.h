@@ -21,6 +21,7 @@ struct TableDimensions;
 enum class ElementType;
 enum class ElementProperty;
 class ElementPropertyValue;
+class PageStyle;
 
 class Element;
 class SlideElement;
@@ -148,6 +149,8 @@ public:
   [[nodiscard]] std::string name() const;
   [[nodiscard]] std::string notes() const;
 
+  [[nodiscard]] PageStyle page_style() const;
+
 private:
   SlideElement();
   SlideElement(std::shared_ptr<const internal::abstract::Document> impl,
@@ -182,6 +185,8 @@ public:
   [[nodiscard]] PageElement next_sibling() const;
 
   [[nodiscard]] std::string name() const;
+
+  [[nodiscard]] PageStyle page_style() const;
 
 private:
   PageElement();
