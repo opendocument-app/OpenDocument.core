@@ -2,9 +2,7 @@
 #define ODR_INTERNAL_OOXML_DOCUMENT_H
 
 #include <internal/abstract/document.h>
-#include <internal/ooxml/text/ooxml_text_style.h>
 #include <memory>
-#include <odr/document_meta.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {
@@ -79,7 +77,6 @@ public:
 
 protected:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
-  DocumentMeta m_document_meta;
 };
 
 } // namespace odr::internal::ooxml

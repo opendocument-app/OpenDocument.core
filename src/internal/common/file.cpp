@@ -2,7 +2,7 @@
 #include <fstream>
 #include <internal/common/file.h>
 #include <odr/exceptions.h>
-#include <odr/file_location.h>
+#include <odr/file.h>
 #include <sstream>
 
 namespace odr::internal::common {

@@ -2,8 +2,9 @@
 #include <internal/common/path.h>
 #include <internal/odf/odf_document.h>
 #include <internal/util/xml_util.h>
-#include <odr/document_meta.h>
-#include <odr/table_dimensions.h>
+#include <odr/document.h>
+#include <odr/exceptions.h>
+#include <odr/file.h>
 
 namespace odr::internal::odf {
 
@@ -25,6 +26,7 @@ bool OpenDocument::savable(bool encrypted) const noexcept { return !encrypted; }
 
 void OpenDocument::save(const common::Path &path) const {
   // TODO
+  throw UnsupportedOperation();
 
   /*
   // TODO throw if not savable
@@ -60,6 +62,7 @@ void OpenDocument::save(const common::Path &path) const {
 
 void OpenDocument::save(const common::Path &path, const char *password) const {
   // TODO throw if not savable
+  throw UnsupportedOperation();
 }
 
 DocumentType OpenDocument::document_type() const noexcept {

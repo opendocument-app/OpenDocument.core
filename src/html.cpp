@@ -7,13 +7,9 @@
 #include <internal/util/stream_util.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
-#include <odr/document_elements.h>
-#include <odr/document_type.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
-#include <odr/html_config.h>
-#include <odr/table_dimensions.h>
 #include <sstream>
 
 using namespace odr::internal;
@@ -408,7 +404,7 @@ void translate_element(const Element &element, std::ostream &out,
                        const HtmlConfig &config) {
   if (element.type() == ElementType::TEXT) {
     // TODO handle whitespace collapse
-    out << common::Html::escape_text(element.text().string());
+    out << common::html::escape_text(element.text().string());
   } else if (element.type() == ElementType::LINE_BREAK) {
     out << "<br>";
   } else if (element.type() == ElementType::PARAGRAPH) {
@@ -563,7 +559,7 @@ void translate_drawing(const Drawing &document, std::ostream &out,
 }
 } // namespace
 
-HtmlConfig Html::parse_config(const std::string &path) {
+HtmlConfig html::parse_config(const std::string &path) {
   HtmlConfig result;
 
   auto json = nlohmann::json::parse(std::ifstream(path));
@@ -572,7 +568,7 @@ HtmlConfig Html::parse_config(const std::string &path) {
   return result;
 }
 
-void Html::translate(const Document &document,
+void html::translate(const Document &document,
                      const std::string &document_identifier,
                      const std::string &path, const HtmlConfig &config) {
   std::ofstream out(path);
@@ -580,15 +576,15 @@ void Html::translate(const Document &document,
     return; // TODO throw
   }
 
-  out << common::Html::doctype();
+  out << common::html::doctype();
   out << "<html><head>";
-  out << common::Html::default_headers();
+  out << common::html::default_headers();
   out << "<style>";
-  out << common::Html::default_style();
+  out << common::html::default_style();
   out << "</style>";
   out << "</head>";
 
-  out << "<body " << common::Html::body_attributes(config) << ">";
+  out << "<body " << common::html::body_attributes(config) << ">";
 
   if (document.document_type() == DocumentType::TEXT) {
     translate_text_document(document.text_document(), out, config);
@@ -605,12 +601,12 @@ void Html::translate(const Document &document,
   out << "</body>";
 
   out << "<script>";
-  out << common::Html::default_script();
+  out << common::html::default_script();
   out << "</script>";
   out << "</html>";
 }
 
-void Html::edit(const Document &document,
+void html::edit(const Document &document,
                 const std::string &document_identifier,
                 const std::string &diff) {
   throw UnsupportedOperation();

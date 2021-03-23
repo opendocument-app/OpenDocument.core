@@ -2,7 +2,7 @@
 #define ODR_TEST_META_H
 
 #include <nlohmann/json.hpp>
-#include <odr/file_type.h>
+#include <odr/file.h>
 #include <string>
 #include <unordered_map>
 #include <vector>

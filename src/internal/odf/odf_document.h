@@ -3,7 +3,6 @@
 
 #include <internal/abstract/document.h>
 #include <memory>
-#include <odr/document.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {

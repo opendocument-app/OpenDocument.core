@@ -7,10 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
 #include <odr/file.h>
-#include <odr/file_category.h>
-#include <odr/file_meta.h>
 #include <odr/html.h>
-#include <odr/html_config.h>
 #include <test_util.h>
 #include <utility>
 
@@ -93,7 +90,7 @@ TEST_P(OutputReferenceTests, all) {
     if (document.document_type() == DocumentType::TEXT) {
       const std::string html_output = output_path + "/document.html";
       fs::create_directories(fs::path(html_output).parent_path());
-      Html::translate(document, "", html_output, config);
+      html::translate(document, "", html_output, config);
       EXPECT_TRUE(fs::is_regular_file(html_output));
       EXPECT_LT(0, fs::file_size(html_output));
     } else if (document.document_type() == DocumentType::PRESENTATION) {
@@ -102,7 +99,7 @@ TEST_P(OutputReferenceTests, all) {
         config.entry_count = 1;
         const std::string html_output =
             output_path + "/slide" + std::to_string(i) + ".html";
-        Html::translate(document, "", html_output, config);
+        html::translate(document, "", html_output, config);
         EXPECT_TRUE(fs::is_regular_file(html_output));
         EXPECT_LT(0, fs::file_size(html_output));
       }
@@ -112,7 +109,7 @@ TEST_P(OutputReferenceTests, all) {
         config.entry_count = 1;
         const std::string html_output =
             output_path + "/sheet" + std::to_string(i) + ".html";
-        Html::translate(document, "", html_output, config);
+        html::translate(document, "", html_output, config);
         EXPECT_TRUE(fs::is_regular_file(html_output));
         EXPECT_LT(0, fs::file_size(html_output));
       }
@@ -122,7 +119,7 @@ TEST_P(OutputReferenceTests, all) {
         config.entry_count = 1;
         const std::string html_output =
             output_path + "/page" + std::to_string(i) + ".html";
-        Html::translate(document, "", html_output, config);
+        html::translate(document, "", html_output, config);
         EXPECT_TRUE(fs::is_regular_file(html_output));
         EXPECT_LT(0, fs::file_size(html_output));
       }

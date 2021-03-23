@@ -2,7 +2,6 @@
 #include <internal/common/path.h>
 #include <internal/oldms/oldms_file.h>
 #include <memory>
-#include <odr/encryption_state.h>
 #include <odr/exceptions.h>
 #include <unordered_map>
 

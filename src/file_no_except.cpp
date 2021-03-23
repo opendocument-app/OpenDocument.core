@@ -1,6 +1,5 @@
 #include <glog/logging.h>
-#include <odr/file_category.h>
-#include <odr/file_meta.h>
+#include <odr/document.h>
 #include <odr/file_no_except.h>
 
 namespace odr {

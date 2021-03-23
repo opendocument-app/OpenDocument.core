@@ -1,17 +1,17 @@
 #include <internal/common/html.h>
 #include <internal/util/string_util.h>
-#include <odr/html_config.h>
+#include <odr/html.h>
 
 namespace odr::internal::common {
 
-const char *Html::doctype() noexcept {
+const char *html::doctype() noexcept {
   // clang-format off
   return R"V0G0N(<!DOCTYPE html>
 )V0G0N";
   // clang-format on
 }
 
-const char *Html::default_headers() noexcept {
+const char *html::default_headers() noexcept {
   // clang-format off
   return R"V0G0N(
 <meta charset="UTF-8"/>
@@ -22,7 +22,7 @@ const char *Html::default_headers() noexcept {
   // clang-format on
 }
 
-const char *Html::default_style() noexcept {
+const char *html::default_style() noexcept {
   // clang-format off
   return R"V0G0N(
 * {
@@ -54,7 +54,7 @@ mark.current { background: orange; }
   // clang-format on
 }
 
-const char *Html::default_spreadsheet_style() noexcept {
+const char *html::default_spreadsheet_style() noexcept {
   // clang-format off
   return R"V0G0N(
 table {
@@ -85,7 +85,7 @@ table td.odr-value-type-float {
   // clang-format on
 }
 
-const char *Html::default_script() noexcept {
+const char *html::default_script() noexcept {
   // clang-format off
   return R"V0G0N(
   // babel from `resources/edit.js`
@@ -99,7 +99,7 @@ const char *Html::default_script() noexcept {
   // clang-format on
 }
 
-std::string Html::body_attributes(const HtmlConfig &config) noexcept {
+std::string html::body_attributes(const HtmlConfig &config) noexcept {
   std::string result;
 
   result += "class=\"";
@@ -120,7 +120,7 @@ std::string Html::body_attributes(const HtmlConfig &config) noexcept {
   return result;
 }
 
-std::string Html::escape_text(std::string text) noexcept {
+std::string html::escape_text(std::string text) noexcept {
   util::string::replace_all(text, "&", "&amp;");
   util::string::replace_all(text, "<", "&lt;");
   util::string::replace_all(text, ">", "&gt;");

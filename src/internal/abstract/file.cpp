@@ -1,7 +1,6 @@
 #include <internal/abstract/document.h>
 #include <internal/abstract/file.h>
-#include <odr/document_meta.h>
-#include <odr/file_category.h>
+#include <odr/file.h>
 
 namespace odr::internal::abstract {
 
