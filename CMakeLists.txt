@@ -47,10 +47,10 @@ add_library(odr-object OBJECT
         src/internal/crypto/crypto_util.cpp
 
         src/internal/odf/odf_crypto.cpp
+        src/internal/odf/odf_document.cpp
         src/internal/odf/odf_file.cpp
         src/internal/odf/odf_manifest.cpp
         src/internal/odf/odf_meta.cpp
-        src/internal/odf/odf_document.cpp
 
         src/internal/oldms/oldms_file.cpp
 

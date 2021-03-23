@@ -2,7 +2,6 @@
 #include <odr/document.h>
 #include <odr/file.h>
 #include <odr/html.h>
-#include <odr/html_config.h>
 #include <string>
 
 using namespace odr;
@@ -33,7 +32,7 @@ int main(int argc, char **argv) {
   auto document = document_file.document();
 
   HtmlConfig config;
-  Html::translate(document, "", output, config);
+  html::translate(document, "", output, config);
 
   return 0;
 }
