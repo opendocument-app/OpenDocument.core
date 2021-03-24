@@ -94,7 +94,8 @@ TEST_P(OutputReferenceTests, all) {
       EXPECT_TRUE(fs::is_regular_file(html_output));
       EXPECT_LT(0, fs::file_size(html_output));
     } else if (document.document_type() == DocumentType::PRESENTATION) {
-      for (std::uint32_t i = 0; i < document.entry_count(); ++i) {
+      for (std::uint32_t i = 0; i < document.presentation().slide_count();
+           ++i) {
         config.entry_offset = i;
         config.entry_count = 1;
         const std::string html_output =
@@ -104,7 +105,7 @@ TEST_P(OutputReferenceTests, all) {
         EXPECT_LT(0, fs::file_size(html_output));
       }
     } else if (document.document_type() == DocumentType::SPREADSHEET) {
-      for (std::uint32_t i = 0; i < document.entry_count(); ++i) {
+      for (std::uint32_t i = 0; i < document.spreadsheet().sheet_count(); ++i) {
         config.entry_offset = i;
         config.entry_count = 1;
         const std::string html_output =
@@ -114,7 +115,7 @@ TEST_P(OutputReferenceTests, all) {
         EXPECT_LT(0, fs::file_size(html_output));
       }
     } else if (document.document_type() == DocumentType::DRAWING) {
-      for (std::uint32_t i = 0; i < document.entry_count(); ++i) {
+      for (std::uint32_t i = 0; i < document.drawing().page_count(); ++i) {
         config.entry_offset = i;
         config.entry_count = 1;
         const std::string html_output =

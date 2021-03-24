@@ -24,55 +24,46 @@ public:
 
   [[nodiscard]] DocumentType document_type() const noexcept final;
 
-  [[nodiscard]] std::uint32_t entry_count() const final;
-
-  [[nodiscard]] abstract::ElementIdentifier root_element() const final;
-  [[nodiscard]] abstract::ElementIdentifier first_entry_element() const final;
+  [[nodiscard]] ElementIdentifier root_element() const final;
+  [[nodiscard]] ElementIdentifier first_entry_element() const final;
 
   [[nodiscard]] ElementType
-  element_type(abstract::ElementIdentifier element_id) const final;
+  element_type(ElementIdentifier element_id) const final;
 
-  [[nodiscard]] abstract::ElementIdentifier
-  element_parent(abstract::ElementIdentifier element_id) const final;
-  [[nodiscard]] abstract::ElementIdentifier
-  element_first_child(abstract::ElementIdentifier element_id) const final;
-  [[nodiscard]] abstract::ElementIdentifier
-  element_previous_sibling(abstract::ElementIdentifier element_id) const final;
-  [[nodiscard]] abstract::ElementIdentifier
-  element_next_sibling(abstract::ElementIdentifier element_id) const final;
+  [[nodiscard]] ElementIdentifier
+  element_parent(ElementIdentifier element_id) const final;
+  [[nodiscard]] ElementIdentifier
+  element_first_child(ElementIdentifier element_id) const final;
+  [[nodiscard]] ElementIdentifier
+  element_previous_sibling(ElementIdentifier element_id) const final;
+  [[nodiscard]] ElementIdentifier
+  element_next_sibling(ElementIdentifier element_id) const final;
 
-  [[nodiscard]] std::any
-  element_property(abstract::ElementIdentifier element_id,
-                   ElementProperty property) const final;
   [[nodiscard]] const char *
-  element_string_property(abstract::ElementIdentifier element_id,
+  element_string_property(ElementIdentifier element_id,
                           ElementProperty property) const final;
   [[nodiscard]] std::uint32_t
-  element_uint32_property(abstract::ElementIdentifier element_id,
+  element_uint32_property(ElementIdentifier element_id,
                           ElementProperty property) const final;
   [[nodiscard]] bool
-  element_bool_property(abstract::ElementIdentifier element_id,
+  element_bool_property(ElementIdentifier element_id,
                         ElementProperty property) const final;
   [[nodiscard]] const char *
-  element_optional_string_property(abstract::ElementIdentifier element_id,
+  element_optional_string_property(ElementIdentifier element_id,
                                    ElementProperty property) const final;
 
   [[nodiscard]] TableDimensions
-  table_dimensions(abstract::ElementIdentifier element_id,
-                   std::uint32_t limit_rows,
+  table_dimensions(ElementIdentifier element_id, std::uint32_t limit_rows,
                    std::uint32_t limit_cols) const final;
 
   [[nodiscard]] std::shared_ptr<abstract::File>
-  image_file(abstract::ElementIdentifier element_id) const final;
+  image_file(ElementIdentifier element_id) const final;
 
-  void set_element_property(abstract::ElementIdentifier element_id,
-                            ElementProperty property,
-                            const std::any &value) const final;
-  void set_element_string_property(abstract::ElementIdentifier element_id,
+  void set_element_string_property(ElementIdentifier element_id,
                                    ElementProperty property,
                                    const char *value) const final;
 
-  void remove_element_property(abstract::ElementIdentifier element_id,
+  void remove_element_property(ElementIdentifier element_id,
                                ElementProperty property) const final;
 
 protected:

@@ -14,7 +14,7 @@ namespace odr::internal::odf {
 class OpenDocumentFile final : public virtual abstract::DocumentFile {
 public:
   explicit OpenDocumentFile(
-      std::shared_ptr<abstract::ReadableFilesystem> files);
+      std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 
@@ -29,7 +29,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const final;
 
 private:
-  std::shared_ptr<abstract::ReadableFilesystem> m_files;
+  std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
   EncryptionState m_encryption_state{EncryptionState::NOT_ENCRYPTED};
   FileMeta m_file_meta;
   Manifest m_manifest;

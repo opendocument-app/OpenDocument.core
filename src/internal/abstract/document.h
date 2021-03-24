@@ -3,6 +3,7 @@
 
 #include <any>
 #include <cstdint>
+#include <internal/identifier.h>
 #include <memory>
 #include <optional>
 #include <string>
@@ -21,20 +22,6 @@ class Path;
 
 namespace odr::internal::abstract {
 class File;
-
-template <typename Number, typename Tag> struct Identifier {
-  Identifier() = default;
-  Identifier(const Number id) : id{id} {}
-
-  operator bool() const { return id == 0; }
-  operator Number() const { return id; }
-
-  Number id{0};
-};
-
-struct ElementIdentifierTag {};
-
-using ElementIdentifier = Identifier<std::uint64_t, ElementIdentifierTag>;
 
 class Document {
 public:
@@ -56,10 +43,6 @@ public:
 
   /// \return the type of the document.
   [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;
-
-  /// \return the amount of entities in the document
-  ///         (e.g. slides, sheets and pages).
-  [[nodiscard]] virtual std::uint32_t entry_count() const = 0;
 
   /// \return the root element of the document.
   [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
@@ -91,13 +74,6 @@ public:
   /// \return the next sibling of the element.
   [[nodiscard]] virtual ElementIdentifier
   element_next_sibling(ElementIdentifier element_id) const = 0;
-
-  /// \param element_id the element to query.
-  /// \param property the requested property.
-  /// \return the requested optional value.
-  [[nodiscard]] virtual std::any
-  element_property(ElementIdentifier element_id,
-                   ElementProperty property) const = 0;
 
   /// \param element_id the element to query.
   /// \param property the requested property.
@@ -147,13 +123,6 @@ public:
   ///         - in case of external images it might be null for now.
   [[nodiscard]] virtual std::shared_ptr<File>
   image_file(ElementIdentifier element_id) const = 0;
-
-  /// \param element_id the element.
-  /// \param property the property to set.
-  /// \param value the value to set.
-  virtual void set_element_property(ElementIdentifier element_id,
-                                    ElementProperty property,
-                                    const std::any &value) const = 0;
 
   /// \param element_id the element.
   /// \param property the property to set.

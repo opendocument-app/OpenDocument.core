@@ -56,13 +56,9 @@ Element::Element(std::shared_ptr<const internal::abstract::Document> impl,
                  const std::uint64_t id)
     : m_impl{std::move(impl)}, m_id{id} {}
 
-bool Element::operator==(const Element &rhs) const {
-  return m_impl == rhs.m_impl && m_id == rhs.m_id;
-}
+bool Element::operator==(const Element &rhs) const { return m_id == rhs.m_id; }
 
-bool Element::operator!=(const Element &rhs) const {
-  return m_impl != rhs.m_impl || m_id != rhs.m_id;
-}
+bool Element::operator!=(const Element &rhs) const { return m_id != rhs.m_id; }
 
 Element::operator bool() const { return m_id != 0; }
 
@@ -680,14 +676,8 @@ DocumentType Document::document_type() const noexcept {
   return m_impl->document_type();
 }
 
-std::uint32_t Document::entry_count() const { return m_impl->entry_count(); }
-
 Element Document::root() const {
   return Element(m_impl, m_impl->root_element());
-}
-
-Element Document::first_entry() const {
-  return Element(m_impl, m_impl->first_entry_element());
 }
 
 TextDocument Document::text_document() const { return TextDocument(m_impl); }
@@ -721,7 +711,8 @@ Presentation::Presentation(
 }
 
 std::uint32_t Presentation::slide_count() const {
-  return m_impl->entry_count();
+  const auto range = slides();
+  return std::distance(std::begin(range), std::end(range));
 }
 
 SlideRange Presentation::slides() const {
@@ -736,7 +727,10 @@ Spreadsheet::Spreadsheet(
   }
 }
 
-std::uint32_t Spreadsheet::sheet_count() const { return m_impl->entry_count(); }
+std::uint32_t Spreadsheet::sheet_count() const {
+  const auto range = sheets();
+  return std::distance(std::begin(range), std::end(range));
+}
 
 SheetRange Spreadsheet::sheets() const {
   return SheetRange(SheetElement(m_impl, m_impl->first_entry_element()));
@@ -749,7 +743,10 @@ Drawing::Drawing(std::shared_ptr<internal::abstract::Document> drawing)
   }
 }
 
-std::uint32_t Drawing::page_count() const { return m_impl->entry_count(); }
+std::uint32_t Drawing::page_count() const {
+  const auto range = pages();
+  return std::distance(std::begin(range), std::end(range));
+}
 
 PageRange Drawing::pages() const {
   return PageRange(PageElement(m_impl, m_impl->first_entry_element()));
@@ -777,7 +774,7 @@ ElementPropertyValue::operator bool() const {
 }
 
 std::any ElementPropertyValue::get() const {
-  return m_impl->element_property(m_id, m_property);
+  return {}; // TODO
 }
 
 std::string ElementPropertyValue::get_string() const {
@@ -797,11 +794,11 @@ const char *ElementPropertyValue::get_optional_string() const {
 }
 
 void ElementPropertyValue::set(const std::any &value) const {
-  m_impl->set_element_property(m_id, m_property, value);
+  // TODO
 }
 
 void ElementPropertyValue::set_string(const std::string &value) const {
-  m_impl->set_element_property(m_id, m_property, value.c_str());
+  m_impl->set_element_string_property(m_id, m_property, value.c_str());
 }
 
 void ElementPropertyValue::remove() const {

@@ -580,11 +580,7 @@ public:
 
   [[nodiscard]] DocumentType document_type() const noexcept;
 
-  [[nodiscard]] std::uint32_t entry_count() const;
-
   [[nodiscard]] Element root() const;
-
-  [[nodiscard]] Element first_entry() const;
 
   [[nodiscard]] TextDocument text_document() const;
   [[nodiscard]] Presentation presentation() const;
