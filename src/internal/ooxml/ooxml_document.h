@@ -39,32 +39,15 @@ public:
   [[nodiscard]] ElementIdentifier
   element_next_sibling(ElementIdentifier element_id) const final;
 
-  [[nodiscard]] const char *
-  element_string_property(ElementIdentifier element_id,
-                          ElementProperty property) const final;
-  [[nodiscard]] std::uint32_t
-  element_uint32_property(ElementIdentifier element_id,
-                          ElementProperty property) const final;
-  [[nodiscard]] bool
-  element_bool_property(ElementIdentifier element_id,
-                        ElementProperty property) const final;
-  [[nodiscard]] const char *
-  element_optional_string_property(ElementIdentifier element_id,
-                                   ElementProperty property) const final;
+  [[nodiscard]] std::any element_property(ElementIdentifier element_id,
+                                          ElementProperty property) const final;
 
-  [[nodiscard]] TableDimensions
-  table_dimensions(ElementIdentifier element_id, std::uint32_t limit_rows,
-                   std::uint32_t limit_cols) const final;
+  void set_element_property(ElementIdentifier element_id,
+                            ElementProperty property,
+                            const std::any &value) const final;
 
-  [[nodiscard]] std::shared_ptr<abstract::File>
-  image_file(ElementIdentifier element_id) const final;
-
-  void set_element_string_property(ElementIdentifier element_id,
-                                   ElementProperty property,
-                                   const char *value) const final;
-
-  void remove_element_property(ElementIdentifier element_id,
-                               ElementProperty property) const final;
+  [[nodiscard]] std::shared_ptr<abstract::Table>
+  table(ElementIdentifier element_id) const final;
 
 protected:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;

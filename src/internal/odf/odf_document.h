@@ -9,7 +9,8 @@
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
-}
+class Table;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::odf {
 
@@ -41,37 +42,21 @@ public:
   [[nodiscard]] ElementIdentifier
   element_next_sibling(ElementIdentifier element_id) const final;
 
-  [[nodiscard]] const char *
-  element_string_property(ElementIdentifier element_id,
-                          ElementProperty property) const final;
-  [[nodiscard]] std::uint32_t
-  element_uint32_property(ElementIdentifier element_id,
-                          ElementProperty property) const final;
-  [[nodiscard]] bool
-  element_bool_property(ElementIdentifier element_id,
-                        ElementProperty property) const final;
-  [[nodiscard]] const char *
-  element_optional_string_property(ElementIdentifier element_id,
-                                   ElementProperty property) const final;
+  [[nodiscard]] std::any element_property(ElementIdentifier element_id,
+                                          ElementProperty property) const final;
 
-  [[nodiscard]] TableDimensions
-  table_dimensions(ElementIdentifier element_id, std::uint32_t limit_rows,
-                   std::uint32_t limit_cols) const final;
+  void set_element_property(ElementIdentifier element_id,
+                            ElementProperty property,
+                            const std::any &value) const final;
 
-  [[nodiscard]] std::shared_ptr<abstract::File>
-  image_file(ElementIdentifier element_id) const final;
-
-  void set_element_string_property(ElementIdentifier element_id,
-                                   ElementProperty property,
-                                   const char *value) const final;
-
-  void remove_element_property(ElementIdentifier element_id,
-                               ElementProperty property) const final;
+  [[nodiscard]] std::shared_ptr<abstract::Table>
+  table(ElementIdentifier element_id) const final;
 
 private:
   struct Element {
     pugi::xml_node node;
     ElementType type{ElementType::NONE};
+
     ElementIdentifier parent;
     ElementIdentifier first_child;
     ElementIdentifier previous_sibling;
@@ -88,11 +73,17 @@ private:
   std::vector<Element> m_elements;
   ElementIdentifier m_root;
 
-  ElementIdentifier register_tree_(pugi::xml_node node,
-                                   ElementIdentifier parent,
-                                   ElementIdentifier previous_sibling);
+  ElementIdentifier register_element_(pugi::xml_node node,
+                                      ElementIdentifier parent,
+                                      ElementIdentifier previous_sibling);
+  ElementIdentifier register_children_(pugi::xml_node node,
+                                       ElementIdentifier parent,
+                                       ElementIdentifier previous_sibling);
+  void register_table_(pugi::xml_node node);
 
-  ElementIdentifier register_element_(const Element &element);
+  ElementIdentifier new_element_(pugi::xml_node node, ElementType type,
+                                 ElementIdentifier parent,
+                                 ElementIdentifier previous_sibling);
   Element *element_(ElementIdentifier element_id);
   const Element *element_(ElementIdentifier element_id) const;
 };

@@ -63,47 +63,21 @@ ElementIdentifier OfficeOpenXmlDocument::element_next_sibling(
   return 0; // TODO
 }
 
-const char *OfficeOpenXmlDocument::element_string_property(
-    const ElementIdentifier element_id, const ElementProperty property) const {
-  return ""; // TODO
+std::any
+OfficeOpenXmlDocument::element_property(const ElementIdentifier element_id,
+                                        const ElementProperty property) const {
+  throw UnsupportedOperation();
 }
 
-std::uint32_t OfficeOpenXmlDocument::element_uint32_property(
-    const ElementIdentifier element_id, const ElementProperty property) const {
-  return 0; // TODO
-}
-
-bool OfficeOpenXmlDocument::element_bool_property(
-    const ElementIdentifier element_id, const ElementProperty property) const {
-  return false; // TODO
-}
-
-const char *OfficeOpenXmlDocument::element_optional_string_property(
-    const ElementIdentifier element_id, const ElementProperty property) const {
-  return ""; // TODO
-}
-
-TableDimensions
-OfficeOpenXmlDocument::table_dimensions(const ElementIdentifier element_id,
-                                        const std::uint32_t limit_rows,
-                                        const std::uint32_t limit_cols) const {
-  return {}; // TODO
-}
-
-std::shared_ptr<abstract::File>
-OfficeOpenXmlDocument::image_file(const ElementIdentifier element_id) const {
-  return {}; // TODO
-}
-
-void OfficeOpenXmlDocument::set_element_string_property(
+void OfficeOpenXmlDocument::set_element_property(
     const ElementIdentifier element_id, const ElementProperty property,
-    const char *value) const {
-  // TODO
+    const std::any &value) const {
+  throw UnsupportedOperation();
 }
 
-void OfficeOpenXmlDocument::remove_element_property(
-    const ElementIdentifier element_id, const ElementProperty property) const {
-  // TODO
+std::shared_ptr<abstract::Table>
+OfficeOpenXmlDocument::table(const ElementIdentifier element_id) const {
+  throw UnsupportedOperation();
 }
 
 } // namespace odr::internal::ooxml

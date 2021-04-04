@@ -9,6 +9,7 @@
 
 namespace odr::internal::abstract {
 class Document;
+class Table;
 } // namespace odr::internal::abstract
 
 namespace odr {
@@ -75,9 +76,6 @@ enum class ElementType {
   LIST_ITEM,
 
   TABLE,
-  TABLE_COLUMN,
-  TABLE_ROW,
-  TABLE_CELL,
 
   FRAME,
   IMAGE,
@@ -89,6 +87,8 @@ enum class ElementType {
 // TODO the property handle could reflect the type
 // TODO it might be possible to strongly type these properties
 enum class ElementProperty {
+  NONE,
+
   NAME,
   NOTES,
   TEXT,
@@ -143,6 +143,7 @@ enum class ElementProperty {
   VERTICAL_ALIGN,
 
   IMAGE_INTERNAL,
+  IMAGE_FILE,
 };
 
 struct TableDimensions {
@@ -153,27 +154,40 @@ struct TableDimensions {
   TableDimensions(std::uint32_t rows, std::uint32_t columns);
 };
 
-class ElementPropertyValue {
+class PropertyValue {
 public:
-  bool operator==(const ElementPropertyValue &rhs) const;
-  bool operator!=(const ElementPropertyValue &rhs) const;
-  explicit operator bool() const;
+  virtual ~PropertyValue() = default;
 
-  [[nodiscard]] std::any get() const;
+  virtual explicit operator bool() const = 0;
+
+  [[nodiscard]] virtual std::any get() const = 0;
   [[nodiscard]] std::string get_string() const;
   [[nodiscard]] std::uint32_t get_uint32() const;
   [[nodiscard]] bool get_bool() const;
   [[nodiscard]] const char *get_optional_string() const;
 
-  void set(const std::any &value) const;
+  virtual void set(const std::any &value) const = 0;
   void set_string(const std::string &value) const;
 
-  void remove() const;
+  virtual void remove() const = 0;
+};
+
+class ElementPropertyValue final : public PropertyValue {
+public:
+  bool operator==(const ElementPropertyValue &rhs) const;
+  bool operator!=(const ElementPropertyValue &rhs) const;
+  explicit operator bool() const final;
+
+  [[nodiscard]] std::any get() const final;
+
+  void set(const std::any &value) const final;
+
+  void remove() const final;
 
 private:
   std::shared_ptr<const internal::abstract::Document> m_impl;
   std::uint64_t m_id{0};
-  ElementProperty m_property;
+  ElementProperty m_property{ElementProperty::NONE};
 
   ElementPropertyValue();
   ElementPropertyValue(std::shared_ptr<const internal::abstract::Document> impl,
@@ -183,19 +197,94 @@ private:
   friend PageStyle;
 };
 
+class TableColumnPropertyValue final : public PropertyValue {
+public:
+  bool operator==(const TableColumnPropertyValue &rhs) const;
+  bool operator!=(const TableColumnPropertyValue &rhs) const;
+  explicit operator bool() const final;
+
+  [[nodiscard]] std::any get() const final;
+
+  void set(const std::any &value) const final;
+
+  void remove() const final;
+
+private:
+  std::shared_ptr<const internal::abstract::Table> m_impl;
+  std::uint32_t m_column{0};
+  ElementProperty m_property{ElementProperty::NONE};
+
+  TableColumnPropertyValue();
+  TableColumnPropertyValue(
+      std::shared_ptr<const internal::abstract::Table> impl,
+      std::uint32_t column, ElementProperty property);
+
+  friend TableColumnElement;
+};
+
+class TableRowPropertyValue final : public PropertyValue {
+public:
+  bool operator==(const TableRowPropertyValue &rhs) const;
+  bool operator!=(const TableRowPropertyValue &rhs) const;
+  explicit operator bool() const final;
+
+  [[nodiscard]] std::any get() const final;
+
+  void set(const std::any &value) const final;
+
+  void remove() const final;
+
+private:
+  std::shared_ptr<const internal::abstract::Table> m_impl;
+  std::uint32_t m_row{0};
+  ElementProperty m_property{ElementProperty::NONE};
+
+  TableRowPropertyValue();
+  TableRowPropertyValue(std::shared_ptr<const internal::abstract::Table> impl,
+                        std::uint32_t row, ElementProperty property);
+
+  friend TableRowElement;
+};
+
+class TableCellPropertyValue final : public PropertyValue {
+public:
+  bool operator==(const TableCellPropertyValue &rhs) const;
+  bool operator!=(const TableCellPropertyValue &rhs) const;
+  explicit operator bool() const final;
+
+  [[nodiscard]] std::any get() const final;
+
+  void set(const std::any &value) const final;
+
+  void remove() const final;
+
+private:
+  std::shared_ptr<const internal::abstract::Table> m_impl;
+  std::uint32_t m_row{0};
+  std::uint32_t m_column{0};
+  ElementProperty m_property{ElementProperty::NONE};
+
+  TableCellPropertyValue();
+  TableCellPropertyValue(std::shared_ptr<const internal::abstract::Table> impl,
+                         std::uint32_t row, std::uint32_t column,
+                         ElementProperty property);
+
+  friend TableCellElement;
+};
+
 class PageStyle {
 public:
   bool operator==(const PageStyle &rhs) const;
   bool operator!=(const PageStyle &rhs) const;
   explicit operator bool() const;
 
-  ElementPropertyValue width() const;
-  ElementPropertyValue height() const;
+  [[nodiscard]] ElementPropertyValue width() const;
+  [[nodiscard]] ElementPropertyValue height() const;
 
-  ElementPropertyValue margin_top() const;
-  ElementPropertyValue margin_bottom() const;
-  ElementPropertyValue margin_left() const;
-  ElementPropertyValue margin_right() const;
+  [[nodiscard]] ElementPropertyValue margin_top() const;
+  [[nodiscard]] ElementPropertyValue margin_bottom() const;
+  [[nodiscard]] ElementPropertyValue margin_left() const;
+  [[nodiscard]] ElementPropertyValue margin_right() const;
 
 private:
   std::shared_ptr<const internal::abstract::Document> m_impl;
@@ -240,9 +329,6 @@ public:
   [[nodiscard]] ListElement list() const;
   [[nodiscard]] ListItemElement list_item() const;
   [[nodiscard]] TableElement table() const;
-  [[nodiscard]] TableColumnElement table_column() const;
-  [[nodiscard]] TableRowElement table_row() const;
-  [[nodiscard]] TableCellElement table_cell() const;
   [[nodiscard]] FrameElement frame() const;
   [[nodiscard]] ImageElement image() const;
   [[nodiscard]] RectElement rect() const;
@@ -259,6 +345,7 @@ protected:
 
   friend Document;
   template <typename E> friend class ElementRangeTemplate;
+  friend class TableCellElement;
 };
 
 template <typename E> class ElementIterator final {
@@ -443,53 +530,86 @@ private:
   TableElement(std::shared_ptr<const internal::abstract::Document> impl,
                std::uint64_t id);
 
+  std::shared_ptr<const internal::abstract::Table> m_table;
+
   friend Element;
   friend SheetElement;
 };
 
-class TableColumnElement final : public Element {
+class TableColumnElement final {
 public:
+  bool operator==(const TableColumnElement &rhs) const;
+  bool operator!=(const TableColumnElement &rhs) const;
+  explicit operator bool() const;
+
   [[nodiscard]] TableColumnElement previous_sibling() const;
   [[nodiscard]] TableColumnElement next_sibling() const;
 
+  [[nodiscard]] TableColumnPropertyValue
+  property(ElementProperty property) const;
+
 private:
   TableColumnElement();
-  TableColumnElement(std::shared_ptr<const internal::abstract::Document> impl,
-                     std::uint64_t id);
+  TableColumnElement(std::shared_ptr<const internal::abstract::Table> impl,
+                     std::uint32_t column);
+
+  std::shared_ptr<const internal::abstract::Table> m_impl;
+  std::uint32_t m_column{0};
 
   friend Element;
   template <typename E> friend class ElementRangeTemplate;
 };
 
-class TableRowElement final : public Element {
+class TableRowElement final {
 public:
+  bool operator==(const TableRowElement &rhs) const;
+  bool operator!=(const TableRowElement &rhs) const;
+  explicit operator bool() const;
+
   [[nodiscard]] TableCellElement first_child() const;
   [[nodiscard]] TableRowElement previous_sibling() const;
   [[nodiscard]] TableRowElement next_sibling() const;
+
+  [[nodiscard]] TableRowPropertyValue property(ElementProperty property) const;
 
   [[nodiscard]] TableCellRange cells() const;
 
 private:
   TableRowElement();
-  TableRowElement(std::shared_ptr<const internal::abstract::Document> impl,
-                  std::uint64_t id);
+  TableRowElement(std::shared_ptr<const internal::abstract::Table> impl,
+                  std::uint32_t row);
+
+  std::shared_ptr<const internal::abstract::Table> m_impl;
+  std::uint32_t m_row{0};
 
   friend Element;
   template <typename E> friend class ElementRangeTemplate;
 };
 
-class TableCellElement final : public Element {
+class TableCellElement final {
 public:
+  bool operator==(const TableCellElement &rhs) const;
+  bool operator!=(const TableCellElement &rhs) const;
+  explicit operator bool() const;
+
   [[nodiscard]] TableCellElement previous_sibling() const;
   [[nodiscard]] TableCellElement next_sibling() const;
+
+  [[nodiscard]] ElementRange children() const;
+
+  [[nodiscard]] TableCellPropertyValue property(ElementProperty property) const;
 
   [[nodiscard]] std::uint32_t row_span() const;
   [[nodiscard]] std::uint32_t column_span() const;
 
 private:
   TableCellElement();
-  TableCellElement(std::shared_ptr<const internal::abstract::Document> impl,
-                   std::uint64_t id);
+  TableCellElement(std::shared_ptr<const internal::abstract::Table> impl,
+                   std::uint32_t row, std::uint32_t column);
+
+  std::shared_ptr<const internal::abstract::Table> m_impl;
+  std::uint32_t m_row{0};
+  std::uint32_t m_column{0};
 
   friend Element;
   template <typename E> friend class ElementRangeTemplate;

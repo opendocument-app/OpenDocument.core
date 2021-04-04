@@ -13,7 +13,6 @@ enum class DocumentType;
 struct DocumentMeta;
 enum class ElementType;
 enum class ElementProperty;
-struct TableDimensions;
 } // namespace odr
 
 namespace odr::internal::common {
@@ -22,6 +21,7 @@ class Path;
 
 namespace odr::internal::abstract {
 class File;
+class Table;
 
 class Document {
 public:
@@ -77,66 +77,20 @@ public:
 
   /// \param element_id the element to query.
   /// \param property the requested property.
-  /// \return the requested optional string.
-  ///         - return value must not be null
-  ///         - lifetime of the return value only guaranteed until next
-  ///           function call on the interface.
-  [[nodiscard]] virtual const char *
-  element_string_property(ElementIdentifier element_id,
-                          ElementProperty property) const = 0;
-
-  /// \param element_id the element to query.
-  /// \param property the requested property.
-  /// \return the requested integer.
-  [[nodiscard]] virtual std::uint32_t
-  element_uint32_property(ElementIdentifier element_id,
-                          ElementProperty property) const = 0;
-
-  /// \param element_id the element to query.
-  /// \param property the requested property.
-  /// \return the requested bool.
-  [[nodiscard]] virtual bool
-  element_bool_property(ElementIdentifier element_id,
-                        ElementProperty property) const = 0;
-
-  /// \param element_id the element to query.
-  /// \param property the requested property.
-  /// \return the requested optional string.
-  ///         - return value might be null
-  ///         - lifetime of the return value only guaranteed until next
-  ///           function call on the interface.
-  [[nodiscard]] virtual const char *
-  element_optional_string_property(ElementIdentifier element_id,
-                                   ElementProperty property) const = 0;
-
-  /// \param element_id the element to query.
-  /// \param limit_rows
-  /// \param limit_cols
-  /// \return the requested table dimensions.
-  [[nodiscard]] virtual TableDimensions
-  table_dimensions(ElementIdentifier element_id, std::uint32_t limit_rows,
-                   std::uint32_t limit_cols) const = 0;
-
-  /// \param element_id the element to query.
-  /// \return the requested file object.
-  ///         - return value should not be null
-  ///         - in case of external images it might be null for now.
-  [[nodiscard]] virtual std::shared_ptr<File>
-  image_file(ElementIdentifier element_id) const = 0;
+  /// \return the requested optional value.
+  [[nodiscard]] virtual std::any
+  element_property(ElementIdentifier element_id,
+                   ElementProperty property) const = 0;
 
   /// \param element_id the element.
   /// \param property the property to set.
   /// \param value the value to set.
-  ///        - lifetime of `value` must be guaranteed until the function
-  ///          completes.
-  virtual void set_element_string_property(ElementIdentifier element_id,
-                                           ElementProperty property,
-                                           const char *value) const = 0;
+  virtual void set_element_property(ElementIdentifier element_id,
+                                    ElementProperty property,
+                                    const std::any &value) const = 0;
 
-  /// \param element_id the element.
-  /// \param property the property to remove.
-  virtual void remove_element_property(ElementIdentifier element_id,
-                                       ElementProperty property) const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Table>
+  table(ElementIdentifier element_id) const = 0;
 };
 
 } // namespace odr::internal::abstract

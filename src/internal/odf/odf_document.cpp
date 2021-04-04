@@ -1,8 +1,10 @@
 #include <fstream>
 #include <internal/abstract/filesystem.h>
+#include <internal/abstract/table.h>
 #include <internal/common/file.h>
 #include <internal/common/path.h>
 #include <internal/odf/odf_document.h>
+#include <internal/util/map_util.h>
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
@@ -10,6 +12,101 @@
 #include <unordered_map>
 
 namespace odr::internal::odf {
+
+namespace {
+class Table final : public abstract::Table {
+public:
+  Table(pugi::xml_node node) : m_node{node} {
+    // TODO
+  }
+
+  [[nodiscard]] std::shared_ptr<abstract::Document> document() const final {
+    return m_document;
+  }
+
+  [[nodiscard]] ElementIdentifier
+  cell_first_child(const std::uint32_t row,
+                   const std::uint32_t column) const final {
+    auto c = cell_(row, column);
+    if (c == nullptr) {
+      return {};
+    }
+    return c->first_child;
+  }
+
+  [[nodiscard]] std::any
+  column_property(const std::uint32_t column,
+                  const ElementProperty property) const final {
+    auto c = column_(column);
+    if (c == nullptr) {
+      return {};
+    }
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::any
+  row_property(const std::uint32_t row,
+               const ElementProperty property) const final {
+    auto r = row_(row);
+    if (r == nullptr) {
+      return {};
+    }
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::any
+  cell_property(const std::uint32_t row, const std::uint32_t column,
+                const ElementProperty property) const final {
+    auto c = cell_(row, column);
+    if (c == nullptr) {
+      return {};
+    }
+    return {}; // TODO
+  }
+
+  [[nodiscard]] TableDimensions
+  dimensions(const std::uint32_t limit_rows,
+             const std::uint32_t limit_cols) const final {
+    return {}; // TODO
+  }
+
+private:
+  struct Column {
+    pugi::xml_node node;
+    std::uint32_t index{0};
+  };
+
+  struct Cell {
+    pugi::xml_node node;
+    std::uint32_t index{0};
+    ElementIdentifier first_child;
+  };
+
+  struct Row {
+    pugi::xml_node node;
+    std::uint32_t index{0};
+    std::vector<Cell> cells;
+  };
+
+  std::shared_ptr<OpenDocument> m_document;
+  pugi::xml_node m_node;
+
+  std::vector<Column> m_columns;
+  std::vector<Row> m_rows;
+
+  Column *column_(const std::uint32_t column) const {
+    return nullptr; // TODO
+  }
+
+  Row *row_(const std::uint32_t row) const {
+    return nullptr; // TODO
+  }
+
+  Cell *cell_(const std::uint32_t row, const std::uint32_t column) const {
+    return nullptr; // TODO
+  }
+};
+} // namespace
 
 OpenDocument::OpenDocument(
     const DocumentType document_type,
@@ -21,7 +118,7 @@ OpenDocument::OpenDocument(
     m_styles_xml = util::xml::parse(*m_filesystem, "styles.xml");
   }
 
-  m_root = register_tree_(
+  m_root = register_element_(
       m_content_xml.document_element().child("office:body").first_child(), 0,
       0);
 
@@ -37,9 +134,34 @@ OpenDocument::OpenDocument(
 }
 
 ElementIdentifier
-OpenDocument::register_tree_(const pugi::xml_node node,
-                             const ElementIdentifier parent,
-                             const ElementIdentifier previous_sibling) {
+OpenDocument::register_element_(const pugi::xml_node node,
+                                const ElementIdentifier parent,
+                                const ElementIdentifier previous_sibling) {
+  static std::unordered_map<std::string, ElementType> element_type_table{
+      {"text:p", ElementType::PARAGRAPH},
+      {"text:h", ElementType::PARAGRAPH},
+      {"text:span", ElementType::SPAN},
+      {"text:s", ElementType::TEXT},
+      {"text:tab", ElementType::TEXT},
+      {"text:line-break", ElementType::LINE_BREAK},
+      {"text:a", ElementType::LINK},
+      {"text:bookmark", ElementType::BOOKMARK},
+      {"text:bookmark-start", ElementType::BOOKMARK},
+      {"text:list", ElementType::LIST},
+      {"text:list-item", ElementType::LIST_ITEM},
+      {"table:table", ElementType::TABLE},
+      {"draw:frame", ElementType::FRAME},
+      {"draw:image", ElementType::IMAGE},
+      {"draw:rect", ElementType::RECT},
+      {"draw:line", ElementType::LINE},
+      {"draw:circle", ElementType::CIRCLE},
+      {"office:text", ElementType::ROOT},
+      {"office:presentation", ElementType::ROOT},
+      {"office:spreadsheet", ElementType::ROOT},
+      {"office:drawing", ElementType::ROOT},
+      // TODO "draw:custom-shape"
+  };
+
   if (!node) {
     return 0;
   }
@@ -51,77 +173,79 @@ OpenDocument::register_tree_(const pugi::xml_node node,
   } else if (node.type() == pugi::node_element) {
     const std::string element = node.name();
 
-    if (element == "text:p" || element == "text:h") {
-      element_type = ElementType::PARAGRAPH;
-    } else if (element == "text:span") {
-      element_type = ElementType::SPAN;
-    } else if (element == "text:s" || element == "text:tab") {
-      element_type = ElementType::TEXT;
-    } else if (element == "text:line-break") {
-      element_type = ElementType::LINE_BREAK;
-    } else if (element == "text:a") {
-      element_type = ElementType::LINK;
-    } else if (element == "text:table-of-content") {
-      return register_tree_(node.child("text:index-body").first_child(), parent,
-                            previous_sibling);
-    } else if (element == "text:bookmark" || element == "text:bookmark-start") {
-      element_type = ElementType::BOOKMARK;
-    } else if (element == "text:list") {
-      element_type = ElementType::LIST;
-    } else if (element == "table:table") {
-      element_type = ElementType::TABLE;
-    } else if (element == "draw:frame") {
-      element_type = ElementType::FRAME;
+    if (element == "text:table-of-content") {
+      return register_children_(node.child("text:index-body"), parent,
+                                previous_sibling);
     } else if (element == "draw:g") {
       // drawing group not supported
-      return register_tree_(node.first_child(), parent, previous_sibling);
-    } else if (element == "draw:image") {
-      element_type = ElementType::IMAGE;
-    } else if (element == "draw:rect") {
-      element_type = ElementType::RECT;
-    } else if (element == "draw:line") {
-      element_type = ElementType::LINE;
-    } else if (element == "draw:circle") {
-      element_type = ElementType::CIRCLE;
-    } else if (element == "office:text" || element == "office:presentation" ||
-               element == "office:spreadsheet" || element == "office:drawing") {
-      element_type = ElementType::ROOT;
+      return register_children_(node, parent, previous_sibling);
     }
-    // TODO if (element == "draw:custom-shape")
 
-    // TODO log element
+    util::map::lookup_map(element_type_table, element, element_type);
   }
 
   if (element_type == ElementType::NONE) {
+    // TODO log node
     return 0;
   }
 
-  Element element;
-  element.node = node;
-  element.type = element_type;
-  element.parent = parent;
-  element.previous_sibling = previous_sibling;
-  const ElementIdentifier element_id = register_element_(element);
-  if (parent && !previous_sibling) {
-    element_(parent)->first_child = element_id;
-  }
-  if (previous_sibling) {
-    element_(previous_sibling)->next_sibling = element_id;
+  auto new_element = new_element_(node, element_type, parent, previous_sibling);
+
+  if (element_type == ElementType::TABLE) {
+    register_table_(node);
+  } else {
+    register_children_(node, new_element, {});
   }
 
-  ElementIdentifier previous_sibling_id;
-  for (auto &&child_node : node) {
-    const ElementIdentifier child_id =
-        register_tree_(child_node, element_id, previous_sibling_id);
-    previous_sibling_id = child_id;
-  }
-
-  return element_id;
+  return new_element;
 }
 
-ElementIdentifier OpenDocument::register_element_(const Element &element) {
+ElementIdentifier
+OpenDocument::register_children_(const pugi::xml_node node,
+                                 const ElementIdentifier parent,
+                                 ElementIdentifier previous_sibling) {
+  ElementIdentifier first_child;
+
+  for (auto &&child_node : node) {
+    const ElementIdentifier child =
+        register_element_(child_node, parent, previous_sibling);
+    if (!child) {
+      continue;
+    }
+    if (!first_child) {
+      first_child = child;
+    }
+    previous_sibling = child;
+  }
+
+  return first_child;
+}
+
+void OpenDocument::register_table_(const pugi::xml_node node) {
+  // TODO
+}
+
+ElementIdentifier
+OpenDocument::new_element_(const pugi::xml_node node, const ElementType type,
+                           const ElementIdentifier parent,
+                           const ElementIdentifier previous_sibling) {
+  Element element;
+  element.node = node;
+  element.type = type;
+  element.parent = parent;
+  element.previous_sibling = previous_sibling;
+
   m_elements.push_back(element);
-  return m_elements.size();
+  ElementIdentifier result = m_elements.size();
+
+  if (parent && !previous_sibling) {
+    element_(parent)->first_child = result;
+  }
+  if (previous_sibling) {
+    element_(previous_sibling)->next_sibling = result;
+  }
+
+  return result;
 }
 
 OpenDocument::Element *
@@ -234,63 +358,40 @@ OpenDocument::element_next_sibling(const ElementIdentifier element_id) const {
   return element_(element_id)->next_sibling;
 }
 
-const char *
-OpenDocument::element_string_property(const ElementIdentifier element_id,
-                                      const ElementProperty property) const {
-  return ""; // TODO
-}
+std::any OpenDocument::element_property(const ElementIdentifier element_id,
+                                        const ElementProperty property) const {
+  if (property == ElementProperty::IMAGE_FILE) {
+    if (!element_id) {
+      return {};
+    }
 
-std::uint32_t
-OpenDocument::element_uint32_property(const ElementIdentifier element_id,
-                                      const ElementProperty property) const {
-  return 0; // TODO
-}
+    if (element_(element_id)->type != ElementType::IMAGE) {
+      return {};
+    }
 
-bool OpenDocument::element_bool_property(const ElementIdentifier element_id,
-                                         const ElementProperty property) const {
-  return false; // TODO
-}
+    // TODO use odf internal check
+    if (!std::any_cast<bool>(
+            element_property(element_id, ElementProperty::IMAGE_INTERNAL))) {
+      // TODO support external files
+      throw std::runtime_error("not internal image");
+    }
 
-const char *OpenDocument::element_optional_string_property(
-    const ElementIdentifier element_id, const ElementProperty property) const {
-  return ""; // TODO
-}
+    const common::Path path = std::any_cast<const char *>(
+        element_property(element_id, ElementProperty::HREF));
+    return m_filesystem->open(path);
+  }
 
-TableDimensions
-OpenDocument::table_dimensions(const ElementIdentifier element_id,
-                               const std::uint32_t limit_rows,
-                               const std::uint32_t limit_cols) const {
   return {}; // TODO
 }
 
-std::shared_ptr<abstract::File>
-OpenDocument::image_file(const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-
-  if (element_(element_id)->type != ElementType::IMAGE) {
-    return {};
-  }
-
-  if (!element_bool_property(element_id, ElementProperty::IMAGE_INTERNAL)) {
-    // TODO support external files
-    throw std::runtime_error("not internal image");
-  }
-
-  const common::Path path =
-      element_string_property(element_id, ElementProperty::HREF);
-  return m_filesystem->open(path);
-}
-
-void OpenDocument::set_element_string_property(
-    const ElementIdentifier element_id, const ElementProperty property,
-    const char *value) const {
+void OpenDocument::set_element_property(const ElementIdentifier element_id,
+                                        const ElementProperty property,
+                                        const std::any &value) const {
   throw UnsupportedOperation();
 }
 
-void OpenDocument::remove_element_property(
-    const ElementIdentifier element_id, const ElementProperty property) const {
+std::shared_ptr<abstract::Table>
+OpenDocument::table(const ElementIdentifier element_id) const {
   throw UnsupportedOperation();
 }
 

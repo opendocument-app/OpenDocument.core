@@ -3,7 +3,7 @@
 
 namespace odr::internal::util::map {
 template <typename Map, typename Key, typename Value>
-bool lookupMap(const Map &map, const Key &key, Value &value) {
+bool lookup_map(const Map &map, const Key &key, Value &value) {
   const auto it = map.find(key);
   if (it == std::end(map)) {
     return false;
@@ -15,7 +15,7 @@ bool lookupMap(const Map &map, const Key &key, Value &value) {
 template <typename Map, typename Key, typename Value>
 bool lookup_map_default(const Map &map, const Key &key, Value &value,
                         const Value &default_value) {
-  if (!lookupMap(map, key, value)) {
+  if (!lookup_map(map, key, value)) {
     value = default_value;
     return false;
   }

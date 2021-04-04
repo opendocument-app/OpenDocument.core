@@ -85,7 +85,7 @@ std::string translate_table_style(const Element &element) {
   return result;
 }
 
-std::string translate_table_column_style(const Element &element) {
+std::string translate_table_column_style(const TableColumnElement &element) {
   std::string result;
   if (auto width = element.property(ElementProperty::WIDTH); width) {
     result += "width:" + width.get_string() + ";";
@@ -93,7 +93,7 @@ std::string translate_table_column_style(const Element &element) {
   return result;
 }
 
-std::string translate_table_cell_style(const Element &element) {
+std::string translate_table_cell_style(const TableCellElement &element) {
   std::string result;
   if (auto padding_top = element.property(ElementProperty::PADDING_TOP);
       padding_top) {

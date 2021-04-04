@@ -1,9 +1,43 @@
 #include <internal/abstract/document.h>
+#include <internal/abstract/table.h>
 #include <internal/common/path.h>
 #include <odr/document.h>
+#include <odr/exceptions.h>
 #include <odr/file.h>
 
 namespace odr {
+
+namespace {
+bool property_value_to_bool(const std::any &value) {
+  if (value.type() == typeid(bool)) {
+    return std::any_cast<bool>(value);
+  }
+  throw std::runtime_error("conversion to bool failed");
+}
+
+std::uint32_t property_value_to_uint32(const std::any &value) {
+  if (value.type() == typeid(std::uint32_t)) {
+    return std::any_cast<std::uint32_t>(value);
+  }
+  throw std::runtime_error("conversion to uint32 failed");
+}
+
+const char *property_value_to_cstr(const std::any &value) {
+  if (value.type() == typeid(const char *)) {
+    return std::any_cast<const char *>(value);
+  }
+  throw std::runtime_error("conversion to cstr failed");
+}
+
+std::string property_value_to_string(const std::any &value) {
+  if (value.type() == typeid(std::string)) {
+    return std::any_cast<std::string>(value);
+  } else if (value.type() == typeid(const char *)) {
+    return std::any_cast<const char *>(value);
+  }
+  throw std::runtime_error("conversion to string failed");
+}
+} // namespace
 
 TableDimensions::TableDimensions() = default;
 
@@ -145,18 +179,6 @@ ListItemElement Element::list_item() const {
 
 TableElement Element::table() const { return TableElement(m_impl, m_id); }
 
-TableColumnElement Element::table_column() const {
-  return TableColumnElement(m_impl, m_id);
-}
-
-TableRowElement Element::table_row() const {
-  return TableRowElement(m_impl, m_id);
-}
-
-TableCellElement Element::table_cell() const {
-  return TableCellElement(m_impl, m_id);
-}
-
 FrameElement Element::frame() const { return FrameElement(m_impl, m_id); }
 
 ImageElement Element::image() const { return ImageElement(m_impl, m_id); }
@@ -253,11 +275,13 @@ SlideElement SlideElement::next_sibling() const {
 }
 
 std::string SlideElement::name() const {
-  return m_impl->element_string_property(m_id, ElementProperty::NAME);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::NAME));
 }
 
 std::string SlideElement::notes() const {
-  return m_impl->element_string_property(m_id, ElementProperty::NOTES);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::NOTES));
 }
 
 PageStyle SlideElement::page_style() const { return PageStyle(m_impl, m_id); }
@@ -278,7 +302,8 @@ SheetElement SheetElement::next_sibling() const {
 }
 
 std::string SheetElement::name() const {
-  return m_impl->element_string_property(m_id, ElementProperty::NAME);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::NAME));
 }
 
 TableElement SheetElement::table() const {
@@ -307,7 +332,8 @@ std::string PageElement::name() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::NAME);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::NAME));
 }
 
 PageStyle PageElement::page_style() const { return PageStyle(m_impl, m_id); }
@@ -323,7 +349,8 @@ std::string TextElement::string() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::TEXT);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::TEXT));
 }
 
 ParagraphElement::ParagraphElement() = default;
@@ -351,7 +378,8 @@ std::string LinkElement::href() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::HREF);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::HREF));
 }
 
 BookmarkElement::BookmarkElement() = default;
@@ -365,7 +393,8 @@ std::string BookmarkElement::name() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::NAME);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::NAME));
 }
 
 ListElement::ListElement() = default;
@@ -387,14 +416,14 @@ TableElement::TableElement() = default;
 TableElement::TableElement(
     std::shared_ptr<const internal::abstract::Document> impl,
     const std::uint64_t id)
-    : Element(std::move(impl), id) {}
+    : Element(std::move(impl), id), m_table{m_impl->table(id)} {}
 
 TableDimensions TableElement::dimensions() const {
   if (!m_impl) {
     return TableDimensions(); // TODO
   }
   // TODO limit?
-  return m_impl->table_dimensions(m_id, 0, 0);
+  return m_table->dimensions(0, 0);
 }
 
 TableColumnRange TableElement::columns() const {
@@ -414,73 +443,123 @@ TableRowRange TableElement::rows() const {
 TableColumnElement::TableColumnElement() = default;
 
 TableColumnElement::TableColumnElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
-    : Element(std::move(impl), id) {}
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t column)
+    : m_impl{std::move(impl)}, m_column{column} {}
+
+bool TableColumnElement::operator==(const TableColumnElement &rhs) const {
+  return m_impl == rhs.m_impl && m_column == rhs.m_column;
+}
+
+bool TableColumnElement::operator!=(const TableColumnElement &rhs) const {
+  return m_impl != rhs.m_impl || m_column != rhs.m_column;
+}
+
+TableColumnElement::operator bool() const { return m_impl.operator bool(); }
 
 TableColumnElement TableColumnElement::previous_sibling() const {
-  return Element::previous_sibling().table_column();
+  return TableColumnElement(m_impl, m_column - 1);
 }
 
 TableColumnElement TableColumnElement::next_sibling() const {
-  return Element::next_sibling().table_column();
+  return TableColumnElement(m_impl, m_column + 1);
+}
+
+TableColumnPropertyValue
+TableColumnElement::property(const ElementProperty property) const {
+  return TableColumnPropertyValue(m_impl, m_column, property);
 }
 
 TableRowElement::TableRowElement() = default;
 
 TableRowElement::TableRowElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
-    : Element(std::move(impl), id) {}
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t row)
+    : m_impl{std::move(impl)}, m_row{row} {}
+
+bool TableRowElement::operator==(const TableRowElement &rhs) const {
+  return m_impl == rhs.m_impl && m_row == rhs.m_row;
+}
+
+bool TableRowElement::operator!=(const TableRowElement &rhs) const {
+  return m_impl != rhs.m_impl || m_row != rhs.m_row;
+}
+
+TableRowElement::operator bool() const { return m_impl.operator bool(); }
 
 TableCellElement TableRowElement::first_child() const {
   if (!m_impl) {
     return TableCellElement();
   }
-  return Element::first_child().table_cell();
+  return TableCellElement(m_impl, m_row, 0);
 }
 
 TableRowElement TableRowElement::previous_sibling() const {
-  return Element::previous_sibling().table_row();
+  return TableRowElement(m_impl, m_row - 1);
 }
 
 TableRowElement TableRowElement::next_sibling() const {
-  return Element::next_sibling().table_row();
+  return TableRowElement(m_impl, m_row + 1);
 }
 
 TableCellRange TableRowElement::cells() const {
   return TableCellRange(first_child());
 }
 
+TableRowPropertyValue
+TableRowElement::property(const ElementProperty property) const {
+  return TableRowPropertyValue(m_impl, m_row, property);
+}
+
 TableCellElement::TableCellElement() = default;
 
 TableCellElement::TableCellElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
-    : Element(std::move(impl), id) {}
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t row, const std::uint32_t column)
+    : m_impl{std::move(impl)}, m_row{row}, m_column{column} {}
+
+bool TableCellElement::operator==(const TableCellElement &rhs) const {
+  return m_impl == rhs.m_impl && m_row == rhs.m_row && m_column == rhs.m_column;
+}
+
+bool TableCellElement::operator!=(const TableCellElement &rhs) const {
+  return m_impl != rhs.m_impl || m_row != rhs.m_row || m_column != rhs.m_column;
+}
+
+TableCellElement::operator bool() const { return m_impl.operator bool(); }
 
 TableCellElement TableCellElement::previous_sibling() const {
-  return Element::previous_sibling().table_cell();
+  return TableCellElement(m_impl, m_row, m_column - 1);
 }
 
 TableCellElement TableCellElement::next_sibling() const {
-  return Element::next_sibling().table_cell();
+  return TableCellElement(m_impl, m_row, m_column + 1);
+}
+
+ElementRange TableCellElement::children() const {
+  return ElementRange(
+      Element(nullptr, m_impl->cell_first_child(m_row, m_column)));
+}
+
+TableCellPropertyValue
+TableCellElement::property(const ElementProperty property) const {
+  return TableCellPropertyValue(m_impl, m_row, m_column, property);
 }
 
 std::uint32_t TableCellElement::row_span() const {
   if (!m_impl) {
     return 0;
   }
-  return m_impl->element_uint32_property(m_id,
-                                         ElementProperty::TABLE_CELL_ROW_SPAN);
+  return property_value_to_uint32(m_impl->cell_property(
+      m_row, m_column, ElementProperty::TABLE_CELL_ROW_SPAN));
 }
 
 std::uint32_t TableCellElement::column_span() const {
   if (!m_impl) {
     return 0;
   }
-  return m_impl->element_uint32_property(
-      m_id, ElementProperty::TABLE_CELL_COLUMN_SPAN);
+  return property_value_to_uint32(m_impl->cell_property(
+      m_row, m_column, ElementProperty::TABLE_CELL_COLUMN_SPAN));
 }
 
 FrameElement::FrameElement() = default;
@@ -494,28 +573,32 @@ std::string FrameElement::anchor_type() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::ANCHOR_TYPE);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::ANCHOR_TYPE));
 }
 
 std::string FrameElement::width() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::WIDTH);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::WIDTH));
 }
 
 std::string FrameElement::height() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::HEIGHT);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::HEIGHT));
 }
 
 std::string FrameElement::z_index() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::Z_INDEX);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::Z_INDEX));
 }
 
 ImageElement::ImageElement() = default;
@@ -529,14 +612,16 @@ bool ImageElement::internal() const {
   if (!m_impl) {
     return false;
   }
-  return m_impl->element_bool_property(m_id, ElementProperty::IMAGE_INTERNAL);
+  return property_value_to_bool(
+      m_impl->element_property(m_id, ElementProperty::IMAGE_INTERNAL));
 }
 
 std::string ImageElement::href() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::HREF);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::HREF));
 }
 
 File ImageElement::image_file() const {
@@ -544,7 +629,8 @@ File ImageElement::image_file() const {
     // TODO there is no "empty" file
     return File(std::shared_ptr<internal::abstract::File>());
   }
-  return File(m_impl->image_file(m_id));
+  return File(std::any_cast<std::shared_ptr<internal::abstract::File>>(
+      m_impl->element_property(m_id, ElementProperty::IMAGE_FILE)));
 }
 
 RectElement::RectElement() = default;
@@ -558,28 +644,32 @@ std::string RectElement::x() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::X);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::X));
 }
 
 std::string RectElement::y() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::Y);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::Y));
 }
 
 std::string RectElement::width() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::WIDTH);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::WIDTH));
 }
 
 std::string RectElement::height() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::HEIGHT);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::HEIGHT));
 }
 
 LineElement::LineElement() = default;
@@ -593,28 +683,32 @@ std::string LineElement::x1() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::X1);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::X1));
 }
 
 std::string LineElement::y1() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::Y1);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::Y1));
 }
 
 std::string LineElement::x2() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::X2);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::X2));
 }
 
 std::string LineElement::y2() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::Y2);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::Y2));
 }
 
 CircleElement::CircleElement() = default;
@@ -628,28 +722,32 @@ std::string CircleElement::x() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::X);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::X));
 }
 
 std::string CircleElement::y() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::Y);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::Y));
 }
 
 std::string CircleElement::width() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::WIDTH);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::WIDTH));
 }
 
 std::string CircleElement::height() const {
   if (!m_impl) {
     return "";
   }
-  return m_impl->element_string_property(m_id, ElementProperty::HEIGHT);
+  return property_value_to_string(
+      m_impl->element_property(m_id, ElementProperty::HEIGHT));
 }
 
 Document::Document(std::shared_ptr<internal::abstract::Document> document)
@@ -752,6 +850,24 @@ PageRange Drawing::pages() const {
   return PageRange(PageElement(m_impl, m_impl->first_entry_element()));
 }
 
+std::string PropertyValue::get_string() const {
+  return property_value_to_string(get());
+}
+
+std::uint32_t PropertyValue::get_uint32() const {
+  return property_value_to_uint32(get());
+}
+
+bool PropertyValue::get_bool() const { return property_value_to_bool(get()); }
+
+const char *PropertyValue::get_optional_string() const {
+  return property_value_to_cstr(get());
+}
+
+void PropertyValue::set_string(const std::string &value) const {
+  set(value.c_str());
+}
+
 ElementPropertyValue::ElementPropertyValue() = default;
 
 ElementPropertyValue::ElementPropertyValue(
@@ -774,35 +890,116 @@ ElementPropertyValue::operator bool() const {
 }
 
 std::any ElementPropertyValue::get() const {
-  return {}; // TODO
-}
-
-std::string ElementPropertyValue::get_string() const {
-  return m_impl->element_string_property(m_id, m_property);
-}
-
-std::uint32_t ElementPropertyValue::get_uint32() const {
-  return m_impl->element_uint32_property(m_id, m_property);
-}
-
-bool ElementPropertyValue::get_bool() const {
-  return m_impl->element_bool_property(m_id, m_property);
-}
-
-const char *ElementPropertyValue::get_optional_string() const {
-  return m_impl->element_optional_string_property(m_id, m_property);
+  return m_impl->element_property(m_id, m_property);
 }
 
 void ElementPropertyValue::set(const std::any &value) const {
-  // TODO
-}
-
-void ElementPropertyValue::set_string(const std::string &value) const {
-  m_impl->set_element_string_property(m_id, m_property, value.c_str());
+  m_impl->set_element_property(m_id, m_property, value);
 }
 
 void ElementPropertyValue::remove() const {
-  m_impl->remove_element_property(m_id, m_property);
+  m_impl->set_element_property(m_id, m_property, {});
+}
+
+TableColumnPropertyValue::TableColumnPropertyValue() = default;
+
+TableColumnPropertyValue::TableColumnPropertyValue(
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t column, const ElementProperty property)
+    : m_impl{std::move(impl)}, m_column{column}, m_property{property} {}
+
+bool TableColumnPropertyValue::operator==(
+    const TableColumnPropertyValue &rhs) const {
+  return m_impl == rhs.m_impl && m_column == rhs.m_column &&
+         m_property == rhs.m_property;
+}
+
+bool TableColumnPropertyValue::operator!=(
+    const TableColumnPropertyValue &rhs) const {
+  return m_impl != rhs.m_impl || m_column != rhs.m_column ||
+         m_property != rhs.m_property;
+}
+
+TableColumnPropertyValue::operator bool() const {
+  return m_impl.operator bool();
+}
+
+std::any TableColumnPropertyValue::get() const {
+  return m_impl->column_property(m_column, m_property);
+}
+
+void TableColumnPropertyValue::set(const std::any &value) const {
+  throw UnsupportedOperation(); // TODO
+}
+
+void TableColumnPropertyValue::remove() const {
+  throw UnsupportedOperation(); // TODO
+}
+
+TableRowPropertyValue::TableRowPropertyValue() = default;
+
+TableRowPropertyValue::TableRowPropertyValue(
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t row, const ElementProperty property)
+    : m_impl{std::move(impl)}, m_row{row}, m_property{property} {}
+
+bool TableRowPropertyValue::operator==(const TableRowPropertyValue &rhs) const {
+  return m_impl == rhs.m_impl && m_row == rhs.m_row &&
+         m_property == rhs.m_property;
+}
+
+bool TableRowPropertyValue::operator!=(const TableRowPropertyValue &rhs) const {
+  return m_impl != rhs.m_impl || m_row != rhs.m_row ||
+         m_property != rhs.m_property;
+}
+
+TableRowPropertyValue::operator bool() const { return m_impl.operator bool(); }
+
+std::any TableRowPropertyValue::get() const {
+  return m_impl->row_property(m_row, m_property);
+}
+
+void TableRowPropertyValue::set(const std::any &value) const {
+  throw UnsupportedOperation(); // TODO
+}
+
+void TableRowPropertyValue::remove() const {
+  throw UnsupportedOperation(); // TODO
+}
+
+TableCellPropertyValue::TableCellPropertyValue() = default;
+
+TableCellPropertyValue::TableCellPropertyValue(
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t row, const std::uint32_t column,
+    const ElementProperty property)
+    : m_impl{std::move(impl)}, m_row{row}, m_column{column}, m_property{
+                                                                 property} {}
+
+bool TableCellPropertyValue::operator==(
+    const TableCellPropertyValue &rhs) const {
+  return m_impl == rhs.m_impl && m_row == rhs.m_row &&
+         m_column == rhs.m_column && m_property == rhs.m_property;
+}
+
+bool TableCellPropertyValue::operator!=(
+    const TableCellPropertyValue &rhs) const {
+  return m_impl != rhs.m_impl || m_row != rhs.m_row ||
+         m_column != rhs.m_column || m_property != rhs.m_property;
+}
+
+TableCellPropertyValue::operator bool() const { return m_impl.operator bool(); }
+
+std::any TableCellPropertyValue::get() const {
+  return m_impl->cell_property(m_row, m_column, m_property);
+}
+
+void TableCellPropertyValue::set(const std::any &value) const {
+  throw UnsupportedOperation(); // TODO
+}
+
+void TableCellPropertyValue::remove() const {
+  throw UnsupportedOperation(); // TODO
 }
 
 } // namespace odr
