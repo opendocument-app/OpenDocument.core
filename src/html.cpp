@@ -85,7 +85,7 @@ std::string translate_table_style(const Element &element) {
   return result;
 }
 
-std::string translate_table_column_style(const TableColumnElement &element) {
+std::string translate_table_column_style(const TableColumn &element) {
   std::string result;
   if (auto width = element.property(ElementProperty::WIDTH); width) {
     result += "width:" + width.get_string() + ";";
@@ -93,7 +93,7 @@ std::string translate_table_column_style(const TableColumnElement &element) {
   return result;
 }
 
-std::string translate_table_cell_style(const TableCellElement &element) {
+std::string translate_table_cell_style(const TableCell &element) {
   std::string result;
   if (auto padding_top = element.property(ElementProperty::PADDING_TOP);
       padding_top) {
@@ -154,7 +154,7 @@ std::string translate_drawing_style(const Element &element) {
   return result;
 }
 
-std::string translate_frame_properties(const FrameElement &properties) {
+std::string translate_frame_properties(const Frame &properties) {
   std::string result;
   result += "width:" + properties.width() + ";";
   result += "height:" + properties.height() + ";";
@@ -162,7 +162,7 @@ std::string translate_frame_properties(const FrameElement &properties) {
   return result;
 }
 
-std::string translate_rect_properties(const RectElement &element) {
+std::string translate_rect_properties(const Rect &element) {
   std::string result;
   result += "position:absolute;";
   result += "left:" + element.x() + ";";
@@ -172,7 +172,7 @@ std::string translate_rect_properties(const RectElement &element) {
   return result;
 }
 
-std::string translate_circle_properties(const CircleElement &element) {
+std::string translate_circle_properties(const Circle &element) {
   std::string result;
   result += "position:absolute;";
   result += "left:" + element.x() + ";";
@@ -189,7 +189,7 @@ std::string optional_style_attribute(const std::string &style) {
   return " style=\"" + style + "\"";
 }
 
-void translate_paragraph(const ParagraphElement &element, std::ostream &out,
+void translate_paragraph(const Paragraph &element, std::ostream &out,
                          const HtmlConfig &config) {
   out << "<p";
   out << optional_style_attribute(translate_paragraph_style(element));
@@ -202,7 +202,7 @@ void translate_paragraph(const ParagraphElement &element, std::ostream &out,
   out << "</p>";
 }
 
-void translate_span(const SpanElement &element, std::ostream &out,
+void translate_span(const Span &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<span";
   out << optional_style_attribute(translate_text_style(element));
@@ -211,7 +211,7 @@ void translate_span(const SpanElement &element, std::ostream &out,
   out << "</span>";
 }
 
-void translate_link(const LinkElement &element, std::ostream &out,
+void translate_link(const Link &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<a";
   out << optional_style_attribute(translate_text_style(element));
@@ -222,14 +222,14 @@ void translate_link(const LinkElement &element, std::ostream &out,
   out << "</a>";
 }
 
-void translate_bookmark(const BookmarkElement &element, std::ostream &out,
+void translate_bookmark(const Bookmark &element, std::ostream &out,
                         const HtmlConfig &config) {
   out << "<a id=\"";
   out << element.name();
   out << "\"></a>";
 }
 
-void translate_list(const ListElement &element, std::ostream &out,
+void translate_list(const List &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<ul>";
   for (auto &&i : element.children()) {
@@ -240,7 +240,7 @@ void translate_list(const ListElement &element, std::ostream &out,
   out << "</ul>";
 }
 
-void translate_table(const TableElement &element, std::ostream &out,
+void translate_table(const Table &element, std::ostream &out,
                      const HtmlConfig &config) {
   out << "<table";
   out << optional_style_attribute(translate_table_style(element));
@@ -305,7 +305,7 @@ void translate_table(const TableElement &element, std::ostream &out,
   out << "</table>";
 }
 
-void translate_image(const ImageElement &element, std::ostream &out,
+void translate_image(const Image &element, std::ostream &out,
                      const HtmlConfig &config) {
   out << "<img style=\"width:100%;height:100%\"";
   out << " alt=\"Error: image not found or unsupported\"";
@@ -341,7 +341,7 @@ void translate_image(const ImageElement &element, std::ostream &out,
   out << "\">";
 }
 
-void translate_frame(const FrameElement &element, std::ostream &out,
+void translate_frame(const Frame &element, std::ostream &out,
                      const HtmlConfig &config) {
   out << "<div";
   out << optional_style_attribute(translate_frame_properties(element));
@@ -356,7 +356,7 @@ void translate_frame(const FrameElement &element, std::ostream &out,
   out << "</div>";
 }
 
-void translate_rect(const RectElement &element, std::ostream &out,
+void translate_rect(const Rect &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<div";
   out << optional_style_attribute(translate_rect_properties(element) +
@@ -367,7 +367,7 @@ void translate_rect(const RectElement &element, std::ostream &out,
   out << "</div>";
 }
 
-void translate_line(const LineElement &element, std::ostream &out,
+void translate_line(const Line &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
   out << optional_style_attribute("z-index:-1;position:absolute;top:0;left:0;" +
@@ -382,7 +382,7 @@ void translate_line(const LineElement &element, std::ostream &out,
   out << "</svg>";
 }
 
-void translate_circle(const CircleElement &element, std::ostream &out,
+void translate_circle(const Circle &element, std::ostream &out,
                       const HtmlConfig &config) {
   out << "<div";
   out << optional_style_attribute(translate_circle_properties(element) +

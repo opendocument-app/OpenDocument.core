@@ -137,13 +137,13 @@ ElementPropertyValue Element::property(ElementProperty property) const {
   return ElementPropertyValue(m_impl, m_id, property);
 }
 
-SlideElement Element::slide() const { return SlideElement(m_impl, m_id); }
+Slide Element::slide() const { return Slide(m_impl, m_id); }
 
-SheetElement Element::sheet() const { return SheetElement(m_impl, m_id); }
+Sheet Element::sheet() const { return Sheet(m_impl, m_id); }
 
-PageElement Element::page() const { return PageElement(m_impl, m_id); }
+Page Element::page() const { return Page(m_impl, m_id); }
 
-TextElement Element::text() const { return TextElement(m_impl, m_id); }
+Text Element::text() const { return Text(m_impl, m_id); }
 
 Element Element::line_break() const {
   if (type() != ElementType::LINE_BREAK) {
@@ -159,35 +159,29 @@ Element Element::page_break() const {
   return *this;
 }
 
-ParagraphElement Element::paragraph() const {
-  return ParagraphElement(m_impl, m_id);
-}
+Paragraph Element::paragraph() const { return Paragraph(m_impl, m_id); }
 
-SpanElement Element::span() const { return SpanElement(m_impl, m_id); }
+Span Element::span() const { return Span(m_impl, m_id); }
 
-LinkElement Element::link() const { return LinkElement(m_impl, m_id); }
+Link Element::link() const { return Link(m_impl, m_id); }
 
-BookmarkElement Element::bookmark() const {
-  return BookmarkElement(m_impl, m_id);
-}
+Bookmark Element::bookmark() const { return Bookmark(m_impl, m_id); }
 
-ListElement Element::list() const { return ListElement(m_impl, m_id); }
+List Element::list() const { return List(m_impl, m_id); }
 
-ListItemElement Element::list_item() const {
-  return ListItemElement(m_impl, m_id);
-}
+ListItem Element::list_item() const { return ListItem(m_impl, m_id); }
 
-TableElement Element::table() const { return TableElement(m_impl, m_id); }
+Table Element::table() const { return Table(m_impl, m_id); }
 
-FrameElement Element::frame() const { return FrameElement(m_impl, m_id); }
+Frame Element::frame() const { return Frame(m_impl, m_id); }
 
-ImageElement Element::image() const { return ImageElement(m_impl, m_id); }
+Image Element::image() const { return Image(m_impl, m_id); }
 
-RectElement Element::rect() const { return RectElement(m_impl, m_id); }
+Rect Element::rect() const { return Rect(m_impl, m_id); }
 
-LineElement Element::line() const { return LineElement(m_impl, m_id); }
+Line Element::line() const { return Line(m_impl, m_id); }
 
-CircleElement Element::circle() const { return CircleElement(m_impl, m_id); }
+Circle Element::circle() const { return Circle(m_impl, m_id); }
 
 template <typename E>
 ElementIterator<E>::ElementIterator(E element)
@@ -219,12 +213,12 @@ bool ElementIterator<E>::operator!=(const ElementIterator<E> &rhs) const {
 }
 
 template class ElementIterator<Element>;
-template class ElementIterator<SlideElement>;
-template class ElementIterator<SheetElement>;
-template class ElementIterator<PageElement>;
-template class ElementIterator<TableColumnElement>;
-template class ElementIterator<TableRowElement>;
-template class ElementIterator<TableCellElement>;
+template class ElementIterator<Slide>;
+template class ElementIterator<Sheet>;
+template class ElementIterator<Page>;
+template class ElementIterator<TableColumn>;
+template class ElementIterator<TableRow>;
+template class ElementIterator<TableCell>;
 
 template <typename E>
 ElementRangeTemplate<E>::ElementRangeTemplate()
@@ -252,83 +246,74 @@ template <typename E> E ElementRangeTemplate<E>::front() const {
 }
 
 template class ElementRangeTemplate<Element>;
-template class ElementRangeTemplate<SlideElement>;
-template class ElementRangeTemplate<SheetElement>;
-template class ElementRangeTemplate<PageElement>;
-template class ElementRangeTemplate<TableColumnElement>;
-template class ElementRangeTemplate<TableRowElement>;
-template class ElementRangeTemplate<TableCellElement>;
+template class ElementRangeTemplate<Slide>;
+template class ElementRangeTemplate<Sheet>;
+template class ElementRangeTemplate<Page>;
+template class ElementRangeTemplate<TableColumn>;
+template class ElementRangeTemplate<TableRow>;
+template class ElementRangeTemplate<TableCell>;
 
-SlideElement::SlideElement() = default;
+Slide::Slide() = default;
 
-SlideElement::SlideElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Slide::Slide(std::shared_ptr<const internal::abstract::Document> impl,
+             const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-SlideElement SlideElement::previous_sibling() const {
+Slide Slide::previous_sibling() const {
   return Element::previous_sibling().slide();
 }
 
-SlideElement SlideElement::next_sibling() const {
-  return Element::next_sibling().slide();
-}
+Slide Slide::next_sibling() const { return Element::next_sibling().slide(); }
 
-std::string SlideElement::name() const {
+std::string Slide::name() const {
   return property_value_to_string(
       m_impl->element_property(m_id, ElementProperty::NAME));
 }
 
-std::string SlideElement::notes() const {
+std::string Slide::notes() const {
   return property_value_to_string(
       m_impl->element_property(m_id, ElementProperty::NOTES));
 }
 
-PageStyle SlideElement::page_style() const { return PageStyle(m_impl, m_id); }
+PageStyle Slide::page_style() const { return PageStyle(m_impl, m_id); }
 
-SheetElement::SheetElement() = default;
+Sheet::Sheet() = default;
 
-SheetElement::SheetElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Sheet::Sheet(std::shared_ptr<const internal::abstract::Document> impl,
+             const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-SheetElement SheetElement::previous_sibling() const {
+Sheet Sheet::previous_sibling() const {
   return Element::previous_sibling().sheet();
 }
 
-SheetElement SheetElement::next_sibling() const {
-  return Element::next_sibling().sheet();
-}
+Sheet Sheet::next_sibling() const { return Element::next_sibling().sheet(); }
 
-std::string SheetElement::name() const {
+std::string Sheet::name() const {
   return property_value_to_string(
       m_impl->element_property(m_id, ElementProperty::NAME));
 }
 
-TableElement SheetElement::table() const {
+Table Sheet::table() const {
   if (!m_impl) {
-    return TableElement();
+    return Table();
   }
-  return TableElement(m_impl, m_id); // TODO
+  return Table(m_impl, m_id); // TODO
 }
 
-PageElement::PageElement() = default;
+Page::Page() = default;
 
-PageElement::PageElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Page::Page(std::shared_ptr<const internal::abstract::Document> impl,
+           const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-PageElement PageElement::previous_sibling() const {
+Page Page::previous_sibling() const {
   return Element::previous_sibling().page();
 }
 
-PageElement PageElement::next_sibling() const {
-  return Element::next_sibling().page();
-}
+Page Page::next_sibling() const { return Element::next_sibling().page(); }
 
-std::string PageElement::name() const {
+std::string Page::name() const {
   if (!m_impl) {
     return "";
   }
@@ -336,16 +321,15 @@ std::string PageElement::name() const {
       m_impl->element_property(m_id, ElementProperty::NAME));
 }
 
-PageStyle PageElement::page_style() const { return PageStyle(m_impl, m_id); }
+PageStyle Page::page_style() const { return PageStyle(m_impl, m_id); }
 
-TextElement::TextElement() = default;
+Text::Text() = default;
 
-TextElement::TextElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Text::Text(std::shared_ptr<const internal::abstract::Document> impl,
+           const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string TextElement::string() const {
+std::string Text::string() const {
   if (!m_impl) {
     return "";
   }
@@ -353,28 +337,25 @@ std::string TextElement::string() const {
       m_impl->element_property(m_id, ElementProperty::TEXT));
 }
 
-ParagraphElement::ParagraphElement() = default;
+Paragraph::Paragraph() = default;
 
-ParagraphElement::ParagraphElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Paragraph::Paragraph(std::shared_ptr<const internal::abstract::Document> impl,
+                     const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-SpanElement::SpanElement() = default;
+Span::Span() = default;
 
-SpanElement::SpanElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Span::Span(std::shared_ptr<const internal::abstract::Document> impl,
+           const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-LinkElement::LinkElement() = default;
+Link::Link() = default;
 
-LinkElement::LinkElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Link::Link(std::shared_ptr<const internal::abstract::Document> impl,
+           const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string LinkElement::href() const {
+std::string Link::href() const {
   if (!m_impl) {
     return "";
   }
@@ -382,14 +363,13 @@ std::string LinkElement::href() const {
       m_impl->element_property(m_id, ElementProperty::HREF));
 }
 
-BookmarkElement::BookmarkElement() = default;
+Bookmark::Bookmark() = default;
 
-BookmarkElement::BookmarkElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Bookmark::Bookmark(std::shared_ptr<const internal::abstract::Document> impl,
+                   const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string BookmarkElement::name() const {
+std::string Bookmark::name() const {
   if (!m_impl) {
     return "";
   }
@@ -397,28 +377,25 @@ std::string BookmarkElement::name() const {
       m_impl->element_property(m_id, ElementProperty::NAME));
 }
 
-ListElement::ListElement() = default;
+List::List() = default;
 
-ListElement::ListElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+List::List(std::shared_ptr<const internal::abstract::Document> impl,
+           const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-ListItemElement::ListItemElement() = default;
+ListItem::ListItem() = default;
 
-ListItemElement::ListItemElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+ListItem::ListItem(std::shared_ptr<const internal::abstract::Document> impl,
+                   const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-TableElement::TableElement() = default;
+Table::Table() = default;
 
-TableElement::TableElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Table::Table(std::shared_ptr<const internal::abstract::Document> impl,
+             const std::uint64_t id)
     : Element(std::move(impl), id), m_table{m_impl->table(id)} {}
 
-TableDimensions TableElement::dimensions() const {
+TableDimensions Table::dimensions() const {
   if (!m_impl) {
     return TableDimensions(); // TODO
   }
@@ -426,127 +403,119 @@ TableDimensions TableElement::dimensions() const {
   return m_table->dimensions(0, 0);
 }
 
-TableColumnRange TableElement::columns() const {
+TableColumnRange Table::columns() const {
   if (!m_impl) {
     return TableColumnRange();
   }
   return TableColumnRange(); // TODO
 }
 
-TableRowRange TableElement::rows() const {
+TableRowRange Table::rows() const {
   if (!m_impl) {
     return TableRowRange();
   }
   return TableRowRange(); // TODO
 }
 
-TableColumnElement::TableColumnElement() = default;
+TableColumn::TableColumn() = default;
 
-TableColumnElement::TableColumnElement(
-    std::shared_ptr<const internal::abstract::Table> impl,
-    const std::uint32_t column)
+TableColumn::TableColumn(std::shared_ptr<const internal::abstract::Table> impl,
+                         const std::uint32_t column)
     : m_impl{std::move(impl)}, m_column{column} {}
 
-bool TableColumnElement::operator==(const TableColumnElement &rhs) const {
+bool TableColumn::operator==(const TableColumn &rhs) const {
   return m_impl == rhs.m_impl && m_column == rhs.m_column;
 }
 
-bool TableColumnElement::operator!=(const TableColumnElement &rhs) const {
+bool TableColumn::operator!=(const TableColumn &rhs) const {
   return m_impl != rhs.m_impl || m_column != rhs.m_column;
 }
 
-TableColumnElement::operator bool() const { return m_impl.operator bool(); }
+TableColumn::operator bool() const { return m_impl.operator bool(); }
 
-TableColumnElement TableColumnElement::previous_sibling() const {
-  return TableColumnElement(m_impl, m_column - 1);
+TableColumn TableColumn::previous_sibling() const {
+  return TableColumn(m_impl, m_column - 1);
 }
 
-TableColumnElement TableColumnElement::next_sibling() const {
-  return TableColumnElement(m_impl, m_column + 1);
+TableColumn TableColumn::next_sibling() const {
+  return TableColumn(m_impl, m_column + 1);
 }
 
 TableColumnPropertyValue
-TableColumnElement::property(const ElementProperty property) const {
+TableColumn::property(const ElementProperty property) const {
   return TableColumnPropertyValue(m_impl, m_column, property);
 }
 
-TableRowElement::TableRowElement() = default;
+TableRow::TableRow() = default;
 
-TableRowElement::TableRowElement(
-    std::shared_ptr<const internal::abstract::Table> impl,
-    const std::uint32_t row)
+TableRow::TableRow(std::shared_ptr<const internal::abstract::Table> impl,
+                   const std::uint32_t row)
     : m_impl{std::move(impl)}, m_row{row} {}
 
-bool TableRowElement::operator==(const TableRowElement &rhs) const {
+bool TableRow::operator==(const TableRow &rhs) const {
   return m_impl == rhs.m_impl && m_row == rhs.m_row;
 }
 
-bool TableRowElement::operator!=(const TableRowElement &rhs) const {
+bool TableRow::operator!=(const TableRow &rhs) const {
   return m_impl != rhs.m_impl || m_row != rhs.m_row;
 }
 
-TableRowElement::operator bool() const { return m_impl.operator bool(); }
+TableRow::operator bool() const { return m_impl.operator bool(); }
 
-TableCellElement TableRowElement::first_child() const {
+TableCell TableRow::first_child() const {
   if (!m_impl) {
-    return TableCellElement();
+    return TableCell();
   }
-  return TableCellElement(m_impl, m_row, 0);
+  return TableCell(m_impl, m_row, 0);
 }
 
-TableRowElement TableRowElement::previous_sibling() const {
-  return TableRowElement(m_impl, m_row - 1);
+TableRow TableRow::previous_sibling() const {
+  return TableRow(m_impl, m_row - 1);
 }
 
-TableRowElement TableRowElement::next_sibling() const {
-  return TableRowElement(m_impl, m_row + 1);
-}
+TableRow TableRow::next_sibling() const { return TableRow(m_impl, m_row + 1); }
 
-TableCellRange TableRowElement::cells() const {
-  return TableCellRange(first_child());
-}
+TableCellRange TableRow::cells() const { return TableCellRange(first_child()); }
 
-TableRowPropertyValue
-TableRowElement::property(const ElementProperty property) const {
+TableRowPropertyValue TableRow::property(const ElementProperty property) const {
   return TableRowPropertyValue(m_impl, m_row, property);
 }
 
-TableCellElement::TableCellElement() = default;
+TableCell::TableCell() = default;
 
-TableCellElement::TableCellElement(
-    std::shared_ptr<const internal::abstract::Table> impl,
-    const std::uint32_t row, const std::uint32_t column)
+TableCell::TableCell(std::shared_ptr<const internal::abstract::Table> impl,
+                     const std::uint32_t row, const std::uint32_t column)
     : m_impl{std::move(impl)}, m_row{row}, m_column{column} {}
 
-bool TableCellElement::operator==(const TableCellElement &rhs) const {
+bool TableCell::operator==(const TableCell &rhs) const {
   return m_impl == rhs.m_impl && m_row == rhs.m_row && m_column == rhs.m_column;
 }
 
-bool TableCellElement::operator!=(const TableCellElement &rhs) const {
+bool TableCell::operator!=(const TableCell &rhs) const {
   return m_impl != rhs.m_impl || m_row != rhs.m_row || m_column != rhs.m_column;
 }
 
-TableCellElement::operator bool() const { return m_impl.operator bool(); }
+TableCell::operator bool() const { return m_impl.operator bool(); }
 
-TableCellElement TableCellElement::previous_sibling() const {
-  return TableCellElement(m_impl, m_row, m_column - 1);
+TableCell TableCell::previous_sibling() const {
+  return TableCell(m_impl, m_row, m_column - 1);
 }
 
-TableCellElement TableCellElement::next_sibling() const {
-  return TableCellElement(m_impl, m_row, m_column + 1);
+TableCell TableCell::next_sibling() const {
+  return TableCell(m_impl, m_row, m_column + 1);
 }
 
-ElementRange TableCellElement::children() const {
+ElementRange TableCell::children() const {
   return ElementRange(
       Element(nullptr, m_impl->cell_first_child(m_row, m_column)));
 }
 
 TableCellPropertyValue
-TableCellElement::property(const ElementProperty property) const {
+TableCell::property(const ElementProperty property) const {
   return TableCellPropertyValue(m_impl, m_row, m_column, property);
 }
 
-std::uint32_t TableCellElement::row_span() const {
+std::uint32_t TableCell::row_span() const {
   if (!m_impl) {
     return 0;
   }
@@ -554,7 +523,7 @@ std::uint32_t TableCellElement::row_span() const {
       m_row, m_column, ElementProperty::TABLE_CELL_ROW_SPAN));
 }
 
-std::uint32_t TableCellElement::column_span() const {
+std::uint32_t TableCell::column_span() const {
   if (!m_impl) {
     return 0;
   }
@@ -562,14 +531,13 @@ std::uint32_t TableCellElement::column_span() const {
       m_row, m_column, ElementProperty::TABLE_CELL_COLUMN_SPAN));
 }
 
-FrameElement::FrameElement() = default;
+Frame::Frame() = default;
 
-FrameElement::FrameElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Frame::Frame(std::shared_ptr<const internal::abstract::Document> impl,
+             const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string FrameElement::anchor_type() const {
+std::string Frame::anchor_type() const {
   if (!m_impl) {
     return "";
   }
@@ -577,7 +545,7 @@ std::string FrameElement::anchor_type() const {
       m_impl->element_property(m_id, ElementProperty::ANCHOR_TYPE));
 }
 
-std::string FrameElement::width() const {
+std::string Frame::width() const {
   if (!m_impl) {
     return "";
   }
@@ -585,7 +553,7 @@ std::string FrameElement::width() const {
       m_impl->element_property(m_id, ElementProperty::WIDTH));
 }
 
-std::string FrameElement::height() const {
+std::string Frame::height() const {
   if (!m_impl) {
     return "";
   }
@@ -593,7 +561,7 @@ std::string FrameElement::height() const {
       m_impl->element_property(m_id, ElementProperty::HEIGHT));
 }
 
-std::string FrameElement::z_index() const {
+std::string Frame::z_index() const {
   if (!m_impl) {
     return "";
   }
@@ -601,14 +569,13 @@ std::string FrameElement::z_index() const {
       m_impl->element_property(m_id, ElementProperty::Z_INDEX));
 }
 
-ImageElement::ImageElement() = default;
+Image::Image() = default;
 
-ImageElement::ImageElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Image::Image(std::shared_ptr<const internal::abstract::Document> impl,
+             const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-bool ImageElement::internal() const {
+bool Image::internal() const {
   if (!m_impl) {
     return false;
   }
@@ -616,7 +583,7 @@ bool ImageElement::internal() const {
       m_impl->element_property(m_id, ElementProperty::IMAGE_INTERNAL));
 }
 
-std::string ImageElement::href() const {
+std::string Image::href() const {
   if (!m_impl) {
     return "";
   }
@@ -624,7 +591,7 @@ std::string ImageElement::href() const {
       m_impl->element_property(m_id, ElementProperty::HREF));
 }
 
-File ImageElement::image_file() const {
+File Image::image_file() const {
   if (!m_impl) {
     // TODO there is no "empty" file
     return File(std::shared_ptr<internal::abstract::File>());
@@ -633,14 +600,13 @@ File ImageElement::image_file() const {
       m_impl->element_property(m_id, ElementProperty::IMAGE_FILE)));
 }
 
-RectElement::RectElement() = default;
+Rect::Rect() = default;
 
-RectElement::RectElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Rect::Rect(std::shared_ptr<const internal::abstract::Document> impl,
+           const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string RectElement::x() const {
+std::string Rect::x() const {
   if (!m_impl) {
     return "";
   }
@@ -648,7 +614,7 @@ std::string RectElement::x() const {
       m_impl->element_property(m_id, ElementProperty::X));
 }
 
-std::string RectElement::y() const {
+std::string Rect::y() const {
   if (!m_impl) {
     return "";
   }
@@ -656,7 +622,7 @@ std::string RectElement::y() const {
       m_impl->element_property(m_id, ElementProperty::Y));
 }
 
-std::string RectElement::width() const {
+std::string Rect::width() const {
   if (!m_impl) {
     return "";
   }
@@ -664,7 +630,7 @@ std::string RectElement::width() const {
       m_impl->element_property(m_id, ElementProperty::WIDTH));
 }
 
-std::string RectElement::height() const {
+std::string Rect::height() const {
   if (!m_impl) {
     return "";
   }
@@ -672,14 +638,13 @@ std::string RectElement::height() const {
       m_impl->element_property(m_id, ElementProperty::HEIGHT));
 }
 
-LineElement::LineElement() = default;
+Line::Line() = default;
 
-LineElement::LineElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Line::Line(std::shared_ptr<const internal::abstract::Document> impl,
+           const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string LineElement::x1() const {
+std::string Line::x1() const {
   if (!m_impl) {
     return "";
   }
@@ -687,7 +652,7 @@ std::string LineElement::x1() const {
       m_impl->element_property(m_id, ElementProperty::X1));
 }
 
-std::string LineElement::y1() const {
+std::string Line::y1() const {
   if (!m_impl) {
     return "";
   }
@@ -695,7 +660,7 @@ std::string LineElement::y1() const {
       m_impl->element_property(m_id, ElementProperty::Y1));
 }
 
-std::string LineElement::x2() const {
+std::string Line::x2() const {
   if (!m_impl) {
     return "";
   }
@@ -703,7 +668,7 @@ std::string LineElement::x2() const {
       m_impl->element_property(m_id, ElementProperty::X2));
 }
 
-std::string LineElement::y2() const {
+std::string Line::y2() const {
   if (!m_impl) {
     return "";
   }
@@ -711,14 +676,13 @@ std::string LineElement::y2() const {
       m_impl->element_property(m_id, ElementProperty::Y2));
 }
 
-CircleElement::CircleElement() = default;
+Circle::Circle() = default;
 
-CircleElement::CircleElement(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id)
+Circle::Circle(std::shared_ptr<const internal::abstract::Document> impl,
+               const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string CircleElement::x() const {
+std::string Circle::x() const {
   if (!m_impl) {
     return "";
   }
@@ -726,7 +690,7 @@ std::string CircleElement::x() const {
       m_impl->element_property(m_id, ElementProperty::X));
 }
 
-std::string CircleElement::y() const {
+std::string Circle::y() const {
   if (!m_impl) {
     return "";
   }
@@ -734,7 +698,7 @@ std::string CircleElement::y() const {
       m_impl->element_property(m_id, ElementProperty::Y));
 }
 
-std::string CircleElement::width() const {
+std::string Circle::width() const {
   if (!m_impl) {
     return "";
   }
@@ -742,7 +706,7 @@ std::string CircleElement::width() const {
       m_impl->element_property(m_id, ElementProperty::WIDTH));
 }
 
-std::string CircleElement::height() const {
+std::string Circle::height() const {
   if (!m_impl) {
     return "";
   }
@@ -814,7 +778,7 @@ std::uint32_t Presentation::slide_count() const {
 }
 
 SlideRange Presentation::slides() const {
-  return SlideRange(SlideElement(m_impl, m_impl->first_entry_element()));
+  return SlideRange(Slide(m_impl, m_impl->first_entry_element()));
 }
 
 Spreadsheet::Spreadsheet(
@@ -831,7 +795,7 @@ std::uint32_t Spreadsheet::sheet_count() const {
 }
 
 SheetRange Spreadsheet::sheets() const {
-  return SheetRange(SheetElement(m_impl, m_impl->first_entry_element()));
+  return SheetRange(Sheet(m_impl, m_impl->first_entry_element()));
 }
 
 Drawing::Drawing(std::shared_ptr<internal::abstract::Document> drawing)
@@ -847,7 +811,7 @@ std::uint32_t Drawing::page_count() const {
 }
 
 PageRange Drawing::pages() const {
-  return PageRange(PageElement(m_impl, m_impl->first_entry_element()));
+  return PageRange(Page(m_impl, m_impl->first_entry_element()));
 }
 
 std::string PropertyValue::get_string() const {
