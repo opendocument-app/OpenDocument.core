@@ -3,6 +3,7 @@
 #include <internal/abstract/table.h>
 #include <internal/common/file.h>
 #include <internal/common/path.h>
+#include <internal/common/table_position.h>
 #include <internal/odf/odf_document.h>
 #include <internal/util/map_util.h>
 #include <internal/util/xml_util.h>
@@ -13,11 +14,57 @@
 
 namespace odr::internal::odf {
 
-namespace {
-class Table final : public abstract::Table {
+class OpenDocument::Table final : public abstract::Table {
 public:
-  Table(pugi::xml_node node) : m_node{node} {
-    // TODO
+  Table(std::shared_ptr<OpenDocument> document, const pugi::xml_node node)
+      : m_document{std::move(document)}, m_node{node} {
+    std::uint32_t column_index = 0;
+    for (auto column : node.children("table:table-column")) {
+      const auto repeat =
+          m_node.attribute("table:number-columns-repeated").as_uint(1);
+
+      Column new_column;
+      new_column.node = column;
+      new_column.index = column_index;
+      new_column.repeat = repeat;
+
+      // TODO insert
+
+      column_index += repeat;
+    }
+
+    std::uint32_t row_index = 0;
+    for (auto row : node.children("table:table-row")) {
+      const auto repeat =
+          m_node.attribute("table:number-rows-repeated").as_uint(1);
+
+      Row new_row;
+      new_row.node = row;
+      new_row.index = column_index;
+      new_row.repeat = repeat;
+
+      std::uint32_t cell_index = 0;
+      for (auto cell : row.children("table:table-cell")) {
+        const auto repeat =
+            m_node.attribute("table:number-columns-repeated").as_uint(1);
+
+        Cell new_cell;
+        new_cell.node = row;
+        new_cell.index = cell_index;
+        new_cell.repeat = repeat;
+        // TODO handle repeated
+        // TODO parent?
+        new_cell.first_child = m_document->register_children_(cell, {}, {});
+
+        // TODO insert
+
+        cell_index += repeat;
+      }
+
+      // TODO insert
+
+      row_index += repeat;
+    }
   }
 
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const final {
@@ -74,25 +121,28 @@ private:
   struct Column {
     pugi::xml_node node;
     std::uint32_t index{0};
+    std::uint32_t repeat{1};
   };
 
   struct Cell {
     pugi::xml_node node;
     std::uint32_t index{0};
+    std::uint32_t repeat{1};
     ElementIdentifier first_child;
   };
 
   struct Row {
     pugi::xml_node node;
     std::uint32_t index{0};
-    std::vector<Cell> cells;
+    std::uint32_t repeat{1};
   };
 
   std::shared_ptr<OpenDocument> m_document;
   pugi::xml_node m_node;
 
-  std::vector<Column> m_columns;
-  std::vector<Row> m_rows;
+  std::unordered_map<std::uint32_t, Column> m_columns;
+  std::unordered_map<std::uint32_t, Row> m_rows;
+  std::unordered_map<common::TablePosition, Cell> m_cells;
 
   Column *column_(const std::uint32_t column) const {
     return nullptr; // TODO
@@ -106,7 +156,6 @@ private:
     return nullptr; // TODO
   }
 };
-} // namespace
 
 OpenDocument::OpenDocument(
     const DocumentType document_type,
@@ -392,7 +441,7 @@ void OpenDocument::set_element_property(const ElementIdentifier element_id,
 
 std::shared_ptr<abstract::Table>
 OpenDocument::table(const ElementIdentifier element_id) const {
-  throw UnsupportedOperation();
+  return m_tables.at(element_id);
 }
 
 } // namespace odr::internal::odf

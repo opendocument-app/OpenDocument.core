@@ -10,8 +10,8 @@ TableRange::TableRange(const TablePosition &from,
     : m_from{from}, m_to{to} {}
 
 TableRange::TableRange(const TablePosition &from, const std::uint32_t rows,
-                       const std::uint32_t cols) noexcept
-    : m_from{from}, m_to{from.row() + rows, from.col() + cols} {}
+                       const std::uint32_t columns) noexcept
+    : m_from{from}, m_to{from.row() + rows, from.column() + columns} {}
 
 TableRange::TableRange(const std::string &s) {
   const auto sep = s.find(':');
@@ -31,7 +31,8 @@ std::string TableRange::to_string() const noexcept {
 }
 
 bool TableRange::contains(const TablePosition &position) const noexcept {
-  return (m_from.col() <= position.col()) && (m_to.col() > position.col()) &&
+  return (m_from.column() <= position.column()) &&
+         (m_to.column() > position.column()) &&
          (m_from.row() <= position.row()) && (m_to.row() > position.row());
 }
 

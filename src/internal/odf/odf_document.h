@@ -5,6 +5,7 @@
 #include <memory>
 #include <odr/document.h>
 #include <pugixml.hpp>
+#include <unordered_map>
 #include <vector>
 
 namespace odr::internal::abstract {
@@ -14,7 +15,8 @@ class Table;
 
 namespace odr::internal::odf {
 
-class OpenDocument final : public abstract::Document {
+class OpenDocument final : public abstract::Document,
+                           public std::enable_shared_from_this<OpenDocument> {
 public:
   OpenDocument(DocumentType document_type,
                std::shared_ptr<abstract::ReadableFilesystem> files);
@@ -63,6 +65,8 @@ private:
     ElementIdentifier next_sibling;
   };
 
+  class Table;
+
   DocumentType m_document_type;
 
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
@@ -72,6 +76,8 @@ private:
 
   std::vector<Element> m_elements;
   ElementIdentifier m_root;
+
+  std::unordered_map<ElementIdentifier, std::shared_ptr<Table>> m_tables;
 
   ElementIdentifier register_element_(pugi::xml_node node,
                                       ElementIdentifier parent,
