@@ -1,6 +1,9 @@
 #ifndef ODR_INTERNAL_HASH_UTIL_H
 #define ODR_INTERNAL_HASH_UTIL_H
 
+#include <cstdint>
+#include <functional>
+
 namespace odr::internal::util::hash {
 
 void hash_combine(std::size_t &seed) {}
