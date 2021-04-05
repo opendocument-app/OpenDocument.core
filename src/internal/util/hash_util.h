@@ -6,7 +6,7 @@
 
 namespace odr::internal::util::hash {
 
-void hash_combine(std::size_t &seed) {}
+void hash_combine(std::size_t &);
 
 template <typename T, typename... Rest>
 void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
