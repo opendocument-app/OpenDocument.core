@@ -63,15 +63,14 @@ ElementIdentifier OfficeOpenXmlDocument::element_next_sibling(
   return 0; // TODO
 }
 
-std::any
-OfficeOpenXmlDocument::element_property(const ElementIdentifier element_id,
-                                        const ElementProperty property) const {
+std::unordered_map<ElementProperty, std::any>
+OfficeOpenXmlDocument::element_properties(ElementIdentifier element_id) const {
   throw UnsupportedOperation();
 }
 
-void OfficeOpenXmlDocument::set_element_property(
-    const ElementIdentifier element_id, const ElementProperty property,
-    const std::any &value) const {
+void OfficeOpenXmlDocument::update_element_properties(
+    ElementIdentifier element_id,
+    std::unordered_map<ElementProperty, std::any> properties) const {
   throw UnsupportedOperation();
 }
 

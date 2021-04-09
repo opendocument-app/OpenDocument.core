@@ -35,6 +35,22 @@ const char *style_attribute(const ElementType element_type) {
   }
 }
 
+void resolve_page_style_properties(
+    pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {}
+
+void resolve_text_style_properties(
+    pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {}
+
+void resolve_table_style_properties(
+    pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {}
+
+void resolve_draw_style_properties(
+    pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {}
+
 std::any element_style_property(const ElementType element_type,
                                 const ElementProperty property,
                                 const ResolvedStyle &style) {
@@ -128,6 +144,12 @@ public:
     return m_document;
   }
 
+  [[nodiscard]] TableDimensions
+  dimensions(const std::uint32_t limit_rows,
+             const std::uint32_t limit_cols) const final {
+    return {}; // TODO
+  }
+
   [[nodiscard]] ElementIdentifier
   cell_first_child(const std::uint32_t row,
                    const std::uint32_t column) const final {
@@ -138,9 +160,8 @@ public:
     return c->first_child;
   }
 
-  [[nodiscard]] std::any
-  column_property(const std::uint32_t column,
-                  const ElementProperty property) const final {
+  std::unordered_map<ElementProperty, std::any>
+  column_properties(const std::uint32_t column) const final {
     auto c = column_(column);
     if (c == nullptr) {
       return {};
@@ -148,9 +169,8 @@ public:
     return {}; // TODO
   }
 
-  [[nodiscard]] std::any
-  row_property(const std::uint32_t row,
-               const ElementProperty property) const final {
+  std::unordered_map<ElementProperty, std::any>
+  row_properties(const std::uint32_t row) const final {
     auto r = row_(row);
     if (r == nullptr) {
       return {};
@@ -158,9 +178,9 @@ public:
     return {}; // TODO
   }
 
-  [[nodiscard]] std::any
-  cell_property(const std::uint32_t row, const std::uint32_t column,
-                const ElementProperty property) const final {
+  std::unordered_map<ElementProperty, std::any>
+  cell_properties(const std::uint32_t row,
+                  const std::uint32_t column) const final {
     auto c = cell_(row, column);
     if (c == nullptr) {
       return {};
@@ -168,11 +188,17 @@ public:
     return {}; // TODO
   }
 
-  [[nodiscard]] TableDimensions
-  dimensions(const std::uint32_t limit_rows,
-             const std::uint32_t limit_cols) const final {
-    return {}; // TODO
-  }
+  void update_column_properties(
+      std::uint32_t column,
+      std::unordered_map<ElementProperty, std::any> properties) const final {}
+
+  void update_row_properties(
+      std::uint32_t row,
+      std::unordered_map<ElementProperty, std::any> properties) const final {}
+
+  void update_cell_properties(
+      std::uint32_t row, std::uint32_t column,
+      std::unordered_map<ElementProperty, std::any> properties) const final {}
 
   void resize(std::uint32_t rows, std::uint32_t columns) const final {
     throw UnsupportedOperation(); // TODO
@@ -464,52 +490,92 @@ OpenDocument::element_next_sibling(const ElementIdentifier element_id) const {
   return element_(element_id)->next_sibling;
 }
 
-std::any OpenDocument::element_property(const ElementIdentifier element_id,
-                                        const ElementProperty property) const {
-  const Element *element = element_(element_id);
+std::unordered_map<ElementProperty, std::any>
+OpenDocument::element_properties(const ElementIdentifier element_id) const {
+  std::unordered_map<ElementProperty, std::any> result;
 
+  const Element *element = element_(element_id);
   if (element == nullptr) {
     throw std::runtime_error("element not found");
   }
 
-  if (property == ElementProperty::IMAGE_FILE) {
-    if (!element_id) {
-      return {};
-    }
-
-    if (element->type != ElementType::IMAGE) {
-      return {};
-    }
-
-    // TODO use odf internal check
-    if (!std::any_cast<bool>(
-            element_property(element_id, ElementProperty::IMAGE_INTERNAL))) {
-      // TODO support external files
-      throw std::runtime_error("not internal image");
-    }
-
-    const common::Path path = std::any_cast<const char *>(
-        element_property(element_id, ElementProperty::HREF));
-    return m_filesystem->open(path);
+  switch (element->type) {
+  case ElementType::ROOT:
+    // TODO
+    break;
+  case ElementType::SLIDE:
+    result[ElementProperty::NAME] =
+        element->node.attribute("draw:name").value();
+    resolve_page_style_properties(element->node, result);
+    break;
+  case ElementType::SHEET:
+    result[ElementProperty::NAME] =
+        element->node.attribute("table:name").value();
+    break;
+  case ElementType::PAGE:
+    result[ElementProperty::NAME] =
+        element->node.attribute("draw:name").value();
+    resolve_page_style_properties(element->node, result);
+    break;
+  case ElementType::PARAGRAPH:
+    resolve_text_style_properties(element->node, result);
+    break;
+  case ElementType::SPAN:
+    resolve_text_style_properties(element->node, result);
+    break;
+  case ElementType::LINK:
+    result[ElementProperty::HREF] =
+        element->node.attribute("xlink:href").value();
+    resolve_text_style_properties(element->node, result);
+    break;
+  case ElementType::BOOKMARK:
+    result[ElementProperty::NAME] =
+        element->node.attribute("text:name").value();
+    resolve_text_style_properties(element->node, result);
+    break;
+  case ElementType::TABLE:
+    resolve_table_style_properties(element->node, result);
+    break;
+  case ElementType::IMAGE:
+    result[ElementProperty::IMAGE_INTERNAL] = true;               // TODO
+    result[ElementProperty::HREF] = "";                           // TODO
+    result[ElementProperty::IMAGE_FILE] = m_filesystem->open(""); // TODO
+    break;
+  case ElementType::RECT:
+    result[ElementProperty::X] = element->node.attribute("svg:x").value();
+    result[ElementProperty::Y] = element->node.attribute("svg:y").value();
+    result[ElementProperty::WIDTH] =
+        element->node.attribute("svg:width").value();
+    result[ElementProperty::HEIGHT] =
+        element->node.attribute("svg:height").value();
+    resolve_draw_style_properties(element->node, result);
+    break;
+  case ElementType::LINE:
+    result[ElementProperty::X1] = element->node.attribute("svg:x1").value();
+    result[ElementProperty::Y1] = element->node.attribute("svg:y1").value();
+    result[ElementProperty::X2] = element->node.attribute("svg:x2").value();
+    result[ElementProperty::Y2] = element->node.attribute("svg:y2").value();
+    resolve_draw_style_properties(element->node, result);
+    break;
+  case ElementType::CIRCLE:
+    result[ElementProperty::X] = element->node.attribute("svg:x").value();
+    result[ElementProperty::Y] = element->node.attribute("svg:y").value();
+    result[ElementProperty::WIDTH] =
+        element->node.attribute("svg:width").value();
+    result[ElementProperty::HEIGHT] =
+        element->node.attribute("svg:height").value();
+    resolve_draw_style_properties(element->node, result);
+    break;
+  default:
+    break;
   }
 
-  auto style_attr = element->node.attribute(style_attribute(element->type));
-  if (!style_attr) {
-    return {};
-  }
-  auto style = m_styles.style(style_attr.value());
-  if (!style) {
-    return {};
-  }
-
-  auto resolved_style = style->resolve();
-
-  return element_style_property(element->type, property, resolved_style);
+  return result;
 }
 
-void OpenDocument::set_element_property(const ElementIdentifier element_id,
-                                        const ElementProperty property,
-                                        const std::any &value) const {
+void OpenDocument::update_element_properties(
+    const ElementIdentifier element_id,
+    std::unordered_map<ElementProperty, std::any> properties) const {
   throw UnsupportedOperation();
 }
 

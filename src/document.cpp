@@ -267,12 +267,12 @@ Slide Slide::next_sibling() const { return Element::next_sibling().slide(); }
 
 std::string Slide::name() const {
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::NAME));
+      m_impl->element_properties(m_id).at(ElementProperty::NAME));
 }
 
 std::string Slide::notes() const {
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::NOTES));
+      m_impl->element_properties(m_id).at(ElementProperty::NOTES));
 }
 
 PageStyle Slide::page_style() const { return PageStyle(m_impl, m_id); }
@@ -291,7 +291,7 @@ Sheet Sheet::next_sibling() const { return Element::next_sibling().sheet(); }
 
 std::string Sheet::name() const {
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::NAME));
+      m_impl->element_properties(m_id).at(ElementProperty::NAME));
 }
 
 Table Sheet::table() const {
@@ -318,7 +318,7 @@ std::string Page::name() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::NAME));
+      m_impl->element_properties(m_id).at(ElementProperty::NAME));
 }
 
 PageStyle Page::page_style() const { return PageStyle(m_impl, m_id); }
@@ -334,7 +334,7 @@ std::string Text::string() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::TEXT));
+      m_impl->element_properties(m_id).at(ElementProperty::TEXT));
 }
 
 Paragraph::Paragraph() = default;
@@ -360,7 +360,7 @@ std::string Link::href() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::HREF));
+      m_impl->element_properties(m_id).at(ElementProperty::HREF));
 }
 
 Bookmark::Bookmark() = default;
@@ -374,7 +374,7 @@ std::string Bookmark::name() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::NAME));
+      m_impl->element_properties(m_id).at(ElementProperty::NAME));
 }
 
 List::List() = default;
@@ -519,16 +519,18 @@ std::uint32_t TableCell::row_span() const {
   if (!m_impl) {
     return 0;
   }
-  return property_value_to_uint32(m_impl->cell_property(
-      m_row, m_column, ElementProperty::TABLE_CELL_ROW_SPAN));
+  return property_value_to_uint32(
+      m_impl->cell_properties(m_row, m_column)
+          .at(ElementProperty::TABLE_CELL_ROW_SPAN));
 }
 
 std::uint32_t TableCell::column_span() const {
   if (!m_impl) {
     return 0;
   }
-  return property_value_to_uint32(m_impl->cell_property(
-      m_row, m_column, ElementProperty::TABLE_CELL_COLUMN_SPAN));
+  return property_value_to_uint32(
+      m_impl->cell_properties(m_row, m_column)
+          .at(ElementProperty::TABLE_CELL_COLUMN_SPAN));
 }
 
 Frame::Frame() = default;
@@ -542,7 +544,7 @@ std::string Frame::anchor_type() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::ANCHOR_TYPE));
+      m_impl->element_properties(m_id).at(ElementProperty::ANCHOR_TYPE));
 }
 
 std::string Frame::width() const {
@@ -550,7 +552,7 @@ std::string Frame::width() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::WIDTH));
+      m_impl->element_properties(m_id).at(ElementProperty::WIDTH));
 }
 
 std::string Frame::height() const {
@@ -558,7 +560,7 @@ std::string Frame::height() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::HEIGHT));
+      m_impl->element_properties(m_id).at(ElementProperty::HEIGHT));
 }
 
 std::string Frame::z_index() const {
@@ -566,7 +568,7 @@ std::string Frame::z_index() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::Z_INDEX));
+      m_impl->element_properties(m_id).at(ElementProperty::Z_INDEX));
 }
 
 Image::Image() = default;
@@ -580,7 +582,7 @@ bool Image::internal() const {
     return false;
   }
   return property_value_to_bool(
-      m_impl->element_property(m_id, ElementProperty::IMAGE_INTERNAL));
+      m_impl->element_properties(m_id).at(ElementProperty::IMAGE_INTERNAL));
 }
 
 std::string Image::href() const {
@@ -588,7 +590,7 @@ std::string Image::href() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::HREF));
+      m_impl->element_properties(m_id).at(ElementProperty::HREF));
 }
 
 File Image::image_file() const {
@@ -597,7 +599,7 @@ File Image::image_file() const {
     return File(std::shared_ptr<internal::abstract::File>());
   }
   return File(std::any_cast<std::shared_ptr<internal::abstract::File>>(
-      m_impl->element_property(m_id, ElementProperty::IMAGE_FILE)));
+      m_impl->element_properties(m_id).at(ElementProperty::IMAGE_FILE)));
 }
 
 Rect::Rect() = default;
@@ -611,7 +613,7 @@ std::string Rect::x() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::X));
+      m_impl->element_properties(m_id).at(ElementProperty::X));
 }
 
 std::string Rect::y() const {
@@ -619,7 +621,7 @@ std::string Rect::y() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::Y));
+      m_impl->element_properties(m_id).at(ElementProperty::Y));
 }
 
 std::string Rect::width() const {
@@ -627,7 +629,7 @@ std::string Rect::width() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::WIDTH));
+      m_impl->element_properties(m_id).at(ElementProperty::WIDTH));
 }
 
 std::string Rect::height() const {
@@ -635,7 +637,7 @@ std::string Rect::height() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::HEIGHT));
+      m_impl->element_properties(m_id).at(ElementProperty::HEIGHT));
 }
 
 Line::Line() = default;
@@ -649,7 +651,7 @@ std::string Line::x1() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::X1));
+      m_impl->element_properties(m_id).at(ElementProperty::X1));
 }
 
 std::string Line::y1() const {
@@ -657,7 +659,7 @@ std::string Line::y1() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::Y1));
+      m_impl->element_properties(m_id).at(ElementProperty::Y1));
 }
 
 std::string Line::x2() const {
@@ -665,7 +667,7 @@ std::string Line::x2() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::X2));
+      m_impl->element_properties(m_id).at(ElementProperty::X2));
 }
 
 std::string Line::y2() const {
@@ -673,7 +675,7 @@ std::string Line::y2() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::Y2));
+      m_impl->element_properties(m_id).at(ElementProperty::Y2));
 }
 
 Circle::Circle() = default;
@@ -687,7 +689,7 @@ std::string Circle::x() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::X));
+      m_impl->element_properties(m_id).at(ElementProperty::X));
 }
 
 std::string Circle::y() const {
@@ -695,7 +697,7 @@ std::string Circle::y() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::Y));
+      m_impl->element_properties(m_id).at(ElementProperty::Y));
 }
 
 std::string Circle::width() const {
@@ -703,7 +705,7 @@ std::string Circle::width() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::WIDTH));
+      m_impl->element_properties(m_id).at(ElementProperty::WIDTH));
 }
 
 std::string Circle::height() const {
@@ -711,7 +713,7 @@ std::string Circle::height() const {
     return "";
   }
   return property_value_to_string(
-      m_impl->element_property(m_id, ElementProperty::HEIGHT));
+      m_impl->element_properties(m_id).at(ElementProperty::HEIGHT));
 }
 
 Document::Document(std::shared_ptr<internal::abstract::Document> document)
@@ -854,15 +856,15 @@ ElementPropertyValue::operator bool() const {
 }
 
 std::any ElementPropertyValue::get() const {
-  return m_impl->element_property(m_id, m_property);
+  return m_impl->element_properties(m_id).at(m_property);
 }
 
 void ElementPropertyValue::set(const std::any &value) const {
-  m_impl->set_element_property(m_id, m_property, value);
+  m_impl->update_element_properties(m_id, {{m_property, value}});
 }
 
 void ElementPropertyValue::remove() const {
-  m_impl->set_element_property(m_id, m_property, {});
+  m_impl->update_element_properties(m_id, {{m_property, {}}});
 }
 
 TableColumnPropertyValue::TableColumnPropertyValue() = default;
@@ -889,7 +891,7 @@ TableColumnPropertyValue::operator bool() const {
 }
 
 std::any TableColumnPropertyValue::get() const {
-  return m_impl->column_property(m_column, m_property);
+  return m_impl->column_properties(m_column).at(m_property);
 }
 
 void TableColumnPropertyValue::set(const std::any &value) const {
@@ -920,7 +922,7 @@ bool TableRowPropertyValue::operator!=(const TableRowPropertyValue &rhs) const {
 TableRowPropertyValue::operator bool() const { return m_impl.operator bool(); }
 
 std::any TableRowPropertyValue::get() const {
-  return m_impl->row_property(m_row, m_property);
+  return m_impl->row_properties(m_row).at(m_property);
 }
 
 void TableRowPropertyValue::set(const std::any &value) const {
@@ -955,7 +957,7 @@ bool TableCellPropertyValue::operator!=(
 TableCellPropertyValue::operator bool() const { return m_impl.operator bool(); }
 
 std::any TableCellPropertyValue::get() const {
-  return m_impl->cell_property(m_row, m_column, m_property);
+  return m_impl->cell_properties(m_row, m_column).at(m_property);
 }
 
 void TableCellPropertyValue::set(const std::any &value) const {

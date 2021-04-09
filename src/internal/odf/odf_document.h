@@ -45,12 +45,12 @@ public:
   [[nodiscard]] ElementIdentifier
   element_next_sibling(ElementIdentifier element_id) const final;
 
-  [[nodiscard]] std::any element_property(ElementIdentifier element_id,
-                                          ElementProperty property) const final;
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  element_properties(ElementIdentifier element_id) const final;
 
-  void set_element_property(ElementIdentifier element_id,
-                            ElementProperty property,
-                            const std::any &value) const final;
+  void update_element_properties(
+      ElementIdentifier element_id,
+      std::unordered_map<ElementProperty, std::any> properties) const final;
 
   [[nodiscard]] std::shared_ptr<abstract::Table>
   table(ElementIdentifier element_id) const final;
