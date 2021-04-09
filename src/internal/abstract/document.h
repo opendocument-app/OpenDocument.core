@@ -75,19 +75,12 @@ public:
   [[nodiscard]] virtual ElementIdentifier
   element_next_sibling(ElementIdentifier element_id) const = 0;
 
-  /// \param element_id the element to query.
-  /// \param property the requested property.
-  /// \return the requested optional value.
-  [[nodiscard]] virtual std::any
-  element_property(ElementIdentifier element_id,
-                   ElementProperty property) const = 0;
+  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
+  element_properties(ElementIdentifier element_id) const = 0;
 
-  /// \param element_id the element.
-  /// \param property the property to set.
-  /// \param value the value to set.
-  virtual void set_element_property(ElementIdentifier element_id,
-                                    ElementProperty property,
-                                    const std::any &value) const = 0;
+  virtual void update_element_properties(
+      ElementIdentifier element_id,
+      std::unordered_map<ElementProperty, std::any> properties) const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<Table>
   table(ElementIdentifier element_id) const = 0;

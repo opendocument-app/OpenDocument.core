@@ -14,56 +14,113 @@
 
 namespace odr::internal::odf {
 
+namespace {
+const char *style_attribute(const ElementType element_type) {
+  switch (element_type) {
+  case ElementType::PARAGRAPH:
+  case ElementType::SPAN:
+  case ElementType::LINK:
+    return "text:style-name";
+  case ElementType::TABLE:
+    return "table:style-name";
+  case ElementType::SLIDE:
+  case ElementType::PAGE:
+  case ElementType::RECT:
+  case ElementType::LINE:
+  case ElementType::CIRCLE:
+    return "draw:style-name";
+  case ElementType::NONE:
+  default:
+    return nullptr;
+  }
+}
+
+std::any element_style_property(const ElementType element_type,
+                                const ElementProperty property,
+                                const ResolvedStyle &style) {
+  static std::unordered_map<ElementProperty, std::string> text_property_table{
+      {ElementProperty::FONT_NAME, "style:font-name"},
+      {ElementProperty::FONT_SIZE, "fo:font-size"},
+      {ElementProperty::FONT_WEIGHT, "fo:font-weight"},
+      {ElementProperty::FONT_STYLE, "fo:font-style"},
+      {ElementProperty::FONT_COLOR, "fo:font-color"},
+      {ElementProperty::BACKGROUND_COLOR, "fo:background-color"},
+  };
+
+  if (auto it = text_property_table.find(property);
+      it != std::end(text_property_table)) {
+    if (auto property_it = style.text_properties.find(it->second);
+        property_it != std::end(style.text_properties)) {
+      return property_it->second;
+    }
+  }
+
+  return {};
+}
+} // namespace
+
 class OpenDocument::Table final : public abstract::Table {
 public:
   Table(std::shared_ptr<OpenDocument> document, const pugi::xml_node node)
       : m_document{std::move(document)}, m_node{node} {
     std::uint32_t column_index = 0;
     for (auto column : node.children("table:table-column")) {
-      const auto repeat =
+      const auto columns_repeated =
           m_node.attribute("table:number-columns-repeated").as_uint(1);
 
-      Column new_column;
-      new_column.node = column;
-      new_column.index = column_index;
-      new_column.repeat = repeat;
+      for (std::uint32_t i = 0; i < columns_repeated; ++i) {
+        bool column_empty = true;
 
-      // TODO insert
+        // TODO
+        if (!column_empty) {
+          Column new_column;
+          new_column.node = column;
+          m_columns[column_index] = new_column;
+        }
 
-      column_index += repeat;
+        ++column_index;
+      }
     }
 
     std::uint32_t row_index = 0;
     for (auto row : node.children("table:table-row")) {
-      const auto repeat =
+      const auto rows_repeated =
           m_node.attribute("table:number-rows-repeated").as_uint(1);
 
-      Row new_row;
-      new_row.node = row;
-      new_row.index = column_index;
-      new_row.repeat = repeat;
+      for (std::uint32_t i = 0; i < rows_repeated; ++i) {
+        bool row_empty = true;
 
-      std::uint32_t cell_index = 0;
-      for (auto cell : row.children("table:table-cell")) {
-        const auto repeat =
-            m_node.attribute("table:number-columns-repeated").as_uint(1);
+        std::uint32_t cell_index = 0;
+        for (auto cell : row.children("table:table-cell")) {
+          const auto cells_repeated =
+              m_node.attribute("table:number-columns-repeated").as_uint(1);
 
-        Cell new_cell;
-        new_cell.node = row;
-        new_cell.index = cell_index;
-        new_cell.repeat = repeat;
-        // TODO handle repeated
-        // TODO parent?
-        new_cell.first_child = m_document->register_children_(cell, {}, {});
+          for (std::uint32_t j = 0; j < cells_repeated; ++j) {
+            // TODO parent?
+            auto first_child = m_document->register_children_(cell, {}, {});
 
-        // TODO insert
+            if (first_child) {
+              Cell new_cell;
+              new_cell.node = row;
+              new_cell.first_child = first_child;
+              m_cells[{row_index, cell_index}] = new_cell;
 
-        cell_index += repeat;
+              row_empty = false;
+            }
+
+            ++cell_index;
+          }
+        }
+
+        // TODO check for style
+        if (!row_empty) {
+          Row new_row;
+          new_row.node = row;
+          m_rows[row_index] = new_row;
+        }
+
+        ++row_index;
       }
-
-      // TODO insert
-
-      row_index += repeat;
     }
   }
 
@@ -117,24 +174,22 @@ public:
     return {}; // TODO
   }
 
+  void resize(std::uint32_t rows, std::uint32_t columns) const final {
+    throw UnsupportedOperation(); // TODO
+  }
+
 private:
   struct Column {
     pugi::xml_node node;
-    std::uint32_t index{0};
-    std::uint32_t repeat{1};
   };
 
   struct Cell {
     pugi::xml_node node;
-    std::uint32_t index{0};
-    std::uint32_t repeat{1};
     ElementIdentifier first_child;
   };
 
   struct Row {
     pugi::xml_node node;
-    std::uint32_t index{0};
-    std::uint32_t repeat{1};
   };
 
   std::shared_ptr<OpenDocument> m_document;
@@ -154,6 +209,11 @@ private:
 
   Cell *cell_(const std::uint32_t row, const std::uint32_t column) const {
     return nullptr; // TODO
+  }
+
+  void decouple_cell_(const std::uint32_t row,
+                      const std::uint32_t column) const {
+    // TODO
   }
 };
 
@@ -175,11 +235,8 @@ OpenDocument::OpenDocument(
     throw NoOpenDocumentFile();
   }
 
-  // TODO scan styles
-
-  // TODO
-  // m_styles = Styles(m_styles_xml.document_element(),
-  // m_content_xml.document_element());
+  m_styles =
+      Styles(m_styles_xml.document_element(), m_content_xml.document_element());
 }
 
 ElementIdentifier
@@ -409,12 +466,18 @@ OpenDocument::element_next_sibling(const ElementIdentifier element_id) const {
 
 std::any OpenDocument::element_property(const ElementIdentifier element_id,
                                         const ElementProperty property) const {
+  const Element *element = element_(element_id);
+
+  if (element == nullptr) {
+    throw std::runtime_error("element not found");
+  }
+
   if (property == ElementProperty::IMAGE_FILE) {
     if (!element_id) {
       return {};
     }
 
-    if (element_(element_id)->type != ElementType::IMAGE) {
+    if (element->type != ElementType::IMAGE) {
       return {};
     }
 
@@ -430,7 +493,18 @@ std::any OpenDocument::element_property(const ElementIdentifier element_id,
     return m_filesystem->open(path);
   }
 
-  return {}; // TODO
+  auto style_attr = element->node.attribute(style_attribute(element->type));
+  if (!style_attr) {
+    return {};
+  }
+  auto style = m_styles.style(style_attr.value());
+  if (!style) {
+    return {};
+  }
+
+  auto resolved_style = style->resolve();
+
+  return element_style_property(element->type, property, resolved_style);
 }
 
 void OpenDocument::set_element_property(const ElementIdentifier element_id,

@@ -51,10 +51,12 @@ public:
 
   /// \param element_id the element to query.
   /// \param limit_rows
-  /// \param limit_cols
+  /// \param limit_columns
   /// \return the requested table dimensions.
   [[nodiscard]] virtual TableDimensions
-  dimensions(std::uint32_t limit_rows, std::uint32_t limit_cols) const = 0;
+  dimensions(std::uint32_t limit_rows, std::uint32_t limit_columns) const = 0;
+
+  virtual void resize(std::uint32_t rows, std::uint32_t columns) const = 0;
 };
 
 } // namespace odr::internal::abstract

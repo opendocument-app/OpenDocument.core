@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_ODF_DOCUMENT_H
 
 #include <internal/abstract/document.h>
+#include <internal/odf/odf_style.h>
 #include <memory>
 #include <odr/document.h>
 #include <pugixml.hpp>
@@ -55,9 +56,12 @@ public:
   table(ElementIdentifier element_id) const final;
 
 private:
+  class Table;
+
   struct Element {
     pugi::xml_node node;
     ElementType type{ElementType::NONE};
+    const char *style{nullptr};
 
     ElementIdentifier parent;
     ElementIdentifier first_child;
@@ -65,7 +69,10 @@ private:
     ElementIdentifier next_sibling;
   };
 
-  class Table;
+  struct TableElementExtension {
+    std::uint32_t row;
+    std::uint32_t column;
+  };
 
   DocumentType m_document_type;
 
@@ -78,6 +85,10 @@ private:
   ElementIdentifier m_root;
 
   std::unordered_map<ElementIdentifier, std::shared_ptr<Table>> m_tables;
+  std::unordered_map<ElementIdentifier, TableElementExtension>
+      m_table_element_extension;
+
+  Styles m_styles;
 
   ElementIdentifier register_element_(pugi::xml_node node,
                                       ElementIdentifier parent,
