@@ -15,63 +15,89 @@
 namespace odr::internal::odf {
 
 namespace {
-const char *style_attribute(const ElementType element_type) {
-  switch (element_type) {
-  case ElementType::PARAGRAPH:
-  case ElementType::SPAN:
-  case ElementType::LINK:
-    return "text:style-name";
-  case ElementType::TABLE:
-    return "table:style-name";
-  case ElementType::SLIDE:
-  case ElementType::PAGE:
-  case ElementType::RECT:
-  case ElementType::LINE:
-  case ElementType::CIRCLE:
-    return "draw:style-name";
-  case ElementType::NONE:
-  default:
-    return nullptr;
+ResolvedStyle resolve_style(const Styles &styles, pugi::xml_node node,
+                            const char *style_attribute) {
+  auto attr = node.attribute(style_attribute);
+  if (!attr) {
+    return {};
   }
+  auto style = styles.style(attr.value());
+  if (!style) {
+    return {};
+  }
+  return style->resolve();
+}
+
+void assign_style_property(
+    const std::unordered_map<std::string, std::any> &properties,
+    const char *name, const ElementProperty property,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  auto it = properties.find(name);
+  if (it == std::end(properties)) {
+    return;
+  }
+  result[property] = it->second;
 }
 
 void resolve_page_style_properties(
-    pugi::xml_node node,
+    const Styles &styles, pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {}
 
 void resolve_text_style_properties(
-    pugi::xml_node node,
-    std::unordered_map<ElementProperty, std::any> &result) {}
+    const Styles &styles, pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  auto resolved_style = resolve_style(styles, node, "text:style-name");
+  assign_style_property(resolved_style.text_properties, "style:font-name",
+                        ElementProperty::FONT_NAME, result);
+  assign_style_property(resolved_style.text_properties, "fo:font-size",
+                        ElementProperty::FONT_SIZE, result);
+  assign_style_property(resolved_style.text_properties, "fo:font-weight",
+                        ElementProperty::FONT_WEIGHT, result);
+  assign_style_property(resolved_style.text_properties, "fo:font-style",
+                        ElementProperty::FONT_STYLE, result);
+  assign_style_property(resolved_style.text_properties, "fo:font-color",
+                        ElementProperty::FONT_COLOR, result);
+  assign_style_property(resolved_style.text_properties, "fo:background-color",
+                        ElementProperty::BACKGROUND_COLOR, result);
+}
+
+void resolve_paragraph_style_properties(
+    const Styles &styles, pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  auto resolved_style = resolve_style(styles, node, "text:style-name");
+  assign_style_property(resolved_style.paragraph_properties, "fo:text-align",
+                        ElementProperty::TEXT_ALIGN, result);
+  assign_style_property(resolved_style.paragraph_properties, "fo:margin-top",
+                        ElementProperty::MARGIN_TOP, result);
+  assign_style_property(resolved_style.paragraph_properties, "fo:margin-bottom",
+                        ElementProperty::MARGIN_BOTTOM, result);
+  assign_style_property(resolved_style.paragraph_properties, "fo:margin-left",
+                        ElementProperty::MARGIN_LEFT, result);
+  assign_style_property(resolved_style.paragraph_properties, "fo:margin-right",
+                        ElementProperty::MARGIN_RIGHT, result);
+}
 
 void resolve_table_style_properties(
-    pugi::xml_node node,
-    std::unordered_map<ElementProperty, std::any> &result) {}
+    const Styles &styles, pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  auto resolved_style = resolve_style(styles, node, "table:style-name");
+  assign_style_property(resolved_style.table_properties, "style:width",
+                        ElementProperty::WIDTH, result);
+}
 
 void resolve_draw_style_properties(
-    pugi::xml_node node,
-    std::unordered_map<ElementProperty, std::any> &result) {}
-
-std::any element_style_property(const ElementType element_type,
-                                const ElementProperty property,
-                                const ResolvedStyle &style) {
-  static std::unordered_map<ElementProperty, std::string> text_property_table{
-      {ElementProperty::FONT_NAME, "style:font-name"},
-      {ElementProperty::FONT_SIZE, "fo:font-size"},
-      {ElementProperty::FONT_WEIGHT, "fo:font-weight"},
-      {ElementProperty::FONT_STYLE, "fo:font-style"},
-      {ElementProperty::FONT_COLOR, "fo:font-color"},
-      {ElementProperty::BACKGROUND_COLOR, "fo:background-color"},
-  };
-
-  if (auto it = text_property_table.find(property);
-      it != std::end(text_property_table)) {
-    if (auto property_it = style.text_properties.find(it->second);
-        property_it != std::end(style.text_properties)) {
-      return property_it->second;
-    }
-  }
-
-  return {};
+    const Styles &styles, pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  auto resolved_style = resolve_style(styles, node, "draw:style-name");
+  assign_style_property(resolved_style.graphic_properties, "svg:stroke-width",
+                        ElementProperty::STROKE_WIDTH, result);
+  assign_style_property(resolved_style.graphic_properties, "svg:stroke-color",
+                        ElementProperty::STROKE_COLOR, result);
+  assign_style_property(resolved_style.graphic_properties, "draw:fill-color",
+                        ElementProperty::FILL_COLOR, result);
+  assign_style_property(resolved_style.graphic_properties,
+                        "draw:textarea-vertical-align",
+                        ElementProperty::VERTICAL_ALIGN, result);
 }
 } // namespace
 
@@ -506,7 +532,7 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
   case ElementType::SLIDE:
     result[ElementProperty::NAME] =
         element->node.attribute("draw:name").value();
-    resolve_page_style_properties(element->node, result);
+    resolve_page_style_properties(m_styles, element->node, result);
     break;
   case ElementType::SHEET:
     result[ElementProperty::NAME] =
@@ -515,26 +541,26 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
   case ElementType::PAGE:
     result[ElementProperty::NAME] =
         element->node.attribute("draw:name").value();
-    resolve_page_style_properties(element->node, result);
+    resolve_page_style_properties(m_styles, element->node, result);
     break;
   case ElementType::PARAGRAPH:
-    resolve_text_style_properties(element->node, result);
+    resolve_text_style_properties(m_styles, element->node, result);
     break;
   case ElementType::SPAN:
-    resolve_text_style_properties(element->node, result);
+    resolve_text_style_properties(m_styles, element->node, result);
     break;
   case ElementType::LINK:
     result[ElementProperty::HREF] =
         element->node.attribute("xlink:href").value();
-    resolve_text_style_properties(element->node, result);
+    resolve_text_style_properties(m_styles, element->node, result);
     break;
   case ElementType::BOOKMARK:
     result[ElementProperty::NAME] =
         element->node.attribute("text:name").value();
-    resolve_text_style_properties(element->node, result);
+    resolve_text_style_properties(m_styles, element->node, result);
     break;
   case ElementType::TABLE:
-    resolve_table_style_properties(element->node, result);
+    resolve_table_style_properties(m_styles, element->node, result);
     break;
   case ElementType::IMAGE:
     result[ElementProperty::IMAGE_INTERNAL] = true;               // TODO
@@ -548,14 +574,14 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
         element->node.attribute("svg:width").value();
     result[ElementProperty::HEIGHT] =
         element->node.attribute("svg:height").value();
-    resolve_draw_style_properties(element->node, result);
+    resolve_draw_style_properties(m_styles, element->node, result);
     break;
   case ElementType::LINE:
     result[ElementProperty::X1] = element->node.attribute("svg:x1").value();
     result[ElementProperty::Y1] = element->node.attribute("svg:y1").value();
     result[ElementProperty::X2] = element->node.attribute("svg:x2").value();
     result[ElementProperty::Y2] = element->node.attribute("svg:y2").value();
-    resolve_draw_style_properties(element->node, result);
+    resolve_draw_style_properties(m_styles, element->node, result);
     break;
   case ElementType::CIRCLE:
     result[ElementProperty::X] = element->node.attribute("svg:x").value();
@@ -564,7 +590,7 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
         element->node.attribute("svg:width").value();
     result[ElementProperty::HEIGHT] =
         element->node.attribute("svg:height").value();
-    resolve_draw_style_properties(element->node, result);
+    resolve_draw_style_properties(m_styles, element->node, result);
     break;
   default:
     break;
