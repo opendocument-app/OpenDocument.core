@@ -215,18 +215,19 @@ public:
   }
 
   void update_column_properties(
-      std::uint32_t column,
+      const std::uint32_t column,
       std::unordered_map<ElementProperty, std::any> properties) const final {}
 
   void update_row_properties(
-      std::uint32_t row,
+      const std::uint32_t row,
       std::unordered_map<ElementProperty, std::any> properties) const final {}
 
   void update_cell_properties(
-      std::uint32_t row, std::uint32_t column,
+      const std::uint32_t row, std::uint32_t column,
       std::unordered_map<ElementProperty, std::any> properties) const final {}
 
-  void resize(std::uint32_t rows, std::uint32_t columns) const final {
+  void resize(const std::uint32_t rows,
+              const std::uint32_t columns) const final {
     throw UnsupportedOperation(); // TODO
   }
 
@@ -251,16 +252,28 @@ private:
   std::unordered_map<std::uint32_t, Row> m_rows;
   std::unordered_map<common::TablePosition, Cell> m_cells;
 
-  Column *column_(const std::uint32_t column) const {
-    return nullptr; // TODO
+  const Column *column_(const std::uint32_t column) const {
+    auto it = m_columns.find(column);
+    if (it == std::end(m_columns)) {
+      return nullptr;
+    }
+    return &it->second;
   }
 
-  Row *row_(const std::uint32_t row) const {
-    return nullptr; // TODO
+  const Row *row_(const std::uint32_t row) const {
+    auto it = m_rows.find(row);
+    if (it == std::end(m_rows)) {
+      return nullptr;
+    }
+    return &it->second;
   }
 
-  Cell *cell_(const std::uint32_t row, const std::uint32_t column) const {
-    return nullptr; // TODO
+  const Cell *cell_(const std::uint32_t row, const std::uint32_t column) const {
+    auto it = m_cells.find({row, column});
+    if (it == std::end(m_cells)) {
+      return nullptr;
+    }
+    return &it->second;
   }
 
   void decouple_cell_(const std::uint32_t row,
@@ -424,7 +437,9 @@ OpenDocument::element_(const ElementIdentifier element_id) const {
 
 bool OpenDocument::editable() const noexcept { return true; }
 
-bool OpenDocument::savable(bool encrypted) const noexcept { return !encrypted; }
+bool OpenDocument::savable(const bool encrypted) const noexcept {
+  return !encrypted;
+}
 
 void OpenDocument::save(const common::Path &path) const {
   // TODO this would decrypt/inflate and encrypt/deflate again
