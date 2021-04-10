@@ -15,6 +15,7 @@ class Table;
 } // namespace odr::internal::abstract
 
 namespace odr::internal::odf {
+class Table;
 
 class OpenDocument final : public abstract::Document,
                            public std::enable_shared_from_this<OpenDocument> {
@@ -56,7 +57,7 @@ public:
   table(ElementIdentifier element_id) const final;
 
 private:
-  class Table;
+  friend class Table;
 
   struct Element {
     pugi::xml_node node;

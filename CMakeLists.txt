@@ -52,6 +52,7 @@ add_library(odr-object OBJECT
         src/internal/odf/odf_manifest.cpp
         src/internal/odf/odf_meta.cpp
         src/internal/odf/odf_style.cpp
+        src/internal/odf/odf_table.cpp
 
         src/internal/oldms/oldms_file.cpp
 

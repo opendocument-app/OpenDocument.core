@@ -3,6 +3,7 @@
 
 #include <any>
 #include <internal/identifier.h>
+#include <memory>
 #include <unordered_map>
 
 namespace odr {
