@@ -275,7 +275,7 @@ Style::element_style(const ElementIdentifier element_id) const {
   }
 
   auto style = style_(element->node);
-  if (style) {
+  if (!style) {
     return {};
   }
 
@@ -296,7 +296,7 @@ Style::table_column_style(const ElementIdentifier element,
   }
 
   auto style = style_(c->node);
-  if (style) {
+  if (!style) {
     return {};
   }
 
@@ -317,7 +317,7 @@ Style::table_row_style(const ElementIdentifier element,
   }
 
   auto style = style_(r->node);
-  if (style) {
+  if (!style) {
     return {};
   }
 
@@ -339,7 +339,7 @@ Style::table_cell_style(const ElementIdentifier element,
   }
 
   auto style = style_(c->node);
-  if (style) {
+  if (!style) {
     return {};
   }
 

@@ -1,6 +1,7 @@
 #include <internal/abstract/document.h>
 #include <internal/abstract/table.h>
 #include <internal/common/path.h>
+#include <internal/util/map_util.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -852,11 +853,13 @@ bool ElementPropertyValue::operator!=(const ElementPropertyValue &rhs) const {
 }
 
 ElementPropertyValue::operator bool() const {
-  return m_impl.operator bool() && m_id != 0;
+  return m_impl.operator bool() && m_id != 0 && get().has_value();
 }
 
 std::any ElementPropertyValue::get() const {
-  return m_impl->element_properties(m_id).at(m_property);
+  auto properties = m_impl->element_properties(m_id);
+  return internal::util::map::lookup_map_default(properties, m_property,
+                                                 std::any());
 }
 
 void ElementPropertyValue::set(const std::any &value) const {

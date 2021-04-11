@@ -45,18 +45,36 @@ private:
       m_registry;
 
   PropertyRegistry() {
+    // TODO root
+
     default_register_(ElementType::SLIDE, ElementProperty::NAME, "draw:name");
 
     default_register_(ElementType::SHEET, ElementProperty::NAME, "table:name");
 
     default_register_(ElementType::PAGE, ElementProperty::NAME, "draw:name");
 
+    register_(ElementType::TEXT, ElementProperty::TEXT,
+              [](const pugi::xml_node node) { return node.text().get(); });
+
     default_register_(ElementType::LINK, ElementProperty::HREF, "xlink:href");
 
     default_register_(ElementType::BOOKMARK, ElementProperty::NAME,
                       "text:name");
 
-    // TODO image
+    default_register_(ElementType::FRAME, ElementProperty::WIDTH, "svg:width");
+    default_register_(ElementType::FRAME, ElementProperty::HEIGHT,
+                      "svg:height");
+    default_register_(ElementType::FRAME, ElementProperty::Z_INDEX,
+                      "draw:z-index");
+
+    register_(ElementType::IMAGE, ElementProperty::IMAGE_INTERNAL,
+              [](const pugi::xml_node node) { return false; }); // TODO
+    register_(ElementType::IMAGE, ElementProperty::HREF,
+              [](const pugi::xml_node node) { return ""; }); // TODO
+    register_(ElementType::IMAGE, ElementProperty::IMAGE_FILE,
+              [](const pugi::xml_node node) {
+                return std::shared_ptr<ImageFile>();
+              }); // TODO
 
     default_register_(ElementType::RECT, ElementProperty::X, "svg:x");
     default_register_(ElementType::RECT, ElementProperty::Y, "svg:y");
@@ -75,17 +93,21 @@ private:
                       "svg:height");
   }
 
+  void register_(const ElementType element, const ElementProperty property,
+                 std::function<std::any(pugi::xml_node node)> get) {
+    m_registry[element][property].get = get;
+  }
+
   void default_register_(const ElementType element,
                          const ElementProperty property,
                          const char *attribute_name) {
-    m_registry[element][property].get =
-        [attribute_name](const pugi::xml_node node) {
-          auto attribute = node.attribute(attribute_name);
-          if (!attribute) {
-            return std::any();
-          }
-          return std::any(attribute.value());
-        };
+    register_(element, property, [attribute_name](const pugi::xml_node node) {
+      auto attribute = node.attribute(attribute_name);
+      if (!attribute) {
+        return std::any();
+      }
+      return std::any(attribute.value());
+    });
   }
 };
 } // namespace
