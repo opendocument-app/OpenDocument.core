@@ -57,12 +57,12 @@ public:
   table(ElementIdentifier element_id) const final;
 
 private:
+  friend class Style;
   friend class Table;
 
   struct Element {
     pugi::xml_node node;
     ElementType type{ElementType::NONE};
-    const char *style{nullptr};
 
     ElementIdentifier parent;
     ElementIdentifier first_child;
@@ -89,7 +89,7 @@ private:
   std::unordered_map<ElementIdentifier, TableElementExtension>
       m_table_element_extension;
 
-  Styles m_styles;
+  Style m_style;
 
   ElementIdentifier register_element_(pugi::xml_node node,
                                       ElementIdentifier parent,

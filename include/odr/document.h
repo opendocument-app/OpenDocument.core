@@ -76,6 +76,9 @@ enum class ElementType {
   LIST_ITEM,
 
   TABLE,
+  TABLE_COLUMN,
+  TABLE_ROW,
+  TABLE_CELL,
 
   FRAME,
   IMAGE,
@@ -94,6 +97,8 @@ enum class ElementProperty {
   TEXT,
   HREF,
   ANCHOR_TYPE,
+
+  STYLE_NAME,
 
   X,
   Y,

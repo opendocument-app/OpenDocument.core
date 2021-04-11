@@ -21,6 +21,16 @@ bool lookup_map_default(const Map &map, const Key &key, Value &value,
   }
   return true;
 }
+
+template <typename Map, typename Key, typename Value>
+Value lookup_map_default(const Map &map, const Key &key,
+                         const Value &default_value) {
+  const auto it = map.find(key);
+  if (it == std::end(map)) {
+    return default_value;
+  }
+  return it->second;
+}
 } // namespace odr::internal::util::map
 
 #endif // ODR_INTERNAL_UTIL_MAP_H

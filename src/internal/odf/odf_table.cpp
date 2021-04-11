@@ -4,10 +4,14 @@
 
 namespace odr::internal::odf {
 
-Table::Table(std::shared_ptr<OpenDocument> document, const pugi::xml_node node)
-    : m_document{std::move(document)}, m_node{node} {
+Table::Table(OpenDocument &document, const pugi::xml_node node)
+    : m_document{document}, m_node{node} {
+  register_();
+}
+
+void Table::register_() {
   std::uint32_t column_index = 0;
-  for (auto column : node.children("table:table-column")) {
+  for (auto column : m_node.children("table:table-column")) {
     const auto columns_repeated =
         m_node.attribute("table:number-columns-repeated").as_uint(1);
 
@@ -26,7 +30,7 @@ Table::Table(std::shared_ptr<OpenDocument> document, const pugi::xml_node node)
   }
 
   std::uint32_t row_index = 0;
-  for (auto row : node.children("table:table-row")) {
+  for (auto row : m_node.children("table:table-row")) {
     const auto rows_repeated =
         m_node.attribute("table:number-rows-repeated").as_uint(1);
 
@@ -40,7 +44,7 @@ Table::Table(std::shared_ptr<OpenDocument> document, const pugi::xml_node node)
 
         for (std::uint32_t j = 0; j < cells_repeated; ++j) {
           // TODO parent?
-          auto first_child = m_document->register_children_(cell, {}, {});
+          auto first_child = m_document.register_children_(cell, {}, {});
 
           if (first_child) {
             Cell new_cell;
@@ -68,7 +72,7 @@ Table::Table(std::shared_ptr<OpenDocument> document, const pugi::xml_node node)
 }
 
 [[nodiscard]] std::shared_ptr<abstract::Document> Table::document() const {
-  return m_document;
+  return m_document.shared_from_this();
 }
 
 [[nodiscard]] TableDimensions

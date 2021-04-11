@@ -8,10 +8,11 @@
 
 namespace odr::internal::odf {
 class OpenDocument;
+class Style;
 
 class Table : public abstract::Table {
 public:
-  Table(std::shared_ptr<OpenDocument> document, pugi::xml_node node);
+  Table(OpenDocument &document, pugi::xml_node node);
 
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const final;
 
@@ -48,6 +49,7 @@ public:
 
 private:
   friend class OpenDocument;
+  friend class Style;
 
   struct Column {
     pugi::xml_node node;
@@ -62,12 +64,14 @@ private:
     pugi::xml_node node;
   };
 
-  std::shared_ptr<OpenDocument> m_document;
+  OpenDocument &m_document;
   pugi::xml_node m_node;
 
   std::unordered_map<std::uint32_t, Column> m_columns;
   std::unordered_map<std::uint32_t, Row> m_rows;
   std::unordered_map<common::TablePosition, Cell> m_cells;
+
+  void register_();
 
   const Column *column_(std::uint32_t column) const;
   const Row *row_(std::uint32_t row) const;

@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_ODF_STYLE_H
 
 #include <any>
+#include <internal/identifier.h>
 #include <memory>
 #include <pugixml.hpp>
 #include <unordered_map>
@@ -13,42 +14,35 @@ enum class ElementProperty;
 } // namespace odr
 
 namespace odr::internal::odf {
+class OpenDocument;
 
-struct ResolvedStyle {
-  std::unordered_map<std::string, std::any> paragraph_properties;
-  std::unordered_map<std::string, std::any> text_properties;
-
-  std::unordered_map<std::string, std::any> table_properties;
-  std::unordered_map<std::string, std::any> table_column_properties;
-  std::unordered_map<std::string, std::any> table_row_properties;
-  std::unordered_map<std::string, std::any> table_cell_properties;
-
-  std::unordered_map<std::string, std::any> chart_properties;
-  std::unordered_map<std::string, std::any> drawing_page_properties;
-  std::unordered_map<std::string, std::any> graphic_properties;
-};
-
-class Style final {
+class Style {
 public:
-  Style(std::shared_ptr<Style> parent, pugi::xml_node node);
+  Style();
+  explicit Style(OpenDocument &document);
 
-  [[nodiscard]] ResolvedStyle resolve() const;
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  element_style(ElementIdentifier element) const;
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  table_column_style(ElementIdentifier element, std::uint32_t column) const;
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  table_row_style(ElementIdentifier element, std::uint32_t row) const;
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  table_cell_style(ElementIdentifier element, std::uint32_t column,
+                   std::uint32_t row) const;
 
 private:
-  std::shared_ptr<Style> m_parent;
-  pugi::xml_node m_node;
-};
+  struct Entry {
+    std::shared_ptr<Entry> m_parent;
+    pugi::xml_node m_node;
 
-class Styles {
-public:
-  Styles() = default;
-  Styles(pugi::xml_node styles_root, pugi::xml_node content_root);
+    Entry(std::shared_ptr<Entry> parent, pugi::xml_node node);
 
-  [[nodiscard]] std::shared_ptr<Style> style(const std::string &name) const;
+    [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+    properties(ElementType element) const;
+  };
 
-private:
-  pugi::xml_node m_styles_root;
-  pugi::xml_node m_content_root;
+  OpenDocument *m_document{nullptr};
 
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
   std::unordered_map<std::string, pugi::xml_node> m_index_default_style;
@@ -58,16 +52,20 @@ private:
   std::unordered_map<std::string, pugi::xml_node> m_index_page_layout;
   std::unordered_map<std::string, pugi::xml_node> m_index_master_page;
 
-  std::unordered_map<std::string, std::shared_ptr<Style>> m_default_styles;
-  std::unordered_map<std::string, std::shared_ptr<Style>> m_styles;
+  std::unordered_map<std::string, std::shared_ptr<Entry>> m_default_styles;
+  std::unordered_map<std::string, std::shared_ptr<Entry>> m_styles;
 
-  void generate_indices();
-  void generate_indices(pugi::xml_node);
+  void generate_indices_();
+  void generate_indices_(pugi::xml_node node);
 
-  void generate_styles();
-  std::shared_ptr<Style> generate_default_style(const std::string &,
-                                                pugi::xml_node);
-  std::shared_ptr<Style> generate_style(const std::string &, pugi::xml_node);
+  void generate_styles_();
+  std::shared_ptr<Entry> generate_default_style_(const std::string &name,
+                                                 pugi::xml_node node);
+  std::shared_ptr<Entry> generate_style_(const std::string &name,
+                                         pugi::xml_node node);
+
+  [[nodiscard]] std::shared_ptr<Entry> style_(const std::string &name) const;
+  [[nodiscard]] std::shared_ptr<Entry> style_(pugi::xml_node node) const;
 };
 
 } // namespace odr::internal::odf

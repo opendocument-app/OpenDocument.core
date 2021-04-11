@@ -14,90 +14,80 @@
 namespace odr::internal::odf {
 
 namespace {
-ResolvedStyle resolve_style(const Styles &styles, pugi::xml_node node,
-                            const char *style_attribute) {
-  auto attr = node.attribute(style_attribute);
-  if (!attr) {
-    return {};
+class PropertyRegistry {
+public:
+  static PropertyRegistry &instance() {
+    static PropertyRegistry instance;
+    return instance;
   }
-  auto style = styles.style(attr.value());
-  if (!style) {
-    return {};
+
+  void
+  resolve_properties(const ElementType element, const pugi::xml_node node,
+                     std::unordered_map<ElementProperty, std::any> &result) {
+    auto it = m_registry.find(element);
+    if (it == std::end(m_registry)) {
+      return;
+    }
+    for (auto &&p : it->second) {
+      auto value = p.second.get(node);
+      if (value.has_value()) {
+        result[p.first] = value;
+      }
+    }
   }
-  return style->resolve();
-}
 
-void assign_style_property(
-    const std::unordered_map<std::string, std::any> &properties,
-    const char *name, const ElementProperty property,
-    std::unordered_map<ElementProperty, std::any> &result) {
-  auto it = properties.find(name);
-  if (it == std::end(properties)) {
-    return;
+private:
+  struct Entry {
+    std::function<std::any(pugi::xml_node node)> get;
+  };
+
+  std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
+      m_registry;
+
+  PropertyRegistry() {
+    default_register_(ElementType::SLIDE, ElementProperty::NAME, "draw:name");
+
+    default_register_(ElementType::SHEET, ElementProperty::NAME, "table:name");
+
+    default_register_(ElementType::PAGE, ElementProperty::NAME, "draw:name");
+
+    default_register_(ElementType::LINK, ElementProperty::HREF, "xlink:href");
+
+    default_register_(ElementType::BOOKMARK, ElementProperty::NAME,
+                      "text:name");
+
+    // TODO image
+
+    default_register_(ElementType::RECT, ElementProperty::X, "svg:x");
+    default_register_(ElementType::RECT, ElementProperty::Y, "svg:y");
+    default_register_(ElementType::RECT, ElementProperty::WIDTH, "svg:width");
+    default_register_(ElementType::RECT, ElementProperty::HEIGHT, "svg:height");
+
+    default_register_(ElementType::LINE, ElementProperty::X1, "svg:x1");
+    default_register_(ElementType::LINE, ElementProperty::Y1, "svg:y1");
+    default_register_(ElementType::LINE, ElementProperty::X2, "svg:x2");
+    default_register_(ElementType::LINE, ElementProperty::Y2, "svg:y2");
+
+    default_register_(ElementType::CIRCLE, ElementProperty::X, "svg:x");
+    default_register_(ElementType::CIRCLE, ElementProperty::Y, "svg:y");
+    default_register_(ElementType::CIRCLE, ElementProperty::WIDTH, "svg:width");
+    default_register_(ElementType::CIRCLE, ElementProperty::HEIGHT,
+                      "svg:height");
   }
-  result[property] = it->second;
-}
 
-void resolve_page_style_properties(
-    const Styles &styles, pugi::xml_node node,
-    std::unordered_map<ElementProperty, std::any> &result) {}
-
-void resolve_text_style_properties(
-    const Styles &styles, pugi::xml_node node,
-    std::unordered_map<ElementProperty, std::any> &result) {
-  auto resolved_style = resolve_style(styles, node, "text:style-name");
-  assign_style_property(resolved_style.text_properties, "style:font-name",
-                        ElementProperty::FONT_NAME, result);
-  assign_style_property(resolved_style.text_properties, "fo:font-size",
-                        ElementProperty::FONT_SIZE, result);
-  assign_style_property(resolved_style.text_properties, "fo:font-weight",
-                        ElementProperty::FONT_WEIGHT, result);
-  assign_style_property(resolved_style.text_properties, "fo:font-style",
-                        ElementProperty::FONT_STYLE, result);
-  assign_style_property(resolved_style.text_properties, "fo:font-color",
-                        ElementProperty::FONT_COLOR, result);
-  assign_style_property(resolved_style.text_properties, "fo:background-color",
-                        ElementProperty::BACKGROUND_COLOR, result);
-}
-
-void resolve_paragraph_style_properties(
-    const Styles &styles, pugi::xml_node node,
-    std::unordered_map<ElementProperty, std::any> &result) {
-  auto resolved_style = resolve_style(styles, node, "text:style-name");
-  assign_style_property(resolved_style.paragraph_properties, "fo:text-align",
-                        ElementProperty::TEXT_ALIGN, result);
-  assign_style_property(resolved_style.paragraph_properties, "fo:margin-top",
-                        ElementProperty::MARGIN_TOP, result);
-  assign_style_property(resolved_style.paragraph_properties, "fo:margin-bottom",
-                        ElementProperty::MARGIN_BOTTOM, result);
-  assign_style_property(resolved_style.paragraph_properties, "fo:margin-left",
-                        ElementProperty::MARGIN_LEFT, result);
-  assign_style_property(resolved_style.paragraph_properties, "fo:margin-right",
-                        ElementProperty::MARGIN_RIGHT, result);
-}
-
-void resolve_table_style_properties(
-    const Styles &styles, pugi::xml_node node,
-    std::unordered_map<ElementProperty, std::any> &result) {
-  auto resolved_style = resolve_style(styles, node, "table:style-name");
-  assign_style_property(resolved_style.table_properties, "style:width",
-                        ElementProperty::WIDTH, result);
-}
-
-void resolve_draw_style_properties(
-    const Styles &styles, pugi::xml_node node,
-    std::unordered_map<ElementProperty, std::any> &result) {
-  auto resolved_style = resolve_style(styles, node, "draw:style-name");
-  assign_style_property(resolved_style.graphic_properties, "svg:stroke-width",
-                        ElementProperty::STROKE_WIDTH, result);
-  assign_style_property(resolved_style.graphic_properties, "svg:stroke-color",
-                        ElementProperty::STROKE_COLOR, result);
-  assign_style_property(resolved_style.graphic_properties, "draw:fill-color",
-                        ElementProperty::FILL_COLOR, result);
-  assign_style_property(resolved_style.graphic_properties,
-                        "draw:textarea-vertical-align",
-                        ElementProperty::VERTICAL_ALIGN, result);
-}
+  void default_register_(const ElementType element,
+                         const ElementProperty property,
+                         const char *attribute_name) {
+    m_registry[element][property].get =
+        [attribute_name](const pugi::xml_node node) {
+          auto attribute = node.attribute(attribute_name);
+          if (!attribute) {
+            return std::any();
+          }
+          return std::any(attribute.value());
+        };
+  }
+};
 } // namespace
 
 OpenDocument::OpenDocument(
@@ -118,8 +108,7 @@ OpenDocument::OpenDocument(
     throw NoOpenDocumentFile();
   }
 
-  m_styles =
-      Styles(m_styles_xml.document_element(), m_content_xml.document_element());
+  m_style = Style(*this);
 }
 
 ElementIdentifier
@@ -358,76 +347,11 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
     throw std::runtime_error("element not found");
   }
 
-  switch (element->type) {
-  case ElementType::ROOT:
-    // TODO
-    break;
-  case ElementType::SLIDE:
-    result[ElementProperty::NAME] =
-        element->node.attribute("draw:name").value();
-    resolve_page_style_properties(m_styles, element->node, result);
-    break;
-  case ElementType::SHEET:
-    result[ElementProperty::NAME] =
-        element->node.attribute("table:name").value();
-    break;
-  case ElementType::PAGE:
-    result[ElementProperty::NAME] =
-        element->node.attribute("draw:name").value();
-    resolve_page_style_properties(m_styles, element->node, result);
-    break;
-  case ElementType::PARAGRAPH:
-    resolve_text_style_properties(m_styles, element->node, result);
-    break;
-  case ElementType::SPAN:
-    resolve_text_style_properties(m_styles, element->node, result);
-    break;
-  case ElementType::LINK:
-    result[ElementProperty::HREF] =
-        element->node.attribute("xlink:href").value();
-    resolve_text_style_properties(m_styles, element->node, result);
-    break;
-  case ElementType::BOOKMARK:
-    result[ElementProperty::NAME] =
-        element->node.attribute("text:name").value();
-    resolve_text_style_properties(m_styles, element->node, result);
-    break;
-  case ElementType::TABLE:
-    resolve_table_style_properties(m_styles, element->node, result);
-    break;
-  case ElementType::IMAGE:
-    result[ElementProperty::IMAGE_INTERNAL] = true;               // TODO
-    result[ElementProperty::HREF] = "";                           // TODO
-    result[ElementProperty::IMAGE_FILE] = m_filesystem->open(""); // TODO
-    break;
-  case ElementType::RECT:
-    result[ElementProperty::X] = element->node.attribute("svg:x").value();
-    result[ElementProperty::Y] = element->node.attribute("svg:y").value();
-    result[ElementProperty::WIDTH] =
-        element->node.attribute("svg:width").value();
-    result[ElementProperty::HEIGHT] =
-        element->node.attribute("svg:height").value();
-    resolve_draw_style_properties(m_styles, element->node, result);
-    break;
-  case ElementType::LINE:
-    result[ElementProperty::X1] = element->node.attribute("svg:x1").value();
-    result[ElementProperty::Y1] = element->node.attribute("svg:y1").value();
-    result[ElementProperty::X2] = element->node.attribute("svg:x2").value();
-    result[ElementProperty::Y2] = element->node.attribute("svg:y2").value();
-    resolve_draw_style_properties(m_styles, element->node, result);
-    break;
-  case ElementType::CIRCLE:
-    result[ElementProperty::X] = element->node.attribute("svg:x").value();
-    result[ElementProperty::Y] = element->node.attribute("svg:y").value();
-    result[ElementProperty::WIDTH] =
-        element->node.attribute("svg:width").value();
-    result[ElementProperty::HEIGHT] =
-        element->node.attribute("svg:height").value();
-    resolve_draw_style_properties(m_styles, element->node, result);
-    break;
-  default:
-    break;
-  }
+  auto style_properties = m_style.element_style(element_id);
+  result.insert(std::begin(style_properties), std::end(style_properties));
+
+  PropertyRegistry::instance().resolve_properties(element->type, element->node,
+                                                  result);
 
   return result;
 }
