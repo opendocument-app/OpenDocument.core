@@ -16,8 +16,7 @@ namespace odr::internal::odf {
 
 class OpenDocument::PropertyRegistry final {
 public:
-  using Get = std::function<std::any(const OpenDocument &document,
-                                     pugi::xml_node node)>;
+  using Get = std::function<std::any(pugi::xml_node node)>;
 
   static PropertyRegistry &instance() {
     static PropertyRegistry instance;
@@ -25,15 +24,14 @@ public:
   }
 
   void
-  resolve_properties(const OpenDocument &document, const ElementType element,
-                     const pugi::xml_node node,
+  resolve_properties(const ElementType element, const pugi::xml_node node,
                      std::unordered_map<ElementProperty, std::any> &result) {
     auto it = m_registry.find(element);
     if (it == std::end(m_registry)) {
       return;
     }
     for (auto &&p : it->second) {
-      auto value = p.second.get(document, node);
+      auto value = p.second.get(node);
       if (value.has_value()) {
         result[p.first] = value;
       }
@@ -64,9 +62,7 @@ private:
                       draw_style_attribute);
 
     register_(ElementType::TEXT, ElementProperty::TEXT,
-              [](const OpenDocument &document, const pugi::xml_node node) {
-                return node.text().get();
-              });
+              [](const pugi::xml_node node) { return node.text().get(); });
 
     default_register_(ElementType::PARAGRAPH, ElementProperty::STYLE_NAME,
                       text_style_attribute);
@@ -123,15 +119,13 @@ private:
   void default_register_(const ElementType element,
                          const ElementProperty property,
                          const char *attribute_name) {
-    register_(element, property,
-              [attribute_name](const OpenDocument &document,
-                               const pugi::xml_node node) {
-                auto attribute = node.attribute(attribute_name);
-                if (!attribute) {
-                  return std::any();
-                }
-                return std::any(attribute.value());
-              });
+    register_(element, property, [attribute_name](const pugi::xml_node node) {
+      auto attribute = node.attribute(attribute_name);
+      if (!attribute) {
+        return std::any();
+      }
+      return std::any(attribute.value());
+    });
   }
 };
 
@@ -398,8 +392,8 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
     throw std::runtime_error("element not found");
   }
 
-  PropertyRegistry::instance().resolve_properties(*this, element->type,
-                                                  element->node, result);
+  PropertyRegistry::instance().resolve_properties(element->type, element->node,
+                                                  result);
 
   if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
       style_name_it != std::end(result)) {

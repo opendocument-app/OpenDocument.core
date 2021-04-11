@@ -16,14 +16,10 @@ void Table::register_(const pugi::xml_node node) {
         node.attribute("table:number-columns-repeated").as_uint(1);
 
     for (std::uint32_t i = 0; i < columns_repeated; ++i) {
-      bool column_empty = true;
-
-      // TODO
-      if (!column_empty) {
-        Column new_column;
-        new_column.node = column;
-        m_columns[column_index] = new_column;
-      }
+      // TODO optimize for repeated data
+      Column new_column;
+      new_column.node = column;
+      m_columns[column_index] = new_column;
 
       ++column_index;
     }
@@ -35,8 +31,6 @@ void Table::register_(const pugi::xml_node node) {
         node.attribute("table:number-rows-repeated").as_uint(1);
 
     for (std::uint32_t i = 0; i < rows_repeated; ++i) {
-      bool row_empty = true;
-
       std::uint32_t cell_index = 0;
       for (auto cell : row.children("table:table-cell")) {
         const auto cells_repeated =
@@ -51,20 +45,16 @@ void Table::register_(const pugi::xml_node node) {
             new_cell.node = row;
             new_cell.first_child = first_child;
             m_cells[{row_index, cell_index}] = new_cell;
-
-            row_empty = false;
           }
 
           ++cell_index;
         }
       }
 
-      // TODO check for style
-      if (!row_empty) {
-        Row new_row;
-        new_row.node = row;
-        m_rows[row_index] = new_row;
-      }
+      // TODO optimize for repeated data
+      Row new_row;
+      new_row.node = row;
+      m_rows[row_index] = new_row;
 
       ++row_index;
     }
@@ -95,7 +85,20 @@ Table::column_properties(const std::uint32_t column) const {
   if (c == nullptr) {
     return {};
   }
-  return {}; // TODO
+
+  std::unordered_map<ElementProperty, std::any> result;
+
+  if (auto style_name_attribute = c->node.attribute("table:style-name");
+      style_name_attribute) {
+    const char *style_name = style_name_attribute.value();
+    result[ElementProperty::STYLE_NAME] = style_name;
+
+    auto style_properties =
+        m_document.m_style.resolve_style(ElementType::TABLE_COLUMN, style_name);
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
+
+  return result;
 }
 
 std::unordered_map<ElementProperty, std::any>
@@ -104,7 +107,20 @@ Table::row_properties(const std::uint32_t row) const {
   if (r == nullptr) {
     return {};
   }
-  return {}; // TODO
+
+  std::unordered_map<ElementProperty, std::any> result;
+
+  if (auto style_name_attribute = r->node.attribute("table:style-name");
+      style_name_attribute) {
+    const char *style_name = style_name_attribute.value();
+    result[ElementProperty::STYLE_NAME] = style_name;
+
+    auto style_properties =
+        m_document.m_style.resolve_style(ElementType::TABLE_ROW, style_name);
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
+
+  return result;
 }
 
 std::unordered_map<ElementProperty, std::any>
@@ -114,20 +130,40 @@ Table::cell_properties(const std::uint32_t row,
   if (c == nullptr) {
     return {};
   }
-  return {}; // TODO
+
+  std::unordered_map<ElementProperty, std::any> result;
+
+  // TODO default cell style
+  if (auto style_name_attribute = c->node.attribute("table:style-name");
+      style_name_attribute) {
+    const char *style_name = style_name_attribute.value();
+    result[ElementProperty::STYLE_NAME] = style_name;
+
+    auto style_properties =
+        m_document.m_style.resolve_style(ElementType::TABLE_CELL, style_name);
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
+
+  return result;
 }
 
 void Table::update_column_properties(
     const std::uint32_t column,
-    std::unordered_map<ElementProperty, std::any> properties) const {}
+    std::unordered_map<ElementProperty, std::any> properties) const {
+  throw UnsupportedOperation(); // TODO
+}
 
 void Table::update_row_properties(
     const std::uint32_t row,
-    std::unordered_map<ElementProperty, std::any> properties) const {}
+    std::unordered_map<ElementProperty, std::any> properties) const {
+  throw UnsupportedOperation(); // TODO
+}
 
 void Table::update_cell_properties(
     const std::uint32_t row, const std::uint32_t column,
-    std::unordered_map<ElementProperty, std::any> properties) const {}
+    std::unordered_map<ElementProperty, std::any> properties) const {
+  throw UnsupportedOperation(); // TODO
+}
 
 void Table::resize(const std::uint32_t rows,
                    const std::uint32_t columns) const {
