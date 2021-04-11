@@ -22,11 +22,8 @@ public:
   document() const = 0;
 
   /// \param element_id the element to query.
-  /// \param limit_rows
-  /// \param limit_columns
   /// \return the requested table dimensions.
-  [[nodiscard]] virtual TableDimensions
-  dimensions(std::uint32_t limit_rows, std::uint32_t limit_columns) const = 0;
+  [[nodiscard]] virtual TableDimensions dimensions() const = 0;
 
   /// \param element_id the element to query.
   /// \param row the requested row.

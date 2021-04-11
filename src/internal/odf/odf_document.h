@@ -59,7 +59,6 @@ public:
   table(ElementIdentifier element_id) const final;
 
 private:
-  friend class Style;
   friend class Table;
 
   class PropertyRegistry;

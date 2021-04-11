@@ -5,15 +5,15 @@
 namespace odr::internal::odf {
 
 Table::Table(OpenDocument &document, const pugi::xml_node node)
-    : m_document{document}, m_node{node} {
-  register_();
+    : m_document{document} {
+  register_(node);
 }
 
-void Table::register_() {
+void Table::register_(const pugi::xml_node node) {
   std::uint32_t column_index = 0;
-  for (auto column : m_node.children("table:table-column")) {
+  for (auto column : node.children("table:table-column")) {
     const auto columns_repeated =
-        m_node.attribute("table:number-columns-repeated").as_uint(1);
+        node.attribute("table:number-columns-repeated").as_uint(1);
 
     for (std::uint32_t i = 0; i < columns_repeated; ++i) {
       bool column_empty = true;
@@ -30,9 +30,9 @@ void Table::register_() {
   }
 
   std::uint32_t row_index = 0;
-  for (auto row : m_node.children("table:table-row")) {
+  for (auto row : node.children("table:table-row")) {
     const auto rows_repeated =
-        m_node.attribute("table:number-rows-repeated").as_uint(1);
+        node.attribute("table:number-rows-repeated").as_uint(1);
 
     for (std::uint32_t i = 0; i < rows_repeated; ++i) {
       bool row_empty = true;
@@ -40,7 +40,7 @@ void Table::register_() {
       std::uint32_t cell_index = 0;
       for (auto cell : row.children("table:table-cell")) {
         const auto cells_repeated =
-            m_node.attribute("table:number-columns-repeated").as_uint(1);
+            node.attribute("table:number-columns-repeated").as_uint(1);
 
         for (std::uint32_t j = 0; j < cells_repeated; ++j) {
           // TODO parent?
@@ -69,17 +69,15 @@ void Table::register_() {
       ++row_index;
     }
   }
+
+  m_dimensions = {row_index, column_index};
 }
 
 [[nodiscard]] std::shared_ptr<abstract::Document> Table::document() const {
   return m_document.shared_from_this();
 }
 
-[[nodiscard]] TableDimensions
-Table::dimensions(const std::uint32_t limit_rows,
-                  const std::uint32_t limit_cols) const {
-  return {}; // TODO
-}
+[[nodiscard]] TableDimensions Table::dimensions() const { return m_dimensions; }
 
 [[nodiscard]] ElementIdentifier
 Table::cell_first_child(const std::uint32_t row,

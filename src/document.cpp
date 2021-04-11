@@ -402,7 +402,7 @@ TableDimensions Table::dimensions() const {
     return TableDimensions(); // TODO
   }
   // TODO limit?
-  return m_table->dimensions(0, 0);
+  return m_table->dimensions();
 }
 
 TableColumnRange Table::columns() const {

@@ -16,8 +16,7 @@ public:
 
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const final;
 
-  [[nodiscard]] TableDimensions
-  dimensions(std::uint32_t limit_rows, std::uint32_t limit_cols) const final;
+  [[nodiscard]] TableDimensions dimensions() const final;
 
   [[nodiscard]] ElementIdentifier
   cell_first_child(std::uint32_t row, std::uint32_t column) const final;
@@ -65,13 +64,14 @@ private:
   };
 
   OpenDocument &m_document;
-  pugi::xml_node m_node;
+
+  TableDimensions m_dimensions;
 
   std::unordered_map<std::uint32_t, Column> m_columns;
   std::unordered_map<std::uint32_t, Row> m_rows;
   std::unordered_map<common::TablePosition, Cell> m_cells;
 
-  void register_();
+  void register_(pugi::xml_node node);
 
   const Column *column_(std::uint32_t column) const;
   const Row *row_(std::uint32_t row) const;
