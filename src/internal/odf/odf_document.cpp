@@ -10,6 +10,7 @@
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <unordered_map>
+#include <utility>
 
 namespace odr::internal::odf {
 
@@ -45,21 +46,38 @@ private:
       m_registry;
 
   PropertyRegistry() {
-    // TODO root
+    static auto text_style_attribute = "text:style-name";
+    static auto table_style_attribute = "table:style-name";
+    static auto draw_style_attribute = "draw:style-name";
 
     default_register_(ElementType::SLIDE, ElementProperty::NAME, "draw:name");
+    default_register_(ElementType::SLIDE, ElementProperty::STYLE_NAME,
+                      draw_style_attribute);
 
     default_register_(ElementType::SHEET, ElementProperty::NAME, "table:name");
 
     default_register_(ElementType::PAGE, ElementProperty::NAME, "draw:name");
+    default_register_(ElementType::PAGE, ElementProperty::STYLE_NAME,
+                      draw_style_attribute);
 
     register_(ElementType::TEXT, ElementProperty::TEXT,
               [](const pugi::xml_node node) { return node.text().get(); });
 
+    default_register_(ElementType::PARAGRAPH, ElementProperty::STYLE_NAME,
+                      text_style_attribute);
+
+    default_register_(ElementType::SPAN, ElementProperty::STYLE_NAME,
+                      text_style_attribute);
+
     default_register_(ElementType::LINK, ElementProperty::HREF, "xlink:href");
+    default_register_(ElementType::LINK, ElementProperty::STYLE_NAME,
+                      text_style_attribute);
 
     default_register_(ElementType::BOOKMARK, ElementProperty::NAME,
                       "text:name");
+
+    default_register_(ElementType::TABLE, ElementProperty::STYLE_NAME,
+                      table_style_attribute);
 
     default_register_(ElementType::FRAME, ElementProperty::WIDTH, "svg:width");
     default_register_(ElementType::FRAME, ElementProperty::HEIGHT,
@@ -80,22 +98,28 @@ private:
     default_register_(ElementType::RECT, ElementProperty::Y, "svg:y");
     default_register_(ElementType::RECT, ElementProperty::WIDTH, "svg:width");
     default_register_(ElementType::RECT, ElementProperty::HEIGHT, "svg:height");
+    default_register_(ElementType::RECT, ElementProperty::STYLE_NAME,
+                      draw_style_attribute);
 
     default_register_(ElementType::LINE, ElementProperty::X1, "svg:x1");
     default_register_(ElementType::LINE, ElementProperty::Y1, "svg:y1");
     default_register_(ElementType::LINE, ElementProperty::X2, "svg:x2");
     default_register_(ElementType::LINE, ElementProperty::Y2, "svg:y2");
+    default_register_(ElementType::LINE, ElementProperty::STYLE_NAME,
+                      draw_style_attribute);
 
     default_register_(ElementType::CIRCLE, ElementProperty::X, "svg:x");
     default_register_(ElementType::CIRCLE, ElementProperty::Y, "svg:y");
     default_register_(ElementType::CIRCLE, ElementProperty::WIDTH, "svg:width");
     default_register_(ElementType::CIRCLE, ElementProperty::HEIGHT,
                       "svg:height");
+    default_register_(ElementType::CIRCLE, ElementProperty::STYLE_NAME,
+                      draw_style_attribute);
   }
 
   void register_(const ElementType element, const ElementProperty property,
                  std::function<std::any(pugi::xml_node node)> get) {
-    m_registry[element][property].get = get;
+    m_registry[element][property].get = std::move(get);
   }
 
   void default_register_(const ElementType element,
