@@ -134,15 +134,14 @@ Style::Entry::properties(const ElementType element) const {
 
 Style::Style() = default;
 
-Style::Style(OpenDocument &document) : m_document{&document} {
-  generate_indices_();
+Style::Style(const pugi::xml_node content_root,
+             const pugi::xml_node styles_root) {
+  generate_indices_(content_root, styles_root);
   generate_styles_();
 }
 
-void Style::generate_indices_() {
-  auto styles_root = m_document->m_styles_xml.document_element();
-  auto content_root = m_document->m_content_xml.document_element();
-
+void Style::generate_indices_(const pugi::xml_node content_root,
+                              const pugi::xml_node styles_root) {
   if (auto font_face_decls = styles_root.child("office:font-face-decls");
       font_face_decls) {
     generate_indices_(font_face_decls);
@@ -253,97 +252,14 @@ std::shared_ptr<Style::Entry> Style::style_(const std::string &name) const {
   return style_it->second;
 }
 
-std::shared_ptr<Style::Entry> Style::style_(const pugi::xml_node node) const {
-  // TODO good strategy to find style attribute?
-  auto attribute = node.find_attribute([](const pugi::xml_attribute attribute) {
-    if (util::string::ends_with(attribute.value(), ":style-name")) {
-      return true;
-    }
-    return false;
-  });
-  if (!attribute) {
-    return {};
-  }
-  return style_(attribute.value());
-}
-
 std::unordered_map<ElementProperty, std::any>
-Style::element_style(const ElementIdentifier element_id) const {
-  auto element = m_document->element_(element_id);
-  if (element == nullptr) {
-    return {};
-  }
-
-  auto style = style_(element->node);
+Style::resolve_style(const ElementType element,
+                     const std::string &style_name) const {
+  auto style = style_(style_name);
   if (!style) {
     return {};
   }
-
-  return style->properties(element->type);
-}
-
-std::unordered_map<ElementProperty, std::any>
-Style::table_column_style(const ElementIdentifier element,
-                          const std::uint32_t column) const {
-  auto table = std::reinterpret_pointer_cast<Table>(m_document->table(element));
-  if (!table) {
-    return {};
-  }
-
-  auto c = table->column_(column);
-  if (c == nullptr) {
-    return {};
-  }
-
-  auto style = style_(c->node);
-  if (!style) {
-    return {};
-  }
-
-  return style->properties(ElementType::TABLE_COLUMN);
-}
-
-std::unordered_map<ElementProperty, std::any>
-Style::table_row_style(const ElementIdentifier element,
-                       const std::uint32_t row) const {
-  auto table = std::reinterpret_pointer_cast<Table>(m_document->table(element));
-  if (!table) {
-    return {};
-  }
-
-  auto r = table->row_(row);
-  if (r == nullptr) {
-    return {};
-  }
-
-  auto style = style_(r->node);
-  if (!style) {
-    return {};
-  }
-
-  return style->properties(ElementType::TABLE_COLUMN);
-}
-
-std::unordered_map<ElementProperty, std::any>
-Style::table_cell_style(const ElementIdentifier element,
-                        const std::uint32_t column,
-                        const std::uint32_t row) const {
-  auto table = std::reinterpret_pointer_cast<Table>(m_document->table(element));
-  if (!table) {
-    return {};
-  }
-
-  auto c = table->cell_(row, column);
-  if (c == nullptr) {
-    return {};
-  }
-
-  auto style = style_(c->node);
-  if (!style) {
-    return {};
-  }
-
-  return style->properties(ElementType::TABLE_CELL);
+  return style->properties(element);
 }
 
 } // namespace odr::internal::odf

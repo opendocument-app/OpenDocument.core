@@ -154,7 +154,8 @@ OpenDocument::OpenDocument(
     throw NoOpenDocumentFile();
   }
 
-  m_style = Style(*this);
+  m_style =
+      Style(m_content_xml.document_element(), m_styles_xml.document_element());
 }
 
 ElementIdentifier
@@ -393,11 +394,15 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
     throw std::runtime_error("element not found");
   }
 
-  auto style_properties = m_style.element_style(element_id);
-  result.insert(std::begin(style_properties), std::end(style_properties));
-
   PropertyRegistry::instance().resolve_properties(element->type, element->node,
                                                   result);
+
+  if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
+      style_name_it != std::end(result)) {
+    auto style_name = std::any_cast<const char *>(style_name_it->second);
+    auto style_properties = m_style.resolve_style(element->type, style_name);
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
 
   return result;
 }

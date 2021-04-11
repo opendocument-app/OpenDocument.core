@@ -19,17 +19,10 @@ class OpenDocument;
 class Style {
 public:
   Style();
-  explicit Style(OpenDocument &document);
+  Style(pugi::xml_node content_root, pugi::xml_node styles_root);
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  element_style(ElementIdentifier element) const;
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  table_column_style(ElementIdentifier element, std::uint32_t column) const;
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  table_row_style(ElementIdentifier element, std::uint32_t row) const;
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  table_cell_style(ElementIdentifier element, std::uint32_t column,
-                   std::uint32_t row) const;
+  resolve_style(ElementType element, const std::string &style_name) const;
 
 private:
   struct Entry {
@@ -42,8 +35,6 @@ private:
     properties(ElementType element) const;
   };
 
-  OpenDocument *m_document{nullptr};
-
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
   std::unordered_map<std::string, pugi::xml_node> m_index_default_style;
   std::unordered_map<std::string, pugi::xml_node> m_index_style;
@@ -55,7 +46,8 @@ private:
   std::unordered_map<std::string, std::shared_ptr<Entry>> m_default_styles;
   std::unordered_map<std::string, std::shared_ptr<Entry>> m_styles;
 
-  void generate_indices_();
+  void generate_indices_(pugi::xml_node content_root,
+                         pugi::xml_node styles_root);
   void generate_indices_(pugi::xml_node node);
 
   void generate_styles_();
@@ -65,7 +57,6 @@ private:
                                          pugi::xml_node node);
 
   [[nodiscard]] std::shared_ptr<Entry> style_(const std::string &name) const;
-  [[nodiscard]] std::shared_ptr<Entry> style_(pugi::xml_node node) const;
 };
 
 } // namespace odr::internal::odf
