@@ -30,6 +30,11 @@ DocumentType OfficeOpenXmlDocument::document_type() const noexcept {
   return DocumentType::UNKNOWN; // TODO
 }
 
+std::shared_ptr<abstract::ReadableFilesystem>
+OfficeOpenXmlDocument::files() const noexcept {
+  return m_filesystem;
+}
+
 ElementIdentifier OfficeOpenXmlDocument::root_element() const {
   return 0; // TODO
 }

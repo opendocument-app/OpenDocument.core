@@ -146,9 +146,6 @@ enum class ElementProperty {
   STROKE_COLOR,
   FILL_COLOR,
   VERTICAL_ALIGN,
-
-  IMAGE_INTERNAL,
-  IMAGE_FILE,
 };
 
 struct TableDimensions {

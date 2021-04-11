@@ -1,4 +1,5 @@
 #include <internal/abstract/document.h>
+#include <internal/abstract/filesystem.h>
 #include <internal/abstract/table.h>
 #include <internal/common/path.h>
 #include <internal/util/map_util.h>
@@ -579,11 +580,19 @@ Image::Image(std::shared_ptr<const internal::abstract::Document> impl,
     : Element(std::move(impl), id) {}
 
 bool Image::internal() const {
-  if (!m_impl) {
+  if (!m_impl || !m_impl->files()) {
     return false;
   }
-  return property_value_to_bool(
-      m_impl->element_properties(m_id).at(ElementProperty::IMAGE_INTERNAL));
+
+  try {
+    const std::string href = this->href();
+    const internal::common::Path path{href};
+
+    return m_impl->files()->is_file(path);
+  } catch (...) {
+  }
+
+  return false;
 }
 
 std::string Image::href() const {
@@ -596,11 +605,19 @@ std::string Image::href() const {
 
 File Image::image_file() const {
   if (!m_impl) {
-    // TODO there is no "empty" file
+    // TODO throw; there is no "empty" file
     return File(std::shared_ptr<internal::abstract::File>());
   }
-  return File(std::any_cast<std::shared_ptr<internal::abstract::File>>(
-      m_impl->element_properties(m_id).at(ElementProperty::IMAGE_FILE)));
+
+  if (!internal()) {
+    // TODO throw / support external files
+    return File(std::shared_ptr<internal::abstract::File>());
+  }
+
+  const std::string href = this->href();
+  const internal::common::Path path{href};
+
+  return File(m_impl->files()->open(path));
 }
 
 Rect::Rect() = default;

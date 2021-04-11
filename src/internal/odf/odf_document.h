@@ -30,6 +30,8 @@ public:
   void save(const common::Path &path, const char *password) const final;
 
   [[nodiscard]] DocumentType document_type() const noexcept final;
+  [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
+  files() const noexcept final;
 
   [[nodiscard]] ElementIdentifier root_element() const final;
   [[nodiscard]] ElementIdentifier first_entry_element() const final;
@@ -59,6 +61,8 @@ public:
 private:
   friend class Style;
   friend class Table;
+
+  class PropertyRegistry;
 
   struct Element {
     pugi::xml_node node;

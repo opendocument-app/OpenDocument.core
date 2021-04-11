@@ -22,6 +22,7 @@ class Path;
 
 namespace odr::internal::abstract {
 class File;
+class ReadableFilesystem;
 class Table;
 
 class Document {
@@ -44,6 +45,9 @@ public:
 
   /// \return the type of the document.
   [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;
+
+  [[nodiscard]] virtual std::shared_ptr<ReadableFilesystem>
+  files() const noexcept = 0;
 
   /// \return the root element of the document.
   [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
