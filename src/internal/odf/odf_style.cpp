@@ -1,7 +1,5 @@
 #include <functional>
-#include <internal/odf/odf_document.h>
 #include <internal/odf/odf_style.h>
-#include <internal/odf/odf_table.h>
 #include <internal/util/map_util.h>
 #include <internal/util/string_util.h>
 #include <odr/document.h>
@@ -41,48 +39,28 @@ private:
       m_registry;
 
   StylePropertyRegistry() {
-    default_register_paragraph_(ElementType::PARAGRAPH);
-    default_register_text_(ElementType::PARAGRAPH);
+    register_paragraph_(ElementType::PARAGRAPH);
+    register_text_(ElementType::PARAGRAPH);
 
-    default_register_text_(ElementType::SPAN);
+    register_text_(ElementType::SPAN);
 
-    default_register_text_(ElementType::LINK);
+    register_text_(ElementType::LINK);
 
     default_register_(ElementType::TABLE, ElementProperty::WIDTH,
                       "style:table-properties", "style:width");
 
-    const auto table_column_property_attribute =
-        "style:table-column-properties";
-    default_register_(ElementType::TABLE_COLUMN, ElementProperty::WIDTH,
-                      table_column_property_attribute, "style:column-width");
+    register_table_column_();
+    register_table_cell_();
 
-    const auto table_cell_property_attribute = "style:table-cell-properties";
-    default_register_(ElementType::TABLE_CELL, ElementProperty::PADDING_TOP,
-                      table_cell_property_attribute, "fo:padding-top");
-    default_register_(ElementType::TABLE_CELL, ElementProperty::PADDING_BOTTOM,
-                      table_cell_property_attribute, "fo:padding-bottom");
-    default_register_(ElementType::TABLE_CELL, ElementProperty::PADDING_LEFT,
-                      table_cell_property_attribute, "fo:padding-left");
-    default_register_(ElementType::TABLE_CELL, ElementProperty::PADDING_RIGHT,
-                      table_cell_property_attribute, "fo:padding-right");
-    default_register_(ElementType::TABLE_CELL, ElementProperty::BORDER_TOP,
-                      table_cell_property_attribute, "fo:border-top");
-    default_register_(ElementType::TABLE_CELL, ElementProperty::BORDER_BOTTOM,
-                      table_cell_property_attribute, "fo:border-bottom");
-    default_register_(ElementType::TABLE_CELL, ElementProperty::BORDER_LEFT,
-                      table_cell_property_attribute, "fo:border-left");
-    default_register_(ElementType::TABLE_CELL, ElementProperty::BORDER_RIGHT,
-                      table_cell_property_attribute, "fo:border-right");
-
-    default_register_graphic_(ElementType::RECT);
-    default_register_graphic_(ElementType::LINE);
-    default_register_graphic_(ElementType::CIRCLE);
+    register_graphic_(ElementType::RECT);
+    register_graphic_(ElementType::LINE);
+    register_graphic_(ElementType::CIRCLE);
   }
 
-  void default_register_(const ElementType element,
-                         const ElementProperty property,
-                         const char *property_class_name,
-                         const char *attribute_name) {
+  void default_register_get_(const ElementType element,
+                             const ElementProperty property,
+                             const char *property_class_name,
+                             const char *attribute_name) {
     m_registry[element][property].get =
         [property_class_name, attribute_name](const pugi::xml_node node,
                                               std::any previous_value) {
@@ -95,22 +73,59 @@ private:
         };
   }
 
-  void default_register_paragraph_(const ElementType element) {
+  void default_register_(const ElementType element,
+                         const ElementProperty property,
+                         const char *property_class_name,
+                         const char *attribute_name) {
+    default_register_get_(element, property, property_class_name,
+                          attribute_name);
+  }
+
+  void default_register_directions_(
+      const ElementType element, const ElementProperty top_property,
+      const ElementProperty bottom_property,
+      const ElementProperty left_property, const ElementProperty right_property,
+      const char *property_class_name, const char *attribute_base_name,
+      const char *attribute_top_name, const char *attribute_bottom_name,
+      const char *attribute_left_name, const char *attribute_right_name) {
+    auto get_factory = [property_class_name, attribute_base_name](
+                           const char *attribute_direction_name) {
+      return [property_class_name, attribute_base_name,
+              attribute_direction_name](const pugi::xml_node node,
+                                        std::any previous_value) {
+        auto property_class = node.child(property_class_name);
+        if (auto attribute = property_class.attribute(attribute_direction_name);
+            attribute) {
+          return std::any(attribute.value());
+        }
+        if (auto attribute = property_class.attribute(attribute_base_name);
+            attribute) {
+          return std::any(attribute.value());
+        }
+        return previous_value;
+      };
+    };
+
+    m_registry[element][top_property].get = get_factory(attribute_top_name);
+    m_registry[element][bottom_property].get =
+        get_factory(attribute_bottom_name);
+    m_registry[element][left_property].get = get_factory(attribute_left_name);
+    m_registry[element][right_property].get = get_factory(attribute_right_name);
+  }
+
+  void register_paragraph_() {
+    static auto element = ElementType::PARAGRAPH;
     static auto property_class_name = "style:paragraph-properties";
     default_register_(element, ElementProperty::TEXT_ALIGN, property_class_name,
                       "fo:text-align");
-    // TODO handle fo:margin
-    default_register_(element, ElementProperty::MARGIN_TOP, property_class_name,
-                      "fo:margin-top");
-    default_register_(element, ElementProperty::MARGIN_BOTTOM,
-                      property_class_name, "fo:margin-bottom");
-    default_register_(element, ElementProperty::MARGIN_LEFT,
-                      property_class_name, "fo:margin-left");
-    default_register_(element, ElementProperty::MARGIN_RIGHT,
-                      property_class_name, "fo:margin-right");
+    default_register_directions_(
+        element, ElementProperty::MARGIN_TOP, ElementProperty::MARGIN_BOTTOM,
+        ElementProperty::MARGIN_LEFT, ElementProperty::MARGIN_RIGHT,
+        property_class_name, "fo:margin", "fo:margin-top", "fo:margin-bottom",
+        "fo:margin-left", "fo:margin-right");
   }
 
-  void default_register_text_(const ElementType element) {
+  void register_text_(const ElementType element) {
     static auto property_class_name = "style:text-properties";
     default_register_(element, ElementProperty::FONT_NAME, property_class_name,
                       "style:font-name");
@@ -126,7 +141,29 @@ private:
                       property_class_name, "fo:background-color");
   }
 
-  void default_register_graphic_(const ElementType element) {
+  void register_table_column_() {
+    static auto property_class_name = "style:table-column-properties";
+    default_register_(ElementType::TABLE_COLUMN, ElementProperty::WIDTH,
+                      property_class_name, "style:column-width");
+  }
+
+  void register_table_cell_() {
+    static auto property_class_name = "style:table-cell-properties";
+    default_register_directions_(
+        ElementType::TABLE_CELL, ElementProperty::PADDING_TOP,
+        ElementProperty::PADDING_BOTTOM, ElementProperty::PADDING_LEFT,
+        ElementProperty::PADDING_RIGHT, property_class_name, "fo:padding",
+        "fo:padding-top", "fo:padding-bottom", "fo:padding-left",
+        "fo:padding-right");
+    default_register_directions_(
+        ElementType::TABLE_CELL, ElementProperty::BORDER_TOP,
+        ElementProperty::BORDER_BOTTOM, ElementProperty::BORDER_LEFT,
+        ElementProperty::BORDER_RIGHT, property_class_name, "fo:border",
+        "fo:border-top", "fo:border-bottom", "fo:border-left",
+        "fo:border-right");
+  }
+
+  void register_graphic_(const ElementType element) {
     static auto property_class_name = "style:graphic-properties";
     default_register_(element, ElementProperty::STROKE_WIDTH,
                       property_class_name, "svg:stroke-width");
