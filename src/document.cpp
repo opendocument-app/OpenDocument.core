@@ -922,11 +922,11 @@ std::any TableColumnPropertyValue::get() const {
 }
 
 void TableColumnPropertyValue::set(const std::any &value) const {
-  throw UnsupportedOperation(); // TODO
+  m_impl->update_column_properties(m_column, {{m_property, value}});
 }
 
 void TableColumnPropertyValue::remove() const {
-  throw UnsupportedOperation(); // TODO
+  m_impl->update_column_properties(m_column, {{m_property, {}}});
 }
 
 TableRowPropertyValue::TableRowPropertyValue() = default;
@@ -957,11 +957,11 @@ std::any TableRowPropertyValue::get() const {
 }
 
 void TableRowPropertyValue::set(const std::any &value) const {
-  throw UnsupportedOperation(); // TODO
+  m_impl->update_row_properties(m_row, {{m_property, value}});
 }
 
 void TableRowPropertyValue::remove() const {
-  throw UnsupportedOperation(); // TODO
+  m_impl->update_row_properties(m_row, {{m_property, {}}});
 }
 
 TableCellPropertyValue::TableCellPropertyValue() = default;
@@ -996,11 +996,11 @@ std::any TableCellPropertyValue::get() const {
 }
 
 void TableCellPropertyValue::set(const std::any &value) const {
-  throw UnsupportedOperation(); // TODO
+  m_impl->update_cell_properties(m_row, m_column, {{m_property, value}});
 }
 
 void TableCellPropertyValue::remove() const {
-  throw UnsupportedOperation(); // TODO
+  m_impl->update_cell_properties(m_row, m_column, {{m_property, {}}});
 }
 
 } // namespace odr
