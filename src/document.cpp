@@ -399,7 +399,8 @@ Table::Table(std::shared_ptr<const internal::abstract::Document> impl,
 
 TableDimensions Table::dimensions() const {
   if (!m_impl) {
-    return TableDimensions(); // TODO
+    // TODO there is no empty TableDimensions
+    return TableDimensions();
   }
   return m_table->dimensions();
 }
