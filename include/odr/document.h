@@ -558,7 +558,7 @@ private:
   std::shared_ptr<const internal::abstract::Table> m_impl;
   std::uint32_t m_column{0};
 
-  friend Element;
+  friend Table;
   template <typename E> friend class ElementRangeTemplate;
 };
 
@@ -584,7 +584,7 @@ private:
   std::shared_ptr<const internal::abstract::Table> m_impl;
   std::uint32_t m_row{0};
 
-  friend Element;
+  friend Table;
   template <typename E> friend class ElementRangeTemplate;
 };
 
@@ -613,9 +613,8 @@ private:
   std::uint32_t m_row{0};
   std::uint32_t m_column{0};
 
-  friend Element;
-  template <typename E> friend class ElementRangeTemplate;
   friend TableRow;
+  template <typename E> friend class ElementRangeTemplate;
 };
 
 class Frame final : public Element {

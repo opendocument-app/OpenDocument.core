@@ -210,7 +210,7 @@ OpenDocument::register_element_(const pugi::xml_node node,
   auto new_element = new_element_(node, element_type, parent, previous_sibling);
 
   if (element_type == ElementType::TABLE) {
-    register_table_(node);
+    m_tables[new_element] = std::make_shared<Table>(*this, node);
   } else {
     register_children_(node, new_element, {});
   }
@@ -239,9 +239,7 @@ OpenDocument::register_children_(const pugi::xml_node node,
   return first_child;
 }
 
-void OpenDocument::register_table_(const pugi::xml_node node) {
-  // TODO
-}
+void OpenDocument::register_table_(const pugi::xml_node node) {}
 
 ElementIdentifier
 OpenDocument::new_element_(const pugi::xml_node node, const ElementType type,

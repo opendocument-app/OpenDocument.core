@@ -300,7 +300,7 @@ Table Sheet::table() const {
   if (!m_impl) {
     return Table();
   }
-  return Table(m_impl, m_id); // TODO
+  return Table(m_impl, m_id);
 }
 
 Page::Page() = default;
@@ -401,7 +401,6 @@ TableDimensions Table::dimensions() const {
   if (!m_impl) {
     return TableDimensions(); // TODO
   }
-  // TODO limit?
   return m_table->dimensions();
 }
 
@@ -409,14 +408,16 @@ TableColumnRange Table::columns() const {
   if (!m_impl) {
     return TableColumnRange();
   }
-  return TableColumnRange(); // TODO
+  return TableColumnRange(TableColumn(m_table, 0),
+                          TableColumn(m_table, dimensions().columns));
 }
 
 TableRowRange Table::rows() const {
   if (!m_impl) {
     return TableRowRange();
   }
-  return TableRowRange(); // TODO
+  return TableRowRange(TableRow(m_table, 0),
+                       TableRow(m_table, dimensions().rows));
 }
 
 TableColumn::TableColumn() = default;
@@ -477,7 +478,10 @@ TableRow TableRow::previous_sibling() const {
 
 TableRow TableRow::next_sibling() const { return TableRow(m_impl, m_row + 1); }
 
-TableCellRange TableRow::cells() const { return TableCellRange(first_child()); }
+TableCellRange TableRow::cells() const {
+  return TableCellRange(first_child(),
+                        TableCell(m_impl, m_row, m_impl->dimensions().columns));
+}
 
 TableRowPropertyValue TableRow::property(const ElementProperty property) const {
   return TableRowPropertyValue(m_impl, m_row, property);
@@ -509,7 +513,7 @@ TableCell TableCell::next_sibling() const {
 
 ElementRange TableCell::children() const {
   return ElementRange(
-      Element(nullptr, m_impl->cell_first_child(m_row, m_column)));
+      Element(m_impl->document(), m_impl->cell_first_child(m_row, m_column)));
 }
 
 TableCellPropertyValue
@@ -907,11 +911,13 @@ bool TableColumnPropertyValue::operator!=(
 }
 
 TableColumnPropertyValue::operator bool() const {
-  return m_impl.operator bool();
+  return m_impl.operator bool() && get().has_value();
 }
 
 std::any TableColumnPropertyValue::get() const {
-  return m_impl->column_properties(m_column).at(m_property);
+  auto properties = m_impl->column_properties(m_column);
+  return internal::util::map::lookup_map_default(properties, m_property,
+                                                 std::any());
 }
 
 void TableColumnPropertyValue::set(const std::any &value) const {
@@ -939,10 +945,14 @@ bool TableRowPropertyValue::operator!=(const TableRowPropertyValue &rhs) const {
          m_property != rhs.m_property;
 }
 
-TableRowPropertyValue::operator bool() const { return m_impl.operator bool(); }
+TableRowPropertyValue::operator bool() const {
+  return m_impl.operator bool() && get().has_value();
+}
 
 std::any TableRowPropertyValue::get() const {
-  return m_impl->row_properties(m_row).at(m_property);
+  auto properties = m_impl->row_properties(m_row);
+  return internal::util::map::lookup_map_default(properties, m_property,
+                                                 std::any());
 }
 
 void TableRowPropertyValue::set(const std::any &value) const {
@@ -974,10 +984,14 @@ bool TableCellPropertyValue::operator!=(
          m_column != rhs.m_column || m_property != rhs.m_property;
 }
 
-TableCellPropertyValue::operator bool() const { return m_impl.operator bool(); }
+TableCellPropertyValue::operator bool() const {
+  return m_impl.operator bool() && get().has_value();
+}
 
 std::any TableCellPropertyValue::get() const {
-  return m_impl->cell_properties(m_row, m_column).at(m_property);
+  auto properties = m_impl->cell_properties(m_row, m_column);
+  return internal::util::map::lookup_map_default(properties, m_property,
+                                                 std::any());
 }
 
 void TableCellPropertyValue::set(const std::any &value) const {

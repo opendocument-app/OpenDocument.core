@@ -51,6 +51,9 @@ private:
     default_register_(ElementType::TABLE, ElementProperty::WIDTH,
                       "style:table-properties", "style:width");
 
+    default_register_(ElementType::TABLE_COLUMN, ElementProperty::WIDTH,
+                      "style:table-column-properties", "style:column-width");
+
     default_register_graphic_(ElementType::RECT);
     default_register_graphic_(ElementType::LINE);
     default_register_graphic_(ElementType::CIRCLE);
