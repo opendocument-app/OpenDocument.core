@@ -42,7 +42,7 @@ void Table::register_(const pugi::xml_node node) {
 
           if (first_child) {
             Cell new_cell;
-            new_cell.node = row;
+            new_cell.node = cell;
             new_cell.first_child = first_child;
             m_cells[{row_index, cell_index}] = new_cell;
           }

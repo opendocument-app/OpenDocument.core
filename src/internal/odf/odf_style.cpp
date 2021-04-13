@@ -51,8 +51,28 @@ private:
     default_register_(ElementType::TABLE, ElementProperty::WIDTH,
                       "style:table-properties", "style:width");
 
+    const auto table_column_property_attribute =
+        "style:table-column-properties";
     default_register_(ElementType::TABLE_COLUMN, ElementProperty::WIDTH,
-                      "style:table-column-properties", "style:column-width");
+                      table_column_property_attribute, "style:column-width");
+
+    const auto table_cell_property_attribute = "style:table-cell-properties";
+    default_register_(ElementType::TABLE_CELL, ElementProperty::PADDING_TOP,
+                      table_cell_property_attribute, "fo:padding-top");
+    default_register_(ElementType::TABLE_CELL, ElementProperty::PADDING_BOTTOM,
+                      table_cell_property_attribute, "fo:padding-bottom");
+    default_register_(ElementType::TABLE_CELL, ElementProperty::PADDING_LEFT,
+                      table_cell_property_attribute, "fo:padding-left");
+    default_register_(ElementType::TABLE_CELL, ElementProperty::PADDING_RIGHT,
+                      table_cell_property_attribute, "fo:padding-right");
+    default_register_(ElementType::TABLE_CELL, ElementProperty::BORDER_TOP,
+                      table_cell_property_attribute, "fo:border-top");
+    default_register_(ElementType::TABLE_CELL, ElementProperty::BORDER_BOTTOM,
+                      table_cell_property_attribute, "fo:border-bottom");
+    default_register_(ElementType::TABLE_CELL, ElementProperty::BORDER_LEFT,
+                      table_cell_property_attribute, "fo:border-left");
+    default_register_(ElementType::TABLE_CELL, ElementProperty::BORDER_RIGHT,
+                      table_cell_property_attribute, "fo:border-right");
 
     default_register_graphic_(ElementType::RECT);
     default_register_graphic_(ElementType::LINE);
@@ -79,6 +99,7 @@ private:
     static auto property_class_name = "style:paragraph-properties";
     default_register_(element, ElementProperty::TEXT_ALIGN, property_class_name,
                       "fo:text-align");
+    // TODO handle fo:margin
     default_register_(element, ElementProperty::MARGIN_TOP, property_class_name,
                       "fo:margin-top");
     default_register_(element, ElementProperty::MARGIN_BOTTOM,

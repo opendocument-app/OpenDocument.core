@@ -113,19 +113,19 @@ std::string translate_table_cell_style(const TableCell &element) {
   }
   if (auto border_top = element.property(ElementProperty::BORDER_TOP);
       border_top) {
-    result += "padding-top:" + border_top.get_string() + ";";
+    result += "border-top:" + border_top.get_string() + ";";
   }
   if (auto border_bottom = element.property(ElementProperty::BORDER_BOTTOM);
       border_bottom) {
-    result += "padding-bottom:" + border_bottom.get_string() + ";";
+    result += "border-bottom:" + border_bottom.get_string() + ";";
   }
   if (auto border_left = element.property(ElementProperty::BORDER_LEFT);
       border_left) {
-    result += "padding-left:" + border_left.get_string() + ";";
+    result += "border-left:" + border_left.get_string() + ";";
   }
   if (auto border_right = element.property(ElementProperty::BORDER_RIGHT);
       border_right) {
-    result += "padding-right:" + border_right.get_string() + ";";
+    result += "border-right:" + border_right.get_string() + ";";
   }
   return result;
 }
