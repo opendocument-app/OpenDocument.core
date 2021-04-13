@@ -20,7 +20,6 @@ void Table::register_(const pugi::xml_node node) {
       Column new_column;
       new_column.node = column;
       m_columns[column_index] = new_column;
-
       ++column_index;
     }
   }
@@ -31,6 +30,12 @@ void Table::register_(const pugi::xml_node node) {
         node.attribute("table:number-rows-repeated").as_uint(1);
 
     for (std::uint32_t i = 0; i < rows_repeated; ++i) {
+      // TODO optimize for repeated data
+      Row new_row;
+      new_row.node = row;
+      m_rows[row_index] = new_row;
+      ++row_index;
+
       std::uint32_t cell_index = 0;
       for (auto cell : row.children("table:table-cell")) {
         const auto cells_repeated =
@@ -39,24 +44,15 @@ void Table::register_(const pugi::xml_node node) {
         for (std::uint32_t j = 0; j < cells_repeated; ++j) {
           // TODO parent?
           auto first_child = m_document.register_children_(cell, {}, {});
-
           if (first_child) {
             Cell new_cell;
             new_cell.node = cell;
             new_cell.first_child = first_child;
             m_cells[{row_index, cell_index}] = new_cell;
           }
-
           ++cell_index;
         }
       }
-
-      // TODO optimize for repeated data
-      Row new_row;
-      new_row.node = row;
-      m_rows[row_index] = new_row;
-
-      ++row_index;
     }
   }
 
