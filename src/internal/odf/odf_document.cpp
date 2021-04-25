@@ -214,6 +214,9 @@ OpenDocument::register_element_(const pugi::xml_node node,
     if (element == "text:table-of-content") {
       return register_children_(node.child("text:index-body"), parent,
                                 previous_sibling);
+    } else if (element == "text:index-title") {
+      // not sure what else to do with this tag
+      return register_children_(node, parent, previous_sibling);
     } else if (element == "draw:g") {
       // drawing group not supported
       return register_children_(node, parent, previous_sibling);
