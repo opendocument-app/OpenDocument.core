@@ -242,21 +242,16 @@ ElementIdentifier
 OpenDocument::register_children_(const pugi::xml_node node,
                                  const ElementIdentifier parent,
                                  ElementIdentifier previous_sibling) {
-  ElementIdentifier first_child;
-
   for (auto &&child_node : node) {
     const ElementIdentifier child =
         register_element_(child_node, parent, previous_sibling);
     if (!child) {
       continue;
     }
-    if (!first_child) {
-      first_child = child;
-    }
     previous_sibling = child;
   }
 
-  return first_child;
+  return previous_sibling;
 }
 
 void OpenDocument::register_table_(const pugi::xml_node node) {}
