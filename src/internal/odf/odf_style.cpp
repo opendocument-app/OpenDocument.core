@@ -39,7 +39,7 @@ private:
       m_registry;
 
   StylePropertyRegistry() {
-    register_paragraph_(ElementType::PARAGRAPH);
+    register_paragraph_();
     register_text_(ElementType::PARAGRAPH);
 
     register_text_(ElementType::SPAN);

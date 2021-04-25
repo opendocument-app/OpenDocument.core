@@ -43,7 +43,7 @@ p:after {
 span {
   margin: 0 !important;
 }
-.odr-whitespace {
+span {
   white-space: pre-wrap;
 }
 

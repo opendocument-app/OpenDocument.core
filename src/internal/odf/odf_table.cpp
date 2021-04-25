@@ -15,13 +15,10 @@ void Table::register_(const pugi::xml_node node) {
     const auto columns_repeated =
         node.attribute("table:number-columns-repeated").as_uint(1);
 
-    for (std::uint32_t i = 0; i < columns_repeated; ++i) {
-      // TODO optimize for repeated data
-      Column new_column;
-      new_column.node = column;
-      m_columns[column_index] = new_column;
-      ++column_index;
-    }
+    Column new_column;
+    new_column.node = column;
+    m_columns[column_index] = new_column;
+    ++column_index;
   }
 
   std::uint32_t row_index = 0;
@@ -29,13 +26,11 @@ void Table::register_(const pugi::xml_node node) {
     const auto rows_repeated =
         node.attribute("table:number-rows-repeated").as_uint(1);
 
-    for (std::uint32_t i = 0; i < rows_repeated; ++i) {
-      // TODO optimize for repeated data
-      Row new_row;
-      new_row.node = row;
-      m_rows[row_index] = new_row;
-      ++row_index;
+    Row new_row;
+    new_row.node = row;
+    m_rows[row_index] = new_row;
 
+    for (std::uint32_t i = 0; i < rows_repeated; ++i) {
       std::uint32_t cell_index = 0;
       for (auto cell : row.children("table:table-cell")) {
         const auto cells_repeated =
@@ -53,6 +48,8 @@ void Table::register_(const pugi::xml_node node) {
           ++cell_index;
         }
       }
+
+      ++row_index;
     }
   }
 
@@ -172,7 +169,7 @@ void Table::decouple_cell(const std::uint32_t row,
 }
 
 const Table::Column *Table::column_(const std::uint32_t column) const {
-  auto it = m_columns.find(column);
+  auto it = m_columns.lower_bound(column);
   if (it == std::end(m_columns)) {
     return nullptr;
   }
@@ -180,7 +177,7 @@ const Table::Column *Table::column_(const std::uint32_t column) const {
 }
 
 const Table::Row *Table::row_(const std::uint32_t row) const {
-  auto it = m_rows.find(row);
+  auto it = m_rows.lower_bound(row);
   if (it == std::end(m_rows)) {
     return nullptr;
   }

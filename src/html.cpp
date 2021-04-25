@@ -279,8 +279,7 @@ void translate_table(const Table &element, std::ostream &out,
   std::uint32_t row_index = 0;
   for (auto &&row : element.rows()) {
     if (end_row && (row_index >= end_row)) {
-      ++row_index;
-      continue;
+      break;
     }
     ++row_index;
 
@@ -288,8 +287,7 @@ void translate_table(const Table &element, std::ostream &out,
     std::uint32_t column_index = 0;
     for (auto &&cell : row.cells()) {
       if (end_column && (column_index >= end_column)) {
-        ++column_index;
-        continue;
+        break;
       }
       ++column_index;
 

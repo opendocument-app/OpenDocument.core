@@ -3,6 +3,7 @@
 
 #include <internal/abstract/table.h>
 #include <internal/common/table_position.h>
+#include <map>
 #include <pugixml.hpp>
 #include <unordered_map>
 
@@ -67,8 +68,8 @@ private:
 
   TableDimensions m_dimensions;
 
-  std::unordered_map<std::uint32_t, Column> m_columns;
-  std::unordered_map<std::uint32_t, Row> m_rows;
+  std::map<std::uint32_t, Column> m_columns;
+  std::map<std::uint32_t, Row> m_rows;
   std::unordered_map<common::TablePosition, Cell> m_cells;
 
   void register_(pugi::xml_node node);

@@ -61,8 +61,7 @@ private:
     default_register_(ElementType::PAGE, ElementProperty::STYLE_NAME,
                       draw_style_attribute);
 
-    register_(ElementType::TEXT, ElementProperty::TEXT,
-              [](const pugi::xml_node node) { return node.text().get(); });
+    register_text_();
 
     default_register_(ElementType::PARAGRAPH, ElementProperty::STYLE_NAME,
                       text_style_attribute);
@@ -127,6 +126,26 @@ private:
       return std::any(attribute.value());
     });
   }
+
+  void register_text_() {
+    register_(ElementType::TEXT, ElementProperty::TEXT,
+              [](const pugi::xml_node node) {
+                if (node.type() == pugi::node_pcdata) {
+                  return std::any(node.text().as_string());
+                }
+
+                const std::string element = node.name();
+                if (element == "text:s") {
+                  const auto count = node.attribute("text:c").as_uint(1);
+                  return std::any(std::string(count, ' '));
+                } else if (element == "text:tab") {
+                  return std::any("\t");
+                }
+
+                // TODO this should never happen. log or throw?
+                return std::any("");
+              });
+  }
 };
 
 OpenDocument::OpenDocument(
@@ -167,6 +186,7 @@ OpenDocument::register_element_(const pugi::xml_node node,
       {"text:bookmark-start", ElementType::BOOKMARK},
       {"text:list", ElementType::LIST},
       {"text:list-item", ElementType::LIST_ITEM},
+      {"text:index-title", ElementType::PARAGRAPH},
       {"table:table", ElementType::TABLE},
       {"draw:frame", ElementType::FRAME},
       {"draw:image", ElementType::IMAGE},
@@ -181,7 +201,7 @@ OpenDocument::register_element_(const pugi::xml_node node,
   };
 
   if (!node) {
-    return 0;
+    return {};
   }
 
   ElementType element_type = ElementType::NONE;
@@ -204,7 +224,7 @@ OpenDocument::register_element_(const pugi::xml_node node,
 
   if (element_type == ElementType::NONE) {
     // TODO log node
-    return 0;
+    return {};
   }
 
   auto new_element = new_element_(node, element_type, parent, previous_sibling);
