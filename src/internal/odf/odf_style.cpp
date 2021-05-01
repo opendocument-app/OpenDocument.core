@@ -385,4 +385,13 @@ Style::resolve_master_page(const ElementType element,
   return result;
 }
 
+pugi::xml_node
+Style::master_page_node(const std::string &master_page_name) const {
+  auto master_page_it = m_index_master_page.find(master_page_name);
+  if (master_page_it == std::end(m_index_master_page)) {
+    return {};
+  }
+  return master_page_it->second;
+}
+
 } // namespace odr::internal::odf

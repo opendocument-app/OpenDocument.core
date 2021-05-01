@@ -32,6 +32,9 @@ public:
   resolve_master_page(ElementType element,
                       const std::string &master_page_name) const;
 
+  [[nodiscard]] pugi::xml_node
+  master_page_node(const std::string &master_page_name) const;
+
 private:
   struct Entry {
     std::shared_ptr<Entry> m_parent;

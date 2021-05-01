@@ -178,6 +178,9 @@ OpenDocument::OpenDocument(
     m_styles_xml = util::xml::parse(*m_filesystem, "styles.xml");
   }
 
+  m_style =
+      Style(m_content_xml.document_element(), m_styles_xml.document_element());
+
   m_root = register_element_(
       m_content_xml.document_element().child("office:body").first_child(), 0,
       0);
@@ -185,9 +188,6 @@ OpenDocument::OpenDocument(
   if (!m_root) {
     throw NoOpenDocumentFile();
   }
-
-  m_style =
-      Style(m_content_xml.document_element(), m_styles_xml.document_element());
 }
 
 ElementIdentifier
@@ -266,6 +266,24 @@ OpenDocument::register_element_(const pugi::xml_node node,
 
   if (element_type == ElementType::TABLE) {
     m_tables[new_element] = std::make_shared<Table>(*this, node);
+  } else if (element_type == ElementType::SLIDE) {
+    ElementIdentifier inner_previous_sibling;
+    if (auto master_page_name_attr = node.attribute("draw:master-page-name")) {
+      auto master_page_node =
+          m_style.master_page_node(master_page_name_attr.value());
+      for (auto &&child_node : master_page_node) {
+        if (child_node.attribute("presentation:placeholder").as_bool()) {
+          continue;
+        }
+        auto child =
+            register_element_(child_node, new_element, inner_previous_sibling);
+        if (!child) {
+          continue;
+        }
+        inner_previous_sibling = child;
+      }
+    }
+    register_children_(node, new_element, inner_previous_sibling);
   } else {
     register_children_(node, new_element, {});
   }
