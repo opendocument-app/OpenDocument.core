@@ -27,6 +27,6 @@ TEST(SvmToSvg, string) {
 
   EXPECT_LT(0, out_string.size());
 
-  std::ofstream test("/home/andreas/test.svg");
-  test << out_string;
+  // std::ofstream test("/home/andreas/test.svg");
+  // test << out_string;
 }
