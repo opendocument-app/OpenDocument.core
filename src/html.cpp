@@ -1,10 +1,12 @@
 #include <fstream>
 #include <internal/abstract/document.h>
+#include <internal/common/file.h>
 #include <internal/common/html.h>
 #include <internal/crypto/crypto_util.h>
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_to_svg.h>
 #include <internal/util/stream_util.h>
+#include <menu.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
 #include <odr/exceptions.h>
@@ -145,34 +147,56 @@ std::string translate_drawing_style(const Element &element) {
   return result;
 }
 
-std::string translate_frame_properties(const Frame &properties) {
+std::string translate_frame_properties(const Frame &element) {
   std::string result;
-  if (properties.anchor_type() == "as-char") {
+  if (auto anchor_type = element.anchor_type();
+      anchor_type && (anchor_type.get_string() == "as-char")) {
     result += "display:inline-block;";
   }
-  result += "width:" + properties.width() + ";";
-  result += "height:" + properties.height() + ";";
-  result += "z-index:" + properties.z_index() + ";";
+  if (element.x() || element.y()) {
+    result += "position:absolute;";
+  }
+  if (auto x = element.x()) {
+    result += "left:" + x.get_string() + ";";
+  }
+  if (auto y = element.y()) {
+    result += "top:" + y.get_string() + ";";
+  }
+  result += "width:" + element.width().get_string() + ";";
+  result += "height:" + element.height().get_string() + ";";
+  if (auto z_index = element.z_index()) {
+    result += "z-index:" + z_index.get_string() + ";";
+  }
   return result;
 }
 
 std::string translate_rect_properties(const Rect &element) {
   std::string result;
   result += "position:absolute;";
-  result += "left:" + element.x() + ";";
-  result += "top:" + element.y() + ";";
-  result += "width:" + element.width() + ";";
-  result += "height:" + element.height() + ";";
+  result += "left:" + element.x().get_string() + ";";
+  result += "top:" + element.y().get_string() + ";";
+  result += "width:" + element.width().get_string() + ";";
+  result += "height:" + element.height().get_string() + ";";
   return result;
 }
 
 std::string translate_circle_properties(const Circle &element) {
   std::string result;
   result += "position:absolute;";
-  result += "left:" + element.x() + ";";
-  result += "top:" + element.y() + ";";
-  result += "width:" + element.width() + ";";
-  result += "height:" + element.height() + ";";
+  result += "left:" + element.x().get_string() + ";";
+  result += "top:" + element.y().get_string() + ";";
+  result += "width:" + element.width().get_string() + ";";
+  result += "height:" + element.height().get_string() + ";";
+  return result;
+}
+
+std::string translate_custom_shape_properties(const CustomShape &element) {
+  std::string result;
+  result += "position:absolute;";
+  result += "left:" + element.x().get_string() + ";";
+  result += "top:" + element.y().get_string() + ";";
+  result += "width:" + element.width().get_string() + ";";
+  result += "height:" + element.height().get_string() + ";";
   return result;
 }
 
@@ -312,7 +336,11 @@ void translate_image(const Image &element, std::ostream &out,
     try {
       // try svm
       // TODO `impl()` might be a bit dirty
-      svm::SvmFile svm_file(image_file.impl());
+      auto image_file_impl = image_file.impl();
+      // TODO memory file might not be necessary; other istreams didn't support
+      // `tellg`
+      svm::SvmFile svm_file(
+          std::make_shared<common::MemoryFile>(*image_file_impl));
       std::ostringstream svg_out;
       svm::Translator::svg(svm_file, svg_out);
       image = svg_out.str();
@@ -327,7 +355,7 @@ void translate_image(const Image &element, std::ostream &out,
     // TODO stream
     out << crypto::util::base64_encode(image);
   } else {
-    out << element.href();
+    out << element.href().get_string();
   }
 
   out << "\">";
@@ -335,7 +363,8 @@ void translate_image(const Image &element, std::ostream &out,
 
 void translate_frame(const Frame &element, std::ostream &out,
                      const HtmlConfig &config) {
-  if (element.anchor_type() == "as-char") {
+  if (auto anchor_type = element.anchor_type();
+      anchor_type && (anchor_type.get_string() == "as-char")) {
     out << "<span";
   } else {
     out << "<div";
@@ -372,8 +401,10 @@ void translate_line(const Line &element, std::ostream &out,
   out << ">";
 
   out << "<line";
-  out << " x1=\"" << element.x1() << "\" y1=\"" << element.y1() << "\"";
-  out << " x2=\"" << element.x2() << "\" y2=\"" << element.y2() << "\"";
+  out << " x1=\"" << element.x1().get_string() << "\" y1=\""
+      << element.y1().get_string() << "\"";
+  out << " x2=\"" << element.x2().get_string() << "\" y2=\""
+      << element.y2().get_string() << "\"";
   out << " />";
 
   out << "</svg>";
@@ -387,6 +418,17 @@ void translate_circle(const Circle &element, std::ostream &out,
   out << ">";
   translate_generation(element.children(), out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
+  out << "</div>";
+}
+
+void translate_custom_shape(const CustomShape &element, std::ostream &out,
+                            const HtmlConfig &config) {
+  out << "<div";
+  out << optional_style_attribute(translate_custom_shape_properties(element) +
+                                  translate_drawing_style(element));
+  out << ">";
+  translate_generation(element.children(), out, config);
+  // TODO draw shape in svg
   out << "</div>";
 }
 
@@ -424,6 +466,8 @@ void translate_element(const Element &element, std::ostream &out,
     translate_line(element.line(), out, config);
   } else if (element.type() == ElementType::CIRCLE) {
     translate_circle(element.circle(), out, config);
+  } else if (element.type() == ElementType::CUSTOM_SHAPE) {
+    translate_custom_shape(element.custom_shape(), out, config);
   } else {
     // TODO log
   }

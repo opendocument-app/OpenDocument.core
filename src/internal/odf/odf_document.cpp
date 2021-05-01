@@ -87,6 +87,8 @@ private:
 
     default_register_(ElementType::FRAME, ElementProperty::ANCHOR_TYPE,
                       "text:anchor-type");
+    default_register_(ElementType::FRAME, ElementProperty::X, "svg:x");
+    default_register_(ElementType::FRAME, ElementProperty::Y, "svg:y");
     default_register_(ElementType::FRAME, ElementProperty::WIDTH, "svg:width");
     default_register_(ElementType::FRAME, ElementProperty::HEIGHT,
                       "svg:height");
@@ -116,6 +118,16 @@ private:
                       "svg:height");
     default_register_(ElementType::CIRCLE, ElementProperty::STYLE_NAME,
                       draw_style_attribute);
+
+    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::X, "svg:x");
+    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::Y, "svg:y");
+    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::WIDTH,
+                      "svg:width");
+    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::HEIGHT,
+                      "svg:height");
+    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::STYLE_NAME,
+                      draw_style_attribute);
+    // TODO text style
   }
 
   void register_(const ElementType element, const ElementProperty property,
@@ -201,11 +213,11 @@ OpenDocument::register_element_(const pugi::xml_node node,
       {"draw:rect", ElementType::RECT},
       {"draw:line", ElementType::LINE},
       {"draw:circle", ElementType::CIRCLE},
+      {"draw:custom-shape", ElementType::CUSTOM_SHAPE},
       {"office:text", ElementType::ROOT},
       {"office:presentation", ElementType::ROOT},
       {"office:spreadsheet", ElementType::ROOT},
       {"office:drawing", ElementType::ROOT},
-      // TODO "draw:custom-shape"
   };
 
   if (!node) {

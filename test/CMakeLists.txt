@@ -25,6 +25,8 @@ add_executable(odr_test
 
         src/internal/ooxml/ooxml_crypto_test.cpp
 
+        src/internal/svm/svm_test.cpp
+
         src/internal/zip/miniz_test.cpp
         src/internal/zip/zip_archive_test.cpp
         )

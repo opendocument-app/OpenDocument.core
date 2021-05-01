@@ -66,8 +66,6 @@ private:
                                          pugi::xml_node node);
   std::shared_ptr<Entry> generate_page_layout_(const std::string &name,
                                                pugi::xml_node node);
-
-  [[nodiscard]] std::shared_ptr<Entry> style_(const std::string &name) const;
 };
 
 } // namespace odr::internal::odf

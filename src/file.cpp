@@ -84,6 +84,9 @@ FileType FileMeta::type_by_extension(const std::string &extension) noexcept {
   if (extension == "xls") {
     return FileType::LEGACY_EXCEL_WORKSHEETS;
   }
+  if (extension == "svm") {
+    return FileType::STARVIEW_METAFILE;
+  }
 
   return FileType::UNKNOWN;
 }

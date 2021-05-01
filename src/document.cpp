@@ -185,6 +185,8 @@ Line Element::line() const { return Line(m_impl, m_id); }
 
 Circle Element::circle() const { return Circle(m_impl, m_id); }
 
+CustomShape Element::custom_shape() const { return CustomShape(m_impl, m_id); }
+
 template <typename E>
 ElementIterator<E>::ElementIterator(E element)
     : m_element{std::move(element)} {}
@@ -546,36 +548,28 @@ Frame::Frame(std::shared_ptr<const internal::abstract::Document> impl,
              const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string Frame::anchor_type() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::ANCHOR_TYPE));
+ElementPropertyValue Frame::anchor_type() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::ANCHOR_TYPE);
 }
 
-std::string Frame::width() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::WIDTH));
+ElementPropertyValue Frame::x() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::X);
 }
 
-std::string Frame::height() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::HEIGHT));
+ElementPropertyValue Frame::y() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y);
 }
 
-std::string Frame::z_index() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::Z_INDEX));
+ElementPropertyValue Frame::width() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::WIDTH);
+}
+
+ElementPropertyValue Frame::height() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::HEIGHT);
+}
+
+ElementPropertyValue Frame::z_index() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::Z_INDEX);
 }
 
 Image::Image() = default;
@@ -590,7 +584,7 @@ bool Image::internal() const {
   }
 
   try {
-    const std::string href = this->href();
+    const std::string href = this->href().get_string();
     const internal::common::Path path{href};
 
     return m_impl->files()->is_file(path);
@@ -600,12 +594,8 @@ bool Image::internal() const {
   return false;
 }
 
-std::string Image::href() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::HREF));
+ElementPropertyValue Image::href() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::HREF);
 }
 
 File Image::image_file() const {
@@ -619,7 +609,7 @@ File Image::image_file() const {
     return File(std::shared_ptr<internal::abstract::File>());
   }
 
-  const std::string href = this->href();
+  const std::string href = this->href().get_string();
   const internal::common::Path path{href};
 
   return File(m_impl->files()->open(path));
@@ -631,36 +621,20 @@ Rect::Rect(std::shared_ptr<const internal::abstract::Document> impl,
            const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string Rect::x() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::X));
+ElementPropertyValue Rect::x() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::X);
 }
 
-std::string Rect::y() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::Y));
+ElementPropertyValue Rect::y() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y);
 }
 
-std::string Rect::width() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::WIDTH));
+ElementPropertyValue Rect::width() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::WIDTH);
 }
 
-std::string Rect::height() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::HEIGHT));
+ElementPropertyValue Rect::height() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::HEIGHT);
 }
 
 Line::Line() = default;
@@ -669,36 +643,20 @@ Line::Line(std::shared_ptr<const internal::abstract::Document> impl,
            const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string Line::x1() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::X1));
+ElementPropertyValue Line::x1() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::X1);
 }
 
-std::string Line::y1() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::Y1));
+ElementPropertyValue Line::y1() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y1);
 }
 
-std::string Line::x2() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::X2));
+ElementPropertyValue Line::x2() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::X2);
 }
 
-std::string Line::y2() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::Y2));
+ElementPropertyValue Line::y2() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y2);
 }
 
 Circle::Circle() = default;
@@ -707,36 +665,43 @@ Circle::Circle(std::shared_ptr<const internal::abstract::Document> impl,
                const std::uint64_t id)
     : Element(std::move(impl), id) {}
 
-std::string Circle::x() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::X));
+ElementPropertyValue Circle::x() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::X);
 }
 
-std::string Circle::y() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::Y));
+ElementPropertyValue Circle::y() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y);
 }
 
-std::string Circle::width() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::WIDTH));
+ElementPropertyValue Circle::width() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::WIDTH);
 }
 
-std::string Circle::height() const {
-  if (!m_impl) {
-    return "";
-  }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::HEIGHT));
+ElementPropertyValue Circle::height() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::HEIGHT);
+}
+
+CustomShape::CustomShape() = default;
+
+CustomShape::CustomShape(
+    std::shared_ptr<const internal::abstract::Document> impl,
+    const std::uint64_t id)
+    : Element(std::move(impl), id) {}
+
+ElementPropertyValue CustomShape::x() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::X);
+}
+
+ElementPropertyValue CustomShape::y() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y);
+}
+
+ElementPropertyValue CustomShape::width() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::WIDTH);
+}
+
+ElementPropertyValue CustomShape::height() const {
+  return ElementPropertyValue(m_impl, m_id, ElementProperty::HEIGHT);
 }
 
 Document::Document(std::shared_ptr<internal::abstract::Document> document)

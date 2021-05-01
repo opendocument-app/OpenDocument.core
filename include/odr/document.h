@@ -38,6 +38,7 @@ class Image;
 class Rect;
 class Line;
 class Circle;
+class CustomShape;
 
 template <typename E> class ElementRangeTemplate;
 using ElementRange = ElementRangeTemplate<Element>;
@@ -85,6 +86,7 @@ enum class ElementType {
   RECT,
   LINE,
   CIRCLE,
+  CUSTOM_SHAPE,
 };
 
 // TODO the property handle could reflect the type
@@ -200,6 +202,12 @@ private:
                        std::uint64_t id, ElementProperty property);
 
   friend Element;
+  friend Frame;
+  friend Image;
+  friend Rect;
+  friend Line;
+  friend Circle;
+  friend CustomShape;
   friend PageStyle;
 };
 
@@ -340,6 +348,7 @@ public:
   [[nodiscard]] Rect rect() const;
   [[nodiscard]] Line line() const;
   [[nodiscard]] Circle circle() const;
+  [[nodiscard]] CustomShape custom_shape() const;
 
 protected:
   std::shared_ptr<const internal::abstract::Document> m_impl;
@@ -623,10 +632,12 @@ private:
 
 class Frame final : public Element {
 public:
-  [[nodiscard]] std::string anchor_type() const;
-  [[nodiscard]] std::string width() const;
-  [[nodiscard]] std::string height() const;
-  [[nodiscard]] std::string z_index() const;
+  [[nodiscard]] ElementPropertyValue anchor_type() const;
+  [[nodiscard]] ElementPropertyValue x() const;
+  [[nodiscard]] ElementPropertyValue y() const;
+  [[nodiscard]] ElementPropertyValue width() const;
+  [[nodiscard]] ElementPropertyValue height() const;
+  [[nodiscard]] ElementPropertyValue z_index() const;
 
 private:
   Frame();
@@ -639,7 +650,7 @@ private:
 class Image final : public Element {
 public:
   [[nodiscard]] bool internal() const;
-  [[nodiscard]] std::string href() const;
+  [[nodiscard]] ElementPropertyValue href() const;
   [[nodiscard]] File image_file() const;
 
 private:
@@ -652,10 +663,10 @@ private:
 
 class Rect final : public Element {
 public:
-  [[nodiscard]] std::string x() const;
-  [[nodiscard]] std::string y() const;
-  [[nodiscard]] std::string width() const;
-  [[nodiscard]] std::string height() const;
+  [[nodiscard]] ElementPropertyValue x() const;
+  [[nodiscard]] ElementPropertyValue y() const;
+  [[nodiscard]] ElementPropertyValue width() const;
+  [[nodiscard]] ElementPropertyValue height() const;
 
 private:
   Rect();
@@ -667,10 +678,10 @@ private:
 
 class Line final : public Element {
 public:
-  [[nodiscard]] std::string x1() const;
-  [[nodiscard]] std::string y1() const;
-  [[nodiscard]] std::string x2() const;
-  [[nodiscard]] std::string y2() const;
+  [[nodiscard]] ElementPropertyValue x1() const;
+  [[nodiscard]] ElementPropertyValue y1() const;
+  [[nodiscard]] ElementPropertyValue x2() const;
+  [[nodiscard]] ElementPropertyValue y2() const;
 
 private:
   Line();
@@ -682,15 +693,30 @@ private:
 
 class Circle final : public Element {
 public:
-  [[nodiscard]] std::string x() const;
-  [[nodiscard]] std::string y() const;
-  [[nodiscard]] std::string width() const;
-  [[nodiscard]] std::string height() const;
+  [[nodiscard]] ElementPropertyValue x() const;
+  [[nodiscard]] ElementPropertyValue y() const;
+  [[nodiscard]] ElementPropertyValue width() const;
+  [[nodiscard]] ElementPropertyValue height() const;
 
 private:
   Circle();
   Circle(std::shared_ptr<const internal::abstract::Document> impl,
          std::uint64_t id);
+
+  friend Element;
+};
+
+class CustomShape final : public Element {
+public:
+  [[nodiscard]] ElementPropertyValue x() const;
+  [[nodiscard]] ElementPropertyValue y() const;
+  [[nodiscard]] ElementPropertyValue width() const;
+  [[nodiscard]] ElementPropertyValue height() const;
+
+private:
+  CustomShape();
+  CustomShape(std::shared_ptr<const internal::abstract::Document> impl,
+              std::uint64_t id);
 
   friend Element;
 };
