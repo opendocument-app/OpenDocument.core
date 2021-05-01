@@ -55,6 +55,9 @@ private:
     register_graphic_(ElementType::RECT);
     register_graphic_(ElementType::LINE);
     register_graphic_(ElementType::CIRCLE);
+
+    register_page_layout_(ElementType::SLIDE);
+    register_page_layout_(ElementType::PAGE);
   }
 
   void default_register_get_(const ElementType element,
@@ -180,6 +183,21 @@ private:
     default_register_(element, ElementProperty::VERTICAL_ALIGN,
                       property_class_name, "draw:textarea-vertical-align");
   }
+
+  void register_page_layout_(const ElementType element) {
+    static auto property_class_name = "style:page-layout-properties";
+    default_register_directions_(
+        element, ElementProperty::MARGIN_TOP, ElementProperty::MARGIN_BOTTOM,
+        ElementProperty::MARGIN_LEFT, ElementProperty::MARGIN_RIGHT,
+        property_class_name, "fo:margin", "fo:margin-top", "fo:margin-bottom",
+        "fo:margin-left", "fo:margin-right");
+    default_register_(element, ElementProperty::WIDTH, property_class_name,
+                      "fo:page-width");
+    default_register_(element, ElementProperty::HEIGHT, property_class_name,
+                      "fo:page-height");
+    default_register_(element, ElementProperty::PRINT_ORIENTATION,
+                      property_class_name, "style:print-orientation");
+  }
 };
 } // namespace
 
@@ -271,6 +289,10 @@ void Style::generate_styles_() {
   for (auto &&e : m_index_style) {
     generate_style_(e.first, e.second);
   }
+
+  for (auto &&e : m_index_page_layout) {
+    generate_page_layout_(e.first, e.second);
+  }
 }
 
 std::shared_ptr<Style::Entry>
@@ -311,22 +333,56 @@ Style::generate_style_(const std::string &name, const pugi::xml_node node) {
   return m_styles[name] = std::make_shared<Entry>(parent, node);
 }
 
-std::shared_ptr<Style::Entry> Style::style_(const std::string &name) const {
-  auto style_it = m_styles.find(name);
-  if (style_it == std::end(m_styles)) {
-    return {};
+std::shared_ptr<Style::Entry>
+Style::generate_page_layout_(const std::string &name,
+                             const pugi::xml_node node) {
+  if (auto it = m_page_layouts.find(name); it != std::end(m_page_layouts)) {
+    return it->second;
   }
-  return style_it->second;
+
+  return m_page_layouts[name] = std::make_shared<Entry>(nullptr, node);
 }
 
 std::unordered_map<ElementProperty, std::any>
 Style::resolve_style(const ElementType element,
                      const std::string &style_name) const {
-  auto style = style_(style_name);
-  if (!style) {
+  auto style_it = m_styles.find(style_name);
+  if (style_it == std::end(m_styles)) {
     return {};
   }
-  return style->properties(element);
+  return style_it->second->properties(element);
+}
+
+std::unordered_map<ElementProperty, std::any>
+Style::resolve_page_layout(const ElementType element,
+                           const std::string &page_layout_name) const {
+  auto page_layout_it = m_page_layouts.find(page_layout_name);
+  if (page_layout_it == std::end(m_page_layouts)) {
+    return {};
+  }
+  return page_layout_it->second->properties(element);
+}
+
+std::unordered_map<ElementProperty, std::any>
+Style::resolve_master_page(const ElementType element,
+                           const std::string &master_page_name) const {
+  auto master_page_it = m_index_master_page.find(master_page_name);
+  if (master_page_it == std::end(m_index_master_page)) {
+    return {};
+  }
+
+  std::unordered_map<ElementProperty, std::any> result;
+  if (auto page_layout_name_attr =
+          master_page_it->second.attribute("style:page-layout-name")) {
+    auto style = resolve_page_layout(element, page_layout_name_attr.value());
+    result.insert(std::begin(style), std::end(style));
+  }
+  if (auto style_name_attr =
+          master_page_it->second.attribute("draw:style-name")) {
+    auto style = resolve_style(element, style_name_attr.value());
+    result.insert(std::begin(style), std::end(style));
+  }
+  return result;
 }
 
 } // namespace odr::internal::odf

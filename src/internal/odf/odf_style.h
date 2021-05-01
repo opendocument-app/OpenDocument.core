@@ -24,6 +24,14 @@ public:
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   resolve_style(ElementType element, const std::string &style_name) const;
 
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  resolve_page_layout(ElementType element,
+                      const std::string &page_layout_name) const;
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  resolve_master_page(ElementType element,
+                      const std::string &master_page_name) const;
+
 private:
   struct Entry {
     std::shared_ptr<Entry> m_parent;
@@ -45,6 +53,7 @@ private:
 
   std::unordered_map<std::string, std::shared_ptr<Entry>> m_default_styles;
   std::unordered_map<std::string, std::shared_ptr<Entry>> m_styles;
+  std::unordered_map<std::string, std::shared_ptr<Entry>> m_page_layouts;
 
   void generate_indices_(pugi::xml_node content_root,
                          pugi::xml_node styles_root);
@@ -55,6 +64,8 @@ private:
                                                  pugi::xml_node node);
   std::shared_ptr<Entry> generate_style_(const std::string &name,
                                          pugi::xml_node node);
+  std::shared_ptr<Entry> generate_page_layout_(const std::string &name,
+                                               pugi::xml_node node);
 
   [[nodiscard]] std::shared_ptr<Entry> style_(const std::string &name) const;
 };

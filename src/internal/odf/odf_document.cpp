@@ -51,16 +51,21 @@ private:
     static auto text_style_attribute = "text:style-name";
     static auto table_style_attribute = "table:style-name";
     static auto draw_style_attribute = "draw:style-name";
+    static auto draw_master_page_attribute = "draw:master-page-name";
 
     default_register_(ElementType::SLIDE, ElementProperty::NAME, "draw:name");
     default_register_(ElementType::SLIDE, ElementProperty::STYLE_NAME,
                       draw_style_attribute);
+    default_register_(ElementType::SLIDE, ElementProperty::MASTER_PAGE_NAME,
+                      draw_master_page_attribute);
 
     default_register_(ElementType::SHEET, ElementProperty::NAME, "table:name");
 
     default_register_(ElementType::PAGE, ElementProperty::NAME, "draw:name");
     default_register_(ElementType::PAGE, ElementProperty::STYLE_NAME,
                       draw_style_attribute);
+    default_register_(ElementType::PAGE, ElementProperty::MASTER_PAGE_NAME,
+                      draw_master_page_attribute);
 
     register_text_();
 
@@ -224,9 +229,20 @@ OpenDocument::register_element_(const pugi::xml_node node,
     } else if (element == "draw:g") {
       // drawing group not supported
       return register_children_(node, parent, previous_sibling).second;
+    } else if ((m_document_type == DocumentType::PRESENTATION) &&
+               (element == "draw:page")) {
+      element_type = ElementType::SLIDE;
+    } else if ((m_document_type == DocumentType::SPREADSHEET) &&
+               (element == "table:table") && (parent == m_root)) {
+      auto sheet =
+          new_element_(node, ElementType::SHEET, parent, previous_sibling);
+      return register_element_(node, sheet, previous_sibling);
+    } else if ((m_document_type == DocumentType::DRAWING) &&
+               (element == "draw:page")) {
+      element_type = ElementType::PAGE;
+    } else {
+      util::map::lookup_map(element_type_table, element, element_type);
     }
-
-    util::map::lookup_map(element_type_table, element, element_type);
   }
 
   if (element_type == ElementType::NONE) {
@@ -363,7 +379,7 @@ OpenDocument::files() const noexcept {
 ElementIdentifier OpenDocument::root_element() const { return m_root; }
 
 ElementIdentifier OpenDocument::first_entry_element() const {
-  return 0; // TODO
+  return element_first_child(m_root);
 }
 
 ElementType
@@ -422,6 +438,15 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
       style_name_it != std::end(result)) {
     auto style_name = std::any_cast<const char *>(style_name_it->second);
     auto style_properties = m_style.resolve_style(element->type, style_name);
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
+
+  if (auto master_page_name_it = result.find(ElementProperty::MASTER_PAGE_NAME);
+      master_page_name_it != std::end(result)) {
+    auto master_page_name =
+        std::any_cast<const char *>(master_page_name_it->second);
+    auto style_properties =
+        m_style.resolve_master_page(element->type, master_page_name);
     result.insert(std::begin(style_properties), std::end(style_properties));
   }
 

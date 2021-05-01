@@ -99,6 +99,7 @@ enum class ElementProperty {
   ANCHOR_TYPE,
 
   STYLE_NAME,
+  MASTER_PAGE_NAME,
 
   X,
   Y,
