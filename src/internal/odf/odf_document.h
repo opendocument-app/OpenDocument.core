@@ -97,10 +97,9 @@ private:
   ElementIdentifier register_element_(pugi::xml_node node,
                                       ElementIdentifier parent,
                                       ElementIdentifier previous_sibling);
-  ElementIdentifier register_children_(pugi::xml_node node,
-                                       ElementIdentifier parent,
-                                       ElementIdentifier previous_sibling);
-  void register_table_(pugi::xml_node node);
+  std::pair<ElementIdentifier, ElementIdentifier>
+  register_children_(pugi::xml_node node, ElementIdentifier parent,
+                     ElementIdentifier previous_sibling);
 
   ElementIdentifier new_element_(pugi::xml_node node, ElementType type,
                                  ElementIdentifier parent,

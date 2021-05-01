@@ -215,13 +215,14 @@ OpenDocument::register_element_(const pugi::xml_node node,
 
     if (element == "text:table-of-content") {
       return register_children_(node.child("text:index-body"), parent,
-                                previous_sibling);
+                                previous_sibling)
+          .second;
     } else if (element == "text:index-title") {
       // not sure what else to do with this tag
-      return register_children_(node, parent, previous_sibling);
+      return register_children_(node, parent, previous_sibling).second;
     } else if (element == "draw:g") {
       // drawing group not supported
-      return register_children_(node, parent, previous_sibling);
+      return register_children_(node, parent, previous_sibling).second;
     }
 
     util::map::lookup_map(element_type_table, element, element_type);
@@ -243,23 +244,26 @@ OpenDocument::register_element_(const pugi::xml_node node,
   return new_element;
 }
 
-ElementIdentifier
+std::pair<ElementIdentifier, ElementIdentifier>
 OpenDocument::register_children_(const pugi::xml_node node,
                                  const ElementIdentifier parent,
                                  ElementIdentifier previous_sibling) {
+  ElementIdentifier first_element;
+
   for (auto &&child_node : node) {
     const ElementIdentifier child =
         register_element_(child_node, parent, previous_sibling);
     if (!child) {
       continue;
     }
+    if (!first_element) {
+      first_element = child;
+    }
     previous_sibling = child;
   }
 
-  return previous_sibling;
+  return {first_element, previous_sibling};
 }
-
-void OpenDocument::register_table_(const pugi::xml_node node) {}
 
 ElementIdentifier
 OpenDocument::new_element_(const pugi::xml_node node, const ElementType type,

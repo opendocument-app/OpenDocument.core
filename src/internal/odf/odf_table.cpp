@@ -12,9 +12,6 @@ Table::Table(OpenDocument &document, const pugi::xml_node node)
 void Table::register_(const pugi::xml_node node) {
   std::uint32_t column_index = 0;
   for (auto column : node.children("table:table-column")) {
-    const auto columns_repeated =
-        node.attribute("table:number-columns-repeated").as_uint(1);
-
     Column new_column;
     new_column.node = column;
     m_columns[column_index] = new_column;
@@ -38,7 +35,7 @@ void Table::register_(const pugi::xml_node node) {
 
         for (std::uint32_t j = 0; j < cells_repeated; ++j) {
           // TODO parent?
-          auto first_child = m_document.register_children_(cell, {}, {});
+          auto first_child = m_document.register_children_(cell, {}, {}).first;
           if (first_child) {
             Cell new_cell;
             new_cell.node = cell;
