@@ -265,25 +265,9 @@ OpenDocument::register_element_(const pugi::xml_node node,
   auto new_element = new_element_(node, element_type, parent, previous_sibling);
 
   if (element_type == ElementType::TABLE) {
-    m_tables[new_element] = std::make_shared<Table>(*this, node);
+    post_register_table_(new_element, node);
   } else if (element_type == ElementType::SLIDE) {
-    ElementIdentifier inner_previous_sibling;
-    if (auto master_page_name_attr = node.attribute("draw:master-page-name")) {
-      auto master_page_node =
-          m_style.master_page_node(master_page_name_attr.value());
-      for (auto &&child_node : master_page_node) {
-        if (child_node.attribute("presentation:placeholder").as_bool()) {
-          continue;
-        }
-        auto child =
-            register_element_(child_node, new_element, inner_previous_sibling);
-        if (!child) {
-          continue;
-        }
-        inner_previous_sibling = child;
-      }
-    }
-    register_children_(node, new_element, inner_previous_sibling);
+    post_register_slide_(new_element, node);
   } else {
     register_children_(node, new_element, {});
   }
@@ -310,6 +294,32 @@ OpenDocument::register_children_(const pugi::xml_node node,
   }
 
   return {first_element, previous_sibling};
+}
+
+void OpenDocument::post_register_table_(const ElementIdentifier element,
+                                        const pugi::xml_node node) {
+  m_tables[element] = std::make_shared<Table>(*this, node);
+}
+
+void OpenDocument::post_register_slide_(const ElementIdentifier element,
+                                        const pugi::xml_node node) {
+  ElementIdentifier inner_previous_sibling;
+  if (auto master_page_name_attr = node.attribute("draw:master-page-name")) {
+    auto master_page_node =
+        m_style.master_page_node(master_page_name_attr.value());
+    for (auto &&child_node : master_page_node) {
+      if (child_node.attribute("presentation:placeholder").as_bool()) {
+        continue;
+      }
+      auto child =
+          register_element_(child_node, element, inner_previous_sibling);
+      if (!child) {
+        continue;
+      }
+      inner_previous_sibling = child;
+    }
+  }
+  register_children_(node, element, inner_previous_sibling);
 }
 
 ElementIdentifier

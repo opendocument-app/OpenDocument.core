@@ -101,6 +101,9 @@ private:
   register_children_(pugi::xml_node node, ElementIdentifier parent,
                      ElementIdentifier previous_sibling);
 
+  void post_register_table_(ElementIdentifier element, pugi::xml_node node);
+  void post_register_slide_(ElementIdentifier element, pugi::xml_node node);
+
   ElementIdentifier new_element_(pugi::xml_node node, ElementType type,
                                  ElementIdentifier parent,
                                  ElementIdentifier previous_sibling);
