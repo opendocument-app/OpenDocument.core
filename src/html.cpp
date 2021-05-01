@@ -323,7 +323,7 @@ void translate_table(const Table &element, std::ostream &out,
 
 void translate_image(const Image &element, std::ostream &out,
                      const HtmlConfig &config) {
-  out << "<img style=\"width:100%;height:100%\"";
+  out << "<img style=\"position:absolute;left:0;top:0;width:100%;height:100%\"";
   out << " alt=\"Error: image not found or unsupported\"";
   out << " src=\"";
 
@@ -372,13 +372,7 @@ void translate_frame(const Frame &element, std::ostream &out,
 
   out << optional_style_attribute(translate_frame_properties(element));
   out << ">";
-
-  for (auto &&e : element.children()) {
-    if (e.type() == ElementType::IMAGE) {
-      translate_image(e.image(), out, config);
-    }
-  }
-
+  translate_generation(element.children(), out, config);
   out << "</div>";
 }
 
@@ -460,6 +454,8 @@ void translate_element(const Element &element, std::ostream &out,
     translate_table(element.table(), out, config);
   } else if (element.type() == ElementType::FRAME) {
     translate_frame(element.frame(), out, config);
+  } else if (element.type() == ElementType::IMAGE) {
+    translate_image(element.image(), out, config);
   } else if (element.type() == ElementType::RECT) {
     translate_rect(element.rect(), out, config);
   } else if (element.type() == ElementType::LINE) {

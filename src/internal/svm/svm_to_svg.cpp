@@ -14,7 +14,7 @@ struct Context final {
   std::ostream *out{};
   const ActionHeader *action{};
 
-  // MapMode map_mode;
+  MapMode map_mode;
   TextEncoding encoding{};
   Font font;
   TextLineAction text_line;
@@ -27,6 +27,19 @@ struct Context final {
   std::uint32_t text_fill_rgb{};
   bool text_fill_rgb_set{};
 };
+
+double transform(const std::int32_t coordinate, const std::int32_t origin,
+                 const IntPair scale) {
+  return (origin + coordinate) * (double)scale.x / scale.y;
+}
+
+double transform_x(const std::int32_t x, const Context &context) {
+  return transform(x, context.map_mode.origin.x, context.map_mode.scale_x);
+}
+
+double transform_y(const std::int32_t y, const Context &context) {
+  return transform(y, context.map_mode.origin.y, context.map_mode.scale_y);
+}
 
 std::string get_svg_color_string(const std::uint32_t color) {
   const uint8_t blue = (color >> 0) & 0xff;
@@ -85,10 +98,14 @@ void write_style(std::ostream &out, Context &context, const int styles) {
 void write_rectangle(std::ostream &out, const Rectangle &rect,
                      Context &context) {
   out << "<rect";
-  out << " x=\"" << rect.left << "\"";
-  out << " y=\"" << rect.top << "\"";
-  out << " width=\"" << (rect.right - rect.left) << "\"";
-  out << " height=\"" << (rect.bottom - rect.top) << "\"";
+  out << " x=\"" << transform_x(rect.left, context) << "\"";
+  out << " y=\"" << transform_y(rect.top, context) << "\"";
+  out << " width=\""
+      << (transform_x(rect.right, context) - transform_x(rect.left, context))
+      << "\"";
+  out << " height=\""
+      << (transform_y(rect.bottom, context) - transform_y(rect.top, context))
+      << "\"";
   write_style(out, context, 1);
   out << " />";
 }
@@ -100,7 +117,7 @@ void write_polygon(std::ostream &out, const std::string &tag,
 
   out << " points=\"";
   for (auto &&p : points) {
-    out << p.x << "," << p.y;
+    out << transform_x(p.x, context) << "," << transform_y(p.y, context);
     out << " ";
   }
   out << "\"";
@@ -117,8 +134,8 @@ void write_polygon(std::ostream &out, const std::string &tag,
 void write_text(std::ostream &out, const IntPair &point,
                 const std::string &text, Context &context) {
   out << "<text";
-  out << " x=\"" << point.x << "\"";
-  out << " y=\"" << point.y << "\"";
+  out << " x=\"" << transform_x(point.x, context) << "\"";
+  out << " y=\"" << transform_y(point.y, context) << "\"";
   write_style(out, context, 2);
   out << ">";
   out << text;
@@ -156,6 +173,9 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   case META_RECT_ACTION: {
     Rectangle action = read_rectangle(in);
     write_rectangle(out, action, context);
+  } break;
+  case META_MAPMODE_ACTION: {
+    context.map_mode = read_map_mode(in);
   } break;
   case META_POLYLINE_ACTION: {
     PolyLineAction action = read_poly_line_action(in, action_header.vl);
@@ -220,7 +240,7 @@ void Translator::svg(const SvmFile &file, std::ostream &out) {
   Header header = read_header(in);
 
   context.encoding = RTL_TEXTENCODING_ASCII_US;
-  // context.map_mode = header.map_mode;
+  context.map_mode = header.map_mode;
 
   out << "<svg";
   out << " xmlns=\"http://www.w3.org/2000/svg\"";
