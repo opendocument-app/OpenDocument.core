@@ -79,6 +79,8 @@ private:
     default_register_(ElementType::TABLE, ElementProperty::STYLE_NAME,
                       table_style_attribute);
 
+    default_register_(ElementType::FRAME, ElementProperty::ANCHOR_TYPE,
+                      "text:anchor-type");
     default_register_(ElementType::FRAME, ElementProperty::WIDTH, "svg:width");
     default_register_(ElementType::FRAME, ElementProperty::HEIGHT,
                       "svg:height");

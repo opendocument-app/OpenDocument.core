@@ -135,8 +135,14 @@ private:
                       property_class_name, "fo:font-weight");
     default_register_(element, ElementProperty::FONT_STYLE, property_class_name,
                       "fo:font-style");
+    default_register_(element, ElementProperty::FONT_UNDERLINE,
+                      property_class_name, "style:text-underline-style");
+    default_register_(element, ElementProperty::FONT_STRIKETHROUGH,
+                      property_class_name, "style:text-line-through-style");
+    default_register_(element, ElementProperty::FONT_SHADOW,
+                      property_class_name, "fo:text-shadow");
     default_register_(element, ElementProperty::FONT_COLOR, property_class_name,
-                      "fo:font-color");
+                      "fo:color");
     default_register_(element, ElementProperty::BACKGROUND_COLOR,
                       property_class_name, "fo:background-color");
   }

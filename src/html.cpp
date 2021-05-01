@@ -24,24 +24,19 @@ void translate_element(const Element &element, std::ostream &out,
 
 std::string translate_paragraph_style(const Element &element) {
   std::string result;
-  if (auto text_align = element.property(ElementProperty::TEXT_ALIGN);
-      text_align) {
+  if (auto text_align = element.property(ElementProperty::TEXT_ALIGN)) {
     result += "text-align:" + text_align.get_string() + ";";
   }
-  if (auto margin_top = element.property(ElementProperty::MARGIN_TOP);
-      margin_top) {
+  if (auto margin_top = element.property(ElementProperty::MARGIN_TOP)) {
     result += "margin-top:" + margin_top.get_string() + ";";
   }
-  if (auto margin_bottom = element.property(ElementProperty::MARGIN_BOTTOM);
-      margin_bottom) {
+  if (auto margin_bottom = element.property(ElementProperty::MARGIN_BOTTOM)) {
     result += "margin-bottom:" + margin_bottom.get_string() + ";";
   }
-  if (auto margin_left = element.property(ElementProperty::MARGIN_LEFT);
-      margin_left) {
+  if (auto margin_left = element.property(ElementProperty::MARGIN_LEFT)) {
     result += "margin-left:" + margin_left.get_string() + ";";
   }
-  if (auto margin_right = element.property(ElementProperty::MARGIN_RIGHT);
-      margin_right) {
+  if (auto margin_right = element.property(ElementProperty::MARGIN_RIGHT)) {
     result += "margin-right:" + margin_right.get_string() + ";";
   }
   return result;
@@ -49,29 +44,37 @@ std::string translate_paragraph_style(const Element &element) {
 
 std::string translate_text_style(const Element &element) {
   std::string result;
-  if (auto font_name = element.property(ElementProperty::FONT_NAME);
-      font_name) {
+  if (auto font_name = element.property(ElementProperty::FONT_NAME)) {
     result += "font-family:" + font_name.get_string() + ";";
   }
   if (auto font_size = element.property(ElementProperty::FONT_SIZE);
       font_size) {
     result += "font-size:" + font_size.get_string() + ";";
   }
-  if (auto font_weight = element.property(ElementProperty::FONT_WEIGHT);
-      font_weight) {
+  if (auto font_weight = element.property(ElementProperty::FONT_WEIGHT)) {
     result += "font-weight:" + font_weight.get_string() + ";";
   }
-  if (auto font_style = element.property(ElementProperty::FONT_STYLE);
-      font_style) {
+  if (auto font_style = element.property(ElementProperty::FONT_STYLE)) {
     result += "font-style:" + font_style.get_string() + ";";
   }
-  if (auto font_color = element.property(ElementProperty::FONT_COLOR);
-      font_color) {
+  if (auto underline = element.property(ElementProperty::FONT_UNDERLINE);
+      underline && underline.get_string() == "solid") {
+    result += "text-decoration:underline;";
+  }
+  if (auto strikethrough =
+          element.property(ElementProperty::FONT_STRIKETHROUGH);
+      strikethrough && strikethrough.get_string() == "solid") {
+    result += "text-decoration:line-through;";
+  }
+  if (auto font_shadow = element.property(ElementProperty::FONT_SHADOW)) {
+    result += "text-shadow:" + font_shadow.get_string() + ";";
+  }
+  if (auto font_color = element.property(ElementProperty::FONT_COLOR)) {
     result += "color:" + font_color.get_string() + ";";
   }
   if (auto background_color =
           element.property(ElementProperty::BACKGROUND_COLOR);
-      background_color) {
+      background_color && background_color.get_string() != "transparent") {
     result += "background-color:" + background_color.get_string() + ";";
   }
   return result;
@@ -87,7 +90,7 @@ std::string translate_table_style(const Element &element) {
 
 std::string translate_table_column_style(const TableColumn &element) {
   std::string result;
-  if (auto width = element.property(ElementProperty::WIDTH); width) {
+  if (auto width = element.property(ElementProperty::WIDTH)) {
     result += "width:" + width.get_string() + ";";
   }
   return result;
@@ -95,36 +98,28 @@ std::string translate_table_column_style(const TableColumn &element) {
 
 std::string translate_table_cell_style(const TableCell &element) {
   std::string result;
-  if (auto padding_top = element.property(ElementProperty::PADDING_TOP);
-      padding_top) {
+  if (auto padding_top = element.property(ElementProperty::PADDING_TOP)) {
     result += "padding-top:" + padding_top.get_string() + ";";
   }
-  if (auto padding_bottom = element.property(ElementProperty::PADDING_BOTTOM);
-      padding_bottom) {
+  if (auto padding_bottom = element.property(ElementProperty::PADDING_BOTTOM)) {
     result += "padding-bottom:" + padding_bottom.get_string() + ";";
   }
-  if (auto padding_left = element.property(ElementProperty::PADDING_LEFT);
-      padding_left) {
+  if (auto padding_left = element.property(ElementProperty::PADDING_LEFT)) {
     result += "padding-left:" + padding_left.get_string() + ";";
   }
-  if (auto padding_right = element.property(ElementProperty::PADDING_RIGHT);
-      padding_right) {
+  if (auto padding_right = element.property(ElementProperty::PADDING_RIGHT)) {
     result += "padding-right:" + padding_right.get_string() + ";";
   }
-  if (auto border_top = element.property(ElementProperty::BORDER_TOP);
-      border_top) {
+  if (auto border_top = element.property(ElementProperty::BORDER_TOP)) {
     result += "border-top:" + border_top.get_string() + ";";
   }
-  if (auto border_bottom = element.property(ElementProperty::BORDER_BOTTOM);
-      border_bottom) {
+  if (auto border_bottom = element.property(ElementProperty::BORDER_BOTTOM)) {
     result += "border-bottom:" + border_bottom.get_string() + ";";
   }
-  if (auto border_left = element.property(ElementProperty::BORDER_LEFT);
-      border_left) {
+  if (auto border_left = element.property(ElementProperty::BORDER_LEFT)) {
     result += "border-left:" + border_left.get_string() + ";";
   }
-  if (auto border_right = element.property(ElementProperty::BORDER_RIGHT);
-      border_right) {
+  if (auto border_right = element.property(ElementProperty::BORDER_RIGHT)) {
     result += "border-right:" + border_right.get_string() + ";";
   }
   return result;
@@ -132,20 +127,16 @@ std::string translate_table_cell_style(const TableCell &element) {
 
 std::string translate_drawing_style(const Element &element) {
   std::string result;
-  if (auto stroke_width = element.property(ElementProperty::STROKE_WIDTH);
-      stroke_width) {
+  if (auto stroke_width = element.property(ElementProperty::STROKE_WIDTH)) {
     result += "stroke-width:" + stroke_width.get_string() + ";";
   }
-  if (auto stroke_color = element.property(ElementProperty::STROKE_COLOR);
-      stroke_color) {
+  if (auto stroke_color = element.property(ElementProperty::STROKE_COLOR)) {
     result += "stroke:" + stroke_color.get_string() + ";";
   }
-  if (auto fill_color = element.property(ElementProperty::FILL_COLOR);
-      fill_color) {
+  if (auto fill_color = element.property(ElementProperty::FILL_COLOR)) {
     result += "fill:" + fill_color.get_string() + ";";
   }
-  if (auto vertical_align = element.property(ElementProperty::VERTICAL_ALIGN);
-      vertical_align) {
+  if (auto vertical_align = element.property(ElementProperty::VERTICAL_ALIGN)) {
     if (vertical_align.get_string() == "middle") {
       result += "display:flex;justify-content:center;flex-direction: column;";
     }
@@ -156,6 +147,9 @@ std::string translate_drawing_style(const Element &element) {
 
 std::string translate_frame_properties(const Frame &properties) {
   std::string result;
+  if (properties.anchor_type() == "as-char") {
+    result += "display:inline-block;";
+  }
   result += "width:" + properties.width() + ";";
   result += "height:" + properties.height() + ";";
   result += "z-index:" + properties.z_index() + ";";
@@ -341,7 +335,12 @@ void translate_image(const Image &element, std::ostream &out,
 
 void translate_frame(const Frame &element, std::ostream &out,
                      const HtmlConfig &config) {
-  out << "<div";
+  if (element.anchor_type() == "as-char") {
+    out << "<span";
+  } else {
+    out << "<div";
+  }
+
   out << optional_style_attribute(translate_frame_properties(element));
   out << ">";
 
