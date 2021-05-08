@@ -30,23 +30,40 @@ void Table::register_(const pugi::xml_node node) {
     new_row.node = row;
     m_rows[row_index] = new_row;
 
+    bool row_empty = true;
+
     for (std::uint32_t i = 0; i < rows_repeated; ++i) {
       std::uint32_t cell_index = 0;
       for (auto cell : row.children("table:table-cell")) {
         const auto cells_repeated =
             cell.attribute("table:number-columns-repeated").as_uint(1);
 
+        bool cell_empty = true;
+
         for (std::uint32_t j = 0; j < cells_repeated; ++j) {
           // TODO parent?
           auto first_child = m_document.register_children_(cell, {}, {}).first;
+
           if (first_child) {
             Cell new_cell;
             new_cell.node = cell;
             new_cell.first_child = first_child;
             m_cells[{row_index, cell_index}] = new_cell;
+
+            cell_empty = false;
+            row_empty = false;
           }
+
+          if (cell_empty) {
+            break;
+          }
+
           ++cell_index;
         }
+      }
+
+      if (row_empty) {
+        break;
       }
 
       ++row_index;
