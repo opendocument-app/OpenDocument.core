@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace odr::internal::abstract {
@@ -118,6 +119,7 @@ enum class ElementProperty {
   TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME,
   TABLE_CELL_ROW_SPAN,
   TABLE_CELL_COLUMN_SPAN,
+  TABLE_CELL_BACKGROUND_COLOR,
 
   MARGIN_TOP,
   MARGIN_BOTTOM,
@@ -173,7 +175,6 @@ public:
   [[nodiscard]] std::string get_string() const;
   [[nodiscard]] std::uint32_t get_uint32() const;
   [[nodiscard]] bool get_bool() const;
-  [[nodiscard]] const char *get_optional_string() const;
 
   virtual void set(const std::any &value) const = 0;
   void set_string(const std::string &value) const;
@@ -287,6 +288,34 @@ private:
   friend TableCell;
 };
 
+class PropertySet {
+public:
+  [[nodiscard]] std::any get(ElementProperty property) const;
+  [[nodiscard]] std::optional<std::string>
+  get_string(ElementProperty property) const;
+  [[nodiscard]] std::optional<std::uint32_t>
+  get_uint32(ElementProperty property) const;
+  [[nodiscard]] std::optional<bool> get_bool(ElementProperty property) const;
+
+private:
+  explicit PropertySet(
+      std::unordered_map<ElementProperty, std::any> properties);
+
+  std::unordered_map<ElementProperty, std::any> m_properties;
+
+  friend Element;
+  friend Frame;
+  friend Image;
+  friend Rect;
+  friend Line;
+  friend Circle;
+  friend CustomShape;
+  friend PageStyle;
+  friend TableColumn;
+  friend TableRow;
+  friend TableCell;
+};
+
 class PageStyle {
 public:
   bool operator==(const PageStyle &rhs) const;
@@ -329,6 +358,7 @@ public:
 
   [[nodiscard]] ElementRange children() const;
 
+  [[nodiscard]] PropertySet properties() const;
   [[nodiscard]] ElementPropertyValue property(ElementProperty property) const;
 
   [[nodiscard]] Slide slide() const;
@@ -561,6 +591,7 @@ public:
   [[nodiscard]] TableColumn previous_sibling() const;
   [[nodiscard]] TableColumn next_sibling() const;
 
+  [[nodiscard]] PropertySet properties() const;
   [[nodiscard]] TableColumnPropertyValue
   property(ElementProperty property) const;
 
@@ -586,6 +617,7 @@ public:
   [[nodiscard]] TableRow previous_sibling() const;
   [[nodiscard]] TableRow next_sibling() const;
 
+  [[nodiscard]] PropertySet properties() const;
   [[nodiscard]] TableRowPropertyValue property(ElementProperty property) const;
 
   [[nodiscard]] TableCellRange cells() const;
@@ -613,6 +645,7 @@ public:
 
   [[nodiscard]] ElementRange children() const;
 
+  [[nodiscard]] PropertySet properties() const;
   [[nodiscard]] TableCellPropertyValue property(ElementProperty property) const;
 
   [[nodiscard]] std::uint32_t row_span() const;

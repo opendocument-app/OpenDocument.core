@@ -10,28 +10,30 @@
 namespace odr {
 
 namespace {
-bool property_value_to_bool(const std::any &value) {
+std::optional<bool> property_value_to_bool(const std::any &value) {
+  if (!value.has_value()) {
+    return {};
+  }
   if (value.type() == typeid(bool)) {
     return std::any_cast<bool>(value);
   }
   throw std::runtime_error("conversion to bool failed");
 }
 
-std::uint32_t property_value_to_uint32(const std::any &value) {
+std::optional<std::uint32_t> property_value_to_uint32(const std::any &value) {
+  if (!value.has_value()) {
+    return {};
+  }
   if (value.type() == typeid(std::uint32_t)) {
     return std::any_cast<std::uint32_t>(value);
   }
   throw std::runtime_error("conversion to uint32 failed");
 }
 
-const char *property_value_to_cstr(const std::any &value) {
-  if (value.type() == typeid(const char *)) {
-    return std::any_cast<const char *>(value);
+std::optional<std::string> property_value_to_string(const std::any &value) {
+  if (!value.has_value()) {
+    return {};
   }
-  throw std::runtime_error("conversion to cstr failed");
-}
-
-std::string property_value_to_string(const std::any &value) {
   if (value.type() == typeid(std::string)) {
     return std::any_cast<std::string>(value);
   } else if (value.type() == typeid(const char *)) {
@@ -45,6 +47,193 @@ TableDimensions::TableDimensions() = default;
 
 TableDimensions::TableDimensions(std::uint32_t rows, std::uint32_t columns)
     : rows{rows}, columns{columns} {}
+
+std::string PropertyValue::get_string() const {
+  return *property_value_to_string(get());
+}
+
+std::uint32_t PropertyValue::get_uint32() const {
+  return *property_value_to_uint32(get());
+}
+
+bool PropertyValue::get_bool() const { return *property_value_to_bool(get()); }
+
+void PropertyValue::set_string(const std::string &value) const {
+  set(value.c_str());
+}
+
+ElementPropertyValue::ElementPropertyValue() = default;
+
+ElementPropertyValue::ElementPropertyValue(
+    std::shared_ptr<const internal::abstract::Document> impl,
+    const std::uint64_t id, const ElementProperty property)
+    : m_impl{std::move(impl)}, m_id{id}, m_property{property} {}
+
+bool ElementPropertyValue::operator==(const ElementPropertyValue &rhs) const {
+  return m_impl == rhs.m_impl && m_id == rhs.m_id &&
+         m_property == rhs.m_property;
+}
+
+bool ElementPropertyValue::operator!=(const ElementPropertyValue &rhs) const {
+  return m_impl != rhs.m_impl || m_id != rhs.m_id ||
+         m_property != rhs.m_property;
+}
+
+ElementPropertyValue::operator bool() const {
+  return m_impl.operator bool() && m_id != 0 && get().has_value();
+}
+
+std::any ElementPropertyValue::get() const {
+  auto properties = m_impl->element_properties(m_id);
+  return internal::util::map::lookup_map_default(properties, m_property,
+                                                 std::any());
+}
+
+void ElementPropertyValue::set(const std::any &value) const {
+  m_impl->update_element_properties(m_id, {{m_property, value}});
+}
+
+void ElementPropertyValue::remove() const {
+  m_impl->update_element_properties(m_id, {{m_property, {}}});
+}
+
+TableColumnPropertyValue::TableColumnPropertyValue() = default;
+
+TableColumnPropertyValue::TableColumnPropertyValue(
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t column, const ElementProperty property)
+    : m_impl{std::move(impl)}, m_column{column}, m_property{property} {}
+
+bool TableColumnPropertyValue::operator==(
+    const TableColumnPropertyValue &rhs) const {
+  return m_impl == rhs.m_impl && m_column == rhs.m_column &&
+         m_property == rhs.m_property;
+}
+
+bool TableColumnPropertyValue::operator!=(
+    const TableColumnPropertyValue &rhs) const {
+  return m_impl != rhs.m_impl || m_column != rhs.m_column ||
+         m_property != rhs.m_property;
+}
+
+TableColumnPropertyValue::operator bool() const {
+  return m_impl.operator bool() && get().has_value();
+}
+
+std::any TableColumnPropertyValue::get() const {
+  auto properties = m_impl->column_properties(m_column);
+  return internal::util::map::lookup_map_default(properties, m_property,
+                                                 std::any());
+}
+
+void TableColumnPropertyValue::set(const std::any &value) const {
+  m_impl->update_column_properties(m_column, {{m_property, value}});
+}
+
+void TableColumnPropertyValue::remove() const {
+  m_impl->update_column_properties(m_column, {{m_property, {}}});
+}
+
+TableRowPropertyValue::TableRowPropertyValue() = default;
+
+TableRowPropertyValue::TableRowPropertyValue(
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t row, const ElementProperty property)
+    : m_impl{std::move(impl)}, m_row{row}, m_property{property} {}
+
+bool TableRowPropertyValue::operator==(const TableRowPropertyValue &rhs) const {
+  return m_impl == rhs.m_impl && m_row == rhs.m_row &&
+         m_property == rhs.m_property;
+}
+
+bool TableRowPropertyValue::operator!=(const TableRowPropertyValue &rhs) const {
+  return m_impl != rhs.m_impl || m_row != rhs.m_row ||
+         m_property != rhs.m_property;
+}
+
+TableRowPropertyValue::operator bool() const {
+  return m_impl.operator bool() && get().has_value();
+}
+
+std::any TableRowPropertyValue::get() const {
+  auto properties = m_impl->row_properties(m_row);
+  return internal::util::map::lookup_map_default(properties, m_property,
+                                                 std::any());
+}
+
+void TableRowPropertyValue::set(const std::any &value) const {
+  m_impl->update_row_properties(m_row, {{m_property, value}});
+}
+
+void TableRowPropertyValue::remove() const {
+  m_impl->update_row_properties(m_row, {{m_property, {}}});
+}
+
+TableCellPropertyValue::TableCellPropertyValue() = default;
+
+TableCellPropertyValue::TableCellPropertyValue(
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t row, const std::uint32_t column,
+    const ElementProperty property)
+    : m_impl{std::move(impl)}, m_row{row}, m_column{column}, m_property{
+                                                                 property} {}
+
+bool TableCellPropertyValue::operator==(
+    const TableCellPropertyValue &rhs) const {
+  return m_impl == rhs.m_impl && m_row == rhs.m_row &&
+         m_column == rhs.m_column && m_property == rhs.m_property;
+}
+
+bool TableCellPropertyValue::operator!=(
+    const TableCellPropertyValue &rhs) const {
+  return m_impl != rhs.m_impl || m_row != rhs.m_row ||
+         m_column != rhs.m_column || m_property != rhs.m_property;
+}
+
+TableCellPropertyValue::operator bool() const {
+  return m_impl.operator bool() && get().has_value();
+}
+
+std::any TableCellPropertyValue::get() const {
+  auto properties = m_impl->cell_properties(m_row, m_column);
+  return internal::util::map::lookup_map_default(properties, m_property,
+                                                 std::any());
+}
+
+void TableCellPropertyValue::set(const std::any &value) const {
+  m_impl->update_cell_properties(m_row, m_column, {{m_property, value}});
+}
+
+void TableCellPropertyValue::remove() const {
+  m_impl->update_cell_properties(m_row, m_column, {{m_property, {}}});
+}
+
+PropertySet::PropertySet(
+    std::unordered_map<ElementProperty, std::any> properties)
+    : m_properties{std::move(properties)} {}
+
+std::any PropertySet::get(const ElementProperty property) const {
+  auto it = m_properties.find(property);
+  if (it == std::end(m_properties)) {
+    return {};
+  }
+  return it->second;
+}
+
+std::optional<std::string>
+PropertySet::get_string(const ElementProperty property) const {
+  return property_value_to_string(get(property));
+}
+
+std::optional<std::uint32_t>
+PropertySet::get_uint32(const ElementProperty property) const {
+  return property_value_to_uint32(get(property));
+}
+
+std::optional<bool>
+PropertySet::get_bool(const ElementProperty property) const {
+  return property_value_to_bool(get(property));
+}
 
 PageStyle::PageStyle() = default;
 
@@ -134,6 +323,10 @@ Element Element::next_sibling() const {
 }
 
 ElementRange Element::children() const { return ElementRange(first_child()); }
+
+PropertySet Element::properties() const {
+  return PropertySet(m_impl->element_properties(m_id));
+}
 
 ElementPropertyValue Element::property(ElementProperty property) const {
   return ElementPropertyValue(m_impl, m_id, property);
@@ -270,13 +463,11 @@ Slide Slide::previous_sibling() const {
 Slide Slide::next_sibling() const { return Element::next_sibling().slide(); }
 
 std::string Slide::name() const {
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::NAME));
+  return property(ElementProperty::NAME).get_string();
 }
 
 std::string Slide::notes() const {
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::NOTES));
+  return property(ElementProperty::NOTES).get_string();
 }
 
 PageStyle Slide::page_style() const { return PageStyle(m_impl, m_id); }
@@ -294,8 +485,7 @@ Sheet Sheet::previous_sibling() const {
 Sheet Sheet::next_sibling() const { return Element::next_sibling().sheet(); }
 
 std::string Sheet::name() const {
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::NAME));
+  return property(ElementProperty::NAME).get_string();
 }
 
 Table Sheet::table() const {
@@ -321,8 +511,7 @@ std::string Page::name() const {
   if (!m_impl) {
     return "";
   }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::NAME));
+  return property(ElementProperty::NAME).get_string();
 }
 
 PageStyle Page::page_style() const { return PageStyle(m_impl, m_id); }
@@ -337,8 +526,7 @@ std::string Text::string() const {
   if (!m_impl) {
     return "";
   }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::TEXT));
+  return property(ElementProperty::TEXT).get_string();
 }
 
 Paragraph::Paragraph() = default;
@@ -363,8 +551,7 @@ std::string Link::href() const {
   if (!m_impl) {
     return "";
   }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::HREF));
+  return property(ElementProperty::HREF).get_string();
 }
 
 Bookmark::Bookmark() = default;
@@ -377,8 +564,7 @@ std::string Bookmark::name() const {
   if (!m_impl) {
     return "";
   }
-  return property_value_to_string(
-      m_impl->element_properties(m_id).at(ElementProperty::NAME));
+  return property(ElementProperty::NAME).get_string();
 }
 
 List::List() = default;
@@ -447,6 +633,10 @@ TableColumn TableColumn::next_sibling() const {
   return TableColumn(m_impl, m_column + 1);
 }
 
+PropertySet TableColumn::properties() const {
+  return PropertySet(m_impl->column_properties(m_column));
+}
+
 TableColumnPropertyValue
 TableColumn::property(const ElementProperty property) const {
   return TableColumnPropertyValue(m_impl, m_column, property);
@@ -486,6 +676,10 @@ TableCellRange TableRow::cells() const {
                         TableCell(m_impl, m_row, m_impl->dimensions().columns));
 }
 
+PropertySet TableRow::properties() const {
+  return PropertySet(m_impl->row_properties(m_row));
+}
+
 TableRowPropertyValue TableRow::property(const ElementProperty property) const {
   return TableRowPropertyValue(m_impl, m_row, property);
 }
@@ -519,6 +713,10 @@ ElementRange TableCell::children() const {
       Element(m_impl->document(), m_impl->cell_first_child(m_row, m_column)));
 }
 
+PropertySet TableCell::properties() const {
+  return PropertySet(m_impl->cell_properties(m_row, m_column));
+}
+
 TableCellPropertyValue
 TableCell::property(const ElementProperty property) const {
   return TableCellPropertyValue(m_impl, m_row, m_column, property);
@@ -533,7 +731,7 @@ std::uint32_t TableCell::row_span() const {
   if (span_it == std::end(props)) {
     return 1;
   }
-  return property_value_to_uint32(span_it->second);
+  return *property_value_to_uint32(span_it->second);
 }
 
 std::uint32_t TableCell::column_span() const {
@@ -545,7 +743,7 @@ std::uint32_t TableCell::column_span() const {
   if (span_it == std::end(props)) {
     return 1;
   }
-  return property_value_to_uint32(span_it->second);
+  return *property_value_to_uint32(span_it->second);
 }
 
 Frame::Frame() = default;
@@ -808,170 +1006,6 @@ std::uint32_t Drawing::page_count() const {
 
 PageRange Drawing::pages() const {
   return PageRange(Page(m_impl, m_impl->first_entry_element()));
-}
-
-std::string PropertyValue::get_string() const {
-  return property_value_to_string(get());
-}
-
-std::uint32_t PropertyValue::get_uint32() const {
-  return property_value_to_uint32(get());
-}
-
-bool PropertyValue::get_bool() const { return property_value_to_bool(get()); }
-
-const char *PropertyValue::get_optional_string() const {
-  return property_value_to_cstr(get());
-}
-
-void PropertyValue::set_string(const std::string &value) const {
-  set(value.c_str());
-}
-
-ElementPropertyValue::ElementPropertyValue() = default;
-
-ElementPropertyValue::ElementPropertyValue(
-    std::shared_ptr<const internal::abstract::Document> impl,
-    const std::uint64_t id, const ElementProperty property)
-    : m_impl{std::move(impl)}, m_id{id}, m_property{property} {}
-
-bool ElementPropertyValue::operator==(const ElementPropertyValue &rhs) const {
-  return m_impl == rhs.m_impl && m_id == rhs.m_id &&
-         m_property == rhs.m_property;
-}
-
-bool ElementPropertyValue::operator!=(const ElementPropertyValue &rhs) const {
-  return m_impl != rhs.m_impl || m_id != rhs.m_id ||
-         m_property != rhs.m_property;
-}
-
-ElementPropertyValue::operator bool() const {
-  return m_impl.operator bool() && m_id != 0 && get().has_value();
-}
-
-std::any ElementPropertyValue::get() const {
-  auto properties = m_impl->element_properties(m_id);
-  return internal::util::map::lookup_map_default(properties, m_property,
-                                                 std::any());
-}
-
-void ElementPropertyValue::set(const std::any &value) const {
-  m_impl->update_element_properties(m_id, {{m_property, value}});
-}
-
-void ElementPropertyValue::remove() const {
-  m_impl->update_element_properties(m_id, {{m_property, {}}});
-}
-
-TableColumnPropertyValue::TableColumnPropertyValue() = default;
-
-TableColumnPropertyValue::TableColumnPropertyValue(
-    std::shared_ptr<const internal::abstract::Table> impl,
-    const std::uint32_t column, const ElementProperty property)
-    : m_impl{std::move(impl)}, m_column{column}, m_property{property} {}
-
-bool TableColumnPropertyValue::operator==(
-    const TableColumnPropertyValue &rhs) const {
-  return m_impl == rhs.m_impl && m_column == rhs.m_column &&
-         m_property == rhs.m_property;
-}
-
-bool TableColumnPropertyValue::operator!=(
-    const TableColumnPropertyValue &rhs) const {
-  return m_impl != rhs.m_impl || m_column != rhs.m_column ||
-         m_property != rhs.m_property;
-}
-
-TableColumnPropertyValue::operator bool() const {
-  return m_impl.operator bool() && get().has_value();
-}
-
-std::any TableColumnPropertyValue::get() const {
-  auto properties = m_impl->column_properties(m_column);
-  return internal::util::map::lookup_map_default(properties, m_property,
-                                                 std::any());
-}
-
-void TableColumnPropertyValue::set(const std::any &value) const {
-  m_impl->update_column_properties(m_column, {{m_property, value}});
-}
-
-void TableColumnPropertyValue::remove() const {
-  m_impl->update_column_properties(m_column, {{m_property, {}}});
-}
-
-TableRowPropertyValue::TableRowPropertyValue() = default;
-
-TableRowPropertyValue::TableRowPropertyValue(
-    std::shared_ptr<const internal::abstract::Table> impl,
-    const std::uint32_t row, const ElementProperty property)
-    : m_impl{std::move(impl)}, m_row{row}, m_property{property} {}
-
-bool TableRowPropertyValue::operator==(const TableRowPropertyValue &rhs) const {
-  return m_impl == rhs.m_impl && m_row == rhs.m_row &&
-         m_property == rhs.m_property;
-}
-
-bool TableRowPropertyValue::operator!=(const TableRowPropertyValue &rhs) const {
-  return m_impl != rhs.m_impl || m_row != rhs.m_row ||
-         m_property != rhs.m_property;
-}
-
-TableRowPropertyValue::operator bool() const {
-  return m_impl.operator bool() && get().has_value();
-}
-
-std::any TableRowPropertyValue::get() const {
-  auto properties = m_impl->row_properties(m_row);
-  return internal::util::map::lookup_map_default(properties, m_property,
-                                                 std::any());
-}
-
-void TableRowPropertyValue::set(const std::any &value) const {
-  m_impl->update_row_properties(m_row, {{m_property, value}});
-}
-
-void TableRowPropertyValue::remove() const {
-  m_impl->update_row_properties(m_row, {{m_property, {}}});
-}
-
-TableCellPropertyValue::TableCellPropertyValue() = default;
-
-TableCellPropertyValue::TableCellPropertyValue(
-    std::shared_ptr<const internal::abstract::Table> impl,
-    const std::uint32_t row, const std::uint32_t column,
-    const ElementProperty property)
-    : m_impl{std::move(impl)}, m_row{row}, m_column{column}, m_property{
-                                                                 property} {}
-
-bool TableCellPropertyValue::operator==(
-    const TableCellPropertyValue &rhs) const {
-  return m_impl == rhs.m_impl && m_row == rhs.m_row &&
-         m_column == rhs.m_column && m_property == rhs.m_property;
-}
-
-bool TableCellPropertyValue::operator!=(
-    const TableCellPropertyValue &rhs) const {
-  return m_impl != rhs.m_impl || m_row != rhs.m_row ||
-         m_column != rhs.m_column || m_property != rhs.m_property;
-}
-
-TableCellPropertyValue::operator bool() const {
-  return m_impl.operator bool() && get().has_value();
-}
-
-std::any TableCellPropertyValue::get() const {
-  auto properties = m_impl->cell_properties(m_row, m_column);
-  return internal::util::map::lookup_map_default(properties, m_property,
-                                                 std::any());
-}
-
-void TableCellPropertyValue::set(const std::any &value) const {
-  m_impl->update_cell_properties(m_row, m_column, {{m_property, value}});
-}
-
-void TableCellPropertyValue::remove() const {
-  m_impl->update_cell_properties(m_row, m_column, {{m_property, {}}});
 }
 
 } // namespace odr

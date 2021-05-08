@@ -40,7 +40,7 @@ private:
 
   StylePropertyRegistry() {
     register_text_(ElementType::PARAGRAPH);
-    register_paragraph_();
+    register_paragraph_(ElementType::PARAGRAPH);
 
     register_text_(ElementType::SPAN);
 
@@ -54,6 +54,7 @@ private:
     register_table_row_();
 
     register_text_(ElementType::TABLE_CELL);
+    register_paragraph_(ElementType::TABLE_CELL);
     register_table_cell_();
 
     register_graphic_(ElementType::RECT);
@@ -120,8 +121,7 @@ private:
     m_registry[element][right_property].get = get_factory(attribute_right_name);
   }
 
-  void register_paragraph_() {
-    static auto element = ElementType::PARAGRAPH;
+  void register_paragraph_(const ElementType element) {
     static auto property_class_name = "style:paragraph-properties";
     default_register_(element, ElementProperty::TEXT_ALIGN, property_class_name,
                       "fo:text-align");
@@ -168,9 +168,11 @@ private:
 
   void register_table_cell_() {
     static auto property_class_name = "style:table-cell-properties";
+    default_register_(ElementType::TABLE_CELL, ElementProperty::VERTICAL_ALIGN,
+                      property_class_name, "style:vertical-align");
     default_register_(ElementType::TABLE_CELL,
-                      ElementProperty::BACKGROUND_COLOR, property_class_name,
-                      "fo:background-color");
+                      ElementProperty::TABLE_CELL_BACKGROUND_COLOR,
+                      property_class_name, "fo:background-color");
     default_register_directions_(
         ElementType::TABLE_CELL, ElementProperty::PADDING_TOP,
         ElementProperty::PADDING_BOTTOM, ElementProperty::PADDING_LEFT,

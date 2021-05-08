@@ -19,6 +19,8 @@ public:
 
   [[nodiscard]] TableDimensions dimensions() const final;
 
+  [[nodiscard]] common::TableRange content_bounds() const final;
+
   [[nodiscard]] ElementIdentifier
   cell_first_child(std::uint32_t row, std::uint32_t column) const final;
 
@@ -64,6 +66,7 @@ private:
 
   struct Row {
     pugi::xml_node node;
+    std::map<std::uint32_t, Cell> cells;
   };
 
   OpenDocument &m_document;
@@ -72,7 +75,6 @@ private:
 
   std::map<std::uint32_t, Column> m_columns;
   std::map<std::uint32_t, Row> m_rows;
-  std::unordered_map<common::TablePosition, Cell> m_cells;
 
   void register_(pugi::xml_node node);
 

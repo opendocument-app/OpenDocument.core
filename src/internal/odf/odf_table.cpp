@@ -1,3 +1,4 @@
+#include <internal/common/table_range.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_table.h>
 #include <odr/exceptions.h>
@@ -109,13 +110,12 @@ void Table::register_(const pugi::xml_node node) {
     const auto rows_repeated =
         row.attribute("table:number-rows-repeated").as_uint(1);
 
-    Row new_row;
-    new_row.node = row;
-    m_rows[row_index] = new_row;
-
     bool row_empty = true;
 
     for (std::uint32_t i = 0; i < rows_repeated; ++i) {
+      Row new_row;
+      new_row.node = row;
+
       std::uint32_t cell_index = 0;
       for (auto cell : row.children("table:table-cell")) {
         const auto cells_repeated =
@@ -127,12 +127,12 @@ void Table::register_(const pugi::xml_node node) {
           // TODO parent?
           auto first_child = m_document.register_children_(cell, {}, {}).first;
 
-          if (first_child) {
-            Cell new_cell;
-            new_cell.node = cell;
-            new_cell.first_child = first_child;
-            m_cells[{row_index, cell_index}] = new_cell;
+          Cell new_cell;
+          new_cell.node = cell;
+          new_cell.first_child = first_child;
+          new_row.cells[cell_index] = new_cell;
 
+          if (first_child) {
             cell_empty = false;
             row_empty = false;
           }
@@ -145,6 +145,8 @@ void Table::register_(const pugi::xml_node node) {
           ++cell_index;
         }
       }
+
+      m_rows[row_index] = new_row;
 
       if (row_empty) {
         row_index += rows_repeated;
@@ -163,6 +165,10 @@ void Table::register_(const pugi::xml_node node) {
 }
 
 [[nodiscard]] TableDimensions Table::dimensions() const { return m_dimensions; }
+
+common::TableRange Table::content_bounds() const {
+  return {}; // TODO
+}
 
 [[nodiscard]] ElementIdentifier
 Table::cell_first_child(const std::uint32_t row,
@@ -281,26 +287,41 @@ void Table::decouple_cell(const std::uint32_t row,
 }
 
 const Table::Column *Table::column_(const std::uint32_t column) const {
-  auto it = m_columns.lower_bound(column);
+  auto it = m_columns.upper_bound(column);
   if (it == std::end(m_columns)) {
     return nullptr;
+  }
+  if (it != std::begin(m_columns)) {
+    --it;
   }
   return &it->second;
 }
 
 const Table::Row *Table::row_(const std::uint32_t row) const {
-  auto it = m_rows.lower_bound(row);
+  auto it = m_rows.upper_bound(row);
   if (it == std::end(m_rows)) {
     return nullptr;
+  }
+  if (it != std::begin(m_rows)) {
+    --it;
   }
   return &it->second;
 }
 
 const Table::Cell *Table::cell_(const std::uint32_t row,
                                 const std::uint32_t column) const {
-  auto it = m_cells.find({row, column});
-  if (it == std::end(m_cells)) {
+  auto row_ptr = row_(row);
+  if (row_ptr == nullptr) {
     return nullptr;
+  }
+
+  auto &&cells = row_ptr->cells;
+  auto it = cells.upper_bound(column);
+  if (it == std::end(cells)) {
+    return nullptr;
+  }
+  if (it != std::begin(cells)) {
+    --it;
   }
   return &it->second;
 }

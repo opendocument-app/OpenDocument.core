@@ -24,156 +24,135 @@ void translate_generation(const ElementRange &siblings, std::ostream &out,
 void translate_element(const Element &element, std::ostream &out,
                        const HtmlConfig &config);
 
-std::string translate_paragraph_style(const Element &element) {
+std::string translate_paragraph_style(const PropertySet &properties) {
   std::string result;
-  if (auto text_align = element.property(ElementProperty::TEXT_ALIGN)) {
-    result += "text-align:" + text_align.get_string() + ";";
+  if (auto text_align = properties.get_string(ElementProperty::TEXT_ALIGN)) {
+    result += "text-align:" + *text_align + ";";
   }
-  if (auto margin_top = element.property(ElementProperty::MARGIN_TOP)) {
-    result += "margin-top:" + margin_top.get_string() + ";";
+  if (auto margin_top = properties.get_string(ElementProperty::MARGIN_TOP)) {
+    result += "margin-top:" + *margin_top + ";";
   }
-  if (auto margin_bottom = element.property(ElementProperty::MARGIN_BOTTOM)) {
-    result += "margin-bottom:" + margin_bottom.get_string() + ";";
+  if (auto margin_bottom =
+          properties.get_string(ElementProperty::MARGIN_BOTTOM)) {
+    result += "margin-bottom:" + *margin_bottom + ";";
   }
-  if (auto margin_left = element.property(ElementProperty::MARGIN_LEFT)) {
-    result += "margin-left:" + margin_left.get_string() + ";";
+  if (auto margin_left = properties.get_string(ElementProperty::MARGIN_LEFT)) {
+    result += "margin-left:" + *margin_left + ";";
   }
-  if (auto margin_right = element.property(ElementProperty::MARGIN_RIGHT)) {
-    result += "margin-right:" + margin_right.get_string() + ";";
+  if (auto margin_right =
+          properties.get_string(ElementProperty::MARGIN_RIGHT)) {
+    result += "margin-right:" + *margin_right + ";";
   }
   return result;
 }
 
-std::string translate_text_style(const Element &element) {
+std::string translate_text_style(const PropertySet &properties) {
   std::string result;
-  if (auto font_name = element.property(ElementProperty::FONT_NAME)) {
-    result += "font-family:" + font_name.get_string() + ";";
+  if (auto font_name = properties.get_string(ElementProperty::FONT_NAME)) {
+    result += "font-family:" + *font_name + ";";
   }
-  if (auto font_size = element.property(ElementProperty::FONT_SIZE);
+  if (auto font_size = properties.get_string(ElementProperty::FONT_SIZE);
       font_size) {
-    result += "font-size:" + font_size.get_string() + ";";
+    result += "font-size:" + *font_size + ";";
   }
-  if (auto font_weight = element.property(ElementProperty::FONT_WEIGHT)) {
-    result += "font-weight:" + font_weight.get_string() + ";";
+  if (auto font_weight = properties.get_string(ElementProperty::FONT_WEIGHT)) {
+    result += "font-weight:" + *font_weight + ";";
   }
-  if (auto font_style = element.property(ElementProperty::FONT_STYLE)) {
-    result += "font-style:" + font_style.get_string() + ";";
+  if (auto font_style = properties.get_string(ElementProperty::FONT_STYLE)) {
+    result += "font-style:" + *font_style + ";";
   }
-  if (auto underline = element.property(ElementProperty::FONT_UNDERLINE);
-      underline && underline.get_string() == "solid") {
+  if (auto underline = properties.get_string(ElementProperty::FONT_UNDERLINE);
+      underline && underline == "solid") {
     result += "text-decoration:underline;";
   }
   if (auto strikethrough =
-          element.property(ElementProperty::FONT_STRIKETHROUGH);
-      strikethrough && strikethrough.get_string() == "solid") {
+          properties.get_string(ElementProperty::FONT_STRIKETHROUGH);
+      strikethrough && strikethrough == "solid") {
     result += "text-decoration:line-through;";
   }
-  if (auto font_shadow = element.property(ElementProperty::FONT_SHADOW)) {
-    result += "text-shadow:" + font_shadow.get_string() + ";";
+  if (auto font_shadow = properties.get_string(ElementProperty::FONT_SHADOW)) {
+    result += "text-shadow:" + *font_shadow + ";";
   }
-  if (auto font_color = element.property(ElementProperty::FONT_COLOR)) {
-    result += "color:" + font_color.get_string() + ";";
+  if (auto font_color = properties.get_string(ElementProperty::FONT_COLOR)) {
+    result += "color:" + *font_color + ";";
   }
   if (auto background_color =
-          element.property(ElementProperty::BACKGROUND_COLOR);
-      background_color && background_color.get_string() != "transparent") {
-    result += "background-color:" + background_color.get_string() + ";";
+          properties.get_string(ElementProperty::BACKGROUND_COLOR);
+      background_color && background_color != "transparent") {
+    result += "background-color:" + *background_color + ";";
   }
   return result;
 }
 
-std::string translate_table_style(const Element &element) {
+std::string translate_table_style(const PropertySet &properties) {
   std::string result;
-  if (auto width = element.property(ElementProperty::WIDTH); width) {
-    result += "width:" + width.get_string() + ";";
+  if (auto width = properties.get_string(ElementProperty::WIDTH); width) {
+    result += "width:" + *width + ";";
   }
   return result;
 }
 
-std::string translate_table_column_style(const TableColumn &element) {
+std::string translate_table_column_style(const PropertySet &properties) {
   std::string result;
-  if (auto width = element.property(ElementProperty::WIDTH)) {
-    result += "width:" + width.get_string() + ";";
+  if (auto width = properties.get_string(ElementProperty::WIDTH)) {
+    result += "width:" + *width + ";";
   }
   return result;
 }
 
-std::string translate_table_row_style(const TableRow &element) {
+std::string translate_table_row_style(const PropertySet &properties) {
   std::string result;
   // TODO that does not work with HTML; height would need to be applied to the
   // cells
-  if (auto height = element.property(ElementProperty::HEIGHT)) {
-    result += "height:" + height.get_string() + ";";
+  if (auto height = properties.get_string(ElementProperty::HEIGHT)) {
+    result += "height:" + *height + ";";
   }
   return result;
 }
 
-std::string translate_table_cell_style(const TableCell &element) {
+std::string translate_table_cell_style(const PropertySet &properties) {
   std::string result;
 
-  // TODO copy from text style
-  if (auto font_name = element.property(ElementProperty::FONT_NAME)) {
-    result += "font-family:" + font_name.get_string() + ";";
-  }
-  if (auto font_size = element.property(ElementProperty::FONT_SIZE);
-      font_size) {
-    result += "font-size:" + font_size.get_string() + ";";
-  }
-  if (auto font_weight = element.property(ElementProperty::FONT_WEIGHT)) {
-    result += "font-weight:" + font_weight.get_string() + ";";
-  }
-  if (auto font_style = element.property(ElementProperty::FONT_STYLE)) {
-    result += "font-style:" + font_style.get_string() + ";";
-  }
-  if (auto underline = element.property(ElementProperty::FONT_UNDERLINE);
-      underline && underline.get_string() == "solid") {
-    result += "text-decoration:underline;";
-  }
-  if (auto strikethrough =
-          element.property(ElementProperty::FONT_STRIKETHROUGH);
-      strikethrough && strikethrough.get_string() == "solid") {
-    result += "text-decoration:line-through;";
-  }
-  if (auto font_shadow = element.property(ElementProperty::FONT_SHADOW)) {
-    result += "text-shadow:" + font_shadow.get_string() + ";";
-  }
-  if (auto font_color = element.property(ElementProperty::FONT_COLOR)) {
-    result += "color:" + font_color.get_string() + ";";
-  }
-  if (auto background_color =
-          element.property(ElementProperty::BACKGROUND_COLOR);
-      background_color && background_color.get_string() != "transparent") {
-    result += "background-color:" + background_color.get_string() + ";";
-  }
+  translate_text_style(properties);
+  translate_paragraph_style(properties);
 
+  if (auto vertical_align =
+          properties.get_string(ElementProperty::VERTICAL_ALIGN)) {
+    // TODO
+  }
   if (auto background_color =
-          element.property(ElementProperty::BACKGROUND_COLOR);
-      background_color && background_color.get_string() != "transparent") {
-    result += "background-color:" + background_color.get_string() + ";";
+          properties.get_string(ElementProperty::TABLE_CELL_BACKGROUND_COLOR);
+      background_color && *background_color != "transparent") {
+    result += "background-color:" + *background_color + ";";
   }
-  if (auto padding_top = element.property(ElementProperty::PADDING_TOP)) {
-    result += "padding-top:" + padding_top.get_string() + ";";
+  if (auto padding_top = properties.get_string(ElementProperty::PADDING_TOP)) {
+    result += "padding-top:" + *padding_top + ";";
   }
-  if (auto padding_bottom = element.property(ElementProperty::PADDING_BOTTOM)) {
-    result += "padding-bottom:" + padding_bottom.get_string() + ";";
+  if (auto padding_bottom =
+          properties.get_string(ElementProperty::PADDING_BOTTOM)) {
+    result += "padding-bottom:" + *padding_bottom + ";";
   }
-  if (auto padding_left = element.property(ElementProperty::PADDING_LEFT)) {
-    result += "padding-left:" + padding_left.get_string() + ";";
+  if (auto padding_left =
+          properties.get_string(ElementProperty::PADDING_LEFT)) {
+    result += "padding-left:" + *padding_left + ";";
   }
-  if (auto padding_right = element.property(ElementProperty::PADDING_RIGHT)) {
-    result += "padding-right:" + padding_right.get_string() + ";";
+  if (auto padding_right =
+          properties.get_string(ElementProperty::PADDING_RIGHT)) {
+    result += "padding-right:" + *padding_right + ";";
   }
-  if (auto border_top = element.property(ElementProperty::BORDER_TOP)) {
-    result += "border-top:" + border_top.get_string() + ";";
+  if (auto border_top = properties.get_string(ElementProperty::BORDER_TOP)) {
+    result += "border-top:" + *border_top + ";";
   }
-  if (auto border_bottom = element.property(ElementProperty::BORDER_BOTTOM)) {
-    result += "border-bottom:" + border_bottom.get_string() + ";";
+  if (auto border_bottom =
+          properties.get_string(ElementProperty::BORDER_BOTTOM)) {
+    result += "border-bottom:" + *border_bottom + ";";
   }
-  if (auto border_left = element.property(ElementProperty::BORDER_LEFT)) {
-    result += "border-left:" + border_left.get_string() + ";";
+  if (auto border_left = properties.get_string(ElementProperty::BORDER_LEFT)) {
+    result += "border-left:" + *border_left + ";";
   }
-  if (auto border_right = element.property(ElementProperty::BORDER_RIGHT)) {
-    result += "border-right:" + border_right.get_string() + ";";
+  if (auto border_right =
+          properties.get_string(ElementProperty::BORDER_RIGHT)) {
+    result += "border-right:" + *border_right + ";";
   }
   return result;
 }
@@ -260,11 +239,13 @@ std::string optional_style_attribute(const std::string &style) {
 
 void translate_paragraph(const Paragraph &element, std::ostream &out,
                          const HtmlConfig &config) {
+  auto properties = element.properties();
+
   out << "<p";
-  out << optional_style_attribute(translate_paragraph_style(element));
+  out << optional_style_attribute(translate_paragraph_style(properties));
   out << ">";
   out << "<span";
-  out << optional_style_attribute(translate_text_style(element));
+  out << optional_style_attribute(translate_text_style(properties));
   out << ">";
   translate_generation(element.children(), out, config);
   out << "</span>";
@@ -273,8 +254,10 @@ void translate_paragraph(const Paragraph &element, std::ostream &out,
 
 void translate_span(const Span &element, std::ostream &out,
                     const HtmlConfig &config) {
+  auto properties = element.properties();
+
   out << "<span";
-  out << optional_style_attribute(translate_text_style(element));
+  out << optional_style_attribute(translate_text_style(properties));
   out << ">";
   translate_generation(element.children(), out, config);
   out << "</span>";
@@ -282,8 +265,10 @@ void translate_span(const Span &element, std::ostream &out,
 
 void translate_link(const Link &element, std::ostream &out,
                     const HtmlConfig &config) {
+  auto properties = element.properties();
+
   out << "<a";
-  out << optional_style_attribute(translate_text_style(element));
+  out << optional_style_attribute(translate_text_style(properties));
   out << " href=\"";
   out << element.href();
   out << "\">";
@@ -311,8 +296,10 @@ void translate_list(const List &element, std::ostream &out,
 
 void translate_table(const Table &element, std::ostream &out,
                      const HtmlConfig &config) {
+  auto properties = element.properties();
+
   out << "<table";
-  out << optional_style_attribute(translate_table_style(element));
+  out << optional_style_attribute(translate_table_style(properties));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
@@ -340,8 +327,11 @@ void translate_table(const Table &element, std::ostream &out,
     }
     ++column_index;
 
+    auto column_properties = col.properties();
+
     out << "<col";
-    out << optional_style_attribute(translate_table_column_style(col));
+    out << optional_style_attribute(
+        translate_table_column_style(column_properties));
     out << ">";
   }
 
@@ -352,25 +342,34 @@ void translate_table(const Table &element, std::ostream &out,
     }
     ++row_index;
 
+    auto row_properties = row.properties();
+
     out << "<tr";
-    out << optional_style_attribute(translate_table_row_style(row));
+    out << optional_style_attribute(translate_table_row_style(row_properties));
     out << ">";
 
-    std::uint32_t column_index = 0;
+    std::uint32_t cell_index = 0;
     for (auto &&cell : row.cells()) {
-      if (end_column && (column_index >= end_column)) {
+      if (end_column && (cell_index >= end_column)) {
         break;
       }
-      ++column_index;
+      ++cell_index;
+
+      auto cell_properties = cell.properties();
 
       out << "<td";
-      if (cell.column_span() > 1) {
-        out << " colspan=\"" << cell.column_span() << "\"";
+      if (auto column_span = cell_properties.get_uint32(
+              ElementProperty::TABLE_CELL_COLUMN_SPAN);
+          column_span && *column_span > 1) {
+        out << " colspan=\"" << *column_span << "\"";
       }
-      if (cell.row_span() > 1) {
-        out << " rowspan=\"" << cell.row_span() << "\"";
+      if (auto row_span =
+              cell_properties.get_uint32(ElementProperty::TABLE_CELL_ROW_SPAN);
+          row_span && *row_span > 1) {
+        out << " rowspan=\"" << *row_span << "\"";
       }
-      out << optional_style_attribute(translate_table_cell_style(cell));
+      out << optional_style_attribute(
+          translate_table_cell_style(cell_properties));
       out << ">";
       translate_generation(cell.children(), out, config);
       out << "</td>";
