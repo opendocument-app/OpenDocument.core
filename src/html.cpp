@@ -310,6 +310,12 @@ void translate_table(const Table &element, std::ostream &out,
       ++column_index;
 
       out << "<td";
+      if (cell.column_span() > 1) {
+        out << " colspan=\"" << cell.column_span() << "\"";
+      }
+      if (cell.row_span() > 1) {
+        out << " rowspan=\"" << cell.row_span() << "\"";
+      }
       out << optional_style_attribute(translate_table_cell_style(cell));
       out << ">";
       translate_generation(cell.children(), out, config);

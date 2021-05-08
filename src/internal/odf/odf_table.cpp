@@ -12,16 +12,19 @@ Table::Table(OpenDocument &document, const pugi::xml_node node)
 void Table::register_(const pugi::xml_node node) {
   std::uint32_t column_index = 0;
   for (auto column : node.children("table:table-column")) {
+    const auto columns_repeated =
+        column.attribute("table:number-columns-repeated").as_uint(1);
+
     Column new_column;
     new_column.node = column;
     m_columns[column_index] = new_column;
-    ++column_index;
+    column_index += columns_repeated;
   }
 
   std::uint32_t row_index = 0;
   for (auto row : node.children("table:table-row")) {
     const auto rows_repeated =
-        node.attribute("table:number-rows-repeated").as_uint(1);
+        row.attribute("table:number-rows-repeated").as_uint(1);
 
     Row new_row;
     new_row.node = row;
@@ -31,7 +34,7 @@ void Table::register_(const pugi::xml_node node) {
       std::uint32_t cell_index = 0;
       for (auto cell : row.children("table:table-cell")) {
         const auto cells_repeated =
-            node.attribute("table:number-columns-repeated").as_uint(1);
+            cell.attribute("table:number-columns-repeated").as_uint(1);
 
         for (std::uint32_t j = 0; j < cells_repeated; ++j) {
           // TODO parent?
@@ -78,8 +81,7 @@ Table::column_properties(const std::uint32_t column) const {
 
   std::unordered_map<ElementProperty, std::any> result;
 
-  if (auto style_name_attribute = c->node.attribute("table:style-name");
-      style_name_attribute) {
+  if (auto style_name_attribute = c->node.attribute("table:style-name")) {
     const char *style_name = style_name_attribute.value();
     result[ElementProperty::STYLE_NAME] = style_name;
 
@@ -123,9 +125,20 @@ Table::cell_properties(const std::uint32_t row,
 
   std::unordered_map<ElementProperty, std::any> result;
 
+  if (auto columns_spanned =
+          c->node.attribute("table:number-columns-spanned").as_uint(1);
+      columns_spanned > 1) {
+    result[ElementProperty::TABLE_CELL_COLUMN_SPAN] = columns_spanned;
+  }
+
+  if (auto rows_spanned =
+          c->node.attribute("table:number-rows-spanned").as_uint(1);
+      rows_spanned > 1) {
+    result[ElementProperty::TABLE_CELL_ROW_SPAN] = rows_spanned;
+  }
+
   // TODO default cell style
-  if (auto style_name_attribute = c->node.attribute("table:style-name");
-      style_name_attribute) {
+  if (auto style_name_attribute = c->node.attribute("table:style-name")) {
     const char *style_name = style_name_attribute.value();
     result[ElementProperty::STYLE_NAME] = style_name;
 
