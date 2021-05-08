@@ -98,8 +98,59 @@ std::string translate_table_column_style(const TableColumn &element) {
   return result;
 }
 
+std::string translate_table_row_style(const TableRow &element) {
+  std::string result;
+  // TODO that does not work with HTML; height would need to be applied to the
+  // cells
+  if (auto height = element.property(ElementProperty::HEIGHT)) {
+    result += "height:" + height.get_string() + ";";
+  }
+  return result;
+}
+
 std::string translate_table_cell_style(const TableCell &element) {
   std::string result;
+
+  // TODO copy from text style
+  if (auto font_name = element.property(ElementProperty::FONT_NAME)) {
+    result += "font-family:" + font_name.get_string() + ";";
+  }
+  if (auto font_size = element.property(ElementProperty::FONT_SIZE);
+      font_size) {
+    result += "font-size:" + font_size.get_string() + ";";
+  }
+  if (auto font_weight = element.property(ElementProperty::FONT_WEIGHT)) {
+    result += "font-weight:" + font_weight.get_string() + ";";
+  }
+  if (auto font_style = element.property(ElementProperty::FONT_STYLE)) {
+    result += "font-style:" + font_style.get_string() + ";";
+  }
+  if (auto underline = element.property(ElementProperty::FONT_UNDERLINE);
+      underline && underline.get_string() == "solid") {
+    result += "text-decoration:underline;";
+  }
+  if (auto strikethrough =
+          element.property(ElementProperty::FONT_STRIKETHROUGH);
+      strikethrough && strikethrough.get_string() == "solid") {
+    result += "text-decoration:line-through;";
+  }
+  if (auto font_shadow = element.property(ElementProperty::FONT_SHADOW)) {
+    result += "text-shadow:" + font_shadow.get_string() + ";";
+  }
+  if (auto font_color = element.property(ElementProperty::FONT_COLOR)) {
+    result += "color:" + font_color.get_string() + ";";
+  }
+  if (auto background_color =
+          element.property(ElementProperty::BACKGROUND_COLOR);
+      background_color && background_color.get_string() != "transparent") {
+    result += "background-color:" + background_color.get_string() + ";";
+  }
+
+  if (auto background_color =
+          element.property(ElementProperty::BACKGROUND_COLOR);
+      background_color && background_color.get_string() != "transparent") {
+    result += "background-color:" + background_color.get_string() + ";";
+  }
   if (auto padding_top = element.property(ElementProperty::PADDING_TOP)) {
     result += "padding-top:" + padding_top.get_string() + ";";
   }
@@ -301,7 +352,10 @@ void translate_table(const Table &element, std::ostream &out,
     }
     ++row_index;
 
-    out << "<tr>";
+    out << "<tr";
+    out << optional_style_attribute(translate_table_row_style(row));
+    out << ">";
+
     std::uint32_t column_index = 0;
     for (auto &&cell : row.cells()) {
       if (end_column && (column_index >= end_column)) {
@@ -321,6 +375,7 @@ void translate_table(const Table &element, std::ostream &out,
       translate_generation(cell.children(), out, config);
       out << "</td>";
     }
+
     out << "</tr>";
   }
 
@@ -624,6 +679,9 @@ void html::translate(const Document &document,
   out << common::html::default_headers();
   out << "<style>";
   out << common::html::default_style();
+  if (document.document_type() == DocumentType::SPREADSHEET) {
+    out << common::html::default_spreadsheet_style();
+  }
   out << "</style>";
   out << "</head>";
 

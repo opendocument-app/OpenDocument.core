@@ -51,6 +51,8 @@ private:
   friend class OpenDocument;
   friend class Style;
 
+  class PropertyRegistry;
+
   struct Column {
     pugi::xml_node node;
   };

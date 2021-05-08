@@ -39,8 +39,8 @@ private:
       m_registry;
 
   StylePropertyRegistry() {
-    register_paragraph_();
     register_text_(ElementType::PARAGRAPH);
+    register_paragraph_();
 
     register_text_(ElementType::SPAN);
 
@@ -50,6 +50,10 @@ private:
                       "style:table-properties", "style:width");
 
     register_table_column_();
+
+    register_table_row_();
+
+    register_text_(ElementType::TABLE_CELL);
     register_table_cell_();
 
     register_graphic_(ElementType::RECT);
@@ -156,8 +160,17 @@ private:
                       property_class_name, "style:column-width");
   }
 
+  void register_table_row_() {
+    static auto property_class_name = "style:table-row-properties";
+    default_register_(ElementType::TABLE_ROW, ElementProperty::HEIGHT,
+                      property_class_name, "style:row-height");
+  }
+
   void register_table_cell_() {
     static auto property_class_name = "style:table-cell-properties";
+    default_register_(ElementType::TABLE_CELL,
+                      ElementProperty::BACKGROUND_COLOR, property_class_name,
+                      "fo:background-color");
     default_register_directions_(
         ElementType::TABLE_CELL, ElementProperty::PADDING_TOP,
         ElementProperty::PADDING_BOTTOM, ElementProperty::PADDING_LEFT,

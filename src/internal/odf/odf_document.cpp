@@ -481,6 +481,7 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
     result.insert(std::begin(style_properties), std::end(style_properties));
   }
 
+  // TODO this check does not need to happen all the time
   if (auto master_page_name_it = result.find(ElementProperty::MASTER_PAGE_NAME);
       master_page_name_it != std::end(result)) {
     auto master_page_name =

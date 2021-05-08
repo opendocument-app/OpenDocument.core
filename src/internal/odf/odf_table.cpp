@@ -4,6 +4,89 @@
 
 namespace odr::internal::odf {
 
+class Table::PropertyRegistry final {
+public:
+  using Get = std::function<std::any(pugi::xml_node node)>;
+
+  static PropertyRegistry &instance() {
+    static PropertyRegistry instance;
+    return instance;
+  }
+
+  void
+  resolve_properties(const ElementType element, const pugi::xml_node node,
+                     std::unordered_map<ElementProperty, std::any> &result) {
+    auto it = m_registry.find(element);
+    if (it == std::end(m_registry)) {
+      return;
+    }
+    for (auto &&p : it->second) {
+      auto value = p.second.get(node);
+      if (value.has_value()) {
+        result[p.first] = value;
+      }
+    }
+  }
+
+private:
+  struct Entry {
+    Get get;
+  };
+
+  std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
+      m_registry;
+
+  PropertyRegistry() {
+    static auto table_style_attribute = "table:style-name";
+
+    default_register_(ElementType::TABLE_COLUMN, ElementProperty::STYLE_NAME,
+                      table_style_attribute);
+    default_register_(ElementType::TABLE_COLUMN,
+                      ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME,
+                      "table:default-cell-style-name");
+
+    default_register_(ElementType::TABLE_ROW, ElementProperty::STYLE_NAME,
+                      table_style_attribute);
+
+    default_register_(ElementType::TABLE_CELL, ElementProperty::STYLE_NAME,
+                      table_style_attribute);
+    register_span_(ElementType::TABLE_CELL,
+                   ElementProperty::TABLE_CELL_COLUMN_SPAN,
+                   "table:number-columns-spanned");
+    register_span_(ElementType::TABLE_CELL,
+                   ElementProperty::TABLE_CELL_ROW_SPAN,
+                   "table:number-rows-spanned");
+  }
+
+  void register_(const ElementType element, const ElementProperty property,
+                 Get get) {
+    m_registry[element][property].get = std::move(get);
+  }
+
+  void default_register_(const ElementType element,
+                         const ElementProperty property,
+                         const char *attribute_name) {
+    register_(element, property, [attribute_name](const pugi::xml_node node) {
+      auto attribute = node.attribute(attribute_name);
+      if (!attribute) {
+        return std::any();
+      }
+      return std::any(attribute.value());
+    });
+  }
+
+  void register_span_(const ElementType element, const ElementProperty property,
+                      const char *attribute_name) {
+    register_(element, property, [attribute_name](const pugi::xml_node node) {
+      auto attribute = node.attribute(attribute_name);
+      if (auto span = attribute.as_uint(1); span > 1) {
+        return std::any(span);
+      }
+      return std::any();
+    });
+  }
+};
+
 Table::Table(OpenDocument &document, const pugi::xml_node node)
     : m_document{document} {
   register_(node);
@@ -55,6 +138,7 @@ void Table::register_(const pugi::xml_node node) {
           }
 
           if (cell_empty) {
+            cell_index += cells_repeated;
             break;
           }
 
@@ -63,6 +147,7 @@ void Table::register_(const pugi::xml_node node) {
       }
 
       if (row_empty) {
+        row_index += rows_repeated;
         break;
       }
 
@@ -98,10 +183,12 @@ Table::column_properties(const std::uint32_t column) const {
 
   std::unordered_map<ElementProperty, std::any> result;
 
-  if (auto style_name_attribute = c->node.attribute("table:style-name")) {
-    const char *style_name = style_name_attribute.value();
-    result[ElementProperty::STYLE_NAME] = style_name;
+  PropertyRegistry::instance().resolve_properties(ElementType::TABLE_COLUMN,
+                                                  c->node, result);
 
+  if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
+      style_name_it != std::end(result)) {
+    auto style_name = std::any_cast<const char *>(style_name_it->second);
     auto style_properties =
         m_document.m_style.resolve_style(ElementType::TABLE_COLUMN, style_name);
     result.insert(std::begin(style_properties), std::end(style_properties));
@@ -119,11 +206,12 @@ Table::row_properties(const std::uint32_t row) const {
 
   std::unordered_map<ElementProperty, std::any> result;
 
-  if (auto style_name_attribute = r->node.attribute("table:style-name");
-      style_name_attribute) {
-    const char *style_name = style_name_attribute.value();
-    result[ElementProperty::STYLE_NAME] = style_name;
+  PropertyRegistry::instance().resolve_properties(ElementType::TABLE_ROW,
+                                                  r->node, result);
 
+  if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
+      style_name_it != std::end(result)) {
+    auto style_name = std::any_cast<const char *>(style_name_it->second);
     auto style_properties =
         m_document.m_style.resolve_style(ElementType::TABLE_ROW, style_name);
     result.insert(std::begin(style_properties), std::end(style_properties));
@@ -142,25 +230,22 @@ Table::cell_properties(const std::uint32_t row,
 
   std::unordered_map<ElementProperty, std::any> result;
 
-  if (auto columns_spanned =
-          c->node.attribute("table:number-columns-spanned").as_uint(1);
-      columns_spanned > 1) {
-    result[ElementProperty::TABLE_CELL_COLUMN_SPAN] = columns_spanned;
+  PropertyRegistry::instance().resolve_properties(ElementType::TABLE_CELL,
+                                                  c->node, result);
+
+  std::optional<std::string> style_name;
+  if (auto it =
+          result.find(ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME);
+      it != std::end(result)) {
+    style_name = std::any_cast<const char *>(it->second);
   }
-
-  if (auto rows_spanned =
-          c->node.attribute("table:number-rows-spanned").as_uint(1);
-      rows_spanned > 1) {
-    result[ElementProperty::TABLE_CELL_ROW_SPAN] = rows_spanned;
+  if (auto it = result.find(ElementProperty::STYLE_NAME);
+      it != std::end(result)) {
+    style_name = std::any_cast<const char *>(it->second);
   }
-
-  // TODO default cell style
-  if (auto style_name_attribute = c->node.attribute("table:style-name")) {
-    const char *style_name = style_name_attribute.value();
-    result[ElementProperty::STYLE_NAME] = style_name;
-
+  if (style_name) {
     auto style_properties =
-        m_document.m_style.resolve_style(ElementType::TABLE_CELL, style_name);
+        m_document.m_style.resolve_style(ElementType::TABLE_CELL, *style_name);
     result.insert(std::begin(style_properties), std::end(style_properties));
   }
 
