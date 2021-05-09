@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_ODF_TABLE_H
 
 #include <internal/abstract/table.h>
-#include <internal/common/table_position.h>
+#include <internal/common/table_range.h>
 #include <map>
 #include <pugixml.hpp>
 #include <unordered_map>
@@ -24,13 +24,13 @@ public:
   [[nodiscard]] ElementIdentifier
   cell_first_child(std::uint32_t row, std::uint32_t column) const final;
 
-  std::unordered_map<ElementProperty, std::any>
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   column_properties(std::uint32_t column) const final;
 
-  std::unordered_map<ElementProperty, std::any>
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   row_properties(std::uint32_t row) const final;
 
-  std::unordered_map<ElementProperty, std::any>
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   cell_properties(std::uint32_t row, std::uint32_t column) const final;
 
   void update_column_properties(
@@ -72,15 +72,17 @@ private:
   OpenDocument &m_document;
 
   TableDimensions m_dimensions;
+  common::TableRange m_content_bounds;
 
   std::map<std::uint32_t, Column> m_columns;
   std::map<std::uint32_t, Row> m_rows;
 
   void register_(pugi::xml_node node);
 
-  const Column *column_(std::uint32_t column) const;
-  const Row *row_(std::uint32_t row) const;
-  const Cell *cell_(std::uint32_t row, std::uint32_t column) const;
+  [[nodiscard]] const Column *column_(std::uint32_t column) const;
+  [[nodiscard]] const Row *row_(std::uint32_t row) const;
+  [[nodiscard]] const Cell *cell_(std::uint32_t row,
+                                  std::uint32_t column) const;
 };
 
 } // namespace odr::internal::odf

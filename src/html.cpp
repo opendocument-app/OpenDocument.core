@@ -2,6 +2,7 @@
 #include <internal/abstract/document.h>
 #include <internal/common/file.h>
 #include <internal/common/html.h>
+#include <internal/common/table_cursor.h>
 #include <internal/crypto/crypto_util.h>
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_to_svg.h>
@@ -113,8 +114,8 @@ std::string translate_table_row_style(const PropertySet &properties) {
 std::string translate_table_cell_style(const PropertySet &properties) {
   std::string result;
 
-  translate_text_style(properties);
-  translate_paragraph_style(properties);
+  result += translate_text_style(properties);
+  result += translate_paragraph_style(properties);
 
   if (auto vertical_align =
           properties.get_string(ElementProperty::VERTICAL_ALIGN)) {
@@ -296,6 +297,10 @@ void translate_list(const List &element, std::ostream &out,
 
 void translate_table(const Table &element, std::ostream &out,
                      const HtmlConfig &config) {
+  // TODO a lot of features here should only apply to spreadsheets
+  // TODO table column width does not work
+  // TODO table row height does not work
+
   auto properties = element.properties();
 
   out << "<table";
@@ -305,27 +310,26 @@ void translate_table(const Table &element, std::ostream &out,
 
   std::optional<std::uint32_t> end_column;
   std::optional<std::uint32_t> end_row;
-
   if (config.table_limit_cols > 0) {
     end_column = config.table_limit_cols;
   }
   if (config.table_limit_rows > 0) {
     end_row = config.table_limit_rows;
   }
-
-  if (config.table_limit_by_dimensions) {
-    const auto dimensions = element.dimensions();
-    end_column = dimensions.columns;
-    end_row = dimensions.rows;
+  if (config.table_limit_by_content) {
+    const auto content_bounds = element.content_bounds();
+    end_column = content_bounds.columns;
+    end_row = content_bounds.rows;
   }
 
-  std::uint32_t column_index = 0;
+  common::TableCursor cursor;
+
   for (auto &&col : element.columns()) {
-    if (end_column && (column_index >= end_column)) {
-      ++column_index;
+    if (end_column && (cursor.col() >= end_column)) {
+      cursor.add_col();
       continue;
     }
-    ++column_index;
+    cursor.add_col();
 
     auto column_properties = col.properties();
 
@@ -335,12 +339,12 @@ void translate_table(const Table &element, std::ostream &out,
     out << ">";
   }
 
-  std::uint32_t row_index = 0;
+  cursor = {};
+
   for (auto &&row : element.rows()) {
-    if (end_row && (row_index >= end_row)) {
+    if (end_row && (cursor.row() >= end_row)) {
       break;
     }
-    ++row_index;
 
     auto row_properties = row.properties();
 
@@ -348,34 +352,40 @@ void translate_table(const Table &element, std::ostream &out,
     out << optional_style_attribute(translate_table_row_style(row_properties));
     out << ">";
 
-    std::uint32_t cell_index = 0;
     for (auto &&cell : row.cells()) {
-      if (end_column && (cell_index >= end_column)) {
+      if (end_column && (cursor.col() >= end_column)) {
         break;
       }
-      ++cell_index;
 
       auto cell_properties = cell.properties();
+      std::uint32_t column_span = 1;
+      std::uint32_t row_span = 1;
 
       out << "<td";
-      if (auto column_span = cell_properties.get_uint32(
+      if (auto column_span_opt = cell_properties.get_uint32(
               ElementProperty::TABLE_CELL_COLUMN_SPAN);
-          column_span && *column_span > 1) {
-        out << " colspan=\"" << *column_span << "\"";
+          column_span_opt && *column_span_opt > 1) {
+        column_span = *column_span_opt;
+        out << " colspan=\"" << column_span << "\"";
       }
-      if (auto row_span =
+      if (auto row_span_opt =
               cell_properties.get_uint32(ElementProperty::TABLE_CELL_ROW_SPAN);
-          row_span && *row_span > 1) {
-        out << " rowspan=\"" << *row_span << "\"";
+          row_span_opt && *row_span_opt > 1) {
+        row_span = *row_span_opt;
+        out << " rowspan=\"" << row_span << "\"";
       }
       out << optional_style_attribute(
           translate_table_cell_style(cell_properties));
       out << ">";
       translate_generation(cell.children(), out, config);
       out << "</td>";
+
+      cursor.add_cell(column_span, row_span);
     }
 
     out << "</tr>";
+
+    cursor.add_row();
   }
 
   out << "</table>";

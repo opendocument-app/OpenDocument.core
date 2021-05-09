@@ -2,6 +2,7 @@
 #include <internal/abstract/filesystem.h>
 #include <internal/abstract/table.h>
 #include <internal/common/path.h>
+#include <internal/common/table_range.h>
 #include <internal/util/map_util.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
@@ -588,14 +589,23 @@ Table::Table(std::shared_ptr<const internal::abstract::Document> impl,
 TableDimensions Table::dimensions() const {
   if (!m_impl) {
     // TODO there is no empty TableDimensions
-    return TableDimensions();
+    return {};
   }
   return m_table->dimensions();
 }
 
+TableDimensions Table::content_bounds() const {
+  if (!m_impl) {
+    // TODO there is no empty TableDimensions
+    return {};
+  }
+  auto content_bounds = m_table->content_bounds();
+  return {content_bounds.to().row(), content_bounds.to().column()};
+}
+
 TableColumnRange Table::columns() const {
   if (!m_impl) {
-    return TableColumnRange();
+    return {};
   }
   return TableColumnRange(TableColumn(m_table, 0),
                           TableColumn(m_table, dimensions().columns));
@@ -603,7 +613,7 @@ TableColumnRange Table::columns() const {
 
 TableRowRange Table::rows() const {
   if (!m_impl) {
-    return TableRowRange();
+    return {};
   }
   return TableRowRange(TableRow(m_table, 0),
                        TableRow(m_table, dimensions().rows));
@@ -701,11 +711,13 @@ bool TableCell::operator!=(const TableCell &rhs) const {
 TableCell::operator bool() const { return m_impl.operator bool(); }
 
 TableCell TableCell::previous_sibling() const {
+  // TODO consider colspan
   return TableCell(m_impl, m_row, m_column - 1);
 }
 
 TableCell TableCell::next_sibling() const {
-  return TableCell(m_impl, m_row, m_column + 1);
+  // TODO performance
+  return TableCell(m_impl, m_row, m_column + column_span());
 }
 
 ElementRange TableCell::children() const {

@@ -1,4 +1,4 @@
-#include <internal/common/table_range.h>
+#include <internal/common/table_cursor.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_table.h>
 #include <odr/exceptions.h>
@@ -94,18 +94,26 @@ Table::Table(OpenDocument &document, const pugi::xml_node node)
 }
 
 void Table::register_(const pugi::xml_node node) {
-  std::uint32_t column_index = 0;
+  common::TableCursor cursor;
+  std::optional<std::uint32_t> begin_col;
+  std::optional<std::uint32_t> begin_row;
+  std::optional<std::uint32_t> end_col;
+  std::optional<std::uint32_t> end_row;
+
   for (auto column : node.children("table:table-column")) {
     const auto columns_repeated =
         column.attribute("table:number-columns-repeated").as_uint(1);
 
     Column new_column;
     new_column.node = column;
-    m_columns[column_index] = new_column;
-    column_index += columns_repeated;
+    m_columns[cursor.col()] = new_column;
+
+    cursor.add_col(columns_repeated);
   }
 
-  std::uint32_t row_index = 0;
+  m_dimensions.columns = cursor.col();
+  cursor = {};
+
   for (auto row : node.children("table:table-row")) {
     const auto rows_repeated =
         row.attribute("table:number-rows-repeated").as_uint(1);
@@ -116,10 +124,13 @@ void Table::register_(const pugi::xml_node node) {
       Row new_row;
       new_row.node = row;
 
-      std::uint32_t cell_index = 0;
       for (auto cell : row.children("table:table-cell")) {
         const auto cells_repeated =
             cell.attribute("table:number-columns-repeated").as_uint(1);
+        const auto colspan =
+            cell.attribute("table:number-columns-spanned").as_uint(1);
+        const auto rowspan =
+            cell.attribute("table:number-rows-spanned").as_uint(1);
 
         bool cell_empty = true;
 
@@ -130,34 +141,53 @@ void Table::register_(const pugi::xml_node node) {
           Cell new_cell;
           new_cell.node = cell;
           new_cell.first_child = first_child;
-          new_row.cells[cell_index] = new_cell;
+          new_row.cells[cursor.col()] = new_cell;
 
           if (first_child) {
+            if (!begin_col || *begin_col > cursor.col()) {
+              begin_col = cursor.col();
+            }
+            if (!begin_row || *begin_row > cursor.row()) {
+              begin_row = cursor.row();
+            }
+            if (!end_col || *end_col < cursor.col()) {
+              end_col = cursor.col();
+            }
+            if (!end_row || *end_row < cursor.row()) {
+              end_row = cursor.row();
+            }
+
             cell_empty = false;
             row_empty = false;
           }
 
           if (cell_empty) {
-            cell_index += cells_repeated;
+            cursor.add_cell(colspan, rowspan, cells_repeated);
             break;
           }
 
-          ++cell_index;
+          cursor.add_cell(colspan, rowspan);
         }
       }
 
-      m_rows[row_index] = new_row;
+      m_rows[cursor.row()] = new_row;
 
       if (row_empty) {
-        row_index += rows_repeated;
+        cursor.add_row(rows_repeated);
         break;
       }
 
-      ++row_index;
+      cursor.add_row();
     }
   }
 
-  m_dimensions = {row_index, column_index};
+  m_dimensions.rows = cursor.row();
+
+  common::TablePosition begin{begin_row ? *begin_row : 0,
+                              begin_col ? *begin_col : 0};
+  common::TablePosition end{end_row ? *end_row + 1 : begin.row(),
+                            end_col ? *end_col + 1 : begin.column()};
+  m_content_bounds = {begin, end};
 }
 
 [[nodiscard]] std::shared_ptr<abstract::Document> Table::document() const {
@@ -166,9 +196,7 @@ void Table::register_(const pugi::xml_node node) {
 
 [[nodiscard]] TableDimensions Table::dimensions() const { return m_dimensions; }
 
-common::TableRange Table::content_bounds() const {
-  return {}; // TODO
-}
+common::TableRange Table::content_bounds() const { return m_content_bounds; }
 
 [[nodiscard]] ElementIdentifier
 Table::cell_first_child(const std::uint32_t row,

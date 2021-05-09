@@ -29,7 +29,7 @@ struct HtmlConfig {
   // spreadsheet table limit
   std::uint32_t table_limit_rows{10000};
   std::uint32_t table_limit_cols{500};
-  bool table_limit_by_dimensions{true};
+  bool table_limit_by_content{true};
   // spreadsheet gridlines
   HtmlTableGridlines table_gridlines{HtmlTableGridlines::SOFT};
 };

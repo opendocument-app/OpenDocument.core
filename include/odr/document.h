@@ -567,6 +567,7 @@ private:
 class Table final : public Element {
 public:
   [[nodiscard]] TableDimensions dimensions() const;
+  [[nodiscard]] TableDimensions content_bounds() const;
 
   [[nodiscard]] TableColumnRange columns() const;
   [[nodiscard]] TableRowRange rows() const;
