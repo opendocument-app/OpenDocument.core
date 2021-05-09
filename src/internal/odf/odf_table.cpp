@@ -51,12 +51,6 @@ private:
 
     default_register_(ElementType::TABLE_CELL, ElementProperty::STYLE_NAME,
                       table_style_attribute);
-    register_span_(ElementType::TABLE_CELL,
-                   ElementProperty::TABLE_CELL_COLUMN_SPAN,
-                   "table:number-columns-spanned");
-    register_span_(ElementType::TABLE_CELL,
-                   ElementProperty::TABLE_CELL_ROW_SPAN,
-                   "table:number-rows-spanned");
   }
 
   void register_(const ElementType element, const ElementProperty property,
@@ -73,17 +67,6 @@ private:
         return std::any();
       }
       return std::any(attribute.value());
-    });
-  }
-
-  void register_span_(const ElementType element, const ElementProperty property,
-                      const char *attribute_name) {
-    register_(element, property, [attribute_name](const pugi::xml_node node) {
-      auto attribute = node.attribute(attribute_name);
-      if (auto span = attribute.as_uint(1); span > 1) {
-        return std::any(span);
-      }
-      return std::any();
     });
   }
 };
