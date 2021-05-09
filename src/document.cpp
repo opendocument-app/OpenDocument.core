@@ -736,26 +736,16 @@ TableCell::property(const ElementProperty property) const {
 
 std::uint32_t TableCell::row_span() const {
   if (!m_impl) {
-    return 1;
+    return 0;
   }
-  auto props = m_impl->cell_properties(m_row, m_column);
-  auto span_it = props.find(ElementProperty::TABLE_CELL_ROW_SPAN);
-  if (span_it == std::end(props)) {
-    return 1;
-  }
-  return *property_value_to_uint32(span_it->second);
+  return m_impl->cell_span(m_row, m_column).rows;
 }
 
 std::uint32_t TableCell::column_span() const {
   if (!m_impl) {
-    return 1;
+    return 0;
   }
-  auto props = m_impl->cell_properties(m_row, m_column);
-  auto span_it = props.find(ElementProperty::TABLE_CELL_COLUMN_SPAN);
-  if (span_it == std::end(props)) {
-    return 1;
-  }
-  return *property_value_to_uint32(span_it->second);
+  return m_impl->cell_span(m_row, m_column).columns;
 }
 
 Frame::Frame() = default;

@@ -141,6 +141,8 @@ void Table::register_(const pugi::xml_node node) {
           Cell new_cell;
           new_cell.node = cell;
           new_cell.first_child = first_child;
+          new_cell.rowspan = rowspan;
+          new_cell.colspan = colspan;
           new_row.cells[cursor.col()] = new_cell;
 
           if (first_child) {
@@ -206,6 +208,15 @@ Table::cell_first_child(const std::uint32_t row,
     return {};
   }
   return c->first_child;
+}
+
+TableDimensions Table::cell_span(const std::uint32_t row,
+                                 const std::uint32_t column) const {
+  auto c = cell_(row, column);
+  if (c == nullptr) {
+    return {};
+  }
+  return {c->rowspan, c->colspan};
 }
 
 std::unordered_map<ElementProperty, std::any>

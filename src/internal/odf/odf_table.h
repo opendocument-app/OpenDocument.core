@@ -24,6 +24,9 @@ public:
   [[nodiscard]] ElementIdentifier
   cell_first_child(std::uint32_t row, std::uint32_t column) const final;
 
+  [[nodiscard]] TableDimensions cell_span(std::uint32_t row,
+                                          std::uint32_t column) const final;
+
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   column_properties(std::uint32_t column) const final;
 
@@ -62,6 +65,8 @@ private:
   struct Cell {
     pugi::xml_node node;
     ElementIdentifier first_child;
+    std::uint32_t rowspan{1};
+    std::uint32_t colspan{1};
   };
 
   struct Row {

@@ -358,20 +358,12 @@ void translate_table(const Table &element, std::ostream &out,
       }
 
       auto cell_properties = cell.properties();
-      std::uint32_t column_span = 1;
-      std::uint32_t row_span = 1;
 
       out << "<td";
-      if (auto column_span_opt = cell_properties.get_uint32(
-              ElementProperty::TABLE_CELL_COLUMN_SPAN);
-          column_span_opt && *column_span_opt > 1) {
-        column_span = *column_span_opt;
+      if (auto column_span = cell.column_span(); column_span > 1) {
         out << " colspan=\"" << column_span << "\"";
       }
-      if (auto row_span_opt =
-              cell_properties.get_uint32(ElementProperty::TABLE_CELL_ROW_SPAN);
-          row_span_opt && *row_span_opt > 1) {
-        row_span = *row_span_opt;
+      if (auto row_span = cell.row_span(); row_span > 1) {
         out << " rowspan=\"" << row_span << "\"";
       }
       out << optional_style_attribute(
@@ -380,7 +372,7 @@ void translate_table(const Table &element, std::ostream &out,
       translate_generation(cell.children(), out, config);
       out << "</td>";
 
-      cursor.add_cell(column_span, row_span);
+      cursor.add_cell(cell.column_span(), cell.row_span());
     }
 
     out << "</tr>";
