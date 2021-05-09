@@ -326,10 +326,11 @@ void Table::decouple_cell(const std::uint32_t row,
 }
 
 const Table::Column *Table::column_(const std::uint32_t column) const {
-  auto it = m_columns.upper_bound(column);
-  if (it == std::end(m_columns)) {
+  if (m_columns.empty()) {
     return nullptr;
   }
+
+  auto it = m_columns.upper_bound(column);
   if (it != std::begin(m_columns)) {
     --it;
   }
@@ -337,10 +338,11 @@ const Table::Column *Table::column_(const std::uint32_t column) const {
 }
 
 const Table::Row *Table::row_(const std::uint32_t row) const {
-  auto it = m_rows.upper_bound(row);
-  if (it == std::end(m_rows)) {
+  if (m_rows.empty()) {
     return nullptr;
   }
+
+  auto it = m_rows.upper_bound(row);
   if (it != std::begin(m_rows)) {
     --it;
   }
@@ -355,10 +357,11 @@ const Table::Cell *Table::cell_(const std::uint32_t row,
   }
 
   auto &&cells = row_ptr->cells;
-  auto it = cells.upper_bound(column);
-  if (it == std::end(cells)) {
+  if (cells.empty()) {
     return nullptr;
   }
+
+  auto it = cells.upper_bound(column);
   if (it != std::begin(cells)) {
     --it;
   }
