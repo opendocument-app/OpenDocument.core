@@ -51,6 +51,8 @@ private:
 
     default_register_(ElementType::TABLE_CELL, ElementProperty::STYLE_NAME,
                       table_style_attribute);
+    default_register_(ElementType::TABLE_CELL, ElementProperty::VALUE_TYPE,
+                      "office:value-type");
   }
 
   void register_(const ElementType element, const ElementProperty property,

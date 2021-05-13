@@ -104,6 +104,8 @@ enum class ElementProperty {
   STYLE_NAME,
   MASTER_PAGE_NAME,
 
+  VALUE_TYPE,
+
   X,
   Y,
   WIDTH,

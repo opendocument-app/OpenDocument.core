@@ -117,6 +117,8 @@ std::string translate_table_cell_style(const PropertySet &properties) {
   result += translate_text_style(properties);
   result += translate_paragraph_style(properties);
 
+  // TODO check value type for alignment
+
   if (auto vertical_align =
           properties.get_string(ElementProperty::VERTICAL_ALIGN)) {
     // TODO
