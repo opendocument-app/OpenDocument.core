@@ -35,6 +35,8 @@ public:
   [[nodiscard]] pugi::xml_node
   master_page_node(const std::string &master_page_name) const;
 
+  [[nodiscard]] std::optional<std::string> first_master_page() const;
+
 private:
   struct Entry {
     std::shared_ptr<Entry> m_parent;
@@ -53,6 +55,8 @@ private:
   std::unordered_map<std::string, pugi::xml_node> m_index_outline_style;
   std::unordered_map<std::string, pugi::xml_node> m_index_page_layout;
   std::unordered_map<std::string, pugi::xml_node> m_index_master_page;
+
+  std::optional<std::string> m_first_master_page;
 
   std::unordered_map<std::string, std::shared_ptr<Entry>> m_default_styles;
   std::unordered_map<std::string, std::shared_ptr<Entry>> m_styles;

@@ -61,6 +61,7 @@ private:
     register_graphic_(ElementType::LINE);
     register_graphic_(ElementType::CIRCLE);
 
+    register_page_layout_(ElementType::ROOT);
     register_page_layout_(ElementType::SLIDE);
     register_page_layout_(ElementType::PAGE);
   }
@@ -291,7 +292,11 @@ void Style::generate_indices_(const pugi::xml_node node) {
     } else if (name == "style:page-layout") {
       m_index_page_layout[e.attribute("style:name").value()] = e;
     } else if (name == "style:master-page") {
-      m_index_master_page[e.attribute("style:name").value()] = e;
+      std::string master_page_name = e.attribute("style:name").value();
+      m_index_master_page[master_page_name] = e;
+      if (!m_first_master_page) {
+        m_first_master_page = master_page_name;
+      }
     }
   }
 }
@@ -407,6 +412,10 @@ Style::master_page_node(const std::string &master_page_name) const {
     return {};
   }
   return master_page_it->second;
+}
+
+std::optional<std::string> Style::first_master_page() const {
+  return m_first_master_page;
 }
 
 } // namespace odr::internal::odf

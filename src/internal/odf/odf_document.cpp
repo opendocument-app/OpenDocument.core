@@ -471,6 +471,12 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
     throw std::runtime_error("element not found");
   }
 
+  if (element->type == ElementType::ROOT) {
+    auto style_properties = m_style.resolve_master_page(
+        element->type, m_style.first_master_page().value());
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
+
   PropertyRegistry::instance().resolve_properties(element->type, element->node,
                                                   result);
 
