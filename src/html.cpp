@@ -226,8 +226,16 @@ std::string translate_circle_properties(const Circle &element) {
 std::string translate_custom_shape_properties(const CustomShape &element) {
   std::string result;
   result += "position:absolute;";
-  result += "left:" + element.x().get_string() + ";";
-  result += "top:" + element.y().get_string() + ";";
+  if (auto x = element.x()) {
+    result += "left:" + x.get_string() + ";";
+  } else {
+    result += "left:0;";
+  }
+  if (auto y = element.y()) {
+    result += "top:" + y.get_string() + ";";
+  } else {
+    result += "top:0;";
+  }
   result += "width:" + element.width().get_string() + ";";
   result += "height:" + element.height().get_string() + ";";
   return result;
