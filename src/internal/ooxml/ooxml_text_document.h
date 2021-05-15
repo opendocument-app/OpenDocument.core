@@ -76,9 +76,14 @@ private:
                  std::unordered_map<ElementProperty, std::any> &result) const;
     };
 
+    std::unordered_map<std::string, pugi::xml_node> m_index;
+
     std::unordered_map<std::string, std::shared_ptr<Entry>> m_styles;
 
     void generate_indices_(pugi::xml_node styles_root);
+    void generate_styles_();
+    std::shared_ptr<Entry> generate_style_(const std::string &name,
+                                           pugi::xml_node node);
   };
 
   struct Element {

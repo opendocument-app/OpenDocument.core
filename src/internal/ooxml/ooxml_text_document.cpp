@@ -84,6 +84,8 @@ private:
 namespace {
 class StylePropertyRegistry {
 public:
+  using Get = std::function<std::any(pugi::xml_node node)>;
+
   static StylePropertyRegistry &instance() {
     static StylePropertyRegistry instance;
     return instance;
@@ -97,8 +99,7 @@ public:
       return;
     }
     for (auto &&p : it->second) {
-      auto value = p.second.get(
-          node, util::map::lookup_map_default(result, p.first, std::any()));
+      auto value = p.second.get(node);
       if (value.has_value()) {
         result[p.first] = value;
       }
@@ -107,50 +108,82 @@ public:
 
 private:
   struct Entry {
-    std::function<std::any(pugi::xml_node node, std::any previous_value)> get;
+    Get get;
   };
 
   std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
       m_registry;
 
   StylePropertyRegistry() {
-    const auto paragraph_properties = "w:pPr";
+    register_text_(ElementType::PARAGRAPH);
+    register_paragraph_(ElementType::PARAGRAPH);
 
-    default_register_(ElementType::PARAGRAPH, ElementProperty::TEXT_ALIGN,
-                      paragraph_properties, "w:jc");
+    register_text_(ElementType::SPAN);
+  }
+
+  void register_get_(const ElementType element, const ElementProperty property,
+                     Get get) {
+    m_registry[element][property].get = std::move(get);
   }
 
   void default_register_get_(const ElementType element,
                              const ElementProperty property,
                              const char *property_class_element,
-                             const char *property_element) {
+                             const char *property_element,
+                             const char *attribute_name = "w:val") {
     m_registry[element][property].get =
-        [property_class_element, property_element](const pugi::xml_node node,
-                                                   std::any previous_value) {
+        [property_class_element, property_element,
+         attribute_name](const pugi::xml_node node) {
           auto attribute = node.child(property_class_element)
                                .child(property_element)
-                               .attribute("w:val");
+                               .attribute(attribute_name);
           if (!attribute) {
-            return previous_value;
+            return std::any();
           }
           return std::any(attribute.value());
         };
   }
 
-  void default_register_(const ElementType element,
-                         const ElementProperty property,
-                         const char *property_class_element,
-                         const char *property_element) {
-    default_register_get_(element, property, property_class_element,
-                          property_element);
+  void register_paragraph_(const ElementType element) {
+    const auto paragraph_properties = "w:pPr";
+
+    default_register_get_(element, ElementProperty::TEXT_ALIGN,
+                          paragraph_properties, "w:jc");
+  }
+
+  void register_text_(const ElementType element) {
+    const auto run_properties = "w:rPr";
+
+    default_register_get_(element, ElementProperty::FONT_NAME, run_properties,
+                          "w:rFonts", "w:ascii");
+    default_register_get_(element, ElementProperty::FONT_SIZE, run_properties,
+                          "w:sz");
+    register_get_(
+        element, ElementProperty::FONT_COLOR,
+        [run_properties](const pugi::xml_node node) {
+          auto attribute =
+              node.child(run_properties).child("w:color").attribute("w:val");
+          if (!attribute) {
+            return std::any();
+          }
+          std::string value = attribute.value();
+          if (value == "auto") {
+            return std::any();
+          }
+          if (value.length() == 6) {
+            return std::any("#" + value);
+          }
+          return std::any(attribute.value());
+        });
   }
 };
 } // namespace
 
 OfficeOpenXmlTextDocument::Style::Style() = default;
 
-OfficeOpenXmlTextDocument::Style::Style(pugi::xml_node styles_root) {
+OfficeOpenXmlTextDocument::Style::Style(const pugi::xml_node styles_root) {
   generate_indices_(styles_root);
+  generate_styles_();
 }
 
 [[nodiscard]] std::unordered_map<ElementProperty, std::any>
@@ -179,7 +212,7 @@ OfficeOpenXmlTextDocument::Style::resolve_style(
     style_it->second->properties(element_type, result);
   }
 
-  StylePropertyRegistry::instance().resolve_properties(element_type, properties,
+  StylePropertyRegistry::instance().resolve_properties(element_type, element,
                                                        result);
 
   return result;
@@ -200,7 +233,44 @@ void OfficeOpenXmlTextDocument::Style::Entry::properties(
 }
 
 void OfficeOpenXmlTextDocument::Style::generate_indices_(
-    const pugi::xml_node styles_root) {}
+    const pugi::xml_node styles_root) {
+  for (auto style : styles_root) {
+    std::string element_name = style.name();
+
+    if (element_name == "w:style") {
+      m_index[style.attribute("w:styleId").value()] = style;
+    }
+  }
+}
+
+void OfficeOpenXmlTextDocument::Style::generate_styles_() {
+  for (auto &&e : m_index) {
+    generate_style_(e.first, e.second);
+  }
+}
+
+std::shared_ptr<OfficeOpenXmlTextDocument::Style::Entry>
+OfficeOpenXmlTextDocument::Style::generate_style_(const std::string &name,
+                                                  const pugi::xml_node node) {
+  if (auto style_it = m_styles.find(name); style_it != std::end(m_styles)) {
+    return style_it->second;
+  }
+
+  std::shared_ptr<Entry> parent;
+
+  // TODO use defaults as parent?
+
+  if (auto parent_attr = node.child("w:basedOn").attribute("w:val");
+      parent_attr) {
+    if (auto parent_style_it = m_index.find(parent_attr.value());
+        parent_style_it != std::end(m_index)) {
+      parent = generate_style_(parent_attr.value(), parent_style_it->second);
+    }
+    // TODO else throw or log?
+  }
+
+  return m_styles[name] = std::make_shared<Entry>(parent, node);
+}
 
 OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem)
