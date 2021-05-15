@@ -55,6 +55,32 @@ public:
 private:
   class PropertyRegistry;
 
+  class Style final {
+  public:
+    Style();
+
+    explicit Style(pugi::xml_node styles_root);
+
+    [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+    resolve_style(ElementType element_type, pugi::xml_node element) const;
+
+  private:
+    struct Entry {
+      std::shared_ptr<Entry> m_parent;
+      pugi::xml_node m_node;
+
+      Entry(std::shared_ptr<Entry> parent, pugi::xml_node node);
+
+      void
+      properties(ElementType element,
+                 std::unordered_map<ElementProperty, std::any> &result) const;
+    };
+
+    std::unordered_map<std::string, std::shared_ptr<Entry>> m_styles;
+
+    void generate_indices_(pugi::xml_node styles_root);
+  };
+
   struct Element {
     pugi::xml_node node;
     ElementType type{ElementType::NONE};
@@ -81,6 +107,8 @@ private:
   std::unordered_map<ElementIdentifier, std::shared_ptr<Table>> m_tables;
   std::unordered_map<ElementIdentifier, TableElementExtension>
       m_table_element_extension;
+
+  Style m_style;
 
   ElementIdentifier register_element_(pugi::xml_node node,
                                       ElementIdentifier parent,

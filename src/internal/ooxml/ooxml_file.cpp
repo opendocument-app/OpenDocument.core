@@ -2,10 +2,11 @@
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_crypto.h>
-#include <internal/ooxml/ooxml_document.h>
 #include <internal/ooxml/ooxml_file.h>
 #include <internal/ooxml/ooxml_meta.h>
+#include <internal/ooxml/ooxml_text_document.h>
 #include <internal/util/stream_util.h>
+#include <odr/exceptions.h>
 
 namespace odr::internal::ooxml {
 
@@ -54,7 +55,12 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
 
 std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
   // TODO throw if encrypted
-  return std::make_shared<OfficeOpenXmlDocument>(m_filesystem);
+  switch (file_type()) {
+  case FileType::OFFICE_OPEN_XML_DOCUMENT:
+    return std::make_shared<OfficeOpenXmlTextDocument>(m_filesystem);
+  default:
+    throw UnsupportedOperation();
+  }
 }
 
 } // namespace odr::internal::ooxml

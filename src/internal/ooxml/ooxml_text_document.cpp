@@ -41,17 +41,14 @@ private:
       m_registry;
 
   PropertyRegistry() {
-    const auto paragraph_properties = "w:pPr";
-
     register_(ElementType::TEXT, ElementProperty::TEXT,
               [](const pugi::xml_node node) {
                 return node.first_child().text().as_string();
               });
 
-    default_register_(ElementType::PARAGRAPH, ElementProperty::STYLE_NAME,
-                      paragraph_properties, "w:pStyle");
-    default_register_(ElementType::PARAGRAPH, ElementProperty::TEXT_ALIGN,
-                      paragraph_properties, "w:jc");
+    default_register_(ElementType::BOOKMARK, ElementProperty::NAME, "w:name");
+
+    register_link_();
   }
 
   void register_(const ElementType element, const ElementProperty property,
@@ -61,27 +58,157 @@ private:
 
   void default_register_(const ElementType element,
                          const ElementProperty property,
-                         const char *property_class_element,
-                         const char *property_element) {
-    register_(
-        element, property,
-        [property_class_element, property_element](const pugi::xml_node node) {
+                         const char *attribute_name) {
+    register_(element, property, [attribute_name](const pugi::xml_node node) {
+      auto attribute = node.attribute(attribute_name);
+      if (!attribute) {
+        return std::any();
+      }
+      return std::any(attribute.value());
+    });
+  }
+
+  void register_link_() {
+    register_(ElementType::LINK, ElementProperty::HREF,
+              [](const pugi::xml_node node) {
+                if (auto anchor = node.attribute("w:anchor")) {
+                  return std::any(anchor.value());
+                }
+                auto id = node.attribute("r:id");
+                // TODO
+                return std::any("");
+              });
+  }
+};
+
+namespace {
+class StylePropertyRegistry {
+public:
+  static StylePropertyRegistry &instance() {
+    static StylePropertyRegistry instance;
+    return instance;
+  }
+
+  void
+  resolve_properties(const ElementType element, const pugi::xml_node node,
+                     std::unordered_map<ElementProperty, std::any> &result) {
+    auto it = m_registry.find(element);
+    if (it == std::end(m_registry)) {
+      return;
+    }
+    for (auto &&p : it->second) {
+      auto value = p.second.get(
+          node, util::map::lookup_map_default(result, p.first, std::any()));
+      if (value.has_value()) {
+        result[p.first] = value;
+      }
+    }
+  }
+
+private:
+  struct Entry {
+    std::function<std::any(pugi::xml_node node, std::any previous_value)> get;
+  };
+
+  std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
+      m_registry;
+
+  StylePropertyRegistry() {
+    const auto paragraph_properties = "w:pPr";
+
+    default_register_(ElementType::PARAGRAPH, ElementProperty::TEXT_ALIGN,
+                      paragraph_properties, "w:jc");
+  }
+
+  void default_register_get_(const ElementType element,
+                             const ElementProperty property,
+                             const char *property_class_element,
+                             const char *property_element) {
+    m_registry[element][property].get =
+        [property_class_element, property_element](const pugi::xml_node node,
+                                                   std::any previous_value) {
           auto attribute = node.child(property_class_element)
                                .child(property_element)
                                .attribute("w:val");
           if (!attribute) {
-            return std::any();
+            return previous_value;
           }
           return std::any(attribute.value());
-        });
+        };
+  }
+
+  void default_register_(const ElementType element,
+                         const ElementProperty property,
+                         const char *property_class_element,
+                         const char *property_element) {
+    default_register_get_(element, property, property_class_element,
+                          property_element);
   }
 };
+} // namespace
+
+OfficeOpenXmlTextDocument::Style::Style() = default;
+
+OfficeOpenXmlTextDocument::Style::Style(pugi::xml_node styles_root) {
+  generate_indices_(styles_root);
+}
+
+[[nodiscard]] std::unordered_map<ElementProperty, std::any>
+OfficeOpenXmlTextDocument::Style::resolve_style(
+    const ElementType element_type, const pugi::xml_node element) const {
+  std::unordered_map<ElementProperty, std::any> result;
+
+  pugi::xml_node properties;
+  std::string style_name;
+
+  // TODO map
+  if (element_type == ElementType::PARAGRAPH) {
+    properties = element.child("w:pPr");
+    style_name = properties.child("w:pStyle").attribute("w:val").as_string();
+  } else if (element_type == ElementType::SPAN) {
+    properties = element.child("w:rPr");
+    style_name = properties.child("w:rStyle").attribute("w:val").as_string();
+  }
+
+  if (!style_name.empty()) {
+    result[ElementProperty::STYLE_NAME] = style_name;
+  }
+
+  auto style_it = m_styles.find(style_name);
+  if (style_it != std::end(m_styles)) {
+    style_it->second->properties(element_type, result);
+  }
+
+  StylePropertyRegistry::instance().resolve_properties(element_type, properties,
+                                                       result);
+
+  return result;
+}
+
+OfficeOpenXmlTextDocument::Style::Entry::Entry(std::shared_ptr<Entry> parent,
+                                               pugi::xml_node node)
+    : m_parent{std::move(parent)}, m_node{node} {}
+
+void OfficeOpenXmlTextDocument::Style::Entry::properties(
+    const ElementType element,
+    std::unordered_map<ElementProperty, std::any> &result) const {
+  if (m_parent) {
+    m_parent->properties(element, result);
+  }
+
+  StylePropertyRegistry::instance().resolve_properties(element, m_node, result);
+}
+
+void OfficeOpenXmlTextDocument::Style::generate_indices_(
+    const pugi::xml_node styles_root) {}
 
 OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   m_document_xml = util::xml::parse(*m_filesystem, "word/document.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "word/styles.xml");
+
+  m_style = Style(m_styles_xml.document_element());
 
   m_root =
       register_element_(m_document_xml.document_element().first_child(), 0, 0);
@@ -188,7 +315,7 @@ OfficeOpenXmlTextDocument::element_(const ElementIdentifier element_id) const {
 
 bool OfficeOpenXmlTextDocument::editable() const noexcept { return false; }
 
-bool OfficeOpenXmlTextDocument::savable(bool encrypted) const noexcept {
+bool OfficeOpenXmlTextDocument::savable(const bool encrypted) const noexcept {
   return false;
 }
 
@@ -271,11 +398,14 @@ OfficeOpenXmlTextDocument::element_properties(
   PropertyRegistry::instance().resolve_properties(element->type, element->node,
                                                   result);
 
+  auto style_properties = m_style.resolve_style(element->type, element->node);
+  result.insert(std::begin(style_properties), std::end(style_properties));
+
   return result;
 }
 
 void OfficeOpenXmlTextDocument::update_element_properties(
-    ElementIdentifier element_id,
+    const ElementIdentifier element_id,
     std::unordered_map<ElementProperty, std::any> properties) const {
   throw UnsupportedOperation();
 }
