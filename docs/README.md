@@ -1,3 +1,3 @@
 # Documentation
 
-- Design
+- [Design](design/README.md)
