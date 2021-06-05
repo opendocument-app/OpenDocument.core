@@ -1,5 +1,12 @@
 # Design
 
+## Motivation
+- non-intrusive read/write access to documents
+  - saving should not depend on our internal representation of the document but only the changes
+- support of different formats thought one API
+- lightweight API
+- handle document specifics behind the API
+
 ## Document abstraction
 - in-memory indexed tree structure
 - read/write properties with `std::any` values
