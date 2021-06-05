@@ -6,6 +6,7 @@
 - support of different formats thought one API
 - lightweight API
 - handle document specifics behind the API
+- value semantics for the user facing API
 
 ## Document abstraction
 - in-memory indexed tree structure
