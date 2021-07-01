@@ -183,8 +183,15 @@ void frame_translator(const pugi::xml_node &in, std::ostream &out,
   if (const auto height_attr = in.attribute("svg:height"); height_attr) {
     out << "height:" << height_attr.as_string() << ";";
   }
+  if (const auto anchor_attr = in.attribute("text:anchor-type"); anchor_attr) {
+    if (anchor_attr.as_string() == std::string("char")) {
+      out << "position:relative;";
+    }
+  } else {
+    out << "position:absolute;";
+  }
   if (const auto x_attr = in.attribute("svg:x"); x_attr) {
-    out << "position:absolute;left:" << x_attr.as_string() << ";";
+    out << "left:" << x_attr.as_string() << ";";
   }
   if (const auto y_attr = in.attribute("svg:y"); y_attr) {
     out << "top:" << y_attr.as_string() << ";";
