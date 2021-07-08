@@ -41,7 +41,7 @@ public:
 
 private:
   struct Entry {
-    Get get;
+    Get get{nullptr};
   };
 
   std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>

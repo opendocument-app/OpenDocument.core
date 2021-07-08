@@ -53,8 +53,6 @@ public:
   table(ElementIdentifier element_id) const final;
 
 private:
-  class PropertyRegistry;
-
   class Style final {
   public:
     Style();

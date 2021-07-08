@@ -8,82 +8,78 @@
 
 namespace odr::internal::ooxml {
 
-class OfficeOpenXmlTextDocument::PropertyRegistry final {
-public:
-  using Get = std::function<std::any(pugi::xml_node node)>;
-
-  static PropertyRegistry &instance() {
-    static PropertyRegistry instance;
-    return instance;
+namespace {
+void set_optional_property(
+    const ElementProperty property, std::any value,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  if (value.has_value()) {
+    result[property] = std::move(value);
   }
+}
 
-  void
-  resolve_properties(const ElementType element, const pugi::xml_node node,
-                     std::unordered_map<ElementProperty, std::any> &result) {
-    auto it = m_registry.find(element);
-    if (it == std::end(m_registry)) {
-      return;
-    }
-    for (auto &&p : it->second) {
-      auto value = p.second.get(node);
-      if (value.has_value()) {
-        result[p.first] = value;
-      }
-    }
+std::any read_text_property(const pugi::xml_node node) {
+  std::string name = node.name();
+  if (name == "w:tab") {
+    return "\t";
   }
+  return node.first_child().text().as_string();
+}
 
-private:
-  struct Entry {
-    Get get;
-  };
-
-  std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
-      m_registry;
-
-  PropertyRegistry() {
-    register_(ElementType::TEXT, ElementProperty::TEXT,
-              [](const pugi::xml_node node) {
-                std::string name = node.name();
-                if (name == "w:tab") {
-                  return "\t";
-                }
-                return node.first_child().text().as_string();
-              });
-
-    default_register_(ElementType::BOOKMARK, ElementProperty::NAME, "w:name");
-
-    register_link_();
+std::any read_bookmark_name_property(const pugi::xml_node node) {
+  if (auto attribute = node.attribute("w:name")) {
+    return attribute.value();
   }
+  return {};
+}
 
-  void register_(const ElementType element, const ElementProperty property,
-                 Get get) {
-    m_registry[element][property].get = std::move(get);
+std::any read_link_href_property(const pugi::xml_node node) {
+  if (auto anchor = node.attribute("w:anchor")) {
+    return anchor.value();
   }
+  auto id = node.attribute("r:id");
+  // TODO
+  return "";
+}
 
-  void default_register_(const ElementType element,
-                         const ElementProperty property,
-                         const char *attribute_name) {
-    register_(element, property, [attribute_name](const pugi::xml_node node) {
-      auto attribute = node.attribute(attribute_name);
-      if (!attribute) {
-        return std::any();
-      }
-      return std::any(attribute.value());
-    });
-  }
+void resolve_text_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  set_optional_property(ElementProperty::TEXT, read_text_property(node),
+                        result);
+}
 
-  void register_link_() {
-    register_(ElementType::LINK, ElementProperty::HREF,
-              [](const pugi::xml_node node) {
-                if (auto anchor = node.attribute("w:anchor")) {
-                  return std::any(anchor.value());
-                }
-                auto id = node.attribute("r:id");
-                // TODO
-                return std::any("");
-              });
+void resolve_bookmark_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  set_optional_property(ElementProperty::NAME,
+                        read_bookmark_name_property(node), result);
+}
+
+void resolve_link_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  set_optional_property(ElementProperty::HREF, read_link_href_property(node),
+                        result);
+}
+
+void resolve_element_properties(
+    const ElementType element, const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  switch (element) {
+  case ElementType::TEXT:
+    resolve_text_properties(node, result);
+    break;
+  case ElementType::BOOKMARK:
+    resolve_bookmark_properties(node, result);
+    break;
+  case ElementType::LINK:
+    resolve_link_properties(node, result);
+    break;
+  default:
+    break;
   }
-};
+}
+} // namespace
 
 namespace {
 class StylePropertyRegistry {
@@ -112,7 +108,7 @@ public:
 
 private:
   struct Entry {
-    Get get;
+    Get get{nullptr};
   };
 
   std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
@@ -538,8 +534,7 @@ OfficeOpenXmlTextDocument::element_properties(
     throw std::runtime_error("element not found");
   }
 
-  PropertyRegistry::instance().resolve_properties(element->type, element->node,
-                                                  result);
+  resolve_element_properties(element->type, element->node, result);
 
   auto style_properties = m_style.resolve_style(element->type, element->node);
   result.insert(std::begin(style_properties), std::end(style_properties));
