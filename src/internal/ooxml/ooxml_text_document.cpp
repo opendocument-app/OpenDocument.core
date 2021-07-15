@@ -1,5 +1,6 @@
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_text_document.h>
+#include <internal/ooxml/ooxml_util.h>
 #include <internal/util/map_util.h>
 #include <internal/util/xml_util.h>
 #include <odr/document.h>
@@ -36,26 +37,26 @@ std::any read_link_href_property(const pugi::xml_node node) {
   if (auto anchor = node.attribute("w:anchor")) {
     return anchor.value();
   }
-  auto id = node.attribute("r:id");
+  // auto id = node.attribute("r:id");
   // TODO
   return "";
 }
 
-void resolve_text_properties(
+void resolve_text_element_properties(
     const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
   set_optional_property(ElementProperty::TEXT, read_text_property(node),
                         result);
 }
 
-void resolve_bookmark_properties(
+void resolve_bookmark_element_properties(
     const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
   set_optional_property(ElementProperty::NAME,
                         read_bookmark_name_property(node), result);
 }
 
-void resolve_link_properties(
+void resolve_link_element_properties(
     const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
   set_optional_property(ElementProperty::HREF, read_link_href_property(node),
@@ -67,184 +68,132 @@ void resolve_element_properties(
     std::unordered_map<ElementProperty, std::any> &result) {
   switch (element) {
   case ElementType::TEXT:
-    resolve_text_properties(node, result);
+    resolve_text_element_properties(node, result);
     break;
   case ElementType::BOOKMARK:
-    resolve_bookmark_properties(node, result);
+    resolve_bookmark_element_properties(node, result);
     break;
   case ElementType::LINK:
-    resolve_link_properties(node, result);
+    resolve_link_element_properties(node, result);
     break;
   default:
     break;
   }
 }
-} // namespace
 
-namespace {
-class StylePropertyRegistry {
-public:
-  using Get = std::function<std::any(pugi::xml_node node)>;
+using NodeTransformation =
+    std::function<std::any(const pugi::xml_node attribute)>;
+using AttributeTransformation =
+    std::function<std::any(const pugi::xml_attribute attribute)>;
 
-  static StylePropertyRegistry &instance() {
-    static StylePropertyRegistry instance;
-    return instance;
+std::any read_optional_node(const pugi::xml_node node,
+                            const NodeTransformation &node_transformation) {
+  if (node) {
+    return node_transformation(node);
+  }
+  return {};
+}
+
+std::any read_optional_attribute(
+    const pugi::xml_attribute attribute,
+    const AttributeTransformation &attribute_transformation =
+        [](const pugi::xml_attribute attribute) { return attribute.value(); }) {
+  if (attribute) {
+    return attribute_transformation(attribute);
+  }
+  return {};
+}
+
+void resolve_paragraph_style_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  const auto paragraph_properties = "w:pPr";
+
+  const auto properties_node = node.child(paragraph_properties);
+  if (!properties_node) {
+    return;
   }
 
-  void
-  resolve_properties(const ElementType element, const pugi::xml_node node,
-                     std::unordered_map<ElementProperty, std::any> &result) {
-    auto it = m_registry.find(element);
-    if (it == std::end(m_registry)) {
-      return;
-    }
-    for (auto &&p : it->second) {
-      auto value = p.second.get(node);
-      if (value.has_value()) {
-        result[p.first] = value;
-      }
-    }
+  set_optional_property(
+      ElementProperty::TEXT_ALIGN,
+      read_optional_attribute(properties_node.child("w:jc").attribute("w:val")),
+      result);
+}
+
+void resolve_text_style_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  const auto run_properties = "w:rPr";
+
+  const auto properties_node = node.child(run_properties);
+  if (!properties_node) {
+    return;
   }
 
-private:
-  struct Entry {
-    Get get{nullptr};
-  };
+  set_optional_property(
+      ElementProperty::FONT_NAME,
+      read_optional_attribute(
+          properties_node.child("w:rFonts").attribute("w:ascii")),
+      result);
+  set_optional_property(
+      ElementProperty::FONT_SIZE,
+      read_optional_attribute(properties_node.child("w:sz").attribute("w:val"),
+                              read_half_point_attribute),
+      result);
+  set_optional_property(ElementProperty::FONT_COLOR,
+                        read_optional_attribute(
+                            properties_node.child("w:color").attribute("w:val"),
+                            read_color_attribute),
+                        result);
+  set_optional_property(
+      ElementProperty::BACKGROUND_COLOR,
+      read_optional_attribute(
+          properties_node.child("w:highlight").attribute("w:val"),
+          read_color_attribute),
+      result);
+  set_optional_property(
+      ElementProperty::FONT_WEIGHT,
+      read_optional_node(properties_node.child("w:b"),
+                         [](const pugi::xml_node) { return std::any("bold"); }),
+      result);
+  set_optional_property(ElementProperty::FONT_STYLE,
+                        read_optional_node(properties_node.child("w:i"),
+                                           [](const pugi::xml_node) {
+                                             return std::any("italic");
+                                           }),
+                        result);
+  set_optional_property(
+      ElementProperty::FONT_UNDERLINE,
+      read_optional_attribute(properties_node.child("w:u").attribute("w:val"),
+                              read_line_attribute),
+      result);
+  set_optional_property(
+      ElementProperty::FONT_STRIKETHROUGH,
+      read_optional_attribute(
+          properties_node.child("w:strike").attribute("w:val"),
+          read_line_attribute),
+      result);
+  set_optional_property(ElementProperty::FONT_STRIKETHROUGH,
+                        read_optional_node(properties_node.child("w:shadow"),
+                                           read_shadow_attribute),
+                        result);
+}
 
-  std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
-      m_registry;
-
-  StylePropertyRegistry() {
-    register_text_(ElementType::PARAGRAPH);
-    register_paragraph_(ElementType::PARAGRAPH);
-
-    register_text_(ElementType::SPAN);
+void resolve_style_properties(
+    const ElementType element, const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  switch (element) {
+  case ElementType::PARAGRAPH:
+    resolve_paragraph_style_properties(node, result);
+    resolve_text_style_properties(node, result);
+    break;
+  case ElementType::SPAN:
+    resolve_text_style_properties(node, result);
+    break;
+  default:
+    break;
   }
-
-  void register_get_(const ElementType element, const ElementProperty property,
-                     Get get) {
-    m_registry[element][property].get = std::move(get);
-  }
-
-  void default_register_get_(const ElementType element,
-                             const ElementProperty property,
-                             const char *property_class_element,
-                             const char *property_element,
-                             const char *attribute_name = "w:val") {
-    m_registry[element][property].get =
-        [property_class_element, property_element,
-         attribute_name](const pugi::xml_node node) {
-          auto attribute = node.child(property_class_element)
-                               .child(property_element)
-                               .attribute(attribute_name);
-          if (!attribute) {
-            return std::any();
-          }
-          return std::any(attribute.value());
-        };
-  }
-
-  void register_color_(const ElementType element,
-                       const ElementProperty property,
-                       const char *property_class_element,
-                       const char *property_element) {
-    m_registry[element][property].get =
-        [property_class_element, property_element](const pugi::xml_node node) {
-          auto attribute = node.child(property_class_element)
-                               .child(property_element)
-                               .attribute("w:val");
-          if (!attribute) {
-            return std::any();
-          }
-          std::string value = attribute.value();
-          if (value == "auto") {
-            return std::any();
-          }
-          if (value.length() == 6) {
-            return std::any("#" + value);
-          }
-          return std::any(attribute.value());
-        };
-  }
-
-  void register_half_point_(const ElementType element,
-                            const ElementProperty property,
-                            const char *property_class_element,
-                            const char *property_element) {
-    m_registry[element][property].get =
-        [property_class_element, property_element](const pugi::xml_node node) {
-          auto attribute = node.child(property_class_element)
-                               .child(property_element)
-                               .attribute("w:val");
-          if (!attribute) {
-            return std::any();
-          }
-          return std::any(std::to_string(attribute.as_int() * 0.5f) + "pt");
-        };
-  }
-
-  void register_paragraph_(const ElementType element) {
-    const auto paragraph_properties = "w:pPr";
-
-    default_register_get_(element, ElementProperty::TEXT_ALIGN,
-                          paragraph_properties, "w:jc");
-  }
-
-  void register_text_(const ElementType element) {
-    const auto run_properties = "w:rPr";
-
-    default_register_get_(element, ElementProperty::FONT_NAME, run_properties,
-                          "w:rFonts", "w:ascii");
-    register_half_point_(element, ElementProperty::FONT_SIZE, run_properties,
-                         "w:sz");
-    register_color_(element, ElementProperty::FONT_COLOR, run_properties,
-                    "w:color");
-    register_color_(element, ElementProperty::BACKGROUND_COLOR, run_properties,
-                    "w:highlight");
-    register_get_(element, ElementProperty::FONT_WEIGHT,
-                  [run_properties](const pugi::xml_node node) {
-                    auto property = node.child(run_properties).child("w:b");
-                    if (!property) {
-                      return std::any();
-                    }
-                    return std::any("bold");
-                  });
-    register_get_(element, ElementProperty::FONT_STYLE,
-                  [run_properties](const pugi::xml_node node) {
-                    auto property = node.child(run_properties).child("w:i");
-                    if (!property) {
-                      return std::any();
-                    }
-                    return std::any("italic");
-                  });
-    register_get_(element, ElementProperty::FONT_UNDERLINE,
-                  [run_properties](const pugi::xml_node node) {
-                    auto property = node.child(run_properties).child("w:u");
-                    if (!property || std::string(property.value()) == "none") {
-                      return std::any();
-                    }
-                    return std::any("solid");
-                  });
-    register_get_(element, ElementProperty::FONT_STRIKETHROUGH,
-                  [run_properties](const pugi::xml_node node) {
-                    auto property =
-                        node.child(run_properties).child("w:strike");
-                    if (!property) {
-                      return std::any();
-                    }
-                    return std::any("solid");
-                  });
-    register_get_(element, ElementProperty::FONT_SHADOW,
-                  [run_properties](const pugi::xml_node node) {
-                    auto property =
-                        node.child(run_properties).child("w:shadow");
-                    if (!property) {
-                      return std::any();
-                    }
-                    return std::any("1pt 1pt");
-                  });
-  }
-};
+}
 } // namespace
 
 OfficeOpenXmlTextDocument::Style::Style() = default;
@@ -280,8 +229,7 @@ OfficeOpenXmlTextDocument::Style::resolve_style(
     style_it->second->properties(element_type, result);
   }
 
-  StylePropertyRegistry::instance().resolve_properties(element_type, element,
-                                                       result);
+  resolve_style_properties(element_type, element, result);
 
   return result;
 }
@@ -297,7 +245,7 @@ void OfficeOpenXmlTextDocument::Style::Entry::properties(
     m_parent->properties(element, result);
   }
 
-  StylePropertyRegistry::instance().resolve_properties(element, m_node, result);
+  resolve_style_properties(element, m_node, result);
 }
 
 void OfficeOpenXmlTextDocument::Style::generate_indices_(
@@ -454,16 +402,17 @@ OfficeOpenXmlTextDocument::element_(const ElementIdentifier element_id) const {
 
 bool OfficeOpenXmlTextDocument::editable() const noexcept { return false; }
 
-bool OfficeOpenXmlTextDocument::savable(const bool encrypted) const noexcept {
+bool OfficeOpenXmlTextDocument::savable(
+    const bool /*encrypted*/) const noexcept {
   return false;
 }
 
-void OfficeOpenXmlTextDocument::save(const common::Path &path) const {
+void OfficeOpenXmlTextDocument::save(const common::Path & /*path*/) const {
   throw UnsupportedOperation();
 }
 
-void OfficeOpenXmlTextDocument::save(const common::Path &path,
-                                     const char *password) const {
+void OfficeOpenXmlTextDocument::save(const common::Path & /*path*/,
+                                     const char * /*password*/) const {
   throw UnsupportedOperation();
 }
 
@@ -543,13 +492,13 @@ OfficeOpenXmlTextDocument::element_properties(
 }
 
 void OfficeOpenXmlTextDocument::update_element_properties(
-    const ElementIdentifier element_id,
-    std::unordered_map<ElementProperty, std::any> properties) const {
+    const ElementIdentifier /*element_id*/,
+    std::unordered_map<ElementProperty, std::any> /*properties*/) const {
   throw UnsupportedOperation();
 }
 
 std::shared_ptr<abstract::Table>
-OfficeOpenXmlTextDocument::table(const ElementIdentifier element_id) const {
+OfficeOpenXmlTextDocument::table(const ElementIdentifier /*element_id*/) const {
   throw UnsupportedOperation();
 }
 
