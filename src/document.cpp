@@ -603,6 +603,16 @@ TableDimensions Table::content_bounds() const {
   return {content_bounds.to().row(), content_bounds.to().column()};
 }
 
+TableDimensions Table::content_bounds(const TableDimensions within) const {
+  if (!m_impl) {
+    // TODO there is no empty TableDimensions
+    return {};
+  }
+  auto content_bounds =
+      m_table->content_bounds({{0, 0}, {within.rows, within.columns}});
+  return {content_bounds.to().row(), content_bounds.to().column()};
+}
+
 TableColumnRange Table::columns() const {
   if (!m_impl) {
     return {};

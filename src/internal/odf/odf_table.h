@@ -20,6 +20,8 @@ public:
   [[nodiscard]] TableDimensions dimensions() const final;
 
   [[nodiscard]] common::TableRange content_bounds() const final;
+  [[nodiscard]] common::TableRange
+  content_bounds(common::TableRange within) const final;
 
   [[nodiscard]] ElementIdentifier
   cell_first_child(std::uint32_t row, std::uint32_t column) const final;

@@ -327,7 +327,8 @@ void translate_table(const Table &element, std::ostream &out,
     end_row = config.table_limit_rows;
   }
   if (config.table_limit_by_content) {
-    const auto content_bounds = element.content_bounds();
+    const auto content_bounds = element.content_bounds(
+        {config.table_limit_rows, config.table_limit_cols});
     end_column = content_bounds.columns;
     end_row = content_bounds.rows;
   }

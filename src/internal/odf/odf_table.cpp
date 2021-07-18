@@ -137,6 +137,7 @@ void Table::register_(const pugi::xml_node node) {
             if (!begin_row || *begin_row > cursor.row()) {
               begin_row = cursor.row();
             }
+            // TODO consider span?
             if (!end_col || *end_col < cursor.col()) {
               end_col = cursor.col();
             }
@@ -177,17 +178,55 @@ void Table::register_(const pugi::xml_node node) {
   m_content_bounds = {begin, end};
 }
 
-[[nodiscard]] std::shared_ptr<abstract::Document> Table::document() const {
+std::shared_ptr<abstract::Document> Table::document() const {
   return m_document.shared_from_this();
 }
 
-[[nodiscard]] TableDimensions Table::dimensions() const { return m_dimensions; }
+TableDimensions Table::dimensions() const { return m_dimensions; }
 
 common::TableRange Table::content_bounds() const { return m_content_bounds; }
 
-[[nodiscard]] ElementIdentifier
-Table::cell_first_child(const std::uint32_t row,
-                        const std::uint32_t column) const {
+common::TableRange
+Table::content_bounds(const common::TableRange within) const {
+  std::optional<std::uint32_t> begin_col;
+  std::optional<std::uint32_t> begin_row;
+  std::optional<std::uint32_t> end_col;
+  std::optional<std::uint32_t> end_row;
+
+  for (std::uint32_t row = within.from().row(); row < within.to().row();
+       ++row) {
+    for (std::uint32_t column = within.from().column();
+         column < within.to().column(); ++column) {
+      auto first_child = cell_first_child(row, column);
+      if (!first_child) {
+        continue;
+      }
+
+      if (!begin_col || *begin_col > column) {
+        begin_col = column;
+      }
+      if (!begin_row || *begin_row > row) {
+        begin_row = row;
+      }
+      // TODO consider span?
+      if (!end_col || *end_col < column) {
+        end_col = column;
+      }
+      if (!end_row || *end_row < row) {
+        end_row = row;
+      }
+    }
+  }
+
+  common::TablePosition begin{begin_row ? *begin_row : within.from().row(),
+                              begin_col ? *begin_col : within.from().column()};
+  common::TablePosition end{end_row ? *end_row + 1 : begin.row(),
+                            end_col ? *end_col + 1 : begin.column()};
+  return {begin, end};
+}
+
+ElementIdentifier Table::cell_first_child(const std::uint32_t row,
+                                          const std::uint32_t column) const {
   auto c = cell_(row, column);
   if (c == nullptr) {
     return {};

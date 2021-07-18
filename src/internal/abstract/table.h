@@ -30,6 +30,8 @@ public:
   [[nodiscard]] virtual TableDimensions dimensions() const = 0;
 
   [[nodiscard]] virtual common::TableRange content_bounds() const = 0;
+  [[nodiscard]] virtual common::TableRange
+  content_bounds(common::TableRange within) const = 0;
 
   /// \param element_id the element to query.
   /// \param row the requested row.
