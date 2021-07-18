@@ -339,10 +339,8 @@ void translate_table(const Table &element, std::ostream &out,
 
   for (auto &&col : element.columns()) {
     if (end_column && (cursor.col() >= end_column)) {
-      cursor.add_col();
-      continue;
+      break;
     }
-    cursor.add_col();
 
     auto column_properties = col.properties();
 
@@ -350,6 +348,8 @@ void translate_table(const Table &element, std::ostream &out,
     out << optional_style_attribute(
         translate_table_column_style(column_properties));
     out << ">";
+
+    cursor.add_col();
   }
 
   cursor = {};
