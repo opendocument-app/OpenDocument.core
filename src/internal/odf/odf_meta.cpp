@@ -150,7 +150,7 @@ void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
       cursor.add_cell(colspan, rowspan, columns_repeated);
 
       const auto new_rows = cursor.row();
-      const auto new_cols = std::max(cols, cursor.col());
+      const auto new_cols = std::max(cols, cursor.column());
       if (cell.first_child() &&
           (((limit_rows != 0) && (new_rows < limit_rows)) &&
            ((limit_cols != 0) && (new_cols < limit_cols)))) {

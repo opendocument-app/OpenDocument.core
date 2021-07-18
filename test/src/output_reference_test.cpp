@@ -41,7 +41,7 @@ TEST_P(OutputReferenceTests, all) {
   HtmlConfig config;
   config.editable = true;
   config.table_limit_rows = 4000;
-  config.table_limit_cols = 500;
+  config.table_limit_columns = 500;
 
   const DecodedFile file{test_file.path};
 

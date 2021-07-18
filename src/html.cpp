@@ -320,8 +320,8 @@ void translate_table(const Table &element, std::ostream &out,
 
   std::optional<std::uint32_t> end_column;
   std::optional<std::uint32_t> end_row;
-  if (config.table_limit_cols > 0) {
-    end_column = config.table_limit_cols;
+  if (config.table_limit_columns > 0) {
+    end_column = config.table_limit_columns;
   }
   if (config.table_limit_rows > 0) {
     end_row = config.table_limit_rows;
@@ -329,7 +329,7 @@ void translate_table(const Table &element, std::ostream &out,
   if (config.table_limit_by_content) {
     const auto content_bounds = element.content_bounds();
     const auto content_bounds_within = element.content_bounds(
-        {config.table_limit_rows, config.table_limit_cols});
+        {config.table_limit_rows, config.table_limit_columns});
     end_column =
         end_column ? content_bounds_within.columns : content_bounds.columns;
     end_row = end_row ? content_bounds_within.rows : content_bounds.rows;
@@ -337,19 +337,19 @@ void translate_table(const Table &element, std::ostream &out,
 
   common::TableCursor cursor;
 
-  for (auto &&col : element.columns()) {
-    if (end_column && (cursor.col() >= end_column)) {
+  for (auto &&column : element.columns()) {
+    if (end_column && (cursor.column() >= end_column)) {
       break;
     }
 
-    auto column_properties = col.properties();
+    auto column_properties = column.properties();
 
     out << "<col";
     out << optional_style_attribute(
         translate_table_column_style(column_properties));
     out << ">";
 
-    cursor.add_col();
+    cursor.add_column();
   }
 
   cursor = {};
@@ -366,7 +366,7 @@ void translate_table(const Table &element, std::ostream &out,
     out << ">";
 
     for (auto &&cell : row.cells()) {
-      if (end_column && (cursor.col() >= end_column)) {
+      if (end_column && (cursor.column() >= end_column)) {
         break;
       }
 

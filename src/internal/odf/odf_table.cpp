@@ -80,9 +80,9 @@ Table::Table(OpenDocument &document, const pugi::xml_node node)
 
 void Table::register_(const pugi::xml_node node) {
   common::TableCursor cursor;
-  std::optional<std::uint32_t> begin_col;
+  std::optional<std::uint32_t> begin_column;
   std::optional<std::uint32_t> begin_row;
-  std::optional<std::uint32_t> end_col;
+  std::optional<std::uint32_t> end_column;
   std::optional<std::uint32_t> end_row;
 
   for (auto column : node.children("table:table-column")) {
@@ -91,12 +91,12 @@ void Table::register_(const pugi::xml_node node) {
 
     Column new_column;
     new_column.node = column;
-    m_columns[cursor.col()] = new_column;
+    m_columns[cursor.column()] = new_column;
 
-    cursor.add_col(columns_repeated);
+    cursor.add_column(columns_repeated);
   }
 
-  m_dimensions.columns = cursor.col();
+  m_dimensions.columns = cursor.column();
   cursor = {};
 
   for (auto row : node.children("table:table-row")) {
@@ -128,18 +128,18 @@ void Table::register_(const pugi::xml_node node) {
           new_cell.first_child = first_child;
           new_cell.rowspan = rowspan;
           new_cell.colspan = colspan;
-          new_row.cells[cursor.col()] = new_cell;
+          new_row.cells[cursor.column()] = new_cell;
 
           if (first_child) {
-            if (!begin_col || *begin_col > cursor.col()) {
-              begin_col = cursor.col();
+            if (!begin_column || *begin_column > cursor.column()) {
+              begin_column = cursor.column();
             }
             if (!begin_row || *begin_row > cursor.row()) {
               begin_row = cursor.row();
             }
             // TODO consider span?
-            if (!end_col || *end_col < cursor.col()) {
-              end_col = cursor.col();
+            if (!end_column || *end_column < cursor.column()) {
+              end_column = cursor.column();
             }
             if (!end_row || *end_row < cursor.row()) {
               end_row = cursor.row();
@@ -172,9 +172,9 @@ void Table::register_(const pugi::xml_node node) {
   m_dimensions.rows = cursor.row();
 
   common::TablePosition begin{begin_row ? *begin_row : 0,
-                              begin_col ? *begin_col : 0};
+                              begin_column ? *begin_column : 0};
   common::TablePosition end{end_row ? *end_row + 1 : begin.row(),
-                            end_col ? *end_col + 1 : begin.column()};
+                            end_column ? *end_column + 1 : begin.column()};
   m_content_bounds = {begin, end};
 }
 
@@ -188,9 +188,9 @@ common::TableRange Table::content_bounds() const { return m_content_bounds; }
 
 common::TableRange
 Table::content_bounds(const common::TableRange within) const {
-  std::optional<std::uint32_t> begin_col;
+  std::optional<std::uint32_t> begin_column;
   std::optional<std::uint32_t> begin_row;
-  std::optional<std::uint32_t> end_col;
+  std::optional<std::uint32_t> end_column;
   std::optional<std::uint32_t> end_row;
 
   for (std::uint32_t row = within.from().row(); row < within.to().row();
@@ -202,15 +202,15 @@ Table::content_bounds(const common::TableRange within) const {
         continue;
       }
 
-      if (!begin_col || *begin_col > column) {
-        begin_col = column;
+      if (!begin_column || *begin_column > column) {
+        begin_column = column;
       }
       if (!begin_row || *begin_row > row) {
         begin_row = row;
       }
       // TODO consider span?
-      if (!end_col || *end_col < column) {
-        end_col = column;
+      if (!end_column || *end_column < column) {
+        end_column = column;
       }
       if (!end_row || *end_row < row) {
         end_row = row;
@@ -219,9 +219,10 @@ Table::content_bounds(const common::TableRange within) const {
   }
 
   common::TablePosition begin{begin_row ? *begin_row : within.from().row(),
-                              begin_col ? *begin_col : within.from().column()};
+                              begin_column ? *begin_column
+                                           : within.from().column()};
   common::TablePosition end{end_row ? *end_row + 1 : begin.row(),
-                            end_col ? *end_col + 1 : begin.column()};
+                            end_column ? *end_column + 1 : begin.column()};
   return {begin, end};
 }
 
