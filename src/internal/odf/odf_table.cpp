@@ -239,7 +239,7 @@ TableDimensions Table::cell_span(const std::uint32_t row,
                                  const std::uint32_t column) const {
   auto c = cell_(row, column);
   if (c == nullptr) {
-    return {};
+    return {1, 1};
   }
   return {c->rowspan, c->colspan};
 }
