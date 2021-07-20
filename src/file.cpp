@@ -153,7 +153,7 @@ FileMeta DecodedFile::meta(const std::string &path) {
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
     : m_impl{std::move(impl)} {
   if (!m_impl) {
-    throw FileNotFound();
+    throw UnknownFileType();
   }
 }
 

@@ -34,7 +34,8 @@ TEST_P(OutputReferenceTests, all) {
   if (util::string::ends_with(test_file.path, ".sxw") ||
       (test_file.type == FileType::LEGACY_WORD_DOCUMENT) ||
       (test_file.type == FileType::LEGACY_POWERPOINT_PRESENTATION) ||
-      (test_file.type == FileType::LEGACY_EXCEL_WORKSHEETS)) {
+      (test_file.type == FileType::LEGACY_EXCEL_WORKSHEETS) ||
+      (test_file.type == FileType::STARVIEW_METAFILE)) {
     GTEST_SKIP();
   }
 
