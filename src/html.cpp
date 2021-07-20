@@ -196,7 +196,9 @@ std::string translate_frame_properties(const Frame &element) {
     result += "top:" + y.get_string() + ";";
   }
   result += "width:" + element.width().get_string() + ";";
-  result += "height:" + element.height().get_string() + ";";
+  if (auto height = element.height()) {
+    result += "height:" + height.get_string() + ";";
+  }
   if (auto z_index = element.z_index()) {
     result += "z-index:" + z_index.get_string() + ";";
   }
