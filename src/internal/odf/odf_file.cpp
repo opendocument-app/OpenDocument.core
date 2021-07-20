@@ -14,10 +14,10 @@ OpenDocumentFile::OpenDocumentFile(
   if (m_filesystem->exists("META-INF/manifest.xml")) {
     auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
 
-    m_file_meta = parse_file_meta(*m_filesystem, &manifest, true);
+    m_file_meta = parse_file_meta(*m_filesystem, &manifest, false);
     m_manifest = parse_manifest(manifest);
   } else {
-    m_file_meta = parse_file_meta(*m_filesystem, nullptr, true);
+    m_file_meta = parse_file_meta(*m_filesystem, nullptr, false);
   }
 
   if (m_file_meta.password_encrypted) {
@@ -46,6 +46,7 @@ bool OpenDocumentFile::decrypt(const std::string &password) {
   if (!odf::decrypt(m_filesystem, m_manifest, password)) {
     return false;
   }
+  m_file_meta = parse_file_meta(*m_filesystem, nullptr, true);
   m_encryption_state = EncryptionState::DECRYPTED;
   return true;
 }
