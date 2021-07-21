@@ -8,12 +8,13 @@ nlohmann::json meta_to_json(const FileMeta &meta) {
 
   result["type"] = meta.type_as_string();
   result["encrypted"] = meta.password_encrypted;
-  result["entryCount"] = 0;
 
   if (meta.document_meta) {
     auto &&document_meta = *meta.document_meta;
 
-    result["entryCount"] = document_meta.entry_count;
+    if (document_meta.entry_count) {
+      result["entryCount"] = *document_meta.entry_count;
+    }
   }
 
   return result;

@@ -340,12 +340,11 @@ Style::generate_style_(const std::string &name, const pugi::xml_node node) {
       parent = generate_style_(parent_attr.value(), parent_style_it->second);
     }
     // TODO else throw or log?
-  } else if (auto family_attr = node.attribute("style:family-name");
-             family_attr) {
-    if (auto family_style_it = m_index_default_style.find(name);
+  } else if (auto family_attr = node.attribute("style:family"); family_attr) {
+    if (auto family_style_it = m_index_default_style.find(family_attr.value());
         family_style_it != std::end(m_index_default_style)) {
       parent =
-          generate_default_style_(parent_attr.value(), family_style_it->second);
+          generate_default_style_(family_attr.value(), family_style_it->second);
     }
     // TODO else throw or log?
   }

@@ -93,10 +93,11 @@ enum class DocumentType {
 
 struct DocumentMeta final {
   DocumentMeta();
-  DocumentMeta(DocumentType document_type, std::uint32_t entry_count);
+  DocumentMeta(DocumentType document_type,
+               std::optional<std::uint32_t> entry_count);
 
   DocumentType document_type{DocumentType::UNKNOWN};
-  std::uint32_t entry_count{0};
+  std::optional<std::uint32_t> entry_count;
 };
 
 struct FileMeta final {

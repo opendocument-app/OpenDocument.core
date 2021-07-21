@@ -44,7 +44,7 @@ std::string type_to_string(const FileType type) {
 DocumentMeta::DocumentMeta() = default;
 
 DocumentMeta::DocumentMeta(const DocumentType document_type,
-                           const std::uint32_t entry_count)
+                           const std::optional<std::uint32_t> entry_count)
     : document_type{document_type}, entry_count{entry_count} {}
 
 FileType FileMeta::type_by_extension(const std::string &extension) noexcept {

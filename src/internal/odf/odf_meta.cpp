@@ -92,6 +92,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
       if (statistics) {
         switch (result.type) {
         case FileType::OPENDOCUMENT_TEXT: {
+          document_meta.document_type = DocumentType::TEXT;
           const auto page_count = statistics.attribute("meta:page-count");
           if (!page_count) {
             break;
@@ -99,9 +100,10 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
           document_meta.entry_count = page_count.as_uint();
         } break;
         case FileType::OPENDOCUMENT_PRESENTATION: {
-          document_meta.entry_count = 0;
+          document_meta.document_type = DocumentType::PRESENTATION;
         } break;
         case FileType::OPENDOCUMENT_SPREADSHEET: {
+          document_meta.document_type = DocumentType::SPREADSHEET;
           const auto table_count = statistics.attribute("meta:table-count");
           if (!table_count) {
             break;
@@ -109,6 +111,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
           document_meta.entry_count = table_count.as_uint();
         } break;
         case FileType::OPENDOCUMENT_GRAPHICS: {
+          document_meta.document_type = DocumentType::DRAWING;
         } break;
         default:
           break;
