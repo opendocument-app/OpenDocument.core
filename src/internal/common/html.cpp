@@ -43,9 +43,6 @@ p:after {
 span {
   margin: 0 !important;
 }
-span {
-  white-space: pre-wrap;
-}
 
 /* https://github.com/marcelblanarik/js-keyword-highlighter/blob/dd69436bee06f8c658abe1e12e2abb35d3bf250b/index.html#L81-L82 */
 mark { background: yellow; }
