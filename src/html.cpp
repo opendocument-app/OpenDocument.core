@@ -183,11 +183,10 @@ std::string translate_drawing_style(const Element &element) {
 std::string translate_frame_properties(const Frame &element) {
   std::string result;
   if (auto anchor_type = element.anchor_type();
-      anchor_type && ((anchor_type.get_string() == "as-char") ||
-                      (anchor_type.get_string() == "char"))) {
+      anchor_type && (anchor_type.get_string() == "as-char")) {
     result += "display:inline-block;";
-    result += "position:relative;";
-  } else if (element.x() || element.y()) {
+  } else {
+    result += "display:block;";
     result += "position:absolute;";
   }
   if (auto x = element.x()) {
@@ -448,19 +447,12 @@ void translate_image(const Image &element, std::ostream &out,
 
 void translate_frame(const Frame &element, std::ostream &out,
                      const HtmlConfig &config) {
-  // TODO hide ODF details about anchor values
-  if (auto anchor_type = element.anchor_type();
-      anchor_type && ((anchor_type.get_string() == "as-char") ||
-                      (anchor_type.get_string() == "char"))) {
-    out << "<span";
-  } else {
-    out << "<div";
-  }
-
+  // TODO choosing <span> because it is valid inside <p>; is that okay?
+  out << "<span";
   out << optional_style_attribute(translate_frame_properties(element));
   out << ">";
   translate_generation(element.children(), out, config);
-  out << "</div>";
+  out << "</span>";
 }
 
 void translate_rect(const Rect &element, std::ostream &out,
