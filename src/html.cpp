@@ -448,6 +448,7 @@ void translate_image(const Image &element, std::ostream &out,
 
 void translate_frame(const Frame &element, std::ostream &out,
                      const HtmlConfig &config) {
+  // TODO hide ODF details about anchor values
   if (auto anchor_type = element.anchor_type();
       anchor_type && ((anchor_type.get_string() == "as-char") ||
                       (anchor_type.get_string() == "char"))) {
