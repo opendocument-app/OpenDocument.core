@@ -252,6 +252,11 @@ std::string optional_style_attribute(const std::string &style) {
   return " style=\"" + style + "\"";
 }
 
+void translate_text(const Text &element, std::ostream &out,
+                    const HtmlConfig &config) {
+  out << common::html::escape_text(element.text().string());
+}
+
 void translate_paragraph(const Paragraph &element, std::ostream &out,
                          const HtmlConfig &config) {
   auto properties = element.properties();
@@ -515,8 +520,7 @@ void translate_generation(const ElementRange &siblings, std::ostream &out,
 void translate_element(const Element &element, std::ostream &out,
                        const HtmlConfig &config) {
   if (element.type() == ElementType::TEXT) {
-    // TODO handle whitespace collapse
-    out << common::html::escape_text(element.text().string());
+    translate_text(element.text(), out, config);
   } else if (element.type() == ElementType::LINE_BREAK) {
     out << "<br>";
   } else if (element.type() == ElementType::PARAGRAPH) {

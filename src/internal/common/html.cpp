@@ -128,9 +128,24 @@ std::string html::body_attributes(const HtmlConfig &config) noexcept {
 }
 
 std::string html::escape_text(std::string text) noexcept {
+  if (text.empty()) {
+    return text;
+  }
+
   util::string::replace_all(text, "&", "&amp;");
   util::string::replace_all(text, "<", "&lt;");
   util::string::replace_all(text, ">", "&gt;");
+
+  if (text.front() == ' ') {
+    text = "&nbsp;" + text.substr(1);
+  }
+  if (text.back() == ' ') {
+    text = text.substr(0, text.length() - 1) + "&nbsp;";
+  }
+  util::string::replace_all(text, "  ", " &nbsp;");
+
+  // TODO `&emsp;` is not a tab
+  util::string::replace_all(text, "\t", "&emsp;");
 
   return text;
 }
