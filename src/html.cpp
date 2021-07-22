@@ -447,12 +447,24 @@ void translate_image(const Image &element, std::ostream &out,
 
 void translate_frame(const Frame &element, std::ostream &out,
                      const HtmlConfig &config) {
-  // TODO choosing <span> because it is valid inside <p>; is that okay?
-  out << "<span";
+  // TODO choosing <span> by default because it is valid inside <p>;
+  // alternatives?
+  const bool span = element.anchor_type().operator bool();
+  if (span) {
+    out << "<span";
+  } else {
+    out << "<div";
+  }
+
   out << optional_style_attribute(translate_frame_properties(element));
   out << ">";
   translate_generation(element.children(), out, config);
-  out << "</span>";
+
+  if (span) {
+    out << "</span>";
+  } else {
+    out << "</div>";
+  }
 }
 
 void translate_rect(const Rect &element, std::ostream &out,
