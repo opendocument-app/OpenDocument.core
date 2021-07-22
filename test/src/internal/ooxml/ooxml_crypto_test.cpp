@@ -6,12 +6,12 @@
 using namespace odr::internal::ooxml;
 
 TEST(OoxmlCrypto, ECMA376Standard_derive_key) {
-  Crypto::EncryptionHeader encryption_header{};
+  crypto::EncryptionHeader encryption_header{};
   encryption_header.alg_id = 0x660e;
   encryption_header.alg_id_hash = 0x8004;
   encryption_header.key_size = 128;
   encryption_header.provider_type = 0x18;
-  Crypto::EncryptionVerifier encryption_verifier{};
+  crypto::EncryptionVerifier encryption_verifier{};
   encryption_verifier.salt_size = 16;
   std::memcpy(encryption_verifier.salt,
               "\xe8\x82"
@@ -22,15 +22,15 @@ TEST(OoxmlCrypto, ECMA376Standard_derive_key) {
   const std::string expected_key =
       "@\xb1:q\xf9\x0b\x96n7T\x08\xf2\xd1\x81\xa1\xaa";
 
-  Crypto::ECMA376Standard crypto(encryption_header, encryption_verifier, "");
+  crypto::ECMA376Standard crypto(encryption_header, encryption_verifier, "");
   const std::string key = crypto.derive_key(password);
 
   EXPECT_EQ(expected_key, key);
 }
 
 TEST(OoxmlCrypto, ECMA376Standard_verify) {
-  const Crypto::EncryptionHeader encryption_header{};
-  Crypto::EncryptionVerifier encryption_verifier{};
+  const crypto::EncryptionHeader encryption_header{};
+  crypto::EncryptionVerifier encryption_verifier{};
   encryption_verifier.verifierHashSize = 16;
   std::memcpy(encryption_verifier.encrypted_verifier,
               "Qos.\x96o\xac\x17\xb1\xc5\xd7\xd8\xcc"
@@ -41,7 +41,7 @@ TEST(OoxmlCrypto, ECMA376Standard_verify) {
       "Ft\\\x14\xd3\xcf\x1b\xb1@\xa4\x8fNo=#\x88\x08r\xb1j";
   const std::string key = "@\xb1:q\xf9\x0b\x96n7T\x08\xf2\xd1\x81\xa1\xaa";
 
-  Crypto::ECMA376Standard crypto(encryption_header, encryption_verifier,
+  crypto::ECMA376Standard crypto(encryption_header, encryption_verifier,
                                  encrypted_verifier_hash);
   EXPECT_TRUE(crypto.verify(key));
 }

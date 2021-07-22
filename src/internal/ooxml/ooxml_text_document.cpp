@@ -66,18 +66,12 @@ void resolve_link_element_properties(
 void resolve_element_properties(
     const ElementType element, const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
-  switch (element) {
-  case ElementType::TEXT:
+  if (element == ElementType::TEXT) {
     resolve_text_element_properties(node, result);
-    break;
-  case ElementType::BOOKMARK:
+  } else if (element == ElementType::BOOKMARK) {
     resolve_bookmark_element_properties(node, result);
-    break;
-  case ElementType::LINK:
+  } else if (element == ElementType::LINK) {
     resolve_link_element_properties(node, result);
-    break;
-  default:
-    break;
   }
 }
 
@@ -182,16 +176,11 @@ void resolve_text_style_properties(
 void resolve_style_properties(
     const ElementType element, const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
-  switch (element) {
-  case ElementType::PARAGRAPH:
+  if (element == ElementType::PARAGRAPH) {
     resolve_paragraph_style_properties(node, result);
     resolve_text_style_properties(node, result);
-    break;
-  case ElementType::SPAN:
+  } else if (element == ElementType::SPAN) {
     resolve_text_style_properties(node, result);
-    break;
-  default:
-    break;
   }
 }
 } // namespace
