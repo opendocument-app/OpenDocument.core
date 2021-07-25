@@ -8,6 +8,7 @@
 #include <internal/ooxml/ooxml_meta.h>
 #include <internal/ooxml/ooxml_presentation.h>
 #include <internal/ooxml/ooxml_text_document.h>
+#include <internal/ooxml/ooxml_workbook.h>
 #include <internal/util/stream_util.h>
 #include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
@@ -67,6 +68,8 @@ std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
     return std::make_shared<OfficeOpenXmlTextDocument>(m_filesystem);
   case FileType::OFFICE_OPEN_XML_PRESENTATION:
     return std::make_shared<OfficeOpenXmlPresentation>(m_filesystem);
+  case FileType::OFFICE_OPEN_XML_WORKBOOK:
+    return std::make_shared<OfficeOpenXmlWorkbook>(m_filesystem);
   default:
     throw UnsupportedOperation();
   }

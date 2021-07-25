@@ -75,15 +75,6 @@ TEST_P(OutputReferenceTests, all) {
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
-  // TODO remove
-  if ((test_file.type != FileType::OPENDOCUMENT_TEXT) &&
-      (test_file.type != FileType::OPENDOCUMENT_PRESENTATION) &&
-      (test_file.type != FileType::OPENDOCUMENT_SPREADSHEET) &&
-      (test_file.type != FileType::OPENDOCUMENT_GRAPHICS) &&
-      (test_file.type != FileType::OFFICE_OPEN_XML_DOCUMENT)) {
-    GTEST_SKIP();
-  }
-
   if (file.file_category() == FileCategory::DOCUMENT) {
     auto document_file = file.document_file();
     auto document = document_file.document();
