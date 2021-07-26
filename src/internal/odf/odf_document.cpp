@@ -241,6 +241,8 @@ OpenDocument::register_element_(const pugi::xml_node node,
     } else if (element == "draw:g") {
       // drawing group not supported
       return register_children_(node, parent, previous_sibling).second;
+    } else if (element == "draw:text-box") {
+      return register_children_(node, parent, previous_sibling).second;
     } else if ((m_document_type == DocumentType::PRESENTATION) &&
                (element == "draw:page")) {
       element_type = ElementType::SLIDE;
