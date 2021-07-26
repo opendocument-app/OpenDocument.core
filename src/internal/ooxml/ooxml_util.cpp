@@ -6,6 +6,24 @@
 
 namespace odr::internal {
 
+std::any
+ooxml::read_optional_node(const pugi::xml_node node,
+                          const NodeTransformation &node_transformation) {
+  if (node) {
+    return node_transformation(node);
+  }
+  return {};
+}
+
+std::any ooxml::read_optional_attribute(
+    const pugi::xml_attribute attribute,
+    const AttributeTransformation &attribute_transformation) {
+  if (attribute) {
+    return attribute_transformation(attribute);
+  }
+  return {};
+}
+
 std::any ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
   std::string value = attribute.value();
   if (value == "auto") {
@@ -31,12 +49,20 @@ std::any ooxml::read_line_attribute(const pugi::xml_attribute attribute) {
     return {};
   }
   // TODO
-  return std::any("solid");
+  return "solid";
 }
 
 std::any ooxml::read_shadow_attribute(const pugi::xml_node) {
   // TODO
   return "1pt 1pt";
+}
+
+std::any ooxml::read_text_property(const pugi::xml_node node) {
+  std::string name = node.name();
+  if (name == "w:tab") {
+    return "\t";
+  }
+  return node.first_child().text().as_string();
 }
 
 std::unordered_map<std::string, std::string>

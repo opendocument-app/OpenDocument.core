@@ -2,6 +2,7 @@
 #include <internal/ooxml/ooxml_presentation.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/util/map_util.h>
+#include <internal/util/property_util.h>
 #include <internal/util/xml_util.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
@@ -10,43 +11,28 @@
 namespace odr::internal::ooxml {
 
 namespace {
-void set_optional_property(
-    const ElementProperty property, std::any value,
-    std::unordered_map<ElementProperty, std::any> &result) {
-  if (value.has_value()) {
-    result[property] = std::move(value);
-  }
-}
-
-std::any read_text_property(const pugi::xml_node node) {
-  std::string name = node.name();
-  if (name == "w:tab") {
-    return "\t";
-  }
-  return node.first_child().text().as_string();
-}
-
 void read_xfrm_properties(
     const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
   const auto off = node.child("a:off");
   const auto ext = node.child("a:ext");
 
-  set_optional_property(ElementProperty::X,
-                        read_emus_attribute(off.attribute("x")), result);
-  set_optional_property(ElementProperty::Y,
-                        read_emus_attribute(off.attribute("y")), result);
-  set_optional_property(ElementProperty::WIDTH,
-                        read_emus_attribute(ext.attribute("cx")), result);
-  set_optional_property(ElementProperty::HEIGHT,
-                        read_emus_attribute(ext.attribute("cy")), result);
+  util::property::set_optional_property(
+      ElementProperty::X, read_emus_attribute(off.attribute("x")), result);
+  util::property::set_optional_property(
+      ElementProperty::Y, read_emus_attribute(off.attribute("y")), result);
+  util::property::set_optional_property(
+      ElementProperty::WIDTH, read_emus_attribute(ext.attribute("cx")), result);
+  util::property::set_optional_property(
+      ElementProperty::HEIGHT, read_emus_attribute(ext.attribute("cy")),
+      result);
 }
 
 void resolve_text_element_properties(
     const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
-  set_optional_property(ElementProperty::TEXT, read_text_property(node),
-                        result);
+  util::property::set_optional_property(ElementProperty::TEXT,
+                                        read_text_property(node), result);
 }
 
 void resolve_frame_element_properties(
@@ -104,6 +90,7 @@ ElementIdentifier OfficeOpenXmlPresentation::register_element_(
       {"a:p", ElementType::PARAGRAPH},
       {"a:r", ElementType::SPAN},
       {"a:t", ElementType::TEXT},
+      {"w:tab", ElementType::TEXT},
   };
 
   if (!node) {
@@ -277,15 +264,10 @@ OfficeOpenXmlPresentation::element_properties(
     throw std::runtime_error("element not found");
   }
 
-  // TODO move
+  // TODO move?
   if (element->type == ElementType::SLIDE) {
     result[ElementProperty::WIDTH] = m_slide_width;
     result[ElementProperty::HEIGHT] = m_slide_height;
-    // TODO implement
-    result[ElementProperty::MARGIN_TOP] = "";
-    result[ElementProperty::MARGIN_LEFT] = "";
-    result[ElementProperty::MARGIN_BOTTOM] = "";
-    result[ElementProperty::MARGIN_RIGHT] = "";
   }
 
   resolve_element_properties(element->type, element->node, result);

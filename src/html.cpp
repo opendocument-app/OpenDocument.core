@@ -25,6 +25,36 @@ void translate_generation(const ElementRange &siblings, std::ostream &out,
 void translate_element(const Element &element, std::ostream &out,
                        const HtmlConfig &config);
 
+std::string translate_outer_page_style(const PropertySet &properties) {
+  std::string result;
+  if (auto width = properties.get_string(ElementProperty::WIDTH)) {
+    result += "width:" + *width + ";";
+  }
+  if (auto height = properties.get_string(ElementProperty::HEIGHT)) {
+    result += "height:" + *height + ";";
+  }
+  return result;
+}
+
+std::string translate_inner_page_style(const PropertySet &properties) {
+  std::string result;
+  if (auto margin_top = properties.get_string(ElementProperty::MARGIN_TOP)) {
+    result += "margin-top:" + *margin_top + ";";
+  }
+  if (auto margin_left = properties.get_string(ElementProperty::MARGIN_LEFT)) {
+    result += "margin-left:" + *margin_left + ";";
+  }
+  if (auto margin_bottom =
+          properties.get_string(ElementProperty::MARGIN_BOTTOM)) {
+    result += "margin-bottom:" + *margin_bottom + ";";
+  }
+  if (auto margin_right =
+          properties.get_string(ElementProperty::MARGIN_RIGHT)) {
+    result += "margin-right:" + *margin_right + ";";
+  }
+  return result;
+}
+
 std::string translate_paragraph_style(const PropertySet &properties) {
   std::string result;
   if (auto text_align = properties.get_string(ElementProperty::TEXT_ALIGN)) {
@@ -564,21 +594,13 @@ void translate_text_document(const TextDocument &document, std::ostream &out,
   const auto root = document.root();
 
   if (config.text_document_margin) {
-    // TODO check if props are available
-    const std::string outer_style =
-        "width:" + root.property(ElementProperty::WIDTH).get_string() + ";";
-    const std::string inner_style =
-        "margin-top:" +
-        root.property(ElementProperty::MARGIN_TOP).get_string() + ";" +
-        "margin-left:" +
-        root.property(ElementProperty::MARGIN_LEFT).get_string() + ";" +
-        "margin-bottom:" +
-        root.property(ElementProperty::MARGIN_BOTTOM).get_string() + ";" +
-        "margin-right:" +
-        root.property(ElementProperty::MARGIN_RIGHT).get_string() + ";";
-
-    out << R"(<div style=")" + outer_style + "\">";
-    out << R"(<div style=")" + inner_style + "\">";
+    auto properties = root.properties();
+    out << "<div";
+    out << optional_style_attribute(translate_outer_page_style(properties));
+    out << ">";
+    out << "<div";
+    out << optional_style_attribute(translate_inner_page_style(properties));
+    out << ">";
     translate_generation(document.root().children(), out, config);
     out << "</div>";
     out << "</div>";
@@ -605,21 +627,13 @@ void translate_presentation(const Presentation &document, std::ostream &out,
     }
     ++i;
 
-    const std::string outer_style =
-        "width:" + slide.property(ElementProperty::WIDTH).get_string() + ";" +
-        "height:" + slide.property(ElementProperty::HEIGHT).get_string() + ";";
-    const std::string inner_style =
-        "margin-top:" +
-        slide.property(ElementProperty::MARGIN_TOP).get_string() + ";" +
-        "margin-left:" +
-        slide.property(ElementProperty::MARGIN_LEFT).get_string() + ";" +
-        "margin-bottom:" +
-        slide.property(ElementProperty::MARGIN_BOTTOM).get_string() + ";" +
-        "margin-right:" +
-        slide.property(ElementProperty::MARGIN_RIGHT).get_string() + ";";
-
-    out << R"(<div style=")" + outer_style + "\">";
-    out << R"(<div style=")" + inner_style + "\">";
+    auto properties = slide.properties();
+    out << "<div";
+    out << optional_style_attribute(translate_outer_page_style(properties));
+    out << ">";
+    out << "<div";
+    out << optional_style_attribute(translate_inner_page_style(properties));
+    out << ">";
     translate_generation(slide.children(), out, config);
     out << "</div>";
     out << "</div>";
@@ -664,21 +678,13 @@ void translate_drawing(const Drawing &document, std::ostream &out,
     }
     ++i;
 
-    const std::string outer_style =
-        "width:" + page.property(ElementProperty::WIDTH).get_string() + ";" +
-        "height:" + page.property(ElementProperty::HEIGHT).get_string() + ";";
-    const std::string inner_style =
-        "margin-top:" +
-        page.property(ElementProperty::MARGIN_TOP).get_string() + ";" +
-        "margin-left:" +
-        page.property(ElementProperty::MARGIN_LEFT).get_string() + ";" +
-        "margin-bottom:" +
-        page.property(ElementProperty::MARGIN_BOTTOM).get_string() + ";" +
-        "margin-right:" +
-        page.property(ElementProperty::MARGIN_RIGHT).get_string() + ";";
-
-    out << R"(<div style=")" + outer_style + "\">";
-    out << R"(<div style=")" + inner_style + "\">";
+    auto properties = page.properties();
+    out << "<div";
+    out << optional_style_attribute(translate_outer_page_style(properties));
+    out << ">";
+    out << "<div";
+    out << optional_style_attribute(translate_inner_page_style(properties));
+    out << ">";
     translate_generation(page.children(), out, config);
     out << "</div>";
     out << "</div>";

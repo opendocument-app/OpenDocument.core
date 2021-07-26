@@ -2,6 +2,7 @@
 #include <internal/ooxml/ooxml_text_document.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/util/map_util.h>
+#include <internal/util/property_util.h>
 #include <internal/util/xml_util.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
@@ -10,22 +11,6 @@
 namespace odr::internal::ooxml {
 
 namespace {
-void set_optional_property(
-    const ElementProperty property, std::any value,
-    std::unordered_map<ElementProperty, std::any> &result) {
-  if (value.has_value()) {
-    result[property] = std::move(value);
-  }
-}
-
-std::any read_text_property(const pugi::xml_node node) {
-  std::string name = node.name();
-  if (name == "w:tab") {
-    return "\t";
-  }
-  return node.first_child().text().as_string();
-}
-
 std::any read_bookmark_name_property(const pugi::xml_node node) {
   if (auto attribute = node.attribute("w:name")) {
     return attribute.value();
@@ -45,22 +30,22 @@ std::any read_link_href_property(const pugi::xml_node node) {
 void resolve_text_element_properties(
     const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
-  set_optional_property(ElementProperty::TEXT, read_text_property(node),
-                        result);
+  util::property::set_optional_property(ElementProperty::TEXT,
+                                        read_text_property(node), result);
 }
 
 void resolve_bookmark_element_properties(
     const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
-  set_optional_property(ElementProperty::NAME,
-                        read_bookmark_name_property(node), result);
+  util::property::set_optional_property(
+      ElementProperty::NAME, read_bookmark_name_property(node), result);
 }
 
 void resolve_link_element_properties(
     const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
-  set_optional_property(ElementProperty::HREF, read_link_href_property(node),
-                        result);
+  util::property::set_optional_property(ElementProperty::HREF,
+                                        read_link_href_property(node), result);
 }
 
 void resolve_element_properties(
@@ -75,29 +60,6 @@ void resolve_element_properties(
   }
 }
 
-using NodeTransformation =
-    std::function<std::any(const pugi::xml_node attribute)>;
-using AttributeTransformation =
-    std::function<std::any(const pugi::xml_attribute attribute)>;
-
-std::any read_optional_node(const pugi::xml_node node,
-                            const NodeTransformation &node_transformation) {
-  if (node) {
-    return node_transformation(node);
-  }
-  return {};
-}
-
-std::any read_optional_attribute(
-    const pugi::xml_attribute attribute,
-    const AttributeTransformation &attribute_transformation =
-        [](const pugi::xml_attribute attribute) { return attribute.value(); }) {
-  if (attribute) {
-    return attribute_transformation(attribute);
-  }
-  return {};
-}
-
 void resolve_paragraph_style_properties(
     const pugi::xml_node node,
     std::unordered_map<ElementProperty, std::any> &result) {
@@ -108,7 +70,7 @@ void resolve_paragraph_style_properties(
     return;
   }
 
-  set_optional_property(
+  util::property::set_optional_property(
       ElementProperty::TEXT_ALIGN,
       read_optional_attribute(properties_node.child("w:jc").attribute("w:val")),
       result);
@@ -124,53 +86,55 @@ void resolve_text_style_properties(
     return;
   }
 
-  set_optional_property(
+  util::property::set_optional_property(
       ElementProperty::FONT_NAME,
       read_optional_attribute(
           properties_node.child("w:rFonts").attribute("w:ascii")),
       result);
-  set_optional_property(
+  util::property::set_optional_property(
       ElementProperty::FONT_SIZE,
       read_optional_attribute(properties_node.child("w:sz").attribute("w:val"),
                               read_half_point_attribute),
       result);
-  set_optional_property(ElementProperty::FONT_COLOR,
-                        read_optional_attribute(
-                            properties_node.child("w:color").attribute("w:val"),
-                            read_color_attribute),
-                        result);
-  set_optional_property(
+  util::property::set_optional_property(
+      ElementProperty::FONT_COLOR,
+      read_optional_attribute(
+          properties_node.child("w:color").attribute("w:val"),
+          read_color_attribute),
+      result);
+  util::property::set_optional_property(
       ElementProperty::BACKGROUND_COLOR,
       read_optional_attribute(
           properties_node.child("w:highlight").attribute("w:val"),
           read_color_attribute),
       result);
-  set_optional_property(
+  util::property::set_optional_property(
       ElementProperty::FONT_WEIGHT,
       read_optional_node(properties_node.child("w:b"),
                          [](const pugi::xml_node) { return std::any("bold"); }),
       result);
-  set_optional_property(ElementProperty::FONT_STYLE,
-                        read_optional_node(properties_node.child("w:i"),
-                                           [](const pugi::xml_node) {
-                                             return std::any("italic");
-                                           }),
-                        result);
-  set_optional_property(
+  util::property::set_optional_property(
+      ElementProperty::FONT_STYLE,
+      read_optional_node(
+          properties_node.child("w:i"),
+          [](const pugi::xml_node) { return std::any("italic"); }),
+      result);
+  util::property::set_optional_property(
       ElementProperty::FONT_UNDERLINE,
       read_optional_attribute(properties_node.child("w:u").attribute("w:val"),
                               read_line_attribute),
       result);
-  set_optional_property(
+  util::property::set_optional_property(
       ElementProperty::FONT_STRIKETHROUGH,
       read_optional_attribute(
           properties_node.child("w:strike").attribute("w:val"),
           read_line_attribute),
       result);
-  set_optional_property(ElementProperty::FONT_STRIKETHROUGH,
-                        read_optional_node(properties_node.child("w:shadow"),
-                                           read_shadow_attribute),
-                        result);
+  util::property::set_optional_property(
+      ElementProperty::FONT_STRIKETHROUGH,
+      read_optional_node(properties_node.child("w:shadow"),
+                         read_shadow_attribute),
+      result);
 }
 
 void resolve_style_properties(
