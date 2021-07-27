@@ -36,6 +36,7 @@ add_library(odr-object OBJECT
         src/internal/cfb/cfb_util.cpp
 
         src/internal/common/constants.cpp
+        src/internal/common/document.cpp
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
         src/internal/common/html.cpp

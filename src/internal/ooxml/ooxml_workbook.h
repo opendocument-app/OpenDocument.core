@@ -12,7 +12,7 @@ class ReadableFilesystem;
 
 namespace odr::internal::ooxml {
 
-class OfficeOpenXmlWorkbook final : public virtual abstract::Document {
+class OfficeOpenXmlWorkbook final : public abstract::Document {
 public:
   explicit OfficeOpenXmlWorkbook(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem);
