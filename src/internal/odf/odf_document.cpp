@@ -328,39 +328,14 @@ ElementIdentifier
 OpenDocument::new_element_(const pugi::xml_node node, const ElementType type,
                            const ElementIdentifier parent,
                            const ElementIdentifier previous_sibling) {
-  Element element;
-  element.node = node;
-  element.type = type;
-  element.parent = parent;
-  element.previous_sibling = previous_sibling;
-
-  m_elements.push_back(element);
-  ElementIdentifier result = m_elements.size();
-
-  if (parent && !previous_sibling) {
-    element_(parent)->first_child = result;
-  }
-  if (previous_sibling) {
-    element_(previous_sibling)->next_sibling = result;
-  }
-
+  auto result = Document::new_element_(type, parent, previous_sibling);
+  m_element_nodes[result] = node;
   return result;
 }
 
-OpenDocument::Element *
-OpenDocument::element_(const ElementIdentifier element_id) {
-  if (!element_id) {
-    return nullptr;
-  }
-  return &m_elements[element_id.id - 1];
-}
-
-const OpenDocument::Element *
-OpenDocument::element_(const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return nullptr;
-  }
-  return &m_elements[element_id.id - 1];
+pugi::xml_node
+OpenDocument::element_node_(const ElementIdentifier element_id) const {
+  return m_element_nodes.at(element_id);
 }
 
 bool OpenDocument::editable() const noexcept { return true; }
@@ -404,7 +379,8 @@ void OpenDocument::save(const common::Path &path) const {
   archive.save(ostream);
 }
 
-void OpenDocument::save(const common::Path &path, const char *password) const {
+void OpenDocument::save(const common::Path & /*path*/,
+                        const char * /*password*/) const {
   // TODO throw if not savable
   throw UnsupportedOperation();
 }
@@ -416,52 +392,6 @@ DocumentType OpenDocument::document_type() const noexcept {
 std::shared_ptr<abstract::ReadableFilesystem>
 OpenDocument::files() const noexcept {
   return m_filesystem;
-}
-
-ElementIdentifier OpenDocument::root_element() const { return m_root; }
-
-ElementIdentifier OpenDocument::first_entry_element() const {
-  return element_first_child(m_root);
-}
-
-ElementType
-OpenDocument::element_type(const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return ElementType::NONE;
-  }
-  return element_(element_id)->type;
-}
-
-ElementIdentifier
-OpenDocument::element_parent(const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->parent;
-}
-
-ElementIdentifier
-OpenDocument::element_first_child(const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->first_child;
-}
-
-ElementIdentifier OpenDocument::element_previous_sibling(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->previous_sibling;
-}
-
-ElementIdentifier
-OpenDocument::element_next_sibling(const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->next_sibling;
 }
 
 std::unordered_map<ElementProperty, std::any>
@@ -479,8 +409,8 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
     result.insert(std::begin(style_properties), std::end(style_properties));
   }
 
-  PropertyRegistry::instance().resolve_properties(element->type, element->node,
-                                                  result);
+  PropertyRegistry::instance().resolve_properties(
+      element->type, element_node_(element_id), result);
 
   if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
       style_name_it != std::end(result)) {
@@ -503,14 +433,9 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
 }
 
 void OpenDocument::update_element_properties(
-    const ElementIdentifier element_id,
-    std::unordered_map<ElementProperty, std::any> properties) const {
+    const ElementIdentifier /*element_id*/,
+    std::unordered_map<ElementProperty, std::any> /*properties*/) const {
   throw UnsupportedOperation();
-}
-
-std::shared_ptr<abstract::Table>
-OpenDocument::table(const ElementIdentifier element_id) const {
-  return m_tables.at(element_id);
 }
 
 } // namespace odr::internal::odf
