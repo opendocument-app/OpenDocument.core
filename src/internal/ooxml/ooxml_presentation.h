@@ -32,9 +32,6 @@ public:
       ElementIdentifier element_id,
       std::unordered_map<ElementProperty, std::any> properties) const final;
 
-  [[nodiscard]] std::shared_ptr<abstract::Table>
-  table(ElementIdentifier element_id) const final;
-
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
 

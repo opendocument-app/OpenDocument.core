@@ -318,39 +318,14 @@ OfficeOpenXmlTextDocument::register_children_(
 ElementIdentifier OfficeOpenXmlTextDocument::new_element_(
     const pugi::xml_node node, const ElementType type,
     const ElementIdentifier parent, const ElementIdentifier previous_sibling) {
-  Element element;
-  element.node = node;
-  element.type = type;
-  element.parent = parent;
-  element.previous_sibling = previous_sibling;
-
-  m_elements.push_back(element);
-  ElementIdentifier result = m_elements.size();
-
-  if (parent && !previous_sibling) {
-    element_(parent)->first_child = result;
-  }
-  if (previous_sibling) {
-    element_(previous_sibling)->next_sibling = result;
-  }
-
+  auto result = Document::new_element_(type, parent, previous_sibling);
+  m_element_nodes[result] = node;
   return result;
 }
 
-OfficeOpenXmlTextDocument::Element *
-OfficeOpenXmlTextDocument::element_(const ElementIdentifier element_id) {
-  if (!element_id) {
-    return nullptr;
-  }
-  return &m_elements[element_id.id - 1];
-}
-
-const OfficeOpenXmlTextDocument::Element *
-OfficeOpenXmlTextDocument::element_(const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return nullptr;
-  }
-  return &m_elements[element_id.id - 1];
+pugi::xml_node OfficeOpenXmlTextDocument::element_node_(
+    const ElementIdentifier element_id) const {
+  return m_element_nodes.at(element_id);
 }
 
 bool OfficeOpenXmlTextDocument::editable() const noexcept { return false; }
@@ -378,54 +353,6 @@ OfficeOpenXmlTextDocument::files() const noexcept {
   return m_filesystem;
 }
 
-ElementIdentifier OfficeOpenXmlTextDocument::root_element() const {
-  return m_root;
-}
-
-ElementIdentifier OfficeOpenXmlTextDocument::first_entry_element() const {
-  return element_first_child(m_root);
-}
-
-ElementType OfficeOpenXmlTextDocument::element_type(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return ElementType::NONE;
-  }
-  return element_(element_id)->type;
-}
-
-ElementIdentifier OfficeOpenXmlTextDocument::element_parent(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->parent;
-}
-
-ElementIdentifier OfficeOpenXmlTextDocument::element_first_child(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->first_child;
-}
-
-ElementIdentifier OfficeOpenXmlTextDocument::element_previous_sibling(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->previous_sibling;
-}
-
-ElementIdentifier OfficeOpenXmlTextDocument::element_next_sibling(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->next_sibling;
-}
-
 std::unordered_map<ElementProperty, std::any>
 OfficeOpenXmlTextDocument::element_properties(
     ElementIdentifier element_id) const {
@@ -436,9 +363,11 @@ OfficeOpenXmlTextDocument::element_properties(
     throw std::runtime_error("element not found");
   }
 
-  resolve_element_properties(element->type, element->node, result);
+  auto element_node = element_node_(element_id);
 
-  auto style_properties = m_style.resolve_style(element->type, element->node);
+  resolve_element_properties(element->type, element_node, result);
+
+  auto style_properties = m_style.resolve_style(element->type, element_node);
   result.insert(std::begin(style_properties), std::end(style_properties));
 
   return result;
@@ -447,11 +376,6 @@ OfficeOpenXmlTextDocument::element_properties(
 void OfficeOpenXmlTextDocument::update_element_properties(
     const ElementIdentifier /*element_id*/,
     std::unordered_map<ElementProperty, std::any> /*properties*/) const {
-  throw UnsupportedOperation();
-}
-
-std::shared_ptr<abstract::Table>
-OfficeOpenXmlTextDocument::table(const ElementIdentifier /*element_id*/) const {
   throw UnsupportedOperation();
 }
 

@@ -92,39 +92,14 @@ OfficeOpenXmlWorkbook::register_children_(const pugi::xml_node node,
 ElementIdentifier OfficeOpenXmlWorkbook::new_element_(
     const pugi::xml_node node, const ElementType type,
     const ElementIdentifier parent, const ElementIdentifier previous_sibling) {
-  Element element;
-  element.node = node;
-  element.type = type;
-  element.parent = parent;
-  element.previous_sibling = previous_sibling;
-
-  m_elements.push_back(element);
-  ElementIdentifier result = m_elements.size();
-
-  if (parent && !previous_sibling) {
-    element_(parent)->first_child = result;
-  }
-  if (previous_sibling) {
-    element_(previous_sibling)->next_sibling = result;
-  }
-
+  auto result = Document::new_element_(type, parent, previous_sibling);
+  m_element_nodes[result] = node;
   return result;
 }
 
-OfficeOpenXmlWorkbook::Element *
-OfficeOpenXmlWorkbook::element_(const ElementIdentifier element_id) {
-  if (!element_id) {
-    return nullptr;
-  }
-  return &m_elements[element_id.id - 1];
-}
-
-const OfficeOpenXmlWorkbook::Element *
-OfficeOpenXmlWorkbook::element_(const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return nullptr;
-  }
-  return &m_elements[element_id.id - 1];
+pugi::xml_node
+OfficeOpenXmlWorkbook::element_node_(const ElementIdentifier element_id) const {
+  return m_element_nodes.at(element_id);
 }
 
 bool OfficeOpenXmlWorkbook::editable() const noexcept { return false; }
@@ -151,52 +126,6 @@ OfficeOpenXmlWorkbook::files() const noexcept {
   return m_filesystem;
 }
 
-ElementIdentifier OfficeOpenXmlWorkbook::root_element() const { return m_root; }
-
-ElementIdentifier OfficeOpenXmlWorkbook::first_entry_element() const {
-  return element_first_child(m_root);
-}
-
-ElementType
-OfficeOpenXmlWorkbook::element_type(const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return ElementType::NONE;
-  }
-  return element_(element_id)->type;
-}
-
-ElementIdentifier OfficeOpenXmlWorkbook::element_parent(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->parent;
-}
-
-ElementIdentifier OfficeOpenXmlWorkbook::element_first_child(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->first_child;
-}
-
-ElementIdentifier OfficeOpenXmlWorkbook::element_previous_sibling(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->previous_sibling;
-}
-
-ElementIdentifier OfficeOpenXmlWorkbook::element_next_sibling(
-    const ElementIdentifier element_id) const {
-  if (!element_id) {
-    return {};
-  }
-  return element_(element_id)->next_sibling;
-}
-
 std::unordered_map<ElementProperty, std::any>
 OfficeOpenXmlWorkbook::element_properties(ElementIdentifier element_id) const {
   std::unordered_map<ElementProperty, std::any> result;
@@ -214,11 +143,6 @@ OfficeOpenXmlWorkbook::element_properties(ElementIdentifier element_id) const {
 void OfficeOpenXmlWorkbook::update_element_properties(
     const ElementIdentifier /*element_id*/,
     std::unordered_map<ElementProperty, std::any> /*properties*/) const {
-  throw UnsupportedOperation();
-}
-
-std::shared_ptr<abstract::Table>
-OfficeOpenXmlWorkbook::table(const ElementIdentifier /*element_id*/) const {
   throw UnsupportedOperation();
 }
 
