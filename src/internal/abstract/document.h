@@ -2,11 +2,8 @@
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 
 #include <any>
-#include <cstdint>
 #include <internal/identifier.h>
 #include <memory>
-#include <optional>
-#include <string>
 #include <unordered_map>
 
 namespace odr {

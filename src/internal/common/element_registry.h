@@ -7,6 +7,9 @@
 
 namespace odr::internal {
 
+/*
+ * TODO unused - remove?
+ */
 template <typename Element> class ElementRegistry {
 public:
   Element &operator[](const ElementIdentifier element_id) {
@@ -19,7 +22,7 @@ public:
     return m_elements[element_id.id - 1];
   }
 
-  ElementIdentifier new_element(const Element &element) {
+  ElementIdentifier push_back(const Element &element) {
     m_elements.push_back(element);
     return m_elements.size();
   }
