@@ -58,10 +58,12 @@ add_library(odr-object OBJECT
         src/internal/oldms/oldms_file.cpp
 
         src/internal/ooxml/ooxml_crypto.cpp
+        src/internal/ooxml/ooxml_document.cpp
         src/internal/ooxml/ooxml_file.cpp
         src/internal/ooxml/ooxml_meta.cpp
         src/internal/ooxml/ooxml_presentation.cpp
         src/internal/ooxml/ooxml_text_document.cpp
+        src/internal/ooxml/ooxml_text_style.cpp
         src/internal/ooxml/ooxml_util.cpp
         src/internal/ooxml/ooxml_workbook.cpp
 

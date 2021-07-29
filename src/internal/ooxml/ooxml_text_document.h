@@ -2,7 +2,9 @@
 #define ODR_INTERNAL_OOXML_TEXT_DOCUMENT_H
 
 #include <internal/common/document.h>
+#include <internal/ooxml/ooxml_text_style.h>
 #include <pugixml.hpp>
+#include <unordered_map>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -33,37 +35,6 @@ public:
       std::unordered_map<ElementProperty, std::any> properties) const final;
 
 private:
-  class Style final {
-  public:
-    Style();
-
-    explicit Style(pugi::xml_node styles_root);
-
-    [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-    resolve_style(ElementType element_type, pugi::xml_node element) const;
-
-  private:
-    struct Entry {
-      std::shared_ptr<Entry> m_parent;
-      pugi::xml_node m_node;
-
-      Entry(std::shared_ptr<Entry> parent, pugi::xml_node node);
-
-      void
-      properties(ElementType element,
-                 std::unordered_map<ElementProperty, std::any> &result) const;
-    };
-
-    std::unordered_map<std::string, pugi::xml_node> m_index;
-
-    std::unordered_map<std::string, std::shared_ptr<Entry>> m_styles;
-
-    void generate_indices_(pugi::xml_node styles_root);
-    void generate_styles_();
-    std::shared_ptr<Entry> generate_style_(const std::string &name,
-                                           pugi::xml_node node);
-  };
-
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
 
   pugi::xml_document m_document_xml;
@@ -71,7 +42,7 @@ private:
 
   std::unordered_map<ElementIdentifier, pugi::xml_node> m_element_nodes;
 
-  Style m_style;
+  OfficeOpenXmlTextStyle m_style;
 
   ElementIdentifier register_element_(pugi::xml_node node,
                                       ElementIdentifier parent,
