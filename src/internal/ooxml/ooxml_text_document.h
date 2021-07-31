@@ -12,6 +12,9 @@ class ReadableFilesystem;
 
 namespace odr::internal::ooxml {
 
+/*
+ * TODO naming - text? word? wordprocessing?
+ */
 class OfficeOpenXmlTextDocument final : public common::Document {
 public:
   explicit OfficeOpenXmlTextDocument(

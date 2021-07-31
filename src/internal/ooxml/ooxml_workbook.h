@@ -10,6 +10,9 @@ class ReadableFilesystem;
 
 namespace odr::internal::ooxml {
 
+/*
+ * TODO naming - spreadsheet?
+ */
 class OfficeOpenXmlWorkbook final : public common::Document {
 public:
   explicit OfficeOpenXmlWorkbook(
