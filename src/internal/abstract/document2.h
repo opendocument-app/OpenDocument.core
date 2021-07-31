@@ -41,6 +41,42 @@ public:
   [[nodiscard]] virtual Table *table() const = 0;
 };
 
+/*
+ * TODO unused - remove?
+ *
+ * advantages
+ *  - this interface is more natural than the existing `abstract::Document`
+ * interface to access elements
+ *  - supports partially loaded document trees
+ *
+ * disadvantages
+ *  - the current frontend would cause memory allocations by traversing the
+ * document tree
+ */
+class ElementCursor {
+public:
+  virtual ~ElementCursor() = default;
+
+  [[nodiscard]] virtual explicit operator bool() const noexcept = 0;
+
+  [[nodiscard]] virtual std::unique_ptr<DocumentPointer> clone() const = 0;
+
+  [[nodiscard]] virtual ElementType type() const = 0;
+
+  virtual void parent() = 0;
+  virtual void first_child() = 0;
+  virtual void previous_sibling() = 0;
+  virtual void next_sibling() = 0;
+
+  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
+  properties() const = 0;
+
+  virtual void update_properties(
+      std::unordered_map<ElementProperty, std::any> properties) const = 0;
+
+  [[nodiscard]] virtual Table *table() const = 0;
+};
+
 class Document2 {
 public:
   virtual ~Document2() = default;
