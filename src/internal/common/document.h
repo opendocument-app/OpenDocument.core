@@ -10,19 +10,6 @@ class Table;
 
 namespace odr::internal::common {
 
-class Element {
-public:
-  virtual ~Element() = default;
-
-  [[nodiscard]] virtual ElementType type() const = 0;
-
-  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
-  properties() const = 0;
-
-  virtual void update_properties(
-      std::unordered_map<ElementProperty, std::any> properties) const = 0;
-};
-
 class Document : public abstract::Document {
 public:
   [[nodiscard]] ElementIdentifier root_element() const override;
