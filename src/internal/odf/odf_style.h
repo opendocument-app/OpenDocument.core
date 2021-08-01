@@ -16,7 +16,7 @@ enum class ElementProperty;
 namespace odr::internal::odf {
 class OpenDocument;
 
-class Style {
+class Style final {
 public:
   Style();
   Style(pugi::xml_node content_root, pugi::xml_node styles_root);
