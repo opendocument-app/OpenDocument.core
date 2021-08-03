@@ -381,6 +381,13 @@ Circle Element::circle() const { return Circle(m_impl, m_id); }
 
 CustomShape Element::custom_shape() const { return CustomShape(m_impl, m_id); }
 
+Element Element::group() const {
+  if (type() != ElementType::GROUP) {
+    return {};
+  }
+  return *this;
+}
+
 template <typename E>
 ElementIterator<E>::ElementIterator(E element)
     : m_element{std::move(element)} {}

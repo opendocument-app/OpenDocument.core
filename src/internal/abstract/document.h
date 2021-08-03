@@ -22,6 +22,21 @@ class File;
 class ReadableFilesystem;
 class Table;
 
+/*
+ * Q: Why `element_id` and not a pointer?
+ * A: If the elements are allocated in a `std::vector` the address of the
+ * element could change. The index will not.
+ *
+ * Q: Why not a separate interface for an element?
+ * A: In an implementation the element is likely to need a reference to the
+ * `Document`. Such a reference would be duplicated across all elements in the
+ * document.
+ *
+ * Q: What is the lifetime of an element?
+ * A: Once accessed the element has to stay in memory with the same ID. The
+ * implementation might load the whole document tree as an index into the memory
+ * at construction.
+ */
 class Document {
 public:
   virtual ~Document() = default;

@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_COMMON_DOCUMENT_H
 
 #include <internal/abstract/document.h>
+#include <internal/common/element_attributes_store.h>
 #include <odr/document.h>
 
 namespace odr::abstract {
@@ -45,18 +46,14 @@ protected:
     std::uint32_t column;
   };
 
-  std::vector<Element> m_elements;
+  DenseElementAttributeStore<Element> m_elements;
   ElementIdentifier m_root;
 
-  std::unordered_map<ElementIdentifier, std::shared_ptr<abstract::Table>>
-      m_tables;
-  std::unordered_map<ElementIdentifier, TableElementExtension>
-      m_table_element_extension;
+  SparseElementAttributeStore<std::shared_ptr<abstract::Table>> m_tables;
+  SparseElementAttributeStore<TableElementExtension> m_table_element_extension;
 
   ElementIdentifier new_element_(ElementType type, ElementIdentifier parent,
                                  ElementIdentifier previous_sibling);
-  Element *element_(ElementIdentifier element_id);
-  const Element *element_(ElementIdentifier element_id) const;
 };
 
 } // namespace odr::internal::common

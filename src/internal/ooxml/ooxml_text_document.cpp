@@ -178,16 +178,12 @@ OfficeOpenXmlTextDocument::element_properties(
     ElementIdentifier element_id) const {
   std::unordered_map<ElementProperty, std::any> result;
 
-  const Element *element = element_(element_id);
-  if (element == nullptr) {
-    throw std::runtime_error("element not found");
-  }
-
+  auto element = m_elements[element_id];
   auto element_node = element_node_(element_id);
 
-  resolve_element_properties(element->type, element_node, result);
+  resolve_element_properties(element.type, element_node, result);
 
-  auto style_properties = m_style.resolve_style(element->type, element_node);
+  auto style_properties = m_style.resolve_style(element.type, element_node);
   result.insert(std::begin(style_properties), std::end(style_properties));
 
   return result;

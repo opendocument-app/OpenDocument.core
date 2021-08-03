@@ -130,10 +130,7 @@ std::unordered_map<ElementProperty, std::any>
 OfficeOpenXmlWorkbook::element_properties(ElementIdentifier element_id) const {
   std::unordered_map<ElementProperty, std::any> result;
 
-  const Element *element = element_(element_id);
-  if (element == nullptr) {
-    throw std::runtime_error("element not found");
-  }
+  auto element = m_elements[element_id];
 
   // TODO
 

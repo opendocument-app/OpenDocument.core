@@ -186,18 +186,15 @@ OfficeOpenXmlPresentation::element_properties(
     ElementIdentifier element_id) const {
   std::unordered_map<ElementProperty, std::any> result;
 
-  const Element *element = element_(element_id);
-  if (element == nullptr) {
-    throw std::runtime_error("element not found");
-  }
+  auto element = m_elements[element_id];
 
   // TODO move?
-  if (element->type == ElementType::SLIDE) {
+  if (element.type == ElementType::SLIDE) {
     result[ElementProperty::WIDTH] = m_slide_width;
     result[ElementProperty::HEIGHT] = m_slide_height;
   }
 
-  resolve_element_properties(element->type, element_node_(element_id), result);
+  resolve_element_properties(element.type, element_node_(element_id), result);
 
   return result;
 }

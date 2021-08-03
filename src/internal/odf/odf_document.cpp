@@ -397,24 +397,21 @@ std::unordered_map<ElementProperty, std::any>
 OpenDocument::element_properties(const ElementIdentifier element_id) const {
   std::unordered_map<ElementProperty, std::any> result;
 
-  const Element *element = element_(element_id);
-  if (element == nullptr) {
-    throw std::runtime_error("element not found");
-  }
+  auto element = m_elements[element_id];
 
-  if (element->type == ElementType::ROOT) {
+  if (element.type == ElementType::ROOT) {
     auto style_properties = m_style.resolve_master_page(
-        element->type, m_style.first_master_page().value());
+        element.type, m_style.first_master_page().value());
     result.insert(std::begin(style_properties), std::end(style_properties));
   }
 
   PropertyRegistry::instance().resolve_properties(
-      element->type, element_node_(element_id), result);
+      element.type, element_node_(element_id), result);
 
   if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
       style_name_it != std::end(result)) {
     auto style_name = std::any_cast<const char *>(style_name_it->second);
-    auto style_properties = m_style.resolve_style(element->type, style_name);
+    auto style_properties = m_style.resolve_style(element.type, style_name);
     result.insert(std::begin(style_properties), std::end(style_properties));
   }
 
@@ -424,7 +421,7 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
     auto master_page_name =
         std::any_cast<const char *>(master_page_name_it->second);
     auto style_properties =
-        m_style.resolve_master_page(element->type, master_page_name);
+        m_style.resolve_master_page(element.type, master_page_name);
     result.insert(std::begin(style_properties), std::end(style_properties));
   }
 

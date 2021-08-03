@@ -88,6 +88,8 @@ enum class ElementType {
   LINE,
   CIRCLE,
   CUSTOM_SHAPE,
+
+  GROUP,
 };
 
 // TODO the property handle could reflect the type
@@ -380,6 +382,7 @@ public:
   [[nodiscard]] Line line() const;
   [[nodiscard]] Circle circle() const;
   [[nodiscard]] CustomShape custom_shape() const;
+  [[nodiscard]] Element group() const;
 
 protected:
   std::shared_ptr<const internal::abstract::Document> m_impl;
