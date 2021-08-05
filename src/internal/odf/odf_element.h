@@ -53,6 +53,9 @@ private:
         std::unordered_map<ElementProperty, std::any> properties) const = 0;
   };
   class DefaultAdapter;
+  class TextAdapter;
+  class SpaceAdapter;
+  class TabAdapter;
 
   static Adapter *default_adapter(pugi::xml_node node);
 

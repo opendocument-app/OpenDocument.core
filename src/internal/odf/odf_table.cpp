@@ -324,29 +324,29 @@ Table::cell_properties(const std::uint32_t row,
 
 void Table::update_column_properties(
     const std::uint32_t column,
-    std::unordered_map<ElementProperty, std::any> properties) const {
+    std::unordered_map<ElementProperty, std::any> /*properties*/) const {
   throw UnsupportedOperation(); // TODO
 }
 
 void Table::update_row_properties(
-    const std::uint32_t row,
-    std::unordered_map<ElementProperty, std::any> properties) const {
+    const std::uint32_t /*row*/,
+    std::unordered_map<ElementProperty, std::any> /*properties*/) const {
   throw UnsupportedOperation(); // TODO
 }
 
 void Table::update_cell_properties(
-    const std::uint32_t row, const std::uint32_t column,
-    std::unordered_map<ElementProperty, std::any> properties) const {
+    const std::uint32_t /*row*/, const std::uint32_t /*column*/,
+    std::unordered_map<ElementProperty, std::any> /*properties*/) const {
   throw UnsupportedOperation(); // TODO
 }
 
-void Table::resize(const std::uint32_t rows,
-                   const std::uint32_t columns) const {
+void Table::resize(const std::uint32_t /*row*/,
+                   const std::uint32_t /*columns*/) const {
   throw UnsupportedOperation(); // TODO
 }
 
-void Table::decouple_cell(const std::uint32_t row,
-                          const std::uint32_t column) const {
+void Table::decouple_cell(const std::uint32_t /*row*/,
+                          const std::uint32_t /*column*/) const {
   throw UnsupportedOperation(); // TODO
 }
 
