@@ -4,10 +4,12 @@
 namespace odr::internal::common {
 
 ElementIdentifier
-Document::new_element_(const ElementType type, const ElementIdentifier parent,
+Document::new_element_(const ElementType type, PropertyAdapter *adapter,
+                       const ElementIdentifier parent,
                        const ElementIdentifier previous_sibling) {
   Element element;
   element.type = type;
+  element.adapter = adapter;
   element.parent = parent;
   element.previous_sibling = previous_sibling;
 
@@ -51,6 +53,25 @@ Document::element_previous_sibling(const ElementIdentifier element_id) const {
 ElementIdentifier
 Document::element_next_sibling(const ElementIdentifier element_id) const {
   return m_elements[element_id].next_sibling;
+}
+
+std::unordered_map<ElementProperty, std::any>
+Document::element_properties(const ElementIdentifier element_id) const {
+  auto adapter = m_elements[element_id].adapter;
+  if (adapter == nullptr) {
+    return {};
+  }
+  return adapter->properties(element_id);
+}
+
+void Document::update_element_properties(
+    const ElementIdentifier element_id,
+    std::unordered_map<ElementProperty, std::any> properties) const {
+  auto adapter = m_elements[element_id].adapter;
+  if (adapter == nullptr) {
+    return;
+  }
+  return adapter->update_properties(element_id, properties);
 }
 
 std::shared_ptr<abstract::Table>

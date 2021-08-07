@@ -19,6 +19,8 @@ public:
 
   explicit operator bool() const;
 
+  pugi::xml_node xml_node() const;
+
   [[nodiscard]] ElementType type() const;
 
   [[nodiscard]] Element parent() const;

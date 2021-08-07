@@ -327,7 +327,8 @@ ElementIdentifier
 OpenDocument::new_element_(const pugi::xml_node node, const ElementType type,
                            const ElementIdentifier parent,
                            const ElementIdentifier previous_sibling) {
-  auto result = Document::new_element_(type, parent, previous_sibling);
+  // TODO
+  auto result = Document::new_element_(type, nullptr, parent, previous_sibling);
   m_element_nodes[result] = node;
   return result;
 }

@@ -178,6 +178,10 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
 
   static std::unordered_map<std::string, std::shared_ptr<Element::Adapter>>
       element_adapter_table{
+          {"office:text", nullptr},         // ElementType::ROOT
+          {"office:presentation", nullptr}, // ElementType::ROOT
+          {"office:spreadsheet", nullptr},  // ElementType::ROOT
+          {"office:drawing", nullptr},      // ElementType::ROOT
           {"text:p", paragraph_adapter},
           {"text:h", paragraph_adapter},
           {"text:span",
@@ -201,6 +205,21 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
            DefaultAdapter::create(
                ElementType::TABLE,
                {{table_style_attribute, ElementProperty::STYLE_NAME}})},
+          {"table:table-column",
+           DefaultAdapter::create(
+               ElementType::TABLE_COLUMN,
+               {{table_style_attribute, ElementProperty::STYLE_NAME},
+                {"table:default-cell-style-name",
+                 ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME}})},
+          {"table:table-row",
+           DefaultAdapter::create(
+               ElementType::TABLE_ROW,
+               {{table_style_attribute, ElementProperty::STYLE_NAME}})},
+          {"table:table-cell",
+           DefaultAdapter::create(
+               ElementType::TABLE_CELL,
+               {{table_style_attribute, ElementProperty::STYLE_NAME},
+                {"office:value-type", ElementProperty::VALUE_TYPE}})},
           {"draw:frame",
            DefaultAdapter::create(
                ElementType::FRAME,
@@ -245,10 +264,6 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
                 {"svg:width", ElementProperty::WIDTH},
                 {"svg:height", ElementProperty::HEIGHT},
                 {draw_style_attribute, ElementProperty::STYLE_NAME}})},
-          {"office:text", nullptr},         // ElementType::ROOT
-          {"office:presentation", nullptr}, // ElementType::ROOT
-          {"office:spreadsheet", nullptr},  // ElementType::ROOT
-          {"office:drawing", nullptr},      // ElementType::ROOT
       };
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {
@@ -276,6 +291,8 @@ ElementType Element::type() const {
   }
   return m_adapter->type(m_node);
 }
+
+pugi::xml_node Element::xml_node() const { return m_node; }
 
 Element Element::parent() const {
   if (m_adapter == nullptr) {
