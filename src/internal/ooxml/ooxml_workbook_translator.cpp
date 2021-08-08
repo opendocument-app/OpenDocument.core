@@ -3,7 +3,6 @@
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
-#include <internal/crypto/crypto_util.h>
 #include <internal/ooxml/ooxml_translator_context.h>
 #include <internal/ooxml/ooxml_workbook_translator.h>
 #include <internal/util/stream_util.h>
@@ -67,7 +66,7 @@ void fills_translator(pugi::xml_node in, std::ostream &out, Context &) {
 
 void borders_translator(pugi::xml_node in, std::ostream &out, Context &) {
   std::uint32_t i = 0;
-  for (auto &&e : in.children()) {
+  for (auto &&_ : in.children()) {
     out << ".border-" << i << " {";
     // TODO
     out << "} ";

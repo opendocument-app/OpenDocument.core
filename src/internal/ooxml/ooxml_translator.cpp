@@ -151,13 +151,7 @@ OfficeOpenXmlTranslator::OfficeOpenXmlTranslator(
   m_meta = parse_file_meta(*m_filesystem);
 }
 
-OfficeOpenXmlTranslator::OfficeOpenXmlTranslator(
-    OfficeOpenXmlTranslator &&) noexcept = default;
-
 OfficeOpenXmlTranslator::~OfficeOpenXmlTranslator() = default;
-
-OfficeOpenXmlTranslator &OfficeOpenXmlTranslator::operator=(
-    OfficeOpenXmlTranslator &&) noexcept = default;
 
 const FileMeta &OfficeOpenXmlTranslator::meta() const noexcept {
   return m_meta;

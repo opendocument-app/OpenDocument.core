@@ -136,13 +136,7 @@ OpenDocumentTranslator::OpenDocumentTranslator(
   }
 }
 
-OpenDocumentTranslator::OpenDocumentTranslator(
-    OpenDocumentTranslator &&) noexcept = default;
-
 OpenDocumentTranslator::~OpenDocumentTranslator() = default;
-
-OpenDocumentTranslator &
-OpenDocumentTranslator::operator=(OpenDocumentTranslator &&) noexcept = default;
 
 const FileMeta &OpenDocumentTranslator::meta() const noexcept { return m_meta; }
 
@@ -267,8 +261,8 @@ void OpenDocumentTranslator::save(const common::Path &path) const {
   archive.save(ostream);
 }
 
-void OpenDocumentTranslator::save(const common::Path &path,
-                                  const std::string &password) const {
+void OpenDocumentTranslator::save(const common::Path & /*path*/,
+                                  const std::string & /*password*/) const {
   // TODO throw if not decrypted
   throw UnsupportedOperation();
 }
