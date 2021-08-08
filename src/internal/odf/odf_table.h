@@ -15,8 +15,6 @@ class Table : public abstract::Table {
 public:
   Table(OpenDocument &document, pugi::xml_node node);
 
-  [[nodiscard]] std::shared_ptr<abstract::Document> document() const final;
-
   [[nodiscard]] TableDimensions dimensions() const final;
 
   [[nodiscard]] common::TableRange content_bounds() const final;

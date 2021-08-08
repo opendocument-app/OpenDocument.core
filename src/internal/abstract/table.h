@@ -25,9 +25,6 @@ public:
 
   virtual ~Table() = default;
 
-  [[nodiscard]] virtual std::shared_ptr<abstract::Document>
-  document() const = 0;
-
   /// \param element_id the element to query.
   /// \return the requested table dimensions.
   [[nodiscard]] virtual TableDimensions dimensions() const = 0;

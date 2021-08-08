@@ -20,7 +20,7 @@ public:
     return m_filesystem;
   }
 
-  void save(const common::Path &path) const final {
+  void save(const common::Path & /*path*/) const final {
     throw UnsupportedOperation();
   }
 

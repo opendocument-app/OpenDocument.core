@@ -629,21 +629,26 @@ TableColumnRange Table::columns() const {
   if (!m_impl) {
     return {};
   }
-  return {TableColumn(m_table, 0), TableColumn(m_table, dimensions().columns)};
+  return {TableColumn(m_impl, m_table, 0),
+          TableColumn(m_impl, m_table, dimensions().columns)};
 }
 
 TableRowRange Table::rows() const {
   if (!m_impl) {
     return {};
   }
-  return {TableRow(m_table, 0), TableRow(m_table, dimensions().rows)};
+  return {TableRow(m_impl, m_table, 0),
+          TableRow(m_impl, m_table, dimensions().rows)};
 }
 
 TableColumn::TableColumn() = default;
 
-TableColumn::TableColumn(std::shared_ptr<const internal::abstract::Table> impl,
-                         const std::uint32_t column)
-    : m_impl{std::move(impl)}, m_column{column} {}
+TableColumn::TableColumn(
+    std::shared_ptr<const internal::abstract::Document> document,
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t column)
+    : m_document{std::move(document)}, m_impl{std::move(impl)}, m_column{
+                                                                    column} {}
 
 bool TableColumn::operator==(const TableColumn &rhs) const {
   return m_impl == rhs.m_impl && m_column == rhs.m_column;
@@ -656,10 +661,12 @@ bool TableColumn::operator!=(const TableColumn &rhs) const {
 TableColumn::operator bool() const { return m_impl.operator bool(); }
 
 TableColumn TableColumn::previous_sibling() const {
-  return {m_impl, m_column - 1};
+  return {m_document, m_impl, m_column - 1};
 }
 
-TableColumn TableColumn::next_sibling() const { return {m_impl, m_column + 1}; }
+TableColumn TableColumn::next_sibling() const {
+  return {m_document, m_impl, m_column + 1};
+}
 
 PropertySet TableColumn::properties() const {
   return PropertySet(
@@ -673,9 +680,10 @@ TableColumn::property(const ElementProperty property) const {
 
 TableRow::TableRow() = default;
 
-TableRow::TableRow(std::shared_ptr<const internal::abstract::Table> impl,
+TableRow::TableRow(std::shared_ptr<const internal::abstract::Document> document,
+                   std::shared_ptr<const internal::abstract::Table> impl,
                    const std::uint32_t row)
-    : m_impl{std::move(impl)}, m_row{row} {}
+    : m_document{std::move(document)}, m_impl{std::move(impl)}, m_row{row} {}
 
 bool TableRow::operator==(const TableRow &rhs) const {
   return m_impl == rhs.m_impl && m_row == rhs.m_row;
@@ -691,16 +699,20 @@ TableCell TableRow::first_child() const {
   if (!m_impl) {
     return {};
   }
-  return {m_impl, m_row, 0};
+  return {m_document, m_impl, m_row, 0};
 }
 
-TableRow TableRow::previous_sibling() const { return {m_impl, m_row - 1}; }
+TableRow TableRow::previous_sibling() const {
+  return {m_document, m_impl, m_row - 1};
+}
 
-TableRow TableRow::next_sibling() const { return {m_impl, m_row + 1}; }
+TableRow TableRow::next_sibling() const {
+  return {m_document, m_impl, m_row + 1};
+}
 
 TableCellRange TableRow::cells() const {
   return {first_child(),
-          TableCell(m_impl, m_row, m_impl->dimensions().columns)};
+          TableCell(m_document, m_impl, m_row, m_impl->dimensions().columns)};
 }
 
 PropertySet TableRow::properties() const {
@@ -713,9 +725,12 @@ TableRowPropertyValue TableRow::property(const ElementProperty property) const {
 
 TableCell::TableCell() = default;
 
-TableCell::TableCell(std::shared_ptr<const internal::abstract::Table> impl,
-                     const std::uint32_t row, const std::uint32_t column)
-    : m_impl{std::move(impl)}, m_row{row}, m_column{column} {}
+TableCell::TableCell(
+    std::shared_ptr<const internal::abstract::Document> document,
+    std::shared_ptr<const internal::abstract::Table> impl,
+    const std::uint32_t row, const std::uint32_t column)
+    : m_document{std::move(document)}, m_impl{std::move(impl)}, m_row{row},
+      m_column{column} {}
 
 bool TableCell::operator==(const TableCell &rhs) const {
   return m_impl == rhs.m_impl && m_row == rhs.m_row && m_column == rhs.m_column;
@@ -729,17 +744,17 @@ TableCell::operator bool() const { return m_impl.operator bool(); }
 
 TableCell TableCell::previous_sibling() const {
   // TODO consider colspan
-  return {m_impl, m_row, m_column - 1};
+  return {m_document, m_impl, m_row, m_column - 1};
 }
 
 TableCell TableCell::next_sibling() const {
   // TODO performance
-  return {m_impl, m_row, m_column + column_span()};
+  return {m_document, m_impl, m_row, m_column + column_span()};
 }
 
 ElementRange TableCell::children() const {
   return ElementRange(
-      Element(m_impl->document(), m_impl->cell_first_child(m_row, m_column)));
+      Element(m_document, m_impl->cell_first_child(m_row, m_column)));
 }
 
 PropertySet TableCell::properties() const {

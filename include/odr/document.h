@@ -602,9 +602,11 @@ public:
 
 private:
   TableColumn();
-  TableColumn(std::shared_ptr<const internal::abstract::Table> impl,
+  TableColumn(std::shared_ptr<const internal::abstract::Document> document,
+              std::shared_ptr<const internal::abstract::Table> impl,
               std::uint32_t column);
 
+  std::shared_ptr<const internal::abstract::Document> m_document;
   std::shared_ptr<const internal::abstract::Table> m_impl;
   std::uint32_t m_column{0};
 
@@ -629,9 +631,11 @@ public:
 
 private:
   TableRow();
-  TableRow(std::shared_ptr<const internal::abstract::Table> impl,
+  TableRow(std::shared_ptr<const internal::abstract::Document> document,
+           std::shared_ptr<const internal::abstract::Table> impl,
            std::uint32_t row);
 
+  std::shared_ptr<const internal::abstract::Document> m_document;
   std::shared_ptr<const internal::abstract::Table> m_impl;
   std::uint32_t m_row{0};
 
@@ -658,9 +662,11 @@ public:
 
 private:
   TableCell();
-  TableCell(std::shared_ptr<const internal::abstract::Table> impl,
+  TableCell(std::shared_ptr<const internal::abstract::Document> document,
+            std::shared_ptr<const internal::abstract::Table> impl,
             std::uint32_t row, std::uint32_t column);
 
+  std::shared_ptr<const internal::abstract::Document> m_document;
   std::shared_ptr<const internal::abstract::Table> m_impl;
   std::uint32_t m_row{0};
   std::uint32_t m_column{0};

@@ -16,8 +16,7 @@ class Table;
 namespace odr::internal::odf {
 class Table;
 
-class OpenDocument final : public common::Document,
-                           public std::enable_shared_from_this<OpenDocument> {
+class OpenDocument final : public common::Document {
 public:
   OpenDocument(DocumentType document_type,
                std::shared_ptr<abstract::ReadableFilesystem> files);

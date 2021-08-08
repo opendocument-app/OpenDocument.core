@@ -178,10 +178,6 @@ void Table::register_(const pugi::xml_node node) {
   m_content_bounds = {begin, end};
 }
 
-std::shared_ptr<abstract::Document> Table::document() const {
-  return m_document.shared_from_this();
-}
-
 TableDimensions Table::dimensions() const { return m_dimensions; }
 
 common::TableRange Table::content_bounds() const { return m_content_bounds; }
