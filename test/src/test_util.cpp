@@ -14,21 +14,24 @@ namespace {
 TestFile get_test_file(std::string input) {
   const FileType type =
       FileMeta::type_by_extension(common::Path(input).extension());
-  const std::string fileName = fs::path(input).filename();
+  const std::string file_name = fs::path(input).filename().string();
   std::string password;
-  if (const auto left = fileName.find('$'), right = fileName.rfind('$');
-      (left != std::string::npos) && (left != right))
-    password = fileName.substr(left, right);
+  if (const auto left = file_name.find('$'), right = file_name.rfind('$');
+      (left != std::string::npos) && (left != right)) {
+    password = file_name.substr(left, right);
+  }
   const bool encrypted = !password.empty();
 
   return {std::move(input), type, encrypted, std::move(password)};
 }
 
 std::vector<TestFile> get_test_files(const std::string &input) {
-  if (fs::is_regular_file(input))
+  if (fs::is_regular_file(input)) {
     return {get_test_file(input)};
-  if (!fs::is_directory(input))
+  }
+  if (!fs::is_directory(input)) {
     return {};
+  }
 
   std::vector<TestFile> result;
 
@@ -39,10 +42,11 @@ std::vector<TestFile> get_test_files(const std::string &input) {
       const FileType type = FileMeta::type_by_extension(row["type"].get<>());
       std::string password = row["password"].get<>();
       const bool encrypted = !password.empty();
-      const std::string fileName = fs::path(path).filename();
+      const std::string file_name = fs::path(path).filename().string();
 
-      if (type == FileType::UNKNOWN)
+      if (type == FileType::UNKNOWN) {
         continue;
+      }
       result.emplace_back(path, type, encrypted, std::move(password));
     }
   }
