@@ -1,5 +1,4 @@
 #include <internal/common/document.h>
-#include <odr/document.h>
 
 namespace odr::internal::common {
 

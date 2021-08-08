@@ -122,17 +122,20 @@ TableColumnPropertyValue::operator bool() const {
 }
 
 std::any TableColumnPropertyValue::get() const {
-  auto properties = m_impl->column_properties(m_column);
+  auto properties =
+      m_impl->properties(internal::abstract::Table::all, m_column);
   return internal::util::map::lookup_map_default(properties, m_property,
                                                  std::any());
 }
 
 void TableColumnPropertyValue::set(const std::any &value) const {
-  m_impl->update_column_properties(m_column, {{m_property, value}});
+  m_impl->update_properties(internal::abstract::Table::all, m_column,
+                            {{m_property, value}});
 }
 
 void TableColumnPropertyValue::remove() const {
-  m_impl->update_column_properties(m_column, {{m_property, {}}});
+  m_impl->update_properties(internal::abstract::Table::all, m_column,
+                            {{m_property, {}}});
 }
 
 TableRowPropertyValue::TableRowPropertyValue() = default;
@@ -157,17 +160,19 @@ TableRowPropertyValue::operator bool() const {
 }
 
 std::any TableRowPropertyValue::get() const {
-  auto properties = m_impl->row_properties(m_row);
+  auto properties = m_impl->properties(m_row, internal::abstract::Table::all);
   return internal::util::map::lookup_map_default(properties, m_property,
                                                  std::any());
 }
 
 void TableRowPropertyValue::set(const std::any &value) const {
-  m_impl->update_row_properties(m_row, {{m_property, value}});
+  m_impl->update_properties(m_row, internal::abstract::Table::all,
+                            {{m_property, value}});
 }
 
 void TableRowPropertyValue::remove() const {
-  m_impl->update_row_properties(m_row, {{m_property, {}}});
+  m_impl->update_properties(m_row, internal::abstract::Table::all,
+                            {{m_property, {}}});
 }
 
 TableCellPropertyValue::TableCellPropertyValue() = default;
@@ -196,17 +201,17 @@ TableCellPropertyValue::operator bool() const {
 }
 
 std::any TableCellPropertyValue::get() const {
-  auto properties = m_impl->cell_properties(m_row, m_column);
+  auto properties = m_impl->properties(m_row, m_column);
   return internal::util::map::lookup_map_default(properties, m_property,
                                                  std::any());
 }
 
 void TableCellPropertyValue::set(const std::any &value) const {
-  m_impl->update_cell_properties(m_row, m_column, {{m_property, value}});
+  m_impl->update_properties(m_row, m_column, {{m_property, value}});
 }
 
 void TableCellPropertyValue::remove() const {
-  m_impl->update_cell_properties(m_row, m_column, {{m_property, {}}});
+  m_impl->update_properties(m_row, m_column, {{m_property, {}}});
 }
 
 PropertySet::PropertySet(
@@ -253,27 +258,27 @@ bool PageStyle::operator!=(const PageStyle &rhs) const {
 PageStyle::operator bool() const { return m_impl.operator bool() && m_id != 0; }
 
 ElementPropertyValue PageStyle::width() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::WIDTH);
+  return {m_impl, m_id, ElementProperty::WIDTH};
 }
 
 ElementPropertyValue PageStyle::height() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::HEIGHT);
+  return {m_impl, m_id, ElementProperty::HEIGHT};
 }
 
 ElementPropertyValue PageStyle::margin_top() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::MARGIN_TOP);
+  return {m_impl, m_id, ElementProperty::MARGIN_TOP};
 }
 
 ElementPropertyValue PageStyle::margin_bottom() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::MARGIN_BOTTOM);
+  return {m_impl, m_id, ElementProperty::MARGIN_BOTTOM};
 }
 
 ElementPropertyValue PageStyle::margin_left() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::MARGIN_LEFT);
+  return {m_impl, m_id, ElementProperty::MARGIN_LEFT};
 }
 
 ElementPropertyValue PageStyle::margin_right() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::MARGIN_RIGHT);
+  return {m_impl, m_id, ElementProperty::MARGIN_RIGHT};
 }
 
 Element::Element() = default;
@@ -297,30 +302,30 @@ ElementType Element::type() const {
 
 Element Element::parent() const {
   if (!m_impl) {
-    return Element();
+    return {};
   }
-  return Element(m_impl, m_impl->element_parent(m_id));
+  return {m_impl, m_impl->element_parent(m_id)};
 }
 
 Element Element::first_child() const {
   if (!m_impl) {
-    return Element();
+    return {};
   }
-  return Element(m_impl, m_impl->element_first_child(m_id));
+  return {m_impl, m_impl->element_first_child(m_id)};
 }
 
 Element Element::previous_sibling() const {
   if (!m_impl) {
-    return Element();
+    return {};
   }
-  return Element(m_impl, m_impl->element_previous_sibling(m_id));
+  return {m_impl, m_impl->element_previous_sibling(m_id)};
 }
 
 Element Element::next_sibling() const {
   if (!m_impl) {
-    return Element();
+    return {};
   }
-  return Element(m_impl, m_impl->element_next_sibling(m_id));
+  return {m_impl, m_impl->element_next_sibling(m_id)};
 }
 
 ElementRange Element::children() const { return ElementRange(first_child()); }
@@ -330,16 +335,16 @@ PropertySet Element::properties() const {
 }
 
 ElementPropertyValue Element::property(ElementProperty property) const {
-  return ElementPropertyValue(m_impl, m_id, property);
+  return {m_impl, m_id, property};
 }
 
-Slide Element::slide() const { return Slide(m_impl, m_id); }
+Slide Element::slide() const { return {m_impl, m_id}; }
 
-Sheet Element::sheet() const { return Sheet(m_impl, m_id); }
+Sheet Element::sheet() const { return {m_impl, m_id}; }
 
-Page Element::page() const { return Page(m_impl, m_id); }
+Page Element::page() const { return {m_impl, m_id}; }
 
-Text Element::text() const { return Text(m_impl, m_id); }
+Text Element::text() const { return {m_impl, m_id}; }
 
 Element Element::line_break() const {
   if (type() != ElementType::LINE_BREAK) {
@@ -355,31 +360,31 @@ Element Element::page_break() const {
   return *this;
 }
 
-Paragraph Element::paragraph() const { return Paragraph(m_impl, m_id); }
+Paragraph Element::paragraph() const { return {m_impl, m_id}; }
 
-Span Element::span() const { return Span(m_impl, m_id); }
+Span Element::span() const { return {m_impl, m_id}; }
 
-Link Element::link() const { return Link(m_impl, m_id); }
+Link Element::link() const { return {m_impl, m_id}; }
 
-Bookmark Element::bookmark() const { return Bookmark(m_impl, m_id); }
+Bookmark Element::bookmark() const { return {m_impl, m_id}; }
 
-List Element::list() const { return List(m_impl, m_id); }
+List Element::list() const { return {m_impl, m_id}; }
 
-ListItem Element::list_item() const { return ListItem(m_impl, m_id); }
+ListItem Element::list_item() const { return {m_impl, m_id}; }
 
-Table Element::table() const { return Table(m_impl, m_id); }
+Table Element::table() const { return {m_impl, m_id}; }
 
-Frame Element::frame() const { return Frame(m_impl, m_id); }
+Frame Element::frame() const { return {m_impl, m_id}; }
 
-Image Element::image() const { return Image(m_impl, m_id); }
+Image Element::image() const { return {m_impl, m_id}; }
 
-Rect Element::rect() const { return Rect(m_impl, m_id); }
+Rect Element::rect() const { return {m_impl, m_id}; }
 
-Line Element::line() const { return Line(m_impl, m_id); }
+Line Element::line() const { return {m_impl, m_id}; }
 
-Circle Element::circle() const { return Circle(m_impl, m_id); }
+Circle Element::circle() const { return {m_impl, m_id}; }
 
-CustomShape Element::custom_shape() const { return CustomShape(m_impl, m_id); }
+CustomShape Element::custom_shape() const { return {m_impl, m_id}; }
 
 Element Element::group() const {
   if (type() != ElementType::GROUP) {
@@ -478,7 +483,7 @@ std::string Slide::notes() const {
   return property(ElementProperty::NOTES).get_string();
 }
 
-PageStyle Slide::page_style() const { return PageStyle(m_impl, m_id); }
+PageStyle Slide::page_style() const { return {m_impl, m_id}; }
 
 Sheet::Sheet() = default;
 
@@ -498,9 +503,9 @@ std::string Sheet::name() const {
 
 Table Sheet::table() const {
   if (!m_impl) {
-    return Table();
+    return {};
   }
-  return Table(m_impl, m_id);
+  return {m_impl, m_id};
 }
 
 Page::Page() = default;
@@ -522,7 +527,7 @@ std::string Page::name() const {
   return property(ElementProperty::NAME).get_string();
 }
 
-PageStyle Page::page_style() const { return PageStyle(m_impl, m_id); }
+PageStyle Page::page_style() const { return {m_impl, m_id}; }
 
 Text::Text() = default;
 
@@ -624,16 +629,14 @@ TableColumnRange Table::columns() const {
   if (!m_impl) {
     return {};
   }
-  return TableColumnRange(TableColumn(m_table, 0),
-                          TableColumn(m_table, dimensions().columns));
+  return {TableColumn(m_table, 0), TableColumn(m_table, dimensions().columns)};
 }
 
 TableRowRange Table::rows() const {
   if (!m_impl) {
     return {};
   }
-  return TableRowRange(TableRow(m_table, 0),
-                       TableRow(m_table, dimensions().rows));
+  return {TableRow(m_table, 0), TableRow(m_table, dimensions().rows)};
 }
 
 TableColumn::TableColumn() = default;
@@ -653,20 +656,19 @@ bool TableColumn::operator!=(const TableColumn &rhs) const {
 TableColumn::operator bool() const { return m_impl.operator bool(); }
 
 TableColumn TableColumn::previous_sibling() const {
-  return TableColumn(m_impl, m_column - 1);
+  return {m_impl, m_column - 1};
 }
 
-TableColumn TableColumn::next_sibling() const {
-  return TableColumn(m_impl, m_column + 1);
-}
+TableColumn TableColumn::next_sibling() const { return {m_impl, m_column + 1}; }
 
 PropertySet TableColumn::properties() const {
-  return PropertySet(m_impl->column_properties(m_column));
+  return PropertySet(
+      m_impl->properties(internal::abstract::Table::all, m_column));
 }
 
 TableColumnPropertyValue
 TableColumn::property(const ElementProperty property) const {
-  return TableColumnPropertyValue(m_impl, m_column, property);
+  return {m_impl, m_column, property};
 }
 
 TableRow::TableRow() = default;
@@ -687,28 +689,26 @@ TableRow::operator bool() const { return m_impl.operator bool(); }
 
 TableCell TableRow::first_child() const {
   if (!m_impl) {
-    return TableCell();
+    return {};
   }
-  return TableCell(m_impl, m_row, 0);
+  return {m_impl, m_row, 0};
 }
 
-TableRow TableRow::previous_sibling() const {
-  return TableRow(m_impl, m_row - 1);
-}
+TableRow TableRow::previous_sibling() const { return {m_impl, m_row - 1}; }
 
-TableRow TableRow::next_sibling() const { return TableRow(m_impl, m_row + 1); }
+TableRow TableRow::next_sibling() const { return {m_impl, m_row + 1}; }
 
 TableCellRange TableRow::cells() const {
-  return TableCellRange(first_child(),
-                        TableCell(m_impl, m_row, m_impl->dimensions().columns));
+  return {first_child(),
+          TableCell(m_impl, m_row, m_impl->dimensions().columns)};
 }
 
 PropertySet TableRow::properties() const {
-  return PropertySet(m_impl->row_properties(m_row));
+  return PropertySet(m_impl->properties(m_row, internal::abstract::Table::all));
 }
 
 TableRowPropertyValue TableRow::property(const ElementProperty property) const {
-  return TableRowPropertyValue(m_impl, m_row, property);
+  return {m_impl, m_row, property};
 }
 
 TableCell::TableCell() = default;
@@ -729,12 +729,12 @@ TableCell::operator bool() const { return m_impl.operator bool(); }
 
 TableCell TableCell::previous_sibling() const {
   // TODO consider colspan
-  return TableCell(m_impl, m_row, m_column - 1);
+  return {m_impl, m_row, m_column - 1};
 }
 
 TableCell TableCell::next_sibling() const {
   // TODO performance
-  return TableCell(m_impl, m_row, m_column + column_span());
+  return {m_impl, m_row, m_column + column_span()};
 }
 
 ElementRange TableCell::children() const {
@@ -743,12 +743,12 @@ ElementRange TableCell::children() const {
 }
 
 PropertySet TableCell::properties() const {
-  return PropertySet(m_impl->cell_properties(m_row, m_column));
+  return PropertySet(m_impl->properties(m_row, m_column));
 }
 
 TableCellPropertyValue
 TableCell::property(const ElementProperty property) const {
-  return TableCellPropertyValue(m_impl, m_row, m_column, property);
+  return {m_impl, m_row, m_column, property};
 }
 
 std::uint32_t TableCell::row_span() const {
@@ -772,27 +772,27 @@ Frame::Frame(std::shared_ptr<const internal::abstract::Document> impl,
     : Element(std::move(impl), id) {}
 
 ElementPropertyValue Frame::anchor_type() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::ANCHOR_TYPE);
+  return {m_impl, m_id, ElementProperty::ANCHOR_TYPE};
 }
 
 ElementPropertyValue Frame::x() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::X);
+  return {m_impl, m_id, ElementProperty::X};
 }
 
 ElementPropertyValue Frame::y() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y);
+  return {m_impl, m_id, ElementProperty::Y};
 }
 
 ElementPropertyValue Frame::width() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::WIDTH);
+  return {m_impl, m_id, ElementProperty::WIDTH};
 }
 
 ElementPropertyValue Frame::height() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::HEIGHT);
+  return {m_impl, m_id, ElementProperty::HEIGHT};
 }
 
 ElementPropertyValue Frame::z_index() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::Z_INDEX);
+  return {m_impl, m_id, ElementProperty::Z_INDEX};
 }
 
 Image::Image() = default;
@@ -818,7 +818,7 @@ bool Image::internal() const {
 }
 
 ElementPropertyValue Image::href() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::HREF);
+  return {m_impl, m_id, ElementProperty::HREF};
 }
 
 File Image::image_file() const {
@@ -845,19 +845,19 @@ Rect::Rect(std::shared_ptr<const internal::abstract::Document> impl,
     : Element(std::move(impl), id) {}
 
 ElementPropertyValue Rect::x() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::X);
+  return {m_impl, m_id, ElementProperty::X};
 }
 
 ElementPropertyValue Rect::y() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y);
+  return {m_impl, m_id, ElementProperty::Y};
 }
 
 ElementPropertyValue Rect::width() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::WIDTH);
+  return {m_impl, m_id, ElementProperty::WIDTH};
 }
 
 ElementPropertyValue Rect::height() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::HEIGHT);
+  return {m_impl, m_id, ElementProperty::HEIGHT};
 }
 
 Line::Line() = default;
@@ -867,19 +867,19 @@ Line::Line(std::shared_ptr<const internal::abstract::Document> impl,
     : Element(std::move(impl), id) {}
 
 ElementPropertyValue Line::x1() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::X1);
+  return {m_impl, m_id, ElementProperty::X1};
 }
 
 ElementPropertyValue Line::y1() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y1);
+  return {m_impl, m_id, ElementProperty::Y1};
 }
 
 ElementPropertyValue Line::x2() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::X2);
+  return {m_impl, m_id, ElementProperty::X2};
 }
 
 ElementPropertyValue Line::y2() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y2);
+  return {m_impl, m_id, ElementProperty::Y2};
 }
 
 Circle::Circle() = default;
@@ -889,19 +889,19 @@ Circle::Circle(std::shared_ptr<const internal::abstract::Document> impl,
     : Element(std::move(impl), id) {}
 
 ElementPropertyValue Circle::x() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::X);
+  return {m_impl, m_id, ElementProperty::X};
 }
 
 ElementPropertyValue Circle::y() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y);
+  return {m_impl, m_id, ElementProperty::Y};
 }
 
 ElementPropertyValue Circle::width() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::WIDTH);
+  return {m_impl, m_id, ElementProperty::WIDTH};
 }
 
 ElementPropertyValue Circle::height() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::HEIGHT);
+  return {m_impl, m_id, ElementProperty::HEIGHT};
 }
 
 CustomShape::CustomShape() = default;
@@ -912,19 +912,19 @@ CustomShape::CustomShape(
     : Element(std::move(impl), id) {}
 
 ElementPropertyValue CustomShape::x() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::X);
+  return {m_impl, m_id, ElementProperty::X};
 }
 
 ElementPropertyValue CustomShape::y() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::Y);
+  return {m_impl, m_id, ElementProperty::Y};
 }
 
 ElementPropertyValue CustomShape::width() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::WIDTH);
+  return {m_impl, m_id, ElementProperty::WIDTH};
 }
 
 ElementPropertyValue CustomShape::height() const {
-  return ElementPropertyValue(m_impl, m_id, ElementProperty::HEIGHT);
+  return {m_impl, m_id, ElementProperty::HEIGHT};
 }
 
 Document::Document(std::shared_ptr<internal::abstract::Document> document)
@@ -951,9 +951,7 @@ DocumentType Document::document_type() const noexcept {
   return m_impl->document_type();
 }
 
-Element Document::root() const {
-  return Element(m_impl, m_impl->root_element());
-}
+Element Document::root() const { return {m_impl, m_impl->root_element()}; }
 
 TextDocument Document::text_document() const { return TextDocument(m_impl); }
 
@@ -974,7 +972,7 @@ TextDocument::TextDocument(
 ElementRange TextDocument::content() const { return root().children(); }
 
 PageStyle TextDocument::page_style() const {
-  return PageStyle(m_impl, m_impl->root_element());
+  return {m_impl, m_impl->root_element()};
 }
 
 Presentation::Presentation(

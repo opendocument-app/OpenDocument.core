@@ -20,6 +20,9 @@ class Document;
 
 class Table {
 public:
+  static constexpr std::uint32_t all =
+      std::numeric_limits<std::uint32_t>::max();
+
   virtual ~Table() = default;
 
   [[nodiscard]] virtual std::shared_ptr<abstract::Document>
@@ -44,23 +47,9 @@ public:
   cell_span(std::uint32_t row, std::uint32_t column) const = 0;
 
   [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
-  column_properties(std::uint32_t column) const = 0;
+  properties(std::uint32_t row, std::uint32_t column) const = 0;
 
-  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
-  row_properties(std::uint32_t row) const = 0;
-
-  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
-  cell_properties(std::uint32_t row, std::uint32_t column) const = 0;
-
-  virtual void update_column_properties(
-      std::uint32_t column,
-      std::unordered_map<ElementProperty, std::any> properties) const = 0;
-
-  virtual void update_row_properties(
-      std::uint32_t row,
-      std::unordered_map<ElementProperty, std::any> properties) const = 0;
-
-  virtual void update_cell_properties(
+  virtual void update_properties(
       std::uint32_t row, std::uint32_t column,
       std::unordered_map<ElementProperty, std::any> properties) const = 0;
 

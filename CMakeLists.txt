@@ -41,6 +41,7 @@ add_library(odr-object OBJECT
         src/internal/common/filesystem.cpp
         src/internal/common/html.cpp
         src/internal/common/path.cpp
+        src/internal/common/table.cpp
         src/internal/common/table_cursor.cpp
         src/internal/common/table_position.cpp
         src/internal/common/table_range.cpp

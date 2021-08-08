@@ -245,7 +245,22 @@ TableDimensions Table::cell_span(const std::uint32_t row,
 }
 
 std::unordered_map<ElementProperty, std::any>
-Table::column_properties(const std::uint32_t column) const {
+Table::properties(const std::uint32_t row, const std::uint32_t column) const {
+  if ((row == Table::all) && (column == Table::all)) {
+    // TODO table properties
+    return {};
+  }
+  if (row == Table::all) {
+    return column_properties_(column);
+  }
+  if (column == Table::all) {
+    return row_properties_(row);
+  }
+  return cell_properties_(row, column);
+}
+
+std::unordered_map<ElementProperty, std::any>
+Table::column_properties_(const std::uint32_t column) const {
   auto c = column_(column);
   if (c == nullptr) {
     return {};
@@ -268,7 +283,7 @@ Table::column_properties(const std::uint32_t column) const {
 }
 
 std::unordered_map<ElementProperty, std::any>
-Table::row_properties(const std::uint32_t row) const {
+Table::row_properties_(const std::uint32_t row) const {
   auto r = row_(row);
   if (r == nullptr) {
     return {};
@@ -291,8 +306,8 @@ Table::row_properties(const std::uint32_t row) const {
 }
 
 std::unordered_map<ElementProperty, std::any>
-Table::cell_properties(const std::uint32_t row,
-                       const std::uint32_t column) const {
+Table::cell_properties_(const std::uint32_t row,
+                        const std::uint32_t column) const {
   auto c = cell_(row, column);
   if (c == nullptr) {
     return {};
@@ -322,19 +337,7 @@ Table::cell_properties(const std::uint32_t row,
   return result;
 }
 
-void Table::update_column_properties(
-    const std::uint32_t column,
-    std::unordered_map<ElementProperty, std::any> /*properties*/) const {
-  throw UnsupportedOperation(); // TODO
-}
-
-void Table::update_row_properties(
-    const std::uint32_t /*row*/,
-    std::unordered_map<ElementProperty, std::any> /*properties*/) const {
-  throw UnsupportedOperation(); // TODO
-}
-
-void Table::update_cell_properties(
+void Table::update_properties(
     const std::uint32_t /*row*/, const std::uint32_t /*column*/,
     std::unordered_map<ElementProperty, std::any> /*properties*/) const {
   throw UnsupportedOperation(); // TODO

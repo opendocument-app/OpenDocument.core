@@ -30,23 +30,9 @@ public:
                                           std::uint32_t column) const final;
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  column_properties(std::uint32_t column) const final;
+  properties(std::uint32_t row, std::uint32_t column) const final;
 
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  row_properties(std::uint32_t row) const final;
-
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  cell_properties(std::uint32_t row, std::uint32_t column) const final;
-
-  void update_column_properties(
-      std::uint32_t column,
-      std::unordered_map<ElementProperty, std::any> properties) const final;
-
-  void update_row_properties(
-      std::uint32_t row,
-      std::unordered_map<ElementProperty, std::any> properties) const final;
-
-  void update_cell_properties(
+  void update_properties(
       std::uint32_t row, std::uint32_t column,
       std::unordered_map<ElementProperty, std::any> properties) const final;
 
@@ -90,6 +76,15 @@ private:
   [[nodiscard]] const Row *row_(std::uint32_t row) const;
   [[nodiscard]] const Cell *cell_(std::uint32_t row,
                                   std::uint32_t column) const;
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  column_properties_(std::uint32_t column) const;
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  row_properties_(std::uint32_t row) const;
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  cell_properties_(std::uint32_t row, std::uint32_t column) const;
 };
 
 } // namespace odr::internal::odf
