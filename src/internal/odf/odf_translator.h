@@ -23,10 +23,11 @@ public:
   explicit OpenDocumentTranslator(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem);
   OpenDocumentTranslator(const OpenDocumentTranslator &) = delete;
-  OpenDocumentTranslator(OpenDocumentTranslator &&) noexcept;
+  OpenDocumentTranslator(OpenDocumentTranslator &&) noexcept = default;
   ~OpenDocumentTranslator() final;
   OpenDocumentTranslator &operator=(const OpenDocumentTranslator &) = delete;
-  OpenDocumentTranslator &operator=(OpenDocumentTranslator &&) noexcept;
+  OpenDocumentTranslator &
+  operator=(OpenDocumentTranslator &&) noexcept = default;
 
   [[nodiscard]] const FileMeta &meta() const noexcept final;
   [[nodiscard]] const abstract::ReadableFilesystem &filesystem() const noexcept;

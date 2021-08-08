@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 #include <internal/cfb/cfb_impl.h>
 #include <odr/exceptions.h>

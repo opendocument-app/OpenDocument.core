@@ -39,7 +39,7 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
   case FileType::OFFICE_OPEN_XML_PRESENTATION: {
     const auto ppt = util::xml::parse(filesystem, "ppt/presentation.xml");
     result.entry_count = 0;
-    for (auto &&e : ppt.select_nodes("//p:sldId")) {
+    for (auto &&_ : ppt.select_nodes("//p:sldId")) {
       ++result.entry_count;
       FileMeta::Entry entry;
       // TODO

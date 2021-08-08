@@ -23,7 +23,7 @@ struct FileMeta {
   std::uint32_t entry_count{0};
   std::vector<Entry> entries;
 
-  std::string type_as_string() const noexcept;
+  [[nodiscard]] std::string type_as_string() const noexcept;
 };
 
 } // namespace odr

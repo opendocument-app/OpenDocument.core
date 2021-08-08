@@ -18,10 +18,11 @@ public:
   explicit OfficeOpenXmlTranslator(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem);
   OfficeOpenXmlTranslator(const OfficeOpenXmlTranslator &) = delete;
-  OfficeOpenXmlTranslator(OfficeOpenXmlTranslator &&) noexcept;
+  OfficeOpenXmlTranslator(OfficeOpenXmlTranslator &&) noexcept = default;
   ~OfficeOpenXmlTranslator() final;
   OfficeOpenXmlTranslator &operator=(const OfficeOpenXmlTranslator &) = delete;
-  OfficeOpenXmlTranslator &operator=(OfficeOpenXmlTranslator &&) noexcept;
+  OfficeOpenXmlTranslator &
+  operator=(OfficeOpenXmlTranslator &&) noexcept = default;
 
   [[nodiscard]] const FileMeta &meta() const noexcept final;
 

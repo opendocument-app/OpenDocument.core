@@ -56,8 +56,9 @@ MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
 
 MemoryFile::MemoryFile(const abstract::File &file) : m_data(file.size(), ' ') {
   auto istream = file.read();
-  istream->read(m_data.data(), file.size());
-  if (istream->gcount() != file.size()) {
+  auto size = (std::int64_t)file.size();
+  istream->read(m_data.data(), size);
+  if (istream->gcount() != size) {
     throw FileReadError();
   }
 }

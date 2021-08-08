@@ -20,7 +20,7 @@ public:
     return std::make_unique<SystemFileWalker>(*this);
   }
 
-  [[nodiscard]] bool equals(const FileWalker &rhs) const final {
+  [[nodiscard]] bool equals(const FileWalker & /*rhs*/) const final {
     return false; // TODO
   }
 
@@ -149,7 +149,7 @@ public:
     return std::make_unique<VirtualFileWalker>(*this); // TODO
   }
 
-  [[nodiscard]] bool equals(const FileWalker &rhs) const final {
+  [[nodiscard]] bool equals(const FileWalker & /*rhs*/) const final {
     return false; // TODO
   }
 
@@ -212,7 +212,7 @@ bool VirtualFilesystem::is_directory(Path path) const {
 }
 
 std::unique_ptr<abstract::FileWalker>
-VirtualFilesystem::file_walker(Path path) const {
+VirtualFilesystem::file_walker(Path /*path*/) const {
   throw UnsupportedOperation();
   // TODO
   // return std::make_unique<VirtualFileWalker>(std::move(path), m_files);
@@ -226,7 +226,7 @@ std::shared_ptr<abstract::File> VirtualFilesystem::open(Path path) const {
   return file_it->second;
 }
 
-std::unique_ptr<std::ostream> VirtualFilesystem::create_file(Path path) {
+std::unique_ptr<std::ostream> VirtualFilesystem::create_file(Path /*path*/) {
   throw UnsupportedOperation();
 }
 
@@ -262,7 +262,7 @@ bool VirtualFilesystem::copy(Path from, Path to) {
 }
 
 std::shared_ptr<abstract::File>
-VirtualFilesystem::copy(const abstract::File &from, Path to) {
+VirtualFilesystem::copy(const abstract::File & /*from*/, Path /*to*/) {
   throw UnsupportedOperation();
 }
 

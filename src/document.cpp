@@ -75,7 +75,7 @@ open_impl(const std::string &path) {
 }
 
 std::unique_ptr<internal::abstract::DocumentTranslator>
-open_impl(const std::string &path, const FileType as) {
+open_impl(const std::string & /*path*/, const FileType /*as*/) {
   // TODO implement
   throw UnknownFileType();
 }

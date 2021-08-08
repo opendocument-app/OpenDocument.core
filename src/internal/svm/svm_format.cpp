@@ -142,7 +142,7 @@ ActionHeader read_action_header(std::istream &in) {
 MapMode read_map_mode(std::istream &in) {
   MapMode result;
 
-  VersionLength vl = read_version_length(in);
+  read_version_length(in);
 
   read_primitive(in, result.unit);
   result.origin = read_int_pair(in);
