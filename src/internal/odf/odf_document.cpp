@@ -167,6 +167,42 @@ private:
   }
 };
 
+class OpenDocument::DefaultPropertyAdapter : public PropertyAdapter {
+public:
+  DefaultPropertyAdapter(
+      OpenDocument &document,
+      std::unordered_map<std::string, ElementProperty> properties)
+      : m_document{document}, m_properties{std::move(properties)} {}
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties(const ElementIdentifier element_id) const override {
+    std::unordered_map<ElementProperty, std::any> result;
+
+    pugi::xml_node node = m_document.element_node_(element_id);
+
+    for (auto attribute : node.attributes()) {
+      auto property_it = m_properties.find(attribute.name());
+      if (property_it == std::end(m_properties)) {
+        continue;
+      }
+      result[property_it->second] = attribute.value();
+    }
+
+    return result;
+  }
+
+  void update_properties(
+      const ElementIdentifier /*element_id*/,
+      std::unordered_map<ElementProperty, std::any> /*properties*/)
+      const override {
+    // TODO
+  }
+
+private:
+  OpenDocument &m_document;
+  std::unordered_map<std::string, ElementProperty> m_properties;
+};
+
 OpenDocument::OpenDocument(
     const DocumentType document_type,
     std::shared_ptr<abstract::ReadableFilesystem> filesystem)
@@ -335,7 +371,7 @@ OpenDocument::new_element_(const pugi::xml_node node, const ElementType type,
 
 pugi::xml_node
 OpenDocument::element_node_(const ElementIdentifier element_id) const {
-  return m_element_nodes.at(element_id);
+  return m_element_nodes[element_id];
 }
 
 bool OpenDocument::editable() const noexcept { return true; }
@@ -427,12 +463,6 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
   }
 
   return result;
-}
-
-void OpenDocument::update_element_properties(
-    const ElementIdentifier /*element_id*/,
-    std::unordered_map<ElementProperty, std::any> /*properties*/) const {
-  throw UnsupportedOperation();
 }
 
 } // namespace odr::internal::odf

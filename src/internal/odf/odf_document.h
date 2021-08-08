@@ -3,10 +3,7 @@
 
 #include <internal/common/document.h>
 #include <internal/odf/odf_style.h>
-#include <memory>
 #include <pugixml.hpp>
-#include <unordered_map>
-#include <vector>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -34,14 +31,12 @@ public:
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   element_properties(ElementIdentifier element_id) const final;
 
-  void update_element_properties(
-      ElementIdentifier element_id,
-      std::unordered_map<ElementProperty, std::any> properties) const final;
-
 private:
   friend class Table;
 
   class PropertyRegistry;
+
+  class DefaultPropertyAdapter;
 
   DocumentType m_document_type;
 
@@ -50,7 +45,7 @@ private:
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
 
-  std::unordered_map<ElementIdentifier, pugi::xml_node> m_element_nodes;
+  DenseElementAttributeStore<pugi::xml_node> m_element_nodes;
 
   Style m_style;
 
