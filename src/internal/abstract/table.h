@@ -40,9 +40,6 @@ public:
   [[nodiscard]] virtual ElementIdentifier
   cell_first_child(std::uint32_t row, std::uint32_t column) const = 0;
 
-  [[nodiscard]] virtual TableDimensions
-  cell_span(std::uint32_t row, std::uint32_t column) const = 0;
-
   [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
   properties(std::uint32_t row, std::uint32_t column) const = 0;
 

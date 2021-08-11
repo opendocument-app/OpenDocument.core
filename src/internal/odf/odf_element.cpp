@@ -214,11 +214,17 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
           {"table:table-row",
            DefaultAdapter::create(
                ElementType::TABLE_ROW,
-               {{table_style_attribute, ElementProperty::STYLE_NAME}})},
+               {{table_style_attribute, ElementProperty::STYLE_NAME},
+                {"table:number-columns-repeated",
+                 ElementProperty::ROWS_REPEATED}})},
           {"table:table-cell",
            DefaultAdapter::create(
                ElementType::TABLE_CELL,
                {{table_style_attribute, ElementProperty::STYLE_NAME},
+                {"table:number-columns-spanned", ElementProperty::COLUMN_SPAN},
+                {"table:number-rows-spanned", ElementProperty::ROW_SPAN},
+                {"table:number-columns-repeated",
+                 ElementProperty::COLUMNS_REPEATED},
                 {"office:value-type", ElementProperty::VALUE_TYPE}})},
           {"draw:frame",
            DefaultAdapter::create(

@@ -122,6 +122,10 @@ enum class ElementProperty {
 
   TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME,
   TABLE_CELL_BACKGROUND_COLOR,
+  ROW_SPAN,
+  COLUMN_SPAN,
+  ROWS_REPEATED,
+  COLUMNS_REPEATED,
 
   MARGIN_TOP,
   MARGIN_BOTTOM,
@@ -573,8 +577,9 @@ public:
   [[nodiscard]] TableDimensions content_bounds() const;
   [[nodiscard]] TableDimensions content_bounds(TableDimensions within) const;
 
-  [[nodiscard]] TableColumnRange columns() const;
-  [[nodiscard]] TableRowRange rows() const;
+  [[nodiscard]] TableColumn column(std::uint32_t column) const;
+  [[nodiscard]] TableRow row(std::uint32_t row) const;
+  [[nodiscard]] TableCell cell(std::uint32_t row, std::uint32_t column) const;
 
 private:
   Table();
@@ -593,9 +598,6 @@ public:
   bool operator!=(const TableColumn &rhs) const;
   explicit operator bool() const;
 
-  [[nodiscard]] TableColumn previous_sibling() const;
-  [[nodiscard]] TableColumn next_sibling() const;
-
   [[nodiscard]] PropertySet properties() const;
   [[nodiscard]] TableColumnPropertyValue
   property(ElementProperty property) const;
@@ -611,7 +613,6 @@ private:
   std::uint32_t m_column{0};
 
   friend Table;
-  template <typename E> friend class ElementRangeTemplate;
 };
 
 class TableRow final {
@@ -620,14 +621,10 @@ public:
   bool operator!=(const TableRow &rhs) const;
   explicit operator bool() const;
 
-  [[nodiscard]] TableCell first_child() const;
-  [[nodiscard]] TableRow previous_sibling() const;
-  [[nodiscard]] TableRow next_sibling() const;
-
   [[nodiscard]] PropertySet properties() const;
   [[nodiscard]] TableRowPropertyValue property(ElementProperty property) const;
 
-  [[nodiscard]] TableCellRange cells() const;
+  [[nodiscard]] TableCell cell(std::uint32_t column) const;
 
 private:
   TableRow();
@@ -640,7 +637,6 @@ private:
   std::uint32_t m_row{0};
 
   friend Table;
-  template <typename E> friend class ElementRangeTemplate;
 };
 
 class TableCell final {
@@ -657,8 +653,9 @@ public:
   [[nodiscard]] PropertySet properties() const;
   [[nodiscard]] TableCellPropertyValue property(ElementProperty property) const;
 
-  [[nodiscard]] std::uint32_t row_span() const;
-  [[nodiscard]] std::uint32_t column_span() const;
+  // TODO use strongly typed property values
+  [[nodiscard]] TableCellPropertyValue row_span() const;
+  [[nodiscard]] TableCellPropertyValue column_span() const;
 
 private:
   TableCell();
@@ -671,8 +668,8 @@ private:
   std::uint32_t m_row{0};
   std::uint32_t m_column{0};
 
+  friend Table;
   friend TableRow;
-  template <typename E> friend class ElementRangeTemplate;
 };
 
 class Frame final : public Element {

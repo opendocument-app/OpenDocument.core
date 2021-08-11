@@ -17,9 +17,6 @@ public:
   [[nodiscard]] ElementIdentifier
   cell_first_child(std::uint32_t row, std::uint32_t column) const override;
 
-  [[nodiscard]] TableDimensions cell_span(std::uint32_t row,
-                                          std::uint32_t column) const override;
-
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties(std::uint32_t row, std::uint32_t column) const override;
 

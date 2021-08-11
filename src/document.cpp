@@ -426,9 +426,6 @@ template class ElementIterator<Element>;
 template class ElementIterator<Slide>;
 template class ElementIterator<Sheet>;
 template class ElementIterator<Page>;
-template class ElementIterator<TableColumn>;
-template class ElementIterator<TableRow>;
-template class ElementIterator<TableCell>;
 
 template <typename E>
 ElementRangeTemplate<E>::ElementRangeTemplate()
@@ -459,9 +456,6 @@ template class ElementRangeTemplate<Element>;
 template class ElementRangeTemplate<Slide>;
 template class ElementRangeTemplate<Sheet>;
 template class ElementRangeTemplate<Page>;
-template class ElementRangeTemplate<TableColumn>;
-template class ElementRangeTemplate<TableRow>;
-template class ElementRangeTemplate<TableCell>;
 
 Slide::Slide() = default;
 
@@ -625,20 +619,16 @@ TableDimensions Table::content_bounds(const TableDimensions within) const {
   return {content_bounds.to().row(), content_bounds.to().column()};
 }
 
-TableColumnRange Table::columns() const {
-  if (!m_impl) {
-    return {};
-  }
-  return {TableColumn(m_impl, m_table, 0),
-          TableColumn(m_impl, m_table, dimensions().columns)};
+TableColumn Table::column(const std::uint32_t column) const {
+  return {m_impl, m_table, column};
 }
 
-TableRowRange Table::rows() const {
-  if (!m_impl) {
-    return {};
-  }
-  return {TableRow(m_impl, m_table, 0),
-          TableRow(m_impl, m_table, dimensions().rows)};
+TableRow Table::row(const std::uint32_t row) const {
+  return {m_impl, m_table, row};
+}
+
+TableCell Table::cell(std::uint32_t row, std::uint32_t column) const {
+  return {m_impl, m_table, row, column};
 }
 
 TableColumn::TableColumn() = default;
@@ -659,14 +649,6 @@ bool TableColumn::operator!=(const TableColumn &rhs) const {
 }
 
 TableColumn::operator bool() const { return m_impl.operator bool(); }
-
-TableColumn TableColumn::previous_sibling() const {
-  return {m_document, m_impl, m_column - 1};
-}
-
-TableColumn TableColumn::next_sibling() const {
-  return {m_document, m_impl, m_column + 1};
-}
 
 PropertySet TableColumn::properties() const {
   return PropertySet(
@@ -695,24 +677,8 @@ bool TableRow::operator!=(const TableRow &rhs) const {
 
 TableRow::operator bool() const { return m_impl.operator bool(); }
 
-TableCell TableRow::first_child() const {
-  if (!m_impl) {
-    return {};
-  }
-  return {m_document, m_impl, m_row, 0};
-}
-
-TableRow TableRow::previous_sibling() const {
-  return {m_document, m_impl, m_row - 1};
-}
-
-TableRow TableRow::next_sibling() const {
-  return {m_document, m_impl, m_row + 1};
-}
-
-TableCellRange TableRow::cells() const {
-  return {first_child(),
-          TableCell(m_document, m_impl, m_row, m_impl->dimensions().columns)};
+TableCell TableRow::cell(const std::uint32_t column) const {
+  return {m_document, m_impl, m_row, column};
 }
 
 PropertySet TableRow::properties() const {
@@ -749,7 +715,7 @@ TableCell TableCell::previous_sibling() const {
 
 TableCell TableCell::next_sibling() const {
   // TODO performance
-  return {m_document, m_impl, m_row, m_column + column_span()};
+  return {m_document, m_impl, m_row, m_column + column_span().get_uint32()};
 }
 
 ElementRange TableCell::children() const {
@@ -766,18 +732,12 @@ TableCell::property(const ElementProperty property) const {
   return {m_impl, m_row, m_column, property};
 }
 
-std::uint32_t TableCell::row_span() const {
-  if (!m_impl) {
-    return 0;
-  }
-  return m_impl->cell_span(m_row, m_column).rows;
+TableCellPropertyValue TableCell::row_span() const {
+  return {m_impl, m_row, m_column, ElementProperty::ROW_SPAN};
 }
 
-std::uint32_t TableCell::column_span() const {
-  if (!m_impl) {
-    return 0;
-  }
-  return m_impl->cell_span(m_row, m_column).columns;
+TableCellPropertyValue TableCell::column_span() const {
+  return {m_impl, m_row, m_column, ElementProperty::COLUMN_SPAN};
 }
 
 Frame::Frame() = default;

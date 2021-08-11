@@ -14,12 +14,6 @@ Table::cell_first_child(const std::uint32_t /*row*/,
   return {};
 }
 
-TableDimensions Table::cell_span(const std::uint32_t /*row*/,
-                                 const std::uint32_t /*column*/) const {
-  // TODO
-  return {};
-}
-
 std::unordered_map<ElementProperty, std::any>
 Table::properties(std::uint32_t /*row*/, std::uint32_t /*column*/) const {
   // TODO

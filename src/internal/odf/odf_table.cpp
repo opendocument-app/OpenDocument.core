@@ -231,15 +231,6 @@ ElementIdentifier Table::cell_first_child(const std::uint32_t row,
   return c->first_child;
 }
 
-TableDimensions Table::cell_span(const std::uint32_t row,
-                                 const std::uint32_t column) const {
-  auto c = cell_(row, column);
-  if (c == nullptr) {
-    return {1, 1};
-  }
-  return {c->rowspan, c->colspan};
-}
-
 std::unordered_map<ElementProperty, std::any>
 Table::properties(const std::uint32_t row, const std::uint32_t column) const {
   if ((row == Table::all) && (column == Table::all)) {

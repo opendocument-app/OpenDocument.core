@@ -357,66 +357,57 @@ void translate_table(const Table &element, std::ostream &out,
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
-  std::optional<std::uint32_t> end_column;
-  std::optional<std::uint32_t> end_row;
-  if (config.table_limit_columns > 0) {
-    end_column = config.table_limit_columns;
-  }
+  std::uint32_t end_row = element.dimensions().rows;
+  std::uint32_t end_column = element.dimensions().columns;
   if (config.table_limit_rows > 0) {
     end_row = config.table_limit_rows;
+  }
+  if (config.table_limit_columns > 0) {
+    end_column = config.table_limit_columns;
   }
   if (config.table_limit_by_content) {
     const auto content_bounds = element.content_bounds();
     const auto content_bounds_within = element.content_bounds(
         {config.table_limit_rows, config.table_limit_columns});
+    end_row = end_row ? content_bounds_within.rows : content_bounds.rows;
     end_column =
         end_column ? content_bounds_within.columns : content_bounds.columns;
-    end_row = end_row ? content_bounds_within.rows : content_bounds.rows;
   }
 
-  common::TableCursor cursor;
-
-  for (auto &&column : element.columns()) {
-    if (end_column && (cursor.column() >= end_column)) {
-      break;
-    }
-
+  for (std::uint32_t j = 0; j < end_column; ++j) {
+    auto column = element.column(j);
     auto column_properties = column.properties();
 
     out << "<col";
     out << optional_style_attribute(
         translate_table_column_style(column_properties));
     out << ">";
-
-    cursor.add_column();
   }
 
-  cursor = {};
-
-  for (auto &&row : element.rows()) {
-    if (end_row && (cursor.row() >= end_row)) {
-      break;
-    }
-
+  for (std::uint32_t i = 0; i < end_row; ++i) {
+    auto row = element.row(i);
     auto row_properties = row.properties();
 
     out << "<tr";
     out << optional_style_attribute(translate_table_row_style(row_properties));
     out << ">";
 
-    for (auto &&cell : row.cells()) {
-      if (end_column && (cursor.column() >= end_column)) {
-        break;
-      }
+    for (std::uint32_t j = 0; j < end_column;) {
+      auto cell = row.cell(j);
+      // TODO check if cell hidden
 
       auto cell_properties = cell.properties();
+      std::uint32_t row_span =
+          cell_properties.get_uint32(ElementProperty::ROW_SPAN).value_or(1);
+      std::uint32_t column_span =
+          cell_properties.get_uint32(ElementProperty::COLUMN_SPAN).value_or(1);
 
       out << "<td";
-      if (auto column_span = cell.column_span(); column_span > 1) {
-        out << " colspan=\"" << column_span << "\"";
-      }
-      if (auto row_span = cell.row_span(); row_span > 1) {
+      if (row_span > 1) {
         out << " rowspan=\"" << row_span << "\"";
+      }
+      if (column_span > 1) {
+        out << " colspan=\"" << column_span << "\"";
       }
       out << optional_style_attribute(
           translate_table_cell_style(cell_properties));
@@ -424,12 +415,10 @@ void translate_table(const Table &element, std::ostream &out,
       translate_generation(cell.children(), out, config);
       out << "</td>";
 
-      cursor.add_cell(cell.column_span(), cell.row_span());
+      j += column_span;
     }
 
     out << "</tr>";
-
-    cursor.add_row();
   }
 
   out << "</table>";
