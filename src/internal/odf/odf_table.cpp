@@ -90,7 +90,8 @@ void Table::register_(const pugi::xml_node node) {
         column.attribute("table:number-columns-repeated").as_uint(1);
 
     Column new_column;
-    new_column.node = column;
+    // TODO element lookup would not be necessary
+    new_column.element = Element(column);
     m_columns[cursor.column()] = new_column;
 
     cursor.add_column(columns_repeated);
@@ -107,9 +108,11 @@ void Table::register_(const pugi::xml_node node) {
 
     for (std::uint32_t i = 0; i < rows_repeated; ++i) {
       Row new_row;
-      new_row.node = row;
+      // TODO element lookup would not be necessary
+      new_row.element = Element(row);
 
       for (auto cell : row.children("table:table-cell")) {
+        // TODO performance - fetch all attributes at once
         const auto cells_repeated =
             cell.attribute("table:number-columns-repeated").as_uint(1);
         const auto colspan =
@@ -121,10 +124,11 @@ void Table::register_(const pugi::xml_node node) {
 
         for (std::uint32_t j = 0; j < cells_repeated; ++j) {
           // TODO parent?
-          auto first_child = m_document.register_children_(cell, {}, {}).first;
+          auto first_child =
+              m_document.register_children_(odf::Element(cell), {}, {}).first;
 
           Cell new_cell;
-          new_cell.node = cell;
+          new_cell.element = Element(cell);
           new_cell.first_child = first_child;
           new_cell.rowspan = rowspan;
           new_cell.colspan = colspan;
@@ -171,8 +175,7 @@ void Table::register_(const pugi::xml_node node) {
 
   m_dimensions.rows = cursor.row();
 
-  common::TablePosition begin{begin_row ? *begin_row : 0,
-                              begin_column ? *begin_column : 0};
+  common::TablePosition begin{begin_row.value_or(0), begin_column.value_or(0)};
   common::TablePosition end{end_row ? *end_row + 1 : begin.row(),
                             end_column ? *end_column + 1 : begin.column()};
   m_content_bounds = {begin, end};
@@ -255,8 +258,10 @@ Table::column_properties_(const std::uint32_t column) const {
 
   std::unordered_map<ElementProperty, std::any> result;
 
-  PropertyRegistry::instance().resolve_properties(ElementType::TABLE_COLUMN,
-                                                  c->node, result);
+  {
+    auto element_properties = c->element.properties();
+    result.insert(std::begin(element_properties), std::end(element_properties));
+  }
 
   if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
       style_name_it != std::end(result)) {
@@ -278,8 +283,10 @@ Table::row_properties_(const std::uint32_t row) const {
 
   std::unordered_map<ElementProperty, std::any> result;
 
-  PropertyRegistry::instance().resolve_properties(ElementType::TABLE_ROW,
-                                                  r->node, result);
+  {
+    auto element_properties = r->element.properties();
+    result.insert(std::begin(element_properties), std::end(element_properties));
+  }
 
   if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
       style_name_it != std::end(result)) {
@@ -302,8 +309,10 @@ Table::cell_properties_(const std::uint32_t row,
 
   std::unordered_map<ElementProperty, std::any> result;
 
-  PropertyRegistry::instance().resolve_properties(ElementType::TABLE_CELL,
-                                                  c->node, result);
+  {
+    auto element_properties = c->element.properties();
+    result.insert(std::begin(element_properties), std::end(element_properties));
+  }
 
   std::optional<std::string> style_name;
   if (auto it =

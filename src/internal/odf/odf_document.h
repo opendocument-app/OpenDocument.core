@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_ODF_DOCUMENT_H
 
 #include <internal/common/document.h>
+#include <internal/odf/odf_element.h>
 #include <internal/odf/odf_style.h>
 #include <pugixml.hpp>
 
@@ -34,10 +35,6 @@ public:
 private:
   friend class Table;
 
-  class PropertyRegistry;
-
-  class DefaultPropertyAdapter;
-
   DocumentType m_document_type;
 
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
@@ -45,24 +42,21 @@ private:
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
 
-  DenseElementAttributeStore<pugi::xml_node> m_element_nodes;
+  DenseElementAttributeStore<odf::Element> m_odf_elements;
 
   Style m_style;
 
-  ElementIdentifier register_element_(pugi::xml_node node,
+  ElementIdentifier register_element_(odf::Element element,
                                       ElementIdentifier parent,
                                       ElementIdentifier previous_sibling);
   std::pair<ElementIdentifier, ElementIdentifier>
-  register_children_(pugi::xml_node node, ElementIdentifier parent,
+  register_children_(odf::Element element, ElementIdentifier parent,
                      ElementIdentifier previous_sibling);
+  void register_table_children_(odf::Element element, ElementIdentifier parent);
+  void register_slide_children_(odf::Element element, ElementIdentifier parent);
 
-  void post_register_table_(ElementIdentifier element, pugi::xml_node node);
-  void post_register_slide_(ElementIdentifier element, pugi::xml_node node);
-
-  ElementIdentifier new_element_(pugi::xml_node node, ElementType type,
-                                 ElementIdentifier parent,
+  ElementIdentifier new_element_(odf::Element element, ElementIdentifier parent,
                                  ElementIdentifier previous_sibling);
-  pugi::xml_node element_node_(ElementIdentifier element_id) const;
 };
 
 } // namespace odr::internal::odf

@@ -5,7 +5,8 @@
 
 namespace odr::internal::odf {
 
-class Element::DefaultAdapter : public Element::Adapter {
+namespace {
+class DefaultAdapter : public ElementAdapter {
 public:
   static std::shared_ptr<DefaultAdapter>
   create(const ElementType element_type) {
@@ -94,22 +95,22 @@ public:
   }
 
 protected:
-  [[nodiscard]] virtual Element::Adapter *
+  [[nodiscard]] virtual ElementAdapter *
   parent_adapter_(const pugi::xml_node node) const {
     return default_adapter(node);
   }
 
-  [[nodiscard]] virtual Element::Adapter *
+  [[nodiscard]] virtual ElementAdapter *
   first_child_adapter_(const pugi::xml_node node) const {
     return default_adapter(node);
   }
 
-  [[nodiscard]] virtual Element::Adapter *
+  [[nodiscard]] virtual ElementAdapter *
   previous_sibling_adapter_(const pugi::xml_node node) const {
     return default_adapter(node);
   }
 
-  [[nodiscard]] virtual Element::Adapter *
+  [[nodiscard]] virtual ElementAdapter *
   next_sibling_adapter_(const pugi::xml_node node) const {
     return default_adapter(node);
   }
@@ -119,7 +120,7 @@ private:
   std::unordered_map<std::string, ElementProperty> m_properties;
 };
 
-class Element::TextAdapter : public Element::DefaultAdapter {
+class TextAdapter : public DefaultAdapter {
 public:
   TextAdapter() : DefaultAdapter(ElementType::TEXT) {}
 
@@ -133,7 +134,7 @@ public:
   }
 };
 
-class Element::SpaceAdapter : public Element::DefaultAdapter {
+class SpaceAdapter : public DefaultAdapter {
 public:
   SpaceAdapter() : DefaultAdapter(ElementType::TEXT) {}
 
@@ -149,7 +150,7 @@ public:
   }
 };
 
-class Element::TabAdapter : public Element::DefaultAdapter {
+class TabAdapter : public DefaultAdapter {
 public:
   TabAdapter() : DefaultAdapter(ElementType::TEXT) {}
 
@@ -162,21 +163,49 @@ public:
     return result;
   }
 };
+} // namespace
 
-Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
-  static const auto text_style_attribute = "text:style-name";
-  static const auto table_style_attribute = "table:style-name";
-  static const auto draw_style_attribute = "draw:style-name";
+std::shared_ptr<ElementAdapter> ElementAdapter::table_adapter() {
+  return DefaultAdapter::create(
+      ElementType::TABLE, {{"table:style-name", ElementProperty::STYLE_NAME}});
+}
+
+std::shared_ptr<ElementAdapter> ElementAdapter::table_column_adapter() {
+  return DefaultAdapter::create(
+      ElementType::TABLE_COLUMN,
+      {{"table:style-name", ElementProperty::STYLE_NAME},
+       {"table:default-cell-style-name",
+        ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME}});
+}
+
+std::shared_ptr<ElementAdapter> ElementAdapter::table_row_adapter() {
+  return DefaultAdapter::create(
+      ElementType::TABLE_ROW,
+      {{"table:style-name", ElementProperty::STYLE_NAME},
+       {"table:number-columns-repeated", ElementProperty::ROWS_REPEATED}});
+}
+
+std::shared_ptr<ElementAdapter> ElementAdapter::table_cell_adapter() {
+  return DefaultAdapter::create(
+      ElementType::TABLE_CELL,
+      {{"table:style-name", ElementProperty::STYLE_NAME},
+       {"table:number-columns-spanned", ElementProperty::COLUMN_SPAN},
+       {"table:number-rows-spanned", ElementProperty::ROW_SPAN},
+       {"table:number-columns-repeated", ElementProperty::COLUMNS_REPEATED},
+       {"office:value-type", ElementProperty::VALUE_TYPE}});
+}
+
+ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
   static const auto draw_master_page_attribute = "draw:master-page-name";
 
   static const auto text_adapter = std::make_shared<TextAdapter>();
   static const auto paragraph_adapter = DefaultAdapter::create(
       ElementType::PARAGRAPH,
-      {{text_style_attribute, ElementProperty::STYLE_NAME}});
+      {{"text:style-name", ElementProperty::STYLE_NAME}});
   static const auto bookmark_adapter = DefaultAdapter::create(
       ElementType::BOOKMARK, {{"text:name", ElementProperty::NAME}});
 
-  static std::unordered_map<std::string, std::shared_ptr<Element::Adapter>>
+  static std::unordered_map<std::string, std::shared_ptr<ElementAdapter>>
       element_adapter_table{
           {"office:text", nullptr},         // ElementType::ROOT
           {"office:presentation", nullptr}, // ElementType::ROOT
@@ -187,45 +216,23 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
           {"text:span",
            DefaultAdapter::create(
                ElementType::SPAN,
-               {{text_style_attribute, ElementProperty::STYLE_NAME}})},
+               {{"text:style-name", ElementProperty::STYLE_NAME}})},
           {"text:s", std::make_shared<SpaceAdapter>()},
           {"text:tab", std::make_shared<TabAdapter>()},
           {"text:line-break", DefaultAdapter::create(ElementType::LINE_BREAK)},
-          {"text:a",
-           DefaultAdapter::create(
-               ElementType::LINK,
-               {{"xlink:href", ElementProperty::HREF},
-                {text_style_attribute, ElementProperty::STYLE_NAME}})},
+          {"text:a", DefaultAdapter::create(
+                         ElementType::LINK,
+                         {{"xlink:href", ElementProperty::HREF},
+                          {"text:style-name", ElementProperty::STYLE_NAME}})},
           {"text:bookmark", bookmark_adapter},
           {"text:bookmark-start", bookmark_adapter},
           {"text:list", DefaultAdapter::create(ElementType::LIST)},
           {"text:list-item", DefaultAdapter::create(ElementType::LIST_ITEM)},
           {"text:index-title", paragraph_adapter},
-          {"table:table",
-           DefaultAdapter::create(
-               ElementType::TABLE,
-               {{table_style_attribute, ElementProperty::STYLE_NAME}})},
-          {"table:table-column",
-           DefaultAdapter::create(
-               ElementType::TABLE_COLUMN,
-               {{table_style_attribute, ElementProperty::STYLE_NAME},
-                {"table:default-cell-style-name",
-                 ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME}})},
-          {"table:table-row",
-           DefaultAdapter::create(
-               ElementType::TABLE_ROW,
-               {{table_style_attribute, ElementProperty::STYLE_NAME},
-                {"table:number-columns-repeated",
-                 ElementProperty::ROWS_REPEATED}})},
-          {"table:table-cell",
-           DefaultAdapter::create(
-               ElementType::TABLE_CELL,
-               {{table_style_attribute, ElementProperty::STYLE_NAME},
-                {"table:number-columns-spanned", ElementProperty::COLUMN_SPAN},
-                {"table:number-rows-spanned", ElementProperty::ROW_SPAN},
-                {"table:number-columns-repeated",
-                 ElementProperty::COLUMNS_REPEATED},
-                {"office:value-type", ElementProperty::VALUE_TYPE}})},
+          {"table:table", table_adapter()},
+          {"table:table-column", table_column_adapter()},
+          {"table:table-row", table_row_adapter()},
+          {"table:table-cell", table_cell_adapter()},
           {"draw:frame",
            DefaultAdapter::create(
                ElementType::FRAME,
@@ -245,7 +252,7 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
                 {"svg:y", ElementProperty::Y},
                 {"svg:width", ElementProperty::WIDTH},
                 {"svg:height", ElementProperty::HEIGHT},
-                {draw_style_attribute, ElementProperty::STYLE_NAME}})},
+                {"draw:style-name", ElementProperty::STYLE_NAME}})},
           {"draw:line",
            DefaultAdapter::create(
                ElementType::LINE,
@@ -253,7 +260,7 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
                 {"svg:y1", ElementProperty::Y1},
                 {"svg:x2", ElementProperty::X2},
                 {"svg:y2", ElementProperty::Y2},
-                {draw_style_attribute, ElementProperty::STYLE_NAME}})},
+                {"draw:style-name", ElementProperty::STYLE_NAME}})},
           {"draw:circle",
            DefaultAdapter::create(
                ElementType::CIRCLE,
@@ -261,7 +268,7 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
                 {"svg:y", ElementProperty::Y},
                 {"svg:width", ElementProperty::WIDTH},
                 {"svg:height", ElementProperty::HEIGHT},
-                {draw_style_attribute, ElementProperty::STYLE_NAME}})},
+                {"draw:style-name", ElementProperty::STYLE_NAME}})},
           {"draw:custom-shape",
            DefaultAdapter::create(
                ElementType::CUSTOM_SHAPE,
@@ -269,7 +276,7 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
                 {"svg:y", ElementProperty::Y},
                 {"svg:width", ElementProperty::WIDTH},
                 {"svg:height", ElementProperty::HEIGHT},
-                {draw_style_attribute, ElementProperty::STYLE_NAME}})},
+                {"draw:style-name", ElementProperty::STYLE_NAME}})},
       };
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {
@@ -284,10 +291,18 @@ Element::Adapter *Element::default_adapter(const pugi::xml_node node) {
 Element::Element() = default;
 
 Element::Element(const pugi::xml_node node)
-    : m_node{node}, m_adapter(default_adapter(node)) {}
+    : m_node{node}, m_adapter(ElementAdapter::default_adapter(node)) {}
 
-Element::Element(const pugi::xml_node node, Adapter *adapter)
-    : m_node{node}, m_adapter{adapter} {}
+Element::Element(pugi::xml_node node, ElementAdapter *adapter)
+    : m_node{std::move(node)}, m_adapter{adapter} {}
+
+bool Element::operator==(const Element &rhs) const {
+  return (m_node == rhs.m_node) && (m_adapter == rhs.m_adapter);
+}
+
+bool Element::operator!=(const Element &rhs) const {
+  return (m_node != rhs.m_node) || (m_adapter != rhs.m_adapter);
+}
 
 Element::operator bool() const { return m_node && (m_adapter != nullptr); }
 
@@ -299,6 +314,8 @@ ElementType Element::type() const {
 }
 
 pugi::xml_node Element::xml_node() const { return m_node; }
+
+ElementAdapter *Element::adapter() const { return m_adapter; }
 
 Element Element::parent() const {
   if (m_adapter == nullptr) {
@@ -328,6 +345,10 @@ Element Element::next_sibling() const {
   return m_adapter->next_sibling(m_node);
 }
 
+ElementIterator Element::begin() const { return ElementIterator(*this); }
+
+ElementIterator Element::end() const { return ElementIterator({}); }
+
 std::unordered_map<ElementProperty, std::any> Element::properties() const {
   if (m_adapter == nullptr) {
     return {};
@@ -341,6 +362,156 @@ void Element::update_properties(
     return;
   }
   m_adapter->update_properties(m_node, std::move(properties));
+}
+
+std::shared_ptr<ElementAdapter> TableElement::adapter_() {
+  return ElementAdapter::table_column_adapter();
+}
+
+TableElement::TableElement() = default;
+
+TableElement::TableElement(pugi::xml_node node)
+    : ElementBase<TableElement>(std::move(node)) {}
+
+Element TableElement::element() const {
+  return Element(m_node, ElementAdapter::table_adapter().get());
+}
+
+ElementType TableElement::type() const { return ElementType::TABLE; }
+
+Element TableElement::parent() const { return Element(m_node.parent()); }
+
+Element TableElement::previous_sibling() const {
+  // TODO iterate / use adapter
+  return Element(m_node.previous_sibling());
+}
+
+Element TableElement::next_sibling() const {
+  // TODO iterate / use adapter
+  return Element(m_node.next_sibling());
+}
+
+void TableElement::columns() {
+  // TODO
+}
+
+void TableElement::rows() {
+  // TODO
+}
+
+std::shared_ptr<ElementAdapter> TableColumnElement::adapter_() {
+  return ElementAdapter::table_column_adapter();
+}
+
+TableColumnElement::TableColumnElement() = default;
+
+TableColumnElement::TableColumnElement(pugi::xml_node node)
+    : ElementBase<TableColumnElement>(std::move(node)) {}
+
+Element TableColumnElement::element() const {
+  return Element(m_node, ElementAdapter::table_column_adapter().get());
+}
+
+ElementType TableColumnElement::type() const {
+  return ElementType::TABLE_COLUMN;
+}
+
+TableElement TableColumnElement::parent() const {
+  return TableElement(m_node.parent());
+}
+
+TableColumnElement TableColumnElement::previous_sibling() const {
+  // TODO iterate / use adapter
+  return TableColumnElement(m_node.previous_sibling());
+}
+
+TableColumnElement TableColumnElement::next_sibling() const {
+  // TODO iterate / use adapter
+  return TableColumnElement(m_node.next_sibling());
+}
+
+std::shared_ptr<ElementAdapter> TableRowElement::adapter_() {
+  return ElementAdapter::table_row_adapter();
+}
+
+TableRowElement::TableRowElement() = default;
+
+TableRowElement::TableRowElement(pugi::xml_node node)
+    : ElementBase<TableRowElement>(std::move(node)) {}
+
+Element TableRowElement::element() const {
+  return Element(m_node, ElementAdapter::table_column_adapter().get());
+}
+
+ElementType TableRowElement::type() const { return ElementType::TABLE_ROW; }
+
+TableElement TableRowElement::parent() const {
+  return TableElement(m_node.parent());
+}
+
+TableRowElement TableRowElement::previous_sibling() const {
+  // TODO iterate / use adapter
+  return TableRowElement(m_node.previous_sibling());
+}
+
+TableRowElement TableRowElement::next_sibling() const {
+  // TODO iterate / use adapter
+  return TableRowElement(m_node.next_sibling());
+}
+
+std::shared_ptr<ElementAdapter> TableCellElement::adapter_() {
+  return ElementAdapter::table_cell_adapter();
+}
+
+TableCellElement::TableCellElement() = default;
+
+TableCellElement::TableCellElement(pugi::xml_node node)
+    : ElementBase<TableCellElement>(std::move(node)) {}
+
+Element TableCellElement::element() const {
+  return Element(m_node, ElementAdapter::table_column_adapter().get());
+}
+
+ElementType TableCellElement::type() const { return ElementType::TABLE_CELL; }
+
+TableRowElement TableCellElement::parent() const {
+  return TableRowElement(m_node.parent());
+}
+
+TableCellElement TableCellElement::previous_sibling() const {
+  // TODO iterate / use adapter
+  return TableCellElement(m_node.previous_sibling());
+}
+
+TableCellElement TableCellElement::next_sibling() const {
+  // TODO iterate / use adapter
+  return TableCellElement(m_node.next_sibling());
+}
+
+ElementIterator::ElementIterator(Element element)
+    : m_element{std::move(element)} {}
+
+ElementIterator &ElementIterator::operator++() {
+  m_element = m_element.next_sibling();
+  return *this;
+}
+
+ElementIterator ElementIterator::operator++(int) & {
+  ElementIterator result = *this;
+  operator++();
+  return result;
+}
+
+Element &ElementIterator::operator*() { return m_element; }
+
+Element *ElementIterator::operator->() { return &m_element; }
+
+bool ElementIterator::operator==(const ElementIterator &rhs) const {
+  return m_element == rhs.m_element;
+}
+
+bool ElementIterator::operator!=(const ElementIterator &rhs) const {
+  return m_element != rhs.m_element;
 }
 
 } // namespace odr::internal::odf

@@ -42,18 +42,18 @@ private:
   class PropertyRegistry;
 
   struct Column {
-    pugi::xml_node node;
+    odf::Element element;
   };
 
   struct Cell {
-    pugi::xml_node node;
+    odf::Element element;
     ElementIdentifier first_child;
     std::uint32_t rowspan{1};
     std::uint32_t colspan{1};
   };
 
   struct Row {
-    pugi::xml_node node;
+    odf::Element element;
     std::map<std::uint32_t, Cell> cells;
   };
 

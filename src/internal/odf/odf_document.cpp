@@ -4,7 +4,6 @@
 #include <internal/common/path.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_table.h>
-#include <internal/util/map_util.h>
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
@@ -13,195 +12,6 @@
 #include <utility>
 
 namespace odr::internal::odf {
-
-class OpenDocument::PropertyRegistry final {
-public:
-  using Get = std::function<std::any(pugi::xml_node node)>;
-
-  static PropertyRegistry &instance() {
-    static PropertyRegistry instance;
-    return instance;
-  }
-
-  void
-  resolve_properties(const ElementType element, const pugi::xml_node node,
-                     std::unordered_map<ElementProperty, std::any> &result) {
-    auto it = m_registry.find(element);
-    if (it == std::end(m_registry)) {
-      return;
-    }
-    for (auto &&p : it->second) {
-      auto value = p.second.get(node);
-      if (value.has_value()) {
-        result[p.first] = value;
-      }
-    }
-  }
-
-private:
-  struct Entry {
-    Get get{nullptr};
-  };
-
-  std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
-      m_registry;
-
-  PropertyRegistry() {
-    static auto text_style_attribute = "text:style-name";
-    static auto table_style_attribute = "table:style-name";
-    static auto draw_style_attribute = "draw:style-name";
-    static auto draw_master_page_attribute = "draw:master-page-name";
-
-    default_register_(ElementType::SLIDE, ElementProperty::NAME, "draw:name");
-    default_register_(ElementType::SLIDE, ElementProperty::STYLE_NAME,
-                      draw_style_attribute);
-    default_register_(ElementType::SLIDE, ElementProperty::MASTER_PAGE_NAME,
-                      draw_master_page_attribute);
-
-    default_register_(ElementType::SHEET, ElementProperty::NAME, "table:name");
-
-    default_register_(ElementType::PAGE, ElementProperty::NAME, "draw:name");
-    default_register_(ElementType::PAGE, ElementProperty::STYLE_NAME,
-                      draw_style_attribute);
-    default_register_(ElementType::PAGE, ElementProperty::MASTER_PAGE_NAME,
-                      draw_master_page_attribute);
-
-    register_text_();
-
-    default_register_(ElementType::PARAGRAPH, ElementProperty::STYLE_NAME,
-                      text_style_attribute);
-
-    default_register_(ElementType::SPAN, ElementProperty::STYLE_NAME,
-                      text_style_attribute);
-
-    default_register_(ElementType::LINK, ElementProperty::HREF, "xlink:href");
-    default_register_(ElementType::LINK, ElementProperty::STYLE_NAME,
-                      text_style_attribute);
-
-    default_register_(ElementType::BOOKMARK, ElementProperty::NAME,
-                      "text:name");
-
-    default_register_(ElementType::TABLE, ElementProperty::STYLE_NAME,
-                      table_style_attribute);
-
-    default_register_(ElementType::FRAME, ElementProperty::ANCHOR_TYPE,
-                      "text:anchor-type");
-    default_register_(ElementType::FRAME, ElementProperty::X, "svg:x");
-    default_register_(ElementType::FRAME, ElementProperty::Y, "svg:y");
-    default_register_(ElementType::FRAME, ElementProperty::WIDTH, "svg:width");
-    default_register_(ElementType::FRAME, ElementProperty::HEIGHT,
-                      "svg:height");
-    default_register_(ElementType::FRAME, ElementProperty::Z_INDEX,
-                      "draw:z-index");
-
-    default_register_(ElementType::IMAGE, ElementProperty::HREF, "xlink:href");
-
-    default_register_(ElementType::RECT, ElementProperty::X, "svg:x");
-    default_register_(ElementType::RECT, ElementProperty::Y, "svg:y");
-    default_register_(ElementType::RECT, ElementProperty::WIDTH, "svg:width");
-    default_register_(ElementType::RECT, ElementProperty::HEIGHT, "svg:height");
-    default_register_(ElementType::RECT, ElementProperty::STYLE_NAME,
-                      draw_style_attribute);
-
-    default_register_(ElementType::LINE, ElementProperty::X1, "svg:x1");
-    default_register_(ElementType::LINE, ElementProperty::Y1, "svg:y1");
-    default_register_(ElementType::LINE, ElementProperty::X2, "svg:x2");
-    default_register_(ElementType::LINE, ElementProperty::Y2, "svg:y2");
-    default_register_(ElementType::LINE, ElementProperty::STYLE_NAME,
-                      draw_style_attribute);
-
-    default_register_(ElementType::CIRCLE, ElementProperty::X, "svg:x");
-    default_register_(ElementType::CIRCLE, ElementProperty::Y, "svg:y");
-    default_register_(ElementType::CIRCLE, ElementProperty::WIDTH, "svg:width");
-    default_register_(ElementType::CIRCLE, ElementProperty::HEIGHT,
-                      "svg:height");
-    default_register_(ElementType::CIRCLE, ElementProperty::STYLE_NAME,
-                      draw_style_attribute);
-
-    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::X, "svg:x");
-    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::Y, "svg:y");
-    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::WIDTH,
-                      "svg:width");
-    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::HEIGHT,
-                      "svg:height");
-    default_register_(ElementType::CUSTOM_SHAPE, ElementProperty::STYLE_NAME,
-                      draw_style_attribute);
-    // TODO text style
-  }
-
-  void register_(const ElementType element, const ElementProperty property,
-                 Get get) {
-    m_registry[element][property].get = std::move(get);
-  }
-
-  void default_register_(const ElementType element,
-                         const ElementProperty property,
-                         const char *attribute_name) {
-    register_(element, property, [attribute_name](const pugi::xml_node node) {
-      auto attribute = node.attribute(attribute_name);
-      if (!attribute) {
-        return std::any();
-      }
-      return std::any(attribute.value());
-    });
-  }
-
-  void register_text_() {
-    register_(ElementType::TEXT, ElementProperty::TEXT,
-              [](const pugi::xml_node node) {
-                if (node.type() == pugi::node_pcdata) {
-                  return std::any(node.text().as_string());
-                }
-
-                const std::string element = node.name();
-                if (element == "text:s") {
-                  const auto count = node.attribute("text:c").as_uint(1);
-                  return std::any(std::string(count, ' '));
-                } else if (element == "text:tab") {
-                  return std::any("\t");
-                }
-
-                // TODO this should never happen. log or throw?
-                return std::any("");
-              });
-  }
-};
-
-class OpenDocument::DefaultPropertyAdapter : public PropertyAdapter {
-public:
-  DefaultPropertyAdapter(
-      OpenDocument &document,
-      std::unordered_map<std::string, ElementProperty> properties)
-      : m_document{document}, m_properties{std::move(properties)} {}
-
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  properties(const ElementIdentifier element_id) const override {
-    std::unordered_map<ElementProperty, std::any> result;
-
-    pugi::xml_node node = m_document.element_node_(element_id);
-
-    for (auto attribute : node.attributes()) {
-      auto property_it = m_properties.find(attribute.name());
-      if (property_it == std::end(m_properties)) {
-        continue;
-      }
-      result[property_it->second] = attribute.value();
-    }
-
-    return result;
-  }
-
-  void update_properties(
-      const ElementIdentifier /*element_id*/,
-      std::unordered_map<ElementProperty, std::any> /*properties*/)
-      const override {
-    // TODO
-  }
-
-private:
-  OpenDocument &m_document;
-  std::unordered_map<std::string, ElementProperty> m_properties;
-};
 
 OpenDocument::OpenDocument(
     const DocumentType document_type,
@@ -217,8 +27,9 @@ OpenDocument::OpenDocument(
       Style(m_content_xml.document_element(), m_styles_xml.document_element());
 
   m_root = register_element_(
-      m_content_xml.document_element().child("office:body").first_child(), 0,
-      0);
+      odf::Element(
+          m_content_xml.document_element().child("office:body").first_child()),
+      {}, {});
 
   if (!m_root) {
     throw NoOpenDocumentFile();
@@ -226,101 +37,32 @@ OpenDocument::OpenDocument(
 }
 
 ElementIdentifier
-OpenDocument::register_element_(const pugi::xml_node node,
+OpenDocument::register_element_(const odf::Element element,
                                 const ElementIdentifier parent,
                                 const ElementIdentifier previous_sibling) {
-  static std::unordered_map<std::string, ElementType> element_type_table{
-      {"text:p", ElementType::PARAGRAPH},
-      {"text:h", ElementType::PARAGRAPH},
-      {"text:span", ElementType::SPAN},
-      {"text:s", ElementType::TEXT},
-      {"text:tab", ElementType::TEXT},
-      {"text:line-break", ElementType::LINE_BREAK},
-      {"text:a", ElementType::LINK},
-      {"text:bookmark", ElementType::BOOKMARK},
-      {"text:bookmark-start", ElementType::BOOKMARK},
-      {"text:list", ElementType::LIST},
-      {"text:list-item", ElementType::LIST_ITEM},
-      {"text:index-title", ElementType::PARAGRAPH},
-      {"table:table", ElementType::TABLE},
-      {"draw:frame", ElementType::FRAME},
-      {"draw:image", ElementType::IMAGE},
-      {"draw:rect", ElementType::RECT},
-      {"draw:line", ElementType::LINE},
-      {"draw:circle", ElementType::CIRCLE},
-      {"draw:custom-shape", ElementType::CUSTOM_SHAPE},
-      {"office:text", ElementType::ROOT},
-      {"office:presentation", ElementType::ROOT},
-      {"office:spreadsheet", ElementType::ROOT},
-      {"office:drawing", ElementType::ROOT},
-  };
-
-  if (!node) {
-    return {};
-  }
-
-  ElementType element_type = ElementType::NONE;
-
-  if (node.type() == pugi::node_pcdata) {
-    element_type = ElementType::TEXT;
-  } else if (node.type() == pugi::node_element) {
-    const std::string element = node.name();
-
-    if (element == "text:table-of-content") {
-      return register_children_(node.child("text:index-body"), parent,
-                                previous_sibling)
-          .second;
-    } else if (element == "text:index-title") {
-      // not sure what else to do with this tag
-      return register_children_(node, parent, previous_sibling).second;
-    } else if (element == "draw:g") {
-      // drawing group not supported
-      return register_children_(node, parent, previous_sibling).second;
-    } else if (element == "draw:text-box") {
-      return register_children_(node, parent, previous_sibling).second;
-    } else if ((m_document_type == DocumentType::PRESENTATION) &&
-               (element == "draw:page")) {
-      element_type = ElementType::SLIDE;
-    } else if ((m_document_type == DocumentType::SPREADSHEET) &&
-               (element == "table:table") && (parent == m_root)) {
-      auto sheet =
-          new_element_(node, ElementType::SHEET, parent, previous_sibling);
-      return register_element_(node, sheet, previous_sibling);
-    } else if ((m_document_type == DocumentType::DRAWING) &&
-               (element == "draw:page")) {
-      element_type = ElementType::PAGE;
-    } else {
-      util::map::lookup_map(element_type_table, element, element_type);
-    }
-  }
-
-  if (element_type == ElementType::NONE) {
-    // TODO log node
-    return {};
-  }
-
-  auto new_element = new_element_(node, element_type, parent, previous_sibling);
+  auto element_type = element.type();
+  auto new_element = new_element_(element, parent, previous_sibling);
 
   if (element_type == ElementType::TABLE) {
-    post_register_table_(new_element, node);
+    register_table_children_(element, new_element);
   } else if (element_type == ElementType::SLIDE) {
-    post_register_slide_(new_element, node);
+    register_slide_children_(element, new_element);
   } else {
-    register_children_(node, new_element, {});
+    register_children_(element, new_element, {});
   }
 
   return new_element;
 }
 
 std::pair<ElementIdentifier, ElementIdentifier>
-OpenDocument::register_children_(const pugi::xml_node node,
+OpenDocument::register_children_(const odf::Element element,
                                  const ElementIdentifier parent,
                                  ElementIdentifier previous_sibling) {
   ElementIdentifier first_element;
 
-  for (auto &&child_node : node) {
+  for (auto &&child_element : element) {
     const ElementIdentifier child =
-        register_element_(child_node, parent, previous_sibling);
+        register_element_(child_element, parent, previous_sibling);
     if (!child) {
       continue;
     }
@@ -333,13 +75,15 @@ OpenDocument::register_children_(const pugi::xml_node node,
   return {first_element, previous_sibling};
 }
 
-void OpenDocument::post_register_table_(const ElementIdentifier element,
-                                        const pugi::xml_node node) {
-  m_tables[element] = std::make_shared<Table>(*this, node);
+void OpenDocument::register_table_children_(const odf::Element element,
+                                            const ElementIdentifier parent) {
+  m_tables[parent] = std::make_shared<Table>(*this, element.xml_node());
 }
 
-void OpenDocument::post_register_slide_(const ElementIdentifier element,
-                                        const pugi::xml_node node) {
+void OpenDocument::register_slide_children_(const odf::Element element,
+                                            const ElementIdentifier parent) {
+  auto node = element.xml_node();
+
   ElementIdentifier inner_previous_sibling;
   if (auto master_page_name_attr = node.attribute("draw:master-page-name")) {
     auto master_page_node =
@@ -348,30 +92,26 @@ void OpenDocument::post_register_slide_(const ElementIdentifier element,
       if (child_node.attribute("presentation:placeholder").as_bool()) {
         continue;
       }
-      auto child =
-          register_element_(child_node, element, inner_previous_sibling);
+      auto child = register_element_(odf::Element(child_node), parent,
+                                     inner_previous_sibling);
       if (!child) {
         continue;
       }
       inner_previous_sibling = child;
     }
   }
-  register_children_(node, element, inner_previous_sibling);
+
+  register_children_(element, parent, inner_previous_sibling);
 }
 
 ElementIdentifier
-OpenDocument::new_element_(const pugi::xml_node node, const ElementType type,
+OpenDocument::new_element_(const odf::Element element,
                            const ElementIdentifier parent,
                            const ElementIdentifier previous_sibling) {
-  // TODO
-  auto result = Document::new_element_(type, nullptr, parent, previous_sibling);
-  m_element_nodes[result] = node;
+  auto result =
+      Document::new_element_(element.type(), nullptr, parent, previous_sibling);
+  m_odf_elements[result] = element;
   return result;
-}
-
-pugi::xml_node
-OpenDocument::element_node_(const ElementIdentifier element_id) const {
-  return m_element_nodes[element_id];
 }
 
 bool OpenDocument::editable() const noexcept { return true; }
@@ -442,8 +182,11 @@ OpenDocument::element_properties(const ElementIdentifier element_id) const {
     result.insert(std::begin(style_properties), std::end(style_properties));
   }
 
-  PropertyRegistry::instance().resolve_properties(
-      element.type, element_node_(element_id), result);
+  {
+    auto odf_element = m_odf_elements[element_id];
+    auto element_properties = odf_element.properties();
+    result.insert(std::begin(element_properties), std::end(element_properties));
+  }
 
   if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
       style_name_it != std::end(result)) {
