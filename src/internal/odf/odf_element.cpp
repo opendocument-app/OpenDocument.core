@@ -434,6 +434,7 @@ ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
        {"svg:width", ElementProperty::WIDTH},
        {"svg:height", ElementProperty::HEIGHT},
        {"draw:style-name", ElementProperty::STYLE_NAME}});
+  static DefaultAdapter group_adapter(ElementType::GROUP);
   static TextAdapter text_adapter;
 
   static std::unordered_map<std::string, ElementAdapter *>
@@ -464,6 +465,8 @@ ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
           {"draw:line", &line_adapter},
           {"draw:circle", &circle_adapter},
           {"draw:custom-shape", &custom_shape_adapter},
+          {"draw:text-box", &group_adapter},
+          {"draw:g", &group_adapter},
       };
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {

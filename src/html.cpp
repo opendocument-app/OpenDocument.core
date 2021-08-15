@@ -573,6 +573,8 @@ void translate_element(const Element &element, std::ostream &out,
     translate_circle(element.circle(), out, config);
   } else if (element.type() == ElementType::CUSTOM_SHAPE) {
     translate_custom_shape(element.custom_shape(), out, config);
+  } else if (element.type() == ElementType::GROUP) {
+    translate_generation(element.children(), out, config);
   } else {
     // TODO log
   }
