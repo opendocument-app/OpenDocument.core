@@ -34,7 +34,7 @@ public:
   [[nodiscard]] Element parent(const pugi::xml_node node) const override {
     for (pugi::xml_node parent = node.parent(); parent;
          parent = parent.parent()) {
-      if (auto adapter = parent_adapter_(node); adapter != nullptr) {
+      if (auto adapter = default_adapter(node); adapter != nullptr) {
         return {node, adapter};
       }
     }
@@ -44,7 +44,7 @@ public:
   [[nodiscard]] Element first_child(const pugi::xml_node node) const override {
     for (pugi::xml_node first_child = node.first_child(); first_child;
          first_child = first_child.next_sibling()) {
-      if (auto adapter = first_child_adapter_(node); adapter != nullptr) {
+      if (auto adapter = default_adapter(node); adapter != nullptr) {
         return {node, adapter};
       }
     }
@@ -56,7 +56,7 @@ public:
     for (pugi::xml_node previous_sibling = node.previous_sibling();
          previous_sibling;
          previous_sibling = previous_sibling.previous_sibling()) {
-      if (auto adapter = previous_sibling_adapter_(node); adapter != nullptr) {
+      if (auto adapter = default_adapter(node); adapter != nullptr) {
         return {node, adapter};
       }
     }
@@ -66,7 +66,7 @@ public:
   [[nodiscard]] Element next_sibling(const pugi::xml_node node) const override {
     for (pugi::xml_node next_sibling = node.next_sibling(); next_sibling;
          next_sibling = next_sibling.next_sibling()) {
-      if (auto adapter = next_sibling_adapter_(node); adapter != nullptr) {
+      if (auto adapter = default_adapter(node); adapter != nullptr) {
         return {node, adapter};
       }
     }
@@ -89,30 +89,10 @@ public:
   }
 
   void update_properties(
-      const pugi::xml_node node,
-      std::unordered_map<ElementProperty, std::any> properties) const override {
+      const pugi::xml_node /*node*/,
+      std::unordered_map<ElementProperty, std::any> /*properties*/)
+      const override {
     // TODO
-  }
-
-protected:
-  [[nodiscard]] virtual ElementAdapter *
-  parent_adapter_(const pugi::xml_node node) const {
-    return default_adapter(node);
-  }
-
-  [[nodiscard]] virtual ElementAdapter *
-  first_child_adapter_(const pugi::xml_node node) const {
-    return default_adapter(node);
-  }
-
-  [[nodiscard]] virtual ElementAdapter *
-  previous_sibling_adapter_(const pugi::xml_node node) const {
-    return default_adapter(node);
-  }
-
-  [[nodiscard]] virtual ElementAdapter *
-  next_sibling_adapter_(const pugi::xml_node node) const {
-    return default_adapter(node);
   }
 
 private:
@@ -120,7 +100,7 @@ private:
   std::unordered_map<std::string, ElementProperty> m_properties;
 };
 
-class TextAdapter : public DefaultAdapter {
+class TextAdapter final : public DefaultAdapter {
 public:
   TextAdapter() : DefaultAdapter(ElementType::TEXT) {}
 
@@ -134,7 +114,7 @@ public:
   }
 };
 
-class SpaceAdapter : public DefaultAdapter {
+class SpaceAdapter final : public DefaultAdapter {
 public:
   SpaceAdapter() : DefaultAdapter(ElementType::TEXT) {}
 
@@ -150,7 +130,7 @@ public:
   }
 };
 
-class TabAdapter : public DefaultAdapter {
+class TabAdapter final : public DefaultAdapter {
 public:
   TabAdapter() : DefaultAdapter(ElementType::TEXT) {}
 
@@ -163,36 +143,120 @@ public:
     return result;
   }
 };
+
+class TableAdapter final : public DefaultAdapter {
+public:
+  TableAdapter()
+      : DefaultAdapter(ElementType::TABLE,
+                       {{"table:style-name", ElementProperty::STYLE_NAME}}) {}
+
+  [[nodiscard]] Element first_child(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+};
+
+class TableColumnAdapter final : public DefaultAdapter {
+public:
+  TableColumnAdapter()
+      : DefaultAdapter(
+            ElementType::TABLE_COLUMN,
+            {{"table:style-name", ElementProperty::STYLE_NAME},
+             {"table:default-cell-style-name",
+              ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME}}) {}
+
+  [[nodiscard]] Element parent(const pugi::xml_node node) const final {
+    return {node.parent(), table_adapter().get()};
+  }
+
+  [[nodiscard]] Element first_child(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+
+  [[nodiscard]] Element
+  previous_sibling(const pugi::xml_node node) const final {
+    return {node.previous_sibling("table:table-column"),
+            table_column_adapter().get()};
+  }
+
+  [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
+    return {node.next_sibling("table:table-column"),
+            table_column_adapter().get()};
+  }
+};
+
+class TableRowAdapter final : public DefaultAdapter {
+public:
+  TableRowAdapter()
+      : DefaultAdapter(ElementType::TABLE_ROW,
+                       {{"table:style-name", ElementProperty::STYLE_NAME},
+                        {"table:number-columns-repeated",
+                         ElementProperty::ROWS_REPEATED}}) {}
+
+  [[nodiscard]] Element parent(const pugi::xml_node node) const final {
+    return {node.parent(), table_adapter().get()};
+  }
+
+  [[nodiscard]] Element first_child(const pugi::xml_node node) const final {
+    return {node.child("table:table-cell"), table_cell_adapter().get()};
+  }
+
+  [[nodiscard]] Element
+  previous_sibling(const pugi::xml_node node) const final {
+    return {node.previous_sibling("table:table-row"),
+            table_row_adapter().get()};
+  }
+
+  [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
+    return {node.next_sibling("table:table-row"), table_row_adapter().get()};
+  }
+};
+
+class TableCellAdapter final : public DefaultAdapter {
+public:
+  TableCellAdapter()
+      : DefaultAdapter(
+            ElementType::TABLE_CELL,
+            {{"table:style-name", ElementProperty::STYLE_NAME},
+             {"table:number-columns-spanned", ElementProperty::COLUMN_SPAN},
+             {"table:number-rows-spanned", ElementProperty::ROW_SPAN},
+             {"table:number-columns-repeated",
+              ElementProperty::COLUMNS_REPEATED},
+             {"office:value-type", ElementProperty::VALUE_TYPE}}) {}
+
+  [[nodiscard]] Element parent(const pugi::xml_node node) const final {
+    return {node.parent(), table_row_adapter().get()};
+  }
+
+  [[nodiscard]] Element
+  previous_sibling(const pugi::xml_node node) const final {
+    return {node.previous_sibling("table:table-cell"),
+            table_cell_adapter().get()};
+  }
+
+  [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
+    return {node.next_sibling("table:table-cell"), table_cell_adapter().get()};
+  }
+};
 } // namespace
 
 std::shared_ptr<ElementAdapter> ElementAdapter::table_adapter() {
-  return DefaultAdapter::create(
-      ElementType::TABLE, {{"table:style-name", ElementProperty::STYLE_NAME}});
+  static auto adapter = std::make_shared<TableAdapter>();
+  return adapter;
 }
 
 std::shared_ptr<ElementAdapter> ElementAdapter::table_column_adapter() {
-  return DefaultAdapter::create(
-      ElementType::TABLE_COLUMN,
-      {{"table:style-name", ElementProperty::STYLE_NAME},
-       {"table:default-cell-style-name",
-        ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME}});
+  static auto adapter = std::make_shared<TableColumnAdapter>();
+  return adapter;
 }
 
 std::shared_ptr<ElementAdapter> ElementAdapter::table_row_adapter() {
-  return DefaultAdapter::create(
-      ElementType::TABLE_ROW,
-      {{"table:style-name", ElementProperty::STYLE_NAME},
-       {"table:number-columns-repeated", ElementProperty::ROWS_REPEATED}});
+  static auto adapter = std::make_shared<TableRowAdapter>();
+  return adapter;
 }
 
 std::shared_ptr<ElementAdapter> ElementAdapter::table_cell_adapter() {
-  return DefaultAdapter::create(
-      ElementType::TABLE_CELL,
-      {{"table:style-name", ElementProperty::STYLE_NAME},
-       {"table:number-columns-spanned", ElementProperty::COLUMN_SPAN},
-       {"table:number-rows-spanned", ElementProperty::ROW_SPAN},
-       {"table:number-columns-repeated", ElementProperty::COLUMNS_REPEATED},
-       {"office:value-type", ElementProperty::VALUE_TYPE}});
+  static auto adapter = std::make_shared<TableCellAdapter>();
+  return adapter;
 }
 
 ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
@@ -364,7 +428,7 @@ void Element::update_properties(
   m_adapter->update_properties(m_node, std::move(properties));
 }
 
-std::shared_ptr<ElementAdapter> TableElement::adapter_() {
+std::shared_ptr<ElementAdapter> TableElement::adapter() {
   return ElementAdapter::table_column_adapter();
 }
 
@@ -379,18 +443,6 @@ Element TableElement::element() const {
 
 ElementType TableElement::type() const { return ElementType::TABLE; }
 
-Element TableElement::parent() const { return Element(m_node.parent()); }
-
-Element TableElement::previous_sibling() const {
-  // TODO iterate / use adapter
-  return Element(m_node.previous_sibling());
-}
-
-Element TableElement::next_sibling() const {
-  // TODO iterate / use adapter
-  return Element(m_node.next_sibling());
-}
-
 void TableElement::columns() {
   // TODO
 }
@@ -399,7 +451,7 @@ void TableElement::rows() {
   // TODO
 }
 
-std::shared_ptr<ElementAdapter> TableColumnElement::adapter_() {
+std::shared_ptr<ElementAdapter> TableColumnElement::adapter() {
   return ElementAdapter::table_column_adapter();
 }
 
@@ -417,20 +469,18 @@ ElementType TableColumnElement::type() const {
 }
 
 TableElement TableColumnElement::parent() const {
-  return TableElement(m_node.parent());
+  return TableElement(Base::parent().xml_node());
 }
 
 TableColumnElement TableColumnElement::previous_sibling() const {
-  // TODO iterate / use adapter
-  return TableColumnElement(m_node.previous_sibling());
+  return TableColumnElement(Base::previous_sibling().xml_node());
 }
 
 TableColumnElement TableColumnElement::next_sibling() const {
-  // TODO iterate / use adapter
-  return TableColumnElement(m_node.next_sibling());
+  return TableColumnElement(Base::next_sibling().xml_node());
 }
 
-std::shared_ptr<ElementAdapter> TableRowElement::adapter_() {
+std::shared_ptr<ElementAdapter> TableRowElement::adapter() {
   return ElementAdapter::table_row_adapter();
 }
 
@@ -446,20 +496,18 @@ Element TableRowElement::element() const {
 ElementType TableRowElement::type() const { return ElementType::TABLE_ROW; }
 
 TableElement TableRowElement::parent() const {
-  return TableElement(m_node.parent());
+  return TableElement(Base::parent().xml_node());
 }
 
 TableRowElement TableRowElement::previous_sibling() const {
-  // TODO iterate / use adapter
-  return TableRowElement(m_node.previous_sibling());
+  return TableRowElement(Base::previous_sibling().xml_node());
 }
 
 TableRowElement TableRowElement::next_sibling() const {
-  // TODO iterate / use adapter
-  return TableRowElement(m_node.next_sibling());
+  return TableRowElement(Base::next_sibling().xml_node());
 }
 
-std::shared_ptr<ElementAdapter> TableCellElement::adapter_() {
+std::shared_ptr<ElementAdapter> TableCellElement::adapter() {
   return ElementAdapter::table_cell_adapter();
 }
 
@@ -475,17 +523,15 @@ Element TableCellElement::element() const {
 ElementType TableCellElement::type() const { return ElementType::TABLE_CELL; }
 
 TableRowElement TableCellElement::parent() const {
-  return TableRowElement(m_node.parent());
+  return TableRowElement(Base::parent().xml_node());
 }
 
 TableCellElement TableCellElement::previous_sibling() const {
-  // TODO iterate / use adapter
-  return TableCellElement(m_node.previous_sibling());
+  return TableCellElement(Base::previous_sibling().xml_node());
 }
 
 TableCellElement TableCellElement::next_sibling() const {
-  // TODO iterate / use adapter
-  return TableCellElement(m_node.next_sibling());
+  return TableCellElement(Base::next_sibling().xml_node());
 }
 
 ElementIterator::ElementIterator(Element element)

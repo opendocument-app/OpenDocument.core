@@ -83,6 +83,8 @@ public:
 
 template <typename Derived> class ElementBase {
 public:
+  using Base = ElementBase<Derived>;
+
   ElementBase() = default;
   explicit ElementBase(pugi::xml_node node) : m_node{std::move(node)} {}
 
@@ -92,14 +94,30 @@ public:
 
   [[nodiscard]] pugi::xml_node xml_node() const { return m_node; }
 
+  [[nodiscard]] Element parent() const {
+    return Derived::adapter()->parent(m_node);
+  }
+
+  [[nodiscard]] Element first_child() const {
+    return Derived::adapter()->first_child(m_node);
+  }
+
+  [[nodiscard]] Element previous_sibling() const {
+    return Derived::adapter()->previous_sibling(m_node);
+  }
+
+  [[nodiscard]] Element next_sibling() const {
+    return Derived::adapter()->next_sibling(m_node);
+  }
+
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const {
-    return Derived::adapter_()->properties();
+    return Derived::adapter()->properties();
   }
 
   void update_properties(
       std::unordered_map<ElementProperty, std::any> properties) const {
-    return Derived::adapter_()->update_properties(std::move(properties));
+    return Derived::adapter()->update_properties(std::move(properties));
   }
 
 protected:
@@ -108,6 +126,8 @@ protected:
 
 class TableElement final : public ElementBase<TableElement> {
 public:
+  static std::shared_ptr<ElementAdapter> adapter();
+
   TableElement();
   explicit TableElement(pugi::xml_node node);
 
@@ -115,19 +135,14 @@ public:
 
   [[nodiscard]] ElementType type() const;
 
-  [[nodiscard]] Element parent() const;
-  [[nodiscard]] Element previous_sibling() const;
-  [[nodiscard]] Element next_sibling() const;
-
   void columns();
   void rows();
-
-private:
-  static std::shared_ptr<ElementAdapter> adapter_();
 };
 
 class TableColumnElement final : public ElementBase<TableColumnElement> {
 public:
+  static std::shared_ptr<ElementAdapter> adapter();
+
   TableColumnElement();
   explicit TableColumnElement(pugi::xml_node node);
 
@@ -138,13 +153,12 @@ public:
   [[nodiscard]] TableElement parent() const;
   [[nodiscard]] TableColumnElement previous_sibling() const;
   [[nodiscard]] TableColumnElement next_sibling() const;
-
-private:
-  static std::shared_ptr<ElementAdapter> adapter_();
 };
 
 class TableRowElement final : public ElementBase<TableRowElement> {
 public:
+  static std::shared_ptr<ElementAdapter> adapter();
+
   TableRowElement();
   explicit TableRowElement(pugi::xml_node node);
 
@@ -155,13 +169,12 @@ public:
   [[nodiscard]] TableElement parent() const;
   [[nodiscard]] TableRowElement previous_sibling() const;
   [[nodiscard]] TableRowElement next_sibling() const;
-
-private:
-  static std::shared_ptr<ElementAdapter> adapter_();
 };
 
 class TableCellElement final : public ElementBase<TableCellElement> {
 public:
+  static std::shared_ptr<ElementAdapter> adapter();
+
   TableCellElement();
   explicit TableCellElement(pugi::xml_node node);
 
@@ -172,9 +185,6 @@ public:
   [[nodiscard]] TableRowElement parent() const;
   [[nodiscard]] TableCellElement previous_sibling() const;
   [[nodiscard]] TableCellElement next_sibling() const;
-
-private:
-  static std::shared_ptr<ElementAdapter> adapter_();
 };
 
 class ElementIterator final {
