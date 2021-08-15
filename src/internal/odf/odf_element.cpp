@@ -17,18 +17,6 @@ ElementAdapter *table_cell_adapter();
 
 class DefaultAdapter : public ElementAdapter {
 public:
-  static std::shared_ptr<DefaultAdapter>
-  create(const ElementType element_type) {
-    return std::make_shared<DefaultAdapter>(element_type);
-  }
-
-  static std::shared_ptr<DefaultAdapter>
-  create(const ElementType element_type,
-         std::unordered_map<std::string, ElementProperty> properties) {
-    return std::make_shared<DefaultAdapter>(element_type,
-                                            std::move(properties));
-  }
-
   explicit DefaultAdapter(const ElementType element_type)
       : m_element_type{element_type} {}
 
