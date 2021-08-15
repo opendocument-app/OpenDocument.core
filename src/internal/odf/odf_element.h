@@ -7,11 +7,6 @@
 #include <pugixml.hpp>
 #include <unordered_map>
 
-namespace odr {
-enum class ElementType;
-enum class ElementProperty;
-} // namespace odr
-
 namespace odr::internal::odf {
 
 class ElementAdapter;
@@ -88,7 +83,7 @@ public:
   using Base = ElementBase<Derived>;
 
   ElementBase() = default;
-  explicit ElementBase(pugi::xml_node node) : m_node{std::move(node)} {}
+  explicit ElementBase(const pugi::xml_node node) : m_node{node} {}
 
   bool operator==(const Derived &rhs) const { return m_node == rhs.m_node; }
   bool operator!=(const Derived &rhs) const { return m_node != rhs.m_node; }

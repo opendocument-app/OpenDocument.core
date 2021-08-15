@@ -67,6 +67,7 @@ add_library(odr-object OBJECT
         src/internal/ooxml/ooxml_text_document.cpp
         src/internal/ooxml/ooxml_text_style.cpp
         src/internal/ooxml/ooxml_util.cpp
+        src/internal/ooxml/ooxml_wordprocessingml_elemens.cpp
         src/internal/ooxml/ooxml_workbook.cpp
 
         src/internal/svm/svm_file.cpp

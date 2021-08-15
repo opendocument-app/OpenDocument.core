@@ -484,8 +484,8 @@ Element::Element() = default;
 Element::Element(const pugi::xml_node node)
     : m_node{node}, m_adapter(ElementAdapter::default_adapter(node)) {}
 
-Element::Element(pugi::xml_node node, ElementAdapter *adapter)
-    : m_node{std::move(node)}, m_adapter{adapter} {}
+Element::Element(const pugi::xml_node node, ElementAdapter *adapter)
+    : m_node{node}, m_adapter{adapter} {}
 
 bool Element::operator==(const Element &rhs) const {
   // TODO check adapter?
@@ -564,12 +564,10 @@ ElementAdapter *TableElement::adapter() { return table_column_adapter(); }
 
 TableElement::TableElement() = default;
 
-TableElement::TableElement(pugi::xml_node node)
-    : ElementBase<TableElement>(std::move(node)) {}
+TableElement::TableElement(const pugi::xml_node node)
+    : ElementBase<TableElement>(node) {}
 
-Element TableElement::element() const {
-  return Element(m_node, table_adapter());
-}
+Element TableElement::element() const { return {m_node, table_adapter()}; }
 
 ElementType TableElement::type() const { return ElementType::TABLE; }
 
@@ -586,11 +584,11 @@ ElementAdapter *TableColumnElement::adapter() { return table_column_adapter(); }
 
 TableColumnElement::TableColumnElement() = default;
 
-TableColumnElement::TableColumnElement(pugi::xml_node node)
-    : ElementBase<TableColumnElement>(std::move(node)) {}
+TableColumnElement::TableColumnElement(const pugi::xml_node node)
+    : ElementBase<TableColumnElement>(node) {}
 
 Element TableColumnElement::element() const {
-  return Element(m_node, table_column_adapter());
+  return {m_node, table_column_adapter()};
 }
 
 ElementType TableColumnElement::type() const {
@@ -613,11 +611,11 @@ ElementAdapter *TableRowElement::adapter() { return table_row_adapter(); }
 
 TableRowElement::TableRowElement() = default;
 
-TableRowElement::TableRowElement(pugi::xml_node node)
-    : ElementBase<TableRowElement>(std::move(node)) {}
+TableRowElement::TableRowElement(const pugi::xml_node node)
+    : ElementBase<TableRowElement>(node) {}
 
 Element TableRowElement::element() const {
-  return Element(m_node, table_column_adapter());
+  return {m_node, table_column_adapter()};
 }
 
 ElementType TableRowElement::type() const { return ElementType::TABLE_ROW; }
@@ -643,11 +641,11 @@ ElementAdapter *TableCellElement::adapter() { return table_cell_adapter(); }
 
 TableCellElement::TableCellElement() = default;
 
-TableCellElement::TableCellElement(pugi::xml_node node)
-    : ElementBase<TableCellElement>(std::move(node)) {}
+TableCellElement::TableCellElement(const pugi::xml_node node)
+    : ElementBase<TableCellElement>(node) {}
 
 Element TableCellElement::element() const {
-  return Element(m_node, table_column_adapter());
+  return {m_node, table_column_adapter()};
 }
 
 ElementType TableCellElement::type() const { return ElementType::TABLE_CELL; }
