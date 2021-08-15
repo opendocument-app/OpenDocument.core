@@ -435,7 +435,7 @@ Table Sheet::table() const {
   if (!m_impl) {
     return {};
   }
-  return {m_impl, m_id};
+  return {m_impl, first_child().m_id};
 }
 
 Page::Page() = default;

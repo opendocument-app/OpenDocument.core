@@ -398,6 +398,7 @@ protected:
 
   friend Document;
   template <typename E> friend class ElementRangeTemplate;
+  friend class Sheet;
   friend class TableCell;
 };
 

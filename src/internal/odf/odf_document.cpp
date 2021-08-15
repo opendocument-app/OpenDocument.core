@@ -40,6 +40,10 @@ ElementIdentifier
 OpenDocument::register_element_(const odf::Element element,
                                 const ElementIdentifier parent,
                                 const ElementIdentifier previous_sibling) {
+  if (!element) {
+    return {};
+  }
+
   auto element_type = element.type();
   auto new_element = new_element_(element, parent, previous_sibling);
 

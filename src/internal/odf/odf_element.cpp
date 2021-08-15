@@ -6,13 +6,14 @@
 namespace odr::internal::odf {
 
 namespace {
-std::shared_ptr<ElementAdapter> slide_adapter();
-std::shared_ptr<ElementAdapter> sheet_adapter();
-std::shared_ptr<ElementAdapter> page_adapter();
-std::shared_ptr<ElementAdapter> table_adapter();
-std::shared_ptr<ElementAdapter> table_column_adapter();
-std::shared_ptr<ElementAdapter> table_row_adapter();
-std::shared_ptr<ElementAdapter> table_cell_adapter();
+ElementAdapter *slide_adapter();
+ElementAdapter *sheet_adapter();
+ElementAdapter *page_adapter();
+ElementAdapter *table_adapter();
+ElementAdapter *spreadsheet_table_adapter();
+ElementAdapter *table_column_adapter();
+ElementAdapter *table_row_adapter();
+ElementAdapter *table_cell_adapter();
 
 class DefaultAdapter : public ElementAdapter {
 public:
@@ -42,8 +43,8 @@ public:
   [[nodiscard]] Element parent(const pugi::xml_node node) const override {
     for (pugi::xml_node parent = node.parent(); parent;
          parent = parent.parent()) {
-      if (auto adapter = default_adapter(node); adapter != nullptr) {
-        return {node, adapter};
+      if (auto adapter = default_adapter(parent); adapter != nullptr) {
+        return {parent, adapter};
       }
     }
     return {};
@@ -52,8 +53,8 @@ public:
   [[nodiscard]] Element first_child(const pugi::xml_node node) const override {
     for (pugi::xml_node first_child = node.first_child(); first_child;
          first_child = first_child.next_sibling()) {
-      if (auto adapter = default_adapter(node); adapter != nullptr) {
-        return {node, adapter};
+      if (auto adapter = default_adapter(first_child); adapter != nullptr) {
+        return {first_child, adapter};
       }
     }
     return {};
@@ -64,8 +65,9 @@ public:
     for (pugi::xml_node previous_sibling = node.previous_sibling();
          previous_sibling;
          previous_sibling = previous_sibling.previous_sibling()) {
-      if (auto adapter = default_adapter(node); adapter != nullptr) {
-        return {node, adapter};
+      if (auto adapter = default_adapter(previous_sibling);
+          adapter != nullptr) {
+        return {previous_sibling, adapter};
       }
     }
     return {};
@@ -74,8 +76,8 @@ public:
   [[nodiscard]] Element next_sibling(const pugi::xml_node node) const override {
     for (pugi::xml_node next_sibling = node.next_sibling(); next_sibling;
          next_sibling = next_sibling.next_sibling()) {
-      if (auto adapter = default_adapter(node); adapter != nullptr) {
-        return {node, adapter};
+      if (auto adapter = default_adapter(next_sibling); adapter != nullptr) {
+        return {next_sibling, adapter};
       }
     }
     return {};
@@ -150,11 +152,11 @@ public:
 
   [[nodiscard]] Element
   previous_sibling(const pugi::xml_node node) const final {
-    return {node.previous_sibling("draw:page"), slide_adapter().get()};
+    return {node.previous_sibling("draw:page"), slide_adapter()};
   }
 
   [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
-    return {node.next_sibling("draw:page"), slide_adapter().get()};
+    return {node.next_sibling("draw:page"), slide_adapter()};
   }
 };
 
@@ -165,16 +167,16 @@ public:
                        {{"table:name", ElementProperty::NAME}}) {}
 
   [[nodiscard]] Element first_child(const pugi::xml_node node) const final {
-    return {node, table_adapter().get()};
+    return {node, spreadsheet_table_adapter()};
   }
 
   [[nodiscard]] Element
   previous_sibling(const pugi::xml_node node) const final {
-    return {node.previous_sibling("table:table"), slide_adapter().get()};
+    return {node.previous_sibling("table:table"), sheet_adapter()};
   }
 
   [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
-    return {node.next_sibling("table:table"), slide_adapter().get()};
+    return {node.next_sibling("table:table"), sheet_adapter()};
   }
 };
 
@@ -189,11 +191,11 @@ public:
 
   [[nodiscard]] Element
   previous_sibling(const pugi::xml_node node) const final {
-    return {node.previous_sibling("draw:page"), slide_adapter().get()};
+    return {node.previous_sibling("draw:page"), page_adapter()};
   }
 
   [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
-    return {node.next_sibling("draw:page"), slide_adapter().get()};
+    return {node.next_sibling("draw:page"), page_adapter()};
   }
 };
 
@@ -241,18 +243,30 @@ public:
   }
 };
 
-class TableAdapter final : public DefaultAdapter {
+class TableAdapter : public DefaultAdapter {
 public:
   TableAdapter()
       : DefaultAdapter(ElementType::TABLE,
                        {{"table:style-name", ElementProperty::STYLE_NAME}}) {}
 
+  [[nodiscard]] Element first_child(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+};
+
+class SpreadsheetTableAdapter final : public TableAdapter {
+public:
   [[nodiscard]] Element parent(const pugi::xml_node node) const final {
-    // TODO check if sheet is parent
-    return DefaultAdapter::parent(node);
+    return {node, sheet_adapter()};
   }
 
-  [[nodiscard]] Element first_child(const pugi::xml_node /*node*/) const final {
+  [[nodiscard]] Element
+  previous_sibling(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+
+  [[nodiscard]] Element
+  next_sibling(const pugi::xml_node /*node*/) const final {
     return {};
   }
 };
@@ -267,7 +281,7 @@ public:
               ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME}}) {}
 
   [[nodiscard]] Element parent(const pugi::xml_node node) const final {
-    return {node.parent(), table_adapter().get()};
+    return {node.parent(), table_adapter()};
   }
 
   [[nodiscard]] Element first_child(const pugi::xml_node /*node*/) const final {
@@ -277,12 +291,11 @@ public:
   [[nodiscard]] Element
   previous_sibling(const pugi::xml_node node) const final {
     return {node.previous_sibling("table:table-column"),
-            table_column_adapter().get()};
+            table_column_adapter()};
   }
 
   [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
-    return {node.next_sibling("table:table-column"),
-            table_column_adapter().get()};
+    return {node.next_sibling("table:table-column"), table_column_adapter()};
   }
 };
 
@@ -295,21 +308,20 @@ public:
                          ElementProperty::ROWS_REPEATED}}) {}
 
   [[nodiscard]] Element parent(const pugi::xml_node node) const final {
-    return {node.parent(), table_adapter().get()};
+    return {node.parent(), table_adapter()};
   }
 
   [[nodiscard]] Element first_child(const pugi::xml_node node) const final {
-    return {node.child("table:table-cell"), table_cell_adapter().get()};
+    return {node.child("table:table-cell"), table_cell_adapter()};
   }
 
   [[nodiscard]] Element
   previous_sibling(const pugi::xml_node node) const final {
-    return {node.previous_sibling("table:table-row"),
-            table_row_adapter().get()};
+    return {node.previous_sibling("table:table-row"), table_row_adapter()};
   }
 
   [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
-    return {node.next_sibling("table:table-row"), table_row_adapter().get()};
+    return {node.next_sibling("table:table-row"), table_row_adapter()};
   }
 };
 
@@ -326,148 +338,152 @@ public:
              {"office:value-type", ElementProperty::VALUE_TYPE}}) {}
 
   [[nodiscard]] Element parent(const pugi::xml_node node) const final {
-    return {node.parent(), table_row_adapter().get()};
+    return {node.parent(), table_row_adapter()};
   }
 
   [[nodiscard]] Element
   previous_sibling(const pugi::xml_node node) const final {
-    return {node.previous_sibling("table:table-cell"),
-            table_cell_adapter().get()};
+    return {node.previous_sibling("table:table-cell"), table_cell_adapter()};
   }
 
   [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
-    return {node.next_sibling("table:table-cell"), table_cell_adapter().get()};
+    return {node.next_sibling("table:table-cell"), table_cell_adapter()};
   }
 };
 
-std::shared_ptr<ElementAdapter> slide_adapter() {
-  static auto adapter = std::make_shared<SlideAdapter>();
-  return adapter;
+ElementAdapter *slide_adapter() {
+  static SlideAdapter adapter;
+  return &adapter;
 }
 
-std::shared_ptr<ElementAdapter> sheet_adapter() {
-  static auto adapter = std::make_shared<SheetAdapter>();
-  return adapter;
+ElementAdapter *sheet_adapter() {
+  static SheetAdapter adapter;
+  return &adapter;
 }
 
-std::shared_ptr<ElementAdapter> page_adapter() {
-  static auto adapter = std::make_shared<PageAdapter>();
-  return adapter;
+ElementAdapter *page_adapter() {
+  static PageAdapter adapter;
+  return &adapter;
 }
 
-std::shared_ptr<ElementAdapter> table_adapter() {
-  static auto adapter = std::make_shared<TableAdapter>();
-  return adapter;
+ElementAdapter *table_adapter() {
+  static TableAdapter adapter;
+  return &adapter;
 }
 
-std::shared_ptr<ElementAdapter> table_column_adapter() {
-  static auto adapter = std::make_shared<TableColumnAdapter>();
-  return adapter;
+ElementAdapter *spreadsheet_table_adapter() {
+  static SpreadsheetTableAdapter adapter;
+  return &adapter;
 }
 
-std::shared_ptr<ElementAdapter> table_row_adapter() {
-  static auto adapter = std::make_shared<TableRowAdapter>();
-  return adapter;
+ElementAdapter *table_column_adapter() {
+  static TableColumnAdapter adapter;
+  return &adapter;
 }
 
-std::shared_ptr<ElementAdapter> table_cell_adapter() {
-  static auto adapter = std::make_shared<TableCellAdapter>();
-  return adapter;
+ElementAdapter *table_row_adapter() {
+  static TableRowAdapter adapter;
+  return &adapter;
+}
+
+ElementAdapter *table_cell_adapter() {
+  static TableCellAdapter adapter;
+  return &adapter;
 }
 } // namespace
 
 ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
-  static const auto text_adapter = std::make_shared<TextAdapter>();
-  static const auto paragraph_adapter = DefaultAdapter::create(
+  static RootAdapter text_root_adapter;
+  static RootAdapter presentation_root_adapter(slide_adapter());
+  static RootAdapter spreadsheet_root_adapter(sheet_adapter());
+  static RootAdapter drawing_root_adapter(page_adapter());
+  static DefaultAdapter paragraph_adapter(
       ElementType::PARAGRAPH,
       {{"text:style-name", ElementProperty::STYLE_NAME}});
-  static const auto bookmark_adapter = DefaultAdapter::create(
+  static DefaultAdapter span_adapter(
+      ElementType::SPAN, {{"text:style-name", ElementProperty::STYLE_NAME}});
+  static SpaceAdapter space_adapter;
+  static TabAdapter tab_adapter;
+  static DefaultAdapter line_break_adapter(ElementType::LINE_BREAK);
+  static DefaultAdapter link_adapter(
+      ElementType::LINK, {{"xlink:href", ElementProperty::HREF},
+                          {"text:style-name", ElementProperty::STYLE_NAME}});
+  static DefaultAdapter bookmark_adapter(
       ElementType::BOOKMARK, {{"text:name", ElementProperty::NAME}});
+  static DefaultAdapter list_adapter(ElementType::LIST);
+  static DefaultAdapter list_item_adapter(ElementType::LIST_ITEM);
+  static DefaultAdapter frame_adapter(
+      ElementType::FRAME, {{"text:anchor-type", ElementProperty::ANCHOR_TYPE},
+                           {"svg:x", ElementProperty::X},
+                           {"svg:y", ElementProperty::Y},
+                           {"svg:width", ElementProperty::WIDTH},
+                           {"svg:height", ElementProperty::HEIGHT},
+                           {"draw:z-index", ElementProperty::Z_INDEX}});
+  static DefaultAdapter image_adapter(ElementType::IMAGE,
+                                      {{"xlink:href", ElementProperty::HREF}});
+  static DefaultAdapter rect_adapter(
+      ElementType::RECT, {{"svg:x", ElementProperty::X},
+                          {"svg:y", ElementProperty::Y},
+                          {"svg:width", ElementProperty::WIDTH},
+                          {"svg:height", ElementProperty::HEIGHT},
+                          {"draw:style-name", ElementProperty::STYLE_NAME}});
+  static DefaultAdapter line_adapter(
+      ElementType::LINE, {{"svg:x1", ElementProperty::X1},
+                          {"svg:y1", ElementProperty::Y1},
+                          {"svg:x2", ElementProperty::X2},
+                          {"svg:y2", ElementProperty::Y2},
+                          {"draw:style-name", ElementProperty::STYLE_NAME}});
+  static DefaultAdapter circle_adapter(
+      ElementType::CIRCLE, {{"svg:x", ElementProperty::X},
+                            {"svg:y", ElementProperty::Y},
+                            {"svg:width", ElementProperty::WIDTH},
+                            {"svg:height", ElementProperty::HEIGHT},
+                            {"draw:style-name", ElementProperty::STYLE_NAME}});
+  static DefaultAdapter custom_shape_adapter(
+      ElementType::CUSTOM_SHAPE,
+      {{"svg:x", ElementProperty::X},
+       {"svg:y", ElementProperty::Y},
+       {"svg:width", ElementProperty::WIDTH},
+       {"svg:height", ElementProperty::HEIGHT},
+       {"draw:style-name", ElementProperty::STYLE_NAME}});
+  static TextAdapter text_adapter;
 
-  static std::unordered_map<std::string, std::shared_ptr<ElementAdapter>>
+  static std::unordered_map<std::string, ElementAdapter *>
       element_adapter_table{
-          {"office:text", std::make_shared<RootAdapter>()},
-          {"office:presentation",
-           std::make_shared<RootAdapter>(slide_adapter().get())},
-          {"office:spreadsheet",
-           std::make_shared<RootAdapter>(sheet_adapter().get())},
-          {"office:drawing",
-           std::make_shared<RootAdapter>(page_adapter().get())},
-          {"text:p", paragraph_adapter},
-          {"text:h", paragraph_adapter},
-          {"text:span",
-           DefaultAdapter::create(
-               ElementType::SPAN,
-               {{"text:style-name", ElementProperty::STYLE_NAME}})},
-          {"text:s", std::make_shared<SpaceAdapter>()},
-          {"text:tab", std::make_shared<TabAdapter>()},
-          {"text:line-break", DefaultAdapter::create(ElementType::LINE_BREAK)},
-          {"text:a", DefaultAdapter::create(
-                         ElementType::LINK,
-                         {{"xlink:href", ElementProperty::HREF},
-                          {"text:style-name", ElementProperty::STYLE_NAME}})},
-          {"text:bookmark", bookmark_adapter},
-          {"text:bookmark-start", bookmark_adapter},
-          {"text:list", DefaultAdapter::create(ElementType::LIST)},
-          {"text:list-item", DefaultAdapter::create(ElementType::LIST_ITEM)},
-          {"text:index-title", paragraph_adapter},
+          {"office:text", &text_root_adapter},
+          {"office:presentation", &presentation_root_adapter},
+          {"office:spreadsheet", &spreadsheet_root_adapter},
+          {"office:drawing", &drawing_root_adapter},
+          {"text:p", &paragraph_adapter},
+          {"text:h", &paragraph_adapter},
+          {"text:span", &span_adapter},
+          {"text:s", &space_adapter},
+          {"text:tab", &tab_adapter},
+          {"text:line-break", &line_break_adapter},
+          {"text:a", &link_adapter},
+          {"text:bookmark", &bookmark_adapter},
+          {"text:bookmark-start", &bookmark_adapter},
+          {"text:list", &list_adapter},
+          {"text:list-item", &list_item_adapter},
+          {"text:index-title", &paragraph_adapter},
           {"table:table", table_adapter()},
           {"table:table-column", table_column_adapter()},
           {"table:table-row", table_row_adapter()},
           {"table:table-cell", table_cell_adapter()},
-          {"draw:frame",
-           DefaultAdapter::create(
-               ElementType::FRAME,
-               {{"text:anchor-type", ElementProperty::ANCHOR_TYPE},
-                {"svg:x", ElementProperty::X},
-                {"svg:y", ElementProperty::Y},
-                {"svg:width", ElementProperty::WIDTH},
-                {"svg:height", ElementProperty::HEIGHT},
-                {"draw:z-index", ElementProperty::Z_INDEX}})},
-          {"draw:image",
-           DefaultAdapter::create(ElementType::IMAGE,
-                                  {{"xlink:href", ElementProperty::HREF}})},
-          {"draw:rect",
-           DefaultAdapter::create(
-               ElementType::RECT,
-               {{"svg:x", ElementProperty::X},
-                {"svg:y", ElementProperty::Y},
-                {"svg:width", ElementProperty::WIDTH},
-                {"svg:height", ElementProperty::HEIGHT},
-                {"draw:style-name", ElementProperty::STYLE_NAME}})},
-          {"draw:line",
-           DefaultAdapter::create(
-               ElementType::LINE,
-               {{"svg:x1", ElementProperty::X1},
-                {"svg:y1", ElementProperty::Y1},
-                {"svg:x2", ElementProperty::X2},
-                {"svg:y2", ElementProperty::Y2},
-                {"draw:style-name", ElementProperty::STYLE_NAME}})},
-          {"draw:circle",
-           DefaultAdapter::create(
-               ElementType::CIRCLE,
-               {{"svg:x", ElementProperty::X},
-                {"svg:y", ElementProperty::Y},
-                {"svg:width", ElementProperty::WIDTH},
-                {"svg:height", ElementProperty::HEIGHT},
-                {"draw:style-name", ElementProperty::STYLE_NAME}})},
-          {"draw:custom-shape",
-           DefaultAdapter::create(
-               ElementType::CUSTOM_SHAPE,
-               {{"svg:x", ElementProperty::X},
-                {"svg:y", ElementProperty::Y},
-                {"svg:width", ElementProperty::WIDTH},
-                {"svg:height", ElementProperty::HEIGHT},
-                {"draw:style-name", ElementProperty::STYLE_NAME}})},
+          {"draw:frame", &frame_adapter},
+          {"draw:image", &image_adapter},
+          {"draw:rect", &rect_adapter},
+          {"draw:line", &line_adapter},
+          {"draw:circle", &circle_adapter},
+          {"draw:custom-shape", &custom_shape_adapter},
       };
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {
-    return text_adapter.get();
+    return &text_adapter;
   }
 
   return util::map::lookup_map_default(element_adapter_table, node.name(),
-                                       nullptr)
-      .get();
+                                       nullptr);
 }
 
 Element::Element() = default;
@@ -479,14 +495,19 @@ Element::Element(pugi::xml_node node, ElementAdapter *adapter)
     : m_node{std::move(node)}, m_adapter{adapter} {}
 
 bool Element::operator==(const Element &rhs) const {
-  return (m_node == rhs.m_node) && (m_adapter == rhs.m_adapter);
+  // TODO check adapter?
+  return m_node == rhs.m_node;
 }
 
 bool Element::operator!=(const Element &rhs) const {
-  return (m_node != rhs.m_node) || (m_adapter != rhs.m_adapter);
+  // TODO check adapter?
+  return m_node != rhs.m_node;
 }
 
-Element::operator bool() const { return m_node && (m_adapter != nullptr); }
+Element::operator bool() const {
+  // TODO check adapter?
+  return m_node;
+}
 
 ElementType Element::type() const {
   if (m_adapter == nullptr) {
@@ -529,7 +550,7 @@ Element Element::next_sibling() const {
   return m_adapter->next_sibling(m_node);
 }
 
-ElementRange Element::children() const { return ElementRange(*this); }
+ElementRange Element::children() const { return ElementRange(first_child()); }
 
 std::unordered_map<ElementProperty, std::any> Element::properties() const {
   if (m_adapter == nullptr) {
@@ -546,9 +567,7 @@ void Element::update_properties(
   m_adapter->update_properties(m_node, std::move(properties));
 }
 
-std::shared_ptr<ElementAdapter> TableElement::adapter() {
-  return table_column_adapter();
-}
+ElementAdapter *TableElement::adapter() { return table_column_adapter(); }
 
 TableElement::TableElement() = default;
 
@@ -556,7 +575,7 @@ TableElement::TableElement(pugi::xml_node node)
     : ElementBase<TableElement>(std::move(node)) {}
 
 Element TableElement::element() const {
-  return Element(m_node, table_adapter().get());
+  return Element(m_node, table_adapter());
 }
 
 ElementType TableElement::type() const { return ElementType::TABLE; }
@@ -570,9 +589,7 @@ TableRowElementRange TableElement::rows() const {
   return TableRowElementRange(TableRowElement(m_node.child("table:table-row")));
 }
 
-std::shared_ptr<ElementAdapter> TableColumnElement::adapter() {
-  return table_column_adapter();
-}
+ElementAdapter *TableColumnElement::adapter() { return table_column_adapter(); }
 
 TableColumnElement::TableColumnElement() = default;
 
@@ -580,7 +597,7 @@ TableColumnElement::TableColumnElement(pugi::xml_node node)
     : ElementBase<TableColumnElement>(std::move(node)) {}
 
 Element TableColumnElement::element() const {
-  return Element(m_node, table_column_adapter().get());
+  return Element(m_node, table_column_adapter());
 }
 
 ElementType TableColumnElement::type() const {
@@ -599,9 +616,7 @@ TableColumnElement TableColumnElement::next_sibling() const {
   return TableColumnElement(Base::next_sibling().xml_node());
 }
 
-std::shared_ptr<ElementAdapter> TableRowElement::adapter() {
-  return table_row_adapter();
-}
+ElementAdapter *TableRowElement::adapter() { return table_row_adapter(); }
 
 TableRowElement::TableRowElement() = default;
 
@@ -609,7 +624,7 @@ TableRowElement::TableRowElement(pugi::xml_node node)
     : ElementBase<TableRowElement>(std::move(node)) {}
 
 Element TableRowElement::element() const {
-  return Element(m_node, table_column_adapter().get());
+  return Element(m_node, table_column_adapter());
 }
 
 ElementType TableRowElement::type() const { return ElementType::TABLE_ROW; }
@@ -631,9 +646,7 @@ TableCellElementRange TableRowElement::cells() const {
       TableCellElement(m_node.child("table:table-cell")));
 }
 
-std::shared_ptr<ElementAdapter> TableCellElement::adapter() {
-  return table_cell_adapter();
-}
+ElementAdapter *TableCellElement::adapter() { return table_cell_adapter(); }
 
 TableCellElement::TableCellElement() = default;
 
@@ -641,7 +654,7 @@ TableCellElement::TableCellElement(pugi::xml_node node)
     : ElementBase<TableCellElement>(std::move(node)) {}
 
 Element TableCellElement::element() const {
-  return Element(m_node, table_column_adapter().get());
+  return Element(m_node, table_column_adapter());
 }
 
 ElementType TableCellElement::type() const { return ElementType::TABLE_CELL; }

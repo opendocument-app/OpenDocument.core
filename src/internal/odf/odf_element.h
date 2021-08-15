@@ -128,7 +128,7 @@ protected:
 
 class TableElement final : public ElementBase<TableElement> {
 public:
-  static std::shared_ptr<ElementAdapter> adapter();
+  static ElementAdapter *adapter();
 
   TableElement();
   explicit TableElement(pugi::xml_node node);
@@ -143,7 +143,7 @@ public:
 
 class TableColumnElement final : public ElementBase<TableColumnElement> {
 public:
-  static std::shared_ptr<ElementAdapter> adapter();
+  static ElementAdapter *adapter();
 
   TableColumnElement();
   explicit TableColumnElement(pugi::xml_node node);
@@ -159,7 +159,7 @@ public:
 
 class TableRowElement final : public ElementBase<TableRowElement> {
 public:
-  static std::shared_ptr<ElementAdapter> adapter();
+  static ElementAdapter *adapter();
 
   TableRowElement();
   explicit TableRowElement(pugi::xml_node node);
@@ -177,7 +177,7 @@ public:
 
 class TableCellElement final : public ElementBase<TableCellElement> {
 public:
-  static std::shared_ptr<ElementAdapter> adapter();
+  static ElementAdapter *adapter();
 
   TableCellElement();
   explicit TableCellElement(pugi::xml_node node);

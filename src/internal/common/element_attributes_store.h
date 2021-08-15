@@ -11,7 +11,9 @@ namespace odr::internal {
 template <typename Attribute> class DenseElementAttributeStore {
 public:
   Attribute &operator[](const ElementIdentifier element_id) {
-    check_id_(element_id);
+    if (element_id.id >= m_elements.size()) {
+      m_elements.resize(element_id.id);
+    }
     return m_elements[element_id.id - 1];
   }
 
@@ -40,7 +42,7 @@ private:
     if (!element_id) {
       throw std::invalid_argument("identifier is null");
     }
-    if (element_id.id >= m_elements.size()) {
+    if (element_id.id > m_elements.size()) {
       throw std::invalid_argument("identifier out of range");
     }
   }
