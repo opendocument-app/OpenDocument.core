@@ -6,6 +6,14 @@
 namespace odr::internal::odf {
 
 namespace {
+std::shared_ptr<ElementAdapter> slide_adapter();
+std::shared_ptr<ElementAdapter> sheet_adapter();
+std::shared_ptr<ElementAdapter> page_adapter();
+std::shared_ptr<ElementAdapter> table_adapter();
+std::shared_ptr<ElementAdapter> table_column_adapter();
+std::shared_ptr<ElementAdapter> table_row_adapter();
+std::shared_ptr<ElementAdapter> table_cell_adapter();
+
 class DefaultAdapter : public ElementAdapter {
 public:
   static std::shared_ptr<DefaultAdapter>
@@ -331,42 +339,42 @@ public:
     return {node.next_sibling("table:table-cell"), table_cell_adapter().get()};
   }
 };
-} // namespace
 
-std::shared_ptr<ElementAdapter> ElementAdapter::slide_adapter() {
+std::shared_ptr<ElementAdapter> slide_adapter() {
   static auto adapter = std::make_shared<SlideAdapter>();
   return adapter;
 }
 
-std::shared_ptr<ElementAdapter> ElementAdapter::sheet_adapter() {
+std::shared_ptr<ElementAdapter> sheet_adapter() {
   static auto adapter = std::make_shared<SheetAdapter>();
   return adapter;
 }
 
-std::shared_ptr<ElementAdapter> ElementAdapter::page_adapter() {
+std::shared_ptr<ElementAdapter> page_adapter() {
   static auto adapter = std::make_shared<PageAdapter>();
   return adapter;
 }
 
-std::shared_ptr<ElementAdapter> ElementAdapter::table_adapter() {
+std::shared_ptr<ElementAdapter> table_adapter() {
   static auto adapter = std::make_shared<TableAdapter>();
   return adapter;
 }
 
-std::shared_ptr<ElementAdapter> ElementAdapter::table_column_adapter() {
+std::shared_ptr<ElementAdapter> table_column_adapter() {
   static auto adapter = std::make_shared<TableColumnAdapter>();
   return adapter;
 }
 
-std::shared_ptr<ElementAdapter> ElementAdapter::table_row_adapter() {
+std::shared_ptr<ElementAdapter> table_row_adapter() {
   static auto adapter = std::make_shared<TableRowAdapter>();
   return adapter;
 }
 
-std::shared_ptr<ElementAdapter> ElementAdapter::table_cell_adapter() {
+std::shared_ptr<ElementAdapter> table_cell_adapter() {
   static auto adapter = std::make_shared<TableCellAdapter>();
   return adapter;
 }
+} // namespace
 
 ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
   static const auto text_adapter = std::make_shared<TextAdapter>();
@@ -539,7 +547,7 @@ void Element::update_properties(
 }
 
 std::shared_ptr<ElementAdapter> TableElement::adapter() {
-  return ElementAdapter::table_column_adapter();
+  return table_column_adapter();
 }
 
 TableElement::TableElement() = default;
@@ -548,7 +556,7 @@ TableElement::TableElement(pugi::xml_node node)
     : ElementBase<TableElement>(std::move(node)) {}
 
 Element TableElement::element() const {
-  return Element(m_node, ElementAdapter::table_adapter().get());
+  return Element(m_node, table_adapter().get());
 }
 
 ElementType TableElement::type() const { return ElementType::TABLE; }
@@ -563,7 +571,7 @@ TableRowElementRange TableElement::rows() const {
 }
 
 std::shared_ptr<ElementAdapter> TableColumnElement::adapter() {
-  return ElementAdapter::table_column_adapter();
+  return table_column_adapter();
 }
 
 TableColumnElement::TableColumnElement() = default;
@@ -572,7 +580,7 @@ TableColumnElement::TableColumnElement(pugi::xml_node node)
     : ElementBase<TableColumnElement>(std::move(node)) {}
 
 Element TableColumnElement::element() const {
-  return Element(m_node, ElementAdapter::table_column_adapter().get());
+  return Element(m_node, table_column_adapter().get());
 }
 
 ElementType TableColumnElement::type() const {
@@ -592,7 +600,7 @@ TableColumnElement TableColumnElement::next_sibling() const {
 }
 
 std::shared_ptr<ElementAdapter> TableRowElement::adapter() {
-  return ElementAdapter::table_row_adapter();
+  return table_row_adapter();
 }
 
 TableRowElement::TableRowElement() = default;
@@ -601,7 +609,7 @@ TableRowElement::TableRowElement(pugi::xml_node node)
     : ElementBase<TableRowElement>(std::move(node)) {}
 
 Element TableRowElement::element() const {
-  return Element(m_node, ElementAdapter::table_column_adapter().get());
+  return Element(m_node, table_column_adapter().get());
 }
 
 ElementType TableRowElement::type() const { return ElementType::TABLE_ROW; }
@@ -624,7 +632,7 @@ TableCellElementRange TableRowElement::cells() const {
 }
 
 std::shared_ptr<ElementAdapter> TableCellElement::adapter() {
-  return ElementAdapter::table_cell_adapter();
+  return table_cell_adapter();
 }
 
 TableCellElement::TableCellElement() = default;
@@ -633,7 +641,7 @@ TableCellElement::TableCellElement(pugi::xml_node node)
     : ElementBase<TableCellElement>(std::move(node)) {}
 
 Element TableCellElement::element() const {
-  return Element(m_node, ElementAdapter::table_column_adapter().get());
+  return Element(m_node, table_column_adapter().get());
 }
 
 ElementType TableCellElement::type() const { return ElementType::TABLE_CELL; }

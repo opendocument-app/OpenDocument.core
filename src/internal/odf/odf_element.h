@@ -64,13 +64,6 @@ private:
 
 class ElementAdapter {
 public:
-  static std::shared_ptr<ElementAdapter> slide_adapter();
-  static std::shared_ptr<ElementAdapter> sheet_adapter();
-  static std::shared_ptr<ElementAdapter> page_adapter();
-  static std::shared_ptr<ElementAdapter> table_adapter();
-  static std::shared_ptr<ElementAdapter> table_column_adapter();
-  static std::shared_ptr<ElementAdapter> table_row_adapter();
-  static std::shared_ptr<ElementAdapter> table_cell_adapter();
   static ElementAdapter *default_adapter(pugi::xml_node node);
 
   virtual ~ElementAdapter() = default;
