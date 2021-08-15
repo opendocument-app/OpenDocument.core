@@ -455,6 +455,8 @@ ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
           {"text:list", &list_adapter},
           {"text:list-item", &list_item_adapter},
           {"text:index-title", &paragraph_adapter},
+          {"text:table-of-content", &group_adapter},
+          {"text:index-body", &group_adapter},
           {"table:table", table_adapter()},
           {"table:table-column", table_column_adapter()},
           {"table:table-row", table_row_adapter()},
