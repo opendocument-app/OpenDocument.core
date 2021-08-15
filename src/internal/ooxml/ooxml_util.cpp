@@ -6,22 +6,8 @@
 
 namespace odr::internal {
 
-std::any
-ooxml::read_optional_node(const pugi::xml_node node,
-                          const NodeTransformation &node_transformation) {
-  if (node) {
-    return node_transformation(node);
-  }
-  return {};
-}
-
-std::any ooxml::read_optional_attribute(
-    const pugi::xml_attribute attribute,
-    const AttributeTransformation &attribute_transformation) {
-  if (attribute) {
-    return attribute_transformation(attribute);
-  }
-  return {};
+std::any ooxml::read_string_attribute(pugi::xml_attribute attribute) {
+  return attribute.value();
 }
 
 std::any ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
@@ -63,6 +49,24 @@ std::any ooxml::read_text_property(const pugi::xml_node node) {
     return "\t";
   }
   return node.first_child().text().as_string();
+}
+
+std::any
+ooxml::read_optional_node(const pugi::xml_node node,
+                          const NodeTransformation &node_transformation) {
+  if (node) {
+    return node_transformation(node);
+  }
+  return {};
+}
+
+std::any ooxml::read_optional_attribute(
+    const pugi::xml_attribute attribute,
+    const AttributeTransformation &attribute_transformation) {
+  if (attribute) {
+    return attribute_transformation(attribute);
+  }
+  return {};
 }
 
 std::unordered_map<std::string, std::string>

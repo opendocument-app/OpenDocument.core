@@ -17,6 +17,15 @@ class Path;
 
 namespace odr::internal::ooxml {
 
+std::any read_string_attribute(pugi::xml_attribute attribute);
+std::any read_color_attribute(pugi::xml_attribute attribute);
+std::any read_half_point_attribute(pugi::xml_attribute attribute);
+std::any read_emus_attribute(pugi::xml_attribute attribute);
+std::any read_line_attribute(pugi::xml_attribute attribute);
+std::any read_shadow_attribute(pugi::xml_node node);
+
+std::any read_text_property(pugi::xml_node node);
+
 using NodeTransformation =
     std::function<std::any(const pugi::xml_node attribute)>;
 using AttributeTransformation =
@@ -27,15 +36,7 @@ std::any read_optional_node(pugi::xml_node node,
 std::any read_optional_attribute(
     pugi::xml_attribute attribute,
     const AttributeTransformation &attribute_transformation =
-        [](const pugi::xml_attribute attribute) { return attribute.value(); });
-
-std::any read_color_attribute(pugi::xml_attribute attribute);
-std::any read_half_point_attribute(pugi::xml_attribute attribute);
-std::any read_emus_attribute(pugi::xml_attribute attribute);
-std::any read_line_attribute(pugi::xml_attribute attribute);
-std::any read_shadow_attribute(pugi::xml_node node);
-
-std::any read_text_property(pugi::xml_node node);
+        read_string_attribute);
 
 std::unordered_map<std::string, std::string>
 parse_relationships(const pugi::xml_document &relations);
