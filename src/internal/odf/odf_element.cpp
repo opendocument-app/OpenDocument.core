@@ -100,6 +100,95 @@ private:
   std::unordered_map<std::string, ElementProperty> m_properties;
 };
 
+class RootAdapter final : public DefaultAdapter {
+public:
+  RootAdapter() : DefaultAdapter(ElementType::ROOT) {}
+  explicit RootAdapter(ElementAdapter *child_adapter)
+      : DefaultAdapter(ElementType::ROOT), m_child_adapter{child_adapter} {}
+
+  [[nodiscard]] Element parent(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+
+  [[nodiscard]] Element first_child(const pugi::xml_node node) const final {
+    if (m_child_adapter == nullptr) {
+      return DefaultAdapter::first_child(node);
+    }
+    return {node.first_child(), m_child_adapter};
+  }
+
+  [[nodiscard]] Element
+  previous_sibling(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+
+  [[nodiscard]] Element
+  next_sibling(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+
+private:
+  ElementAdapter *m_child_adapter{nullptr};
+};
+
+class SlideAdapter final : public DefaultAdapter {
+public:
+  SlideAdapter()
+      : DefaultAdapter(
+            ElementType::SLIDE,
+            {{"draw:name", ElementProperty::NAME},
+             {"draw:style-name", ElementProperty::STYLE_NAME},
+             {"draw:master-page-name", ElementProperty::MASTER_PAGE_NAME}}) {}
+
+  [[nodiscard]] Element
+  previous_sibling(const pugi::xml_node node) const final {
+    return {node.previous_sibling("draw:page"), slide_adapter().get()};
+  }
+
+  [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
+    return {node.next_sibling("draw:page"), slide_adapter().get()};
+  }
+};
+
+class SheetAdapter final : public DefaultAdapter {
+public:
+  SheetAdapter()
+      : DefaultAdapter(ElementType::SHEET,
+                       {{"table:name", ElementProperty::NAME}}) {}
+
+  [[nodiscard]] Element first_child(const pugi::xml_node node) const final {
+    return {node, table_adapter().get()};
+  }
+
+  [[nodiscard]] Element
+  previous_sibling(const pugi::xml_node node) const final {
+    return {node.previous_sibling("table:table"), slide_adapter().get()};
+  }
+
+  [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
+    return {node.next_sibling("table:table"), slide_adapter().get()};
+  }
+};
+
+class PageAdapter final : public DefaultAdapter {
+public:
+  PageAdapter()
+      : DefaultAdapter(
+            ElementType::PAGE,
+            {{"draw:name", ElementProperty::NAME},
+             {"draw:style-name", ElementProperty::STYLE_NAME},
+             {"draw:master-page-name", ElementProperty::MASTER_PAGE_NAME}}) {}
+
+  [[nodiscard]] Element
+  previous_sibling(const pugi::xml_node node) const final {
+    return {node.previous_sibling("draw:page"), slide_adapter().get()};
+  }
+
+  [[nodiscard]] Element next_sibling(const pugi::xml_node node) const final {
+    return {node.next_sibling("draw:page"), slide_adapter().get()};
+  }
+};
+
 class TextAdapter final : public DefaultAdapter {
 public:
   TextAdapter() : DefaultAdapter(ElementType::TEXT) {}
@@ -149,6 +238,11 @@ public:
   TableAdapter()
       : DefaultAdapter(ElementType::TABLE,
                        {{"table:style-name", ElementProperty::STYLE_NAME}}) {}
+
+  [[nodiscard]] Element parent(const pugi::xml_node node) const final {
+    // TODO check if sheet is parent
+    return DefaultAdapter::parent(node);
+  }
 
   [[nodiscard]] Element first_child(const pugi::xml_node /*node*/) const final {
     return {};
@@ -239,6 +333,21 @@ public:
 };
 } // namespace
 
+std::shared_ptr<ElementAdapter> ElementAdapter::slide_adapter() {
+  static auto adapter = std::make_shared<SlideAdapter>();
+  return adapter;
+}
+
+std::shared_ptr<ElementAdapter> ElementAdapter::sheet_adapter() {
+  static auto adapter = std::make_shared<SheetAdapter>();
+  return adapter;
+}
+
+std::shared_ptr<ElementAdapter> ElementAdapter::page_adapter() {
+  static auto adapter = std::make_shared<PageAdapter>();
+  return adapter;
+}
+
 std::shared_ptr<ElementAdapter> ElementAdapter::table_adapter() {
   static auto adapter = std::make_shared<TableAdapter>();
   return adapter;
@@ -260,8 +369,6 @@ std::shared_ptr<ElementAdapter> ElementAdapter::table_cell_adapter() {
 }
 
 ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
-  static const auto draw_master_page_attribute = "draw:master-page-name";
-
   static const auto text_adapter = std::make_shared<TextAdapter>();
   static const auto paragraph_adapter = DefaultAdapter::create(
       ElementType::PARAGRAPH,
@@ -271,10 +378,13 @@ ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
 
   static std::unordered_map<std::string, std::shared_ptr<ElementAdapter>>
       element_adapter_table{
-          {"office:text", nullptr},         // ElementType::ROOT
-          {"office:presentation", nullptr}, // ElementType::ROOT
-          {"office:spreadsheet", nullptr},  // ElementType::ROOT
-          {"office:drawing", nullptr},      // ElementType::ROOT
+          {"office:text", std::make_shared<RootAdapter>()},
+          {"office:presentation",
+           std::make_shared<RootAdapter>(slide_adapter().get())},
+          {"office:spreadsheet",
+           std::make_shared<RootAdapter>(sheet_adapter().get())},
+          {"office:drawing",
+           std::make_shared<RootAdapter>(page_adapter().get())},
           {"text:p", paragraph_adapter},
           {"text:h", paragraph_adapter},
           {"text:span",
@@ -377,6 +487,8 @@ ElementType Element::type() const {
   return m_adapter->type(m_node);
 }
 
+TableElement Element::table() const { return TableElement(m_node); }
+
 pugi::xml_node Element::xml_node() const { return m_node; }
 
 ElementAdapter *Element::adapter() const { return m_adapter; }
@@ -409,9 +521,7 @@ Element Element::next_sibling() const {
   return m_adapter->next_sibling(m_node);
 }
 
-ElementIterator Element::begin() const { return ElementIterator(*this); }
-
-ElementIterator Element::end() const { return ElementIterator({}); }
+ElementRange Element::children() const { return ElementRange(*this); }
 
 std::unordered_map<ElementProperty, std::any> Element::properties() const {
   if (m_adapter == nullptr) {
@@ -443,12 +553,13 @@ Element TableElement::element() const {
 
 ElementType TableElement::type() const { return ElementType::TABLE; }
 
-void TableElement::columns() {
-  // TODO
+TableColumnElementRange TableElement::columns() const {
+  return TableColumnElementRange(
+      TableColumnElement(m_node.child("table:table-column")));
 }
 
-void TableElement::rows() {
-  // TODO
+TableRowElementRange TableElement::rows() const {
+  return TableRowElementRange(TableRowElement(m_node.child("table:table-row")));
 }
 
 std::shared_ptr<ElementAdapter> TableColumnElement::adapter() {
@@ -507,6 +618,11 @@ TableRowElement TableRowElement::next_sibling() const {
   return TableRowElement(Base::next_sibling().xml_node());
 }
 
+TableCellElementRange TableRowElement::cells() const {
+  return TableCellElementRange(
+      TableCellElement(m_node.child("table:table-cell")));
+}
+
 std::shared_ptr<ElementAdapter> TableCellElement::adapter() {
   return ElementAdapter::table_cell_adapter();
 }
@@ -532,32 +648,6 @@ TableCellElement TableCellElement::previous_sibling() const {
 
 TableCellElement TableCellElement::next_sibling() const {
   return TableCellElement(Base::next_sibling().xml_node());
-}
-
-ElementIterator::ElementIterator(Element element)
-    : m_element{std::move(element)} {}
-
-ElementIterator &ElementIterator::operator++() {
-  m_element = m_element.next_sibling();
-  return *this;
-}
-
-ElementIterator ElementIterator::operator++(int) & {
-  ElementIterator result = *this;
-  operator++();
-  return result;
-}
-
-Element &ElementIterator::operator*() { return m_element; }
-
-Element *ElementIterator::operator->() { return &m_element; }
-
-bool ElementIterator::operator==(const ElementIterator &rhs) const {
-  return m_element == rhs.m_element;
-}
-
-bool ElementIterator::operator!=(const ElementIterator &rhs) const {
-  return m_element != rhs.m_element;
 }
 
 } // namespace odr::internal::odf

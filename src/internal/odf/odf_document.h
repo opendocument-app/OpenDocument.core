@@ -52,7 +52,8 @@ private:
   std::pair<ElementIdentifier, ElementIdentifier>
   register_children_(odf::Element element, ElementIdentifier parent,
                      ElementIdentifier previous_sibling);
-  void register_table_children_(odf::Element element, ElementIdentifier parent);
+  void register_table_children_(odf::TableElement element,
+                                ElementIdentifier parent);
   void register_slide_children_(odf::Element element, ElementIdentifier parent);
 
   ElementIdentifier new_element_(odf::Element element, ElementIdentifier parent,

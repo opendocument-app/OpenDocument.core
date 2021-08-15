@@ -3,6 +3,7 @@
 
 #include <internal/abstract/table.h>
 #include <internal/common/table_range.h>
+#include <internal/odf/odf_element.h>
 #include <map>
 #include <pugixml.hpp>
 #include <unordered_map>
@@ -13,7 +14,7 @@ class Style;
 
 class Table : public abstract::Table {
 public:
-  Table(OpenDocument &document, pugi::xml_node node);
+  Table(OpenDocument &document, odf::TableElement element);
 
   [[nodiscard]] TableDimensions dimensions() const final;
 
@@ -36,28 +37,25 @@ public:
   void decouple_cell(std::uint32_t row, std::uint32_t column) const;
 
 private:
-  friend class OpenDocument;
-  friend class Style;
-
-  class PropertyRegistry;
-
   struct Column {
-    odf::Element element;
+    odf::TableColumnElement element;
   };
 
   struct Cell {
-    odf::Element element;
+    odf::TableCellElement element;
     ElementIdentifier first_child;
     std::uint32_t rowspan{1};
     std::uint32_t colspan{1};
   };
 
   struct Row {
-    odf::Element element;
+    odf::TableRowElement element;
     std::map<std::uint32_t, Cell> cells;
   };
 
   OpenDocument &m_document;
+
+  odf::TableElement m_element;
 
   TableDimensions m_dimensions;
   common::TableRange m_content_bounds;
@@ -65,7 +63,7 @@ private:
   std::map<std::uint32_t, Column> m_columns;
   std::map<std::uint32_t, Row> m_rows;
 
-  void register_(pugi::xml_node node);
+  void register_(odf::TableElement element);
 
   [[nodiscard]] const Column *column_(std::uint32_t column) const;
   [[nodiscard]] const Row *row_(std::uint32_t row) const;

@@ -44,7 +44,7 @@ OpenDocument::register_element_(const odf::Element element,
   auto new_element = new_element_(element, parent, previous_sibling);
 
   if (element_type == ElementType::TABLE) {
-    register_table_children_(element, new_element);
+    register_table_children_(element.table(), new_element);
   } else if (element_type == ElementType::SLIDE) {
     register_slide_children_(element, new_element);
   } else {
@@ -60,7 +60,7 @@ OpenDocument::register_children_(const odf::Element element,
                                  ElementIdentifier previous_sibling) {
   ElementIdentifier first_element;
 
-  for (auto &&child_element : element) {
+  for (auto &&child_element : element.children()) {
     const ElementIdentifier child =
         register_element_(child_element, parent, previous_sibling);
     if (!child) {
@@ -75,9 +75,9 @@ OpenDocument::register_children_(const odf::Element element,
   return {first_element, previous_sibling};
 }
 
-void OpenDocument::register_table_children_(const odf::Element element,
+void OpenDocument::register_table_children_(const odf::TableElement element,
                                             const ElementIdentifier parent) {
-  m_tables[parent] = std::make_shared<Table>(*this, element.xml_node());
+  m_tables[parent] = std::make_shared<Table>(*this, element);
 }
 
 void OpenDocument::register_slide_children_(const odf::Element element,

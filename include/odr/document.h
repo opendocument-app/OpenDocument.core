@@ -409,14 +409,30 @@ public:
   using pointer = E *;
   using reference = E &;
 
-  explicit ElementIterator(E element);
+  explicit ElementIterator(E element) : m_element{std::move(element)} {}
 
-  ElementIterator<E> &operator++();
-  ElementIterator<E> operator++(int) &;
-  reference operator*();
-  pointer operator->();
-  bool operator==(const ElementIterator<E> &rhs) const;
-  bool operator!=(const ElementIterator<E> &rhs) const;
+  ElementIterator<E> &operator++() {
+    m_element = m_element.next_sibling();
+    return *this;
+  }
+
+  ElementIterator<E> operator++(int) & {
+    ElementIterator<E> result = *this;
+    operator++();
+    return result;
+  }
+
+  reference operator*() { return m_element; }
+
+  pointer operator->() { return &m_element; }
+
+  bool operator==(const ElementIterator<E> &rhs) const {
+    return m_element == rhs.m_element;
+  }
+
+  bool operator!=(const ElementIterator<E> &rhs) const {
+    return m_element != rhs.m_element;
+  }
 
 private:
   E m_element;
@@ -424,14 +440,20 @@ private:
 
 template <typename E> class ElementRangeTemplate final {
 public:
-  ElementRangeTemplate();
-  explicit ElementRangeTemplate(E begin);
-  ElementRangeTemplate(E begin, E end);
+  ElementRangeTemplate() = default;
+  explicit ElementRangeTemplate(E begin) : m_begin{begin} {}
+  ElementRangeTemplate(E begin, E end)
+      : m_begin{std::move(begin)}, m_end{std::move(end)} {}
 
-  [[nodiscard]] ElementIterator<E> begin() const;
-  [[nodiscard]] ElementIterator<E> end() const;
+  [[nodiscard]] ElementIterator<E> begin() const {
+    return ElementIterator<E>(m_begin);
+  }
 
-  [[nodiscard]] E front() const;
+  [[nodiscard]] ElementIterator<E> end() const {
+    return ElementIterator<E>(m_end);
+  }
+
+  [[nodiscard]] E front() const { return m_begin; }
 
 private:
   E m_begin;

@@ -5,93 +5,24 @@
 
 namespace odr::internal::odf {
 
-class Table::PropertyRegistry final {
-public:
-  using Get = std::function<std::any(pugi::xml_node node)>;
-
-  static PropertyRegistry &instance() {
-    static PropertyRegistry instance;
-    return instance;
-  }
-
-  void
-  resolve_properties(const ElementType element, const pugi::xml_node node,
-                     std::unordered_map<ElementProperty, std::any> &result) {
-    auto it = m_registry.find(element);
-    if (it == std::end(m_registry)) {
-      return;
-    }
-    for (auto &&p : it->second) {
-      auto value = p.second.get(node);
-      if (value.has_value()) {
-        result[p.first] = value;
-      }
-    }
-  }
-
-private:
-  struct Entry {
-    Get get;
-  };
-
-  std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
-      m_registry;
-
-  PropertyRegistry() {
-    static auto table_style_attribute = "table:style-name";
-
-    default_register_(ElementType::TABLE_COLUMN, ElementProperty::STYLE_NAME,
-                      table_style_attribute);
-    default_register_(ElementType::TABLE_COLUMN,
-                      ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME,
-                      "table:default-cell-style-name");
-
-    default_register_(ElementType::TABLE_ROW, ElementProperty::STYLE_NAME,
-                      table_style_attribute);
-
-    default_register_(ElementType::TABLE_CELL, ElementProperty::STYLE_NAME,
-                      table_style_attribute);
-    default_register_(ElementType::TABLE_CELL, ElementProperty::VALUE_TYPE,
-                      "office:value-type");
-  }
-
-  void register_(const ElementType element, const ElementProperty property,
-                 Get get) {
-    m_registry[element][property].get = std::move(get);
-  }
-
-  void default_register_(const ElementType element,
-                         const ElementProperty property,
-                         const char *attribute_name) {
-    register_(element, property, [attribute_name](const pugi::xml_node node) {
-      auto attribute = node.attribute(attribute_name);
-      if (!attribute) {
-        return std::any();
-      }
-      return std::any(attribute.value());
-    });
-  }
-};
-
-Table::Table(OpenDocument &document, const pugi::xml_node node)
-    : m_document{document} {
-  register_(node);
+Table::Table(OpenDocument &document, odf::TableElement element)
+    : m_document{document}, m_element{std::move(element)} {
+  register_(element);
 }
 
-void Table::register_(const pugi::xml_node node) {
+void Table::register_(const odf::TableElement element) {
   common::TableCursor cursor;
   std::optional<std::uint32_t> begin_column;
   std::optional<std::uint32_t> begin_row;
   std::optional<std::uint32_t> end_column;
   std::optional<std::uint32_t> end_row;
 
-  for (auto column : node.children("table:table-column")) {
+  for (auto column : element.columns()) {
     const auto columns_repeated =
-        column.attribute("table:number-columns-repeated").as_uint(1);
+        column.xml_node().attribute("table:number-columns-repeated").as_uint(1);
 
     Column new_column;
-    // TODO element lookup would not be necessary
-    new_column.element = Element(column);
+    new_column.element = TableColumnElement(column);
     m_columns[cursor.column()] = new_column;
 
     cursor.add_column(columns_repeated);
@@ -100,35 +31,37 @@ void Table::register_(const pugi::xml_node node) {
   m_dimensions.columns = cursor.column();
   cursor = {};
 
-  for (auto row : node.children("table:table-row")) {
+  for (auto row : element.rows()) {
     const auto rows_repeated =
-        row.attribute("table:number-rows-repeated").as_uint(1);
+        row.xml_node().attribute("table:number-rows-repeated").as_uint(1);
 
     bool row_empty = true;
 
     for (std::uint32_t i = 0; i < rows_repeated; ++i) {
       Row new_row;
-      // TODO element lookup would not be necessary
-      new_row.element = Element(row);
+      new_row.element = TableRowElement(row);
 
-      for (auto cell : row.children("table:table-cell")) {
+      for (auto cell : row.cells()) {
         // TODO performance - fetch all attributes at once
         const auto cells_repeated =
-            cell.attribute("table:number-columns-repeated").as_uint(1);
-        const auto colspan =
-            cell.attribute("table:number-columns-spanned").as_uint(1);
+            cell.xml_node()
+                .attribute("table:number-columns-repeated")
+                .as_uint(1);
+        const auto colspan = cell.xml_node()
+                                 .attribute("table:number-columns-spanned")
+                                 .as_uint(1);
         const auto rowspan =
-            cell.attribute("table:number-rows-spanned").as_uint(1);
+            cell.xml_node().attribute("table:number-rows-spanned").as_uint(1);
 
         bool cell_empty = true;
 
         for (std::uint32_t j = 0; j < cells_repeated; ++j) {
           // TODO parent?
           auto first_child =
-              m_document.register_children_(odf::Element(cell), {}, {}).first;
+              m_document.register_children_(cell.element(), {}, {}).first;
 
           Cell new_cell;
-          new_cell.element = Element(cell);
+          new_cell.element = TableCellElement(cell);
           new_cell.first_child = first_child;
           new_cell.rowspan = rowspan;
           new_cell.colspan = colspan;
@@ -217,9 +150,8 @@ Table::content_bounds(const common::TableRange within) const {
     }
   }
 
-  common::TablePosition begin{begin_row ? *begin_row : within.from().row(),
-                              begin_column ? *begin_column
-                                           : within.from().column()};
+  common::TablePosition begin{begin_row.value_or(within.from().row()),
+                              begin_column.value_or(within.from().column())};
   common::TablePosition end{end_row ? *end_row + 1 : begin.row(),
                             end_column ? *end_column + 1 : begin.column()};
   return {begin, end};

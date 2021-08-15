@@ -3,6 +3,7 @@
 
 #include <any>
 #include <memory>
+#include <odr/document.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 
@@ -15,12 +16,16 @@ namespace odr::internal::odf {
 
 class ElementAdapter;
 
+class Element;
 class TableElement;
 class TableColumnElement;
 class TableRowElement;
 class TableCellElement;
 
-class ElementIterator;
+using ElementRange = ElementRangeTemplate<Element>;
+using TableColumnElementRange = ElementRangeTemplate<TableColumnElement>;
+using TableRowElementRange = ElementRangeTemplate<TableRowElement>;
+using TableCellElementRange = ElementRangeTemplate<TableCellElement>;
 
 class Element final {
 public:
@@ -37,13 +42,14 @@ public:
 
   [[nodiscard]] ElementType type() const;
 
+  [[nodiscard]] TableElement table() const;
+
   [[nodiscard]] Element parent() const;
   [[nodiscard]] Element first_child() const;
   [[nodiscard]] Element previous_sibling() const;
   [[nodiscard]] Element next_sibling() const;
 
-  ElementIterator begin() const;
-  ElementIterator end() const;
+  [[nodiscard]] ElementRange children() const;
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const;
@@ -58,6 +64,9 @@ private:
 
 class ElementAdapter {
 public:
+  static std::shared_ptr<ElementAdapter> slide_adapter();
+  static std::shared_ptr<ElementAdapter> sheet_adapter();
+  static std::shared_ptr<ElementAdapter> page_adapter();
   static std::shared_ptr<ElementAdapter> table_adapter();
   static std::shared_ptr<ElementAdapter> table_column_adapter();
   static std::shared_ptr<ElementAdapter> table_row_adapter();
@@ -112,12 +121,12 @@ public:
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const {
-    return Derived::adapter()->properties();
+    return Derived::adapter()->properties(m_node);
   }
 
   void update_properties(
       std::unordered_map<ElementProperty, std::any> properties) const {
-    return Derived::adapter()->update_properties(std::move(properties));
+    return Derived::adapter()->update_properties(m_node, std::move(properties));
   }
 
 protected:
@@ -135,8 +144,8 @@ public:
 
   [[nodiscard]] ElementType type() const;
 
-  void columns();
-  void rows();
+  TableColumnElementRange columns() const;
+  TableRowElementRange rows() const;
 };
 
 class TableColumnElement final : public ElementBase<TableColumnElement> {
@@ -169,6 +178,8 @@ public:
   [[nodiscard]] TableElement parent() const;
   [[nodiscard]] TableRowElement previous_sibling() const;
   [[nodiscard]] TableRowElement next_sibling() const;
+
+  TableCellElementRange cells() const;
 };
 
 class TableCellElement final : public ElementBase<TableCellElement> {
@@ -185,27 +196,6 @@ public:
   [[nodiscard]] TableRowElement parent() const;
   [[nodiscard]] TableCellElement previous_sibling() const;
   [[nodiscard]] TableCellElement next_sibling() const;
-};
-
-class ElementIterator final {
-public:
-  using iterator_category = std::forward_iterator_tag;
-  using value_type = Element;
-  using difference_type = std::ptrdiff_t;
-  using pointer = Element *;
-  using reference = Element &;
-
-  explicit ElementIterator(Element element);
-
-  ElementIterator &operator++();
-  ElementIterator operator++(int) &;
-  reference operator*();
-  pointer operator->();
-  bool operator==(const ElementIterator &rhs) const;
-  bool operator!=(const ElementIterator &rhs) const;
-
-private:
-  Element m_element;
 };
 
 } // namespace odr::internal::odf
