@@ -2,7 +2,7 @@
 #include <internal/odf/odf_style.h>
 #include <internal/util/map_util.h>
 #include <internal/util/string_util.h>
-#include <odr/document.h>
+#include <odr/element.h>
 
 namespace odr::internal::odf {
 

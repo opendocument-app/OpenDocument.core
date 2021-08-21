@@ -1,17 +1,14 @@
-#include <internal/ooxml/ooxml_wordprocessingml_elements.h>
+#include <internal/ooxml/ooxml_util.h>
+#include <internal/ooxml/text/ooxml_text_elements.h>
 #include <internal/util/map_util.h>
 
-namespace odr::internal::ooxml::word {
+namespace odr::internal::ooxml::text {
 
 namespace {
 class DefaultAdapter : public ElementAdapter {
 public:
   explicit DefaultAdapter(const ElementType element_type)
       : m_element_type{element_type} {}
-
-  DefaultAdapter(const ElementType element_type,
-                 std::unordered_map<std::string, ElementProperty> properties)
-      : m_element_type{element_type}, m_properties{std::move(properties)} {}
 
   [[nodiscard]] ElementType type(const pugi::xml_node /*node*/) const final {
     return m_element_type;
@@ -61,18 +58,8 @@ public:
   }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  properties(const pugi::xml_node node) const override {
-    std::unordered_map<ElementProperty, std::any> result;
-
-    for (auto attribute : node.attributes()) {
-      auto property_it = m_properties.find(attribute.name());
-      if (property_it == std::end(m_properties)) {
-        continue;
-      }
-      result[property_it->second] = attribute.value();
-    }
-
-    return result;
+  properties(const pugi::xml_node /*node*/) const override {
+    return {};
   }
 
   void update_properties(
@@ -84,18 +71,112 @@ public:
 
 private:
   ElementType m_element_type;
-  std::unordered_map<std::string, ElementProperty> m_properties;
+};
+
+class RootAdapter final : public DefaultAdapter {
+public:
+  RootAdapter() : DefaultAdapter(ElementType::ROOT) {}
+
+  [[nodiscard]] Element parent(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+
+  [[nodiscard]] Element
+  previous_sibling(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+
+  [[nodiscard]] Element
+  next_sibling(const pugi::xml_node /*node*/) const final {
+    return {};
+  }
+};
+
+class TextAdapter final : public DefaultAdapter {
+public:
+  TextAdapter() : DefaultAdapter(ElementType::TEXT) {}
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties(const pugi::xml_node node) const final {
+    return {{ElementProperty::TEXT, node.text().as_string()}};
+  }
+};
+
+class TabAdapter final : public DefaultAdapter {
+public:
+  TabAdapter() : DefaultAdapter(ElementType::TEXT) {}
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties(const pugi::xml_node /*node*/) const final {
+    return {{ElementProperty::TEXT, "\t"}};
+  }
+};
+
+class ParagraphAdapter final : public DefaultAdapter {
+public:
+  ParagraphAdapter() : DefaultAdapter(ElementType::PARAGRAPH) {}
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties(const pugi::xml_node /*node*/) const final {
+    std::unordered_map<ElementProperty, std::any> result;
+
+    // TODO get style name
+
+    return result;
+  }
+};
+
+class SpanAdapter final : public DefaultAdapter {
+public:
+  SpanAdapter() : DefaultAdapter(ElementType::SPAN) {}
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties(const pugi::xml_node /*node*/) const final {
+    std::unordered_map<ElementProperty, std::any> result;
+
+    // TODO get style name
+
+    return result;
+  }
+};
+
+class BookmarkAdapter final : public DefaultAdapter {
+public:
+  BookmarkAdapter() : DefaultAdapter(ElementType::BOOKMARK) {}
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties(const pugi::xml_node /*node*/) const final {
+    std::unordered_map<ElementProperty, std::any> result;
+
+    // TODO
+
+    return result;
+  }
+};
+
+class LinkAdapter final : public DefaultAdapter {
+public:
+  LinkAdapter() : DefaultAdapter(ElementType::LINK) {}
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties(const pugi::xml_node /*node*/) const final {
+    std::unordered_map<ElementProperty, std::any> result;
+
+    // TODO
+
+    return result;
+  }
 };
 } // namespace
 
 ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
-  static DefaultAdapter root_adapter(ElementType::ROOT);
-  static DefaultAdapter text_adapter(ElementType::TEXT);
-  static DefaultAdapter tab_adapter(ElementType::TEXT);
-  static DefaultAdapter paragraph_adapter(ElementType::PARAGRAPH);
-  static DefaultAdapter span_adapter(ElementType::SPAN);
-  static DefaultAdapter bookmark_adapter(ElementType::BOOKMARK);
-  static DefaultAdapter link_adapter(ElementType::LINK);
+  static RootAdapter root_adapter;
+  static TextAdapter text_adapter;
+  static TabAdapter tab_adapter;
+  static ParagraphAdapter paragraph_adapter;
+  static SpanAdapter span_adapter;
+  static BookmarkAdapter bookmark_adapter;
+  static LinkAdapter link_adapter;
 
   static std::unordered_map<std::string, ElementAdapter *>
       element_adapter_table{
@@ -191,4 +272,4 @@ void Element::update_properties(
   m_adapter->update_properties(m_node, std::move(properties));
 }
 
-} // namespace odr::internal::ooxml::word
+} // namespace odr::internal::ooxml::text

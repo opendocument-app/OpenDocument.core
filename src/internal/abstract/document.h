@@ -1,16 +1,11 @@
 #ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 
-#include <any>
-#include <internal/identifier.h>
 #include <memory>
-#include <unordered_map>
 
 namespace odr {
 enum class DocumentType;
-struct DocumentMeta;
-enum class ElementType;
-enum class ElementProperty;
+class Element;
 } // namespace odr
 
 namespace odr::internal::common {
@@ -22,21 +17,6 @@ class File;
 class ReadableFilesystem;
 class Table;
 
-/*
- * Q: Why `element_id` and not a pointer?
- * A: If the elements are allocated in a `std::vector` the address of the
- * element could change. The index will not.
- *
- * Q: Why not a separate interface for an element?
- * A: In an implementation the element is likely to need a reference to the
- * `Document`. Such a reference would be duplicated across all elements in the
- * document.
- *
- * Q: What is the lifetime of an element?
- * A: Once accessed the element has to stay in memory with the same ID. The
- * implementation might load the whole document tree as an index into the memory
- * at construction.
- */
 class Document {
 public:
   virtual ~Document() = default;
@@ -62,45 +42,7 @@ public:
   files() const noexcept = 0;
 
   /// \return the root element of the document.
-  [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
-
-  /// \return the first entry element of the document.
-  [[nodiscard]] virtual ElementIdentifier first_entry_element() const = 0;
-
-  /// \param element_id the element to query.
-  /// \return the type of the element.
-  [[nodiscard]] virtual ElementType
-  element_type(ElementIdentifier element_id) const = 0;
-
-  /// \param element_id the element to query.
-  /// \return the parent of the element.
-  [[nodiscard]] virtual ElementIdentifier
-  element_parent(ElementIdentifier element_id) const = 0;
-
-  /// \param element_id the element to query.
-  /// \return the first child of the element.
-  [[nodiscard]] virtual ElementIdentifier
-  element_first_child(ElementIdentifier element_id) const = 0;
-
-  /// \param element_id the element to query.
-  /// \return the previous sibling of the element.
-  [[nodiscard]] virtual ElementIdentifier
-  element_previous_sibling(ElementIdentifier element_id) const = 0;
-
-  /// \param element_id the element to query.
-  /// \return the next sibling of the element.
-  [[nodiscard]] virtual ElementIdentifier
-  element_next_sibling(ElementIdentifier element_id) const = 0;
-
-  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
-  element_properties(ElementIdentifier element_id) const = 0;
-
-  virtual void update_element_properties(
-      ElementIdentifier element_id,
-      std::unordered_map<ElementProperty, std::any> properties) const = 0;
-
-  [[nodiscard]] virtual std::shared_ptr<Table>
-  table(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual odr::Element root_element() const = 0;
 };
 
 } // namespace odr::internal::abstract

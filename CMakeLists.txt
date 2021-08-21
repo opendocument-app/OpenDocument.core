@@ -22,12 +22,14 @@ target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-object OBJECT
         src/document.cpp
+        src/element.cpp
         src/exceptions.cpp
         src/file.cpp
         src/file_no_except.cpp
         src/html.cpp
         src/open_document_reader.cpp
         src/open_strategy.cpp
+        src/table.cpp
 
         src/internal/abstract/file.cpp
 
@@ -36,12 +38,11 @@ add_library(odr-object OBJECT
         src/internal/cfb/cfb_util.cpp
 
         src/internal/common/constants.cpp
-        src/internal/common/document.cpp
+        src/internal/common/element.cpp
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
         src/internal/common/html.cpp
         src/internal/common/path.cpp
-        src/internal/common/table.cpp
         src/internal/common/table_cursor.cpp
         src/internal/common/table_position.cpp
         src/internal/common/table_range.cpp
@@ -59,16 +60,15 @@ add_library(odr-object OBJECT
 
         src/internal/oldms/oldms_file.cpp
 
+        src/internal/ooxml/presentation/ooxml_presentation.cpp
+        src/internal/ooxml/spreadsheet/ooxml_workbook.cpp
+        src/internal/ooxml/text/ooxml_text_document.cpp
+        src/internal/ooxml/text/ooxml_text_elements.cpp
+        src/internal/ooxml/text/ooxml_text_style.cpp
         src/internal/ooxml/ooxml_crypto.cpp
-        src/internal/ooxml/ooxml_document.cpp
         src/internal/ooxml/ooxml_file.cpp
         src/internal/ooxml/ooxml_meta.cpp
-        src/internal/ooxml/ooxml_presentation.cpp
-        src/internal/ooxml/ooxml_text_document.cpp
-        src/internal/ooxml/ooxml_text_style.cpp
         src/internal/ooxml/ooxml_util.cpp
-        src/internal/ooxml/ooxml_wordprocessingml_elemens.cpp
-        src/internal/ooxml/ooxml_workbook.cpp
 
         src/internal/svm/svm_file.cpp
         src/internal/svm/svm_format.cpp

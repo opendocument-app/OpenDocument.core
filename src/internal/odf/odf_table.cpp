@@ -6,7 +6,7 @@
 namespace odr::internal::odf {
 
 Table::Table(OpenDocument &document, odf::TableElement element)
-    : m_document{document}, m_element{std::move(element)} {
+    : m_document{document} {
   register_(element);
 }
 
@@ -57,17 +57,17 @@ void Table::register_(const odf::TableElement element) {
 
         for (std::uint32_t j = 0; j < cells_repeated; ++j) {
           // TODO parent?
-          auto first_child =
-              m_document.register_children_(cell.element(), {}, {}).first;
+          // TODO
+          // auto first_child =
+          //    m_document.register_children_(cell.element(), {}, {}).first;
 
           Cell new_cell;
           new_cell.element = TableCellElement(cell);
-          new_cell.first_child = first_child;
           new_cell.rowspan = rowspan;
           new_cell.colspan = colspan;
           new_row.cells[cursor.column()] = new_cell;
 
-          if (first_child) {
+          if (new_cell.element.first_child()) {
             if (!begin_column || *begin_column > cursor.column()) {
               begin_column = cursor.column();
             }
@@ -129,7 +129,7 @@ Table::content_bounds(const common::TableRange within) const {
        ++row) {
     for (std::uint32_t column = within.from().column();
          column < within.to().column(); ++column) {
-      auto first_child = cell_first_child(row, column);
+      auto first_child = cell(row, column).first_child();
       if (!first_child) {
         continue;
       }
@@ -157,128 +157,17 @@ Table::content_bounds(const common::TableRange within) const {
   return {begin, end};
 }
 
-ElementIdentifier Table::cell_first_child(const std::uint32_t row,
-                                          const std::uint32_t column) const {
-  auto c = cell_(row, column);
-  if (c == nullptr) {
-    return {};
-  }
-  return c->first_child;
+odr::Element Table::column(const std::uint32_t /*column*/) const {
+  return {}; // TODO
 }
 
-std::unordered_map<ElementProperty, std::any>
-Table::properties(const std::uint32_t row, const std::uint32_t column) const {
-  if ((row == Table::all) && (column == Table::all)) {
-    // TODO table properties
-    return {};
-  }
-  if (row == Table::all) {
-    return column_properties_(column);
-  }
-  if (column == Table::all) {
-    return row_properties_(row);
-  }
-  return cell_properties_(row, column);
+odr::Element Table::row(const std::uint32_t /*row*/) const {
+  return {}; // TODO
 }
 
-std::unordered_map<ElementProperty, std::any>
-Table::column_properties_(const std::uint32_t column) const {
-  auto c = column_(column);
-  if (c == nullptr) {
-    return {};
-  }
-
-  std::unordered_map<ElementProperty, std::any> result;
-
-  {
-    auto element_properties = c->element.properties();
-    result.insert(std::begin(element_properties), std::end(element_properties));
-  }
-
-  if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
-      style_name_it != std::end(result)) {
-    auto style_name = std::any_cast<const char *>(style_name_it->second);
-    auto style_properties =
-        m_document.m_style.resolve_style(ElementType::TABLE_COLUMN, style_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  return result;
-}
-
-std::unordered_map<ElementProperty, std::any>
-Table::row_properties_(const std::uint32_t row) const {
-  auto r = row_(row);
-  if (r == nullptr) {
-    return {};
-  }
-
-  std::unordered_map<ElementProperty, std::any> result;
-
-  {
-    auto element_properties = r->element.properties();
-    result.insert(std::begin(element_properties), std::end(element_properties));
-  }
-
-  if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
-      style_name_it != std::end(result)) {
-    auto style_name = std::any_cast<const char *>(style_name_it->second);
-    auto style_properties =
-        m_document.m_style.resolve_style(ElementType::TABLE_ROW, style_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  return result;
-}
-
-std::unordered_map<ElementProperty, std::any>
-Table::cell_properties_(const std::uint32_t row,
-                        const std::uint32_t column) const {
-  auto c = cell_(row, column);
-  if (c == nullptr) {
-    return {};
-  }
-
-  std::unordered_map<ElementProperty, std::any> result;
-
-  {
-    auto element_properties = c->element.properties();
-    result.insert(std::begin(element_properties), std::end(element_properties));
-  }
-
-  std::optional<std::string> style_name;
-  if (auto it =
-          result.find(ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME);
-      it != std::end(result)) {
-    style_name = std::any_cast<const char *>(it->second);
-  }
-  if (auto it = result.find(ElementProperty::STYLE_NAME);
-      it != std::end(result)) {
-    style_name = std::any_cast<const char *>(it->second);
-  }
-  if (style_name) {
-    auto style_properties =
-        m_document.m_style.resolve_style(ElementType::TABLE_CELL, *style_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  return result;
-}
-
-void Table::update_properties(
-    const std::uint32_t /*row*/, const std::uint32_t /*column*/,
-    std::unordered_map<ElementProperty, std::any> /*properties*/) const {
-  throw UnsupportedOperation(); // TODO
-}
-
-void Table::resize(const std::uint32_t /*row*/,
-                   const std::uint32_t /*columns*/) const {
-  throw UnsupportedOperation(); // TODO
-}
-
-void Table::decouple_cell(const std::uint32_t /*row*/,
-                          const std::uint32_t /*column*/) const {
-  throw UnsupportedOperation(); // TODO
+odr::Element Table::cell(const std::uint32_t /*row*/,
+                         const std::uint32_t /*column*/) const {
+  return {}; // TODO
 }
 
 const Table::Column *Table::column_(const std::uint32_t column) const {

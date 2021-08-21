@@ -1,5 +1,6 @@
 #include <fstream>
 #include <internal/abstract/filesystem.h>
+#include <internal/common/element.h>
 #include <internal/common/file.h>
 #include <internal/common/path.h>
 #include <internal/odf/odf_document.h>
@@ -26,96 +27,10 @@ OpenDocument::OpenDocument(
   m_style =
       Style(m_content_xml.document_element(), m_styles_xml.document_element());
 
-  m_root = register_element_(
-      odf::Element(
-          m_content_xml.document_element().child("office:body").first_child()),
-      {}, {});
-
-  if (!m_root) {
-    throw NoOpenDocumentFile();
-  }
-}
-
-ElementIdentifier
-OpenDocument::register_element_(const odf::Element element,
-                                const ElementIdentifier parent,
-                                const ElementIdentifier previous_sibling) {
-  if (!element) {
-    return {};
-  }
-
-  auto element_type = element.type();
-  auto new_element = new_element_(element, parent, previous_sibling);
-
-  if (element_type == ElementType::TABLE) {
-    register_table_children_(element.table(), new_element);
-  } else if (element_type == ElementType::SLIDE) {
-    register_slide_children_(element, new_element);
-  } else {
-    register_children_(element, new_element, {});
-  }
-
-  return new_element;
-}
-
-std::pair<ElementIdentifier, ElementIdentifier>
-OpenDocument::register_children_(const odf::Element element,
-                                 const ElementIdentifier parent,
-                                 ElementIdentifier previous_sibling) {
-  ElementIdentifier first_element;
-
-  for (auto &&child_element : element.children()) {
-    const ElementIdentifier child =
-        register_element_(child_element, parent, previous_sibling);
-    if (!child) {
-      continue;
-    }
-    if (!first_element) {
-      first_element = child;
-    }
-    previous_sibling = child;
-  }
-
-  return {first_element, previous_sibling};
-}
-
-void OpenDocument::register_table_children_(const odf::TableElement element,
-                                            const ElementIdentifier parent) {
-  m_tables[parent] = std::make_shared<Table>(*this, element);
-}
-
-void OpenDocument::register_slide_children_(const odf::Element element,
-                                            const ElementIdentifier parent) {
-  auto node = element.xml_node();
-
-  ElementIdentifier inner_previous_sibling;
-  if (auto master_page_name_attr = node.attribute("draw:master-page-name")) {
-    auto master_page_node =
-        m_style.master_page_node(master_page_name_attr.value());
-    for (auto &&child_node : master_page_node) {
-      if (child_node.attribute("presentation:placeholder").as_bool()) {
-        continue;
-      }
-      auto child = register_element_(odf::Element(child_node), parent,
-                                     inner_previous_sibling);
-      if (!child) {
-        continue;
-      }
-      inner_previous_sibling = child;
-    }
-  }
-
-  register_children_(element, parent, inner_previous_sibling);
-}
-
-ElementIdentifier
-OpenDocument::new_element_(const odf::Element element,
-                           const ElementIdentifier parent,
-                           const ElementIdentifier previous_sibling) {
-  auto result =
-      Document::new_element_(element.type(), nullptr, parent, previous_sibling);
-  m_odf_elements[result] = element;
-  return result;
+  m_root = odr::Element(
+      common::Element<odf::Element>(odf::Element(
+          m_content_xml.document_element().child("office:body").first_child())),
+      true);
 }
 
 bool OpenDocument::editable() const noexcept { return true; }
@@ -174,42 +89,6 @@ OpenDocument::files() const noexcept {
   return m_filesystem;
 }
 
-std::unordered_map<ElementProperty, std::any>
-OpenDocument::element_properties(const ElementIdentifier element_id) const {
-  std::unordered_map<ElementProperty, std::any> result;
-
-  auto element = m_elements[element_id];
-
-  if (element.type == ElementType::ROOT) {
-    auto style_properties = m_style.resolve_master_page(
-        element.type, m_style.first_master_page().value());
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  {
-    auto odf_element = m_odf_elements[element_id];
-    auto element_properties = odf_element.properties();
-    result.insert(std::begin(element_properties), std::end(element_properties));
-  }
-
-  if (auto style_name_it = result.find(ElementProperty::STYLE_NAME);
-      style_name_it != std::end(result)) {
-    auto style_name = std::any_cast<const char *>(style_name_it->second);
-    auto style_properties = m_style.resolve_style(element.type, style_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  // TODO this check does not need to happen all the time
-  if (auto master_page_name_it = result.find(ElementProperty::MASTER_PAGE_NAME);
-      master_page_name_it != std::end(result)) {
-    auto master_page_name =
-        std::any_cast<const char *>(master_page_name_it->second);
-    auto style_properties =
-        m_style.resolve_master_page(element.type, master_page_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  return result;
-}
+odr::Element OpenDocument::root_element() const { return m_root; }
 
 } // namespace odr::internal::odf

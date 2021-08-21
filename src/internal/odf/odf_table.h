@@ -22,19 +22,12 @@ public:
   [[nodiscard]] common::TableRange
   content_bounds(common::TableRange within) const final;
 
-  [[nodiscard]] ElementIdentifier
-  cell_first_child(std::uint32_t row, std::uint32_t column) const final;
+  [[nodiscard]] odr::Element column(std::uint32_t column) const final;
 
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  properties(std::uint32_t row, std::uint32_t column) const final;
+  [[nodiscard]] odr::Element row(std::uint32_t row) const final;
 
-  void update_properties(
-      std::uint32_t row, std::uint32_t column,
-      std::unordered_map<ElementProperty, std::any> properties) const final;
-
-  void resize(std::uint32_t rows, std::uint32_t columns) const final;
-
-  void decouple_cell(std::uint32_t row, std::uint32_t column) const;
+  [[nodiscard]] odr::Element cell(std::uint32_t row,
+                                  std::uint32_t column) const final;
 
 private:
   struct Column {
@@ -43,7 +36,6 @@ private:
 
   struct Cell {
     odf::TableCellElement element;
-    ElementIdentifier first_child;
     std::uint32_t rowspan{1};
     std::uint32_t colspan{1};
   };
@@ -54,8 +46,6 @@ private:
   };
 
   OpenDocument &m_document;
-
-  odf::TableElement m_element;
 
   TableDimensions m_dimensions;
   common::TableRange m_content_bounds;
@@ -69,15 +59,6 @@ private:
   [[nodiscard]] const Row *row_(std::uint32_t row) const;
   [[nodiscard]] const Cell *cell_(std::uint32_t row,
                                   std::uint32_t column) const;
-
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  column_properties_(std::uint32_t column) const;
-
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  row_properties_(std::uint32_t row) const;
-
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  cell_properties_(std::uint32_t row, std::uint32_t column) const;
 };
 
 } // namespace odr::internal::odf

@@ -1,5 +1,5 @@
-#include <internal/ooxml/ooxml_text_style.h>
 #include <internal/ooxml/ooxml_util.h>
+#include <internal/ooxml/text/ooxml_text_style.h>
 #include <internal/util/property_util.h>
 
 namespace odr::internal::ooxml {
@@ -110,7 +110,8 @@ OfficeOpenXmlTextStyle::resolve_style(const ElementType element_type,
   pugi::xml_node properties;
   std::string style_name;
 
-  // TODO map
+  // TODO move to element
+  // TODO use map?
   if (element_type == ElementType::PARAGRAPH) {
     properties = element.child("w:pPr");
     style_name = properties.child("w:pStyle").attribute("w:val").as_string();
@@ -123,8 +124,8 @@ OfficeOpenXmlTextStyle::resolve_style(const ElementType element_type,
     result[ElementProperty::STYLE_NAME] = style_name;
   }
 
-  auto style_it = m_styles.find(style_name);
-  if (style_it != std::end(m_styles)) {
+  if (auto style_it = m_styles.find(style_name);
+      style_it != std::end(m_styles)) {
     style_it->second->properties(element_type, result);
   }
 

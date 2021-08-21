@@ -1,20 +1,16 @@
 #ifndef ODR_INTERNAL_ODF_DOCUMENT_H
 #define ODR_INTERNAL_ODF_DOCUMENT_H
 
-#include <internal/common/document.h>
+#include <internal/abstract/document.h>
+#include <internal/common/element.h>
 #include <internal/odf/odf_element.h>
 #include <internal/odf/odf_style.h>
 #include <pugixml.hpp>
 
-namespace odr::internal::abstract {
-class ReadableFilesystem;
-class Table;
-} // namespace odr::internal::abstract
-
 namespace odr::internal::odf {
 class Table;
 
-class OpenDocument final : public common::Document {
+class OpenDocument final : public abstract::Document {
 public:
   OpenDocument(DocumentType document_type,
                std::shared_ptr<abstract::ReadableFilesystem> files);
@@ -29,8 +25,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  element_properties(ElementIdentifier element_id) const final;
+  [[nodiscard]] odr::Element root_element() const final;
 
 private:
   friend class Table;
@@ -42,22 +37,9 @@ private:
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
 
-  DenseElementAttributeStore<odf::Element> m_odf_elements;
-
   Style m_style;
 
-  ElementIdentifier register_element_(odf::Element element,
-                                      ElementIdentifier parent,
-                                      ElementIdentifier previous_sibling);
-  std::pair<ElementIdentifier, ElementIdentifier>
-  register_children_(odf::Element element, ElementIdentifier parent,
-                     ElementIdentifier previous_sibling);
-  void register_table_children_(odf::TableElement element,
-                                ElementIdentifier parent);
-  void register_slide_children_(odf::Element element, ElementIdentifier parent);
-
-  ElementIdentifier new_element_(odf::Element element, ElementIdentifier parent,
-                                 ElementIdentifier previous_sibling);
+  odr::Element m_root;
 };
 
 } // namespace odr::internal::odf

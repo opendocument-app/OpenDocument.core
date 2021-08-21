@@ -17,9 +17,6 @@ ElementAdapter *table_cell_adapter();
 
 class DefaultAdapter : public ElementAdapter {
 public:
-  explicit DefaultAdapter(const ElementType element_type)
-      : m_element_type{element_type} {}
-
   DefaultAdapter(const ElementType element_type,
                  std::unordered_map<std::string, ElementProperty> properties)
       : m_element_type{element_type}, m_properties{std::move(properties)} {}
@@ -100,9 +97,8 @@ private:
 
 class RootAdapter final : public DefaultAdapter {
 public:
-  RootAdapter() : DefaultAdapter(ElementType::ROOT) {}
   explicit RootAdapter(ElementAdapter *child_adapter)
-      : DefaultAdapter(ElementType::ROOT), m_child_adapter{child_adapter} {}
+      : DefaultAdapter(ElementType::ROOT, {}), m_child_adapter{child_adapter} {}
 
   [[nodiscard]] Element parent(const pugi::xml_node /*node*/) const final {
     return {};
@@ -189,45 +185,33 @@ public:
 
 class TextAdapter final : public DefaultAdapter {
 public:
-  TextAdapter() : DefaultAdapter(ElementType::TEXT) {}
+  TextAdapter() : DefaultAdapter(ElementType::TEXT, {}) {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties(const pugi::xml_node node) const override {
-    auto result = DefaultAdapter::properties(node);
-
-    result[ElementProperty::TEXT] = node.text().as_string();
-
-    return result;
+    return {{ElementProperty::TEXT, node.text().as_string()}};
   }
 };
 
 class SpaceAdapter final : public DefaultAdapter {
 public:
-  SpaceAdapter() : DefaultAdapter(ElementType::TEXT) {}
+  SpaceAdapter() : DefaultAdapter(ElementType::TEXT, {}) {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties(const pugi::xml_node node) const override {
-    auto result = DefaultAdapter::properties(node);
-
     // TODO optimize
     const auto count = node.attribute("text:c").as_uint(1);
-    result[ElementProperty::TEXT] = std::string(count, ' ');
-
-    return result;
+    return {{ElementProperty::TEXT, std::string(count, ' ')}};
   }
 };
 
 class TabAdapter final : public DefaultAdapter {
 public:
-  TabAdapter() : DefaultAdapter(ElementType::TEXT) {}
+  TabAdapter() : DefaultAdapter(ElementType::TEXT, {}) {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  properties(const pugi::xml_node node) const override {
-    auto result = DefaultAdapter::properties(node);
-
-    result[ElementProperty::TEXT] = std::string("\t");
-
-    return result;
+  properties(const pugi::xml_node /*node*/) const override {
+    return {{ElementProperty::TEXT, "\t"}};
   }
 };
 
@@ -381,7 +365,7 @@ ElementAdapter *table_cell_adapter() {
 } // namespace
 
 ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
-  static RootAdapter text_root_adapter;
+  static RootAdapter text_root_adapter(nullptr);
   static RootAdapter presentation_root_adapter(slide_adapter());
   static RootAdapter spreadsheet_root_adapter(sheet_adapter());
   static RootAdapter drawing_root_adapter(page_adapter());
@@ -392,14 +376,14 @@ ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
       ElementType::SPAN, {{"text:style-name", ElementProperty::STYLE_NAME}});
   static SpaceAdapter space_adapter;
   static TabAdapter tab_adapter;
-  static DefaultAdapter line_break_adapter(ElementType::LINE_BREAK);
+  static DefaultAdapter line_break_adapter(ElementType::LINE_BREAK, {});
   static DefaultAdapter link_adapter(
       ElementType::LINK, {{"xlink:href", ElementProperty::HREF},
                           {"text:style-name", ElementProperty::STYLE_NAME}});
   static DefaultAdapter bookmark_adapter(
       ElementType::BOOKMARK, {{"text:name", ElementProperty::NAME}});
-  static DefaultAdapter list_adapter(ElementType::LIST);
-  static DefaultAdapter list_item_adapter(ElementType::LIST_ITEM);
+  static DefaultAdapter list_adapter(ElementType::LIST, {});
+  static DefaultAdapter list_item_adapter(ElementType::LIST_ITEM, {});
   static DefaultAdapter frame_adapter(
       ElementType::FRAME, {{"text:anchor-type", ElementProperty::ANCHOR_TYPE},
                            {"svg:x", ElementProperty::X},
@@ -434,7 +418,7 @@ ElementAdapter *ElementAdapter::default_adapter(const pugi::xml_node node) {
        {"svg:width", ElementProperty::WIDTH},
        {"svg:height", ElementProperty::HEIGHT},
        {"draw:style-name", ElementProperty::STYLE_NAME}});
-  static DefaultAdapter group_adapter(ElementType::GROUP);
+  static DefaultAdapter group_adapter(ElementType::GROUP, {});
   static TextAdapter text_adapter;
 
   static std::unordered_map<std::string, ElementAdapter *>

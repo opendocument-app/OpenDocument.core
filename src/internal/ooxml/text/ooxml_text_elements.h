@@ -1,13 +1,14 @@
-#ifndef ODR_INTERNAL_WORDPROCESSINGML_ELEMENTS_H
-#define ODR_INTERNAL_WORDPROCESSINGML_ELEMENTS_H
+#ifndef ODR_INTERNAL_OOXML_TEXT_ELEMENTS_H
+#define ODR_INTERNAL_OOXML_TEXT_ELEMENTS_H
 
 #include <any>
 #include <memory>
 #include <odr/document.h>
+#include <odr/element.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 
-namespace odr::internal::ooxml::word {
+namespace odr::internal::ooxml::text {
 
 class ElementAdapter;
 
@@ -69,6 +70,6 @@ public:
       std::unordered_map<ElementProperty, std::any> properties) const = 0;
 };
 
-} // namespace odr::internal::ooxml::word
+} // namespace odr::internal::ooxml::text
 
-#endif // ODR_INTERNAL_WORDPROCESSINGML_ELEMENTS_H
+#endif // ODR_INTERNAL_OOXML_TEXT_ELEMENTS_H

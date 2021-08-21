@@ -4,6 +4,7 @@
 #include <any>
 #include <memory>
 #include <odr/document.h>
+#include <odr/element.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 
@@ -128,12 +129,12 @@ public:
   TableElement();
   explicit TableElement(pugi::xml_node node);
 
-  Element element() const;
+  [[nodiscard]] Element element() const;
 
   [[nodiscard]] ElementType type() const;
 
-  TableColumnElementRange columns() const;
-  TableRowElementRange rows() const;
+  [[nodiscard]] TableColumnElementRange columns() const;
+  [[nodiscard]] TableRowElementRange rows() const;
 };
 
 class TableColumnElement final : public ElementBase<TableColumnElement> {
@@ -143,7 +144,7 @@ public:
   TableColumnElement();
   explicit TableColumnElement(pugi::xml_node node);
 
-  Element element() const;
+  [[nodiscard]] Element element() const;
 
   [[nodiscard]] ElementType type() const;
 
@@ -159,7 +160,7 @@ public:
   TableRowElement();
   explicit TableRowElement(pugi::xml_node node);
 
-  Element element() const;
+  [[nodiscard]] Element element() const;
 
   [[nodiscard]] ElementType type() const;
 
@@ -167,7 +168,7 @@ public:
   [[nodiscard]] TableRowElement previous_sibling() const;
   [[nodiscard]] TableRowElement next_sibling() const;
 
-  TableCellElementRange cells() const;
+  [[nodiscard]] TableCellElementRange cells() const;
 };
 
 class TableCellElement final : public ElementBase<TableCellElement> {
@@ -177,7 +178,7 @@ public:
   TableCellElement();
   explicit TableCellElement(pugi::xml_node node);
 
-  Element element() const;
+  [[nodiscard]] Element element() const;
 
   [[nodiscard]] ElementType type() const;
 

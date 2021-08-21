@@ -10,6 +10,7 @@
 #include <menu.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
+#include <odr/element.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
@@ -25,7 +26,7 @@ void translate_generation(const ElementRange &siblings, std::ostream &out,
 void translate_element(const Element &element, std::ostream &out,
                        const HtmlConfig &config);
 
-std::string translate_outer_page_style(const PropertySet &properties) {
+std::string translate_outer_page_style(const ElementPropertySet &properties) {
   std::string result;
   if (auto width = properties.get_string(ElementProperty::WIDTH)) {
     result += "width:" + *width + ";";
@@ -36,7 +37,7 @@ std::string translate_outer_page_style(const PropertySet &properties) {
   return result;
 }
 
-std::string translate_inner_page_style(const PropertySet &properties) {
+std::string translate_inner_page_style(const ElementPropertySet &properties) {
   std::string result;
   if (auto margin_top = properties.get_string(ElementProperty::MARGIN_TOP)) {
     result += "margin-top:" + *margin_top + ";";
@@ -55,7 +56,7 @@ std::string translate_inner_page_style(const PropertySet &properties) {
   return result;
 }
 
-std::string translate_paragraph_style(const PropertySet &properties) {
+std::string translate_paragraph_style(const ElementPropertySet &properties) {
   std::string result;
   if (auto text_align = properties.get_string(ElementProperty::TEXT_ALIGN)) {
     result += "text-align:" + *text_align + ";";
@@ -77,7 +78,7 @@ std::string translate_paragraph_style(const PropertySet &properties) {
   return result;
 }
 
-std::string translate_text_style(const PropertySet &properties) {
+std::string translate_text_style(const ElementPropertySet &properties) {
   std::string result;
   if (auto font_name = properties.get_string(ElementProperty::FONT_NAME)) {
     result += "font-family:" + *font_name + ";";
@@ -115,7 +116,7 @@ std::string translate_text_style(const PropertySet &properties) {
   return result;
 }
 
-std::string translate_table_style(const PropertySet &properties) {
+std::string translate_table_style(const ElementPropertySet &properties) {
   std::string result;
   if (auto width = properties.get_string(ElementProperty::WIDTH); width) {
     result += "width:" + *width + ";";
@@ -123,7 +124,7 @@ std::string translate_table_style(const PropertySet &properties) {
   return result;
 }
 
-std::string translate_table_column_style(const PropertySet &properties) {
+std::string translate_table_column_style(const ElementPropertySet &properties) {
   std::string result;
   if (auto width = properties.get_string(ElementProperty::WIDTH)) {
     result += "width:" + *width + ";";
@@ -131,7 +132,7 @@ std::string translate_table_column_style(const PropertySet &properties) {
   return result;
 }
 
-std::string translate_table_row_style(const PropertySet &properties) {
+std::string translate_table_row_style(const ElementPropertySet &properties) {
   std::string result;
   // TODO that does not work with HTML; height would need to be applied to the
   // cells
@@ -141,7 +142,7 @@ std::string translate_table_row_style(const PropertySet &properties) {
   return result;
 }
 
-std::string translate_table_cell_style(const PropertySet &properties) {
+std::string translate_table_cell_style(const ElementPropertySet &properties) {
   std::string result;
 
   result += translate_text_style(properties);
@@ -283,11 +284,11 @@ std::string optional_style_attribute(const std::string &style) {
 }
 
 void translate_text(const Text &element, std::ostream &out,
-                    const HtmlConfig &config) {
+                    const HtmlConfig & /*config*/) {
   out << common::html::escape_text(element.text().string());
 }
 
-void translate_paragraph(const Paragraph &element, std::ostream &out,
+void translate_paragraph(const Element &element, std::ostream &out,
                          const HtmlConfig &config) {
   auto properties = element.properties();
 
@@ -302,7 +303,7 @@ void translate_paragraph(const Paragraph &element, std::ostream &out,
   out << "</p>";
 }
 
-void translate_span(const Span &element, std::ostream &out,
+void translate_span(const Element &element, std::ostream &out,
                     const HtmlConfig &config) {
   auto properties = element.properties();
 
@@ -327,13 +328,13 @@ void translate_link(const Link &element, std::ostream &out,
 }
 
 void translate_bookmark(const Bookmark &element, std::ostream &out,
-                        const HtmlConfig &config) {
+                        const HtmlConfig & /*config*/) {
   out << "<a id=\"";
   out << element.name();
   out << "\"></a>";
 }
 
-void translate_list(const List &element, std::ostream &out,
+void translate_list(const Element &element, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<ul>";
   for (auto &&i : element.children()) {
@@ -344,7 +345,7 @@ void translate_list(const List &element, std::ostream &out,
   out << "</ul>";
 }
 
-void translate_table(const Table &element, std::ostream &out,
+void translate_table(const TableElement &element, std::ostream &out,
                      const HtmlConfig &config) {
   // TODO a lot of features here should only apply to spreadsheets
   // TODO table column width does not work
@@ -393,7 +394,7 @@ void translate_table(const Table &element, std::ostream &out,
     out << ">";
 
     for (std::uint32_t j = 0; j < end_column;) {
-      auto cell = row.cell(j);
+      auto cell = element.cell(i, j);
       // TODO check if cell hidden
 
       auto cell_properties = cell.properties();
@@ -425,7 +426,7 @@ void translate_table(const Table &element, std::ostream &out,
 }
 
 void translate_image(const Image &element, std::ostream &out,
-                     const HtmlConfig &config) {
+                     const HtmlConfig & /*config*/) {
   out << "<img style=\"position:absolute;left:0;top:0;width:100%;height:100%\"";
   out << " alt=\"Error: image not found or unsupported\"";
   out << " src=\"";
@@ -498,7 +499,7 @@ void translate_rect(const Rect &element, std::ostream &out,
 }
 
 void translate_line(const Line &element, std::ostream &out,
-                    const HtmlConfig &config) {
+                    const HtmlConfig & /*config*/) {
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
   out << optional_style_attribute("z-index:-1;position:absolute;top:0;left:0;" +
                                   translate_drawing_style(element));
@@ -693,7 +694,7 @@ HtmlConfig html::parse_config(const std::string &path) {
 }
 
 void html::translate(const Document &document,
-                     const std::string &document_identifier,
+                     const std::string & /*document_identifier*/,
                      const std::string &path, const HtmlConfig &config) {
   std::ofstream out(path);
   if (!out.is_open()) {
@@ -733,9 +734,9 @@ void html::translate(const Document &document,
   out << "</html>";
 }
 
-void html::edit(const Document &document,
-                const std::string &document_identifier,
-                const std::string &diff) {
+void html::edit(const Document & /*document*/,
+                const std::string & /*document_identifier*/,
+                const std::string & /*diff*/) {
   throw UnsupportedOperation();
 }
 

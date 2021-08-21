@@ -2,7 +2,6 @@
 #define ODR_INTERNAL_ODF_STYLE_H
 
 #include <any>
-#include <internal/identifier.h>
 #include <memory>
 #include <pugixml.hpp>
 #include <unordered_map>
