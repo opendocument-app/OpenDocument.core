@@ -27,11 +27,15 @@ class Table : public AnyThing<internal::abstract::Table> {
 public:
   Table();
 
-  template <typename Derived>
-  explicit Table(Derived &&derived, bool destruct) : Base(derived, destruct) {}
+  template <typename Derived,
+            typename = typename std::enable_if<std::is_base_of<
+                internal::abstract::Table, Derived>::value>::type>
+  explicit Table(Derived &&derived) : Base{derived} {}
 
-  template <typename Derived>
-  explicit Table(Derived &derived, bool destruct) : Base(derived, destruct) {}
+  template <typename Derived,
+            typename = typename std::enable_if<std::is_base_of<
+                internal::abstract::Table, Derived>::value>::type>
+  explicit Table(Derived &derived) : Base{derived} {}
 
   [[nodiscard]] TableDimensions dimensions() const;
   [[nodiscard]] TableDimensions content_bounds() const;

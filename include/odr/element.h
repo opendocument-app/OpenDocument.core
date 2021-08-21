@@ -170,13 +170,15 @@ class Element : public AnyThing<internal::abstract::Element> {
 public:
   Element();
 
-  template <typename Derived>
-  explicit Element(Derived &&derived, bool ownership)
-      : Base(derived, ownership) {}
+  template <typename Derived,
+            typename = typename std::enable_if<std::is_base_of<
+                internal::abstract::Element, Derived>::value>::type>
+  explicit Element(Derived &derived) : Base{derived} {}
 
-  template <typename Derived>
-  explicit Element(Derived &derived, bool ownership)
-      : Base(derived, ownership) {}
+  template <typename Derived,
+            typename = typename std::enable_if<std::is_base_of<
+                internal::abstract::Element, Derived>::value>::type>
+  explicit Element(Derived &&derived) : Base{derived} {}
 
   [[nodiscard]] ElementType type() const;
 

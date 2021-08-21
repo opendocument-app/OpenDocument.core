@@ -48,41 +48,41 @@ ElementType Element::type() const {
   if (!operator bool()) {
     return ElementType::NONE;
   }
-  return m_thing->type();
+  return get()->type();
 }
 
 Element Element::parent() const {
   if (!operator bool()) {
     return {};
   }
-  return m_thing->parent();
+  return get()->parent();
 }
 
 Element Element::first_child() const {
   if (!operator bool()) {
     return {};
   }
-  return m_thing->first_child();
+  return get()->first_child();
 }
 
 Element Element::previous_sibling() const {
   if (!operator bool()) {
     return {};
   }
-  return m_thing->previous_sibling();
+  return get()->previous_sibling();
 }
 
 Element Element::next_sibling() const {
   if (!operator bool()) {
     return {};
   }
-  return m_thing->next_sibling();
+  return get()->next_sibling();
 }
 
 ElementRange Element::children() const { return ElementRange(first_child()); }
 
 ElementPropertySet Element::properties() const {
-  return ElementPropertySet(m_thing->properties());
+  return ElementPropertySet(get()->properties());
 }
 
 ElementPropertyValue Element::property(const ElementProperty property) const {
@@ -346,7 +346,7 @@ std::string Bookmark::name() const {
 TableElement::TableElement() = default;
 
 TableElement::TableElement(const Element &element)
-    : Element{element}, m_table{m_thing->table()} {}
+    : Element{element}, m_table{get()->table()} {}
 
 TableDimensions TableElement::dimensions() const {
   if (!operator bool()) {
@@ -520,7 +520,7 @@ ElementPropertyValue::operator bool() const {
 }
 
 std::any ElementPropertyValue::get() const {
-  auto properties = m_element.m_thing->properties();
+  auto properties = m_element.get()->properties();
   return internal::util::map::lookup_map_default(properties, m_property,
                                                  std::any());
 }

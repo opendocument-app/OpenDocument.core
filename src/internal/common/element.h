@@ -25,19 +25,19 @@ public:
   }
 
   [[nodiscard]] odr::Element parent() const final {
-    return odr::Element(Element(m_impl.parent()), true);
+    return odr::Element(Element(m_impl.parent()));
   }
 
   [[nodiscard]] odr::Element first_child() const final {
-    return odr::Element(common::Element(m_impl.first_child()), true);
+    return odr::Element(common::Element(m_impl.first_child()));
   }
 
   [[nodiscard]] odr::Element previous_sibling() const final {
-    return odr::Element(common::Element(m_impl.previous_sibling()), true);
+    return odr::Element(common::Element(m_impl.previous_sibling()));
   }
 
   [[nodiscard]] odr::Element next_sibling() const final {
-    return odr::Element(common::Element(m_impl.next_sibling()), true);
+    return odr::Element(common::Element(m_impl.next_sibling()));
   }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>

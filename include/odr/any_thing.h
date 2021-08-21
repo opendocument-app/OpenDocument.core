@@ -9,19 +9,21 @@ public:
 
   AnyThing() = default;
 
-  template <typename Derived>
-  explicit AnyThing(Derived &&derived, bool ownership)
-      : m_thing{new Derived(derived)}, m_info{Info<Derived>::instance()},
-        m_ownership{ownership} {}
-
-  template <typename Derived>
-  explicit AnyThing(Derived &derived, bool ownership)
-      : m_thing{&derived}, m_info{Info<Derived>::instance()}, m_ownership{
-                                                                  ownership} {}
-
   AnyThing(const AnyThing &other) { copy_(other); }
 
   AnyThing(AnyThing &&other) noexcept { move_(std::move(other)); }
+
+  template <typename Derived, typename = typename std::enable_if<
+                                  std::is_base_of<Thing, Derived>::value>::type>
+  explicit AnyThing(Derived &derived)
+      : m_thing{&derived}, m_info{Info<Derived>::instance()}, m_ownership{
+                                                                  false} {}
+
+  template <typename Derived, typename = typename std::enable_if<
+                                  std::is_base_of<Thing, Derived>::value>::type>
+  explicit AnyThing(Derived &&derived)
+      : m_thing{new Derived(derived)}, m_info{Info<Derived>::instance()},
+        m_ownership{true} {}
 
   ~AnyThing() {
     if (m_ownership) {
@@ -62,6 +64,15 @@ public:
   }
 
   explicit operator bool() const { return m_thing != nullptr; }
+
+protected:
+  Thing *operator->() { return m_thing; }
+
+  const Thing *operator->() const { return m_thing; }
+
+  Thing *get() { return m_thing; }
+
+  const Thing *get() const { return m_thing; }
 
 private:
   class InfoBase {
@@ -124,7 +135,6 @@ private:
     std::swap(m_ownership, other.m_ownership);
   }
 
-protected:
   Thing *m_thing{nullptr};
   InfoBase *m_info{nullptr};
   bool m_ownership{false};

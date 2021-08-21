@@ -27,10 +27,8 @@ OpenDocument::OpenDocument(
   m_style =
       Style(m_content_xml.document_element(), m_styles_xml.document_element());
 
-  m_root = odr::Element(
-      common::Element<odf::Element>(odf::Element(
-          m_content_xml.document_element().child("office:body").first_child())),
-      true);
+  m_root = odr::Element(common::Element<odf::Element>(odf::Element(
+      m_content_xml.document_element().child("office:body").first_child())));
 }
 
 bool OpenDocument::editable() const noexcept { return true; }

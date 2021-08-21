@@ -17,14 +17,14 @@ TableDimensions Table::dimensions() const {
   if (!operator bool()) {
     return {};
   }
-  return m_thing->dimensions();
+  return get()->dimensions();
 }
 
 TableDimensions Table::content_bounds() const {
   if (!operator bool()) {
     return {};
   }
-  auto result = m_thing->content_bounds();
+  auto result = get()->content_bounds();
   return {result.to().row(), result.to().column()};
 }
 
@@ -32,8 +32,7 @@ TableDimensions Table::content_bounds(TableDimensions within) const {
   if (!operator bool()) {
     return {};
   }
-  auto result =
-      m_thing->content_bounds({{0, 0}, {within.rows, within.columns}});
+  auto result = get()->content_bounds({{0, 0}, {within.rows, within.columns}});
   return {result.to().row(), result.to().column()};
 }
 
@@ -41,21 +40,21 @@ Element Table::column(const std::uint32_t column) const {
   if (!operator bool()) {
     return {};
   }
-  return m_thing->column(column);
+  return get()->column(column);
 }
 
 Element Table::row(const std::uint32_t row) const {
   if (!operator bool()) {
     return {};
   }
-  return m_thing->row(row);
+  return get()->row(row);
 }
 
 Element Table::cell(const std::uint32_t row, const std::uint32_t column) const {
   if (!operator bool()) {
     return {};
   }
-  return m_thing->cell(row, column);
+  return get()->cell(row, column);
 }
 
 } // namespace odr

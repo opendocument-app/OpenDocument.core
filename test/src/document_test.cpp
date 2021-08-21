@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <odr/document.h>
+#include <odr/element.h>
 #include <odr/file.h>
 #include <test_util.h>
 
