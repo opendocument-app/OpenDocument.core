@@ -5,45 +5,45 @@
 namespace odr::internal::odf {
 
 namespace {
-odr::Element create_default_parent_element(pugi::xml_node node,
-                                           OpenDocument *document) {
+odr::Element create_default_parent_element(OpenDocument *document,
+                                           pugi::xml_node node) {
   for (pugi::xml_node parent = node.parent(); parent;
        parent = parent.parent()) {
-    if (auto result = create_default_element(parent, document)) {
+    if (auto result = create_default_element(document, parent)) {
       return result;
     }
   }
   return {};
 }
 
-odr::Element create_default_first_child_element(pugi::xml_node node,
-                                                OpenDocument *document) {
+odr::Element create_default_first_child_element(OpenDocument *document,
+                                                pugi::xml_node node) {
   for (pugi::xml_node first_child = node.first_child(); first_child;
        first_child = first_child.next_sibling()) {
-    if (auto result = create_default_element(first_child, document)) {
+    if (auto result = create_default_element(document, first_child)) {
       return result;
     }
   }
   return {};
 }
 
-odr::Element create_default_previous_sibling_element(pugi::xml_node node,
-                                                     OpenDocument *document) {
+odr::Element create_default_previous_sibling_element(OpenDocument *document,
+                                                     pugi::xml_node node) {
   for (pugi::xml_node previous_sibling = node.previous_sibling();
        previous_sibling;
        previous_sibling = previous_sibling.previous_sibling()) {
-    if (auto result = create_default_element(previous_sibling, document)) {
+    if (auto result = create_default_element(document, previous_sibling)) {
       return result;
     }
   }
   return {};
 }
 
-odr::Element create_default_next_sibling_element(pugi::xml_node node,
-                                                 OpenDocument *document) {
+odr::Element create_default_next_sibling_element(OpenDocument *document,
+                                                 pugi::xml_node node) {
   for (pugi::xml_node next_sibling = node.next_sibling(); next_sibling;
        next_sibling = next_sibling.next_sibling()) {
-    if (auto result = create_default_element(next_sibling, document)) {
+    if (auto result = create_default_element(document, next_sibling)) {
       return result;
     }
   }
@@ -67,23 +67,23 @@ std::unordered_map<ElementProperty, std::any> fetch_properties(
 }
 
 template <typename Derived>
-odr::Element construct_default(pugi::xml_node node, OpenDocument *document) {
-  return odr::Element(Derived(node, document));
+odr::Element construct_default(OpenDocument *document, pugi::xml_node node) {
+  return odr::Element(Derived(document, node));
 };
 
 template <typename Derived>
-odr::Element construct_default_optional(pugi::xml_node node,
-                                        OpenDocument *document) {
+odr::Element construct_default_optional(OpenDocument *document,
+                                        pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  return odr::Element(Derived(node, document));
+  return odr::Element(Derived(document, node));
 };
 
 template <typename Derived, ElementType element_type>
 class DefaultElement : public abstract::Element {
 public:
-  DefaultElement(pugi::xml_node node, OpenDocument *document)
+  DefaultElement(OpenDocument *document, pugi::xml_node node)
       : m_node{node}, m_document{document} {}
 
   bool operator==(const abstract::Element &rhs) const final {
@@ -101,19 +101,19 @@ public:
   }
 
   [[nodiscard]] odr::Element parent() const override {
-    return create_default_parent_element(m_node, m_document);
+    return create_default_parent_element(m_document, m_node);
   }
 
   [[nodiscard]] odr::Element first_child() const override {
-    return create_default_first_child_element(m_node, m_document);
+    return create_default_first_child_element(m_document, m_node);
   }
 
   [[nodiscard]] odr::Element previous_sibling() const override {
-    return create_default_previous_sibling_element(m_node, m_document);
+    return create_default_previous_sibling_element(m_document, m_node);
   }
 
   [[nodiscard]] odr::Element next_sibling() const override {
-    return create_default_next_sibling_element(m_node, m_document);
+    return create_default_next_sibling_element(m_document, m_node);
   }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
@@ -134,8 +134,8 @@ class TableCell;
 template <typename Derived>
 class RootBase : public DefaultElement<Derived, ElementType::ROOT> {
 public:
-  RootBase(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement<Derived, ElementType::ROOT>{node, document} {}
+  RootBase(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement<Derived, ElementType::ROOT>{document, node} {}
 
   [[nodiscard]] odr::Element parent() const final { return {}; }
 
@@ -146,8 +146,8 @@ public:
 
 class TextDocumentRoot final : public RootBase<TextDocumentRoot> {
 public:
-  TextDocumentRoot(pugi::xml_node node, OpenDocument *document)
-      : RootBase{node, document} {}
+  TextDocumentRoot(OpenDocument *document, pugi::xml_node node)
+      : RootBase{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -157,50 +157,50 @@ public:
 
 class PresentationRoot : public RootBase<PresentationRoot> {
 public:
-  PresentationRoot(pugi::xml_node node, OpenDocument *document)
-      : RootBase{node, document} {}
+  PresentationRoot(OpenDocument *document, pugi::xml_node node)
+      : RootBase{document, node} {}
 
   [[nodiscard]] odr::Element first_child() const final {
-    return construct_default_optional<Slide>(m_node.child("draw:page"),
-                                             m_document);
+    return construct_default_optional<Slide>(m_document,
+                                             m_node.child("draw:page"));
   }
 };
 
 class SpreadsheetRoot : public RootBase<SpreadsheetRoot> {
 public:
-  SpreadsheetRoot(pugi::xml_node node, OpenDocument *document)
-      : RootBase{node, document} {}
+  SpreadsheetRoot(OpenDocument *document, pugi::xml_node node)
+      : RootBase{document, node} {}
 
   [[nodiscard]] odr::Element first_child() const final {
-    return construct_default_optional<Sheet>(m_node.child("table:table"),
-                                             m_document);
+    return construct_default_optional<Sheet>(m_document,
+                                             m_node.child("table:table"));
   }
 };
 
 class DrawingRoot : public RootBase<DrawingRoot> {
 public:
-  DrawingRoot(pugi::xml_node node, OpenDocument *document)
-      : RootBase{node, document} {}
+  DrawingRoot(OpenDocument *document, pugi::xml_node node)
+      : RootBase{document, node} {}
 
   [[nodiscard]] odr::Element first_child() const final {
-    return construct_default_optional<Sheet>(m_node.child("draw:page"),
-                                             m_document);
+    return construct_default_optional<Sheet>(m_document,
+                                             m_node.child("draw:page"));
   }
 };
 
 class Slide : public DefaultElement<Slide, ElementType::SLIDE> {
 public:
-  Slide(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Slide(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] odr::Element previous_sibling() const final {
     return construct_default_optional<Slide>(
-        m_node.previous_sibling("draw:page"), m_document);
+        m_document, m_node.previous_sibling("draw:page"));
   }
 
   [[nodiscard]] odr::Element next_sibling() const final {
-    return construct_default_optional<Slide>(m_node.next_sibling("draw:page"),
-                                             m_document);
+    return construct_default_optional<Slide>(m_document,
+                                             m_node.next_sibling("draw:page"));
   }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
@@ -216,19 +216,19 @@ public:
 
 class Sheet : public DefaultElement<Sheet, ElementType::SHEET> {
 public:
-  Sheet(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Sheet(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   // TODO first child
 
   [[nodiscard]] odr::Element previous_sibling() const final {
     return construct_default_optional<Sheet>(
-        m_node.previous_sibling("table:table"), m_document);
+        m_document, m_node.previous_sibling("table:table"));
   }
 
   [[nodiscard]] odr::Element next_sibling() const final {
-    return construct_default_optional<Sheet>(m_node.next_sibling("table:table"),
-                                             m_document);
+    return construct_default_optional<Sheet>(
+        m_document, m_node.next_sibling("table:table"));
   }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
@@ -242,17 +242,17 @@ public:
 
 class Page final : public DefaultElement<Page, ElementType::PAGE> {
 public:
-  Page(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Page(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] odr::Element previous_sibling() const final {
-    return construct_default<Page>(m_node.previous_sibling("draw:page"),
-                                   m_document);
+    return construct_default<Page>(m_document,
+                                   m_node.previous_sibling("draw:page"));
   }
 
   [[nodiscard]] odr::Element next_sibling() const final {
-    return construct_default<Page>(m_node.next_sibling("draw:page"),
-                                   m_document);
+    return construct_default<Page>(m_document,
+                                   m_node.next_sibling("draw:page"));
   }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
@@ -269,8 +269,8 @@ public:
 class Paragraph final
     : public DefaultElement<Paragraph, ElementType::PARAGRAPH> {
 public:
-  Paragraph(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Paragraph(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -283,8 +283,8 @@ public:
 
 class Span final : public DefaultElement<Span, ElementType::SPAN> {
 public:
-  Span(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Span(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -297,21 +297,21 @@ public:
 
 class Text final : public DefaultElement<Text, ElementType::TEXT> {
 public:
-  Text(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Text(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 };
 
 class LineBreak final
     : public DefaultElement<LineBreak, ElementType::LINE_BREAK> {
 public:
-  LineBreak(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  LineBreak(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 };
 
 class Link final : public DefaultElement<Link, ElementType::LINK> {
 public:
-  Link(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Link(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -325,8 +325,8 @@ public:
 
 class Bookmark final : public DefaultElement<Bookmark, ElementType::BOOKMARK> {
 public:
-  Bookmark(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Bookmark(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -339,21 +339,21 @@ public:
 
 class List final : public DefaultElement<List, ElementType::LIST> {
 public:
-  List(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  List(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 };
 
 class ListItem final : public DefaultElement<ListItem, ElementType::LIST_ITEM> {
 public:
-  ListItem(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  ListItem(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 };
 
 class TableElement final
     : public DefaultElement<TableElement, ElementType::TABLE> {
 public:
-  TableElement(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  TableElement(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -367,23 +367,23 @@ public:
 class TableColumn final
     : public DefaultElement<TableColumn, ElementType::TABLE_COLUMN> {
 public:
-  TableColumn(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  TableColumn(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   odr::Element parent() const final {
-    return construct_default<TableElement>(m_node.parent(), m_document);
+    return construct_default<TableElement>(m_document, m_node.parent());
   }
 
   odr::Element first_child() const final { return {}; }
 
   [[nodiscard]] odr::Element previous_sibling() const final {
     return construct_default_optional<TableColumn>(
-        m_node.previous_sibling("table:table-column"), m_document);
+        m_document, m_node.previous_sibling("table:table-column"));
   }
 
   [[nodiscard]] odr::Element next_sibling() const final {
     return construct_default_optional<TableColumn>(
-        m_node.next_sibling("table:table-column"), m_document);
+        m_document, m_node.next_sibling("table:table-column"));
   }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
@@ -399,26 +399,26 @@ public:
 
 class TableRow final : public DefaultElement<TableRow, ElementType::TABLE_ROW> {
 public:
-  TableRow(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  TableRow(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   odr::Element parent() const final {
-    return construct_default<TableElement>(m_node.parent(), m_document);
+    return construct_default<TableElement>(m_document, m_node.parent());
   }
 
   odr::Element first_child() const final {
-    return construct_default<TableCell>(m_node.child("table:table-cell"),
-                                        m_document);
+    return construct_default<TableCell>(m_document,
+                                        m_node.child("table:table-cell"));
   }
 
   [[nodiscard]] odr::Element previous_sibling() const final {
     return construct_default_optional<TableCell>(
-        m_node.previous_sibling("table:table-row"), m_document);
+        m_document, m_node.previous_sibling("table:table-row"));
   }
 
   [[nodiscard]] odr::Element next_sibling() const final {
     return construct_default_optional<TableCell>(
-        m_node.next_sibling("table:table-row"), m_document);
+        m_document, m_node.next_sibling("table:table-row"));
   }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
@@ -434,21 +434,21 @@ public:
 class TableCell final
     : public DefaultElement<TableCell, ElementType::TABLE_CELL> {
 public:
-  TableCell(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  TableCell(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   odr::Element parent() const final {
-    return construct_default<TableRow>(m_node.parent(), m_document);
+    return construct_default<TableRow>(m_document, m_node.parent());
   }
 
   [[nodiscard]] odr::Element previous_sibling() const final {
     return construct_default_optional<TableCell>(
-        m_node.previous_sibling("table:table-cell"), m_document);
+        m_document, m_node.previous_sibling("table:table-cell"));
   }
 
   [[nodiscard]] odr::Element next_sibling() const final {
     return construct_default_optional<TableCell>(
-        m_node.next_sibling("table:table-cell"), m_document);
+        m_document, m_node.next_sibling("table:table-cell"));
   }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
@@ -466,8 +466,8 @@ public:
 
 class Frame final : public DefaultElement<Frame, ElementType::FRAME> {
 public:
-  Frame(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Frame(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -485,8 +485,8 @@ public:
 
 class Image final : public DefaultElement<Image, ElementType::IMAGE> {
 public:
-  Image(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Image(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -499,8 +499,8 @@ public:
 
 class Rect final : public DefaultElement<Rect, ElementType::RECT> {
 public:
-  Rect(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Rect(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -517,8 +517,8 @@ public:
 
 class Line final : public DefaultElement<Line, ElementType::LINE> {
 public:
-  Line(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Line(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -535,8 +535,8 @@ public:
 
 class Circle final : public DefaultElement<Circle, ElementType::CIRCLE> {
 public:
-  Circle(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Circle(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -554,8 +554,8 @@ public:
 class CustomShape final
     : public DefaultElement<CustomShape, ElementType::CUSTOM_SHAPE> {
 public:
-  CustomShape(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  CustomShape(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const final {
@@ -572,8 +572,8 @@ public:
 
 class Group final : public DefaultElement<Group, ElementType::GROUP> {
 public:
-  Group(pugi::xml_node node, OpenDocument *document)
-      : DefaultElement{node, document} {}
+  Group(OpenDocument *document, pugi::xml_node node)
+      : DefaultElement{document, node} {}
 };
 
 } // namespace
@@ -582,10 +582,10 @@ public:
 
 namespace odr::internal {
 
-odr::Element odf::create_default_element(pugi::xml_node node,
-                                         OpenDocument *document) {
+odr::Element odf::create_default_element(OpenDocument *document,
+                                         pugi::xml_node node) {
   using Constructor =
-      std::function<odr::Element(pugi::xml_node, OpenDocument *)>;
+      std::function<odr::Element(OpenDocument *, pugi::xml_node)>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
       {"office:text", construct_default<TextDocumentRoot>},
@@ -621,12 +621,12 @@ odr::Element odf::create_default_element(pugi::xml_node node,
   };
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {
-    return construct_default<Text>(node, document);
+    return construct_default<Text>(document, node);
   }
 
   if (auto constructor_it = constructor_table.find(node.name());
       constructor_it != std::end(constructor_table)) {
-    return constructor_it->second(node, document);
+    return constructor_it->second(document, node);
   }
 
   return {};

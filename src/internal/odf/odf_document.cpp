@@ -3,7 +3,7 @@
 #include <internal/common/file.h>
 #include <internal/common/path.h>
 #include <internal/odf/odf_document.h>
-#include <internal/odf/odf_table.h>
+#include <internal/odf/odf_sheet.h>
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
@@ -88,5 +88,11 @@ OpenDocument::files() const noexcept {
 }
 
 odr::Element OpenDocument::root_element() const { return m_root; }
+
+OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
+    std::shared_ptr<abstract::ReadableFilesystem> files)
+    : OpenDocument{DocumentType::SPREADSHEET, std::move(files)} {
+  // TODO index sheets
+}
 
 } // namespace odr::internal::odf

@@ -103,11 +103,58 @@ public:
   [[nodiscard]] virtual odr::Element first_row() const = 0;
 };
 
+class FrameElement : public Element {
+  [[nodiscard]] ElementType type() const final;
+
+  [[nodiscard]] virtual std::string anchor_type() const = 0;
+  [[nodiscard]] virtual std::string x() const = 0;
+  [[nodiscard]] virtual std::string y() const = 0;
+  [[nodiscard]] virtual std::string width() const = 0;
+  [[nodiscard]] virtual std::string height() const = 0;
+  [[nodiscard]] virtual std::string z_index() const = 0;
+};
+
 class ImageElement : public Element {
 public:
   [[nodiscard]] ElementType type() const final;
 
   [[nodiscard]] virtual odr::File file() const = 0;
+};
+
+class RectElement : public Element {
+  [[nodiscard]] ElementType type() const final;
+
+  [[nodiscard]] virtual std::string x() const = 0;
+  [[nodiscard]] virtual std::string y() const = 0;
+  [[nodiscard]] virtual std::string width() const = 0;
+  [[nodiscard]] virtual std::string height() const = 0;
+};
+
+class LineElement : public Element {
+  [[nodiscard]] ElementType type() const final;
+
+  [[nodiscard]] virtual std::string x1() const = 0;
+  [[nodiscard]] virtual std::string y1() const = 0;
+  [[nodiscard]] virtual std::string x2() const = 0;
+  [[nodiscard]] virtual std::string y2() const = 0;
+};
+
+class CircleElement : public Element {
+  [[nodiscard]] ElementType type() const final;
+
+  [[nodiscard]] virtual std::string x() const = 0;
+  [[nodiscard]] virtual std::string y() const = 0;
+  [[nodiscard]] virtual std::string width() const = 0;
+  [[nodiscard]] virtual std::string height() const = 0;
+};
+
+class CustomShapeElement : public Element {
+  [[nodiscard]] ElementType type() const final;
+
+  [[nodiscard]] virtual std::string x() const = 0;
+  [[nodiscard]] virtual std::string y() const = 0;
+  [[nodiscard]] virtual std::string width() const = 0;
+  [[nodiscard]] virtual std::string height() const = 0;
 };
 
 } // namespace odr::internal::abstract

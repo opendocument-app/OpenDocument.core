@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_ODF_TABLE_H
-#define ODR_INTERNAL_ODF_TABLE_H
+#ifndef ODR_INTERNAL_ODF_SHEET_H
+#define ODR_INTERNAL_ODF_SHEET_H
 
 #include <internal/common/table_range.h>
 #include <internal/odf/odf_element.h>
@@ -11,9 +11,9 @@ namespace odr::internal::odf {
 class OpenDocument;
 class Style;
 
-class Table : public abstract::Table {
+class Sheet : public abstract::Sheet {
 public:
-  Table(OpenDocument &document, odf::TableElement element);
+  Sheet(pugi::xml_node node, OpenDocumentSpreadsheet *document);
 
   [[nodiscard]] TableDimensions dimensions() const final;
 
@@ -30,21 +30,21 @@ public:
 
 private:
   struct Column {
-    odf::TableColumnElement element;
+    pugi::xml_node node;
   };
 
   struct Cell {
-    odf::TableCellElement element;
+    pugi::xml_node node;
     std::uint32_t rowspan{1};
     std::uint32_t colspan{1};
   };
 
   struct Row {
-    odf::TableRowElement element;
+    pugi::xml_node node;
     std::map<std::uint32_t, Cell> cells;
   };
 
-  OpenDocument &m_document;
+  OpenDocumentSpreadsheet *m_document;
 
   TableDimensions m_dimensions;
   common::TableRange m_content_bounds;
@@ -52,7 +52,7 @@ private:
   std::map<std::uint32_t, Column> m_columns;
   std::map<std::uint32_t, Row> m_rows;
 
-  void register_(odf::TableElement element);
+  void register_(pugi::xml_node node);
 
   [[nodiscard]] const Column *column_(std::uint32_t column) const;
   [[nodiscard]] const Row *row_(std::uint32_t row) const;
@@ -62,4 +62,4 @@ private:
 
 } // namespace odr::internal::odf
 
-#endif // ODR_INTERNAL_ODF_TABLE_H
+#endif // ODR_INTERNAL_ODF_SHEET_H

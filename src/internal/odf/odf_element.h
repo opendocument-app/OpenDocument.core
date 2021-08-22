@@ -11,8 +11,8 @@
 
 namespace odr::internal::odf {
 
-odr::Element create_default_element(pugi::xml_node node,
-                                    OpenDocument *document);
+odr::Element create_default_element(OpenDocument *document,
+                                    pugi::xml_node node);
 
 } // namespace odr::internal::odf
 
