@@ -15,15 +15,9 @@ public:
 
   template <typename Derived, typename = typename std::enable_if<
                                   std::is_base_of<Thing, Derived>::value>::type>
-  explicit AnyThing(Derived &derived)
-      : m_thing{&derived}, m_info{Info<Derived>::instance()}, m_ownership{
-                                                                  false} {}
-
-  template <typename Derived, typename = typename std::enable_if<
-                                  std::is_base_of<Thing, Derived>::value>::type>
-  explicit AnyThing(Derived &&derived)
-      : m_thing{new Derived(derived)}, m_info{Info<Derived>::instance()},
-        m_ownership{true} {}
+  explicit AnyThing(Derived derived)
+      : m_thing{new Derived(std::move(derived))},
+        m_info{Info<Derived>::instance()}, m_ownership{true} {}
 
   ~AnyThing() {
     if (m_ownership) {

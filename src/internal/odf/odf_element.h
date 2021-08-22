@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_ODF_ELEMENT_H
 
 #include <any>
+#include <internal/abstract/element.h>
 #include <memory>
 #include <odr/document.h>
 #include <odr/element.h>
@@ -9,6 +10,14 @@
 #include <unordered_map>
 
 namespace odr::internal::odf {
+
+odr::Element create_text_document_root(pugi::xml_node node,
+                                       OpenDocument *document);
+odr::Element create_presentation_root(pugi::xml_node node,
+                                      OpenDocument *document);
+odr::Element create_spreadsheet_root(pugi::xml_node node,
+                                     OpenDocument *document);
+odr::Element create_drawing_root(pugi::xml_node node, OpenDocument *document);
 
 class ElementAdapter;
 

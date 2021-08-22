@@ -173,12 +173,7 @@ public:
   template <typename Derived,
             typename = typename std::enable_if<std::is_base_of<
                 internal::abstract::Element, Derived>::value>::type>
-  explicit Element(Derived &derived) : Base{derived} {}
-
-  template <typename Derived,
-            typename = typename std::enable_if<std::is_base_of<
-                internal::abstract::Element, Derived>::value>::type>
-  explicit Element(Derived &&derived) : Base{derived} {}
+  explicit Element(Derived derived) : Base{std::move(derived)} {}
 
   [[nodiscard]] ElementType type() const;
 

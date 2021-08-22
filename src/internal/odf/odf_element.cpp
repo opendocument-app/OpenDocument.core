@@ -5,6 +5,75 @@
 
 namespace odr::internal::odf {
 
+template <ElementType element_type>
+class DefaultElement : public abstract::Element {
+public:
+  [[nodiscard]] ElementType type() const final { return element_type; }
+};
+
+class ElementImpl : public abstract::Element {
+public:
+  bool operator==(const abstract::Element &rhs) const override;
+  bool operator!=(const abstract::Element &rhs) const override;
+
+  [[nodiscard]] ElementType type() const override;
+
+  [[nodiscard]] odr::Element copy() const override;
+
+  [[nodiscard]] odr::Element parent() const override;
+  [[nodiscard]] odr::Element first_child() const override;
+  [[nodiscard]] odr::Element previous_sibling() const override;
+  [[nodiscard]] odr::Element next_sibling() const override;
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties() const override;
+
+private:
+  pugi::xml_node m_node;
+  OpenDocument *m_document;
+
+  ElementImpl(pugi::xml_node node, OpenDocument *document);
+};
+
+ElementImpl::ElementImpl(pugi::xml_node node, OpenDocument *document)
+    : m_node{node}, m_document{document} {}
+
+class RootBase : public ElementImpl {
+public:
+  [[nodiscard]] ElementType type() const final { return ElementType::ROOT; }
+
+  [[nodiscard]] odr::Element parent() const final { return {}; }
+
+  [[nodiscard]] odr::Element previous_sibling() const final { return {}; }
+
+  [[nodiscard]] odr::Element next_sibling() const final { return {}; }
+};
+
+class TextDocumentRoot final : public RootBase {
+public:
+  [[nodiscard]] odr::Element copy() const final { return odr::Element(*this); }
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties() const final {
+    return {}; // TODO
+  }
+};
+
+class PresentationRoot : public RootBase {
+public:
+  [[nodiscard]] odr::Element copy() const final { return odr::Element(*this); }
+};
+
+class SpreadsheetRoot : public RootBase {
+public:
+  [[nodiscard]] odr::Element copy() const final { return odr::Element(*this); }
+};
+
+class DrawingRoot : public RootBase {
+public:
+  [[nodiscard]] odr::Element copy() const final { return odr::Element(*this); }
+};
+
 namespace {
 ElementAdapter *slide_adapter();
 ElementAdapter *sheet_adapter();

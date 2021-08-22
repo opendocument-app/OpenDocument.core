@@ -31,6 +31,7 @@ add_library(odr-object OBJECT
         src/open_strategy.cpp
         src/table.cpp
 
+        src/internal/abstract/element.cpp
         src/internal/abstract/file.cpp
 
         src/internal/cfb/cfb_archive.cpp
@@ -38,7 +39,6 @@ add_library(odr-object OBJECT
         src/internal/cfb/cfb_util.cpp
 
         src/internal/common/constants.cpp
-        src/internal/common/element.cpp
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
         src/internal/common/html.cpp

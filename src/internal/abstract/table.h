@@ -14,9 +14,19 @@ class TableRange;
 
 namespace odr::internal::abstract {
 
-class Table {
+class DenseTable {
 public:
-  virtual ~Table() = default;
+  virtual ~DenseTable() = default;
+
+  [[nodiscard]] virtual TableDimensions dimensions() const = 0;
+
+  [[nodiscard]] virtual odr::Element first_column() const = 0;
+  [[nodiscard]] virtual odr::Element first_row() const = 0;
+};
+
+class SparseTable {
+public:
+  virtual ~SparseTable() = default;
 
   [[nodiscard]] virtual TableDimensions dimensions() const = 0;
 
@@ -25,9 +35,7 @@ public:
   content_bounds(common::TableRange within) const = 0;
 
   [[nodiscard]] virtual odr::Element column(std::uint32_t column) const = 0;
-
   [[nodiscard]] virtual odr::Element row(std::uint32_t row) const = 0;
-
   [[nodiscard]] virtual odr::Element cell(std::uint32_t row,
                                           std::uint32_t column) const = 0;
 };
