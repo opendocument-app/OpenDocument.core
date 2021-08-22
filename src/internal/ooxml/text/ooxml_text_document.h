@@ -2,8 +2,8 @@
 #define ODR_INTERNAL_OOXML_TEXT_DOCUMENT_H
 
 #include <internal/abstract/document.h>
-#include <internal/common/element.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
+#include <odr/element.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 

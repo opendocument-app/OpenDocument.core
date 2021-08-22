@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_OOXML_WORKBOOK_H
 
 #include <internal/abstract/document.h>
-#include <internal/common/element.h>
+#include <odr/element.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml {

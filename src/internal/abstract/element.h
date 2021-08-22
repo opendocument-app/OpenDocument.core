@@ -12,8 +12,13 @@ enum class ElementType;
 enum class ElementProperty;
 
 class Element;
-class Table;
+
+struct TableDimensions;
 } // namespace odr
+
+namespace odr::internal::common {
+class TableRange;
+} // namespace odr::internal::common
 
 namespace odr::internal::abstract {
 
@@ -37,6 +42,36 @@ public:
   properties() const = 0;
 };
 
+class Slide : public Element {
+  [[nodiscard]] ElementType type() const final;
+
+  [[nodiscard]] virtual std::string name() const = 0;
+  [[nodiscard]] virtual std::string notes() const = 0;
+};
+
+class Sheet : public Element {
+public:
+  [[nodiscard]] ElementType type() const final;
+
+  [[nodiscard]] virtual std::string name() const = 0;
+  [[nodiscard]] virtual TableDimensions dimensions() const = 0;
+
+  [[nodiscard]] virtual common::TableRange content_bounds() const = 0;
+  [[nodiscard]] virtual common::TableRange
+  content_bounds(common::TableRange within) const = 0;
+
+  [[nodiscard]] virtual odr::Element column(std::uint32_t column) const = 0;
+  [[nodiscard]] virtual odr::Element row(std::uint32_t row) const = 0;
+  [[nodiscard]] virtual odr::Element cell(std::uint32_t row,
+                                          std::uint32_t column) const = 0;
+};
+
+class Page : public Element {
+  [[nodiscard]] ElementType type() const final;
+
+  [[nodiscard]] virtual std::string name() const = 0;
+};
+
 class TextElement : public Element {
 public:
   [[nodiscard]] ElementType type() const final;
@@ -44,18 +79,28 @@ public:
   [[nodiscard]] virtual std::string text() const = 0;
 };
 
-class DenseTableElement : public Element {
+class LinkElement : public Element {
 public:
   [[nodiscard]] ElementType type() const final;
 
-  [[nodiscard]] virtual odr::Table table() const = 0;
+  [[nodiscard]] virtual std::string href() const = 0;
 };
 
-class SparseTableElement : public Element {
+class BookmarkElement : public Element {
 public:
   [[nodiscard]] ElementType type() const final;
 
-  [[nodiscard]] virtual odr::Table table() const = 0;
+  [[nodiscard]] virtual std::string name() const = 0;
+};
+
+class TableElement : public Element {
+public:
+  [[nodiscard]] ElementType type() const final;
+
+  [[nodiscard]] virtual TableDimensions dimensions() const = 0;
+
+  [[nodiscard]] virtual odr::Element first_column() const = 0;
+  [[nodiscard]] virtual odr::Element first_row() const = 0;
 };
 
 class ImageElement : public Element {

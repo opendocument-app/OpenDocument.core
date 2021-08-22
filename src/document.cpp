@@ -1,7 +1,6 @@
 #include <internal/abstract/document.h>
 #include <internal/abstract/element.h>
 #include <internal/abstract/filesystem.h>
-#include <internal/abstract/table.h>
 #include <internal/common/path.h>
 #include <internal/common/table_range.h>
 #include <odr/document.h>

@@ -3,7 +3,6 @@
 #include <internal/util/map_util.h>
 #include <odr/element.h>
 #include <odr/file.h>
-#include <odr/table.h>
 #include <stdexcept>
 
 namespace odr {
@@ -41,6 +40,12 @@ std::optional<std::string> property_value_to_string(const std::any &value) {
   throw std::runtime_error("conversion to string failed");
 }
 } // namespace
+
+TableDimensions::TableDimensions() = default;
+
+TableDimensions::TableDimensions(const std::uint32_t rows,
+                                 const std::uint32_t columns)
+    : rows{rows}, columns{columns} {}
 
 Element::Element() = default;
 

@@ -1,6 +1,5 @@
 #include <fstream>
 #include <internal/abstract/filesystem.h>
-#include <internal/common/element.h>
 #include <internal/common/file.h>
 #include <internal/common/path.h>
 #include <internal/odf/odf_document.h>
@@ -27,8 +26,9 @@ OpenDocument::OpenDocument(
   m_style =
       Style(m_content_xml.document_element(), m_styles_xml.document_element());
 
-  m_root = odr::Element(common::Element<odf::Element>(odf::Element(
-      m_content_xml.document_element().child("office:body").first_child())));
+  m_root = create_default_element(
+      m_content_xml.document_element().child("office:body").first_child(),
+      this);
 }
 
 bool OpenDocument::editable() const noexcept { return true; }

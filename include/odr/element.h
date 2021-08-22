@@ -6,7 +6,6 @@
 #include <memory>
 #include <odr/any_thing.h>
 #include <odr/property.h>
-#include <odr/table.h>
 #include <string>
 #include <unordered_map>
 
@@ -164,6 +163,14 @@ enum class ElementProperty {
   STROKE_COLOR,
   FILL_COLOR,
   VERTICAL_ALIGN,
+};
+
+struct TableDimensions {
+  std::uint32_t rows{0};
+  std::uint32_t columns{0};
+
+  TableDimensions();
+  TableDimensions(std::uint32_t rows, std::uint32_t columns);
 };
 
 class Element : public AnyThing<internal::abstract::Element> {
@@ -380,8 +387,6 @@ public:
 private:
   TableElement();
   explicit TableElement(const Element &element);
-
-  Table m_table;
 
   friend Element;
   friend Sheet;
