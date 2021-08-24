@@ -1,11 +1,15 @@
 #ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 
+#include <any>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace odr {
 enum class DocumentType;
-class Element;
+enum class ElementType;
+enum class ElementProperty;
 } // namespace odr
 
 namespace odr::internal::common {
@@ -16,6 +20,27 @@ namespace odr::internal::abstract {
 class File;
 class ReadableFilesystem;
 class Table;
+
+class DocumentCursor {
+  virtual ~DocumentCursor() = default;
+
+  virtual bool operator==(const DocumentCursor &rhs) const = 0;
+  virtual bool operator!=(const DocumentCursor &rhs) const = 0;
+
+  [[nodiscard]] virtual std::unique_ptr<DocumentCursor> copy() const = 0;
+
+  [[nodiscard]] virtual std::string document_path() const = 0;
+
+  [[nodiscard]] virtual ElementType type() const = 0;
+
+  virtual bool parent() = 0;
+  virtual bool first_child() = 0;
+  virtual bool previous_sibling() = 0;
+  virtual bool next_sibling() = 0;
+
+  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
+  properties() const = 0;
+};
 
 class Document {
 public:
@@ -41,8 +66,9 @@ public:
   [[nodiscard]] virtual std::shared_ptr<ReadableFilesystem>
   files() const noexcept = 0;
 
-  /// \return the root element of the document.
-  [[nodiscard]] virtual odr::Element root_element() const = 0;
+  /// \return cursor to the root element of the document.
+  [[nodiscard]] virtual std::unique_ptr<DocumentCursor>
+  root_element() const = 0;
 };
 
 } // namespace odr::internal::abstract

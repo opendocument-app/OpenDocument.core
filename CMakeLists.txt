@@ -30,7 +30,6 @@ add_library(odr-object OBJECT
         src/open_document_reader.cpp
         src/open_strategy.cpp
 
-        src/internal/abstract/element.cpp
         src/internal/abstract/file.cpp
 
         src/internal/cfb/cfb_archive.cpp
