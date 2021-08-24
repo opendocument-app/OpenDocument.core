@@ -183,8 +183,8 @@ public:
       : RootBase{document, node} {}
 
   [[nodiscard]] odr::Element first_child() const final {
-    return construct_default_optional<Sheet>(m_document,
-                                             m_node.child("draw:page"));
+    return construct_default_optional<Page>(m_document,
+                                            m_node.child("draw:page"));
   }
 };
 
