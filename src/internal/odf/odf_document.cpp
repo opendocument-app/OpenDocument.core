@@ -13,6 +13,52 @@
 
 namespace odr::internal::odf {
 
+namespace {
+class DocumentCursor final : public abstract::DocumentCursor {
+public:
+  bool operator==(const abstract::DocumentCursor &rhs) const final {
+    return false; // TODO
+  }
+
+  bool operator!=(const abstract::DocumentCursor &rhs) const final {
+    return true; // TODO
+  }
+
+  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor> copy() const final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::string document_path() const final {
+    return ""; // TODO
+  }
+
+  [[nodiscard]] ElementType type() const final {
+    return ElementType::NONE; // TODO
+  }
+
+  bool parent() final {
+    return false; // TODO
+  }
+
+  bool first_child() final {
+    return false; // TODO
+  }
+
+  bool previous_sibling() final {
+    return false; // TODO
+  }
+
+  bool next_sibling() final {
+    return false; // TODO
+  }
+
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties() const final {
+    return {}; // TODO
+  }
+};
+} // namespace
+
 OpenDocument::OpenDocument(
     const DocumentType document_type,
     std::shared_ptr<abstract::ReadableFilesystem> filesystem)
@@ -25,10 +71,6 @@ OpenDocument::OpenDocument(
 
   m_style =
       Style(m_content_xml.document_element(), m_styles_xml.document_element());
-
-  m_root = create_default_element(
-      m_content_xml.document_element().child("office:body").first_child(),
-      this);
 }
 
 bool OpenDocument::editable() const noexcept { return true; }
@@ -87,12 +129,8 @@ OpenDocument::files() const noexcept {
   return m_filesystem;
 }
 
-odr::Element OpenDocument::root_element() const { return m_root; }
-
-OpenDocumentSpreadsheet::OpenDocumentSpreadsheet(
-    std::shared_ptr<abstract::ReadableFilesystem> files)
-    : OpenDocument{DocumentType::SPREADSHEET, std::move(files)} {
-  // TODO index sheets
+std::unique_ptr<abstract::DocumentCursor> OpenDocument::root_element() const {
+  return {}; // TODO
 }
 
 } // namespace odr::internal::odf

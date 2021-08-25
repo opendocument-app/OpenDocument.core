@@ -7,7 +7,6 @@
 #include <pugixml.hpp>
 
 namespace odr::internal::odf {
-class Table;
 
 class OpenDocument : public abstract::Document {
 public:
@@ -24,7 +23,8 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] odr::Element root_element() const final;
+  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
+  root_element() const final;
 
 protected:
   DocumentType m_document_type;
@@ -35,16 +35,6 @@ protected:
   pugi::xml_document m_styles_xml;
 
   Style m_style;
-
-  odr::Element m_root;
-};
-
-class OpenDocumentSpreadsheet : public OpenDocument {
-public:
-  explicit OpenDocumentSpreadsheet(
-      std::shared_ptr<abstract::ReadableFilesystem> files);
-
-private:
 };
 
 } // namespace odr::internal::odf

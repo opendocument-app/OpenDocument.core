@@ -22,6 +22,7 @@ class ReadableFilesystem;
 class Table;
 
 class DocumentCursor {
+public:
   virtual ~DocumentCursor() = default;
 
   virtual bool operator==(const DocumentCursor &rhs) const = 0;
