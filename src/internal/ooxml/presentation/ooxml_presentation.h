@@ -2,7 +2,6 @@
 #define ODR_INTERNAL_OOXML_PRESENTATION_H
 
 #include <internal/abstract/document.h>
-#include <odr/element.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml {
@@ -22,12 +21,11 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] odr::Element root_element() const final;
+  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
+  root_element() const final;
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
-
-  odr::Element m_root;
 };
 
 } // namespace odr::internal::ooxml

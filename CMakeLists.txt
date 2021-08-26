@@ -22,7 +22,6 @@ target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-object OBJECT
         src/document.cpp
-        src/element.cpp
         src/exceptions.cpp
         src/file.cpp
         src/file_no_except.cpp
@@ -37,6 +36,7 @@ add_library(odr-object OBJECT
         src/internal/cfb/cfb_util.cpp
 
         src/internal/common/constants.cpp
+        src/internal/common/document_cursor.cpp
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
         src/internal/common/html.cpp
@@ -50,12 +50,10 @@ add_library(odr-object OBJECT
         src/internal/odf/odf_crypto.cpp
         src/internal/odf/odf_cursor.cpp
         src/internal/odf/odf_document.cpp
-        src/internal/odf/odf_element.cpp
         src/internal/odf/odf_file.cpp
         src/internal/odf/odf_manifest.cpp
         src/internal/odf/odf_meta.cpp
         src/internal/odf/odf_style.cpp
-        src/internal/odf/odf_sheet.cpp
 
         src/internal/oldms/oldms_file.cpp
 

@@ -3,61 +3,15 @@
 #include <internal/common/file.h>
 #include <internal/common/path.h>
 #include <internal/odf/odf_document.h>
-#include <internal/odf/odf_sheet.h>
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
+#include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <unordered_map>
 #include <utility>
 
 namespace odr::internal::odf {
-
-namespace {
-class DocumentCursor final : public abstract::DocumentCursor {
-public:
-  bool operator==(const abstract::DocumentCursor &rhs) const final {
-    return false; // TODO
-  }
-
-  bool operator!=(const abstract::DocumentCursor &rhs) const final {
-    return true; // TODO
-  }
-
-  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor> copy() const final {
-    return {}; // TODO
-  }
-
-  [[nodiscard]] std::string document_path() const final {
-    return ""; // TODO
-  }
-
-  [[nodiscard]] ElementType type() const final {
-    return ElementType::NONE; // TODO
-  }
-
-  bool parent() final {
-    return false; // TODO
-  }
-
-  bool first_child() final {
-    return false; // TODO
-  }
-
-  bool previous_sibling() final {
-    return false; // TODO
-  }
-
-  bool next_sibling() final {
-    return false; // TODO
-  }
-
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  properties() const final {
-    return {}; // TODO
-  }
-};
-} // namespace
 
 OpenDocument::OpenDocument(
     const DocumentType document_type,

@@ -2,7 +2,6 @@
 #define ODR_INTERNAL_ODF_DOCUMENT_H
 
 #include <internal/abstract/document.h>
-#include <internal/odf/odf_element.h>
 #include <internal/odf/odf_style.h>
 #include <pugixml.hpp>
 

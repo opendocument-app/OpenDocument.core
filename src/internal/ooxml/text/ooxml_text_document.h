@@ -3,7 +3,6 @@
 
 #include <internal/abstract/document.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
-#include <odr/element.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 
@@ -31,7 +30,8 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] odr::Element root_element() const final;
+  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
+  root_element() const final;
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
@@ -40,8 +40,6 @@ private:
   pugi::xml_document m_styles_xml;
 
   OfficeOpenXmlTextStyle m_style;
-
-  odr::Element m_root;
 };
 
 } // namespace odr::internal::ooxml

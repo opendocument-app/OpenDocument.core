@@ -4,7 +4,6 @@
 #include <any>
 #include <memory>
 #include <odr/document.h>
-#include <odr/element.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 
@@ -13,8 +12,6 @@ namespace odr::internal::ooxml::text {
 class ElementAdapter;
 
 class Element;
-
-using ElementRange = ElementRangeTemplate<Element>;
 
 class Element final {
 public:
@@ -35,8 +32,6 @@ public:
   [[nodiscard]] Element first_child() const;
   [[nodiscard]] Element previous_sibling() const;
   [[nodiscard]] Element next_sibling() const;
-
-  [[nodiscard]] ElementRange children() const;
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties() const;

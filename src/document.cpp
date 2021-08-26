@@ -1,14 +1,46 @@
 #include <internal/abstract/document.h>
-#include <internal/abstract/element.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/common/table_range.h>
 #include <odr/document.h>
-#include <odr/element.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 
 namespace odr {
+
+namespace {
+std::optional<bool> property_value_to_bool(const std::any &value) {
+  if (!value.has_value()) {
+    return {};
+  }
+  if (value.type() == typeid(bool)) {
+    return std::any_cast<bool>(value);
+  }
+  throw std::runtime_error("conversion to bool failed");
+}
+
+std::optional<std::uint32_t> property_value_to_uint32(const std::any &value) {
+  if (!value.has_value()) {
+    return {};
+  }
+  if (value.type() == typeid(std::uint32_t)) {
+    return std::any_cast<std::uint32_t>(value);
+  }
+  throw std::runtime_error("conversion to uint32 failed");
+}
+
+std::optional<std::string> property_value_to_string(const std::any &value) {
+  if (!value.has_value()) {
+    return {};
+  }
+  if (value.type() == typeid(std::string)) {
+    return std::any_cast<std::string>(value);
+  } else if (value.type() == typeid(const char *)) {
+    return std::any_cast<const char *>(value);
+  }
+  throw std::runtime_error("conversion to string failed");
+}
+} // namespace
 
 Document::Document(std::shared_ptr<internal::abstract::Document> document)
     : m_impl{std::move(document)} {
@@ -34,78 +66,124 @@ DocumentType Document::document_type() const noexcept {
   return m_impl->document_type();
 }
 
-Element Document::root() const { return m_impl->root_element(); }
+DocumentCursor Document::root_element() const {
+  return DocumentCursor(m_impl->root_element());
+}
 
-TextDocument Document::text_document() const { return TextDocument(m_impl); }
+DocumentCursor::DocumentCursor(
+    std::shared_ptr<internal::abstract::DocumentCursor> impl)
+    : m_impl{std::move(impl)} {
+  // TODO throw if nullptr
+}
 
-Presentation Document::presentation() const { return Presentation(m_impl); }
+bool DocumentCursor::operator==(const DocumentCursor &rhs) const {
+  return m_impl->operator==(*rhs.m_impl);
+}
 
-Spreadsheet Document::spreadsheet() const { return Spreadsheet(m_impl); }
+bool DocumentCursor::operator!=(const DocumentCursor &rhs) const {
+  return m_impl->operator!=(*rhs.m_impl);
+}
 
-Drawing Document::drawing() const { return Drawing(m_impl); }
+std::string DocumentCursor::document_path() const {
+  return m_impl->document_path();
+}
 
-TextDocument::TextDocument(
-    std::shared_ptr<internal::abstract::Document> text_document)
-    : Document(std::move(text_document)) {
-  if (m_impl->document_type() != DocumentType::TEXT) {
-    throw std::runtime_error("not a text document");
+ElementType DocumentCursor::element_type() const {
+  return m_impl->element_type();
+}
+
+ElementPropertySet DocumentCursor::element_properties() const {
+  return ElementPropertySet(m_impl->element_properties());
+}
+
+TableElement DocumentCursor::table() const {
+  return TableElement(m_impl->table());
+}
+
+ImageElement DocumentCursor::image() const {
+  return ImageElement(m_impl->image());
+}
+
+bool DocumentCursor::move_to_parent() { return m_impl->move_to_parent(); }
+
+bool DocumentCursor::move_to_first_child() {
+  return m_impl->move_to_first_child();
+}
+
+bool DocumentCursor::move_to_previous_sibling() {
+  return m_impl->move_to_previous_sibling();
+}
+
+bool DocumentCursor::move_to_next_sibling() {
+  return m_impl->move_to_next_sibling();
+}
+
+void DocumentCursor::for_each_child(ChildVisitor visitor) {
+  std::uint32_t i = 0;
+  if (!move_to_first_child()) {
+    return;
   }
-}
-
-ElementRange TextDocument::content() const { return root().children(); }
-
-PageStyle TextDocument::page_style() const {
-  return PageStyle(m_impl->root_element());
-}
-
-Presentation::Presentation(
-    std::shared_ptr<internal::abstract::Document> presentation)
-    : Document(std::move(presentation)) {
-  if (m_impl->document_type() != DocumentType::PRESENTATION) {
-    throw std::runtime_error("not a presentation");
+  while (true) {
+    visitor(*this, i);
+    if (!move_to_next_sibling()) {
+      break;
+    }
+    ++i;
   }
+  move_to_parent();
 }
 
-std::uint32_t Presentation::slide_count() const {
-  const auto range = slides();
-  return std::distance(std::begin(range), std::end(range));
+TableDimensions::TableDimensions() = default;
+
+TableDimensions::TableDimensions(const std::uint32_t rows,
+                                 const std::uint32_t columns)
+    : rows{rows}, columns{columns} {}
+
+TableElement::TableElement(internal::abstract::TableElement *impl)
+    : m_impl{impl} {}
+
+TableElement::operator bool() const { return m_impl != nullptr; }
+
+TableDimensions TableElement::dimensions() const {
+  return m_impl->dimensions();
 }
 
-SlideRange Presentation::slides() const {
-  return SlideRange(Slide(m_impl->root_element().first_child()));
+ImageElement::ImageElement(internal::abstract::ImageElement *impl)
+    : m_impl{impl} {}
+
+ImageElement::operator bool() const { return m_impl != nullptr; }
+
+bool ImageElement::internal() const { return m_impl->internal(); }
+
+std::optional<File> ImageElement::image_file() const {
+  return m_impl->image_file();
 }
 
-Spreadsheet::Spreadsheet(
-    std::shared_ptr<internal::abstract::Document> spreadsheet)
-    : Document(std::move(spreadsheet)) {
-  if (m_impl->document_type() != DocumentType::SPREADSHEET) {
-    throw std::runtime_error("not a spreadsheet");
+ElementPropertySet::ElementPropertySet(
+    std::unordered_map<ElementProperty, std::any> properties)
+    : m_properties{std::move(properties)} {}
+
+std::any ElementPropertySet::get(const ElementProperty property) const {
+  auto it = m_properties.find(property);
+  if (it == std::end(m_properties)) {
+    return {};
   }
+  return it->second;
 }
 
-std::uint32_t Spreadsheet::sheet_count() const {
-  const auto range = sheets();
-  return std::distance(std::begin(range), std::end(range));
+std::optional<std::string>
+ElementPropertySet::get_string(const ElementProperty property) const {
+  return property_value_to_string(get(property));
 }
 
-SheetRange Spreadsheet::sheets() const {
-  return SheetRange(Sheet(m_impl->root_element().first_child()));
+std::optional<std::uint32_t>
+ElementPropertySet::get_uint32(const ElementProperty property) const {
+  return property_value_to_uint32(get(property));
 }
 
-Drawing::Drawing(std::shared_ptr<internal::abstract::Document> drawing)
-    : Document(std::move(drawing)) {
-  if (m_impl->document_type() != DocumentType::DRAWING) {
-    throw std::runtime_error("not a drawing");
-  }
-}
-
-std::uint32_t Drawing::page_count() const {
-  const auto range = pages();
-  return std::distance(std::begin(range), std::end(range));
-}
-
-PageRange Drawing::pages() const {
-  return PageRange(Page(m_impl->root_element().first_child()));
+std::optional<bool>
+ElementPropertySet::get_bool(const ElementProperty property) const {
+  return property_value_to_bool(get(property));
 }
 
 } // namespace odr

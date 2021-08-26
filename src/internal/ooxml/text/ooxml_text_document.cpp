@@ -44,6 +44,9 @@ OfficeOpenXmlTextDocument::files() const noexcept {
   return m_filesystem;
 }
 
-odr::Element OfficeOpenXmlTextDocument::root_element() const { return m_root; }
+std::unique_ptr<abstract::DocumentCursor>
+OfficeOpenXmlTextDocument::root_element() const {
+  return {}; // TODO
+}
 
 } // namespace odr::internal::ooxml

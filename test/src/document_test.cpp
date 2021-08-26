@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 #include <odr/document.h>
-#include <odr/element.h>
 #include <odr/file.h>
 #include <test_util.h>
 
@@ -17,20 +16,18 @@ TEST(DocumentTest, odt) {
 
   EXPECT_EQ(document.document_type(), DocumentType::TEXT);
 
-  auto text_document = document.text_document();
+  auto cursor = document.root_element();
 
-  auto page_style = text_document.page_style();
+  auto properties = cursor.element_properties();
 
-  EXPECT_TRUE(page_style.width());
-  EXPECT_EQ("8.2673in", page_style.width().get_string());
-  EXPECT_TRUE(page_style.height());
-  EXPECT_EQ("11.6925in", page_style.height().get_string());
-  EXPECT_TRUE(page_style.margin_top());
-  EXPECT_EQ("0.7874in", page_style.margin_top().get_string());
-
-  for (auto &&e : text_document.content()) {
-    EXPECT_TRUE(e);
-  }
+  EXPECT_TRUE(properties.get_string(ElementProperty::WIDTH));
+  EXPECT_EQ("8.2673in", properties.get_string(ElementProperty::WIDTH).value());
+  EXPECT_TRUE(properties.get_string(ElementProperty::HEIGHT));
+  EXPECT_EQ("11.6925in",
+            properties.get_string(ElementProperty::HEIGHT).value());
+  EXPECT_TRUE(properties.get_string(ElementProperty::MARGIN_TOP));
+  EXPECT_EQ("0.7874in",
+            properties.get_string(ElementProperty::MARGIN_TOP).value());
 }
 
 TEST(DocumentTest, odg) {
@@ -43,19 +40,20 @@ TEST(DocumentTest, odg) {
 
   EXPECT_EQ(document.document_type(), DocumentType::DRAWING);
 
-  auto drawing = document.drawing();
+  auto cursor = document.root_element();
 
   // TODO
   // EXPECT_EQ(drawing.page_count(), 3);
 
-  for (auto &&e : drawing.pages()) {
-    auto page_style = e.page_style();
+  cursor.for_each_child([](DocumentCursor &cursor, const std::uint32_t) {
+    auto properties = cursor.element_properties();
 
-    EXPECT_TRUE(page_style.width());
-    EXPECT_EQ("21cm", page_style.width().get_string());
-    EXPECT_TRUE(page_style.height());
-    EXPECT_EQ("29.7cm", page_style.height().get_string());
-    EXPECT_TRUE(page_style.margin_top());
-    EXPECT_EQ("1cm", page_style.margin_top().get_string());
-  }
+    EXPECT_TRUE(properties.get_string(ElementProperty::WIDTH));
+    EXPECT_EQ("21cm", properties.get_string(ElementProperty::WIDTH).value());
+    EXPECT_TRUE(properties.get_string(ElementProperty::HEIGHT));
+    EXPECT_EQ("29.7cm", properties.get_string(ElementProperty::HEIGHT).value());
+    EXPECT_TRUE(properties.get_string(ElementProperty::MARGIN_TOP));
+    EXPECT_EQ("1cm",
+              properties.get_string(ElementProperty::MARGIN_TOP).value());
+  });
 }

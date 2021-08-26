@@ -7,10 +7,8 @@
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_to_svg.h>
 #include <internal/util/stream_util.h>
-#include <menu.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
-#include <odr/element.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
@@ -21,9 +19,9 @@ using namespace odr::internal;
 namespace odr {
 
 namespace {
-void translate_generation(const ElementRange &siblings, std::ostream &out,
-                          const HtmlConfig &config);
-void translate_element(const Element &element, std::ostream &out,
+void translate_children(DocumentCursor &cursor, std::ostream &out,
+                        const HtmlConfig &config);
+void translate_element(DocumentCursor &cursor, std::ostream &out,
                        const HtmlConfig &config);
 
 std::string translate_outer_page_style(const ElementPropertySet &properties) {
@@ -191,19 +189,22 @@ std::string translate_table_cell_style(const ElementPropertySet &properties) {
   return result;
 }
 
-std::string translate_drawing_style(const Element &element) {
+std::string translate_drawing_style(const ElementPropertySet &properties) {
   std::string result;
-  if (auto stroke_width = element.property(ElementProperty::STROKE_WIDTH)) {
-    result += "stroke-width:" + stroke_width.get_string() + ";";
+  if (auto stroke_width =
+          properties.get_string(ElementProperty::STROKE_WIDTH)) {
+    result += "stroke-width:" + *stroke_width + ";";
   }
-  if (auto stroke_color = element.property(ElementProperty::STROKE_COLOR)) {
-    result += "stroke:" + stroke_color.get_string() + ";";
+  if (auto stroke_color =
+          properties.get_string(ElementProperty::STROKE_COLOR)) {
+    result += "stroke:" + *stroke_color + ";";
   }
-  if (auto fill_color = element.property(ElementProperty::FILL_COLOR)) {
-    result += "fill:" + fill_color.get_string() + ";";
+  if (auto fill_color = properties.get_string(ElementProperty::FILL_COLOR)) {
+    result += "fill:" + *fill_color + ";";
   }
-  if (auto vertical_align = element.property(ElementProperty::VERTICAL_ALIGN)) {
-    if (vertical_align.get_string() == "middle") {
+  if (auto vertical_align =
+          properties.get_string(ElementProperty::VERTICAL_ALIGN)) {
+    if (vertical_align == "middle") {
       result += "display:flex;justify-content:center;flex-direction: column;";
     }
     // TODO else log
@@ -211,68 +212,75 @@ std::string translate_drawing_style(const Element &element) {
   return result;
 }
 
-std::string translate_frame_properties(const Frame &element) {
+std::string translate_frame_properties(const ElementPropertySet &properties) {
   std::string result;
-  if (auto anchor_type = element.anchor_type();
-      anchor_type && (anchor_type.get_string() == "as-char")) {
+  if (auto anchor_type = properties.get_string(ElementProperty::ANCHOR_TYPE);
+      anchor_type && (*anchor_type == "as-char")) {
     result += "display:inline-block;";
   } else {
     result += "display:block;";
     result += "position:absolute;";
   }
-  if (auto x = element.x()) {
-    result += "left:" + x.get_string() + ";";
+  if (auto x = properties.get_string(ElementProperty::X)) {
+    result += "left:" + *x + ";";
   }
-  if (auto y = element.y()) {
-    result += "top:" + y.get_string() + ";";
+  if (auto y = properties.get_string(ElementProperty::Y)) {
+    result += "top:" + *y + ";";
   }
-  if (auto width = element.width()) {
-    result += "width:" + width.get_string() + ";";
+  if (auto width = properties.get_string(ElementProperty::WIDTH)) {
+    result += "width:" + *width + ";";
   }
-  if (auto height = element.height()) {
-    result += "height:" + height.get_string() + ";";
+  if (auto height = properties.get_string(ElementProperty::HEIGHT)) {
+    result += "height:" + *height + ";";
   }
-  if (auto z_index = element.z_index()) {
-    result += "z-index:" + z_index.get_string() + ";";
+  if (auto z_index = properties.get_string(ElementProperty::Z_INDEX)) {
+    result += "z-index:" + *z_index + ";";
   }
   return result;
 }
 
-std::string translate_rect_properties(const Rect &element) {
+std::string translate_rect_properties(const ElementPropertySet &properties) {
   std::string result;
   result += "position:absolute;";
-  result += "left:" + element.x().get_string() + ";";
-  result += "top:" + element.y().get_string() + ";";
-  result += "width:" + element.width().get_string() + ";";
-  result += "height:" + element.height().get_string() + ";";
+  result += "left:" + properties.get_string(ElementProperty::X).value() + ";";
+  result += "top:" + properties.get_string(ElementProperty::Y).value() + ";";
+  result +=
+      "width:" + properties.get_string(ElementProperty::WIDTH).value() + ";";
+  result +=
+      "height:" + properties.get_string(ElementProperty::HEIGHT).value() + ";";
   return result;
 }
 
-std::string translate_circle_properties(const Circle &element) {
+std::string translate_circle_properties(const ElementPropertySet &properties) {
   std::string result;
   result += "position:absolute;";
-  result += "left:" + element.x().get_string() + ";";
-  result += "top:" + element.y().get_string() + ";";
-  result += "width:" + element.width().get_string() + ";";
-  result += "height:" + element.height().get_string() + ";";
+  result += "left:" + properties.get_string(ElementProperty::X).value() + ";";
+  result += "top:" + properties.get_string(ElementProperty::Y).value() + ";";
+  result +=
+      "width:" + properties.get_string(ElementProperty::WIDTH).value() + ";";
+  result +=
+      "height:" + properties.get_string(ElementProperty::HEIGHT).value() + ";";
   return result;
 }
 
-std::string translate_custom_shape_properties(const CustomShape &element) {
+std::string
+translate_custom_shape_properties(const ElementPropertySet &properties) {
   std::string result;
   result += "position:absolute;";
-  if (auto x = element.x()) {
-    result += "left:" + x.get_string() + ";";
+  if (auto x = properties.get_string(ElementProperty::X)) {
+    result += "left:" + *x + ";";
   } else {
     result += "left:0;";
   }
-  if (auto y = element.y()) {
-    result += "top:" + y.get_string() + ";";
+  if (auto y = properties.get_string(ElementProperty::Y)) {
+    result += "top:" + *y + ";";
   } else {
     result += "top:0;";
   }
-  result += "width:" + element.width().get_string() + ";";
-  result += "height:" + element.height().get_string() + ";";
+  result +=
+      "width:" + properties.get_string(ElementProperty::WIDTH).value() + ";";
+  result +=
+      "height:" + properties.get_string(ElementProperty::HEIGHT).value() + ";";
   return result;
 }
 
@@ -283,14 +291,16 @@ std::string optional_style_attribute(const std::string &style) {
   return " style=\"" + style + "\"";
 }
 
-void translate_text(const Text &element, std::ostream &out,
-                    const HtmlConfig & /*config*/) {
-  out << common::html::escape_text(element.text().string());
+void translate_text(const DocumentCursor &cursor, std::ostream &out) {
+  auto properties = cursor.element_properties();
+
+  out << common::html::escape_text(
+      properties.get_string(ElementProperty::TEXT).value());
 }
 
-void translate_paragraph(const Element &element, std::ostream &out,
+void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
                          const HtmlConfig &config) {
-  auto properties = element.properties();
+  auto properties = cursor.element_properties();
 
   out << "<p";
   out << optional_style_attribute(translate_paragraph_style(properties));
@@ -298,74 +308,79 @@ void translate_paragraph(const Element &element, std::ostream &out,
   out << "<span";
   out << optional_style_attribute(translate_text_style(properties));
   out << ">";
-  translate_generation(element.children(), out, config);
+  translate_children(cursor, out, config);
   out << "</span>";
   out << "</p>";
 }
 
-void translate_span(const Element &element, std::ostream &out,
+void translate_span(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
-  auto properties = element.properties();
+  auto properties = cursor.element_properties();
 
   out << "<span";
   out << optional_style_attribute(translate_text_style(properties));
   out << ">";
-  translate_generation(element.children(), out, config);
+  translate_children(cursor, out, config);
   out << "</span>";
 }
 
-void translate_link(const Link &element, std::ostream &out,
+void translate_link(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
-  auto properties = element.properties();
+  auto properties = cursor.element_properties();
 
   out << "<a";
   out << optional_style_attribute(translate_text_style(properties));
   out << " href=\"";
-  out << element.href();
+  out << properties.get_string(ElementProperty::HREF).value();
   out << "\">";
-  translate_generation(element.children(), out, config);
+  translate_children(cursor, out, config);
   out << "</a>";
 }
 
-void translate_bookmark(const Bookmark &element, std::ostream &out,
+void translate_bookmark(DocumentCursor &cursor, std::ostream &out,
                         const HtmlConfig & /*config*/) {
+  auto properties = cursor.element_properties();
+
   out << "<a id=\"";
-  out << element.name();
+  out << properties.get_string(ElementProperty::HREF).value();
   out << "\"></a>";
 }
 
-void translate_list(const Element &element, std::ostream &out,
+void translate_list(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<ul>";
-  for (auto &&i : element.children()) {
+  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
     out << "<li>";
-    translate_generation(i.children(), out, config);
+    translate_children(cursor, out, config);
     out << "</li>";
-  }
+  });
   out << "</ul>";
 }
 
-void translate_table(const TableElement &element, std::ostream &out,
+void translate_table(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
   // TODO a lot of features here should only apply to spreadsheets
   // TODO table column width does not work
   // TODO table row height does not work
 
-  auto properties = element.properties();
+  auto properties = cursor.element_properties();
+  auto table = cursor.table();
 
   out << "<table";
   out << optional_style_attribute(translate_table_style(properties));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
-  std::uint32_t end_row = element.dimensions().rows;
-  std::uint32_t end_column = element.dimensions().columns;
+  auto dimensions = table.dimensions();
+  std::uint32_t end_row = dimensions.rows;
+  std::uint32_t end_column = dimensions.columns;
   if (config.table_limit_rows > 0) {
     end_row = config.table_limit_rows;
   }
   if (config.table_limit_columns > 0) {
     end_column = config.table_limit_columns;
   }
+  /* TODO
   if (config.table_limit_by_content) {
     const auto content_bounds = element.content_bounds();
     const auto content_bounds_within = element.content_bounds(
@@ -374,68 +389,69 @@ void translate_table(const TableElement &element, std::ostream &out,
     end_column =
         end_column ? content_bounds_within.columns : content_bounds.columns;
   }
+   */
 
-  for (std::uint32_t j = 0; j < end_column; ++j) {
-    auto column = element.column(j);
-    auto column_properties = column.properties();
+  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
+    if (cursor.element_type() == ElementType::TABLE_COLUMN) {
+      auto column_properties = cursor.element_properties();
 
-    out << "<col";
-    out << optional_style_attribute(
-        translate_table_column_style(column_properties));
-    out << ">";
-  }
-
-  for (std::uint32_t i = 0; i < end_row; ++i) {
-    auto row = element.row(i);
-    auto row_properties = row.properties();
-
-    out << "<tr";
-    out << optional_style_attribute(translate_table_row_style(row_properties));
-    out << ">";
-
-    for (std::uint32_t j = 0; j < end_column;) {
-      auto cell = element.cell(i, j);
-      // TODO check if cell hidden
-
-      auto cell_properties = cell.properties();
-      std::uint32_t row_span =
-          cell_properties.get_uint32(ElementProperty::ROW_SPAN).value_or(1);
-      std::uint32_t column_span =
-          cell_properties.get_uint32(ElementProperty::COLUMN_SPAN).value_or(1);
-
-      out << "<td";
-      if (row_span > 1) {
-        out << " rowspan=\"" << row_span << "\"";
-      }
-      if (column_span > 1) {
-        out << " colspan=\"" << column_span << "\"";
-      }
+      out << "<col";
       out << optional_style_attribute(
-          translate_table_cell_style(cell_properties));
+          translate_table_column_style(column_properties));
       out << ">";
-      translate_generation(cell.children(), out, config);
-      out << "</td>";
+    } else if (cursor.element_type() == ElementType::TABLE_ROW) {
+      auto row_properties = cursor.element_properties();
 
-      j += column_span;
+      out << "<tr";
+      out << optional_style_attribute(
+          translate_table_row_style(row_properties));
+      out << ">";
+
+      cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
+        // TODO check if cell hidden
+
+        auto cell_properties = cursor.element_properties();
+        std::uint32_t row_span =
+            cell_properties.get_uint32(ElementProperty::ROW_SPAN).value_or(1);
+        std::uint32_t column_span =
+            cell_properties.get_uint32(ElementProperty::COLUMN_SPAN)
+                .value_or(1);
+
+        out << "<td";
+        if (row_span > 1) {
+          out << " rowspan=\"" << row_span << "\"";
+        }
+        if (column_span > 1) {
+          out << " colspan=\"" << column_span << "\"";
+        }
+        out << optional_style_attribute(
+            translate_table_cell_style(cell_properties));
+        out << ">";
+        translate_children(cursor, out, config);
+        out << "</td>";
+      });
+
+      out << "</tr>";
     }
-
-    out << "</tr>";
-  }
+  });
 
   out << "</table>";
 }
 
-void translate_image(const Image &element, std::ostream &out,
+void translate_image(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig & /*config*/) {
+  auto properties = cursor.element_properties();
+  auto image = cursor.image();
+
   out << "<img style=\"position:absolute;left:0;top:0;width:100%;height:100%\"";
   out << " alt=\"Error: image not found or unsupported\"";
   out << " src=\"";
 
-  if (element.internal()) {
-    auto image_file = element.image_file();
+  if (image.internal()) {
+    auto image_file = image.image_file().value();
 
     // TODO use stream
-    std::string image;
+    std::string image_data;
 
     try {
       // try svm
@@ -447,38 +463,40 @@ void translate_image(const Image &element, std::ostream &out,
           std::make_shared<common::MemoryFile>(*image_file_impl));
       std::ostringstream svg_out;
       svm::Translator::svg(svm_file, svg_out);
-      image = svg_out.str();
+      image_data = svg_out.str();
       out << "data:image/svg+xml;base64, ";
     } catch (...) {
       // else we guess that it is a usual image
-      image = util::stream::read(*image_file.read());
+      image_data = util::stream::read(*image_file.read());
       // TODO hacky - `image/jpg` works for all common image types in chrome
       out << "data:image/jpg;base64, ";
     }
 
     // TODO stream
-    out << crypto::util::base64_encode(image);
+    out << crypto::util::base64_encode(image_data);
   } else {
-    out << element.href().get_string();
+    out << properties.get_string(ElementProperty::HREF).value();
   }
 
   out << "\">";
 }
 
-void translate_frame(const Frame &element, std::ostream &out,
+void translate_frame(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
+  auto properties = cursor.element_properties();
+
   // TODO choosing <span> by default because it is valid inside <p>;
   // alternatives?
-  const bool span = element.anchor_type().operator bool();
+  const bool span = properties.get(ElementProperty::ANCHOR_TYPE).has_value();
   if (span) {
     out << "<span";
   } else {
     out << "<div";
   }
 
-  out << optional_style_attribute(translate_frame_properties(element));
+  out << optional_style_attribute(translate_frame_properties(properties));
   out << ">";
-  translate_generation(element.children(), out, config);
+  translate_children(cursor, out, config);
 
   if (span) {
     out << "</span>";
@@ -487,121 +505,131 @@ void translate_frame(const Frame &element, std::ostream &out,
   }
 }
 
-void translate_rect(const Rect &element, std::ostream &out,
+void translate_rect(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
+  auto properties = cursor.element_properties();
+
   out << "<div";
-  out << optional_style_attribute(translate_rect_properties(element) +
-                                  translate_drawing_style(element));
+  out << optional_style_attribute(translate_rect_properties(properties) +
+                                  translate_drawing_style(properties));
   out << ">";
-  translate_generation(element.children(), out, config);
+  translate_children(cursor, out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
   out << "</div>";
 }
 
-void translate_line(const Line &element, std::ostream &out,
+void translate_line(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig & /*config*/) {
+  auto properties = cursor.element_properties();
+
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
   out << optional_style_attribute("z-index:-1;position:absolute;top:0;left:0;" +
-                                  translate_drawing_style(element));
+                                  translate_drawing_style(properties));
   out << ">";
 
   out << "<line";
-  out << " x1=\"" << element.x1().get_string() << "\" y1=\""
-      << element.y1().get_string() << "\"";
-  out << " x2=\"" << element.x2().get_string() << "\" y2=\""
-      << element.y2().get_string() << "\"";
+  out << " x1=\"" << properties.get_string(ElementProperty::X1).value()
+      << "\" y1=\"" << properties.get_string(ElementProperty::Y1).value()
+      << "\"";
+  out << " x2=\"" << properties.get_string(ElementProperty::X2).value()
+      << "\" y2=\"" << properties.get_string(ElementProperty::Y2).value()
+      << "\"";
   out << " />";
 
   out << "</svg>";
 }
 
-void translate_circle(const Circle &element, std::ostream &out,
+void translate_circle(DocumentCursor &cursor, std::ostream &out,
                       const HtmlConfig &config) {
+  auto properties = cursor.element_properties();
+
   out << "<div";
-  out << optional_style_attribute(translate_circle_properties(element) +
-                                  translate_drawing_style(element));
+  out << optional_style_attribute(translate_circle_properties(properties) +
+                                  translate_drawing_style(properties));
   out << ">";
-  translate_generation(element.children(), out, config);
+  translate_children(cursor, out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
   out << "</div>";
 }
 
-void translate_custom_shape(const CustomShape &element, std::ostream &out,
+void translate_custom_shape(DocumentCursor &cursor, std::ostream &out,
                             const HtmlConfig &config) {
+  auto properties = cursor.element_properties();
+
   out << "<div";
-  out << optional_style_attribute(translate_custom_shape_properties(element) +
-                                  translate_drawing_style(element));
+  out << optional_style_attribute(
+      translate_custom_shape_properties(properties) +
+      translate_drawing_style(properties));
   out << ">";
-  translate_generation(element.children(), out, config);
+  translate_children(cursor, out, config);
   // TODO draw shape in svg
   out << "</div>";
 }
 
-void translate_generation(const ElementRange &siblings, std::ostream &out,
-                          const HtmlConfig &config) {
-  for (auto &&e : siblings) {
-    translate_element(e, out, config);
-  }
+void translate_children(DocumentCursor &cursor, std::ostream &out,
+                        const HtmlConfig &config) {
+  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
+    translate_element(cursor, out, config);
+  });
 }
 
-void translate_element(const Element &element, std::ostream &out,
+void translate_element(DocumentCursor &cursor, std::ostream &out,
                        const HtmlConfig &config) {
-  if (element.type() == ElementType::TEXT) {
-    translate_text(element.text(), out, config);
-  } else if (element.type() == ElementType::LINE_BREAK) {
+  if (cursor.element_type() == ElementType::TEXT) {
+    translate_text(cursor, out);
+  } else if (cursor.element_type() == ElementType::LINE_BREAK) {
     out << "<br>";
-  } else if (element.type() == ElementType::PARAGRAPH) {
-    translate_paragraph(element.paragraph(), out, config);
-  } else if (element.type() == ElementType::SPAN) {
-    translate_span(element.span(), out, config);
-  } else if (element.type() == ElementType::LINK) {
-    translate_link(element.link(), out, config);
-  } else if (element.type() == ElementType::BOOKMARK) {
-    translate_bookmark(element.bookmark(), out, config);
-  } else if (element.type() == ElementType::LIST) {
-    translate_list(element.list(), out, config);
-  } else if (element.type() == ElementType::TABLE) {
-    translate_table(element.table(), out, config);
-  } else if (element.type() == ElementType::FRAME) {
-    translate_frame(element.frame(), out, config);
-  } else if (element.type() == ElementType::IMAGE) {
-    translate_image(element.image(), out, config);
-  } else if (element.type() == ElementType::RECT) {
-    translate_rect(element.rect(), out, config);
-  } else if (element.type() == ElementType::LINE) {
-    translate_line(element.line(), out, config);
-  } else if (element.type() == ElementType::CIRCLE) {
-    translate_circle(element.circle(), out, config);
-  } else if (element.type() == ElementType::CUSTOM_SHAPE) {
-    translate_custom_shape(element.custom_shape(), out, config);
-  } else if (element.type() == ElementType::GROUP) {
-    translate_generation(element.children(), out, config);
+  } else if (cursor.element_type() == ElementType::PARAGRAPH) {
+    translate_paragraph(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::SPAN) {
+    translate_span(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::LINK) {
+    translate_link(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::BOOKMARK) {
+    translate_bookmark(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::LIST) {
+    translate_list(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::TABLE) {
+    translate_table(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::FRAME) {
+    translate_frame(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::IMAGE) {
+    translate_image(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::RECT) {
+    translate_rect(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::LINE) {
+    translate_line(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::CIRCLE) {
+    translate_circle(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::CUSTOM_SHAPE) {
+    translate_custom_shape(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::GROUP) {
+    translate_children(cursor, out, config);
   } else {
     // TODO log
   }
 }
 
-void translate_text_document(const TextDocument &document, std::ostream &out,
+void translate_text_document(DocumentCursor &cursor, std::ostream &out,
                              const HtmlConfig &config) {
-  const auto root = document.root();
-
   if (config.text_document_margin) {
-    auto properties = root.properties();
+    auto properties = cursor.element_properties();
+
     out << "<div";
     out << optional_style_attribute(translate_outer_page_style(properties));
     out << ">";
     out << "<div";
     out << optional_style_attribute(translate_inner_page_style(properties));
     out << ">";
-    translate_generation(document.root().children(), out, config);
+    translate_children(cursor, out, config);
     out << "</div>";
     out << "</div>";
   } else {
-    translate_generation(document.root().children(), out, config);
+    translate_children(cursor, out, config);
   }
 }
 
-void translate_presentation(const Presentation &document, std::ostream &out,
+void translate_presentation(DocumentCursor &cursor, std::ostream &out,
                             const HtmlConfig &config) {
   // TODO indexing is kind of ugly here and duplicated
   std::uint32_t begin_entry = config.entry_offset;
@@ -611,28 +639,26 @@ void translate_presentation(const Presentation &document, std::ostream &out,
     end_entry = begin_entry + config.entry_count;
   }
 
-  std::uint32_t i = 0;
-  for (auto &&slide : document.slides()) {
+  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
     if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
-      ++i;
-      continue;
+      return;
     }
-    ++i;
 
-    auto properties = slide.properties();
+    auto properties = cursor.element_properties();
+
     out << "<div";
     out << optional_style_attribute(translate_outer_page_style(properties));
     out << ">";
     out << "<div";
     out << optional_style_attribute(translate_inner_page_style(properties));
     out << ">";
-    translate_generation(slide.children(), out, config);
+    translate_children(cursor, out, config);
     out << "</div>";
     out << "</div>";
-  }
+  });
 }
 
-void translate_spreadsheet(const Spreadsheet &document, std::ostream &out,
+void translate_spreadsheet(DocumentCursor &cursor, std::ostream &out,
                            const HtmlConfig &config) {
   std::uint32_t begin_entry = config.entry_offset;
   std::optional<std::uint32_t> end_entry;
@@ -641,19 +667,16 @@ void translate_spreadsheet(const Spreadsheet &document, std::ostream &out,
     end_entry = begin_entry + config.entry_count;
   }
 
-  std::uint32_t i = 0;
-  for (auto &&sheet : document.sheets()) {
+  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
     if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
-      ++i;
-      continue;
+      return;
     }
-    ++i;
 
-    translate_table(sheet.table(), out, config);
-  }
+    translate_table(cursor, out, config);
+  });
 }
 
-void translate_drawing(const Drawing &document, std::ostream &out,
+void translate_drawing(DocumentCursor &cursor, std::ostream &out,
                        const HtmlConfig &config) {
   std::uint32_t begin_entry = config.entry_offset;
   std::optional<std::uint32_t> end_entry;
@@ -662,25 +685,23 @@ void translate_drawing(const Drawing &document, std::ostream &out,
     end_entry = begin_entry + config.entry_count;
   }
 
-  std::uint32_t i = 0;
-  for (auto &&page : document.pages()) {
+  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
     if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
-      ++i;
-      continue;
+      return;
     }
-    ++i;
 
-    auto properties = page.properties();
+    auto properties = cursor.element_properties();
+
     out << "<div";
     out << optional_style_attribute(translate_outer_page_style(properties));
     out << ">";
     out << "<div";
     out << optional_style_attribute(translate_inner_page_style(properties));
     out << ">";
-    translate_generation(page.children(), out, config);
+    translate_children(cursor, out, config);
     out << "</div>";
     out << "</div>";
-  }
+  });
 }
 } // namespace
 
@@ -714,14 +735,16 @@ void html::translate(const Document &document,
 
   out << "<body " << common::html::body_attributes(config) << ">";
 
+  auto cursor = document.root_element();
+
   if (document.document_type() == DocumentType::TEXT) {
-    translate_text_document(document.text_document(), out, config);
+    translate_text_document(cursor, out, config);
   } else if (document.document_type() == DocumentType::PRESENTATION) {
-    translate_presentation(document.presentation(), out, config);
+    translate_presentation(cursor, out, config);
   } else if (document.document_type() == DocumentType::SPREADSHEET) {
-    translate_spreadsheet(document.spreadsheet(), out, config);
+    translate_spreadsheet(cursor, out, config);
   } else if (document.document_type() == DocumentType::DRAWING) {
-    translate_drawing(document.drawing(), out, config);
+    translate_drawing(cursor, out, config);
   } else {
     // TODO throw?
   }

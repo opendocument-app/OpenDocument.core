@@ -2,7 +2,6 @@
 #define ODR_INTERNAL_OOXML_TEXT_STYLE_H
 
 #include <odr/document.h>
-#include <odr/element.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 

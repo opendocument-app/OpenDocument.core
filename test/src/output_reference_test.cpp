@@ -78,6 +78,7 @@ TEST_P(OutputReferenceTests, all) {
   if (file.file_category() == FileCategory::DOCUMENT) {
     auto document_file = file.document_file();
     auto document = document_file.document();
+    auto cursor = document.root_element();
 
     if (document.document_type() == DocumentType::TEXT) {
       const std::string html_output = output_path + "/document.html";
@@ -86,8 +87,7 @@ TEST_P(OutputReferenceTests, all) {
       EXPECT_TRUE(fs::is_regular_file(html_output));
       EXPECT_LT(0, fs::file_size(html_output));
     } else if (document.document_type() == DocumentType::PRESENTATION) {
-      for (std::uint32_t i = 0; i < document.presentation().slide_count();
-           ++i) {
+      cursor.for_each_child([&](DocumentCursor &, const std::uint32_t i) {
         config.entry_offset = i;
         config.entry_count = 1;
         const std::string html_output =
@@ -95,9 +95,9 @@ TEST_P(OutputReferenceTests, all) {
         html::translate(document, "", html_output, config);
         EXPECT_TRUE(fs::is_regular_file(html_output));
         EXPECT_LT(0, fs::file_size(html_output));
-      }
+      });
     } else if (document.document_type() == DocumentType::SPREADSHEET) {
-      for (std::uint32_t i = 0; i < document.spreadsheet().sheet_count(); ++i) {
+      cursor.for_each_child([&](DocumentCursor &, const std::uint32_t i) {
         config.entry_offset = i;
         config.entry_count = 1;
         const std::string html_output =
@@ -105,9 +105,9 @@ TEST_P(OutputReferenceTests, all) {
         html::translate(document, "", html_output, config);
         EXPECT_TRUE(fs::is_regular_file(html_output));
         EXPECT_LT(0, fs::file_size(html_output));
-      }
+      });
     } else if (document.document_type() == DocumentType::DRAWING) {
-      for (std::uint32_t i = 0; i < document.drawing().page_count(); ++i) {
+      cursor.for_each_child([&](DocumentCursor &, const std::uint32_t i) {
         config.entry_offset = i;
         config.entry_count = 1;
         const std::string html_output =
@@ -115,7 +115,7 @@ TEST_P(OutputReferenceTests, all) {
         html::translate(document, "", html_output, config);
         EXPECT_TRUE(fs::is_regular_file(html_output));
         EXPECT_LT(0, fs::file_size(html_output));
-      }
+      });
     } else {
       EXPECT_TRUE(false);
     }

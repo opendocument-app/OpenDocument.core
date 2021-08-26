@@ -2,7 +2,6 @@
 #define ODR_INTERNAL_OOXML_WORKBOOK_H
 
 #include <internal/abstract/document.h>
-#include <odr/element.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml {
@@ -25,15 +24,14 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] odr::Element root_element() const final;
+  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
+  root_element() const final;
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
 
   pugi::xml_document m_styles_xml;
   std::vector<pugi::xml_document> m_sheets_xml;
-
-  odr::Element m_root;
 };
 
 } // namespace odr::internal::ooxml

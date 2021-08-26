@@ -255,8 +255,6 @@ Element Element::next_sibling() const {
   return m_adapter->next_sibling(m_node);
 }
 
-ElementRange Element::children() const { return ElementRange(first_child()); }
-
 std::unordered_map<ElementProperty, std::any> Element::properties() const {
   if (m_adapter == nullptr) {
     return {};

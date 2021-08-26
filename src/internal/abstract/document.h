@@ -10,6 +10,8 @@ namespace odr {
 enum class DocumentType;
 enum class ElementType;
 enum class ElementProperty;
+class TableDimensions;
+class File;
 } // namespace odr
 
 namespace odr::internal::common {
@@ -17,31 +19,10 @@ class Path;
 }
 
 namespace odr::internal::abstract {
+
 class File;
 class ReadableFilesystem;
-class Table;
-
-class DocumentCursor {
-public:
-  virtual ~DocumentCursor() = default;
-
-  virtual bool operator==(const DocumentCursor &rhs) const = 0;
-  virtual bool operator!=(const DocumentCursor &rhs) const = 0;
-
-  [[nodiscard]] virtual std::unique_ptr<DocumentCursor> copy() const = 0;
-
-  [[nodiscard]] virtual std::string document_path() const = 0;
-
-  [[nodiscard]] virtual ElementType type() const = 0;
-
-  virtual bool parent() = 0;
-  virtual bool first_child() = 0;
-  virtual bool previous_sibling() = 0;
-  virtual bool next_sibling() = 0;
-
-  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
-  properties() const = 0;
-};
+class DocumentCursor;
 
 class Document {
 public:
@@ -70,6 +51,45 @@ public:
   /// \return cursor to the root element of the document.
   [[nodiscard]] virtual std::unique_ptr<DocumentCursor>
   root_element() const = 0;
+};
+
+class TableElement {
+public:
+  virtual ~TableElement() = default;
+
+  [[nodiscard]] virtual TableDimensions dimensions() const = 0;
+};
+
+class ImageElement {
+public:
+  virtual ~ImageElement() = default;
+
+  [[nodiscard]] virtual bool internal() const = 0;
+  [[nodiscard]] virtual std::optional<odr::File> image_file() const = 0;
+};
+
+class DocumentCursor {
+public:
+  virtual ~DocumentCursor() = default;
+
+  virtual bool operator==(const DocumentCursor &rhs) const = 0;
+  virtual bool operator!=(const DocumentCursor &rhs) const = 0;
+
+  [[nodiscard]] virtual std::unique_ptr<DocumentCursor> copy() const = 0;
+
+  [[nodiscard]] virtual std::string document_path() const = 0;
+
+  [[nodiscard]] virtual ElementType element_type() const = 0;
+  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
+  element_properties() const = 0;
+
+  virtual TableElement *table() const = 0;
+  virtual ImageElement *image() const = 0;
+
+  virtual bool move_to_parent() = 0;
+  virtual bool move_to_first_child() = 0;
+  virtual bool move_to_previous_sibling() = 0;
+  virtual bool move_to_next_sibling() = 0;
 };
 
 } // namespace odr::internal::abstract

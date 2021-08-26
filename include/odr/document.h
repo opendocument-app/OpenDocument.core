@@ -2,6 +2,7 @@
 #define ODR_DOCUMENT_H
 
 #include <any>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -10,32 +11,128 @@
 
 namespace odr::internal::abstract {
 class Document;
+class DocumentCursor;
+class TableElement;
+class ImageElement;
 } // namespace odr::internal::abstract
 
 namespace odr {
 
 enum class DocumentType;
+class File;
 class DocumentFile;
 
-class Element;
-class Slide;
-class Sheet;
-class Page;
-template <typename E> class ElementRangeTemplate;
-using ElementRange = ElementRangeTemplate<Element>;
-using SlideRange = ElementRangeTemplate<Slide>;
-using SheetRange = ElementRangeTemplate<Sheet>;
-using PageRange = ElementRangeTemplate<Page>;
+enum class ElementType {
+  NONE,
 
-class PageStyle;
+  ROOT,
+  SLIDE,
+  SHEET,
+  PAGE,
 
-class Document;
-class TextDocument;
-class Presentation;
-class Spreadsheet;
-class Drawing;
+  TEXT,
+  LINE_BREAK,
+  PAGE_BREAK,
+  PARAGRAPH,
+  SPAN,
+  LINK,
+  BOOKMARK,
 
-class Document {
+  LIST,
+  LIST_ITEM,
+
+  TABLE,
+  TABLE_COLUMN,
+  TABLE_ROW,
+  TABLE_CELL,
+
+  FRAME,
+  IMAGE,
+  RECT,
+  LINE,
+  CIRCLE,
+  CUSTOM_SHAPE,
+
+  GROUP,
+};
+
+// TODO the property handle could reflect the type
+// TODO it might be possible to strongly type these properties
+enum class ElementProperty {
+  NONE,
+
+  NAME,
+  NOTES,
+  TEXT,
+  HREF,
+  ANCHOR_TYPE,
+
+  STYLE_NAME,
+  MASTER_PAGE_NAME,
+
+  VALUE_TYPE,
+
+  X,
+  Y,
+  WIDTH,
+  HEIGHT,
+
+  X1,
+  Y1,
+  X2,
+  Y2,
+
+  Z_INDEX,
+
+  TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME,
+  TABLE_CELL_BACKGROUND_COLOR,
+  ROW_SPAN,
+  COLUMN_SPAN,
+  ROWS_REPEATED,
+  COLUMNS_REPEATED,
+
+  MARGIN_TOP,
+  MARGIN_BOTTOM,
+  MARGIN_LEFT,
+  MARGIN_RIGHT,
+
+  PADDING_TOP,
+  PADDING_BOTTOM,
+  PADDING_LEFT,
+  PADDING_RIGHT,
+
+  BORDER_TOP,
+  BORDER_BOTTOM,
+  BORDER_LEFT,
+  BORDER_RIGHT,
+
+  PRINT_ORIENTATION,
+
+  FONT_NAME,
+  FONT_SIZE,
+  FONT_WEIGHT,
+  FONT_STYLE,
+  FONT_UNDERLINE,
+  FONT_STRIKETHROUGH,
+  FONT_SHADOW,
+  FONT_COLOR,
+
+  BACKGROUND_COLOR,
+
+  TEXT_ALIGN,
+
+  STROKE_WIDTH,
+  STROKE_COLOR,
+  FILL_COLOR,
+  VERTICAL_ALIGN,
+};
+
+class DocumentCursor;
+class ElementPropertySet;
+class TableElement;
+class ImageElement;
+
+class Document final {
 public:
   [[nodiscard]] bool editable() const noexcept;
   [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
@@ -45,68 +142,101 @@ public:
 
   [[nodiscard]] DocumentType document_type() const noexcept;
 
-  [[nodiscard]] Element root() const;
-
-  [[nodiscard]] TextDocument text_document() const;
-  [[nodiscard]] Presentation presentation() const;
-  [[nodiscard]] Spreadsheet spreadsheet() const;
-  [[nodiscard]] Drawing drawing() const;
-
-protected:
-  std::shared_ptr<internal::abstract::Document> m_impl;
-
-  explicit Document(std::shared_ptr<internal::abstract::Document>);
+  [[nodiscard]] DocumentCursor root_element() const;
 
 private:
+  std::shared_ptr<internal::abstract::Document> m_impl;
+
+  explicit Document(std::shared_ptr<internal::abstract::Document> impl);
+
   friend DocumentFile;
 };
 
-class TextDocument final : public Document {
+class DocumentCursor final {
 public:
-  [[nodiscard]] ElementRange content() const;
+  bool operator==(const DocumentCursor &rhs) const;
+  bool operator!=(const DocumentCursor &rhs) const;
 
-  [[nodiscard]] PageStyle page_style() const;
+  [[nodiscard]] std::string document_path() const;
+
+  [[nodiscard]] ElementType element_type() const;
+  [[nodiscard]] ElementPropertySet element_properties() const;
+
+  TableElement table() const;
+  ImageElement image() const;
+
+  bool move_to_parent();
+  bool move_to_first_child();
+  bool move_to_previous_sibling();
+  bool move_to_next_sibling();
+
+  using ChildVisitor =
+      std::function<void(DocumentCursor &cursor, std::uint32_t i)>;
+
+  void for_each_child(ChildVisitor visitor);
 
 private:
-  explicit TextDocument(std::shared_ptr<internal::abstract::Document>);
+  std::shared_ptr<internal::abstract::DocumentCursor> m_impl;
+
+  explicit DocumentCursor(
+      std::shared_ptr<internal::abstract::DocumentCursor> impl);
 
   friend Document;
 };
 
-class Presentation final : public Document {
-public:
-  [[nodiscard]] std::uint32_t slide_count() const;
+struct TableDimensions {
+  std::uint32_t rows{0};
+  std::uint32_t columns{0};
 
-  [[nodiscard]] SlideRange slides() const;
-
-private:
-  explicit Presentation(std::shared_ptr<internal::abstract::Document>);
-
-  friend Document;
+  TableDimensions();
+  TableDimensions(std::uint32_t rows, std::uint32_t columns);
 };
 
-class Spreadsheet final : public Document {
+class TableElement final {
 public:
-  [[nodiscard]] std::uint32_t sheet_count() const;
+  explicit operator bool() const;
 
-  [[nodiscard]] SheetRange sheets() const;
+  [[nodiscard]] TableDimensions dimensions() const;
 
 private:
-  explicit Spreadsheet(std::shared_ptr<internal::abstract::Document>);
+  explicit TableElement(internal::abstract::TableElement *impl);
 
-  friend Document;
+  internal::abstract::TableElement *m_impl;
+
+  friend DocumentCursor;
 };
 
-class Drawing final : public Document {
+class ImageElement final {
 public:
-  [[nodiscard]] std::uint32_t page_count() const;
+  explicit operator bool() const;
 
-  [[nodiscard]] PageRange pages() const;
+  [[nodiscard]] bool internal() const;
+  [[nodiscard]] std::optional<File> image_file() const;
 
 private:
-  explicit Drawing(std::shared_ptr<internal::abstract::Document>);
+  explicit ImageElement(internal::abstract::ImageElement *impl);
 
-  friend Document;
+  internal::abstract::ImageElement *m_impl;
+
+  friend DocumentCursor;
+};
+
+class ElementPropertySet final {
+public:
+  [[nodiscard]] std::any get(ElementProperty property) const;
+  [[nodiscard]] std::optional<std::string>
+  get_string(ElementProperty property) const;
+  [[nodiscard]] std::optional<std::uint32_t>
+  get_uint32(ElementProperty property) const;
+  [[nodiscard]] std::optional<bool> get_bool(ElementProperty property) const;
+
+private:
+  explicit ElementPropertySet(
+      std::unordered_map<ElementProperty, std::any> properties);
+
+  std::unordered_map<ElementProperty, std::any> m_properties;
+
+  friend DocumentCursor;
 };
 
 } // namespace odr
