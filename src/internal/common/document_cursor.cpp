@@ -90,7 +90,7 @@ std::int32_t DocumentCursor::back_offset_() const {
 
 const DocumentCursor::Element *DocumentCursor::back_() const {
   std::int32_t offset = back_offset_();
-  return reinterpret_cast<const Element *>(m_element_offset.data() + offset);
+  return reinterpret_cast<const Element *>(m_element_stack.data() + offset);
 }
 
 } // namespace odr::internal::common

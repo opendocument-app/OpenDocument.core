@@ -2,6 +2,7 @@
 #include <internal/abstract/filesystem.h>
 #include <internal/common/file.h>
 #include <internal/common/path.h>
+#include <internal/odf/odf_cursor.h>
 #include <internal/odf/odf_document.h>
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
@@ -84,7 +85,9 @@ OpenDocument::files() const noexcept {
 }
 
 std::unique_ptr<abstract::DocumentCursor> OpenDocument::root_element() const {
-  return {}; // TODO
+  return std::make_unique<DocumentCursor>(
+      this,
+      m_content_xml.document_element().child("office:body").first_child());
 }
 
 } // namespace odr::internal::odf

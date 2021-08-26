@@ -42,6 +42,11 @@ public:
 
   ElementType type() const final { return _element_type; }
 
+  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+  properties(const common::DocumentCursor &) const override {
+    return {};
+  }
+
   abstract::TableElement *table() const final { return nullptr; }
 
   abstract::ImageElement *image() const final { return nullptr; }
@@ -69,27 +74,51 @@ public:
   }
 };
 
-class TextDocumentRoot final
-    : public DocumentCursor::DefaultElement<TextDocumentRoot,
-                                            ElementType::ROOT> {
+template <typename Derived>
+class DefaultRoot
+    : public DocumentCursor::DefaultElement<Derived, ElementType::ROOT> {
 public:
-  TextDocumentRoot(const OpenDocument *document, pugi::xml_node node)
-      : DefaultElement(node) {}
+  explicit DefaultRoot(pugi::xml_node node)
+      : DocumentCursor::DefaultElement<Derived, ElementType::ROOT>(node) {}
 
-  Element *previous_sibling(const common::DocumentCursor &cursor,
-                            DocumentCursor::Allocator allocator) const final {
+  DocumentCursor::Element *
+  previous_sibling(const common::DocumentCursor &,
+                   DocumentCursor::Allocator) const final {
     return nullptr;
   }
 
-  Element *next_sibling(const common::DocumentCursor &cursor,
-                        DocumentCursor::Allocator allocator) const final {
+  DocumentCursor::Element *next_sibling(const common::DocumentCursor &,
+                                        DocumentCursor::Allocator) const final {
     return nullptr;
   }
+};
+
+class TextDocumentRoot final : public DefaultRoot<TextDocumentRoot> {
+public:
+  TextDocumentRoot(const OpenDocument *, pugi::xml_node node)
+      : DefaultRoot(node) {}
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties(const common::DocumentCursor &cursor) const final {
     return {}; // TODO
   }
+};
+
+class PresentationRoot final : public DefaultRoot<PresentationRoot> {
+public:
+  PresentationRoot(const OpenDocument *, pugi::xml_node node)
+      : DefaultRoot(node) {}
+};
+
+class SpreadsheetRoot final : public DefaultRoot<SpreadsheetRoot> {
+public:
+  SpreadsheetRoot(const OpenDocument *, pugi::xml_node node)
+      : DefaultRoot(node) {}
+};
+
+class DrawingRoot final : public DefaultRoot<DrawingRoot> {
+public:
+  DrawingRoot(const OpenDocument *, pugi::xml_node node) : DefaultRoot(node) {}
 };
 
 namespace {
@@ -120,10 +149,10 @@ construct_default_element(const OpenDocument *document, pugi::xml_node node,
 
   static std::unordered_map<std::string, Constructor> constructor_table{
       {"office:text", construct_default<TextDocumentRoot>},
-      /*{"office:presentation", construct_default<PresentationRoot>},
+      {"office:presentation", construct_default<PresentationRoot>},
       {"office:spreadsheet", construct_default<SpreadsheetRoot>},
       {"office:drawing", construct_default<DrawingRoot>},
-      {"text:p", construct_default<Paragraph>},
+      /*{"text:p", construct_default<Paragraph>},
       {"text:h", construct_default<Paragraph>},
       {"text:span", construct_default<Span>},
       {"text:s", construct_default<Text>},
