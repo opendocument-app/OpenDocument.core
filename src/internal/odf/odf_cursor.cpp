@@ -1,3 +1,6 @@
+#include <internal/abstract/file.h>
+#include <internal/abstract/filesystem.h>
+#include <internal/common/path.h>
 #include <internal/odf/odf_cursor.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_style.h>
@@ -101,7 +104,7 @@ struct DocumentCursor::DefaultTraits {
          ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME},
         // TABLE_CELL
         {"office:value-type", ElementProperty::VALUE_TYPE},
-        // LINK
+        // LINK, IMAGE
         {"xlink:href", ElementProperty::HREF},
         // BOOKMARK
         {"text:name", ElementProperty::NAME},
@@ -592,13 +595,45 @@ public:
 
   ImageElement *image(const common::DocumentCursor &) final { return this; }
 
-  [[nodiscard]] bool internal(const common::DocumentCursor &) const final {
-    return false; // TODO
+  const char *href() const { return m_node.attribute("xlink:href").value(); }
+
+  [[nodiscard]] bool
+  internal(const common::DocumentCursor &cursor) const final {
+    auto doc = document(cursor);
+
+    if (!doc || !doc->files()) {
+      return false;
+    }
+
+    try {
+      const std::string href = this->href();
+      const internal::common::Path path{href};
+
+      return doc->files()->is_file(path);
+    } catch (...) {
+    }
+
+    return false;
   }
 
   [[nodiscard]] std::optional<odr::File>
-  image_file(const common::DocumentCursor &) const final {
-    return {}; // TODO
+  image_file(const common::DocumentCursor &cursor) const final {
+    auto doc = document(cursor);
+
+    if (!doc) {
+      // TODO throw; there is no "empty" file
+      return File(std::shared_ptr<internal::abstract::File>());
+    }
+
+    if (!internal(cursor)) {
+      // TODO throw / support external files
+      return File(std::shared_ptr<internal::abstract::File>());
+    }
+
+    const std::string href = this->href();
+    const internal::common::Path path{href};
+
+    return File(doc->files()->open(path));
   }
 };
 
