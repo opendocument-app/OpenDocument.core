@@ -5,15 +5,19 @@
 
 namespace odr::internal::odf {
 class OpenDocument;
+class Style;
 
 class DocumentCursor final : public common::DocumentCursor {
 public:
   DocumentCursor(const OpenDocument *document, pugi::xml_node root);
 
-  template <typename Derived, ElementType element_type> class DefaultElement;
+  struct DefaultTraits;
+  template <ElementType, typename = DefaultTraits> class DefaultElement;
 
 private:
   const OpenDocument *m_document;
+
+  const Style *style() const;
 };
 
 } // namespace odr::internal::odf

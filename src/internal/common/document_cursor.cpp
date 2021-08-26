@@ -1,4 +1,5 @@
 #include <internal/common/document_cursor.h>
+#include <odr/file.h>
 
 namespace odr::internal::common {
 
@@ -30,12 +31,13 @@ DocumentCursor::element_properties() const {
   return back_()->properties(*this);
 }
 
-abstract::TableElement *DocumentCursor::table() const {
-  return back_()->table();
-}
-
-abstract::ImageElement *DocumentCursor::image() const {
-  return back_()->image();
+abstract::ImageElement *DocumentCursor::image() {
+  auto impl = back_()->image(*this);
+  if (!impl) {
+    return nullptr;
+  }
+  m_image_element = ImageElementImpl(this, impl);
+  return &m_image_element;
 }
 
 bool DocumentCursor::move_to_parent() {
@@ -71,9 +73,10 @@ bool DocumentCursor::move_to_next_sibling() {
 }
 
 void *DocumentCursor::push_(const std::size_t size) {
+  m_element_offset.push_back(m_next_element_offset);
   std::int32_t offset = back_offset_();
-  m_element_offset.push_back(offset);
-  m_element_stack.reserve(offset + size);
+  m_next_element_offset = offset + size;
+  m_element_stack.reserve(m_next_element_offset);
   return m_element_stack.data() + offset;
 }
 
@@ -85,12 +88,32 @@ void DocumentCursor::pop_() {
 }
 
 std::int32_t DocumentCursor::back_offset_() const {
-  return m_element_offset.empty() ? 0 : m_element_offset.back();
+  return m_element_offset.empty() ? m_next_element_offset
+                                  : m_element_offset.back();
 }
 
 const DocumentCursor::Element *DocumentCursor::back_() const {
   std::int32_t offset = back_offset_();
   return reinterpret_cast<const Element *>(m_element_stack.data() + offset);
+}
+
+DocumentCursor::Element *DocumentCursor::back_() {
+  std::int32_t offset = back_offset_();
+  return reinterpret_cast<Element *>(m_element_stack.data() + offset);
+}
+
+DocumentCursor::ImageElementImpl::ImageElementImpl() = default;
+
+DocumentCursor::ImageElementImpl::ImageElementImpl(
+    DocumentCursor *cursor, DocumentCursor::ImageElement *impl)
+    : m_cursor{cursor}, m_impl{impl} {}
+
+bool DocumentCursor::ImageElementImpl::internal() const {
+  return m_impl->internal(*m_cursor);
+}
+
+std::optional<odr::File> DocumentCursor::ImageElementImpl::image_file() const {
+  return m_impl->image_file(*m_cursor);
 }
 
 } // namespace odr::internal::common

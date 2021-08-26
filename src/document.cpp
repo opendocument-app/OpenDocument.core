@@ -96,10 +96,6 @@ ElementPropertySet DocumentCursor::element_properties() const {
   return ElementPropertySet(m_impl->element_properties());
 }
 
-TableElement DocumentCursor::table() const {
-  return TableElement(m_impl->table());
-}
-
 ImageElement DocumentCursor::image() const {
   return ImageElement(m_impl->image());
 }
@@ -138,15 +134,6 @@ TableDimensions::TableDimensions() = default;
 TableDimensions::TableDimensions(const std::uint32_t rows,
                                  const std::uint32_t columns)
     : rows{rows}, columns{columns} {}
-
-TableElement::TableElement(internal::abstract::TableElement *impl)
-    : m_impl{impl} {}
-
-TableElement::operator bool() const { return m_impl != nullptr; }
-
-TableDimensions TableElement::dimensions() const {
-  return m_impl->dimensions();
-}
 
 ImageElement::ImageElement(internal::abstract::ImageElement *impl)
     : m_impl{impl} {}

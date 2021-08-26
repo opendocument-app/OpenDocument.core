@@ -364,32 +364,32 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
   // TODO table row height does not work
 
   auto properties = cursor.element_properties();
-  auto table = cursor.table();
+  // auto table = cursor.table();
 
   out << "<table";
   out << optional_style_attribute(translate_table_style(properties));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
-  auto dimensions = table.dimensions();
-  std::uint32_t end_row = dimensions.rows;
-  std::uint32_t end_column = dimensions.columns;
-  if (config.table_limit_rows > 0) {
-    end_row = config.table_limit_rows;
-  }
-  if (config.table_limit_columns > 0) {
-    end_column = config.table_limit_columns;
-  }
   /* TODO
-  if (config.table_limit_by_content) {
-    const auto content_bounds = element.content_bounds();
-    const auto content_bounds_within = element.content_bounds(
-        {config.table_limit_rows, config.table_limit_columns});
-    end_row = end_row ? content_bounds_within.rows : content_bounds.rows;
-    end_column =
-        end_column ? content_bounds_within.columns : content_bounds.columns;
-  }
-   */
+auto dimensions = table.dimensions();
+std::uint32_t end_row = dimensions.rows;
+std::uint32_t end_column = dimensions.columns;
+if (config.table_limit_rows > 0) {
+  end_row = config.table_limit_rows;
+}
+if (config.table_limit_columns > 0) {
+  end_column = config.table_limit_columns;
+}
+if (config.table_limit_by_content) {
+  const auto content_bounds = element.content_bounds();
+  const auto content_bounds_within = element.content_bounds(
+      {config.table_limit_rows, config.table_limit_columns});
+  end_row = end_row ? content_bounds_within.rows : content_bounds.rows;
+  end_column =
+      end_column ? content_bounds_within.columns : content_bounds.columns;
+}
+ */
 
   cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
     if (cursor.element_type() == ElementType::TABLE_COLUMN) {

@@ -129,7 +129,6 @@ enum class ElementProperty {
 
 class DocumentCursor;
 class ElementPropertySet;
-class TableElement;
 class ImageElement;
 
 class Document final {
@@ -162,7 +161,6 @@ public:
   [[nodiscard]] ElementType element_type() const;
   [[nodiscard]] ElementPropertySet element_properties() const;
 
-  TableElement table() const;
   ImageElement image() const;
 
   bool move_to_parent();
@@ -190,20 +188,6 @@ struct TableDimensions {
 
   TableDimensions();
   TableDimensions(std::uint32_t rows, std::uint32_t columns);
-};
-
-class TableElement final {
-public:
-  explicit operator bool() const;
-
-  [[nodiscard]] TableDimensions dimensions() const;
-
-private:
-  explicit TableElement(internal::abstract::TableElement *impl);
-
-  internal::abstract::TableElement *m_impl;
-
-  friend DocumentCursor;
 };
 
 class ImageElement final {
