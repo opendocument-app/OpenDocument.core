@@ -73,9 +73,6 @@ public:
   };
 
 protected:
-  std::vector<std::int32_t> m_element_stack_top;
-  std::string m_element_stack;
-
   void *push_(std::size_t size);
   void pop_();
   std::int32_t next_offset_() const;
@@ -84,8 +81,10 @@ protected:
   const Element *back_() const;
 
 private:
-  [[nodiscard]] bool internal() const final;
+  std::vector<std::int32_t> m_element_stack_top;
+  std::string m_element_stack;
 
+  [[nodiscard]] bool internal() const final;
   [[nodiscard]] std::optional<odr::File> image_file() const final;
 };
 
