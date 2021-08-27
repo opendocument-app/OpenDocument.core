@@ -20,7 +20,6 @@ class Path;
 
 namespace odr::internal::abstract {
 
-class File;
 class ReadableFilesystem;
 class DocumentCursor;
 
@@ -53,9 +52,19 @@ public:
   root_element() const = 0;
 };
 
+class SlideElement {
+public:
+  virtual ~SlideElement() = default;
+
+  [[nodiscard]] virtual bool move_to_slide_master() = 0;
+};
+
 class TableElement {
 public:
   virtual ~TableElement() = default;
+
+  [[nodiscard]] virtual bool move_to_first_column() = 0;
+  [[nodiscard]] virtual bool move_to_first_row() = 0;
 };
 
 class ImageElement {
@@ -81,8 +90,9 @@ public:
   [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
   element_properties() const = 0;
 
-  virtual const TableElement *table() const = 0;
-  virtual const ImageElement *image() const = 0;
+  [[nodiscard]] virtual SlideElement *slide() = 0;
+  [[nodiscard]] virtual TableElement *table() = 0;
+  [[nodiscard]] virtual const ImageElement *image() const = 0;
 
   virtual bool move_to_parent() = 0;
   virtual bool move_to_first_child() = 0;

@@ -72,6 +72,8 @@ enum class ElementProperty {
 
   VALUE_TYPE,
 
+  PLACEHOLDER,
+
   X,
   Y,
   WIDTH,

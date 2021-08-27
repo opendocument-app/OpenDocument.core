@@ -33,20 +33,25 @@ DocumentCursor::element_properties() const {
   return back_()->properties(*this);
 }
 
-const abstract::TableElement *DocumentCursor::table() const {
-  auto impl = back_()->table(*this);
-  if (!impl) {
-    return nullptr;
+abstract::SlideElement *DocumentCursor::slide() {
+  if (back_()->slide(*this)) {
+    return this;
   }
-  return this;
+  return nullptr;
+}
+
+abstract::TableElement *DocumentCursor::table() {
+  if (back_()->table(*this)) {
+    return this;
+  }
+  return nullptr;
 }
 
 const abstract::ImageElement *DocumentCursor::image() const {
-  auto impl = back_()->image(*this);
-  if (!impl) {
-    return nullptr;
+  if (back_()->image(*this)) {
+    return this;
   }
-  return this;
+  return nullptr;
 }
 
 bool DocumentCursor::move_to_parent() {
@@ -115,6 +120,20 @@ DocumentCursor::Element *DocumentCursor::back_() {
 const DocumentCursor::Element *DocumentCursor::back_() const {
   std::int32_t offset = back_offset_();
   return reinterpret_cast<const Element *>(m_element_stack.data() + offset);
+}
+
+bool DocumentCursor::move_to_slide_master() {
+  auto allocator = [this](const std::size_t size) { return push_(size); };
+  auto element = back_()->slide(*this)->slide_master(*this, allocator);
+  return element != nullptr;
+}
+
+bool DocumentCursor::move_to_first_column() {
+  return back_()->table(*this)->move_to_first_column(*this);
+}
+
+bool DocumentCursor::move_to_first_row() {
+  return back_()->table(*this)->move_to_first_row(*this);
 }
 
 bool DocumentCursor::internal() const {
