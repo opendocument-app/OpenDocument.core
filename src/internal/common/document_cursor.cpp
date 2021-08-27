@@ -77,7 +77,8 @@ bool DocumentCursor::move_to_next_sibling() {
     pop_();
     return push_(size);
   };
-  auto element = back_()->next_sibling(*this, allocator);
+  auto impl = back_();
+  auto element = impl->next_sibling(*this, allocator);
   return element != nullptr;
 }
 
@@ -85,7 +86,7 @@ void *DocumentCursor::push_(const std::size_t size) {
   std::int32_t offset = next_offset_();
   std::int32_t next_offset = offset + size;
   m_element_stack_top.push_back(next_offset);
-  m_element_stack.reserve(next_offset);
+  m_element_stack.resize(next_offset);
   return m_element_stack.data() + offset;
 }
 
@@ -93,7 +94,7 @@ void DocumentCursor::pop_() {
   back_()->~Element();
   m_element_stack_top.pop_back();
   std::int32_t next_offset = next_offset_();
-  m_element_stack.reserve(next_offset);
+  m_element_stack.resize(next_offset);
 }
 
 std::int32_t DocumentCursor::next_offset_() const {

@@ -345,20 +345,20 @@ public:
   DocumentCursor::Element *
   previous_sibling(const common::DocumentCursor &cursor,
                    DocumentCursor::Allocator allocator) final {
-    return construct_default_previous_sibling_element(document(cursor), left_(),
-                                                      allocator);
+    return construct_default_previous_sibling_element(document(cursor),
+                                                      first_(), allocator);
   }
 
   DocumentCursor::Element *
   next_sibling(const common::DocumentCursor &cursor,
                DocumentCursor::Allocator allocator) final {
-    return construct_default_next_sibling_element(document(cursor), right_(),
+    return construct_default_next_sibling_element(document(cursor), last_(),
                                                   allocator);
   }
 
   std::string text() const {
     std::string result;
-    for (auto node = left_(); is_text_(node); node = node.next_sibling()) {
+    for (auto node = first_(); is_text_(node); node = node.next_sibling()) {
       result = result + text_(node);
     }
     return result;
@@ -400,14 +400,14 @@ private:
     return "";
   }
 
-  pugi::xml_node left_() const {
+  pugi::xml_node first_() const {
     auto node = m_node;
     for (; is_text_(node.previous_sibling()); node = node.previous_sibling()) {
     }
     return node;
   }
 
-  pugi::xml_node right_() const {
+  pugi::xml_node last_() const {
     auto node = m_node;
     for (; is_text_(node.next_sibling()); node = node.next_sibling()) {
     }
