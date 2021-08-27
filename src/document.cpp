@@ -1,7 +1,6 @@
 #include <internal/abstract/document.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
-#include <internal/common/table_range.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -135,7 +134,7 @@ TableDimensions::TableDimensions(const std::uint32_t rows,
                                  const std::uint32_t columns)
     : rows{rows}, columns{columns} {}
 
-ImageElement::ImageElement(internal::abstract::ImageElement *impl)
+ImageElement::ImageElement(const internal::abstract::ImageElement *impl)
     : m_impl{impl} {}
 
 ImageElement::operator bool() const { return m_impl != nullptr; }

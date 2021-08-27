@@ -198,9 +198,9 @@ public:
   [[nodiscard]] std::optional<File> image_file() const;
 
 private:
-  explicit ImageElement(internal::abstract::ImageElement *impl);
+  explicit ImageElement(const internal::abstract::ImageElement *impl);
 
-  internal::abstract::ImageElement *m_impl;
+  const internal::abstract::ImageElement *m_impl;
 
   friend DocumentCursor;
 };

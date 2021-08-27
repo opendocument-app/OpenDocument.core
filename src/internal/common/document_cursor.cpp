@@ -3,6 +3,8 @@
 
 namespace odr::internal::common {
 
+DocumentCursor::DocumentCursor() { m_element_stack_top.push_back(0); }
+
 bool DocumentCursor::operator==(const abstract::DocumentCursor &rhs) const {
   return back_()->operator==(
       *dynamic_cast<const DocumentCursor &>(rhs).back_());
@@ -31,17 +33,24 @@ DocumentCursor::element_properties() const {
   return back_()->properties(*this);
 }
 
-abstract::ImageElement *DocumentCursor::image() {
+const abstract::TableElement *DocumentCursor::table() const {
+  auto impl = back_()->table(*this);
+  if (!impl) {
+    return nullptr;
+  }
+  return this;
+}
+
+const abstract::ImageElement *DocumentCursor::image() const {
   auto impl = back_()->image(*this);
   if (!impl) {
     return nullptr;
   }
-  m_image_element = ImageElementImpl(this, impl);
-  return &m_image_element;
+  return this;
 }
 
 bool DocumentCursor::move_to_parent() {
-  if (m_element_offset.size() <= 1) {
+  if (m_element_stack_top.size() <= 1) {
     return false;
   }
   pop_();
@@ -49,13 +58,13 @@ bool DocumentCursor::move_to_parent() {
 }
 
 bool DocumentCursor::move_to_first_child() {
-  auto allocator = [this](std::size_t size) { return push_(size); };
+  auto allocator = [this](const std::size_t size) { return push_(size); };
   auto element = back_()->first_child(*this, allocator);
   return element != nullptr;
 }
 
 bool DocumentCursor::move_to_previous_sibling() {
-  auto allocator = [this](std::size_t size) {
+  auto allocator = [this](const std::size_t size) {
     pop_();
     return push_(size);
   };
@@ -64,7 +73,7 @@ bool DocumentCursor::move_to_previous_sibling() {
 }
 
 bool DocumentCursor::move_to_next_sibling() {
-  auto allocator = [this](std::size_t size) {
+  auto allocator = [this](const std::size_t size) {
     pop_();
     return push_(size);
   };
@@ -73,28 +82,28 @@ bool DocumentCursor::move_to_next_sibling() {
 }
 
 void *DocumentCursor::push_(const std::size_t size) {
-  m_element_offset.push_back(m_next_element_offset);
-  std::int32_t offset = back_offset_();
-  m_next_element_offset = offset + size;
-  m_element_stack.reserve(m_next_element_offset);
+  std::int32_t offset = next_offset_();
+  std::int32_t next_offset = offset + size;
+  m_element_stack_top.push_back(next_offset);
+  m_element_stack.reserve(next_offset);
   return m_element_stack.data() + offset;
 }
 
 void DocumentCursor::pop_() {
   back_()->~Element();
-  std::int32_t offset = back_offset_();
-  m_element_offset.pop_back();
-  m_element_stack.reserve(offset);
+  m_element_stack_top.pop_back();
+  std::int32_t next_offset = next_offset_();
+  m_element_stack.reserve(next_offset);
+}
+
+std::int32_t DocumentCursor::next_offset_() const {
+  return m_element_stack_top.back();
 }
 
 std::int32_t DocumentCursor::back_offset_() const {
-  return m_element_offset.empty() ? m_next_element_offset
-                                  : m_element_offset.back();
-}
-
-const DocumentCursor::Element *DocumentCursor::back_() const {
-  std::int32_t offset = back_offset_();
-  return reinterpret_cast<const Element *>(m_element_stack.data() + offset);
+  return (m_element_stack_top.size() <= 1)
+             ? 0
+             : m_element_stack_top[m_element_stack_top.size() - 2];
 }
 
 DocumentCursor::Element *DocumentCursor::back_() {
@@ -102,18 +111,17 @@ DocumentCursor::Element *DocumentCursor::back_() {
   return reinterpret_cast<Element *>(m_element_stack.data() + offset);
 }
 
-DocumentCursor::ImageElementImpl::ImageElementImpl() = default;
-
-DocumentCursor::ImageElementImpl::ImageElementImpl(
-    DocumentCursor *cursor, DocumentCursor::ImageElement *impl)
-    : m_cursor{cursor}, m_impl{impl} {}
-
-bool DocumentCursor::ImageElementImpl::internal() const {
-  return m_impl->internal(*m_cursor);
+const DocumentCursor::Element *DocumentCursor::back_() const {
+  std::int32_t offset = back_offset_();
+  return reinterpret_cast<const Element *>(m_element_stack.data() + offset);
 }
 
-std::optional<odr::File> DocumentCursor::ImageElementImpl::image_file() const {
-  return m_impl->image_file(*m_cursor);
+bool DocumentCursor::internal() const {
+  return back_()->image(*this)->internal(*this);
+}
+
+std::optional<odr::File> DocumentCursor::image_file() const {
+  return back_()->image(*this)->image_file(*this);
 }
 
 } // namespace odr::internal::common

@@ -9,8 +9,12 @@
 
 namespace odr::internal::common {
 
-class DocumentCursor : public abstract::DocumentCursor {
+class DocumentCursor : public abstract::DocumentCursor,
+                       private abstract::TableElement,
+                       private abstract::ImageElement {
 public:
+  DocumentCursor();
+
   bool operator==(const abstract::DocumentCursor &rhs) const final;
   bool operator!=(const abstract::DocumentCursor &rhs) const final;
 
@@ -22,7 +26,8 @@ public:
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   element_properties() const override;
 
-  abstract::ImageElement *image() final;
+  const abstract::TableElement *table() const final;
+  const abstract::ImageElement *image() const final;
 
   bool move_to_parent() final;
   bool move_to_first_child() final;
@@ -30,6 +35,11 @@ public:
   bool move_to_next_sibling() final;
 
   using Allocator = std::function<void *(std::size_t size)>;
+
+  class TableElement {
+  public:
+    virtual ~TableElement() = default;
+  };
 
   class ImageElement {
   public:
@@ -51,7 +61,8 @@ public:
     [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
     properties(const DocumentCursor &cursor) const = 0;
 
-    virtual ImageElement *image(const DocumentCursor &cursor) = 0;
+    virtual const TableElement *table(const DocumentCursor &cursor) const = 0;
+    virtual const ImageElement *image(const DocumentCursor &cursor) const = 0;
 
     virtual Element *first_child(const DocumentCursor &cursor,
                                  Allocator allocator) = 0;
@@ -62,32 +73,20 @@ public:
   };
 
 protected:
-  std::vector<std::int32_t> m_element_offset;
-  std::int32_t m_next_element_offset{0};
+  std::vector<std::int32_t> m_element_stack_top;
   std::string m_element_stack;
 
   void *push_(std::size_t size);
   void pop_();
+  std::int32_t next_offset_() const;
   std::int32_t back_offset_() const;
-  const Element *back_() const;
   Element *back_();
+  const Element *back_() const;
 
 private:
-  class ImageElementImpl final : public abstract::ImageElement {
-  public:
-    ImageElementImpl();
-    ImageElementImpl(DocumentCursor *cursor,
-                     DocumentCursor::ImageElement *impl);
+  [[nodiscard]] bool internal() const final;
 
-    [[nodiscard]] bool internal() const final;
-    [[nodiscard]] std::optional<odr::File> image_file() const final;
-
-  private:
-    DocumentCursor *m_cursor{nullptr};
-    DocumentCursor::ImageElement *m_impl{nullptr};
-  };
-
-  ImageElementImpl m_image_element;
+  [[nodiscard]] std::optional<odr::File> image_file() const final;
 };
 
 } // namespace odr::internal::common

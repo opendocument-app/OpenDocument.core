@@ -53,6 +53,11 @@ public:
   root_element() const = 0;
 };
 
+class TableElement {
+public:
+  virtual ~TableElement() = default;
+};
+
 class ImageElement {
 public:
   virtual ~ImageElement() = default;
@@ -76,7 +81,8 @@ public:
   [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
   element_properties() const = 0;
 
-  virtual ImageElement *image() = 0;
+  virtual const TableElement *table() const = 0;
+  virtual const ImageElement *image() const = 0;
 
   virtual bool move_to_parent() = 0;
   virtual bool move_to_first_child() = 0;

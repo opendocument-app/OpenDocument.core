@@ -99,9 +99,6 @@ struct DocumentCursor::DefaultTraits {
         {"table:name", ElementProperty::NAME},
         // TABLE, TABLE_COLUMN, TABLE_ROW, TABLE_CELL
         {"table:style-name", ElementProperty::STYLE_NAME},
-        // TABLE_COLUMN
-        {"table:default-cell-style-name",
-         ElementProperty::TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME},
         // TABLE_CELL
         {"office:value-type", ElementProperty::VALUE_TYPE},
         // LINK, IMAGE
@@ -151,7 +148,11 @@ public:
                             document_style(cursor), _element_type);
   }
 
-  ImageElement *image(const common::DocumentCursor &) override {
+  const TableElement *table(const common::DocumentCursor &) const override {
+    return nullptr;
+  }
+
+  const ImageElement *image(const common::DocumentCursor &) const override {
     return nullptr;
   }
 
@@ -593,7 +594,9 @@ public:
   ImageElement(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  ImageElement *image(const common::DocumentCursor &) final { return this; }
+  const ImageElement *image(const common::DocumentCursor &) const final {
+    return this;
+  }
 
   const char *href() const { return m_node.attribute("xlink:href").value(); }
 
