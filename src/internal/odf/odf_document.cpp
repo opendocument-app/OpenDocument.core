@@ -14,9 +14,8 @@
 
 namespace odr::internal::odf {
 
-OpenDocument::OpenDocument(
-    const DocumentType document_type,
-    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+Document::Document(const DocumentType document_type,
+                   std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_document_type{document_type}, m_filesystem{std::move(filesystem)} {
   m_content_xml = util::xml::parse(*m_filesystem, "content.xml");
 
@@ -28,13 +27,13 @@ OpenDocument::OpenDocument(
       Style(m_content_xml.document_element(), m_styles_xml.document_element());
 }
 
-bool OpenDocument::editable() const noexcept { return true; }
+bool Document::editable() const noexcept { return true; }
 
-bool OpenDocument::savable(const bool encrypted) const noexcept {
+bool Document::savable(const bool encrypted) const noexcept {
   return !encrypted;
 }
 
-void OpenDocument::save(const common::Path &path) const {
+void Document::save(const common::Path &path) const {
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 
@@ -69,22 +68,21 @@ void OpenDocument::save(const common::Path &path) const {
   archive.save(ostream);
 }
 
-void OpenDocument::save(const common::Path & /*path*/,
-                        const char * /*password*/) const {
+void Document::save(const common::Path & /*path*/,
+                    const char * /*password*/) const {
   // TODO throw if not savable
   throw UnsupportedOperation();
 }
 
-DocumentType OpenDocument::document_type() const noexcept {
+DocumentType Document::document_type() const noexcept {
   return m_document_type;
 }
 
-std::shared_ptr<abstract::ReadableFilesystem>
-OpenDocument::files() const noexcept {
+std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::unique_ptr<abstract::DocumentCursor> OpenDocument::root_element() const {
+std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
   return std::make_unique<DocumentCursor>(
       this,
       m_content_xml.document_element().child("office:body").first_child());

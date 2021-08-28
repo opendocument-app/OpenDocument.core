@@ -8,10 +8,10 @@
 namespace odr::internal::odf {
 class DocumentCursor;
 
-class OpenDocument : public abstract::Document {
+class Document : public abstract::Document {
 public:
-  OpenDocument(DocumentType document_type,
-               std::shared_ptr<abstract::ReadableFilesystem> files);
+  Document(DocumentType document_type,
+           std::shared_ptr<abstract::ReadableFilesystem> files);
 
   bool editable() const noexcept final;
   bool savable(bool encrypted) const noexcept final;

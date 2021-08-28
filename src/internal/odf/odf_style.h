@@ -13,7 +13,7 @@ enum class ElementProperty;
 } // namespace odr
 
 namespace odr::internal::odf {
-class OpenDocument;
+class Document;
 
 class Style final {
 public:

@@ -4,20 +4,20 @@
 #include <internal/common/document_cursor.h>
 
 namespace odr::internal::odf {
-class OpenDocument;
+class Document;
 class Style;
 
 class DocumentCursor final : public common::DocumentCursor {
 public:
-  DocumentCursor(const OpenDocument *document, pugi::xml_node root);
+  DocumentCursor(const Document *document, pugi::xml_node root);
 
 private:
-  const OpenDocument *m_document;
+  const Document *m_document;
 
   const Style *style() const;
 
   template <typename Derived>
-  static Element *construct_default(const OpenDocument *document,
+  static Element *construct_default(const Document *document,
                                     pugi::xml_node node,
                                     const Allocator &allocator) {
     auto alloc = allocator(sizeof(Derived));
@@ -25,7 +25,7 @@ private:
   }
 
   template <typename Derived>
-  static Element *construct_default_optional(const OpenDocument *document,
+  static Element *construct_default_optional(const Document *document,
                                              pugi::xml_node node,
                                              const Allocator &allocator) {
     if (!node) {
@@ -35,20 +35,20 @@ private:
   }
 
   static DocumentCursor::Element *
-  construct_default_element(const OpenDocument *document, pugi::xml_node node,
+  construct_default_element(const Document *document, pugi::xml_node node,
                             const Allocator &allocator);
   static DocumentCursor::Element *
-  construct_default_parent_element(const OpenDocument *document,
+  construct_default_parent_element(const Document *document,
                                    pugi::xml_node node,
                                    const DocumentCursor::Allocator &allocator);
   static DocumentCursor::Element *construct_default_first_child_element(
-      const OpenDocument *document, pugi::xml_node node,
+      const Document *document, pugi::xml_node node,
       const DocumentCursor::Allocator &allocator);
   static DocumentCursor::Element *construct_default_previous_sibling_element(
-      const OpenDocument *document, pugi::xml_node node,
+      const Document *document, pugi::xml_node node,
       const DocumentCursor::Allocator &allocator);
   static DocumentCursor::Element *construct_default_next_sibling_element(
-      const OpenDocument *document, pugi::xml_node node,
+      const Document *document, pugi::xml_node node,
       const DocumentCursor::Allocator &allocator);
 
   static std::unordered_map<ElementProperty, std::any> fetch_properties(

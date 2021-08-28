@@ -57,15 +57,13 @@ std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
   // TODO throw if encrypted
   switch (file_type()) {
   case FileType::OPENDOCUMENT_TEXT:
-    return std::make_shared<OpenDocument>(DocumentType::TEXT, m_filesystem);
+    return std::make_shared<Document>(DocumentType::TEXT, m_filesystem);
   case FileType::OPENDOCUMENT_PRESENTATION:
-    return std::make_shared<OpenDocument>(DocumentType::PRESENTATION,
-                                          m_filesystem);
+    return std::make_shared<Document>(DocumentType::PRESENTATION, m_filesystem);
   case FileType::OPENDOCUMENT_SPREADSHEET:
-    return std::make_shared<OpenDocument>(DocumentType::SPREADSHEET,
-                                          m_filesystem);
+    return std::make_shared<Document>(DocumentType::SPREADSHEET, m_filesystem);
   case FileType::OPENDOCUMENT_GRAPHICS:
-    return std::make_shared<OpenDocument>(DocumentType::DRAWING, m_filesystem);
+    return std::make_shared<Document>(DocumentType::DRAWING, m_filesystem);
   default:
     throw UnsupportedOperation();
   }
