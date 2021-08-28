@@ -167,6 +167,8 @@ public:
   bool move_to_previous_sibling();
   bool move_to_next_sibling();
 
+  [[nodiscard]] std::string text() const;
+
   [[nodiscard]] bool image_internal() const;
   [[nodiscard]] std::optional<File> image_file() const;
 

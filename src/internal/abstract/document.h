@@ -72,6 +72,8 @@ public:
   virtual bool move_to_previous_sibling() = 0;
   virtual bool move_to_next_sibling() = 0;
 
+  [[nodiscard]] virtual std::string text() const = 0;
+
   [[nodiscard]] virtual bool move_to_slide_master() = 0;
 
   [[nodiscard]] virtual bool move_to_first_table_column() = 0;

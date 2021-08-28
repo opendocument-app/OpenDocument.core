@@ -21,6 +21,8 @@ struct DocumentCursor::DefaultTraits {
         // TABLE, TABLE_COLUMN, TABLE_ROW, TABLE_CELL
         {"table:style-name", ElementProperty::STYLE_NAME},
         // TABLE_CELL
+        {"table:number-columns-spanned", ElementProperty::COLUMN_SPAN},
+        {"table:number-rows-spanned", ElementProperty::ROW_SPAN},
         {"office:value-type", ElementProperty::VALUE_TYPE},
         // LINK, IMAGE
         {"xlink:href", ElementProperty::HREF},
@@ -85,6 +87,11 @@ public:
                         const Allocator &allocator) override {
     return construct_default_next_sibling_element(document(cursor), m_node,
                                                   allocator);
+  }
+
+  [[nodiscard]] std::string
+  text(const common::DocumentCursor &) const override {
+    return "";
   }
 
   Element *slide_master(const common::DocumentCursor &,
@@ -270,13 +277,6 @@ public:
   Text(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  properties(const common::DocumentCursor &) const final {
-    return {
-        {ElementProperty::TEXT, text()},
-    };
-  }
-
   Element *previous_sibling(const common::DocumentCursor &cursor,
                             const Allocator &allocator) final {
     return construct_default_previous_sibling_element(document(cursor),
@@ -289,7 +289,7 @@ public:
                                                   allocator);
   }
 
-  [[nodiscard]] std::string text() const {
+  [[nodiscard]] std::string text(const common::DocumentCursor &) const final {
     std::string result;
     for (auto node = first_(); is_text_(node); node = node.next_sibling()) {
       result += text_(node);
@@ -477,15 +477,7 @@ public:
 private:
   TableColumn m_column;
 
-  [[nodiscard]] std::uint32_t number_columns_spanned_() const {
-    return m_node.attribute("table:number-columns-spanned").as_uint(1);
-  }
-
-  [[nodiscard]] std::uint32_t number_rows_spanned_() const {
-    return m_node.attribute("table:number-rows-spanned").as_uint(1);
-  }
-
-  [[nodiscard]] std::uint32_t number_repeated_() const {
+  [[nodiscard]] std::uint32_t number_repeated_() const final {
     return m_node.attribute("table:number-columns-repeated").as_uint(1);
   }
 
@@ -511,40 +503,23 @@ public:
   [[nodiscard]] bool
   image_internal(const common::DocumentCursor &cursor) const final {
     auto doc = document(cursor);
-
     if (!doc || !doc->files()) {
       return false;
     }
-
     try {
-      const std::string href = this->href();
-      const internal::common::Path path{href};
-
-      return doc->files()->is_file(path);
+      return doc->files()->is_file(this->href());
     } catch (...) {
     }
-
     return false;
   }
 
   [[nodiscard]] std::optional<odr::File>
   image_file(const common::DocumentCursor &cursor) const final {
     auto doc = document(cursor);
-
-    if (!doc) {
-      // TODO throw; there is no "empty" file
-      return File(std::shared_ptr<internal::abstract::File>());
+    if (!doc || !image_internal(cursor)) {
+      return {};
     }
-
-    if (!image_internal(cursor)) {
-      // TODO throw / support external files
-      return File(std::shared_ptr<internal::abstract::File>());
-    }
-
-    const std::string href = this->href();
-    const internal::common::Path path{href};
-
-    return File(doc->files()->open(path));
+    return File(doc->files()->open(this->href()));
   }
 };
 
@@ -619,9 +594,8 @@ DocumentCursor::Element *
 DocumentCursor::construct_default_parent_element(const OpenDocument *document,
                                                  pugi::xml_node node,
                                                  const Allocator &allocator) {
-  for (pugi::xml_node parent = node.parent(); parent;
-       parent = parent.parent()) {
-    if (auto result = construct_default_element(document, parent, allocator)) {
+  for (node = node.parent(); node; node = node.parent()) {
+    if (auto result = construct_default_element(document, node, allocator)) {
       return result;
     }
   }
@@ -631,10 +605,8 @@ DocumentCursor::construct_default_parent_element(const OpenDocument *document,
 DocumentCursor::Element *DocumentCursor::construct_default_first_child_element(
     const OpenDocument *document, pugi::xml_node node,
     const Allocator &allocator) {
-  for (pugi::xml_node first_child = node.first_child(); first_child;
-       first_child = first_child.next_sibling()) {
-    if (auto result =
-            construct_default_element(document, first_child, allocator)) {
+  for (node = node.first_child(); node; node = node.next_sibling()) {
+    if (auto result = construct_default_element(document, node, allocator)) {
       return result;
     }
   }
@@ -645,11 +617,8 @@ DocumentCursor::Element *
 DocumentCursor::construct_default_previous_sibling_element(
     const OpenDocument *document, pugi::xml_node node,
     const Allocator &allocator) {
-  for (pugi::xml_node previous_sibling = node.previous_sibling();
-       previous_sibling;
-       previous_sibling = previous_sibling.previous_sibling()) {
-    if (auto result =
-            construct_default_element(document, previous_sibling, allocator)) {
+  for (node = node.previous_sibling(); node; node = node.previous_sibling()) {
+    if (auto result = construct_default_element(document, node, allocator)) {
       return result;
     }
   }
@@ -659,10 +628,8 @@ DocumentCursor::construct_default_previous_sibling_element(
 DocumentCursor::Element *DocumentCursor::construct_default_next_sibling_element(
     const OpenDocument *document, pugi::xml_node node,
     const Allocator &allocator) {
-  for (pugi::xml_node next_sibling = node.next_sibling(); next_sibling;
-       next_sibling = next_sibling.next_sibling()) {
-    if (auto result =
-            construct_default_element(document, next_sibling, allocator)) {
+  for (node = node.next_sibling(); node; node = node.next_sibling()) {
+    if (auto result = construct_default_element(document, node, allocator)) {
       return result;
     }
   }

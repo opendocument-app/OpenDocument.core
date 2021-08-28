@@ -29,6 +29,8 @@ public:
   bool move_to_previous_sibling() final;
   bool move_to_next_sibling() final;
 
+  [[nodiscard]] std::string text() const final;
+
   [[nodiscard]] bool move_to_slide_master() final;
 
   [[nodiscard]] bool move_to_first_table_column() final;
@@ -56,6 +58,9 @@ public:
                                       const Allocator &allocator) = 0;
     virtual Element *next_sibling(const DocumentCursor &cursor,
                                   const Allocator &allocator) = 0;
+
+    [[nodiscard]] virtual std::string
+    text(const DocumentCursor &cursor) const = 0;
 
     virtual Element *slide_master(const DocumentCursor &cursor,
                                   const Allocator &allocator) = 0;
