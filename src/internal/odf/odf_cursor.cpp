@@ -551,8 +551,8 @@ public:
   TableElement(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  Element *first_child(const common::DocumentCursor &cursor,
-                       const Allocator &allocator) final {
+  Element *first_child(const common::DocumentCursor &,
+                       const Allocator &) final {
     return nullptr;
   }
 
