@@ -9,10 +9,7 @@
 
 namespace odr::internal::common {
 
-class DocumentCursor : public abstract::DocumentCursor,
-                       private abstract::SlideElement,
-                       private abstract::TableElement,
-                       private abstract::ImageElement {
+class DocumentCursor : public abstract::DocumentCursor {
 public:
   DocumentCursor();
 
@@ -27,45 +24,20 @@ public:
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   element_properties() const override;
 
-  abstract::SlideElement *slide() final;
-  abstract::TableElement *table() final;
-  const abstract::ImageElement *image() const final;
-
   bool move_to_parent() final;
   bool move_to_first_child() final;
   bool move_to_previous_sibling() final;
   bool move_to_next_sibling() final;
 
+  [[nodiscard]] bool move_to_slide_master() final;
+
+  [[nodiscard]] bool move_to_first_table_column() final;
+  [[nodiscard]] bool move_to_first_table_row() final;
+
+  [[nodiscard]] bool image_internal() const final;
+  [[nodiscard]] std::optional<odr::File> image_file() const final;
+
   using Allocator = std::function<void *(std::size_t size)>;
-
-  class Element;
-
-  class SlideElement {
-  public:
-    virtual ~SlideElement() = default;
-
-    virtual Element *slide_master(const DocumentCursor &cursor,
-                                  const Allocator &allocator) = 0;
-  };
-
-  class TableElement {
-  public:
-    virtual ~TableElement() = default;
-
-    [[nodiscard]] virtual bool
-    move_to_first_column(const DocumentCursor &cursor) = 0;
-    [[nodiscard]] virtual bool
-    move_to_first_row(const DocumentCursor &cursor) = 0;
-  };
-
-  class ImageElement {
-  public:
-    virtual ~ImageElement() = default;
-
-    [[nodiscard]] virtual bool internal(const DocumentCursor &cursor) const = 0;
-    [[nodiscard]] virtual std::optional<odr::File>
-    image_file(const DocumentCursor &cursor) const = 0;
-  };
 
   class Element {
   public:
@@ -78,17 +50,25 @@ public:
     [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
     properties(const DocumentCursor &cursor) const = 0;
 
-    [[nodiscard]] virtual SlideElement *slide(const DocumentCursor &cursor) = 0;
-    [[nodiscard]] virtual TableElement *table(const DocumentCursor &cursor) = 0;
-    [[nodiscard]] virtual const ImageElement *
-    image(const DocumentCursor &cursor) const = 0;
-
     virtual Element *first_child(const DocumentCursor &cursor,
                                  const Allocator &allocator) = 0;
     virtual Element *previous_sibling(const DocumentCursor &cursor,
                                       const Allocator &allocator) = 0;
     virtual Element *next_sibling(const DocumentCursor &cursor,
                                   const Allocator &allocator) = 0;
+
+    virtual Element *slide_master(const DocumentCursor &cursor,
+                                  const Allocator &allocator) = 0;
+
+    virtual Element *first_table_column(const DocumentCursor &cursor,
+                                        const Allocator &allocator) = 0;
+    virtual Element *first_table_row(const DocumentCursor &cursor,
+                                     const Allocator &allocator) = 0;
+
+    [[nodiscard]] virtual bool
+    image_internal(const DocumentCursor &cursor) const = 0;
+    [[nodiscard]] virtual std::optional<odr::File>
+    image_file(const DocumentCursor &cursor) const = 0;
   };
 
 protected:
@@ -102,17 +82,6 @@ protected:
 private:
   std::vector<std::int32_t> m_element_stack_top;
   std::string m_element_stack;
-
-  // abstract::SlideElement
-  [[nodiscard]] bool move_to_slide_master() final;
-
-  // abstract::TableElement
-  [[nodiscard]] bool move_to_first_column() final;
-  [[nodiscard]] bool move_to_first_row() final;
-
-  // abstract::ImageElement
-  [[nodiscard]] bool internal() const final;
-  [[nodiscard]] std::optional<odr::File> image_file() const final;
 };
 
 } // namespace odr::internal::common

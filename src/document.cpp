@@ -95,10 +95,6 @@ ElementPropertySet DocumentCursor::element_properties() const {
   return ElementPropertySet(m_impl->element_properties());
 }
 
-ImageElement DocumentCursor::image() const {
-  return ImageElement(m_impl->image());
-}
-
 bool DocumentCursor::move_to_parent() { return m_impl->move_to_parent(); }
 
 bool DocumentCursor::move_to_first_child() {
@@ -111,6 +107,12 @@ bool DocumentCursor::move_to_previous_sibling() {
 
 bool DocumentCursor::move_to_next_sibling() {
   return m_impl->move_to_next_sibling();
+}
+
+bool DocumentCursor::image_internal() const { return m_impl->image_internal(); }
+
+std::optional<File> DocumentCursor::image_file() const {
+  return m_impl->image_file();
 }
 
 void DocumentCursor::for_each_child(ChildVisitor visitor) {
@@ -133,17 +135,6 @@ TableDimensions::TableDimensions() = default;
 TableDimensions::TableDimensions(const std::uint32_t rows,
                                  const std::uint32_t columns)
     : rows{rows}, columns{columns} {}
-
-ImageElement::ImageElement(const internal::abstract::ImageElement *impl)
-    : m_impl{impl} {}
-
-ImageElement::operator bool() const { return m_impl != nullptr; }
-
-bool ImageElement::internal() const { return m_impl->internal(); }
-
-std::optional<File> ImageElement::image_file() const {
-  return m_impl->image_file();
-}
 
 ElementPropertySet::ElementPropertySet(
     std::unordered_map<ElementProperty, std::any> properties)

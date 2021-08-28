@@ -131,7 +131,6 @@ enum class ElementProperty {
 
 class DocumentCursor;
 class ElementPropertySet;
-class ImageElement;
 
 class Document final {
 public:
@@ -163,12 +162,13 @@ public:
   [[nodiscard]] ElementType element_type() const;
   [[nodiscard]] ElementPropertySet element_properties() const;
 
-  ImageElement image() const;
-
   bool move_to_parent();
   bool move_to_first_child();
   bool move_to_previous_sibling();
   bool move_to_next_sibling();
+
+  [[nodiscard]] bool image_internal() const;
+  [[nodiscard]] std::optional<File> image_file() const;
 
   using ChildVisitor =
       std::function<void(DocumentCursor &cursor, std::uint32_t i)>;
@@ -190,21 +190,6 @@ struct TableDimensions {
 
   TableDimensions();
   TableDimensions(std::uint32_t rows, std::uint32_t columns);
-};
-
-class ImageElement final {
-public:
-  explicit operator bool() const;
-
-  [[nodiscard]] bool internal() const;
-  [[nodiscard]] std::optional<File> image_file() const;
-
-private:
-  explicit ImageElement(const internal::abstract::ImageElement *impl);
-
-  const internal::abstract::ImageElement *m_impl;
-
-  friend DocumentCursor;
 };
 
 class ElementPropertySet final {

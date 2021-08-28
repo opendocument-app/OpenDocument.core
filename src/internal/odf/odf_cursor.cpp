@@ -28,23 +28,6 @@ construct_default_optional(const OpenDocument *document, pugi::xml_node node,
   return construct_default<Derived>(document, node, allocator);
 }
 
-DocumentCursor::Element *
-construct_default_element(const OpenDocument *document, pugi::xml_node node,
-                          const DocumentCursor::Allocator &allocator);
-DocumentCursor::Element *
-construct_default_parent_element(const OpenDocument *document,
-                                 pugi::xml_node node,
-                                 const DocumentCursor::Allocator &allocator);
-DocumentCursor::Element *construct_default_first_child_element(
-    const OpenDocument *document, pugi::xml_node node,
-    const DocumentCursor::Allocator &allocator);
-DocumentCursor::Element *construct_default_previous_sibling_element(
-    const OpenDocument *document, pugi::xml_node node,
-    const DocumentCursor::Allocator &allocator);
-DocumentCursor::Element *construct_default_next_sibling_element(
-    const OpenDocument *document, pugi::xml_node node,
-    const DocumentCursor::Allocator &allocator);
-
 std::unordered_map<ElementProperty, std::any> fetch_properties(
     const std::unordered_map<std::string, ElementProperty> &property_table,
     pugi::xml_node node, const Style *style, const ElementType element_type,
@@ -125,7 +108,7 @@ struct DocumentCursor::DefaultTraits {
 };
 
 template <ElementType _element_type, typename Traits>
-class DocumentCursor::DefaultElement : public DocumentCursor::Element {
+class DocumentCursor::DefaultElement : public Element {
 public:
   pugi::xml_node m_node;
 
@@ -147,36 +130,47 @@ public:
                             document_style(cursor), _element_type);
   }
 
-  [[nodiscard]] SlideElement *slide(const common::DocumentCursor &) override {
-    return nullptr;
-  }
-
-  [[nodiscard]] TableElement *table(const common::DocumentCursor &) override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const ImageElement *
-  image(const common::DocumentCursor &) const override {
-    return nullptr;
-  }
-
   Element *first_child(const common::DocumentCursor &cursor,
-                       const DocumentCursor::Allocator &allocator) override {
+                       const Allocator &allocator) override {
     return construct_default_first_child_element(document(cursor), m_node,
                                                  allocator);
   }
 
-  Element *
-  previous_sibling(const common::DocumentCursor &cursor,
-                   const DocumentCursor::Allocator &allocator) override {
+  Element *previous_sibling(const common::DocumentCursor &cursor,
+                            const Allocator &allocator) override {
     return construct_default_previous_sibling_element(document(cursor), m_node,
                                                       allocator);
   }
 
   Element *next_sibling(const common::DocumentCursor &cursor,
-                        const DocumentCursor::Allocator &allocator) override {
+                        const Allocator &allocator) override {
     return construct_default_next_sibling_element(document(cursor), m_node,
                                                   allocator);
+  }
+
+  Element *slide_master(const common::DocumentCursor &,
+                        const Allocator &) override {
+    return nullptr;
+  }
+
+  Element *first_table_column(const common::DocumentCursor &,
+                              const Allocator &) override {
+    return nullptr;
+  }
+
+  Element *first_table_row(const common::DocumentCursor &,
+                           const Allocator &) override {
+    return nullptr;
+  }
+
+  [[nodiscard]] bool
+  image_internal(const common::DocumentCursor &) const override {
+    return false;
+  }
+
+  [[nodiscard]] std::optional<odr::File>
+  image_file(const common::DocumentCursor &) const override {
+    return {};
   }
 
   static const OpenDocument *document(const common::DocumentCursor &cursor) {
@@ -188,33 +182,25 @@ public:
   }
 };
 
-namespace {
-template <typename Traits = DocumentCursor::DefaultTraits>
-class DefaultRoot
-    : public DocumentCursor::DefaultElement<ElementType::ROOT, Traits> {
+template <typename Traits>
+class DocumentCursor::DefaultRoot
+    : public DefaultElement<ElementType::ROOT, Traits> {
 public:
   DefaultRoot(const OpenDocument *document, pugi::xml_node node)
-      : DocumentCursor::DefaultElement<ElementType::ROOT, Traits>(document,
-                                                                  node) {}
+      : DefaultElement<ElementType::ROOT, Traits>(document, node) {}
 
-  DocumentCursor::Element *
-  previous_sibling(const common::DocumentCursor &,
-                   const DocumentCursor::Allocator &) final {
+  Element *previous_sibling(const common::DocumentCursor &,
+                            const Allocator &) final {
     return nullptr;
   }
 
-  DocumentCursor::Element *
-  next_sibling(const common::DocumentCursor &,
-               const DocumentCursor::Allocator &) final {
+  Element *next_sibling(const common::DocumentCursor &,
+                        const Allocator &) final {
     return nullptr;
   }
 };
 
-class Slide;
-class Sheet;
-class Page;
-
-class TextDocumentRoot final : public DefaultRoot<> {
+class DocumentCursor::TextDocumentRoot final : public DefaultRoot<> {
 public:
   TextDocumentRoot(const OpenDocument *document, pugi::xml_node node)
       : DefaultRoot(document, node) {}
@@ -229,51 +215,49 @@ public:
   }
 };
 
-class PresentationRoot final : public DefaultRoot<> {
+class DocumentCursor::PresentationRoot final : public DefaultRoot<> {
 public:
   PresentationRoot(const OpenDocument *document, pugi::xml_node node)
       : DefaultRoot(document, node) {}
 
   Element *first_child(const common::DocumentCursor &cursor,
-                       const DocumentCursor::Allocator &allocator) final {
+                       const Allocator &allocator) final {
     return construct_default_optional<Slide>(document(cursor),
                                              m_node.first_child(), allocator);
   }
 };
 
-class SpreadsheetRoot final : public DefaultRoot<> {
+class DocumentCursor::SpreadsheetRoot final : public DefaultRoot<> {
 public:
   SpreadsheetRoot(const OpenDocument *document, pugi::xml_node node)
       : DefaultRoot(document, node) {}
 
   Element *first_child(const common::DocumentCursor &cursor,
-                       const DocumentCursor::Allocator &allocator) final {
+                       const Allocator &allocator) final {
     return construct_default_optional<Sheet>(document(cursor),
                                              m_node.first_child(), allocator);
   }
 };
 
-class DrawingRoot final : public DefaultRoot<> {
+class DocumentCursor::DrawingRoot final : public DefaultRoot<> {
 public:
   DrawingRoot(const OpenDocument *document, pugi::xml_node node)
       : DefaultRoot(document, node) {}
 
   Element *first_child(const common::DocumentCursor &cursor,
-                       const DocumentCursor::Allocator &allocator) final {
+                       const Allocator &allocator) final {
     return construct_default_optional<Page>(document(cursor),
                                             m_node.first_child(), allocator);
   }
 };
 
-class Slide final : public DocumentCursor::DefaultElement<ElementType::SLIDE>,
-                    public DocumentCursor::SlideElement {
+class DocumentCursor::Slide final : public DefaultElement<ElementType::SLIDE> {
 public:
   Slide(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  DocumentCursor::Element *
-  previous_sibling(const common::DocumentCursor &,
-                   const DocumentCursor::Allocator &) final {
+  Element *previous_sibling(const common::DocumentCursor &,
+                            const Allocator &) final {
     if (auto previous_sibling = m_node.previous_sibling()) {
       m_node = previous_sibling;
       return this;
@@ -281,31 +265,23 @@ public:
     return nullptr;
   }
 
-  DocumentCursor::Element *
-  next_sibling(const common::DocumentCursor &,
-               const DocumentCursor::Allocator &) final {
+  Element *next_sibling(const common::DocumentCursor &,
+                        const Allocator &) final {
     if (auto next_sibling = m_node.next_sibling()) {
       m_node = next_sibling;
       return this;
     }
     return nullptr;
   }
-
-  DocumentCursor::Element *
-  slide_master(const common::DocumentCursor &cursor,
-               const DocumentCursor::Allocator &allocator) final {
-    return nullptr; // TODO
-  }
 };
 
-class Sheet final : public DocumentCursor::DefaultElement<ElementType::SHEET> {
+class DocumentCursor::Sheet final : public DefaultElement<ElementType::SHEET> {
 public:
   Sheet(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  DocumentCursor::Element *
-  previous_sibling(const common::DocumentCursor &,
-                   const DocumentCursor::Allocator &) final {
+  Element *previous_sibling(const common::DocumentCursor &,
+                            const Allocator &) final {
     if (auto previous_sibling = m_node.previous_sibling()) {
       m_node = previous_sibling;
       return this;
@@ -313,9 +289,8 @@ public:
     return nullptr;
   }
 
-  DocumentCursor::Element *
-  next_sibling(const common::DocumentCursor &,
-               const DocumentCursor::Allocator &) final {
+  Element *next_sibling(const common::DocumentCursor &,
+                        const Allocator &) final {
     if (auto next_sibling = m_node.next_sibling()) {
       m_node = next_sibling;
       return this;
@@ -324,14 +299,13 @@ public:
   }
 };
 
-class Page final : public DocumentCursor::DefaultElement<ElementType::PAGE> {
+class DocumentCursor::Page final : public DefaultElement<ElementType::PAGE> {
 public:
   Page(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  DocumentCursor::Element *
-  previous_sibling(const common::DocumentCursor &,
-                   const DocumentCursor::Allocator &) final {
+  Element *previous_sibling(const common::DocumentCursor &,
+                            const Allocator &) final {
     if (auto previous_sibling = m_node.previous_sibling()) {
       m_node = previous_sibling;
       return this;
@@ -339,9 +313,8 @@ public:
     return nullptr;
   }
 
-  DocumentCursor::Element *
-  next_sibling(const common::DocumentCursor &,
-               const DocumentCursor::Allocator &) final {
+  Element *next_sibling(const common::DocumentCursor &,
+                        const Allocator &) final {
     if (auto next_sibling = m_node.next_sibling()) {
       m_node = next_sibling;
       return this;
@@ -350,7 +323,7 @@ public:
   }
 };
 
-class Text final : public DocumentCursor::DefaultElement<ElementType::TEXT> {
+class DocumentCursor::Text final : public DefaultElement<ElementType::TEXT> {
 public:
   Text(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
@@ -362,16 +335,14 @@ public:
     };
   }
 
-  DocumentCursor::Element *
-  previous_sibling(const common::DocumentCursor &cursor,
-                   const DocumentCursor::Allocator &allocator) final {
+  Element *previous_sibling(const common::DocumentCursor &cursor,
+                            const Allocator &allocator) final {
     return construct_default_previous_sibling_element(document(cursor),
                                                       first_(), allocator);
   }
 
-  DocumentCursor::Element *
-  next_sibling(const common::DocumentCursor &cursor,
-               const DocumentCursor::Allocator &allocator) final {
+  Element *next_sibling(const common::DocumentCursor &cursor,
+                        const Allocator &allocator) final {
     return construct_default_next_sibling_element(document(cursor), last_(),
                                                   allocator);
   }
@@ -435,22 +406,21 @@ private:
   }
 };
 
-class TableElement final
-    : public DocumentCursor::DefaultElement<ElementType::TABLE> {
+class DocumentCursor::TableElement final
+    : public DefaultElement<ElementType::TABLE> {
 public:
   TableElement(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 };
 
-class TableColumn final
-    : public DocumentCursor::DefaultElement<ElementType::TABLE_COLUMN> {
+class DocumentCursor::TableColumn final
+    : public DefaultElement<ElementType::TABLE_COLUMN> {
 public:
   TableColumn(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  DocumentCursor::Element *
-  previous_sibling(const common::DocumentCursor &,
-                   const DocumentCursor::Allocator &) final {
+  Element *previous_sibling(const common::DocumentCursor &,
+                            const Allocator &) final {
     if (m_repeated_index > 0) {
       --m_repeated_index;
       return this;
@@ -465,9 +435,8 @@ public:
     return nullptr;
   }
 
-  DocumentCursor::Element *
-  next_sibling(const common::DocumentCursor &,
-               const DocumentCursor::Allocator &) final {
+  Element *next_sibling(const common::DocumentCursor &,
+                        const Allocator &) final {
     if (m_repeated_index < number_repeated() - 1) {
       ++m_repeated_index;
       return this;
@@ -494,15 +463,14 @@ private:
   }
 };
 
-class TableRow final
-    : public DocumentCursor::DefaultElement<ElementType::TABLE_ROW> {
+class DocumentCursor::TableRow final
+    : public DefaultElement<ElementType::TABLE_ROW> {
 public:
   TableRow(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  DocumentCursor::Element *
-  previous_sibling(const common::DocumentCursor &,
-                   const DocumentCursor::Allocator &) final {
+  Element *previous_sibling(const common::DocumentCursor &,
+                            const Allocator &) final {
     if (m_repeated_index > 0) {
       --m_repeated_index;
       return this;
@@ -517,9 +485,8 @@ public:
     return nullptr;
   }
 
-  DocumentCursor::Element *
-  next_sibling(const common::DocumentCursor &,
-               const DocumentCursor::Allocator &) final {
+  Element *next_sibling(const common::DocumentCursor &,
+                        const Allocator &) final {
     if (m_repeated_index < number_repeated() - 1) {
       ++m_repeated_index;
       return this;
@@ -542,8 +509,8 @@ private:
   }
 };
 
-class TableCell final
-    : public DocumentCursor::DefaultElement<ElementType::TABLE_CELL> {
+class DocumentCursor::TableCell final
+    : public DefaultElement<ElementType::TABLE_CELL> {
 public:
   TableCell(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node), m_column(document, node) {}
@@ -551,14 +518,13 @@ public:
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties(const common::DocumentCursor &cursor) const final {
     auto default_style_name = m_column.default_cell_style_name();
-    return fetch_properties(DocumentCursor::DefaultTraits::properties_table(),
-                            m_node, document_style(cursor),
-                            ElementType::TABLE_CELL, default_style_name);
+    return fetch_properties(DefaultTraits::properties_table(), m_node,
+                            document_style(cursor), ElementType::TABLE_CELL,
+                            default_style_name);
   }
 
-  DocumentCursor::Element *
-  previous_sibling(const common::DocumentCursor &cursor,
-                   const DocumentCursor::Allocator &allocator) final {
+  Element *previous_sibling(const common::DocumentCursor &cursor,
+                            const Allocator &allocator) final {
     m_column.previous_sibling(cursor, allocator);
 
     if (m_repeated_index > 0) {
@@ -575,9 +541,8 @@ public:
     return nullptr;
   }
 
-  DocumentCursor::Element *
-  next_sibling(const common::DocumentCursor &cursor,
-               const DocumentCursor::Allocator &allocator) final {
+  Element *next_sibling(const common::DocumentCursor &cursor,
+                        const Allocator &allocator) final {
     m_column.next_sibling(cursor, allocator);
 
     if (m_repeated_index < number_repeated() - 1) {
@@ -611,24 +576,18 @@ private:
   }
 };
 
-class ImageElement final
-    : public DocumentCursor::DefaultElement<ElementType::IMAGE>,
-      public DocumentCursor::ImageElement {
+class DocumentCursor::ImageElement final
+    : public DefaultElement<ElementType::IMAGE> {
 public:
   ImageElement(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
-
-  [[nodiscard]] const ImageElement *
-  image(const common::DocumentCursor &) const final {
-    return this;
-  }
 
   [[nodiscard]] const char *href() const {
     return m_node.attribute("xlink:href").value();
   }
 
   [[nodiscard]] bool
-  internal(const common::DocumentCursor &cursor) const final {
+  image_internal(const common::DocumentCursor &cursor) const final {
     auto doc = document(cursor);
 
     if (!doc || !doc->files()) {
@@ -655,7 +614,7 @@ public:
       return File(std::shared_ptr<internal::abstract::File>());
     }
 
-    if (!internal(cursor)) {
+    if (!image_internal(cursor)) {
       // TODO throw / support external files
       return File(std::shared_ptr<internal::abstract::File>());
     }
@@ -668,25 +627,26 @@ public:
 };
 
 DocumentCursor::Element *
-construct_default_element(const OpenDocument *document, pugi::xml_node node,
-                          const DocumentCursor::Allocator &allocator) {
-  using Constructor = std::function<DocumentCursor::Element *(
-      const OpenDocument *document, pugi::xml_node node,
-      const DocumentCursor::Allocator &allocator)>;
+DocumentCursor::construct_default_element(const OpenDocument *document,
+                                          pugi::xml_node node,
+                                          const Allocator &allocator) {
+  using Constructor =
+      std::function<Element *(const OpenDocument *document, pugi::xml_node node,
+                              const Allocator &allocator)>;
 
-  using Paragraph = DocumentCursor::DefaultElement<ElementType::PARAGRAPH>;
-  using Span = DocumentCursor::DefaultElement<ElementType::SPAN>;
-  using LineBreak = DocumentCursor::DefaultElement<ElementType::LINE_BREAK>;
-  using Link = DocumentCursor::DefaultElement<ElementType::LINK>;
-  using Bookmark = DocumentCursor::DefaultElement<ElementType::BOOKMARK>;
-  using List = DocumentCursor::DefaultElement<ElementType::LIST>;
-  using ListItem = DocumentCursor::DefaultElement<ElementType::LIST_ITEM>;
-  using Group = DocumentCursor::DefaultElement<ElementType::GROUP>;
-  using Frame = DocumentCursor::DefaultElement<ElementType::FRAME>;
-  using Rect = DocumentCursor::DefaultElement<ElementType::RECT>;
-  using Line = DocumentCursor::DefaultElement<ElementType::LINE>;
-  using Circle = DocumentCursor::DefaultElement<ElementType::CIRCLE>;
-  using CustomShape = DocumentCursor::DefaultElement<ElementType::CUSTOM_SHAPE>;
+  using Paragraph = DefaultElement<ElementType::PARAGRAPH>;
+  using Span = DefaultElement<ElementType::SPAN>;
+  using LineBreak = DefaultElement<ElementType::LINE_BREAK>;
+  using Link = DefaultElement<ElementType::LINK>;
+  using Bookmark = DefaultElement<ElementType::BOOKMARK>;
+  using List = DefaultElement<ElementType::LIST>;
+  using ListItem = DefaultElement<ElementType::LIST_ITEM>;
+  using Group = DefaultElement<ElementType::GROUP>;
+  using Frame = DefaultElement<ElementType::FRAME>;
+  using Rect = DefaultElement<ElementType::RECT>;
+  using Line = DefaultElement<ElementType::LINE>;
+  using Circle = DefaultElement<ElementType::CIRCLE>;
+  using CustomShape = DefaultElement<ElementType::CUSTOM_SHAPE>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
       {"office:text", construct_default<TextDocumentRoot>},
@@ -734,9 +694,9 @@ construct_default_element(const OpenDocument *document, pugi::xml_node node,
 }
 
 DocumentCursor::Element *
-construct_default_parent_element(const OpenDocument *document,
-                                 pugi::xml_node node,
-                                 const DocumentCursor::Allocator &allocator) {
+DocumentCursor::construct_default_parent_element(const OpenDocument *document,
+                                                 pugi::xml_node node,
+                                                 const Allocator &allocator) {
   for (pugi::xml_node parent = node.parent(); parent;
        parent = parent.parent()) {
     if (auto result = construct_default_element(document, parent, allocator)) {
@@ -746,9 +706,9 @@ construct_default_parent_element(const OpenDocument *document,
   return {};
 }
 
-DocumentCursor::Element *construct_default_first_child_element(
+DocumentCursor::Element *DocumentCursor::construct_default_first_child_element(
     const OpenDocument *document, pugi::xml_node node,
-    const DocumentCursor::Allocator &allocator) {
+    const Allocator &allocator) {
   for (pugi::xml_node first_child = node.first_child(); first_child;
        first_child = first_child.next_sibling()) {
     if (auto result =
@@ -759,9 +719,10 @@ DocumentCursor::Element *construct_default_first_child_element(
   return {};
 }
 
-DocumentCursor::Element *construct_default_previous_sibling_element(
+DocumentCursor::Element *
+DocumentCursor::construct_default_previous_sibling_element(
     const OpenDocument *document, pugi::xml_node node,
-    const DocumentCursor::Allocator &allocator) {
+    const Allocator &allocator) {
   for (pugi::xml_node previous_sibling = node.previous_sibling();
        previous_sibling;
        previous_sibling = previous_sibling.previous_sibling()) {
@@ -773,9 +734,9 @@ DocumentCursor::Element *construct_default_previous_sibling_element(
   return {};
 }
 
-DocumentCursor::Element *construct_default_next_sibling_element(
+DocumentCursor::Element *DocumentCursor::construct_default_next_sibling_element(
     const OpenDocument *document, pugi::xml_node node,
-    const DocumentCursor::Allocator &allocator) {
+    const Allocator &allocator) {
   for (pugi::xml_node next_sibling = node.next_sibling(); next_sibling;
        next_sibling = next_sibling.next_sibling()) {
     if (auto result =
@@ -785,7 +746,6 @@ DocumentCursor::Element *construct_default_next_sibling_element(
   }
   return {};
 }
-} // namespace
 
 DocumentCursor::DocumentCursor(const OpenDocument *document,
                                pugi::xml_node root)
@@ -798,7 +758,7 @@ DocumentCursor::DocumentCursor(const OpenDocument *document,
 }
 
 const Style *DocumentCursor::style() const {
-  if (m_document == nullptr) {
+  if (!m_document) {
     return nullptr;
   }
   return &m_document->m_style;

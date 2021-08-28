@@ -52,29 +52,6 @@ public:
   root_element() const = 0;
 };
 
-class SlideElement {
-public:
-  virtual ~SlideElement() = default;
-
-  [[nodiscard]] virtual bool move_to_slide_master() = 0;
-};
-
-class TableElement {
-public:
-  virtual ~TableElement() = default;
-
-  [[nodiscard]] virtual bool move_to_first_column() = 0;
-  [[nodiscard]] virtual bool move_to_first_row() = 0;
-};
-
-class ImageElement {
-public:
-  virtual ~ImageElement() = default;
-
-  [[nodiscard]] virtual bool internal() const = 0;
-  [[nodiscard]] virtual std::optional<odr::File> image_file() const = 0;
-};
-
 class DocumentCursor {
 public:
   virtual ~DocumentCursor() = default;
@@ -90,14 +67,18 @@ public:
   [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
   element_properties() const = 0;
 
-  [[nodiscard]] virtual SlideElement *slide() = 0;
-  [[nodiscard]] virtual TableElement *table() = 0;
-  [[nodiscard]] virtual const ImageElement *image() const = 0;
-
   virtual bool move_to_parent() = 0;
   virtual bool move_to_first_child() = 0;
   virtual bool move_to_previous_sibling() = 0;
   virtual bool move_to_next_sibling() = 0;
+
+  [[nodiscard]] virtual bool move_to_slide_master() = 0;
+
+  [[nodiscard]] virtual bool move_to_first_table_column() = 0;
+  [[nodiscard]] virtual bool move_to_first_table_row() = 0;
+
+  [[nodiscard]] virtual bool image_internal() const = 0;
+  [[nodiscard]] virtual std::optional<odr::File> image_file() const = 0;
 };
 
 } // namespace odr::internal::abstract

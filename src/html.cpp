@@ -441,14 +441,13 @@ if (config.table_limit_by_content) {
 void translate_image(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig & /*config*/) {
   auto properties = cursor.element_properties();
-  auto image = cursor.image();
 
   out << "<img style=\"position:absolute;left:0;top:0;width:100%;height:100%\"";
   out << " alt=\"Error: image not found or unsupported\"";
   out << " src=\"";
 
-  if (image.internal()) {
-    auto image_file = image.image_file().value();
+  if (cursor.image_internal()) {
+    auto image_file = cursor.image_file().value();
 
     // TODO use stream
     std::string image_data;

@@ -33,27 +33,6 @@ DocumentCursor::element_properties() const {
   return back_()->properties(*this);
 }
 
-abstract::SlideElement *DocumentCursor::slide() {
-  if (back_()->slide(*this)) {
-    return this;
-  }
-  return nullptr;
-}
-
-abstract::TableElement *DocumentCursor::table() {
-  if (back_()->table(*this)) {
-    return this;
-  }
-  return nullptr;
-}
-
-const abstract::ImageElement *DocumentCursor::image() const {
-  if (back_()->image(*this)) {
-    return this;
-  }
-  return nullptr;
-}
-
 bool DocumentCursor::move_to_parent() {
   if (m_element_stack_top.size() <= 1) {
     return false;
@@ -85,6 +64,32 @@ bool DocumentCursor::move_to_next_sibling() {
   auto impl = back_();
   auto element = impl->next_sibling(*this, allocator);
   return element != nullptr;
+}
+
+bool DocumentCursor::move_to_slide_master() {
+  auto allocator = [this](const std::size_t size) { return push_(size); };
+  auto element = back_()->slide_master(*this, allocator);
+  return element != nullptr;
+}
+
+bool DocumentCursor::move_to_first_table_column() {
+  auto allocator = [this](const std::size_t size) { return push_(size); };
+  auto element = back_()->first_table_column(*this, allocator);
+  return element != nullptr;
+}
+
+bool DocumentCursor::move_to_first_table_row() {
+  auto allocator = [this](const std::size_t size) { return push_(size); };
+  auto element = back_()->first_table_row(*this, allocator);
+  return element != nullptr;
+}
+
+bool DocumentCursor::image_internal() const {
+  return back_()->image_internal(*this);
+}
+
+std::optional<odr::File> DocumentCursor::image_file() const {
+  return back_()->image_file(*this);
 }
 
 void *DocumentCursor::push_(const std::size_t size) {
@@ -121,27 +126,4 @@ const DocumentCursor::Element *DocumentCursor::back_() const {
   std::int32_t offset = back_offset_();
   return reinterpret_cast<const Element *>(m_element_stack.data() + offset);
 }
-
-bool DocumentCursor::move_to_slide_master() {
-  auto allocator = [this](const std::size_t size) { return push_(size); };
-  auto element = back_()->slide(*this)->slide_master(*this, allocator);
-  return element != nullptr;
-}
-
-bool DocumentCursor::move_to_first_column() {
-  return back_()->table(*this)->move_to_first_column(*this);
-}
-
-bool DocumentCursor::move_to_first_row() {
-  return back_()->table(*this)->move_to_first_row(*this);
-}
-
-bool DocumentCursor::internal() const {
-  return back_()->image(*this)->internal(*this);
-}
-
-std::optional<odr::File> DocumentCursor::image_file() const {
-  return back_()->image(*this)->image_file(*this);
-}
-
 } // namespace odr::internal::common
