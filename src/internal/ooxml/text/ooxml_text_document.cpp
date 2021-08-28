@@ -1,52 +1,46 @@
 #include <internal/common/path.h>
-#include <internal/ooxml/ooxml_util.h>
+#include <internal/ooxml/text/ooxml_text_cursor.h>
 #include <internal/ooxml/text/ooxml_text_document.h>
-#include <internal/util/property_util.h>
 #include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 
-namespace odr::internal::ooxml {
+namespace odr::internal::ooxml::text {
 
-OfficeOpenXmlTextDocument::OfficeOpenXmlTextDocument(
-    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   m_document_xml = util::xml::parse(*m_filesystem, "word/document.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "word/styles.xml");
 
-  m_style = OfficeOpenXmlTextStyle(m_styles_xml.document_element());
-
-  // TODO root
+  m_style = Style(m_styles_xml.document_element());
 }
 
-bool OfficeOpenXmlTextDocument::editable() const noexcept { return false; }
+bool Document::editable() const noexcept { return false; }
 
-bool OfficeOpenXmlTextDocument::savable(
-    const bool /*encrypted*/) const noexcept {
+bool Document::savable(const bool /*encrypted*/) const noexcept {
   return false;
 }
 
-void OfficeOpenXmlTextDocument::save(const common::Path & /*path*/) const {
+void Document::save(const common::Path & /*path*/) const {
   throw UnsupportedOperation();
 }
 
-void OfficeOpenXmlTextDocument::save(const common::Path & /*path*/,
-                                     const char * /*password*/) const {
+void Document::save(const common::Path & /*path*/,
+                    const char * /*password*/) const {
   throw UnsupportedOperation();
 }
 
-DocumentType OfficeOpenXmlTextDocument::document_type() const noexcept {
+DocumentType Document::document_type() const noexcept {
   return DocumentType::TEXT;
 }
 
-std::shared_ptr<abstract::ReadableFilesystem>
-OfficeOpenXmlTextDocument::files() const noexcept {
+std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::unique_ptr<abstract::DocumentCursor>
-OfficeOpenXmlTextDocument::root_element() const {
-  return {}; // TODO
+std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
+  return std::make_unique<DocumentCursor>(
+      this, m_document_xml.document_element().first_child());
 }
 
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::text

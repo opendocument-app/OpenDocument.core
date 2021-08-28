@@ -65,7 +65,7 @@ std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
   // TODO throw if encrypted
   switch (file_type()) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT:
-    return std::make_shared<OfficeOpenXmlTextDocument>(m_filesystem);
+    return std::make_shared<text::Document>(m_filesystem);
   case FileType::OFFICE_OPEN_XML_PRESENTATION:
     return std::make_shared<OfficeOpenXmlPresentation>(m_filesystem);
   case FileType::OFFICE_OPEN_XML_WORKBOOK:

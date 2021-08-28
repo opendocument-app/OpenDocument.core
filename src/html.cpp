@@ -292,10 +292,7 @@ std::string optional_style_attribute(const std::string &style) {
 }
 
 void translate_text(const DocumentCursor &cursor, std::ostream &out) {
-  auto properties = cursor.element_properties();
-
-  out << common::html::escape_text(
-      properties.get_string(ElementProperty::TEXT).value());
+  out << common::html::escape_text(cursor.text());
 }
 
 void translate_paragraph(DocumentCursor &cursor, std::ostream &out,

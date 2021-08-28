@@ -63,7 +63,6 @@ enum class ElementProperty {
 
   NAME,
   NOTES,
-  TEXT,
   HREF,
   ANCHOR_TYPE,
 
@@ -86,12 +85,9 @@ enum class ElementProperty {
 
   Z_INDEX,
 
-  TABLE_COLUMN_DEFAULT_CELL_STYLE_NAME,
   TABLE_CELL_BACKGROUND_COLOR,
   ROW_SPAN,
   COLUMN_SPAN,
-  ROWS_REPEATED,
-  COLUMNS_REPEATED,
 
   MARGIN_TOP,
   MARGIN_BOTTOM,

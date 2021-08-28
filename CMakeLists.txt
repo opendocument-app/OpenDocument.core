@@ -59,8 +59,8 @@ add_library(odr-object OBJECT
 
         src/internal/ooxml/presentation/ooxml_presentation.cpp
         src/internal/ooxml/spreadsheet/ooxml_workbook.cpp
+        src/internal/ooxml/text/ooxml_text_cursor.cpp
         src/internal/ooxml/text/ooxml_text_document.cpp
-        src/internal/ooxml/text/ooxml_text_elements.cpp
         src/internal/ooxml/text/ooxml_text_style.cpp
         src/internal/ooxml/ooxml_crypto.cpp
         src/internal/ooxml/ooxml_file.cpp

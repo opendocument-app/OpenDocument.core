@@ -4,21 +4,17 @@
 #include <internal/abstract/document.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
 #include <pugixml.hpp>
-#include <unordered_map>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
 }
 
-namespace odr::internal::ooxml {
+namespace odr::internal::ooxml::text {
+class DocumentCursor;
 
-/*
- * TODO naming - text? word? wordprocessing?
- */
-class OfficeOpenXmlTextDocument final : public abstract::Document {
+class Document final : public abstract::Document {
 public:
-  explicit OfficeOpenXmlTextDocument(
-      std::shared_ptr<abstract::ReadableFilesystem> filesystem);
+  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
   [[nodiscard]] bool editable() const noexcept final;
   [[nodiscard]] bool savable(bool encrypted) const noexcept final;
@@ -39,9 +35,11 @@ private:
   pugi::xml_document m_document_xml;
   pugi::xml_document m_styles_xml;
 
-  OfficeOpenXmlTextStyle m_style;
+  Style m_style;
+
+  friend class DocumentCursor;
 };
 
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::text
 
 #endif // ODR_INTERNAL_OOXML_TEXT_DOCUMENT_H

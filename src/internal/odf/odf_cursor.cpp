@@ -9,6 +9,175 @@
 
 namespace odr::internal::odf {
 
+DocumentCursor::DocumentCursor(const OpenDocument *document,
+                               pugi::xml_node root)
+    : m_document{document} {
+  auto allocator = [this](std::size_t size) { return push_(size); };
+  auto element = construct_default_element(document, root, allocator);
+  if (!element) {
+    throw std::invalid_argument("root element invalid");
+  }
+}
+
+const Style *DocumentCursor::style() const {
+  if (!m_document) {
+    return nullptr;
+  }
+  return &m_document->m_style;
+}
+
+DocumentCursor::Element *
+DocumentCursor::construct_default_element(const OpenDocument *document,
+                                          pugi::xml_node node,
+                                          const Allocator &allocator) {
+  using Constructor =
+      std::function<Element *(const OpenDocument *document, pugi::xml_node node,
+                              const Allocator &allocator)>;
+
+  using Paragraph = DefaultElement<ElementType::PARAGRAPH>;
+  using Span = DefaultElement<ElementType::SPAN>;
+  using LineBreak = DefaultElement<ElementType::LINE_BREAK>;
+  using Link = DefaultElement<ElementType::LINK>;
+  using Bookmark = DefaultElement<ElementType::BOOKMARK>;
+  using List = DefaultElement<ElementType::LIST>;
+  using ListItem = DefaultElement<ElementType::LIST_ITEM>;
+  using Group = DefaultElement<ElementType::GROUP>;
+  using Frame = DefaultElement<ElementType::FRAME>;
+  using Rect = DefaultElement<ElementType::RECT>;
+  using Line = DefaultElement<ElementType::LINE>;
+  using Circle = DefaultElement<ElementType::CIRCLE>;
+  using CustomShape = DefaultElement<ElementType::CUSTOM_SHAPE>;
+
+  static std::unordered_map<std::string, Constructor> constructor_table{
+      {"office:text", construct_default<TextDocumentRoot>},
+      {"office:presentation", construct_default<PresentationRoot>},
+      {"office:spreadsheet", construct_default<SpreadsheetRoot>},
+      {"office:drawing", construct_default<DrawingRoot>},
+      {"text:p", construct_default<Paragraph>},
+      {"text:h", construct_default<Paragraph>},
+      {"text:span", construct_default<Span>},
+      {"text:s", construct_default<Text>},
+      {"text:tab", construct_default<Text>},
+      {"text:line-break", construct_default<LineBreak>},
+      {"text:a", construct_default<Link>},
+      {"text:bookmark", construct_default<Bookmark>},
+      {"text:bookmark-start", construct_default<Bookmark>},
+      {"text:list", construct_default<List>},
+      {"text:list-item", construct_default<ListItem>},
+      {"text:index-title", construct_default<Paragraph>},
+      {"text:table-of-content", construct_default<Group>},
+      {"text:index-body", construct_default<Group>},
+      {"table:table", construct_default<TableElement>},
+      {"table:table-column", construct_default<TableColumn>},
+      {"table:table-row", construct_default<TableRow>},
+      {"table:table-cell", construct_default<TableCell>},
+      {"draw:frame", construct_default<Frame>},
+      {"draw:image", construct_default<ImageElement>},
+      {"draw:rect", construct_default<Rect>},
+      {"draw:line", construct_default<Line>},
+      {"draw:circle", construct_default<Circle>},
+      {"draw:custom-shape", construct_default<CustomShape>},
+      {"draw:text-box", construct_default<Group>},
+      {"draw:g", construct_default<Group>},
+  };
+
+  if (node.type() == pugi::xml_node_type::node_pcdata) {
+    return construct_default<Text>(document, node, allocator);
+  }
+
+  if (auto constructor_it = constructor_table.find(node.name());
+      constructor_it != std::end(constructor_table)) {
+    return constructor_it->second(document, node, allocator);
+  }
+
+  return {};
+}
+
+DocumentCursor::Element *
+DocumentCursor::construct_default_parent_element(const OpenDocument *document,
+                                                 pugi::xml_node node,
+                                                 const Allocator &allocator) {
+  for (node = node.parent(); node; node = node.parent()) {
+    if (auto result = construct_default_element(document, node, allocator)) {
+      return result;
+    }
+  }
+  return {};
+}
+
+DocumentCursor::Element *DocumentCursor::construct_default_first_child_element(
+    const OpenDocument *document, pugi::xml_node node,
+    const Allocator &allocator) {
+  for (node = node.first_child(); node; node = node.next_sibling()) {
+    if (auto result = construct_default_element(document, node, allocator)) {
+      return result;
+    }
+  }
+  return {};
+}
+
+DocumentCursor::Element *
+DocumentCursor::construct_default_previous_sibling_element(
+    const OpenDocument *document, pugi::xml_node node,
+    const Allocator &allocator) {
+  for (node = node.previous_sibling(); node; node = node.previous_sibling()) {
+    if (auto result = construct_default_element(document, node, allocator)) {
+      return result;
+    }
+  }
+  return {};
+}
+
+DocumentCursor::Element *DocumentCursor::construct_default_next_sibling_element(
+    const OpenDocument *document, pugi::xml_node node,
+    const Allocator &allocator) {
+  for (node = node.next_sibling(); node; node = node.next_sibling()) {
+    if (auto result = construct_default_element(document, node, allocator)) {
+      return result;
+    }
+  }
+  return {};
+}
+
+std::unordered_map<ElementProperty, std::any> DocumentCursor::fetch_properties(
+    const std::unordered_map<std::string, ElementProperty> &property_table,
+    pugi::xml_node node, const Style *style, const ElementType element_type,
+    const char *default_style_name) {
+  std::unordered_map<ElementProperty, std::any> result;
+
+  const char *style_name = default_style_name;
+  const char *master_page_name = nullptr;
+
+  for (auto attribute : node.attributes()) {
+    auto property_it = property_table.find(attribute.name());
+    if (property_it == std::end(property_table)) {
+      continue;
+    }
+    auto property = property_it->second;
+    result[property] = attribute.value();
+
+    if (property == ElementProperty::STYLE_NAME) {
+      style_name = attribute.value();
+    } else if (property == ElementProperty::MASTER_PAGE_NAME) {
+      master_page_name = attribute.value();
+    }
+  }
+
+  if (style && style_name) {
+    auto style_properties = style->resolve_style(element_type, style_name);
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
+
+  // TODO this check does not need to happen all the time
+  if (style && master_page_name) {
+    auto style_properties =
+        style->resolve_master_page(element_type, master_page_name);
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
+
+  return result;
+}
+
 struct DocumentCursor::DefaultTraits {
   static std::unordered_map<std::string, ElementProperty> properties_table() {
     static std::unordered_map<std::string, ElementProperty> result{
@@ -522,174 +691,5 @@ public:
     return File(doc->files()->open(this->href()));
   }
 };
-
-DocumentCursor::Element *
-DocumentCursor::construct_default_element(const OpenDocument *document,
-                                          pugi::xml_node node,
-                                          const Allocator &allocator) {
-  using Constructor =
-      std::function<Element *(const OpenDocument *document, pugi::xml_node node,
-                              const Allocator &allocator)>;
-
-  using Paragraph = DefaultElement<ElementType::PARAGRAPH>;
-  using Span = DefaultElement<ElementType::SPAN>;
-  using LineBreak = DefaultElement<ElementType::LINE_BREAK>;
-  using Link = DefaultElement<ElementType::LINK>;
-  using Bookmark = DefaultElement<ElementType::BOOKMARK>;
-  using List = DefaultElement<ElementType::LIST>;
-  using ListItem = DefaultElement<ElementType::LIST_ITEM>;
-  using Group = DefaultElement<ElementType::GROUP>;
-  using Frame = DefaultElement<ElementType::FRAME>;
-  using Rect = DefaultElement<ElementType::RECT>;
-  using Line = DefaultElement<ElementType::LINE>;
-  using Circle = DefaultElement<ElementType::CIRCLE>;
-  using CustomShape = DefaultElement<ElementType::CUSTOM_SHAPE>;
-
-  static std::unordered_map<std::string, Constructor> constructor_table{
-      {"office:text", construct_default<TextDocumentRoot>},
-      {"office:presentation", construct_default<PresentationRoot>},
-      {"office:spreadsheet", construct_default<SpreadsheetRoot>},
-      {"office:drawing", construct_default<DrawingRoot>},
-      {"text:p", construct_default<Paragraph>},
-      {"text:h", construct_default<Paragraph>},
-      {"text:span", construct_default<Span>},
-      {"text:s", construct_default<Text>},
-      {"text:tab", construct_default<Text>},
-      {"text:line-break", construct_default<LineBreak>},
-      {"text:a", construct_default<Link>},
-      {"text:bookmark", construct_default<Bookmark>},
-      {"text:bookmark-start", construct_default<Bookmark>},
-      {"text:list", construct_default<List>},
-      {"text:list-item", construct_default<ListItem>},
-      {"text:index-title", construct_default<Paragraph>},
-      {"text:table-of-content", construct_default<Group>},
-      {"text:index-body", construct_default<Group>},
-      {"table:table", construct_default<TableElement>},
-      {"table:table-column", construct_default<TableColumn>},
-      {"table:table-row", construct_default<TableRow>},
-      {"table:table-cell", construct_default<TableCell>},
-      {"draw:frame", construct_default<Frame>},
-      {"draw:image", construct_default<ImageElement>},
-      {"draw:rect", construct_default<Rect>},
-      {"draw:line", construct_default<Line>},
-      {"draw:circle", construct_default<Circle>},
-      {"draw:custom-shape", construct_default<CustomShape>},
-      {"draw:text-box", construct_default<Group>},
-      {"draw:g", construct_default<Group>},
-  };
-
-  if (node.type() == pugi::xml_node_type::node_pcdata) {
-    return construct_default<Text>(document, node, allocator);
-  }
-
-  if (auto constructor_it = constructor_table.find(node.name());
-      constructor_it != std::end(constructor_table)) {
-    return constructor_it->second(document, node, allocator);
-  }
-
-  return {};
-}
-
-DocumentCursor::Element *
-DocumentCursor::construct_default_parent_element(const OpenDocument *document,
-                                                 pugi::xml_node node,
-                                                 const Allocator &allocator) {
-  for (node = node.parent(); node; node = node.parent()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-DocumentCursor::Element *DocumentCursor::construct_default_first_child_element(
-    const OpenDocument *document, pugi::xml_node node,
-    const Allocator &allocator) {
-  for (node = node.first_child(); node; node = node.next_sibling()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-DocumentCursor::Element *
-DocumentCursor::construct_default_previous_sibling_element(
-    const OpenDocument *document, pugi::xml_node node,
-    const Allocator &allocator) {
-  for (node = node.previous_sibling(); node; node = node.previous_sibling()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-DocumentCursor::Element *DocumentCursor::construct_default_next_sibling_element(
-    const OpenDocument *document, pugi::xml_node node,
-    const Allocator &allocator) {
-  for (node = node.next_sibling(); node; node = node.next_sibling()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-std::unordered_map<ElementProperty, std::any> DocumentCursor::fetch_properties(
-    const std::unordered_map<std::string, ElementProperty> &property_table,
-    pugi::xml_node node, const Style *style, const ElementType element_type,
-    const char *default_style_name) {
-  std::unordered_map<ElementProperty, std::any> result;
-
-  const char *style_name = default_style_name;
-  const char *master_page_name = nullptr;
-
-  for (auto attribute : node.attributes()) {
-    auto property_it = property_table.find(attribute.name());
-    if (property_it == std::end(property_table)) {
-      continue;
-    }
-    auto property = property_it->second;
-    result[property] = attribute.value();
-
-    if (property == ElementProperty::STYLE_NAME) {
-      style_name = attribute.value();
-    } else if (property == ElementProperty::MASTER_PAGE_NAME) {
-      master_page_name = attribute.value();
-    }
-  }
-
-  if (style && style_name) {
-    auto style_properties = style->resolve_style(element_type, style_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  // TODO this check does not need to happen all the time
-  if (style && master_page_name) {
-    auto style_properties =
-        style->resolve_master_page(element_type, master_page_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  return result;
-}
-
-DocumentCursor::DocumentCursor(const OpenDocument *document,
-                               pugi::xml_node root)
-    : m_document{document} {
-  auto allocator = [this](std::size_t size) { return push_(size); };
-  auto element = construct_default_element(document, root, allocator);
-  if (!element) {
-    throw std::invalid_argument("root element invalid");
-  }
-}
-
-const Style *DocumentCursor::style() const {
-  if (!m_document) {
-    return nullptr;
-  }
-  return &m_document->m_style;
-}
 
 } // namespace odr::internal::odf

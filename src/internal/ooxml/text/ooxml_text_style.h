@@ -5,12 +5,12 @@
 #include <pugixml.hpp>
 #include <unordered_map>
 
-namespace odr::internal::ooxml {
+namespace odr::internal::ooxml::text {
 
-class OfficeOpenXmlTextStyle final {
+class Style final {
 public:
-  OfficeOpenXmlTextStyle();
-  explicit OfficeOpenXmlTextStyle(pugi::xml_node styles_root);
+  Style();
+  explicit Style(pugi::xml_node styles_root);
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   resolve_style(ElementType element_type, pugi::xml_node element) const;
@@ -37,6 +37,6 @@ private:
                                          pugi::xml_node node);
 };
 
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::text
 
 #endif // ODR_INTERNAL_OOXML_TEXT_STYLE_H

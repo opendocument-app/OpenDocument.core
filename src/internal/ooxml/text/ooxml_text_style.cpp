@@ -2,7 +2,7 @@
 #include <internal/ooxml/text/ooxml_text_style.h>
 #include <internal/util/property_util.h>
 
-namespace odr::internal::ooxml {
+namespace odr::internal::ooxml::text {
 
 namespace {
 void resolve_paragraph_style_properties(
@@ -94,17 +94,16 @@ void resolve_style_properties(
 }
 } // namespace
 
-OfficeOpenXmlTextStyle::OfficeOpenXmlTextStyle() = default;
+Style::Style() = default;
 
-OfficeOpenXmlTextStyle::OfficeOpenXmlTextStyle(
-    const pugi::xml_node styles_root) {
+Style::Style(const pugi::xml_node styles_root) {
   generate_indices_(styles_root);
   generate_styles_();
 }
 
 [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-OfficeOpenXmlTextStyle::resolve_style(const ElementType element_type,
-                                      const pugi::xml_node element) const {
+Style::resolve_style(const ElementType element_type,
+                     const pugi::xml_node element) const {
   std::unordered_map<ElementProperty, std::any> result;
 
   pugi::xml_node properties;
@@ -134,11 +133,10 @@ OfficeOpenXmlTextStyle::resolve_style(const ElementType element_type,
   return result;
 }
 
-OfficeOpenXmlTextStyle::Entry::Entry(std::shared_ptr<Entry> parent,
-                                     pugi::xml_node node)
+Style::Entry::Entry(std::shared_ptr<Entry> parent, pugi::xml_node node)
     : m_parent{std::move(parent)}, m_node{node} {}
 
-void OfficeOpenXmlTextStyle::Entry::properties(
+void Style::Entry::properties(
     const ElementType element,
     std::unordered_map<ElementProperty, std::any> &result) const {
   if (m_parent) {
@@ -148,8 +146,7 @@ void OfficeOpenXmlTextStyle::Entry::properties(
   resolve_style_properties(element, m_node, result);
 }
 
-void OfficeOpenXmlTextStyle::generate_indices_(
-    const pugi::xml_node styles_root) {
+void Style::generate_indices_(const pugi::xml_node styles_root) {
   for (auto style : styles_root) {
     std::string element_name = style.name();
 
@@ -159,15 +156,14 @@ void OfficeOpenXmlTextStyle::generate_indices_(
   }
 }
 
-void OfficeOpenXmlTextStyle::generate_styles_() {
+void Style::generate_styles_() {
   for (auto &&e : m_index) {
     generate_style_(e.first, e.second);
   }
 }
 
-std::shared_ptr<OfficeOpenXmlTextStyle::Entry>
-OfficeOpenXmlTextStyle::generate_style_(const std::string &name,
-                                        const pugi::xml_node node) {
+std::shared_ptr<Style::Entry>
+Style::generate_style_(const std::string &name, const pugi::xml_node node) {
   if (auto style_it = m_styles.find(name); style_it != std::end(m_styles)) {
     return style_it->second;
   }
@@ -188,4 +184,4 @@ OfficeOpenXmlTextStyle::generate_style_(const std::string &name,
   return m_styles[name] = std::make_shared<Entry>(parent, node);
 }
 
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::text
