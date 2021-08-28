@@ -162,21 +162,7 @@ void resolve_page_layout_properties(
 void resolve_properties(const ElementType element_type,
                         const pugi::xml_node node,
                         std::unordered_map<ElementProperty, std::any> &result) {
-  using PropertyClassResolver = std::function<void(
-      const pugi::xml_node node,
-      std::unordered_map<ElementProperty, std::any> &result)>;
-
-  static std::unordered_map<std::string, PropertyClassResolver>
-      string_properties{
-          {"style:text-properties", resolve_text_properties},
-          {"style:paragraph-properties", resolve_paragraph_properties},
-          {"style:table-properties", resolve_table_properties},
-          {"style:table-column-properties", resolve_table_column_properties},
-          {"style:table-row-properties", resolve_table_row_properties},
-          {"style:table-cell-properties", resolve_table_cell_properties},
-          {"style:graphic-properties", resolve_graphic_properties},
-          {"style:page-layout-properties", resolve_page_layout_properties},
-      };
+  // TODO it would be better if the element selects the properties
 
   switch (element_type) {
   case ElementType::PARAGRAPH:
@@ -251,8 +237,7 @@ Style::Style(const pugi::xml_node content_root,
 
 void Style::generate_indices_(const pugi::xml_node content_root,
                               const pugi::xml_node styles_root) {
-  if (auto font_face_decls = styles_root.child("office:font-face-decls");
-      font_face_decls) {
+  if (auto font_face_decls = styles_root.child("office:font-face-decls")) {
     generate_indices_(font_face_decls);
   }
 
@@ -369,21 +354,21 @@ Style::generate_page_layout_(const std::string &name,
 std::unordered_map<ElementProperty, std::any>
 Style::resolve_style(const ElementType element,
                      const std::string &style_name) const {
-  auto style_it = m_styles.find(style_name);
-  if (style_it == std::end(m_styles)) {
-    return {};
+  if (auto style_it = m_styles.find(style_name);
+      style_it != std::end(m_styles)) {
+    return style_it->second->properties(element);
   }
-  return style_it->second->properties(element);
+  return {};
 }
 
 std::unordered_map<ElementProperty, std::any>
 Style::resolve_page_layout(const ElementType element,
                            const std::string &page_layout_name) const {
-  auto page_layout_it = m_page_layouts.find(page_layout_name);
-  if (page_layout_it == std::end(m_page_layouts)) {
-    return {};
+  if (auto page_layout_it = m_page_layouts.find(page_layout_name);
+      page_layout_it != std::end(m_page_layouts)) {
+    return page_layout_it->second->properties(element);
   }
-  return page_layout_it->second->properties(element);
+  return {};
 }
 
 std::unordered_map<ElementProperty, std::any>
@@ -410,11 +395,12 @@ Style::resolve_master_page(const ElementType element,
 
 pugi::xml_node
 Style::master_page_node(const std::string &master_page_name) const {
-  auto master_page_it = m_index_master_page.find(master_page_name);
-  if (master_page_it == std::end(m_index_master_page)) {
-    return {};
+
+  if (auto master_page_it = m_index_master_page.find(master_page_name);
+      master_page_it != std::end(m_index_master_page)) {
+    return master_page_it->second;
   }
-  return master_page_it->second;
+  return {};
 }
 
 std::optional<std::string> Style::first_master_page() const {
