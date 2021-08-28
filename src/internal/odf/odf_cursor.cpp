@@ -9,65 +9,6 @@
 
 namespace odr::internal::odf {
 
-namespace {
-template <typename Derived>
-DocumentCursor::Element *
-construct_default(const OpenDocument *document, pugi::xml_node node,
-                  const DocumentCursor::Allocator &allocator) {
-  auto alloc = allocator(sizeof(Derived));
-  return new (alloc) Derived(document, node);
-}
-
-template <typename Derived>
-DocumentCursor::Element *
-construct_default_optional(const OpenDocument *document, pugi::xml_node node,
-                           const DocumentCursor::Allocator &allocator) {
-  if (!node) {
-    return nullptr;
-  }
-  return construct_default<Derived>(document, node, allocator);
-}
-
-std::unordered_map<ElementProperty, std::any> fetch_properties(
-    const std::unordered_map<std::string, ElementProperty> &property_table,
-    pugi::xml_node node, const Style *style, const ElementType element_type,
-    const char *default_style_name = nullptr) {
-  std::unordered_map<ElementProperty, std::any> result;
-
-  const char *style_name = default_style_name;
-  const char *master_page_name = nullptr;
-
-  for (auto attribute : node.attributes()) {
-    auto property_it = property_table.find(attribute.name());
-    if (property_it == std::end(property_table)) {
-      continue;
-    }
-    auto property = property_it->second;
-    result[property] = attribute.value();
-
-    if (property == ElementProperty::STYLE_NAME) {
-      style_name = attribute.value();
-    } else if (property == ElementProperty::MASTER_PAGE_NAME) {
-      master_page_name = attribute.value();
-    }
-  }
-
-  if (style && style_name) {
-    auto style_properties = style->resolve_style(element_type, style_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  // TODO this check does not need to happen all the time
-  if (style && master_page_name) {
-    auto style_properties =
-        style->resolve_master_page(element_type, master_page_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  return result;
-}
-} // namespace
-
 struct DocumentCursor::DefaultTraits {
   static std::unordered_map<std::string, ElementProperty> properties_table() {
     static std::unordered_map<std::string, ElementProperty> result{
@@ -745,6 +686,45 @@ DocumentCursor::Element *DocumentCursor::construct_default_next_sibling_element(
     }
   }
   return {};
+}
+
+std::unordered_map<ElementProperty, std::any> DocumentCursor::fetch_properties(
+    const std::unordered_map<std::string, ElementProperty> &property_table,
+    pugi::xml_node node, const Style *style, const ElementType element_type,
+    const char *default_style_name) {
+  std::unordered_map<ElementProperty, std::any> result;
+
+  const char *style_name = default_style_name;
+  const char *master_page_name = nullptr;
+
+  for (auto attribute : node.attributes()) {
+    auto property_it = property_table.find(attribute.name());
+    if (property_it == std::end(property_table)) {
+      continue;
+    }
+    auto property = property_it->second;
+    result[property] = attribute.value();
+
+    if (property == ElementProperty::STYLE_NAME) {
+      style_name = attribute.value();
+    } else if (property == ElementProperty::MASTER_PAGE_NAME) {
+      master_page_name = attribute.value();
+    }
+  }
+
+  if (style && style_name) {
+    auto style_properties = style->resolve_style(element_type, style_name);
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
+
+  // TODO this check does not need to happen all the time
+  if (style && master_page_name) {
+    auto style_properties =
+        style->resolve_master_page(element_type, master_page_name);
+    result.insert(std::begin(style_properties), std::end(style_properties));
+  }
+
+  return result;
 }
 
 DocumentCursor::DocumentCursor(const OpenDocument *document,
