@@ -30,6 +30,8 @@ enum class ElementType {
   SHEET,
   PAGE,
 
+  MASTER_PAGE,
+
   TEXT,
   LINE_BREAK,
   PAGE_BREAK,
@@ -164,6 +166,8 @@ public:
   bool move_to_next_sibling();
 
   [[nodiscard]] std::string text() const;
+
+  [[nodiscard]] bool move_to_slide_master();
 
   [[nodiscard]] bool image_internal() const;
   [[nodiscard]] std::optional<File> image_file() const;

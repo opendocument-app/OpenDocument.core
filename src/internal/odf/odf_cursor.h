@@ -63,6 +63,7 @@ private:
   class PresentationRoot;
   class SpreadsheetRoot;
   class DrawingRoot;
+  class MasterPage;
   class Slide;
   class Sheet;
   class Page;

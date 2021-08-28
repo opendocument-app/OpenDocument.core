@@ -606,6 +606,24 @@ void translate_element(DocumentCursor &cursor, std::ostream &out,
   }
 }
 
+void translate_master_slide(DocumentCursor &cursor, std::ostream &out,
+                            const HtmlConfig &config) {
+  if (!cursor.move_to_slide_master()) {
+    return;
+  }
+
+  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
+    if (cursor.element_properties()
+            .get(ElementProperty::PLACEHOLDER)
+            .has_value()) {
+      return;
+    }
+    translate_element(cursor, out, config);
+  });
+
+  cursor.move_to_parent();
+}
+
 void translate_text_document(DocumentCursor &cursor, std::ostream &out,
                              const HtmlConfig &config) {
   if (config.text_document_margin) {
@@ -648,6 +666,7 @@ void translate_presentation(DocumentCursor &cursor, std::ostream &out,
     out << "<div";
     out << optional_style_attribute(translate_inner_page_style(properties));
     out << ">";
+    translate_master_slide(cursor, out, config);
     translate_children(cursor, out, config);
     out << "</div>";
     out << "</div>";

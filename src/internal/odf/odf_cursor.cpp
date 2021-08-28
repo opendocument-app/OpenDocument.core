@@ -361,6 +361,13 @@ public:
   }
 };
 
+class DocumentCursor::MasterPage final
+    : public DefaultElement<ElementType::MASTER_PAGE> {
+public:
+  MasterPage(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+};
+
 class DocumentCursor::Slide final : public DefaultElement<ElementType::SLIDE> {
 public:
   Slide(const Document *document, pugi::xml_node node)
@@ -380,6 +387,18 @@ public:
     if (auto next_sibling = m_node.next_sibling()) {
       m_node = next_sibling;
       return this;
+    }
+    return nullptr;
+  }
+
+  Element *slide_master(const common::DocumentCursor &cursor,
+                        const Allocator &allocator) override {
+    if (auto master_page_name_attr =
+            m_node.attribute("draw:master-page-name")) {
+      auto master_page_node = document_style(cursor)->master_page_node(
+          master_page_name_attr.value());
+      return construct_default_optional<MasterPage>(
+          document(cursor), master_page_node, allocator);
     }
     return nullptr;
   }

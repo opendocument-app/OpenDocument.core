@@ -111,6 +111,10 @@ bool DocumentCursor::move_to_next_sibling() {
 
 std::string DocumentCursor::text() const { return m_impl->text(); }
 
+bool DocumentCursor::move_to_slide_master() {
+  return m_impl->move_to_slide_master();
+}
+
 bool DocumentCursor::image_internal() const { return m_impl->image_internal(); }
 
 std::optional<File> DocumentCursor::image_file() const {
