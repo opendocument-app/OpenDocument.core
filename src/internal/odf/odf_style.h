@@ -38,8 +38,8 @@ public:
 
 private:
   struct Entry {
-    std::shared_ptr<Entry> m_parent;
-    pugi::xml_node m_node;
+    std::shared_ptr<Entry> parent;
+    pugi::xml_node node;
 
     Entry(std::shared_ptr<Entry> parent, pugi::xml_node node);
 

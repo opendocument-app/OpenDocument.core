@@ -1,234 +1,242 @@
 #include <functional>
 #include <internal/odf/odf_style.h>
-#include <internal/util/map_util.h>
 #include <internal/util/string_util.h>
 #include <odr/document.h>
 
 namespace odr::internal::odf {
 
 namespace {
-class StylePropertyRegistry {
-public:
-  static StylePropertyRegistry &instance() {
-    static StylePropertyRegistry instance;
-    return instance;
+std::any fetch_string_property(const pugi::xml_attribute attribute) {
+  if (attribute) {
+    return attribute.value();
+  }
+  return {};
+}
+
+void resolve_property_class(
+    const pugi::xml_node property_class,
+    const std::unordered_map<std::string, ElementProperty> &string_properties,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  if (!property_class) {
+    return;
   }
 
-  void
-  resolve_properties(const ElementType element, const pugi::xml_node node,
-                     std::unordered_map<ElementProperty, std::any> &result) {
-    auto it = m_registry.find(element);
-    if (it == std::end(m_registry)) {
-      return;
-    }
-    for (auto &&p : it->second) {
-      auto value = p.second.get(
-          node, util::map::lookup_map_default(result, p.first, std::any()));
-      if (value.has_value()) {
-        result[p.first] = value;
-      }
+  for (auto attribute : property_class.attributes()) {
+    if (auto it = string_properties.find(attribute.name());
+        it != std::end(string_properties)) {
+      result[it->second] = fetch_string_property(attribute);
     }
   }
+}
 
-private:
-  struct Entry {
-    std::function<std::any(pugi::xml_node node, std::any previous_value)> get;
+void resolve_text_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  static std::unordered_map<std::string, ElementProperty> string_properties{
+      {"style:font-name", ElementProperty::FONT_NAME},
+      {"fo:font-size", ElementProperty::FONT_SIZE},
+      {"fo:font-weight", ElementProperty::FONT_WEIGHT},
+      {"fo:font-style", ElementProperty::FONT_STYLE},
+      {"style:text-underline-style", ElementProperty::FONT_UNDERLINE},
+      {"style:text-line-through-style", ElementProperty::FONT_STRIKETHROUGH},
+      {"fo:text-shadow", ElementProperty::FONT_SHADOW},
+      {"fo:color", ElementProperty::FONT_COLOR},
+      {"fo:background-color", ElementProperty::BACKGROUND_COLOR},
   };
 
-  std::unordered_map<ElementType, std::unordered_map<ElementProperty, Entry>>
-      m_registry;
+  resolve_property_class(node, string_properties, result);
+}
 
-  StylePropertyRegistry() {
-    register_text_(ElementType::PARAGRAPH);
-    register_paragraph_(ElementType::PARAGRAPH);
+void resolve_paragraph_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  static std::unordered_map<std::string, ElementProperty> string_properties{
+      {"fo:text-align", ElementProperty::TEXT_ALIGN},
+      {"fo:margin-top", ElementProperty::MARGIN_TOP},
+      {"fo:margin-bottom", ElementProperty::MARGIN_BOTTOM},
+      {"fo:margin-left", ElementProperty::MARGIN_LEFT},
+      {"fo:margin-right", ElementProperty::MARGIN_RIGHT},
+  };
 
-    register_text_(ElementType::SPAN);
+  result[ElementProperty::MARGIN_TOP] = result[ElementProperty::MARGIN_BOTTOM] =
+      result[ElementProperty::MARGIN_LEFT] =
+          result[ElementProperty::MARGIN_RIGHT] =
+              fetch_string_property(node.attribute("fo:margin"));
 
-    register_text_(ElementType::LINK);
+  resolve_property_class(node, string_properties, result);
+}
 
-    default_register_(ElementType::TABLE, ElementProperty::WIDTH,
-                      "style:table-properties", "style:width");
+void resolve_table_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  static std::unordered_map<std::string, ElementProperty> string_properties{
+      {"style:width", ElementProperty::WIDTH},
+  };
 
-    register_table_column_();
+  resolve_property_class(node, string_properties, result);
+}
 
-    register_table_row_();
+void resolve_table_column_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  static std::unordered_map<std::string, ElementProperty> string_properties{
+      {"style:column-width", ElementProperty::WIDTH},
+  };
 
-    register_text_(ElementType::TABLE_CELL);
-    register_paragraph_(ElementType::TABLE_CELL);
-    register_table_cell_();
+  resolve_property_class(node, string_properties, result);
+}
 
-    register_graphic_(ElementType::RECT);
-    register_graphic_(ElementType::LINE);
-    register_graphic_(ElementType::CIRCLE);
+void resolve_table_row_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  static std::unordered_map<std::string, ElementProperty> string_properties{
+      {"style:row-height", ElementProperty::HEIGHT},
+  };
 
-    register_page_layout_(ElementType::ROOT);
-    register_page_layout_(ElementType::SLIDE);
-    register_page_layout_(ElementType::PAGE);
-  }
+  resolve_property_class(node, string_properties, result);
+}
 
-  void default_register_get_(const ElementType element,
-                             const ElementProperty property,
-                             const char *property_class_name,
-                             const char *attribute_name) {
-    m_registry[element][property].get =
-        [property_class_name, attribute_name](const pugi::xml_node node,
-                                              std::any previous_value) {
-          auto attribute =
-              node.child(property_class_name).attribute(attribute_name);
-          if (!attribute) {
-            return previous_value;
-          }
-          return std::any(attribute.value());
-        };
-  }
+void resolve_table_cell_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  static std::unordered_map<std::string, ElementProperty> string_properties{
+      {"style:vertical-align", ElementProperty::VERTICAL_ALIGN},
+      {"fo:background-color", ElementProperty::TABLE_CELL_BACKGROUND_COLOR},
+      {"fo:padding-top", ElementProperty::PADDING_TOP},
+      {"fo:padding-bottom", ElementProperty::PADDING_BOTTOM},
+      {"fo:padding-left", ElementProperty::PADDING_LEFT},
+      {"fo:padding-right", ElementProperty::PADDING_RIGHT},
+      {"fo:border-top", ElementProperty::BORDER_TOP},
+      {"fo:border-bottom", ElementProperty::BORDER_BOTTOM},
+      {"fo:border-left", ElementProperty::BORDER_LEFT},
+      {"fo:border-right", ElementProperty::BORDER_RIGHT},
+  };
 
-  void default_register_(const ElementType element,
-                         const ElementProperty property,
-                         const char *property_class_name,
-                         const char *attribute_name) {
-    default_register_get_(element, property, property_class_name,
-                          attribute_name);
-  }
+  result[ElementProperty::PADDING_TOP] =
+      result[ElementProperty::PADDING_BOTTOM] =
+          result[ElementProperty::PADDING_LEFT] =
+              result[ElementProperty::PADDING_RIGHT] =
+                  fetch_string_property(node.attribute("fo:padding"));
+  result[ElementProperty::BORDER_TOP] = result[ElementProperty::BORDER_BOTTOM] =
+      result[ElementProperty::BORDER_LEFT] =
+          result[ElementProperty::BORDER_RIGHT] =
+              fetch_string_property(node.attribute("fo:border"));
 
-  void default_register_directions_(
-      const ElementType element, const ElementProperty top_property,
-      const ElementProperty bottom_property,
-      const ElementProperty left_property, const ElementProperty right_property,
-      const char *property_class_name, const char *attribute_base_name,
-      const char *attribute_top_name, const char *attribute_bottom_name,
-      const char *attribute_left_name, const char *attribute_right_name) {
-    auto get_factory = [property_class_name, attribute_base_name](
-                           const char *attribute_direction_name) {
-      return [property_class_name, attribute_base_name,
-              attribute_direction_name](const pugi::xml_node node,
-                                        std::any previous_value) {
-        auto property_class = node.child(property_class_name);
-        if (auto attribute = property_class.attribute(attribute_direction_name);
-            attribute) {
-          return std::any(attribute.value());
-        }
-        if (auto attribute = property_class.attribute(attribute_base_name);
-            attribute) {
-          return std::any(attribute.value());
-        }
-        return previous_value;
+  resolve_property_class(node, string_properties, result);
+}
+
+void resolve_graphic_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  static std::unordered_map<std::string, ElementProperty> string_properties{
+      {"svg:stroke-width", ElementProperty::STROKE_WIDTH},
+      {"svg:stroke-color", ElementProperty::STROKE_COLOR},
+      {"draw:fill-color", ElementProperty::FILL_COLOR},
+      {"draw:textarea-vertical-align", ElementProperty::VERTICAL_ALIGN},
+  };
+
+  resolve_property_class(node, string_properties, result);
+}
+
+void resolve_page_layout_properties(
+    const pugi::xml_node node,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  static std::unordered_map<std::string, ElementProperty> string_properties{
+      {"fo:page-width", ElementProperty::WIDTH},
+      {"fo:page-height", ElementProperty::HEIGHT},
+      {"style:print-orientation", ElementProperty::PRINT_ORIENTATION},
+      {"fo:margin-top", ElementProperty::MARGIN_TOP},
+      {"fo:margin-bottom", ElementProperty::MARGIN_BOTTOM},
+      {"fo:margin-left", ElementProperty::MARGIN_LEFT},
+      {"fo:margin-right", ElementProperty::MARGIN_RIGHT},
+  };
+
+  result[ElementProperty::MARGIN_TOP] = result[ElementProperty::MARGIN_BOTTOM] =
+      result[ElementProperty::MARGIN_LEFT] =
+          result[ElementProperty::MARGIN_RIGHT] =
+              fetch_string_property(node.attribute("fo:margin"));
+
+  resolve_property_class(node, string_properties, result);
+}
+
+void resolve_properties(const ElementType element_type,
+                        const pugi::xml_node node,
+                        std::unordered_map<ElementProperty, std::any> &result) {
+  using PropertyClassResolver = std::function<void(
+      const pugi::xml_node node,
+      std::unordered_map<ElementProperty, std::any> &result)>;
+
+  static std::unordered_map<std::string, PropertyClassResolver>
+      string_properties{
+          {"style:text-properties", resolve_text_properties},
+          {"style:paragraph-properties", resolve_paragraph_properties},
+          {"style:table-properties", resolve_table_properties},
+          {"style:table-column-properties", resolve_table_column_properties},
+          {"style:table-row-properties", resolve_table_row_properties},
+          {"style:table-cell-properties", resolve_table_cell_properties},
+          {"style:graphic-properties", resolve_graphic_properties},
+          {"style:page-layout-properties", resolve_page_layout_properties},
       };
-    };
 
-    m_registry[element][top_property].get = get_factory(attribute_top_name);
-    m_registry[element][bottom_property].get =
-        get_factory(attribute_bottom_name);
-    m_registry[element][left_property].get = get_factory(attribute_left_name);
-    m_registry[element][right_property].get = get_factory(attribute_right_name);
+  switch (element_type) {
+  case ElementType::PARAGRAPH:
+    resolve_text_properties(node.child("style:text-properties"), result);
+    resolve_paragraph_properties(node.child("style:paragraph-properties"),
+                                 result);
+    break;
+  case ElementType::SPAN:
+    resolve_text_properties(node.child("style:text-properties"), result);
+    break;
+  case ElementType::LINK:
+    resolve_text_properties(node.child("style:text-properties"), result);
+    break;
+  case ElementType::TABLE:
+    resolve_table_properties(node.child("style:table-properties"), result);
+    break;
+  case ElementType::TABLE_COLUMN:
+    resolve_table_column_properties(node.child("style:table-column-properties"),
+                                    result);
+    break;
+  case ElementType::TABLE_ROW:
+    resolve_table_row_properties(node.child("style:table-row-properties"),
+                                 result);
+    break;
+  case ElementType::TABLE_CELL:
+    resolve_text_properties(node.child("style:text-properties"), result);
+    resolve_paragraph_properties(node.child("style:paragraph-properties"),
+                                 result);
+    resolve_table_cell_properties(node.child("style:table-cell-properties"),
+                                  result);
+    break;
+  case ElementType::RECT:
+  case ElementType::LINE:
+  case ElementType::CIRCLE:
+    resolve_graphic_properties(node.child("style:graphic-properties"), result);
+    break;
+  case ElementType::ROOT:
+  case ElementType::SLIDE:
+  case ElementType::PAGE:
+    resolve_page_layout_properties(node.child("style:page-layout-properties"),
+                                   result);
+    break;
+  default:
+    break;
   }
-
-  void register_paragraph_(const ElementType element) {
-    static auto property_class_name = "style:paragraph-properties";
-    default_register_(element, ElementProperty::TEXT_ALIGN, property_class_name,
-                      "fo:text-align");
-    default_register_directions_(
-        element, ElementProperty::MARGIN_TOP, ElementProperty::MARGIN_BOTTOM,
-        ElementProperty::MARGIN_LEFT, ElementProperty::MARGIN_RIGHT,
-        property_class_name, "fo:margin", "fo:margin-top", "fo:margin-bottom",
-        "fo:margin-left", "fo:margin-right");
-  }
-
-  void register_text_(const ElementType element) {
-    static auto property_class_name = "style:text-properties";
-    default_register_(element, ElementProperty::FONT_NAME, property_class_name,
-                      "style:font-name");
-    default_register_(element, ElementProperty::FONT_SIZE, property_class_name,
-                      "fo:font-size");
-    default_register_(element, ElementProperty::FONT_WEIGHT,
-                      property_class_name, "fo:font-weight");
-    default_register_(element, ElementProperty::FONT_STYLE, property_class_name,
-                      "fo:font-style");
-    default_register_(element, ElementProperty::FONT_UNDERLINE,
-                      property_class_name, "style:text-underline-style");
-    default_register_(element, ElementProperty::FONT_STRIKETHROUGH,
-                      property_class_name, "style:text-line-through-style");
-    default_register_(element, ElementProperty::FONT_SHADOW,
-                      property_class_name, "fo:text-shadow");
-    default_register_(element, ElementProperty::FONT_COLOR, property_class_name,
-                      "fo:color");
-    default_register_(element, ElementProperty::BACKGROUND_COLOR,
-                      property_class_name, "fo:background-color");
-  }
-
-  void register_table_column_() {
-    static auto property_class_name = "style:table-column-properties";
-    default_register_(ElementType::TABLE_COLUMN, ElementProperty::WIDTH,
-                      property_class_name, "style:column-width");
-  }
-
-  void register_table_row_() {
-    static auto property_class_name = "style:table-row-properties";
-    default_register_(ElementType::TABLE_ROW, ElementProperty::HEIGHT,
-                      property_class_name, "style:row-height");
-  }
-
-  void register_table_cell_() {
-    static auto property_class_name = "style:table-cell-properties";
-    default_register_(ElementType::TABLE_CELL, ElementProperty::VERTICAL_ALIGN,
-                      property_class_name, "style:vertical-align");
-    default_register_(ElementType::TABLE_CELL,
-                      ElementProperty::TABLE_CELL_BACKGROUND_COLOR,
-                      property_class_name, "fo:background-color");
-    default_register_directions_(
-        ElementType::TABLE_CELL, ElementProperty::PADDING_TOP,
-        ElementProperty::PADDING_BOTTOM, ElementProperty::PADDING_LEFT,
-        ElementProperty::PADDING_RIGHT, property_class_name, "fo:padding",
-        "fo:padding-top", "fo:padding-bottom", "fo:padding-left",
-        "fo:padding-right");
-    default_register_directions_(
-        ElementType::TABLE_CELL, ElementProperty::BORDER_TOP,
-        ElementProperty::BORDER_BOTTOM, ElementProperty::BORDER_LEFT,
-        ElementProperty::BORDER_RIGHT, property_class_name, "fo:border",
-        "fo:border-top", "fo:border-bottom", "fo:border-left",
-        "fo:border-right");
-  }
-
-  void register_graphic_(const ElementType element) {
-    static auto property_class_name = "style:graphic-properties";
-    default_register_(element, ElementProperty::STROKE_WIDTH,
-                      property_class_name, "svg:stroke-width");
-    default_register_(element, ElementProperty::STROKE_COLOR,
-                      property_class_name, "svg:stroke-color");
-    default_register_(element, ElementProperty::FILL_COLOR, property_class_name,
-                      "draw:fill-color");
-    default_register_(element, ElementProperty::VERTICAL_ALIGN,
-                      property_class_name, "draw:textarea-vertical-align");
-  }
-
-  void register_page_layout_(const ElementType element) {
-    static auto property_class_name = "style:page-layout-properties";
-    default_register_directions_(
-        element, ElementProperty::MARGIN_TOP, ElementProperty::MARGIN_BOTTOM,
-        ElementProperty::MARGIN_LEFT, ElementProperty::MARGIN_RIGHT,
-        property_class_name, "fo:margin", "fo:margin-top", "fo:margin-bottom",
-        "fo:margin-left", "fo:margin-right");
-    default_register_(element, ElementProperty::WIDTH, property_class_name,
-                      "fo:page-width");
-    default_register_(element, ElementProperty::HEIGHT, property_class_name,
-                      "fo:page-height");
-    default_register_(element, ElementProperty::PRINT_ORIENTATION,
-                      property_class_name, "style:print-orientation");
-  }
-};
+}
 } // namespace
 
 Style::Entry::Entry(std::shared_ptr<Entry> parent, pugi::xml_node node)
-    : m_parent{std::move(parent)}, m_node{node} {}
+    : parent{std::move(parent)}, node{node} {}
 
 [[nodiscard]] std::unordered_map<ElementProperty, std::any>
 Style::Entry::properties(const ElementType element) const {
   std::unordered_map<ElementProperty, std::any> result;
 
-  if (m_parent) {
-    result = m_parent->properties(element);
+  if (parent) {
+    result = parent->properties(element);
   }
 
-  StylePropertyRegistry::instance().resolve_properties(element, m_node, result);
+  resolve_properties(element, node, result);
 
   return result;
 }
@@ -248,29 +256,25 @@ void Style::generate_indices_(const pugi::xml_node content_root,
     generate_indices_(font_face_decls);
   }
 
-  if (auto styles = styles_root.child("office:styles"); styles) {
+  if (auto styles = styles_root.child("office:styles")) {
     generate_indices_(styles);
   }
 
-  if (auto automatic_styles = styles_root.child("office:automatic-styles");
-      automatic_styles) {
+  if (auto automatic_styles = styles_root.child("office:automatic-styles")) {
     generate_indices_(automatic_styles);
   }
 
-  if (auto master_styles = styles_root.child("office:master-styles");
-      master_styles) {
+  if (auto master_styles = styles_root.child("office:master-styles")) {
     generate_indices_(master_styles);
   }
 
   // content styles
 
-  if (auto font_face_decls = content_root.child("office:font-face-decls");
-      font_face_decls) {
+  if (auto font_face_decls = content_root.child("office:font-face-decls")) {
     generate_indices_(font_face_decls);
   }
 
-  if (auto automatic_styles = content_root.child("office:automatic-styles");
-      automatic_styles) {
+  if (auto automatic_styles = content_root.child("office:automatic-styles")) {
     generate_indices_(automatic_styles);
   }
 }
