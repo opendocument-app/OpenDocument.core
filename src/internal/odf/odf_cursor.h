@@ -68,6 +68,7 @@ private:
   class Page;
   class Text;
   class TableElement;
+  template <ElementType, typename = DefaultTraits> class DefaultTableElement;
   class TableColumn;
   class TableRow;
   class TableCell;

@@ -51,8 +51,6 @@ struct DocumentCursor::DefaultTraits {
 template <ElementType _element_type, typename Traits>
 class DocumentCursor::DefaultElement : public Element {
 public:
-  pugi::xml_node m_node;
-
   DefaultElement(const OpenDocument *, pugi::xml_node node) : m_node{node} {}
 
   bool operator==(const Element &rhs) const override {
@@ -121,6 +119,9 @@ public:
   static const Style *document_style(const common::DocumentCursor &cursor) {
     return dynamic_cast<const DocumentCursor &>(cursor).style();
   }
+
+protected:
+  pugi::xml_node m_node;
 };
 
 template <typename Traits>
@@ -352,13 +353,26 @@ class DocumentCursor::TableElement final
 public:
   TableElement(const OpenDocument *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
+
+  Element *first_table_column(const common::DocumentCursor &cursor,
+                              const Allocator &allocator) final {
+    return construct_default_optional<TableColumn>(
+        document(cursor), m_node.child("table:table-column"), allocator);
+  }
+
+  Element *first_table_row(const common::DocumentCursor &cursor,
+                           const Allocator &allocator) final {
+    return construct_default_optional<TableRow>(
+        document(cursor), m_node.child("table:table-row"), allocator);
+  }
 };
 
-class DocumentCursor::TableColumn final
-    : public DefaultElement<ElementType::TABLE_COLUMN> {
+template <ElementType _element_type, typename Traits>
+class DocumentCursor::DefaultTableElement
+    : public DefaultElement<_element_type, Traits> {
 public:
-  TableColumn(const OpenDocument *document, pugi::xml_node node)
-      : DefaultElement(document, node) {}
+  DefaultTableElement(const OpenDocument *document, pugi::xml_node node)
+      : DefaultElement<_element_type, Traits>(document, node) {}
 
   Element *previous_sibling(const common::DocumentCursor &,
                             const Allocator &) final {
@@ -367,8 +381,8 @@ public:
       return this;
     }
 
-    if (auto previous_sibling = m_node.previous_sibling("table:table-column")) {
-      m_node = previous_sibling;
+    if (auto previous_sibling = previous_node_()) {
+      DefaultElement<_element_type, Traits>::m_node = previous_sibling;
       m_repeated_index = 0;
       return this;
     }
@@ -378,83 +392,79 @@ public:
 
   Element *next_sibling(const common::DocumentCursor &,
                         const Allocator &) final {
-    if (m_repeated_index < number_repeated() - 1) {
+    if (m_repeated_index < number_repeated_() - 1) {
       ++m_repeated_index;
       return this;
     }
 
-    if (auto next_sibling = m_node.next_sibling("table:table-column")) {
-      m_node = next_sibling;
+    if (auto next_sibling = next_node_()) {
+      DefaultElement<_element_type, Traits>::m_node = next_sibling;
       m_repeated_index = 0;
       return this;
     }
 
     return nullptr;
   }
+
+private:
+  std::uint32_t m_repeated_index{0};
+
+  [[nodiscard]] virtual std::uint32_t number_repeated_() const = 0;
+  [[nodiscard]] virtual pugi::xml_node previous_node_() const = 0;
+  [[nodiscard]] virtual pugi::xml_node next_node_() const = 0;
+};
+
+class DocumentCursor::TableColumn final
+    : public DefaultTableElement<ElementType::TABLE_COLUMN> {
+public:
+  TableColumn(const OpenDocument *document, pugi::xml_node node)
+      : DefaultTableElement(document, node) {}
 
   [[nodiscard]] const char *default_cell_style_name() const {
     return m_node.attribute("table:default-cell-style-name").value();
   }
 
 private:
-  std::uint32_t m_repeated_index{0};
-
-  [[nodiscard]] std::uint32_t number_repeated() const {
+  [[nodiscard]] std::uint32_t number_repeated_() const final {
     return m_node.attribute("table:number-columns-repeated").as_uint(1);
+  }
+
+  [[nodiscard]] pugi::xml_node previous_node_() const final {
+    return m_node.previous_sibling("table:table-column");
+  }
+
+  [[nodiscard]] pugi::xml_node next_node_() const final {
+    return m_node.next_sibling("table:table-column");
   }
 };
 
 class DocumentCursor::TableRow final
-    : public DefaultElement<ElementType::TABLE_ROW> {
+    : public DefaultTableElement<ElementType::TABLE_ROW> {
 public:
   TableRow(const OpenDocument *document, pugi::xml_node node)
-      : DefaultElement(document, node) {}
-
-  Element *previous_sibling(const common::DocumentCursor &,
-                            const Allocator &) final {
-    if (m_repeated_index > 0) {
-      --m_repeated_index;
-      return this;
-    }
-
-    if (auto previous_sibling = m_node.previous_sibling("table:table-row")) {
-      m_node = previous_sibling;
-      m_repeated_index = 0;
-      return this;
-    }
-
-    return nullptr;
-  }
-
-  Element *next_sibling(const common::DocumentCursor &,
-                        const Allocator &) final {
-    if (m_repeated_index < number_repeated() - 1) {
-      ++m_repeated_index;
-      return this;
-    }
-
-    if (auto next_sibling = m_node.next_sibling("table:table-row")) {
-      m_node = next_sibling;
-      m_repeated_index = 0;
-      return this;
-    }
-
-    return nullptr;
-  }
+      : DefaultTableElement(document, node) {}
 
 private:
-  std::uint32_t m_repeated_index{0};
-
-  [[nodiscard]] std::uint32_t number_repeated() const {
+  [[nodiscard]] std::uint32_t number_repeated_() const final {
     return m_node.attribute("table:number-rows-repeated").as_uint(1);
+  }
+
+  [[nodiscard]] pugi::xml_node previous_node_() const final {
+    return m_node.previous_sibling("table:table-row");
+  }
+
+  [[nodiscard]] pugi::xml_node next_node_() const final {
+    return m_node.next_sibling("table:table-row");
   }
 };
 
 class DocumentCursor::TableCell final
-    : public DefaultElement<ElementType::TABLE_CELL> {
+    : public DefaultTableElement<ElementType::TABLE_CELL> {
 public:
   TableCell(const OpenDocument *document, pugi::xml_node node)
-      : DefaultElement(document, node), m_column(document, node) {}
+      : DefaultTableElement(document, node),
+        m_column(document, node.parent().parent().child("table:table-column")) {
+  }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties(const common::DocumentCursor &cursor) const final {
@@ -464,56 +474,27 @@ public:
                             default_style_name);
   }
 
-  Element *previous_sibling(const common::DocumentCursor &cursor,
-                            const Allocator &allocator) final {
-    m_column.previous_sibling(cursor, allocator);
-
-    if (m_repeated_index > 0) {
-      --m_repeated_index;
-      return this;
-    }
-
-    if (auto previous_sibling = m_node.previous_sibling("table:table-cell")) {
-      m_node = previous_sibling;
-      m_repeated_index = 0;
-      return this;
-    }
-
-    return nullptr;
-  }
-
-  Element *next_sibling(const common::DocumentCursor &cursor,
-                        const Allocator &allocator) final {
-    m_column.next_sibling(cursor, allocator);
-
-    if (m_repeated_index < number_repeated() - 1) {
-      ++m_repeated_index;
-      return this;
-    }
-
-    if (auto next_sibling = m_node.next_sibling("table:table-cell")) {
-      m_node = next_sibling;
-      m_repeated_index = 0;
-      return this;
-    }
-
-    return nullptr;
-  }
-
 private:
-  std::uint32_t m_repeated_index{0};
   TableColumn m_column;
 
-  [[nodiscard]] std::uint32_t number_columns_spanned() const {
+  [[nodiscard]] std::uint32_t number_columns_spanned_() const {
     return m_node.attribute("table:number-columns-spanned").as_uint(1);
   }
 
-  [[nodiscard]] std::uint32_t number_rows_spanned() const {
+  [[nodiscard]] std::uint32_t number_rows_spanned_() const {
     return m_node.attribute("table:number-rows-spanned").as_uint(1);
   }
 
-  [[nodiscard]] std::uint32_t number_repeated() const {
+  [[nodiscard]] std::uint32_t number_repeated_() const {
     return m_node.attribute("table:number-columns-repeated").as_uint(1);
+  }
+
+  [[nodiscard]] pugi::xml_node previous_node_() const final {
+    return m_node.previous_sibling("table:table-cell");
+  }
+
+  [[nodiscard]] pugi::xml_node next_node_() const final {
+    return m_node.next_sibling("table:table-cell");
   }
 };
 
