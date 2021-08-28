@@ -111,8 +111,16 @@ bool DocumentCursor::move_to_next_sibling() {
 
 std::string DocumentCursor::text() const { return m_impl->text(); }
 
-bool DocumentCursor::move_to_slide_master() {
-  return m_impl->move_to_slide_master();
+bool DocumentCursor::move_to_master_page() {
+  return m_impl->move_to_master_page();
+}
+
+bool DocumentCursor::move_to_first_table_column() {
+  return m_impl->move_to_first_table_column();
+}
+
+bool DocumentCursor::move_to_first_table_row() {
+  return m_impl->move_to_first_table_row();
 }
 
 bool DocumentCursor::image_internal() const { return m_impl->image_internal(); }
@@ -121,11 +129,29 @@ std::optional<File> DocumentCursor::image_file() const {
   return m_impl->image_file();
 }
 
-void DocumentCursor::for_each_child(ChildVisitor visitor) {
-  std::uint32_t i = 0;
+void DocumentCursor::for_each_child(const ChildVisitor &visitor) {
   if (!move_to_first_child()) {
     return;
   }
+  for_each_(visitor);
+}
+
+void DocumentCursor::for_each_column(const ChildVisitor &visitor) {
+  if (!move_to_first_table_column()) {
+    return;
+  }
+  for_each_(visitor);
+}
+
+void DocumentCursor::for_each_row(const ChildVisitor &visitor) {
+  if (!move_to_first_table_row()) {
+    return;
+  }
+  for_each_(visitor);
+}
+
+void DocumentCursor::for_each_(const ChildVisitor &visitor) {
+  std::uint32_t i = 0;
   while (true) {
     visitor(*this, i);
     if (!move_to_next_sibling()) {

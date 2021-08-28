@@ -68,9 +68,9 @@ bool DocumentCursor::move_to_next_sibling() {
 
 std::string DocumentCursor::text() const { return back_()->text(*this); }
 
-bool DocumentCursor::move_to_slide_master() {
+bool DocumentCursor::move_to_master_page() {
   auto allocator = [this](const std::size_t size) { return push_(size); };
-  auto element = back_()->slide_master(*this, allocator);
+  auto element = back_()->master_page(*this, allocator);
   return element != nullptr;
 }
 

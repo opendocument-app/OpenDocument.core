@@ -177,8 +177,8 @@ public:
     return "";
   }
 
-  Element *slide_master(const common::DocumentCursor &,
-                        const Allocator &) override {
+  Element *master_page(const common::DocumentCursor &,
+                       const Allocator &) override {
     return nullptr;
   }
 

@@ -31,7 +31,7 @@ public:
 
   [[nodiscard]] std::string text() const final;
 
-  [[nodiscard]] bool move_to_slide_master() final;
+  [[nodiscard]] bool move_to_master_page() final;
 
   [[nodiscard]] bool move_to_first_table_column() final;
   [[nodiscard]] bool move_to_first_table_row() final;
@@ -62,8 +62,8 @@ public:
     [[nodiscard]] virtual std::string
     text(const DocumentCursor &cursor) const = 0;
 
-    virtual Element *slide_master(const DocumentCursor &cursor,
-                                  const Allocator &allocator) = 0;
+    virtual Element *master_page(const DocumentCursor &cursor,
+                                 const Allocator &allocator) = 0;
 
     virtual Element *first_table_column(const DocumentCursor &cursor,
                                         const Allocator &allocator) = 0;

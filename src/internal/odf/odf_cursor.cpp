@@ -255,8 +255,8 @@ public:
     return "";
   }
 
-  Element *slide_master(const common::DocumentCursor &,
-                        const Allocator &) override {
+  Element *master_page(const common::DocumentCursor &,
+                       const Allocator &) override {
     return nullptr;
   }
 
@@ -332,8 +332,8 @@ public:
 
   Element *first_child(const common::DocumentCursor &cursor,
                        const Allocator &allocator) final {
-    return construct_default_optional<Slide>(document(cursor),
-                                             m_node.first_child(), allocator);
+    return construct_default_optional<Slide>(
+        document(cursor), m_node.child("draw:page"), allocator);
   }
 };
 
@@ -344,8 +344,8 @@ public:
 
   Element *first_child(const common::DocumentCursor &cursor,
                        const Allocator &allocator) final {
-    return construct_default_optional<Sheet>(document(cursor),
-                                             m_node.first_child(), allocator);
+    return construct_default_optional<Sheet>(
+        document(cursor), m_node.child("table:table"), allocator);
   }
 };
 
@@ -356,8 +356,8 @@ public:
 
   Element *first_child(const common::DocumentCursor &cursor,
                        const Allocator &allocator) final {
-    return construct_default_optional<Page>(document(cursor),
-                                            m_node.first_child(), allocator);
+    return construct_default_optional<Page>(
+        document(cursor), m_node.child("draw:page"), allocator);
   }
 };
 
@@ -391,8 +391,8 @@ public:
     return nullptr;
   }
 
-  Element *slide_master(const common::DocumentCursor &cursor,
-                        const Allocator &allocator) override {
+  Element *master_page(const common::DocumentCursor &cursor,
+                       const Allocator &allocator) final {
     if (auto master_page_name_attr =
             m_node.attribute("draw:master-page-name")) {
       auto master_page_node = document_style(cursor)->master_page_node(
@@ -409,9 +409,14 @@ public:
   Sheet(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
+  Element *first_child(const common::DocumentCursor &cursor,
+                       const Allocator &allocator) final {
+    return nullptr;
+  }
+
   Element *previous_sibling(const common::DocumentCursor &,
                             const Allocator &) final {
-    if (auto previous_sibling = m_node.previous_sibling()) {
+    if (auto previous_sibling = m_node.previous_sibling("table:table")) {
       m_node = previous_sibling;
       return this;
     }
@@ -420,11 +425,23 @@ public:
 
   Element *next_sibling(const common::DocumentCursor &,
                         const Allocator &) final {
-    if (auto next_sibling = m_node.next_sibling()) {
+    if (auto next_sibling = m_node.next_sibling("table:table")) {
       m_node = next_sibling;
       return this;
     }
     return nullptr;
+  }
+
+  Element *first_table_column(const common::DocumentCursor &cursor,
+                              const Allocator &allocator) final {
+    return construct_default_optional<TableColumn>(
+        document(cursor), m_node.child("table:table-column"), allocator);
+  }
+
+  Element *first_table_row(const common::DocumentCursor &cursor,
+                           const Allocator &allocator) final {
+    return construct_default_optional<TableRow>(
+        document(cursor), m_node.child("table:table-row"), allocator);
   }
 };
 
@@ -533,6 +550,11 @@ class DocumentCursor::TableElement final
 public:
   TableElement(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
+
+  Element *first_child(const common::DocumentCursor &cursor,
+                       const Allocator &allocator) final {
+    return nullptr;
+  }
 
   Element *first_table_column(const common::DocumentCursor &cursor,
                               const Allocator &allocator) final {

@@ -74,7 +74,7 @@ public:
 
   [[nodiscard]] virtual std::string text() const = 0;
 
-  [[nodiscard]] virtual bool move_to_slide_master() = 0;
+  [[nodiscard]] virtual bool move_to_master_page() = 0;
 
   [[nodiscard]] virtual bool move_to_first_table_column() = 0;
   [[nodiscard]] virtual bool move_to_first_table_row() = 0;

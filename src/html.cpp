@@ -388,48 +388,46 @@ if (config.table_limit_by_content) {
 }
  */
 
-  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
-    if (cursor.element_type() == ElementType::TABLE_COLUMN) {
-      auto column_properties = cursor.element_properties();
+  cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
+    auto column_properties = cursor.element_properties();
 
-      out << "<col";
+    out << "<col";
+    out << optional_style_attribute(
+        translate_table_column_style(column_properties));
+    out << ">";
+  });
+
+  cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
+    auto row_properties = cursor.element_properties();
+
+    out << "<tr";
+    out << optional_style_attribute(translate_table_row_style(row_properties));
+    out << ">";
+
+    cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
+      // TODO check if cell hidden
+
+      auto cell_properties = cursor.element_properties();
+      std::uint32_t row_span =
+          cell_properties.get_uint32(ElementProperty::ROW_SPAN).value_or(1);
+      std::uint32_t column_span =
+          cell_properties.get_uint32(ElementProperty::COLUMN_SPAN).value_or(1);
+
+      out << "<td";
+      if (row_span > 1) {
+        out << " rowspan=\"" << row_span << "\"";
+      }
+      if (column_span > 1) {
+        out << " colspan=\"" << column_span << "\"";
+      }
       out << optional_style_attribute(
-          translate_table_column_style(column_properties));
+          translate_table_cell_style(cell_properties));
       out << ">";
-    } else if (cursor.element_type() == ElementType::TABLE_ROW) {
-      auto row_properties = cursor.element_properties();
+      translate_children(cursor, out, config);
+      out << "</td>";
+    });
 
-      out << "<tr";
-      out << optional_style_attribute(
-          translate_table_row_style(row_properties));
-      out << ">";
-
-      cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
-        // TODO check if cell hidden
-
-        auto cell_properties = cursor.element_properties();
-        std::uint32_t row_span =
-            cell_properties.get_uint32(ElementProperty::ROW_SPAN).value_or(1);
-        std::uint32_t column_span =
-            cell_properties.get_uint32(ElementProperty::COLUMN_SPAN)
-                .value_or(1);
-
-        out << "<td";
-        if (row_span > 1) {
-          out << " rowspan=\"" << row_span << "\"";
-        }
-        if (column_span > 1) {
-          out << " colspan=\"" << column_span << "\"";
-        }
-        out << optional_style_attribute(
-            translate_table_cell_style(cell_properties));
-        out << ">";
-        translate_children(cursor, out, config);
-        out << "</td>";
-      });
-
-      out << "</tr>";
-    }
+    out << "</tr>";
   });
 
   out << "</table>";
@@ -606,9 +604,9 @@ void translate_element(DocumentCursor &cursor, std::ostream &out,
   }
 }
 
-void translate_master_slide(DocumentCursor &cursor, std::ostream &out,
-                            const HtmlConfig &config) {
-  if (!cursor.move_to_slide_master()) {
+void translate_master_page(DocumentCursor &cursor, std::ostream &out,
+                           const HtmlConfig &config) {
+  if (!cursor.move_to_master_page()) {
     return;
   }
 
@@ -666,7 +664,7 @@ void translate_presentation(DocumentCursor &cursor, std::ostream &out,
     out << "<div";
     out << optional_style_attribute(translate_inner_page_style(properties));
     out << ">";
-    translate_master_slide(cursor, out, config);
+    translate_master_page(cursor, out, config);
     translate_children(cursor, out, config);
     out << "</div>";
     out << "</div>";
@@ -713,6 +711,7 @@ void translate_drawing(DocumentCursor &cursor, std::ostream &out,
     out << "<div";
     out << optional_style_attribute(translate_inner_page_style(properties));
     out << ">";
+    translate_master_page(cursor, out, config);
     translate_children(cursor, out, config);
     out << "</div>";
     out << "</div>";

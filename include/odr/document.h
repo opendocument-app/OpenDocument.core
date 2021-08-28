@@ -167,7 +167,10 @@ public:
 
   [[nodiscard]] std::string text() const;
 
-  [[nodiscard]] bool move_to_slide_master();
+  [[nodiscard]] bool move_to_master_page();
+
+  [[nodiscard]] bool move_to_first_table_column();
+  [[nodiscard]] bool move_to_first_table_row();
 
   [[nodiscard]] bool image_internal() const;
   [[nodiscard]] std::optional<File> image_file() const;
@@ -175,13 +178,17 @@ public:
   using ChildVisitor =
       std::function<void(DocumentCursor &cursor, std::uint32_t i)>;
 
-  void for_each_child(ChildVisitor visitor);
+  void for_each_child(const ChildVisitor &visitor);
+  void for_each_column(const ChildVisitor &visitor);
+  void for_each_row(const ChildVisitor &visitor);
 
 private:
   std::shared_ptr<internal::abstract::DocumentCursor> m_impl;
 
   explicit DocumentCursor(
       std::shared_ptr<internal::abstract::DocumentCursor> impl);
+
+  void for_each_(const ChildVisitor &visitor);
 
   friend Document;
 };
