@@ -47,10 +47,11 @@ public:
   public:
     virtual ~Element() = default;
 
-    virtual bool operator==(const Element &rhs) const = 0;
-    virtual bool operator!=(const Element &rhs) const = 0;
+    [[nodiscard]] virtual bool equals(const DocumentCursor &cursor,
+                                      const Element &rhs) const = 0;
 
-    [[nodiscard]] virtual ElementType type() const = 0;
+    [[nodiscard]] virtual ElementType
+    type(const DocumentCursor &cursor) const = 0;
     [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
     properties(const DocumentCursor &cursor) const = 0;
 
@@ -80,6 +81,38 @@ public:
     image_internal(const DocumentCursor &cursor) const = 0;
     [[nodiscard]] virtual std::optional<odr::File>
     image_file(const DocumentCursor &cursor) const = 0;
+  };
+
+  class DefaultElement : public Element {
+  public:
+    [[nodiscard]] std::unordered_map<ElementProperty, std::any>
+    properties(const DocumentCursor &cursor) const override;
+
+    Element *first_child(const DocumentCursor &cursor,
+                         const Allocator &allocator) override;
+    Element *previous_sibling(const DocumentCursor &cursor,
+                              const Allocator &allocator) override;
+    Element *next_sibling(const DocumentCursor &cursor,
+                          const Allocator &allocator) override;
+
+    [[nodiscard]] std::string text(const DocumentCursor &cursor) const override;
+
+    Element *master_page(const DocumentCursor &cursor,
+                         const Allocator &allocator) override;
+
+    [[nodiscard]] TableDimensions
+    table_dimensions(const DocumentCursor &cursor) const override;
+    Element *first_table_column(const DocumentCursor &cursor,
+                                const Allocator &allocator) override;
+    Element *first_table_row(const DocumentCursor &cursor,
+                             const Allocator &allocator) override;
+    [[nodiscard]] TableDimensions
+    table_cell_span(const DocumentCursor &cursor) const override;
+
+    [[nodiscard]] bool
+    image_internal(const DocumentCursor &cursor) const override;
+    [[nodiscard]] std::optional<odr::File>
+    image_file(const DocumentCursor &cursor) const override;
   };
 
 protected:

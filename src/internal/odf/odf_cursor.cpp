@@ -212,19 +212,19 @@ struct DocumentCursor::DefaultTraits {
 };
 
 template <ElementType _element_type, typename Traits>
-class DocumentCursor::DefaultElement : public Element {
+class DocumentCursor::DefaultElement
+    : public common::DocumentCursor::DefaultElement {
 public:
   DefaultElement(const Document *, pugi::xml_node node) : m_node{node} {}
 
-  bool operator==(const Element &rhs) const override {
+  [[nodiscard]] bool equals(const common::DocumentCursor &,
+                            const Element &rhs) const override {
     return m_node == *dynamic_cast<const DefaultElement &>(rhs).m_node;
   }
 
-  bool operator!=(const Element &rhs) const override {
-    return m_node != *dynamic_cast<const DefaultElement &>(rhs).m_node;
+  [[nodiscard]] ElementType type(const common::DocumentCursor &) const final {
+    return _element_type;
   }
-
-  [[nodiscard]] ElementType type() const final { return _element_type; }
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   properties(const common::DocumentCursor &cursor) const override {
@@ -248,46 +248,6 @@ public:
                         const Allocator &allocator) override {
     return construct_default_next_sibling_element(document(cursor), m_node,
                                                   allocator);
-  }
-
-  [[nodiscard]] std::string
-  text(const common::DocumentCursor &) const override {
-    return "";
-  }
-
-  Element *master_page(const common::DocumentCursor &,
-                       const Allocator &) override {
-    return nullptr;
-  }
-
-  [[nodiscard]] TableDimensions
-  table_dimensions(const common::DocumentCursor &) const override {
-    return {};
-  }
-
-  Element *first_table_column(const common::DocumentCursor &,
-                              const Allocator &) override {
-    return nullptr;
-  }
-
-  Element *first_table_row(const common::DocumentCursor &,
-                           const Allocator &) override {
-    return nullptr;
-  }
-
-  [[nodiscard]] TableDimensions
-  table_cell_span(const common::DocumentCursor &) const override {
-    return {};
-  }
-
-  [[nodiscard]] bool
-  image_internal(const common::DocumentCursor &) const override {
-    return false;
-  }
-
-  [[nodiscard]] std::optional<odr::File>
-  image_file(const common::DocumentCursor &) const override {
-    return {};
   }
 
   static const Document *document(const common::DocumentCursor &cursor) {

@@ -7,13 +7,13 @@ namespace odr::internal::common {
 DocumentCursor::DocumentCursor() { m_element_stack_top.push_back(0); }
 
 bool DocumentCursor::operator==(const abstract::DocumentCursor &rhs) const {
-  return back_()->operator==(
-      *dynamic_cast<const DocumentCursor &>(rhs).back_());
+  return back_()->equals(*this,
+                         *dynamic_cast<const DocumentCursor &>(rhs).back_());
 }
 
 bool DocumentCursor::operator!=(const abstract::DocumentCursor &rhs) const {
-  return back_()->operator!=(
-      *dynamic_cast<const DocumentCursor &>(rhs).back_());
+  return !back_()->equals(*this,
+                          *dynamic_cast<const DocumentCursor &>(rhs).back_());
 }
 
 [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
@@ -26,7 +26,7 @@ DocumentCursor::copy() const {
 }
 
 [[nodiscard]] ElementType DocumentCursor::element_type() const {
-  return back_()->type();
+  return back_()->type(*this);
 }
 
 [[nodiscard]] std::unordered_map<ElementProperty, std::any>
@@ -137,4 +137,70 @@ const DocumentCursor::Element *DocumentCursor::back_() const {
   std::int32_t offset = back_offset_();
   return reinterpret_cast<const Element *>(m_element_stack.data() + offset);
 }
+
+std::unordered_map<ElementProperty, std::any>
+DocumentCursor::DefaultElement::properties(const DocumentCursor &) const {
+  return {};
+}
+
+DocumentCursor::Element *
+DocumentCursor::DefaultElement::first_child(const DocumentCursor &,
+                                            const Allocator &) {
+  return nullptr;
+}
+
+DocumentCursor::Element *
+DocumentCursor::DefaultElement::previous_sibling(const DocumentCursor &,
+                                                 const Allocator &) {
+  return nullptr;
+}
+
+DocumentCursor::Element *
+DocumentCursor::DefaultElement::next_sibling(const DocumentCursor &,
+                                             const Allocator &) {
+  return nullptr;
+}
+
+std::string DocumentCursor::DefaultElement::text(const DocumentCursor &) const {
+  return "";
+}
+
+DocumentCursor::Element *
+DocumentCursor::DefaultElement::master_page(const DocumentCursor &,
+                                            const Allocator &) {
+  return nullptr;
+}
+
+TableDimensions
+DocumentCursor::DefaultElement::table_dimensions(const DocumentCursor &) const {
+  return {};
+}
+
+DocumentCursor::Element *
+DocumentCursor::DefaultElement::first_table_column(const DocumentCursor &,
+                                                   const Allocator &) {
+  return nullptr;
+}
+
+DocumentCursor::Element *
+DocumentCursor::DefaultElement::first_table_row(const DocumentCursor &,
+                                                const Allocator &) {
+  return nullptr;
+}
+
+TableDimensions
+DocumentCursor::DefaultElement::table_cell_span(const DocumentCursor &) const {
+  return {};
+}
+
+bool DocumentCursor::DefaultElement::image_internal(
+    const DocumentCursor &) const {
+  return false;
+}
+
+std::optional<odr::File>
+DocumentCursor::DefaultElement::image_file(const DocumentCursor &) const {
+  return {};
+}
+
 } // namespace odr::internal::common
