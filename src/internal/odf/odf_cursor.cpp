@@ -222,7 +222,8 @@ public:
     return m_node == *dynamic_cast<const DefaultElement &>(rhs).m_node;
   }
 
-  [[nodiscard]] ElementType type(const common::DocumentCursor &) const final {
+  [[nodiscard]] ElementType
+  type(const common::DocumentCursor &) const override {
     return _element_type;
   }
 
@@ -688,6 +689,11 @@ class DocumentCursor::Sheet final : public TableElement {
 public:
   Sheet(const Document *document, pugi::xml_node node)
       : TableElement(document, node) {}
+
+  [[nodiscard]] ElementType
+  type(const common::DocumentCursor &) const override {
+    return ElementType::SHEET;
+  }
 
   Element *previous_sibling(const common::DocumentCursor &,
                             const Allocator &) final {

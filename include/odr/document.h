@@ -12,8 +12,6 @@
 namespace odr::internal::abstract {
 class Document;
 class DocumentCursor;
-class TableElement;
-class ImageElement;
 } // namespace odr::internal::abstract
 
 namespace odr {

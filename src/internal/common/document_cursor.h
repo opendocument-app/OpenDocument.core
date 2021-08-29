@@ -118,10 +118,10 @@ public:
 protected:
   void *push_(std::size_t size);
   void pop_();
-  std::int32_t next_offset_() const;
-  std::int32_t back_offset_() const;
+  [[nodiscard]] std::int32_t next_offset_() const;
+  [[nodiscard]] std::int32_t back_offset_() const;
   Element *back_();
-  const Element *back_() const;
+  [[nodiscard]] const Element *back_() const;
 
 private:
   std::vector<std::int32_t> m_element_stack_top;
