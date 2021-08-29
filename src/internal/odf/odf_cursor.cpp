@@ -172,7 +172,8 @@ std::unordered_map<ElementProperty, std::any> DocumentCursor::fetch_properties(
 }
 
 struct DocumentCursor::DefaultTraits {
-  static std::unordered_map<std::string, ElementProperty> properties_table() {
+  static const std::unordered_map<std::string, ElementProperty> &
+  properties_table() {
     static std::unordered_map<std::string, ElementProperty> result{
         // PARAGRAPH, SPAN, LINK
         {"text:style-name", ElementProperty::STYLE_NAME},
