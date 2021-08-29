@@ -33,8 +33,10 @@ public:
 
   [[nodiscard]] bool move_to_master_page() final;
 
+  [[nodiscard]] TableDimensions table_dimensions() const final;
   [[nodiscard]] bool move_to_first_table_column() final;
   [[nodiscard]] bool move_to_first_table_row() final;
+  [[nodiscard]] TableDimensions table_cell_span() const final;
 
   [[nodiscard]] bool image_internal() const final;
   [[nodiscard]] std::optional<odr::File> image_file() const final;
@@ -65,10 +67,14 @@ public:
     virtual Element *master_page(const DocumentCursor &cursor,
                                  const Allocator &allocator) = 0;
 
+    [[nodiscard]] virtual TableDimensions
+    table_dimensions(const DocumentCursor &cursor) const = 0;
     virtual Element *first_table_column(const DocumentCursor &cursor,
                                         const Allocator &allocator) = 0;
     virtual Element *first_table_row(const DocumentCursor &cursor,
                                      const Allocator &allocator) = 0;
+    [[nodiscard]] virtual TableDimensions
+    table_cell_span(const DocumentCursor &cursor) const = 0;
 
     [[nodiscard]] virtual bool
     image_internal(const DocumentCursor &cursor) const = 0;

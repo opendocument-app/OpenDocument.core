@@ -182,6 +182,11 @@ public:
     return nullptr;
   }
 
+  [[nodiscard]] TableDimensions
+  table_dimensions(const common::DocumentCursor &) const override {
+    return {};
+  }
+
   Element *first_table_column(const common::DocumentCursor &,
                               const Allocator &) override {
     return nullptr;
@@ -190,6 +195,11 @@ public:
   Element *first_table_row(const common::DocumentCursor &,
                            const Allocator &) override {
     return nullptr;
+  }
+
+  [[nodiscard]] TableDimensions
+  table_cell_span(const common::DocumentCursor &) const override {
+    return {};
   }
 
   [[nodiscard]] bool

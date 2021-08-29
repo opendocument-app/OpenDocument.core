@@ -1,4 +1,5 @@
 #include <internal/common/document_cursor.h>
+#include <odr/document.h>
 #include <odr/file.h>
 
 namespace odr::internal::common {
@@ -74,6 +75,10 @@ bool DocumentCursor::move_to_master_page() {
   return element != nullptr;
 }
 
+TableDimensions DocumentCursor::table_dimensions() const {
+  return back_()->table_dimensions(*this);
+}
+
 bool DocumentCursor::move_to_first_table_column() {
   auto allocator = [this](const std::size_t size) { return push_(size); };
   auto element = back_()->first_table_column(*this, allocator);
@@ -84,6 +89,10 @@ bool DocumentCursor::move_to_first_table_row() {
   auto allocator = [this](const std::size_t size) { return push_(size); };
   auto element = back_()->first_table_row(*this, allocator);
   return element != nullptr;
+}
+
+TableDimensions DocumentCursor::table_cell_span() const {
+  return back_()->table_cell_span(*this);
 }
 
 bool DocumentCursor::image_internal() const {

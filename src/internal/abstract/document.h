@@ -76,8 +76,10 @@ public:
 
   [[nodiscard]] virtual bool move_to_master_page() = 0;
 
+  [[nodiscard]] virtual TableDimensions table_dimensions() const = 0;
   [[nodiscard]] virtual bool move_to_first_table_column() = 0;
   [[nodiscard]] virtual bool move_to_first_table_row() = 0;
+  [[nodiscard]] virtual TableDimensions table_cell_span() const = 0;
 
   [[nodiscard]] virtual bool image_internal() const = 0;
   [[nodiscard]] virtual std::optional<odr::File> image_file() const = 0;

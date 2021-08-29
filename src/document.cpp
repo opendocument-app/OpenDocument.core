@@ -115,12 +115,20 @@ bool DocumentCursor::move_to_master_page() {
   return m_impl->move_to_master_page();
 }
 
+TableDimensions DocumentCursor::table_dimensions() {
+  return m_impl->table_dimensions();
+}
+
 bool DocumentCursor::move_to_first_table_column() {
   return m_impl->move_to_first_table_column();
 }
 
 bool DocumentCursor::move_to_first_table_row() {
   return m_impl->move_to_first_table_row();
+}
+
+TableDimensions DocumentCursor::table_cell_span() {
+  return m_impl->table_cell_span();
 }
 
 bool DocumentCursor::image_internal() const { return m_impl->image_internal(); }
@@ -136,15 +144,22 @@ void DocumentCursor::for_each_child(const ChildVisitor &visitor) {
   for_each_(visitor);
 }
 
-void DocumentCursor::for_each_column(const ChildVisitor &visitor) {
+void DocumentCursor::for_each_column(const ConditionalChildVisitor &visitor) {
   if (!move_to_first_table_column()) {
     return;
   }
   for_each_(visitor);
 }
 
-void DocumentCursor::for_each_row(const ChildVisitor &visitor) {
+void DocumentCursor::for_each_row(const ConditionalChildVisitor &visitor) {
   if (!move_to_first_table_row()) {
+    return;
+  }
+  for_each_(visitor);
+}
+
+void DocumentCursor::for_each_cell(const ConditionalChildVisitor &visitor) {
+  if (!move_to_first_child()) {
     return;
   }
   for_each_(visitor);
@@ -154,6 +169,20 @@ void DocumentCursor::for_each_(const ChildVisitor &visitor) {
   std::uint32_t i = 0;
   while (true) {
     visitor(*this, i);
+    if (!move_to_next_sibling()) {
+      break;
+    }
+    ++i;
+  }
+  move_to_parent();
+}
+
+void DocumentCursor::for_each_(const ConditionalChildVisitor &visitor) {
+  std::uint32_t i = 0;
+  while (true) {
+    if (!visitor(*this, i)) {
+      break;
+    }
     if (!move_to_next_sibling()) {
       break;
     }

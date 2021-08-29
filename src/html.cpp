@@ -356,37 +356,15 @@ void translate_list(DocumentCursor &cursor, std::ostream &out,
 
 void translate_table(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
-  // TODO a lot of features here should only apply to spreadsheets
   // TODO table column width does not work
   // TODO table row height does not work
 
   auto properties = cursor.element_properties();
-  // auto table = cursor.table();
 
   out << "<table";
   out << optional_style_attribute(translate_table_style(properties));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
-
-  /* TODO
-auto dimensions = table.dimensions();
-std::uint32_t end_row = dimensions.rows;
-std::uint32_t end_column = dimensions.columns;
-if (config.table_limit_rows > 0) {
-  end_row = config.table_limit_rows;
-}
-if (config.table_limit_columns > 0) {
-  end_column = config.table_limit_columns;
-}
-if (config.table_limit_by_content) {
-  const auto content_bounds = element.content_bounds();
-  const auto content_bounds_within = element.content_bounds(
-      {config.table_limit_rows, config.table_limit_columns});
-  end_row = end_row ? content_bounds_within.rows : content_bounds.rows;
-  end_column =
-      end_column ? content_bounds_within.columns : content_bounds.columns;
-}
- */
 
   cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
     auto column_properties = cursor.element_properties();
@@ -395,6 +373,8 @@ if (config.table_limit_by_content) {
     out << optional_style_attribute(
         translate_table_column_style(column_properties));
     out << ">";
+
+    return true;
   });
 
   cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
@@ -404,30 +384,29 @@ if (config.table_limit_by_content) {
     out << optional_style_attribute(translate_table_row_style(row_properties));
     out << ">";
 
-    cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
-      // TODO check if cell hidden
-
+    cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
       auto cell_properties = cursor.element_properties();
-      std::uint32_t row_span =
-          cell_properties.get_uint32(ElementProperty::ROW_SPAN).value_or(1);
-      std::uint32_t column_span =
-          cell_properties.get_uint32(ElementProperty::COLUMN_SPAN).value_or(1);
+      auto cell_span = cursor.table_cell_span();
 
       out << "<td";
-      if (row_span > 1) {
-        out << " rowspan=\"" << row_span << "\"";
+      if (cell_span.rows > 1) {
+        out << " rowspan=\"" << cell_span.rows << "\"";
       }
-      if (column_span > 1) {
-        out << " colspan=\"" << column_span << "\"";
+      if (cell_span.columns > 1) {
+        out << " colspan=\"" << cell_span.columns << "\"";
       }
       out << optional_style_attribute(
           translate_table_cell_style(cell_properties));
       out << ">";
       translate_children(cursor, out, config);
       out << "</td>";
+
+      return true;
     });
 
     out << "</tr>";
+
+    return true;
   });
 
   out << "</table>";
@@ -622,6 +601,95 @@ void translate_master_page(DocumentCursor &cursor, std::ostream &out,
   cursor.move_to_parent();
 }
 
+void translate_sheet(DocumentCursor &cursor, std::ostream &out,
+                     const HtmlConfig &config) {
+  // TODO table column width does not work
+  // TODO table row height does not work
+
+  auto properties = cursor.element_properties();
+
+  out << "<table";
+  out << optional_style_attribute(translate_table_style(properties));
+  out << R"( cellpadding="0" border="0" cellspacing="0")";
+  out << ">";
+
+  auto dimensions = cursor.table_dimensions();
+  std::uint32_t end_row = dimensions.rows;
+  std::uint32_t end_column = dimensions.columns;
+  if ((config.table_limit_rows > 0) && (end_row > config.table_limit_rows)) {
+    end_row = config.table_limit_rows;
+  }
+  if ((config.table_limit_columns > 0) &&
+      (end_column > config.table_limit_columns)) {
+    end_column = config.table_limit_columns;
+  }
+  /*
+  if (config.table_limit_by_content) {
+    const auto content_bounds = element.content_bounds();
+    const auto content_bounds_within = element.content_bounds(
+        {config.table_limit_rows, config.table_limit_columns});
+    end_row = end_row ? content_bounds_within.rows : content_bounds.rows;
+    end_column =
+        end_column ? content_bounds_within.columns : content_bounds.columns;
+  }
+   */
+
+  std::uint32_t column_index = 0;
+  std::uint32_t row_index = 0;
+
+  cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
+    auto column_properties = cursor.element_properties();
+
+    out << "<col";
+    out << optional_style_attribute(
+        translate_table_column_style(column_properties));
+    out << ">";
+
+    ++column_index;
+    return column_index < end_column;
+  });
+
+  cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
+    auto row_properties = cursor.element_properties();
+
+    out << "<tr";
+    out << optional_style_attribute(translate_table_row_style(row_properties));
+    out << ">";
+
+    column_index = 0;
+
+    cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
+      // TODO check if cell hidden
+
+      auto cell_properties = cursor.element_properties();
+      auto cell_span = cursor.table_cell_span();
+
+      out << "<td";
+      if (cell_span.rows > 1) {
+        out << " rowspan=\"" << cell_span.rows << "\"";
+      }
+      if (cell_span.columns > 1) {
+        out << " colspan=\"" << cell_span.columns << "\"";
+      }
+      out << optional_style_attribute(
+          translate_table_cell_style(cell_properties));
+      out << ">";
+      translate_children(cursor, out, config);
+      out << "</td>";
+
+      column_index += cell_span.columns;
+      return column_index < end_column;
+    });
+
+    out << "</tr>";
+
+    ++row_index;
+    return row_index < end_row;
+  });
+
+  out << "</table>";
+}
+
 void translate_text_document(DocumentCursor &cursor, std::ostream &out,
                              const HtmlConfig &config) {
   if (config.text_document_margin) {
@@ -685,7 +753,7 @@ void translate_spreadsheet(DocumentCursor &cursor, std::ostream &out,
       return;
     }
 
-    translate_table(cursor, out, config);
+    translate_sheet(cursor, out, config);
   });
 }
 

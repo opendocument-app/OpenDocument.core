@@ -88,8 +88,6 @@ enum class ElementProperty {
   Z_INDEX,
 
   TABLE_CELL_BACKGROUND_COLOR,
-  ROW_SPAN,
-  COLUMN_SPAN,
 
   MARGIN_TOP,
   MARGIN_BOTTOM,
@@ -127,6 +125,7 @@ enum class ElementProperty {
   VERTICAL_ALIGN,
 };
 
+struct TableDimensions;
 class DocumentCursor;
 class ElementPropertySet;
 
@@ -169,18 +168,23 @@ public:
 
   [[nodiscard]] bool move_to_master_page();
 
+  [[nodiscard]] TableDimensions table_dimensions();
   [[nodiscard]] bool move_to_first_table_column();
   [[nodiscard]] bool move_to_first_table_row();
+  [[nodiscard]] TableDimensions table_cell_span();
 
   [[nodiscard]] bool image_internal() const;
   [[nodiscard]] std::optional<File> image_file() const;
 
   using ChildVisitor =
       std::function<void(DocumentCursor &cursor, std::uint32_t i)>;
+  using ConditionalChildVisitor =
+      std::function<bool(DocumentCursor &cursor, std::uint32_t i)>;
 
   void for_each_child(const ChildVisitor &visitor);
-  void for_each_column(const ChildVisitor &visitor);
-  void for_each_row(const ChildVisitor &visitor);
+  void for_each_column(const ConditionalChildVisitor &visitor);
+  void for_each_row(const ConditionalChildVisitor &visitor);
+  void for_each_cell(const ConditionalChildVisitor &visitor);
 
 private:
   std::shared_ptr<internal::abstract::DocumentCursor> m_impl;
@@ -189,6 +193,7 @@ private:
       std::shared_ptr<internal::abstract::DocumentCursor> impl);
 
   void for_each_(const ChildVisitor &visitor);
+  void for_each_(const ConditionalChildVisitor &visitor);
 
   friend Document;
 };

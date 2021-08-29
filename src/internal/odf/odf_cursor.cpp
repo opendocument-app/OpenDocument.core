@@ -1,6 +1,7 @@
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
+#include <internal/common/table_cursor.h>
 #include <internal/odf/odf_cursor.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_style.h>
@@ -182,8 +183,6 @@ struct DocumentCursor::DefaultTraits {
         // TABLE, TABLE_COLUMN, TABLE_ROW, TABLE_CELL
         {"table:style-name", ElementProperty::STYLE_NAME},
         // TABLE_CELL
-        {"table:number-columns-spanned", ElementProperty::COLUMN_SPAN},
-        {"table:number-rows-spanned", ElementProperty::ROW_SPAN},
         {"office:value-type", ElementProperty::VALUE_TYPE},
         // LINK, IMAGE
         {"xlink:href", ElementProperty::HREF},
@@ -260,6 +259,11 @@ public:
     return nullptr;
   }
 
+  [[nodiscard]] TableDimensions
+  table_dimensions(const common::DocumentCursor &) const override {
+    return {};
+  }
+
   Element *first_table_column(const common::DocumentCursor &,
                               const Allocator &) override {
     return nullptr;
@@ -268,6 +272,11 @@ public:
   Element *first_table_row(const common::DocumentCursor &,
                            const Allocator &) override {
     return nullptr;
+  }
+
+  [[nodiscard]] TableDimensions
+  table_cell_span(const common::DocumentCursor &) const override {
+    return {};
   }
 
   [[nodiscard]] bool
@@ -404,47 +413,6 @@ public:
   }
 };
 
-class DocumentCursor::Sheet final : public DefaultElement<ElementType::SHEET> {
-public:
-  Sheet(const Document *document, pugi::xml_node node)
-      : DefaultElement(document, node) {}
-
-  Element *first_child(const common::DocumentCursor &cursor,
-                       const Allocator &allocator) final {
-    return nullptr;
-  }
-
-  Element *previous_sibling(const common::DocumentCursor &,
-                            const Allocator &) final {
-    if (auto previous_sibling = m_node.previous_sibling("table:table")) {
-      m_node = previous_sibling;
-      return this;
-    }
-    return nullptr;
-  }
-
-  Element *next_sibling(const common::DocumentCursor &,
-                        const Allocator &) final {
-    if (auto next_sibling = m_node.next_sibling("table:table")) {
-      m_node = next_sibling;
-      return this;
-    }
-    return nullptr;
-  }
-
-  Element *first_table_column(const common::DocumentCursor &cursor,
-                              const Allocator &allocator) final {
-    return construct_default_optional<TableColumn>(
-        document(cursor), m_node.child("table:table-column"), allocator);
-  }
-
-  Element *first_table_row(const common::DocumentCursor &cursor,
-                           const Allocator &allocator) final {
-    return construct_default_optional<TableRow>(
-        document(cursor), m_node.child("table:table-row"), allocator);
-  }
-};
-
 class DocumentCursor::Page final : public DefaultElement<ElementType::PAGE> {
 public:
   Page(const Document *document, pugi::xml_node node)
@@ -545,8 +513,7 @@ private:
   }
 };
 
-class DocumentCursor::TableElement final
-    : public DefaultElement<ElementType::TABLE> {
+class DocumentCursor::TableElement : public DefaultElement<ElementType::TABLE> {
 public:
   TableElement(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
@@ -554,6 +521,31 @@ public:
   Element *first_child(const common::DocumentCursor &,
                        const Allocator &) final {
     return nullptr;
+  }
+
+  [[nodiscard]] TableDimensions
+  table_dimensions(const common::DocumentCursor &) const final {
+    TableDimensions result;
+    common::TableCursor cursor;
+
+    for (auto column : m_node.children("table:table-column")) {
+      const auto columns_repeated =
+          column.attribute("table:number-columns-repeated").as_uint(1);
+      cursor.add_column(columns_repeated);
+    }
+
+    result.columns = cursor.column();
+    cursor = {};
+
+    for (auto row : m_node.children("table:table-row")) {
+      const auto rows_repeated =
+          row.attribute("table:number-rows-repeated").as_uint(1);
+      cursor.add_row(rows_repeated);
+    }
+
+    result.rows = cursor.row();
+
+    return result;
   }
 
   Element *first_table_column(const common::DocumentCursor &cursor,
@@ -676,6 +668,12 @@ public:
                             default_style_name);
   }
 
+  [[nodiscard]] TableDimensions
+  table_cell_span(const common::DocumentCursor &) const final {
+    return {m_node.attribute("table:number-rows-spanned").as_uint(1),
+            m_node.attribute("table:number-columns-spanned").as_uint(1)};
+  }
+
 private:
   TableColumn m_column;
 
@@ -722,6 +720,30 @@ public:
       return {};
     }
     return File(doc->files()->open(this->href()));
+  }
+};
+
+class DocumentCursor::Sheet final : public TableElement {
+public:
+  Sheet(const Document *document, pugi::xml_node node)
+      : TableElement(document, node) {}
+
+  Element *previous_sibling(const common::DocumentCursor &,
+                            const Allocator &) final {
+    if (auto previous_sibling = m_node.previous_sibling("table:table")) {
+      m_node = previous_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  Element *next_sibling(const common::DocumentCursor &,
+                        const Allocator &) final {
+    if (auto next_sibling = m_node.next_sibling("table:table")) {
+      m_node = next_sibling;
+      return this;
+    }
+    return nullptr;
   }
 };
 

@@ -13,6 +13,14 @@ std::any fetch_string_property(const pugi::xml_attribute attribute) {
   return {};
 }
 
+void set_property_if_present(
+    const ElementProperty property, std::any value,
+    std::unordered_map<ElementProperty, std::any> &result) {
+  if (value.has_value()) {
+    result[property] = std::move(value);
+  }
+}
+
 void resolve_property_class(
     const pugi::xml_node property_class,
     const std::unordered_map<std::string, ElementProperty> &string_properties,
@@ -58,10 +66,11 @@ void resolve_paragraph_properties(
       {"fo:margin-right", ElementProperty::MARGIN_RIGHT},
   };
 
-  result[ElementProperty::MARGIN_TOP] = result[ElementProperty::MARGIN_BOTTOM] =
-      result[ElementProperty::MARGIN_LEFT] =
-          result[ElementProperty::MARGIN_RIGHT] =
-              fetch_string_property(node.attribute("fo:margin"));
+  auto margin = fetch_string_property(node.attribute("fo:margin"));
+  set_property_if_present(ElementProperty::MARGIN_TOP, margin, result);
+  set_property_if_present(ElementProperty::MARGIN_BOTTOM, margin, result);
+  set_property_if_present(ElementProperty::MARGIN_LEFT, margin, result);
+  set_property_if_present(ElementProperty::MARGIN_RIGHT, margin, result);
 
   resolve_property_class(node, string_properties, result);
 }
@@ -112,15 +121,17 @@ void resolve_table_cell_properties(
       {"fo:border-right", ElementProperty::BORDER_RIGHT},
   };
 
-  result[ElementProperty::PADDING_TOP] =
-      result[ElementProperty::PADDING_BOTTOM] =
-          result[ElementProperty::PADDING_LEFT] =
-              result[ElementProperty::PADDING_RIGHT] =
-                  fetch_string_property(node.attribute("fo:padding"));
-  result[ElementProperty::BORDER_TOP] = result[ElementProperty::BORDER_BOTTOM] =
-      result[ElementProperty::BORDER_LEFT] =
-          result[ElementProperty::BORDER_RIGHT] =
-              fetch_string_property(node.attribute("fo:border"));
+  auto padding = fetch_string_property(node.attribute("fo:padding"));
+  set_property_if_present(ElementProperty::PADDING_TOP, padding, result);
+  set_property_if_present(ElementProperty::PADDING_BOTTOM, padding, result);
+  set_property_if_present(ElementProperty::PADDING_LEFT, padding, result);
+  set_property_if_present(ElementProperty::PADDING_RIGHT, padding, result);
+
+  auto border = fetch_string_property(node.attribute("fo:border"));
+  set_property_if_present(ElementProperty::BORDER_TOP, border, result);
+  set_property_if_present(ElementProperty::BORDER_BOTTOM, border, result);
+  set_property_if_present(ElementProperty::BORDER_LEFT, border, result);
+  set_property_if_present(ElementProperty::BORDER_RIGHT, border, result);
 
   resolve_property_class(node, string_properties, result);
 }
@@ -151,10 +162,11 @@ void resolve_page_layout_properties(
       {"fo:margin-right", ElementProperty::MARGIN_RIGHT},
   };
 
-  result[ElementProperty::MARGIN_TOP] = result[ElementProperty::MARGIN_BOTTOM] =
-      result[ElementProperty::MARGIN_LEFT] =
-          result[ElementProperty::MARGIN_RIGHT] =
-              fetch_string_property(node.attribute("fo:margin"));
+  auto margin = fetch_string_property(node.attribute("fo:margin"));
+  set_property_if_present(ElementProperty::MARGIN_TOP, margin, result);
+  set_property_if_present(ElementProperty::MARGIN_BOTTOM, margin, result);
+  set_property_if_present(ElementProperty::MARGIN_LEFT, margin, result);
+  set_property_if_present(ElementProperty::MARGIN_RIGHT, margin, result);
 
   resolve_property_class(node, string_properties, result);
 }
