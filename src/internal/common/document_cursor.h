@@ -20,99 +20,75 @@ public:
 
   [[nodiscard]] std::string document_path() const final;
 
-  [[nodiscard]] ElementType element_type() const final;
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  element_properties() const override;
-
-  bool move_to_parent() final;
-  bool move_to_first_child() final;
-  bool move_to_previous_sibling() final;
-  bool move_to_next_sibling() final;
-
-  [[nodiscard]] std::string text() const final;
-
-  [[nodiscard]] bool move_to_master_page() final;
-
-  [[nodiscard]] TableDimensions table_dimensions() const final;
-  [[nodiscard]] bool move_to_first_table_column() final;
-  [[nodiscard]] bool move_to_first_table_row() final;
-  [[nodiscard]] TableDimensions table_cell_span() const final;
-
-  [[nodiscard]] bool image_internal() const final;
-  [[nodiscard]] std::optional<odr::File> image_file() const final;
+  [[nodiscard]] Element *element() final;
+  [[nodiscard]] const Element *element() const final;
 
   using Allocator = std::function<void *(std::size_t size)>;
 
-  class Element {
+  class Element : public abstract::DocumentCursor::Element {
   public:
-    virtual ~Element() = default;
+    bool move_to_parent(abstract::DocumentCursor *cursor) override;
+    bool move_to_first_child(abstract::DocumentCursor *cursor) override;
+    bool move_to_previous_sibling(abstract::DocumentCursor *cursor) override;
+    bool move_to_next_sibling(abstract::DocumentCursor *cursor) override;
 
-    [[nodiscard]] virtual bool equals(const DocumentCursor &cursor,
-                                      const Element &rhs) const = 0;
+    virtual Element *first_child(const DocumentCursor *cursor,
+                                 const Allocator &allocator);
+    virtual Element *previous_sibling(const DocumentCursor *cursor,
+                                      const Allocator &allocator);
+    virtual Element *next_sibling(const DocumentCursor *cursor,
+                                  const Allocator &allocator);
 
-    [[nodiscard]] virtual ElementType
-    type(const DocumentCursor &cursor) const = 0;
-    [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
-    properties(const DocumentCursor &cursor) const = 0;
+    class Text : public abstract::DocumentCursor::Element::Text {
+    public:
+    };
 
-    virtual Element *first_child(const DocumentCursor &cursor,
-                                 const Allocator &allocator) = 0;
-    virtual Element *previous_sibling(const DocumentCursor &cursor,
-                                      const Allocator &allocator) = 0;
-    virtual Element *next_sibling(const DocumentCursor &cursor,
-                                  const Allocator &allocator) = 0;
+    class Slide : public abstract::DocumentCursor::Element::Slide {
+    public:
+      [[nodiscard]] bool move_to_master_page(
+          abstract::DocumentCursor *cursor,
+          const abstract::DocumentCursor::Element *element) const override;
 
-    [[nodiscard]] virtual std::string
-    text(const DocumentCursor &cursor) const = 0;
+      [[nodiscard]] virtual Element *
+      master_page(const DocumentCursor *cursor,
+                  const Allocator &allocator) const = 0;
+    };
 
-    virtual Element *master_page(const DocumentCursor &cursor,
-                                 const Allocator &allocator) = 0;
+    class Table : public abstract::DocumentCursor::Element::Table {
+    public:
+      [[nodiscard]] bool move_to_first_table_column(
+          abstract::DocumentCursor *cursor,
+          const abstract::DocumentCursor::Element *element) const override;
+      [[nodiscard]] bool move_to_first_table_row(
+          abstract::DocumentCursor *cursor,
+          const abstract::DocumentCursor::Element *element) const override;
 
-    [[nodiscard]] virtual TableDimensions
-    table_dimensions(const DocumentCursor &cursor) const = 0;
-    virtual Element *first_table_column(const DocumentCursor &cursor,
-                                        const Allocator &allocator) = 0;
-    virtual Element *first_table_row(const DocumentCursor &cursor,
-                                     const Allocator &allocator) = 0;
-    [[nodiscard]] virtual TableDimensions
-    table_cell_span(const DocumentCursor &cursor) const = 0;
+      [[nodiscard]] virtual Element *
+      first_table_column(const DocumentCursor *cursor,
+                         const Allocator &allocator) const = 0;
+      [[nodiscard]] virtual Element *
+      first_table_row(const DocumentCursor *cursor,
+                      const Allocator &allocator) const = 0;
+    };
 
-    [[nodiscard]] virtual bool
-    image_internal(const DocumentCursor &cursor) const = 0;
-    [[nodiscard]] virtual std::optional<odr::File>
-    image_file(const DocumentCursor &cursor) const = 0;
-  };
+    class TableCell : public abstract::DocumentCursor::Element::TableCell {
+    public:
+    };
 
-  class DefaultElement : public Element {
-  public:
-    [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-    properties(const DocumentCursor &cursor) const override;
+    class Image : public abstract::DocumentCursor::Element::Image {
+    public:
+    };
 
-    Element *first_child(const DocumentCursor &cursor,
-                         const Allocator &allocator) override;
-    Element *previous_sibling(const DocumentCursor &cursor,
-                              const Allocator &allocator) override;
-    Element *next_sibling(const DocumentCursor &cursor,
-                          const Allocator &allocator) override;
-
-    [[nodiscard]] std::string text(const DocumentCursor &cursor) const override;
-
-    Element *master_page(const DocumentCursor &cursor,
-                         const Allocator &allocator) override;
-
-    [[nodiscard]] TableDimensions
-    table_dimensions(const DocumentCursor &cursor) const override;
-    Element *first_table_column(const DocumentCursor &cursor,
-                                const Allocator &allocator) override;
-    Element *first_table_row(const DocumentCursor &cursor,
-                             const Allocator &allocator) override;
-    [[nodiscard]] TableDimensions
-    table_cell_span(const DocumentCursor &cursor) const override;
-
-    [[nodiscard]] bool
-    image_internal(const DocumentCursor &cursor) const override;
-    [[nodiscard]] std::optional<odr::File>
-    image_file(const DocumentCursor &cursor) const override;
+    [[nodiscard]] const Text *
+    text(const abstract::DocumentCursor *cursor) const override;
+    [[nodiscard]] const Slide *
+    slide(const abstract::DocumentCursor *cursor) const override;
+    [[nodiscard]] const Table *
+    table(const abstract::DocumentCursor *cursor) const override;
+    [[nodiscard]] const TableCell *
+    table_cell(const abstract::DocumentCursor *cursor) const override;
+    [[nodiscard]] const Image *
+    image(const abstract::DocumentCursor *cursor) const override;
   };
 
 protected:

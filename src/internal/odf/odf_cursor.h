@@ -14,7 +14,7 @@ public:
 private:
   const Document *m_document;
 
-  const Style *style() const;
+  [[nodiscard]] const Style *style() const;
 
   template <typename Derived>
   static Element *construct_default(const Document *document,

@@ -88,53 +88,71 @@ std::string DocumentCursor::document_path() const {
 }
 
 ElementType DocumentCursor::element_type() const {
-  return m_impl->element_type();
+  return m_impl->element()->type(m_impl.get());
 }
 
 ElementPropertySet DocumentCursor::element_properties() const {
-  return ElementPropertySet(m_impl->element_properties());
+  return ElementPropertySet(m_impl->element()->properties(m_impl.get()));
 }
 
-bool DocumentCursor::move_to_parent() { return m_impl->move_to_parent(); }
+bool DocumentCursor::move_to_parent() {
+  return m_impl->element()->move_to_parent(m_impl.get());
+}
 
 bool DocumentCursor::move_to_first_child() {
-  return m_impl->move_to_first_child();
+  return m_impl->element()->move_to_first_child(m_impl.get());
 }
 
 bool DocumentCursor::move_to_previous_sibling() {
-  return m_impl->move_to_previous_sibling();
+  return m_impl->element()->move_to_previous_sibling(m_impl.get());
 }
 
 bool DocumentCursor::move_to_next_sibling() {
-  return m_impl->move_to_next_sibling();
+  return m_impl->element()->move_to_next_sibling(m_impl.get());
 }
 
-std::string DocumentCursor::text() const { return m_impl->text(); }
+std::string DocumentCursor::text() const {
+  auto element = m_impl->element();
+  return element->text(m_impl.get())->value(m_impl.get(), element);
+}
 
 bool DocumentCursor::move_to_master_page() {
-  return m_impl->move_to_master_page();
+  auto element = m_impl->element();
+  return element->slide(m_impl.get())
+      ->move_to_master_page(m_impl.get(), element);
 }
 
 TableDimensions DocumentCursor::table_dimensions() {
-  return m_impl->table_dimensions();
+  auto element = m_impl->element();
+  return element->table(m_impl.get())->table_dimensions(m_impl.get(), element);
 }
 
 bool DocumentCursor::move_to_first_table_column() {
-  return m_impl->move_to_first_table_column();
+  auto element = m_impl->element();
+  return element->table(m_impl.get())
+      ->move_to_first_table_column(m_impl.get(), element);
 }
 
 bool DocumentCursor::move_to_first_table_row() {
-  return m_impl->move_to_first_table_row();
+  auto element = m_impl->element();
+  return element->table(m_impl.get())
+      ->move_to_first_table_row(m_impl.get(), element);
 }
 
 TableDimensions DocumentCursor::table_cell_span() {
-  return m_impl->table_cell_span();
+  auto element = m_impl->element();
+  return element->table_cell(m_impl.get())
+      ->table_cell_span(m_impl.get(), element);
 }
 
-bool DocumentCursor::image_internal() const { return m_impl->image_internal(); }
+bool DocumentCursor::image_internal() const {
+  auto element = m_impl->element();
+  return element->image(m_impl.get())->image_internal(m_impl.get(), element);
+}
 
 std::optional<File> DocumentCursor::image_file() const {
-  return m_impl->image_file();
+  auto element = m_impl->element();
+  return element->image(m_impl.get())->image_file(m_impl.get(), element);
 }
 
 void DocumentCursor::for_each_child(const ChildVisitor &visitor) {
