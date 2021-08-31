@@ -7,40 +7,6 @@
 
 namespace odr {
 
-namespace {
-std::optional<bool> property_value_to_bool(const std::any &value) {
-  if (!value.has_value()) {
-    return {};
-  }
-  if (value.type() == typeid(bool)) {
-    return std::any_cast<bool>(value);
-  }
-  throw std::runtime_error("conversion to bool failed");
-}
-
-std::optional<std::uint32_t> property_value_to_uint32(const std::any &value) {
-  if (!value.has_value()) {
-    return {};
-  }
-  if (value.type() == typeid(std::uint32_t)) {
-    return std::any_cast<std::uint32_t>(value);
-  }
-  throw std::runtime_error("conversion to uint32 failed");
-}
-
-std::optional<std::string> property_value_to_string(const std::any &value) {
-  if (!value.has_value()) {
-    return {};
-  }
-  if (value.type() == typeid(std::string)) {
-    return std::any_cast<std::string>(value);
-  } else if (value.type() == typeid(const char *)) {
-    return std::any_cast<const char *>(value);
-  }
-  throw std::runtime_error("conversion to string failed");
-}
-} // namespace
-
 Document::Document(std::shared_ptr<internal::abstract::Document> document)
     : m_document{std::move(document)} {
   if (!m_document) {
@@ -69,6 +35,87 @@ DocumentCursor Document::root_element() const {
   return DocumentCursor(m_document, m_document->root_element());
 }
 
+Element::Element(const internal::abstract::Document *document,
+                 const internal::abstract::Element *element)
+    : m_document{document}, m_element{element} {}
+
+bool Element::operator==(const Element &rhs) const {
+  return m_element->equals(m_document, *rhs.m_element);
+}
+
+bool Element::operator!=(const Element &rhs) const { return !operator==(rhs); }
+
+ElementType Element::type() const { return m_element->type(m_document); }
+
+std::optional<std::string> Element::style_name() const {
+  return m_element->style_name(m_document);
+}
+
+Style Element::style() const {
+  return Style(m_document, m_element, m_element->style(m_document));
+}
+
+Element::Extension::Extension(const internal::abstract::Document *document,
+                              const internal::abstract::Element *element,
+                              const void *extension)
+    : m_document{document}, m_element{element}, m_extension{extension} {}
+
+Element::Text::Text(const internal::abstract::Document *document,
+                    const internal::abstract::Element *element,
+                    const void *extension)
+    : Extension(document, element, extension) {}
+
+std::string Element::Text::value() const {
+  return m_element->text(m_document)->value(m_document, m_element);
+}
+
+Element::Table::Table(const internal::abstract::Document *document,
+                      const internal::abstract::Element *element,
+                      const void *extension)
+    : Extension(document, element, extension) {}
+
+TableDimensions Element::Table::dimensions() const {
+  return m_element->table(m_document)->dimensions(m_document, m_element);
+}
+
+Element::TableCell::TableCell(const internal::abstract::Document *document,
+                              const internal::abstract::Element *element,
+                              const void *extension)
+    : Extension(document, element, extension) {}
+
+TableDimensions Element::TableCell::span() const {
+  return m_element->table_cell(m_document)->span(m_document, m_element);
+}
+
+Element::Image::Image(const internal::abstract::Document *document,
+                      const internal::abstract::Element *element,
+                      const void *extension)
+    : Extension(document, element, extension) {}
+
+bool Element::Image::internal() const {
+  return m_element->image(m_document)->internal(m_document, m_element);
+}
+
+std::optional<File> Element::Image::file() const {
+  return m_element->image(m_document)->file(m_document, m_element);
+}
+
+Element::Text Element::text() const {
+  return Text(m_document, m_element, m_element->text(m_document));
+}
+
+Element::Table Element::table() const {
+  return Table(m_document, m_element, m_element->table(m_document));
+}
+
+Element::TableCell Element::table_cell() const {
+  return TableCell(m_document, m_element, m_element->table_cell(m_document));
+}
+
+Element::Image Element::image() const {
+  return Image(m_document, m_element, m_element->image(m_document));
+}
+
 DocumentCursor::DocumentCursor(
     std::shared_ptr<internal::abstract::Document> document,
     std::shared_ptr<internal::abstract::DocumentCursor> cursor)
@@ -90,10 +137,6 @@ std::string DocumentCursor::document_path() const {
 
 ElementType DocumentCursor::element_type() const {
   return m_cursor->element()->type(m_document.get());
-}
-
-ElementPropertySet DocumentCursor::element_properties() const {
-  return ElementPropertySet(m_cursor->element()->properties(m_document.get()));
 }
 
 bool DocumentCursor::move_to_parent() { return m_cursor->move_to_parent(); }
@@ -211,31 +254,198 @@ TableDimensions::TableDimensions(const std::uint32_t rows,
                                  const std::uint32_t columns)
     : rows{rows}, columns{columns} {}
 
-ElementPropertySet::ElementPropertySet(
-    std::unordered_map<ElementProperty, std::any> properties)
-    : m_properties{std::move(properties)} {}
+Property::Property(const internal::abstract::Document *document,
+                   const internal::abstract::Element *element,
+                   const internal::abstract::Style *style,
+                   const internal::abstract::Property *property)
+    : m_document{document}, m_element{element}, m_style{style}, m_property{
+                                                                    property} {}
 
-std::any ElementPropertySet::get(const ElementProperty property) const {
-  auto it = m_properties.find(property);
-  if (it == std::end(m_properties)) {
-    return {};
-  }
-  return it->second;
+std::optional<std::string> Property::value() const {
+  return m_property->value(m_document, m_element, m_style);
 }
 
-std::optional<std::string>
-ElementPropertySet::get_string(const ElementProperty property) const {
-  return property_value_to_string(get(property));
+Style::Style(const internal::abstract::Document *document,
+             const internal::abstract::Element *element,
+             internal::abstract::Style *style)
+    : m_document{document}, m_element{element}, m_style{style} {}
+
+Style::DirectionalProperty::DirectionalProperty(
+    const internal::abstract::Document *document,
+    const internal::abstract::Style *style,
+    const internal::abstract::Element *element, void *property)
+    : m_document{document}, m_style{style}, m_element{element}, m_property{
+                                                                    property} {}
+
+Property Style::DirectionalProperty::right() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::DirectionalProperty *>(m_property)
+          ->right(m_document, m_style));
 }
 
-std::optional<std::uint32_t>
-ElementPropertySet::get_uint32(const ElementProperty property) const {
-  return property_value_to_uint32(get(property));
+Property Style::DirectionalProperty::top() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::DirectionalProperty *>(m_property)
+          ->top(m_document, m_style));
 }
 
-std::optional<bool>
-ElementPropertySet::get_bool(const ElementProperty property) const {
-  return property_value_to_bool(get(property));
+Property Style::DirectionalProperty::left() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::DirectionalProperty *>(m_property)
+          ->left(m_document, m_style));
+}
+
+Property Style::DirectionalProperty::bottom() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::DirectionalProperty *>(m_property)
+          ->bottom(m_document, m_style));
+}
+
+Style::Extension::Extension(const internal::abstract::Document *document,
+                            const internal::abstract::Element *element,
+                            const internal::abstract::Style *style,
+                            void *extension)
+    : m_document{document}, m_element{element}, m_style{style},
+      m_extension{extension} {}
+
+Style::Text::Text(const internal::abstract::Document *document,
+                  const internal::abstract::Element *element,
+                  const internal::abstract::Style *style, void *extension)
+    : Extension(document, element, style, extension) {}
+
+Property Style::Text::font_name() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Text *>(m_extension)
+                      ->font_name(m_document, m_style));
+}
+
+Property Style::Text::font_size() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Text *>(m_extension)
+                      ->font_size(m_document, m_style));
+}
+
+Property Style::Text::font_weight() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Text *>(m_extension)
+                      ->font_weight(m_document, m_style));
+}
+
+Property Style::Text::font_style() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Text *>(m_extension)
+                      ->font_style(m_document, m_style));
+}
+
+Property Style::Text::font_underline() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Text *>(m_extension)
+                      ->font_underline(m_document, m_style));
+}
+
+Property Style::Text::font_line_through() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Text *>(m_extension)
+                      ->font_line_through(m_document, m_style));
+}
+
+Property Style::Text::font_shadow() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Text *>(m_extension)
+                      ->font_shadow(m_document, m_style));
+}
+
+Property Style::Text::font_color() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Text *>(m_extension)
+                      ->font_color(m_document, m_style));
+}
+
+Property Style::Text::background_color() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Text *>(m_extension)
+                      ->background_color(m_document, m_style));
+}
+
+Style::Paragraph::Paragraph(const internal::abstract::Document *document,
+                            const internal::abstract::Element *element,
+                            const internal::abstract::Style *style,
+                            void *extension)
+    : Extension(document, element, style, extension) {}
+
+Style::Table::Table(const internal::abstract::Document *document,
+                    const internal::abstract::Element *element,
+                    const internal::abstract::Style *style, void *extension)
+    : Extension(document, element, style, extension) {}
+
+Style::TableColumn::TableColumn(const internal::abstract::Document *document,
+                                const internal::abstract::Element *element,
+                                const internal::abstract::Style *style,
+                                void *extension)
+    : Extension(document, element, style, extension) {}
+
+Style::TableRow::TableRow(const internal::abstract::Document *document,
+                          const internal::abstract::Element *element,
+                          const internal::abstract::Style *style,
+                          void *extension)
+    : Extension(document, element, style, extension) {}
+
+Style::TableCell::TableCell(const internal::abstract::Document *document,
+                            const internal::abstract::Element *element,
+                            const internal::abstract::Style *style,
+                            void *extension)
+    : Extension(document, element, style, extension) {}
+
+Style::Graphic::Graphic(const internal::abstract::Document *document,
+                        const internal::abstract::Element *element,
+                        const internal::abstract::Style *style, void *extension)
+    : Extension(document, element, style, extension) {}
+
+Style::PageLayout::PageLayout(const internal::abstract::Document *document,
+                              const internal::abstract::Element *element,
+                              const internal::abstract::Style *style,
+                              void *extension)
+    : Extension(document, element, style, extension) {}
+
+Style::Text Style::text() const {
+  return Text(m_document, m_element, m_style, m_style->text(m_document));
+}
+
+Style::Paragraph Style::paragraph() const {
+  return Paragraph(m_document, m_element, m_style,
+                   m_style->paragraph(m_document));
+}
+
+Style::Table Style::table() const {
+  return Table(m_document, m_element, m_style, m_style->table(m_document));
+}
+
+Style::TableColumn Style::table_column() const {
+  return TableColumn(m_document, m_element, m_style,
+                     m_style->table_column(m_document));
+}
+
+Style::TableRow Style::table_row() const {
+  return TableRow(m_document, m_element, m_style,
+                  m_style->table_row(m_document));
+}
+
+Style::TableCell Style::table_cell() const {
+  return TableCell(m_document, m_element, m_style,
+                   m_style->table_cell(m_document));
+}
+
+Style::Graphic Style::graphic() const {
+  return Graphic(m_document, m_element, m_style, m_style->graphic(m_document));
+}
+
+Style::PageLayout Style::page_layout() const {
+  return PageLayout(m_document, m_element, m_style,
+                    m_style->page_layout(m_document));
 }
 
 } // namespace odr

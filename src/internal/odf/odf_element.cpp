@@ -5,6 +5,7 @@
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_element.h>
 #include <internal/odf/odf_style.h>
+#include <internal/util/string_util.h>
 #include <odr/document.h>
 #include <odr/file.h>
 
@@ -16,16 +17,15 @@ protected:
     return dynamic_cast<const Document *>(document);
   }
 
-  static const Style *style_(const abstract::Document *cursor) {
-    return &dynamic_cast<const Document *>(cursor)->m_style;
+  static const StyleRegistry *style_(const abstract::Document *cursor) {
+    return &dynamic_cast<const Document *>(cursor)->m_style_registry;
   }
 };
 
 namespace {
 
-struct DefaultTraits;
-template <ElementType, typename = DefaultTraits> class DefaultElement;
-template <typename = DefaultTraits> class DefaultRoot;
+template <ElementType> class DefaultElement;
+class DefaultRoot;
 class TextDocumentRoot;
 class PresentationRoot;
 class SpreadsheetRoot;
@@ -36,7 +36,6 @@ class Sheet;
 class Page;
 class Text;
 class TableElement;
-template <ElementType, typename = DefaultTraits> class DefaultTableElement;
 class TableColumn;
 class TableRow;
 class TableCell;
@@ -60,48 +59,16 @@ abstract::Element *construct_default_optional(const Document *document,
   return construct_default<Derived>(document, node, allocator);
 }
 
-struct DefaultTraits {
-  static const std::unordered_map<std::string, ElementProperty> &
-  properties_table() {
-    static std::unordered_map<std::string, ElementProperty> result{
-        // PARAGRAPH, SPAN, LINK
-        {"text:style-name", ElementProperty::STYLE_NAME},
-        // PAGE, SLIDE
-        {"draw:master-page-name", ElementProperty::MASTER_PAGE_NAME},
-        // SHEET
-        {"table:name", ElementProperty::NAME},
-        // TABLE, TABLE_COLUMN, TABLE_ROW, TABLE_CELL
-        {"table:style-name", ElementProperty::STYLE_NAME},
-        // TABLE_CELL
-        {"office:value-type", ElementProperty::VALUE_TYPE},
-        // LINK, IMAGE
-        {"xlink:href", ElementProperty::HREF},
-        // BOOKMARK
-        {"text:name", ElementProperty::NAME},
-        // FRAME
-        {"text:anchor-type", ElementProperty::ANCHOR_TYPE},
-        {"draw:z-index", ElementProperty::Z_INDEX},
-        // RECT, CIRCLE, CUSTOM_SHAPE
-        {"svg:x", ElementProperty::X},
-        {"svg:y", ElementProperty::Y},
-        {"svg:width", ElementProperty::WIDTH},
-        {"svg:height", ElementProperty::HEIGHT},
-        // LINE
-        {"svg:x1", ElementProperty::X1},
-        {"svg:y1", ElementProperty::Y1},
-        {"svg:x2", ElementProperty::X2},
-        {"svg:y2", ElementProperty::Y2},
-        // PAGE, SLIDE, RECT, LINE, CIRCLE, CUSTOM_SHAPE
-        {"draw:style-name", ElementProperty::STYLE_NAME},
-        // master page elements
-        {"presentation:placeholder", ElementProperty::PLACEHOLDER},
-    };
-    return result;
+std::optional<std::string> default_style_name(const pugi::xml_node node) {
+  for (auto attribute : node.attributes()) {
+    if (util::string::ends_with(attribute.name(), ":style-name")) {
+      return attribute.value();
+    }
   }
-};
+  return {};
+}
 
-template <ElementType _element_type, typename Traits>
-class DefaultElement : public Element {
+template <ElementType _element_type> class DefaultElement : public Element {
 public:
   DefaultElement(const Document *, pugi::xml_node node) : m_node{node} {}
 
@@ -114,10 +81,17 @@ public:
     return _element_type;
   }
 
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  properties(const abstract::Document *document) const override {
-    return fetch_properties(Traits::properties_table(), m_node,
-                            style_(document), _element_type);
+  [[nodiscard]] std::optional<std::string>
+  style_name(const abstract::Document *) const override {
+    return default_style_name(m_node);
+  }
+
+  [[nodiscard]] abstract::Style *
+  style(const abstract::Document *document) const override {
+    if (auto name = style_name(document)) {
+      return style_(document)->style(*name);
+    }
+    return nullptr;
   }
 
   abstract::Element *parent(const abstract::Document *document,
@@ -169,11 +143,10 @@ protected:
   pugi::xml_node m_node;
 };
 
-template <typename Traits>
-class DefaultRoot : public DefaultElement<ElementType::ROOT, Traits> {
+class DefaultRoot : public DefaultElement<ElementType::root> {
 public:
   DefaultRoot(const Document *document, pugi::xml_node node)
-      : DefaultElement<ElementType::ROOT, Traits>(document, node) {}
+      : DefaultElement<ElementType::root>(document, node) {}
 
   abstract::Element *previous_sibling(const abstract::Document *,
                                       const Allocator &) final {
@@ -186,22 +159,15 @@ public:
   }
 };
 
-class TextDocumentRoot final : public DefaultRoot<> {
+class TextDocumentRoot final : public DefaultRoot {
 public:
   TextDocumentRoot(const Document *document, pugi::xml_node node)
       : DefaultRoot(document, node) {}
 
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  properties(const abstract::Document *document) const final {
-    if (auto style = style_(document)) {
-      return style->resolve_master_page(ElementType::ROOT,
-                                        style->first_master_page().value());
-    }
-    return {};
-  }
+  // TODO page style
 };
 
-class PresentationRoot final : public DefaultRoot<> {
+class PresentationRoot final : public DefaultRoot {
 public:
   PresentationRoot(const Document *document, pugi::xml_node node)
       : DefaultRoot(document, node) {}
@@ -213,7 +179,7 @@ public:
   }
 };
 
-class SpreadsheetRoot final : public DefaultRoot<> {
+class SpreadsheetRoot final : public DefaultRoot {
 public:
   SpreadsheetRoot(const Document *document, pugi::xml_node node)
       : DefaultRoot(document, node) {}
@@ -225,7 +191,7 @@ public:
   }
 };
 
-class DrawingRoot final : public DefaultRoot<> {
+class DrawingRoot final : public DefaultRoot {
 public:
   DrawingRoot(const Document *document, pugi::xml_node node)
       : DefaultRoot(document, node) {}
@@ -237,13 +203,13 @@ public:
   }
 };
 
-class MasterPage final : public DefaultElement<ElementType::MASTER_PAGE> {
+class MasterPage final : public DefaultElement<ElementType::master_page> {
 public:
   MasterPage(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 };
 
-class Slide final : public DefaultElement<ElementType::SLIDE>,
+class Slide final : public DefaultElement<ElementType::slide>,
                     public abstract::Element::Slide {
 public:
   Slide(const Document *document, pugi::xml_node node)
@@ -285,7 +251,7 @@ public:
   }
 };
 
-class Page final : public DefaultElement<ElementType::PAGE> {
+class Page final : public DefaultElement<ElementType::page> {
 public:
   Page(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
@@ -309,7 +275,7 @@ public:
   }
 };
 
-class Text final : public DefaultElement<ElementType::TEXT>,
+class Text final : public DefaultElement<ElementType::text>,
                    public abstract::Element::Text {
 public:
   Text(const Document *document, pugi::xml_node node)
@@ -392,7 +358,7 @@ private:
   }
 };
 
-class TableElement : public DefaultElement<ElementType::TABLE>,
+class TableElement : public DefaultElement<ElementType::table>,
                      public abstract::Element::Table {
 public:
   TableElement(const Document *document, pugi::xml_node node)
@@ -444,11 +410,11 @@ public:
   }
 };
 
-template <ElementType _element_type, typename Traits>
-class DefaultTableElement : public DefaultElement<_element_type, Traits> {
+template <ElementType _element_type>
+class DefaultTableElement : public DefaultElement<_element_type> {
 public:
   DefaultTableElement(const Document *document, pugi::xml_node node)
-      : DefaultElement<_element_type, Traits>(document, node) {}
+      : DefaultElement<_element_type>(document, node) {}
 
   abstract::Element *previous_sibling(const abstract::Document *,
                                       const Allocator &) final {
@@ -458,7 +424,7 @@ public:
     }
 
     if (auto previous_sibling = previous_node_()) {
-      DefaultElement<_element_type, Traits>::m_node = previous_sibling;
+      DefaultElement<_element_type>::m_node = previous_sibling;
       m_repeated_index = 0;
       return this;
     }
@@ -474,7 +440,7 @@ public:
     }
 
     if (auto next_sibling = next_node_()) {
-      DefaultElement<_element_type, Traits>::m_node = next_sibling;
+      DefaultElement<_element_type>::m_node = next_sibling;
       m_repeated_index = 0;
       return this;
     }
@@ -491,13 +457,16 @@ private:
 };
 
 class TableColumn final
-    : public DefaultTableElement<ElementType::TABLE_COLUMN> {
+    : public DefaultTableElement<ElementType::table_column> {
 public:
   TableColumn(const Document *document, pugi::xml_node node)
       : DefaultTableElement(document, node) {}
 
-  [[nodiscard]] const char *default_cell_style_name() const {
-    return m_node.attribute("table:default-cell-style-name").value();
+  [[nodiscard]] std::optional<std::string> default_cell_style_name() const {
+    if (auto attribute = m_node.attribute("table:default-cell-style-name")) {
+      return attribute.value();
+    }
+    return {};
   }
 
 private:
@@ -514,7 +483,7 @@ private:
   }
 };
 
-class TableRow final : public DefaultTableElement<ElementType::TABLE_ROW> {
+class TableRow final : public DefaultTableElement<ElementType::table_row> {
 public:
   TableRow(const Document *document, pugi::xml_node node)
       : DefaultTableElement(document, node) {}
@@ -533,7 +502,7 @@ private:
   }
 };
 
-class TableCell final : public DefaultTableElement<ElementType::TABLE_CELL>,
+class TableCell final : public DefaultTableElement<ElementType::table_cell>,
                         public abstract::Element::TableCell {
 public:
   TableCell(const Document *document, pugi::xml_node node)
@@ -541,12 +510,12 @@ public:
         m_column(document, node.parent().parent().child("table:table-column")) {
   }
 
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  properties(const abstract::Document *document) const final {
-    auto default_style_name = m_column.default_cell_style_name();
-    return fetch_properties(DefaultTraits::properties_table(), m_node,
-                            style_(document), ElementType::TABLE_CELL,
-                            default_style_name);
+  [[nodiscard]] std::optional<std::string>
+  style_name(const abstract::Document *document) const final {
+    if (auto name = DefaultElement::style_name(document)) {
+      return name;
+    }
+    return m_column.default_cell_style_name();
   }
 
   [[nodiscard]] TableDimensions span(const abstract::Document *,
@@ -571,7 +540,7 @@ private:
   }
 };
 
-class ImageElement final : public DefaultElement<ElementType::IMAGE>,
+class ImageElement final : public DefaultElement<ElementType::image>,
                            public abstract::Element::Image {
 public:
   ImageElement(const Document *document, pugi::xml_node node)
@@ -611,7 +580,7 @@ public:
       : TableElement(document, node) {}
 
   [[nodiscard]] ElementType type(const abstract::Document *) const override {
-    return ElementType::SHEET;
+    return ElementType::sheet;
   }
 
   Element *previous_sibling(const abstract::Document *,
@@ -645,19 +614,19 @@ abstract::Element *odf::construct_default_element(const Document *document,
       const Document *document, pugi::xml_node node,
       const Allocator &allocator)>;
 
-  using Paragraph = DefaultElement<ElementType::PARAGRAPH>;
-  using Span = DefaultElement<ElementType::SPAN>;
-  using LineBreak = DefaultElement<ElementType::LINE_BREAK>;
-  using Link = DefaultElement<ElementType::LINK>;
-  using Bookmark = DefaultElement<ElementType::BOOKMARK>;
-  using List = DefaultElement<ElementType::LIST>;
-  using ListItem = DefaultElement<ElementType::LIST_ITEM>;
-  using Group = DefaultElement<ElementType::GROUP>;
-  using Frame = DefaultElement<ElementType::FRAME>;
-  using Rect = DefaultElement<ElementType::RECT>;
-  using Line = DefaultElement<ElementType::LINE>;
-  using Circle = DefaultElement<ElementType::CIRCLE>;
-  using CustomShape = DefaultElement<ElementType::CUSTOM_SHAPE>;
+  using Paragraph = DefaultElement<ElementType::paragraph>;
+  using Span = DefaultElement<ElementType::span>;
+  using LineBreak = DefaultElement<ElementType::line_break>;
+  using Link = DefaultElement<ElementType::link>;
+  using Bookmark = DefaultElement<ElementType::bookmark>;
+  using List = DefaultElement<ElementType::list>;
+  using ListItem = DefaultElement<ElementType::list_item>;
+  using Group = DefaultElement<ElementType::group>;
+  using Frame = DefaultElement<ElementType::frame>;
+  using Rect = DefaultElement<ElementType::rect>;
+  using Line = DefaultElement<ElementType::line>;
+  using Circle = DefaultElement<ElementType::circle>;
+  using CustomShape = DefaultElement<ElementType::custom_shape>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
       {"office:text", construct_default<TextDocumentRoot>},
@@ -742,45 +711,6 @@ abstract::Element *odf::construct_default_next_sibling_element(
     }
   }
   return {};
-}
-
-std::unordered_map<ElementProperty, std::any> odf::fetch_properties(
-    const std::unordered_map<std::string, ElementProperty> &property_table,
-    pugi::xml_node node, const Style *style, const ElementType element_type,
-    const char *default_style_name) {
-  std::unordered_map<ElementProperty, std::any> result;
-
-  const char *style_name = default_style_name;
-  const char *master_page_name = nullptr;
-
-  for (auto attribute : node.attributes()) {
-    auto property_it = property_table.find(attribute.name());
-    if (property_it == std::end(property_table)) {
-      continue;
-    }
-    auto property = property_it->second;
-    result[property] = attribute.value();
-
-    if (property == ElementProperty::STYLE_NAME) {
-      style_name = attribute.value();
-    } else if (property == ElementProperty::MASTER_PAGE_NAME) {
-      master_page_name = attribute.value();
-    }
-  }
-
-  if (style && style_name) {
-    auto style_properties = style->resolve_style(element_type, style_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  // TODO this check does not need to happen all the time
-  if (style && master_page_name) {
-    auto style_properties =
-        style->resolve_master_page(element_type, master_page_name);
-    result.insert(std::begin(style_properties), std::end(style_properties));
-  }
-
-  return result;
 }
 
 } // namespace odr::internal

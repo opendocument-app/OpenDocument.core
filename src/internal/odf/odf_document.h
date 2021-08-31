@@ -34,7 +34,7 @@ protected:
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
 
-  Style m_style;
+  StyleRegistry m_style_registry;
 
   friend class Element;
 };

@@ -59,9 +59,9 @@ class Property {
 public:
   virtual ~Property() = default;
 
-  [[nodiscard]] virtual std::string value(const Document *document,
-                                          const Element *element,
-                                          const Style *style) const = 0;
+  [[nodiscard]] virtual std::optional<std::string>
+  value(const Document *document, const Element *element,
+        const Style *style) const = 0;
 };
 
 class Element {
@@ -74,8 +74,10 @@ public:
                                     const Element &other) const = 0;
 
   [[nodiscard]] virtual ElementType type(const Document *document) const = 0;
-  [[nodiscard]] virtual std::unordered_map<ElementProperty, std::any>
-  properties(const Document *document) const = 0;
+
+  [[nodiscard]] virtual std::optional<std::string>
+  style_name(const Document *document) const = 0;
+  [[nodiscard]] virtual Style *style(const Document *document) const = 0;
 
   virtual Element *parent(const Document *document,
                           const Allocator &allocator) = 0;
@@ -180,26 +182,44 @@ public:
 
 class Style {
 public:
+  virtual ~Style() = default;
+
+  class DirectionalProperty {
+  public:
+    virtual ~DirectionalProperty() = default;
+
+    [[nodiscard]] virtual Property *right(const Document *document,
+                                          const Style *style) = 0;
+    [[nodiscard]] virtual Property *top(const Document *document,
+                                        const Style *style) = 0;
+    [[nodiscard]] virtual Property *left(const Document *document,
+                                         const Style *style) = 0;
+    [[nodiscard]] virtual Property *bottom(const Document *document,
+                                           const Style *style) = 0;
+  };
+
   class Text {
   public:
     virtual ~Text() = default;
 
     [[nodiscard]] virtual Property *font_name(const Document *document,
-                                              const Style *style) const = 0;
+                                              const Style *style) = 0;
     [[nodiscard]] virtual Property *font_size(const Document *document,
-                                              const Style *style) const = 0;
+                                              const Style *style) = 0;
     [[nodiscard]] virtual Property *font_weight(const Document *document,
-                                                const Style *style) const = 0;
+                                                const Style *style) = 0;
     [[nodiscard]] virtual Property *font_style(const Document *document,
-                                               const Style *style) const = 0;
-    [[nodiscard]] virtual Property *
-    font_underline(const Document *document, const Style *style) const = 0;
+                                               const Style *style) = 0;
+    [[nodiscard]] virtual Property *font_underline(const Document *document,
+                                                   const Style *style) = 0;
+    [[nodiscard]] virtual Property *font_line_through(const Document *document,
+                                                      const Style *style) = 0;
     [[nodiscard]] virtual Property *font_shadow(const Document *document,
-                                                const Style *style) const = 0;
+                                                const Style *style) = 0;
     [[nodiscard]] virtual Property *font_color(const Document *document,
-                                               const Style *style) const = 0;
-    [[nodiscard]] virtual Property *
-    background_color(const Document *document, const Style *style) const = 0;
+                                               const Style *style) = 0;
+    [[nodiscard]] virtual Property *background_color(const Document *document,
+                                                     const Style *style) = 0;
   };
 
   class Paragraph {
@@ -207,9 +227,9 @@ public:
     virtual ~Paragraph() = default;
 
     [[nodiscard]] virtual Property *text_align(const Document *document,
-                                               const Style *style) const = 0;
-    [[nodiscard]] virtual Property *margin(const Document *document,
-                                           const Style *style) const = 0;
+                                               const Style *style) = 0;
+    [[nodiscard]] virtual DirectionalProperty *margin(const Document *document,
+                                                      const Style *style) = 0;
   };
 
   class Table {
@@ -217,7 +237,7 @@ public:
     virtual ~Table() = default;
 
     [[nodiscard]] virtual Property *width(const Document *document,
-                                          const Style *style) const = 0;
+                                          const Style *style) = 0;
   };
 
   class TableColumn {
@@ -225,7 +245,7 @@ public:
     virtual ~TableColumn() = default;
 
     [[nodiscard]] virtual Property *width(const Document *document,
-                                          const Style *style) const = 0;
+                                          const Style *style) = 0;
   };
 
   class TableRow {
@@ -233,21 +253,21 @@ public:
     virtual ~TableRow() = default;
 
     [[nodiscard]] virtual Property *height(const Document *document,
-                                           const Style *style) const = 0;
+                                           const Style *style) = 0;
   };
 
   class TableCell {
   public:
     virtual ~TableCell() = default;
 
-    [[nodiscard]] virtual Property *
-    vertical_align(const Document *document, const Style *style) const = 0;
-    [[nodiscard]] virtual Property *
-    background_color(const Document *document, const Style *style) const = 0;
-    [[nodiscard]] virtual Property *padding(const Document *document,
-                                            const Style *style) const = 0;
-    [[nodiscard]] virtual Property *border(const Document *document,
-                                           const Style *style) const = 0;
+    [[nodiscard]] virtual Property *vertical_align(const Document *document,
+                                                   const Style *style) = 0;
+    [[nodiscard]] virtual Property *background_color(const Document *document,
+                                                     const Style *style) = 0;
+    [[nodiscard]] virtual DirectionalProperty *padding(const Document *document,
+                                                       const Style *style) = 0;
+    [[nodiscard]] virtual DirectionalProperty *border(const Document *document,
+                                                      const Style *style) = 0;
   };
 
   class Graphic {
@@ -255,13 +275,13 @@ public:
     virtual ~Graphic() = default;
 
     [[nodiscard]] virtual Property *stroke_width(const Document *document,
-                                                 const Style *style) const = 0;
+                                                 const Style *style) = 0;
     [[nodiscard]] virtual Property *stroke_color(const Document *document,
-                                                 const Style *style) const = 0;
+                                                 const Style *style) = 0;
     [[nodiscard]] virtual Property *fill_color(const Document *document,
-                                               const Style *style) const = 0;
-    [[nodiscard]] virtual Property *
-    vertical_align(const Document *document, const Style *style) const = 0;
+                                               const Style *style) = 0;
+    [[nodiscard]] virtual Property *vertical_align(const Document *document,
+                                                   const Style *style) = 0;
   };
 
   class PageLayout {
@@ -269,29 +289,23 @@ public:
     virtual ~PageLayout() = default;
 
     [[nodiscard]] virtual Property *width(const Document *document,
-                                          const Style *style) const = 0;
+                                          const Style *style) = 0;
     [[nodiscard]] virtual Property *height(const Document *document,
-                                           const Style *style) const = 0;
-    [[nodiscard]] virtual Property *
-    print_orientation(const Document *document, const Style *style) const = 0;
-    [[nodiscard]] virtual Property *margin(const Document *document,
-                                           const Style *style) const = 0;
+                                           const Style *style) = 0;
+    [[nodiscard]] virtual Property *print_orientation(const Document *document,
+                                                      const Style *style) = 0;
+    [[nodiscard]] virtual DirectionalProperty *margin(const Document *document,
+                                                      const Style *style) = 0;
   };
 
-  virtual ~Style() = default;
-
-  [[nodiscard]] virtual Text *text(const Document *document) const = 0;
-  [[nodiscard]] virtual Paragraph *
-  paragraph(const Document *document) const = 0;
-  [[nodiscard]] virtual Table *table(const Document *document) const = 0;
-  [[nodiscard]] virtual TableColumn *
-  table_column(const Document *document) const = 0;
-  [[nodiscard]] virtual TableRow *table_row(const Document *document) const = 0;
-  [[nodiscard]] virtual TableCell *
-  table_cell(const Document *document) const = 0;
-  [[nodiscard]] virtual Graphic *graphic(const Document *document) const = 0;
-  [[nodiscard]] virtual PageLayout *
-  page_layout(const Document *document) const = 0;
+  [[nodiscard]] virtual Text *text(const Document *document) = 0;
+  [[nodiscard]] virtual Paragraph *paragraph(const Document *document) = 0;
+  [[nodiscard]] virtual Table *table(const Document *document) = 0;
+  [[nodiscard]] virtual TableColumn *table_column(const Document *document) = 0;
+  [[nodiscard]] virtual TableRow *table_row(const Document *document) = 0;
+  [[nodiscard]] virtual TableCell *table_cell(const Document *document) = 0;
+  [[nodiscard]] virtual Graphic *graphic(const Document *document) = 0;
+  [[nodiscard]] virtual PageLayout *page_layout(const Document *document) = 0;
 };
 
 } // namespace odr::internal::abstract

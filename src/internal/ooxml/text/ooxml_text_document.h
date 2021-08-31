@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_OOXML_TEXT_DOCUMENT_H
 
 #include <internal/abstract/document.h>
-#include <internal/ooxml/text/ooxml_text_style.h>
+//#include <internal/ooxml/text/ooxml_text_style.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {
@@ -35,7 +35,7 @@ private:
   pugi::xml_document m_document_xml;
   pugi::xml_document m_styles_xml;
 
-  Style m_style;
+  // StyleRegistry m_style_registry;
 
   friend class DocumentCursor;
 };

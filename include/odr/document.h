@@ -12,6 +12,9 @@
 namespace odr::internal::abstract {
 class Document;
 class DocumentCursor;
+class Element;
+class Style;
+class Property;
 } // namespace odr::internal::abstract
 
 namespace odr {
@@ -21,111 +24,44 @@ class File;
 class DocumentFile;
 
 enum class ElementType {
-  NONE,
+  none,
 
-  ROOT,
-  SLIDE,
-  SHEET,
-  PAGE,
+  root,
+  slide,
+  sheet,
+  page,
 
-  MASTER_PAGE,
+  master_page,
 
-  TEXT,
-  LINE_BREAK,
-  PAGE_BREAK,
-  PARAGRAPH,
-  SPAN,
-  LINK,
-  BOOKMARK,
+  text,
+  line_break,
+  page_break,
+  paragraph,
+  span,
+  link,
+  bookmark,
 
-  LIST,
-  LIST_ITEM,
+  list,
+  list_item,
 
-  TABLE,
-  TABLE_COLUMN,
-  TABLE_ROW,
-  TABLE_CELL,
+  table,
+  table_column,
+  table_row,
+  table_cell,
 
-  FRAME,
-  IMAGE,
-  RECT,
-  LINE,
-  CIRCLE,
-  CUSTOM_SHAPE,
+  frame,
+  image,
+  rect,
+  line,
+  circle,
+  custom_shape,
 
-  GROUP,
-};
-
-// TODO the property handle could reflect the type
-// TODO it might be possible to strongly type these properties
-enum class ElementProperty {
-  NONE,
-
-  NAME,
-  NOTES,
-  HREF,
-  ANCHOR_TYPE,
-
-  STYLE_NAME,
-  MASTER_PAGE_NAME,
-
-  VALUE_TYPE,
-
-  PLACEHOLDER,
-
-  X,
-  Y,
-  WIDTH,
-  HEIGHT,
-
-  X1,
-  Y1,
-  X2,
-  Y2,
-
-  Z_INDEX,
-
-  TABLE_CELL_BACKGROUND_COLOR,
-
-  MARGIN_TOP,
-  MARGIN_BOTTOM,
-  MARGIN_LEFT,
-  MARGIN_RIGHT,
-
-  PADDING_TOP,
-  PADDING_BOTTOM,
-  PADDING_LEFT,
-  PADDING_RIGHT,
-
-  BORDER_TOP,
-  BORDER_BOTTOM,
-  BORDER_LEFT,
-  BORDER_RIGHT,
-
-  PRINT_ORIENTATION,
-
-  FONT_NAME,
-  FONT_SIZE,
-  FONT_WEIGHT,
-  FONT_STYLE,
-  FONT_UNDERLINE,
-  FONT_STRIKETHROUGH,
-  FONT_SHADOW,
-  FONT_COLOR,
-
-  BACKGROUND_COLOR,
-
-  TEXT_ALIGN,
-
-  STROKE_WIDTH,
-  STROKE_COLOR,
-  FILL_COLOR,
-  VERTICAL_ALIGN,
+  group,
 };
 
 struct TableDimensions;
 class DocumentCursor;
-class ElementPropertySet;
+class Style;
 
 class Document final {
 public:
@@ -147,6 +83,75 @@ private:
   friend DocumentFile;
 };
 
+class Element final {
+public:
+  bool operator==(const Element &rhs) const;
+  bool operator!=(const Element &rhs) const;
+
+  [[nodiscard]] ElementType type() const;
+
+  [[nodiscard]] std::optional<std::string> style_name() const;
+  [[nodiscard]] Style style() const;
+
+  class Extension {
+  public:
+    Extension(const internal::abstract::Document *document,
+              const internal::abstract::Element *element,
+              const void *extension);
+
+  protected:
+    const internal::abstract::Document *m_document;
+    const internal::abstract::Element *m_element;
+    const void *m_extension;
+  };
+
+  class Text final : public Extension {
+  public:
+    Text(const internal::abstract::Document *document,
+         const internal::abstract::Element *element, const void *extension);
+
+    [[nodiscard]] std::string value() const;
+  };
+
+  class Table final : public Extension {
+  public:
+    Table(const internal::abstract::Document *document,
+          const internal::abstract::Element *element, const void *extension);
+
+    [[nodiscard]] TableDimensions dimensions() const;
+  };
+
+  class TableCell final : public Extension {
+  public:
+    TableCell(const internal::abstract::Document *document,
+              const internal::abstract::Element *element,
+              const void *extension);
+
+    [[nodiscard]] TableDimensions span() const;
+  };
+
+  class Image final : public Extension {
+  public:
+    Image(const internal::abstract::Document *document,
+          const internal::abstract::Element *element, const void *extension);
+
+    [[nodiscard]] bool internal() const;
+    [[nodiscard]] std::optional<odr::File> file() const;
+  };
+
+  [[nodiscard]] Text text() const;
+  [[nodiscard]] Table table() const;
+  [[nodiscard]] TableCell table_cell() const;
+  [[nodiscard]] Image image() const;
+
+private:
+  const internal::abstract::Document *m_document;
+  const internal::abstract::Element *m_element;
+
+  Element(const internal::abstract::Document *document,
+          const internal::abstract::Element *element);
+};
+
 class DocumentCursor final {
 public:
   bool operator==(const DocumentCursor &rhs) const;
@@ -155,7 +160,6 @@ public:
   [[nodiscard]] std::string document_path() const;
 
   [[nodiscard]] ElementType element_type() const;
-  [[nodiscard]] ElementPropertySet element_properties() const;
 
   bool move_to_parent();
   bool move_to_first_child();
@@ -188,9 +192,8 @@ private:
   std::shared_ptr<internal::abstract::Document> m_document;
   std::shared_ptr<internal::abstract::DocumentCursor> m_cursor;
 
-  explicit DocumentCursor(
-      std::shared_ptr<internal::abstract::Document> document,
-      std::shared_ptr<internal::abstract::DocumentCursor> cursor);
+  DocumentCursor(std::shared_ptr<internal::abstract::Document> document,
+                 std::shared_ptr<internal::abstract::DocumentCursor> cursor);
 
   void for_each_(const ChildVisitor &visitor);
   void for_each_(const ConditionalChildVisitor &visitor);
@@ -206,22 +209,163 @@ struct TableDimensions {
   TableDimensions(std::uint32_t rows, std::uint32_t columns);
 };
 
-class ElementPropertySet final {
+class Property {
 public:
-  [[nodiscard]] std::any get(ElementProperty property) const;
-  [[nodiscard]] std::optional<std::string>
-  get_string(ElementProperty property) const;
-  [[nodiscard]] std::optional<std::uint32_t>
-  get_uint32(ElementProperty property) const;
-  [[nodiscard]] std::optional<bool> get_bool(ElementProperty property) const;
+  Property(const internal::abstract::Document *document,
+           const internal::abstract::Element *element,
+           const internal::abstract::Style *style,
+           const internal::abstract::Property *property);
+
+  [[nodiscard]] std::optional<std::string> value() const;
 
 private:
-  explicit ElementPropertySet(
-      std::unordered_map<ElementProperty, std::any> properties);
+  const internal::abstract::Document *m_document;
+  const internal::abstract::Element *m_element;
+  const internal::abstract::Style *m_style;
+  const internal::abstract::Property *m_property;
+};
 
-  std::unordered_map<ElementProperty, std::any> m_properties;
+class Style {
+public:
+  Style(const internal::abstract::Document *document,
+        const internal::abstract::Element *element,
+        internal::abstract::Style *style);
 
-  friend DocumentCursor;
+  class DirectionalProperty final {
+  public:
+    DirectionalProperty(const internal::abstract::Document *document,
+                        const internal::abstract::Style *style,
+                        const internal::abstract::Element *element,
+                        void *m_property);
+
+    [[nodiscard]] Property right() const;
+    [[nodiscard]] Property top() const;
+    [[nodiscard]] Property left() const;
+    [[nodiscard]] Property bottom() const;
+
+  protected:
+    const internal::abstract::Document *m_document;
+    const internal::abstract::Style *m_style;
+    const internal::abstract::Element *m_element;
+    void *m_property;
+  };
+
+  class Extension {
+  public:
+    Extension(const internal::abstract::Document *document,
+              const internal::abstract::Element *element,
+              const internal::abstract::Style *style, void *extension);
+
+  protected:
+    const internal::abstract::Document *m_document;
+    const internal::abstract::Element *m_element;
+    const internal::abstract::Style *m_style;
+    void *m_extension;
+  };
+
+  class Text final : public Extension {
+  public:
+    Text(const internal::abstract::Document *document,
+         const internal::abstract::Element *element,
+         const internal::abstract::Style *style, void *extension);
+
+    [[nodiscard]] Property font_name() const;
+    [[nodiscard]] Property font_size() const;
+    [[nodiscard]] Property font_weight() const;
+    [[nodiscard]] Property font_style() const;
+    [[nodiscard]] Property font_underline() const;
+    [[nodiscard]] Property font_line_through() const;
+    [[nodiscard]] Property font_shadow() const;
+    [[nodiscard]] Property font_color() const;
+    [[nodiscard]] Property background_color() const;
+  };
+
+  class Paragraph final : public Extension {
+  public:
+    Paragraph(const internal::abstract::Document *document,
+              const internal::abstract::Element *element,
+              const internal::abstract::Style *style, void *extension);
+
+    [[nodiscard]] Property text_align() const;
+    [[nodiscard]] DirectionalProperty margin() const;
+  };
+
+  class Table final : public Extension {
+  public:
+    Table(const internal::abstract::Document *document,
+          const internal::abstract::Element *element,
+          const internal::abstract::Style *style, void *extension);
+
+    [[nodiscard]] Property width() const;
+  };
+
+  class TableColumn final : public Extension {
+  public:
+    TableColumn(const internal::abstract::Document *document,
+                const internal::abstract::Element *element,
+                const internal::abstract::Style *style, void *extension);
+
+    [[nodiscard]] Property width() const;
+  };
+
+  class TableRow final : public Extension {
+  public:
+    TableRow(const internal::abstract::Document *document,
+             const internal::abstract::Element *element,
+             const internal::abstract::Style *style, void *extension);
+
+    [[nodiscard]] Property height() const;
+  };
+
+  class TableCell final : public Extension {
+  public:
+    TableCell(const internal::abstract::Document *document,
+              const internal::abstract::Element *element,
+              const internal::abstract::Style *style, void *extension);
+
+    [[nodiscard]] Property vertical_align() const;
+    [[nodiscard]] Property background_color() const;
+    [[nodiscard]] DirectionalProperty *padding() const;
+    [[nodiscard]] DirectionalProperty *border() const;
+  };
+
+  class Graphic final : public Extension {
+  public:
+    Graphic(const internal::abstract::Document *document,
+            const internal::abstract::Element *element,
+            const internal::abstract::Style *style, void *extension);
+
+    [[nodiscard]] Property stroke_width() const;
+    [[nodiscard]] Property stroke_color() const;
+    [[nodiscard]] Property fill_color() const;
+    [[nodiscard]] Property vertical_align() const;
+  };
+
+  class PageLayout final : public Extension {
+  public:
+    PageLayout(const internal::abstract::Document *document,
+               const internal::abstract::Element *element,
+               const internal::abstract::Style *style, void *extension);
+
+    [[nodiscard]] Property width() const;
+    [[nodiscard]] Property height() const;
+    [[nodiscard]] Property print_orientation() const;
+    [[nodiscard]] DirectionalProperty margin() const;
+  };
+
+  [[nodiscard]] Text text() const;
+  [[nodiscard]] Paragraph paragraph() const;
+  [[nodiscard]] Table table() const;
+  [[nodiscard]] TableColumn table_column() const;
+  [[nodiscard]] TableRow table_row() const;
+  [[nodiscard]] TableCell table_cell() const;
+  [[nodiscard]] Graphic graphic() const;
+  [[nodiscard]] PageLayout page_layout() const;
+
+private:
+  const internal::abstract::Document *m_document;
+  const internal::abstract::Element *m_element;
+  internal::abstract::Style *m_style;
 };
 
 } // namespace odr

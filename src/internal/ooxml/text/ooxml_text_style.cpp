@@ -94,16 +94,16 @@ void resolve_style_properties(
 }
 } // namespace
 
-Style::Style() = default;
+StyleRegistry::StyleRegistry() = default;
 
-Style::Style(const pugi::xml_node styles_root) {
+StyleRegistry::StyleRegistry(const pugi::xml_node styles_root) {
   generate_indices_(styles_root);
   generate_styles_();
 }
 
 [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-Style::resolve_style(const ElementType element_type,
-                     const pugi::xml_node element) const {
+StyleRegistry::resolve_style(const ElementType element_type,
+                             const pugi::xml_node element) const {
   std::unordered_map<ElementProperty, std::any> result;
 
   pugi::xml_node properties;
@@ -133,10 +133,10 @@ Style::resolve_style(const ElementType element_type,
   return result;
 }
 
-Style::Entry::Entry(std::shared_ptr<Entry> parent, pugi::xml_node node)
+StyleRegistry::Entry::Entry(std::shared_ptr<Entry> parent, pugi::xml_node node)
     : m_parent{std::move(parent)}, m_node{node} {}
 
-void Style::Entry::properties(
+void StyleRegistry::Entry::properties(
     const ElementType element,
     std::unordered_map<ElementProperty, std::any> &result) const {
   if (m_parent) {
@@ -146,7 +146,7 @@ void Style::Entry::properties(
   resolve_style_properties(element, m_node, result);
 }
 
-void Style::generate_indices_(const pugi::xml_node styles_root) {
+void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
   for (auto style : styles_root) {
     std::string element_name = style.name();
 
@@ -156,14 +156,15 @@ void Style::generate_indices_(const pugi::xml_node styles_root) {
   }
 }
 
-void Style::generate_styles_() {
+void StyleRegistry::generate_styles_() {
   for (auto &&e : m_index) {
     generate_style_(e.first, e.second);
   }
 }
 
-std::shared_ptr<Style::Entry>
-Style::generate_style_(const std::string &name, const pugi::xml_node node) {
+std::shared_ptr<StyleRegistry::Entry>
+StyleRegistry::generate_style_(const std::string &name,
+                               const pugi::xml_node node) {
   if (auto style_it = m_styles.find(name); style_it != std::end(m_styles)) {
     return style_it->second;
   }

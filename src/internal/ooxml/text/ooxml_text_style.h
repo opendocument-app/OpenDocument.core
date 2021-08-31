@@ -7,10 +7,10 @@
 
 namespace odr::internal::ooxml::text {
 
-class Style final {
+class StyleRegistry final {
 public:
-  Style();
-  explicit Style(pugi::xml_node styles_root);
+  StyleRegistry();
+  explicit StyleRegistry(pugi::xml_node styles_root);
 
   [[nodiscard]] std::unordered_map<ElementProperty, std::any>
   resolve_style(ElementType element_type, pugi::xml_node element) const;

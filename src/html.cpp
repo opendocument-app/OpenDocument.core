@@ -548,35 +548,35 @@ void translate_children(DocumentCursor &cursor, std::ostream &out,
 
 void translate_element(DocumentCursor &cursor, std::ostream &out,
                        const HtmlConfig &config) {
-  if (cursor.element_type() == ElementType::TEXT) {
+  if (cursor.element_type() == ElementType::text) {
     translate_text(cursor, out);
-  } else if (cursor.element_type() == ElementType::LINE_BREAK) {
+  } else if (cursor.element_type() == ElementType::line_break) {
     out << "<br>";
-  } else if (cursor.element_type() == ElementType::PARAGRAPH) {
+  } else if (cursor.element_type() == ElementType::paragraph) {
     translate_paragraph(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::SPAN) {
+  } else if (cursor.element_type() == ElementType::span) {
     translate_span(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::LINK) {
+  } else if (cursor.element_type() == ElementType::link) {
     translate_link(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::BOOKMARK) {
+  } else if (cursor.element_type() == ElementType::bookmark) {
     translate_bookmark(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::LIST) {
+  } else if (cursor.element_type() == ElementType::list) {
     translate_list(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::TABLE) {
+  } else if (cursor.element_type() == ElementType::table) {
     translate_table(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::FRAME) {
+  } else if (cursor.element_type() == ElementType::frame) {
     translate_frame(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::IMAGE) {
+  } else if (cursor.element_type() == ElementType::image) {
     translate_image(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::RECT) {
+  } else if (cursor.element_type() == ElementType::rect) {
     translate_rect(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::LINE) {
+  } else if (cursor.element_type() == ElementType::line) {
     translate_line(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::CIRCLE) {
+  } else if (cursor.element_type() == ElementType::circle) {
     translate_circle(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::CUSTOM_SHAPE) {
+  } else if (cursor.element_type() == ElementType::custom_shape) {
     translate_custom_shape(cursor, out, config);
-  } else if (cursor.element_type() == ElementType::GROUP) {
+  } else if (cursor.element_type() == ElementType::group) {
     translate_children(cursor, out, config);
   } else {
     // TODO log

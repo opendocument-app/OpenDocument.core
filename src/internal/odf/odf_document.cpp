@@ -23,8 +23,8 @@ Document::Document(const DocumentType document_type,
     m_styles_xml = util::xml::parse(*m_filesystem, "styles.xml");
   }
 
-  m_style =
-      Style(m_content_xml.document_element(), m_styles_xml.document_element());
+  m_style_registry = StyleRegistry(m_content_xml.document_element(),
+                                   m_styles_xml.document_element());
 }
 
 bool Document::editable() const noexcept { return true; }

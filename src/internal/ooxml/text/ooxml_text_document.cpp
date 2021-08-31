@@ -12,7 +12,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_document_xml = util::xml::parse(*m_filesystem, "word/document.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "word/styles.xml");
 
-  m_style = Style(m_styles_xml.document_element());
+  // m_style_registry = StyleRegistry(m_styles_xml.document_element());
 }
 
 bool Document::editable() const noexcept { return false; }
