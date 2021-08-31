@@ -272,9 +272,9 @@ Style::Style(const internal::abstract::Document *document,
 
 Style::DirectionalProperty::DirectionalProperty(
     const internal::abstract::Document *document,
-    const internal::abstract::Style *style,
-    const internal::abstract::Element *element, void *property)
-    : m_document{document}, m_style{style}, m_element{element}, m_property{
+    const internal::abstract::Element *element,
+    const internal::abstract::Style *style, void *property)
+    : m_document{document}, m_element{element}, m_style{style}, m_property{
                                                                     property} {}
 
 Property Style::DirectionalProperty::right() const {
@@ -377,10 +377,30 @@ Style::Paragraph::Paragraph(const internal::abstract::Document *document,
                             void *extension)
     : Extension(document, element, style, extension) {}
 
+Property Style::Paragraph::text_align() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::Paragraph *>(m_extension)
+          ->text_align(m_document, m_style));
+}
+
+Style::DirectionalProperty Style::Paragraph::margin() const {
+  return DirectionalProperty(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::Paragraph *>(m_extension)
+          ->margin(m_document, m_style));
+}
+
 Style::Table::Table(const internal::abstract::Document *document,
                     const internal::abstract::Element *element,
                     const internal::abstract::Style *style, void *extension)
     : Extension(document, element, style, extension) {}
+
+Property Style::Table::width() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Table *>(m_extension)
+                      ->width(m_document, m_style));
+}
 
 Style::TableColumn::TableColumn(const internal::abstract::Document *document,
                                 const internal::abstract::Element *element,
@@ -388,11 +408,25 @@ Style::TableColumn::TableColumn(const internal::abstract::Document *document,
                                 void *extension)
     : Extension(document, element, style, extension) {}
 
+Property Style::TableColumn::width() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::TableColumn *>(m_extension)
+          ->width(m_document, m_style));
+}
+
 Style::TableRow::TableRow(const internal::abstract::Document *document,
                           const internal::abstract::Element *element,
                           const internal::abstract::Style *style,
                           void *extension)
     : Extension(document, element, style, extension) {}
+
+Property Style::TableRow::height() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::TableRow *>(m_extension)
+          ->height(m_document, m_style));
+}
 
 Style::TableCell::TableCell(const internal::abstract::Document *document,
                             const internal::abstract::Element *element,
@@ -400,16 +434,96 @@ Style::TableCell::TableCell(const internal::abstract::Document *document,
                             void *extension)
     : Extension(document, element, style, extension) {}
 
+Property Style::TableCell::vertical_align() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::TableCell *>(m_extension)
+          ->vertical_align(m_document, m_style));
+}
+
+Property Style::TableCell::background_color() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::TableCell *>(m_extension)
+          ->background_color(m_document, m_style));
+}
+
+Style::DirectionalProperty Style::TableCell::padding() const {
+  return DirectionalProperty(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::TableCell *>(m_extension)
+          ->padding(m_document, m_style));
+}
+
+Style::DirectionalProperty Style::TableCell::border() const {
+  return DirectionalProperty(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::TableCell *>(m_extension)
+          ->border(m_document, m_style));
+}
+
 Style::Graphic::Graphic(const internal::abstract::Document *document,
                         const internal::abstract::Element *element,
                         const internal::abstract::Style *style, void *extension)
     : Extension(document, element, style, extension) {}
+
+Property Style::Graphic::stroke_width() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Graphic *>(m_extension)
+                      ->stroke_width(m_document, m_style));
+}
+
+Property Style::Graphic::stroke_color() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Graphic *>(m_extension)
+                      ->stroke_color(m_document, m_style));
+}
+
+Property Style::Graphic::fill_color() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Graphic *>(m_extension)
+                      ->fill_color(m_document, m_style));
+}
+
+Property Style::Graphic::vertical_align() const {
+  return Property(m_document, m_element, m_style,
+                  static_cast<internal::abstract::Style::Graphic *>(m_extension)
+                      ->vertical_align(m_document, m_style));
+}
 
 Style::PageLayout::PageLayout(const internal::abstract::Document *document,
                               const internal::abstract::Element *element,
                               const internal::abstract::Style *style,
                               void *extension)
     : Extension(document, element, style, extension) {}
+
+Property Style::PageLayout::width() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::PageLayout *>(m_extension)
+          ->width(m_document, m_style));
+}
+
+Property Style::PageLayout::height() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::PageLayout *>(m_extension)
+          ->height(m_document, m_style));
+}
+
+Property Style::PageLayout::print_orientation() const {
+  return Property(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::PageLayout *>(m_extension)
+          ->print_orientation(m_document, m_style));
+}
+
+Style::DirectionalProperty Style::PageLayout::margin() const {
+  return DirectionalProperty(
+      m_document, m_element, m_style,
+      static_cast<internal::abstract::Style::PageLayout *>(m_extension)
+          ->margin(m_document, m_style));
+}
 
 Style::Text Style::text() const {
   return Text(m_document, m_element, m_style, m_style->text(m_document));

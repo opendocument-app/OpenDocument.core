@@ -234,8 +234,8 @@ public:
   class DirectionalProperty final {
   public:
     DirectionalProperty(const internal::abstract::Document *document,
-                        const internal::abstract::Style *style,
                         const internal::abstract::Element *element,
+                        const internal::abstract::Style *style,
                         void *m_property);
 
     [[nodiscard]] Property right() const;
@@ -245,8 +245,8 @@ public:
 
   protected:
     const internal::abstract::Document *m_document;
-    const internal::abstract::Style *m_style;
     const internal::abstract::Element *m_element;
+    const internal::abstract::Style *m_style;
     void *m_property;
   };
 
@@ -325,8 +325,8 @@ public:
 
     [[nodiscard]] Property vertical_align() const;
     [[nodiscard]] Property background_color() const;
-    [[nodiscard]] DirectionalProperty *padding() const;
-    [[nodiscard]] DirectionalProperty *border() const;
+    [[nodiscard]] DirectionalProperty padding() const;
+    [[nodiscard]] DirectionalProperty border() const;
   };
 
   class Graphic final : public Extension {
