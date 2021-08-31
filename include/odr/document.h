@@ -110,49 +110,42 @@ public:
 
   class Text final : public Extension {
   public:
-    Text(const internal::abstract::Document *document,
-         const internal::abstract::Element *element, const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] std::string value() const;
   };
 
   class Link final : public Extension {
   public:
-    Link(const internal::abstract::Document *document,
-         const internal::abstract::Element *element, const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] std::string href() const;
   };
 
   class Bookmark final : public Extension {
   public:
-    Bookmark(const internal::abstract::Document *document,
-             const internal::abstract::Element *element, const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] std::string name() const;
   };
 
   class Table final : public Extension {
   public:
-    Table(const internal::abstract::Document *document,
-          const internal::abstract::Element *element, const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] TableDimensions dimensions() const;
   };
 
   class TableCell final : public Extension {
   public:
-    TableCell(const internal::abstract::Document *document,
-              const internal::abstract::Element *element,
-              const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] TableDimensions span() const;
   };
 
   class Frame final : public Extension {
   public:
-    Frame(const internal::abstract::Document *document,
-          const internal::abstract::Element *element, const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] std::optional<std::string> anchor_type() const;
     [[nodiscard]] std::optional<std::string> x() const;
@@ -164,8 +157,7 @@ public:
 
   class Rect final : public Extension {
   public:
-    Rect(const internal::abstract::Document *document,
-         const internal::abstract::Element *element, const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] std::string x() const;
     [[nodiscard]] std::string y() const;
@@ -175,8 +167,7 @@ public:
 
   class Line final : public Extension {
   public:
-    Line(const internal::abstract::Document *document,
-         const internal::abstract::Element *element, const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] std::string x1() const;
     [[nodiscard]] std::string y1() const;
@@ -186,8 +177,7 @@ public:
 
   class Circle final : public Extension {
   public:
-    Circle(const internal::abstract::Document *document,
-           const internal::abstract::Element *element, const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] std::string x() const;
     [[nodiscard]] std::string y() const;
@@ -197,9 +187,7 @@ public:
 
   class CustomShape final : public Extension {
   public:
-    CustomShape(const internal::abstract::Document *document,
-                const internal::abstract::Element *element,
-                const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] std::optional<std::string> x() const;
     [[nodiscard]] std::optional<std::string> y() const;
@@ -209,8 +197,7 @@ public:
 
   class Image final : public Extension {
   public:
-    Image(const internal::abstract::Document *document,
-          const internal::abstract::Element *element, const void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] bool internal() const;
     [[nodiscard]] std::optional<odr::File> file() const;
@@ -342,9 +329,7 @@ public:
 
   class Text final : public Extension {
   public:
-    Text(const internal::abstract::Document *document,
-         const internal::abstract::Element *element,
-         const internal::abstract::Style *style, void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] Property font_name() const;
     [[nodiscard]] Property font_size() const;
@@ -359,9 +344,7 @@ public:
 
   class Paragraph final : public Extension {
   public:
-    Paragraph(const internal::abstract::Document *document,
-              const internal::abstract::Element *element,
-              const internal::abstract::Style *style, void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] Property text_align() const;
     [[nodiscard]] DirectionalProperty margin() const;
@@ -369,36 +352,28 @@ public:
 
   class Table final : public Extension {
   public:
-    Table(const internal::abstract::Document *document,
-          const internal::abstract::Element *element,
-          const internal::abstract::Style *style, void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] Property width() const;
   };
 
   class TableColumn final : public Extension {
   public:
-    TableColumn(const internal::abstract::Document *document,
-                const internal::abstract::Element *element,
-                const internal::abstract::Style *style, void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] Property width() const;
   };
 
   class TableRow final : public Extension {
   public:
-    TableRow(const internal::abstract::Document *document,
-             const internal::abstract::Element *element,
-             const internal::abstract::Style *style, void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] Property height() const;
   };
 
   class TableCell final : public Extension {
   public:
-    TableCell(const internal::abstract::Document *document,
-              const internal::abstract::Element *element,
-              const internal::abstract::Style *style, void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] Property vertical_align() const;
     [[nodiscard]] Property background_color() const;
@@ -408,9 +383,7 @@ public:
 
   class Graphic final : public Extension {
   public:
-    Graphic(const internal::abstract::Document *document,
-            const internal::abstract::Element *element,
-            const internal::abstract::Style *style, void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] Property stroke_width() const;
     [[nodiscard]] Property stroke_color() const;
@@ -420,9 +393,7 @@ public:
 
   class PageLayout final : public Extension {
   public:
-    PageLayout(const internal::abstract::Document *document,
-               const internal::abstract::Element *element,
-               const internal::abstract::Style *style, void *extension);
+    using Extension::Extension;
 
     [[nodiscard]] Property width() const;
     [[nodiscard]] Property height() const;
