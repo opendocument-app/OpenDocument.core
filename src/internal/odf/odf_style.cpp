@@ -393,6 +393,34 @@ StyleRegistry::StyleRegistry(const pugi::xml_node content_root,
   generate_styles_();
 }
 
+abstract::Style *StyleRegistry::style(const std::string &name) const {
+  if (auto styles_it = m_styles.find(name); styles_it != std::end(m_styles)) {
+    return styles_it->second.get();
+  }
+  return {};
+}
+
+abstract::Style *StyleRegistry::page_layout(const std::string &name) const {
+  if (auto styles_it = m_page_layouts.find(name);
+      styles_it != std::end(m_page_layouts)) {
+    return styles_it->second.get();
+  }
+  return {};
+}
+
+pugi::xml_node
+StyleRegistry::master_page_node(const std::string &master_page_name) const {
+  if (auto master_page_it = m_index_master_page.find(master_page_name);
+      master_page_it != std::end(m_index_master_page)) {
+    return master_page_it->second;
+  }
+  return {};
+}
+
+std::optional<std::string> StyleRegistry::first_master_page() const {
+  return m_first_master_page;
+}
+
 void StyleRegistry::generate_indices_(const pugi::xml_node content_root,
                                       const pugi::xml_node styles_root) {
   generate_indices_(styles_root.child("office:font-face-decls"));
@@ -492,20 +520,6 @@ StyleRegistry::generate_page_layout_(const std::string &name,
     style = std::make_unique<Style>(nullptr, node);
   }
   return style.get();
-}
-
-pugi::xml_node
-StyleRegistry::master_page_node(const std::string &master_page_name) const {
-
-  if (auto master_page_it = m_index_master_page.find(master_page_name);
-      master_page_it != std::end(m_index_master_page)) {
-    return master_page_it->second;
-  }
-  return {};
-}
-
-std::optional<std::string> StyleRegistry::first_master_page() const {
-  return m_first_master_page;
 }
 
 } // namespace odr::internal::odf

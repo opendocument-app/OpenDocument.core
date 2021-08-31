@@ -28,8 +28,6 @@ public:
 
   [[nodiscard]] abstract::Style *page_layout(const std::string &name) const;
 
-  [[nodiscard]] abstract::Style *master_page(const std::string &name) const;
-
   [[nodiscard]] pugi::xml_node
   master_page_node(const std::string &master_page_name) const;
 
