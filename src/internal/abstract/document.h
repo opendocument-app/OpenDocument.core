@@ -178,11 +178,10 @@ public:
   public:
     virtual ~Table() = default;
     [[nodiscard]] virtual bool
-    move_to_first_table_column(DocumentCursor *cursor,
-                               const Element *element) const = 0;
+    move_to_first_column(DocumentCursor *cursor,
+                         const Element *element) const = 0;
     [[nodiscard]] virtual bool
-    move_to_first_table_row(DocumentCursor *cursor,
-                            const Element *element) const = 0;
+    move_to_first_row(DocumentCursor *cursor, const Element *element) const = 0;
   };
 
   [[nodiscard]] virtual const Slide *slide() const = 0;

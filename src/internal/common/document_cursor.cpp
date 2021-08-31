@@ -4,15 +4,14 @@
 
 namespace odr::internal::common {
 
-DocumentCursor::DocumentCursor() { m_element_stack_top.push_back(0); }
-
-bool DocumentCursor::operator==(const abstract::DocumentCursor &rhs) const {
-  return back_()->equals(this,
-                         *dynamic_cast<const DocumentCursor &>(rhs).back_());
+DocumentCursor::DocumentCursor(const abstract::Document *document)
+    : m_document{document} {
+  m_element_stack_top.push_back(0);
 }
 
-bool DocumentCursor::operator!=(const abstract::DocumentCursor &rhs) const {
-  return !operator==(rhs);
+bool DocumentCursor::equals(const abstract::DocumentCursor &other) const {
+  return back_()->equals(m_document,
+                         *dynamic_cast<const DocumentCursor &>(other).back_());
 }
 
 [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
@@ -24,11 +23,9 @@ DocumentCursor::copy() const {
   return ""; // TODO
 }
 
-abstract::DocumentCursor::Element *DocumentCursor::element() { return back_(); }
+abstract::Element *DocumentCursor::element() { return back_(); }
 
-const abstract::DocumentCursor::Element *DocumentCursor::element() const {
-  return back_();
-}
+const abstract::Element *DocumentCursor::element() const { return back_(); }
 
 void *DocumentCursor::push_(const std::size_t size) {
   std::int32_t offset = next_offset_();
@@ -55,132 +52,94 @@ std::int32_t DocumentCursor::back_offset_() const {
              : m_element_stack_top[m_element_stack_top.size() - 2];
 }
 
-DocumentCursor::Element *DocumentCursor::back_() {
+abstract::Element *DocumentCursor::back_() {
   std::int32_t offset = back_offset_();
-  return reinterpret_cast<Element *>(m_element_stack.data() + offset);
+  return reinterpret_cast<abstract::Element *>(m_element_stack.data() + offset);
 }
 
-const DocumentCursor::Element *DocumentCursor::back_() const {
+const abstract::Element *DocumentCursor::back_() const {
   std::int32_t offset = back_offset_();
-  return reinterpret_cast<const Element *>(m_element_stack.data() + offset);
+  return reinterpret_cast<const abstract::Element *>(m_element_stack.data() +
+                                                     offset);
 }
 
-bool DocumentCursor::Element::move_to_parent(
-    abstract::DocumentCursor *abstract_cursor) {
-  auto *cursor = dynamic_cast<DocumentCursor *>(abstract_cursor);
-  if (cursor->m_element_stack_top.size() <= 1) {
+bool DocumentCursor::move_to_parent() {
+  if (m_element_stack_top.size() <= 1) {
     return false;
   }
-  cursor->pop_();
+  pop_();
   return true;
 }
 
-bool DocumentCursor::Element::move_to_first_child(
-    abstract::DocumentCursor *abstract_cursor) {
-  auto *cursor = dynamic_cast<DocumentCursor *>(abstract_cursor);
-  auto allocator = [cursor](const std::size_t size) {
-    return cursor->push_(size);
-  };
-  auto element = first_child(cursor, allocator);
+bool DocumentCursor::move_to_first_child() {
+  auto allocator = [this](const std::size_t size) { return push_(size); };
+  auto element = back_()->first_child(m_document, allocator);
   return element != nullptr;
 }
 
-bool DocumentCursor::Element::move_to_previous_sibling(
-    abstract::DocumentCursor *abstract_cursor) {
-  auto *cursor = dynamic_cast<DocumentCursor *>(abstract_cursor);
-  auto allocator = [cursor](const std::size_t size) {
-    cursor->pop_();
-    return cursor->push_(size);
+bool DocumentCursor::move_to_previous_sibling() {
+  auto allocator = [this](const std::size_t size) {
+    pop_();
+    return push_(size);
   };
-  auto element = previous_sibling(cursor, allocator);
+  auto element = back_()->previous_sibling(m_document, allocator);
   return element != nullptr;
 }
 
-bool DocumentCursor::Element::move_to_next_sibling(
-    abstract::DocumentCursor *abstract_cursor) {
-  auto *cursor = dynamic_cast<DocumentCursor *>(abstract_cursor);
-  auto allocator = [cursor](const std::size_t size) {
-    cursor->pop_();
-    return cursor->push_(size);
+bool DocumentCursor::move_to_next_sibling() {
+  auto allocator = [this](const std::size_t size) {
+    pop_();
+    return push_(size);
   };
-  auto element = next_sibling(cursor, allocator);
+  auto element = back_()->next_sibling(m_document, allocator);
   return element != nullptr;
 }
 
-const DocumentCursor::Element::Text *
-DocumentCursor::Element::text(const abstract::DocumentCursor *) const {
-  return nullptr;
-}
-
-const DocumentCursor::Element::Slide *
-DocumentCursor::Element::slide(const abstract::DocumentCursor *) const {
-  return nullptr;
-}
-
-const DocumentCursor::Element::Table *
-DocumentCursor::Element::table(const abstract::DocumentCursor *) const {
-  return nullptr;
-}
-
-const DocumentCursor::Element::TableCell *
-DocumentCursor::Element::table_cell(const abstract::DocumentCursor *) const {
-  return nullptr;
-}
-
-const DocumentCursor::Element::Image *
-DocumentCursor::Element::image(const abstract::DocumentCursor *) const {
-  return nullptr;
-}
-
-DocumentCursor::Element *
-DocumentCursor::Element::first_child(const DocumentCursor *,
-                                     const Allocator &) {
-  return nullptr;
-}
-
-DocumentCursor::Element *
-DocumentCursor::Element::previous_sibling(const DocumentCursor *,
-                                          const Allocator &) {
-  return nullptr;
-}
-
-DocumentCursor::Element *
-DocumentCursor::Element::next_sibling(const DocumentCursor *,
-                                      const Allocator &) {
-  return nullptr;
-}
-
-bool DocumentCursor::Element::Slide::move_to_master_page(
+bool DocumentCursor::Slide::move_to_master_page(
     abstract::DocumentCursor *abstract_cursor,
-    const abstract::DocumentCursor::Element *) const {
-  auto *cursor = dynamic_cast<DocumentCursor *>(abstract_cursor);
+    const abstract::Element *) const {
+  auto cursor = static_cast<DocumentCursor *>(abstract_cursor);
   auto allocator = [cursor](const std::size_t size) {
     return cursor->push_(size);
   };
-  auto element = master_page(cursor, allocator);
+  auto element = cursor->back_()->first_child(cursor->m_document, allocator);
   return element != nullptr;
 }
 
-bool DocumentCursor::Element::Table::move_to_first_table_column(
+bool DocumentCursor::Table::move_to_first_column(
     abstract::DocumentCursor *abstract_cursor,
-    const abstract::DocumentCursor::Element *) const {
-  auto *cursor = dynamic_cast<DocumentCursor *>(abstract_cursor);
+    const abstract::Element *) const {
+  auto cursor = static_cast<DocumentCursor *>(abstract_cursor);
   auto allocator = [cursor](const std::size_t size) {
     return cursor->push_(size);
   };
-  auto element = first_table_column(cursor, allocator);
+  auto element = cursor->back_()->first_child(cursor->m_document, allocator);
   return element != nullptr;
 }
 
-bool DocumentCursor::Element::Table::move_to_first_table_row(
+bool DocumentCursor::Table::move_to_first_row(
     abstract::DocumentCursor *abstract_cursor,
-    const abstract::DocumentCursor::Element *) const {
-  auto *cursor = dynamic_cast<DocumentCursor *>(abstract_cursor);
+    const abstract::Element *) const {
+  auto cursor = static_cast<DocumentCursor *>(abstract_cursor);
   auto allocator = [cursor](const std::size_t size) {
     return cursor->push_(size);
   };
-  auto element = first_table_row(cursor, allocator);
+  auto element = cursor->back_()->first_child(cursor->m_document, allocator);
   return element != nullptr;
+}
+
+const DocumentCursor::Slide *DocumentCursor::slide() const {
+  if (element()->slide(m_document)) {
+    return &m_slide;
+  }
+  return nullptr;
+}
+
+const DocumentCursor::Table *DocumentCursor::table() const {
+  if (element()->table(m_document)) {
+    return &m_table;
+  }
+  return nullptr;
 }
 
 } // namespace odr::internal::common
