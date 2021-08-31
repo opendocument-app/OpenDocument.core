@@ -11,6 +11,8 @@ namespace odr::internal::common {
 
 class DocumentCursor : public abstract::DocumentCursor {
 public:
+  using Allocator = abstract::Element::Allocator;
+
   explicit DocumentCursor(const abstract::Document *document);
 
   [[nodiscard]] bool equals(const abstract::DocumentCursor &other) const final;

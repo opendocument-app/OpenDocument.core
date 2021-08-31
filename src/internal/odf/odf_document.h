@@ -6,7 +6,7 @@
 #include <pugixml.hpp>
 
 namespace odr::internal::odf {
-class DocumentCursor;
+class Element;
 
 class Document : public abstract::Document {
 public:
@@ -36,7 +36,7 @@ protected:
 
   Style m_style;
 
-  friend class DocumentCursor;
+  friend class Element;
 };
 
 } // namespace odr::internal::odf

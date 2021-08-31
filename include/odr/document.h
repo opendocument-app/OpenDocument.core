@@ -140,9 +140,9 @@ public:
   [[nodiscard]] DocumentCursor root_element() const;
 
 private:
-  std::shared_ptr<internal::abstract::Document> m_impl;
+  std::shared_ptr<internal::abstract::Document> m_document;
 
-  explicit Document(std::shared_ptr<internal::abstract::Document> impl);
+  explicit Document(std::shared_ptr<internal::abstract::Document> document);
 
   friend DocumentFile;
 };
@@ -185,10 +185,12 @@ public:
   void for_each_cell(const ConditionalChildVisitor &visitor);
 
 private:
-  std::shared_ptr<internal::abstract::DocumentCursor> m_impl;
+  std::shared_ptr<internal::abstract::Document> m_document;
+  std::shared_ptr<internal::abstract::DocumentCursor> m_cursor;
 
   explicit DocumentCursor(
-      std::shared_ptr<internal::abstract::DocumentCursor> impl);
+      std::shared_ptr<internal::abstract::Document> document,
+      std::shared_ptr<internal::abstract::DocumentCursor> cursor);
 
   void for_each_(const ChildVisitor &visitor);
   void for_each_(const ConditionalChildVisitor &visitor);

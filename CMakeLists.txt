@@ -50,6 +50,7 @@ add_library(odr-object OBJECT
         src/internal/odf/odf_crypto.cpp
         src/internal/odf/odf_cursor.cpp
         src/internal/odf/odf_document.cpp
+        src/internal/odf/odf_element.cpp
         src/internal/odf/odf_file.cpp
         src/internal/odf/odf_manifest.cpp
         src/internal/odf/odf_meta.cpp
@@ -59,7 +60,7 @@ add_library(odr-object OBJECT
 
         src/internal/ooxml/presentation/ooxml_presentation.cpp
         src/internal/ooxml/spreadsheet/ooxml_workbook.cpp
-        src/internal/ooxml/text/ooxml_text_cursor.cpp
+        #src/internal/ooxml/text/ooxml_text_cursor.cpp
         src/internal/ooxml/text/ooxml_text_document.cpp
         src/internal/ooxml/text/ooxml_text_style.cpp
         src/internal/ooxml/ooxml_crypto.cpp

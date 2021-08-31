@@ -42,117 +42,113 @@ std::optional<std::string> property_value_to_string(const std::any &value) {
 } // namespace
 
 Document::Document(std::shared_ptr<internal::abstract::Document> document)
-    : m_impl{std::move(document)} {
-  if (!m_impl) {
+    : m_document{std::move(document)} {
+  if (!m_document) {
     throw std::runtime_error("document is null");
   }
 }
 
-bool Document::editable() const noexcept { return m_impl->editable(); }
+bool Document::editable() const noexcept { return m_document->editable(); }
 
 bool Document::savable(const bool encrypted) const noexcept {
-  return m_impl->savable(encrypted);
+  return m_document->savable(encrypted);
 }
 
-void Document::save(const std::string &path) const { m_impl->save(path); }
+void Document::save(const std::string &path) const { m_document->save(path); }
 
 void Document::save(const std::string &path,
                     const std::string &password) const {
-  m_impl->save(path, password.c_str());
+  m_document->save(path, password.c_str());
 }
 
 DocumentType Document::document_type() const noexcept {
-  return m_impl->document_type();
+  return m_document->document_type();
 }
 
 DocumentCursor Document::root_element() const {
-  return DocumentCursor(m_impl->root_element());
+  return DocumentCursor(m_document, m_document->root_element());
 }
 
 DocumentCursor::DocumentCursor(
-    std::shared_ptr<internal::abstract::DocumentCursor> impl)
-    : m_impl{std::move(impl)} {
+    std::shared_ptr<internal::abstract::Document> document,
+    std::shared_ptr<internal::abstract::DocumentCursor> cursor)
+    : m_document{std::move(document)}, m_cursor{std::move(cursor)} {
   // TODO throw if nullptr
 }
 
 bool DocumentCursor::operator==(const DocumentCursor &rhs) const {
-  return m_impl->operator==(*rhs.m_impl);
+  return m_cursor->equals(*rhs.m_cursor);
 }
 
 bool DocumentCursor::operator!=(const DocumentCursor &rhs) const {
-  return m_impl->operator!=(*rhs.m_impl);
+  return !operator==(rhs);
 }
 
 std::string DocumentCursor::document_path() const {
-  return m_impl->document_path();
+  return m_cursor->document_path();
 }
 
 ElementType DocumentCursor::element_type() const {
-  return m_impl->element()->type(m_impl.get());
+  return m_cursor->element()->type(m_document.get());
 }
 
 ElementPropertySet DocumentCursor::element_properties() const {
-  return ElementPropertySet(m_impl->element()->properties(m_impl.get()));
+  return ElementPropertySet(m_cursor->element()->properties(m_document.get()));
 }
 
-bool DocumentCursor::move_to_parent() {
-  return m_impl->element()->move_to_parent(m_impl.get());
-}
+bool DocumentCursor::move_to_parent() { return m_cursor->move_to_parent(); }
 
 bool DocumentCursor::move_to_first_child() {
-  return m_impl->element()->move_to_first_child(m_impl.get());
+  return m_cursor->move_to_first_child();
 }
 
 bool DocumentCursor::move_to_previous_sibling() {
-  return m_impl->element()->move_to_previous_sibling(m_impl.get());
+  return m_cursor->move_to_previous_sibling();
 }
 
 bool DocumentCursor::move_to_next_sibling() {
-  return m_impl->element()->move_to_next_sibling(m_impl.get());
+  return m_cursor->move_to_next_sibling();
 }
 
 std::string DocumentCursor::text() const {
-  auto element = m_impl->element();
-  return element->text(m_impl.get())->value(m_impl.get(), element);
+  auto element = m_cursor->element();
+  return element->text(m_document.get())->value(m_document.get(), element);
 }
 
 bool DocumentCursor::move_to_master_page() {
-  auto element = m_impl->element();
-  return element->slide(m_impl.get())
-      ->move_to_master_page(m_impl.get(), element);
+  return m_cursor->slide()->move_to_master_page(m_cursor.get(),
+                                                m_cursor->element());
 }
 
 TableDimensions DocumentCursor::table_dimensions() {
-  auto element = m_impl->element();
-  return element->table(m_impl.get())->table_dimensions(m_impl.get(), element);
+  auto element = m_cursor->element();
+  return element->table(m_document.get())
+      ->dimensions(m_document.get(), element);
 }
 
 bool DocumentCursor::move_to_first_table_column() {
-  auto element = m_impl->element();
-  return element->table(m_impl.get())
-      ->move_to_first_table_column(m_impl.get(), element);
+  return m_cursor->table()->move_to_first_column(m_cursor.get(),
+                                                 m_cursor->element());
 }
 
 bool DocumentCursor::move_to_first_table_row() {
-  auto element = m_impl->element();
-  return element->table(m_impl.get())
-      ->move_to_first_table_row(m_impl.get(), element);
+  return m_cursor->table()->move_to_first_row(m_cursor.get(),
+                                              m_cursor->element());
 }
 
 TableDimensions DocumentCursor::table_cell_span() {
-  auto element = m_impl->element();
-  return element->table_cell(m_impl.get())
-      ->table_cell_span(m_impl.get(), element);
+  auto element = m_cursor->element();
+  return element->table_cell(m_document.get())->span(m_document.get(), element);
 }
 
 bool DocumentCursor::image_internal() const {
-  auto element = m_impl->element();
-  return element->image(m_impl.get())->image_internal(m_impl.get(), element);
+  auto element = m_cursor->element();
+  return element->image(m_document.get())->internal(m_document.get(), element);
 }
 
 std::optional<File> DocumentCursor::image_file() const {
-  auto element = m_impl->element();
-  return element->image(m_impl.get())->image_file(m_impl.get(), element);
+  auto element = m_cursor->element();
+  return element->image(m_document.get())->file(m_document.get(), element);
 }
 
 void DocumentCursor::for_each_child(const ChildVisitor &visitor) {

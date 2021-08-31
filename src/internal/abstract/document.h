@@ -20,8 +20,8 @@ class Path;
 }
 
 namespace odr::internal::abstract {
-
 class ReadableFilesystem;
+
 class DocumentCursor;
 class Element;
 class Style;
@@ -85,16 +85,6 @@ public:
                                     const Allocator &allocator) = 0;
   virtual Element *next_sibling(const Document *document,
                                 const Allocator &allocator) = 0;
-
-  [[nodiscard]] virtual Element *parent(const Document *document,
-                                        const Allocator &allocator) const = 0;
-  [[nodiscard]] virtual Element *
-  first_child(const Document *document, const Allocator &allocator) const = 0;
-  [[nodiscard]] virtual Element *
-  previous_sibling(const Document *document,
-                   const Allocator &allocator) const = 0;
-  [[nodiscard]] virtual Element *
-  next_sibling(const Document *document, const Allocator &allocator) const = 0;
 
   class Text {
   public:

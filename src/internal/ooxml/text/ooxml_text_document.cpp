@@ -1,5 +1,5 @@
 #include <internal/common/path.h>
-#include <internal/ooxml/text/ooxml_text_cursor.h>
+//#include <internal/ooxml/text/ooxml_text_cursor.h>
 #include <internal/ooxml/text/ooxml_text_document.h>
 #include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
@@ -39,8 +39,9 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
 }
 
 std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
-  return std::make_unique<DocumentCursor>(
-      this, m_document_xml.document_element().first_child());
+  // return std::make_unique<DocumentCursor>(this,
+  // m_document_xml.document_element().first_child());
+  return {};
 }
 
 } // namespace odr::internal::ooxml::text
