@@ -174,6 +174,28 @@ protected:
   pugi::xml_node m_node;
 };
 
+class MasterPage final : public DefaultElement<ElementType::master_page> {
+public:
+  MasterPage(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  [[nodiscard]] std::optional<std::string>
+  style_name(const abstract::Document *) const override {
+    if (auto attribute = m_node.attribute("style:page-layout-name")) {
+      return attribute.value();
+    }
+    return {};
+  }
+
+  [[nodiscard]] abstract::Style *
+  style(const abstract::Document *document) const override {
+    if (auto name = style_name(document)) {
+      return style_(document)->page_layout(*name);
+    }
+    return nullptr;
+  }
+};
+
 class DefaultRoot : public DefaultElement<ElementType::root> {
 public:
   DefaultRoot(const Document *document, pugi::xml_node node)
@@ -195,7 +217,20 @@ public:
   TextDocumentRoot(const Document *document, pugi::xml_node node)
       : DefaultRoot(document, node) {}
 
-  // TODO page style
+  [[nodiscard]] std::optional<std::string>
+  style_name(const abstract::Document *document) const override {
+    return style_(document)->first_master_page();
+  }
+
+  [[nodiscard]] abstract::Style *
+  style(const abstract::Document *document) const override {
+    if (auto first_master_page = style_(document)->first_master_page()) {
+      auto master_page_node =
+          style_(document)->master_page_node(*first_master_page);
+      return MasterPage(document_(document), master_page_node).style(document);
+    }
+    return nullptr;
+  }
 };
 
 class PresentationRoot final : public DefaultRoot {
@@ -234,12 +269,6 @@ public:
   }
 };
 
-class MasterPage final : public DefaultElement<ElementType::master_page> {
-public:
-  MasterPage(const Document *document, pugi::xml_node node)
-      : DefaultElement(document, node) {}
-};
-
 class Slide final : public DefaultElement<ElementType::slide>,
                     public abstract::Element::Slide {
 public:
@@ -264,6 +293,14 @@ public:
     return nullptr;
   }
 
+  [[nodiscard]] abstract::Style *
+  style(const abstract::Document *document) const override {
+    if (auto master_page_node = master_page_node_(document)) {
+      return MasterPage(document_(document), master_page_node).style(document);
+    }
+    return nullptr;
+  }
+
   [[nodiscard]] const Slide *slide(const abstract::Document *) const final {
     return this;
   }
@@ -271,14 +308,18 @@ public:
   abstract::Element *master_page(const abstract::Document *document,
                                  const abstract::Element *,
                                  const Allocator &allocator) const final {
+    auto master_page_node = master_page_node_(document);
+    return construct_default_optional<MasterPage>(document_(document),
+                                                  master_page_node, allocator);
+  }
+
+private:
+  pugi::xml_node master_page_node_(const abstract::Document *document) const {
     if (auto master_page_name_attr =
             m_node.attribute("draw:master-page-name")) {
-      auto master_page_node =
-          style_(document)->master_page_node(master_page_name_attr.value());
-      return construct_default_optional<MasterPage>(
-          document_(document), master_page_node, allocator);
+      return style_(document)->master_page_node(master_page_name_attr.value());
     }
-    return nullptr;
+    return {};
   }
 };
 
@@ -303,6 +344,23 @@ public:
       return this;
     }
     return nullptr;
+  }
+
+  [[nodiscard]] abstract::Style *
+  style(const abstract::Document *document) const override {
+    if (auto master_page_node = master_page_node_(document)) {
+      return MasterPage(document_(document), master_page_node).style(document);
+    }
+    return nullptr;
+  }
+
+private:
+  pugi::xml_node master_page_node_(const abstract::Document *document) const {
+    if (auto master_page_name_attr =
+            m_node.attribute("draw:master-page-name")) {
+      return style_(document)->master_page_node(master_page_name_attr.value());
+    }
+    return {};
   }
 };
 
