@@ -122,6 +122,15 @@ public:
     return nullptr;
   }
 
+  [[nodiscard]] const Link *link(const abstract::Document *) const override {
+    return nullptr;
+  }
+
+  [[nodiscard]] const Bookmark *
+  bookmark(const abstract::Document *) const override {
+    return nullptr;
+  }
+
   [[nodiscard]] const Slide *slide(const abstract::Document *) const override {
     return nullptr;
   }
@@ -132,6 +141,28 @@ public:
 
   [[nodiscard]] const TableCell *
   table_cell(const abstract::Document *) const override {
+    return nullptr;
+  }
+
+  [[nodiscard]] const Frame *frame(const abstract::Document *) const override {
+    return nullptr;
+  }
+
+  [[nodiscard]] const Rect *rect(const abstract::Document *) const override {
+    return nullptr;
+  }
+
+  [[nodiscard]] const Line *line(const abstract::Document *) const override {
+    return nullptr;
+  }
+
+  [[nodiscard]] const Circle *
+  circle(const abstract::Document *) const override {
+    return nullptr;
+  }
+
+  [[nodiscard]] const CustomShape *
+  custom_shape(const abstract::Document *) const override {
     return nullptr;
   }
 
@@ -546,18 +577,14 @@ public:
   ImageElement(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  [[nodiscard]] const char *href() const {
-    return m_node.attribute("xlink:href").value();
-  }
-
   [[nodiscard]] bool internal(const abstract::Document *document,
-                              const abstract::Element *) const final {
+                              const abstract::Element *element) const final {
     auto doc = document_(document);
     if (!doc || !doc->files()) {
       return false;
     }
     try {
-      return doc->files()->is_file(this->href());
+      return doc->files()->is_file(this->href(document, element));
     } catch (...) {
     }
     return false;
@@ -570,7 +597,12 @@ public:
     if (!doc || !internal(document, element)) {
       return {};
     }
-    return File(doc->files()->open(this->href()));
+    return File(doc->files()->open(this->href(document, element)));
+  }
+
+  [[nodiscard]] std::string href(const abstract::Document *,
+                                 const abstract::Element *) const final {
+    return m_node.attribute("xlink:href").value();
   }
 };
 

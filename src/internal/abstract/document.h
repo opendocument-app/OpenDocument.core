@@ -95,6 +95,20 @@ public:
                                             const Element *element) const = 0;
   };
 
+  class Link {
+  public:
+    virtual ~Link() = default;
+    [[nodiscard]] virtual std::string href(const Document *document,
+                                           const Element *element) const = 0;
+  };
+
+  class Bookmark {
+  public:
+    virtual ~Bookmark() = default;
+    [[nodiscard]] virtual std::string name(const Document *document,
+                                           const Element *element) const = 0;
+  };
+
   class Slide {
   public:
     virtual ~Slide() = default;
@@ -123,6 +137,75 @@ public:
     span(const Document *document, const Element *element) const = 0;
   };
 
+  class Frame {
+  public:
+    virtual ~Frame() = default;
+    [[nodiscard]] virtual std::optional<std::string>
+    anchor_type(const Document *document, const Element *element) const = 0;
+    [[nodiscard]] virtual std::optional<std::string>
+    x(const Document *document, const Element *element) const = 0;
+    [[nodiscard]] virtual std::optional<std::string>
+    y(const Document *document, const Element *element) const = 0;
+    [[nodiscard]] virtual std::optional<std::string>
+    width(const Document *document, const Element *element) const = 0;
+    [[nodiscard]] virtual std::optional<std::string>
+    height(const Document *document, const Element *element) const = 0;
+    [[nodiscard]] virtual std::optional<std::string>
+    z_index(const Document *document, const Element *element) const = 0;
+  };
+
+  class Rect {
+  public:
+    virtual ~Rect() = default;
+    [[nodiscard]] virtual std::string x(const Document *document,
+                                        const Element *element) const = 0;
+    [[nodiscard]] virtual std::string y(const Document *document,
+                                        const Element *element) const = 0;
+    [[nodiscard]] virtual std::string width(const Document *document,
+                                            const Element *element) const = 0;
+    [[nodiscard]] virtual std::string height(const Document *document,
+                                             const Element *element) const = 0;
+  };
+
+  class Line {
+  public:
+    virtual ~Line() = default;
+    [[nodiscard]] virtual std::string x1(const Document *document,
+                                         const Element *element) const = 0;
+    [[nodiscard]] virtual std::string y1(const Document *document,
+                                         const Element *element) const = 0;
+    [[nodiscard]] virtual std::string x2(const Document *document,
+                                         const Element *element) const = 0;
+    [[nodiscard]] virtual std::string y2(const Document *document,
+                                         const Element *element) const = 0;
+  };
+
+  class Circle {
+  public:
+    virtual ~Circle() = default;
+    [[nodiscard]] virtual std::string x(const Document *document,
+                                        const Element *element) const = 0;
+    [[nodiscard]] virtual std::string y(const Document *document,
+                                        const Element *element) const = 0;
+    [[nodiscard]] virtual std::string width(const Document *document,
+                                            const Element *element) const = 0;
+    [[nodiscard]] virtual std::string height(const Document *document,
+                                             const Element *element) const = 0;
+  };
+
+  class CustomShape {
+  public:
+    virtual ~CustomShape() = default;
+    [[nodiscard]] virtual std::optional<std::string>
+    x(const Document *document, const Element *element) const = 0;
+    [[nodiscard]] virtual std::optional<std::string>
+    y(const Document *document, const Element *element) const = 0;
+    [[nodiscard]] virtual std::string width(const Document *document,
+                                            const Element *element) const = 0;
+    [[nodiscard]] virtual std::string height(const Document *document,
+                                             const Element *element) const = 0;
+  };
+
   class Image {
   public:
     virtual ~Image() = default;
@@ -130,13 +213,25 @@ public:
                                         const Element *element) const = 0;
     [[nodiscard]] virtual std::optional<odr::File>
     file(const Document *document, const Element *element) const = 0;
+    [[nodiscard]] virtual std::string href(const Document *document,
+                                           const Element *element) const = 0;
   };
 
   [[nodiscard]] virtual const Text *text(const Document *document) const = 0;
+  [[nodiscard]] virtual const Link *link(const Document *document) const = 0;
+  [[nodiscard]] virtual const Bookmark *
+  bookmark(const Document *document) const = 0;
   [[nodiscard]] virtual const Slide *slide(const Document *document) const = 0;
   [[nodiscard]] virtual const Table *table(const Document *document) const = 0;
   [[nodiscard]] virtual const TableCell *
   table_cell(const Document *document) const = 0;
+  [[nodiscard]] virtual const Frame *frame(const Document *document) const = 0;
+  [[nodiscard]] virtual const Rect *rect(const Document *document) const = 0;
+  [[nodiscard]] virtual const Line *line(const Document *document) const = 0;
+  [[nodiscard]] virtual const Circle *
+  circle(const Document *document) const = 0;
+  [[nodiscard]] virtual const CustomShape *
+  custom_shape(const Document *document) const = 0;
   [[nodiscard]] virtual const Image *image(const Document *document) const = 0;
 };
 

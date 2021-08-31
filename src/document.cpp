@@ -66,7 +66,28 @@ Element::Text::Text(const internal::abstract::Document *document,
     : Extension(document, element, extension) {}
 
 std::string Element::Text::value() const {
-  return m_element->text(m_document)->value(m_document, m_element);
+  return static_cast<const internal::abstract::Element::Text *>(m_extension)
+      ->value(m_document, m_element);
+}
+
+Element::Link::Link(const internal::abstract::Document *document,
+                    const internal::abstract::Element *element,
+                    const void *extension)
+    : Extension(document, element, extension) {}
+
+std::string Element::Link::href() const {
+  return static_cast<const internal::abstract::Element::Link *>(m_extension)
+      ->href(m_document, m_element);
+}
+
+Element::Bookmark::Bookmark(const internal::abstract::Document *document,
+                            const internal::abstract::Element *element,
+                            const void *extension)
+    : Extension(document, element, extension) {}
+
+std::string Element::Bookmark::name() const {
+  return static_cast<const internal::abstract::Element::Bookmark *>(m_extension)
+      ->name(m_document, m_element);
 }
 
 Element::Table::Table(const internal::abstract::Document *document,
@@ -75,7 +96,8 @@ Element::Table::Table(const internal::abstract::Document *document,
     : Extension(document, element, extension) {}
 
 TableDimensions Element::Table::dimensions() const {
-  return m_element->table(m_document)->dimensions(m_document, m_element);
+  return static_cast<const internal::abstract::Element::Table *>(m_extension)
+      ->dimensions(m_document, m_element);
 }
 
 Element::TableCell::TableCell(const internal::abstract::Document *document,
@@ -84,7 +106,148 @@ Element::TableCell::TableCell(const internal::abstract::Document *document,
     : Extension(document, element, extension) {}
 
 TableDimensions Element::TableCell::span() const {
-  return m_element->table_cell(m_document)->span(m_document, m_element);
+  return static_cast<const internal::abstract::Element::TableCell *>(
+             m_extension)
+      ->span(m_document, m_element);
+}
+
+Element::Frame::Frame(const internal::abstract::Document *document,
+                      const internal::abstract::Element *element,
+                      const void *extension)
+    : Extension(document, element, extension) {}
+
+std::optional<std::string> Element::Frame::anchor_type() const {
+  return static_cast<const internal::abstract::Element::Frame *>(m_extension)
+      ->anchor_type(m_document, m_element);
+}
+
+std::optional<std::string> Element::Frame::x() const {
+  return static_cast<const internal::abstract::Element::Frame *>(m_extension)
+      ->x(m_document, m_element);
+}
+
+std::optional<std::string> Element::Frame::y() const {
+  return static_cast<const internal::abstract::Element::Frame *>(m_extension)
+      ->y(m_document, m_element);
+}
+
+std::optional<std::string> Element::Frame::width() const {
+  return static_cast<const internal::abstract::Element::Frame *>(m_extension)
+      ->width(m_document, m_element);
+}
+
+std::optional<std::string> Element::Frame::height() const {
+  return static_cast<const internal::abstract::Element::Frame *>(m_extension)
+      ->height(m_document, m_element);
+}
+
+std::optional<std::string> Element::Frame::z_index() const {
+  return static_cast<const internal::abstract::Element::Frame *>(m_extension)
+      ->z_index(m_document, m_element);
+}
+
+Element::Rect::Rect(const internal::abstract::Document *document,
+                    const internal::abstract::Element *element,
+                    const void *extension)
+    : Extension(document, element, extension) {}
+
+std::string Element::Rect::x() const {
+  return static_cast<const internal::abstract::Element::Rect *>(m_extension)
+      ->x(m_document, m_element);
+}
+
+std::string Element::Rect::y() const {
+  return static_cast<const internal::abstract::Element::Rect *>(m_extension)
+      ->y(m_document, m_element);
+}
+
+std::string Element::Rect::width() const {
+  return static_cast<const internal::abstract::Element::Rect *>(m_extension)
+      ->width(m_document, m_element);
+}
+
+std::string Element::Rect::height() const {
+  return static_cast<const internal::abstract::Element::Rect *>(m_extension)
+      ->height(m_document, m_element);
+}
+
+Element::Line::Line(const internal::abstract::Document *document,
+                    const internal::abstract::Element *element,
+                    const void *extension)
+    : Extension(document, element, extension) {}
+
+std::string Element::Line::x1() const {
+  return static_cast<const internal::abstract::Element::Line *>(m_extension)
+      ->x1(m_document, m_element);
+}
+
+std::string Element::Line::y1() const {
+  return static_cast<const internal::abstract::Element::Line *>(m_extension)
+      ->y1(m_document, m_element);
+}
+
+std::string Element::Line::x2() const {
+  return static_cast<const internal::abstract::Element::Line *>(m_extension)
+      ->x2(m_document, m_element);
+}
+
+std::string Element::Line::y2() const {
+  return static_cast<const internal::abstract::Element::Line *>(m_extension)
+      ->y2(m_document, m_element);
+}
+
+Element::Circle::Circle(const internal::abstract::Document *document,
+                        const internal::abstract::Element *element,
+                        const void *extension)
+    : Extension(document, element, extension) {}
+
+std::string Element::Circle::x() const {
+  return static_cast<const internal::abstract::Element::Circle *>(m_extension)
+      ->x(m_document, m_element);
+}
+
+std::string Element::Circle::y() const {
+  return static_cast<const internal::abstract::Element::Circle *>(m_extension)
+      ->y(m_document, m_element);
+}
+
+std::string Element::Circle::width() const {
+  return static_cast<const internal::abstract::Element::Circle *>(m_extension)
+      ->width(m_document, m_element);
+}
+
+std::string Element::Circle::height() const {
+  return static_cast<const internal::abstract::Element::Circle *>(m_extension)
+      ->height(m_document, m_element);
+}
+
+Element::CustomShape::CustomShape(const internal::abstract::Document *document,
+                                  const internal::abstract::Element *element,
+                                  const void *extension)
+    : Extension(document, element, extension) {}
+
+std::optional<std::string> Element::CustomShape::x() const {
+  return static_cast<const internal::abstract::Element::CustomShape *>(
+             m_extension)
+      ->x(m_document, m_element);
+}
+
+std::optional<std::string> Element::CustomShape::y() const {
+  return static_cast<const internal::abstract::Element::CustomShape *>(
+             m_extension)
+      ->y(m_document, m_element);
+}
+
+std::string Element::CustomShape::width() const {
+  return static_cast<const internal::abstract::Element::CustomShape *>(
+             m_extension)
+      ->width(m_document, m_element);
+}
+
+std::string Element::CustomShape::height() const {
+  return static_cast<const internal::abstract::Element::CustomShape *>(
+             m_extension)
+      ->height(m_document, m_element);
 }
 
 Element::Image::Image(const internal::abstract::Document *document,
@@ -93,15 +256,30 @@ Element::Image::Image(const internal::abstract::Document *document,
     : Extension(document, element, extension) {}
 
 bool Element::Image::internal() const {
-  return m_element->image(m_document)->internal(m_document, m_element);
+  return static_cast<const internal::abstract::Element::Image *>(m_extension)
+      ->internal(m_document, m_element);
 }
 
 std::optional<File> Element::Image::file() const {
-  return m_element->image(m_document)->file(m_document, m_element);
+  return static_cast<const internal::abstract::Element::Image *>(m_extension)
+      ->file(m_document, m_element);
+}
+
+std::string Element::Image::href() const {
+  return static_cast<const internal::abstract::Element::Image *>(m_extension)
+      ->href(m_document, m_element);
 }
 
 Element::Text Element::text() const {
   return Text(m_document, m_element, m_element->text(m_document));
+}
+
+Element::Link Element::link() const {
+  return Link(m_document, m_element, m_element->link(m_document));
+}
+
+Element::Bookmark Element::bookmark() const {
+  return Bookmark(m_document, m_element, m_element->bookmark(m_document));
 }
 
 Element::Table Element::table() const {
@@ -110,6 +288,27 @@ Element::Table Element::table() const {
 
 Element::TableCell Element::table_cell() const {
   return TableCell(m_document, m_element, m_element->table_cell(m_document));
+}
+
+Element::Frame Element::frame() const {
+  return Frame(m_document, m_element, m_element->frame(m_document));
+}
+
+Element::Rect Element::rect() const {
+  return Rect(m_document, m_element, m_element->rect(m_document));
+}
+
+Element::Line Element::line() const {
+  return Line(m_document, m_element, m_element->line(m_document));
+}
+
+Element::Circle Element::circle() const {
+  return Circle(m_document, m_element, m_element->circle(m_document));
+}
+
+Element::CustomShape Element::custom_shape() const {
+  return CustomShape(m_document, m_element,
+                     m_element->custom_shape(m_document));
 }
 
 Element::Image Element::image() const {
@@ -153,20 +352,13 @@ bool DocumentCursor::move_to_next_sibling() {
   return m_cursor->move_to_next_sibling();
 }
 
-std::string DocumentCursor::text() const {
-  auto element = m_cursor->element();
-  return element->text(m_document.get())->value(m_document.get(), element);
+Element DocumentCursor::element() const {
+  return Element(m_document.get(), m_cursor->element());
 }
 
 bool DocumentCursor::move_to_master_page() {
   return m_cursor->slide()->move_to_master_page(m_cursor.get(),
                                                 m_cursor->element());
-}
-
-TableDimensions DocumentCursor::table_dimensions() {
-  auto element = m_cursor->element();
-  return element->table(m_document.get())
-      ->dimensions(m_document.get(), element);
 }
 
 bool DocumentCursor::move_to_first_table_column() {
@@ -177,21 +369,6 @@ bool DocumentCursor::move_to_first_table_column() {
 bool DocumentCursor::move_to_first_table_row() {
   return m_cursor->table()->move_to_first_row(m_cursor.get(),
                                               m_cursor->element());
-}
-
-TableDimensions DocumentCursor::table_cell_span() {
-  auto element = m_cursor->element();
-  return element->table_cell(m_document.get())->span(m_document.get(), element);
-}
-
-bool DocumentCursor::image_internal() const {
-  auto element = m_cursor->element();
-  return element->image(m_document.get())->internal(m_document.get(), element);
-}
-
-std::optional<File> DocumentCursor::image_file() const {
-  auto element = m_cursor->element();
-  return element->image(m_document.get())->file(m_document.get(), element);
 }
 
 void DocumentCursor::for_each_child(const ChildVisitor &visitor) {

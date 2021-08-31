@@ -85,6 +85,9 @@ private:
 
 class Element final {
 public:
+  Element(const internal::abstract::Document *document,
+          const internal::abstract::Element *element);
+
   bool operator==(const Element &rhs) const;
   bool operator!=(const Element &rhs) const;
 
@@ -113,6 +116,22 @@ public:
     [[nodiscard]] std::string value() const;
   };
 
+  class Link final : public Extension {
+  public:
+    Link(const internal::abstract::Document *document,
+         const internal::abstract::Element *element, const void *extension);
+
+    [[nodiscard]] std::string href() const;
+  };
+
+  class Bookmark final : public Extension {
+  public:
+    Bookmark(const internal::abstract::Document *document,
+             const internal::abstract::Element *element, const void *extension);
+
+    [[nodiscard]] std::string name() const;
+  };
+
   class Table final : public Extension {
   public:
     Table(const internal::abstract::Document *document,
@@ -130,6 +149,64 @@ public:
     [[nodiscard]] TableDimensions span() const;
   };
 
+  class Frame final : public Extension {
+  public:
+    Frame(const internal::abstract::Document *document,
+          const internal::abstract::Element *element, const void *extension);
+
+    [[nodiscard]] std::optional<std::string> anchor_type() const;
+    [[nodiscard]] std::optional<std::string> x() const;
+    [[nodiscard]] std::optional<std::string> y() const;
+    [[nodiscard]] std::optional<std::string> width() const;
+    [[nodiscard]] std::optional<std::string> height() const;
+    [[nodiscard]] std::optional<std::string> z_index() const;
+  };
+
+  class Rect final : public Extension {
+  public:
+    Rect(const internal::abstract::Document *document,
+         const internal::abstract::Element *element, const void *extension);
+
+    [[nodiscard]] std::string x() const;
+    [[nodiscard]] std::string y() const;
+    [[nodiscard]] std::string width() const;
+    [[nodiscard]] std::string height() const;
+  };
+
+  class Line final : public Extension {
+  public:
+    Line(const internal::abstract::Document *document,
+         const internal::abstract::Element *element, const void *extension);
+
+    [[nodiscard]] std::string x1() const;
+    [[nodiscard]] std::string y1() const;
+    [[nodiscard]] std::string x2() const;
+    [[nodiscard]] std::string y2() const;
+  };
+
+  class Circle final : public Extension {
+  public:
+    Circle(const internal::abstract::Document *document,
+           const internal::abstract::Element *element, const void *extension);
+
+    [[nodiscard]] std::string x() const;
+    [[nodiscard]] std::string y() const;
+    [[nodiscard]] std::string width() const;
+    [[nodiscard]] std::string height() const;
+  };
+
+  class CustomShape final : public Extension {
+  public:
+    CustomShape(const internal::abstract::Document *document,
+                const internal::abstract::Element *element,
+                const void *extension);
+
+    [[nodiscard]] std::optional<std::string> x() const;
+    [[nodiscard]] std::optional<std::string> y() const;
+    [[nodiscard]] std::string width() const;
+    [[nodiscard]] std::string height() const;
+  };
+
   class Image final : public Extension {
   public:
     Image(const internal::abstract::Document *document,
@@ -137,19 +214,24 @@ public:
 
     [[nodiscard]] bool internal() const;
     [[nodiscard]] std::optional<odr::File> file() const;
+    [[nodiscard]] std::string href() const;
   };
 
   [[nodiscard]] Text text() const;
+  [[nodiscard]] Link link() const;
+  [[nodiscard]] Bookmark bookmark() const;
   [[nodiscard]] Table table() const;
   [[nodiscard]] TableCell table_cell() const;
+  [[nodiscard]] Frame frame() const;
+  [[nodiscard]] Rect rect() const;
+  [[nodiscard]] Line line() const;
+  [[nodiscard]] Circle circle() const;
+  [[nodiscard]] CustomShape custom_shape() const;
   [[nodiscard]] Image image() const;
 
 private:
   const internal::abstract::Document *m_document;
   const internal::abstract::Element *m_element;
-
-  Element(const internal::abstract::Document *document,
-          const internal::abstract::Element *element);
 };
 
 class DocumentCursor final {
@@ -166,17 +248,12 @@ public:
   bool move_to_previous_sibling();
   bool move_to_next_sibling();
 
-  [[nodiscard]] std::string text() const;
+  [[nodiscard]] Element element() const;
 
   [[nodiscard]] bool move_to_master_page();
 
-  [[nodiscard]] TableDimensions table_dimensions();
   [[nodiscard]] bool move_to_first_table_column();
   [[nodiscard]] bool move_to_first_table_row();
-  [[nodiscard]] TableDimensions table_cell_span();
-
-  [[nodiscard]] bool image_internal() const;
-  [[nodiscard]] std::optional<File> image_file() const;
 
   using ChildVisitor =
       std::function<void(DocumentCursor &cursor, std::uint32_t i)>;

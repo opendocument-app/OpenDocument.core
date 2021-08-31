@@ -97,35 +97,41 @@ bool DocumentCursor::move_to_next_sibling() {
 
 bool DocumentCursor::Slide::move_to_master_page(
     abstract::DocumentCursor *abstract_cursor,
-    const abstract::Element *) const {
+    const abstract::Element *element) const {
   auto cursor = static_cast<DocumentCursor *>(abstract_cursor);
   auto allocator = [cursor](const std::size_t size) {
     return cursor->push_(size);
   };
-  auto element = cursor->back_()->first_child(cursor->m_document, allocator);
-  return element != nullptr;
+  auto result = cursor->back_()
+                    ->slide(cursor->m_document)
+                    ->master_page(cursor->m_document, element, allocator);
+  return result != nullptr;
 }
 
 bool DocumentCursor::Table::move_to_first_column(
     abstract::DocumentCursor *abstract_cursor,
-    const abstract::Element *) const {
+    const abstract::Element *element) const {
   auto cursor = static_cast<DocumentCursor *>(abstract_cursor);
   auto allocator = [cursor](const std::size_t size) {
     return cursor->push_(size);
   };
-  auto element = cursor->back_()->first_child(cursor->m_document, allocator);
-  return element != nullptr;
+  auto result = cursor->back_()
+                    ->table(cursor->m_document)
+                    ->first_column(cursor->m_document, element, allocator);
+  return result != nullptr;
 }
 
 bool DocumentCursor::Table::move_to_first_row(
     abstract::DocumentCursor *abstract_cursor,
-    const abstract::Element *) const {
+    const abstract::Element *element) const {
   auto cursor = static_cast<DocumentCursor *>(abstract_cursor);
   auto allocator = [cursor](const std::size_t size) {
     return cursor->push_(size);
   };
-  auto element = cursor->back_()->first_child(cursor->m_document, allocator);
-  return element != nullptr;
+  auto result = cursor->back_()
+                    ->table(cursor->m_document)
+                    ->first_row(cursor->m_document, element, allocator);
+  return result != nullptr;
 }
 
 const DocumentCursor::Slide *DocumentCursor::slide() const {
