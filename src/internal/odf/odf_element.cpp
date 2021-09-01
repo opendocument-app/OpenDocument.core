@@ -629,6 +629,66 @@ private:
   }
 };
 
+class Frame final : public DefaultElement<ElementType::frame>,
+                    public abstract::Element::Frame {
+public:
+  Frame(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  [[nodiscard]] const Frame *frame(const abstract::Document *) const final {
+    return this;
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  anchor_type(const abstract::Document *,
+              const abstract::Element *) const final {
+    if (auto attribute = m_node.attribute("text:anchor-type")) {
+      return attribute.value();
+    }
+    return {};
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  x(const abstract::Document *, const abstract::Element *) const final {
+    if (auto attribute = m_node.attribute("svg:x")) {
+      return attribute.value();
+    }
+    return {};
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  y(const abstract::Document *, const abstract::Element *) const final {
+    if (auto attribute = m_node.attribute("svg:y")) {
+      return attribute.value();
+    }
+    return {};
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  width(const abstract::Document *, const abstract::Element *) const final {
+    if (auto attribute = m_node.attribute("svg:width")) {
+      return attribute.value();
+    }
+    return {};
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  height(const abstract::Document *, const abstract::Element *) const final {
+    if (auto attribute = m_node.attribute("svg:height")) {
+      return attribute.value();
+    }
+    return {};
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  z_index(const abstract::Document *, const abstract::Element *) const final {
+    if (auto attribute = m_node.attribute("draw:z-index")) {
+      return attribute.value();
+    }
+    return {};
+  }
+};
+
 class ImageElement final : public DefaultElement<ElementType::image>,
                            public abstract::Element::Image {
 public:
@@ -712,7 +772,6 @@ abstract::Element *odf::construct_default_element(const Document *document,
   using List = DefaultElement<ElementType::list>;
   using ListItem = DefaultElement<ElementType::list_item>;
   using Group = DefaultElement<ElementType::group>;
-  using Frame = DefaultElement<ElementType::frame>;
   using Rect = DefaultElement<ElementType::rect>;
   using Line = DefaultElement<ElementType::line>;
   using Circle = DefaultElement<ElementType::circle>;
