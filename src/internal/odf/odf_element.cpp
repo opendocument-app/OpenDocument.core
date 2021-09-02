@@ -689,6 +689,131 @@ public:
   }
 };
 
+class Rect final : public DefaultElement<ElementType::rect>,
+                   public abstract::Element::Rect {
+public:
+  Rect(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  [[nodiscard]] const Rect *rect(const abstract::Document *) const final {
+    return this;
+  }
+
+  [[nodiscard]] std::string x(const abstract::Document *,
+                              const abstract::Element *) const final {
+    return m_node.attribute("svg:x").value();
+  }
+
+  [[nodiscard]] std::string y(const abstract::Document *,
+                              const abstract::Element *) const final {
+    return m_node.attribute("svg:y").value();
+  }
+
+  [[nodiscard]] std::string width(const abstract::Document *,
+                                  const abstract::Element *) const final {
+    return m_node.attribute("svg:width").value();
+  }
+
+  [[nodiscard]] std::string height(const abstract::Document *,
+                                   const abstract::Element *) const final {
+    return m_node.attribute("svg:height").value();
+  }
+};
+
+class Line final : public DefaultElement<ElementType::line>,
+                   public abstract::Element::Line {
+public:
+  Line(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  [[nodiscard]] const Line *line(const abstract::Document *) const final {
+    return this;
+  }
+
+  [[nodiscard]] std::string x1(const abstract::Document *,
+                               const abstract::Element *) const final {
+    return m_node.attribute("svg:x1").value();
+  }
+
+  [[nodiscard]] std::string y1(const abstract::Document *,
+                               const abstract::Element *) const final {
+    return m_node.attribute("svg:y1").value();
+  }
+
+  [[nodiscard]] std::string x2(const abstract::Document *,
+                               const abstract::Element *) const final {
+    return m_node.attribute("svg:x2").value();
+  }
+
+  [[nodiscard]] std::string y2(const abstract::Document *,
+                               const abstract::Element *) const final {
+    return m_node.attribute("svg:y2").value();
+  }
+};
+
+class Circle final : public DefaultElement<ElementType::circle>,
+                     public abstract::Element::Circle {
+public:
+  Circle(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  [[nodiscard]] const Circle *circle(const abstract::Document *) const final {
+    return this;
+  }
+
+  [[nodiscard]] std::string x(const abstract::Document *,
+                              const abstract::Element *) const final {
+    return m_node.attribute("svg:x").value();
+  }
+
+  [[nodiscard]] std::string y(const abstract::Document *,
+                              const abstract::Element *) const final {
+    return m_node.attribute("svg:y").value();
+  }
+
+  [[nodiscard]] std::string width(const abstract::Document *,
+                                  const abstract::Element *) const final {
+    return m_node.attribute("svg:width").value();
+  }
+
+  [[nodiscard]] std::string height(const abstract::Document *,
+                                   const abstract::Element *) const final {
+    return m_node.attribute("svg:height").value();
+  }
+};
+
+class CustomShape final : public DefaultElement<ElementType::custom_shape>,
+                          public abstract::Element::CustomShape {
+public:
+  CustomShape(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  [[nodiscard]] const CustomShape *
+  custom_shape(const abstract::Document *) const final {
+    return this;
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  x(const abstract::Document *, const abstract::Element *) const final {
+    return m_node.attribute("svg:x").value();
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  y(const abstract::Document *, const abstract::Element *) const final {
+    return m_node.attribute("svg:y").value();
+  }
+
+  [[nodiscard]] std::string width(const abstract::Document *,
+                                  const abstract::Element *) const final {
+    return m_node.attribute("svg:width").value();
+  }
+
+  [[nodiscard]] std::string height(const abstract::Document *,
+                                   const abstract::Element *) const final {
+    return m_node.attribute("svg:height").value();
+  }
+};
+
 class ImageElement final : public DefaultElement<ElementType::image>,
                            public abstract::Element::Image {
 public:
@@ -772,10 +897,6 @@ abstract::Element *odf::construct_default_element(const Document *document,
   using List = DefaultElement<ElementType::list>;
   using ListItem = DefaultElement<ElementType::list_item>;
   using Group = DefaultElement<ElementType::group>;
-  using Rect = DefaultElement<ElementType::rect>;
-  using Line = DefaultElement<ElementType::line>;
-  using Circle = DefaultElement<ElementType::circle>;
-  using CustomShape = DefaultElement<ElementType::custom_shape>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
       {"office:text", construct_default<TextDocumentRoot>},

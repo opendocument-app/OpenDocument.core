@@ -189,7 +189,7 @@ std::string translate_drawing_style(const Style::Graphic &graphic) {
   }
   if (auto vertical_align = graphic.vertical_align().value()) {
     if (vertical_align == "middle") {
-      result += "display:flex;justify-content:center;flex-direction: column;";
+      result += "display:flex;justify-content:center;flex-direction:column;";
     }
     // TODO else log
   }
@@ -433,7 +433,10 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
   }
 
   out << optional_style_attribute(
-      translate_frame_properties(cursor.element().frame()));
+      translate_frame_properties(cursor.element().frame()) +
+      translate_text_style(cursor.element().style().text()) +
+      translate_paragraph_style(cursor.element().style().paragraph()) +
+      translate_drawing_style(cursor.element().style().graphic()));
   out << ">";
   translate_children(cursor, out, config);
 
