@@ -12,29 +12,17 @@ public:
   StyleRegistry();
   explicit StyleRegistry(pugi::xml_node styles_root);
 
-  [[nodiscard]] std::unordered_map<ElementProperty, std::any>
-  resolve_style(ElementType element_type, pugi::xml_node element) const;
+  [[nodiscard]] abstract::Style *style(const std::string &name) const;
 
 private:
-  struct Entry {
-    std::shared_ptr<Entry> m_parent;
-    pugi::xml_node m_node;
-
-    Entry(std::shared_ptr<Entry> parent, pugi::xml_node node);
-
-    void
-    properties(ElementType element,
-               std::unordered_map<ElementProperty, std::any> &result) const;
-  };
-
   std::unordered_map<std::string, pugi::xml_node> m_index;
 
-  std::unordered_map<std::string, std::shared_ptr<Entry>> m_styles;
+  std::unordered_map<std::string, std::unique_ptr<abstract::Style>> m_styles;
 
   void generate_indices_(pugi::xml_node styles_root);
   void generate_styles_();
-  std::shared_ptr<Entry> generate_style_(const std::string &name,
-                                         pugi::xml_node node);
+  abstract::Style *generate_style_(const std::string &name,
+                                   pugi::xml_node node);
 };
 
 } // namespace odr::internal::ooxml::text
