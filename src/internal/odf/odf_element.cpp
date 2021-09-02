@@ -820,6 +820,11 @@ public:
   ImageElement(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
+  [[nodiscard]] const abstract::Element::Image *
+  image(const abstract::Document *) const final {
+    return this;
+  }
+
   [[nodiscard]] bool internal(const abstract::Document *document,
                               const abstract::Element *element) const final {
     auto doc = document_(document);

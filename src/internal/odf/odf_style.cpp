@@ -127,7 +127,7 @@ public:
     [[nodiscard]] abstract::Property *
     font_weight(const abstract::Document *, const abstract::Style *) final {
       static StringAttributeProperty font_weight{"style:text-properties",
-                                                 "fo:font-size"};
+                                                 "fo:font-weight"};
       return &font_weight;
     }
 
