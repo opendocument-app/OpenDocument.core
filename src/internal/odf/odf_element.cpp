@@ -17,8 +17,8 @@ protected:
     return dynamic_cast<const Document *>(document);
   }
 
-  static const StyleRegistry *style_(const abstract::Document *cursor) {
-    return &dynamic_cast<const Document *>(cursor)->m_style_registry;
+  static const StyleRegistry *style_(const abstract::Document *document) {
+    return &dynamic_cast<const Document *>(document)->m_style_registry;
   }
 };
 

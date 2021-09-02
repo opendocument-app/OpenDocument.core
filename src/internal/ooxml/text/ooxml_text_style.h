@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 namespace odr::internal::ooxml::text {
+class Style;
 
 class StyleRegistry final {
 public:

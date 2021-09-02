@@ -10,7 +10,7 @@ class ReadableFilesystem;
 }
 
 namespace odr::internal::ooxml::text {
-class DocumentCursor;
+class Element;
 
 class Document final : public abstract::Document {
 public:
@@ -37,7 +37,7 @@ private:
 
   StyleRegistry m_style_registry;
 
-  friend class DocumentCursor;
+  friend class Element;
 };
 
 } // namespace odr::internal::ooxml::text

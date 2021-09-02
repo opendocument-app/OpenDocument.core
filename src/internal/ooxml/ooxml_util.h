@@ -17,23 +17,24 @@ class Path;
 
 namespace odr::internal::ooxml {
 
-std::any read_string_attribute(pugi::xml_attribute attribute);
-std::any read_color_attribute(pugi::xml_attribute attribute);
-std::any read_half_point_attribute(pugi::xml_attribute attribute);
-std::any read_emus_attribute(pugi::xml_attribute attribute);
-std::any read_line_attribute(pugi::xml_attribute attribute);
-std::any read_shadow_attribute(pugi::xml_node node);
+std::string read_string_attribute(pugi::xml_attribute attribute);
+std::string read_color_attribute(pugi::xml_attribute attribute);
+std::string read_half_point_attribute(pugi::xml_attribute attribute);
+std::string read_emus_attribute(pugi::xml_attribute attribute);
+std::string read_line_attribute(pugi::xml_attribute attribute);
+std::string read_shadow_attribute(pugi::xml_node node);
 
-std::any read_text_property(pugi::xml_node node);
+std::string read_text_property(pugi::xml_node node);
 
 using NodeTransformation =
-    std::function<std::any(const pugi::xml_node attribute)>;
+    std::function<std::string(const pugi::xml_node attribute)>;
 using AttributeTransformation =
-    std::function<std::any(const pugi::xml_attribute attribute)>;
+    std::function<std::string(const pugi::xml_attribute attribute)>;
 
-std::any read_optional_node(pugi::xml_node node,
-                            const NodeTransformation &node_transformation);
-std::any read_optional_attribute(
+std::optional<std::string>
+read_optional_node(pugi::xml_node node,
+                   const NodeTransformation &node_transformation);
+std::optional<std::string> read_optional_attribute(
     pugi::xml_attribute attribute,
     const AttributeTransformation &attribute_transformation =
         read_string_attribute);

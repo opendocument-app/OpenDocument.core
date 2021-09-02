@@ -6,11 +6,11 @@
 
 namespace odr::internal {
 
-std::any ooxml::read_string_attribute(pugi::xml_attribute attribute) {
+std::string ooxml::read_string_attribute(pugi::xml_attribute attribute) {
   return attribute.value();
 }
 
-std::any ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
+std::string ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
   std::string value = attribute.value();
   if (value == "auto") {
     return {};
@@ -21,15 +21,16 @@ std::any ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
   return value;
 }
 
-std::any ooxml::read_half_point_attribute(const pugi::xml_attribute attribute) {
+std::string
+ooxml::read_half_point_attribute(const pugi::xml_attribute attribute) {
   return std::to_string(attribute.as_float() * 0.5f) + "pt";
 }
 
-std::any ooxml::read_emus_attribute(const pugi::xml_attribute attribute) {
+std::string ooxml::read_emus_attribute(const pugi::xml_attribute attribute) {
   return std::to_string(attribute.as_float() / 914400.0f) + "in";
 }
 
-std::any ooxml::read_line_attribute(const pugi::xml_attribute attribute) {
+std::string ooxml::read_line_attribute(const pugi::xml_attribute attribute) {
   const std::string value = attribute.value();
   if (value == "none") {
     return {};
@@ -38,20 +39,12 @@ std::any ooxml::read_line_attribute(const pugi::xml_attribute attribute) {
   return "solid";
 }
 
-std::any ooxml::read_shadow_attribute(const pugi::xml_node) {
+std::string ooxml::read_shadow_attribute(const pugi::xml_node) {
   // TODO
   return "1pt 1pt";
 }
 
-std::any ooxml::read_text_property(const pugi::xml_node node) {
-  std::string name = node.name();
-  if (name == "w:tab") {
-    return "\t";
-  }
-  return node.first_child().text().as_string();
-}
-
-std::any
+std::optional<std::string>
 ooxml::read_optional_node(const pugi::xml_node node,
                           const NodeTransformation &node_transformation) {
   if (node) {
@@ -60,7 +53,7 @@ ooxml::read_optional_node(const pugi::xml_node node,
   return {};
 }
 
-std::any ooxml::read_optional_attribute(
+std::optional<std::string> ooxml::read_optional_attribute(
     const pugi::xml_attribute attribute,
     const AttributeTransformation &attribute_transformation) {
   if (attribute) {
