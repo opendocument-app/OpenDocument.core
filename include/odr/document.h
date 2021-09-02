@@ -22,6 +22,7 @@ namespace odr {
 enum class DocumentType;
 class File;
 class DocumentFile;
+struct TableDimensions;
 
 enum class ElementType {
   none,
@@ -59,9 +60,10 @@ enum class ElementType {
   group,
 };
 
-struct TableDimensions;
 class DocumentCursor;
 class Style;
+class Element;
+class Property;
 
 class Document final {
 public:
@@ -83,6 +85,50 @@ private:
   friend DocumentFile;
 };
 
+class DocumentCursor final {
+public:
+  bool operator==(const DocumentCursor &rhs) const;
+  bool operator!=(const DocumentCursor &rhs) const;
+
+  [[nodiscard]] std::string document_path() const;
+
+  [[nodiscard]] ElementType element_type() const;
+
+  bool move_to_parent();
+  bool move_to_first_child();
+  bool move_to_previous_sibling();
+  bool move_to_next_sibling();
+
+  [[nodiscard]] Element element() const;
+
+  [[nodiscard]] bool move_to_master_page();
+
+  [[nodiscard]] bool move_to_first_table_column();
+  [[nodiscard]] bool move_to_first_table_row();
+
+  using ChildVisitor =
+      std::function<void(DocumentCursor &cursor, std::uint32_t i)>;
+  using ConditionalChildVisitor =
+      std::function<bool(DocumentCursor &cursor, std::uint32_t i)>;
+
+  void for_each_child(const ChildVisitor &visitor);
+  void for_each_column(const ConditionalChildVisitor &visitor);
+  void for_each_row(const ConditionalChildVisitor &visitor);
+  void for_each_cell(const ConditionalChildVisitor &visitor);
+
+private:
+  std::shared_ptr<internal::abstract::Document> m_document;
+  std::shared_ptr<internal::abstract::DocumentCursor> m_cursor;
+
+  DocumentCursor(std::shared_ptr<internal::abstract::Document> document,
+                 std::shared_ptr<internal::abstract::DocumentCursor> cursor);
+
+  void for_each_(const ChildVisitor &visitor);
+  void for_each_(const ConditionalChildVisitor &visitor);
+
+  friend Document;
+};
+
 class Element final {
 public:
   Element(const internal::abstract::Document *document,
@@ -90,6 +136,8 @@ public:
 
   bool operator==(const Element &rhs) const;
   bool operator!=(const Element &rhs) const;
+
+  explicit operator bool() const;
 
   [[nodiscard]] ElementType type() const;
 
@@ -101,6 +149,8 @@ public:
     Extension(const internal::abstract::Document *document,
               const internal::abstract::Element *element,
               const void *extension);
+
+    explicit operator bool() const;
 
   protected:
     const internal::abstract::Document *m_document;
@@ -221,79 +271,13 @@ private:
   const internal::abstract::Element *m_element;
 };
 
-class DocumentCursor final {
-public:
-  bool operator==(const DocumentCursor &rhs) const;
-  bool operator!=(const DocumentCursor &rhs) const;
-
-  [[nodiscard]] std::string document_path() const;
-
-  [[nodiscard]] ElementType element_type() const;
-
-  bool move_to_parent();
-  bool move_to_first_child();
-  bool move_to_previous_sibling();
-  bool move_to_next_sibling();
-
-  [[nodiscard]] Element element() const;
-
-  [[nodiscard]] bool move_to_master_page();
-
-  [[nodiscard]] bool move_to_first_table_column();
-  [[nodiscard]] bool move_to_first_table_row();
-
-  using ChildVisitor =
-      std::function<void(DocumentCursor &cursor, std::uint32_t i)>;
-  using ConditionalChildVisitor =
-      std::function<bool(DocumentCursor &cursor, std::uint32_t i)>;
-
-  void for_each_child(const ChildVisitor &visitor);
-  void for_each_column(const ConditionalChildVisitor &visitor);
-  void for_each_row(const ConditionalChildVisitor &visitor);
-  void for_each_cell(const ConditionalChildVisitor &visitor);
-
-private:
-  std::shared_ptr<internal::abstract::Document> m_document;
-  std::shared_ptr<internal::abstract::DocumentCursor> m_cursor;
-
-  DocumentCursor(std::shared_ptr<internal::abstract::Document> document,
-                 std::shared_ptr<internal::abstract::DocumentCursor> cursor);
-
-  void for_each_(const ChildVisitor &visitor);
-  void for_each_(const ConditionalChildVisitor &visitor);
-
-  friend Document;
-};
-
-struct TableDimensions {
-  std::uint32_t rows{0};
-  std::uint32_t columns{0};
-
-  TableDimensions();
-  TableDimensions(std::uint32_t rows, std::uint32_t columns);
-};
-
-class Property {
-public:
-  Property(const internal::abstract::Document *document,
-           const internal::abstract::Element *element,
-           const internal::abstract::Style *style,
-           const internal::abstract::Property *property);
-
-  [[nodiscard]] std::optional<std::string> value() const;
-
-private:
-  const internal::abstract::Document *m_document;
-  const internal::abstract::Element *m_element;
-  const internal::abstract::Style *m_style;
-  const internal::abstract::Property *m_property;
-};
-
 class Style {
 public:
   Style(const internal::abstract::Document *document,
         const internal::abstract::Element *element,
         internal::abstract::Style *style);
+
+  explicit operator bool() const;
 
   class DirectionalProperty final {
   public:
@@ -301,6 +285,8 @@ public:
                         const internal::abstract::Element *element,
                         const internal::abstract::Style *style,
                         void *m_property);
+
+    explicit operator bool() const;
 
     [[nodiscard]] Property right() const;
     [[nodiscard]] Property top() const;
@@ -319,6 +305,8 @@ public:
     Extension(const internal::abstract::Document *document,
               const internal::abstract::Element *element,
               const internal::abstract::Style *style, void *extension);
+
+    explicit operator bool() const;
 
   protected:
     const internal::abstract::Document *m_document;
@@ -414,6 +402,32 @@ private:
   const internal::abstract::Document *m_document;
   const internal::abstract::Element *m_element;
   internal::abstract::Style *m_style;
+};
+
+class Property {
+public:
+  Property(const internal::abstract::Document *document,
+           const internal::abstract::Element *element,
+           const internal::abstract::Style *style,
+           const internal::abstract::Property *property);
+
+  explicit operator bool() const;
+
+  [[nodiscard]] std::optional<std::string> value() const;
+
+private:
+  const internal::abstract::Document *m_document;
+  const internal::abstract::Element *m_element;
+  const internal::abstract::Style *m_style;
+  const internal::abstract::Property *m_property;
+};
+
+struct TableDimensions {
+  std::uint32_t rows{0};
+  std::uint32_t columns{0};
+
+  TableDimensions();
+  TableDimensions(std::uint32_t rows, std::uint32_t columns);
 };
 
 } // namespace odr
