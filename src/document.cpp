@@ -144,18 +144,24 @@ Element DocumentCursor::element() const {
 }
 
 bool DocumentCursor::move_to_master_page() {
-  return m_cursor->slide()->move_to_master_page(m_cursor.get(),
-                                                m_cursor->element());
+  if (auto slide = m_cursor->slide()) {
+    return slide->move_to_master_page(m_cursor.get(), m_cursor->element());
+  }
+  return false;
 }
 
 bool DocumentCursor::move_to_first_table_column() {
-  return m_cursor->table()->move_to_first_column(m_cursor.get(),
-                                                 m_cursor->element());
+  if (auto table = m_cursor->table()) {
+    return table->move_to_first_column(m_cursor.get(), m_cursor->element());
+  }
+  return false;
 }
 
 bool DocumentCursor::move_to_first_table_row() {
-  return m_cursor->table()->move_to_first_row(m_cursor.get(),
-                                              m_cursor->element());
+  if (auto table = m_cursor->table()) {
+    return table->move_to_first_row(m_cursor.get(), m_cursor->element());
+  }
+  return false;
 }
 
 void DocumentCursor::for_each_child(const ChildVisitor &visitor) {

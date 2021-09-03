@@ -111,13 +111,13 @@ std::string html::body_attributes(const HtmlConfig &config) noexcept {
 
   result += "class=\"";
   switch (config.table_gridlines) {
-  case HtmlTableGridlines::SOFT:
+  case HtmlTableGridlines::soft:
     result += "odr-gridlines-soft";
     break;
-  case HtmlTableGridlines::HARD:
+  case HtmlTableGridlines::hard:
     result += "odr-gridlines-hard";
     break;
-  case HtmlTableGridlines::NONE:
+  case HtmlTableGridlines::none:
   default:
     result += "odr-gridlines-none";
     break;

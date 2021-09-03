@@ -7,9 +7,9 @@ namespace odr {
 class Document;
 
 enum class HtmlTableGridlines {
-  NONE,
-  SOFT,
-  HARD,
+  none,
+  soft,
+  hard,
 };
 
 struct HtmlConfig {
@@ -31,7 +31,7 @@ struct HtmlConfig {
   std::uint32_t table_limit_columns{500};
   bool table_limit_by_content{true};
   // spreadsheet gridlines
-  HtmlTableGridlines table_gridlines{HtmlTableGridlines::SOFT};
+  HtmlTableGridlines table_gridlines{HtmlTableGridlines::soft};
 };
 } // namespace odr
 

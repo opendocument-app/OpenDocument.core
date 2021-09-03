@@ -23,12 +23,12 @@ public:
     [[nodiscard]] std::optional<std::string>
     value(const abstract::Document *document, const abstract::Element *element,
           const abstract::Style *style) const final {
-      if (auto attribute = dynamic_cast<const Style *>(style)
+      if (auto attribute = static_cast<const Style *>(style)
                                ->m_node.child(m_property_class_name)
                                .attribute(m_attribute_name)) {
         return attribute.value();
       }
-      if (auto parent = dynamic_cast<const Style *>(style)->m_parent) {
+      if (auto parent = static_cast<const Style *>(style)->m_parent) {
         return value(document, element, parent);
       }
       return {};
@@ -508,7 +508,7 @@ abstract::Style *StyleRegistry::generate_style_(const std::string &name,
     // TODO else throw or log?
   }
 
-  style = std::make_unique<Style>(dynamic_cast<Style *>(parent), node);
+  style = std::make_unique<Style>(static_cast<Style *>(parent), node);
   return style.get();
 }
 

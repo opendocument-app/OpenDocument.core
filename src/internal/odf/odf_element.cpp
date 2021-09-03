@@ -14,11 +14,11 @@ namespace odr::internal::odf {
 class Element : public abstract::Element {
 protected:
   static const Document *document_(const abstract::Document *document) {
-    return dynamic_cast<const Document *>(document);
+    return static_cast<const Document *>(document);
   }
 
   static const StyleRegistry *style_(const abstract::Document *document) {
-    return &dynamic_cast<const Document *>(document)->m_style_registry;
+    return &static_cast<const Document *>(document)->m_style_registry;
   }
 };
 
@@ -74,7 +74,7 @@ public:
 
   [[nodiscard]] bool equals(const abstract::Document *,
                             const abstract::Element &rhs) const override {
-    return m_node == *dynamic_cast<const DefaultElement &>(rhs).m_node;
+    return m_node == *static_cast<const DefaultElement &>(rhs).m_node;
   }
 
   [[nodiscard]] ElementType type(const abstract::Document *) const override {
@@ -453,6 +453,11 @@ public:
   TableElement(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
+  [[nodiscard]] const abstract::Element::Table *
+  table(const abstract::Document *) const final {
+    return this;
+  }
+
   abstract::Element *first_child(const abstract::Document *,
                                  const Allocator &) final {
     return nullptr;
@@ -605,6 +610,11 @@ public:
       return name;
     }
     return m_column.default_cell_style_name();
+  }
+
+  [[nodiscard]] const TableCell *
+  table_cell(const abstract::Document *) const final {
+    return this;
   }
 
   [[nodiscard]] TableDimensions span(const abstract::Document *,

@@ -6,6 +6,7 @@
 
 namespace odr::internal::ooxml::text {
 class Document;
+class StyleRegistry;
 class Style;
 
 class Element : public abstract::Element {
