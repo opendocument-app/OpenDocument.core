@@ -2,6 +2,7 @@
 #include <internal/ooxml/text/ooxml_text_document.h>
 #include <internal/ooxml/text/ooxml_text_element.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
+#include <odr/file.h>
 
 namespace odr::internal::ooxml::text {
 
@@ -367,6 +368,75 @@ public:
   }
 };
 
+class Frame final : public DefaultElement<ElementType::frame>,
+                    public abstract::Element::Frame {
+public:
+  Frame(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  [[nodiscard]] const Frame *frame(const abstract::Document *) const final {
+    return this;
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  anchor_type(const abstract::Document *,
+              const abstract::Element *) const final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  x(const abstract::Document *, const abstract::Element *) const final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  y(const abstract::Document *, const abstract::Element *) const final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  width(const abstract::Document *, const abstract::Element *) const final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  height(const abstract::Document *, const abstract::Element *) const final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  z_index(const abstract::Document *, const abstract::Element *) const final {
+    return {}; // TODO
+  }
+};
+
+class ImageElement final : public DefaultElement<ElementType::image>,
+                           public abstract::Element::Image {
+public:
+  ImageElement(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  [[nodiscard]] const abstract::Element::Image *
+  image(const abstract::Document *) const final {
+    return this;
+  }
+
+  [[nodiscard]] bool internal(const abstract::Document *,
+                              const abstract::Element *) const final {
+    return false;
+  }
+
+  [[nodiscard]] std::optional<odr::File>
+  file(const abstract::Document *, const abstract::Element *) const final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::string href(const abstract::Document *,
+                                 const abstract::Element *) const final {
+    return ""; // TODO
+  }
+};
+
 } // namespace
 
 } // namespace odr::internal::ooxml::text
@@ -395,7 +465,12 @@ abstract::Element *text::construct_default_element(const Document *document,
       {"w:bookmarkStart", construct_default<Bookmark>},
       {"w:hyperlink", construct_default<Link>},
       {"w:tbl", construct_default<TableElement>},
+      {"w:gridCol", construct_default<TableColumn>},
+      {"w:tr", construct_default<TableRow>},
+      {"w:tc", construct_default<TableCell>},
       {"w:sdtContent", construct_default<Group>},
+      {"w:drawing", construct_default<Frame>},
+      {"a:graphicData", construct_default<ImageElement>},
   };
 
   if (auto constructor_it = constructor_table.find(node.name());
