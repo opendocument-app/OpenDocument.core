@@ -57,9 +57,9 @@ public:
                 m_attribute.value(document, element, style, style_context)) {
           return value;
         }
-        if (auto value = m_default_attribute.value(document, element, style,
-                                                   style_context)) {
-          return value;
+        if (style_context != StyleContext::single_style) {
+          return m_default_attribute.value(document, element, style,
+                                           style_context);
         }
         return {};
       }

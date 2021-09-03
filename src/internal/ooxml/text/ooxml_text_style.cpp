@@ -26,19 +26,25 @@ public:
           const StyleContext style_context) const final {
       auto style = static_cast<const Style *>(abstract_style);
       if (auto element = static_cast<const Element *>(abstract_element)) {
-        auto result = m_function(style, element->m_node);
-        if (result) {
+        if (auto result = m_function(style, element->m_node)) {
           return result;
+        }
+        if (style_context == StyleContext::single_style) {
+          return {};
         }
       }
       if (style->m_node) {
-        auto result = m_function(style, style->m_node);
-        if (result) {
+        if (auto result = m_function(style, style->m_node)) {
           return result;
         }
+        if (style_context == StyleContext::single_style) {
+          return {};
+        }
       }
-      if (auto parent = style->m_parent) {
-        return value(document, abstract_element, parent, style_context);
+      if (style_context != StyleContext::single_style) {
+        if (auto parent = style->m_parent) {
+          return value(document, abstract_element, parent, style_context);
+        }
       }
       return {};
     }
