@@ -22,7 +22,8 @@ public:
     [[nodiscard]] std::optional<std::string>
     value(const abstract::Document *document,
           const abstract::Element *abstract_element,
-          const abstract::Style *abstract_style) const final {
+          const abstract::Style *abstract_style,
+          const StyleContext style_context) const final {
       auto style = static_cast<const Style *>(abstract_style);
       if (auto element = static_cast<const Element *>(abstract_element)) {
         auto result = m_function(style, element->m_node);
@@ -37,7 +38,7 @@ public:
         }
       }
       if (auto parent = style->m_parent) {
-        return value(document, abstract_element, parent);
+        return value(document, abstract_element, parent, style_context);
       }
       return {};
     }

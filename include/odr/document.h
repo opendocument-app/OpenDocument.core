@@ -60,6 +60,12 @@ enum class ElementType {
   group,
 };
 
+enum class StyleContext {
+  single_style,
+  style_tree,
+  // element_style_tree, TODO
+};
+
 class DocumentCursor;
 class Style;
 class Element;
@@ -142,7 +148,7 @@ public:
   [[nodiscard]] ElementType type() const;
 
   [[nodiscard]] std::optional<std::string> style_name() const;
-  [[nodiscard]] Style style() const;
+  [[nodiscard]] Style style(StyleContext style_context) const;
 
   class Extension {
   public:
@@ -275,7 +281,7 @@ class Style {
 public:
   Style(const internal::abstract::Document *document,
         const internal::abstract::Element *element,
-        internal::abstract::Style *style);
+        internal::abstract::Style *style, StyleContext style_context);
 
   explicit operator bool() const;
 
@@ -284,7 +290,7 @@ public:
     DirectionalProperty(const internal::abstract::Document *document,
                         const internal::abstract::Element *element,
                         const internal::abstract::Style *style,
-                        void *m_property);
+                        void *m_property, StyleContext style_context);
 
     explicit operator bool() const;
 
@@ -298,13 +304,15 @@ public:
     const internal::abstract::Element *m_element;
     const internal::abstract::Style *m_style;
     void *m_property;
+    StyleContext m_style_context;
   };
 
   class Extension {
   public:
     Extension(const internal::abstract::Document *document,
               const internal::abstract::Element *element,
-              const internal::abstract::Style *style, void *extension);
+              const internal::abstract::Style *style, void *extension,
+              StyleContext style_context);
 
     explicit operator bool() const;
 
@@ -313,6 +321,7 @@ public:
     const internal::abstract::Element *m_element;
     const internal::abstract::Style *m_style;
     void *m_extension;
+    StyleContext m_style_context;
   };
 
   class Text final : public Extension {
@@ -402,6 +411,7 @@ private:
   const internal::abstract::Document *m_document;
   const internal::abstract::Element *m_element;
   internal::abstract::Style *m_style;
+  StyleContext m_style_context;
 };
 
 class Property {
@@ -409,7 +419,8 @@ public:
   Property(const internal::abstract::Document *document,
            const internal::abstract::Element *element,
            const internal::abstract::Style *style,
-           const internal::abstract::Property *property);
+           const internal::abstract::Property *property,
+           StyleContext style_context);
 
   explicit operator bool() const;
 
@@ -420,6 +431,7 @@ private:
   const internal::abstract::Element *m_element;
   const internal::abstract::Style *m_style;
   const internal::abstract::Property *m_property;
+  StyleContext m_style_context;
 };
 
 struct TableDimensions {

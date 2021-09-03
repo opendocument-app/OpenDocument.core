@@ -275,13 +275,13 @@ void translate_text(const DocumentCursor &cursor, std::ostream &out) {
 
 void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
                          const HtmlConfig &config) {
+  auto style = cursor.element().style(StyleContext::style_tree);
+
   out << "<p";
-  out << optional_style_attribute(
-      translate_paragraph_style(cursor.element().style().paragraph()));
+  out << optional_style_attribute(translate_paragraph_style(style.paragraph()));
   out << ">";
   out << "<span";
-  out << optional_style_attribute(
-      translate_text_style(cursor.element().style().text()));
+  out << optional_style_attribute(translate_text_style(style.text()));
   out << ">";
   translate_children(cursor, out, config);
   out << "</span>";
@@ -290,9 +290,10 @@ void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
 
 void translate_span(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
+  auto style = cursor.element().style(StyleContext::style_tree);
+
   out << "<span";
-  out << optional_style_attribute(
-      translate_text_style(cursor.element().style().text()));
+  out << optional_style_attribute(translate_text_style(style.text()));
   out << ">";
   translate_children(cursor, out, config);
   out << "</span>";
@@ -300,9 +301,10 @@ void translate_span(DocumentCursor &cursor, std::ostream &out,
 
 void translate_link(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
+  auto style = cursor.element().style(StyleContext::style_tree);
+
   out << "<a";
-  out << optional_style_attribute(
-      translate_text_style(cursor.element().style().text()));
+  out << optional_style_attribute(translate_text_style(style.text()));
   out << " href=\"";
   out << cursor.element().link().href();
   out << "\">";
@@ -332,29 +334,32 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
   // TODO table column width does not work
   // TODO table row height does not work
+  auto style = cursor.element().style(StyleContext::style_tree);
 
   out << "<table";
-  out << optional_style_attribute(
-      translate_table_style(cursor.element().style().table()));
+  out << optional_style_attribute(translate_table_style(style.table()));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
   cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
     out << "<col";
     out << optional_style_attribute(
-        translate_table_column_style(cursor.element().style().table_column()));
+        translate_table_column_style(style.table_column()));
     out << ">";
 
     return true;
   });
 
   cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
+    auto style = cursor.element().style(StyleContext::style_tree);
+
     out << "<tr";
     out << optional_style_attribute(
-        translate_table_row_style(cursor.element().style().table_row()));
+        translate_table_row_style(style.table_row()));
     out << ">";
 
     cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
+      auto style = cursor.element().style(StyleContext::style_tree);
       auto cell_span = cursor.element().table_cell().span();
 
       out << "<td";
@@ -364,8 +369,7 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
       if (cell_span.columns > 1) {
         out << " colspan=\"" << cell_span.columns << "\"";
       }
-      out << optional_style_attribute(
-          translate_table_cell_style(cursor.element().style()));
+      out << optional_style_attribute(translate_table_cell_style(style));
       out << ">";
       translate_children(cursor, out, config);
       out << "</td>";
@@ -423,6 +427,8 @@ void translate_image(DocumentCursor &cursor, std::ostream &out,
 
 void translate_frame(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
+  auto style = cursor.element().style(StyleContext::style_tree);
+
   // TODO choosing <span> by default because it is valid inside <p>;
   // alternatives?
   const bool span = cursor.element().frame().anchor_type().has_value();
@@ -434,9 +440,9 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
 
   out << optional_style_attribute(
       translate_frame_properties(cursor.element().frame()) +
-      translate_text_style(cursor.element().style().text()) +
-      translate_paragraph_style(cursor.element().style().paragraph()) +
-      translate_drawing_style(cursor.element().style().graphic()));
+      translate_text_style(style.text()) +
+      translate_paragraph_style(style.paragraph()) +
+      translate_drawing_style(style.graphic()));
   out << ">";
   translate_children(cursor, out, config);
 
@@ -449,10 +455,12 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
 
 void translate_rect(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
+  auto style = cursor.element().style(StyleContext::style_tree);
+
   out << "<div";
   out << optional_style_attribute(
       translate_rect_properties(cursor.element().rect()) +
-      translate_drawing_style(cursor.element().style().graphic()));
+      translate_drawing_style(style.graphic()));
   out << ">";
   translate_children(cursor, out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
@@ -461,10 +469,11 @@ void translate_rect(DocumentCursor &cursor, std::ostream &out,
 
 void translate_line(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig & /*config*/) {
+  auto style = cursor.element().style(StyleContext::style_tree);
+
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
-  out << optional_style_attribute(
-      "z-index:-1;position:absolute;top:0;left:0;" +
-      translate_drawing_style(cursor.element().style().graphic()));
+  out << optional_style_attribute("z-index:-1;position:absolute;top:0;left:0;" +
+                                  translate_drawing_style(style.graphic()));
   out << ">";
 
   out << "<line";
@@ -479,10 +488,12 @@ void translate_line(DocumentCursor &cursor, std::ostream &out,
 
 void translate_circle(DocumentCursor &cursor, std::ostream &out,
                       const HtmlConfig &config) {
+  auto style = cursor.element().style(StyleContext::style_tree);
+
   out << "<div";
   out << optional_style_attribute(
       translate_circle_properties(cursor.element().circle()) +
-      translate_drawing_style(cursor.element().style().graphic()));
+      translate_drawing_style(style.graphic()));
   out << ">";
   translate_children(cursor, out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
@@ -491,10 +502,12 @@ void translate_circle(DocumentCursor &cursor, std::ostream &out,
 
 void translate_custom_shape(DocumentCursor &cursor, std::ostream &out,
                             const HtmlConfig &config) {
+  auto style = cursor.element().style(StyleContext::style_tree);
+
   out << "<div";
   out << optional_style_attribute(
       translate_custom_shape_properties(cursor.element().custom_shape()) +
-      translate_drawing_style(cursor.element().style().graphic()));
+      translate_drawing_style(style.graphic()));
   out << ">";
   translate_children(cursor, out, config);
   // TODO draw shape in svg
@@ -563,10 +576,10 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
   // TODO table column width does not work
   // TODO table row height does not work
+  auto style = cursor.element().style(StyleContext::style_tree);
 
   out << "<table";
-  out << optional_style_attribute(
-      translate_table_style(cursor.element().style().table()));
+  out << optional_style_attribute(translate_table_style(style.table()));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
@@ -595,9 +608,11 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
   std::uint32_t row_index = 0;
 
   cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
+    auto style = cursor.element().style(StyleContext::style_tree);
+
     out << "<col";
     out << optional_style_attribute(
-        translate_table_column_style(cursor.element().style().table_column()));
+        translate_table_column_style(style.table_column()));
     out << ">";
 
     ++column_index;
@@ -605,14 +620,18 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
   });
 
   cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
+    auto style = cursor.element().style(StyleContext::style_tree);
+
     out << "<tr";
     out << optional_style_attribute(
-        translate_table_row_style(cursor.element().style().table_row()));
+        translate_table_row_style(style.table_row()));
     out << ">";
 
     column_index = 0;
 
     cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
+      auto style = cursor.element().style(StyleContext::style_tree);
+
       // TODO check if cell hidden
 
       auto cell_span = cursor.element().table_cell().span();
@@ -624,8 +643,7 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
       if (cell_span.columns > 1) {
         out << " colspan=\"" << cell_span.columns << "\"";
       }
-      out << optional_style_attribute(
-          translate_table_cell_style(cursor.element().style()));
+      out << optional_style_attribute(translate_table_cell_style(style));
       out << ">";
       translate_children(cursor, out, config);
       out << "</td>";
@@ -645,14 +663,16 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
 
 void translate_text_document(DocumentCursor &cursor, std::ostream &out,
                              const HtmlConfig &config) {
+  auto style = cursor.element().style(StyleContext::style_tree);
+
   if (config.text_document_margin) {
     out << "<div";
     out << optional_style_attribute(
-        translate_outer_page_style(cursor.element().style().page_layout()));
+        translate_outer_page_style(style.page_layout()));
     out << ">";
     out << "<div";
     out << optional_style_attribute(
-        translate_inner_page_style(cursor.element().style().page_layout()));
+        translate_inner_page_style(style.page_layout()));
     out << ">";
     translate_children(cursor, out, config);
     out << "</div>";
@@ -676,14 +696,15 @@ void translate_presentation(DocumentCursor &cursor, std::ostream &out,
     if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
       return;
     }
+    auto style = cursor.element().style(StyleContext::style_tree);
 
     out << "<div";
     out << optional_style_attribute(
-        translate_outer_page_style(cursor.element().style().page_layout()));
+        translate_outer_page_style(style.page_layout()));
     out << ">";
     out << "<div";
     out << optional_style_attribute(
-        translate_inner_page_style(cursor.element().style().page_layout()));
+        translate_inner_page_style(style.page_layout()));
     out << ">";
     translate_master_page(cursor, out, config);
     translate_children(cursor, out, config);
@@ -723,14 +744,15 @@ void translate_drawing(DocumentCursor &cursor, std::ostream &out,
     if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
       return;
     }
+    auto style = cursor.element().style(StyleContext::style_tree);
 
     out << "<div";
     out << optional_style_attribute(
-        translate_outer_page_style(cursor.element().style().page_layout()));
+        translate_outer_page_style(style.page_layout()));
     out << ">";
     out << "<div";
     out << optional_style_attribute(
-        translate_inner_page_style(cursor.element().style().page_layout()));
+        translate_inner_page_style(style.page_layout()));
     out << ">";
     translate_master_page(cursor, out, config);
     translate_children(cursor, out, config);

@@ -10,7 +10,7 @@
 namespace odr {
 enum class DocumentType;
 enum class ElementType;
-enum class ElementProperty;
+enum class StyleContext;
 class TableDimensions;
 class File;
 } // namespace odr
@@ -25,6 +25,7 @@ class ReadableFilesystem;
 class DocumentCursor;
 class Element;
 class Style;
+class Property;
 
 class Document {
 public:
@@ -55,13 +56,44 @@ public:
   root_element() const = 0;
 };
 
-class Property {
+class DocumentCursor {
 public:
-  virtual ~Property() = default;
+  virtual ~DocumentCursor() = default;
 
-  [[nodiscard]] virtual std::optional<std::string>
-  value(const Document *document, const Element *element,
-        const Style *style) const = 0;
+  [[nodiscard]] virtual bool equals(const DocumentCursor &other) const = 0;
+
+  [[nodiscard]] virtual std::unique_ptr<DocumentCursor> copy() const = 0;
+
+  [[nodiscard]] virtual std::string document_path() const = 0;
+
+  [[nodiscard]] virtual Element *element() = 0;
+  [[nodiscard]] virtual const Element *element() const = 0;
+
+  virtual bool move_to_parent() = 0;
+  virtual bool move_to_first_child() = 0;
+  virtual bool move_to_previous_sibling() = 0;
+  virtual bool move_to_next_sibling() = 0;
+
+  class Slide {
+  public:
+    virtual ~Slide() = default;
+    [[nodiscard]] virtual bool
+    move_to_master_page(DocumentCursor *cursor,
+                        const Element *element) const = 0;
+  };
+
+  class Table {
+  public:
+    virtual ~Table() = default;
+    [[nodiscard]] virtual bool
+    move_to_first_column(DocumentCursor *cursor,
+                         const Element *element) const = 0;
+    [[nodiscard]] virtual bool
+    move_to_first_row(DocumentCursor *cursor, const Element *element) const = 0;
+  };
+
+  [[nodiscard]] virtual const Slide *slide() const = 0;
+  [[nodiscard]] virtual const Table *table() const = 0;
 };
 
 class Element {
@@ -235,46 +267,6 @@ public:
   [[nodiscard]] virtual const Image *image(const Document *document) const = 0;
 };
 
-class DocumentCursor {
-public:
-  virtual ~DocumentCursor() = default;
-
-  [[nodiscard]] virtual bool equals(const DocumentCursor &other) const = 0;
-
-  [[nodiscard]] virtual std::unique_ptr<DocumentCursor> copy() const = 0;
-
-  [[nodiscard]] virtual std::string document_path() const = 0;
-
-  [[nodiscard]] virtual Element *element() = 0;
-  [[nodiscard]] virtual const Element *element() const = 0;
-
-  virtual bool move_to_parent() = 0;
-  virtual bool move_to_first_child() = 0;
-  virtual bool move_to_previous_sibling() = 0;
-  virtual bool move_to_next_sibling() = 0;
-
-  class Slide {
-  public:
-    virtual ~Slide() = default;
-    [[nodiscard]] virtual bool
-    move_to_master_page(DocumentCursor *cursor,
-                        const Element *element) const = 0;
-  };
-
-  class Table {
-  public:
-    virtual ~Table() = default;
-    [[nodiscard]] virtual bool
-    move_to_first_column(DocumentCursor *cursor,
-                         const Element *element) const = 0;
-    [[nodiscard]] virtual bool
-    move_to_first_row(DocumentCursor *cursor, const Element *element) const = 0;
-  };
-
-  [[nodiscard]] virtual const Slide *slide() const = 0;
-  [[nodiscard]] virtual const Table *table() const = 0;
-};
-
 class Style {
 public:
   virtual ~Style() = default;
@@ -401,6 +393,15 @@ public:
   [[nodiscard]] virtual TableCell *table_cell(const Document *document) = 0;
   [[nodiscard]] virtual Graphic *graphic(const Document *document) = 0;
   [[nodiscard]] virtual PageLayout *page_layout(const Document *document) = 0;
+};
+
+class Property {
+public:
+  virtual ~Property() = default;
+
+  [[nodiscard]] virtual std::optional<std::string>
+  value(const Document *document, const Element *element, const Style *style,
+        StyleContext style_context) const = 0;
 };
 
 } // namespace odr::internal::abstract

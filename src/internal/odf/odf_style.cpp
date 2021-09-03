@@ -22,14 +22,15 @@ public:
 
     [[nodiscard]] std::optional<std::string>
     value(const abstract::Document *document, const abstract::Element *element,
-          const abstract::Style *style) const final {
+          const abstract::Style *style,
+          const StyleContext style_context) const final {
       if (auto attribute = static_cast<const Style *>(style)
                                ->m_node.child(m_property_class_name)
                                .attribute(m_attribute_name)) {
         return attribute.value();
       }
       if (auto parent = static_cast<const Style *>(style)->m_parent) {
-        return value(document, element, parent);
+        return value(document, element, parent, style_context);
       }
       return {};
     }
@@ -50,12 +51,14 @@ public:
 
       [[nodiscard]] std::optional<std::string>
       value(const abstract::Document *document,
-            const abstract::Element *element,
-            const abstract::Style *style) const final {
-        if (auto value = m_attribute.value(document, element, style)) {
+            const abstract::Element *element, const abstract::Style *style,
+            const StyleContext style_context) const final {
+        if (auto value =
+                m_attribute.value(document, element, style, style_context)) {
           return value;
         }
-        if (auto value = m_default_attribute.value(document, element, style)) {
+        if (auto value = m_default_attribute.value(document, element, style,
+                                                   style_context)) {
           return value;
         }
         return {};
