@@ -271,6 +271,9 @@ class Style {
 public:
   virtual ~Style() = default;
 
+  virtual std::optional<std::string> name() const = 0;
+  virtual const Style *parent() const = 0;
+
   class DirectionalProperty {
   public:
     virtual ~DirectionalProperty() = default;

@@ -10,8 +10,12 @@ namespace {
 
 class Style final : public abstract::Style {
 public:
-  Style(const Style *parent, pugi::xml_node node)
-      : m_parent{parent}, m_node{node} {}
+  Style(std::string name, const Style *parent, pugi::xml_node node)
+      : m_name{name}, m_parent{parent}, m_node{node} {}
+
+  std::optional<std::string> name() const final { return m_name; }
+
+  const Style *parent() const final { return m_parent; }
 
   class StringAttributeProperty : public abstract::Property {
   public:
@@ -22,14 +26,14 @@ public:
 
     [[nodiscard]] std::optional<std::string>
     value(const abstract::Document *document, const abstract::Element *element,
-          const abstract::Style *style,
+          const abstract::Style *abstract_style,
           const StyleContext style_context) const final {
-      if (auto attribute = static_cast<const Style *>(style)
-                               ->m_node.child(m_property_class_name)
+      auto style = static_cast<const Style *>(abstract_style);
+      if (auto attribute = style->m_node.child(m_property_class_name)
                                .attribute(m_attribute_name)) {
         return attribute.value();
       }
-      if (auto parent = static_cast<const Style *>(style)->m_parent) {
+      if (auto parent = style->m_parent) {
         return value(document, element, parent, style_context);
       }
       return {};
@@ -381,8 +385,8 @@ public:
   }
 
 private:
+  std::string m_name;
   const Style *m_parent;
-
   pugi::xml_node m_node;
 };
 
@@ -479,15 +483,17 @@ void StyleRegistry::generate_styles_() {
 abstract::Style *
 StyleRegistry::generate_default_style_(const std::string &name,
                                        const pugi::xml_node node) {
+  // TODO unique name
   auto &&style = m_default_styles[name];
   if (!style) {
-    style = std::make_unique<Style>(nullptr, node);
+    style = std::make_unique<Style>(name, nullptr, node);
   }
   return style.get();
 }
 
 abstract::Style *StyleRegistry::generate_style_(const std::string &name,
                                                 const pugi::xml_node node) {
+  // TODO unique name
   auto &&style = m_styles[name];
   if (style) {
     return style.get();
@@ -511,16 +517,17 @@ abstract::Style *StyleRegistry::generate_style_(const std::string &name,
     // TODO else throw or log?
   }
 
-  style = std::make_unique<Style>(static_cast<Style *>(parent), node);
+  style = std::make_unique<Style>(name, static_cast<Style *>(parent), node);
   return style.get();
 }
 
 abstract::Style *
 StyleRegistry::generate_page_layout_(const std::string &name,
                                      const pugi::xml_node node) {
+  // TODO unique name
   auto &&style = m_page_layouts[name];
   if (!style) {
-    style = std::make_unique<Style>(nullptr, node);
+    style = std::make_unique<Style>(name, nullptr, node);
   }
   return style.get();
 }

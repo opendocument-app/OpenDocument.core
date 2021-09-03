@@ -7,10 +7,16 @@
 
 namespace odr::internal::ooxml::text {
 
-class Style : public abstract::Style {
+class Style final : public abstract::Style {
 public:
   Style(const Style *parent, pugi::xml_node node)
       : m_parent{parent}, m_node{node} {}
+
+  std::optional<std::string> name() const final {
+    return {}; // TODO
+  }
+
+  const Style *parent() const final { return m_parent; }
 
   class PropertyFunction : public abstract::Property {
   public:
