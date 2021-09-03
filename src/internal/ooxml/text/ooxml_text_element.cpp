@@ -1,3 +1,4 @@
+#include <internal/common/table_cursor.h>
 #include <internal/ooxml/text/ooxml_text_document.h>
 #include <internal/ooxml/text/ooxml_text_element.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
@@ -18,6 +19,11 @@ namespace {
 
 template <ElementType> class DefaultElement;
 class Root;
+class Text;
+class TableElement;
+class TableColumn;
+class TableRow;
+class TableCell;
 
 template <typename Derived>
 abstract::Element *construct_default(const Document *document,
@@ -240,6 +246,127 @@ private:
   }
 };
 
+class TableElement : public DefaultElement<ElementType::table>,
+                     public abstract::Element::Table {
+public:
+  TableElement(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  [[nodiscard]] const abstract::Element::Table *
+  table(const abstract::Document *) const final {
+    return this;
+  }
+
+  abstract::Element *first_child(const abstract::Document *,
+                                 const Allocator &) final {
+    return nullptr;
+  }
+
+  [[nodiscard]] TableDimensions
+  dimensions(const abstract::Document *,
+             const abstract::Element *) const final {
+    return {}; // TODO
+  }
+
+  abstract::Element *first_column(const abstract::Document *document,
+                                  const abstract::Element *,
+                                  const Allocator &allocator) const final {
+    return construct_default_optional<TableColumn>(
+        document_(document), m_node.child("w:tblGrid").child("w:gridCol"),
+        allocator);
+  }
+
+  abstract::Element *first_row(const abstract::Document *document,
+                               const abstract::Element *,
+                               const Allocator &allocator) const final {
+    return construct_default_optional<TableRow>(
+        document_(document), m_node.child("w:tr"), allocator);
+  }
+};
+
+class TableColumn final : public DefaultElement<ElementType::table_column> {
+public:
+  TableColumn(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  abstract::Element *previous_sibling(const abstract::Document *,
+                                      const Allocator &) final {
+    if (auto previous_sibling = m_node.previous_sibling("w:gridCol")) {
+      m_node = previous_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *,
+                                  const Allocator &) final {
+    if (auto next_sibling = m_node.next_sibling("w:gridCol")) {
+      m_node = next_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+};
+
+class TableRow final : public DefaultElement<ElementType::table_row> {
+public:
+  TableRow(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  abstract::Element *previous_sibling(const abstract::Document *,
+                                      const Allocator &) final {
+    if (auto previous_sibling = m_node.previous_sibling("w:tr")) {
+      m_node = previous_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *,
+                                  const Allocator &) final {
+    if (auto next_sibling = m_node.next_sibling("w:tr")) {
+      m_node = next_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+};
+
+class TableCell final : public DefaultElement<ElementType::table_cell>,
+                        public abstract::Element::TableCell {
+public:
+  TableCell(const Document *document, pugi::xml_node node)
+      : DefaultElement(document, node) {}
+
+  abstract::Element *previous_sibling(const abstract::Document *,
+                                      const Allocator &) final {
+    if (auto previous_sibling = m_node.previous_sibling("w:tc")) {
+      m_node = previous_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *,
+                                  const Allocator &) final {
+    if (auto next_sibling = m_node.next_sibling("w:tc")) {
+      m_node = next_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  [[nodiscard]] const TableCell *
+  table_cell(const abstract::Document *) const final {
+    return this;
+  }
+
+  [[nodiscard]] TableDimensions span(const abstract::Document *,
+                                     const abstract::Element *) const final {
+    return {}; // TODO
+  }
+};
+
 } // namespace
 
 } // namespace odr::internal::ooxml::text
@@ -257,6 +384,7 @@ abstract::Element *text::construct_default_element(const Document *document,
   using Span = DefaultElement<ElementType::span>;
   using Link = DefaultElement<ElementType::link>;
   using Bookmark = DefaultElement<ElementType::bookmark>;
+  using Group = DefaultElement<ElementType::group>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
       {"w:body", construct_default<Root>},
@@ -266,6 +394,8 @@ abstract::Element *text::construct_default_element(const Document *document,
       {"w:r", construct_default<Span>},
       {"w:bookmarkStart", construct_default<Bookmark>},
       {"w:hyperlink", construct_default<Link>},
+      {"w:tbl", construct_default<TableElement>},
+      {"w:sdtContent", construct_default<Group>},
   };
 
   if (auto constructor_it = constructor_table.find(node.name());
