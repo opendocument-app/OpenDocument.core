@@ -1,12 +1,11 @@
 #ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 
-#include <any>
 #include <functional>
 #include <memory>
 #include <odr/document.h>
+#include <optional>
 #include <string>
-#include <unordered_map>
 
 namespace odr {
 class File;
