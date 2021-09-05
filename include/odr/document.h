@@ -12,9 +12,36 @@
 namespace odr::internal::abstract {
 class Document;
 class DocumentCursor;
+
 class Element;
+class TextElement;
+class LinkElement;
+class BookmarkElement;
+class SlideElement;
+class PageElement;
+class TableElement;
+class TableColumnElement;
+class TableRowElement;
+class TableCellElement;
+class FrameElement;
+class RectElement;
+class LineElement;
+class CircleElement;
+class CustomShapeElement;
+class ImageElement;
+
 class Style;
+class TextStyle;
+class ParagraphStyle;
+class TableStyle;
+class TableColumnStyle;
+class TableRowStyle;
+class TableCellStyle;
+class GraphicStyle;
+class PageLayout;
+
 class Property;
+class DirectionalProperty;
 } // namespace odr::internal::abstract
 
 namespace odr {
@@ -67,9 +94,10 @@ enum class StyleContext {
 };
 
 class DocumentCursor;
-class Style;
 class Element;
+class PageLayout;
 class Property;
+class DirectionalProperty;
 
 class Document final {
 public:
@@ -138,7 +166,7 @@ private:
 class Element final {
 public:
   Element(const internal::abstract::Document *document,
-          const internal::abstract::Element *element);
+          internal::abstract::Element *element);
 
   bool operator==(const Element &rhs) const;
   bool operator!=(const Element &rhs) const;
@@ -147,59 +175,81 @@ public:
 
   [[nodiscard]] ElementType type() const;
 
-  [[nodiscard]] std::optional<std::string> style_name() const;
-  [[nodiscard]] Style style(StyleContext style_context) const;
-
-  class Extension {
+  template <typename T> class Extension {
   public:
     Extension(const internal::abstract::Document *document,
-              const internal::abstract::Element *element,
-              const void *extension);
+              internal::abstract::Element *element)
+        : m_document{document}, m_element{dynamic_cast<T *>(element)} {}
 
-    explicit operator bool() const;
+    explicit operator bool() const { return m_element; }
 
   protected:
     const internal::abstract::Document *m_document;
-    const internal::abstract::Element *m_element;
-    const void *m_extension;
+    T *m_element;
   };
 
-  class Text final : public Extension {
+  class Slide final : public Extension<internal::abstract::SlideElement> {
+  public:
+    using Extension::Extension;
+
+    [[nodiscard]] PageLayout page_layout() const;
+  };
+
+  class Page final : public Extension<internal::abstract::PageElement> {
+  public:
+    using Extension::Extension;
+
+    [[nodiscard]] PageLayout page_layout() const;
+  };
+
+  class Text final : public Extension<internal::abstract::TextElement> {
   public:
     using Extension::Extension;
 
     [[nodiscard]] std::string value() const;
   };
 
-  class Link final : public Extension {
+  class Link final : public Extension<internal::abstract::LinkElement> {
   public:
     using Extension::Extension;
 
     [[nodiscard]] std::string href() const;
   };
 
-  class Bookmark final : public Extension {
+  class Bookmark final : public Extension<internal::abstract::BookmarkElement> {
   public:
     using Extension::Extension;
 
     [[nodiscard]] std::string name() const;
   };
 
-  class Table final : public Extension {
+  class Table final : public Extension<internal::abstract::TableElement> {
   public:
     using Extension::Extension;
 
     [[nodiscard]] TableDimensions dimensions() const;
   };
 
-  class TableCell final : public Extension {
+  class TableColumn final
+      : public Extension<internal::abstract::TableColumnElement> {
+  public:
+    using Extension::Extension;
+  };
+
+  class TableRow final : public Extension<internal::abstract::TableRowElement> {
+  public:
+    using Extension::Extension;
+  };
+
+  class TableCell final
+      : public Extension<internal::abstract::TableCellElement> {
   public:
     using Extension::Extension;
 
     [[nodiscard]] TableDimensions span() const;
   };
 
-  class Frame final : public Extension {
+  class Frame final : public Extension<internal::abstract::FrameElement> {
   public:
     using Extension::Extension;
 
@@ -211,7 +261,7 @@ public:
     [[nodiscard]] std::optional<std::string> z_index() const;
   };
 
-  class Rect final : public Extension {
+  class Rect final : public Extension<internal::abstract::RectElement> {
   public:
     using Extension::Extension;
 
@@ -221,7 +271,7 @@ public:
     [[nodiscard]] std::string height() const;
   };
 
-  class Line final : public Extension {
+  class Line final : public Extension<internal::abstract::LineElement> {
   public:
     using Extension::Extension;
 
@@ -231,7 +281,7 @@ public:
     [[nodiscard]] std::string y2() const;
   };
 
-  class Circle final : public Extension {
+  class Circle final : public Extension<internal::abstract::CircleElement> {
   public:
     using Extension::Extension;
 
@@ -241,7 +291,8 @@ public:
     [[nodiscard]] std::string height() const;
   };
 
-  class CustomShape final : public Extension {
+  class CustomShape final
+      : public Extension<internal::abstract::CustomShapeElement> {
   public:
     using Extension::Extension;
 
@@ -251,7 +302,7 @@ public:
     [[nodiscard]] std::string height() const;
   };
 
-  class Image final : public Extension {
+  class Image final : public Extension<internal::abstract::ImageElement> {
   public:
     using Extension::Extension;
 
@@ -264,6 +315,8 @@ public:
   [[nodiscard]] Link link() const;
   [[nodiscard]] Bookmark bookmark() const;
   [[nodiscard]] Table table() const;
+  [[nodiscard]] TableColumn table_column() const;
+  [[nodiscard]] TableRow table_row() const;
   [[nodiscard]] TableCell table_cell() const;
   [[nodiscard]] Frame frame() const;
   [[nodiscard]] Rect rect() const;
@@ -274,147 +327,105 @@ public:
 
 private:
   const internal::abstract::Document *m_document;
-  const internal::abstract::Element *m_element;
+  internal::abstract::Element *m_element;
 };
 
-class Style {
+template <typename T> class StyleBase {
 public:
-  Style(const internal::abstract::Document *document,
-        const internal::abstract::Element *element,
-        internal::abstract::Style *style, StyleContext style_context);
+  StyleBase(const internal::abstract::Document *document,
+            const internal::abstract::Element *element, T *style,
+            StyleContext style_context)
+      : m_document{document}, m_element{element}, m_style{style},
+        m_style_context{style_context} {}
 
-  explicit operator bool() const;
+  explicit operator bool() const { return m_style; }
 
-  class DirectionalProperty final {
-  public:
-    DirectionalProperty(const internal::abstract::Document *document,
-                        const internal::abstract::Element *element,
-                        const internal::abstract::Style *style,
-                        void *m_property, StyleContext style_context);
-
-    explicit operator bool() const;
-
-    [[nodiscard]] Property right() const;
-    [[nodiscard]] Property top() const;
-    [[nodiscard]] Property left() const;
-    [[nodiscard]] Property bottom() const;
-
-  protected:
-    const internal::abstract::Document *m_document;
-    const internal::abstract::Element *m_element;
-    const internal::abstract::Style *m_style;
-    void *m_property;
-    StyleContext m_style_context;
-  };
-
-  class Extension {
-  public:
-    Extension(const internal::abstract::Document *document,
-              const internal::abstract::Element *element,
-              const internal::abstract::Style *style, void *extension,
-              StyleContext style_context);
-
-    explicit operator bool() const;
-
-  protected:
-    const internal::abstract::Document *m_document;
-    const internal::abstract::Element *m_element;
-    const internal::abstract::Style *m_style;
-    void *m_extension;
-    StyleContext m_style_context;
-  };
-
-  class Text final : public Extension {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] Property font_name() const;
-    [[nodiscard]] Property font_size() const;
-    [[nodiscard]] Property font_weight() const;
-    [[nodiscard]] Property font_style() const;
-    [[nodiscard]] Property font_underline() const;
-    [[nodiscard]] Property font_line_through() const;
-    [[nodiscard]] Property font_shadow() const;
-    [[nodiscard]] Property font_color() const;
-    [[nodiscard]] Property background_color() const;
-  };
-
-  class Paragraph final : public Extension {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] Property text_align() const;
-    [[nodiscard]] DirectionalProperty margin() const;
-  };
-
-  class Table final : public Extension {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] Property width() const;
-  };
-
-  class TableColumn final : public Extension {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] Property width() const;
-  };
-
-  class TableRow final : public Extension {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] Property height() const;
-  };
-
-  class TableCell final : public Extension {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] Property vertical_align() const;
-    [[nodiscard]] Property background_color() const;
-    [[nodiscard]] DirectionalProperty padding() const;
-    [[nodiscard]] DirectionalProperty border() const;
-  };
-
-  class Graphic final : public Extension {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] Property stroke_width() const;
-    [[nodiscard]] Property stroke_color() const;
-    [[nodiscard]] Property fill_color() const;
-    [[nodiscard]] Property vertical_align() const;
-  };
-
-  class PageLayout final : public Extension {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] Property width() const;
-    [[nodiscard]] Property height() const;
-    [[nodiscard]] Property print_orientation() const;
-    [[nodiscard]] DirectionalProperty margin() const;
-  };
-
-  [[nodiscard]] Text text() const;
-  [[nodiscard]] Paragraph paragraph() const;
-  [[nodiscard]] Table table() const;
-  [[nodiscard]] TableColumn table_column() const;
-  [[nodiscard]] TableRow table_row() const;
-  [[nodiscard]] TableCell table_cell() const;
-  [[nodiscard]] Graphic graphic() const;
-  [[nodiscard]] PageLayout page_layout() const;
-
-private:
+protected:
   const internal::abstract::Document *m_document;
   const internal::abstract::Element *m_element;
-  internal::abstract::Style *m_style;
+  T *m_style;
   StyleContext m_style_context;
 };
 
-class Property {
+class TextStyle final : public StyleBase<internal::abstract::TextStyle> {
+public:
+  using StyleBase::StyleBase;
+
+  [[nodiscard]] Property font_name() const;
+  [[nodiscard]] Property font_size() const;
+  [[nodiscard]] Property font_weight() const;
+  [[nodiscard]] Property font_style() const;
+  [[nodiscard]] Property font_underline() const;
+  [[nodiscard]] Property font_line_through() const;
+  [[nodiscard]] Property font_shadow() const;
+  [[nodiscard]] Property font_color() const;
+  [[nodiscard]] Property background_color() const;
+};
+
+class ParagraphStyle final
+    : public StyleBase<internal::abstract::ParagraphStyle> {
+public:
+  using StyleBase::StyleBase;
+
+  [[nodiscard]] Property text_align() const;
+  [[nodiscard]] DirectionalProperty margin() const;
+};
+
+class TableStyle final : public StyleBase<internal::abstract::TableStyle> {
+public:
+  using StyleBase::StyleBase;
+
+  [[nodiscard]] Property width() const;
+};
+
+class TableColumnStyle final
+    : public StyleBase<internal::abstract::TableColumnStyle> {
+public:
+  using StyleBase::StyleBase;
+
+  [[nodiscard]] Property width() const;
+};
+
+class TableRowStyle final
+    : public StyleBase<internal::abstract::TableRowStyle> {
+public:
+  using StyleBase::StyleBase;
+
+  [[nodiscard]] Property height() const;
+};
+
+class TableCellStyle final
+    : public StyleBase<internal::abstract::TableCellStyle> {
+public:
+  using StyleBase::StyleBase;
+
+  [[nodiscard]] Property vertical_align() const;
+  [[nodiscard]] Property background_color() const;
+  [[nodiscard]] DirectionalProperty padding() const;
+  [[nodiscard]] DirectionalProperty border() const;
+};
+
+class GraphicStyle final : public StyleBase<internal::abstract::GraphicStyle> {
+public:
+  using StyleBase::StyleBase;
+
+  [[nodiscard]] Property stroke_width() const;
+  [[nodiscard]] Property stroke_color() const;
+  [[nodiscard]] Property fill_color() const;
+  [[nodiscard]] Property vertical_align() const;
+};
+
+class PageLayout final : public StyleBase<internal::abstract::PageLayout> {
+public:
+  using StyleBase::StyleBase;
+
+  [[nodiscard]] Property width() const;
+  [[nodiscard]] Property height() const;
+  [[nodiscard]] Property print_orientation() const;
+  [[nodiscard]] DirectionalProperty margin() const;
+};
+
+class Property final {
 public:
   Property(const internal::abstract::Document *document,
            const internal::abstract::Element *element,
@@ -431,6 +442,29 @@ private:
   const internal::abstract::Element *m_element;
   const internal::abstract::Style *m_style;
   const internal::abstract::Property *m_property;
+  StyleContext m_style_context;
+};
+
+class DirectionalProperty final {
+public:
+  DirectionalProperty(const internal::abstract::Document *document,
+                      const internal::abstract::Element *element,
+                      const internal::abstract::Style *style,
+                      internal::abstract::DirectionalProperty *property,
+                      StyleContext style_context);
+
+  explicit operator bool() const;
+
+  [[nodiscard]] Property right() const;
+  [[nodiscard]] Property top() const;
+  [[nodiscard]] Property left() const;
+  [[nodiscard]] Property bottom() const;
+
+private:
+  const internal::abstract::Document *m_document;
+  const internal::abstract::Element *m_element;
+  const internal::abstract::Style *m_style;
+  internal::abstract::DirectionalProperty *m_property;
   StyleContext m_style_context;
 };
 

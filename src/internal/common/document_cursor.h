@@ -11,8 +11,6 @@ namespace odr::internal::common {
 
 class DocumentCursor : public abstract::DocumentCursor {
 public:
-  using Allocator = abstract::Element::Allocator;
-
   explicit DocumentCursor(const abstract::Document *document);
 
   [[nodiscard]] bool equals(const abstract::DocumentCursor &other) const final;
@@ -29,25 +27,10 @@ public:
   bool move_to_previous_sibling() final;
   bool move_to_next_sibling() final;
 
-  class Slide : public abstract::DocumentCursor::Slide {
-  public:
-    [[nodiscard]] bool
-    move_to_master_page(abstract::DocumentCursor *cursor,
-                        const abstract::Element *element) const final;
-  };
+  [[nodiscard]] bool move_to_master_page() final;
 
-  class Table : public abstract::DocumentCursor::Table {
-  public:
-    [[nodiscard]] bool
-    move_to_first_column(abstract::DocumentCursor *cursor,
-                         const abstract::Element *element) const final;
-    [[nodiscard]] bool
-    move_to_first_row(abstract::DocumentCursor *cursor,
-                      const abstract::Element *element) const final;
-  };
-
-  [[nodiscard]] const Slide *slide() const final;
-  [[nodiscard]] const Table *table() const final;
+  [[nodiscard]] bool move_to_first_table_column() final;
+  [[nodiscard]] bool move_to_first_table_row() final;
 
 protected:
   void *push_(std::size_t size);
@@ -62,9 +45,6 @@ protected:
 private:
   std::vector<std::int32_t> m_element_stack_top;
   std::string m_element_stack;
-
-  Slide m_slide;
-  Table m_table;
 };
 
 } // namespace odr::internal::common

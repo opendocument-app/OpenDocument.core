@@ -7,73 +7,6 @@
 
 namespace odr {
 
-namespace {
-auto text_(const void *extension) {
-  return static_cast<const internal::abstract::Element::Text *>(extension);
-}
-auto link_(const void *extension) {
-  return static_cast<const internal::abstract::Element::Link *>(extension);
-}
-auto bookmark_(const void *extension) {
-  return static_cast<const internal::abstract::Element::Bookmark *>(extension);
-}
-auto table_(const void *extension) {
-  return static_cast<const internal::abstract::Element::Table *>(extension);
-}
-auto table_cell_(const void *extension) {
-  return static_cast<const internal::abstract::Element::TableCell *>(extension);
-}
-auto frame_(const void *extension) {
-  return static_cast<const internal::abstract::Element::Frame *>(extension);
-}
-auto rect_(const void *extension) {
-  return static_cast<const internal::abstract::Element::Rect *>(extension);
-}
-auto line_(const void *extension) {
-  return static_cast<const internal::abstract::Element::Line *>(extension);
-}
-auto circle_(const void *extension) {
-  return static_cast<const internal::abstract::Element::Circle *>(extension);
-}
-auto custom_shape_(const void *extension) {
-  return static_cast<const internal::abstract::Element::CustomShape *>(
-      extension);
-}
-auto image_(const void *extension) {
-  return static_cast<const internal::abstract::Element::Image *>(extension);
-}
-
-auto text_style_(void *extension) {
-  return static_cast<internal::abstract::Style::Text *>(extension);
-}
-auto paragraph_style_(void *extension) {
-  return static_cast<internal::abstract::Style::Paragraph *>(extension);
-}
-auto table_style_(void *extension) {
-  return static_cast<internal::abstract::Style::Table *>(extension);
-}
-auto table_column_style_(void *extension) {
-  return static_cast<internal::abstract::Style::TableColumn *>(extension);
-}
-auto table_row_style_(void *extension) {
-  return static_cast<internal::abstract::Style::TableRow *>(extension);
-}
-auto table_cell_style_(void *extension) {
-  return static_cast<internal::abstract::Style::TableCell *>(extension);
-}
-auto graphic_style_(void *extension) {
-  return static_cast<internal::abstract::Style::Graphic *>(extension);
-}
-auto page_layout_(void *extension) {
-  return static_cast<internal::abstract::Style::PageLayout *>(extension);
-}
-
-auto directional_property_(void *extension) {
-  return static_cast<internal::abstract::Style::DirectionalProperty *>(
-      extension);
-}
-} // namespace
-
 Document::Document(std::shared_ptr<internal::abstract::Document> document)
     : m_document{std::move(document)} {
   if (!m_document) {
@@ -144,24 +77,15 @@ Element DocumentCursor::element() const {
 }
 
 bool DocumentCursor::move_to_master_page() {
-  if (auto slide = m_cursor->slide()) {
-    return slide->move_to_master_page(m_cursor.get(), m_cursor->element());
-  }
-  return false;
+  return m_cursor->move_to_master_page();
 }
 
 bool DocumentCursor::move_to_first_table_column() {
-  if (auto table = m_cursor->table()) {
-    return table->move_to_first_column(m_cursor.get(), m_cursor->element());
-  }
-  return false;
+  return m_cursor->move_to_first_table_column();
 }
 
 bool DocumentCursor::move_to_first_table_row() {
-  if (auto table = m_cursor->table()) {
-    return table->move_to_first_row(m_cursor.get(), m_cursor->element());
-  }
-  return false;
+  return m_cursor->move_to_first_table_row();
 }
 
 void DocumentCursor::for_each_child(const ChildVisitor &visitor) {
@@ -219,7 +143,7 @@ void DocumentCursor::for_each_(const ConditionalChildVisitor &visitor) {
 }
 
 Element::Element(const internal::abstract::Document *document,
-                 const internal::abstract::Element *element)
+                 internal::abstract::Element *element)
     : m_document{document}, m_element{element} {}
 
 bool Element::operator==(const Element &rhs) const {
@@ -232,505 +156,301 @@ Element::operator bool() const { return m_element; }
 
 ElementType Element::type() const { return m_element->type(m_document); }
 
-std::optional<std::string> Element::style_name() const {
-  return m_element->style_name(m_document);
-}
-
-Style Element::style(const StyleContext style_context) const {
-  return {m_document, m_element, m_element->style(m_document), style_context};
-}
-
-Element::Extension::Extension(const internal::abstract::Document *document,
-                              const internal::abstract::Element *element,
-                              const void *extension)
-    : m_document{document}, m_element{element}, m_extension{extension} {}
-
-Element::Extension::operator bool() const { return m_extension; }
-
 std::string Element::Text::value() const {
-  return text_(m_extension) ? text_(m_extension)->value(m_document, m_element)
-                            : "";
+  return m_element ? m_element->value(m_document) : "";
 }
 
 std::string Element::Link::href() const {
-  return link_(m_extension) ? link_(m_extension)->href(m_document, m_element)
-                            : "";
+  return m_element ? m_element->href(m_document) : "";
 }
 
 std::string Element::Bookmark::name() const {
-  return bookmark_(m_extension)
-             ? bookmark_(m_extension)->name(m_document, m_element)
-             : "";
+  return m_element ? m_element->name(m_document) : "";
 }
 
 TableDimensions Element::Table::dimensions() const {
-  return table_(m_extension)
-             ? table_(m_extension)->dimensions(m_document, m_element)
-             : TableDimensions();
+  return m_element ? m_element->dimensions(m_document) : TableDimensions();
 }
 
 TableDimensions Element::TableCell::span() const {
-  return table_cell_(m_extension)
-             ? table_cell_(m_extension)->span(m_document, m_element)
-             : TableDimensions();
+  return m_element ? m_element->span(m_document) : TableDimensions();
 }
 
 std::optional<std::string> Element::Frame::anchor_type() const {
-  return frame_(m_extension)
-             ? frame_(m_extension)->anchor_type(m_document, m_element)
-             : std::optional<std::string>();
+  return m_element ? m_element->anchor_type(m_document)
+                   : std::optional<std::string>();
 }
 
 std::optional<std::string> Element::Frame::x() const {
-  return frame_(m_extension) ? frame_(m_extension)->x(m_document, m_element)
-                             : std::optional<std::string>();
+  return m_element ? m_element->x(m_document) : std::optional<std::string>();
 }
 
 std::optional<std::string> Element::Frame::y() const {
-  return frame_(m_extension) ? frame_(m_extension)->y(m_document, m_element)
-                             : std::optional<std::string>();
+  return m_element ? m_element->y(m_document) : std::optional<std::string>();
 }
 
 std::optional<std::string> Element::Frame::width() const {
-  return frame_(m_extension) ? frame_(m_extension)->width(m_document, m_element)
-                             : std::optional<std::string>();
+  return m_element ? m_element->width(m_document)
+                   : std::optional<std::string>();
 }
 
 std::optional<std::string> Element::Frame::height() const {
-  return frame_(m_extension)
-             ? frame_(m_extension)->height(m_document, m_element)
-             : std::optional<std::string>();
+  return m_element ? m_element->height(m_document)
+                   : std::optional<std::string>();
 }
 
 std::optional<std::string> Element::Frame::z_index() const {
-  return frame_(m_extension)
-             ? frame_(m_extension)->z_index(m_document, m_element)
-             : std::optional<std::string>();
+  return m_element ? m_element->z_index(m_document)
+                   : std::optional<std::string>();
 }
 
 std::string Element::Rect::x() const {
-  return rect_(m_extension) ? rect_(m_extension)->x(m_document, m_element) : "";
+  return m_element ? m_element->x(m_document) : "";
 }
 
 std::string Element::Rect::y() const {
-  return rect_(m_extension) ? rect_(m_extension)->y(m_document, m_element) : "";
+  return m_element ? m_element->y(m_document) : "";
 }
 
 std::string Element::Rect::width() const {
-  return rect_(m_extension) ? rect_(m_extension)->width(m_document, m_element)
-                            : "";
+  return m_element ? m_element->width(m_document) : "";
 }
 
 std::string Element::Rect::height() const {
-  return rect_(m_extension) ? rect_(m_extension)->height(m_document, m_element)
-                            : "";
+  return m_element ? m_element->height(m_document) : "";
 }
 
 std::string Element::Line::x1() const {
-  return line_(m_extension) ? line_(m_extension)->x1(m_document, m_element)
-                            : "";
+  return m_element ? m_element->x1(m_document) : "";
 }
 
 std::string Element::Line::y1() const {
-  return line_(m_extension) ? line_(m_extension)->y1(m_document, m_element)
-                            : "";
+  return m_element ? m_element->y1(m_document) : "";
 }
 
 std::string Element::Line::x2() const {
-  return line_(m_extension) ? line_(m_extension)->x2(m_document, m_element)
-                            : "";
+  return m_element ? m_element->x2(m_document) : "";
 }
 
 std::string Element::Line::y2() const {
-  return line_(m_extension) ? line_(m_extension)->y2(m_document, m_element)
-                            : "";
+  return m_element ? m_element->y2(m_document) : "";
 }
 
 std::string Element::Circle::x() const {
-  return circle_(m_extension) ? circle_(m_extension)->x(m_document, m_element)
-                              : "";
+  return m_element ? m_element->x(m_document) : "";
 }
 
 std::string Element::Circle::y() const {
-  return circle_(m_extension) ? circle_(m_extension)->y(m_document, m_element)
-                              : "";
+  return m_element ? m_element->y(m_document) : "";
 }
 
 std::string Element::Circle::width() const {
-  return circle_(m_extension)
-             ? circle_(m_extension)->width(m_document, m_element)
-             : "";
+  return m_element ? m_element->width(m_document) : "";
 }
 
 std::string Element::Circle::height() const {
-  return circle_(m_extension)
-             ? circle_(m_extension)->height(m_document, m_element)
-             : "";
+  return m_element ? m_element->height(m_document) : "";
 }
 
 std::optional<std::string> Element::CustomShape::x() const {
-  return custom_shape_(m_extension)
-             ? custom_shape_(m_extension)->x(m_document, m_element)
-             : std::optional<std::string>();
+  return m_element ? m_element->x(m_document) : "";
 }
 
 std::optional<std::string> Element::CustomShape::y() const {
-  return custom_shape_(m_extension)
-             ? custom_shape_(m_extension)->y(m_document, m_element)
-             : std::optional<std::string>();
+  return m_element ? m_element->y(m_document) : "";
 }
 
 std::string Element::CustomShape::width() const {
-  return custom_shape_(m_extension)
-             ? custom_shape_(m_extension)->width(m_document, m_element)
-             : "";
+  return m_element ? m_element->width(m_document) : "";
 }
 
 std::string Element::CustomShape::height() const {
-  return custom_shape_(m_extension)
-             ? custom_shape_(m_extension)->height(m_document, m_element)
-             : "";
+  return m_element ? m_element->height(m_document) : "";
 }
 
 bool Element::Image::internal() const {
-  return image_(m_extension)
-             ? image_(m_extension)->internal(m_document, m_element)
-             : false;
+  return m_element ? m_element->internal(m_document) : false;
 }
 
 std::optional<File> Element::Image::file() const {
-  return image_(m_extension) ? image_(m_extension)->file(m_document, m_element)
-                             : std::optional<File>();
+  return m_element ? m_element->file(m_document) : std::optional<File>();
 }
 
 std::string Element::Image::href() const {
-  return image_(m_extension) ? image_(m_extension)->href(m_document, m_element)
-                             : "";
+  return m_element ? m_element->href(m_document) : "";
 }
 
-Element::Text Element::text() const {
-  return {m_document, m_element,
-          m_element ? m_element->text(m_document) : nullptr};
+Element::Text Element::text() const { return {m_document, m_element}; }
+
+Element::Link Element::link() const { return {m_document, m_element}; }
+
+Element::Bookmark Element::bookmark() const { return {m_document, m_element}; }
+
+Element::Table Element::table() const { return {m_document, m_element}; }
+
+Element::TableColumn Element::table_column() const {
+  return {m_document, m_element};
 }
 
-Element::Link Element::link() const {
-  return {m_document, m_element,
-          m_element ? m_element->link(m_document) : nullptr};
-}
-
-Element::Bookmark Element::bookmark() const {
-  return {m_document, m_element,
-          m_element ? m_element->bookmark(m_document) : nullptr};
-}
-
-Element::Table Element::table() const {
-  return {m_document, m_element,
-          m_element ? m_element->table(m_document) : nullptr};
-}
+Element::TableRow Element::table_row() const { return {m_document, m_element}; }
 
 Element::TableCell Element::table_cell() const {
-  return {m_document, m_element,
-          m_element ? m_element->table_cell(m_document) : nullptr};
+  return {m_document, m_element};
 }
 
-Element::Frame Element::frame() const {
-  return {m_document, m_element,
-          m_element ? m_element->frame(m_document) : nullptr};
-}
+Element::Frame Element::frame() const { return {m_document, m_element}; }
 
-Element::Rect Element::rect() const {
-  return {m_document, m_element,
-          m_element ? m_element->rect(m_document) : nullptr};
-}
+Element::Rect Element::rect() const { return {m_document, m_element}; }
 
-Element::Line Element::line() const {
-  return {m_document, m_element,
-          m_element ? m_element->line(m_document) : nullptr};
-}
+Element::Line Element::line() const { return {m_document, m_element}; }
 
-Element::Circle Element::circle() const {
-  return {m_document, m_element,
-          m_element ? m_element->circle(m_document) : nullptr};
-}
+Element::Circle Element::circle() const { return {m_document, m_element}; }
 
 Element::CustomShape Element::custom_shape() const {
-  return {m_document, m_element,
-          m_element ? m_element->custom_shape(m_document) : nullptr};
+  return {m_document, m_element};
 }
 
-Element::Image Element::image() const {
-  return {m_document, m_element,
-          m_element ? m_element->image(m_document) : nullptr};
-}
+Element::Image Element::image() const { return {m_document, m_element}; }
 
-Style::Style(const internal::abstract::Document *document,
-             const internal::abstract::Element *element,
-             internal::abstract::Style *style, const StyleContext style_context)
-    : m_document{document}, m_element{element}, m_style{style},
-      m_style_context{style_context} {}
-
-Style::operator bool() const { return m_style; }
-
-Style::Extension::Extension(const internal::abstract::Document *document,
-                            const internal::abstract::Element *element,
-                            const internal::abstract::Style *style,
-                            void *extension, const StyleContext style_context)
-    : m_document{document}, m_element{element}, m_style{style},
-      m_extension{extension}, m_style_context{style_context} {}
-
-Style::Extension::operator bool() const { return m_extension; }
-
-Property Style::Text::font_name() const {
+Property PageLayout::width() const {
   return {m_document, m_element, m_style,
-          text_style_(m_extension)
-              ? text_style_(m_extension)->font_name(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->width(m_document) : nullptr, m_style_context};
+}
+
+Property TextStyle::font_name() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->font_name(m_document) : nullptr, m_style_context};
+}
+
+Property TextStyle::font_size() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->font_size(m_document) : nullptr, m_style_context};
+}
+
+Property TextStyle::font_weight() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->font_weight(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Text::font_size() const {
+Property TextStyle::font_style() const {
   return {m_document, m_element, m_style,
-          text_style_(m_extension)
-              ? text_style_(m_extension)->font_size(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->font_style(m_document) : nullptr, m_style_context};
+}
+
+Property TextStyle::font_underline() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->font_underline(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Text::font_weight() const {
+Property TextStyle::font_line_through() const {
   return {m_document, m_element, m_style,
-          text_style_(m_extension)
-              ? text_style_(m_extension)->font_weight(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->font_line_through(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Text::font_style() const {
+Property TextStyle::font_shadow() const {
   return {m_document, m_element, m_style,
-          text_style_(m_extension)
-              ? text_style_(m_extension)->font_style(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->font_shadow(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Text::font_underline() const {
+Property TextStyle::font_color() const {
   return {m_document, m_element, m_style,
-          text_style_(m_extension)
-              ? text_style_(m_extension)->font_underline(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->font_color(m_document) : nullptr, m_style_context};
+}
+
+Property TextStyle::background_color() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->background_color(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Text::font_line_through() const {
+Property ParagraphStyle::text_align() const {
   return {m_document, m_element, m_style,
-          text_style_(m_extension)
-              ? text_style_(m_extension)->font_line_through(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->text_align(m_document) : nullptr, m_style_context};
+}
+
+DirectionalProperty ParagraphStyle::margin() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->margin(m_document) : nullptr, m_style_context};
+}
+
+Property TableStyle::width() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->width(m_document) : nullptr, m_style_context};
+}
+
+Property TableColumnStyle::width() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->width(m_document) : nullptr, m_style_context};
+}
+
+Property TableRowStyle::height() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->height(m_document) : nullptr, m_style_context};
+}
+
+Property TableCellStyle::vertical_align() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->vertical_align(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Text::font_shadow() const {
+Property TableCellStyle::background_color() const {
   return {m_document, m_element, m_style,
-          text_style_(m_extension)
-              ? text_style_(m_extension)->font_shadow(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->background_color(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Text::font_color() const {
+DirectionalProperty TableCellStyle::padding() const {
   return {m_document, m_element, m_style,
-          text_style_(m_extension)
-              ? text_style_(m_extension)->font_color(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->padding(m_document) : nullptr, m_style_context};
+}
+
+DirectionalProperty TableCellStyle::border() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->border(m_document) : nullptr, m_style_context};
+}
+
+Property GraphicStyle::stroke_width() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->stroke_width(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Text::background_color() const {
+Property GraphicStyle::stroke_color() const {
   return {m_document, m_element, m_style,
-          text_style_(m_extension)
-              ? text_style_(m_extension)->background_color(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->stroke_color(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Paragraph::text_align() const {
+Property GraphicStyle::fill_color() const {
   return {m_document, m_element, m_style,
-          paragraph_style_(m_extension)
-              ? paragraph_style_(m_extension)->text_align(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->fill_color(m_document) : nullptr, m_style_context};
+}
+
+Property GraphicStyle::vertical_align() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->vertical_align(m_document) : nullptr,
           m_style_context};
 }
 
-Style::DirectionalProperty Style::Paragraph::margin() const {
+Property PageLayout::height() const {
   return {m_document, m_element, m_style,
-          paragraph_style_(m_extension)
-              ? paragraph_style_(m_extension)->margin(m_document, m_style)
-              : nullptr,
+          m_style ? m_style->height(m_document) : nullptr, m_style_context};
+}
+
+Property PageLayout::print_orientation() const {
+  return {m_document, m_element, m_style,
+          m_style ? m_style->print_orientation(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::Table::width() const {
+DirectionalProperty PageLayout::margin() const {
   return {m_document, m_element, m_style,
-          table_style_(m_extension)
-              ? table_style_(m_extension)->width(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::TableColumn::width() const {
-  return {m_document, m_element, m_style,
-          table_column_style_(m_extension)
-              ? table_column_style_(m_extension)->width(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::TableRow::height() const {
-  return {m_document, m_element, m_style,
-          table_row_style_(m_extension)
-              ? table_row_style_(m_extension)->height(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::TableCell::vertical_align() const {
-  return {
-      m_document, m_element, m_style,
-      table_cell_style_(m_extension)
-          ? table_cell_style_(m_extension)->vertical_align(m_document, m_style)
-          : nullptr,
-      m_style_context};
-}
-
-Property Style::TableCell::background_color() const {
-  return {m_document, m_element, m_style,
-          table_cell_style_(m_extension)
-              ? table_cell_style_(m_extension)
-                    ->background_color(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Style::DirectionalProperty Style::TableCell::padding() const {
-  return {m_document, m_element, m_style,
-          table_cell_style_(m_extension)
-              ? table_cell_style_(m_extension)->padding(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Style::DirectionalProperty Style::TableCell::border() const {
-  return {m_document, m_element, m_style,
-          table_cell_style_(m_extension)
-              ? table_cell_style_(m_extension)->border(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::Graphic::stroke_width() const {
-  return {m_document, m_element, m_style,
-          graphic_style_(m_extension)
-              ? graphic_style_(m_extension)->stroke_width(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::Graphic::stroke_color() const {
-  return {m_document, m_element, m_style,
-          graphic_style_(m_extension)
-              ? graphic_style_(m_extension)->stroke_color(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::Graphic::fill_color() const {
-  return {m_document, m_element, m_style,
-          graphic_style_(m_extension)
-              ? graphic_style_(m_extension)->fill_color(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::Graphic::vertical_align() const {
-  return {m_document, m_element, m_style,
-          graphic_style_(m_extension)
-              ? graphic_style_(m_extension)->vertical_align(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::PageLayout::width() const {
-  return {m_document, m_element, m_style,
-          page_layout_(m_extension)
-              ? page_layout_(m_extension)->width(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::PageLayout::height() const {
-  return {m_document, m_element, m_style,
-          page_layout_(m_extension)
-              ? page_layout_(m_extension)->height(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Property Style::PageLayout::print_orientation() const {
-  return {
-      m_document, m_element, m_style,
-      page_layout_(m_extension)
-          ? page_layout_(m_extension)->print_orientation(m_document, m_style)
-          : nullptr,
-      m_style_context};
-}
-
-Style::DirectionalProperty Style::PageLayout::margin() const {
-  return {m_document, m_element, m_style,
-          page_layout_(m_extension)
-              ? page_layout_(m_extension)->margin(m_document, m_style)
-              : nullptr,
-          m_style_context};
-}
-
-Style::Text Style::text() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->text(m_document) : nullptr, m_style_context};
-}
-
-Style::Paragraph Style::paragraph() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->paragraph(m_document) : nullptr, m_style_context};
-}
-
-Style::Table Style::table() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->table(m_document) : nullptr, m_style_context};
-}
-
-Style::TableColumn Style::table_column() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->table_column(m_document) : nullptr,
-          m_style_context};
-}
-
-Style::TableRow Style::table_row() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->table_row(m_document) : nullptr, m_style_context};
-}
-
-Style::TableCell Style::table_cell() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->table_cell(m_document) : nullptr, m_style_context};
-}
-
-Style::Graphic Style::graphic() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->graphic(m_document) : nullptr, m_style_context};
-}
-
-Style::PageLayout Style::page_layout() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->page_layout(m_document) : nullptr,
-          m_style_context};
+          m_style ? m_style->margin(m_document) : nullptr, m_style_context};
 }
 
 Property::Property(const internal::abstract::Document *document,
@@ -750,45 +470,36 @@ std::optional<std::string> Property::value() const {
   return m_property->value(m_document, m_element, m_style, m_style_context);
 }
 
-Style::DirectionalProperty::DirectionalProperty(
+DirectionalProperty::DirectionalProperty(
     const internal::abstract::Document *document,
     const internal::abstract::Element *element,
-    const internal::abstract::Style *style, void *property,
+    const internal::abstract::Style *style,
+    internal::abstract::DirectionalProperty *property,
     const StyleContext style_context)
     : m_document{document}, m_element{element}, m_style{style},
       m_property{property}, m_style_context{style_context} {}
 
-Style::DirectionalProperty::operator bool() const { return m_property; }
+DirectionalProperty::operator bool() const { return m_property; }
 
-Property Style::DirectionalProperty::right() const {
+Property DirectionalProperty::right() const {
   return {m_document, m_element, m_style,
-          directional_property_(m_property)
-              ? directional_property_(m_property)->right(m_document, m_style)
-              : nullptr,
+          m_property ? m_property->right(m_document) : nullptr,
           m_style_context};
 }
 
-Property Style::DirectionalProperty::top() const {
+Property DirectionalProperty::top() const {
   return {m_document, m_element, m_style,
-          directional_property_(m_property)
-              ? directional_property_(m_property)->top(m_document, m_style)
-              : nullptr,
-          m_style_context};
+          m_property ? m_property->top(m_document) : nullptr, m_style_context};
 }
 
-Property Style::DirectionalProperty::left() const {
+Property DirectionalProperty::left() const {
   return {m_document, m_element, m_style,
-          directional_property_(m_property)
-              ? directional_property_(m_property)->left(m_document, m_style)
-              : nullptr,
-          m_style_context};
+          m_property ? m_property->left(m_document) : nullptr, m_style_context};
 }
 
-Property Style::DirectionalProperty::bottom() const {
+Property DirectionalProperty::bottom() const {
   return {m_document, m_element, m_style,
-          directional_property_(m_property)
-              ? directional_property_(m_property)->bottom(m_document, m_style)
-              : nullptr,
+          m_property ? m_property->bottom(m_document) : nullptr,
           m_style_context};
 }
 

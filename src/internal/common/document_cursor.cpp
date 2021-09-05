@@ -73,8 +73,7 @@ bool DocumentCursor::move_to_parent() {
 
 bool DocumentCursor::move_to_first_child() {
   auto allocator = [this](const std::size_t size) { return push_(size); };
-  auto element = back_()->first_child(m_document, allocator);
-  return element != nullptr;
+  return back_()->first_child(m_document, allocator);
 }
 
 bool DocumentCursor::move_to_previous_sibling() {
@@ -82,8 +81,7 @@ bool DocumentCursor::move_to_previous_sibling() {
     pop_();
     return push_(size);
   };
-  auto element = back_()->previous_sibling(m_document, allocator);
-  return element != nullptr;
+  return back_()->previous_sibling(m_document, allocator);
 }
 
 bool DocumentCursor::move_to_next_sibling() {
@@ -91,61 +89,31 @@ bool DocumentCursor::move_to_next_sibling() {
     pop_();
     return push_(size);
   };
-  auto element = back_()->next_sibling(m_document, allocator);
-  return element != nullptr;
+  return back_()->next_sibling(m_document, allocator);
 }
 
-bool DocumentCursor::Slide::move_to_master_page(
-    abstract::DocumentCursor *abstract_cursor,
-    const abstract::Element *element) const {
-  auto cursor = static_cast<DocumentCursor *>(abstract_cursor);
-  auto allocator = [cursor](const std::size_t size) {
-    return cursor->push_(size);
-  };
-  auto result = cursor->back_()
-                    ->slide(cursor->m_document)
-                    ->master_page(cursor->m_document, element, allocator);
-  return result != nullptr;
-}
-
-bool DocumentCursor::Table::move_to_first_column(
-    abstract::DocumentCursor *abstract_cursor,
-    const abstract::Element *element) const {
-  auto cursor = static_cast<DocumentCursor *>(abstract_cursor);
-  auto allocator = [cursor](const std::size_t size) {
-    return cursor->push_(size);
-  };
-  auto result = cursor->back_()
-                    ->table(cursor->m_document)
-                    ->first_column(cursor->m_document, element, allocator);
-  return result != nullptr;
-}
-
-bool DocumentCursor::Table::move_to_first_row(
-    abstract::DocumentCursor *abstract_cursor,
-    const abstract::Element *element) const {
-  auto cursor = static_cast<DocumentCursor *>(abstract_cursor);
-  auto allocator = [cursor](const std::size_t size) {
-    return cursor->push_(size);
-  };
-  auto result = cursor->back_()
-                    ->table(cursor->m_document)
-                    ->first_row(cursor->m_document, element, allocator);
-  return result != nullptr;
-}
-
-const DocumentCursor::Slide *DocumentCursor::slide() const {
-  if (element()->slide(m_document)) {
-    return &m_slide;
+bool DocumentCursor::move_to_master_page() {
+  auto allocator = [this](const std::size_t size) { return push_(size); };
+  if (auto slide = dynamic_cast<const abstract::SlideElement *>(back_())) {
+    return slide->master_page(m_document, allocator);
   }
-  return nullptr;
+  return false;
 }
 
-const DocumentCursor::Table *DocumentCursor::table() const {
-  if (element()->table(m_document)) {
-    return &m_table;
+bool DocumentCursor::move_to_first_table_column() {
+  auto allocator = [this](const std::size_t size) { return push_(size); };
+  if (auto table = dynamic_cast<const abstract::TableElement *>(back_())) {
+    return table->first_column(m_document, allocator);
   }
-  return nullptr;
+  return false;
+}
+
+bool DocumentCursor::move_to_first_table_row() {
+  auto allocator = [this](const std::size_t size) { return push_(size); };
+  if (auto table = dynamic_cast<const abstract::TableElement *>(back_())) {
+    return table->first_row(m_document, allocator);
+  }
+  return false;
 }
 
 } // namespace odr::internal::common

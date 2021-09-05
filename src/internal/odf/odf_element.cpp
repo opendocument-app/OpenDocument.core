@@ -11,7 +11,7 @@
 
 namespace odr::internal::odf {
 
-class Element : public abstract::Element {
+class Element : public virtual abstract::Element {
 protected:
   static const Document *document_(const abstract::Document *document) {
     return static_cast<const Document *>(document);
@@ -68,30 +68,18 @@ std::optional<std::string> default_style_name(const pugi::xml_node node) {
   return {};
 }
 
-template <ElementType _element_type> class DefaultElement : public Element {
+template <ElementType _element_type>
+class DefaultElement : public virtual Element {
 public:
   DefaultElement(const Document *, pugi::xml_node node) : m_node{node} {}
 
   [[nodiscard]] bool equals(const abstract::Document *,
                             const abstract::Element &rhs) const override {
-    return m_node == *static_cast<const DefaultElement &>(rhs).m_node;
+    return m_node == *dynamic_cast<const DefaultElement &>(rhs).m_node;
   }
 
   [[nodiscard]] ElementType type(const abstract::Document *) const override {
     return _element_type;
-  }
-
-  [[nodiscard]] std::optional<std::string>
-  style_name(const abstract::Document *) const override {
-    return default_style_name(m_node);
-  }
-
-  [[nodiscard]] abstract::Style *
-  style(const abstract::Document *document) const override {
-    if (auto name = style_name(document)) {
-      return style_(document)->style(*name);
-    }
-    return nullptr;
   }
 
   abstract::Element *parent(const abstract::Document *document,
@@ -116,58 +104,6 @@ public:
                                   const Allocator &allocator) override {
     return construct_default_next_sibling_element(document_(document), m_node,
                                                   allocator);
-  }
-
-  [[nodiscard]] const Text *text(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const Link *link(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const Bookmark *
-  bookmark(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const Slide *slide(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const Table *table(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const TableCell *
-  table_cell(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const Frame *frame(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const Rect *rect(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const Line *line(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const Circle *
-  circle(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const CustomShape *
-  custom_shape(const abstract::Document *) const override {
-    return nullptr;
-  }
-
-  [[nodiscard]] const Image *image(const abstract::Document *) const override {
-    return nullptr;
   }
 
 protected:
@@ -269,8 +205,8 @@ public:
   }
 };
 
-class Slide final : public DefaultElement<ElementType::slide>,
-                    public abstract::Element::Slide {
+class Slide final : public virtual DefaultElement<ElementType::slide>,
+                    public virtual abstract::SlideElement {
 public:
   Slide(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
@@ -301,12 +237,7 @@ public:
     return nullptr;
   }
 
-  [[nodiscard]] const Slide *slide(const abstract::Document *) const final {
-    return this;
-  }
-
   abstract::Element *master_page(const abstract::Document *document,
-                                 const abstract::Element *,
                                  const Allocator &allocator) const final {
     auto master_page_node = master_page_node_(document);
     return construct_default_optional<MasterPage>(document_(document),
@@ -364,8 +295,8 @@ private:
   }
 };
 
-class Text final : public DefaultElement<ElementType::text>,
-                   public abstract::Element::Text {
+class Text final : public virtual DefaultElement<ElementType::text>,
+                   public virtual abstract::TextElement {
 public:
   Text(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
@@ -382,13 +313,7 @@ public:
                                                   allocator);
   }
 
-  [[nodiscard]] const abstract::Element::Text *
-  text(const abstract::Document *) const final {
-    return this;
-  }
-
-  [[nodiscard]] std::string value(const abstract::Document *,
-                                  const abstract::Element *) const final {
+  [[nodiscard]] std::string value(const abstract::Document *) const final {
     std::string result;
     for (auto node = first_(); is_text_(node); node = node.next_sibling()) {
       result += text_(node);
@@ -447,16 +372,11 @@ private:
   }
 };
 
-class TableElement : public DefaultElement<ElementType::table>,
-                     public abstract::Element::Table {
+class TableElement : public virtual DefaultElement<ElementType::table>,
+                     public virtual abstract::TableElement {
 public:
   TableElement(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
-
-  [[nodiscard]] const abstract::Element::Table *
-  table(const abstract::Document *) const final {
-    return this;
-  }
 
   abstract::Element *first_child(const abstract::Document *,
                                  const Allocator &) final {
@@ -464,8 +384,7 @@ public:
   }
 
   [[nodiscard]] TableDimensions
-  dimensions(const abstract::Document *,
-             const abstract::Element *) const final {
+  dimensions(const abstract::Document *) const final {
     TableDimensions result;
     common::TableCursor cursor;
 
@@ -490,14 +409,12 @@ public:
   }
 
   abstract::Element *first_column(const abstract::Document *document,
-                                  const abstract::Element *,
                                   const Allocator &allocator) const final {
     return construct_default_optional<TableColumn>(
         document_(document), m_node.child("table:table-column"), allocator);
   }
 
   abstract::Element *first_row(const abstract::Document *document,
-                               const abstract::Element *,
                                const Allocator &allocator) const final {
     return construct_default_optional<TableRow>(
         document_(document), m_node.child("table:table-row"), allocator);
@@ -596,8 +513,9 @@ private:
   }
 };
 
-class TableCell final : public DefaultTableElement<ElementType::table_cell>,
-                        public abstract::Element::TableCell {
+class TableCell final
+    : public virtual DefaultTableElement<ElementType::table_cell>,
+      public virtual abstract::TableCellElement {
 public:
   TableCell(const Document *document, pugi::xml_node node)
       : DefaultTableElement(document, node),
@@ -612,13 +530,7 @@ public:
     return m_column.default_cell_style_name();
   }
 
-  [[nodiscard]] const TableCell *
-  table_cell(const abstract::Document *) const final {
-    return this;
-  }
-
-  [[nodiscard]] TableDimensions span(const abstract::Document *,
-                                     const abstract::Element *) const final {
+  [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
     return {m_node.attribute("table:number-rows-spanned").as_uint(1),
             m_node.attribute("table:number-columns-spanned").as_uint(1)};
   }
@@ -639,19 +551,14 @@ private:
   }
 };
 
-class Frame final : public DefaultElement<ElementType::frame>,
-                    public abstract::Element::Frame {
+class Frame final : public virtual DefaultElement<ElementType::frame>,
+                    public virtual abstract::FrameElement {
 public:
   Frame(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  [[nodiscard]] const Frame *frame(const abstract::Document *) const final {
-    return this;
-  }
-
   [[nodiscard]] std::optional<std::string>
-  anchor_type(const abstract::Document *,
-              const abstract::Element *) const final {
+  anchor_type(const abstract::Document *) const final {
     if (auto attribute = m_node.attribute("text:anchor-type")) {
       return attribute.value();
     }
@@ -659,7 +566,7 @@ public:
   }
 
   [[nodiscard]] std::optional<std::string>
-  x(const abstract::Document *, const abstract::Element *) const final {
+  x(const abstract::Document *) const final {
     if (auto attribute = m_node.attribute("svg:x")) {
       return attribute.value();
     }
@@ -667,7 +574,7 @@ public:
   }
 
   [[nodiscard]] std::optional<std::string>
-  y(const abstract::Document *, const abstract::Element *) const final {
+  y(const abstract::Document *) const final {
     if (auto attribute = m_node.attribute("svg:y")) {
       return attribute.value();
     }
@@ -675,7 +582,7 @@ public:
   }
 
   [[nodiscard]] std::optional<std::string>
-  width(const abstract::Document *, const abstract::Element *) const final {
+  width(const abstract::Document *) const final {
     if (auto attribute = m_node.attribute("svg:width")) {
       return attribute.value();
     }
@@ -683,7 +590,7 @@ public:
   }
 
   [[nodiscard]] std::optional<std::string>
-  height(const abstract::Document *, const abstract::Element *) const final {
+  height(const abstract::Document *) const final {
     if (auto attribute = m_node.attribute("svg:height")) {
       return attribute.value();
     }
@@ -691,7 +598,7 @@ public:
   }
 
   [[nodiscard]] std::optional<std::string>
-  z_index(const abstract::Document *, const abstract::Element *) const final {
+  z_index(const abstract::Document *) const final {
     if (auto attribute = m_node.attribute("draw:z-index")) {
       return attribute.value();
     }
@@ -699,167 +606,128 @@ public:
   }
 };
 
-class Rect final : public DefaultElement<ElementType::rect>,
-                   public abstract::Element::Rect {
+class Rect final : public virtual DefaultElement<ElementType::rect>,
+                   public virtual abstract::RectElement {
 public:
   Rect(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  [[nodiscard]] const Rect *rect(const abstract::Document *) const final {
-    return this;
-  }
-
-  [[nodiscard]] std::string x(const abstract::Document *,
-                              const abstract::Element *) const final {
+  [[nodiscard]] std::string x(const abstract::Document *) const final {
     return m_node.attribute("svg:x").value();
   }
 
-  [[nodiscard]] std::string y(const abstract::Document *,
-                              const abstract::Element *) const final {
+  [[nodiscard]] std::string y(const abstract::Document *) const final {
     return m_node.attribute("svg:y").value();
   }
 
-  [[nodiscard]] std::string width(const abstract::Document *,
-                                  const abstract::Element *) const final {
+  [[nodiscard]] std::string width(const abstract::Document *) const final {
     return m_node.attribute("svg:width").value();
   }
 
-  [[nodiscard]] std::string height(const abstract::Document *,
-                                   const abstract::Element *) const final {
+  [[nodiscard]] std::string height(const abstract::Document *) const final {
     return m_node.attribute("svg:height").value();
   }
 };
 
-class Line final : public DefaultElement<ElementType::line>,
-                   public abstract::Element::Line {
+class Line final : public virtual DefaultElement<ElementType::line>,
+                   public virtual abstract::LineElement {
 public:
   Line(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  [[nodiscard]] const Line *line(const abstract::Document *) const final {
-    return this;
-  }
-
-  [[nodiscard]] std::string x1(const abstract::Document *,
-                               const abstract::Element *) const final {
+  [[nodiscard]] std::string x1(const abstract::Document *) const final {
     return m_node.attribute("svg:x1").value();
   }
 
-  [[nodiscard]] std::string y1(const abstract::Document *,
-                               const abstract::Element *) const final {
+  [[nodiscard]] std::string y1(const abstract::Document *) const final {
     return m_node.attribute("svg:y1").value();
   }
 
-  [[nodiscard]] std::string x2(const abstract::Document *,
-                               const abstract::Element *) const final {
+  [[nodiscard]] std::string x2(const abstract::Document *) const final {
     return m_node.attribute("svg:x2").value();
   }
 
-  [[nodiscard]] std::string y2(const abstract::Document *,
-                               const abstract::Element *) const final {
+  [[nodiscard]] std::string y2(const abstract::Document *) const final {
     return m_node.attribute("svg:y2").value();
   }
 };
 
 class Circle final : public DefaultElement<ElementType::circle>,
-                     public abstract::Element::Circle {
+                     public abstract::CircleElement {
 public:
   Circle(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  [[nodiscard]] const Circle *circle(const abstract::Document *) const final {
-    return this;
-  }
-
-  [[nodiscard]] std::string x(const abstract::Document *,
-                              const abstract::Element *) const final {
+  [[nodiscard]] std::string x(const abstract::Document *) const final {
     return m_node.attribute("svg:x").value();
   }
 
-  [[nodiscard]] std::string y(const abstract::Document *,
-                              const abstract::Element *) const final {
+  [[nodiscard]] std::string y(const abstract::Document *) const final {
     return m_node.attribute("svg:y").value();
   }
 
-  [[nodiscard]] std::string width(const abstract::Document *,
-                                  const abstract::Element *) const final {
+  [[nodiscard]] std::string width(const abstract::Document *) const final {
     return m_node.attribute("svg:width").value();
   }
 
-  [[nodiscard]] std::string height(const abstract::Document *,
-                                   const abstract::Element *) const final {
+  [[nodiscard]] std::string height(const abstract::Document *) const final {
     return m_node.attribute("svg:height").value();
   }
 };
 
 class CustomShape final : public DefaultElement<ElementType::custom_shape>,
-                          public abstract::Element::CustomShape {
+                          public abstract::CustomShapeElement {
 public:
   CustomShape(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  [[nodiscard]] const CustomShape *
-  custom_shape(const abstract::Document *) const final {
-    return this;
-  }
-
   [[nodiscard]] std::optional<std::string>
-  x(const abstract::Document *, const abstract::Element *) const final {
+  x(const abstract::Document *) const final {
     return m_node.attribute("svg:x").value();
   }
 
   [[nodiscard]] std::optional<std::string>
-  y(const abstract::Document *, const abstract::Element *) const final {
+  y(const abstract::Document *) const final {
     return m_node.attribute("svg:y").value();
   }
 
-  [[nodiscard]] std::string width(const abstract::Document *,
-                                  const abstract::Element *) const final {
+  [[nodiscard]] std::string width(const abstract::Document *) const final {
     return m_node.attribute("svg:width").value();
   }
 
-  [[nodiscard]] std::string height(const abstract::Document *,
-                                   const abstract::Element *) const final {
+  [[nodiscard]] std::string height(const abstract::Document *) const final {
     return m_node.attribute("svg:height").value();
   }
 };
 
 class ImageElement final : public DefaultElement<ElementType::image>,
-                           public abstract::Element::Image {
+                           public abstract::ImageElement {
 public:
   ImageElement(const Document *document, pugi::xml_node node)
       : DefaultElement(document, node) {}
 
-  [[nodiscard]] const abstract::Element::Image *
-  image(const abstract::Document *) const final {
-    return this;
-  }
-
-  [[nodiscard]] bool internal(const abstract::Document *document,
-                              const abstract::Element *element) const final {
+  [[nodiscard]] bool internal(const abstract::Document *document) const final {
     auto doc = document_(document);
     if (!doc || !doc->files()) {
       return false;
     }
     try {
-      return doc->files()->is_file(this->href(document, element));
+      return doc->files()->is_file(href(document));
     } catch (...) {
     }
     return false;
   }
 
   [[nodiscard]] std::optional<odr::File>
-  file(const abstract::Document *document,
-       const abstract::Element *element) const final {
+  file(const abstract::Document *document) const final {
     auto doc = document_(document);
-    if (!doc || !internal(document, element)) {
+    if (!doc || !internal(document)) {
       return {};
     }
-    return File(doc->files()->open(this->href(document, element)));
+    return File(doc->files()->open(href(document)));
   }
 
-  [[nodiscard]] std::string href(const abstract::Document *,
-                                 const abstract::Element *) const final {
+  [[nodiscard]] std::string href(const abstract::Document *) const final {
     return m_node.attribute("xlink:href").value();
   }
 };

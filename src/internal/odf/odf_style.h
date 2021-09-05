@@ -24,14 +24,28 @@ public:
   StyleRegistry();
   StyleRegistry(pugi::xml_node content_root, pugi::xml_node styles_root);
 
-  [[nodiscard]] abstract::Style *style(const std::string &name) const;
-
-  [[nodiscard]] abstract::Style *page_layout(const std::string &name) const;
+  [[nodiscard]] abstract::TextStyle *text_style(const std::string &name) const;
+  [[nodiscard]] abstract::ParagraphStyle *
+  paragraph_style(const std::string &name) const;
+  [[nodiscard]] abstract::TableStyle *
+  table_style(const std::string &name) const;
+  [[nodiscard]] abstract::TableColumnStyle *
+  table_column_style(const std::string &name) const;
+  [[nodiscard]] abstract::TableRowStyle *
+  table_row_style(const std::string &name) const;
+  [[nodiscard]] abstract::TableCellStyle *
+  table_cell_style(const std::string &name) const;
+  [[nodiscard]] abstract::GraphicStyle *
+  graphic_style(const std::string &name) const;
+  [[nodiscard]] abstract::PageLayout *
+  page_layout(const std::string &name) const;
 
   [[nodiscard]] pugi::xml_node
   master_page_node(const std::string &master_page_name) const;
 
   [[nodiscard]] std::optional<std::string> first_master_page() const;
+
+  class StyleCollection;
 
 private:
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
@@ -44,10 +58,10 @@ private:
 
   std::optional<std::string> m_first_master_page;
 
-  std::unordered_map<std::string, std::unique_ptr<abstract::Style>>
+  std::unordered_map<std::string, std::unique_ptr<StyleCollection>>
       m_default_styles;
-  std::unordered_map<std::string, std::unique_ptr<abstract::Style>> m_styles;
-  std::unordered_map<std::string, std::unique_ptr<abstract::Style>>
+  std::unordered_map<std::string, std::unique_ptr<StyleCollection>> m_styles;
+  std::unordered_map<std::string, std::unique_ptr<abstract::PageLayout>>
       m_page_layouts;
 
   void generate_indices_(pugi::xml_node content_root,
@@ -55,12 +69,13 @@ private:
   void generate_indices_(pugi::xml_node node);
 
   void generate_styles_();
-  abstract::Style *generate_default_style_(const std::string &name,
+  StyleCollection *generate_default_style_(const std::string &name,
                                            pugi::xml_node node);
-  abstract::Style *generate_style_(const std::string &name,
+  StyleCollection *generate_style_(const std::string &name,
                                    pugi::xml_node node);
-  abstract::Style *generate_page_layout_(const std::string &name,
-                                         pugi::xml_node node);
+  void generate_page_layout_(const std::string &name, pugi::xml_node node);
+
+  [[nodiscard]] StyleCollection *style_(const std::string &name) const;
 };
 
 } // namespace odr::internal::odf
