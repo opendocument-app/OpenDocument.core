@@ -31,14 +31,6 @@ class CustomShapeElement;
 class ImageElement;
 
 class Style;
-class TextStyle;
-class ParagraphStyle;
-class TableStyle;
-class TableColumnStyle;
-class TableRowStyle;
-class TableCellStyle;
-class GraphicStyle;
-class PageLayout;
 
 class Property;
 class DirectionalProperty;
@@ -63,7 +55,7 @@ enum class ElementType {
 
   text,
   line_break,
-  page_break,
+  // page_break, TODO
   paragraph,
   span,
   link,
@@ -87,17 +79,10 @@ enum class ElementType {
   group,
 };
 
-enum class StyleContext {
-  single_style,
-  style_tree,
-  // element_style_tree, TODO
-};
-
 class DocumentCursor;
 class Element;
-class PageLayout;
-class Property;
-class DirectionalProperty;
+struct PageLayout;
+class Style;
 
 class Document final {
 public:
@@ -330,142 +315,85 @@ private:
   internal::abstract::Element *m_element;
 };
 
-template <typename T> class StyleBase {
-public:
-  StyleBase(const internal::abstract::Document *document,
-            const internal::abstract::Element *element, T *style,
-            StyleContext style_context)
-      : m_document{document}, m_element{element}, m_style{style},
-        m_style_context{style_context} {}
-
-  explicit operator bool() const { return m_style; }
-
-protected:
-  const internal::abstract::Document *m_document;
-  const internal::abstract::Element *m_element;
-  T *m_style;
-  StyleContext m_style_context;
+template <typename T> struct DirectionalStyleProperty final {
+  std::optional<T> right;
+  std::optional<T> top;
+  std::optional<T> left;
+  std::optional<T> bottom;
 };
 
-class TextStyle final : public StyleBase<internal::abstract::TextStyle> {
-public:
-  using StyleBase::StyleBase;
-
-  [[nodiscard]] Property font_name() const;
-  [[nodiscard]] Property font_size() const;
-  [[nodiscard]] Property font_weight() const;
-  [[nodiscard]] Property font_style() const;
-  [[nodiscard]] Property font_underline() const;
-  [[nodiscard]] Property font_line_through() const;
-  [[nodiscard]] Property font_shadow() const;
-  [[nodiscard]] Property font_color() const;
-  [[nodiscard]] Property background_color() const;
+struct TextStyle final {
+  std::optional<std::string> font_name;
+  std::optional<std::string> font_size;
+  std::optional<std::string> font_weight;
+  std::optional<std::string> font_style;
+  std::optional<std::string> font_underline;
+  std::optional<std::string> font_line_through;
+  std::optional<std::string> font_shadow;
+  std::optional<std::string> font_color;
+  std::optional<std::string> background_color;
 };
 
-class ParagraphStyle final
-    : public StyleBase<internal::abstract::ParagraphStyle> {
-public:
-  using StyleBase::StyleBase;
-
-  [[nodiscard]] Property text_align() const;
-  [[nodiscard]] DirectionalProperty margin() const;
+struct ParagraphStyle final {
+  std::optional<std::string> text_align;
+  DirectionalStyleProperty<std::string> margin;
 };
 
-class TableStyle final : public StyleBase<internal::abstract::TableStyle> {
-public:
-  using StyleBase::StyleBase;
-
-  [[nodiscard]] Property width() const;
+struct TableStyle final {
+  std::optional<std::string> width;
 };
 
-class TableColumnStyle final
-    : public StyleBase<internal::abstract::TableColumnStyle> {
-public:
-  using StyleBase::StyleBase;
-
-  [[nodiscard]] Property width() const;
+struct TableColumnStyle final {
+  std::optional<std::string> width;
 };
 
-class TableRowStyle final
-    : public StyleBase<internal::abstract::TableRowStyle> {
-public:
-  using StyleBase::StyleBase;
-
-  [[nodiscard]] Property height() const;
+struct TableRowStyle final {
+  std::optional<std::string> height;
 };
 
-class TableCellStyle final
-    : public StyleBase<internal::abstract::TableCellStyle> {
-public:
-  using StyleBase::StyleBase;
-
-  [[nodiscard]] Property vertical_align() const;
-  [[nodiscard]] Property background_color() const;
-  [[nodiscard]] DirectionalProperty padding() const;
-  [[nodiscard]] DirectionalProperty border() const;
+struct TableCellStyle final {
+  std::optional<std::string> vertical_align;
+  std::optional<std::string> background_color;
+  DirectionalStyleProperty<std::string> padding;
+  DirectionalStyleProperty<std::string> border;
 };
 
-class GraphicStyle final : public StyleBase<internal::abstract::GraphicStyle> {
-public:
-  using StyleBase::StyleBase;
-
-  [[nodiscard]] Property stroke_width() const;
-  [[nodiscard]] Property stroke_color() const;
-  [[nodiscard]] Property fill_color() const;
-  [[nodiscard]] Property vertical_align() const;
+struct GraphicStyle final {
+  std::optional<std::string> stroke_width;
+  std::optional<std::string> stroke_color;
+  std::optional<std::string> fill_color;
+  std::optional<std::string> vertical_align;
 };
 
-class PageLayout final : public StyleBase<internal::abstract::PageLayout> {
-public:
-  using StyleBase::StyleBase;
-
-  [[nodiscard]] Property width() const;
-  [[nodiscard]] Property height() const;
-  [[nodiscard]] Property print_orientation() const;
-  [[nodiscard]] DirectionalProperty margin() const;
+struct PageLayout final {
+  std::optional<std::string> width;
+  std::optional<std::string> height;
+  std::optional<std::string> print_orientation;
+  DirectionalStyleProperty<std::string> margin;
 };
 
-class Property final {
+class Style final {
 public:
-  Property(const internal::abstract::Document *document,
-           const internal::abstract::Element *element,
-           const internal::abstract::Style *style,
-           const internal::abstract::Property *property,
-           StyleContext style_context);
+  Style(const internal::abstract::Document *document,
+        const internal::abstract::Element *element,
+        const internal::abstract::Style *style);
 
   explicit operator bool() const;
 
-  [[nodiscard]] std::optional<std::string> value() const;
+  [[nodiscard]] std::optional<std::string> name() const;
+
+  [[nodiscard]] std::optional<TextStyle> text_style() const;
+  [[nodiscard]] std::optional<ParagraphStyle> paragraph_style() const;
+  [[nodiscard]] std::optional<TableStyle> table_style() const;
+  [[nodiscard]] std::optional<TableColumnStyle> table_column_style() const;
+  [[nodiscard]] std::optional<TableRowStyle> table_row_style() const;
+  [[nodiscard]] std::optional<TableCellStyle> table_cell_style() const;
+  [[nodiscard]] std::optional<GraphicStyle> graphic_style() const;
 
 private:
   const internal::abstract::Document *m_document;
   const internal::abstract::Element *m_element;
   const internal::abstract::Style *m_style;
-  const internal::abstract::Property *m_property;
-  StyleContext m_style_context;
-};
-
-class DirectionalProperty final {
-public:
-  DirectionalProperty(const internal::abstract::Document *document,
-                      const internal::abstract::Element *element,
-                      const internal::abstract::Style *style,
-                      internal::abstract::DirectionalProperty *property,
-                      StyleContext style_context);
-
-  explicit operator bool() const;
-
-  [[nodiscard]] Property right() const;
-  [[nodiscard]] Property top() const;
-  [[nodiscard]] Property left() const;
-  [[nodiscard]] Property bottom() const;
-
-private:
-  const internal::abstract::Document *m_document;
-  const internal::abstract::Element *m_element;
-  const internal::abstract::Style *m_style;
-  internal::abstract::DirectionalProperty *m_property;
-  StyleContext m_style_context;
 };
 
 struct TableDimensions {

@@ -312,195 +312,51 @@ Element::CustomShape Element::custom_shape() const {
 
 Element::Image Element::image() const { return {m_document, m_element}; }
 
-Property PageLayout::width() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->width(m_document) : nullptr, m_style_context};
+Style::Style(const internal::abstract::Document *document,
+             const internal::abstract::Element *element,
+             const internal::abstract::Style *style)
+    : m_document{document}, m_element{element}, m_style{style} {}
+
+Style::operator bool() const { return m_style; }
+
+std::optional<std::string> Style::name() const {
+  return m_style ? m_style->name(m_document, m_element)
+                 : std::optional<std::string>();
 }
 
-Property TextStyle::font_name() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->font_name(m_document) : nullptr, m_style_context};
+std::optional<TextStyle> Style::text_style() const {
+  return m_style ? m_style->text_style(m_document, m_element)
+                 : std::optional<TextStyle>();
 }
 
-Property TextStyle::font_size() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->font_size(m_document) : nullptr, m_style_context};
+std::optional<ParagraphStyle> Style::paragraph_style() const {
+  return m_style ? m_style->paragraph_style(m_document, m_element)
+                 : std::optional<ParagraphStyle>();
 }
 
-Property TextStyle::font_weight() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->font_weight(m_document) : nullptr,
-          m_style_context};
+std::optional<TableStyle> Style::table_style() const {
+  return m_style ? m_style->table_style(m_document, m_element)
+                 : std::optional<TableStyle>();
 }
 
-Property TextStyle::font_style() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->font_style(m_document) : nullptr, m_style_context};
+std::optional<TableColumnStyle> Style::table_column_style() const {
+  return m_style ? m_style->table_column_style(m_document, m_element)
+                 : std::optional<TableColumnStyle>();
 }
 
-Property TextStyle::font_underline() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->font_underline(m_document) : nullptr,
-          m_style_context};
+std::optional<TableRowStyle> Style::table_row_style() const {
+  return m_style ? m_style->table_row_style(m_document, m_element)
+                 : std::optional<TableRowStyle>();
 }
 
-Property TextStyle::font_line_through() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->font_line_through(m_document) : nullptr,
-          m_style_context};
+std::optional<TableCellStyle> Style::table_cell_style() const {
+  return m_style ? m_style->table_cell_style(m_document, m_element)
+                 : std::optional<TableCellStyle>();
 }
 
-Property TextStyle::font_shadow() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->font_shadow(m_document) : nullptr,
-          m_style_context};
-}
-
-Property TextStyle::font_color() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->font_color(m_document) : nullptr, m_style_context};
-}
-
-Property TextStyle::background_color() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->background_color(m_document) : nullptr,
-          m_style_context};
-}
-
-Property ParagraphStyle::text_align() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->text_align(m_document) : nullptr, m_style_context};
-}
-
-DirectionalProperty ParagraphStyle::margin() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->margin(m_document) : nullptr, m_style_context};
-}
-
-Property TableStyle::width() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->width(m_document) : nullptr, m_style_context};
-}
-
-Property TableColumnStyle::width() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->width(m_document) : nullptr, m_style_context};
-}
-
-Property TableRowStyle::height() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->height(m_document) : nullptr, m_style_context};
-}
-
-Property TableCellStyle::vertical_align() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->vertical_align(m_document) : nullptr,
-          m_style_context};
-}
-
-Property TableCellStyle::background_color() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->background_color(m_document) : nullptr,
-          m_style_context};
-}
-
-DirectionalProperty TableCellStyle::padding() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->padding(m_document) : nullptr, m_style_context};
-}
-
-DirectionalProperty TableCellStyle::border() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->border(m_document) : nullptr, m_style_context};
-}
-
-Property GraphicStyle::stroke_width() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->stroke_width(m_document) : nullptr,
-          m_style_context};
-}
-
-Property GraphicStyle::stroke_color() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->stroke_color(m_document) : nullptr,
-          m_style_context};
-}
-
-Property GraphicStyle::fill_color() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->fill_color(m_document) : nullptr, m_style_context};
-}
-
-Property GraphicStyle::vertical_align() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->vertical_align(m_document) : nullptr,
-          m_style_context};
-}
-
-Property PageLayout::height() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->height(m_document) : nullptr, m_style_context};
-}
-
-Property PageLayout::print_orientation() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->print_orientation(m_document) : nullptr,
-          m_style_context};
-}
-
-DirectionalProperty PageLayout::margin() const {
-  return {m_document, m_element, m_style,
-          m_style ? m_style->margin(m_document) : nullptr, m_style_context};
-}
-
-Property::Property(const internal::abstract::Document *document,
-                   const internal::abstract::Element *element,
-                   const internal::abstract::Style *style,
-                   const internal::abstract::Property *property,
-                   const StyleContext style_context)
-    : m_document{document}, m_element{element}, m_style{style},
-      m_property{property}, m_style_context{style_context} {}
-
-Property::operator bool() const { return m_property; }
-
-std::optional<std::string> Property::value() const {
-  if (!*this) {
-    return {};
-  }
-  return m_property->value(m_document, m_element, m_style, m_style_context);
-}
-
-DirectionalProperty::DirectionalProperty(
-    const internal::abstract::Document *document,
-    const internal::abstract::Element *element,
-    const internal::abstract::Style *style,
-    internal::abstract::DirectionalProperty *property,
-    const StyleContext style_context)
-    : m_document{document}, m_element{element}, m_style{style},
-      m_property{property}, m_style_context{style_context} {}
-
-DirectionalProperty::operator bool() const { return m_property; }
-
-Property DirectionalProperty::right() const {
-  return {m_document, m_element, m_style,
-          m_property ? m_property->right(m_document) : nullptr,
-          m_style_context};
-}
-
-Property DirectionalProperty::top() const {
-  return {m_document, m_element, m_style,
-          m_property ? m_property->top(m_document) : nullptr, m_style_context};
-}
-
-Property DirectionalProperty::left() const {
-  return {m_document, m_element, m_style,
-          m_property ? m_property->left(m_document) : nullptr, m_style_context};
-}
-
-Property DirectionalProperty::bottom() const {
-  return {m_document, m_element, m_style,
-          m_property ? m_property->bottom(m_document) : nullptr,
-          m_style_context};
+std::optional<GraphicStyle> Style::graphic_style() const {
+  return m_style ? m_style->graphic_style(m_document, m_element)
+                 : std::optional<GraphicStyle>();
 }
 
 TableDimensions::TableDimensions() = default;

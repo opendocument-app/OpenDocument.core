@@ -4,15 +4,23 @@
 #include <any>
 #include <functional>
 #include <memory>
+#include <odr/document.h>
 #include <string>
 #include <unordered_map>
 
 namespace odr {
+class File;
 enum class DocumentType;
 enum class ElementType;
-enum class StyleContext;
-class TableDimensions;
-class File;
+struct TextStyle;
+struct ParagraphStyle;
+struct TableStyle;
+struct TableColumnStyle;
+struct TableRowStyle;
+struct TableCellStyle;
+struct GraphicStyle;
+struct PageLayout;
+struct TableDimensions;
 } // namespace odr
 
 namespace odr::internal::common {
@@ -23,20 +31,7 @@ namespace odr::internal::abstract {
 class ReadableFilesystem;
 
 class DocumentCursor;
-
 class Element;
-
-class TextStyle;
-class ParagraphStyle;
-class TableStyle;
-class TableColumnStyle;
-class TableRowStyle;
-class TableCellStyle;
-class GraphicStyle;
-class PageLayout;
-
-class Property;
-class DirectionalProperty;
 
 using Allocator = std::function<void *(std::size_t size)>;
 
@@ -114,7 +109,11 @@ public:
 
 class TextRootElement : public virtual Element {
 public:
-  [[nodiscard]] virtual PageLayout *
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::root;
+  }
+
+  [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
   [[nodiscard]] virtual Element *
@@ -124,7 +123,11 @@ public:
 
 class SlideElement : public virtual Element {
 public:
-  [[nodiscard]] virtual PageLayout *
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::slide;
+  }
+
+  [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
   [[nodiscard]] virtual Element *
@@ -135,12 +138,20 @@ public:
 
 class SheetElement : public virtual Element {
 public:
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::sheet;
+  }
+
   [[nodiscard]] virtual std::string *name(const Document *document) const = 0;
 };
 
 class PageElement : public virtual Element {
 public:
-  [[nodiscard]] virtual PageLayout *
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::page;
+  }
+
+  [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
   [[nodiscard]] virtual Element *
@@ -151,46 +162,60 @@ public:
 
 class MasterPageElement : public virtual Element {
 public:
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::master_page;
+  }
+
   [[nodiscard]] virtual PageLayout *
   page_layout(const Document *document) const = 0;
 };
 
 class ParagraphElement : public virtual Element {
 public:
-  [[nodiscard]] virtual TextStyle *
-  text_style(const Document *document) const = 0;
-  [[nodiscard]] virtual ParagraphStyle *
-  paragraph_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::paragraph;
+  }
 };
 
 class SpanElement : public virtual Element {
 public:
-  [[nodiscard]] virtual TextStyle *
-  text_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::span;
+  }
 };
 
 class TextElement : public virtual Element {
 public:
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::text;
+  }
+
   [[nodiscard]] virtual std::string value(const Document *document) const = 0;
 };
 
 class LinkElement : public virtual Element {
 public:
-  [[nodiscard]] virtual TextStyle *
-  text_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::link;
+  }
 
   [[nodiscard]] virtual std::string href(const Document *document) const = 0;
 };
 
 class BookmarkElement : public virtual Element {
 public:
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::bookmark;
+  }
+
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
 
 class TableElement : public virtual Element {
 public:
-  [[nodiscard]] virtual TableStyle *
-  table_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::table;
+  }
 
   [[nodiscard]] virtual TableDimensions
   dimensions(const Document *document) const = 0;
@@ -202,20 +227,23 @@ public:
 
 class TableColumnElement : public virtual Element {
 public:
-  [[nodiscard]] virtual TableColumnStyle *
-  table_column_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::table_column;
+  }
 };
 
 class TableRowElement : public virtual Element {
 public:
-  [[nodiscard]] virtual TableRowStyle *
-  table_row_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::table_row;
+  }
 };
 
 class TableCellElement : public virtual Element {
 public:
-  [[nodiscard]] virtual TableCellStyle *
-  table_cell_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::table_cell;
+  }
 
   [[nodiscard]] virtual TableDimensions
   span(const Document *document) const = 0;
@@ -223,6 +251,10 @@ public:
 
 class FrameElement : public virtual Element {
 public:
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::frame;
+  }
+
   [[nodiscard]] virtual std::optional<std::string>
   anchor_type(const Document *document) const = 0;
   [[nodiscard]] virtual std::optional<std::string>
@@ -239,8 +271,9 @@ public:
 
 class RectElement : public virtual Element {
 public:
-  [[nodiscard]] virtual GraphicStyle *
-  graphic_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::rect;
+  }
 
   [[nodiscard]] virtual std::string x(const Document *document) const = 0;
   [[nodiscard]] virtual std::string y(const Document *document) const = 0;
@@ -250,8 +283,9 @@ public:
 
 class LineElement : public virtual Element {
 public:
-  [[nodiscard]] virtual GraphicStyle *
-  graphic_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::line;
+  }
 
   [[nodiscard]] virtual std::string x1(const Document *document) const = 0;
   [[nodiscard]] virtual std::string y1(const Document *document) const = 0;
@@ -261,8 +295,9 @@ public:
 
 class CircleElement : public virtual Element {
 public:
-  [[nodiscard]] virtual GraphicStyle *
-  graphic_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::circle;
+  }
 
   [[nodiscard]] virtual std::string x(const Document *document) const = 0;
   [[nodiscard]] virtual std::string y(const Document *document) const = 0;
@@ -272,8 +307,9 @@ public:
 
 class CustomShapeElement : public virtual Element {
 public:
-  [[nodiscard]] virtual GraphicStyle *
-  graphic_style(const Document *document) const = 0;
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::custom_shape;
+  }
 
   [[nodiscard]] virtual std::optional<std::string>
   x(const Document *document) const = 0;
@@ -285,6 +321,10 @@ public:
 
 class ImageElement : public virtual Element {
 public:
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::image;
+  }
+
   [[nodiscard]] virtual bool internal(const Document *document) const = 0;
   [[nodiscard]] virtual std::optional<odr::File>
   file(const Document *document) const = 0;
@@ -295,99 +335,24 @@ class Style {
 public:
   virtual ~Style() = default;
 
-  virtual std::optional<std::string> name() const = 0;
-  virtual const Style *parent() const = 0;
-};
+  virtual std::optional<std::string> name(const Document *document,
+                                          const Element *element) const = 0;
 
-class TextStyle : public virtual Style {
-public:
-  virtual const TextStyle *parent() const = 0;
-
-  [[nodiscard]] virtual Property *font_name(const Document *document) = 0;
-  [[nodiscard]] virtual Property *font_size(const Document *document) = 0;
-  [[nodiscard]] virtual Property *font_weight(const Document *document) = 0;
-  [[nodiscard]] virtual Property *font_style(const Document *document) = 0;
-  [[nodiscard]] virtual Property *font_underline(const Document *document) = 0;
-  [[nodiscard]] virtual Property *
-  font_line_through(const Document *document) = 0;
-  [[nodiscard]] virtual Property *font_shadow(const Document *document) = 0;
-  [[nodiscard]] virtual Property *font_color(const Document *document) = 0;
-  [[nodiscard]] virtual Property *
-  background_color(const Document *document) = 0;
-};
-
-class ParagraphStyle : public virtual Style {
-public:
-  virtual const ParagraphStyle *parent() const = 0;
-
-  [[nodiscard]] virtual Property *text_align(const Document *document) = 0;
-  [[nodiscard]] virtual DirectionalProperty *
-  margin(const Document *document) = 0;
-};
-
-class TableStyle : public virtual Style {
-public:
-  [[nodiscard]] virtual Property *width(const Document *document) = 0;
-};
-
-class TableColumnStyle : public virtual Style {
-public:
-  [[nodiscard]] virtual Property *width(const Document *document) = 0;
-};
-
-class TableRowStyle : public virtual Style {
-public:
-  [[nodiscard]] virtual Property *height(const Document *document) = 0;
-};
-
-class TableCellStyle : public virtual Style {
-public:
-  [[nodiscard]] virtual Property *vertical_align(const Document *document) = 0;
-  [[nodiscard]] virtual Property *
-  background_color(const Document *document) = 0;
-  [[nodiscard]] virtual DirectionalProperty *
-  padding(const Document *document) = 0;
-  [[nodiscard]] virtual DirectionalProperty *
-  border(const Document *document) = 0;
-};
-
-class GraphicStyle : public virtual Style {
-public:
-  virtual const GraphicStyle *parent() const = 0;
-
-  [[nodiscard]] virtual Property *stroke_width(const Document *document) = 0;
-  [[nodiscard]] virtual Property *stroke_color(const Document *document) = 0;
-  [[nodiscard]] virtual Property *fill_color(const Document *document) = 0;
-  [[nodiscard]] virtual Property *vertical_align(const Document *document) = 0;
-};
-
-class PageLayout : public virtual Style {
-public:
-  [[nodiscard]] virtual Property *width(const Document *document) = 0;
-  [[nodiscard]] virtual Property *height(const Document *document) = 0;
-  [[nodiscard]] virtual Property *
-  print_orientation(const Document *document) = 0;
-  [[nodiscard]] virtual DirectionalProperty *
-  margin(const Document *document) = 0;
-};
-
-class Property {
-public:
-  virtual ~Property() = default;
-
-  [[nodiscard]] virtual std::optional<std::string>
-  value(const Document *document, const Element *element, const Style *style,
-        StyleContext style_context) const = 0;
-};
-
-class DirectionalProperty {
-public:
-  virtual ~DirectionalProperty() = default;
-
-  [[nodiscard]] virtual Property *right(const Document *document) = 0;
-  [[nodiscard]] virtual Property *top(const Document *document) = 0;
-  [[nodiscard]] virtual Property *left(const Document *document) = 0;
-  [[nodiscard]] virtual Property *bottom(const Document *document) = 0;
+  [[nodiscard]] virtual std::optional<TextStyle>
+  text_style(const Document *document, const Element *element) const = 0;
+  [[nodiscard]] virtual std::optional<ParagraphStyle>
+  paragraph_style(const Document *document, const Element *element) const = 0;
+  [[nodiscard]] virtual std::optional<TableStyle>
+  table_style(const Document *document, const Element *element) const = 0;
+  [[nodiscard]] virtual std::optional<TableColumnStyle>
+  table_column_style(const Document *document,
+                     const Element *element) const = 0;
+  [[nodiscard]] virtual std::optional<TableRowStyle>
+  table_row_style(const Document *document, const Element *element) const = 0;
+  [[nodiscard]] virtual std::optional<TableCellStyle>
+  table_cell_style(const Document *document, const Element *element) const = 0;
+  [[nodiscard]] virtual std::optional<GraphicStyle>
+  graphic_style(const Document *document, const Element *element) const = 0;
 };
 
 } // namespace odr::internal::abstract
