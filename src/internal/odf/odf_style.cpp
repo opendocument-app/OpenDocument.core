@@ -8,514 +8,252 @@ namespace odr::internal::odf {
 
 namespace {
 
-class Style : public virtual abstract::Style {
+std::optional<std::string> read_optional_string(pugi::xml_attribute attribute) {
+  if (attribute) {
+    return attribute.value();
+  }
+  return {};
+}
+
+class Style final : public abstract::Style {
 public:
-  StyleRegistry::StyleCollection *m_collection;
+  Style(std::string name, std::string family, pugi::xml_node node,
+        abstract::Style *parent)
+      : m_name{std::move(name)}, m_family{std::move(family)}, m_node{node},
+        m_parent{parent} {}
 
-  explicit Style(StyleRegistry::StyleCollection *collection)
-      : m_collection{collection} {}
-
-  std::optional<std::string> name() const final;
-  pugi::xml_node node() const;
-};
-
-class StringAttributeProperty : public abstract::Property {
-public:
-  StringAttributeProperty(const char *property_class_name,
-                          const char *attribute_name)
-      : m_property_class_name{property_class_name}, m_attribute_name{
-                                                        attribute_name} {}
-
-  [[nodiscard]] std::optional<std::string>
-  value(const abstract::Document *document, const abstract::Element *element,
-        const abstract::Style *abstract_style,
-        const StyleContext style_context) const final {
-    auto style = dynamic_cast<const Style *>(abstract_style);
-    if (auto attribute = style->node()
-                             .child(m_property_class_name)
-                             .attribute(m_attribute_name)) {
-      return attribute.value();
-    }
-    if (auto parent = style->parent()) {
-      return value(document, element, parent, style_context);
-    }
-    return {};
+  std::optional<std::string> name(const abstract::Document *,
+                                  const abstract::Element *) const final {
+    return m_name;
   }
 
-private:
-  const char *m_property_class_name;
-  const char *m_attribute_name;
-};
+  bool text_style(const abstract::Document *document,
+                  const abstract::Element *element,
+                  const StyleDepth style_depth, TextStyle &result) const final {
+    bool changed = false;
 
-class DirectionalProperty : public abstract::DirectionalProperty {
-public:
-  class Property : public abstract::Property {
-  public:
-    Property(const char *property_class_name, const char *attribute_name,
-             const char *default_attribute_name)
-        : m_attribute{property_class_name, attribute_name},
-          m_default_attribute{property_class_name, default_attribute_name} {}
-
-    [[nodiscard]] std::optional<std::string>
-    value(const abstract::Document *document, const abstract::Element *element,
-          const abstract::Style *style,
-          const StyleContext style_context) const final {
-      if (auto value =
-              m_attribute.value(document, element, style, style_context)) {
-        return value;
-      }
-      return m_default_attribute.value(document, element, style, style_context);
+    if (m_parent && (style_depth != StyleDepth::single_style)) {
+      changed = m_parent->text_style(document, element, style_depth, result);
     }
 
-  private:
-    StringAttributeProperty m_attribute;
-    StringAttributeProperty m_default_attribute;
-  };
+    if (auto text_properties = m_node.child("style:text-properties")) {
+      result.font_name =
+          read_optional_string(text_properties.attribute("style:font-name"));
+      result.font_size =
+          read_optional_string(text_properties.attribute("fo:font-size"));
+      result.font_weight =
+          read_optional_string(text_properties.attribute("fo:font-weight"));
+      result.font_style =
+          read_optional_string(text_properties.attribute("fo:font-style"));
+      result.font_underline = read_optional_string(
+          text_properties.attribute("style:text-underline-style"));
+      result.font_line_through = read_optional_string(
+          text_properties.attribute("style:text-line-through-style"));
+      result.font_shadow =
+          read_optional_string(text_properties.attribute("fo:text-shadow"));
+      result.font_color =
+          read_optional_string(text_properties.attribute("fo:color"));
+      result.font_shadow = read_optional_string(
+          text_properties.attribute("fo:background-color"));
 
-  DirectionalProperty(const char *property_class_name,
-                      const char *default_attribute_name,
-                      const char *right_attribute_name,
-                      const char *top_attribute_name,
-                      const char *left_attribute_name,
-                      const char *bottom_attribute_name)
-      : m_right{property_class_name, right_attribute_name,
-                default_attribute_name},
-        m_top{property_class_name, top_attribute_name, default_attribute_name},
-        m_left{property_class_name, left_attribute_name,
-               default_attribute_name},
-        m_bottom{property_class_name, bottom_attribute_name,
-                 default_attribute_name} {}
-
-  [[nodiscard]] abstract::Property *right(const abstract::Document *) final {
-    return &m_right;
-  }
-
-  [[nodiscard]] abstract::Property *top(const abstract::Document *) final {
-    return &m_top;
-  }
-
-  [[nodiscard]] abstract::Property *left(const abstract::Document *) final {
-    return &m_left;
-  }
-
-  [[nodiscard]] abstract::Property *bottom(const abstract::Document *) final {
-    return &m_bottom;
-  }
-
-private:
-  Property m_right;
-  Property m_top;
-  Property m_left;
-  Property m_bottom;
-};
-
-class TextStyle final : public virtual Style,
-                        public virtual abstract::TextStyle {
-public:
-  using Style::Style;
-
-  const abstract::TextStyle *parent() const final;
-
-  [[nodiscard]] abstract::Property *
-  font_name(const abstract::Document *) final {
-    static StringAttributeProperty font_name{"style:text-properties",
-                                             "style:font-name"};
-    return &font_name;
-  }
-
-  [[nodiscard]] abstract::Property *
-  font_size(const abstract::Document *) final {
-    static StringAttributeProperty font_size{"style:text-properties",
-                                             "fo:font-size"};
-    return &font_size;
-  }
-
-  [[nodiscard]] abstract::Property *
-  font_weight(const abstract::Document *) final {
-    static StringAttributeProperty font_weight{"style:text-properties",
-                                               "fo:font-weight"};
-    return &font_weight;
-  }
-
-  [[nodiscard]] abstract::Property *
-  font_style(const abstract::Document *) final {
-    static StringAttributeProperty font_style{"style:text-properties",
-                                              "fo:font-style"};
-    return &font_style;
-  }
-
-  [[nodiscard]] abstract::Property *
-  font_underline(const abstract::Document *) final {
-    static StringAttributeProperty font_underline{"style:text-properties",
-                                                  "style:text-underline-style"};
-    return &font_underline;
-  }
-
-  [[nodiscard]] abstract::Property *
-  font_line_through(const abstract::Document *) final {
-    static StringAttributeProperty font_line_through{
-        "style:text-properties", "style:text-line-through-style"};
-    return &font_line_through;
-  }
-
-  [[nodiscard]] abstract::Property *
-  font_shadow(const abstract::Document *) final {
-    static StringAttributeProperty font_shadow{"style:text-properties",
-                                               "fo:text-shadow"};
-    return &font_shadow;
-  }
-
-  [[nodiscard]] abstract::Property *
-  font_color(const abstract::Document *) final {
-    static StringAttributeProperty font_color{"style:text-properties",
-                                              "fo:color"};
-    return &font_color;
-  }
-
-  [[nodiscard]] abstract::Property *
-  background_color(const abstract::Document *) final {
-    static StringAttributeProperty background_color{"style:text-properties",
-                                                    "fo:background-color"};
-    return &background_color;
-  }
-};
-
-class ParagraphStyle final : public virtual Style,
-                             public virtual abstract::ParagraphStyle {
-public:
-  using Style::Style;
-
-  const abstract::ParagraphStyle *parent() const final;
-
-  [[nodiscard]] abstract::Property *
-  text_align(const abstract::Document *) final {
-    static StringAttributeProperty text_align{"style:paragraph-properties",
-                                              "fo:text-align"};
-    return &text_align;
-  }
-
-  [[nodiscard]] abstract::DirectionalProperty *
-  margin(const abstract::Document *) final {
-    static DirectionalProperty margin{"style:paragraph-properties",
-                                      "fo:margin",
-                                      "fo:margin-right",
-                                      "fo:margin-top",
-                                      "fo:margin-left",
-                                      "fo:margin-bottom"};
-    return &margin;
-  }
-};
-
-class TableStyle final : public virtual Style,
-                         public virtual abstract::TableStyle {
-public:
-  using Style::Style;
-
-  const abstract::TableStyle *parent() const final;
-
-  [[nodiscard]] abstract::Property *width(const abstract::Document *) final {
-    static StringAttributeProperty width{"style:table-properties",
-                                         "style:width"};
-    return &width;
-  }
-};
-
-class TableColumnStyle final : public virtual Style,
-                               public virtual abstract::TableColumnStyle {
-public:
-  using Style::Style;
-
-  const abstract::TableColumnStyle *parent() const final;
-
-  [[nodiscard]] abstract::Property *width(const abstract::Document *) final {
-    static StringAttributeProperty width{"style:table-column-properties",
-                                         "style:column-width"};
-    return &width;
-  }
-};
-
-class TableRowStyle final : public virtual Style,
-                            public virtual abstract::TableRowStyle {
-public:
-  using Style::Style;
-
-  const abstract::TableRowStyle *parent() const final;
-
-  [[nodiscard]] abstract::Property *height(const abstract::Document *) final {
-    static StringAttributeProperty height{"style:table-row-properties",
-                                          "style:row-height"};
-    return &height;
-  }
-};
-
-class TableCellStyle final : public virtual Style,
-                             public virtual abstract::TableCellStyle {
-public:
-  using Style::Style;
-
-  const abstract::TableCellStyle *parent() const final;
-
-  [[nodiscard]] abstract::Property *
-  vertical_align(const abstract::Document *) final {
-    static StringAttributeProperty vertical_align{"style:table-cell-properties",
-                                                  "style:vertical-align"};
-    return &vertical_align;
-  }
-
-  [[nodiscard]] abstract::Property *
-  background_color(const abstract::Document *) final {
-    static StringAttributeProperty background_color{
-        "style:table-cell-properties", "fo:background-color"};
-    return &background_color;
-  }
-
-  [[nodiscard]] abstract::DirectionalProperty *
-  padding(const abstract::Document *) final {
-    static DirectionalProperty padding{"style:table-cell-properties",
-                                       "fo:padding",
-                                       "fo:padding-right",
-                                       "fo:padding-top",
-                                       "fo:padding-left",
-                                       "fo:padding-bottom"};
-    return &padding;
-  }
-
-  [[nodiscard]] abstract::DirectionalProperty *
-  border(const abstract::Document *) final {
-    static DirectionalProperty border{"style:table-cell-properties",
-                                      "fo:border",
-                                      "fo:border-right",
-                                      "fo:border-top",
-                                      "fo:border-left",
-                                      "fo:border-bottom"};
-    return &border;
-  }
-};
-
-class GraphicStyle final : public virtual Style,
-                           public virtual abstract::GraphicStyle {
-public:
-  using Style::Style;
-
-  const abstract::GraphicStyle *parent() const final;
-
-  [[nodiscard]] abstract::Property *
-  stroke_width(const abstract::Document *) final {
-    static StringAttributeProperty stroke_width{"style:graphic-properties",
-                                                "svg:stroke-width"};
-    return &stroke_width;
-  }
-
-  [[nodiscard]] abstract::Property *
-  stroke_color(const abstract::Document *) final {
-    static StringAttributeProperty stroke_color{"style:graphic-properties",
-                                                "svg:stroke-color"};
-    return &stroke_color;
-  }
-
-  [[nodiscard]] abstract::Property *
-  fill_color(const abstract::Document *) final {
-    static StringAttributeProperty fill_color{"style:graphic-properties",
-                                              "draw:fill-color"};
-    return &fill_color;
-  }
-
-  [[nodiscard]] abstract::Property *
-  vertical_align(const abstract::Document *) final {
-    static StringAttributeProperty vertical_align{
-        "style:graphic-properties", "draw:textarea-vertical-align"};
-    return &vertical_align;
-  }
-};
-
-class PageLayout final : public virtual abstract::PageLayout {
-public:
-  class StringAttributeProperty : public abstract::Property {
-  public:
-    StringAttributeProperty(const char *property_class_name,
-                            const char *attribute_name)
-        : m_property_class_name{property_class_name}, m_attribute_name{
-                                                          attribute_name} {}
-
-    [[nodiscard]] std::optional<std::string>
-    value(const abstract::Document *, const abstract::Element *,
-          const abstract::Style *style, const StyleContext) const final {
-      auto page_layout = dynamic_cast<const PageLayout *>(style);
-      if (auto attribute = page_layout->m_node.child(m_property_class_name)
-                               .attribute(m_attribute_name)) {
-        return attribute.value();
-      }
-      return {};
+      changed = true;
     }
 
-  private:
-    const char *m_property_class_name;
-    const char *m_attribute_name;
-  };
-
-  class DirectionalProperty : public abstract::DirectionalProperty {
-  public:
-    class Property : public abstract::Property {
-    public:
-      Property(const char *property_class_name, const char *attribute_name,
-               const char *default_attribute_name)
-          : m_attribute{property_class_name, attribute_name},
-            m_default_attribute{property_class_name, default_attribute_name} {}
-
-      [[nodiscard]] std::optional<std::string>
-      value(const abstract::Document *document,
-            const abstract::Element *element, const abstract::Style *style,
-            const StyleContext style_context) const final {
-        if (auto value =
-                m_attribute.value(document, element, style, style_context)) {
-          return value;
-        }
-        return m_default_attribute.value(document, element, style,
-                                         style_context);
-      }
-
-    private:
-      StringAttributeProperty m_attribute;
-      StringAttributeProperty m_default_attribute;
-    };
-
-    DirectionalProperty(const char *property_class_name,
-                        const char *default_attribute_name,
-                        const char *right_attribute_name,
-                        const char *top_attribute_name,
-                        const char *left_attribute_name,
-                        const char *bottom_attribute_name)
-        : m_right{property_class_name, right_attribute_name,
-                  default_attribute_name},
-          m_top{property_class_name, top_attribute_name,
-                default_attribute_name},
-          m_left{property_class_name, left_attribute_name,
-                 default_attribute_name},
-          m_bottom{property_class_name, bottom_attribute_name,
-                   default_attribute_name} {}
-
-    [[nodiscard]] abstract::Property *right(const abstract::Document *) final {
-      return &m_right;
-    }
-
-    [[nodiscard]] abstract::Property *top(const abstract::Document *) final {
-      return &m_top;
-    }
-
-    [[nodiscard]] abstract::Property *left(const abstract::Document *) final {
-      return &m_left;
-    }
-
-    [[nodiscard]] abstract::Property *bottom(const abstract::Document *) final {
-      return &m_bottom;
-    }
-
-  private:
-    Property m_right;
-    Property m_top;
-    Property m_left;
-    Property m_bottom;
-  };
-
-  PageLayout(std::string name, pugi::xml_node node)
-      : m_name{std::move(name)}, m_node{node} {}
-
-  std::optional<std::string> name() const final { return m_name; }
-
-  const abstract::PageLayout *parent() const final { return nullptr; }
-
-  [[nodiscard]] abstract::Property *width(const abstract::Document *) final {
-    static StringAttributeProperty width{"style:page-layout-properties",
-                                         "fo:page-width"};
-    return &width;
+    return changed;
   }
 
-  [[nodiscard]] abstract::Property *height(const abstract::Document *) final {
-    static StringAttributeProperty height{"style:page-layout-properties",
-                                          "fo:page-height"};
-    return &height;
+  bool paragraph_style(const abstract::Document *document,
+                       const abstract::Element *element, StyleDepth style_depth,
+                       ParagraphStyle &result) const final {
+    bool changed = false;
+
+    if (m_parent && (style_depth != StyleDepth::single_style)) {
+      changed =
+          m_parent->paragraph_style(document, element, style_depth, result);
+    }
+
+    if (auto paragraph_properties =
+            m_node.child("style:paragraph-properties")) {
+      result.text_align =
+          read_optional_string(paragraph_properties.attribute("fo:text-align"));
+      result.margin =
+          read_optional_string(paragraph_properties.attribute("fo:margin"));
+      result.margin.right = read_optional_string(
+          paragraph_properties.attribute("fo:margin-right"));
+      result.margin.top =
+          read_optional_string(paragraph_properties.attribute("fo:margin-top"));
+      result.margin.left = read_optional_string(
+          paragraph_properties.attribute("fo:margin-left"));
+      result.margin.bottom = read_optional_string(
+          paragraph_properties.attribute("fo:margin-bottom"));
+
+      changed = true;
+    }
+
+    return changed;
   }
 
-  [[nodiscard]] abstract::Property *
-  print_orientation(const abstract::Document *) final {
-    static StringAttributeProperty print_orientation{
-        "style:page-layout-properties", "style:print-orientation"};
-    return &print_orientation;
+  bool table_style(const abstract::Document *document,
+                   const abstract::Element *element, StyleDepth style_depth,
+                   TableStyle &result) const final {
+    bool changed = false;
+
+    if (m_parent && (style_depth != StyleDepth::single_style)) {
+      changed = m_parent->table_style(document, element, style_depth, result);
+    }
+
+    if (auto table_properties = m_node.child("style:table-properties")) {
+      result.width =
+          read_optional_string(table_properties.attribute("style:width"));
+
+      changed = true;
+    }
+
+    return changed;
   }
 
-  [[nodiscard]] abstract::DirectionalProperty *
-  margin(const abstract::Document *) final {
-    static DirectionalProperty margin{"style:page-layout-properties",
-                                      "fo:margin",
-                                      "fo:margin-right",
-                                      "fo:margin-top",
-                                      "fo:margin-left",
-                                      "fo:margin-bottom"};
-    return &margin;
+  bool table_column_style(const abstract::Document *document,
+                          const abstract::Element *element,
+                          StyleDepth style_depth,
+                          TableColumnStyle &result) const final {
+    bool changed = false;
+
+    if (m_parent && (style_depth != StyleDepth::single_style)) {
+      changed =
+          m_parent->table_column_style(document, element, style_depth, result);
+    }
+
+    if (auto table_column_properties =
+            m_node.child("style:table-column-properties")) {
+      result.width = read_optional_string(
+          table_column_properties.attribute("style:column-width"));
+
+      changed = true;
+    }
+
+    return changed;
+  }
+
+  bool table_row_style(const abstract::Document *document,
+                       const abstract::Element *element, StyleDepth style_depth,
+                       TableRowStyle &result) const final {
+    bool changed = false;
+
+    if (m_parent && (style_depth != StyleDepth::single_style)) {
+      changed =
+          m_parent->table_row_style(document, element, style_depth, result);
+    }
+
+    if (auto table_row_properties =
+            m_node.child("style:table-row-properties")) {
+      result.height = read_optional_string(
+          table_row_properties.attribute("style:row-height"));
+
+      changed = true;
+    }
+
+    return changed;
+  }
+
+  bool table_cell_style(const abstract::Document *document,
+                        const abstract::Element *element,
+                        StyleDepth style_depth,
+                        TableCellStyle &result) const final {
+    bool changed = false;
+
+    if (m_parent && (style_depth != StyleDepth::single_style)) {
+      changed =
+          m_parent->table_cell_style(document, element, style_depth, result);
+    }
+
+    if (auto table_cell_properties =
+            m_node.child("style:table-cell-properties")) {
+      result.vertical_align = read_optional_string(
+          table_cell_properties.attribute("style:vertical-align"));
+      result.background_color = read_optional_string(
+          table_cell_properties.attribute("fo:background-color"));
+      result.padding =
+          read_optional_string(table_cell_properties.attribute("fo:padding"));
+      result.padding.right = read_optional_string(
+          table_cell_properties.attribute("fo:padding-right"));
+      result.padding.top = read_optional_string(
+          table_cell_properties.attribute("fo:padding-top"));
+      result.padding.left = read_optional_string(
+          table_cell_properties.attribute("fo:padding-left"));
+      result.padding.bottom = read_optional_string(
+          table_cell_properties.attribute("fo:padding-bottom"));
+      result.border =
+          read_optional_string(table_cell_properties.attribute("fo:border"));
+      result.border.right = read_optional_string(
+          table_cell_properties.attribute("fo:border-right"));
+      result.border.top = read_optional_string(
+          table_cell_properties.attribute("fo:border-top"));
+      result.border.left = read_optional_string(
+          table_cell_properties.attribute("fo:border-left"));
+      result.border.bottom = read_optional_string(
+          table_cell_properties.attribute("fo:border-bottom"));
+
+      changed = true;
+    }
+
+    return changed;
+  }
+
+  bool graphic_style(const abstract::Document *document,
+                     const abstract::Element *element, StyleDepth style_depth,
+                     GraphicStyle &result) const final {
+    bool changed = false;
+
+    if (m_parent && (style_depth != StyleDepth::single_style)) {
+      changed = m_parent->graphic_style(document, element, style_depth, result);
+    }
+
+    if (auto graphic_properties = m_node.child("style:graphic-properties")) {
+      result.stroke_width = read_optional_string(
+          graphic_properties.attribute("svg:stroke-width"));
+      result.stroke_color = read_optional_string(
+          graphic_properties.attribute("svg:stroke-color"));
+      result.fill_color =
+          read_optional_string(graphic_properties.attribute("draw:fill-color"));
+      result.vertical_align = read_optional_string(
+          graphic_properties.attribute("draw:textarea-vertical-align"));
+
+      changed = true;
+    }
+
+    return changed;
   }
 
 private:
   std::string m_name;
+  std::string m_family;
   pugi::xml_node m_node;
+  abstract::Style *m_parent;
 };
 
-} // namespace
+PageLayout read_page_layout(pugi::xml_node node) {
+  PageLayout result;
 
-class StyleRegistry::StyleCollection final {
-public:
-  std::string name;
-  std::string family;
-  pugi::xml_node node;
-  StyleCollection *parent;
+  auto page_layout_properties = node.child("style:page-layout-properties");
 
-  TextStyle text_style;
-  ParagraphStyle paragraph_style;
-  TableStyle table_style;
-  TableColumnStyle table_column_style;
-  TableRowStyle table_row_style;
-  TableCellStyle table_cell_style;
-  GraphicStyle graphic_style;
+  result.width =
+      read_optional_string(page_layout_properties.attribute("fo:page-width"));
+  result.height =
+      read_optional_string(page_layout_properties.attribute("fo:page-height"));
+  result.print_orientation = read_optional_string(
+      page_layout_properties.attribute("style:print-orientation"));
+  result.margin =
+      read_optional_string(page_layout_properties.attribute("fo:margin"));
+  result.margin.right =
+      read_optional_string(page_layout_properties.attribute("fo:margin-right"));
+  result.margin.top =
+      read_optional_string(page_layout_properties.attribute("fo:margin-top"));
+  result.margin.left =
+      read_optional_string(page_layout_properties.attribute("fo:margin-left"));
+  result.margin.bottom = read_optional_string(
+      page_layout_properties.attribute("fo:margin-bottom"));
 
-  StyleCollection(std::string name, std::string family, pugi::xml_node node,
-                  StyleCollection *parent)
-      : name{std::move(name)}, family{std::move(family)}, node{node},
-        parent{parent}, text_style{this}, paragraph_style{this},
-        table_style{this}, table_column_style{this}, table_row_style{this},
-        table_cell_style{this}, graphic_style{this} {}
-};
-
-namespace {
-
-std::optional<std::string> Style::name() const { return m_collection->name; }
-
-pugi::xml_node Style::node() const { return m_collection->node; }
-
-const abstract::TextStyle *TextStyle::parent() const {
-  return &m_collection->parent->text_style;
-}
-
-const abstract::ParagraphStyle *ParagraphStyle::parent() const {
-  return &m_collection->parent->paragraph_style;
-}
-
-const abstract::TableStyle *TableStyle::parent() const {
-  return &m_collection->parent->table_style;
-}
-
-const abstract::TableColumnStyle *TableColumnStyle::parent() const {
-  return &m_collection->parent->table_column_style;
-}
-
-const abstract::TableRowStyle *TableRowStyle::parent() const {
-  return &m_collection->parent->table_row_style;
-}
-
-const abstract::TableCellStyle *TableCellStyle::parent() const {
-  return &m_collection->parent->table_cell_style;
-}
-
-const abstract::GraphicStyle *GraphicStyle::parent() const {
-  return &m_collection->parent->graphic_style;
+  return result;
 }
 
 } // namespace
@@ -528,52 +266,17 @@ StyleRegistry::StyleRegistry(const pugi::xml_node content_root,
   generate_styles_();
 }
 
-abstract::TextStyle *StyleRegistry::text_style(const std::string &name) const {
-  auto style = style_(name);
-  return style ? &style->text_style : nullptr;
+abstract::Style *StyleRegistry::style(const std::string &name) const {
+  if (auto style_it = m_styles.find(name); style_it != std::end(m_styles)) {
+    return style_it->second.get();
+  }
+  return {};
 }
 
-abstract::ParagraphStyle *
-StyleRegistry::paragraph_style(const std::string &name) const {
-  auto style = style_(name);
-  return style ? &style->paragraph_style : nullptr;
-}
-
-abstract::TableStyle *
-StyleRegistry::table_style(const std::string &name) const {
-  auto style = style_(name);
-  return style ? &style->table_style : nullptr;
-}
-
-abstract::TableColumnStyle *
-StyleRegistry::table_column_style(const std::string &name) const {
-  auto style = style_(name);
-  return style ? &style->table_column_style : nullptr;
-}
-
-abstract::TableRowStyle *
-StyleRegistry::table_row_style(const std::string &name) const {
-  auto style = style_(name);
-  return style ? &style->table_row_style : nullptr;
-}
-
-abstract::TableCellStyle *
-StyleRegistry::table_cell_style(const std::string &name) const {
-  auto style = style_(name);
-  return style ? &style->table_cell_style : nullptr;
-}
-
-abstract::GraphicStyle *
-StyleRegistry::graphic_style(const std::string &name) const {
-  auto style = style_(name);
-  return style ? &style->graphic_style : nullptr;
-}
-
-abstract::PageLayout *
-StyleRegistry::page_layout(const std::string &name) const {
-  if (auto styles_it = m_page_layouts.find(name);
-      styles_it != std::end(m_page_layouts)) {
-    return styles_it->second.get();
+PageLayout StyleRegistry::page_layout(const std::string &name) const {
+  if (auto page_layout_it = m_index_page_layout.find(name);
+      page_layout_it != std::end(m_index_page_layout)) {
+    return read_page_layout(page_layout_it->second);
   }
   return {};
 }
@@ -643,27 +346,26 @@ void StyleRegistry::generate_styles_() {
   }
 }
 
-StyleRegistry::StyleCollection *
+abstract::Style *
 StyleRegistry::generate_default_style_(const std::string &name,
                                        const pugi::xml_node node) {
   // TODO unique name
   auto &&style = m_default_styles[name];
   if (!style) {
-    style = std::make_unique<StyleCollection>(name, name, node, nullptr);
+    style = std::make_unique<Style>(name, name, node, nullptr);
   }
   return style.get();
 }
 
-StyleRegistry::StyleCollection *
-StyleRegistry::generate_style_(const std::string &name,
-                               const pugi::xml_node node) {
+abstract::Style *StyleRegistry::generate_style_(const std::string &name,
+                                                const pugi::xml_node node) {
   // TODO unique name
   auto &&style = m_styles[name];
   if (style) {
     return style.get();
   }
 
-  StyleCollection *parent{nullptr};
+  abstract::Style *parent{nullptr};
 
   if (auto parent_attr = node.attribute("style:parent-style-name");
       parent_attr) {
@@ -675,26 +377,9 @@ StyleRegistry::generate_style_(const std::string &name,
         parent_attr.value(), m_index_default_style.at(parent_attr.value()));
   }
 
-  style = std::make_unique<StyleCollection>(
-      name, node.attribute("style:family").value(), node, parent);
+  style = std::make_unique<Style>(name, node.attribute("style:family").value(),
+                                  node, parent);
   return style.get();
-}
-
-void StyleRegistry::generate_page_layout_(const std::string &name,
-                                          const pugi::xml_node node) {
-  // TODO unique name
-  auto &&style = m_page_layouts[name];
-  if (!style) {
-    style = std::make_unique<PageLayout>(name, node);
-  }
-}
-
-StyleRegistry::StyleCollection *
-StyleRegistry::style_(const std::string &name) const {
-  if (auto styles_it = m_styles.find(name); styles_it != std::end(m_styles)) {
-    return styles_it->second.get();
-  }
-  return {};
 }
 
 } // namespace odr::internal::odf

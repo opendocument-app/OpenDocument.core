@@ -14,6 +14,7 @@ class Document;
 class DocumentCursor;
 
 class Element;
+class TextRootElement;
 class TextElement;
 class LinkElement;
 class BookmarkElement;
@@ -31,9 +32,6 @@ class CustomShapeElement;
 class ImageElement;
 
 class Style;
-
-class Property;
-class DirectionalProperty;
 } // namespace odr::internal::abstract
 
 namespace odr {
@@ -77,6 +75,12 @@ enum class ElementType {
   custom_shape,
 
   group,
+};
+
+enum class StyleDepth {
+  single_style,
+  style_tree,
+  // element_style_tree, TODO
 };
 
 class DocumentCursor;
@@ -160,6 +164,8 @@ public:
 
   [[nodiscard]] ElementType type() const;
 
+  [[nodiscard]] Style style(StyleDepth style_depth) const;
+
   template <typename T> class Extension {
   public:
     Extension(const internal::abstract::Document *document,
@@ -171,6 +177,13 @@ public:
   protected:
     const internal::abstract::Document *m_document;
     T *m_element;
+  };
+
+  class TextRoot final : public Extension<internal::abstract::TextRootElement> {
+  public:
+    using Extension::Extension;
+
+    [[nodiscard]] PageLayout page_layout() const;
   };
 
   class Slide final : public Extension<internal::abstract::SlideElement> {
@@ -296,6 +309,7 @@ public:
     [[nodiscard]] std::string href() const;
   };
 
+  [[nodiscard]] TextRoot text_root() const;
   [[nodiscard]] Text text() const;
   [[nodiscard]] Link link() const;
   [[nodiscard]] Bookmark bookmark() const;
@@ -315,11 +329,15 @@ private:
   internal::abstract::Element *m_element;
 };
 
-template <typename T> struct DirectionalStyleProperty final {
+template <typename T> struct DirectionalStyle final {
   std::optional<T> right;
   std::optional<T> top;
   std::optional<T> left;
   std::optional<T> bottom;
+
+  DirectionalStyle() = default;
+  DirectionalStyle(std::optional<T> all)
+      : right{all}, top{all}, left{all}, bottom{all} {}
 };
 
 struct TextStyle final {
@@ -336,7 +354,7 @@ struct TextStyle final {
 
 struct ParagraphStyle final {
   std::optional<std::string> text_align;
-  DirectionalStyleProperty<std::string> margin;
+  DirectionalStyle<std::string> margin;
 };
 
 struct TableStyle final {
@@ -354,8 +372,8 @@ struct TableRowStyle final {
 struct TableCellStyle final {
   std::optional<std::string> vertical_align;
   std::optional<std::string> background_color;
-  DirectionalStyleProperty<std::string> padding;
-  DirectionalStyleProperty<std::string> border;
+  DirectionalStyle<std::string> padding;
+  DirectionalStyle<std::string> border;
 };
 
 struct GraphicStyle final {
@@ -369,14 +387,14 @@ struct PageLayout final {
   std::optional<std::string> width;
   std::optional<std::string> height;
   std::optional<std::string> print_orientation;
-  DirectionalStyleProperty<std::string> margin;
+  DirectionalStyle<std::string> margin;
 };
 
 class Style final {
 public:
   Style(const internal::abstract::Document *document,
         const internal::abstract::Element *element,
-        const internal::abstract::Style *style);
+        const internal::abstract::Style *style, StyleDepth style_depth);
 
   explicit operator bool() const;
 
@@ -394,6 +412,7 @@ private:
   const internal::abstract::Document *m_document;
   const internal::abstract::Element *m_element;
   const internal::abstract::Style *m_style;
+  StyleDepth m_style_depth;
 };
 
 struct TableDimensions {

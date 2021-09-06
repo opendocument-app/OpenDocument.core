@@ -96,6 +96,8 @@ public:
 
   [[nodiscard]] virtual ElementType type(const Document *document) const = 0;
 
+  virtual Style *style(const Document *document) const = 0;
+
   virtual Element *parent(const Document *document,
                           const Allocator &allocator) = 0;
   virtual Element *first_child(const Document *document,
@@ -337,21 +339,27 @@ public:
   virtual std::optional<std::string> name(const Document *document,
                                           const Element *element) const = 0;
 
-  [[nodiscard]] virtual std::optional<TextStyle>
-  text_style(const Document *document, const Element *element) const = 0;
-  [[nodiscard]] virtual std::optional<ParagraphStyle>
-  paragraph_style(const Document *document, const Element *element) const = 0;
-  [[nodiscard]] virtual std::optional<TableStyle>
-  table_style(const Document *document, const Element *element) const = 0;
-  [[nodiscard]] virtual std::optional<TableColumnStyle>
-  table_column_style(const Document *document,
-                     const Element *element) const = 0;
-  [[nodiscard]] virtual std::optional<TableRowStyle>
-  table_row_style(const Document *document, const Element *element) const = 0;
-  [[nodiscard]] virtual std::optional<TableCellStyle>
-  table_cell_style(const Document *document, const Element *element) const = 0;
-  [[nodiscard]] virtual std::optional<GraphicStyle>
-  graphic_style(const Document *document, const Element *element) const = 0;
+  virtual bool text_style(const Document *document, const Element *element,
+                          StyleDepth style_depth, TextStyle &result) const = 0;
+  virtual bool paragraph_style(const Document *document, const Element *element,
+                               StyleDepth style_depth,
+                               ParagraphStyle &result) const = 0;
+  virtual bool table_style(const Document *document, const Element *element,
+                           StyleDepth style_depth,
+                           TableStyle &result) const = 0;
+  virtual bool table_column_style(const Document *document,
+                                  const Element *element,
+                                  StyleDepth style_depth,
+                                  TableColumnStyle &result) const = 0;
+  virtual bool table_row_style(const Document *document, const Element *element,
+                               StyleDepth style_depth,
+                               TableRowStyle &result) const = 0;
+  virtual bool table_cell_style(const Document *document,
+                                const Element *element, StyleDepth style_depth,
+                                TableCellStyle &result) const = 0;
+  virtual bool graphic_style(const Document *document, const Element *element,
+                             StyleDepth style_depth,
+                             GraphicStyle &result) const = 0;
 };
 
 } // namespace odr::internal::abstract

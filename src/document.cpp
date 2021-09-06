@@ -280,6 +280,8 @@ std::string Element::Image::href() const {
   return m_element ? m_element->href(m_document) : "";
 }
 
+Element::TextRoot Element::text_root() const { return {m_document, m_element}; }
+
 Element::Text Element::text() const { return {m_document, m_element}; }
 
 Element::Link Element::link() const { return {m_document, m_element}; }
@@ -314,8 +316,10 @@ Element::Image Element::image() const { return {m_document, m_element}; }
 
 Style::Style(const internal::abstract::Document *document,
              const internal::abstract::Element *element,
-             const internal::abstract::Style *style)
-    : m_document{document}, m_element{element}, m_style{style} {}
+             const internal::abstract::Style *style,
+             const StyleDepth style_depth)
+    : m_document{document}, m_element{element}, m_style{style},
+      m_style_depth{style_depth} {}
 
 Style::operator bool() const { return m_style; }
 
@@ -325,38 +329,66 @@ std::optional<std::string> Style::name() const {
 }
 
 std::optional<TextStyle> Style::text_style() const {
-  return m_style ? m_style->text_style(m_document, m_element)
-                 : std::optional<TextStyle>();
+  TextStyle result;
+  if (m_style &&
+      m_style->text_style(m_document, m_element, m_style_depth, result)) {
+    return result;
+  }
+  return {};
 }
 
 std::optional<ParagraphStyle> Style::paragraph_style() const {
-  return m_style ? m_style->paragraph_style(m_document, m_element)
-                 : std::optional<ParagraphStyle>();
+  ParagraphStyle result;
+  if (m_style &&
+      m_style->paragraph_style(m_document, m_element, m_style_depth, result)) {
+    return result;
+  }
+  return {};
 }
 
 std::optional<TableStyle> Style::table_style() const {
-  return m_style ? m_style->table_style(m_document, m_element)
-                 : std::optional<TableStyle>();
+  TableStyle result;
+  if (m_style &&
+      m_style->table_style(m_document, m_element, m_style_depth, result)) {
+    return result;
+  }
+  return {};
 }
 
 std::optional<TableColumnStyle> Style::table_column_style() const {
-  return m_style ? m_style->table_column_style(m_document, m_element)
-                 : std::optional<TableColumnStyle>();
+  TableColumnStyle result;
+  if (m_style && m_style->table_column_style(m_document, m_element,
+                                             m_style_depth, result)) {
+    return result;
+  }
+  return {};
 }
 
 std::optional<TableRowStyle> Style::table_row_style() const {
-  return m_style ? m_style->table_row_style(m_document, m_element)
-                 : std::optional<TableRowStyle>();
+  TableRowStyle result;
+  if (m_style &&
+      m_style->table_row_style(m_document, m_element, m_style_depth, result)) {
+    return result;
+  }
+  return {};
 }
 
 std::optional<TableCellStyle> Style::table_cell_style() const {
-  return m_style ? m_style->table_cell_style(m_document, m_element)
-                 : std::optional<TableCellStyle>();
+  TableCellStyle result;
+  if (m_style &&
+      m_style->table_cell_style(m_document, m_element, m_style_depth, result)) {
+    return result;
+  }
+  return {};
 }
 
 std::optional<GraphicStyle> Style::graphic_style() const {
-  return m_style ? m_style->graphic_style(m_document, m_element)
-                 : std::optional<GraphicStyle>();
+  GraphicStyle result;
+  if (m_style &&
+      m_style->graphic_style(m_document, m_element, m_style_depth, result)) {
+    return result;
+  }
+  return {};
 }
 
 TableDimensions::TableDimensions() = default;
