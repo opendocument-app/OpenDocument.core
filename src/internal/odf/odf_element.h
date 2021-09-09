@@ -9,28 +9,30 @@ class Document;
 
 class Element : public virtual abstract::Element {
 public:
-  Element(const Document *, pugi::xml_node node);
+  Element(const Document *document, pugi::xml_node node);
 
-  [[nodiscard]] bool equals(const abstract::Document *,
-                            const abstract::DocumentCursor *,
+  [[nodiscard]] bool equals(const abstract::Document *document,
+                            const abstract::DocumentCursor *cursor,
                             const abstract::Element &rhs) const override;
 
   abstract::Element *parent(const abstract::Document *document,
-                            const abstract::DocumentCursor *,
+                            const abstract::DocumentCursor *cursor,
                             const abstract::Allocator *allocator) override;
   abstract::Element *first_child(const abstract::Document *document,
-                                 const abstract::DocumentCursor *,
+                                 const abstract::DocumentCursor *cursor,
                                  const abstract::Allocator *allocator) override;
   abstract::Element *
   previous_sibling(const abstract::Document *document,
-                   const abstract::DocumentCursor *,
+                   const abstract::DocumentCursor *cursor,
                    const abstract::Allocator *allocator) override;
   abstract::Element *
   next_sibling(const abstract::Document *document,
-               const abstract::DocumentCursor *,
+               const abstract::DocumentCursor *cursor,
                const abstract::Allocator *allocator) override;
 
   ResolvedStyle element_style(const abstract::Document *document) const;
+  ResolvedStyle stacked_style(const abstract::Document *document,
+                              const abstract::DocumentCursor *cursor) const;
 
 protected:
   pugi::xml_node m_node;

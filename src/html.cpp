@@ -298,8 +298,10 @@ void translate_span(DocumentCursor &cursor, std::ostream &out,
 
 void translate_link(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
+  auto link = cursor.element().link();
+
   out << "<a href=\"";
-  out << cursor.element().link().href();
+  out << link.href();
   out << "\">";
   translate_children(cursor, out, config);
   out << "</a>";

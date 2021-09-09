@@ -13,32 +13,36 @@ class DocumentCursor : public abstract::DocumentCursor {
 public:
   explicit DocumentCursor(const abstract::Document *document);
 
-  [[nodiscard]] bool equals(const abstract::DocumentCursor &other) const final;
+  [[nodiscard]] bool
+  equals(const abstract::DocumentCursor &other) const override;
 
-  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor> copy() const final;
+  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor> copy() const override;
 
-  [[nodiscard]] std::string document_path() const final;
+  [[nodiscard]] std::string document_path() const override;
 
-  [[nodiscard]] abstract::Element *element() final;
-  [[nodiscard]] const abstract::Element *element() const final;
+  [[nodiscard]] abstract::Element *element() override;
+  [[nodiscard]] const abstract::Element *element() const override;
 
-  bool move_to_parent() final;
-  bool move_to_first_child() final;
-  bool move_to_previous_sibling() final;
-  bool move_to_next_sibling() final;
+  bool move_to_parent() override;
+  bool move_to_first_child() override;
+  bool move_to_previous_sibling() override;
+  bool move_to_next_sibling() override;
 
-  [[nodiscard]] bool move_to_master_page() final;
+  [[nodiscard]] bool move_to_master_page() override;
 
-  [[nodiscard]] bool move_to_first_table_column() final;
-  [[nodiscard]] bool move_to_first_table_row() final;
+  [[nodiscard]] bool move_to_first_table_column() override;
+  [[nodiscard]] bool move_to_first_table_row() override;
 
 protected:
   void *push_(std::size_t size);
-  void pop_();
+  virtual void pushed_(abstract::Element *element);
+  virtual void pop_();
   [[nodiscard]] std::int32_t next_offset_() const;
   [[nodiscard]] std::int32_t back_offset_() const;
   abstract::Element *back_();
   [[nodiscard]] const abstract::Element *back_() const;
+
+  [[nodiscard]] bool move_helper_(abstract::Element *element);
 
   const abstract::Document *m_document;
 

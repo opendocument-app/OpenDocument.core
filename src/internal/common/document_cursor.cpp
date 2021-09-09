@@ -34,6 +34,8 @@ void *DocumentCursor::push_(const std::size_t size) {
   return m_element_stack.data() + offset;
 }
 
+void DocumentCursor::pushed_(abstract::Element *) {}
+
 void DocumentCursor::pop_() {
   back_()->~Element();
   m_element_stack_top.pop_back();
@@ -62,6 +64,13 @@ const abstract::Element *DocumentCursor::back_() const {
                                                      offset);
 }
 
+bool DocumentCursor::move_helper_(abstract::Element *element) {
+  if (element) {
+    pushed_(element);
+  }
+  return element;
+}
+
 bool DocumentCursor::move_to_parent() {
   if (m_element_stack_top.size() <= 1) {
     return false;
@@ -74,7 +83,7 @@ bool DocumentCursor::move_to_first_child() {
   abstract::Allocator allocator = [this](const std::size_t size) {
     return push_(size);
   };
-  return back_()->first_child(m_document, this, &allocator);
+  return move_helper_(back_()->first_child(m_document, this, &allocator));
 }
 
 bool DocumentCursor::move_to_previous_sibling() {
@@ -82,7 +91,7 @@ bool DocumentCursor::move_to_previous_sibling() {
     pop_();
     return push_(size);
   };
-  return back_()->previous_sibling(m_document, this, &allocator);
+  return move_helper_(back_()->previous_sibling(m_document, this, &allocator));
 }
 
 bool DocumentCursor::move_to_next_sibling() {
@@ -90,7 +99,7 @@ bool DocumentCursor::move_to_next_sibling() {
     pop_();
     return push_(size);
   };
-  return back_()->next_sibling(m_document, this, &allocator);
+  return move_helper_(back_()->next_sibling(m_document, this, &allocator));
 }
 
 bool DocumentCursor::move_to_master_page() {
@@ -98,7 +107,7 @@ bool DocumentCursor::move_to_master_page() {
     return push_(size);
   };
   if (auto slide = dynamic_cast<const abstract::SlideElement *>(back_())) {
-    return slide->master_page(m_document, this, &allocator);
+    return move_helper_(slide->master_page(m_document, this, &allocator));
   }
   return false;
 }
@@ -108,7 +117,7 @@ bool DocumentCursor::move_to_first_table_column() {
     return push_(size);
   };
   if (auto table = dynamic_cast<const abstract::TableElement *>(back_())) {
-    return table->first_column(m_document, this, &allocator);
+    return move_helper_(table->first_column(m_document, this, &allocator));
   }
   return false;
 }
@@ -118,7 +127,7 @@ bool DocumentCursor::move_to_first_table_row() {
     return push_(size);
   };
   if (auto table = dynamic_cast<const abstract::TableElement *>(back_())) {
-    return table->first_row(m_document, this, &allocator);
+    return move_helper_(table->first_row(m_document, this, &allocator));
   }
   return false;
 }

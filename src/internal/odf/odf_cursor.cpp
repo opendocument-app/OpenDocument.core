@@ -13,6 +13,20 @@ DocumentCursor::DocumentCursor(const Document *document, pugi::xml_node root)
   if (!element) {
     throw std::invalid_argument("root element invalid");
   }
+  m_style_stack.emplace_back();
 }
+
+const ResolvedStyle &DocumentCursor::current_style() const {
+  return m_style_stack.back();
+}
+
+void DocumentCursor::pushed_(abstract::Element *element) {
+  ResolvedStyle style = current_style();
+  style.override(
+      dynamic_cast<odf::Element *>(element)->element_style(m_document));
+  m_style_stack.push_back(std::move(style));
+}
+
+void DocumentCursor::pop_() { m_style_stack.pop_back(); }
 
 } // namespace odr::internal::odf

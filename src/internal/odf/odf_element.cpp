@@ -2,6 +2,7 @@
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/common/table_cursor.h>
+#include <internal/odf/odf_cursor.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_element.h>
 #include <internal/odf/odf_style.h>
@@ -60,6 +61,12 @@ ResolvedStyle Element::element_style(const abstract::Document *document) const {
     }
   }
   return {};
+}
+
+ResolvedStyle
+Element::stacked_style(const abstract::Document *,
+                       const abstract::DocumentCursor *cursor) const {
+  return static_cast<const DocumentCursor *>(cursor)->current_style();
 }
 
 const Document *Element::document_(const abstract::Document *document) {
@@ -348,9 +355,9 @@ public:
   using Element::Element;
 
   [[nodiscard]] std::optional<ParagraphStyle>
-  style(const abstract::Document *,
-        const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return stacked_style(document, cursor).paragraph_style;
   }
 };
 
@@ -359,9 +366,9 @@ public:
   using Element::Element;
 
   [[nodiscard]] std::optional<TextStyle>
-  style(const abstract::Document *,
-        const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return stacked_style(document, cursor).text_style;
   }
 
   abstract::Element *
@@ -627,7 +634,8 @@ public:
   [[nodiscard]] std::optional<TableCellStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return element_style(document).table_cell_style;
+    return element_style(document)
+        .table_cell_style; // TODO row / column default
   }
 
 private:
@@ -721,9 +729,9 @@ public:
   }
 
   [[nodiscard]] std::optional<GraphicStyle>
-  style(const abstract::Document *,
-        const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return stacked_style(document, cursor).graphic_style;
   }
 };
 
@@ -748,9 +756,9 @@ public:
   }
 
   [[nodiscard]] std::optional<GraphicStyle>
-  style(const abstract::Document *,
-        const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return stacked_style(document, cursor).graphic_style;
   }
 };
 
@@ -775,9 +783,9 @@ public:
   }
 
   [[nodiscard]] std::optional<GraphicStyle>
-  style(const abstract::Document *,
-        const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return stacked_style(document, cursor).graphic_style;
   }
 };
 
@@ -804,9 +812,9 @@ public:
   }
 
   [[nodiscard]] std::optional<GraphicStyle>
-  style(const abstract::Document *,
-        const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return stacked_style(document, cursor).graphic_style;
   }
 };
 
