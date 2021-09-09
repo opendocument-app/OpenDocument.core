@@ -156,8 +156,32 @@ Element::operator bool() const { return m_element; }
 
 ElementType Element::type() const { return m_element->type(m_document); }
 
+PageLayout Element::TextRoot::page_layout() const {
+  return m_element ? m_element->page_layout(m_document) : PageLayout();
+}
+
+std::string Element::Slide::name() const {
+  return m_element ? m_element->name(m_document) : "";
+}
+
+PageLayout Element::Slide::page_layout() const {
+  return m_element ? m_element->page_layout(m_document) : PageLayout();
+}
+
+std::string Element::Sheet::name() const {
+  return m_element ? m_element->name(m_document) : "";
+}
+
+PageLayout Element::Page::page_layout() const {
+  return m_element ? m_element->page_layout(m_document) : PageLayout();
+}
+
 std::string Element::Text::value() const {
   return m_element ? m_element->value(m_document) : "";
+}
+
+std::optional<TextStyle> Element::Text::style() const {
+  return {}; // TODO
 }
 
 std::string Element::Link::href() const {
@@ -172,8 +196,24 @@ TableDimensions Element::Table::dimensions() const {
   return m_element ? m_element->dimensions(m_document) : TableDimensions();
 }
 
+std::optional<TableStyle> Element::Table::style() const {
+  return {}; // TODO
+}
+
+std::optional<TableColumnStyle> Element::TableColumn::style() const {
+  return {}; // TODO
+}
+
+std::optional<TableRowStyle> Element::TableRow::style() const {
+  return {}; // TODO
+}
+
 TableDimensions Element::TableCell::span() const {
   return m_element ? m_element->span(m_document) : TableDimensions();
+}
+
+std::optional<TableCellStyle> Element::TableCell::style() const {
+  return {}; // TODO
 }
 
 std::optional<std::string> Element::Frame::anchor_type() const {
@@ -220,6 +260,10 @@ std::string Element::Rect::height() const {
   return m_element ? m_element->height(m_document) : "";
 }
 
+std::optional<GraphicStyle> Element::Rect::style() const {
+  return {}; // TODO
+}
+
 std::string Element::Line::x1() const {
   return m_element ? m_element->x1(m_document) : "";
 }
@@ -234,6 +278,10 @@ std::string Element::Line::x2() const {
 
 std::string Element::Line::y2() const {
   return m_element ? m_element->y2(m_document) : "";
+}
+
+std::optional<GraphicStyle> Element::Line::style() const {
+  return {}; // TODO
 }
 
 std::string Element::Circle::x() const {
@@ -252,6 +300,10 @@ std::string Element::Circle::height() const {
   return m_element ? m_element->height(m_document) : "";
 }
 
+std::optional<GraphicStyle> Element::Circle::style() const {
+  return {}; // TODO
+}
+
 std::optional<std::string> Element::CustomShape::x() const {
   return m_element ? m_element->x(m_document) : "";
 }
@@ -268,6 +320,10 @@ std::string Element::CustomShape::height() const {
   return m_element ? m_element->height(m_document) : "";
 }
 
+std::optional<GraphicStyle> Element::CustomShape::style() const {
+  return {}; // TODO
+}
+
 bool Element::Image::internal() const {
   return m_element ? m_element->internal(m_document) : false;
 }
@@ -281,6 +337,12 @@ std::string Element::Image::href() const {
 }
 
 Element::TextRoot Element::text_root() const { return {m_document, m_element}; }
+
+Element::Slide Element::slide() const { return {m_document, m_element}; }
+
+Element::Sheet Element::sheet() const { return {m_document, m_element}; }
+
+Element::Page Element::page() const { return {m_document, m_element}; }
 
 Element::Text Element::text() const { return {m_document, m_element}; }
 
@@ -314,81 +376,85 @@ Element::CustomShape Element::custom_shape() const {
 
 Element::Image Element::image() const { return {m_document, m_element}; }
 
-Style::Style(const internal::abstract::Document *document,
-             const internal::abstract::Element *element,
-             const internal::abstract::Style *style,
-             const StyleDepth style_depth)
-    : m_document{document}, m_element{element}, m_style{style},
-      m_style_depth{style_depth} {}
-
-Style::operator bool() const { return m_style; }
-
-std::optional<std::string> Style::name() const {
-  return m_style ? m_style->name(m_document, m_element)
-                 : std::optional<std::string>();
+void TextStyle::override(const TextStyle &other) {
+  if (other.font_name) {
+    font_name = other.font_name;
+  }
+  if (other.font_size) {
+    font_size = other.font_size;
+  }
+  if (other.font_weight) {
+    font_weight = other.font_weight;
+  }
+  if (other.font_style) {
+    font_style = other.font_style;
+  }
+  if (other.font_underline) {
+    font_underline = other.font_underline;
+  }
+  if (other.font_line_through) {
+    font_line_through = other.font_line_through;
+  }
+  if (other.font_shadow) {
+    font_shadow = other.font_shadow;
+  }
+  if (other.font_color) {
+    font_color = other.font_color;
+  }
+  if (other.background_color) {
+    background_color = other.background_color;
+  }
 }
 
-std::optional<TextStyle> Style::text_style() const {
-  TextStyle result;
-  if (m_style &&
-      m_style->text_style(m_document, m_element, m_style_depth, result)) {
-    return result;
+void ParagraphStyle::override(const ParagraphStyle &other) {
+  if (other.text_align) {
+    text_align = other.text_align;
   }
-  return {};
+  margin.override(other.margin);
 }
 
-std::optional<ParagraphStyle> Style::paragraph_style() const {
-  ParagraphStyle result;
-  if (m_style &&
-      m_style->paragraph_style(m_document, m_element, m_style_depth, result)) {
-    return result;
+void TableStyle::override(const TableStyle &other) {
+  if (other.width) {
+    width = other.width;
   }
-  return {};
 }
 
-std::optional<TableStyle> Style::table_style() const {
-  TableStyle result;
-  if (m_style &&
-      m_style->table_style(m_document, m_element, m_style_depth, result)) {
-    return result;
+void TableColumnStyle::override(const TableColumnStyle &other) {
+  if (other.width) {
+    width = other.width;
   }
-  return {};
 }
 
-std::optional<TableColumnStyle> Style::table_column_style() const {
-  TableColumnStyle result;
-  if (m_style && m_style->table_column_style(m_document, m_element,
-                                             m_style_depth, result)) {
-    return result;
+void TableRowStyle::override(const TableRowStyle &other) {
+  if (other.height) {
+    height = other.height;
   }
-  return {};
 }
 
-std::optional<TableRowStyle> Style::table_row_style() const {
-  TableRowStyle result;
-  if (m_style &&
-      m_style->table_row_style(m_document, m_element, m_style_depth, result)) {
-    return result;
+void TableCellStyle::override(const TableCellStyle &other) {
+  if (other.vertical_align) {
+    vertical_align = other.vertical_align;
   }
-  return {};
+  if (other.background_color) {
+    background_color = other.background_color;
+  }
+  padding.override(other.padding);
+  border.override(other.border);
 }
 
-std::optional<TableCellStyle> Style::table_cell_style() const {
-  TableCellStyle result;
-  if (m_style &&
-      m_style->table_cell_style(m_document, m_element, m_style_depth, result)) {
-    return result;
+void GraphicStyle::override(const GraphicStyle &other) {
+  if (other.stroke_width) {
+    stroke_width = other.stroke_width;
   }
-  return {};
-}
-
-std::optional<GraphicStyle> Style::graphic_style() const {
-  GraphicStyle result;
-  if (m_style &&
-      m_style->graphic_style(m_document, m_element, m_style_depth, result)) {
-    return result;
+  if (other.stroke_color) {
+    stroke_color = other.stroke_color;
   }
-  return {};
+  if (other.fill_color) {
+    fill_color = other.fill_color;
+  }
+  if (other.vertical_align) {
+    vertical_align = other.vertical_align;
+  }
 }
 
 TableDimensions::TableDimensions() = default;

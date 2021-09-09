@@ -96,8 +96,6 @@ public:
 
   [[nodiscard]] virtual ElementType type(const Document *document) const = 0;
 
-  virtual Style *style(const Document *document) const = 0;
-
   virtual Element *parent(const Document *document,
                           const Allocator &allocator) = 0;
   virtual Element *first_child(const Document *document,
@@ -143,7 +141,7 @@ public:
     return ElementType::sheet;
   }
 
-  [[nodiscard]] virtual std::string *name(const Document *document) const = 0;
+  [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
 
 class PageElement : public virtual Element {
@@ -176,6 +174,9 @@ public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::paragraph;
   }
+
+  [[nodiscard]] virtual ParagraphStyle
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class SpanElement : public virtual Element {
@@ -192,6 +193,9 @@ public:
   }
 
   [[nodiscard]] virtual std::string value(const Document *document) const = 0;
+
+  [[nodiscard]] virtual TextStyle style(const Document *document,
+                                        const DocumentCursor *cursor) const = 0;
 };
 
 class LinkElement : public virtual Element {
@@ -224,6 +228,9 @@ public:
   first_column(const Document *document, const Allocator &allocator) const = 0;
   [[nodiscard]] virtual Element *
   first_row(const Document *document, const Allocator &allocator) const = 0;
+
+  [[nodiscard]] virtual TableStyle
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class TableColumnElement : public virtual Element {
@@ -231,6 +238,9 @@ public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::table_column;
   }
+
+  [[nodiscard]] virtual TableColumnStyle
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class TableRowElement : public virtual Element {
@@ -238,6 +248,9 @@ public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::table_row;
   }
+
+  [[nodiscard]] virtual TableRowStyle
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class TableCellElement : public virtual Element {
@@ -248,6 +261,9 @@ public:
 
   [[nodiscard]] virtual TableDimensions
   span(const Document *document) const = 0;
+
+  [[nodiscard]] virtual TableCellStyle
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class FrameElement : public virtual Element {
@@ -280,6 +296,9 @@ public:
   [[nodiscard]] virtual std::string y(const Document *document) const = 0;
   [[nodiscard]] virtual std::string width(const Document *document) const = 0;
   [[nodiscard]] virtual std::string height(const Document *document) const = 0;
+
+  [[nodiscard]] virtual GraphicStyle
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class LineElement : public virtual Element {
@@ -292,6 +311,9 @@ public:
   [[nodiscard]] virtual std::string y1(const Document *document) const = 0;
   [[nodiscard]] virtual std::string x2(const Document *document) const = 0;
   [[nodiscard]] virtual std::string y2(const Document *document) const = 0;
+
+  [[nodiscard]] virtual GraphicStyle
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class CircleElement : public virtual Element {
@@ -304,6 +326,9 @@ public:
   [[nodiscard]] virtual std::string y(const Document *document) const = 0;
   [[nodiscard]] virtual std::string width(const Document *document) const = 0;
   [[nodiscard]] virtual std::string height(const Document *document) const = 0;
+
+  [[nodiscard]] virtual GraphicStyle
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class CustomShapeElement : public virtual Element {
@@ -318,6 +343,9 @@ public:
   y(const Document *document) const = 0;
   [[nodiscard]] virtual std::string width(const Document *document) const = 0;
   [[nodiscard]] virtual std::string height(const Document *document) const = 0;
+
+  [[nodiscard]] virtual GraphicStyle
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class ImageElement : public virtual Element {
@@ -330,36 +358,6 @@ public:
   [[nodiscard]] virtual std::optional<odr::File>
   file(const Document *document) const = 0;
   [[nodiscard]] virtual std::string href(const Document *document) const = 0;
-};
-
-class Style {
-public:
-  virtual ~Style() = default;
-
-  virtual std::optional<std::string> name(const Document *document,
-                                          const Element *element) const = 0;
-
-  virtual bool text_style(const Document *document, const Element *element,
-                          StyleDepth style_depth, TextStyle &result) const = 0;
-  virtual bool paragraph_style(const Document *document, const Element *element,
-                               StyleDepth style_depth,
-                               ParagraphStyle &result) const = 0;
-  virtual bool table_style(const Document *document, const Element *element,
-                           StyleDepth style_depth,
-                           TableStyle &result) const = 0;
-  virtual bool table_column_style(const Document *document,
-                                  const Element *element,
-                                  StyleDepth style_depth,
-                                  TableColumnStyle &result) const = 0;
-  virtual bool table_row_style(const Document *document, const Element *element,
-                               StyleDepth style_depth,
-                               TableRowStyle &result) const = 0;
-  virtual bool table_cell_style(const Document *document,
-                                const Element *element, StyleDepth style_depth,
-                                TableCellStyle &result) const = 0;
-  virtual bool graphic_style(const Document *document, const Element *element,
-                             StyleDepth style_depth,
-                             GraphicStyle &result) const = 0;
 };
 
 } // namespace odr::internal::abstract

@@ -4,15 +4,14 @@
 #include <internal/abstract/document.h>
 #include <pugixml.hpp>
 
-namespace odr::internal::ooxml {
+namespace odr::internal::ooxml::spreadsheet {
 
 /*
  * TODO naming - spreadsheet?
  */
-class OfficeOpenXmlWorkbook final : public abstract::Document {
+class Document final : public abstract::Document {
 public:
-  explicit OfficeOpenXmlWorkbook(
-      std::shared_ptr<abstract::ReadableFilesystem> filesystem);
+  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
   [[nodiscard]] bool editable() const noexcept final;
   [[nodiscard]] bool savable(bool encrypted) const noexcept final;
@@ -34,6 +33,6 @@ private:
   std::vector<pugi::xml_document> m_sheets_xml;
 };
 
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::spreadsheet
 
 #endif // ODR_INTERNAL_OOXML_WORKBOOK_H

@@ -6,10 +6,9 @@
 #include <odr/exceptions.h>
 #include <odr/file.h>
 
-namespace odr::internal::ooxml {
+namespace odr::internal::ooxml::spreadsheet {
 
-OfficeOpenXmlWorkbook::OfficeOpenXmlWorkbook(
-    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   auto workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
@@ -17,33 +16,31 @@ OfficeOpenXmlWorkbook::OfficeOpenXmlWorkbook(
   // TODO root
 }
 
-bool OfficeOpenXmlWorkbook::editable() const noexcept { return false; }
+bool Document::editable() const noexcept { return false; }
 
-bool OfficeOpenXmlWorkbook::savable(const bool /*encrypted*/) const noexcept {
+bool Document::savable(const bool /*encrypted*/) const noexcept {
   return false;
 }
 
-void OfficeOpenXmlWorkbook::save(const common::Path & /*path*/) const {
+void Document::save(const common::Path & /*path*/) const {
   throw UnsupportedOperation();
 }
 
-void OfficeOpenXmlWorkbook::save(const common::Path & /*path*/,
-                                 const char * /*password*/) const {
+void Document::save(const common::Path & /*path*/,
+                    const char * /*password*/) const {
   throw UnsupportedOperation();
 }
 
-DocumentType OfficeOpenXmlWorkbook::document_type() const noexcept {
+DocumentType Document::document_type() const noexcept {
   return DocumentType::PRESENTATION;
 }
 
-std::shared_ptr<abstract::ReadableFilesystem>
-OfficeOpenXmlWorkbook::files() const noexcept {
+std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::unique_ptr<abstract::DocumentCursor>
-OfficeOpenXmlWorkbook::root_element() const {
+std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
   return {}; // TODO
 }
 
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::spreadsheet

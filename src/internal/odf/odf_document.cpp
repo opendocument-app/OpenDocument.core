@@ -6,7 +6,6 @@
 #include <internal/odf/odf_document.h>
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
-#include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <unordered_map>

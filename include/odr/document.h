@@ -15,11 +15,12 @@ class DocumentCursor;
 
 class Element;
 class TextRootElement;
+class SlideElement;
+class SheetElement;
+class PageElement;
 class TextElement;
 class LinkElement;
 class BookmarkElement;
-class SlideElement;
-class PageElement;
 class TableElement;
 class TableColumnElement;
 class TableRowElement;
@@ -30,8 +31,6 @@ class LineElement;
 class CircleElement;
 class CustomShapeElement;
 class ImageElement;
-
-class Style;
 } // namespace odr::internal::abstract
 
 namespace odr {
@@ -77,16 +76,17 @@ enum class ElementType {
   group,
 };
 
-enum class StyleDepth {
-  single_style,
-  style_tree,
-  // element_style_tree, TODO
-};
-
 class DocumentCursor;
 class Element;
 struct PageLayout;
-class Style;
+
+struct TextStyle;
+struct ParagraphStyle;
+struct TableStyle;
+struct TableColumnStyle;
+struct TableRowStyle;
+struct TableCellStyle;
+struct GraphicStyle;
 
 class Document final {
 public:
@@ -164,8 +164,6 @@ public:
 
   [[nodiscard]] ElementType type() const;
 
-  [[nodiscard]] Style style(StyleDepth style_depth) const;
-
   template <typename T> class Extension {
   public:
     Extension(const internal::abstract::Document *document,
@@ -190,7 +188,16 @@ public:
   public:
     using Extension::Extension;
 
+    [[nodiscard]] std::string name() const;
+
     [[nodiscard]] PageLayout page_layout() const;
+  };
+
+  class Sheet final : public Extension<internal::abstract::SheetElement> {
+  public:
+    using Extension::Extension;
+
+    [[nodiscard]] std::string name() const;
   };
 
   class Page final : public Extension<internal::abstract::PageElement> {
@@ -205,6 +212,8 @@ public:
     using Extension::Extension;
 
     [[nodiscard]] std::string value() const;
+
+    [[nodiscard]] std::optional<TextStyle> style() const;
   };
 
   class Link final : public Extension<internal::abstract::LinkElement> {
@@ -226,17 +235,23 @@ public:
     using Extension::Extension;
 
     [[nodiscard]] TableDimensions dimensions() const;
+
+    [[nodiscard]] std::optional<TableStyle> style() const;
   };
 
   class TableColumn final
       : public Extension<internal::abstract::TableColumnElement> {
   public:
     using Extension::Extension;
+
+    [[nodiscard]] std::optional<TableColumnStyle> style() const;
   };
 
   class TableRow final : public Extension<internal::abstract::TableRowElement> {
   public:
     using Extension::Extension;
+
+    [[nodiscard]] std::optional<TableRowStyle> style() const;
   };
 
   class TableCell final
@@ -245,6 +260,8 @@ public:
     using Extension::Extension;
 
     [[nodiscard]] TableDimensions span() const;
+
+    [[nodiscard]] std::optional<TableCellStyle> style() const;
   };
 
   class Frame final : public Extension<internal::abstract::FrameElement> {
@@ -267,6 +284,8 @@ public:
     [[nodiscard]] std::string y() const;
     [[nodiscard]] std::string width() const;
     [[nodiscard]] std::string height() const;
+
+    [[nodiscard]] std::optional<GraphicStyle> style() const;
   };
 
   class Line final : public Extension<internal::abstract::LineElement> {
@@ -277,6 +296,8 @@ public:
     [[nodiscard]] std::string y1() const;
     [[nodiscard]] std::string x2() const;
     [[nodiscard]] std::string y2() const;
+
+    [[nodiscard]] std::optional<GraphicStyle> style() const;
   };
 
   class Circle final : public Extension<internal::abstract::CircleElement> {
@@ -287,6 +308,8 @@ public:
     [[nodiscard]] std::string y() const;
     [[nodiscard]] std::string width() const;
     [[nodiscard]] std::string height() const;
+
+    [[nodiscard]] std::optional<GraphicStyle> style() const;
   };
 
   class CustomShape final
@@ -298,6 +321,8 @@ public:
     [[nodiscard]] std::optional<std::string> y() const;
     [[nodiscard]] std::string width() const;
     [[nodiscard]] std::string height() const;
+
+    [[nodiscard]] std::optional<GraphicStyle> style() const;
   };
 
   class Image final : public Extension<internal::abstract::ImageElement> {
@@ -310,6 +335,9 @@ public:
   };
 
   [[nodiscard]] TextRoot text_root() const;
+  [[nodiscard]] Slide slide() const;
+  [[nodiscard]] Sheet sheet() const;
+  [[nodiscard]] Page page() const;
   [[nodiscard]] Text text() const;
   [[nodiscard]] Link link() const;
   [[nodiscard]] Bookmark bookmark() const;
@@ -338,6 +366,21 @@ template <typename T> struct DirectionalStyle final {
   DirectionalStyle() = default;
   DirectionalStyle(std::optional<T> all)
       : right{all}, top{all}, left{all}, bottom{all} {}
+
+  void override(const DirectionalStyle &other) {
+    if (other.right) {
+      right = other.right;
+    }
+    if (other.top) {
+      top = other.top;
+    }
+    if (other.left) {
+      left = other.left;
+    }
+    if (other.bottom) {
+      bottom = other.bottom;
+    }
+  }
 };
 
 struct TextStyle final {
@@ -350,23 +393,33 @@ struct TextStyle final {
   std::optional<std::string> font_shadow;
   std::optional<std::string> font_color;
   std::optional<std::string> background_color;
+
+  void override(const TextStyle &other);
 };
 
 struct ParagraphStyle final {
   std::optional<std::string> text_align;
   DirectionalStyle<std::string> margin;
+
+  void override(const ParagraphStyle &other);
 };
 
 struct TableStyle final {
   std::optional<std::string> width;
+
+  void override(const TableStyle &other);
 };
 
 struct TableColumnStyle final {
   std::optional<std::string> width;
+
+  void override(const TableColumnStyle &other);
 };
 
 struct TableRowStyle final {
   std::optional<std::string> height;
+
+  void override(const TableRowStyle &other);
 };
 
 struct TableCellStyle final {
@@ -374,6 +427,8 @@ struct TableCellStyle final {
   std::optional<std::string> background_color;
   DirectionalStyle<std::string> padding;
   DirectionalStyle<std::string> border;
+
+  void override(const TableCellStyle &other);
 };
 
 struct GraphicStyle final {
@@ -381,6 +436,8 @@ struct GraphicStyle final {
   std::optional<std::string> stroke_color;
   std::optional<std::string> fill_color;
   std::optional<std::string> vertical_align;
+
+  void override(const GraphicStyle &other);
 };
 
 struct PageLayout final {
@@ -388,31 +445,6 @@ struct PageLayout final {
   std::optional<std::string> height;
   std::optional<std::string> print_orientation;
   DirectionalStyle<std::string> margin;
-};
-
-class Style final {
-public:
-  Style(const internal::abstract::Document *document,
-        const internal::abstract::Element *element,
-        const internal::abstract::Style *style, StyleDepth style_depth);
-
-  explicit operator bool() const;
-
-  [[nodiscard]] std::optional<std::string> name() const;
-
-  [[nodiscard]] std::optional<TextStyle> text_style() const;
-  [[nodiscard]] std::optional<ParagraphStyle> paragraph_style() const;
-  [[nodiscard]] std::optional<TableStyle> table_style() const;
-  [[nodiscard]] std::optional<TableColumnStyle> table_column_style() const;
-  [[nodiscard]] std::optional<TableRowStyle> table_row_style() const;
-  [[nodiscard]] std::optional<TableCellStyle> table_cell_style() const;
-  [[nodiscard]] std::optional<GraphicStyle> graphic_style() const;
-
-private:
-  const internal::abstract::Document *m_document;
-  const internal::abstract::Element *m_element;
-  const internal::abstract::Style *m_style;
-  StyleDepth m_style_depth;
 };
 
 struct TableDimensions {

@@ -32,13 +32,6 @@ public:
     return m_node == *dynamic_cast<const Element &>(rhs).m_node;
   }
 
-  abstract::Style *style(const abstract::Document *document) const override {
-    if (auto style_name = default_style_name(m_node)) {
-      return style_(document)->style(*style_name);
-    }
-    return nullptr;
-  }
-
   abstract::Element *parent(const abstract::Document *document,
                             const abstract::Allocator &allocator) override {
     return construct_default_parent_element(document_(document), m_node,
@@ -115,8 +108,7 @@ std::optional<std::string> default_style_name(const pugi::xml_node node) {
   return {};
 }
 
-template <ElementType element_type>
-class DefaultElement : public virtual Element {
+template <ElementType element_type> class DefaultElement : public Element {
 public:
   using Element::Element;
 
@@ -125,8 +117,7 @@ public:
   }
 };
 
-class MasterPage final : public virtual Element,
-                         public virtual abstract::MasterPageElement {
+class MasterPage final : public Element, public abstract::MasterPageElement {
 public:
   using Element::Element;
 
@@ -139,7 +130,7 @@ public:
   }
 };
 
-class Root : public virtual Element {
+class Root : public Element {
 public:
   using Element::Element;
 
@@ -158,8 +149,7 @@ public:
   }
 };
 
-class TextDocumentRoot final : public virtual Root,
-                               public virtual abstract::TextRootElement {
+class TextDocumentRoot final : public Root, public abstract::TextRootElement {
 public:
   using Root::Root;
 
@@ -224,8 +214,7 @@ public:
   }
 };
 
-class Slide final : public virtual Element,
-                    public virtual abstract::SlideElement {
+class Slide final : public Element, public abstract::SlideElement {
 public:
   using Element::Element;
 
@@ -243,14 +232,6 @@ public:
     if (auto next_sibling = m_node.next_sibling()) {
       m_node = next_sibling;
       return this;
-    }
-    return nullptr;
-  }
-
-  [[nodiscard]] abstract::Style *
-  style(const abstract::Document *document) const override {
-    if (auto master_page_node = master_page_node_(document)) {
-      return MasterPage(document_(document), master_page_node).style(document);
     }
     return nullptr;
   }
@@ -288,8 +269,7 @@ private:
   }
 };
 
-class Page final : public virtual Element,
-                   public virtual abstract::PageElement {
+class Page final : public Element, public abstract::PageElement {
 public:
   using Element::Element;
 
@@ -307,14 +287,6 @@ public:
     if (auto next_sibling = m_node.next_sibling()) {
       m_node = next_sibling;
       return this;
-    }
-    return nullptr;
-  }
-
-  [[nodiscard]] abstract::Style *
-  style(const abstract::Document *document) const override {
-    if (auto master_page_node = master_page_node_(document)) {
-      return MasterPage(document_(document), master_page_node).style(document);
     }
     return nullptr;
   }
@@ -352,10 +324,25 @@ private:
   }
 };
 
-class Text final : public virtual Element,
-                   public virtual abstract::TextElement {
+class Paragraph final : public Element, public abstract::ParagraphElement {
 public:
   using Element::Element;
+
+  [[nodiscard]] ParagraphStyle
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {}; // TODO
+  }
+};
+
+class Text final : public Element, public abstract::TextElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] TextStyle style(const abstract::Document *,
+                                const abstract::DocumentCursor *) const final {
+    return {}; // TODO
+  }
 
   abstract::Element *
   previous_sibling(const abstract::Document *document,
@@ -429,10 +416,14 @@ private:
   }
 };
 
-class TableElement : public virtual Element,
-                     public virtual abstract::TableElement {
+class TableElement : public Element, public abstract::TableElement {
 public:
   using Element::Element;
+
+  [[nodiscard]] TableStyle style(const abstract::Document *,
+                                 const abstract::DocumentCursor *) const final {
+    return {}; // TODO
+  }
 
   abstract::Element *first_child(const abstract::Document *,
                                  const abstract::Allocator &) final {
@@ -523,14 +514,22 @@ private:
   [[nodiscard]] virtual pugi::xml_node next_node_() const = 0;
 };
 
-class TableColumn final : public virtual TableComponent,
-                          public virtual abstract::TableColumnElement {
+class TableColumn final : public TableComponent,
+                          public abstract::TableColumnElement {
 public:
   using TableComponent::TableComponent;
 
-  [[nodiscard]] std::optional<std::string> default_cell_style_name() const {
+  [[nodiscard]] TableColumnStyle
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {}; // TODO
+  }
+
+  ResolvedStyle default_cell_style(const abstract::Document *document) const {
     if (auto attribute = m_node.attribute("table:default-cell-style-name")) {
-      return attribute.value();
+      if (auto style = style_(document)->style(attribute.value())) {
+        return style->resolved();
+      }
     }
     return {};
   }
@@ -549,10 +548,24 @@ private:
   }
 };
 
-class TableRow final : public virtual TableComponent,
-                       public virtual abstract::TableRowElement {
+class TableRow final : public TableComponent, public abstract::TableRowElement {
 public:
   using TableComponent::TableComponent;
+
+  [[nodiscard]] TableRowStyle
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {}; // TODO
+  }
+
+  ResolvedStyle default_cell_style(const abstract::Document *document) const {
+    if (auto attribute = m_node.attribute("table:default-cell-style-name")) {
+      if (auto style = style_(document)->style(attribute.value())) {
+        return style->resolved();
+      }
+    }
+    return {};
+  }
 
 private:
   [[nodiscard]] std::uint32_t number_repeated_() const final {
@@ -568,22 +581,30 @@ private:
   }
 };
 
-class TableCell final : public virtual TableComponent,
-                        public virtual abstract::TableCellElement {
+class TableCell final : public TableComponent,
+                        public abstract::TableCellElement {
 public:
   // TODO this only works for first cells
   TableCell(const Document *document, pugi::xml_node node)
-      : TableComponent(document, node),
-        m_column(document, node.parent().parent().child("table:table-column")) {
-  }
+      : TableComponent(document, node), m_column{document,
+                                                 node.parent().parent().child(
+                                                     "table:table-column")},
+        m_row{document, node.parent()} {}
 
   [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
     return {m_node.attribute("table:number-rows-spanned").as_uint(1),
             m_node.attribute("table:number-columns-spanned").as_uint(1)};
   }
 
+  [[nodiscard]] TableCellStyle
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {}; // TODO
+  }
+
 private:
   TableColumn m_column;
+  TableRow m_row;
 
   [[nodiscard]] std::uint32_t number_repeated_() const final {
     return m_node.attribute("table:number-columns-repeated").as_uint(1);
@@ -598,8 +619,7 @@ private:
   }
 };
 
-class Frame final : public virtual Element,
-                    public virtual abstract::FrameElement {
+class Frame final : public Element, public abstract::FrameElement {
 public:
   using Element::Element;
 
@@ -652,8 +672,7 @@ public:
   }
 };
 
-class Rect final : public virtual Element,
-                   public virtual abstract::RectElement {
+class Rect final : public Element, public abstract::RectElement {
 public:
   using Element::Element;
 
@@ -672,10 +691,15 @@ public:
   [[nodiscard]] std::string height(const abstract::Document *) const final {
     return m_node.attribute("svg:height").value();
   }
+
+  [[nodiscard]] GraphicStyle
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {}; // TODO
+  }
 };
 
-class Line final : public virtual Element,
-                   public virtual abstract::LineElement {
+class Line final : public Element, public abstract::LineElement {
 public:
   using Element::Element;
 
@@ -693,6 +717,12 @@ public:
 
   [[nodiscard]] std::string y2(const abstract::Document *) const final {
     return m_node.attribute("svg:y2").value();
+  }
+
+  [[nodiscard]] GraphicStyle
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {}; // TODO
   }
 };
 
@@ -714,6 +744,12 @@ public:
 
   [[nodiscard]] std::string height(const abstract::Document *) const final {
     return m_node.attribute("svg:height").value();
+  }
+
+  [[nodiscard]] GraphicStyle
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {}; // TODO
   }
 };
 
@@ -737,6 +773,12 @@ public:
 
   [[nodiscard]] std::string height(const abstract::Document *) const final {
     return m_node.attribute("svg:height").value();
+  }
+
+  [[nodiscard]] GraphicStyle
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {}; // TODO
   }
 };
 
@@ -770,9 +812,13 @@ public:
   }
 };
 
-class Sheet final : public TableElement {
+class Sheet final : public TableElement, public abstract::SheetElement {
 public:
   using TableElement::TableElement;
+
+  [[nodiscard]] std::string name(const abstract::Document *) const final {
+    return m_node.attribute("table:name").value(); // TODO
+  }
 
   [[nodiscard]] ElementType type(const abstract::Document *) const override {
     return ElementType::sheet;
@@ -810,7 +856,6 @@ odf::construct_default_element(const Document *document, pugi::xml_node node,
       const Document *document, pugi::xml_node node,
       const abstract::Allocator &allocator)>;
 
-  using Paragraph = DefaultElement<ElementType::paragraph>;
   using Span = DefaultElement<ElementType::span>;
   using LineBreak = DefaultElement<ElementType::line_break>;
   using Link = DefaultElement<ElementType::link>;

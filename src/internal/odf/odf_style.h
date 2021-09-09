@@ -3,6 +3,7 @@
 
 #include <any>
 #include <memory>
+#include <odr/document.h>
 #include <pugixml.hpp>
 #include <unordered_map>
 #include <vector>
@@ -11,12 +12,57 @@ namespace odr {
 struct PageLayout;
 } // namespace odr
 
-namespace odr::internal::abstract {
-class Style;
-}
-
 namespace odr::internal::odf {
 class Document;
+
+struct ResolvedStyle final {
+  std::optional<TextStyle> text_style;
+  std::optional<ParagraphStyle> paragraph_style;
+  std::optional<TableStyle> table_style;
+  std::optional<TableColumnStyle> table_column_style;
+  std::optional<TableRowStyle> table_row_style;
+  std::optional<TableCellStyle> table_cell_style;
+  std::optional<GraphicStyle> graphic_style;
+
+  void override(const ResolvedStyle &other);
+};
+
+class Style final {
+public:
+  Style();
+  Style(std::string family, pugi::xml_node node);
+  Style(std::string name, pugi::xml_node node, Style *parent, Style *family);
+
+  std::string name() const;
+
+  const ResolvedStyle &resolved() const;
+
+private:
+  std::string m_name;
+  pugi::xml_node m_node;
+  Style *m_parent;
+  Style *m_family;
+
+  ResolvedStyle m_resolved;
+
+  void resolve_style_();
+
+  static void resolve_text_style_(pugi::xml_node node,
+                                  std::optional<TextStyle> &result);
+  static void resolve_paragraph_style_(pugi::xml_node node,
+                                       std::optional<ParagraphStyle> &result);
+  static void resolve_table_style_(pugi::xml_node node,
+                                   std::optional<TableStyle> &result);
+  static void
+  resolve_table_column_style_(pugi::xml_node node,
+                              std::optional<TableColumnStyle> &result);
+  static void resolve_table_row_style_(pugi::xml_node node,
+                                       std::optional<TableRowStyle> &result);
+  static void resolve_table_cell_style_(pugi::xml_node node,
+                                        std::optional<TableCellStyle> &result);
+  static void resolve_graphic_style_(pugi::xml_node node,
+                                     std::optional<GraphicStyle> &result);
+};
 
 class StyleRegistry final {
 public:
@@ -24,7 +70,7 @@ public:
   StyleRegistry(pugi::xml_node content_root, pugi::xml_node styles_root);
 
   // TODO handle default styles
-  abstract::Style *style(const std::string &name) const;
+  Style *style(const std::string &name) const;
 
   [[nodiscard]] PageLayout page_layout(const std::string &name) const;
 
@@ -44,20 +90,16 @@ private:
 
   std::optional<std::string> m_first_master_page;
 
-  std::unordered_map<std::string, std::unique_ptr<abstract::Style>>
-      m_default_styles;
-  std::unordered_map<std::string, std::unique_ptr<abstract::Style>> m_styles;
+  std::unordered_map<std::string, std::unique_ptr<Style>> m_default_styles;
+  std::unordered_map<std::string, std::unique_ptr<Style>> m_styles;
 
   void generate_indices_(pugi::xml_node content_root,
                          pugi::xml_node styles_root);
   void generate_indices_(pugi::xml_node node);
 
   void generate_styles_();
-  abstract::Style *generate_default_style_(const std::string &name,
-                                           pugi::xml_node node);
-  abstract::Style *generate_style_(const std::string &name,
-                                   pugi::xml_node node);
-  void generate_page_layout_(const std::string &name, pugi::xml_node node);
+  Style *generate_default_style_(const std::string &name, pugi::xml_node node);
+  Style *generate_style_(const std::string &name, pugi::xml_node node);
 };
 
 } // namespace odr::internal::odf

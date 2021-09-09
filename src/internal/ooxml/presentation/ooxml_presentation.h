@@ -4,12 +4,11 @@
 #include <internal/abstract/document.h>
 #include <pugixml.hpp>
 
-namespace odr::internal::ooxml {
+namespace odr::internal::ooxml::presentation {
 
-class OfficeOpenXmlPresentation final : public abstract::Document {
+class Document final : public abstract::Document {
 public:
-  explicit OfficeOpenXmlPresentation(
-      std::shared_ptr<abstract::ReadableFilesystem> filesystem);
+  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
   [[nodiscard]] bool editable() const noexcept final;
   [[nodiscard]] bool savable(bool encrypted) const noexcept final;
@@ -28,6 +27,6 @@ private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
 };
 
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::presentation
 
 #endif // ODR_INTERNAL_OOXML_PRESENTATION_H

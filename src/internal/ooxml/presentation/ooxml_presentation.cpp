@@ -7,10 +7,9 @@
 #include <odr/exceptions.h>
 #include <odr/file.h>
 
-namespace odr::internal::ooxml {
+namespace odr::internal::ooxml::presentation {
 
-OfficeOpenXmlPresentation::OfficeOpenXmlPresentation(
-    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   auto presentation_xml =
       util::xml::parse(*m_filesystem, "ppt/presentation.xml");
@@ -18,34 +17,31 @@ OfficeOpenXmlPresentation::OfficeOpenXmlPresentation(
   // TODO root
 }
 
-bool OfficeOpenXmlPresentation::editable() const noexcept { return false; }
+bool Document::editable() const noexcept { return false; }
 
-bool OfficeOpenXmlPresentation::savable(
-    const bool /*encrypted*/) const noexcept {
+bool Document::savable(const bool /*encrypted*/) const noexcept {
   return false;
 }
 
-void OfficeOpenXmlPresentation::save(const common::Path & /*path*/) const {
+void Document::save(const common::Path & /*path*/) const {
   throw UnsupportedOperation();
 }
 
-void OfficeOpenXmlPresentation::save(const common::Path & /*path*/,
-                                     const char * /*password*/) const {
+void Document::save(const common::Path & /*path*/,
+                    const char * /*password*/) const {
   throw UnsupportedOperation();
 }
 
-DocumentType OfficeOpenXmlPresentation::document_type() const noexcept {
+DocumentType Document::document_type() const noexcept {
   return DocumentType::PRESENTATION;
 }
 
-std::shared_ptr<abstract::ReadableFilesystem>
-OfficeOpenXmlPresentation::files() const noexcept {
+std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::unique_ptr<abstract::DocumentCursor>
-OfficeOpenXmlPresentation::root_element() const {
+std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
   return {}; // TODO
 }
 
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::presentation
