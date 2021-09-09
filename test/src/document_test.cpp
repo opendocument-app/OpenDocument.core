@@ -18,14 +18,13 @@ TEST(DocumentTest, odt) {
 
   auto cursor = document.root_element();
 
-  auto page_layout =
-      cursor.element().style(StyleContext::style_tree).page_layout();
-  EXPECT_TRUE(page_layout.width().value());
-  EXPECT_EQ("8.2673in", page_layout.width().value().value());
-  EXPECT_TRUE(page_layout.height().value());
-  EXPECT_EQ("11.6925in", page_layout.height().value().value());
-  EXPECT_TRUE(page_layout.margin().top().value());
-  EXPECT_EQ("0.7874in", page_layout.margin().top().value().value());
+  auto page_layout = cursor.element().text_root().page_layout();
+  EXPECT_TRUE(page_layout.width);
+  EXPECT_EQ("8.2673in", page_layout.width.value());
+  EXPECT_TRUE(page_layout.height);
+  EXPECT_EQ("11.6925in", page_layout.height.value());
+  EXPECT_TRUE(page_layout.margin.top);
+  EXPECT_EQ("0.7874in", page_layout.margin.top.value());
 }
 
 TEST(DocumentTest, odg) {
@@ -44,13 +43,12 @@ TEST(DocumentTest, odg) {
   // EXPECT_EQ(drawing.page_count(), 3);
 
   cursor.for_each_child([](DocumentCursor &cursor, const std::uint32_t) {
-    auto page_layout =
-        cursor.element().style(StyleContext::style_tree).page_layout();
-    EXPECT_TRUE(page_layout.width().value());
-    EXPECT_EQ("21cm", page_layout.width().value().value());
-    EXPECT_TRUE(page_layout.height().value());
-    EXPECT_EQ("29.7cm", page_layout.height().value().value());
-    EXPECT_TRUE(page_layout.margin().top().value());
-    EXPECT_EQ("1cm", page_layout.margin().top().value().value());
+    auto page_layout = cursor.element().page().page_layout();
+    EXPECT_TRUE(page_layout.width);
+    EXPECT_EQ("21cm", page_layout.width.value());
+    EXPECT_TRUE(page_layout.height);
+    EXPECT_EQ("29.7cm", page_layout.height.value());
+    EXPECT_TRUE(page_layout.margin.top);
+    EXPECT_EQ("1cm", page_layout.margin.top.value());
   });
 }

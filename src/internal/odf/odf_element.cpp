@@ -15,65 +15,60 @@ namespace {
 std::optional<std::string> default_style_name(const pugi::xml_node node);
 }
 
-class Element : public virtual abstract::Element {
-public:
-  Element(const Document *, pugi::xml_node node) : m_node{node} {}
+Element::Element(const Document *, pugi::xml_node node) : m_node{node} {}
 
-  [[nodiscard]] bool equals(const abstract::Document *,
-                            const abstract::DocumentCursor *,
-                            const abstract::Element &rhs) const override {
-    return m_node == *dynamic_cast<const Element &>(rhs).m_node;
-  }
+bool Element::equals(const abstract::Document *,
+                     const abstract::DocumentCursor *,
+                     const abstract::Element &rhs) const {
+  return m_node == *dynamic_cast<const Element &>(rhs).m_node;
+}
 
-  abstract::Element *parent(const abstract::Document *document,
-                            const abstract::DocumentCursor *,
-                            const abstract::Allocator *allocator) override {
-    return construct_default_parent_element(document_(document), m_node,
-                                            allocator);
-  }
+abstract::Element *Element::parent(const abstract::Document *document,
+                                   const abstract::DocumentCursor *,
+                                   const abstract::Allocator *allocator) {
 
-  abstract::Element *
-  first_child(const abstract::Document *document,
-              const abstract::DocumentCursor *,
-              const abstract::Allocator *allocator) override {
-    return construct_default_first_child_element(document_(document), m_node,
-                                                 allocator);
-  }
+  return construct_default_parent_element(document_(document), m_node,
+                                          allocator);
+}
 
-  abstract::Element *
-  previous_sibling(const abstract::Document *document,
-                   const abstract::DocumentCursor *,
-                   const abstract::Allocator *allocator) override {
-    return construct_default_previous_sibling_element(document_(document),
-                                                      m_node, allocator);
-  }
+abstract::Element *Element::first_child(const abstract::Document *document,
+                                        const abstract::DocumentCursor *,
+                                        const abstract::Allocator *allocator) {
+  return construct_default_first_child_element(document_(document), m_node,
+                                               allocator);
+}
 
-  abstract::Element *
-  next_sibling(const abstract::Document *document,
-               const abstract::DocumentCursor *,
-               const abstract::Allocator *allocator) override {
-    return construct_default_next_sibling_element(document_(document), m_node,
-                                                  allocator);
-  }
+abstract::Element *
+Element::previous_sibling(const abstract::Document *document,
+                          const abstract::DocumentCursor *,
+                          const abstract::Allocator *allocator) {
+  return construct_default_previous_sibling_element(document_(document), m_node,
+                                                    allocator);
+}
 
-protected:
-  pugi::xml_node m_node;
+abstract::Element *Element::next_sibling(const abstract::Document *document,
+                                         const abstract::DocumentCursor *,
+                                         const abstract::Allocator *allocator) {
+  return construct_default_next_sibling_element(document_(document), m_node,
+                                                allocator);
+}
 
-  Style *element_style_(const abstract::Document *document) const {
-    if (auto style_name = default_style_name(m_node)) {
-      return style_(document)->style(*style_name);
+ResolvedStyle Element::element_style(const abstract::Document *document) const {
+  if (auto style_name = default_style_name(m_node)) {
+    if (auto style = style_(document)->style(*style_name)) {
+      return style->resolved();
     }
-    return nullptr;
   }
+  return {};
+}
 
-  static const Document *document_(const abstract::Document *document) {
-    return static_cast<const Document *>(document);
-  }
+const Document *Element::document_(const abstract::Document *document) {
+  return static_cast<const Document *>(document);
+}
 
-  static const StyleRegistry *style_(const abstract::Document *document) {
-    return &static_cast<const Document *>(document)->m_style_registry;
-  }
-};
+const StyleRegistry *Element::style_(const abstract::Document *document) {
+  return &static_cast<const Document *>(document)->m_style_registry;
+}
 
 namespace {
 
@@ -450,10 +445,7 @@ public:
   [[nodiscard]] std::optional<TableStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    if (auto style = element_style_(document)) {
-      return style->resolved().table_style;
-    }
-    return {};
+    return element_style(document).table_style;
   }
 
   abstract::Element *first_child(const abstract::Document *,
@@ -558,10 +550,7 @@ public:
   [[nodiscard]] std::optional<TableColumnStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    if (auto style = element_style_(document)) {
-      return style->resolved().table_column_style;
-    }
-    return {};
+    return element_style(document).table_column_style;
   }
 
   ResolvedStyle default_cell_style(const abstract::Document *document) const {
@@ -594,10 +583,7 @@ public:
   [[nodiscard]] std::optional<TableRowStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    if (auto style = element_style_(document)) {
-      return style->resolved().table_row_style;
-    }
-    return {};
+    return element_style(document).table_row_style;
   }
 
   ResolvedStyle default_cell_style(const abstract::Document *document) const {
@@ -641,10 +627,7 @@ public:
   [[nodiscard]] std::optional<TableCellStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    if (auto style = element_style_(document)) {
-      return style->resolved().table_cell_style;
-    }
-    return {};
+    return element_style(document).table_cell_style;
   }
 
 private:

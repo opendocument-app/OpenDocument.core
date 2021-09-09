@@ -6,10 +6,10 @@ namespace odr::internal::odf {
 
 DocumentCursor::DocumentCursor(const Document *document, pugi::xml_node root)
     : common::DocumentCursor(document) {
-  auto allocator = [this](std::size_t size) { return push_(size); };
-  auto element = construct_default_element(
-      document, root,
-      reinterpret_cast<const abstract::Allocator *>(&allocator));
+  abstract::Allocator allocator = [this](std::size_t size) {
+    return push_(size);
+  };
+  auto element = construct_default_element(document, root, &allocator);
   if (!element) {
     throw std::invalid_argument("root element invalid");
   }

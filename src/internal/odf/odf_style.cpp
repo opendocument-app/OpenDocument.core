@@ -367,8 +367,7 @@ Style *StyleRegistry::generate_style_(const std::string &name,
 
   Style *family{nullptr};
   if (auto family_attr = node.attribute("style:family"); family_attr) {
-    family = generate_default_style_(
-        family_attr.value(), m_index_default_style.at(family_attr.value()));
+    family = generate_default_style_(family_attr.value(), {});
   }
 
   style = std::make_unique<Style>(name, node, parent, family);

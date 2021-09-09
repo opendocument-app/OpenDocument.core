@@ -1,5 +1,4 @@
 #include <internal/common/document_cursor.h>
-#include <odr/document.h>
 #include <odr/file.h>
 
 namespace odr::internal::common {
@@ -72,58 +71,54 @@ bool DocumentCursor::move_to_parent() {
 }
 
 bool DocumentCursor::move_to_first_child() {
-  auto allocator = [this](const std::size_t size) { return push_(size); };
-  return back_()->first_child(
-      m_document, this,
-      reinterpret_cast<const abstract::Allocator *>(&allocator));
+  abstract::Allocator allocator = [this](const std::size_t size) {
+    return push_(size);
+  };
+  return back_()->first_child(m_document, this, &allocator);
 }
 
 bool DocumentCursor::move_to_previous_sibling() {
-  auto allocator = [this](const std::size_t size) {
+  abstract::Allocator allocator = [this](const std::size_t size) {
     pop_();
     return push_(size);
   };
-  return back_()->previous_sibling(
-      m_document, this,
-      reinterpret_cast<const abstract::Allocator *>(&allocator));
+  return back_()->previous_sibling(m_document, this, &allocator);
 }
 
 bool DocumentCursor::move_to_next_sibling() {
-  auto allocator = [this](const std::size_t size) {
+  abstract::Allocator allocator = [this](const std::size_t size) {
     pop_();
     return push_(size);
   };
-  return back_()->next_sibling(
-      m_document, this,
-      reinterpret_cast<const abstract::Allocator *>(&allocator));
+  return back_()->next_sibling(m_document, this, &allocator);
 }
 
 bool DocumentCursor::move_to_master_page() {
-  auto allocator = [this](const std::size_t size) { return push_(size); };
+  abstract::Allocator allocator = [this](const std::size_t size) {
+    return push_(size);
+  };
   if (auto slide = dynamic_cast<const abstract::SlideElement *>(back_())) {
-    return slide->master_page(
-        m_document, this,
-        reinterpret_cast<const abstract::Allocator *>(&allocator));
+    return slide->master_page(m_document, this, &allocator);
   }
   return false;
 }
 
 bool DocumentCursor::move_to_first_table_column() {
-  auto allocator = [this](const std::size_t size) { return push_(size); };
+  abstract::Allocator allocator = [this](const std::size_t size) {
+    return push_(size);
+  };
   if (auto table = dynamic_cast<const abstract::TableElement *>(back_())) {
-    return table->first_column(
-        m_document, this,
-        reinterpret_cast<const abstract::Allocator *>(&allocator));
+    return table->first_column(m_document, this, &allocator);
   }
   return false;
 }
 
 bool DocumentCursor::move_to_first_table_row() {
-  auto allocator = [this](const std::size_t size) { return push_(size); };
+  abstract::Allocator allocator = [this](const std::size_t size) {
+    return push_(size);
+  };
   if (auto table = dynamic_cast<const abstract::TableElement *>(back_())) {
-    return table->first_row(
-        m_document, this,
-        reinterpret_cast<const abstract::Allocator *>(&allocator));
+    return table->first_row(m_document, this, &allocator);
   }
   return false;
 }

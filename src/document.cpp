@@ -367,6 +367,10 @@ Element::Page Element::page() const {
   return {m_document, m_cursor, m_element};
 }
 
+Element::Paragraph Element::paragraph() const {
+  return {m_document, m_cursor, m_element};
+}
+
 Element::Text Element::text() const {
   return {m_document, m_cursor, m_element};
 }
