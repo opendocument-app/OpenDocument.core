@@ -28,33 +28,38 @@ public:
   Element(const Document *, pugi::xml_node node) : m_node{node} {}
 
   [[nodiscard]] bool equals(const abstract::Document *,
+                            const abstract::DocumentCursor *,
                             const abstract::Element &rhs) const override {
     return m_node == *dynamic_cast<const Element &>(rhs).m_node;
   }
 
   abstract::Element *parent(const abstract::Document *document,
-                            const abstract::Allocator &allocator) override {
+                            const abstract::DocumentCursor *,
+                            const abstract::Allocator *allocator) override {
     return construct_default_parent_element(document_(document), m_node,
                                             allocator);
   }
 
   abstract::Element *
   first_child(const abstract::Document *document,
-              const abstract::Allocator &allocator) override {
+              const abstract::DocumentCursor *,
+              const abstract::Allocator *allocator) override {
     return construct_default_first_child_element(document_(document), m_node,
                                                  allocator);
   }
 
   abstract::Element *
   previous_sibling(const abstract::Document *document,
-                   const abstract::Allocator &allocator) override {
+                   const abstract::DocumentCursor *,
+                   const abstract::Allocator *allocator) override {
     return construct_default_previous_sibling_element(document_(document),
                                                       m_node, allocator);
   }
 
   abstract::Element *
   next_sibling(const abstract::Document *document,
-               const abstract::Allocator &allocator) override {
+               const abstract::DocumentCursor *,
+               const abstract::Allocator *allocator) override {
     return construct_default_next_sibling_element(document_(document), m_node,
                                                   allocator);
   }
@@ -84,15 +89,15 @@ class ImageElement;
 template <typename Derived>
 abstract::Element *construct_default(const Document *document,
                                      pugi::xml_node node,
-                                     const abstract::Allocator &allocator) {
-  auto alloc = allocator(sizeof(Derived));
+                                     const abstract::Allocator *allocator) {
+  auto alloc = (*allocator)(sizeof(Derived));
   return new (alloc) Derived(document, node);
 }
 
 template <typename Derived>
 abstract::Element *
 construct_default_optional(const Document *document, pugi::xml_node node,
-                           const abstract::Allocator &allocator) {
+                           const abstract::Allocator *allocator) {
   if (!node) {
     return nullptr;
   }
@@ -139,12 +144,14 @@ public:
   }
 
   abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::Allocator &) final {
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
     return nullptr;
   }
 
   abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::Allocator &) final {
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *) final {
     return nullptr;
   }
 };
@@ -170,7 +177,8 @@ public:
 
   [[nodiscard]] abstract::Element *
   first_master_page(const abstract::Document *document,
-                    const abstract::Allocator &allocator) const final {
+                    const abstract::DocumentCursor *,
+                    const abstract::Allocator *allocator) const final {
     if (auto first_master_page = style_(document)->first_master_page()) {
       auto master_page_node =
           style_(document)->master_page_node(*first_master_page);
@@ -186,7 +194,8 @@ public:
   using Root::Root;
 
   abstract::Element *first_child(const abstract::Document *document,
-                                 const abstract::Allocator &allocator) final {
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *allocator) final {
     return construct_default_optional<odf::Slide>(
         document_(document), m_node.child("draw:page"), allocator);
   }
@@ -197,7 +206,8 @@ public:
   using Root::Root;
 
   abstract::Element *first_child(const abstract::Document *document,
-                                 const abstract::Allocator &allocator) final {
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *allocator) final {
     return construct_default_optional<Sheet>(
         document_(document), m_node.child("table:table"), allocator);
   }
@@ -208,7 +218,8 @@ public:
   using Root::Root;
 
   abstract::Element *first_child(const abstract::Document *document,
-                                 const abstract::Allocator &allocator) final {
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *allocator) final {
     return construct_default_optional<Page>(
         document_(document), m_node.child("draw:page"), allocator);
   }
@@ -219,7 +230,8 @@ public:
   using Element::Element;
 
   abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::Allocator &) final {
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
     if (auto previous_sibling = m_node.previous_sibling()) {
       m_node = previous_sibling;
       return this;
@@ -228,7 +240,8 @@ public:
   }
 
   abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::Allocator &) final {
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *) final {
     if (auto next_sibling = m_node.next_sibling()) {
       m_node = next_sibling;
       return this;
@@ -247,7 +260,8 @@ public:
 
   [[nodiscard]] abstract::Element *
   master_page(const abstract::Document *document,
-              const abstract::Allocator &allocator) const final {
+              const abstract::DocumentCursor *,
+              const abstract::Allocator *allocator) const final {
     if (auto master_page_node = master_page_node_(document)) {
       return construct_default_optional<MasterPage>(
           document_(document), master_page_node, allocator);
@@ -274,7 +288,8 @@ public:
   using Element::Element;
 
   abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::Allocator &) final {
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
     if (auto previous_sibling = m_node.previous_sibling()) {
       m_node = previous_sibling;
       return this;
@@ -283,7 +298,8 @@ public:
   }
 
   abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::Allocator &) final {
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *) final {
     if (auto next_sibling = m_node.next_sibling()) {
       m_node = next_sibling;
       return this;
@@ -302,7 +318,8 @@ public:
 
   [[nodiscard]] abstract::Element *
   master_page(const abstract::Document *document,
-              const abstract::Allocator &allocator) const final {
+              const abstract::DocumentCursor *,
+              const abstract::Allocator *allocator) const final {
     if (auto master_page_node = master_page_node_(document)) {
       return construct_default_optional<MasterPage>(
           document_(document), master_page_node, allocator);
@@ -346,13 +363,15 @@ public:
 
   abstract::Element *
   previous_sibling(const abstract::Document *document,
-                   const abstract::Allocator &allocator) final {
+                   const abstract::DocumentCursor *,
+                   const abstract::Allocator *allocator) final {
     return construct_default_previous_sibling_element(document_(document),
                                                       first_(), allocator);
   }
 
   abstract::Element *next_sibling(const abstract::Document *document,
-                                  const abstract::Allocator &allocator) final {
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *allocator) final {
     return construct_default_next_sibling_element(document_(document), last_(),
                                                   allocator);
   }
@@ -426,7 +445,8 @@ public:
   }
 
   abstract::Element *first_child(const abstract::Document *,
-                                 const abstract::Allocator &) final {
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *) final {
     return nullptr;
   }
 
@@ -457,14 +477,16 @@ public:
 
   abstract::Element *
   first_column(const abstract::Document *document,
-               const abstract::Allocator &allocator) const final {
+               const abstract::DocumentCursor *,
+               const abstract::Allocator *allocator) const final {
     return construct_default_optional<TableColumn>(
         document_(document), m_node.child("table:table-column"), allocator);
   }
 
   abstract::Element *
   first_row(const abstract::Document *document,
-            const abstract::Allocator &allocator) const final {
+            const abstract::DocumentCursor *,
+            const abstract::Allocator *allocator) const final {
     return construct_default_optional<TableRow>(
         document_(document), m_node.child("table:table-row"), allocator);
   }
@@ -475,7 +497,8 @@ public:
   using Element::Element;
 
   abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::Allocator &) final {
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
     if (m_repeated_index > 0) {
       --m_repeated_index;
       return this;
@@ -491,7 +514,8 @@ public:
   }
 
   abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::Allocator &) final {
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *) final {
     if (m_repeated_index < number_repeated_() - 1) {
       ++m_repeated_index;
       return this;
@@ -825,7 +849,8 @@ public:
   }
 
   Element *previous_sibling(const abstract::Document *,
-                            const abstract::Allocator &) final {
+                            const abstract::DocumentCursor *,
+                            const abstract::Allocator *) final {
     if (auto previous_sibling = m_node.previous_sibling("table:table")) {
       m_node = previous_sibling;
       return this;
@@ -834,7 +859,8 @@ public:
   }
 
   Element *next_sibling(const abstract::Document *,
-                        const abstract::Allocator &) final {
+                        const abstract::DocumentCursor *,
+                        const abstract::Allocator *) final {
     if (auto next_sibling = m_node.next_sibling("table:table")) {
       m_node = next_sibling;
       return this;
@@ -851,10 +877,10 @@ namespace odr::internal {
 
 abstract::Element *
 odf::construct_default_element(const Document *document, pugi::xml_node node,
-                               const abstract::Allocator &allocator) {
+                               const abstract::Allocator *allocator) {
   using Constructor = std::function<abstract::Element *(
       const Document *document, pugi::xml_node node,
-      const abstract::Allocator &allocator)>;
+      const abstract::Allocator *allocator)>;
 
   using Span = DefaultElement<ElementType::span>;
   using LineBreak = DefaultElement<ElementType::line_break>;
@@ -912,7 +938,7 @@ odf::construct_default_element(const Document *document, pugi::xml_node node,
 abstract::Element *
 odf::construct_default_parent_element(const Document *document,
                                       pugi::xml_node node,
-                                      const abstract::Allocator &allocator) {
+                                      const abstract::Allocator *allocator) {
   for (node = node.parent(); node; node = node.parent()) {
     if (auto result = construct_default_element(document, node, allocator)) {
       return result;
@@ -923,7 +949,7 @@ odf::construct_default_parent_element(const Document *document,
 
 abstract::Element *odf::construct_default_first_child_element(
     const Document *document, pugi::xml_node node,
-    const abstract::Allocator &allocator) {
+    const abstract::Allocator *allocator) {
   for (node = node.first_child(); node; node = node.next_sibling()) {
     if (auto result = construct_default_element(document, node, allocator)) {
       return result;
@@ -934,7 +960,7 @@ abstract::Element *odf::construct_default_first_child_element(
 
 abstract::Element *odf::construct_default_previous_sibling_element(
     const Document *document, pugi::xml_node node,
-    const abstract::Allocator &allocator) {
+    const abstract::Allocator *allocator) {
   for (node = node.previous_sibling(); node; node = node.previous_sibling()) {
     if (auto result = construct_default_element(document, node, allocator)) {
       return result;
@@ -945,7 +971,7 @@ abstract::Element *odf::construct_default_previous_sibling_element(
 
 abstract::Element *odf::construct_default_next_sibling_element(
     const Document *document, pugi::xml_node node,
-    const abstract::Allocator &allocator) {
+    const abstract::Allocator *allocator) {
   for (node = node.next_sibling(); node; node = node.next_sibling()) {
     if (auto result = construct_default_element(document, node, allocator)) {
       return result;

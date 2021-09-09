@@ -73,7 +73,7 @@ bool DocumentCursor::move_to_next_sibling() {
 }
 
 Element DocumentCursor::element() const {
-  return {m_document.get(), m_cursor->element()};
+  return {m_document.get(), m_cursor.get(), m_cursor->element()};
 }
 
 bool DocumentCursor::move_to_master_page() {
@@ -143,11 +143,12 @@ void DocumentCursor::for_each_(const ConditionalChildVisitor &visitor) {
 }
 
 Element::Element(const internal::abstract::Document *document,
+                 const internal::abstract::DocumentCursor *cursor,
                  internal::abstract::Element *element)
-    : m_document{document}, m_element{element} {}
+    : m_document{document}, m_cursor{cursor}, m_element{element} {}
 
 bool Element::operator==(const Element &rhs) const {
-  return m_element->equals(m_document, *rhs.m_element);
+  return m_element->equals(m_document, m_cursor, *rhs.m_element);
 }
 
 bool Element::operator!=(const Element &rhs) const { return !operator==(rhs); }
@@ -336,45 +337,73 @@ std::string Element::Image::href() const {
   return m_element ? m_element->href(m_document) : "";
 }
 
-Element::TextRoot Element::text_root() const { return {m_document, m_element}; }
+Element::TextRoot Element::text_root() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Slide Element::slide() const { return {m_document, m_element}; }
+Element::Slide Element::slide() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Sheet Element::sheet() const { return {m_document, m_element}; }
+Element::Sheet Element::sheet() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Page Element::page() const { return {m_document, m_element}; }
+Element::Page Element::page() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Text Element::text() const { return {m_document, m_element}; }
+Element::Text Element::text() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Link Element::link() const { return {m_document, m_element}; }
+Element::Link Element::link() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Bookmark Element::bookmark() const { return {m_document, m_element}; }
+Element::Bookmark Element::bookmark() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Table Element::table() const { return {m_document, m_element}; }
+Element::Table Element::table() const {
+  return {m_document, m_cursor, m_element};
+}
 
 Element::TableColumn Element::table_column() const {
-  return {m_document, m_element};
+  return {m_document, m_cursor, m_element};
 }
 
-Element::TableRow Element::table_row() const { return {m_document, m_element}; }
+Element::TableRow Element::table_row() const {
+  return {m_document, m_cursor, m_element};
+}
 
 Element::TableCell Element::table_cell() const {
-  return {m_document, m_element};
+  return {m_document, m_cursor, m_element};
 }
 
-Element::Frame Element::frame() const { return {m_document, m_element}; }
+Element::Frame Element::frame() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Rect Element::rect() const { return {m_document, m_element}; }
+Element::Rect Element::rect() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Line Element::line() const { return {m_document, m_element}; }
+Element::Line Element::line() const {
+  return {m_document, m_cursor, m_element};
+}
 
-Element::Circle Element::circle() const { return {m_document, m_element}; }
+Element::Circle Element::circle() const {
+  return {m_document, m_cursor, m_element};
+}
 
 Element::CustomShape Element::custom_shape() const {
-  return {m_document, m_element};
+  return {m_document, m_cursor, m_element};
 }
 
-Element::Image Element::image() const { return {m_document, m_element}; }
+Element::Image Element::image() const {
+  return {m_document, m_cursor, m_element};
+}
 
 void TextStyle::override(const TextStyle &other) {
   if (other.font_name) {

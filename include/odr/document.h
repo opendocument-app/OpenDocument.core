@@ -155,6 +155,7 @@ private:
 class Element final {
 public:
   Element(const internal::abstract::Document *document,
+          const internal::abstract::DocumentCursor *cursor,
           internal::abstract::Element *element);
 
   bool operator==(const Element &rhs) const;
@@ -167,13 +168,16 @@ public:
   template <typename T> class Extension {
   public:
     Extension(const internal::abstract::Document *document,
+              const internal::abstract::DocumentCursor *cursor,
               internal::abstract::Element *element)
-        : m_document{document}, m_element{dynamic_cast<T *>(element)} {}
+        : m_document{document}, m_cursor{cursor}, m_element{dynamic_cast<T *>(
+                                                      element)} {}
 
     explicit operator bool() const { return m_element; }
 
   protected:
     const internal::abstract::Document *m_document;
+    const internal::abstract::DocumentCursor *m_cursor;
     T *m_element;
   };
 
@@ -354,6 +358,7 @@ public:
 
 private:
   const internal::abstract::Document *m_document;
+  const internal::abstract::DocumentCursor *m_cursor;
   internal::abstract::Element *m_element;
 };
 

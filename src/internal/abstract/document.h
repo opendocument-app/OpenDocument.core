@@ -92,18 +92,23 @@ public:
   virtual ~Element() = default;
 
   [[nodiscard]] virtual bool equals(const Document *document,
+                                    const DocumentCursor *cursor,
                                     const Element &other) const = 0;
 
   [[nodiscard]] virtual ElementType type(const Document *document) const = 0;
 
   virtual Element *parent(const Document *document,
-                          const Allocator &allocator) = 0;
+                          const DocumentCursor *cursor,
+                          const Allocator *allocator) = 0;
   virtual Element *first_child(const Document *document,
-                               const Allocator &allocator) = 0;
+                               const DocumentCursor *cursor,
+                               const Allocator *allocator) = 0;
   virtual Element *previous_sibling(const Document *document,
-                                    const Allocator &allocator) = 0;
+                                    const DocumentCursor *cursor,
+                                    const Allocator *allocator) = 0;
   virtual Element *next_sibling(const Document *document,
-                                const Allocator &allocator) = 0;
+                                const DocumentCursor *cursor,
+                                const Allocator *allocator) = 0;
 };
 
 class TextRootElement : public virtual Element {
@@ -116,8 +121,8 @@ public:
   page_layout(const Document *document) const = 0;
 
   [[nodiscard]] virtual Element *
-  first_master_page(const Document *document,
-                    const Allocator &allocator) const = 0;
+  first_master_page(const Document *document, const DocumentCursor *cursor,
+                    const Allocator *allocator) const = 0;
 };
 
 class SlideElement : public virtual Element {
@@ -130,7 +135,8 @@ public:
   page_layout(const Document *document) const = 0;
 
   [[nodiscard]] virtual Element *
-  master_page(const Document *document, const Allocator &allocator) const = 0;
+  master_page(const Document *document, const DocumentCursor *cursor,
+              const Allocator *allocator) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
@@ -154,7 +160,8 @@ public:
   page_layout(const Document *document) const = 0;
 
   [[nodiscard]] virtual Element *
-  master_page(const Document *document, const Allocator &allocator) const = 0;
+  master_page(const Document *document, const DocumentCursor *cursor,
+              const Allocator *allocator) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
@@ -225,9 +232,11 @@ public:
   [[nodiscard]] virtual TableDimensions
   dimensions(const Document *document) const = 0;
   [[nodiscard]] virtual Element *
-  first_column(const Document *document, const Allocator &allocator) const = 0;
+  first_column(const Document *document, const DocumentCursor *cursor,
+               const Allocator *allocator) const = 0;
   [[nodiscard]] virtual Element *
-  first_row(const Document *document, const Allocator &allocator) const = 0;
+  first_row(const Document *document, const DocumentCursor *cursor,
+            const Allocator *allocator) const = 0;
 
   [[nodiscard]] virtual TableStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
