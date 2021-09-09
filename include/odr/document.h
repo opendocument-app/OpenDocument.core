@@ -18,6 +18,7 @@ class TextRootElement;
 class SlideElement;
 class SheetElement;
 class PageElement;
+class ParagraphElement;
 class TextElement;
 class LinkElement;
 class BookmarkElement;
@@ -211,6 +212,14 @@ public:
     [[nodiscard]] PageLayout page_layout() const;
   };
 
+  class Paragraph final
+      : public Extension<internal::abstract::ParagraphElement> {
+  public:
+    using Extension::Extension;
+
+    [[nodiscard]] std::optional<ParagraphStyle> style() const;
+  };
+
   class Text final : public Extension<internal::abstract::TextElement> {
   public:
     using Extension::Extension;
@@ -342,6 +351,7 @@ public:
   [[nodiscard]] Slide slide() const;
   [[nodiscard]] Sheet sheet() const;
   [[nodiscard]] Page page() const;
+  [[nodiscard]] Paragraph paragraph() const;
   [[nodiscard]] Text text() const;
   [[nodiscard]] Link link() const;
   [[nodiscard]] Bookmark bookmark() const;

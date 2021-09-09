@@ -181,8 +181,14 @@ std::string Element::Text::value() const {
   return m_element ? m_element->value(m_document) : "";
 }
 
+std::optional<ParagraphStyle> Element::Paragraph::style() const {
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<ParagraphStyle>();
+}
+
 std::optional<TextStyle> Element::Text::style() const {
-  return {}; // TODO
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<TextStyle>();
 }
 
 std::string Element::Link::href() const {
@@ -198,15 +204,18 @@ TableDimensions Element::Table::dimensions() const {
 }
 
 std::optional<TableStyle> Element::Table::style() const {
-  return {}; // TODO
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<TableStyle>();
 }
 
 std::optional<TableColumnStyle> Element::TableColumn::style() const {
-  return {}; // TODO
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<TableColumnStyle>();
 }
 
 std::optional<TableRowStyle> Element::TableRow::style() const {
-  return {}; // TODO
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<TableRowStyle>();
 }
 
 TableDimensions Element::TableCell::span() const {
@@ -214,7 +223,8 @@ TableDimensions Element::TableCell::span() const {
 }
 
 std::optional<TableCellStyle> Element::TableCell::style() const {
-  return {}; // TODO
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<TableCellStyle>();
 }
 
 std::optional<std::string> Element::Frame::anchor_type() const {
@@ -262,7 +272,8 @@ std::string Element::Rect::height() const {
 }
 
 std::optional<GraphicStyle> Element::Rect::style() const {
-  return {}; // TODO
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<GraphicStyle>();
 }
 
 std::string Element::Line::x1() const {
@@ -282,7 +293,8 @@ std::string Element::Line::y2() const {
 }
 
 std::optional<GraphicStyle> Element::Line::style() const {
-  return {}; // TODO
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<GraphicStyle>();
 }
 
 std::string Element::Circle::x() const {
@@ -302,7 +314,8 @@ std::string Element::Circle::height() const {
 }
 
 std::optional<GraphicStyle> Element::Circle::style() const {
-  return {}; // TODO
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<GraphicStyle>();
 }
 
 std::optional<std::string> Element::CustomShape::x() const {
@@ -322,7 +335,8 @@ std::string Element::CustomShape::height() const {
 }
 
 std::optional<GraphicStyle> Element::CustomShape::style() const {
-  return {}; // TODO
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<GraphicStyle>();
 }
 
 bool Element::Image::internal() const {

@@ -10,7 +10,6 @@ add_executable(odr_test
         ${CMAKE_CURRENT_BINARY_DIR}/src/test_constants.cpp
 
         src/document_test.cpp
-        src/file_no_except_test.cpp
         src/file_test.cpp
         src/output_reference_test.cpp
 

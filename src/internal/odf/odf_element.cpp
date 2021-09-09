@@ -17,14 +17,6 @@ std::optional<std::string> default_style_name(const pugi::xml_node node);
 
 class Element : public virtual abstract::Element {
 public:
-  static const Document *document_(const abstract::Document *document) {
-    return static_cast<const Document *>(document);
-  }
-
-  static const StyleRegistry *style_(const abstract::Document *document) {
-    return &static_cast<const Document *>(document)->m_style_registry;
-  }
-
   Element(const Document *, pugi::xml_node node) : m_node{node} {}
 
   [[nodiscard]] bool equals(const abstract::Document *,
@@ -66,6 +58,21 @@ public:
 
 protected:
   pugi::xml_node m_node;
+
+  Style *element_style_(const abstract::Document *document) const {
+    if (auto style_name = default_style_name(m_node)) {
+      return style_(document)->style(*style_name);
+    }
+    return nullptr;
+  }
+
+  static const Document *document_(const abstract::Document *document) {
+    return static_cast<const Document *>(document);
+  }
+
+  static const StyleRegistry *style_(const abstract::Document *document) {
+    return &static_cast<const Document *>(document)->m_style_registry;
+  }
 };
 
 namespace {
@@ -270,7 +277,7 @@ public:
   }
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
-    return m_node.attribute("draw:name").value(); // TODO
+    return m_node.attribute("draw:name").value();
   }
 
 private:
@@ -328,7 +335,7 @@ public:
   }
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
-    return m_node.attribute("draw:name").value(); // TODO
+    return m_node.attribute("draw:name").value();
   }
 
 private:
@@ -345,7 +352,7 @@ class Paragraph final : public Element, public abstract::ParagraphElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] ParagraphStyle
+  [[nodiscard]] std::optional<ParagraphStyle>
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     return {}; // TODO
@@ -356,8 +363,9 @@ class Text final : public Element, public abstract::TextElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] TextStyle style(const abstract::Document *,
-                                const abstract::DocumentCursor *) const final {
+  [[nodiscard]] std::optional<TextStyle>
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
     return {}; // TODO
   }
 
@@ -439,9 +447,13 @@ class TableElement : public Element, public abstract::TableElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] TableStyle style(const abstract::Document *,
-                                 const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+  [[nodiscard]] std::optional<TableStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *) const final {
+    if (auto style = element_style_(document)) {
+      return style->resolved().table_style;
+    }
+    return {};
   }
 
   abstract::Element *first_child(const abstract::Document *,
@@ -543,10 +555,13 @@ class TableColumn final : public TableComponent,
 public:
   using TableComponent::TableComponent;
 
-  [[nodiscard]] TableColumnStyle
-  style(const abstract::Document *,
+  [[nodiscard]] std::optional<TableColumnStyle>
+  style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+    if (auto style = element_style_(document)) {
+      return style->resolved().table_column_style;
+    }
+    return {};
   }
 
   ResolvedStyle default_cell_style(const abstract::Document *document) const {
@@ -576,10 +591,13 @@ class TableRow final : public TableComponent, public abstract::TableRowElement {
 public:
   using TableComponent::TableComponent;
 
-  [[nodiscard]] TableRowStyle
-  style(const abstract::Document *,
+  [[nodiscard]] std::optional<TableRowStyle>
+  style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+    if (auto style = element_style_(document)) {
+      return style->resolved().table_row_style;
+    }
+    return {};
   }
 
   ResolvedStyle default_cell_style(const abstract::Document *document) const {
@@ -620,10 +638,13 @@ public:
             m_node.attribute("table:number-columns-spanned").as_uint(1)};
   }
 
-  [[nodiscard]] TableCellStyle
-  style(const abstract::Document *,
+  [[nodiscard]] std::optional<TableCellStyle>
+  style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+    if (auto style = element_style_(document)) {
+      return style->resolved().table_cell_style;
+    }
+    return {};
   }
 
 private:
@@ -716,7 +737,7 @@ public:
     return m_node.attribute("svg:height").value();
   }
 
-  [[nodiscard]] GraphicStyle
+  [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     return {}; // TODO
@@ -743,7 +764,7 @@ public:
     return m_node.attribute("svg:y2").value();
   }
 
-  [[nodiscard]] GraphicStyle
+  [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     return {}; // TODO
@@ -770,7 +791,7 @@ public:
     return m_node.attribute("svg:height").value();
   }
 
-  [[nodiscard]] GraphicStyle
+  [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     return {}; // TODO
@@ -799,7 +820,7 @@ public:
     return m_node.attribute("svg:height").value();
   }
 
-  [[nodiscard]] GraphicStyle
+  [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     return {}; // TODO
@@ -841,7 +862,7 @@ public:
   using TableElement::TableElement;
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
-    return m_node.attribute("table:name").value(); // TODO
+    return m_node.attribute("table:name").value();
   }
 
   [[nodiscard]] ElementType type(const abstract::Document *) const override {

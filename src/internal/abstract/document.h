@@ -182,7 +182,7 @@ public:
     return ElementType::paragraph;
   }
 
-  [[nodiscard]] virtual ParagraphStyle
+  [[nodiscard]] virtual std::optional<ParagraphStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -201,8 +201,8 @@ public:
 
   [[nodiscard]] virtual std::string value(const Document *document) const = 0;
 
-  [[nodiscard]] virtual TextStyle style(const Document *document,
-                                        const DocumentCursor *cursor) const = 0;
+  [[nodiscard]] virtual std::optional<TextStyle>
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class LinkElement : public virtual Element {
@@ -238,7 +238,7 @@ public:
   first_row(const Document *document, const DocumentCursor *cursor,
             const Allocator *allocator) const = 0;
 
-  [[nodiscard]] virtual TableStyle
+  [[nodiscard]] virtual std::optional<TableStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -248,7 +248,7 @@ public:
     return ElementType::table_column;
   }
 
-  [[nodiscard]] virtual TableColumnStyle
+  [[nodiscard]] virtual std::optional<TableColumnStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -258,7 +258,7 @@ public:
     return ElementType::table_row;
   }
 
-  [[nodiscard]] virtual TableRowStyle
+  [[nodiscard]] virtual std::optional<TableRowStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -271,7 +271,7 @@ public:
   [[nodiscard]] virtual TableDimensions
   span(const Document *document) const = 0;
 
-  [[nodiscard]] virtual TableCellStyle
+  [[nodiscard]] virtual std::optional<TableCellStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -306,7 +306,7 @@ public:
   [[nodiscard]] virtual std::string width(const Document *document) const = 0;
   [[nodiscard]] virtual std::string height(const Document *document) const = 0;
 
-  [[nodiscard]] virtual GraphicStyle
+  [[nodiscard]] virtual std::optional<GraphicStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -321,7 +321,7 @@ public:
   [[nodiscard]] virtual std::string x2(const Document *document) const = 0;
   [[nodiscard]] virtual std::string y2(const Document *document) const = 0;
 
-  [[nodiscard]] virtual GraphicStyle
+  [[nodiscard]] virtual std::optional<GraphicStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -336,7 +336,7 @@ public:
   [[nodiscard]] virtual std::string width(const Document *document) const = 0;
   [[nodiscard]] virtual std::string height(const Document *document) const = 0;
 
-  [[nodiscard]] virtual GraphicStyle
+  [[nodiscard]] virtual std::optional<GraphicStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -353,7 +353,7 @@ public:
   [[nodiscard]] virtual std::string width(const Document *document) const = 0;
   [[nodiscard]] virtual std::string height(const Document *document) const = 0;
 
-  [[nodiscard]] virtual GraphicStyle
+  [[nodiscard]] virtual std::optional<GraphicStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 

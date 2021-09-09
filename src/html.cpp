@@ -265,43 +265,40 @@ void translate_element(DocumentCursor &cursor, std::ostream &out,
                        const HtmlConfig &config);
 
 void translate_text(const DocumentCursor &cursor, std::ostream &out) {
+  auto text = cursor.element().text();
+
+  out << "<span";
+  if (auto style = text.style()) {
+    out << optional_style_attribute(translate_text_style(*style));
+  }
+  out << ">";
   out << common::html::escape_text(cursor.element().text().value());
+  out << "</span>";
 }
 
 void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
                          const HtmlConfig &config) {
-  auto style = cursor.element().style(StyleDepth::style_tree);
+  auto paragraph = cursor.element().paragraph();
 
   out << "<p";
-  out << optional_style_attribute(
-      translate_paragraph_style(style.paragraph_style()));
-  out << ">";
-  out << "<span";
-  out << optional_style_attribute(translate_text_style(style.text_style()));
+  if (auto style = paragraph.style()) {
+    out << optional_style_attribute(translate_paragraph_style(*style));
+  }
   out << ">";
   translate_children(cursor, out, config);
-  out << "</span>";
   out << "</p>";
 }
 
 void translate_span(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
-  auto style = cursor.element().style(StyleDepth::style_tree);
-
-  out << "<span";
-  out << optional_style_attribute(translate_text_style(style.text_style()));
-  out << ">";
+  out << "<span>";
   translate_children(cursor, out, config);
   out << "</span>";
 }
 
 void translate_link(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
-  auto style = cursor.element().style(StyleDepth::style_tree);
-
-  out << "<a";
-  out << optional_style_attribute(translate_text_style(style.text_style()));
-  out << " href=\"";
+  out << "<a href=\"";
   out << cursor.element().link().href();
   out << "\">";
   translate_children(cursor, out, config);
@@ -330,33 +327,39 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
   // TODO table column width does not work
   // TODO table row height does not work
-  auto style = cursor.element().style(StyleDepth::style_tree);
+  auto table = cursor.element().table();
 
   out << "<table";
-  out << optional_style_attribute(translate_table_style(style.table_style()));
+  if (auto style = table.style()) {
+    out << optional_style_attribute(translate_table_style(*style));
+  }
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
   cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
+    auto table_column = cursor.element().table_column();
+
     out << "<col";
-    out << optional_style_attribute(
-        translate_table_column_style(style.table_column_style()));
+    if (auto style = table_column.style()) {
+      out << optional_style_attribute(translate_table_column_style(*style));
+    }
     out << ">";
 
     return true;
   });
 
   cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
-    auto style = cursor.element().style(StyleDepth::style_tree);
+    auto table_row = cursor.element().table_row();
 
     out << "<tr";
-    out << optional_style_attribute(
-        translate_table_row_style(style.table_row_style()));
+    if (auto style = table_row.style()) {
+      out << optional_style_attribute(translate_table_row_style(*style));
+    }
     out << ">";
 
     cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
-      auto style = cursor.element().style(StyleDepth::style_tree);
-      auto cell_span = cursor.element().table_cell().span();
+      auto table_cell = cursor.element().table_cell();
+      auto cell_span = table_cell.span();
 
       out << "<td";
       if (cell_span.rows > 1) {
@@ -365,7 +368,9 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
       if (cell_span.columns > 1) {
         out << " colspan=\"" << cell_span.columns << "\"";
       }
-      out << optional_style_attribute(translate_table_cell_style(style));
+      if (auto style = table_cell.style()) {
+        out << optional_style_attribute(translate_table_cell_style(*style));
+      }
       out << ">";
       translate_children(cursor, out, config);
       out << "</td>";
@@ -423,8 +428,6 @@ void translate_image(DocumentCursor &cursor, std::ostream &out,
 
 void translate_frame(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
-  auto style = cursor.element().style(StyleDepth::style_tree);
-
   // TODO choosing <span> by default because it is valid inside <p>;
   // alternatives?
   const bool span = cursor.element().frame().anchor_type().has_value();
@@ -435,10 +438,7 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
   }
 
   out << optional_style_attribute(
-      translate_frame_properties(cursor.element().frame()) +
-      translate_text_style(style.text_style()) +
-      translate_paragraph_style(style.paragraph_style()) +
-      translate_drawing_style(style.graphic_style()));
+      translate_frame_properties(cursor.element().frame()));
   out << ">";
   translate_children(cursor, out, config);
 
@@ -451,12 +451,12 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
 
 void translate_rect(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
-  auto style = cursor.element().style(StyleDepth::style_tree);
+  auto rect = cursor.element().rect();
 
   out << "<div";
   out << optional_style_attribute(
       translate_rect_properties(cursor.element().rect()) +
-      translate_drawing_style(style.graphic_style()));
+      (rect.style() ? translate_drawing_style(*rect.style()) : ""));
   out << ">";
   translate_children(cursor, out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
@@ -465,12 +465,12 @@ void translate_rect(DocumentCursor &cursor, std::ostream &out,
 
 void translate_line(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig & /*config*/) {
-  auto style = cursor.element().style(StyleDepth::style_tree);
+  auto line = cursor.element().line();
 
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
   out << optional_style_attribute(
       "z-index:-1;position:absolute;top:0;left:0;" +
-      translate_drawing_style(style.graphic_style()));
+      (line.style() ? translate_drawing_style(*line.style()) : ""));
   out << ">";
 
   out << "<line";
@@ -485,12 +485,12 @@ void translate_line(DocumentCursor &cursor, std::ostream &out,
 
 void translate_circle(DocumentCursor &cursor, std::ostream &out,
                       const HtmlConfig &config) {
-  auto style = cursor.element().style(StyleDepth::style_tree);
+  auto circle = cursor.element().circle();
 
   out << "<div";
   out << optional_style_attribute(
       translate_circle_properties(cursor.element().circle()) +
-      translate_drawing_style(style.graphic_style()));
+      (circle.style() ? translate_drawing_style(*circle.style()) : ""));
   out << ">";
   translate_children(cursor, out, config);
   out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
@@ -499,12 +499,13 @@ void translate_circle(DocumentCursor &cursor, std::ostream &out,
 
 void translate_custom_shape(DocumentCursor &cursor, std::ostream &out,
                             const HtmlConfig &config) {
-  auto style = cursor.element().style(StyleDepth::style_tree);
+  auto custom_shape = cursor.element().custom_shape();
 
   out << "<div";
   out << optional_style_attribute(
       translate_custom_shape_properties(cursor.element().custom_shape()) +
-      translate_drawing_style(style.graphic_style()));
+      (custom_shape.style() ? translate_drawing_style(*custom_shape.style())
+                            : ""));
   out << ">";
   translate_children(cursor, out, config);
   // TODO draw shape in svg
@@ -573,10 +574,8 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
   // TODO table column width does not work
   // TODO table row height does not work
-  auto style = cursor.element().style(StyleDepth::style_tree);
 
   out << "<table";
-  out << optional_style_attribute(translate_table_style(style.table_style()));
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
@@ -605,11 +604,12 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
   std::uint32_t row_index = 0;
 
   cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
-    auto style = cursor.element().style(StyleDepth::style_tree);
+    auto table_column = cursor.element().table_column();
 
     out << "<col";
-    out << optional_style_attribute(
-        translate_table_column_style(style.table_column_style()));
+    if (auto style = table_column.style()) {
+      out << optional_style_attribute(translate_table_column_style(*style));
+    }
     out << ">";
 
     ++column_index;
@@ -617,21 +617,20 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
   });
 
   cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
-    auto style = cursor.element().style(StyleDepth::style_tree);
+    auto table_row = cursor.element().table_row();
 
     out << "<tr";
-    out << optional_style_attribute(
-        translate_table_row_style(style.table_row_style()));
+    if (auto style = table_row.style()) {
+      out << optional_style_attribute(translate_table_row_style(*style));
+    }
     out << ">";
 
     column_index = 0;
 
     cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
-      auto style = cursor.element().style(StyleDepth::style_tree);
-
       // TODO check if cell hidden
-
-      auto cell_span = cursor.element().table_cell().span();
+      auto table_cell = cursor.element().table_cell();
+      auto cell_span = table_cell.span();
 
       out << "<td";
       if (cell_span.rows > 1) {
@@ -640,7 +639,9 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
       if (cell_span.columns > 1) {
         out << " colspan=\"" << cell_span.columns << "\"";
       }
-      out << optional_style_attribute(translate_table_cell_style(style));
+      if (auto style = table_cell.style()) {
+        out << optional_style_attribute(translate_table_cell_style(*style));
+      }
       out << ">";
       translate_children(cursor, out, config);
       out << "</td>";
@@ -784,7 +785,6 @@ void html::translate(const Document &document,
   if (document.document_type() == DocumentType::SPREADSHEET) {
     out << common::html::default_spreadsheet_style();
   }
-  translate_document_style(document, out, config);
   out << "</style>";
   out << "</head>";
 
