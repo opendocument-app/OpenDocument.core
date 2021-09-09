@@ -134,7 +134,7 @@ public:
   [[nodiscard]] virtual Element *
   master_page(const Document *document, const Allocator &allocator) const = 0;
 
-  [[nodiscard]] virtual std::string *name(const Document *document) const = 0;
+  [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
 
 class SheetElement : public virtual Element {
@@ -158,7 +158,7 @@ public:
   [[nodiscard]] virtual Element *
   master_page(const Document *document, const Allocator &allocator) const = 0;
 
-  [[nodiscard]] virtual std::string *name(const Document *document) const = 0;
+  [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
 
 class MasterPageElement : public virtual Element {
@@ -167,7 +167,7 @@ public:
     return ElementType::master_page;
   }
 
-  [[nodiscard]] virtual PageLayout *
+  [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 };
 
