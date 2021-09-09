@@ -17,7 +17,7 @@ private:
   std::vector<ResolvedStyle> m_style_stack;
 
   void pushed_(abstract::Element *element) final;
-  void pop_() final;
+  void popping_(abstract::Element *element) final;
 };
 
 } // namespace odr::internal::odf

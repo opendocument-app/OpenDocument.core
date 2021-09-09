@@ -1,4 +1,5 @@
 #include <internal/common/document_cursor.h>
+#include <iostream>
 #include <odr/file.h>
 
 namespace odr::internal::common {
@@ -6,6 +7,12 @@ namespace odr::internal::common {
 DocumentCursor::DocumentCursor(const abstract::Document *document)
     : m_document{document} {
   m_element_stack_top.push_back(0);
+}
+
+DocumentCursor::~DocumentCursor() {
+  while (!m_element_stack.empty()) {
+    pop_();
+  }
 }
 
 bool DocumentCursor::equals(const abstract::DocumentCursor &other) const {
@@ -34,14 +41,18 @@ void *DocumentCursor::push_(const std::size_t size) {
   return m_element_stack.data() + offset;
 }
 
-void DocumentCursor::pushed_(abstract::Element *) {}
-
 void DocumentCursor::pop_() {
+  popping_(back_());
+
   back_()->~Element();
   m_element_stack_top.pop_back();
   std::int32_t next_offset = next_offset_();
   m_element_stack.resize(next_offset);
 }
+
+void DocumentCursor::pushed_(abstract::Element *) {}
+
+void DocumentCursor::popping_(abstract::Element *) {}
 
 std::int32_t DocumentCursor::next_offset_() const {
   return m_element_stack_top.back();

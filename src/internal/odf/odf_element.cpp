@@ -27,7 +27,6 @@ bool Element::equals(const abstract::Document *,
 abstract::Element *Element::parent(const abstract::Document *document,
                                    const abstract::DocumentCursor *,
                                    const abstract::Allocator *allocator) {
-
   return construct_default_parent_element(document_(document), m_node,
                                           allocator);
 }

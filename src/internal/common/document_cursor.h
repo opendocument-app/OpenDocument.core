@@ -12,6 +12,7 @@ namespace odr::internal::common {
 class DocumentCursor : public abstract::DocumentCursor {
 public:
   explicit DocumentCursor(const abstract::Document *document);
+  ~DocumentCursor();
 
   [[nodiscard]] bool
   equals(const abstract::DocumentCursor &other) const override;
@@ -34,21 +35,26 @@ public:
   [[nodiscard]] bool move_to_first_table_row() override;
 
 protected:
+  const abstract::Document *m_document;
+
   void *push_(std::size_t size);
+
   virtual void pushed_(abstract::Element *element);
-  virtual void pop_();
-  [[nodiscard]] std::int32_t next_offset_() const;
-  [[nodiscard]] std::int32_t back_offset_() const;
+  virtual void popping_(abstract::Element *element);
+
   abstract::Element *back_();
   [[nodiscard]] const abstract::Element *back_() const;
-
-  [[nodiscard]] bool move_helper_(abstract::Element *element);
-
-  const abstract::Document *m_document;
 
 private:
   std::vector<std::int32_t> m_element_stack_top;
   std::string m_element_stack;
+
+  [[nodiscard]] std::int32_t next_offset_() const;
+  [[nodiscard]] std::int32_t back_offset_() const;
+
+  void pop_();
+
+  [[nodiscard]] bool move_helper_(abstract::Element *element);
 };
 
 } // namespace odr::internal::common
