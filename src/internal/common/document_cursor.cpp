@@ -42,8 +42,6 @@ void *DocumentCursor::push_(const std::size_t size) {
 }
 
 void DocumentCursor::pop_() {
-  popping_(back_());
-
   back_()->~Element();
   m_element_stack_top.pop_back();
   std::int32_t next_offset = next_offset_();
@@ -86,6 +84,7 @@ bool DocumentCursor::move_to_parent() {
   if (m_element_stack_top.size() <= 1) {
     return false;
   }
+  popping_(back_());
   pop_();
   return true;
 }
@@ -99,6 +98,7 @@ bool DocumentCursor::move_to_first_child() {
 
 bool DocumentCursor::move_to_previous_sibling() {
   abstract::Allocator allocator = [this](const std::size_t size) {
+    popping_(back_());
     pop_();
     return push_(size);
   };
@@ -107,6 +107,7 @@ bool DocumentCursor::move_to_previous_sibling() {
 
 bool DocumentCursor::move_to_next_sibling() {
   abstract::Allocator allocator = [this](const std::size_t size) {
+    popping_(back_());
     pop_();
     return push_(size);
   };

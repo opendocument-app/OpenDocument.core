@@ -21,11 +21,13 @@ const ResolvedStyle &DocumentCursor::current_style() const {
 }
 
 void DocumentCursor::pushed_(abstract::Element *element) {
-  ResolvedStyle style =
-      m_style_stack.empty() ? ResolvedStyle() : m_style_stack.back();
-  style.override(
+  if (m_style_stack.empty()) {
+    m_style_stack.emplace_back();
+  } else {
+    m_style_stack.emplace_back(m_style_stack.back());
+  }
+  m_style_stack.back().override(
       dynamic_cast<odf::Element *>(element)->element_style(m_document));
-  m_style_stack.push_back(std::move(style));
 }
 
 void DocumentCursor::popping_(abstract::Element *) { m_style_stack.pop_back(); }
