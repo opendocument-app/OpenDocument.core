@@ -65,13 +65,14 @@ pugi::xml_node Element::root_(const abstract::Document *document) {
 
 pugi::xml_node Element::slide_(const abstract::Document *document,
                                const std::string &id) {
-  return document_(document)->m_slides_xml.at(id);
+  return document_(document)->m_slides_xml.at(id).document_element();
 }
 
 namespace {
 
 template <ElementType> class DefaultElement;
 class Root;
+class Slide;
 class Text;
 class TableElement;
 class TableColumn;
@@ -109,6 +110,14 @@ class Root final : public DefaultElement<ElementType::root> {
 public:
   using DefaultElement::DefaultElement;
 
+  abstract::Element *first_child(const abstract::Document *document,
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *allocator) final {
+    return construct_default_optional<Slide>(
+        document_(document), m_node.child("p:sldIdLst").child("p:sldId"),
+        allocator);
+  }
+
   abstract::Element *previous_sibling(const abstract::Document *,
                                       const abstract::DocumentCursor *,
                                       const abstract::Allocator *) final {
@@ -131,7 +140,8 @@ public:
                                  const abstract::DocumentCursor *,
                                  const abstract::Allocator *allocator) final {
     return construct_default_first_child_element(
-        document_(document), slide_node_(document), allocator);
+        document_(document),
+        slide_node_(document).child("p:cSld").child("p:spTree"), allocator);
   }
 
   abstract::Element *previous_sibling(const abstract::Document *,
@@ -222,10 +232,10 @@ private:
   static bool is_text_(const pugi::xml_node node) {
     std::string name = node.name();
 
-    if (name == "w:t") {
+    if (name == "a:t") {
       return true;
     }
-    if (name == "w:tab") {
+    if (name == "a:tab") {
       return true;
     }
 
@@ -235,10 +245,10 @@ private:
   static std::string text_(const pugi::xml_node node) {
     std::string name = node.name();
 
-    if (name == "w:t") {
+    if (name == "a:t") {
       return node.text().get();
     }
-    if (name == "w:tab") {
+    if (name == "a:tab") {
       return "\t";
     }
 
@@ -464,11 +474,13 @@ presentation::construct_default_element(const Document *document,
       const abstract::Allocator *allocator)>;
 
   using Span = DefaultElement<ElementType::span>;
+  using Group = DefaultElement<ElementType::group>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
       {"p:presentation", construct_default<Root>},
       {"p:sld", construct_default<Slide>},
       {"p:sp", construct_default<Frame>},
+      {"p:txBody", construct_default<Group>},
       {"a:t", construct_default<Text>},
       {"a:p", construct_default<Paragraph>},
       {"a:r", construct_default<Span>},

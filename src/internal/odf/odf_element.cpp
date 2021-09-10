@@ -205,7 +205,7 @@ public:
   abstract::Element *first_child(const abstract::Document *document,
                                  const abstract::DocumentCursor *,
                                  const abstract::Allocator *allocator) final {
-    return construct_default_optional<odf::Slide>(
+    return construct_default_optional<Slide>(
         document_(document), m_node.child("draw:page"), allocator);
   }
 };
