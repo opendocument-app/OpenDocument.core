@@ -13,7 +13,11 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
 
-  // TODO load sheets
+  for (auto relationships :
+       parse_relationships(*m_filesystem, "xl/workbook.xml")) {
+    m_sheets_xml[relationships.first] = util::xml::parse(
+        *m_filesystem, common::Path("xl").join(relationships.second));
+  }
 }
 
 bool Document::editable() const noexcept { return false; }
@@ -32,7 +36,7 @@ void Document::save(const common::Path & /*path*/,
 }
 
 DocumentType Document::document_type() const noexcept {
-  return DocumentType::PRESENTATION;
+  return DocumentType::SPREADSHEET;
 }
 
 std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {

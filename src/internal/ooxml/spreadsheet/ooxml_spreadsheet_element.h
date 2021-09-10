@@ -40,6 +40,9 @@ protected:
   pugi::xml_node m_node;
 
   static const Document *document_(const abstract::Document *document);
+  static pugi::xml_node root_(const abstract::Document *document);
+  static pugi::xml_node sheet_(const abstract::Document *document,
+                               const std::string &id);
 };
 
 abstract::Element *

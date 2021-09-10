@@ -1,6 +1,6 @@
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
-#include <internal/common/table_cursor.h>
+#include <internal/common/table_range.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_document.h>
@@ -60,16 +60,24 @@ const Document *Element::document_(const abstract::Document *document) {
   return dynamic_cast<const Document *>(document);
 }
 
+pugi::xml_node Element::root_(const abstract::Document *document) {
+  return document_(document)->m_workbook_xml.document_element();
+}
+
+pugi::xml_node Element::sheet_(const abstract::Document *document,
+                               const std::string &id) {
+  return document_(document)->m_sheets_xml.at(id).document_element();
+}
+
 namespace {
 
 template <ElementType> class DefaultElement;
 class Root;
 class Sheet;
-class Text;
-class TableElement;
 class TableColumn;
 class TableRow;
 class TableCell;
+class Text;
 
 template <typename Derived>
 abstract::Element *construct_default(const Document *document,
@@ -106,8 +114,7 @@ public:
                                  const abstract::DocumentCursor *,
                                  const abstract::Allocator *allocator) final {
     return construct_default_optional<Sheet>(
-        document_(document), m_node.child("p:sldIdLst").child("p:sldId"),
-        allocator);
+        document_(document), m_node.child("sheets").child("sheet"), allocator);
   }
 
   abstract::Element *previous_sibling(const abstract::Document *,
@@ -123,20 +130,26 @@ public:
   }
 };
 
-class Sheet final : public Element, public abstract::SheetElement {
+class Sheet final : public Element,
+                    public abstract::SheetElement,
+                    public abstract::TableElement {
 public:
   using Element::Element;
+
+  [[nodiscard]] ElementType type(const abstract::Document *) const final {
+    return ElementType::sheet;
+  }
 
   abstract::Element *first_child(const abstract::Document *,
                                  const abstract::DocumentCursor *,
                                  const abstract::Allocator *) final {
-    return nullptr; // TODO
+    return nullptr;
   }
 
   abstract::Element *previous_sibling(const abstract::Document *,
                                       const abstract::DocumentCursor *,
                                       const abstract::Allocator *) final {
-    if (auto previous_sibling = m_node.previous_sibling("p:sldId")) {
+    if (auto previous_sibling = m_node.previous_sibling("sheet")) {
       m_node = previous_sibling;
       return this;
     }
@@ -146,7 +159,7 @@ public:
   abstract::Element *next_sibling(const abstract::Document *,
                                   const abstract::DocumentCursor *,
                                   const abstract::Allocator *) final {
-    if (auto next_sibling = m_node.next_sibling("p:sldId")) {
+    if (auto next_sibling = m_node.next_sibling("sheet")) {
       m_node = next_sibling;
       return this;
     }
@@ -154,7 +167,143 @@ public:
   }
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
+    return m_node.attribute("name").value();
+  }
+
+  [[nodiscard]] TableDimensions
+  dimensions(const abstract::Document *document) const final {
+    if (auto dimension =
+            sheet_node_(document).child("dimension").attribute("ref")) {
+      auto range = common::TableRange(dimension.value());
+      return {range.to().row(), range.to().column()};
+    }
+    return {};
+  }
+
+  abstract::Element *
+  first_column(const abstract::Document *document,
+               const abstract::DocumentCursor *,
+               const abstract::Allocator *allocator) const final {
+    return construct_default_optional<TableColumn>(
+        document_(document), sheet_node_(document).child("cols").child("col"),
+        allocator);
+  }
+
+  abstract::Element *
+  first_row(const abstract::Document *document,
+            const abstract::DocumentCursor *,
+            const abstract::Allocator *allocator) const final {
+    return construct_default_optional<TableRow>(
+        document_(document),
+        sheet_node_(document).child("sheetData").child("row"), allocator);
+  }
+
+  [[nodiscard]] std::optional<TableStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *) const final {
+    return partial_style(document).table_style;
+  }
+
+private:
+  pugi::xml_node sheet_node_(const abstract::Document *document) const {
+    return sheet_(document, m_node.attribute("r:id").value());
+  }
+};
+
+class TableColumn final : public Element, public abstract::TableColumnElement {
+public:
+  using Element::Element;
+
+  abstract::Element *previous_sibling(const abstract::Document *,
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
+    if (auto previous_sibling = m_node.previous_sibling("col")) {
+      m_node = previous_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *,
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *) final {
+    if (auto next_sibling = m_node.next_sibling("col")) {
+      m_node = next_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  [[nodiscard]] std::optional<TableColumnStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *) const final {
+    return partial_style(document).table_column_style;
+  }
+};
+
+class TableRow final : public Element, public abstract::TableRowElement {
+public:
+  using Element::Element;
+
+  abstract::Element *previous_sibling(const abstract::Document *,
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
+    if (auto previous_sibling = m_node.previous_sibling("row")) {
+      m_node = previous_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *,
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *) final {
+    if (auto next_sibling = m_node.next_sibling("row")) {
+      m_node = next_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  [[nodiscard]] std::optional<TableRowStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *) const final {
+    return partial_style(document).table_row_style;
+  }
+};
+
+class TableCell final : public Element, public abstract::TableCellElement {
+public:
+  using Element::Element;
+
+  abstract::Element *previous_sibling(const abstract::Document *,
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
+    if (auto previous_sibling = m_node.previous_sibling("c")) {
+      m_node = previous_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *,
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *) final {
+    if (auto next_sibling = m_node.next_sibling("c")) {
+      m_node = next_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
     return {}; // TODO
+  }
+
+  [[nodiscard]] std::optional<TableCellStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *) const final {
+    return partial_style(document).table_cell_style;
   }
 };
 
@@ -244,203 +393,6 @@ private:
   }
 };
 
-class TableElement : public Element, public abstract::TableElement {
-public:
-  using Element::Element;
-
-  abstract::Element *first_child(const abstract::Document *,
-                                 const abstract::DocumentCursor *,
-                                 const abstract::Allocator *) final {
-    return nullptr;
-  }
-
-  [[nodiscard]] TableDimensions
-  dimensions(const abstract::Document *) const final {
-    return {}; // TODO
-  }
-
-  abstract::Element *
-  first_column(const abstract::Document *document,
-               const abstract::DocumentCursor *,
-               const abstract::Allocator *allocator) const final {
-    return construct_default_optional<TableColumn>(
-        document_(document), m_node.child("w:tblGrid").child("w:gridCol"),
-        allocator);
-  }
-
-  abstract::Element *
-  first_row(const abstract::Document *document,
-            const abstract::DocumentCursor *,
-            const abstract::Allocator *allocator) const final {
-    return construct_default_optional<TableRow>(
-        document_(document), m_node.child("w:tr"), allocator);
-  }
-
-  [[nodiscard]] std::optional<TableStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_style;
-  }
-};
-
-class TableColumn final : public Element, public abstract::TableColumnElement {
-public:
-  using Element::Element;
-
-  abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::DocumentCursor *,
-                                      const abstract::Allocator *) final {
-    if (auto previous_sibling = m_node.previous_sibling("w:gridCol")) {
-      m_node = previous_sibling;
-      return this;
-    }
-    return nullptr;
-  }
-
-  abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *) final {
-    if (auto next_sibling = m_node.next_sibling("w:gridCol")) {
-      m_node = next_sibling;
-      return this;
-    }
-    return nullptr;
-  }
-
-  [[nodiscard]] std::optional<TableColumnStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_column_style;
-  }
-};
-
-class TableRow final : public Element, public abstract::TableRowElement {
-public:
-  using Element::Element;
-
-  abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::DocumentCursor *,
-                                      const abstract::Allocator *) final {
-    if (auto previous_sibling = m_node.previous_sibling("w:tr")) {
-      m_node = previous_sibling;
-      return this;
-    }
-    return nullptr;
-  }
-
-  abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *) final {
-    if (auto next_sibling = m_node.next_sibling("w:tr")) {
-      m_node = next_sibling;
-      return this;
-    }
-    return nullptr;
-  }
-
-  [[nodiscard]] std::optional<TableRowStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_row_style;
-  }
-};
-
-class TableCell final : public Element, public abstract::TableCellElement {
-public:
-  using Element::Element;
-
-  abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::DocumentCursor *,
-                                      const abstract::Allocator *) final {
-    if (auto previous_sibling = m_node.previous_sibling("w:tc")) {
-      m_node = previous_sibling;
-      return this;
-    }
-    return nullptr;
-  }
-
-  abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *) final {
-    if (auto next_sibling = m_node.next_sibling("w:tc")) {
-      m_node = next_sibling;
-      return this;
-    }
-    return nullptr;
-  }
-
-  [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
-    return {}; // TODO
-  }
-
-  [[nodiscard]] std::optional<TableCellStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_cell_style;
-  }
-};
-
-class Frame final : public Element, public abstract::FrameElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::optional<std::string>
-  anchor_type(const abstract::Document *) const final {
-    return {}; // TODO
-  }
-
-  [[nodiscard]] std::optional<std::string>
-  x(const abstract::Document *) const final {
-    return read_optional_attribute(
-        m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute("x"),
-        read_emus_attribute);
-  }
-
-  [[nodiscard]] std::optional<std::string>
-  y(const abstract::Document *) const final {
-    return read_optional_attribute(
-        m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute("y"),
-        read_emus_attribute);
-  }
-
-  [[nodiscard]] std::optional<std::string>
-  width(const abstract::Document *) const final {
-    return read_optional_attribute(
-        m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute("cx"),
-        read_emus_attribute);
-  }
-
-  [[nodiscard]] std::optional<std::string>
-  height(const abstract::Document *) const final {
-    return read_optional_attribute(
-        m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute("cy"),
-        read_emus_attribute);
-  }
-
-  [[nodiscard]] std::optional<std::string>
-  z_index(const abstract::Document *) const final {
-    return {}; // TODO
-  }
-};
-
-class ImageElement final : public Element, public abstract::ImageElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] bool internal(const abstract::Document *) const final {
-    return false;
-  }
-
-  [[nodiscard]] std::optional<odr::File>
-  file(const abstract::Document *) const final {
-    return {}; // TODO
-  }
-
-  [[nodiscard]] std::string href(const abstract::Document *) const final {
-    return ""; // TODO
-  }
-};
-
 } // namespace
 
 } // namespace odr::internal::ooxml::spreadsheet
@@ -455,21 +407,13 @@ spreadsheet::construct_default_element(const Document *document,
       const Document *document, pugi::xml_node node,
       const abstract::Allocator *allocator)>;
 
-  using Span = DefaultElement<ElementType::span>;
-  using Group = DefaultElement<ElementType::group>;
-
   static std::unordered_map<std::string, Constructor> constructor_table{
-      {"p:presentation", construct_default<Root>},
-      {"p:sld", construct_default<Sheet>},
-      {"p:sp", construct_default<Frame>},
-      {"p:txBody", construct_default<Group>},
-      {"a:t", construct_default<Text>},
-      {"a:p", construct_default<Paragraph>},
-      {"a:r", construct_default<Span>},
-      {"a:tbl", construct_default<TableElement>},
-      {"a:gridCol", construct_default<TableColumn>},
-      {"a:tr", construct_default<TableRow>},
-      {"a:tc", construct_default<TableCell>},
+      {"workbook", construct_default<Root>},
+      {"worksheet", construct_default<Sheet>},
+      {"col", construct_default<TableColumn>},
+      {"row", construct_default<TableRow>},
+      {"c", construct_default<TableCell>},
+      {"t", construct_default<Text>},
   };
 
   if (auto constructor_it = constructor_table.find(node.name());

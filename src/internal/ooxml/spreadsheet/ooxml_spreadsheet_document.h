@@ -5,6 +5,7 @@
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
+class Element;
 
 class Document final : public abstract::Document {
 public:
@@ -28,7 +29,9 @@ private:
 
   pugi::xml_document m_workbook_xml;
   pugi::xml_document m_styles_xml;
-  std::vector<pugi::xml_document> m_sheets_xml;
+  std::unordered_map<std::string, pugi::xml_document> m_sheets_xml;
+
+  friend class Element;
 };
 
 } // namespace odr::internal::ooxml::spreadsheet

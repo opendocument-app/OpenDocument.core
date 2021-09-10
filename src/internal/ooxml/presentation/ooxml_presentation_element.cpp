@@ -179,7 +179,7 @@ public:
   }
 
 private:
-  pugi::xml_node slide_node_(const abstract::Document *document) {
+  pugi::xml_node slide_node_(const abstract::Document *document) const {
     return slide_(document, m_node.attribute("r:id").value());
   }
 };
