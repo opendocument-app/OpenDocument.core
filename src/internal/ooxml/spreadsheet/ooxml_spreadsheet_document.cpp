@@ -1,8 +1,8 @@
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_util.h>
+#include <internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_document.h>
 #include <internal/util/xml_util.h>
-#include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 
@@ -10,10 +10,10 @@ namespace odr::internal::ooxml::spreadsheet {
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
-  auto workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
+  m_workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
 
-  // TODO root
+  // TODO load sheets
 }
 
 bool Document::editable() const noexcept { return false; }
@@ -40,7 +40,8 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
 }
 
 std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
-  return {}; // TODO
+  return std::make_unique<DocumentCursor>(this,
+                                          m_workbook_xml.document_element());
 }
 
 } // namespace odr::internal::ooxml::spreadsheet

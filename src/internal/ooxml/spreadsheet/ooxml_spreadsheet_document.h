@@ -1,14 +1,11 @@
-#ifndef ODR_INTERNAL_OOXML_WORKBOOK_H
-#define ODR_INTERNAL_OOXML_WORKBOOK_H
+#ifndef ODR_INTERNAL_OOXML_SPREADSHEET_DOCUMENT_H
+#define ODR_INTERNAL_OOXML_SPREADSHEET_DOCUMENT_H
 
 #include <internal/abstract/document.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
 
-/*
- * TODO naming - spreadsheet?
- */
 class Document final : public abstract::Document {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
@@ -29,10 +26,11 @@ public:
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
 
+  pugi::xml_document m_workbook_xml;
   pugi::xml_document m_styles_xml;
   std::vector<pugi::xml_document> m_sheets_xml;
 };
 
 } // namespace odr::internal::ooxml::spreadsheet
 
-#endif // ODR_INTERNAL_OOXML_WORKBOOK_H
+#endif // ODR_INTERNAL_OOXML_SPREADSHEET_DOCUMENT_H
