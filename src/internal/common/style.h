@@ -1,7 +1,7 @@
 #ifndef ODR_INTERNAL_COMMON_STYLE_H
 #define ODR_INTERNAL_COMMON_STYLE_H
 
-#include <odr/document.h>
+#include <odr/style.h>
 #include <optional>
 
 namespace odr::internal::common {

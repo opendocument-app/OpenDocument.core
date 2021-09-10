@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <odr/document.h>
 #include <odr/file.h>
+#include <odr/style.h>
 #include <test_util.h>
 
 using namespace odr;
@@ -20,11 +21,11 @@ TEST(DocumentTest, odt) {
 
   auto page_layout = cursor.element().text_root().page_layout();
   EXPECT_TRUE(page_layout.width);
-  EXPECT_EQ("8.2673in", page_layout.width.value());
+  EXPECT_EQ("8.2673in", page_layout.width);
   EXPECT_TRUE(page_layout.height);
-  EXPECT_EQ("11.6925in", page_layout.height.value());
+  EXPECT_EQ("11.6925in", page_layout.height);
   EXPECT_TRUE(page_layout.margin.top);
-  EXPECT_EQ("0.7874in", page_layout.margin.top.value());
+  EXPECT_EQ("0.7874in", page_layout.margin.top);
 }
 
 TEST(DocumentTest, odg) {
@@ -45,10 +46,10 @@ TEST(DocumentTest, odg) {
   cursor.for_each_child([](DocumentCursor &cursor, const std::uint32_t) {
     auto page_layout = cursor.element().page().page_layout();
     EXPECT_TRUE(page_layout.width);
-    EXPECT_EQ("21cm", page_layout.width.value());
+    EXPECT_EQ("21cm", page_layout.width);
     EXPECT_TRUE(page_layout.height);
-    EXPECT_EQ("29.7cm", page_layout.height.value());
+    EXPECT_EQ("29.7cm", page_layout.height);
     EXPECT_TRUE(page_layout.margin.top);
-    EXPECT_EQ("1cm", page_layout.margin.top.value());
+    EXPECT_EQ("1cm", page_layout.margin.top);
   });
 }

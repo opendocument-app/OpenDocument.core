@@ -6,9 +6,9 @@
 #include <internal/ooxml/ooxml_crypto.h>
 #include <internal/ooxml/ooxml_file.h>
 #include <internal/ooxml/ooxml_meta.h>
-//#include <internal/ooxml/presentation/ooxml_presentation.h>
-//#include <internal/ooxml/spreadsheet/ooxml_workbook.h>
-//#include <internal/ooxml/text/ooxml_text_document.h>
+#include <internal/ooxml/presentation/ooxml_presentation.h>
+#include <internal/ooxml/spreadsheet/ooxml_workbook.h>
+#include <internal/ooxml/text/ooxml_text_document.h>
 #include <internal/util/stream_util.h>
 #include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
@@ -65,11 +65,11 @@ std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
   // TODO throw if encrypted
   switch (file_type()) {
   case FileType::OFFICE_OPEN_XML_DOCUMENT:
-    // return std::make_shared<text::Document>(m_filesystem);
+    return std::make_shared<text::Document>(m_filesystem);
   case FileType::OFFICE_OPEN_XML_PRESENTATION:
-    // return std::make_shared<Document>(m_filesystem);
+    return std::make_shared<presentation::Document>(m_filesystem);
   case FileType::OFFICE_OPEN_XML_WORKBOOK:
-    // return std::make_shared<Document>(m_filesystem);
+    return std::make_shared<spreadsheet::Document>(m_filesystem);
   default:
     throw UnsupportedOperation();
   }

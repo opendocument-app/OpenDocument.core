@@ -27,6 +27,7 @@ add_library(odr-object OBJECT
         src/html.cpp
         src/open_document_reader.cpp
         src/open_strategy.cpp
+        src/style.cpp
 
         src/internal/abstract/file.cpp
 
@@ -58,12 +59,12 @@ add_library(odr-object OBJECT
 
         src/internal/oldms/oldms_file.cpp
 
-        #src/internal/ooxml/presentation/ooxml_presentation.cpp
-        #src/internal/ooxml/spreadsheet/ooxml_workbook.cpp
-        #src/internal/ooxml/text/ooxml_text_cursor.cpp
-        #src/internal/ooxml/text/ooxml_text_document.cpp
-        #src/internal/ooxml/text/ooxml_text_element.cpp
-        #src/internal/ooxml/text/ooxml_text_style.cpp
+        src/internal/ooxml/presentation/ooxml_presentation.cpp
+        src/internal/ooxml/spreadsheet/ooxml_workbook.cpp
+        src/internal/ooxml/text/ooxml_text_cursor.cpp
+        src/internal/ooxml/text/ooxml_text_document.cpp
+        src/internal/ooxml/text/ooxml_text_element.cpp
+        src/internal/ooxml/text/ooxml_text_style.cpp
         src/internal/ooxml/ooxml_crypto.cpp
         src/internal/ooxml/ooxml_file.cpp
         src/internal/ooxml/ooxml_meta.cpp

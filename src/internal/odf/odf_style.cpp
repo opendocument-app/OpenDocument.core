@@ -1,3 +1,4 @@
+#include <cstring>
 #include <functional>
 #include <internal/odf/odf_style.h>
 #include <internal/util/string_util.h>
@@ -7,9 +8,45 @@ namespace odr::internal::odf {
 
 namespace {
 
-std::optional<std::string> read_optional_string(pugi::xml_attribute attribute) {
+const char *read_optional_string(pugi::xml_attribute attribute) {
   if (attribute) {
     return attribute.value();
+  }
+  return {};
+}
+
+std::optional<TextAlign>
+read_optional_text_align(pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  auto value = attribute.value();
+  if (std::strcmp("left", value) == 0) {
+    return TextAlign::left;
+  }
+  if (std::strcmp("right", value) == 0) {
+    return TextAlign::right;
+  }
+  if (std::strcmp("center", value) == 0) {
+    return TextAlign::center;
+  }
+  return {};
+}
+
+std::optional<VerticalAlign>
+read_optional_vertical_align(pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  auto value = attribute.value();
+  if (std::strcmp("top", value) == 0) {
+    return VerticalAlign::top;
+  }
+  if (std::strcmp("middle", value) == 0) {
+    return VerticalAlign::middle;
+  }
+  if (std::strcmp("bottom", value) == 0) {
+    return VerticalAlign::bottom;
   }
   return {};
 }
@@ -96,7 +133,7 @@ void Style::resolve_text_style_(pugi::xml_node node,
         read_optional_string(text_properties.attribute("fo:text-shadow"));
     result->font_color =
         read_optional_string(text_properties.attribute("fo:color"));
-    result->font_shadow =
+    result->background_color =
         read_optional_string(text_properties.attribute("fo:background-color"));
   }
 }
@@ -108,8 +145,8 @@ void Style::resolve_paragraph_style_(pugi::xml_node node,
       result = ParagraphStyle();
     }
 
-    result->text_align =
-        read_optional_string(paragraph_properties.attribute("fo:text-align"));
+    result->text_align = read_optional_text_align(
+        paragraph_properties.attribute("fo:text-align"));
     result->margin =
         read_optional_string(paragraph_properties.attribute("fo:margin"));
     result->margin.right =
@@ -167,7 +204,7 @@ void Style::resolve_table_cell_style_(pugi::xml_node node,
       result = TableCellStyle();
     }
 
-    result->vertical_align = read_optional_string(
+    result->vertical_align = read_optional_vertical_align(
         table_cell_properties.attribute("style:vertical-align"));
     result->background_color = read_optional_string(
         table_cell_properties.attribute("fo:background-color"));
@@ -207,7 +244,7 @@ void Style::resolve_graphic_style_(pugi::xml_node node,
         read_optional_string(graphic_properties.attribute("svg:stroke-color"));
     result->fill_color =
         read_optional_string(graphic_properties.attribute("draw:fill-color"));
-    result->vertical_align = read_optional_string(
+    result->vertical_align = read_optional_vertical_align(
         graphic_properties.attribute("draw:textarea-vertical-align"));
   }
 }
