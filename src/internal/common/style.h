@@ -16,6 +16,7 @@ struct ResolvedStyle final {
   std::optional<GraphicStyle> graphic_style;
 
   void override(const ResolvedStyle &other);
+  void override(ResolvedStyle &&other);
 };
 
 } // namespace odr::internal::common

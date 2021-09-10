@@ -1,11 +1,12 @@
+#include <internal/abstract/filesystem.h>
+#include <internal/common/path.h>
 #include <internal/common/table_cursor.h>
-#include <internal/ooxml/text/ooxml_text_cursor.h>
-#include <internal/ooxml/text/ooxml_text_document.h>
-#include <internal/ooxml/text/ooxml_text_element.h>
-#include <internal/ooxml/text/ooxml_text_style.h>
+#include <internal/ooxml/presentation/ooxml_presentation_cursor.h>
+#include <internal/ooxml/presentation/ooxml_presentation_document.h>
+#include <internal/ooxml/presentation/ooxml_presentation_element.h>
 #include <odr/file.h>
 
-namespace odr::internal::ooxml::text {
+namespace odr::internal::ooxml::presentation {
 
 Element::Element(const Document *, pugi::xml_node node) : m_node{node} {}
 
@@ -44,8 +45,7 @@ abstract::Element *Element::next_sibling(const abstract::Document *document,
                                                 allocator);
 }
 
-common::ResolvedStyle
-Element::partial_style(const abstract::Document *document) const {
+common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
   return {}; // TODO
 }
 
@@ -59,8 +59,13 @@ const Document *Element::document_(const abstract::Document *document) {
   return dynamic_cast<const Document *>(document);
 }
 
-const StyleRegistry *Element::style_(const abstract::Document *document) {
-  return &dynamic_cast<const Document *>(document)->m_style_registry;
+pugi::xml_node Element::root_(const abstract::Document *document) {
+  return document_(document)->m_document_xml.document_element();
+}
+
+pugi::xml_node Element::slide_(const abstract::Document *document,
+                               const std::string &id) {
+  return document_(document)->m_slides_xml.at(id);
 }
 
 namespace {
@@ -91,12 +96,12 @@ construct_default_optional(const Document *document, pugi::xml_node node,
   return construct_default<Derived>(document, node, allocator);
 }
 
-template <ElementType _element_type> class DefaultElement : public Element {
+template <ElementType element_type> class DefaultElement : public Element {
 public:
   using Element::Element;
 
   [[nodiscard]] ElementType type(const abstract::Document *) const override {
-    return _element_type;
+    return element_type;
   }
 };
 
@@ -114,6 +119,58 @@ public:
                                   const abstract::DocumentCursor *,
                                   const abstract::Allocator *) final {
     return nullptr;
+  }
+};
+
+class Slide final : public Element, public abstract::SlideElement {
+public:
+  Slide(const Document *document, pugi::xml_node node)
+      : Element(document, node) {}
+
+  abstract::Element *first_child(const abstract::Document *document,
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *allocator) final {
+    return construct_default_first_child_element(
+        document_(document), slide_node_(document), allocator);
+  }
+
+  abstract::Element *previous_sibling(const abstract::Document *,
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
+    if (auto previous_sibling = m_node.previous_sibling("p:sldId")) {
+      m_node = previous_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *,
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *) final {
+    if (auto next_sibling = m_node.next_sibling("p:sldId")) {
+      m_node = next_sibling;
+      return this;
+    }
+    return nullptr;
+  }
+
+  [[nodiscard]] PageLayout page_layout(const abstract::Document *) const final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] Element *master_page(const abstract::Document *,
+                                     const abstract::DocumentCursor *,
+                                     const abstract::Allocator *) const final {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] std::string name(const abstract::Document *) const final {
+    return {}; // TODO
+  }
+
+private:
+  pugi::xml_node slide_node_(const abstract::Document *document) {
+    return slide_(document, m_node.attribute("r:id").value());
   }
 };
 
@@ -394,37 +451,31 @@ public:
 
 } // namespace
 
-} // namespace odr::internal::ooxml::text
+} // namespace odr::internal::ooxml::presentation
 
 namespace odr::internal::ooxml {
 
 abstract::Element *
-text::construct_default_element(const Document *document, pugi::xml_node node,
-                                const abstract::Allocator *allocator) {
+presentation::construct_default_element(const Document *document,
+                                        pugi::xml_node node,
+                                        const abstract::Allocator *allocator) {
   using Constructor = std::function<abstract::Element *(
       const Document *document, pugi::xml_node node,
       const abstract::Allocator *allocator)>;
 
   using Span = DefaultElement<ElementType::span>;
-  using Link = DefaultElement<ElementType::link>;
-  using Bookmark = DefaultElement<ElementType::bookmark>;
-  using Group = DefaultElement<ElementType::group>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
-      {"w:body", construct_default<Root>},
-      {"w:t", construct_default<Text>},
-      {"w:tab", construct_default<Text>},
-      {"w:p", construct_default<Paragraph>},
-      {"w:r", construct_default<Span>},
-      {"w:bookmarkStart", construct_default<Bookmark>},
-      {"w:hyperlink", construct_default<Link>},
-      {"w:tbl", construct_default<TableElement>},
-      {"w:gridCol", construct_default<TableColumn>},
-      {"w:tr", construct_default<TableRow>},
-      {"w:tc", construct_default<TableCell>},
-      {"w:sdtContent", construct_default<Group>},
-      {"w:drawing", construct_default<Frame>},
-      {"a:graphicData", construct_default<ImageElement>},
+      {"p:presentation", construct_default<Root>},
+      {"p:sld", construct_default<Slide>},
+      {"p:sp", construct_default<Frame>},
+      {"a:t", construct_default<Text>},
+      {"a:p", construct_default<Paragraph>},
+      {"a:r", construct_default<Span>},
+      {"a:tbl", construct_default<TableElement>},
+      {"a:gridCol", construct_default<TableColumn>},
+      {"a:tr", construct_default<TableRow>},
+      {"a:tc", construct_default<TableCell>},
   };
 
   if (auto constructor_it = constructor_table.find(node.name());
@@ -435,10 +486,9 @@ text::construct_default_element(const Document *document, pugi::xml_node node,
   return {};
 }
 
-abstract::Element *
-text::construct_default_parent_element(const Document *document,
-                                       pugi::xml_node node,
-                                       const abstract::Allocator *allocator) {
+abstract::Element *presentation::construct_default_parent_element(
+    const Document *document, pugi::xml_node node,
+    const abstract::Allocator *allocator) {
   for (node = node.parent(); node; node = node.parent()) {
     if (auto result = construct_default_element(document, node, allocator)) {
       return result;
@@ -447,7 +497,7 @@ text::construct_default_parent_element(const Document *document,
   return {};
 }
 
-abstract::Element *text::construct_default_first_child_element(
+abstract::Element *presentation::construct_default_first_child_element(
     const Document *document, pugi::xml_node node,
     const abstract::Allocator *allocator) {
   for (node = node.first_child(); node; node = node.next_sibling()) {
@@ -458,7 +508,7 @@ abstract::Element *text::construct_default_first_child_element(
   return {};
 }
 
-abstract::Element *text::construct_default_previous_sibling_element(
+abstract::Element *presentation::construct_default_previous_sibling_element(
     const Document *document, pugi::xml_node node,
     const abstract::Allocator *allocator) {
   for (node = node.previous_sibling(); node; node = node.previous_sibling()) {
@@ -469,7 +519,7 @@ abstract::Element *text::construct_default_previous_sibling_element(
   return {};
 }
 
-abstract::Element *text::construct_default_next_sibling_element(
+abstract::Element *presentation::construct_default_next_sibling_element(
     const Document *document, pugi::xml_node node,
     const abstract::Allocator *allocator) {
   for (node = node.next_sibling(); node; node = node.next_sibling()) {

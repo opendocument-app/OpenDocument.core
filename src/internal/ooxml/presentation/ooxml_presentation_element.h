@@ -1,11 +1,11 @@
-#ifndef ODR_INTERNAL_ODF_ELEMENT_H
-#define ODR_INTERNAL_ODF_ELEMENT_H
+#ifndef ODR_INTERNAL_OOXML_PRESENTATION_ELEMENT_H
+#define ODR_INTERNAL_OOXML_PRESENTATION_ELEMENT_H
 
 #include <internal/abstract/document.h>
 #include <internal/common/style.h>
 #include <pugixml.hpp>
 
-namespace odr::internal::odf {
+namespace odr::internal::ooxml::presentation {
 class Document;
 
 class Element : public virtual abstract::Element {
@@ -31,9 +31,8 @@ public:
                const abstract::DocumentCursor *cursor,
                const abstract::Allocator *allocator) override;
 
-  virtual common::ResolvedStyle
-  partial_style(const abstract::Document *document) const;
-  virtual common::ResolvedStyle
+  common::ResolvedStyle partial_style(const abstract::Document *document) const;
+  common::ResolvedStyle
   intermediate_style(const abstract::Document *document,
                      const abstract::DocumentCursor *cursor) const;
 
@@ -41,7 +40,9 @@ protected:
   pugi::xml_node m_node;
 
   static const Document *document_(const abstract::Document *document);
-  static const StyleRegistry *style_(const abstract::Document *document);
+  static pugi::xml_node root_(const abstract::Document *document);
+  static pugi::xml_node slide_(const abstract::Document *document,
+                               const std::string &id);
 };
 
 abstract::Element *
@@ -62,6 +63,6 @@ construct_default_next_sibling_element(const Document *document,
                                        pugi::xml_node node,
                                        const abstract::Allocator *allocator);
 
-} // namespace odr::internal::odf
+} // namespace odr::internal::ooxml::presentation
 
-#endif // ODR_INTERNAL_ODF_ELEMENT_H
+#endif // ODR_INTERNAL_OOXML_PRESENTATION_ELEMENT_H

@@ -5,6 +5,7 @@
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::presentation {
+class Element;
 
 class Document final : public abstract::Document {
 public:
@@ -25,6 +26,10 @@ public:
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
+  pugi::xml_document m_document_xml;
+  std::unordered_map<std::string, pugi::xml_document> m_slides_xml;
+
+  friend class Element;
 };
 
 } // namespace odr::internal::ooxml::presentation

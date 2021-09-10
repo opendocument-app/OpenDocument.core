@@ -1,18 +1,17 @@
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_util.h>
-#include <internal/ooxml/presentation/ooxml_presentation.h>
-#include <internal/util/property_util.h>
+#include <internal/ooxml/spreadsheet/ooxml_spreadsheet_document.h>
 #include <internal/util/xml_util.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 
-namespace odr::internal::ooxml::presentation {
+namespace odr::internal::ooxml::spreadsheet {
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
-  auto presentation_xml =
-      util::xml::parse(*m_filesystem, "ppt/presentation.xml");
+  auto workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
+  m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
 
   // TODO root
 }
@@ -44,4 +43,4 @@ std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
   return {}; // TODO
 }
 
-} // namespace odr::internal::ooxml::presentation
+} // namespace odr::internal::ooxml::spreadsheet

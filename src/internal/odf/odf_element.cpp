@@ -633,11 +633,19 @@ public:
             m_node.attribute("table:number-columns-spanned").as_uint(1)};
   }
 
+  common::ResolvedStyle
+  partial_style(const abstract::Document *document) const final {
+    common::ResolvedStyle result;
+    result.override(m_column.partial_style(document));
+    result.override(m_row.partial_style(document));
+    result.override(Element::partial_style(document));
+    return result;
+  }
+
   [[nodiscard]] std::optional<TableCellStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return partial_style(document)
-        .table_cell_style; // TODO row / column default
+    return partial_style(document).table_cell_style;
   }
 
 private:

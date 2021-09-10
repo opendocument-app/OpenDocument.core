@@ -6,8 +6,8 @@
 #include <internal/ooxml/ooxml_crypto.h>
 #include <internal/ooxml/ooxml_file.h>
 #include <internal/ooxml/ooxml_meta.h>
-#include <internal/ooxml/presentation/ooxml_presentation.h>
-#include <internal/ooxml/spreadsheet/ooxml_workbook.h>
+#include <internal/ooxml/presentation/ooxml_presentation_document.h>
+#include <internal/ooxml/spreadsheet/ooxml_spreadsheet_document.h>
 #include <internal/ooxml/text/ooxml_text_document.h>
 #include <internal/util/stream_util.h>
 #include <internal/zip/zip_archive.h>
