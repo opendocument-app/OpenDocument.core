@@ -1,6 +1,7 @@
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/common/table_cursor.h>
+#include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/presentation/ooxml_presentation_cursor.h>
 #include <internal/ooxml/presentation/ooxml_presentation_document.h>
 #include <internal/ooxml/presentation/ooxml_presentation_element.h>
@@ -417,22 +418,30 @@ public:
 
   [[nodiscard]] std::optional<std::string>
   x(const abstract::Document *) const final {
-    return {}; // TODO
+    return read_optional_attribute(
+        m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute("x"),
+        read_emus_attribute);
   }
 
   [[nodiscard]] std::optional<std::string>
   y(const abstract::Document *) const final {
-    return {}; // TODO
+    return read_optional_attribute(
+        m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute("y"),
+        read_emus_attribute);
   }
 
   [[nodiscard]] std::optional<std::string>
   width(const abstract::Document *) const final {
-    return {}; // TODO
+    return read_optional_attribute(
+        m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute("cx"),
+        read_emus_attribute);
   }
 
   [[nodiscard]] std::optional<std::string>
   height(const abstract::Document *) const final {
-    return {}; // TODO
+    return read_optional_attribute(
+        m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute("cy"),
+        read_emus_attribute);
   }
 
   [[nodiscard]] std::optional<std::string>
