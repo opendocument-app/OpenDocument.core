@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <internal/abstract/document.h>
+#include <internal/common/style.h>
 #include <pugixml.hpp>
 #include <string>
 #include <vector>
@@ -34,6 +35,8 @@ public:
   [[nodiscard]] bool move_to_first_table_column() override;
   [[nodiscard]] bool move_to_first_table_row() override;
 
+  const ResolvedStyle &intermediate_style() const;
+
 protected:
   const abstract::Document *m_document;
 
@@ -45,9 +48,12 @@ protected:
   abstract::Element *back_();
   [[nodiscard]] const abstract::Element *back_() const;
 
+  virtual ResolvedStyle partial_style() const;
+
 private:
   std::vector<std::int32_t> m_element_stack_top;
   std::string m_element_stack;
+  std::vector<ResolvedStyle> m_style_stack;
 
   [[nodiscard]] std::int32_t next_offset_() const;
   [[nodiscard]] std::int32_t back_offset_() const;

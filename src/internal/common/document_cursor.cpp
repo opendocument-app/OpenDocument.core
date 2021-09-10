@@ -48,9 +48,18 @@ void DocumentCursor::pop_() {
   m_element_stack.resize(next_offset);
 }
 
-void DocumentCursor::pushed_(abstract::Element *) {}
+void DocumentCursor::pushed_(abstract::Element *) {
+  if (m_style_stack.empty()) {
+    m_style_stack.emplace_back();
+  } else {
+    m_style_stack.emplace_back(m_style_stack.back());
+  }
+  m_style_stack.back().override(intermediate_style());
+}
 
-void DocumentCursor::popping_(abstract::Element *) {}
+void DocumentCursor::popping_(abstract::Element *) { m_style_stack.pop_back(); }
+
+ResolvedStyle DocumentCursor::partial_style() const { return {}; }
 
 std::int32_t DocumentCursor::next_offset_() const {
   return m_element_stack_top.back();
@@ -142,6 +151,10 @@ bool DocumentCursor::move_to_first_table_row() {
     return move_helper_(table->first_row(m_document, this, &allocator));
   }
   return false;
+}
+
+const ResolvedStyle &DocumentCursor::intermediate_style() const {
+  return m_style_stack.back();
 }
 
 } // namespace odr::internal::common

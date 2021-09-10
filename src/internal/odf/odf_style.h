@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_ODF_STYLE_H
 
 #include <any>
+#include <internal/common/style.h>
 #include <memory>
 #include <odr/document.h>
 #include <pugixml.hpp>
@@ -15,18 +16,6 @@ struct PageLayout;
 namespace odr::internal::odf {
 class Document;
 
-struct ResolvedStyle final {
-  std::optional<TextStyle> text_style;
-  std::optional<ParagraphStyle> paragraph_style;
-  std::optional<TableStyle> table_style;
-  std::optional<TableColumnStyle> table_column_style;
-  std::optional<TableRowStyle> table_row_style;
-  std::optional<TableCellStyle> table_cell_style;
-  std::optional<GraphicStyle> graphic_style;
-
-  void override(const ResolvedStyle &other);
-};
-
 class Style final {
 public:
   Style();
@@ -35,7 +24,7 @@ public:
 
   std::string name() const;
 
-  const ResolvedStyle &resolved() const;
+  const common::ResolvedStyle &resolved() const;
 
 private:
   std::string m_name;
@@ -43,7 +32,7 @@ private:
   Style *m_parent;
   Style *m_family;
 
-  ResolvedStyle m_resolved;
+  common::ResolvedStyle m_resolved;
 
   void resolve_style_();
 

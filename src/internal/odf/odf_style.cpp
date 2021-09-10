@@ -41,51 +41,6 @@ PageLayout read_page_layout(pugi::xml_node node) {
 
 } // namespace
 
-void ResolvedStyle::override(const ResolvedStyle &other) {
-  if (other.text_style) {
-    if (!text_style) {
-      text_style = TextStyle();
-    }
-    text_style->override(*other.text_style);
-  }
-  if (other.paragraph_style) {
-    if (!paragraph_style) {
-      paragraph_style = ParagraphStyle();
-    }
-    paragraph_style->override(*other.paragraph_style);
-  }
-  if (other.table_style) {
-    if (!table_style) {
-      table_style = TableStyle();
-    }
-    table_style->override(*other.table_style);
-  }
-  if (other.table_column_style) {
-    if (!table_column_style) {
-      table_column_style = TableColumnStyle();
-    }
-    table_column_style->override(*other.table_column_style);
-  }
-  if (other.table_row_style) {
-    if (!table_row_style) {
-      table_row_style = TableRowStyle();
-    }
-    table_row_style->override(*other.table_row_style);
-  }
-  if (other.table_cell_style) {
-    if (!table_cell_style) {
-      table_cell_style = TableCellStyle();
-    }
-    table_cell_style->override(*other.table_cell_style);
-  }
-  if (other.graphic_style) {
-    if (!graphic_style) {
-      graphic_style = GraphicStyle();
-    }
-    graphic_style->override(*other.graphic_style);
-  }
-}
-
 Style::Style() = default;
 
 Style::Style(std::string family, pugi::xml_node node)
@@ -106,7 +61,7 @@ Style::Style(std::string name, pugi::xml_node node, Style *parent,
 
 std::string Style::name() const { return m_name; }
 
-const ResolvedStyle &Style::resolved() const { return m_resolved; }
+const common::ResolvedStyle &Style::resolved() const { return m_resolved; }
 
 void Style::resolve_style_() {
   resolve_text_style_(m_node, m_resolved.text_style);

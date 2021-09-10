@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_ODF_ELEMENT_H
 
 #include <internal/abstract/document.h>
+#include <internal/common/style.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::odf {
@@ -30,9 +31,10 @@ public:
                const abstract::DocumentCursor *cursor,
                const abstract::Allocator *allocator) override;
 
-  ResolvedStyle element_style(const abstract::Document *document) const;
-  ResolvedStyle stacked_style(const abstract::Document *document,
-                              const abstract::DocumentCursor *cursor) const;
+  common::ResolvedStyle partial_style(const abstract::Document *document) const;
+  common::ResolvedStyle
+  intermediate_style(const abstract::Document *document,
+                     const abstract::DocumentCursor *cursor) const;
 
 protected:
   pugi::xml_node m_node;

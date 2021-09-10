@@ -53,7 +53,8 @@ abstract::Element *Element::next_sibling(const abstract::Document *document,
                                                 allocator);
 }
 
-ResolvedStyle Element::element_style(const abstract::Document *document) const {
+common::ResolvedStyle
+Element::partial_style(const abstract::Document *document) const {
   if (auto style_name = default_style_name(m_node)) {
     if (auto style = style_(document)->style(*style_name)) {
       return style->resolved();
@@ -62,10 +63,10 @@ ResolvedStyle Element::element_style(const abstract::Document *document) const {
   return {};
 }
 
-ResolvedStyle
-Element::stacked_style(const abstract::Document *,
-                       const abstract::DocumentCursor *cursor) const {
-  return static_cast<const DocumentCursor *>(cursor)->current_style();
+common::ResolvedStyle
+Element::intermediate_style(const abstract::Document *,
+                            const abstract::DocumentCursor *cursor) const {
+  return static_cast<const DocumentCursor *>(cursor)->intermediate_style();
 }
 
 const Document *Element::document_(const abstract::Document *document) {
@@ -356,7 +357,7 @@ public:
   [[nodiscard]] std::optional<ParagraphStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
-    return stacked_style(document, cursor).paragraph_style;
+    return intermediate_style(document, cursor).paragraph_style;
   }
 };
 
@@ -367,7 +368,7 @@ public:
   [[nodiscard]] std::optional<TextStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
-    return stacked_style(document, cursor).text_style;
+    return intermediate_style(document, cursor).text_style;
   }
 
   abstract::Element *
@@ -451,7 +452,7 @@ public:
   [[nodiscard]] std::optional<TableStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return element_style(document).table_style;
+    return partial_style(document).table_style;
   }
 
   abstract::Element *first_child(const abstract::Document *,
@@ -556,10 +557,11 @@ public:
   [[nodiscard]] std::optional<TableColumnStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return element_style(document).table_column_style;
+    return partial_style(document).table_column_style;
   }
 
-  ResolvedStyle default_cell_style(const abstract::Document *document) const {
+  common::ResolvedStyle
+  default_cell_style(const abstract::Document *document) const {
     if (auto attribute = m_node.attribute("table:default-cell-style-name")) {
       if (auto style = style_(document)->style(attribute.value())) {
         return style->resolved();
@@ -589,10 +591,11 @@ public:
   [[nodiscard]] std::optional<TableRowStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return element_style(document).table_row_style;
+    return partial_style(document).table_row_style;
   }
 
-  ResolvedStyle default_cell_style(const abstract::Document *document) const {
+  common::ResolvedStyle
+  default_cell_style(const abstract::Document *document) const {
     if (auto attribute = m_node.attribute("table:default-cell-style-name")) {
       if (auto style = style_(document)->style(attribute.value())) {
         return style->resolved();
@@ -633,7 +636,7 @@ public:
   [[nodiscard]] std::optional<TableCellStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return element_style(document)
+    return partial_style(document)
         .table_cell_style; // TODO row / column default
   }
 
@@ -730,7 +733,7 @@ public:
   [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
-    return stacked_style(document, cursor).graphic_style;
+    return intermediate_style(document, cursor).graphic_style;
   }
 };
 
@@ -757,7 +760,7 @@ public:
   [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
-    return stacked_style(document, cursor).graphic_style;
+    return intermediate_style(document, cursor).graphic_style;
   }
 };
 
@@ -784,7 +787,7 @@ public:
   [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
-    return stacked_style(document, cursor).graphic_style;
+    return intermediate_style(document, cursor).graphic_style;
   }
 };
 
@@ -813,7 +816,7 @@ public:
   [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
-    return stacked_style(document, cursor).graphic_style;
+    return intermediate_style(document, cursor).graphic_style;
   }
 };
 
