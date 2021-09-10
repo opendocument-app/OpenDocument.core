@@ -1,59 +1,10 @@
 #include <cstring>
-#include <functional>
 #include <internal/abstract/document.h>
 #include <internal/ooxml/ooxml_util.h>
-#include <internal/ooxml/text/ooxml_text_element.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
 #include <internal/util/property_util.h>
 
 namespace odr::internal::ooxml::text {
-
-namespace {
-
-const char *read_optional_string(pugi::xml_attribute attribute) {
-  if (attribute) {
-    return attribute.value();
-  }
-  return {};
-}
-
-std::optional<TextAlign>
-read_optional_text_align(pugi::xml_attribute attribute) {
-  if (!attribute) {
-    return {};
-  }
-  auto value = attribute.value();
-  if (std::strcmp("left", value) == 0) {
-    return TextAlign::left;
-  }
-  if (std::strcmp("right", value) == 0) {
-    return TextAlign::right;
-  }
-  if (std::strcmp("center", value) == 0) {
-    return TextAlign::center;
-  }
-  return {};
-}
-
-std::optional<VerticalAlign>
-read_optional_vertical_align(pugi::xml_attribute attribute) {
-  if (!attribute) {
-    return {};
-  }
-  auto value = attribute.value();
-  if (std::strcmp("top", value) == 0) {
-    return VerticalAlign::top;
-  }
-  if (std::strcmp("middle", value) == 0) {
-    return VerticalAlign::middle;
-  }
-  if (std::strcmp("bottom", value) == 0) {
-    return VerticalAlign::bottom;
-  }
-  return {};
-}
-
-} // namespace
 
 Style::Style(std::string name, pugi::xml_node node, const Style *parent)
     : m_name{std::move(name)}, m_node{node}, m_parent{parent} {}
@@ -81,29 +32,26 @@ void Style::resolve_text_style_(pugi::xml_node node,
       result = TextStyle();
     }
 
-    /*
-    result->font_name =
-        read_optional_string(run_properties.child("w:rFonts").attribute("w:ascii"));
+    result->font_name = read_string_attribute(
+        run_properties.child("w:rFonts").attribute("w:ascii"));
     result->font_size =
-        read_optional_string(run_properties.child("w:sz").attribute("w:val"));
+        read_string_attribute(run_properties.child("w:sz").attribute("w:val"));
     result->font_weight =
-        read_optional_string(run_properties.child("w:b").attribute("w:val"));
+        read_string_attribute(run_properties.child("w:b").attribute("w:val"));
     result->font_style =
-        read_optional_string(run_properties.child("w:i").attribute("w:val"));
+        read_string_attribute(run_properties.child("w:i").attribute("w:val"));
     result->font_underline = read_optional_attribute(
-        run_properties.child("w:u").attribute("w:val"),
-        read_line_attribute);
+        run_properties.child("w:u").attribute("w:val"), read_line_attribute);
     result->font_line_through = read_optional_attribute(
         run_properties.child("w:strike").attribute("w:val"),
         read_line_attribute);
-    result->font_shadow =
-        read_optional_node(run_properties.child("w:shadow"),
-    read_shadow_attribute); result->font_color =
-        read_optional_attribute(run_properties.child("w:b").attribute("w:val"),
-    read_color_attribute); result->background_color = read_optional_attribute(
-            run_properties.child("w:highlight").attribute("w:val"),
-            read_color_attribute);
-            */
+    result->font_shadow = read_optional_node(run_properties.child("w:shadow"),
+                                             read_shadow_attribute);
+    result->font_color = read_optional_attribute(
+        run_properties.child("w:b").attribute("w:val"), read_color_attribute);
+    result->background_color = read_optional_attribute(
+        run_properties.child("w:highlight").attribute("w:val"),
+        read_color_attribute);
   }
 }
 

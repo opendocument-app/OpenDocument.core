@@ -8,7 +8,7 @@ namespace odr::internal::odf {
 
 namespace {
 
-const char *read_optional_string(pugi::xml_attribute attribute) {
+std::optional<std::string> read_optional_string(pugi::xml_attribute attribute) {
   if (attribute) {
     return attribute.value();
   }

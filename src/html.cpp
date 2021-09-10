@@ -31,16 +31,18 @@ const char *translate_text_align(const TextAlign text_align) {
     return "center";
   case TextAlign::justify:
     return "justify";
+  default:
+    return ""; // TODO log
   }
 }
 
 std::string translate_outer_page_style(const PageLayout &page_layout) {
   std::string result;
   if (auto width = page_layout.width) {
-    result.append("width:").append(width).append(";");
+    result.append("width:").append(*width).append(";");
   }
   if (auto height = page_layout.height) {
-    result.append("height:").append(height).append(";");
+    result.append("height:").append(*height).append(";");
   }
   return result;
 }
@@ -48,16 +50,16 @@ std::string translate_outer_page_style(const PageLayout &page_layout) {
 std::string translate_inner_page_style(const PageLayout &page_layout) {
   std::string result;
   if (auto margin_right = page_layout.margin.right) {
-    result.append("margin-right:").append(margin_right).append(";");
+    result.append("margin-right:").append(*margin_right).append(";");
   }
   if (auto margin_top = page_layout.margin.top) {
-    result.append("margin-top:").append(margin_top).append(";");
+    result.append("margin-top:").append(*margin_top).append(";");
   }
   if (auto margin_left = page_layout.margin.left) {
-    result.append("margin-left:").append(margin_left).append(";");
+    result.append("margin-left:").append(*margin_left).append(";");
   }
   if (auto margin_bottom = page_layout.margin.bottom) {
-    result.append("margin-bottom:").append(margin_bottom).append(";");
+    result.append("margin-bottom:").append(*margin_bottom).append(";");
   }
   return result;
 }
@@ -65,34 +67,34 @@ std::string translate_inner_page_style(const PageLayout &page_layout) {
 std::string translate_text_style(const TextStyle &text_style) {
   std::string result;
   if (auto font_name = text_style.font_name) {
-    result.append("font-family:").append(font_name).append(";");
+    result.append("font-family:").append(*font_name).append(";");
   }
   if (auto font_size = text_style.font_size) {
-    result.append("font-size:").append(font_size).append(";");
+    result.append("font-size:").append(*font_size).append(";");
   }
   if (auto font_weight = text_style.font_weight) {
-    result.append("font-weight:").append(font_weight).append(";");
+    result.append("font-weight:").append(*font_weight).append(";");
   }
   if (auto font_style = text_style.font_style) {
-    result.append("font-style:").append(font_style).append(";");
+    result.append("font-style:").append(*font_style).append(";");
   }
   if (auto underline = text_style.font_underline;
-      underline && (std::strcmp("solid", underline) == 0)) {
+      underline && (underline != "solid")) {
     result += "text-decoration:underline;";
   }
   if (auto strikethrough = text_style.font_line_through;
-      strikethrough && (std::strcmp("solid", strikethrough) == 0)) {
+      strikethrough && (strikethrough != "solid")) {
     result += "text-decoration:line-through;";
   }
   if (auto font_shadow = text_style.font_shadow) {
-    result.append("text-shadow:").append(font_shadow).append(";");
+    result.append("text-shadow:").append(*font_shadow).append(";");
   }
   if (auto font_color = text_style.font_color) {
-    result.append("color:").append(font_color).append(";");
+    result.append("color:").append(*font_color).append(";");
   }
   if (auto background_color = text_style.background_color;
-      background_color && (std::strcmp("transparent", background_color) != 0)) {
-    result.append("background-color:").append(background_color).append(";");
+      background_color && (background_color != "transparent")) {
+    result.append("background-color:").append(*background_color).append(";");
   }
   return result;
 }
@@ -105,16 +107,16 @@ std::string translate_paragraph_style(const ParagraphStyle &paragraph_style) {
         .append(";");
   }
   if (auto margin_right = paragraph_style.margin.right) {
-    result.append("margin-right:").append(margin_right).append(";");
+    result.append("margin-right:").append(*margin_right).append(";");
   }
   if (auto margin_top = paragraph_style.margin.top) {
-    result.append("margin-top:").append(margin_top).append(";");
+    result.append("margin-top:").append(*margin_top).append(";");
   }
   if (auto margin_left = paragraph_style.margin.left) {
-    result.append("margin-left:").append(margin_left).append(";");
+    result.append("margin-left:").append(*margin_left).append(";");
   }
   if (auto margin_bottom = paragraph_style.margin.bottom) {
-    result.append("margin-bottom:").append(margin_bottom).append(";");
+    result.append("margin-bottom:").append(*margin_bottom).append(";");
   }
   return result;
 }
@@ -122,7 +124,7 @@ std::string translate_paragraph_style(const ParagraphStyle &paragraph_style) {
 std::string translate_table_style(const TableStyle &table_style) {
   std::string result;
   if (auto width = table_style.width) {
-    result.append("width:").append(width).append(";");
+    result.append("width:").append(*width).append(";");
   }
   return result;
 }
@@ -131,7 +133,7 @@ std::string
 translate_table_column_style(const TableColumnStyle &table_column_style) {
   std::string result;
   if (auto width = table_column_style.width) {
-    result.append("width:").append(width).append(";");
+    result.append("width:").append(*width).append(";");
   }
   return result;
 }
@@ -141,7 +143,7 @@ std::string translate_table_row_style(const TableRowStyle &table_row_style) {
   // TODO that does not work with HTML; height would need to be applied to the
   // cells
   if (auto height = table_row_style.height) {
-    result.append("height:").append(height).append(";");
+    result.append("height:").append(*height).append(";");
   }
   return result;
 }
@@ -152,32 +154,32 @@ std::string translate_table_cell_style(const TableCellStyle &table_cell_style) {
     // TODO
   }
   if (auto background_color = table_cell_style.background_color;
-      background_color && (std::strcmp("transparent", background_color) != 0)) {
-    result.append("background-color:").append(background_color).append(";");
+      background_color && (background_color != "transparent")) {
+    result.append("background-color:").append(*background_color).append(";");
   }
   if (auto padding_right = table_cell_style.padding.right) {
-    result.append("padding-right:").append(padding_right).append(";");
+    result.append("padding-right:").append(*padding_right).append(";");
   }
   if (auto padding_top = table_cell_style.padding.top) {
-    result.append("padding-top:").append(padding_top).append(";");
+    result.append("padding-top:").append(*padding_top).append(";");
   }
   if (auto padding_left = table_cell_style.padding.left) {
-    result.append("padding-left:").append(padding_left).append(";");
+    result.append("padding-left:").append(*padding_left).append(";");
   }
   if (auto padding_bottom = table_cell_style.padding.bottom) {
-    result.append("padding-bottom:").append(padding_bottom).append(";");
+    result.append("padding-bottom:").append(*padding_bottom).append(";");
   }
   if (auto border_right = table_cell_style.border.right) {
-    result.append("padding-right:").append(border_right).append(";");
+    result.append("padding-right:").append(*border_right).append(";");
   }
   if (auto border_top = table_cell_style.border.top) {
-    result.append("padding-top:").append(border_top).append(";");
+    result.append("padding-top:").append(*border_top).append(";");
   }
   if (auto border_left = table_cell_style.border.left) {
-    result.append("padding-left:").append(border_left).append(";");
+    result.append("padding-left:").append(*border_left).append(";");
   }
   if (auto border_bottom = table_cell_style.border.bottom) {
-    result.append("padding-bottom:").append(border_bottom).append(";");
+    result.append("padding-bottom:").append(*border_bottom).append(";");
   }
   return result;
 }
@@ -185,13 +187,13 @@ std::string translate_table_cell_style(const TableCellStyle &table_cell_style) {
 std::string translate_drawing_style(const GraphicStyle &graphic_style) {
   std::string result;
   if (auto stroke_width = graphic_style.stroke_width) {
-    result.append("stroke-width:").append(stroke_width).append(";");
+    result.append("stroke-width:").append(*stroke_width).append(";");
   }
   if (auto stroke_color = graphic_style.stroke_color) {
-    result.append("stroke:").append(stroke_color).append(";");
+    result.append("stroke:").append(*stroke_color).append(";");
   }
   if (auto fill_color = graphic_style.fill_color) {
-    result.append("fill:").append(fill_color).append(";");
+    result.append("fill:").append(*fill_color).append(";");
   }
   if (auto vertical_align = graphic_style.vertical_align) {
     if (vertical_align == VerticalAlign::middle) {

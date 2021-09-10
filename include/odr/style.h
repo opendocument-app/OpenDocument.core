@@ -69,70 +69,92 @@ template <typename T> struct DirectionalStyle final {
       bottom = other.bottom;
     }
   }
+
+  void override(DirectionalStyle &&other) {
+    if (other.right) {
+      right = std::move(other.right);
+    }
+    if (other.top) {
+      top = std::move(other.top);
+    }
+    if (other.left) {
+      left = std::move(other.left);
+    }
+    if (other.bottom) {
+      bottom = std::move(other.bottom);
+    }
+  }
 };
 
 struct TextStyle final {
-  const char *font_name;
-  const char *font_size;
-  const char *font_weight;
-  const char *font_style;
-  const char *font_underline;
-  const char *font_line_through;
-  const char *font_shadow;
-  const char *font_color;
-  const char *background_color;
+  std::optional<std::string> font_name;
+  std::optional<std::string> font_size;
+  std::optional<std::string> font_weight;
+  std::optional<std::string> font_style;
+  std::optional<std::string> font_underline;
+  std::optional<std::string> font_line_through;
+  std::optional<std::string> font_shadow;
+  std::optional<std::string> font_color;
+  std::optional<std::string> background_color;
 
   void override(const TextStyle &other);
+  void override(TextStyle &&other);
 };
 
 struct ParagraphStyle final {
   std::optional<TextAlign> text_align;
-  DirectionalStringStyle margin;
+  DirectionalStyle<std::string> margin;
 
   void override(const ParagraphStyle &other);
+  void override(ParagraphStyle &&other);
 };
 
 struct TableStyle final {
-  const char *width;
+  std::optional<std::string> width;
 
   void override(const TableStyle &other);
+  void override(TableStyle &&other);
 };
 
 struct TableColumnStyle final {
-  const char *width;
+  std::optional<std::string> width;
 
   void override(const TableColumnStyle &other);
+  void override(TableColumnStyle &&other);
 };
 
 struct TableRowStyle final {
-  const char *height;
+  std::optional<std::string> height;
 
   void override(const TableRowStyle &other);
+  void override(TableRowStyle &&other);
 };
 
 struct TableCellStyle final {
   std::optional<VerticalAlign> vertical_align;
-  const char *background_color;
-  DirectionalStringStyle padding;
-  DirectionalStringStyle border;
+  std::optional<std::string> background_color;
+  DirectionalStyle<std::string> padding;
+  DirectionalStyle<std::string> border;
 
   void override(const TableCellStyle &other);
+  void override(TableCellStyle &&other);
 };
 
 struct GraphicStyle final {
-  const char *stroke_width;
-  const char *stroke_color;
-  const char *fill_color;
+  std::optional<std::string> stroke_width;
+  std::optional<std::string> stroke_color;
+  std::optional<std::string> fill_color;
   std::optional<VerticalAlign> vertical_align;
 
   void override(const GraphicStyle &other);
+  void override(GraphicStyle &&other);
 };
 
 struct PageLayout final {
-  const char *width;
-  const char *height;
-  const char *print_orientation;
-  DirectionalStringStyle margin;
+  std::optional<std::string> width;
+  std::optional<std::string> height;
+  std::optional<std::string> print_orientation;
+  DirectionalStyle<std::string> margin;
 };
 
 struct TableDimensions {
