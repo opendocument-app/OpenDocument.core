@@ -21,14 +21,17 @@ read_optional_text_align(pugi::xml_attribute attribute) {
     return {};
   }
   auto value = attribute.value();
-  if (std::strcmp("left", value) == 0) {
+  if ((std::strcmp("left", value) == 0) || (std::strcmp("start", value) == 0)) {
     return TextAlign::left;
-  }
-  if (std::strcmp("right", value) == 0) {
-    return TextAlign::right;
   }
   if (std::strcmp("center", value) == 0) {
     return TextAlign::center;
+  }
+  if ((std::strcmp("right", value) == 0) || (std::strcmp("end", value) == 0)) {
+    return TextAlign::right;
+  }
+  if (std::strcmp("justify", value) == 0) {
+    return TextAlign::justify;
   }
   return {};
 }

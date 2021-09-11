@@ -13,7 +13,7 @@
 namespace odr::internal::odf {
 
 namespace {
-std::optional<std::string> default_style_name(const pugi::xml_node node);
+std::optional<std::string> default_style_name(pugi::xml_node node);
 }
 
 Element::Element(const Document *, pugi::xml_node node) : m_node{node} {}
@@ -445,6 +445,24 @@ private:
   }
 };
 
+class Link final : public Element, public abstract::LinkElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] std::string href(const abstract::Document *) const final {
+    return m_node.attribute("xlink:href").value();
+  }
+};
+
+class Bookmark final : public Element, public abstract::BookmarkElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] std::string name(const abstract::Document *) const final {
+    return m_node.attribute("text:name").value();
+  }
+};
+
 class TableElement : public Element, public abstract::TableElement {
 public:
   using Element::Element;
@@ -636,8 +654,8 @@ public:
   common::ResolvedStyle
   partial_style(const abstract::Document *document) const final {
     common::ResolvedStyle result;
-    result.override(m_column.partial_style(document));
-    result.override(m_row.partial_style(document));
+    result.override(m_column.default_cell_style(document));
+    result.override(m_row.default_cell_style(document));
     result.override(Element::partial_style(document));
     return result;
   }
@@ -906,8 +924,6 @@ odf::construct_default_element(const Document *document, pugi::xml_node node,
 
   using Span = DefaultElement<ElementType::span>;
   using LineBreak = DefaultElement<ElementType::line_break>;
-  using Link = DefaultElement<ElementType::link>;
-  using Bookmark = DefaultElement<ElementType::bookmark>;
   using List = DefaultElement<ElementType::list>;
   using ListItem = DefaultElement<ElementType::list_item>;
   using Group = DefaultElement<ElementType::group>;
