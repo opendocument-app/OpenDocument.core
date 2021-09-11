@@ -22,15 +22,15 @@ public:
   Style(std::string family, pugi::xml_node node);
   Style(std::string name, pugi::xml_node node, Style *parent, Style *family);
 
-  std::string name() const;
+  [[nodiscard]] std::string name() const;
 
-  const common::ResolvedStyle &resolved() const;
+  [[nodiscard]] const common::ResolvedStyle &resolved() const;
 
 private:
   std::string m_name;
   pugi::xml_node m_node;
-  Style *m_parent;
-  Style *m_family;
+  Style *m_parent{nullptr};
+  Style *m_family{nullptr};
 
   common::ResolvedStyle m_resolved;
 
