@@ -79,11 +79,11 @@ std::string translate_text_style(const TextStyle &text_style) {
     result.append("font-style:").append(*font_style).append(";");
   }
   if (auto underline = text_style.font_underline;
-      underline && (underline != "solid")) {
+      underline && (underline == "solid")) {
     result += "text-decoration:underline;";
   }
   if (auto strikethrough = text_style.font_line_through;
-      strikethrough && (strikethrough != "solid")) {
+      strikethrough && (strikethrough == "solid")) {
     result += "text-decoration:line-through;";
   }
   if (auto font_shadow = text_style.font_shadow) {
@@ -170,16 +170,16 @@ std::string translate_table_cell_style(const TableCellStyle &table_cell_style) {
     result.append("padding-bottom:").append(*padding_bottom).append(";");
   }
   if (auto border_right = table_cell_style.border.right) {
-    result.append("padding-right:").append(*border_right).append(";");
+    result.append("border-right:").append(*border_right).append(";");
   }
   if (auto border_top = table_cell_style.border.top) {
-    result.append("padding-top:").append(*border_top).append(";");
+    result.append("border-top:").append(*border_top).append(";");
   }
   if (auto border_left = table_cell_style.border.left) {
-    result.append("padding-left:").append(*border_left).append(";");
+    result.append("border-left:").append(*border_left).append(";");
   }
   if (auto border_bottom = table_cell_style.border.bottom) {
-    result.append("padding-bottom:").append(*border_bottom).append(";");
+    result.append("border-bottom:").append(*border_bottom).append(";");
   }
   return result;
 }

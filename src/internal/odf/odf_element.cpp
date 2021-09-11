@@ -241,7 +241,7 @@ public:
   abstract::Element *previous_sibling(const abstract::Document *,
                                       const abstract::DocumentCursor *,
                                       const abstract::Allocator *) final {
-    if (auto previous_sibling = m_node.previous_sibling()) {
+    if (auto previous_sibling = m_node.previous_sibling("draw:page")) {
       m_node = previous_sibling;
       return this;
     }
@@ -251,7 +251,7 @@ public:
   abstract::Element *next_sibling(const abstract::Document *,
                                   const abstract::DocumentCursor *,
                                   const abstract::Allocator *) final {
-    if (auto next_sibling = m_node.next_sibling()) {
+    if (auto next_sibling = m_node.next_sibling("draw:page")) {
       m_node = next_sibling;
       return this;
     }
@@ -299,7 +299,7 @@ public:
   abstract::Element *previous_sibling(const abstract::Document *,
                                       const abstract::DocumentCursor *,
                                       const abstract::Allocator *) final {
-    if (auto previous_sibling = m_node.previous_sibling()) {
+    if (auto previous_sibling = m_node.previous_sibling("draw:page")) {
       m_node = previous_sibling;
       return this;
     }
@@ -309,7 +309,7 @@ public:
   abstract::Element *next_sibling(const abstract::Document *,
                                   const abstract::DocumentCursor *,
                                   const abstract::Allocator *) final {
-    if (auto next_sibling = m_node.next_sibling()) {
+    if (auto next_sibling = m_node.next_sibling("draw:page")) {
       m_node = next_sibling;
       return this;
     }
@@ -945,7 +945,7 @@ odf::construct_default_element(const Document *document, pugi::xml_node node,
       {"text:bookmark-start", construct_default<Bookmark>},
       {"text:list", construct_default<List>},
       {"text:list-item", construct_default<ListItem>},
-      {"text:index-title", construct_default<Paragraph>},
+      {"text:index-title", construct_default<Group>},
       {"text:table-of-content", construct_default<Group>},
       {"text:index-body", construct_default<Group>},
       {"text:soft-page-break", construct_default<PageBreak>},
