@@ -45,7 +45,7 @@ abstract::Element *Element::next_sibling(const abstract::Document *document,
 }
 
 common::ResolvedStyle
-Element::partial_style(const abstract::Document *document) const {
+Element::partial_style(const abstract::Document *) const {
   return {}; // TODO
 }
 

@@ -122,8 +122,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
 }
 
 std::unique_ptr<abstract::DecodedFile>
-open_strategy::open_file(std::shared_ptr<abstract::File> file,
-                         const FileType as) {
+open_strategy::open_file(std::shared_ptr<abstract::File> ,
+                         const FileType ) {
   // TODO implement
   throw UnknownFileType();
 }

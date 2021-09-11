@@ -60,7 +60,7 @@ EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {
   return EncryptionState::UNKNOWN;
 }
 
-bool LegacyMicrosoftFile::decrypt(const std::string &password) {
+bool LegacyMicrosoftFile::decrypt(const std::string &) {
   return false; // TODO throw
 }
 
