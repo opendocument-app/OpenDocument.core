@@ -155,8 +155,9 @@ Style *StyleRegistry::generate_style_(const std::string &name,
 
   if (auto parent_attr = node.child("w:basedOn").attribute("w:val");
       parent_attr) {
-    parent =
-        generate_style_(parent_attr.value(), m_index.at(parent_attr.value()));
+    if (auto parent_node = m_index[parent_attr.value()]) {
+      parent = generate_style_(parent_attr.value(), parent_node);
+    }
   }
 
   style = std::make_unique<Style>(name, node, parent);

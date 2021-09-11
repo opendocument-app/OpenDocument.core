@@ -53,7 +53,7 @@ enum class ElementType {
 
   text,
   line_break,
-  // page_break, TODO
+  page_break,
   paragraph,
   span,
   link,

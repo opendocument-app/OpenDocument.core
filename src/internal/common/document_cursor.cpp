@@ -54,7 +54,7 @@ void DocumentCursor::pushed_(abstract::Element *) {
   } else {
     m_style_stack.emplace_back(m_style_stack.back());
   }
-  m_style_stack.back().override(intermediate_style());
+  m_style_stack.back().override(partial_style());
 }
 
 void DocumentCursor::popping_(abstract::Element *) { m_style_stack.pop_back(); }

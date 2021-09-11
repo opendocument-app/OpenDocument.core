@@ -174,8 +174,10 @@ public:
   dimensions(const abstract::Document *document) const final {
     if (auto dimension =
             sheet_node_(document).child("dimension").attribute("ref")) {
-      auto range = common::TableRange(dimension.value());
-      return {range.to().row(), range.to().column()};
+      try {
+        auto range = common::TableRange(dimension.value());
+        return {range.to().row(), range.to().column()};
+      } catch (...) {}
     }
     return {};
   }

@@ -911,6 +911,7 @@ odf::construct_default_element(const Document *document, pugi::xml_node node,
   using List = DefaultElement<ElementType::list>;
   using ListItem = DefaultElement<ElementType::list_item>;
   using Group = DefaultElement<ElementType::group>;
+  using PageBreak = DefaultElement<ElementType::page_break>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
       {"office:text", construct_default<TextDocumentRoot>},
@@ -931,6 +932,7 @@ odf::construct_default_element(const Document *document, pugi::xml_node node,
       {"text:index-title", construct_default<Paragraph>},
       {"text:table-of-content", construct_default<Group>},
       {"text:index-body", construct_default<Group>},
+      {"text:soft-page-break", construct_default<PageBreak>},
       {"table:table", construct_default<TableElement>},
       {"table:table-column", construct_default<TableColumn>},
       {"table:table-row", construct_default<TableRow>},
