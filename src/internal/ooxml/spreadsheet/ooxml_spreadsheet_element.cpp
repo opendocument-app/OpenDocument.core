@@ -177,7 +177,8 @@ public:
       try {
         auto range = common::TableRange(dimension.value());
         return {range.to().row(), range.to().column()};
-      } catch (...) {}
+      } catch (...) {
+      }
     }
     return {};
   }

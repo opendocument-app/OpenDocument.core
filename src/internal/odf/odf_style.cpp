@@ -129,10 +129,12 @@ void Style::resolve_text_style_(pugi::xml_node node,
     if (auto font_style = text_properties.attribute("fo:font-style")) {
       result->font_style = font_style.value();
     }
-    if (auto font_underline = text_properties.attribute("style:text-underline-style")) {
+    if (auto font_underline =
+            text_properties.attribute("style:text-underline-style")) {
       result->font_underline = font_underline.value();
     }
-    if (auto font_line_through = text_properties.attribute("style:text-line-through-style")) {
+    if (auto font_line_through =
+            text_properties.attribute("style:text-line-through-style")) {
       result->font_line_through = font_line_through.value();
     }
     if (auto font_shadow = text_properties.attribute("fo:text-shadow")) {
@@ -141,7 +143,8 @@ void Style::resolve_text_style_(pugi::xml_node node,
     if (auto font_color = text_properties.attribute("fo:color")) {
       result->font_color = font_color.value();
     }
-    if (auto background_color = text_properties.attribute("fo:background-color")) {
+    if (auto background_color =
+            text_properties.attribute("fo:background-color")) {
       result->background_color = background_color.value();
     }
   }
@@ -169,7 +172,8 @@ void Style::resolve_paragraph_style_(pugi::xml_node node,
     if (auto margin_left = paragraph_properties.attribute("fo:margin-left")) {
       result->margin.left = margin_left.value();
     }
-    if (auto margin_bottom = paragraph_properties.attribute("fo:margin-bottom")) {
+    if (auto margin_bottom =
+            paragraph_properties.attribute("fo:margin-bottom")) {
       result->margin.bottom = margin_bottom.value();
     }
   }
@@ -222,31 +226,37 @@ void Style::resolve_table_cell_style_(pugi::xml_node node,
       result = TableCellStyle();
     }
 
-    if (auto vertical_align = table_cell_properties.attribute("style:vertical-align")) {
+    if (auto vertical_align =
+            table_cell_properties.attribute("style:vertical-align")) {
       result->vertical_align = read_optional_vertical_align(vertical_align);
     }
-    if (auto background_color = table_cell_properties.attribute("fo:background-color")) {
+    if (auto background_color =
+            table_cell_properties.attribute("fo:background-color")) {
       result->background_color = background_color.value();
     }
     if (auto padding = table_cell_properties.attribute("fo:padding")) {
       result->padding = read_optional_string(padding);
     }
-    if (auto padding_right = table_cell_properties.attribute("fo:padding-right")) {
+    if (auto padding_right =
+            table_cell_properties.attribute("fo:padding-right")) {
       result->padding.right = padding_right.value();
     }
     if (auto padding_top = table_cell_properties.attribute("fo:padding-top")) {
       result->padding.top = padding_top.value();
     }
-    if (auto padding_left = table_cell_properties.attribute("fo:padding-left")) {
+    if (auto padding_left =
+            table_cell_properties.attribute("fo:padding-left")) {
       result->padding.left = padding_left.value();
     }
-    if (auto padding_bottom = table_cell_properties.attribute("fo:padding-bottom")) {
+    if (auto padding_bottom =
+            table_cell_properties.attribute("fo:padding-bottom")) {
       result->padding.bottom = padding_bottom.value();
     }
     if (auto border = table_cell_properties.attribute("fo:border")) {
       result->border = read_optional_string(border);
     }
-    if (auto border_right = table_cell_properties.attribute("fo:border-right")) {
+    if (auto border_right =
+            table_cell_properties.attribute("fo:border-right")) {
       result->border.right = border_right.value();
     }
     if (auto border_top = table_cell_properties.attribute("fo:border-top")) {
@@ -255,7 +265,8 @@ void Style::resolve_table_cell_style_(pugi::xml_node node,
     if (auto border_left = table_cell_properties.attribute("fo:border-left")) {
       result->border.left = border_left.value();
     }
-    if (auto border_bottom = table_cell_properties.attribute("fo:border-bottom")) {
+    if (auto border_bottom =
+            table_cell_properties.attribute("fo:border-bottom")) {
       result->border.bottom = border_bottom.value();
     }
   }
@@ -277,7 +288,8 @@ void Style::resolve_graphic_style_(pugi::xml_node node,
     if (auto fill_color = graphic_properties.attribute("draw:fill-color")) {
       result->fill_color = fill_color.value();
     }
-    if (auto vertical_align = graphic_properties.attribute("draw:textarea-vertical-align")) {
+    if (auto vertical_align =
+            graphic_properties.attribute("draw:textarea-vertical-align")) {
       result->vertical_align = read_optional_vertical_align(vertical_align);
     }
   }
