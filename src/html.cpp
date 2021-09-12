@@ -674,7 +674,7 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
 
   {
     out << "<tr>";
-    out << "<td/>";
+    out << "<td style=\"width:30px;height:20px;\"/>";
 
     column_index = 0;
     cursor.for_each_column([&](DocumentCursor &, const std::uint32_t) {
@@ -684,8 +684,6 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
 
       ++column_index;
       return column_index < end_column;
-
-      return true;
     });
 
     out << "</tr>";
