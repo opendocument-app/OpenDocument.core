@@ -41,7 +41,7 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
   // TODO throw if not encrypted
   // TODO throw if decrypted
   std::string encryption_info =
-      util::stream::read(*m_filesystem->open("EncryptionInfo")->read());
+      util::stream::read(*m_filesystem->open("/EncryptionInfo")->read());
   // TODO cache Crypto::Util
   crypto::Util util(encryption_info);
   std::string key = util.derive_key(password);
@@ -49,7 +49,7 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
     return false;
   }
   std::string encrypted_package =
-      util::stream::read(*m_filesystem->open("EncryptedPackage")->read());
+      util::stream::read(*m_filesystem->open("/EncryptedPackage")->read());
   std::string decrypted_package = util.decrypt(encrypted_package, key);
   auto memory_file =
       std::make_shared<common::MemoryFile>(std::move(decrypted_package));

@@ -9,7 +9,9 @@ namespace odr::internal::common {
 
 class TablePosition final {
 public:
+  static std::uint32_t to_row_num(const std::string &string);
   static std::uint32_t to_column_num(const std::string &string);
+  static std::string to_row_string(std::uint32_t row);
   static std::string to_column_string(std::uint32_t column);
 
   TablePosition() noexcept;

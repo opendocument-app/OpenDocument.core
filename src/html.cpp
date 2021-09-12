@@ -623,6 +623,8 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
   std::uint32_t column_index = 0;
   std::uint32_t row_index = 0;
 
+  out << "<col>";
+
   cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
     auto table_column = cursor.element().table_column();
 
@@ -637,6 +639,27 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
   });
 
   cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
+    out << "<tr>";
+
+    out << "<td>";
+    out << "</td>";
+
+    column_index = 0;
+    cursor.for_each_cell([&](DocumentCursor &, const std::uint32_t) {
+      out << "<td style=\"text-align:center;vertical-align:middle;\">";
+      out << common::TablePosition::to_column_string(column_index);
+      out << "</td>";
+
+      ++column_index;
+      return column_index < end_column;
+    });
+
+    out << "</tr>";
+
+    return false;
+  });
+
+  cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
     auto table_row = cursor.element().table_row();
 
     out << "<tr";
@@ -645,8 +668,11 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
     }
     out << ">";
 
-    column_index = 0;
+    out << "<td style=\"text-align:center;vertical-align:middle;\">";
+    out << common::TablePosition::to_row_string(row_index);
+    out << "</td>";
 
+    column_index = 0;
     cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
       // TODO check if cell hidden
       auto table_cell = cursor.element().table_cell();

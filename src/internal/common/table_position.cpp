@@ -4,6 +4,14 @@
 
 namespace odr::internal::common {
 
+std::uint32_t TablePosition::to_row_num(const std::string &string) {
+  if (string.empty()) {
+    throw std::invalid_argument("s is empty");
+  }
+
+  return std::stoul(string) - 1;
+}
+
 std::uint32_t TablePosition::to_column_num(const std::string &string) {
   if (string.empty()) {
     throw std::invalid_argument("s is empty");
@@ -17,6 +25,10 @@ std::uint32_t TablePosition::to_column_num(const std::string &string) {
     result = result * 26 + (string[i] - 'A' + 1);
   }
   return result - 1;
+}
+
+std::string TablePosition::to_row_string(const std::uint32_t row) {
+  return std::to_string(row + 1);
 }
 
 std::string TablePosition::to_column_string(std::uint32_t column) {

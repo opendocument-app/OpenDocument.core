@@ -170,7 +170,7 @@ FileType DecodedFile::file_type() const noexcept {
 }
 
 FileCategory DecodedFile::file_category() const noexcept {
-  return FileMeta::category_by_type(file_type());
+  return m_impl->file_category();
 }
 
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
