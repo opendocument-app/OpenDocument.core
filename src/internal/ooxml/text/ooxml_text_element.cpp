@@ -44,8 +44,7 @@ abstract::Element *Element::next_sibling(const abstract::Document *document,
                                                 allocator);
 }
 
-common::ResolvedStyle
-Element::partial_style(const abstract::Document *) const {
+common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
   return {}; // TODO
 }
 
@@ -325,6 +324,18 @@ public:
       m_node = next_sibling;
       return this;
     }
+    return nullptr;
+  }
+
+  [[nodiscard]] const abstract::Element *
+  column(const abstract::Document *,
+         const abstract::DocumentCursor *) const final {
+    return nullptr;
+  }
+
+  [[nodiscard]] const abstract::Element *
+  row(const abstract::Document *,
+      const abstract::DocumentCursor *) const final {
     return nullptr;
   }
 

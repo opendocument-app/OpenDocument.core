@@ -527,7 +527,7 @@ public:
 
   abstract::Element *previous_sibling(const abstract::Document *,
                                       const abstract::DocumentCursor *,
-                                      const abstract::Allocator *) final {
+                                      const abstract::Allocator *) override {
     if (m_repeated_index > 0) {
       --m_repeated_index;
       return this;
@@ -544,7 +544,7 @@ public:
 
   abstract::Element *next_sibling(const abstract::Document *,
                                   const abstract::DocumentCursor *,
-                                  const abstract::Allocator *) final {
+                                  const abstract::Allocator *) override {
     if (m_repeated_index < number_repeated_() - 1) {
       ++m_repeated_index;
       return this;
@@ -645,6 +645,33 @@ public:
                                                  node.parent().parent().child(
                                                      "table:table-column")},
         m_row{document, node.parent()} {}
+
+  abstract::Element *
+  previous_sibling(const abstract::Document *document,
+                   const abstract::DocumentCursor *cursor,
+                   const abstract::Allocator *allocator) final {
+    m_column.previous_sibling(document, cursor, nullptr);
+    return TableComponent::next_sibling(document, cursor, allocator);
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *document,
+                                  const abstract::DocumentCursor *cursor,
+                                  const abstract::Allocator *allocator) final {
+    m_column.next_sibling(document, cursor, nullptr);
+    return TableComponent::next_sibling(document, cursor, allocator);
+  }
+
+  [[nodiscard]] const abstract::Element *
+  column(const abstract::Document *,
+         const abstract::DocumentCursor *) const final {
+    return &m_column;
+  }
+
+  [[nodiscard]] const abstract::Element *
+  row(const abstract::Document *,
+      const abstract::DocumentCursor *) const final {
+    return &m_row;
+  }
 
   [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
     return {m_node.attribute("table:number-rows-spanned").as_uint(1),

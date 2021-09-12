@@ -268,6 +268,11 @@ public:
     return ElementType::table_cell;
   }
 
+  [[nodiscard]] virtual const Element *
+  column(const Document *document, const DocumentCursor *cursor) const = 0;
+  [[nodiscard]] virtual const Element *
+  row(const Document *document, const DocumentCursor *cursor) const = 0;
+
   [[nodiscard]] virtual TableDimensions
   span(const Document *document) const = 0;
 

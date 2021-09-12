@@ -5,10 +5,6 @@
 namespace odr::internal::common {
 
 std::uint32_t TablePosition::to_row_num(const std::string &string) {
-  if (string.empty()) {
-    throw std::invalid_argument("s is empty");
-  }
-
   return std::stoul(string) - 1;
 }
 
@@ -60,13 +56,8 @@ TablePosition::TablePosition(const std::string &s) {
   if (pos == std::string::npos) {
     throw std::invalid_argument("malformed table position " + s);
   }
-  m_row = std::stoul(s.substr(pos));
-  if (m_row <= 0) {
-    throw std::invalid_argument("row number needs to be at least 1 " +
-                                s.substr(pos));
-  }
-  --m_row;
   m_column = to_column_num(s.substr(0, pos));
+  m_row = to_row_num(s.substr(pos));
 }
 
 bool TablePosition::operator==(const TablePosition &rhs) const {
@@ -82,7 +73,7 @@ std::uint32_t TablePosition::row() const noexcept { return m_row; }
 std::uint32_t TablePosition::column() const noexcept { return m_column; }
 
 std::string TablePosition::to_string() const noexcept {
-  return to_column_string(m_column) + std::to_string(m_row + 1);
+  return to_column_string(m_column) + to_row_string(m_row);
 }
 
 } // namespace odr::internal::common
