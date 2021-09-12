@@ -27,6 +27,7 @@ add_library(odr-object OBJECT
         src/html.cpp
         src/open_document_reader.cpp
         src/open_strategy.cpp
+        src/quantity.cpp
         src/style.cpp
 
         src/internal/abstract/file.cpp

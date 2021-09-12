@@ -2,6 +2,16 @@
 
 namespace odr {
 
+Color::Color() = default;
+
+Color::Color(const std::uint8_t red, const std::uint8_t green,
+             const std::uint8_t blue)
+    : red{red}, green{green}, blue{blue} {}
+
+Color::Color(const std::uint8_t red, const std::uint8_t green,
+             const std::uint8_t blue, const std::uint8_t alpha)
+    : red{red}, green{green}, blue{blue}, alpha{alpha} {}
+
 void TextStyle::override(const TextStyle &other) {
   if (other.font_name) {
     font_name = other.font_name;
@@ -71,7 +81,7 @@ void ParagraphStyle::override(const ParagraphStyle &other) {
 
 void ParagraphStyle::override(ParagraphStyle &&other) {
   if (other.text_align) {
-    text_align = std::move(other.text_align);
+    text_align = other.text_align;
   }
   margin.override(std::move(other.margin));
 }
@@ -125,7 +135,7 @@ void TableCellStyle::override(const TableCellStyle &other) {
 
 void TableCellStyle::override(TableCellStyle &&other) {
   if (other.vertical_align) {
-    vertical_align = std::move(other.vertical_align);
+    vertical_align = other.vertical_align;
   }
   if (other.background_color) {
     background_color = std::move(other.background_color);
@@ -160,7 +170,7 @@ void GraphicStyle::override(GraphicStyle &&other) {
     fill_color = std::move(other.fill_color);
   }
   if (other.vertical_align) {
-    vertical_align = std::move(other.vertical_align);
+    vertical_align = other.vertical_align;
   }
 }
 

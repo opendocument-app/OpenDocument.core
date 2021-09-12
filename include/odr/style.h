@@ -19,6 +19,18 @@ enum class VerticalAlign {
   bottom,
 };
 
+struct Color final {
+  std::uint8_t red{0};
+  std::uint8_t green{0};
+  std::uint8_t blue{0};
+  std::uint8_t alpha{255};
+
+  Color();
+  Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
+  Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue,
+        std::uint8_t alpha);
+};
+
 struct DirectionalStringStyle final {
   const char *right;
   const char *top;

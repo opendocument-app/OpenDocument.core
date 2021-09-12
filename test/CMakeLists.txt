@@ -12,6 +12,7 @@ add_executable(odr_test
         src/document_test.cpp
         src/file_test.cpp
         src/output_reference_test.cpp
+        src/quantity_test.cpp
 
         src/internal/cfb/cfb_archive_test.cpp
 
