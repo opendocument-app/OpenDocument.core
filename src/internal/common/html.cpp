@@ -58,8 +58,11 @@ table {
   border-collapse: collapse;
   table-layout: fixed;
 }
-table td {
+td {
   vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 p {

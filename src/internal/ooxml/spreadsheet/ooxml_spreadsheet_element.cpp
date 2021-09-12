@@ -299,6 +299,18 @@ public:
     return nullptr;
   }
 
+  [[nodiscard]] const abstract::Element *
+  column(const abstract::Document *,
+         const abstract::DocumentCursor *) const final {
+    return nullptr;
+  }
+
+  [[nodiscard]] const abstract::Element *
+  row(const abstract::Document *,
+      const abstract::DocumentCursor *) const final {
+    return nullptr;
+  }
+
   [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
     return {}; // TODO
   }

@@ -168,18 +168,20 @@ public:
 
   template <typename T> class Extension {
   public:
+    Extension() = default;
     Extension(const internal::abstract::Document *document,
               const internal::abstract::DocumentCursor *cursor,
-              internal::abstract::Element *element)
-        : m_document{document}, m_cursor{cursor}, m_element{dynamic_cast<T *>(
-                                                      element)} {}
+              const internal::abstract::Element *element)
+        : m_document{document}, m_cursor{cursor}, m_element{
+                                                      dynamic_cast<const T *>(
+                                                          element)} {}
 
     explicit operator bool() const { return m_element; }
 
   protected:
     const internal::abstract::Document *m_document;
     const internal::abstract::DocumentCursor *m_cursor;
-    T *m_element;
+    const T *m_element;
   };
 
   class TextRoot final : public Extension<internal::abstract::TextRootElement> {
@@ -271,6 +273,9 @@ public:
       : public Extension<internal::abstract::TableCellElement> {
   public:
     using Extension::Extension;
+
+    [[nodiscard]] TableColumn column() const;
+    [[nodiscard]] TableRow row() const;
 
     [[nodiscard]] TableDimensions span() const;
 

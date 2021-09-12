@@ -219,6 +219,18 @@ std::optional<TableRowStyle> Element::TableRow::style() const {
                    : std::optional<TableRowStyle>();
 }
 
+Element::TableColumn Element::TableCell::column() const {
+  return m_element ? TableColumn(m_document, m_cursor,
+                                 m_element->column(m_document, m_cursor))
+                   : TableColumn();
+}
+
+Element::TableRow Element::TableCell::row() const {
+  return m_element ? TableRow(m_document, m_cursor,
+                              m_element->row(m_document, m_cursor))
+                   : TableRow();
+}
+
 TableDimensions Element::TableCell::span() const {
   return m_element ? m_element->span(m_document) : TableDimensions();
 }
