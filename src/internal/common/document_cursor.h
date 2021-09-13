@@ -59,8 +59,6 @@ private:
   [[nodiscard]] std::int32_t back_offset_() const;
 
   void pop_();
-
-  [[nodiscard]] bool move_helper_(bool pushed, abstract::Element *element);
 };
 
 } // namespace odr::internal::common

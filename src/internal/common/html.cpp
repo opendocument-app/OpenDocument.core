@@ -59,7 +59,7 @@ table {
   table-layout: fixed;
 }
 td {
-  vertical-align: top;
+  vertical-align: bottom;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

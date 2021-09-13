@@ -71,7 +71,7 @@ std::string translate_color(const Color &color) {
   // TODO alpha
   std::stringstream ss;
   ss << "#";
-  ss << std::setw(10) << std::setfill('0') << std::hex << color.rgb();
+  ss << std::setw(6) << std::setfill('0') << std::hex << color.rgb();
   return ss.str();
 }
 
