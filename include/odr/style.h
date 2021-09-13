@@ -1,10 +1,21 @@
 #ifndef ODR_STYLE_H
 #define ODR_STYLE_H
 
+#include <odr/quantity.h>
 #include <optional>
 #include <string>
 
 namespace odr {
+
+using Measure = Quantity<double>;
+
+enum class FontWeight {
+  bold,
+};
+
+enum class FontStyle {
+  italic,
+};
 
 enum class TextAlign {
   left,
@@ -19,6 +30,11 @@ enum class VerticalAlign {
   bottom,
 };
 
+enum class PrintOrientation {
+  portrait,
+  landscape,
+};
+
 struct Color final {
   std::uint8_t red{0};
   std::uint8_t green{0};
@@ -26,35 +42,14 @@ struct Color final {
   std::uint8_t alpha{255};
 
   Color();
+  explicit Color(std::uint32_t rgb);
+  Color(std::uint32_t rgba, bool dummy);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue,
         std::uint8_t alpha);
-};
 
-struct DirectionalStringStyle final {
-  const char *right;
-  const char *top;
-  const char *left;
-  const char *bottom;
-
-  DirectionalStringStyle() = default;
-  DirectionalStringStyle(const char *all)
-      : right{all}, top{all}, left{all}, bottom{all} {}
-
-  void override(const DirectionalStringStyle &other) {
-    if (other.right) {
-      right = other.right;
-    }
-    if (other.top) {
-      top = other.top;
-    }
-    if (other.left) {
-      left = other.left;
-    }
-    if (other.bottom) {
-      bottom = other.bottom;
-    }
-  }
+  std::uint32_t rgb() const;
+  std::uint32_t rgba() const;
 };
 
 template <typename T> struct DirectionalStyle final {
@@ -99,15 +94,15 @@ template <typename T> struct DirectionalStyle final {
 };
 
 struct TextStyle final {
-  std::optional<std::string> font_name;
-  std::optional<std::string> font_size;
-  std::optional<std::string> font_weight;
-  std::optional<std::string> font_style;
-  std::optional<std::string> font_underline;
-  std::optional<std::string> font_line_through;
+  const char *font_name;
+  std::optional<Measure> font_size;
+  std::optional<FontWeight> font_weight;
+  std::optional<FontStyle> font_style;
+  bool font_underline{false};
+  bool font_line_through{false};
   std::optional<std::string> font_shadow;
-  std::optional<std::string> font_color;
-  std::optional<std::string> background_color;
+  std::optional<Color> font_color;
+  std::optional<Color> background_color;
 
   void override(const TextStyle &other);
   void override(TextStyle &&other);
@@ -115,28 +110,28 @@ struct TextStyle final {
 
 struct ParagraphStyle final {
   std::optional<TextAlign> text_align;
-  DirectionalStyle<std::string> margin;
+  DirectionalStyle<Measure> margin;
 
   void override(const ParagraphStyle &other);
   void override(ParagraphStyle &&other);
 };
 
 struct TableStyle final {
-  std::optional<std::string> width;
+  std::optional<Measure> width;
 
   void override(const TableStyle &other);
   void override(TableStyle &&other);
 };
 
 struct TableColumnStyle final {
-  std::optional<std::string> width;
+  std::optional<Measure> width;
 
   void override(const TableColumnStyle &other);
   void override(TableColumnStyle &&other);
 };
 
 struct TableRowStyle final {
-  std::optional<std::string> height;
+  std::optional<Measure> height;
 
   void override(const TableRowStyle &other);
   void override(TableRowStyle &&other);
@@ -144,8 +139,8 @@ struct TableRowStyle final {
 
 struct TableCellStyle final {
   std::optional<VerticalAlign> vertical_align;
-  std::optional<std::string> background_color;
-  DirectionalStyle<std::string> padding;
+  std::optional<Color> background_color;
+  DirectionalStyle<Measure> padding;
   DirectionalStyle<std::string> border;
 
   void override(const TableCellStyle &other);
@@ -153,9 +148,9 @@ struct TableCellStyle final {
 };
 
 struct GraphicStyle final {
-  std::optional<std::string> stroke_width;
-  std::optional<std::string> stroke_color;
-  std::optional<std::string> fill_color;
+  std::optional<Measure> stroke_width;
+  std::optional<Color> stroke_color;
+  std::optional<Color> fill_color;
   std::optional<VerticalAlign> vertical_align;
 
   void override(const GraphicStyle &other);
@@ -163,10 +158,10 @@ struct GraphicStyle final {
 };
 
 struct PageLayout final {
-  std::optional<std::string> width;
-  std::optional<std::string> height;
-  std::optional<std::string> print_orientation;
-  DirectionalStyle<std::string> margin;
+  std::optional<Measure> width;
+  std::optional<Measure> height;
+  std::optional<PrintOrientation> print_orientation;
+  DirectionalStyle<Measure> margin;
 };
 
 struct TableDimensions {

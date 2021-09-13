@@ -47,4 +47,6 @@ bool DynamicUnit::operator!=(const DynamicUnit &rhs) const {
 
 const std::string &DynamicUnit::name() const { return m_unit->name; }
 
+std::string DynamicUnit::to_string() const { return m_unit->name; }
+
 } // namespace odr

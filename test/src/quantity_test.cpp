@@ -3,8 +3,7 @@
 
 using namespace odr;
 
-TEST(Quantity, inch) {
-  Quantity<double> inch{"10ms"};
-  std::cout << inch.magnitude() << std::endl;
-  std::cout << inch.unit().name() << std::endl;
+TEST(Quantity, construct) {
+  Quantity<double> a{"10ms"};
+  Quantity<double> b{"10 ms"};
 }

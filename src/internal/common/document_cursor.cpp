@@ -82,8 +82,9 @@ const abstract::Element *DocumentCursor::back_() const {
                                                      offset);
 }
 
-bool DocumentCursor::move_helper_(abstract::Element *element) {
-  if (element) {
+bool DocumentCursor::move_helper_(const bool pushed,
+                                  abstract::Element *element) {
+  if (pushed) {
     pushed_(element);
   }
   return element;
@@ -99,58 +100,80 @@ bool DocumentCursor::move_to_parent() {
 }
 
 bool DocumentCursor::move_to_first_child() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
+  bool pushed = false;
+  abstract::Allocator allocator = [&](const std::size_t size) {
+    pushed = true;
     return push_(size);
   };
-  return move_helper_(back_()->first_child(m_document, this, &allocator));
+  return move_helper_(pushed,
+                      back_()->first_child(m_document, this, &allocator));
 }
 
 bool DocumentCursor::move_to_previous_sibling() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
+  bool pushed = false;
+  abstract::Allocator allocator = [&](const std::size_t size) {
+    pushed = true;
     popping_(back_());
     pop_();
     return push_(size);
   };
-  return move_helper_(back_()->previous_sibling(m_document, this, &allocator));
+  return move_helper_(pushed,
+                      back_()->previous_sibling(m_document, this, &allocator));
 }
 
 bool DocumentCursor::move_to_next_sibling() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
+  bool pushed = false;
+  abstract::Allocator allocator = [&](const std::size_t size) {
+    pushed = true;
     popping_(back_());
     pop_();
     return push_(size);
   };
-  return move_helper_(back_()->next_sibling(m_document, this, &allocator));
+  return move_helper_(pushed,
+                      back_()->next_sibling(m_document, this, &allocator));
 }
 
 bool DocumentCursor::move_to_master_page() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
+  auto slide = dynamic_cast<const abstract::SlideElement *>(back_());
+  if (!slide) {
+    return false;
+  }
+
+  bool pushed = false;
+  abstract::Allocator allocator = [&](const std::size_t size) {
+    pushed = true;
     return push_(size);
   };
-  if (auto slide = dynamic_cast<const abstract::SlideElement *>(back_())) {
-    return move_helper_(slide->master_page(m_document, this, &allocator));
-  }
-  return false;
+  return move_helper_(pushed, slide->master_page(m_document, this, &allocator));
 }
 
 bool DocumentCursor::move_to_first_table_column() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
+  auto table = dynamic_cast<const abstract::TableElement *>(back_());
+  if (!table) {
+    return false;
+  }
+
+  bool pushed = false;
+  abstract::Allocator allocator = [&](const std::size_t size) {
+    pushed = true;
     return push_(size);
   };
-  if (auto table = dynamic_cast<const abstract::TableElement *>(back_())) {
-    return move_helper_(table->first_column(m_document, this, &allocator));
-  }
-  return false;
+  return move_helper_(pushed,
+                      table->first_column(m_document, this, &allocator));
 }
 
 bool DocumentCursor::move_to_first_table_row() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
+  auto table = dynamic_cast<const abstract::TableElement *>(back_());
+  if (!table) {
+    return false;
+  }
+
+  bool pushed = false;
+  abstract::Allocator allocator = [&](const std::size_t size) {
+    pushed = true;
     return push_(size);
   };
-  if (auto table = dynamic_cast<const abstract::TableElement *>(back_())) {
-    return move_helper_(table->first_row(m_document, this, &allocator));
-  }
-  return false;
+  return move_helper_(pushed, table->first_row(m_document, this, &allocator));
 }
 
 const ResolvedStyle &DocumentCursor::intermediate_style() const {

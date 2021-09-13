@@ -4,6 +4,14 @@ namespace odr {
 
 Color::Color() = default;
 
+Color::Color(const std::uint32_t rgb)
+    : red{(std::uint8_t)(rgb >> 16)}, green{(std::uint8_t)(rgb >> 8)},
+      blue{(std::uint8_t)(rgb >> 0)} {}
+
+Color::Color(const std::uint32_t rgba, bool)
+    : red{(std::uint8_t)(rgba >> 24)}, green{(std::uint8_t)(rgba >> 16)},
+      blue{(std::uint8_t)(rgba >> 8)}, alpha{(std::uint8_t)(rgba >> 0)} {}
+
 Color::Color(const std::uint8_t red, const std::uint8_t green,
              const std::uint8_t blue)
     : red{red}, green{green}, blue{blue} {}
@@ -11,6 +19,23 @@ Color::Color(const std::uint8_t red, const std::uint8_t green,
 Color::Color(const std::uint8_t red, const std::uint8_t green,
              const std::uint8_t blue, const std::uint8_t alpha)
     : red{red}, green{green}, blue{blue}, alpha{alpha} {}
+
+std::uint32_t Color::rgb() const {
+  std::uint32_t result{0};
+  result |= red << 16;
+  result |= green << 8;
+  result |= blue << 0;
+  return result;
+}
+
+std::uint32_t Color::rgba() const {
+  std::uint32_t result{0};
+  result |= red << 24;
+  result |= green << 16;
+  result |= blue << 8;
+  result |= alpha << 0;
+  return result;
+}
 
 void TextStyle::override(const TextStyle &other) {
   if (other.font_name) {

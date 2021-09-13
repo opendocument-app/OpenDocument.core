@@ -13,7 +13,7 @@
 namespace odr::internal::odf {
 
 namespace {
-std::optional<std::string> default_style_name(pugi::xml_node node);
+const char *default_style_name(pugi::xml_node node);
 }
 
 Element::Element(const Document *, pugi::xml_node node) : m_node{node} {}
@@ -55,8 +55,8 @@ abstract::Element *Element::next_sibling(const abstract::Document *document,
 
 common::ResolvedStyle
 Element::partial_style(const abstract::Document *document) const {
-  if (auto style_name = default_style_name(m_node)) {
-    if (auto style = style_(document)->style(*style_name)) {
+  if (auto style_name = style_name_(document)) {
+    if (auto style = style_(document)->style(style_name)) {
       return style->resolved();
     }
   }
@@ -67,6 +67,10 @@ common::ResolvedStyle
 Element::intermediate_style(const abstract::Document *,
                             const abstract::DocumentCursor *cursor) const {
   return static_cast<const DocumentCursor *>(cursor)->intermediate_style();
+}
+
+const char *Element::style_name_(const abstract::Document *) const {
+  return default_style_name(m_node);
 }
 
 const Document *Element::document_(const abstract::Document *document) {
@@ -113,7 +117,7 @@ construct_default_optional(const Document *document, pugi::xml_node node,
   return construct_default<Derived>(document, node, allocator);
 }
 
-std::optional<std::string> default_style_name(const pugi::xml_node node) {
+const char *default_style_name(const pugi::xml_node node) {
   for (auto attribute : node.attributes()) {
     if (util::string::ends_with(attribute.name(), ":style-name")) {
       return attribute.value();
@@ -696,6 +700,13 @@ public:
 private:
   TableColumn m_column;
   TableRow m_row;
+
+  const char *style_name_(const abstract::Document *) const final {
+    if (auto style_name = m_node.attribute("table:style-name")) {
+      return style_name.value();
+    }
+    return {};
+  }
 
   [[nodiscard]] std::uint32_t number_repeated_() const final {
     return m_node.attribute("table:number-columns-repeated").as_uint(1);

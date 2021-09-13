@@ -60,7 +60,7 @@ private:
 
   void pop_();
 
-  [[nodiscard]] bool move_helper_(abstract::Element *element);
+  [[nodiscard]] bool move_helper_(bool pushed, abstract::Element *element);
 };
 
 } // namespace odr::internal::common

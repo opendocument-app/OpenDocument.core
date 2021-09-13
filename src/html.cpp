@@ -49,13 +49,39 @@ const char *translate_vertical_align(const VerticalAlign vertical_align) {
   }
 }
 
+const char *translate_font_weight(const FontWeight font_weight) {
+  switch (font_weight) {
+  case FontWeight::bold:
+    return "bold";
+  default:
+    return ""; // TODO log
+  }
+}
+
+const char *translate_font_style(const FontStyle font_style) {
+  switch (font_style) {
+  case FontStyle::italic:
+    return "italic";
+  default:
+    return ""; // TODO log
+  }
+}
+
+std::string translate_color(const Color &color) {
+  // TODO alpha
+  std::stringstream ss;
+  ss << "#";
+  ss << std::setw(10) << std::setfill('0') << std::hex << color.rgb();
+  return ss.str();
+}
+
 std::string translate_outer_page_style(const PageLayout &page_layout) {
   std::string result;
   if (auto width = page_layout.width) {
-    result.append("width:").append(*width).append(";");
+    result.append("width:").append(width->to_string()).append(";");
   }
   if (auto height = page_layout.height) {
-    result.append("height:").append(*height).append(";");
+    result.append("height:").append(height->to_string()).append(";");
   }
   return result;
 }
@@ -63,16 +89,20 @@ std::string translate_outer_page_style(const PageLayout &page_layout) {
 std::string translate_inner_page_style(const PageLayout &page_layout) {
   std::string result;
   if (auto margin_right = page_layout.margin.right) {
-    result.append("margin-right:").append(*margin_right).append(";");
+    result.append("margin-right:")
+        .append(margin_right->to_string())
+        .append(";");
   }
   if (auto margin_top = page_layout.margin.top) {
-    result.append("margin-top:").append(*margin_top).append(";");
+    result.append("margin-top:").append(margin_top->to_string()).append(";");
   }
   if (auto margin_left = page_layout.margin.left) {
-    result.append("margin-left:").append(*margin_left).append(";");
+    result.append("margin-left:").append(margin_left->to_string()).append(";");
   }
   if (auto margin_bottom = page_layout.margin.bottom) {
-    result.append("margin-bottom:").append(*margin_bottom).append(";");
+    result.append("margin-bottom:")
+        .append(margin_bottom->to_string())
+        .append(";");
   }
   return result;
 }
@@ -80,34 +110,37 @@ std::string translate_inner_page_style(const PageLayout &page_layout) {
 std::string translate_text_style(const TextStyle &text_style) {
   std::string result;
   if (auto font_name = text_style.font_name) {
-    result.append("font-family:").append(*font_name).append(";");
+    result.append("font-family:").append(font_name).append(";");
   }
   if (auto font_size = text_style.font_size) {
-    result.append("font-size:").append(*font_size).append(";");
+    result.append("font-size:").append(font_size->to_string()).append(";");
   }
   if (auto font_weight = text_style.font_weight) {
-    result.append("font-weight:").append(*font_weight).append(";");
+    result.append("font-weight:")
+        .append(translate_font_weight(*font_weight))
+        .append(";");
   }
   if (auto font_style = text_style.font_style) {
-    result.append("font-style:").append(*font_style).append(";");
+    result.append("font-style:")
+        .append(translate_font_style(*font_style))
+        .append(";");
   }
-  if (auto underline = text_style.font_underline;
-      underline && (underline == "solid")) {
+  if (text_style.font_underline) {
     result += "text-decoration:underline;";
   }
-  if (auto strikethrough = text_style.font_line_through;
-      strikethrough && (strikethrough == "solid")) {
+  if (text_style.font_line_through) {
     result += "text-decoration:line-through;";
   }
   if (auto font_shadow = text_style.font_shadow) {
     result.append("text-shadow:").append(*font_shadow).append(";");
   }
   if (auto font_color = text_style.font_color) {
-    result.append("color:").append(*font_color).append(";");
+    result.append("color:").append(translate_color(*font_color)).append(";");
   }
-  if (auto background_color = text_style.background_color;
-      background_color && (background_color != "transparent")) {
-    result.append("background-color:").append(*background_color).append(";");
+  if (auto background_color = text_style.background_color) {
+    result.append("background-color:")
+        .append(translate_color(*background_color))
+        .append(";");
   }
   return result;
 }
@@ -120,16 +153,20 @@ std::string translate_paragraph_style(const ParagraphStyle &paragraph_style) {
         .append(";");
   }
   if (auto margin_right = paragraph_style.margin.right) {
-    result.append("margin-right:").append(*margin_right).append(";");
+    result.append("margin-right:")
+        .append(margin_right->to_string())
+        .append(";");
   }
   if (auto margin_top = paragraph_style.margin.top) {
-    result.append("margin-top:").append(*margin_top).append(";");
+    result.append("margin-top:").append(margin_top->to_string()).append(";");
   }
   if (auto margin_left = paragraph_style.margin.left) {
-    result.append("margin-left:").append(*margin_left).append(";");
+    result.append("margin-left:").append(margin_left->to_string()).append(";");
   }
   if (auto margin_bottom = paragraph_style.margin.bottom) {
-    result.append("margin-bottom:").append(*margin_bottom).append(";");
+    result.append("margin-bottom:")
+        .append(margin_bottom->to_string())
+        .append(";");
   }
   return result;
 }
@@ -137,16 +174,7 @@ std::string translate_paragraph_style(const ParagraphStyle &paragraph_style) {
 std::string translate_table_style(const TableStyle &table_style) {
   std::string result;
   if (auto width = table_style.width) {
-    result.append("width:").append(*width).append(";");
-  }
-  return result;
-}
-
-std::string
-translate_table_column_style(const TableColumnStyle &table_column_style) {
-  std::string result;
-  if (auto width = table_column_style.width) {
-    result.append("width:").append(*width).append(";");
+    result.append("width:").append(width->to_string()).append(";");
   }
   return result;
 }
@@ -156,25 +184,7 @@ std::string translate_table_row_style(const TableRowStyle &table_row_style) {
   // TODO that does not work with HTML; height would need to be applied to the
   // cells
   if (auto height = table_row_style.height) {
-    result.append("height:").append(*height).append(";");
-  }
-  return result;
-}
-
-std::string
-translate_table_cell_dimension(const Element::TableCell &table_cell) {
-  std::string result;
-  if (auto column_style = table_cell.column().style()) {
-    if (auto width = column_style->width) {
-      result.append("width:").append(*width).append(";");
-      result.append("max-width:").append(*width).append(";");
-    }
-  }
-  if (auto row_style = table_cell.row().style()) {
-    if (auto height = row_style->height) {
-      result.append("height:").append(*height).append(";");
-      result.append("max-height:").append(*height).append(";");
-    }
+    result.append("height:").append(height->to_string()).append(";");
   }
   return result;
 }
@@ -186,21 +196,28 @@ std::string translate_table_cell_style(const TableCellStyle &table_cell_style) {
         .append(translate_vertical_align(*vertical_align))
         .append(";");
   }
-  if (auto background_color = table_cell_style.background_color;
-      background_color && (background_color != "transparent")) {
-    result.append("background-color:").append(*background_color).append(";");
+  if (auto background_color = table_cell_style.background_color) {
+    result.append("background-color:")
+        .append(translate_color(*background_color))
+        .append(";");
   }
   if (auto padding_right = table_cell_style.padding.right) {
-    result.append("padding-right:").append(*padding_right).append(";");
+    result.append("padding-right:")
+        .append(padding_right->to_string())
+        .append(";");
   }
   if (auto padding_top = table_cell_style.padding.top) {
-    result.append("padding-top:").append(*padding_top).append(";");
+    result.append("padding-top:").append(padding_top->to_string()).append(";");
   }
   if (auto padding_left = table_cell_style.padding.left) {
-    result.append("padding-left:").append(*padding_left).append(";");
+    result.append("padding-left:")
+        .append(padding_left->to_string())
+        .append(";");
   }
   if (auto padding_bottom = table_cell_style.padding.bottom) {
-    result.append("padding-bottom:").append(*padding_bottom).append(";");
+    result.append("padding-bottom:")
+        .append(padding_bottom->to_string())
+        .append(";");
   }
   if (auto border_right = table_cell_style.border.right) {
     result.append("border-right:").append(*border_right).append(";");
@@ -220,13 +237,15 @@ std::string translate_table_cell_style(const TableCellStyle &table_cell_style) {
 std::string translate_drawing_style(const GraphicStyle &graphic_style) {
   std::string result;
   if (auto stroke_width = graphic_style.stroke_width) {
-    result.append("stroke-width:").append(*stroke_width).append(";");
+    result.append("stroke-width:")
+        .append(stroke_width->to_string())
+        .append(";");
   }
   if (auto stroke_color = graphic_style.stroke_color) {
-    result.append("stroke:").append(*stroke_color).append(";");
+    result.append("stroke:").append(translate_color(*stroke_color)).append(";");
   }
   if (auto fill_color = graphic_style.fill_color) {
-    result.append("fill:").append(*fill_color).append(";");
+    result.append("fill:").append(translate_color(*fill_color)).append(";");
   }
   if (auto vertical_align = graphic_style.vertical_align) {
     if (vertical_align == VerticalAlign::middle) {
@@ -389,15 +408,8 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
-  cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
-    auto table_column = cursor.element().table_column();
-
-    out << "<col";
-    if (auto style = table_column.style()) {
-      out << optional_style_attribute(translate_table_column_style(*style));
-    }
-    out << ">";
-
+  cursor.for_each_column([&](DocumentCursor &, const std::uint32_t) {
+    out << "<col>";
     return true;
   });
 
@@ -659,14 +671,8 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
   out << "<col>";
 
   column_index = 0;
-  cursor.for_each_column([&](DocumentCursor &cursor, const std::uint32_t) {
-    auto table_column = cursor.element().table_column();
-
-    out << "<col";
-    if (auto style = table_column.style()) {
-      out << optional_style_attribute(translate_table_column_style(*style));
-    }
-    out << ">";
+  cursor.for_each_column([&](DocumentCursor &, const std::uint32_t) {
+    out << "<col>";
 
     ++column_index;
     return column_index < end_column;
@@ -678,7 +684,17 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
 
     column_index = 0;
     cursor.for_each_column([&](DocumentCursor &, const std::uint32_t) {
-      out << "<td style=\"text-align:center;vertical-align:middle;\">";
+      auto table_column = cursor.element().table_column();
+      auto table_column_style = table_column.style();
+
+      out << "<td style=\"text-align:center;vertical-align:middle;";
+      if (table_column_style) {
+        if (auto width = table_column_style->width) {
+          out << "width:" << width->to_string() << ";";
+          out << "max-width:" << width->to_string() << ";";
+        }
+      }
+      out << "\">";
       out << common::TablePosition::to_column_string(column_index);
       out << "</td>";
 
@@ -691,14 +707,23 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
 
   cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
     auto table_row = cursor.element().table_row();
+    auto table_row_style = table_row.style();
 
     out << "<tr";
-    if (auto style = table_row.style()) {
-      out << optional_style_attribute(translate_table_row_style(*style));
+    if (table_row_style) {
+      out << optional_style_attribute(
+          translate_table_row_style(*table_row_style));
     }
     out << ">";
 
-    out << "<td style=\"text-align:center;vertical-align:middle;\">";
+    out << "<td style=\"text-align:center;vertical-align:middle;";
+    if (table_row_style) {
+      if (auto height = table_row_style->height) {
+        out << "height:" << height->to_string() << ";";
+        out << "max-height:" << height->to_string() << ";";
+      }
+    }
+    out << "\">";
     out << common::TablePosition::to_row_string(row_index);
     out << "</td>";
 
@@ -715,10 +740,9 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
       if (cell_span.columns > 1) {
         out << " colspan=\"" << cell_span.columns << "\"";
       }
-      out << optional_style_attribute(
-          translate_table_cell_dimension(table_cell) +
-          (table_cell.style() ? translate_table_cell_style(*table_cell.style())
-                              : ""));
+      if (auto style = table_cell.style()) {
+        out << optional_style_attribute(translate_table_cell_style(*style));
+      }
       out << ">";
       translate_children(cursor, out, config);
       out << "</td>";

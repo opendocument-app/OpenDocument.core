@@ -31,8 +31,11 @@ void Style::resolve_text_style_(pugi::xml_node node,
       result = TextStyle();
     }
 
-    result->font_name = read_string_attribute(
-        run_properties.child("w:rFonts").attribute("w:ascii"));
+    if (auto font_name =
+            run_properties.child("w:rFonts").attribute("w:ascii")) {
+      result->font_name = font_name.value();
+    }
+    /*
     result->font_size =
         read_string_attribute(run_properties.child("w:sz").attribute("w:val"));
     result->font_weight =
@@ -51,6 +54,7 @@ void Style::resolve_text_style_(pugi::xml_node node,
     result->background_color = read_optional_attribute(
         run_properties.child("w:highlight").attribute("w:val"),
         read_color_attribute);
+        */
   }
 }
 

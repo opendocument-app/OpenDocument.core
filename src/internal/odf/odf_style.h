@@ -58,8 +58,7 @@ public:
   StyleRegistry();
   StyleRegistry(pugi::xml_node content_root, pugi::xml_node styles_root);
 
-  // TODO handle default styles
-  Style *style(const std::string &name) const;
+  Style *style(const char *name) const;
 
   [[nodiscard]] PageLayout page_layout(const std::string &name) const;
 

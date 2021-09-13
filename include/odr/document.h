@@ -171,6 +171,10 @@ public:
     Extension() = default;
     Extension(const internal::abstract::Document *document,
               const internal::abstract::DocumentCursor *cursor,
+              const T *element)
+        : m_document{document}, m_cursor{cursor}, m_element{element} {}
+    Extension(const internal::abstract::Document *document,
+              const internal::abstract::DocumentCursor *cursor,
               const internal::abstract::Element *element)
         : m_document{document}, m_cursor{cursor}, m_element{
                                                       dynamic_cast<const T *>(

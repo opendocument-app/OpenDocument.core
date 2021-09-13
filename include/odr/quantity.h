@@ -15,6 +15,8 @@ public:
 
   [[nodiscard]] const std::string &name() const;
 
+  std::string to_string() const;
+
 private:
   struct Unit;
   class Registry;
@@ -36,10 +38,21 @@ public:
     m_unit = DynamicUnit(end);
   }
 
+  bool operator==(const Quantity &rhs) const {
+    return (m_magnitude == rhs.m_magnitude) && (m_unit == rhs.m_unit);
+  }
+  bool operator!=(const Quantity &rhs) const {
+    return (m_magnitude != rhs.m_magnitude) || (m_unit != rhs.m_unit);
+  }
+
   explicit operator Magnitude() const { return m_magnitude; }
 
   Magnitude magnitude() const { return m_magnitude; }
   Unit unit() const { return m_unit; }
+
+  std::string to_string() const {
+    return std::to_string(m_magnitude) + m_unit.to_string();
+  }
 
 private:
   Magnitude m_magnitude{0};

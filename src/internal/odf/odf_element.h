@@ -40,6 +40,8 @@ public:
 protected:
   pugi::xml_node m_node;
 
+  virtual const char *style_name_(const abstract::Document *document) const;
+
   static const Document *document_(const abstract::Document *document);
   static const StyleRegistry *style_(const abstract::Document *document);
 };
