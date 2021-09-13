@@ -284,6 +284,7 @@ public:
     [[nodiscard]] TableColumn column() const;
     [[nodiscard]] TableRow row() const;
 
+    [[nodiscard]] bool covered() const;
     [[nodiscard]] TableDimensions span() const;
 
     [[nodiscard]] std::optional<TableCellStyle> style() const;

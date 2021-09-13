@@ -407,6 +407,10 @@ public:
     return nullptr;
   }
 
+  [[nodiscard]] bool covered(const abstract::Document *) const final {
+    return false;
+  }
+
   [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
     return {}; // TODO
   }

@@ -424,21 +424,24 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
 
     cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
       auto table_cell = cursor.element().table_cell();
-      auto cell_span = table_cell.span();
 
-      out << "<td";
-      if (cell_span.rows > 1) {
-        out << " rowspan=\"" << cell_span.rows << "\"";
+      if (!table_cell.covered()) {
+        auto cell_span = table_cell.span();
+
+        out << "<td";
+        if (cell_span.rows > 1) {
+          out << " rowspan=\"" << cell_span.rows << "\"";
+        }
+        if (cell_span.columns > 1) {
+          out << " colspan=\"" << cell_span.columns << "\"";
+        }
+        if (auto style = table_cell.style()) {
+          out << optional_style_attribute(translate_table_cell_style(*style));
+        }
+        out << ">";
+        translate_children(cursor, out, config);
+        out << "</td>";
       }
-      if (cell_span.columns > 1) {
-        out << " colspan=\"" << cell_span.columns << "\"";
-      }
-      if (auto style = table_cell.style()) {
-        out << optional_style_attribute(translate_table_cell_style(*style));
-      }
-      out << ">";
-      translate_children(cursor, out, config);
-      out << "</td>";
 
       return true;
     });
@@ -723,25 +726,27 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
 
     column_index = 0;
     cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
-      // TODO check if cell hidden
       auto table_cell = cursor.element().table_cell();
-      auto cell_span = table_cell.span();
 
-      out << "<td";
-      if (cell_span.rows > 1) {
-        out << " rowspan=\"" << cell_span.rows << "\"";
-      }
-      if (cell_span.columns > 1) {
-        out << " colspan=\"" << cell_span.columns << "\"";
-      }
-      if (auto style = table_cell.style()) {
-        out << optional_style_attribute(translate_table_cell_style(*style));
-      }
-      out << ">";
-      translate_children(cursor, out, config);
-      out << "</td>";
+      if (!table_cell.covered()) {
+        auto cell_span = table_cell.span();
 
-      column_index += cell_span.columns;
+        out << "<td";
+        if (cell_span.rows > 1) {
+          out << " rowspan=\"" << cell_span.rows << "\"";
+        }
+        if (cell_span.columns > 1) {
+          out << " colspan=\"" << cell_span.columns << "\"";
+        }
+        if (auto style = table_cell.style()) {
+          out << optional_style_attribute(translate_table_cell_style(*style));
+        }
+        out << ">";
+        translate_children(cursor, out, config);
+        out << "</td>";
+      }
+
+      ++column_index;
       return column_index < end_column;
     });
 

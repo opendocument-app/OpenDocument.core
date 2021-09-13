@@ -1,3 +1,4 @@
+#include <cstring>
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
@@ -677,6 +678,10 @@ public:
     return &m_row;
   }
 
+  [[nodiscard]] bool covered(const abstract::Document *) const final {
+    return std::strcmp(m_node.name(), "table:covered-table-cell") == 0;
+  }
+
   [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
     return {m_node.attribute("table:number-rows-spanned").as_uint(1),
             m_node.attribute("table:number-columns-spanned").as_uint(1)};
@@ -713,11 +718,11 @@ private:
   }
 
   [[nodiscard]] pugi::xml_node previous_node_() const final {
-    return m_node.previous_sibling("table:table-cell");
+    return m_node.previous_sibling();
   }
 
   [[nodiscard]] pugi::xml_node next_node_() const final {
-    return m_node.next_sibling("table:table-cell");
+    return m_node.next_sibling();
   }
 };
 
@@ -1024,6 +1029,7 @@ odf::construct_default_element(const Document *document, pugi::xml_node node,
       {"table:table-column", construct_default<TableColumn>},
       {"table:table-row", construct_default<TableRow>},
       {"table:table-cell", construct_default<TableCell>},
+      {"table:covered-table-cell", construct_default<TableCell>},
       {"draw:frame", construct_default<Frame>},
       {"draw:image", construct_default<ImageElement>},
       {"draw:rect", construct_default<Rect>},

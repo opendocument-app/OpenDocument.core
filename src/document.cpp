@@ -236,6 +236,10 @@ Element::TableRow Element::TableCell::row() const {
                    : TableRow();
 }
 
+bool Element::TableCell::covered() const {
+  return m_element ? m_element->covered(m_document) : false;
+}
+
 TableDimensions Element::TableCell::span() const {
   return m_element ? m_element->span(m_document) : TableDimensions();
 }

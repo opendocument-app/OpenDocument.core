@@ -62,7 +62,6 @@ td {
   vertical-align: bottom;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 p {
@@ -72,10 +71,11 @@ p {
 
 .odr-gridlines-none table td {}
 .odr-gridlines-soft table td {
-  border:1px solid #C0C0C0;
+  border-top: 1px solid #C0C0C0;
+  border-left: 1px solid #C0C0C0;
 }
 .odr-gridlines-hard table td {
-  border:1px solid #C0C0C0 !important;
+  border: 1px solid #C0C0C0 !important;
 }
 
 table td.odr-value-type-float {

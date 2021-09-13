@@ -277,6 +277,7 @@ public:
   [[nodiscard]] virtual const Element *
   row(const Document *document, const DocumentCursor *cursor) const = 0;
 
+  [[nodiscard]] virtual bool covered(const Document *document) const = 0;
   [[nodiscard]] virtual TableDimensions
   span(const Document *document) const = 0;
 
