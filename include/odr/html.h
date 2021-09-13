@@ -1,6 +1,8 @@
 #ifndef ODR_HTML_H
 #define ODR_HTML_H
 
+#include <odr/style.h>
+#include <optional>
 #include <string>
 
 namespace odr {
@@ -27,8 +29,7 @@ struct HtmlConfig {
   bool text_document_margin{false};
 
   // spreadsheet table limit
-  std::uint32_t table_limit_rows{10000};
-  std::uint32_t table_limit_columns{500};
+  std::optional<TableDimensions> table_limit = TableDimensions(10000, 500);
   bool table_limit_by_content{true};
   // spreadsheet gridlines
   HtmlTableGridlines table_gridlines{HtmlTableGridlines::soft};

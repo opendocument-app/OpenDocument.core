@@ -148,6 +148,10 @@ public:
   }
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
+
+  [[nodiscard]] virtual TableDimensions
+  content(const Document *document,
+          std::optional<TableDimensions> range) const = 0;
 };
 
 class PageElement : public virtual Element {

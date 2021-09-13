@@ -644,26 +644,20 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
-  auto dimensions = cursor.element().table().dimensions();
+  auto table = cursor.element().table();
+  auto sheet = cursor.element().sheet();
+  auto dimensions = table.dimensions();
   std::uint32_t end_row = dimensions.rows;
   std::uint32_t end_column = dimensions.columns;
-  if ((config.table_limit_rows > 0) && (end_row > config.table_limit_rows)) {
-    end_row = config.table_limit_rows;
+  if (config.table_limit) {
+    end_row = config.table_limit->rows;
+    end_column = config.table_limit->columns;
   }
-  if ((config.table_limit_columns > 0) &&
-      (end_column > config.table_limit_columns)) {
-    end_column = config.table_limit_columns;
-  }
-  /*
   if (config.table_limit_by_content) {
-    const auto content_bounds = element.content_bounds();
-    const auto content_bounds_within = element.content_bounds(
-        {config.table_limit_rows, config.table_limit_columns});
-    end_row = end_row ? content_bounds_within.rows : content_bounds.rows;
-    end_column =
-        end_column ? content_bounds_within.columns : content_bounds.columns;
+    const auto content = sheet.content(config.table_limit);
+    end_row = content.rows;
+    end_column = content.columns;
   }
-   */
 
   std::uint32_t column_index = 0;
   std::uint32_t row_index = 0;

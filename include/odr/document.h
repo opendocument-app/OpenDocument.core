@@ -209,6 +209,9 @@ public:
     using Extension::Extension;
 
     [[nodiscard]] std::string name() const;
+
+    [[nodiscard]] TableDimensions
+    content(std::optional<TableDimensions> range) const;
   };
 
   class Page final : public Extension<internal::abstract::PageElement> {

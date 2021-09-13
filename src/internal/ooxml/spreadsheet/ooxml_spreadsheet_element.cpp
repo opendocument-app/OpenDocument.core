@@ -183,6 +183,11 @@ public:
     return {};
   }
 
+  [[nodiscard]] TableDimensions content(const abstract::Document *document,
+                                        std::optional<TableDimensions>) const {
+    return dimensions(document); // TODO
+  }
+
   abstract::Element *
   first_column(const abstract::Document *document,
                const abstract::DocumentCursor *,

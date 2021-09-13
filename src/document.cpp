@@ -174,6 +174,11 @@ std::string Element::Sheet::name() const {
   return m_element ? m_element->name(m_document) : "";
 }
 
+TableDimensions
+Element::Sheet::content(std::optional<TableDimensions> range) const {
+  return m_element ? m_element->content(m_document, range) : TableDimensions();
+}
+
 PageLayout Element::Page::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
 }

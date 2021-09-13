@@ -945,6 +945,39 @@ public:
     }
     return nullptr;
   }
+
+  [[nodiscard]] TableDimensions
+  content(const abstract::Document *,
+          const std::optional<TableDimensions> range) const final {
+    TableDimensions result;
+
+    common::TableCursor cursor;
+    for (auto row : m_node.children("table:table-row")) {
+      const auto rows_repeated =
+          row.attribute("table:number-rows-repeated").as_uint(1);
+      cursor.add_row(rows_repeated);
+
+      for (auto cell : row.children("table:table-cell")) {
+        const auto columns_repeated =
+            cell.attribute("table:number-columns-repeated").as_uint(1);
+        const auto colspan =
+            cell.attribute("table:number-columns-spanned").as_uint(1);
+        const auto rowspan =
+            cell.attribute("table:number-rows-spanned").as_uint(1);
+        cursor.add_cell(colspan, rowspan, columns_repeated);
+
+        const auto new_rows = cursor.row();
+        const auto new_cols = std::max(result.columns, cursor.column());
+        if (cell.first_child() && (range && (new_rows < range->rows) &&
+                                   (new_cols < range->columns))) {
+          result.rows = new_rows;
+          result.columns = new_cols;
+        }
+      }
+    }
+
+    return result;
+  }
 };
 
 } // namespace
