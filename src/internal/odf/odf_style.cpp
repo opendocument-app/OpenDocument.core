@@ -20,6 +20,7 @@ std::optional<Measure> read_measure(pugi::xml_attribute attribute) {
     try {
       return Measure(attribute.value());
     } catch (...) {
+      // TODO log
     }
   }
   return {};
@@ -108,12 +109,14 @@ std::optional<Color> read_color(pugi::xml_attribute attribute) {
   if (std::strcmp("transparent", attribute.value()) == 0) {
     return {}; // TODO use alpha
   }
-  if (value[0] != '#') {
-    throw std::invalid_argument("# missing");
+  if (value[0] == '#') {
+    std::uint32_t color = std::strtoull(&value[1], nullptr, 16);
+    return Color((std::uint8_t)(color >> 16), (std::uint8_t)(color >> 8),
+                 (std::uint8_t)(color >> 0));
   }
-  std::uint32_t color = std::strtoull(&value[1], nullptr, 16);
-  return Color((std::uint8_t)(color >> 16), (std::uint8_t)(color >> 8),
-               (std::uint8_t)(color >> 0));
+  // TODO log
+  // throw std::invalid_argument("# missing");
+  return {};
 }
 
 PageLayout read_page_layout(pugi::xml_node node) {
