@@ -420,8 +420,9 @@ Style *StyleRegistry::generate_style_(const std::string &name,
   Style *parent{nullptr};
   if (auto parent_attr = node.attribute("style:parent-style-name");
       parent_attr) {
-    parent = generate_style_(parent_attr.value(),
-                             m_index_style.at(parent_attr.value()));
+    if (auto parent_node = m_index_style[parent_attr.value()]) {
+      parent = generate_style_(parent_attr.value(), parent_node);
+    }
   }
 
   Style *family{nullptr};
