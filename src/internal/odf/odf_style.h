@@ -16,17 +16,22 @@ struct PageLayout;
 namespace odr::internal::odf {
 class Document;
 
+class StyleRegistry;
+
 class Style final {
 public:
   Style();
-  Style(std::string family, pugi::xml_node node);
-  Style(std::string name, pugi::xml_node node, Style *parent, Style *family);
+  Style(const StyleRegistry *registry, std::string family, pugi::xml_node node);
+  Style(const StyleRegistry *registry, std::string name, pugi::xml_node node,
+        Style *parent, Style *family);
 
   [[nodiscard]] std::string name() const;
 
   [[nodiscard]] const common::ResolvedStyle &resolved() const;
 
 private:
+  const StyleRegistry *m_registry{nullptr};
+
   std::string m_name;
   pugi::xml_node m_node;
   Style *m_parent{nullptr};
@@ -36,7 +41,8 @@ private:
 
   void resolve_style_();
 
-  static void resolve_text_style_(pugi::xml_node node,
+  static void resolve_text_style_(const StyleRegistry *registry,
+                                  pugi::xml_node node,
                                   std::optional<TextStyle> &result);
   static void resolve_paragraph_style_(pugi::xml_node node,
                                        std::optional<ParagraphStyle> &result);
@@ -62,8 +68,9 @@ public:
 
   [[nodiscard]] PageLayout page_layout(const std::string &name) const;
 
-  [[nodiscard]] pugi::xml_node
-  master_page_node(const std::string &master_page_name) const;
+  [[nodiscard]] pugi::xml_node master_page_node(const std::string &name) const;
+
+  [[nodiscard]] pugi::xml_node font_face_node(const std::string &name) const;
 
   [[nodiscard]] std::optional<std::string> first_master_page() const;
 

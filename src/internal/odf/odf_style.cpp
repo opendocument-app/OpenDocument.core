@@ -155,19 +155,29 @@ PageLayout read_page_layout(pugi::xml_node node) {
   return result;
 }
 
+void read_font_face(const char *name, pugi::xml_node node, TextStyle &result) {
+  if (!node) {
+    result.font_name = name;
+    return;
+  }
+
+  result.font_name = node.attribute("svg:font-family").value();
+}
+
 } // namespace
 
 Style::Style() = default;
 
-Style::Style(std::string family, pugi::xml_node node)
-    : m_name{std::move(family)}, m_node{node} {
+Style::Style(const StyleRegistry *registry, std::string family,
+             pugi::xml_node node)
+    : m_registry{registry}, m_name{std::move(family)}, m_node{node} {
   resolve_style_();
 }
 
-Style::Style(std::string name, pugi::xml_node node, Style *parent,
-             Style *family)
-    : m_name{std::move(name)}, m_node{node}, m_parent{parent}, m_family{
-                                                                   family} {
+Style::Style(const StyleRegistry *registry, std::string name,
+             pugi::xml_node node, Style *parent, Style *family)
+    : m_registry{registry}, m_name{std::move(name)}, m_node{node},
+      m_parent{parent}, m_family{family} {
   if (Style *copy_from = m_parent ? m_parent : m_family) {
     m_resolved = copy_from->m_resolved;
   }
@@ -180,7 +190,7 @@ std::string Style::name() const { return m_name; }
 const common::ResolvedStyle &Style::resolved() const { return m_resolved; }
 
 void Style::resolve_style_() {
-  resolve_text_style_(m_node, m_resolved.text_style);
+  resolve_text_style_(m_registry, m_node, m_resolved.text_style);
   resolve_paragraph_style_(m_node, m_resolved.paragraph_style);
   resolve_table_style_(m_node, m_resolved.table_style);
   resolve_table_column_style_(m_node, m_resolved.table_column_style);
@@ -189,15 +199,16 @@ void Style::resolve_style_() {
   resolve_graphic_style_(m_node, m_resolved.graphic_style);
 }
 
-void Style::resolve_text_style_(pugi::xml_node node,
+void Style::resolve_text_style_(const StyleRegistry *registry,
+                                pugi::xml_node node,
                                 std::optional<TextStyle> &result) {
   if (auto text_properties = node.child("style:text-properties")) {
     if (!result) {
       result = TextStyle();
     }
 
-    if (auto font_name = text_properties.attribute("style:font-name")) {
-      result->font_name = font_name.value();
+    if (auto font_name = text_properties.attribute("style:font-name").value()) {
+      read_font_face(font_name, registry->font_face_node(font_name), *result);
     }
     result->font_size = read_measure(text_properties.attribute("fo:font-size"));
     result->font_weight =
@@ -372,11 +383,18 @@ PageLayout StyleRegistry::page_layout(const std::string &name) const {
   return {};
 }
 
-pugi::xml_node
-StyleRegistry::master_page_node(const std::string &master_page_name) const {
-  if (auto master_page_it = m_index_master_page.find(master_page_name);
+pugi::xml_node StyleRegistry::master_page_node(const std::string &name) const {
+  if (auto master_page_it = m_index_master_page.find(name);
       master_page_it != std::end(m_index_master_page)) {
     return master_page_it->second;
+  }
+  return {};
+}
+
+pugi::xml_node StyleRegistry::font_face_node(const std::string &name) const {
+  if (auto font_face_it = m_index_font_face.find(name);
+      font_face_it != std::end(m_index_font_face)) {
+    return font_face_it->second;
   }
   return {};
 }
@@ -439,7 +457,7 @@ Style *StyleRegistry::generate_default_style_(const std::string &family,
   if (style) {
     return style.get();
   }
-  style = std::make_unique<Style>(family, node);
+  style = std::make_unique<Style>(this, family, node);
   return style.get();
 }
 
@@ -463,7 +481,7 @@ Style *StyleRegistry::generate_style_(const std::string &name,
     family = generate_default_style_(family_attr.value(), {});
   }
 
-  style = std::make_unique<Style>(name, node, parent, family);
+  style = std::make_unique<Style>(this, name, node, parent, family);
   return style.get();
 }
 
