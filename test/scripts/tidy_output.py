@@ -14,7 +14,7 @@ class HtmlTidyError(Exception):
     pass
 
 
-def tidy_json(path, **kwargs):
+def tidy_json(path):
     try:
         with open(path, 'r') as f:
             parsed = json.load(f)
@@ -25,9 +25,11 @@ def tidy_json(path, **kwargs):
         return 1
 
 
-def tidy_html(path, **kwargs):
+def tidy_html(path):
     cmd = shlex.split(f'tidy -config .html-tidy -q -m "{path}"')
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    result = subprocess.run(cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
     if result.returncode == 1:
         return 1
     if result.returncode > 1:
@@ -35,14 +37,14 @@ def tidy_html(path, **kwargs):
     return 0
 
 
-def tidy_file(path, **kwargs):
+def tidy_file(path):
     if path.endswith('.json'):
         return tidy_json(path)
     elif path.endswith('.html'):
         return tidy_html(path)
 
 
-def tidyable_file(path, **kwargs):
+def tidyable_file(path):
     if path.endswith('.json'):
         return True
     if path.endswith('.html'):
@@ -50,7 +52,7 @@ def tidyable_file(path, **kwargs):
     return False
 
 
-def tidy_dir(path, level=0, prefix='', **kwargs):
+def tidy_dir(path, level=0, prefix=''):
     prefix_file = prefix + '├── '
     if level == 0:
         print(f'tidy dir {path}')
@@ -61,7 +63,9 @@ def tidy_dir(path, level=0, prefix='', **kwargs):
     }
 
     items = [os.path.join(path, name) for name in os.listdir(path)]
-    files = sorted([path for path in items if os.path.isfile(path) and tidyable_file(path)])
+    files = sorted([
+        path for path in items if os.path.isfile(path) and tidyable_file(path)
+    ])
     dirs = sorted([path for path in items if os.path.isdir(path)])
 
     for filename in [os.path.basename(path) for path in files]:
@@ -78,7 +82,9 @@ def tidy_dir(path, level=0, prefix='', **kwargs):
 
     for dirname in [os.path.basename(path) for path in dirs]:
         print(prefix + '├── ' + dirname)
-        subresult = tidy_dir(os.path.join(path, dirname), level=level + 1, prefix=prefix + '│   ', **kwargs)
+        subresult = tidy_dir(os.path.join(path, dirname),
+                             level=level + 1,
+                             prefix=prefix + '│   ')
         result['warning'].extend(subresult['warning'])
         result['error'].extend(subresult['error'])
 
