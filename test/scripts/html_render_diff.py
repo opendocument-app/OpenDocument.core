@@ -57,9 +57,10 @@ def main():
     if bounding_box:
         print('images are different')
         print('first error at %f%%' % (1e2 * bounding_box[1] / diff.height))
-        print('bounding box %f%%' % (
-                1e2 * ((bounding_box[2] - bounding_box[0]) * (bounding_box[3] - bounding_box[1])) / (
-                diff.width * diff.height)))
+        print('bounding box %f%%' %
+              (1e2 * ((bounding_box[2] - bounding_box[0]) *
+                      (bounding_box[3] - bounding_box[1])) /
+               (diff.width * diff.height)))
         return 1
 
     print('images are the same')
