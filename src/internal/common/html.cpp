@@ -60,7 +60,6 @@ table {
 }
 td {
   vertical-align: bottom;
-  overflow: hidden;
   text-overflow: ellipsis;
 }
 
