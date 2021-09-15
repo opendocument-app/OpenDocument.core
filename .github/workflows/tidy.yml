@@ -12,7 +12,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - run: clang-tidy --version
+      - run: clang-tidy-12 --version
 
       - name: cmake
         run: |

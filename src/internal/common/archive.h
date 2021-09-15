@@ -45,7 +45,7 @@ private:
 template <typename Impl> class ArchiveFile : public abstract::ArchiveFile {
 public:
   template <typename... Args>
-  ArchiveFile(Args &&... args) : m_impl{std::forward<Args>(args)...} {}
+  ArchiveFile(Args &&...args) : m_impl{std::forward<Args>(args)...} {}
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final {
     return {}; // TODO
