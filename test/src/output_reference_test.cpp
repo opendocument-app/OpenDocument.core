@@ -117,4 +117,4 @@ TEST_P(OutputReferenceTests, all) {
 }
 
 INSTANTIATE_TEST_SUITE_P(all, OutputReferenceTests,
-                        testing::ValuesIn(TestData::test_file_paths()));
+                         testing::ValuesIn(TestData::test_file_paths()));
