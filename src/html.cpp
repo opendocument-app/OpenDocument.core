@@ -388,7 +388,13 @@ void translate_list(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<ul>";
   cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
-    out << "<li>";
+    auto list_item = cursor.element().list_item();
+
+    out << "<li";
+    if (auto style = list_item.style()) {
+      out << optional_style_attribute(translate_text_style(*style));
+    }
+    out << ">";
     translate_children(cursor, out, config);
     out << "</li>";
   });
@@ -496,9 +502,11 @@ void translate_image(DocumentCursor &cursor, std::ostream &out,
 
 void translate_frame(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
+  auto frame = cursor.element().frame();
+
   // TODO choosing <span> by default because it is valid inside <p>;
   // alternatives?
-  const bool span = cursor.element().frame().anchor_type().has_value();
+  const bool span = frame.anchor_type().has_value();
   if (span) {
     out << "<span";
   } else {
@@ -506,7 +514,8 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
   }
 
   out << optional_style_attribute(
-      translate_frame_properties(cursor.element().frame()));
+      translate_frame_properties(frame) +
+      (frame.style() ? translate_drawing_style(*frame.style()) : ""));
   out << ">";
   translate_children(cursor, out, config);
 

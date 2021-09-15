@@ -468,6 +468,17 @@ public:
   }
 };
 
+class ListItem final : public Element, public abstract::ListItemElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] std::optional<TextStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
+  }
+};
+
 class TableElement : public Element, public abstract::TableElement {
 public:
   using Element::Element;
@@ -777,6 +788,12 @@ public:
     }
     return {};
   }
+
+  [[nodiscard]] std::optional<GraphicStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).graphic_style;
+  }
 };
 
 class Rect final : public Element, public abstract::RectElement {
@@ -1001,7 +1018,6 @@ odf::construct_default_element(const Document *document, pugi::xml_node node,
   using Span = DefaultElement<ElementType::span>;
   using LineBreak = DefaultElement<ElementType::line_break>;
   using List = DefaultElement<ElementType::list>;
-  using ListItem = DefaultElement<ElementType::list_item>;
   using Group = DefaultElement<ElementType::group>;
   using PageBreak = DefaultElement<ElementType::page_break>;
 

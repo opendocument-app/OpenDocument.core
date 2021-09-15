@@ -205,6 +205,11 @@ std::string Element::Bookmark::name() const {
   return m_element ? m_element->name(m_document) : "";
 }
 
+std::optional<TextStyle> Element::ListItem::style() const {
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<TextStyle>();
+}
+
 TableDimensions Element::Table::dimensions() const {
   return m_element ? m_element->dimensions(m_document) : TableDimensions();
 }
@@ -275,6 +280,11 @@ std::optional<std::string> Element::Frame::height() const {
 std::optional<std::string> Element::Frame::z_index() const {
   return m_element ? m_element->z_index(m_document)
                    : std::optional<std::string>();
+}
+
+std::optional<GraphicStyle> Element::Frame::style() const {
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<GraphicStyle>();
 }
 
 std::string Element::Rect::x() const {
@@ -402,6 +412,10 @@ Element::Link Element::link() const {
 }
 
 Element::Bookmark Element::bookmark() const {
+  return {m_document, m_cursor, m_element};
+}
+
+Element::ListItem Element::list_item() const {
   return {m_document, m_cursor, m_element};
 }
 

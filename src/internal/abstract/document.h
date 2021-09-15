@@ -227,6 +227,16 @@ public:
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
 
+class ListItemElement : public virtual Element {
+public:
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::list_item;
+  }
+
+  [[nodiscard]] virtual std::optional<TextStyle>
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
+};
+
 class TableElement : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
@@ -303,6 +313,9 @@ public:
   height(const Document *document) const = 0;
   [[nodiscard]] virtual std::optional<std::string>
   z_index(const Document *document) const = 0;
+
+  [[nodiscard]] virtual std::optional<GraphicStyle>
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class RectElement : public virtual Element {

@@ -22,6 +22,7 @@ class ParagraphElement;
 class TextElement;
 class LinkElement;
 class BookmarkElement;
+class ListItemElement;
 class TableElement;
 class TableColumnElement;
 class TableRowElement;
@@ -252,6 +253,13 @@ public:
     [[nodiscard]] std::string name() const;
   };
 
+  class ListItem final : public Extension<internal::abstract::ListItemElement> {
+  public:
+    using Extension::Extension;
+
+    [[nodiscard]] std::optional<TextStyle> style() const;
+  };
+
   class Table final : public Extension<internal::abstract::TableElement> {
   public:
     using Extension::Extension;
@@ -300,6 +308,8 @@ public:
     [[nodiscard]] std::optional<std::string> width() const;
     [[nodiscard]] std::optional<std::string> height() const;
     [[nodiscard]] std::optional<std::string> z_index() const;
+
+    [[nodiscard]] std::optional<GraphicStyle> style() const;
   };
 
   class Rect final : public Extension<internal::abstract::RectElement> {
@@ -368,6 +378,7 @@ public:
   [[nodiscard]] Text text() const;
   [[nodiscard]] Link link() const;
   [[nodiscard]] Bookmark bookmark() const;
+  [[nodiscard]] ListItem list_item() const;
   [[nodiscard]] Table table() const;
   [[nodiscard]] TableColumn table_column() const;
   [[nodiscard]] TableRow table_row() const;

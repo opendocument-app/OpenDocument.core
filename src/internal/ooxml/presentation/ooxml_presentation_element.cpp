@@ -463,6 +463,12 @@ public:
   z_index(const abstract::Document *) const final {
     return {}; // TODO
   }
+
+  [[nodiscard]] std::optional<GraphicStyle>
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {}; // TODO
+  }
 };
 
 class ImageElement final : public Element, public abstract::ImageElement {
