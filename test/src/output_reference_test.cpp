@@ -45,7 +45,6 @@ TEST_P(OutputReferenceTests, all) {
 
   const DecodedFile file{test_file.path};
 
-  fs::create_directories(fs::path(output_path));
   auto file_meta = file.file_meta();
 
   // encrypted ooxml type cannot be inspected
@@ -63,6 +62,7 @@ TEST_P(OutputReferenceTests, all) {
     EXPECT_EQ(test_file.type, document_file.file_type());
   }
 
+  fs::create_directories(output_path);
   file_meta = file.file_meta();
 
   {
@@ -122,4 +122,4 @@ TEST_P(OutputReferenceTests, all) {
 }
 
 INSTANTIATE_TEST_SUITE_P(all, OutputReferenceTests,
-                        testing::ValuesIn(TestData::test_file_paths()));
+                         testing::ValuesIn(TestData::test_file_paths()));
