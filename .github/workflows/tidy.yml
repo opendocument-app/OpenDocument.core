@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - run: sudo apt install clang-tidy
+      - run: sudo apt install clang-tidy-12
 
       - name: checkout
         uses: actions/checkout@v2
@@ -23,4 +23,4 @@ jobs:
       - name: clang-tidy
         run: |
           FILES=$( find . -path ./build -prune -false -o -type f \( -iname \*.cpp \) )
-          clang-tidy -p build -header-filter '.*' $FILES
+          clang-tidy-12 -p build -header-filter '.*' $FILES

@@ -3,7 +3,7 @@
 format_file() {
   local file="${1}"
   if [ -f $file ]; then
-    clang-format-10 -i -style=file ${1}
+    clang-format-12 -i -style=file ${1}
   fi
 }
 
