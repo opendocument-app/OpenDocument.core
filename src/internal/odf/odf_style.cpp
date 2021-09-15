@@ -190,6 +190,7 @@ std::string Style::name() const { return m_name; }
 const common::ResolvedStyle &Style::resolved() const { return m_resolved; }
 
 void Style::resolve_style_() {
+  // TODO use override?
   resolve_text_style_(m_registry, m_node, m_resolved.text_style);
   resolve_paragraph_style_(m_node, m_resolved.paragraph_style);
   resolve_table_style_(m_node, m_resolved.table_style);
@@ -207,14 +208,22 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
       result = TextStyle();
     }
 
-    if (auto font_name = text_properties.attribute("style:font-name").value()) {
-      read_font_face(font_name, registry->font_face_node(font_name), *result);
+    if (auto font_name = text_properties.attribute("style:font-name")) {
+      read_font_face(font_name.value(),
+                     registry->font_face_node(font_name.value()), *result);
     }
-    result->font_size = read_measure(text_properties.attribute("fo:font-size"));
-    result->font_weight =
-        read_font_weight(text_properties.attribute("fo:font-weight"));
-    result->font_style =
-        read_font_style(text_properties.attribute("fo:font-style"));
+    if (auto font_size =
+            read_measure(text_properties.attribute("fo:font-size"))) {
+      result->font_size = font_size;
+    }
+    if (auto font_weight =
+            read_font_weight(text_properties.attribute("fo:font-weight"))) {
+      result->font_weight = font_weight;
+    }
+    if (auto font_style =
+            read_font_style(text_properties.attribute("fo:font-style"))) {
+      result->font_style = font_style;
+    }
     if (auto font_underline =
             text_properties.attribute("style:text-underline-style");
         font_underline && (std::strcmp("none", font_underline.value()) != 0)) {
@@ -226,11 +235,17 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
         (std::strcmp("none", font_line_through.value()) != 0)) {
       result->font_line_through = true;
     }
-    result->font_shadow =
-        read_string(text_properties.attribute("fo:text-shadow"));
-    result->font_color = read_color(text_properties.attribute("fo:color"));
-    result->background_color =
-        read_color(text_properties.attribute("fo:background-color"));
+    if (auto font_shadow =
+            read_string(text_properties.attribute("fo:text-shadow"))) {
+      result->font_shadow = font_shadow;
+    }
+    if (auto font_color = read_color(text_properties.attribute("fo:color"))) {
+      result->font_color = font_color;
+    }
+    if (auto background_color =
+            read_color(text_properties.attribute("fo:background-color"))) {
+      result->background_color = background_color;
+    }
   }
 }
 
@@ -241,21 +256,29 @@ void Style::resolve_paragraph_style_(pugi::xml_node node,
       result = ParagraphStyle();
     }
 
-    result->text_align =
-        read_text_align(paragraph_properties.attribute("fo:text-align"));
-    result->margin = read_measure(paragraph_properties.attribute("fo:margin"));
-    if (auto margin_right = paragraph_properties.attribute("fo:margin-right")) {
-      result->margin.right = read_measure(margin_right);
+    if (auto text_align =
+            read_text_align(paragraph_properties.attribute("fo:text-align"))) {
+      result->text_align = text_align;
     }
-    if (auto margin_top = paragraph_properties.attribute("fo:margin-top")) {
-      result->margin.top = read_measure(margin_top);
+    if (auto margin =
+            read_measure(paragraph_properties.attribute("fo:margin"))) {
+      result->margin = margin;
     }
-    if (auto margin_left = paragraph_properties.attribute("fo:margin-left")) {
-      result->margin.left = read_measure(margin_left);
+    if (auto margin_right =
+            read_measure(paragraph_properties.attribute("fo:margin-right"))) {
+      result->margin.right = margin_right;
+    }
+    if (auto margin_top =
+            read_measure(paragraph_properties.attribute("fo:margin-top"))) {
+      result->margin.top = margin_top;
+    }
+    if (auto margin_left =
+            read_measure(paragraph_properties.attribute("fo:margin-left"))) {
+      result->margin.left = margin_left;
     }
     if (auto margin_bottom =
-            paragraph_properties.attribute("fo:margin-bottom")) {
-      result->margin.bottom = read_measure(margin_bottom);
+            read_measure(paragraph_properties.attribute("fo:margin-bottom"))) {
+      result->margin.bottom = margin_bottom;
     }
   }
 }
@@ -267,7 +290,9 @@ void Style::resolve_table_style_(pugi::xml_node node,
       result = TableStyle();
     }
 
-    result->width = read_measure(table_properties.attribute("style:width"));
+    if (auto width = read_measure(table_properties.attribute("style:width"))) {
+      result->width = width;
+    }
   }
 }
 
@@ -279,8 +304,10 @@ void Style::resolve_table_column_style_(
       result = TableColumnStyle();
     }
 
-    result->width =
-        read_measure(table_column_properties.attribute("style:column-width"));
+    if (auto width = read_measure(
+            table_column_properties.attribute("style:column-width"))) {
+      result->width = width;
+    }
   }
 }
 
@@ -291,8 +318,10 @@ void Style::resolve_table_row_style_(pugi::xml_node node,
       result = TableRowStyle();
     }
 
-    result->height =
-        read_measure(table_row_properties.attribute("style:row-height"));
+    if (auto height =
+            read_measure(table_row_properties.attribute("style:row-height"))) {
+      result->height = height;
+    }
   }
 }
 
@@ -303,41 +332,53 @@ void Style::resolve_table_cell_style_(pugi::xml_node node,
       result = TableCellStyle();
     }
 
-    result->vertical_align = read_vertical_align(
-        table_cell_properties.attribute("style:vertical-align"));
-    result->background_color =
-        read_color(table_cell_properties.attribute("fo:background-color"));
-    result->padding =
-        read_measure(table_cell_properties.attribute("fo:padding"));
-    if (auto padding_right =
-            table_cell_properties.attribute("fo:padding-right")) {
-      result->padding.right = read_measure(padding_right);
+    if (auto vertical_align = read_vertical_align(
+            table_cell_properties.attribute("style:vertical-align"))) {
+      result->vertical_align = vertical_align;
     }
-    if (auto padding_top = table_cell_properties.attribute("fo:padding-top")) {
-      result->padding.top = read_measure(padding_top);
+    if (auto background_color = read_color(
+            table_cell_properties.attribute("fo:background-color"))) {
+      result->background_color = background_color;
+    }
+    if (auto padding =
+            read_measure(table_cell_properties.attribute("fo:padding"))) {
+      result->padding = padding;
+    }
+    if (auto padding_right =
+            read_measure(table_cell_properties.attribute("fo:padding-right"))) {
+      result->padding.right = padding_right;
+    }
+    if (auto padding_top =
+            read_measure(table_cell_properties.attribute("fo:padding-top"))) {
+      result->padding.top = padding_top;
     }
     if (auto padding_left =
-            table_cell_properties.attribute("fo:padding-left")) {
-      result->padding.left = read_measure(padding_left);
+            read_measure(table_cell_properties.attribute("fo:padding-left"))) {
+      result->padding.left = padding_left;
     }
-    if (auto padding_bottom =
-            table_cell_properties.attribute("fo:padding-bottom")) {
-      result->padding.bottom = read_measure(padding_bottom);
+    if (auto padding_bottom = read_measure(
+            table_cell_properties.attribute("fo:padding-bottom"))) {
+      result->padding.bottom = padding_bottom;
     }
-    result->border = read_border(table_cell_properties.attribute("fo:border"));
+    if (auto border =
+            read_border(table_cell_properties.attribute("fo:border"))) {
+      result->border = border;
+    }
     if (auto border_right =
-            table_cell_properties.attribute("fo:border-right")) {
-      result->border.right = read_border(border_right);
+            read_border(table_cell_properties.attribute("fo:border-right"))) {
+      result->border.right = border_right;
     }
-    if (auto border_top = table_cell_properties.attribute("fo:border-top")) {
-      result->border.top = read_border(border_top);
+    if (auto border_top =
+            read_border(table_cell_properties.attribute("fo:border-top"))) {
+      result->border.top = border_top;
     }
-    if (auto border_left = table_cell_properties.attribute("fo:border-left")) {
-      result->border.left = read_border(border_left);
+    if (auto border_left =
+            read_border(table_cell_properties.attribute("fo:border-left"))) {
+      result->border.left = border_left;
     }
     if (auto border_bottom =
-            table_cell_properties.attribute("fo:border-bottom")) {
-      result->border.bottom = read_border(border_bottom);
+            read_border(table_cell_properties.attribute("fo:border-bottom"))) {
+      result->border.bottom = border_bottom;
     }
   }
 }
@@ -349,14 +390,22 @@ void Style::resolve_graphic_style_(pugi::xml_node node,
       result = GraphicStyle();
     }
 
-    result->stroke_width =
-        read_measure(graphic_properties.attribute("svg:stroke-width"));
-    result->stroke_color =
-        read_color(graphic_properties.attribute("svg:stroke-color"));
-    result->fill_color =
-        read_color(graphic_properties.attribute("draw:fill-color"));
-    result->vertical_align = read_vertical_align(
-        graphic_properties.attribute("draw:textarea-vertical-align"));
+    if (auto stroke_width =
+            read_measure(graphic_properties.attribute("svg:stroke-width"))) {
+      result->stroke_width = stroke_width;
+    }
+    if (auto stroke_color =
+            read_color(graphic_properties.attribute("svg:stroke-color"))) {
+      result->stroke_color = stroke_color;
+    }
+    if (auto fill_color =
+            read_color(graphic_properties.attribute("draw:fill-color"))) {
+      result->fill_color = fill_color;
+    }
+    if (auto vertical_align = read_vertical_align(
+            graphic_properties.attribute("draw:textarea-vertical-align"))) {
+      result->vertical_align = vertical_align;
+    }
   }
 }
 
