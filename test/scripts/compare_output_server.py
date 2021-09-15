@@ -25,11 +25,16 @@ class Observer:
 
             def dispatch(self, event):
                 if os.path.isfile(event.src_path):
-                    Config.comparator.submit(os.path.relpath(event.src_path, self._path))
+                    Config.comparator.submit(
+                        os.path.relpath(event.src_path, self._path))
 
         self._observer = watchdog.observers.Observer()
-        self._observer.schedule(Handler(Config.path_a), Config.path_a, recursive=True)
-        self._observer.schedule(Handler(Config.path_b), Config.path_b, recursive=True)
+        self._observer.schedule(Handler(Config.path_a),
+                                Config.path_a,
+                                recursive=True)
+        self._observer.schedule(Handler(Config.path_b),
+                                Config.path_b,
+                                recursive=True)
 
     def start(self):
         self._observer.start()
@@ -43,7 +48,8 @@ class Observer:
             common = [name for name in left if name in right]
 
             for name in common:
-                if os.path.isfile(os.path.join(a, name)) and comparable_file(os.path.join(a, name)):
+                if os.path.isfile(os.path.join(a, name)) and comparable_file(
+                        os.path.join(a, name)):
                     Config.comparator.submit(os.path.join(common_path, name))
                 elif os.path.isdir(os.path.join(a, name)):
                     init_compare(os.path.join(a, name), os.path.join(b, name))
@@ -76,7 +82,8 @@ class Comparator:
         self._future[path] = self._executor.submit(self.compare, path)
 
     def compare(self, path):
-        result = compare_files(os.path.join(Config.path_a, path), os.path.join(Config.path_b, path))
+        result = compare_files(os.path.join(Config.path_a, path),
+                               os.path.join(Config.path_b, path))
         self._result[path] = 'same' if result else 'different'
         self._future.pop(path)
 
@@ -154,7 +161,8 @@ def root():
             result += f'<li><b>B dirs missing: {right_dirs_missing}</b></li>'
 
         for name in common_files:
-            symbol = Config.comparator.result_symbol(os.path.join(common_path, name))
+            symbol = Config.comparator.result_symbol(
+                os.path.join(common_path, name))
             css = Config.comparator.result_css(os.path.join(common_path, name))
             result += f'<li style="{css}"><a style="{css}" href="/compare/{os.path.join(common_path, name)}">{name}</a> {symbol}</li>'
 
