@@ -4,13 +4,106 @@
 import os
 import sys
 import argparse
-from compare_output import comparable_file
+import concurrent.futures
+from compare_output import comparable_file, compare_files
 from flask import Flask, send_from_directory
+import watchdog.observers
+import watchdog.events
 
 
 class Config:
     path_a = None
     path_b = None
+    comparator = None
+
+
+class Observer:
+    def __init__(self):
+        class Handler(watchdog.events.FileSystemEventHandler):
+            def __init__(self, path):
+                self._path = path
+
+            def dispatch(self, event):
+                if os.path.isfile(event.src_path):
+                    Config.comparator.submit(os.path.relpath(event.src_path, self._path))
+
+        self._observer = watchdog.observers.Observer()
+        self._observer.schedule(Handler(Config.path_a), Config.path_a, recursive=True)
+        self._observer.schedule(Handler(Config.path_b), Config.path_b, recursive=True)
+
+    def start(self):
+        self._observer.start()
+
+        def init_compare(a, b):
+            common_path = os.path.relpath(a, Config.path_a)
+
+            left = sorted(os.listdir(a))
+            right = sorted(os.listdir(b))
+
+            common = [name for name in left if name in right]
+
+            for name in common:
+                if os.path.isfile(os.path.join(a, name)) and comparable_file(os.path.join(a, name)):
+                    Config.comparator.submit(os.path.join(common_path, name))
+                elif os.path.isdir(os.path.join(a, name)):
+                    init_compare(os.path.join(a, name), os.path.join(b, name))
+
+        init_compare(Config.path_a, Config.path_b)
+
+    def stop(self):
+        self._observer.stop()
+
+    def join(self):
+        self._observer.join()
+
+
+class Comparator:
+    def __init__(self, executor):
+        self._executor = executor
+        self._result = {}
+        self._future = {}
+
+    def submit(self, path):
+        if path in self._future:
+            try:
+                self._future[path].cancel()
+                self._future[path].result()
+                self._future.pop(path)
+            except Exception:
+                pass
+
+        self._result[path] = 'pending'
+        self._future[path] = self._executor.submit(self.compare, path)
+
+    def compare(self, path):
+        result = compare_files(os.path.join(Config.path_a, path), os.path.join(Config.path_b, path))
+        self._result[path] = 'same' if result else 'different'
+        self._future.pop(path)
+
+    def result(self, path):
+        if path in self._result:
+            return self._result[path]
+        return 'unknown'
+
+    def result_symbol(self, path):
+        result = self.result(path)
+        if result == 'pending':
+            return '🔄'
+        if result == 'same':
+            return '✔'
+        if result == 'different':
+            return '❌'
+        return '⛔'
+
+    def result_css(self, path):
+        result = self.result(path)
+        if result == 'pending':
+            return 'color:blue;'
+        if result == 'same':
+            return 'color:green;'
+        if result == 'different':
+            return 'color:orange;'
+        return 'color:red;'
 
 
 app = Flask('compare')
@@ -61,7 +154,9 @@ def root():
             result += f'<li><b>B dirs missing: {right_dirs_missing}</b></li>'
 
         for name in common_files:
-            result += f'<li><a href="/compare/{os.path.join(common_path, name)}">{name}</a></li>'
+            symbol = Config.comparator.result_symbol(os.path.join(common_path, name))
+            css = Config.comparator.result_css(os.path.join(common_path, name))
+            result += f'<li style="{css}"><a style="{css}" href="/compare/{os.path.join(common_path, name)}">{name}</a> {symbol}</li>'
 
         for name in common_dirs:
             result += f'<li>{name}'
@@ -125,7 +220,17 @@ def main():
     Config.path_a = args.a
     Config.path_b = args.b
 
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+    Config.comparator = Comparator(executor)
+
+    observer = Observer()
+    observer.start()
+
     app.run()
+
+    observer.stop()
+    observer.join()
+
     return 0
 
 
