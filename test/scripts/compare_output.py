@@ -10,10 +10,6 @@ from common import bcolors
 import filecmp
 
 
-class CompareError(Exception):
-    pass
-
-
 def parse_json(path):
     with open(path) as f:
         return json.load(f)
