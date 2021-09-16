@@ -51,6 +51,8 @@ const char *translate_vertical_align(const VerticalAlign vertical_align) {
 
 const char *translate_font_weight(const FontWeight font_weight) {
   switch (font_weight) {
+  case FontWeight::normal:
+    return "normal";
   case FontWeight::bold:
     return "bold";
   default:
@@ -60,6 +62,8 @@ const char *translate_font_weight(const FontWeight font_weight) {
 
 const char *translate_font_style(const FontStyle font_style) {
   switch (font_style) {
+  case FontStyle::normal:
+    return "normal";
   case FontStyle::italic:
     return "italic";
   default:
@@ -261,15 +265,25 @@ std::string translate_frame_properties(const Element::Frame &frame) {
   if (auto anchor_type = frame.anchor_type();
       anchor_type && (*anchor_type == "as-char")) {
     result += "display:inline-block;";
+  } else if (anchor_type && (*anchor_type == "char")) {
+    result += "display:block;";
+    result += "float:left;clear:both;";
+    result += "shape-outside:content-box;";
+    if (auto x = frame.x()) {
+      result += "margin-left:" + *x + ";";
+    }
+    if (auto y = frame.y()) {
+      result += "margin-top:" + *y + ";";
+    }
   } else {
     result += "display:block;";
     result += "position:absolute;";
-  }
-  if (auto x = frame.x()) {
-    result += "left:" + *x + ";";
-  }
-  if (auto y = frame.y()) {
-    result += "top:" + *y + ";";
+    if (auto x = frame.x()) {
+      result += "left:" + *x + ";";
+    }
+    if (auto y = frame.y()) {
+      result += "top:" + *y + ";";
+    }
   }
   if (auto width = frame.width()) {
     result += "width:" + *width + ";";

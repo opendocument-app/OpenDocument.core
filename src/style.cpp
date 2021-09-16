@@ -67,36 +67,6 @@ void TextStyle::override(const TextStyle &other) {
   }
 }
 
-void TextStyle::override(TextStyle &&other) {
-  if (other.font_name) {
-    font_name = std::move(other.font_name);
-  }
-  if (other.font_size) {
-    font_size = std::move(other.font_size);
-  }
-  if (other.font_weight) {
-    font_weight = std::move(other.font_weight);
-  }
-  if (other.font_style) {
-    font_style = std::move(other.font_style);
-  }
-  if (other.font_underline) {
-    font_underline = std::move(other.font_underline);
-  }
-  if (other.font_line_through) {
-    font_line_through = std::move(other.font_line_through);
-  }
-  if (other.font_shadow) {
-    font_shadow = std::move(other.font_shadow);
-  }
-  if (other.font_color) {
-    font_color = std::move(other.font_color);
-  }
-  if (other.background_color) {
-    background_color = std::move(other.background_color);
-  }
-}
-
 void ParagraphStyle::override(const ParagraphStyle &other) {
   if (other.text_align) {
     text_align = other.text_align;
@@ -104,22 +74,9 @@ void ParagraphStyle::override(const ParagraphStyle &other) {
   margin.override(other.margin);
 }
 
-void ParagraphStyle::override(ParagraphStyle &&other) {
-  if (other.text_align) {
-    text_align = other.text_align;
-  }
-  margin.override(std::move(other.margin));
-}
-
 void TableStyle::override(const TableStyle &other) {
   if (other.width) {
     width = other.width;
-  }
-}
-
-void TableStyle::override(TableStyle &&other) {
-  if (other.width) {
-    width = std::move(other.width);
   }
 }
 
@@ -129,21 +86,9 @@ void TableColumnStyle::override(const TableColumnStyle &other) {
   }
 }
 
-void TableColumnStyle::override(TableColumnStyle &&other) {
-  if (other.width) {
-    width = std::move(other.width);
-  }
-}
-
 void TableRowStyle::override(const TableRowStyle &other) {
   if (other.height) {
     height = other.height;
-  }
-}
-
-void TableRowStyle::override(TableRowStyle &&other) {
-  if (other.height) {
-    height = std::move(other.height);
   }
 }
 
@@ -182,20 +127,8 @@ void GraphicStyle::override(const GraphicStyle &other) {
   if (other.vertical_align) {
     vertical_align = other.vertical_align;
   }
-}
-
-void GraphicStyle::override(GraphicStyle &&other) {
-  if (other.stroke_width) {
-    stroke_width = std::move(other.stroke_width);
-  }
-  if (other.stroke_color) {
-    stroke_color = std::move(other.stroke_color);
-  }
-  if (other.fill_color) {
-    fill_color = std::move(other.fill_color);
-  }
-  if (other.vertical_align) {
-    vertical_align = other.vertical_align;
+  if (other.text_wrap) {
+    text_wrap = other.text_wrap;
   }
 }
 

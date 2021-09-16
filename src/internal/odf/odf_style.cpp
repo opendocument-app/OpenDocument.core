@@ -31,6 +31,9 @@ std::optional<FontWeight> read_font_weight(pugi::xml_attribute attribute) {
     return {};
   }
   auto value = attribute.value();
+  if (std::strcmp("normal", value) == 0) {
+    return FontWeight::normal;
+  }
   if (std::strcmp("bold", value) == 0) {
     return FontWeight::bold;
   }
@@ -42,6 +45,9 @@ std::optional<FontStyle> read_font_style(pugi::xml_attribute attribute) {
     return {};
   }
   auto value = attribute.value();
+  if (std::strcmp("normal", value) == 0) {
+    return FontStyle::normal;
+  }
   if (std::strcmp("italic", value) == 0) {
     return FontStyle::italic;
   }
@@ -56,11 +62,11 @@ std::optional<TextAlign> read_text_align(pugi::xml_attribute attribute) {
   if ((std::strcmp("left", value) == 0) || (std::strcmp("start", value) == 0)) {
     return TextAlign::left;
   }
-  if (std::strcmp("center", value) == 0) {
-    return TextAlign::center;
-  }
   if ((std::strcmp("right", value) == 0) || (std::strcmp("end", value) == 0)) {
     return TextAlign::right;
+  }
+  if (std::strcmp("center", value) == 0) {
+    return TextAlign::center;
   }
   if (std::strcmp("justify", value) == 0) {
     return TextAlign::justify;
@@ -84,6 +90,25 @@ read_vertical_align(pugi::xml_attribute attribute) {
     return VerticalAlign::bottom;
   }
   return {};
+}
+
+bool read_text_wrap(pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  auto value = attribute.value();
+  if ((std::strcmp("biggest", value) == 0) ||
+      (std::strcmp("dynamic", value) == 0) ||
+      (std::strcmp("left", value) == 0) ||
+      (std::strcmp("parallel", value) == 0) ||
+      (std::strcmp("right", value) == 0)) {
+    return true;
+  }
+  if ((std::strcmp("none", value) == 0) ||
+      (std::strcmp("run-through", value) == 0)) {
+    return false;
+  }
+  return false;
 }
 
 std::optional<PrintOrientation>
@@ -405,6 +430,10 @@ void Style::resolve_graphic_style_(pugi::xml_node node,
     if (auto vertical_align = read_vertical_align(
             graphic_properties.attribute("draw:textarea-vertical-align"))) {
       result->vertical_align = vertical_align;
+    }
+    if (auto text_wrap =
+            read_text_wrap(graphic_properties.attribute("style:wrap"))) {
+      result->text_wrap = text_wrap;
     }
   }
 }

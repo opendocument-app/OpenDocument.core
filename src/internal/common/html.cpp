@@ -33,15 +33,15 @@ body {
   padding: 5px;
 }
 p {
-  padding: 0 !important;
+  padding: 0;
 }
-p:after {
+p:empty:after {
   content: "";
   display: inline-block;
-  width: 0px;
+  width: 1mm;
 }
 span {
-  margin: 0 !important;
+  margin: 0;
 }
 
 /* https://github.com/marcelblanarik/js-keyword-highlighter/blob/dd69436bee06f8c658abe1e12e2abb35d3bf250b/index.html#L81-L82 */

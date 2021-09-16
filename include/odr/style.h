@@ -10,10 +10,12 @@ namespace odr {
 using Measure = Quantity<double>;
 
 enum class FontWeight {
+  normal,
   bold,
 };
 
 enum class FontStyle {
+  normal,
   italic,
 };
 
@@ -48,8 +50,8 @@ struct Color final {
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue,
         std::uint8_t alpha);
 
-  std::uint32_t rgb() const;
-  std::uint32_t rgba() const;
+  [[nodiscard]] std::uint32_t rgb() const;
+  [[nodiscard]] std::uint32_t rgba() const;
 };
 
 template <typename T> struct DirectionalStyle final {
@@ -94,7 +96,7 @@ template <typename T> struct DirectionalStyle final {
 };
 
 struct TextStyle final {
-  const char *font_name;
+  const char *font_name{nullptr};
   std::optional<Measure> font_size;
   std::optional<FontWeight> font_weight;
   std::optional<FontStyle> font_style;
@@ -105,7 +107,6 @@ struct TextStyle final {
   std::optional<Color> background_color;
 
   void override(const TextStyle &other);
-  void override(TextStyle &&other);
 };
 
 struct ParagraphStyle final {
@@ -113,28 +114,24 @@ struct ParagraphStyle final {
   DirectionalStyle<Measure> margin;
 
   void override(const ParagraphStyle &other);
-  void override(ParagraphStyle &&other);
 };
 
 struct TableStyle final {
   std::optional<Measure> width;
 
   void override(const TableStyle &other);
-  void override(TableStyle &&other);
 };
 
 struct TableColumnStyle final {
   std::optional<Measure> width;
 
   void override(const TableColumnStyle &other);
-  void override(TableColumnStyle &&other);
 };
 
 struct TableRowStyle final {
   std::optional<Measure> height;
 
   void override(const TableRowStyle &other);
-  void override(TableRowStyle &&other);
 };
 
 struct TableCellStyle final {
@@ -152,9 +149,9 @@ struct GraphicStyle final {
   std::optional<Color> stroke_color;
   std::optional<Color> fill_color;
   std::optional<VerticalAlign> vertical_align;
+  bool text_wrap{false};
 
   void override(const GraphicStyle &other);
-  void override(GraphicStyle &&other);
 };
 
 struct PageLayout final {
