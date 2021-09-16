@@ -15,4 +15,9 @@ DocumentCursor::DocumentCursor(const Document *document, pugi::xml_node root)
   }
 }
 
+[[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
+DocumentCursor::copy() const {
+  return std::make_unique<DocumentCursor>(*this);
+}
+
 } // namespace odr::internal::ooxml::presentation

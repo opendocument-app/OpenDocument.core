@@ -20,11 +20,6 @@ bool DocumentCursor::equals(const abstract::DocumentCursor &other) const {
                          *dynamic_cast<const DocumentCursor &>(other).back_());
 }
 
-[[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
-DocumentCursor::copy() const {
-  return std::make_unique<DocumentCursor>(*this);
-}
-
 [[nodiscard]] std::string DocumentCursor::document_path() const {
   return ""; // TODO
 }
@@ -175,6 +170,23 @@ bool DocumentCursor::move_to_first_table_row() {
     return push_(size);
   };
   auto element = table->first_row(m_document, this, &allocator);
+  if (!element) {
+    return false;
+  }
+  pushed_(element);
+  return true;
+}
+
+bool DocumentCursor::move_to_first_sheet_shape() {
+  auto sheet = dynamic_cast<const abstract::SheetElement *>(back_());
+  if (!sheet) {
+    return false;
+  }
+
+  abstract::Allocator allocator = [this](const std::size_t size) {
+    return push_(size);
+  };
+  auto element = sheet->first_shape(m_document, this, &allocator);
   if (!element) {
     return false;
   }

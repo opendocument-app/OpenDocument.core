@@ -428,12 +428,12 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
-  cursor.for_each_column([&](DocumentCursor &, const std::uint32_t) {
+  cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
     out << "<col>";
     return true;
   });
 
-  cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
+  cursor.for_each_table_row([&](DocumentCursor &cursor, const std::uint32_t) {
     auto table_row = cursor.element().table_row();
 
     out << "<tr";
@@ -442,7 +442,8 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
     }
     out << ">";
 
-    cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
+    cursor.for_each_table_cell([&](DocumentCursor &cursor,
+                                   const std::uint32_t) {
       auto table_cell = cursor.element().table_cell();
 
       if (!table_cell.covered()) {
@@ -685,13 +686,15 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
     end_column = content.columns;
   }
 
+  auto shape_cursor = cursor;
+
   std::uint32_t column_index = 0;
   std::uint32_t row_index = 0;
 
   out << "<col>";
 
   column_index = 0;
-  cursor.for_each_column([&](DocumentCursor &, const std::uint32_t) {
+  cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
     out << "<col>";
 
     ++column_index;
@@ -703,7 +706,7 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
     out << "<td style=\"width:30px;height:20px;\"/>";
 
     column_index = 0;
-    cursor.for_each_column([&](DocumentCursor &, const std::uint32_t) {
+    cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
       auto table_column = cursor.element().table_column();
       auto table_column_style = table_column.style();
 
@@ -725,7 +728,7 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
     out << "</tr>";
   }
 
-  cursor.for_each_row([&](DocumentCursor &cursor, const std::uint32_t) {
+  cursor.for_each_table_row([&](DocumentCursor &cursor, const std::uint32_t) {
     auto table_row = cursor.element().table_row();
     auto table_row_style = table_row.style();
 
@@ -748,7 +751,8 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
     out << "</td>";
 
     column_index = 0;
-    cursor.for_each_cell([&](DocumentCursor &cursor, const std::uint32_t) {
+    cursor.for_each_table_cell([&](DocumentCursor &cursor,
+                                   const std::uint32_t) {
       auto table_cell = cursor.element().table_cell();
 
       if (!table_cell.covered()) {
@@ -765,6 +769,12 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
           out << optional_style_attribute(translate_table_cell_style(*style));
         }
         out << ">";
+        if ((row_index == 0) && (column_index == 0)) {
+          shape_cursor.for_each_sheet_shape(
+              [&](DocumentCursor &cursor, const std::uint32_t) {
+                translate_element(cursor, out, config);
+              });
+        }
         translate_children(cursor, out, config);
         out << "</td>";
       }

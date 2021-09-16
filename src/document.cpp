@@ -38,9 +38,24 @@ DocumentCursor Document::root_element() const {
 
 DocumentCursor::DocumentCursor(
     std::shared_ptr<internal::abstract::Document> document,
-    std::shared_ptr<internal::abstract::DocumentCursor> cursor)
+    std::unique_ptr<internal::abstract::DocumentCursor> cursor)
     : m_document{std::move(document)}, m_cursor{std::move(cursor)} {
   // TODO throw if nullptr
+}
+
+DocumentCursor::DocumentCursor(const DocumentCursor &other)
+    : DocumentCursor(other.m_document, other.m_cursor->copy()) {}
+
+DocumentCursor::~DocumentCursor() = default;
+
+DocumentCursor &DocumentCursor::operator=(const DocumentCursor &other) {
+  if (&other == this) {
+    return *this;
+  }
+
+  m_document = other.m_document;
+  m_cursor = other.m_cursor->copy();
+  return *this;
 }
 
 bool DocumentCursor::operator==(const DocumentCursor &rhs) const {
@@ -89,6 +104,10 @@ bool DocumentCursor::move_to_first_table_row() {
   return m_cursor->move_to_first_table_row();
 }
 
+bool DocumentCursor::move_to_first_sheet_shape() {
+  return m_cursor->move_to_first_sheet_shape();
+}
+
 void DocumentCursor::for_each_child(const ChildVisitor &visitor) {
   if (!move_to_first_child()) {
     return;
@@ -96,22 +115,32 @@ void DocumentCursor::for_each_child(const ChildVisitor &visitor) {
   for_each_(visitor);
 }
 
-void DocumentCursor::for_each_column(const ConditionalChildVisitor &visitor) {
+void DocumentCursor::for_each_table_column(
+    const ConditionalChildVisitor &visitor) {
   if (!move_to_first_table_column()) {
     return;
   }
   for_each_(visitor);
 }
 
-void DocumentCursor::for_each_row(const ConditionalChildVisitor &visitor) {
+void DocumentCursor::for_each_table_row(
+    const ConditionalChildVisitor &visitor) {
   if (!move_to_first_table_row()) {
     return;
   }
   for_each_(visitor);
 }
 
-void DocumentCursor::for_each_cell(const ConditionalChildVisitor &visitor) {
+void DocumentCursor::for_each_table_cell(
+    const ConditionalChildVisitor &visitor) {
   if (!move_to_first_child()) {
+    return;
+  }
+  for_each_(visitor);
+}
+
+void DocumentCursor::for_each_sheet_shape(const ChildVisitor &visitor) {
+  if (!move_to_first_sheet_shape()) {
     return;
   }
   for_each_(visitor);
@@ -242,7 +271,7 @@ Element::TableRow Element::TableCell::row() const {
 }
 
 bool Element::TableCell::covered() const {
-  return m_element ? m_element->covered(m_document) : false;
+  return m_element && m_element->covered(m_document);
 }
 
 TableDimensions Element::TableCell::span() const {
@@ -372,7 +401,7 @@ std::optional<GraphicStyle> Element::CustomShape::style() const {
 }
 
 bool Element::Image::internal() const {
-  return m_element ? m_element->internal(m_document) : false;
+  return m_element && m_element->internal(m_document);
 }
 
 std::optional<File> Element::Image::file() const {

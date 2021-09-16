@@ -112,6 +112,10 @@ private:
 
 class DocumentCursor final {
 public:
+  DocumentCursor(const DocumentCursor &other);
+  ~DocumentCursor();
+  DocumentCursor &operator=(const DocumentCursor &other);
+
   bool operator==(const DocumentCursor &rhs) const;
   bool operator!=(const DocumentCursor &rhs) const;
 
@@ -131,22 +135,25 @@ public:
   [[nodiscard]] bool move_to_first_table_column();
   [[nodiscard]] bool move_to_first_table_row();
 
+  [[nodiscard]] bool move_to_first_sheet_shape();
+
   using ChildVisitor =
       std::function<void(DocumentCursor &cursor, std::uint32_t i)>;
   using ConditionalChildVisitor =
       std::function<bool(DocumentCursor &cursor, std::uint32_t i)>;
 
   void for_each_child(const ChildVisitor &visitor);
-  void for_each_column(const ConditionalChildVisitor &visitor);
-  void for_each_row(const ConditionalChildVisitor &visitor);
-  void for_each_cell(const ConditionalChildVisitor &visitor);
+  void for_each_table_column(const ConditionalChildVisitor &visitor);
+  void for_each_table_row(const ConditionalChildVisitor &visitor);
+  void for_each_table_cell(const ConditionalChildVisitor &visitor);
+  void for_each_sheet_shape(const ChildVisitor &visitor);
 
 private:
   std::shared_ptr<internal::abstract::Document> m_document;
-  std::shared_ptr<internal::abstract::DocumentCursor> m_cursor;
+  std::unique_ptr<internal::abstract::DocumentCursor> m_cursor;
 
   DocumentCursor(std::shared_ptr<internal::abstract::Document> document,
-                 std::shared_ptr<internal::abstract::DocumentCursor> cursor);
+                 std::unique_ptr<internal::abstract::DocumentCursor> cursor);
 
   void for_each_(const ChildVisitor &visitor);
   void for_each_(const ConditionalChildVisitor &visitor);

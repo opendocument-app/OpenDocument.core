@@ -85,6 +85,8 @@ public:
 
   virtual bool move_to_first_table_column() = 0;
   virtual bool move_to_first_table_row() = 0;
+
+  virtual bool move_to_first_sheet_shape() = 0;
 };
 
 class Element {
@@ -152,6 +154,10 @@ public:
   [[nodiscard]] virtual TableDimensions
   content(const Document *document,
           std::optional<TableDimensions> range) const = 0;
+
+  [[nodiscard]] virtual Element *
+  first_shape(const Document *document, const DocumentCursor *cursor,
+              const Allocator *allocator) const = 0;
 };
 
 class PageElement : public virtual Element {

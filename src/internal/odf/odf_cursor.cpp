@@ -15,6 +15,11 @@ DocumentCursor::DocumentCursor(const Document *document, pugi::xml_node root)
   }
 }
 
+[[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
+DocumentCursor::copy() const {
+  return std::make_unique<DocumentCursor>(*this);
+}
+
 common::ResolvedStyle DocumentCursor::partial_style() const {
   return dynamic_cast<const odf::Element *>(back_())->partial_style(m_document);
 }

@@ -206,6 +206,12 @@ public:
         sheet_node_(document).child("sheetData").child("row"), allocator);
   }
 
+  [[nodiscard]] abstract::Element *
+  first_shape(const abstract::Document *, const abstract::DocumentCursor *,
+              const abstract::Allocator *) const final {
+    return nullptr;
+  }
+
   [[nodiscard]] std::optional<TableStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {

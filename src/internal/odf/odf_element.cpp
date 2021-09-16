@@ -1000,6 +1000,14 @@ public:
 
     return result;
   }
+
+  [[nodiscard]] abstract::Element *
+  first_shape(const abstract::Document *document,
+              const abstract::DocumentCursor *,
+              const abstract::Allocator *allocator) const final {
+    return construct_default_first_child_element(
+        document_(document), m_node.child("table:shapes"), allocator);
+  }
 };
 
 } // namespace
@@ -1043,8 +1051,8 @@ odf::construct_default_element(const Document *document, pugi::xml_node node,
       {"text:soft-page-break", construct_default<PageBreak>},
       {"text:date", construct_default<Group>},
       {"text:time", construct_default<Group>},
-      {"text:page-number", construct_default<Group>},
-      {"text:page-continuation", construct_default<Group>},
+      //{"text:page-number", construct_default<Group>},
+      //{"text:page-continuation", construct_default<Group>},
       {"table:table", construct_default<TableElement>},
       {"table:table-column", construct_default<TableColumn>},
       {"table:table-row", construct_default<TableRow>},

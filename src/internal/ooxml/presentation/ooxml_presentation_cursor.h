@@ -9,6 +9,8 @@ class Document;
 class DocumentCursor final : public common::DocumentCursor {
 public:
   DocumentCursor(const Document *document, pugi::xml_node root);
+
+  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor> copy() const final;
 };
 
 } // namespace odr::internal::ooxml::presentation

@@ -35,10 +35,13 @@ body {
 p {
   padding: 0;
 }
-p:empty:after {
+p:after {
   content: "";
   display: inline-block;
-  width: 1mm;
+  width: 0;
+}
+p:empty:after {
+  width: 0.01mm;
 }
 span {
   margin: 0;

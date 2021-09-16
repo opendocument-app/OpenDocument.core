@@ -13,12 +13,10 @@ namespace odr::internal::common {
 class DocumentCursor : public abstract::DocumentCursor {
 public:
   explicit DocumentCursor(const abstract::Document *document);
-  ~DocumentCursor();
+  ~DocumentCursor() override;
 
   [[nodiscard]] bool
   equals(const abstract::DocumentCursor &other) const override;
-
-  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor> copy() const override;
 
   [[nodiscard]] std::string document_path() const override;
 
@@ -34,6 +32,8 @@ public:
 
   [[nodiscard]] bool move_to_first_table_column() override;
   [[nodiscard]] bool move_to_first_table_row() override;
+
+  [[nodiscard]] bool move_to_first_sheet_shape() override;
 
   const ResolvedStyle &intermediate_style() const;
 
