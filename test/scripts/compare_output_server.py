@@ -6,9 +6,10 @@ import sys
 import argparse
 import concurrent.futures
 import threading
-from html_render_diff import get_browser
+import io
+from html_render_diff import get_browser, html_render_diff
 from compare_output import comparable_file, compare_files
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, send_file
 import watchdog.observers
 import watchdog.events
 
@@ -17,6 +18,7 @@ class Config:
     path_a = None
     path_b = None
     comparator = None
+    browser = get_browser()
     thread_local = threading.local()
 
 
@@ -221,6 +223,15 @@ iframe_b.contentWindow.addEventListener('scroll', function(event) {{
 </body>
 </html> 
 '''
+
+
+@app.route('/image_diff/<path:path>')
+def image_diff(path):
+    diff = html_render_diff(Config.browser, os.path.join(Config.path_a, path), os.path.join(Config.path_b, path))
+    tmp = io.BytesIO()
+    diff.save(tmp, 'JPEG', quality=70)
+    tmp.seek(0)
+    return send_file(tmp, mimetype='image/jpeg')
 
 
 @app.route('/file/<variant>/<path:path>')
