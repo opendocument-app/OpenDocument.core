@@ -5,6 +5,8 @@ import os
 import sys
 import argparse
 import concurrent.futures
+import threading
+from html_render_diff import get_browser
 from compare_output import comparable_file, compare_files
 from flask import Flask, send_from_directory
 import watchdog.observers
@@ -15,6 +17,7 @@ class Config:
     path_a = None
     path_b = None
     comparator = None
+    thread_local = threading.local()
 
 
 class Observer:
@@ -64,8 +67,13 @@ class Observer:
 
 
 class Comparator:
-    def __init__(self, executor):
-        self._executor = executor
+    def __init__(self, max_workers):
+        def initializer():
+            browser = getattr(Config.thread_local, 'browser', None)
+            if browser is None:
+                Config.thread_local.browser = get_browser()
+
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, initializer=initializer)
         self._result = {}
         self._future = {}
 
@@ -82,8 +90,10 @@ class Comparator:
         self._future[path] = self._executor.submit(self.compare, path)
 
     def compare(self, path):
+        browser = getattr(Config.thread_local, 'browser', None)
         result = compare_files(os.path.join(Config.path_a, path),
-                               os.path.join(Config.path_b, path))
+                               os.path.join(Config.path_b, path),
+                               browser=browser)
         self._result[path] = 'same' if result else 'different'
         self._future.pop(path)
 
@@ -228,8 +238,7 @@ def main():
     Config.path_a = args.a
     Config.path_b = args.b
 
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
-    Config.comparator = Comparator(executor)
+    Config.comparator = Comparator(max_workers=4)
 
     observer = Observer()
     observer.start()
