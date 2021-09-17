@@ -5,8 +5,125 @@
 
 namespace odr::internal::ooxml::text {
 
+namespace {
+void resolve_text_style_(pugi::xml_node node,
+                         std::optional<TextStyle> &result) {
+  if (auto run_properties = node.child("w:rPr")) {
+    if (!result) {
+      result = TextStyle();
+    }
+
+    if (auto font_name =
+            run_properties.child("w:rFonts").attribute("w:ascii")) {
+      result->font_name = font_name.value();
+    }
+    if (auto font_size = read_half_point_attribute(
+            run_properties.child("w:sz").attribute("w:val"))) {
+      result->font_size = font_size;
+    }
+    if (auto font_weight =
+            read_font_weight_attribute(run_properties.child("w:b"))) {
+      result->font_weight = font_weight;
+    }
+    if (auto font_style =
+            read_font_style_attribute(run_properties.child("w:i"))) {
+      result->font_style = font_style;
+    }
+    if (auto font_underline =
+            read_line_attribute(run_properties.child("w:u"))) {
+      result->font_underline = font_underline;
+    }
+    if (auto font_line_through =
+            read_line_attribute(run_properties.child("w:strike"))) {
+      result->font_line_through = font_line_through;
+    }
+    if (auto font_shadow =
+            read_shadow_attribute(run_properties.child("w:shadow"))) {
+      result->font_shadow = font_shadow;
+    }
+    if (auto font_color = read_color_attribute(
+            run_properties.child("w:color").attribute("w:val"))) {
+      result->font_color = font_color;
+    }
+    if (auto background_color = read_color_attribute(
+            run_properties.child("w:highlight").attribute("w:val"))) {
+      result->background_color = background_color;
+    }
+  }
+}
+
+void resolve_paragraph_style_(pugi::xml_node node,
+                              std::optional<ParagraphStyle> &result) {
+  if (auto paragraph_properties = node.child("w:pPr")) {
+    if (!result) {
+      result = ParagraphStyle();
+    }
+
+    if (auto text_align =
+            read_text_align_attribute(paragraph_properties.child("w:jc"))) {
+      result->text_align = text_align;
+    }
+    if (auto margin_left = read_twips_attribute(
+            paragraph_properties.child("w:ind").attribute("w:left"))) {
+      result->margin.left = margin_left;
+    }
+    if (auto margin_left = read_twips_attribute(
+            paragraph_properties.child("w:ind").attribute("w:start"))) {
+      result->margin.left = margin_left;
+    }
+    if (auto margin_right = read_twips_attribute(
+            paragraph_properties.child("w:ind").attribute("w:right"))) {
+      result->margin.right = margin_right;
+    }
+    if (auto margin_right = read_twips_attribute(
+            paragraph_properties.child("w:ind").attribute("w:end"))) {
+      result->margin.right = margin_right;
+    }
+  }
+}
+
+void resolve_table_style_(pugi::xml_node node,
+                          std::optional<TableStyle> &result) {
+  if (auto table_properties = node.child("w:tblPr")) {
+    if (!result) {
+      result = TableStyle();
+    }
+  }
+}
+
+void resolve_table_column_style_(pugi::xml_node node,
+                                 std::optional<TableColumnStyle> &result) {
+  // TODO
+}
+
+void resolve_table_row_style_(pugi::xml_node node,
+                              std::optional<TableRowStyle> &result) {
+  if (auto table_row_properties = node.child("w:trPr")) {
+    if (!result) {
+      result = TableRowStyle();
+    }
+  }
+}
+
+void resolve_table_cell_style_(pugi::xml_node node,
+                               std::optional<TableCellStyle> &result) {
+  if (auto table_cell_properties = node.child("w:tcPr")) {
+    if (!result) {
+      result = TableCellStyle();
+    }
+  }
+}
+
+void resolve_graphic_style_(pugi::xml_node node,
+                            std::optional<GraphicStyle> &result) {
+  // TODO
+}
+} // namespace
+
 Style::Style(std::string name, pugi::xml_node node, const Style *parent)
-    : m_name{std::move(name)}, m_node{node}, m_parent{parent} {}
+    : m_name{std::move(name)}, m_node{node}, m_parent{parent} {
+  resolve_style_();
+}
 
 std::string Style::name() const { return m_name; }
 
@@ -24,100 +141,6 @@ void Style::resolve_style_() {
   resolve_graphic_style_(m_node, m_resolved.graphic_style);
 }
 
-void Style::resolve_text_style_(pugi::xml_node node,
-                                std::optional<TextStyle> &result) {
-  if (auto run_properties = node.child("w:rPr")) {
-    if (!result) {
-      result = TextStyle();
-    }
-
-    if (auto font_name =
-            run_properties.child("w:rFonts").attribute("w:ascii")) {
-      result->font_name = font_name.value();
-    }
-    /*
-    result->font_size =
-        read_string_attribute(run_properties.child("w:sz").attribute("w:val"));
-    result->font_weight =
-        read_string_attribute(run_properties.child("w:b").attribute("w:val"));
-    result->font_style =
-        read_string_attribute(run_properties.child("w:i").attribute("w:val"));
-    result->font_underline = read_optional_attribute(
-        run_properties.child("w:u").attribute("w:val"), read_line_attribute);
-    result->font_line_through = read_optional_attribute(
-        run_properties.child("w:strike").attribute("w:val"),
-        read_line_attribute);
-    result->font_shadow = read_optional_node(run_properties.child("w:shadow"),
-                                             read_shadow_attribute);
-    result->font_color = read_optional_attribute(
-        run_properties.child("w:b").attribute("w:val"), read_color_attribute);
-    result->background_color = read_optional_attribute(
-        run_properties.child("w:highlight").attribute("w:val"),
-        read_color_attribute);
-        */
-  }
-}
-
-void Style::resolve_paragraph_style_(pugi::xml_node node,
-                                     std::optional<ParagraphStyle> &result) {
-  if (auto paragraph_properties = node.child("style:paragraph-properties")) {
-    if (!result) {
-      result = ParagraphStyle();
-    }
-
-    /*
-    result->text_align =
-        read_optional_attribute(node.child("w:pPr").child("w:jc").attribute("w:val"));
-        */
-  }
-}
-
-void Style::resolve_table_style_(pugi::xml_node node,
-                                 std::optional<TableStyle> &result) {
-  if (auto table_properties = node.child("style:table-properties")) {
-    if (!result) {
-      result = TableStyle();
-    }
-  }
-}
-
-void Style::resolve_table_column_style_(
-    pugi::xml_node node, std::optional<TableColumnStyle> &result) {
-  if (auto table_column_properties =
-          node.child("style:table-column-properties")) {
-    if (!result) {
-      result = TableColumnStyle();
-    }
-  }
-}
-
-void Style::resolve_table_row_style_(pugi::xml_node node,
-                                     std::optional<TableRowStyle> &result) {
-  if (auto table_row_properties = node.child("style:table-row-properties")) {
-    if (!result) {
-      result = TableRowStyle();
-    }
-  }
-}
-
-void Style::resolve_table_cell_style_(pugi::xml_node node,
-                                      std::optional<TableCellStyle> &result) {
-  if (auto table_cell_properties = node.child("style:table-cell-properties")) {
-    if (!result) {
-      result = TableCellStyle();
-    }
-  }
-}
-
-void Style::resolve_graphic_style_(pugi::xml_node node,
-                                   std::optional<GraphicStyle> &result) {
-  if (auto graphic_properties = node.child("style:graphic-properties")) {
-    if (!result) {
-      result = GraphicStyle();
-    }
-  }
-}
-
 StyleRegistry::StyleRegistry() = default;
 
 StyleRegistry::StyleRegistry(const pugi::xml_node styles_root) {
@@ -130,6 +153,44 @@ Style *StyleRegistry::style(const std::string &name) const {
     return styles_it->second.get();
   }
   return nullptr;
+}
+
+common::ResolvedStyle
+StyleRegistry::partial_text_style(const pugi::xml_node node) const {
+  if (!node) {
+    return {};
+  }
+  common::ResolvedStyle result;
+  if (auto style_name =
+          node.child("w:rPr").child("w:rStyle").attribute("w:val")) {
+    if (auto style = this->style(style_name.value())) {
+      result = style->resolved();
+    }
+  }
+  resolve_text_style_(node, result.text_style);
+  return result;
+}
+
+common::ResolvedStyle
+StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
+  if (!node) {
+    return {};
+  }
+  common::ResolvedStyle result;
+  if (auto style_name =
+          node.child("w:pPr").child("w:pStyle").attribute("w:val")) {
+    if (auto style = this->style(style_name.value())) {
+      result = style->resolved();
+    }
+  }
+  resolve_paragraph_style_(node, result.paragraph_style);
+  if (auto text_style = partial_text_style(node.child("w:pPr")).text_style) {
+    if (!result.text_style) {
+      result.text_style = TextStyle();
+    }
+    result.text_style->override(*text_style);
+  }
+  return result;
 }
 
 void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {

@@ -433,30 +433,42 @@ public:
 
   [[nodiscard]] std::optional<std::string>
   x(const abstract::Document *) const final {
-    return read_optional_attribute(
-        m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute("x"),
-        read_emus_attribute);
+    if (auto x = read_emus_attribute(
+            m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute(
+                "x"))) {
+      return x->to_string();
+    }
+    return {};
   }
 
   [[nodiscard]] std::optional<std::string>
   y(const abstract::Document *) const final {
-    return read_optional_attribute(
-        m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute("y"),
-        read_emus_attribute);
+    if (auto y = read_emus_attribute(
+            m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute(
+                "y"))) {
+      return y->to_string();
+    }
+    return {};
   }
 
   [[nodiscard]] std::optional<std::string>
   width(const abstract::Document *) const final {
-    return read_optional_attribute(
-        m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute("cx"),
-        read_emus_attribute);
+    if (auto cx = read_emus_attribute(
+            m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute(
+                "cx"))) {
+      return cx->to_string();
+    }
+    return {};
   }
 
   [[nodiscard]] std::optional<std::string>
   height(const abstract::Document *) const final {
-    return read_optional_attribute(
-        m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute("cy"),
-        read_emus_attribute);
+    if (auto cy = read_emus_attribute(
+            m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute(
+                "cy"))) {
+      return cy->to_string();
+    }
+    return {};
   }
 
   [[nodiscard]] std::optional<std::string>

@@ -1,3 +1,4 @@
+#include <cstring>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_util.h>
@@ -6,58 +7,114 @@
 
 namespace odr::internal {
 
-std::string ooxml::read_string_attribute(pugi::xml_attribute attribute) {
+std::optional<std::string>
+ooxml::read_string_attribute(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
   return attribute.value();
 }
 
-std::string ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
-  std::string value = attribute.value();
-  if (value == "auto") {
+std::optional<Color>
+ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
+  static const std::unordered_map<std::string, Color> color_map{
+      {"red", {255, 0, 0}},
+      {"green", {0, 255, 0}},
+      {"blue", {0, 0, 255}},
+  };
+
+  if (!attribute) {
     return {};
   }
-  if (value.length() == 6) {
-    return "#" + value;
-  }
-  return value;
-}
-
-std::string
-ooxml::read_half_point_attribute(const pugi::xml_attribute attribute) {
-  return std::to_string(attribute.as_float() * 0.5f) + "pt";
-}
-
-std::string ooxml::read_emus_attribute(const pugi::xml_attribute attribute) {
-  return std::to_string(attribute.as_float() / 914400.0f) + "in";
-}
-
-std::string ooxml::read_line_attribute(const pugi::xml_attribute attribute) {
-  const std::string value = attribute.value();
-  if (value == "none") {
+  auto value = attribute.value();
+  if (std::strcmp("auto", attribute.value()) == 0) {
     return {};
   }
-  // TODO
-  return "solid";
-}
-
-std::string ooxml::read_shadow_attribute(const pugi::xml_node) {
-  // TODO
-  return "1pt 1pt";
-}
-
-std::optional<std::string>
-ooxml::read_optional_node(const pugi::xml_node node,
-                          const NodeTransformation &node_transformation) {
-  if (node) {
-    return node_transformation(node);
+  if (auto color_map_it = color_map.find(value);
+      color_map_it != std::end(color_map)) {
+    return color_map_it->second;
+  }
+  if (std::strlen(value) == 6) {
+    std::uint32_t color = std::strtoull(value, nullptr, 16);
+    return Color((std::uint8_t)(color >> 16), (std::uint8_t)(color >> 8),
+                 (std::uint8_t)(color >> 0));
   }
   return {};
 }
 
-std::optional<std::string> ooxml::read_optional_attribute(
-    const pugi::xml_attribute attribute,
-    const AttributeTransformation &attribute_transformation) {
-  if (attribute) {
-    return attribute_transformation(attribute);
+std::optional<Measure>
+ooxml::read_half_point_attribute(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  return Measure(attribute.as_float() * 0.5f, DynamicUnit("pt"));
+}
+
+std::optional<Measure>
+ooxml::read_emus_attribute(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  return Measure(attribute.as_float() / 914400.0f, DynamicUnit("in"));
+}
+
+std::optional<Measure>
+ooxml::read_twips_attribute(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  return Measure(attribute.as_float() / 1440.0f, DynamicUnit("in"));
+}
+
+bool ooxml::read_line_attribute(const pugi::xml_node node) {
+  if (!node) {
+    return false;
+  }
+  auto val = node.attribute("w:val").value();
+  if (std::strcmp("none", val) == 0) {
+    return false;
+  }
+  return true;
+}
+
+std::optional<std::string>
+ooxml::read_shadow_attribute(const pugi::xml_node node) {
+  if (!node) {
+    return {};
+  }
+  return "1pt 1pt";
+}
+
+std::optional<FontWeight>
+ooxml::read_font_weight_attribute(const pugi::xml_node node) {
+  if (!node) {
+    return {};
+  }
+  return FontWeight::bold;
+}
+
+std::optional<FontStyle>
+ooxml::read_font_style_attribute(const pugi::xml_node node) {
+  if (!node) {
+    return {};
+  }
+  return FontStyle::italic;
+}
+
+std::optional<TextAlign>
+ooxml::read_text_align_attribute(const pugi::xml_node node) {
+  auto val = node.attribute("w:val").value();
+  if ((std::strcmp("left", val) == 0) || (std::strcmp("start", val) == 0)) {
+    return TextAlign::left;
+  }
+  if ((std::strcmp("right", val) == 0) || (std::strcmp("end", val) == 0)) {
+    return TextAlign::right;
+  }
+  if (std::strcmp("center", val) == 0) {
+    return TextAlign::center;
+  }
+  if (std::strcmp("justify", val) == 0) {
+    return TextAlign::justify;
   }
   return {};
 }

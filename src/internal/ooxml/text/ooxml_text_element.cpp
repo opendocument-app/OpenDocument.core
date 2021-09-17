@@ -120,10 +120,25 @@ class Paragraph final : public Element, public abstract::ParagraphElement {
 public:
   using Element::Element;
 
+  common::ResolvedStyle
+  partial_style(const abstract::Document *document) const final {
+    return style_(document)->partial_paragraph_style(m_node);
+  }
+
   [[nodiscard]] std::optional<ParagraphStyle>
   style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).paragraph_style;
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).paragraph_style;
+  }
+};
+
+class Span final : public Element, public abstract::SpanElement {
+public:
+  using Element::Element;
+
+  common::ResolvedStyle
+  partial_style(const abstract::Document *document) const final {
+    return style_(document)->partial_text_style(m_node);
   }
 };
 
@@ -156,8 +171,8 @@ public:
 
   [[nodiscard]] std::optional<TextStyle>
   style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).text_style;
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
   }
 
 private:
@@ -426,7 +441,6 @@ text::construct_default_element(const Document *document, pugi::xml_node node,
       const Document *document, pugi::xml_node node,
       const abstract::Allocator *allocator)>;
 
-  using Span = DefaultElement<ElementType::span>;
   using Link = DefaultElement<ElementType::link>;
   using Bookmark = DefaultElement<ElementType::bookmark>;
   using Group = DefaultElement<ElementType::group>;
@@ -443,6 +457,7 @@ text::construct_default_element(const Document *document, pugi::xml_node node,
       {"w:gridCol", construct_default<TableColumn>},
       {"w:tr", construct_default<TableRow>},
       {"w:tc", construct_default<TableCell>},
+      {"w:sdt", construct_default<Group>},
       {"w:sdtContent", construct_default<Group>},
       {"w:drawing", construct_default<Frame>},
       {"a:graphicData", construct_default<ImageElement>},

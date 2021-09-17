@@ -3,6 +3,7 @@
 
 #include <any>
 #include <functional>
+#include <odr/style.h>
 #include <pugixml.hpp>
 #include <string>
 #include <unordered_map>
@@ -17,27 +18,18 @@ class Path;
 
 namespace odr::internal::ooxml {
 
-std::string read_string_attribute(pugi::xml_attribute attribute);
-std::string read_color_attribute(pugi::xml_attribute attribute);
-std::string read_half_point_attribute(pugi::xml_attribute attribute);
-std::string read_emus_attribute(pugi::xml_attribute attribute);
-std::string read_line_attribute(pugi::xml_attribute attribute);
-std::string read_shadow_attribute(pugi::xml_node node);
+std::optional<std::string> read_string_attribute(pugi::xml_attribute attribute);
+std::optional<Color> read_color_attribute(pugi::xml_attribute attribute);
+std::optional<Measure> read_half_point_attribute(pugi::xml_attribute attribute);
+std::optional<Measure> read_emus_attribute(pugi::xml_attribute attribute);
+std::optional<Measure> read_twips_attribute(pugi::xml_attribute attribute);
+bool read_line_attribute(pugi::xml_node attribute);
+std::optional<std::string> read_shadow_attribute(pugi::xml_node node);
+std::optional<FontWeight> read_font_weight_attribute(pugi::xml_node node);
+std::optional<FontStyle> read_font_style_attribute(pugi::xml_node node);
+std::optional<TextAlign> read_text_align_attribute(pugi::xml_node node);
 
 std::string read_text_property(pugi::xml_node node);
-
-using NodeTransformation =
-    std::function<std::string(const pugi::xml_node attribute)>;
-using AttributeTransformation =
-    std::function<std::string(const pugi::xml_attribute attribute)>;
-
-std::optional<std::string>
-read_optional_node(pugi::xml_node node,
-                   const NodeTransformation &node_transformation);
-std::optional<std::string> read_optional_attribute(
-    pugi::xml_attribute attribute,
-    const AttributeTransformation &attribute_transformation =
-        read_string_attribute);
 
 std::unordered_map<std::string, std::string>
 parse_relationships(const pugi::xml_document &relations);

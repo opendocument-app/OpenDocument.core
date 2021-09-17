@@ -25,22 +25,6 @@ private:
   common::ResolvedStyle m_resolved;
 
   void resolve_style_();
-
-  static void resolve_text_style_(pugi::xml_node node,
-                                  std::optional<TextStyle> &result);
-  static void resolve_paragraph_style_(pugi::xml_node node,
-                                       std::optional<ParagraphStyle> &result);
-  static void resolve_table_style_(pugi::xml_node node,
-                                   std::optional<TableStyle> &result);
-  static void
-  resolve_table_column_style_(pugi::xml_node node,
-                              std::optional<TableColumnStyle> &result);
-  static void resolve_table_row_style_(pugi::xml_node node,
-                                       std::optional<TableRowStyle> &result);
-  static void resolve_table_cell_style_(pugi::xml_node node,
-                                        std::optional<TableCellStyle> &result);
-  static void resolve_graphic_style_(pugi::xml_node node,
-                                     std::optional<GraphicStyle> &result);
 };
 
 class StyleRegistry final {
@@ -49,6 +33,9 @@ public:
   explicit StyleRegistry(pugi::xml_node styles_root);
 
   [[nodiscard]] Style *style(const std::string &name) const;
+
+  common::ResolvedStyle partial_text_style(pugi::xml_node node) const;
+  common::ResolvedStyle partial_paragraph_style(pugi::xml_node node) const;
 
 private:
   std::unordered_map<std::string, pugi::xml_node> m_index;

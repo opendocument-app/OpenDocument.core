@@ -33,8 +33,9 @@ public:
                const abstract::DocumentCursor *cursor,
                const abstract::Allocator *allocator) override;
 
-  common::ResolvedStyle partial_style(const abstract::Document *document) const;
-  common::ResolvedStyle
+  virtual common::ResolvedStyle
+  partial_style(const abstract::Document *document) const;
+  virtual common::ResolvedStyle
   intermediate_style(const abstract::Document *document,
                      const abstract::DocumentCursor *cursor) const;
 

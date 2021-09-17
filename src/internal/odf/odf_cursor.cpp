@@ -21,7 +21,7 @@ DocumentCursor::copy() const {
 }
 
 common::ResolvedStyle DocumentCursor::partial_style() const {
-  return dynamic_cast<const odf::Element *>(back_())->partial_style(m_document);
+  return dynamic_cast<const Element *>(back_())->partial_style(m_document);
 }
 
 } // namespace odr::internal::odf
