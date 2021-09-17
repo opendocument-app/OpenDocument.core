@@ -1,5 +1,6 @@
 #include <cstring>
 #include <internal/abstract/filesystem.h>
+#include <internal/common/html.h>
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/util/xml_util.h>
@@ -66,6 +67,26 @@ ooxml::read_twips_attribute(const pugi::xml_attribute attribute) {
   return Measure(attribute.as_float() / 1440.0f, DynamicUnit("in"));
 }
 
+std::optional<Measure> ooxml::read_width_attribute(const pugi::xml_node node) {
+  if (!node) {
+    return {};
+  }
+  auto type = node.attribute("w:type").value();
+  if (std::strcmp("auto", type) == 0) {
+    return {};
+  }
+  if (std::strcmp("dxa", type) == 0) {
+    return read_twips_attribute(node.attribute("w:w"));
+  }
+  if (std::strcmp("nil", type) == 0) {
+    return Measure(0, DynamicUnit(""));
+  }
+  if (std::strcmp("pct", type) == 0) {
+    return Measure(node.attribute("w:w").as_float(), DynamicUnit("%"));
+  }
+  return {};
+}
+
 bool ooxml::read_line_attribute(const pugi::xml_node node) {
   if (!node) {
     return false;
@@ -117,6 +138,42 @@ ooxml::read_text_align_attribute(const pugi::xml_node node) {
     return TextAlign::justify;
   }
   return {};
+}
+
+std::optional<VerticalAlign>
+ooxml::read_vertical_align_attribute(const pugi::xml_attribute attribute) {
+  auto val = attribute.value();
+  if (std::strcmp("top", val) == 0) {
+    return VerticalAlign::top;
+  }
+  if (std::strcmp("center", val) == 0) {
+    return VerticalAlign::middle;
+  }
+  if (std::strcmp("bottom", val) == 0) {
+    return VerticalAlign::bottom;
+  }
+  return {};
+}
+
+std::optional<std::string>
+ooxml::read_border_attribute(const pugi::xml_node node) {
+  if (!node) {
+    return {};
+  }
+  std::string result;
+  result
+      .append(
+          read_half_point_attribute(node.attribute("w:sz")).value().to_string())
+      .append(" ");
+  auto val = node.attribute("w:val").value();
+  if (std::strcmp("none", val) == 0) {
+    result.append(node.attribute("w:val").value()).append(" ");
+  } else {
+    result.append("solid ");
+  }
+  result.append(common::html::color(
+      read_color_attribute(node.attribute("w:color")).value()));
+  return result;
 }
 
 std::unordered_map<std::string, std::string>

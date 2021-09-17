@@ -88,12 +88,11 @@ void resolve_table_style_(pugi::xml_node node,
     if (!result) {
       result = TableStyle();
     }
-  }
-}
 
-void resolve_table_column_style_(pugi::xml_node node,
-                                 std::optional<TableColumnStyle> &result) {
-  // TODO
+    if (auto width = read_width_attribute(table_properties.child("w:tblW"))) {
+      result->width = width;
+    }
+  }
 }
 
 void resolve_table_row_style_(pugi::xml_node node,
@@ -111,11 +110,35 @@ void resolve_table_cell_style_(pugi::xml_node node,
     if (!result) {
       result = TableCellStyle();
     }
+
+    if (auto width =
+            read_width_attribute(table_cell_properties.child("w:tcW"))) {
+      // result->width = width; // TODO
+    }
+    if (auto vertical_align = read_vertical_align_attribute(
+            table_cell_properties.child("w:vAlign").attribute("w:val"))) {
+      result->vertical_align = vertical_align;
+    }
+    if (auto border_right = read_border_attribute(
+            table_cell_properties.child("w:tcBorders").child("w:right"))) {
+      result->border.right = border_right;
+    }
+    if (auto border_top = read_border_attribute(
+            table_cell_properties.child("w:tcBorders").child("w:top"))) {
+      result->border.top = border_top;
+    }
+    if (auto border_left = read_border_attribute(
+            table_cell_properties.child("w:tcBorders").child("w:left"))) {
+      result->border.left = border_left;
+    }
+    if (auto border_bottom = read_border_attribute(
+            table_cell_properties.child("w:tcBorders").child("w:bottom"))) {
+      result->border.bottom = border_bottom;
+    }
   }
 }
 
-void resolve_graphic_style_(pugi::xml_node node,
-                            std::optional<GraphicStyle> &result) {
+void resolve_graphic_style_(pugi::xml_node, std::optional<GraphicStyle> &) {
   // TODO
 }
 } // namespace
@@ -135,7 +158,6 @@ void Style::resolve_style_() {
   resolve_text_style_(m_node, m_resolved.text_style);
   resolve_paragraph_style_(m_node, m_resolved.paragraph_style);
   resolve_table_style_(m_node, m_resolved.table_style);
-  resolve_table_column_style_(m_node, m_resolved.table_column_style);
   resolve_table_row_style_(m_node, m_resolved.table_row_style);
   resolve_table_cell_style_(m_node, m_resolved.table_cell_style);
   resolve_graphic_style_(m_node, m_resolved.graphic_style);
@@ -190,6 +212,31 @@ StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
     }
     result.text_style->override(*text_style);
   }
+  return result;
+}
+
+common::ResolvedStyle
+StyleRegistry::partial_table_style(const pugi::xml_node node) const {
+  if (!node) {
+    return {};
+  }
+  common::ResolvedStyle result;
+  resolve_table_style_(node, result.table_style);
+  return result;
+}
+
+common::ResolvedStyle
+StyleRegistry::partial_table_row_style(const pugi::xml_node) const {
+  return {};
+}
+
+common::ResolvedStyle
+StyleRegistry::partial_table_cell_style(const pugi::xml_node node) const {
+  if (!node) {
+    return {};
+  }
+  common::ResolvedStyle result;
+  resolve_table_cell_style_(node, result.table_cell_style);
   return result;
 }
 

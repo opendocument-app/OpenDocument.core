@@ -1,4 +1,5 @@
 #include <internal/common/table_cursor.h>
+#include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/text/ooxml_text_cursor.h>
 #include <internal/ooxml/text/ooxml_text_document.h>
 #include <internal/ooxml/text/ooxml_text_element.h>
@@ -252,7 +253,7 @@ public:
   [[nodiscard]] std::optional<TableStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_style;
+    return style_(document)->partial_table_style(m_node).table_style;
   }
 };
 
@@ -281,9 +282,13 @@ public:
   }
 
   [[nodiscard]] std::optional<TableColumnStyle>
-  style(const abstract::Document *document,
+  style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_column_style;
+    TableColumnStyle result;
+    if (auto width = read_twips_attribute(m_node.attribute("w:w"))) {
+      result.width = width;
+    }
+    return result;
   }
 };
 
@@ -314,17 +319,23 @@ public:
   [[nodiscard]] std::optional<TableRowStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_row_style;
+    return style_(document)->partial_table_row_style(m_node).table_row_style;
   }
 };
 
 class TableCell final : public Element, public abstract::TableCellElement {
 public:
-  using Element::Element;
+  // TODO this only works for first cells
+  TableCell(const Document *document, pugi::xml_node node)
+      : Element(document, node),
+        m_column{document,
+                 node.parent().parent().child("w:tblGrid").child("w:gridCol")},
+        m_row{document, node.parent()} {}
 
-  abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::DocumentCursor *,
+  abstract::Element *previous_sibling(const abstract::Document *document,
+                                      const abstract::DocumentCursor *cursor,
                                       const abstract::Allocator *) final {
+    m_column.previous_sibling(document, cursor, nullptr);
     if (auto previous_sibling = m_node.previous_sibling("w:tc")) {
       m_node = previous_sibling;
       return this;
@@ -332,9 +343,10 @@ public:
     return nullptr;
   }
 
-  abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::DocumentCursor *,
+  abstract::Element *next_sibling(const abstract::Document *document,
+                                  const abstract::DocumentCursor *cursor,
                                   const abstract::Allocator *) final {
+    m_column.next_sibling(document, cursor, nullptr);
     if (auto next_sibling = m_node.next_sibling("w:tc")) {
       m_node = next_sibling;
       return this;
@@ -345,17 +357,17 @@ public:
   [[nodiscard]] const abstract::Element *
   column(const abstract::Document *,
          const abstract::DocumentCursor *) const final {
-    return nullptr;
+    return &m_column;
   }
 
   [[nodiscard]] const abstract::Element *
   row(const abstract::Document *,
       const abstract::DocumentCursor *) const final {
-    return nullptr;
+    return &m_row;
   }
 
   [[nodiscard]] bool covered(const abstract::Document *) const final {
-    return {}; // TODO
+    return false;
   }
 
   [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
@@ -365,8 +377,12 @@ public:
   [[nodiscard]] std::optional<TableCellStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_cell_style;
+    return style_(document)->partial_table_cell_style(m_node).table_cell_style;
   }
+
+private:
+  TableColumn m_column;
+  TableRow m_row;
 };
 
 class Frame final : public Element, public abstract::FrameElement {

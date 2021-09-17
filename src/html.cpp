@@ -71,14 +71,6 @@ const char *translate_font_style(const FontStyle font_style) {
   }
 }
 
-std::string translate_color(const Color &color) {
-  // TODO alpha
-  std::stringstream ss;
-  ss << "#";
-  ss << std::setw(6) << std::setfill('0') << std::hex << color.rgb();
-  return ss.str();
-}
-
 std::string translate_outer_page_style(const PageLayout &page_layout) {
   std::string result;
   if (auto width = page_layout.width) {
@@ -139,11 +131,13 @@ std::string translate_text_style(const TextStyle &text_style) {
     result.append("text-shadow:").append(*font_shadow).append(";");
   }
   if (auto font_color = text_style.font_color) {
-    result.append("color:").append(translate_color(*font_color)).append(";");
+    result.append("color:")
+        .append(internal::common::html::color(*font_color))
+        .append(";");
   }
   if (auto background_color = text_style.background_color) {
     result.append("background-color:")
-        .append(translate_color(*background_color))
+        .append(internal::common::html::color(*background_color))
         .append(";");
   }
   return result;
@@ -183,6 +177,15 @@ std::string translate_table_style(const TableStyle &table_style) {
   return result;
 }
 
+std::string
+translate_table_column_style(const TableColumnStyle &table_column_style) {
+  std::string result;
+  if (auto width = table_column_style.width) {
+    result.append("width:").append(width->to_string()).append(";");
+  }
+  return result;
+}
+
 std::string translate_table_row_style(const TableRowStyle &table_row_style) {
   std::string result;
   // TODO that does not work with HTML; height would need to be applied to the
@@ -202,7 +205,7 @@ std::string translate_table_cell_style(const TableCellStyle &table_cell_style) {
   }
   if (auto background_color = table_cell_style.background_color) {
     result.append("background-color:")
-        .append(translate_color(*background_color))
+        .append(internal::common::html::color(*background_color))
         .append(";");
   }
   if (auto padding_right = table_cell_style.padding.right) {
@@ -246,10 +249,14 @@ std::string translate_drawing_style(const GraphicStyle &graphic_style) {
         .append(";");
   }
   if (auto stroke_color = graphic_style.stroke_color) {
-    result.append("stroke:").append(translate_color(*stroke_color)).append(";");
+    result.append("stroke:")
+        .append(internal::common::html::color(*stroke_color))
+        .append(";");
   }
   if (auto fill_color = graphic_style.fill_color) {
-    result.append("fill:").append(translate_color(*fill_color)).append(";");
+    result.append("fill:")
+        .append(internal::common::html::color(*fill_color))
+        .append(";");
   }
   if (auto vertical_align = graphic_style.vertical_align) {
     if (vertical_align == VerticalAlign::middle) {
@@ -428,10 +435,18 @@ void translate_table(DocumentCursor &cursor, std::ostream &out,
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
-  cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
-    out << "<col>";
-    return true;
-  });
+  cursor.for_each_table_column(
+      [&](DocumentCursor &cursor, const std::uint32_t) {
+        auto table_column = cursor.element().table_column();
+
+        out << "<col";
+        if (auto style = table_column.style()) {
+          out << optional_style_attribute(translate_table_column_style(*style));
+        }
+        out << ">";
+
+        return true;
+      });
 
   cursor.for_each_table_row([&](DocumentCursor &cursor, const std::uint32_t) {
     auto table_row = cursor.element().table_row();

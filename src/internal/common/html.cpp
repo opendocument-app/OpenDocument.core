@@ -1,6 +1,8 @@
 #include <internal/common/html.h>
 #include <internal/util/string_util.h>
+#include <iomanip>
 #include <odr/html.h>
+#include <sstream>
 
 namespace odr::internal::common {
 
@@ -153,6 +155,13 @@ std::string html::escape_text(std::string text) noexcept {
   util::string::replace_all(text, "\t", "&emsp;");
 
   return text;
+}
+
+std::string html::color(const Color &color) noexcept {
+  std::stringstream ss;
+  ss << "#";
+  ss << std::setw(6) << std::setfill('0') << std::hex << color.rgb();
+  return ss.str();
 }
 
 } // namespace odr::internal::common

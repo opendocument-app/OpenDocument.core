@@ -36,6 +36,9 @@ public:
 
   common::ResolvedStyle partial_text_style(pugi::xml_node node) const;
   common::ResolvedStyle partial_paragraph_style(pugi::xml_node node) const;
+  common::ResolvedStyle partial_table_style(pugi::xml_node node) const;
+  common::ResolvedStyle partial_table_row_style(pugi::xml_node node) const;
+  common::ResolvedStyle partial_table_cell_style(pugi::xml_node node) const;
 
 private:
   std::unordered_map<std::string, pugi::xml_node> m_index;
