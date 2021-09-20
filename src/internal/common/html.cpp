@@ -66,11 +66,17 @@ table {
 td {
   vertical-align: bottom;
   text-overflow: ellipsis;
+  height: inherit;
+  overflow: auto;
+  overflow-y: hidden;
 }
 
 p {
   font-family: "Arial";
   font-size: 10pt;
+}
+td p {
+  height: inherit;
 }
 
 .odr-gridlines-none table td {}

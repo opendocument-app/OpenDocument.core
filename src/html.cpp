@@ -536,12 +536,7 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
 
   // TODO choosing <span> by default because it is valid inside <p>;
   // alternatives?
-  const bool span = frame.anchor_type() == AnchorType::as_char;
-  if (span) {
-    out << "<span";
-  } else {
-    out << "<div";
-  }
+  out << "<span";
 
   out << optional_style_attribute(
       translate_frame_properties(frame) +
@@ -549,11 +544,7 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
   out << ">";
   translate_children(cursor, out, config);
 
-  if (span) {
-    out << "</span>";
-  } else {
-    out << "</div>";
-  }
+  out << "</span>";
 }
 
 void translate_rect(DocumentCursor &cursor, std::ostream &out,
@@ -710,7 +701,13 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
 
   column_index = 0;
   cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
-    out << "<col>";
+    auto table_column = cursor.element().table_column();
+
+    out << "<col";
+    if (auto style = table_column.style()) {
+      out << optional_style_attribute(translate_table_column_style(*style));
+    }
+    out << ">";
 
     ++column_index;
     return column_index < end_column;
@@ -722,17 +719,7 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
 
     column_index = 0;
     cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
-      auto table_column = cursor.element().table_column();
-      auto table_column_style = table_column.style();
-
-      out << "<td style=\"text-align:center;vertical-align:middle;";
-      if (table_column_style) {
-        if (auto width = table_column_style->width) {
-          out << "width:" << width->to_string() << ";";
-          out << "max-width:" << width->to_string() << ";";
-        }
-      }
-      out << "\">";
+      out << "<td style=\"text-align:center;vertical-align:middle;\">";
       out << common::TablePosition::to_column_string(column_index);
       out << "</td>";
 

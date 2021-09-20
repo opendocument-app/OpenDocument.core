@@ -81,8 +81,9 @@ enum class ElementType {
 enum class AnchorType {
   as_char,
   at_char,
-  at_paragraph,
+  at_frame,
   at_page,
+  at_paragraph,
 };
 
 class DocumentCursor;

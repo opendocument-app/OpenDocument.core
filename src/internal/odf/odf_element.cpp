@@ -755,7 +755,7 @@ public:
     if (std::strcmp("page", anchor_type) == 0) {
       return AnchorType::at_page;
     }
-    return {}; // TODO default?
+    return AnchorType::at_page;
   }
 
   [[nodiscard]] std::optional<std::string>
