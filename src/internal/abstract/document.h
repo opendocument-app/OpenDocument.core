@@ -307,7 +307,7 @@ public:
     return ElementType::frame;
   }
 
-  [[nodiscard]] virtual std::optional<std::string>
+  [[nodiscard]] virtual AnchorType
   anchor_type(const Document *document) const = 0;
   [[nodiscard]] virtual std::optional<std::string>
   x(const Document *document) const = 0;

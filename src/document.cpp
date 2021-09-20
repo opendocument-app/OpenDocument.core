@@ -283,9 +283,9 @@ std::optional<TableCellStyle> Element::TableCell::style() const {
                    : std::optional<TableCellStyle>();
 }
 
-std::optional<std::string> Element::Frame::anchor_type() const {
+AnchorType Element::Frame::anchor_type() const {
   return m_element ? m_element->anchor_type(m_document)
-                   : std::optional<std::string>();
+                   : AnchorType::as_char; // TODO default?
 }
 
 std::optional<std::string> Element::Frame::x() const {

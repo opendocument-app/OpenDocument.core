@@ -270,9 +270,9 @@ std::string translate_drawing_style(const GraphicStyle &graphic_style) {
 std::string translate_frame_properties(const Element::Frame &frame) {
   std::string result;
   if (auto anchor_type = frame.anchor_type();
-      anchor_type && (*anchor_type == "as-char")) {
+      anchor_type == AnchorType::as_char) {
     result += "display:inline-block;";
-  } else if (anchor_type && (*anchor_type == "char")) {
+  } else if (anchor_type == AnchorType::at_char) {
     result += "display:block;";
     result += "float:left;clear:both;";
     result += "shape-outside:content-box;";
@@ -536,7 +536,7 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
 
   // TODO choosing <span> by default because it is valid inside <p>;
   // alternatives?
-  const bool span = frame.anchor_type().has_value();
+  const bool span = frame.anchor_type() == AnchorType::as_char;
   if (span) {
     out << "<span";
   } else {

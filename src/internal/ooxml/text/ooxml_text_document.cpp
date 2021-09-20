@@ -1,4 +1,5 @@
 #include <internal/common/path.h>
+#include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/text/ooxml_text_cursor.h>
 #include <internal/ooxml/text/ooxml_text_document.h>
 #include <internal/util/xml_util.h>
@@ -13,6 +14,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_styles_xml = util::xml::parse(*m_filesystem, "word/styles.xml");
 
   m_style_registry = StyleRegistry(m_styles_xml.document_element());
+
+  m_document_relations =
+      parse_relationships(*m_filesystem.get(), "word/document.xml");
 }
 
 bool Document::editable() const noexcept { return false; }

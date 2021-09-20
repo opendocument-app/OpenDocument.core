@@ -78,6 +78,13 @@ enum class ElementType {
   group,
 };
 
+enum class AnchorType {
+  as_char,
+  at_char,
+  at_paragraph,
+  at_page,
+};
+
 class DocumentCursor;
 class Element;
 struct PageLayout;
@@ -309,7 +316,7 @@ public:
   public:
     using Extension::Extension;
 
-    [[nodiscard]] std::optional<std::string> anchor_type() const;
+    [[nodiscard]] AnchorType anchor_type() const;
     [[nodiscard]] std::optional<std::string> x() const;
     [[nodiscard]] std::optional<std::string> y() const;
     [[nodiscard]] std::optional<std::string> width() const;

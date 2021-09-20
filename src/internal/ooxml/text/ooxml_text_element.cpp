@@ -1,3 +1,5 @@
+#include <internal/abstract/filesystem.h>
+#include <internal/common/path.h>
 #include <internal/common/table_cursor.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/text/ooxml_text_cursor.h>
@@ -61,6 +63,11 @@ const Document *Element::document_(const abstract::Document *document) {
 
 const StyleRegistry *Element::style_(const abstract::Document *document) {
   return &dynamic_cast<const Document *>(document)->m_style_registry;
+}
+
+const std::unordered_map<std::string, std::string> &
+Element::document_relations_(const abstract::Document *document) {
+  return dynamic_cast<const Document *>(document)->m_document_relations;
 }
 
 namespace {
@@ -389,40 +396,58 @@ class Frame final : public Element, public abstract::FrameElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::optional<std::string>
-  anchor_type(const abstract::Document *) const final {
-    return {}; // TODO
+  abstract::Element *first_child(const abstract::Document *document,
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *allocator) final {
+    return construct_default_first_child_element(
+        document_(document), m_node.child("wp:inline").child("a:graphic"),
+        allocator);
+  }
+
+  [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final {
+    if (m_node.child("wp:inline")) {
+      return AnchorType::as_char;
+    }
+    return AnchorType::as_char; // TODO default?
   }
 
   [[nodiscard]] std::optional<std::string>
   x(const abstract::Document *) const final {
-    return {}; // TODO
+    return {};
   }
 
   [[nodiscard]] std::optional<std::string>
   y(const abstract::Document *) const final {
-    return {}; // TODO
+    return {};
   }
 
   [[nodiscard]] std::optional<std::string>
   width(const abstract::Document *) const final {
-    return {}; // TODO
+    if (auto width = read_emus_attribute(
+            m_node.child("wp:inline").child("wp:extent").attribute("cx"))) {
+      return width->to_string();
+    }
+    return {};
   }
 
   [[nodiscard]] std::optional<std::string>
   height(const abstract::Document *) const final {
-    return {}; // TODO
+    if (auto height = read_emus_attribute(
+            m_node.child("wp:inline").child("wp:extent").attribute("cy"))) {
+      return height->to_string();
+    }
+    return {};
   }
 
   [[nodiscard]] std::optional<std::string>
   z_index(const abstract::Document *) const final {
-    return {}; // TODO
+    return {};
   }
 
   [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
-    return {}; // TODO
+    return {};
   }
 };
 
@@ -430,16 +455,38 @@ class ImageElement final : public Element, public abstract::ImageElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool internal(const abstract::Document *) const final {
+  [[nodiscard]] bool internal(const abstract::Document *document) const final {
+    auto doc = document_(document);
+    if (!doc || !doc->files()) {
+      return false;
+    }
+    try {
+      return doc->files()->is_file(href(document));
+    } catch (...) {
+    }
     return false;
   }
 
   [[nodiscard]] std::optional<odr::File>
-  file(const abstract::Document *) const final {
-    return {}; // TODO
+  file(const abstract::Document *document) const final {
+    auto doc = document_(document);
+    if (!doc || !internal(document)) {
+      return {};
+    }
+    return File(doc->files()->open(href(document)));
   }
 
-  [[nodiscard]] std::string href(const abstract::Document *) const final {
+  [[nodiscard]] std::string
+  href(const abstract::Document *document) const final {
+    if (auto ref = m_node.child("pic:pic")
+                       .child("pic:blipFill")
+                       .child("a:blip")
+                       .attribute("r:embed")) {
+      auto relations = document_relations_(document);
+      if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
+        return common::Path("word").join(rel->second).string();
+      }
+    }
     return ""; // TODO
   }
 };

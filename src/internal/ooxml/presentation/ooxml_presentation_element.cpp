@@ -426,8 +426,7 @@ class Frame final : public Element, public abstract::FrameElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::optional<std::string>
-  anchor_type(const abstract::Document *) const final {
+  [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final {
     return {}; // TODO
   }
 

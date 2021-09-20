@@ -44,6 +44,8 @@ protected:
 
   static const Document *document_(const abstract::Document *document);
   static const StyleRegistry *style_(const abstract::Document *document);
+  static const std::unordered_map<std::string, std::string> &
+  document_relations_(const abstract::Document *document);
 
   friend class Style;
 };

@@ -741,12 +741,21 @@ class Frame final : public Element, public abstract::FrameElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::optional<std::string>
-  anchor_type(const abstract::Document *) const final {
-    if (auto attribute = m_node.attribute("text:anchor-type")) {
-      return attribute.value();
+  [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final {
+    auto anchor_type = m_node.attribute("text:anchor-type").value();
+    if (std::strcmp("as-char", anchor_type) == 0) {
+      return AnchorType::as_char;
     }
-    return {};
+    if (std::strcmp("char", anchor_type) == 0) {
+      return AnchorType::at_char;
+    }
+    if (std::strcmp("paragraph", anchor_type) == 0) {
+      return AnchorType::at_paragraph;
+    }
+    if (std::strcmp("page", anchor_type) == 0) {
+      return AnchorType::at_page;
+    }
+    return {}; // TODO default?
   }
 
   [[nodiscard]] std::optional<std::string>
