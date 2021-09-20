@@ -181,7 +181,7 @@ std::string
 translate_table_column_style(const TableColumnStyle &table_column_style) {
   std::string result;
   if (auto width = table_column_style.width) {
-    result.append("width:").append(width->to_string()).append(";");
+    result.append("min-width:").append(width->to_string()).append(";");
   }
   return result;
 }
