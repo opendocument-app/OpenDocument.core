@@ -237,8 +237,18 @@ class Link final : public Element, public abstract::LinkElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::string href(const abstract::Document *) const final {
-    return m_node.attribute("xlink:href").value();
+  [[nodiscard]] std::string
+  href(const abstract::Document *document) const final {
+    if (auto anchor = m_node.attribute("w:anchor")) {
+      return anchor.value();
+    }
+    if (auto ref = m_node.attribute("r:id")) {
+      auto relations = document_relations_(document);
+      if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
+        return rel->second;
+      }
+    }
+    return "";
   }
 };
 
@@ -247,7 +257,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
-    return m_node.attribute("text:name").value();
+    return m_node.attribute("w:name").value();
   }
 };
 
