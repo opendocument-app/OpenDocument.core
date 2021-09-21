@@ -255,7 +255,7 @@ public:
 class List final : public DefaultElement<ElementType::list> {
 public:
   static bool is_list_item(const pugi::xml_node node) {
-    return false; // TODO
+    return node.child("w:pPr").child("w:numPr");
   }
 
   List(const Document *document, pugi::xml_node node,
@@ -305,7 +305,13 @@ private:
 
 class ListItem final : public Element, public abstract::ListItemElement {
 public:
-  static std::int32_t level(const pugi::xml_node node) { return 0; }
+  static std::int32_t level(const pugi::xml_node node) {
+    return node.child("w:pPr")
+        .child("w:numPr")
+        .child("w:ilvl")
+        .attribute("w:val")
+        .as_int(0);
+  }
 
   ListItem(const Document *document, pugi::xml_node node,
            const std::int32_t level = 0)
@@ -322,17 +328,24 @@ public:
                                      m_level + 1);
   }
 
-  abstract::Element *
-  previous_sibling(const abstract::Document *document,
-                   const abstract::DocumentCursor *,
-                   const abstract::Allocator *allocator) final {
-    return nullptr; // TODO
+  abstract::Element *previous_sibling(const abstract::Document *,
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
+    if (auto previous = previous_()) {
+      m_node = previous;
+      return this;
+    }
+    return nullptr;
   }
 
-  abstract::Element *next_sibling(const abstract::Document *document,
+  abstract::Element *next_sibling(const abstract::Document *,
                                   const abstract::DocumentCursor *,
-                                  const abstract::Allocator *allocator) final {
-    return nullptr; // TODO
+                                  const abstract::Allocator *) final {
+    if (auto next = next_()) {
+      m_node = next;
+      return this;
+    }
+    return nullptr;
   }
 
   [[nodiscard]] std::optional<TextStyle>
@@ -343,6 +356,26 @@ public:
 
 private:
   std::int32_t m_level{0};
+
+  [[nodiscard]] pugi::xml_node previous_() const {
+    for (auto node = m_node.previous_sibling(); List::is_list_item(node);
+         node = node.previous_sibling()) {
+      if (level(node) == m_level) {
+        return node;
+      }
+    }
+    return {};
+  }
+
+  [[nodiscard]] pugi::xml_node next_() const {
+    for (auto node = m_node.next_sibling(); List::is_list_item(node);
+         node = node.next_sibling()) {
+      if (level(node) == m_level) {
+        return node;
+      }
+    }
+    return {};
+  }
 };
 
 class ListItemParagraph : public Paragraph {
