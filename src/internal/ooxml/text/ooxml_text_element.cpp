@@ -75,6 +75,8 @@ namespace {
 template <ElementType> class DefaultElement;
 class Root;
 class Text;
+class ListItem;
+class ListItemParagraph;
 class TableElement;
 class TableColumn;
 class TableRow;
@@ -86,6 +88,13 @@ abstract::Element *construct_default(const Document *document,
                                      const abstract::Allocator *allocator) {
   auto alloc = (*allocator)(sizeof(Derived));
   return new (alloc) Derived(document, node);
+}
+
+template <typename Derived, typename... Args>
+abstract::Element *construct_default_2(const abstract::Allocator *allocator,
+                                       Args &&...args) {
+  auto alloc = (*allocator)(sizeof(Derived));
+  return new (alloc) Derived(std::forward<Args>(args)...);
 }
 
 template <typename Derived>
@@ -124,7 +133,7 @@ public:
   }
 };
 
-class Paragraph final : public Element, public abstract::ParagraphElement {
+class Paragraph : public Element, public abstract::ParagraphElement {
 public:
   using Element::Element;
 
@@ -222,6 +231,134 @@ private:
     for (; is_text_(node.next_sibling()); node = node.next_sibling()) {
     }
     return node;
+  }
+};
+
+class Link final : public Element, public abstract::LinkElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] std::string href(const abstract::Document *) const final {
+    return m_node.attribute("xlink:href").value();
+  }
+};
+
+class Bookmark final : public Element, public abstract::BookmarkElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] std::string name(const abstract::Document *) const final {
+    return m_node.attribute("text:name").value();
+  }
+};
+
+class List final : public DefaultElement<ElementType::list> {
+public:
+  static bool is_list_item(const pugi::xml_node node) {
+    return false; // TODO
+  }
+
+  List(const Document *document, pugi::xml_node node,
+       const std::int32_t level = 0)
+      : DefaultElement(document, node), m_level{level} {}
+
+  abstract::Element *first_child(const abstract::Document *document,
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *allocator) final {
+    return construct_default_2<ListItem>(allocator, document_(document), m_node,
+                                         m_level);
+  }
+
+  abstract::Element *
+  previous_sibling(const abstract::Document *document,
+                   const abstract::DocumentCursor *,
+                   const abstract::Allocator *allocator) final {
+    return construct_default_previous_sibling_element(document_(document),
+                                                      first_(), allocator);
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *document,
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *allocator) final {
+    return construct_default_next_sibling_element(document_(document), last_(),
+                                                  allocator);
+  }
+
+private:
+  std::int32_t m_level{0};
+
+  [[nodiscard]] pugi::xml_node first_() const {
+    auto node = m_node;
+    for (; is_list_item(node.previous_sibling());
+         node = node.previous_sibling()) {
+    }
+    return node;
+  }
+
+  [[nodiscard]] pugi::xml_node last_() const {
+    auto node = m_node;
+    for (; is_list_item(node.next_sibling()); node = node.next_sibling()) {
+    }
+    return node;
+  }
+};
+
+class ListItem final : public Element, public abstract::ListItemElement {
+public:
+  static std::int32_t level(const pugi::xml_node node) { return 0; }
+
+  ListItem(const Document *document, pugi::xml_node node,
+           const std::int32_t level = 0)
+      : Element(document, node), m_level{level} {}
+
+  abstract::Element *first_child(const abstract::Document *document,
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *allocator) final {
+    if (m_level == level(m_node)) {
+      return construct_default<ListItemParagraph>(document_(document), m_node,
+                                                  allocator);
+    }
+    return construct_default_2<List>(allocator, document_(document), m_node,
+                                     m_level + 1);
+  }
+
+  abstract::Element *
+  previous_sibling(const abstract::Document *document,
+                   const abstract::DocumentCursor *,
+                   const abstract::Allocator *allocator) final {
+    return nullptr; // TODO
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *document,
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *allocator) final {
+    return nullptr; // TODO
+  }
+
+  [[nodiscard]] std::optional<TextStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
+  }
+
+private:
+  std::int32_t m_level{0};
+};
+
+class ListItemParagraph : public Paragraph {
+public:
+  using Paragraph::Paragraph;
+
+  abstract::Element *previous_sibling(const abstract::Document *,
+                                      const abstract::DocumentCursor *,
+                                      const abstract::Allocator *) final {
+    return nullptr;
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *,
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *) final {
+    return nullptr;
   }
 };
 
@@ -504,8 +641,6 @@ text::construct_default_element(const Document *document, pugi::xml_node node,
       const Document *document, pugi::xml_node node,
       const abstract::Allocator *allocator)>;
 
-  using Link = DefaultElement<ElementType::link>;
-  using Bookmark = DefaultElement<ElementType::bookmark>;
   using Group = DefaultElement<ElementType::group>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
