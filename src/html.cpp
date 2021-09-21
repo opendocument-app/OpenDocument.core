@@ -408,18 +408,20 @@ void translate_bookmark(DocumentCursor &cursor, std::ostream &out,
 void translate_list(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
   out << "<ul>";
-  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t) {
-    auto list_item = cursor.element().list_item();
-
-    out << "<li";
-    if (auto style = list_item.style()) {
-      out << optional_style_attribute(translate_text_style(*style));
-    }
-    out << ">";
-    translate_children(cursor, out, config);
-    out << "</li>";
-  });
+  translate_children(cursor, out, config);
   out << "</ul>";
+}
+
+void translate_list_item(DocumentCursor &cursor, std::ostream &out,
+                         const HtmlConfig &config) {
+  auto list_item = cursor.element().list_item();
+  out << "<li";
+  if (auto style = list_item.style()) {
+    out << optional_style_attribute(translate_text_style(*style));
+  }
+  out << ">";
+  translate_children(cursor, out, config);
+  out << "</li>";
 }
 
 void translate_table(DocumentCursor &cursor, std::ostream &out,
@@ -633,6 +635,8 @@ void translate_element(DocumentCursor &cursor, std::ostream &out,
     translate_bookmark(cursor, out, config);
   } else if (cursor.element_type() == ElementType::list) {
     translate_list(cursor, out, config);
+  } else if (cursor.element_type() == ElementType::list_item) {
+    translate_list_item(cursor, out, config);
   } else if (cursor.element_type() == ElementType::table) {
     translate_table(cursor, out, config);
   } else if (cursor.element_type() == ElementType::frame) {

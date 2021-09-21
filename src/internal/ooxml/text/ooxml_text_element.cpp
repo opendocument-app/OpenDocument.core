@@ -75,7 +75,6 @@ namespace {
 template <ElementType> class DefaultElement;
 class Root;
 class Text;
-class ListItem;
 class ListItemParagraph;
 class TableElement;
 class TableColumn;
@@ -252,59 +251,12 @@ public:
   }
 };
 
-class List final : public DefaultElement<ElementType::list> {
+class ListElement final : public Element, public abstract::ListItemElement {
 public:
   static bool is_list_item(const pugi::xml_node node) {
     return node.child("w:pPr").child("w:numPr");
   }
 
-  List(const Document *document, pugi::xml_node node,
-       const std::int32_t level = 0)
-      : DefaultElement(document, node), m_level{level} {}
-
-  abstract::Element *first_child(const abstract::Document *document,
-                                 const abstract::DocumentCursor *,
-                                 const abstract::Allocator *allocator) final {
-    return construct_default_2<ListItem>(allocator, document_(document), m_node,
-                                         m_level);
-  }
-
-  abstract::Element *
-  previous_sibling(const abstract::Document *document,
-                   const abstract::DocumentCursor *,
-                   const abstract::Allocator *allocator) final {
-    return construct_default_previous_sibling_element(document_(document),
-                                                      first_(), allocator);
-  }
-
-  abstract::Element *next_sibling(const abstract::Document *document,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *allocator) final {
-    return construct_default_next_sibling_element(document_(document), last_(),
-                                                  allocator);
-  }
-
-private:
-  std::int32_t m_level{0};
-
-  [[nodiscard]] pugi::xml_node first_() const {
-    auto node = m_node;
-    for (; is_list_item(node.previous_sibling());
-         node = node.previous_sibling()) {
-    }
-    return node;
-  }
-
-  [[nodiscard]] pugi::xml_node last_() const {
-    auto node = m_node;
-    for (; is_list_item(node.next_sibling()); node = node.next_sibling()) {
-    }
-    return node;
-  }
-};
-
-class ListItem final : public Element, public abstract::ListItemElement {
-public:
   static std::int32_t level(const pugi::xml_node node) {
     return node.child("w:pPr")
         .child("w:numPr")
@@ -313,9 +265,16 @@ public:
         .as_int(0);
   }
 
-  ListItem(const Document *document, pugi::xml_node node,
-           const std::int32_t level = 0)
+  ListElement(const Document *document, pugi::xml_node node,
+              const std::int32_t level)
       : Element(document, node), m_level{level} {}
+
+  [[nodiscard]] ElementType type(const abstract::Document *) const final {
+    if (m_level == level(m_node)) {
+      return ElementType::list_item;
+    }
+    return ElementType::list;
+  }
 
   abstract::Element *first_child(const abstract::Document *document,
                                  const abstract::DocumentCursor *,
@@ -324,25 +283,21 @@ public:
       return construct_default<ListItemParagraph>(document_(document), m_node,
                                                   allocator);
     }
-    return construct_default_2<List>(allocator, document_(document), m_node,
-                                     m_level + 1);
+    return construct_default_2<ListElement>(allocator, document_(document),
+                                            m_node, m_level + 1);
   }
 
   abstract::Element *previous_sibling(const abstract::Document *,
                                       const abstract::DocumentCursor *,
                                       const abstract::Allocator *) final {
-    if (auto previous = previous_()) {
-      m_node = previous;
-      return this;
-    }
-    return nullptr;
+    return nullptr; // TODO
   }
 
   abstract::Element *next_sibling(const abstract::Document *,
                                   const abstract::DocumentCursor *,
                                   const abstract::Allocator *) final {
-    if (auto next = next_()) {
-      m_node = next;
+    if (auto node = m_node.next_sibling(); node && is_list_item(node)) {
+      m_node = node;
       return this;
     }
     return nullptr;
@@ -356,25 +311,42 @@ public:
 
 private:
   std::int32_t m_level{0};
+};
 
-  [[nodiscard]] pugi::xml_node previous_() const {
-    for (auto node = m_node.previous_sibling(); List::is_list_item(node);
-         node = node.previous_sibling()) {
-      if (level(node) == m_level) {
-        return node;
-      }
-    }
-    return {};
+class ListRoot final : public Element {
+public:
+  using Element::Element;
+
+  [[nodiscard]] ElementType type(const abstract::Document *) const final {
+    return ElementType::list;
   }
 
-  [[nodiscard]] pugi::xml_node next_() const {
-    for (auto node = m_node.next_sibling(); List::is_list_item(node);
-         node = node.next_sibling()) {
-      if (level(node) == m_level) {
-        return node;
-      }
+  abstract::Element *first_child(const abstract::Document *document,
+                                 const abstract::DocumentCursor *,
+                                 const abstract::Allocator *allocator) final {
+    return construct_default_2<ListElement>(allocator, document_(document),
+                                            m_node, 0);
+  }
+
+  abstract::Element *
+  previous_sibling(const abstract::Document *document,
+                   const abstract::DocumentCursor *,
+                   const abstract::Allocator *allocator) final {
+    auto node = m_node.previous_sibling();
+    for (; node && ListElement::is_list_item(node);
+         node = node.previous_sibling()) {
     }
-    return {};
+    return construct_default_element(document_(document), node, allocator);
+  }
+
+  abstract::Element *next_sibling(const abstract::Document *document,
+                                  const abstract::DocumentCursor *,
+                                  const abstract::Allocator *allocator) final {
+    auto node = m_node.next_sibling();
+    for (; node && ListElement::is_list_item(node);
+         node = node.next_sibling()) {
+    }
+    return construct_default_element(document_(document), node, allocator);
   }
 };
 
@@ -693,6 +665,10 @@ text::construct_default_element(const Document *document, pugi::xml_node node,
       {"w:drawing", construct_default<Frame>},
       {"a:graphicData", construct_default<ImageElement>},
   };
+
+  if (ListElement::is_list_item(node)) {
+    return construct_default<ListRoot>(document, node, allocator);
+  }
 
   if (auto constructor_it = constructor_table.find(node.name());
       constructor_it != std::end(constructor_table)) {
