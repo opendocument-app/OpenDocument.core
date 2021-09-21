@@ -240,7 +240,7 @@ public:
   [[nodiscard]] std::string
   href(const abstract::Document *document) const final {
     if (auto anchor = m_node.attribute("w:anchor")) {
-      return anchor.value();
+      return std::string("#") + anchor.value();
     }
     if (auto ref = m_node.attribute("r:id")) {
       auto relations = document_relations_(document);
