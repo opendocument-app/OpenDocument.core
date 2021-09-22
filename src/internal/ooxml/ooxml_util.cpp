@@ -160,19 +160,23 @@ ooxml::read_border_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
+  auto val = node.attribute("w:val").value();
+  if (std::strcmp("nil", val) == 0) {
+    return {};
+  }
   std::string result;
   result
       .append(
           read_half_point_attribute(node.attribute("w:sz")).value().to_string())
       .append(" ");
-  auto val = node.attribute("w:val").value();
   if (std::strcmp("none", val) == 0) {
     result.append(node.attribute("w:val").value()).append(" ");
   } else {
     result.append("solid ");
   }
-  result.append(common::html::color(
-      read_color_attribute(node.attribute("w:color")).value()));
+  if (auto color = read_color_attribute(node.attribute("w:color"))) {
+    result.append(common::html::color(*color));
+  }
   return result;
 }
 
