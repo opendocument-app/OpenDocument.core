@@ -95,6 +95,9 @@ bool ooxml::read_line_attribute(const pugi::xml_node node) {
   if (std::strcmp("none", val) == 0) {
     return false;
   }
+  if (std::strcmp("false", val) == 0) {
+    return {};
+  }
   return true;
 }
 
@@ -111,12 +114,20 @@ ooxml::read_font_weight_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
+  auto val = node.attribute("w:val").value();
+  if (std::strcmp("false", val) == 0) {
+    return {};
+  }
   return FontWeight::bold;
 }
 
 std::optional<FontStyle>
 ooxml::read_font_style_attribute(const pugi::xml_node node) {
   if (!node) {
+    return {};
+  }
+  auto val = node.attribute("w:val").value();
+  if (std::strcmp("false", val) == 0) {
     return {};
   }
   return FontStyle::italic;
