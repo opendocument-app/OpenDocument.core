@@ -212,18 +212,24 @@ PageLayout Element::Page::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
 }
 
-std::string Element::Text::value() const {
-  return m_element ? m_element->value(m_document) : "";
+std::string Element::Text::text() const {
+  return m_element ? m_element->text(m_document) : "";
 }
 
-std::optional<ParagraphStyle> Element::Paragraph::style() const {
-  return m_element ? m_element->style(m_document, m_cursor)
-                   : std::optional<ParagraphStyle>();
+void Element::Text::text(const std::string &text) const {
+  if (m_element) {
+    m_element->text(m_document, text);
+  }
 }
 
 std::optional<TextStyle> Element::Text::style() const {
   return m_element ? m_element->style(m_document, m_cursor)
                    : std::optional<TextStyle>();
+}
+
+std::optional<ParagraphStyle> Element::Paragraph::style() const {
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<ParagraphStyle>();
 }
 
 std::string Element::Link::href() const {

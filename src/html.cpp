@@ -364,7 +364,7 @@ void translate_text(const DocumentCursor &cursor, std::ostream &out) {
     out << optional_style_attribute(translate_text_style(*style));
   }
   out << ">";
-  out << common::html::escape_text(cursor.element().text().value());
+  out << common::html::escape_text(cursor.element().text().text());
   out << "</span>";
 }
 

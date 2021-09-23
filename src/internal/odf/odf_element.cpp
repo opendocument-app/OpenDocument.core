@@ -8,6 +8,7 @@
 #include <internal/odf/odf_element.h>
 #include <internal/odf/odf_style.h>
 #include <internal/util/string_util.h>
+#include <internal/util/xml_util.h>
 #include <odr/document.h>
 #include <odr/file.h>
 
@@ -370,12 +371,6 @@ class Text final : public Element, public abstract::TextElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::optional<TextStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
-  }
-
   abstract::Element *
   previous_sibling(const abstract::Document *document,
                    const abstract::DocumentCursor *,
@@ -391,12 +386,51 @@ public:
                                                   allocator);
   }
 
-  [[nodiscard]] std::string value(const abstract::Document *) const final {
+  [[nodiscard]] std::string text(const abstract::Document *) const final {
     std::string result;
     for (auto node = first_(); is_text_(node); node = node.next_sibling()) {
       result += text_(node);
     }
     return result;
+  }
+
+  void text(const abstract::Document *, const std::string &text) final {
+    auto old_start = m_node;
+
+    auto tokens = util::xml::tokenize_text(text);
+    for (auto &&token : tokens) {
+      switch (token.type) {
+      case util::xml::StringToken::Type::none:
+        break;
+      case util::xml::StringToken::Type::string: {
+        auto text_node =
+            old_start.prepend_child(pugi::xml_node_type::node_cdata);
+        text_node.text().set(token.string.c_str());
+      } break;
+      case util::xml::StringToken::Type::spaces: {
+        auto space_node = old_start.prepend_child("text:s");
+        space_node.prepend_attribute("text:c").set_value(token.string.size());
+      } break;
+      case util::xml::StringToken::Type::tabs: {
+        for (std::size_t i = 0; i < token.string.size(); ++i) {
+          old_start.prepend_child("text:tab");
+        }
+      } break;
+      }
+    }
+
+    m_node = first_();
+    auto new_end = old_start.previous_sibling();
+
+    while (is_text_(new_end.next_sibling())) {
+      m_node.parent().remove_child(new_end.next_sibling());
+    }
+  }
+
+  [[nodiscard]] std::optional<TextStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
   }
 
 private:

@@ -249,7 +249,8 @@ public:
   public:
     using Extension::Extension;
 
-    [[nodiscard]] std::string value() const;
+    [[nodiscard]] std::string text() const;
+    void text(const std::string &text) const;
 
     [[nodiscard]] std::optional<TextStyle> style() const;
   };

@@ -367,12 +367,16 @@ public:
                                                   allocator);
   }
 
-  [[nodiscard]] std::string value(const abstract::Document *) const final {
+  [[nodiscard]] std::string text(const abstract::Document *) const final {
     std::string result;
     for (auto node = first_(); is_text_(node); node = node.next_sibling()) {
       result += text_(node);
     }
     return result;
+  }
+
+  void text(const abstract::Document *, const std::string &) final {
+    // TODO
   }
 
   [[nodiscard]] std::optional<TextStyle>
