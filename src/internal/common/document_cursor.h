@@ -57,7 +57,7 @@ private:
   std::vector<ResolvedStyle> m_style_stack;
 
   DocumentPath m_parent_path;
-  DocumentPath::Component m_current_component;
+  std::optional<DocumentPath::Component> m_current_component;
 
   [[nodiscard]] std::int32_t next_offset_() const;
   [[nodiscard]] std::int32_t back_offset_() const;

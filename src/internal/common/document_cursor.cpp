@@ -5,7 +5,7 @@
 namespace odr::internal::common {
 
 DocumentCursor::DocumentCursor(const abstract::Document *document)
-    : m_document{document}, m_current_component{DocumentPath::Child(0)} {
+    : m_document{document} {
   m_element_stack_top.push_back(0);
 }
 
@@ -21,7 +21,10 @@ bool DocumentCursor::equals(const abstract::DocumentCursor &other) const {
 }
 
 [[nodiscard]] DocumentPath DocumentCursor::document_path() const {
-  return m_parent_path.join(m_current_component);
+  if (m_current_component) {
+    return m_parent_path.join(*m_current_component);
+  }
+  return m_parent_path;
 }
 
 abstract::Element *DocumentCursor::element() { return back_(); }
@@ -83,8 +86,12 @@ bool DocumentCursor::move_to_parent() {
   }
   popping_(back_());
   pop_();
-  m_current_component = m_parent_path.back();
-  m_parent_path = m_parent_path.parent();
+  if (m_parent_path.empty()) {
+    m_current_component = {};
+  } else {
+    m_current_component = m_parent_path.back();
+    m_parent_path = m_parent_path.parent();
+  }
   return true;
 }
 
@@ -97,7 +104,9 @@ bool DocumentCursor::move_to_first_child() {
     return false;
   }
   pushed_(element);
-  m_parent_path = m_parent_path.join(m_current_component);
+  if (m_current_component) {
+    m_parent_path = m_parent_path.join(*m_current_component);
+  }
   m_current_component = DocumentPath::Child(0);
   return true;
 }
@@ -113,7 +122,7 @@ bool DocumentCursor::move_to_previous_sibling() {
   }
   popping_(element);
   pushed_(element);
-  std::visit([](auto &&c) { --c; }, m_current_component);
+  std::visit([](auto &&c) { --c; }, *m_current_component);
   return true;
 }
 
@@ -128,7 +137,7 @@ bool DocumentCursor::move_to_next_sibling() {
   }
   popping_(element);
   pushed_(element);
-  std::visit([](auto &&c) { ++c; }, m_current_component);
+  std::visit([](auto &&c) { ++c; }, *m_current_component);
   return true;
 }
 
@@ -146,7 +155,9 @@ bool DocumentCursor::move_to_master_page() {
     return false;
   }
   pushed_(element);
-  m_parent_path = m_parent_path.join(m_current_component);
+  if (m_current_component) {
+    m_parent_path = m_parent_path.join(*m_current_component);
+  }
   m_current_component = DocumentPath::Child(0);
   return true;
 }
@@ -165,7 +176,9 @@ bool DocumentCursor::move_to_first_table_column() {
     return false;
   }
   pushed_(element);
-  m_parent_path = m_parent_path.join(m_current_component);
+  if (m_current_component) {
+    m_parent_path = m_parent_path.join(*m_current_component);
+  }
   m_current_component = DocumentPath::Column(0);
   return true;
 }
@@ -184,7 +197,9 @@ bool DocumentCursor::move_to_first_table_row() {
     return false;
   }
   pushed_(element);
-  m_parent_path = m_parent_path.join(m_current_component);
+  if (m_current_component) {
+    m_parent_path = m_parent_path.join(*m_current_component);
+  }
   m_current_component = DocumentPath::Row(0);
   return true;
 }
@@ -203,7 +218,9 @@ bool DocumentCursor::move_to_first_sheet_shape() {
     return false;
   }
   pushed_(element);
-  m_parent_path = m_parent_path.join(m_current_component);
+  if (m_current_component) {
+    m_parent_path = m_parent_path.join(*m_current_component);
+  }
   m_current_component = DocumentPath::Child(0);
   return true;
 }
