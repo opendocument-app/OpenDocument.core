@@ -1,5 +1,5 @@
-#include "table_position.h"
 #include <internal/common/document_path.h>
+#include <internal/common/table_position.h>
 
 namespace odr::internal::common {
 
