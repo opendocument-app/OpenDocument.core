@@ -40,9 +40,6 @@ TEST(DocumentTest, odg) {
 
   auto cursor = document.root_element();
 
-  // TODO
-  // EXPECT_EQ(drawing.page_count(), 3);
-
   cursor.for_each_child([](DocumentCursor &cursor, const std::uint32_t) {
     auto page_layout = cursor.element().page().page_layout();
     EXPECT_TRUE(page_layout.width);

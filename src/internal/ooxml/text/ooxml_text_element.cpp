@@ -187,6 +187,9 @@ public:
   }
 
   void text(const abstract::Document *, const std::string &text) final {
+    // TODO http://officeopenxml.com/WPtextSpacing.php
+    // <w:t xml:space="preserve">
+    // use `xml:space`
     auto parent = m_node.parent();
     auto old_start = m_node;
 
