@@ -429,7 +429,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final {
-    return {}; // TODO
+    return AnchorType::at_page;
   }
 
   [[nodiscard]] std::optional<std::string>

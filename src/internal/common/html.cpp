@@ -67,8 +67,6 @@ td {
   vertical-align: bottom;
   text-overflow: ellipsis;
   height: inherit;
-  overflow: auto;
-  overflow-y: hidden;
 }
 
 p {

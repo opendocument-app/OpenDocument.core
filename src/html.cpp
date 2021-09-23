@@ -536,18 +536,29 @@ void translate_image(DocumentCursor &cursor, std::ostream &out,
 void translate_frame(DocumentCursor &cursor, std::ostream &out,
                      const HtmlConfig &config) {
   auto frame = cursor.element().frame();
+  auto style = frame.style();
 
   // TODO choosing <span> by default because it is valid inside <p>;
   // alternatives?
-  out << "<span";
+  const bool span = (frame.anchor_type() == AnchorType::as_char) ||
+                    (style && style->text_wrap);
+  if (span) {
+    out << "<span";
+  } else {
+    out << "<div";
+  }
 
   out << optional_style_attribute(
       translate_frame_properties(frame) +
-      (frame.style() ? translate_drawing_style(*frame.style()) : ""));
+      (style ? translate_drawing_style(*style) : ""));
   out << ">";
   translate_children(cursor, out, config);
 
-  out << "</span>";
+  if (span) {
+    out << "</span>";
+  } else {
+    out << "</div>";
+  }
 }
 
 void translate_rect(DocumentCursor &cursor, std::ostream &out,
