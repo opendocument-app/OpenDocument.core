@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <odr/document.h>
 #include <odr/file.h>
+#include <odr/html.h>
 #include <odr/style.h>
 #include <test_util.h>
 
@@ -54,13 +55,7 @@ TEST(DocumentTest, odg) {
 TEST(DocumentTest, edit_odt) {
   DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"));
-
-  EXPECT_EQ(document_file.file_type(), FileType::OPENDOCUMENT_TEXT);
-
   Document document = document_file.document();
-
-  EXPECT_EQ(document.document_type(), DocumentType::TEXT);
-
   auto cursor = document.root_element();
 
   DocumentCursor::ChildVisitor edit = [&](DocumentCursor &cursor,
@@ -75,4 +70,17 @@ TEST(DocumentTest, edit_odt) {
 
   document.save("about_edit.odt");
   DocumentFile("about_edit.odt");
+}
+
+TEST(DocumentTest, edit_odt_diff) {
+  auto diff =
+      R"({"modifiedText":{"/child:16/child:0":"Outasdfsdafdline","/child:24/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0":"Text hello world!"}})";
+  DocumentFile document_file(
+      TestData::test_file_path("odr-public/odt/style-various-1.odt"));
+  Document document = document_file.document();
+
+  html::edit(document, diff);
+
+  document.save("style-various-1_edit_diff.odt");
+  DocumentFile("style-various-1_edit_diff.odt");
 }
