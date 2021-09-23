@@ -109,6 +109,10 @@ bool DocumentCursor::move_to_first_sheet_shape() {
   return m_cursor->move_to_first_sheet_shape();
 }
 
+void DocumentCursor::move(const std::string &path) {
+  m_cursor->move(internal::common::DocumentPath(path));
+}
+
 void DocumentCursor::for_each_child(const ChildVisitor &visitor) {
   if (!move_to_first_child()) {
     return;

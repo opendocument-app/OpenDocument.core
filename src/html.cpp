@@ -356,12 +356,17 @@ void translate_children(DocumentCursor &cursor, std::ostream &out,
 void translate_element(DocumentCursor &cursor, std::ostream &out,
                        const HtmlConfig &config);
 
-void translate_text(const DocumentCursor &cursor, std::ostream &out) {
+void translate_text(const DocumentCursor &cursor, std::ostream &out,
+                    const HtmlConfig &config) {
   auto text = cursor.element().text();
 
   out << "<span";
   if (auto style = text.style()) {
     out << optional_style_attribute(translate_text_style(*style));
+  }
+  if (config.editable) {
+    out << " contenteditable=\"true\"";
+    out << " data-odr-path=\"" << cursor.document_path() << "\"";
   }
   out << ">";
   out << common::html::escape_text(cursor.element().text().text());
@@ -634,7 +639,7 @@ void translate_children(DocumentCursor &cursor, std::ostream &out,
 void translate_element(DocumentCursor &cursor, std::ostream &out,
                        const HtmlConfig &config) {
   if (cursor.element_type() == ElementType::text) {
-    translate_text(cursor, out);
+    translate_text(cursor, out, config);
   } else if (cursor.element_type() == ElementType::line_break) {
     out << "<br>";
   } else if (cursor.element_type() == ElementType::paragraph) {
@@ -920,9 +925,8 @@ HtmlConfig html::parse_config(const std::string &path) {
   return result;
 }
 
-void html::translate(const Document &document,
-                     const std::string & /*document_identifier*/,
-                     const std::string &path, const HtmlConfig &config) {
+void html::translate(const Document &document, const std::string &path,
+                     const HtmlConfig &config) {
   std::ofstream out(path);
   if (!out.is_open()) {
     return; // TODO throw
@@ -963,10 +967,14 @@ void html::translate(const Document &document,
   out << "</html>";
 }
 
-void html::edit(const Document & /*document*/,
-                const std::string & /*document_identifier*/,
-                const std::string & /*diff*/) {
-  throw UnsupportedOperation();
+void html::edit(const Document &document, const std::string &diff) {
+  auto json = nlohmann::json::parse(diff);
+
+  for (auto &&i : json["modifiedText"].items()) {
+    auto cursor = document.root_element();
+    cursor.move(i.key());
+    cursor.element().text().text(i.value());
+  }
 }
 
 } // namespace odr

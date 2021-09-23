@@ -29,12 +29,14 @@ public:
   bool move_to_previous_sibling() override;
   bool move_to_next_sibling() override;
 
-  [[nodiscard]] bool move_to_master_page() override;
+  bool move_to_master_page() override;
 
-  [[nodiscard]] bool move_to_first_table_column() override;
-  [[nodiscard]] bool move_to_first_table_row() override;
+  bool move_to_first_table_column() override;
+  bool move_to_first_table_row() override;
 
-  [[nodiscard]] bool move_to_first_sheet_shape() override;
+  bool move_to_first_sheet_shape() override;
+
+  void move(const common::DocumentPath &path) override;
 
   [[nodiscard]] const ResolvedStyle &intermediate_style() const;
 

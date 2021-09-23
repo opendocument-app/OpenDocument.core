@@ -145,6 +145,8 @@ public:
 
   [[nodiscard]] bool move_to_first_sheet_shape();
 
+  void move(const std::string &path);
+
   using ChildVisitor =
       std::function<void(DocumentCursor &cursor, std::uint32_t i)>;
   using ConditionalChildVisitor =

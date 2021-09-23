@@ -88,6 +88,8 @@ public:
   virtual bool move_to_first_table_row() = 0;
 
   virtual bool move_to_first_sheet_shape() = 0;
+
+  virtual void move(const common::DocumentPath &path) = 0;
 };
 
 class Element {

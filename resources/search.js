@@ -73,7 +73,7 @@
         }
     }
 
-    var odr = window.odr || {};
+    const odr = window.odr || {};
     odr.search = search;
     odr.searchNext = next;
     odr.searchPrevious = prev;

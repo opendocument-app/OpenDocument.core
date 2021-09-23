@@ -225,6 +225,45 @@ bool DocumentCursor::move_to_first_sheet_shape() {
   return true;
 }
 
+void DocumentCursor::move(const common::DocumentPath &path) {
+  std::uint32_t death = 0;
+
+  try {
+    for (auto &&c : path) {
+      std::uint32_t number;
+      if (auto child = std::get_if<common::DocumentPath::Child>(&c)) {
+        if (!move_to_first_child()) {
+          throw std::invalid_argument("child not found");
+        }
+        number = child->number;
+      } else if (auto column = std::get_if<common::DocumentPath::Column>(&c)) {
+        if (!move_to_first_table_column()) {
+          throw std::invalid_argument("column not found");
+        }
+        number = column->number;
+      } else if (auto row = std::get_if<common::DocumentPath::Row>(&c)) {
+        if (!move_to_first_table_row()) {
+          throw std::invalid_argument("row not found");
+        }
+        number = row->number;
+      } else {
+        throw std::invalid_argument("unknown component");
+      }
+      ++death;
+      for (std::uint32_t i = 0; i < number; ++i) {
+        if (!move_to_next_sibling()) {
+          throw std::invalid_argument("sibling not found");
+        }
+      }
+    }
+  } catch (...) {
+    for (std::uint32_t i = 0; i < death; ++i) {
+      move_to_parent();
+    }
+    throw;
+  }
+}
+
 const ResolvedStyle &DocumentCursor::intermediate_style() const {
   return m_style_stack.back();
 }

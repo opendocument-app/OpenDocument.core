@@ -1,23 +1,6 @@
 (function() {
-  function download(filename, text) {
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    element.setAttribute('download', filename);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  }
-
-  window.addEventListener('keydown', function(event) {
-    if ((event.ctrlKey || event.metaKey) && (event.key === 's')) {
-      event.preventDefault();
-      download('test.json', generateDiff());
-    }
-  });
-
   function generateDiff() {
-    let result = {
+    const result = {
       modifiedText: {},
     };
     for (let [k, v] of Object.entries(editJournal['modifiedText'])) {
@@ -30,17 +13,15 @@
     for(let m of mutations) {
       if (m.type === 'characterData') {
         const node = m.target.parentNode;
-        const id = node.getAttribute('data-odr-cid');
-        if (id) {
-          editJournal['modifiedText'][parseInt(id)] = node;
+        const path = node.getAttribute('data-odr-path');
+        if (path) {
+          editJournal['modifiedText'][path] = node;
         }
-      } else {
-        console.log(m);
       }
     }
   }
 
-  let editJournal = {
+  const editJournal = {
     modifiedText: {},
   };
 
@@ -53,8 +34,7 @@
   };
   observer.observe(document.body, config);
 
-  var odr = window.odr || {};
-  odr.download = download;
+  const odr = window.odr || {};
   odr.generateDiff = generateDiff;
   window.odr = odr;
 })();
