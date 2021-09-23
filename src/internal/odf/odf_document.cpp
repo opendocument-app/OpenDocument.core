@@ -42,7 +42,7 @@ void Document::save(const common::Path &path) const {
                         m_filesystem->open("mimetype"), 0);
   }
 
-  for (auto walker = m_filesystem->file_walker("/"); !walker->end();
+  for (auto walker = m_filesystem->file_walker(""); !walker->end();
        walker->next()) {
     auto p = walker->path();
     if (p == "mimetype") {

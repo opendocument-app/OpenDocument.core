@@ -395,6 +395,7 @@ public:
   }
 
   void text(const abstract::Document *, const std::string &text) final {
+    auto parent = m_node.parent();
     auto old_start = m_node;
 
     auto tokens = util::xml::tokenize_text(text);
@@ -403,17 +404,17 @@ public:
       case util::xml::StringToken::Type::none:
         break;
       case util::xml::StringToken::Type::string: {
-        auto text_node =
-            old_start.prepend_child(pugi::xml_node_type::node_cdata);
+        auto text_node = parent.insert_child_before(
+            pugi::xml_node_type::node_pcdata, old_start);
         text_node.text().set(token.string.c_str());
       } break;
       case util::xml::StringToken::Type::spaces: {
-        auto space_node = old_start.prepend_child("text:s");
+        auto space_node = parent.insert_child_before("text:s", old_start);
         space_node.prepend_attribute("text:c").set_value(token.string.size());
       } break;
       case util::xml::StringToken::Type::tabs: {
         for (std::size_t i = 0; i < token.string.size(); ++i) {
-          old_start.prepend_child("text:tab");
+          parent.insert_child_before("text:tab", old_start);
         }
       } break;
       }
@@ -423,7 +424,7 @@ public:
     auto new_end = old_start.previous_sibling();
 
     while (is_text_(new_end.next_sibling())) {
-      m_node.parent().remove_child(new_end.next_sibling());
+      parent.remove_child(new_end.next_sibling());
     }
   }
 
@@ -711,15 +712,13 @@ public:
     return TableComponent::next_sibling(document, cursor, allocator);
   }
 
-  [[nodiscard]] const abstract::Element *
-  column(const abstract::Document *,
-         const abstract::DocumentCursor *) const final {
+  [[nodiscard]] abstract::Element *
+  column(const abstract::Document *, const abstract::DocumentCursor *) final {
     return &m_column;
   }
 
-  [[nodiscard]] const abstract::Element *
-  row(const abstract::Document *,
-      const abstract::DocumentCursor *) const final {
+  [[nodiscard]] abstract::Element *row(const abstract::Document *,
+                                       const abstract::DocumentCursor *) final {
     return &m_row;
   }
 

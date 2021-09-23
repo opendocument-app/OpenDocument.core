@@ -53,3 +53,29 @@ TEST(DocumentTest, odg) {
     EXPECT_EQ(Measure("1cm"), page_layout.margin.top);
   });
 }
+
+TEST(DocumentTest, edit_odt) {
+  DocumentFile document_file(
+      TestData::test_file_path("odr-public/odt/about.odt"));
+
+  EXPECT_EQ(document_file.file_type(), FileType::OPENDOCUMENT_TEXT);
+
+  Document document = document_file.document();
+
+  EXPECT_EQ(document.document_type(), DocumentType::TEXT);
+
+  auto cursor = document.root_element();
+
+  DocumentCursor::ChildVisitor edit = [&](DocumentCursor &cursor,
+                                          const std::uint32_t) {
+    cursor.for_each_child(edit);
+
+    if (auto text = cursor.element().text()) {
+      text.text("hello world!");
+    }
+  };
+  edit(cursor, 0);
+
+  document.save("about_edit.odt");
+  DocumentFile("about_edit.odt");
+}

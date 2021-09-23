@@ -289,10 +289,10 @@ public:
     return ElementType::table_cell;
   }
 
-  [[nodiscard]] virtual const Element *
-  column(const Document *document, const DocumentCursor *cursor) const = 0;
-  [[nodiscard]] virtual const Element *
-  row(const Document *document, const DocumentCursor *cursor) const = 0;
+  [[nodiscard]] virtual Element *column(const Document *document,
+                                        const DocumentCursor *cursor) = 0;
+  [[nodiscard]] virtual Element *row(const Document *document,
+                                     const DocumentCursor *cursor) = 0;
 
   [[nodiscard]] virtual bool covered(const Document *document) const = 0;
   [[nodiscard]] virtual TableDimensions

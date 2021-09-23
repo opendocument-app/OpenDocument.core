@@ -310,15 +310,13 @@ public:
     return nullptr;
   }
 
-  [[nodiscard]] const abstract::Element *
-  column(const abstract::Document *,
-         const abstract::DocumentCursor *) const final {
+  [[nodiscard]] abstract::Element *
+  column(const abstract::Document *, const abstract::DocumentCursor *) final {
     return nullptr;
   }
 
-  [[nodiscard]] const abstract::Element *
-  row(const abstract::Document *,
-      const abstract::DocumentCursor *) const final {
+  [[nodiscard]] abstract::Element *row(const abstract::Document *,
+                                       const abstract::DocumentCursor *) final {
     return nullptr;
   }
 

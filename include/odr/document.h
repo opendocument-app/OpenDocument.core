@@ -186,22 +186,20 @@ public:
   public:
     Extension() = default;
     Extension(const internal::abstract::Document *document,
-              const internal::abstract::DocumentCursor *cursor,
-              const T *element)
+              const internal::abstract::DocumentCursor *cursor, T *element)
         : m_document{document}, m_cursor{cursor}, m_element{element} {}
     Extension(const internal::abstract::Document *document,
               const internal::abstract::DocumentCursor *cursor,
-              const internal::abstract::Element *element)
-        : m_document{document}, m_cursor{cursor}, m_element{
-                                                      dynamic_cast<const T *>(
-                                                          element)} {}
+              internal::abstract::Element *element)
+        : m_document{document}, m_cursor{cursor}, m_element{dynamic_cast<T *>(
+                                                      element)} {}
 
     explicit operator bool() const { return m_element; }
 
   protected:
     const internal::abstract::Document *m_document;
     const internal::abstract::DocumentCursor *m_cursor;
-    const T *m_element;
+    T *m_element;
   };
 
   class TextRoot final : public Extension<internal::abstract::TextRootElement> {
