@@ -38,6 +38,7 @@ add_library(odr-object OBJECT
 
         src/internal/common/constants.cpp
         src/internal/common/document_cursor.cpp
+        src/internal/common/document_path.cpp
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
         src/internal/common/html.cpp

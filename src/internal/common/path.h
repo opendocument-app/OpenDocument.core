@@ -24,6 +24,7 @@ public:
   operator std::string() const noexcept;
   operator std::filesystem::path() const noexcept;
   operator const std::string &() const noexcept;
+
   [[nodiscard]] const std::string &string() const noexcept;
   [[nodiscard]] std::filesystem::path path() const noexcept;
   [[nodiscard]] std::size_t hash() const noexcept;
