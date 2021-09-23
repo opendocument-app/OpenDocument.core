@@ -19,7 +19,7 @@ public:
     bool operator==(const Child &other) const noexcept;
     bool operator!=(const Child &other) const noexcept;
 
-    std::string to_string() const noexcept;
+    [[nodiscard]] std::string to_string() const noexcept;
   };
 
   struct Column final {
@@ -31,7 +31,7 @@ public:
     bool operator==(const Column &other) const noexcept;
     bool operator!=(const Column &other) const noexcept;
 
-    std::string to_string() const noexcept;
+    [[nodiscard]] std::string to_string() const noexcept;
   };
 
   struct Row final {
@@ -43,7 +43,7 @@ public:
     bool operator==(const Row &other) const noexcept;
     bool operator!=(const Row &other) const noexcept;
 
-    std::string to_string() const noexcept;
+    [[nodiscard]] std::string to_string() const noexcept;
   };
 
   struct Cell final {
@@ -57,9 +57,9 @@ public:
     bool operator==(const Cell &other) const noexcept;
     bool operator!=(const Cell &other) const noexcept;
 
-    TablePosition position() const;
+    [[nodiscard]] TablePosition position() const;
 
-    std::string to_string() const noexcept;
+    [[nodiscard]] std::string to_string() const noexcept;
   };
 
   using Component = std::variant<Child, Column, Row, Cell>;
@@ -86,8 +86,8 @@ public:
   using Container = std::vector<std::variant<Child, Column, Row, Cell>>;
   using const_iterator = Container::const_iterator;
 
-  const_iterator begin() const;
-  const_iterator end() const;
+  [[nodiscard]] const_iterator begin() const;
+  [[nodiscard]] const_iterator end() const;
 
 private:
   Container m_components;

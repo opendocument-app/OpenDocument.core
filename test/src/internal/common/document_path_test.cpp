@@ -4,3 +4,8 @@
 using namespace odr::internal::common;
 
 TEST(DocumentPath, empty) { EXPECT_EQ("", DocumentPath().to_string()); }
+
+TEST(DocumentPath, example1) {
+  EXPECT_EQ("/child:3/child:2/cell:J17/child:0",
+            DocumentPath("/child:3/child:2/cell:J17/child:0").to_string());
+}

@@ -138,8 +138,8 @@ DocumentPath::DocumentPath(const std::string &string) {
       next = string.size();
     }
     m_components.push_back(
-        component_from_string(string.substr(pos, next - pos)));
-    pos = next + 1;
+        component_from_string(string.substr(pos + 1, next - pos)));
+    pos = next;
   }
 }
 
