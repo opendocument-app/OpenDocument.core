@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <internal/abstract/document.h>
+#include <internal/common/document_path.h>
 #include <internal/common/style.h>
 #include <pugixml.hpp>
 #include <string>
@@ -18,7 +19,7 @@ public:
   [[nodiscard]] bool
   equals(const abstract::DocumentCursor &other) const override;
 
-  [[nodiscard]] std::string document_path() const override;
+  [[nodiscard]] DocumentPath document_path() const override;
 
   [[nodiscard]] abstract::Element *element() override;
   [[nodiscard]] const abstract::Element *element() const override;
@@ -35,7 +36,7 @@ public:
 
   [[nodiscard]] bool move_to_first_sheet_shape() override;
 
-  const ResolvedStyle &intermediate_style() const;
+  [[nodiscard]] const ResolvedStyle &intermediate_style() const;
 
 protected:
   const abstract::Document *m_document;
@@ -48,12 +49,15 @@ protected:
   abstract::Element *back_();
   [[nodiscard]] const abstract::Element *back_() const;
 
-  virtual ResolvedStyle partial_style() const;
+  [[nodiscard]] virtual ResolvedStyle partial_style() const;
 
 private:
   std::vector<std::int32_t> m_element_stack_top;
   std::string m_element_stack;
   std::vector<ResolvedStyle> m_style_stack;
+
+  DocumentPath m_parent_path;
+  DocumentPath::Component m_current_component;
 
   [[nodiscard]] std::int32_t next_offset_() const;
   [[nodiscard]] std::int32_t back_offset_() const;

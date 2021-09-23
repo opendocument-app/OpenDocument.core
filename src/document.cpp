@@ -1,5 +1,6 @@
 #include <internal/abstract/document.h>
 #include <internal/abstract/filesystem.h>
+#include <internal/common/document_path.h>
 #include <internal/common/path.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
@@ -67,7 +68,7 @@ bool DocumentCursor::operator!=(const DocumentCursor &rhs) const {
 }
 
 std::string DocumentCursor::document_path() const {
-  return m_cursor->document_path();
+  return m_cursor->document_path().to_string();
 }
 
 ElementType DocumentCursor::element_type() const {

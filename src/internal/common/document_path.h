@@ -1,6 +1,8 @@
 #ifndef ODR_INTERNAL_COMMON_DOCUMENT_PATH_H
 #define ODR_INTERNAL_COMMON_DOCUMENT_PATH_H
 
+#include <internal/util/string_util.h>
+#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
@@ -10,61 +12,57 @@ class TablePosition;
 
 class DocumentPath final {
 public:
-  struct Child final {
+  template <typename Component> struct ComponentTemplate {
     std::uint32_t number{0};
 
-    Child(std::uint32_t number);
-    Child(const std::string &string);
+    ComponentTemplate(const std::uint32_t number) : number{number} {}
+    ComponentTemplate(const std::string &string) {
+      if (!util::string::starts_with(string, Component::prefix)) {
+        throw std::invalid_argument("string");
+      }
+      number = std::stoul(string.substr(6));
+    }
 
-    bool operator==(const Child &other) const noexcept;
-    bool operator!=(const Child &other) const noexcept;
+    bool operator==(const ComponentTemplate &other) const noexcept {
+      return number == other.number;
+    }
+    bool operator!=(const ComponentTemplate &other) const noexcept {
+      return number != other.number;
+    }
 
-    [[nodiscard]] std::string to_string() const noexcept;
+    ComponentTemplate &operator++() {
+      ++number;
+      return *this;
+    }
+
+    ComponentTemplate &operator--() {
+      --number;
+      return *this;
+    }
+
+    [[nodiscard]] std::string to_string() const noexcept {
+      return Component::prefix + std::to_string(number);
+    }
   };
 
-  struct Column final {
-    std::uint32_t number;
-
-    Column(std::uint32_t number);
-    Column(const std::string &string);
-
-    bool operator==(const Column &other) const noexcept;
-    bool operator!=(const Column &other) const noexcept;
-
-    [[nodiscard]] std::string to_string() const noexcept;
+  struct Child final : public ComponentTemplate<Child> {
+    static const std::string prefix;
+    using ComponentTemplate::ComponentTemplate;
   };
 
-  struct Row final {
-    std::uint32_t number;
-
-    Row(std::uint32_t number);
-    Row(const std::string &string);
-
-    bool operator==(const Row &other) const noexcept;
-    bool operator!=(const Row &other) const noexcept;
-
-    [[nodiscard]] std::string to_string() const noexcept;
+  struct Column final : public ComponentTemplate<Column> {
+    static const std::string prefix;
+    using ComponentTemplate::ComponentTemplate;
   };
 
-  struct Cell final {
-    std::uint32_t row;
-    std::uint32_t column;
-
-    Cell(TablePosition position);
-    Cell(std::uint32_t row, std::uint32_t column);
-    Cell(const std::string &string);
-
-    bool operator==(const Cell &other) const noexcept;
-    bool operator!=(const Cell &other) const noexcept;
-
-    [[nodiscard]] TablePosition position() const;
-
-    [[nodiscard]] std::string to_string() const noexcept;
+  struct Row final : public ComponentTemplate<Row> {
+    static const std::string prefix;
+    using ComponentTemplate::ComponentTemplate;
   };
 
-  using Component = std::variant<Child, Column, Row, Cell>;
+  using Component = std::variant<Child, Column, Row>;
 
-  Component component_from_string(const std::string &string);
+  static Component component_from_string(const std::string &string);
 
   DocumentPath() noexcept;
   DocumentPath(const char *c_string);
@@ -80,10 +78,11 @@ public:
 
   [[nodiscard]] bool empty() const noexcept;
 
+  [[nodiscard]] Component back() const;
   [[nodiscard]] DocumentPath parent() const;
   [[nodiscard]] DocumentPath join(const DocumentPath &other) const;
 
-  using Container = std::vector<std::variant<Child, Column, Row, Cell>>;
+  using Container = std::vector<Component>;
   using const_iterator = Container::const_iterator;
 
   [[nodiscard]] const_iterator begin() const;

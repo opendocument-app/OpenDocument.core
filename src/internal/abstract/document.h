@@ -24,7 +24,8 @@ struct TableDimensions;
 
 namespace odr::internal::common {
 class Path;
-}
+class DocumentPath;
+} // namespace odr::internal::common
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -71,7 +72,7 @@ public:
 
   [[nodiscard]] virtual std::unique_ptr<DocumentCursor> copy() const = 0;
 
-  [[nodiscard]] virtual std::string document_path() const = 0;
+  [[nodiscard]] virtual common::DocumentPath document_path() const = 0;
 
   [[nodiscard]] virtual Element *element() = 0;
   [[nodiscard]] virtual const Element *element() const = 0;
