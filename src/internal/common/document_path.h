@@ -20,7 +20,7 @@ public:
       if (!util::string::starts_with(string, Component::prefix)) {
         throw std::invalid_argument("string");
       }
-      number = std::stoul(string.substr(6));
+      number = std::stoul(string.substr(Component::prefix.size()));
     }
 
     bool operator==(const ComponentTemplate &other) const noexcept {

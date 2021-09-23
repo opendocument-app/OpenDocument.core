@@ -44,7 +44,7 @@ DocumentPath::DocumentPath(const std::string &string) {
       next = string.size();
     }
     m_components.push_back(
-        component_from_string(string.substr(pos + 1, next - pos)));
+        component_from_string(string.substr(pos + 1, next - pos - 1)));
     pos = next;
   }
 }
