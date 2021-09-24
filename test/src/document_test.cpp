@@ -8,7 +8,7 @@
 using namespace odr;
 using namespace odr::test;
 
-TEST(DocumentTest, odt) {
+TEST(Document, odt) {
   DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"));
 
@@ -29,7 +29,7 @@ TEST(DocumentTest, odt) {
   EXPECT_EQ(Measure("0.7874in"), page_layout.margin.top);
 }
 
-TEST(DocumentTest, odg) {
+TEST(Document, odg) {
   DocumentFile document_file(
       TestData::test_file_path("odr-public/odg/sample.odg"));
 
@@ -52,7 +52,7 @@ TEST(DocumentTest, odg) {
   });
 }
 
-TEST(DocumentTest, edit_odt) {
+TEST(Document, edit_odt) {
   DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"));
   Document document = document_file.document();
@@ -72,7 +72,7 @@ TEST(DocumentTest, edit_odt) {
   DocumentFile("about_edit.odt");
 }
 
-TEST(DocumentTest, edit_odt_diff) {
+TEST(Document, edit_odt_diff) {
   auto diff =
       R"({"modifiedText":{"/child:16/child:0":"Outasdfsdafdline","/child:24/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0":"Text hello world!"}})";
   DocumentFile document_file(
