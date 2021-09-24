@@ -2,12 +2,13 @@
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_meta.h>
 #include <odr/file.h>
+#include <unordered_map>
 #include <utility>
 
 namespace odr::internal::ooxml {
 
 FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
-  static const std::unordered_map<common::Path, FileType> TYPES = {
+  static const std::unordered_map<common::Path, FileType> types = {
       {"word/document.xml", FileType::office_open_xml_document},
       {"ppt/presentation.xml", FileType::office_open_xml_presentation},
       {"xl/workbook.xml", FileType::office_open_xml_workbook},
@@ -22,7 +23,7 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
     return result;
   }
 
-  for (auto &&t : TYPES) {
+  for (auto &&t : types) {
     if (filesystem.is_file(t.first)) {
       result.type = t.second;
       break;
