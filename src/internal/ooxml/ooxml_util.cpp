@@ -1,5 +1,5 @@
+#include <cstdint>
 #include <cstring>
-#include <debug/safe_iterator.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/html.h>
 #include <internal/common/path.h>
@@ -9,7 +9,6 @@
 #include <odr/quantity.h>
 #include <odr/style.h>
 #include <pugixml.hpp>
-#include <stdint.h>
 #include <stdlib.h>
 #include <utility>
 

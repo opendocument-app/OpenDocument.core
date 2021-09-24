@@ -3,8 +3,7 @@
 
 #include <internal/abstract/file.h>
 #include <memory>
-
-#include "odr/file.h"
+#include <odr/file.h>
 
 namespace odr::internal::abstract {
 class Image;

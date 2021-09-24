@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_COMMON_DOCUMENT_CURSOR_H
 #define ODR_INTERNAL_COMMON_DOCUMENT_CURSOR_H
 
+#include <cstdint>
 #include <functional>
 #include <internal/abstract/document.h>
 #include <internal/common/document_path.h>
@@ -8,7 +9,6 @@
 #include <iosfwd>
 #include <optional>
 #include <pugixml.hpp>
-#include <stdint.h>
 #include <string>
 #include <vector>
 

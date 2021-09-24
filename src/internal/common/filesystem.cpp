@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <debug/safe_iterator.h>
 #include <filesystem>
 #include <fstream>
 #include <internal/abstract/file.h>

@@ -2,7 +2,6 @@
 #define ODR_INTERNAL_OOXML_UTIL_H
 
 #include <any>
-#include <debug/unordered_map>
 #include <functional>
 #include <odr/style.h>
 #include <optional>

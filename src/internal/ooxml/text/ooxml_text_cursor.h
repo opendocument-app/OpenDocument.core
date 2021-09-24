@@ -2,9 +2,8 @@
 #define ODR_INTERNAL_OOXML_TEXT_CURSOR_H
 
 #include <internal/common/document_cursor.h>
+#include <internal/common/style.h>
 #include <memory>
-
-#include "internal/common/style.h"
 
 namespace pugi {
 class xml_node;

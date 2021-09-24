@@ -1,16 +1,14 @@
+#include <cstdint>
 #include <cstring>
-#include <debug/safe_iterator.h>
+#include <internal/common/style.h>
 #include <internal/odf/odf_style.h>
 #include <iterator>
-#include <stdint.h>
+#include <odr/quantity.h>
+#include <odr/style.h>
+#include <pugixml.hpp>
 #include <stdlib.h>
 #include <unordered_map>
 #include <utility>
-
-#include "internal/common/style.h"
-#include "odr/quantity.h"
-#include "odr/style.h"
-#include "pugixml.hpp"
 
 namespace odr::internal::odf {
 

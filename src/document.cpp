@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <internal/abstract/document.h>
 #include <internal/common/document_path.h>
 #include <internal/common/path.h>
@@ -5,7 +6,6 @@
 #include <odr/file.h>
 #include <odr/style.h>
 #include <stdexcept>
-#include <stdint.h>
 #include <utility>
 
 namespace odr {

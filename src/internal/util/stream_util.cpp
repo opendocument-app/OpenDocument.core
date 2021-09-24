@@ -1,6 +1,6 @@
+#include <cstdint>
 #include <internal/util/stream_util.h>
 #include <iterator>
-#include <stdint.h>
 
 namespace odr::internal::util {
 
