@@ -16,6 +16,8 @@ public:
 
   [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] FileMeta file_meta() const noexcept final;
+  [[nodiscard]] DocumentType document_type() const final;
+  [[nodiscard]] DocumentMeta document_meta() const final;
 
   [[nodiscard]] bool password_encrypted() const noexcept final;
   [[nodiscard]] EncryptionState encryption_state() const noexcept final;
@@ -25,7 +27,7 @@ public:
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_storage;
-  FileMeta m_meta;
+  FileMeta m_file_meta;
 };
 
 } // namespace odr::internal::oldms

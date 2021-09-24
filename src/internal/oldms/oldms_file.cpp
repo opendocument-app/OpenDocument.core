@@ -9,7 +9,7 @@ namespace odr::internal::oldms {
 
 namespace {
 FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
-  static const std::unordered_map<common::Path, FileType> TYPES = {
+  static const std::unordered_map<common::Path, FileType> types = {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
       {"WordDocument", FileType::legacy_word_document},
@@ -23,7 +23,7 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
 
   FileMeta result;
 
-  for (auto &&t : TYPES) {
+  for (auto &&t : types) {
     if (storage.is_file(t.first)) {
       result.type = t.second;
       break;
@@ -41,19 +41,29 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
 LegacyMicrosoftFile::LegacyMicrosoftFile(
     std::shared_ptr<abstract::ReadableFilesystem> storage)
     : m_storage{std::move(storage)} {
-  m_meta = parse_meta(*m_storage);
+  m_file_meta = parse_meta(*m_storage);
 }
 
 std::shared_ptr<abstract::File> LegacyMicrosoftFile::file() const noexcept {
   return {};
 }
 
-FileType LegacyMicrosoftFile::file_type() const noexcept { return m_meta.type; }
+FileType LegacyMicrosoftFile::file_type() const noexcept {
+  return m_file_meta.type;
+}
 
-FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_meta; }
+FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_file_meta; }
+
+DocumentType LegacyMicrosoftFile::document_type() const {
+  return m_file_meta.document_meta->document_type;
+}
+
+DocumentMeta LegacyMicrosoftFile::document_meta() const {
+  return *m_file_meta.document_meta;
+}
 
 bool LegacyMicrosoftFile::password_encrypted() const noexcept {
-  return m_meta.password_encrypted;
+  return m_file_meta.password_encrypted;
 }
 
 EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {

@@ -4,7 +4,6 @@
 #include <internal/odf/odf_file.h>
 #include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
-#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 
@@ -33,6 +32,16 @@ FileType OpenDocumentFile::file_type() const noexcept {
   return m_file_meta.type;
 }
 
+FileMeta OpenDocumentFile::file_meta() const noexcept { return m_file_meta; }
+
+DocumentType OpenDocumentFile::document_type() const {
+  return m_file_meta.document_meta->document_type;
+}
+
+DocumentMeta OpenDocumentFile::document_meta() const {
+  return *m_file_meta.document_meta;
+}
+
 bool OpenDocumentFile::password_encrypted() const noexcept {
   return m_file_meta.password_encrypted;
 }
@@ -50,8 +59,6 @@ bool OpenDocumentFile::decrypt(const std::string &password) {
   m_encryption_state = EncryptionState::decrypted;
   return true;
 }
-
-FileMeta OpenDocumentFile::file_meta() const noexcept { return m_file_meta; }
 
 std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
   // TODO throw if encrypted

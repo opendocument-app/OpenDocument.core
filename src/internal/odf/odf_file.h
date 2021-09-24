@@ -19,12 +19,13 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 
   [[nodiscard]] FileType file_type() const noexcept final;
+  [[nodiscard]] FileMeta file_meta() const noexcept final;
+  [[nodiscard]] DocumentType document_type() const final;
+  [[nodiscard]] DocumentMeta document_meta() const final;
 
   [[nodiscard]] bool password_encrypted() const noexcept final;
   [[nodiscard]] EncryptionState encryption_state() const noexcept final;
   bool decrypt(const std::string &password) final;
-
-  [[nodiscard]] FileMeta file_meta() const noexcept final;
 
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const final;
 

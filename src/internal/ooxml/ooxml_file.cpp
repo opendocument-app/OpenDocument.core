@@ -2,7 +2,6 @@
 #include <internal/abstract/filesystem.h>
 #include <internal/common/archive.h>
 #include <internal/common/file.h>
-#include <internal/common/path.h>
 #include <internal/ooxml/ooxml_crypto.h>
 #include <internal/ooxml/ooxml_file.h>
 #include <internal/ooxml/ooxml_meta.h>
@@ -17,7 +16,7 @@ namespace odr::internal::ooxml {
 
 OfficeOpenXmlFile::OfficeOpenXmlFile(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem) {
-  m_meta = parse_file_meta(*filesystem);
+  m_file_meta = parse_file_meta(*filesystem);
   m_filesystem = std::move(filesystem);
 }
 
@@ -25,12 +24,22 @@ std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
   return {};
 }
 
-FileType OfficeOpenXmlFile::file_type() const noexcept { return m_meta.type; }
+FileType OfficeOpenXmlFile::file_type() const noexcept {
+  return m_file_meta.type;
+}
 
-FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_meta; }
+FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_file_meta; }
+
+DocumentType OfficeOpenXmlFile::document_type() const {
+  return m_file_meta.document_meta->document_type;
+}
+
+DocumentMeta OfficeOpenXmlFile::document_meta() const {
+  return *m_file_meta.document_meta;
+}
 
 bool OfficeOpenXmlFile::password_encrypted() const noexcept {
-  return m_meta.password_encrypted;
+  return m_file_meta.password_encrypted;
 }
 
 EncryptionState OfficeOpenXmlFile::encryption_state() const noexcept {
@@ -56,7 +65,7 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
   auto zip = std::make_unique<common::ArchiveFile<zip::ReadonlyZipArchive>>(
       zip::ReadonlyZipArchive(memory_file));
   m_filesystem = zip->archive()->filesystem();
-  m_meta = parse_file_meta(*m_filesystem);
+  m_file_meta = parse_file_meta(*m_filesystem);
   m_encryption_state = EncryptionState::decrypted;
   return true;
 }
