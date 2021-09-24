@@ -63,7 +63,7 @@ TEST(DocumentTest, edit_odt) {
     cursor.for_each_child(edit);
 
     if (auto text = cursor.element().text()) {
-      text.text("hello world!");
+      text.set_content("hello world!");
     }
   };
   edit(cursor, 0);

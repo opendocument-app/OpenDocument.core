@@ -212,8 +212,9 @@ public:
     return ElementType::text;
   }
 
-  [[nodiscard]] virtual std::string text(const Document *document) const = 0;
-  virtual void text(const Document *document, const std::string &text) = 0;
+  [[nodiscard]] virtual std::string content(const Document *document) const = 0;
+  virtual void set_content(const Document *document,
+                           const std::string &text) = 0;
 
   [[nodiscard]] virtual std::optional<TextStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;

@@ -386,7 +386,7 @@ public:
                                                   allocator);
   }
 
-  [[nodiscard]] std::string text(const abstract::Document *) const final {
+  [[nodiscard]] std::string content(const abstract::Document *) const final {
     std::string result;
     for (auto node = first_(); is_text_(node); node = node.next_sibling()) {
       result += text_(node);
@@ -394,7 +394,7 @@ public:
     return result;
   }
 
-  void text(const abstract::Document *, const std::string &text) final {
+  void set_content(const abstract::Document *, const std::string &text) final {
     auto parent = m_node.parent();
     auto old_start = m_node;
 

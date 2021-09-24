@@ -217,13 +217,13 @@ PageLayout Element::Page::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
 }
 
-std::string Element::Text::text() const {
-  return m_element ? m_element->text(m_document) : "";
+std::string Element::Text::content() const {
+  return m_element ? m_element->content(m_document) : "";
 }
 
-void Element::Text::text(const std::string &text) const {
+void Element::Text::set_content(const std::string &text) const {
   if (m_element) {
-    m_element->text(m_document, text);
+    m_element->set_content(m_document, text);
   }
 }
 

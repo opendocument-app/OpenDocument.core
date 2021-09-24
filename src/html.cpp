@@ -369,7 +369,7 @@ void translate_text(const DocumentCursor &cursor, std::ostream &out,
     out << " data-odr-path=\"" << cursor.document_path() << "\"";
   }
   out << ">";
-  out << common::html::escape_text(cursor.element().text().text());
+  out << common::html::escape_text(cursor.element().text().content());
   out << "</span>";
 }
 
@@ -973,7 +973,7 @@ void html::edit(const Document &document, const std::string &diff) {
   for (auto &&i : json["modifiedText"].items()) {
     auto cursor = document.root_element();
     cursor.move(i.key());
-    cursor.element().text().text(i.value());
+    cursor.element().text().set_content(i.value());
   }
 }
 
