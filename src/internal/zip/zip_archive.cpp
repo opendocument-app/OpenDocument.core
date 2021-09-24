@@ -1,11 +1,15 @@
 #include <chrono>
 #include <internal/abstract/file.h>
-#include <internal/common/file.h>
 #include <internal/common/path.h>
 #include <internal/zip/zip_archive.h>
 #include <internal/zip/zip_util.h>
+#include <miniz.h>
+#include <miniz_zip.h>
 #include <odr/exceptions.h>
+#include <ostream>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace odr::internal::zip {
 

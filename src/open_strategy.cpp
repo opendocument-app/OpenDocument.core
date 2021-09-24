@@ -1,3 +1,4 @@
+#include <internal/abstract/archive.h>
 #include <internal/cfb/cfb_archive.h>
 #include <internal/common/archive.h>
 #include <internal/common/file.h>
@@ -8,6 +9,7 @@
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <open_strategy.h>
+#include <utility>
 
 using namespace odr::internal;
 

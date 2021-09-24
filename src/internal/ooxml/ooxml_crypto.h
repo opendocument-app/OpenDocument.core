@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_OOXML_CRYPTO_H
 #define ODR_INTERNAL_OOXML_CRYPTO_H
 
+#include <cstdint>
 #include <memory>
 #include <string>
 

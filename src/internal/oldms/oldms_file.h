@@ -3,7 +3,14 @@
 
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
+#include <memory>
 #include <odr/file.h>
+#include <string>
+
+namespace odr::internal::abstract {
+class Document;
+class ReadableFilesystem;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::oldms {
 

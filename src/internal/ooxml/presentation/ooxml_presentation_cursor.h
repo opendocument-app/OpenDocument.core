@@ -2,6 +2,15 @@
 #define ODR_INTERNAL_OOXML_PRESENTATION_CURSOR_H
 
 #include <internal/common/document_cursor.h>
+#include <memory>
+
+namespace pugi {
+class xml_node;
+} // namespace pugi
+
+namespace odr::internal::abstract {
+class DocumentCursor;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::ooxml::presentation {
 class Document;

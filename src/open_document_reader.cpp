@@ -1,5 +1,6 @@
 #include <internal/common/constants.h>
 #include <odr/open_document_reader.h>
+#include <string>
 
 namespace odr {
 

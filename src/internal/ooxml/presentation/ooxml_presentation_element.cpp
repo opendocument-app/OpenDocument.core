@@ -1,11 +1,20 @@
-#include <internal/abstract/filesystem.h>
-#include <internal/common/path.h>
-#include <internal/common/table_cursor.h>
+#include <functional>
+#include <internal/abstract/document.h>
+#include <internal/common/style.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/presentation/ooxml_presentation_cursor.h>
 #include <internal/ooxml/presentation/ooxml_presentation_document.h>
 #include <internal/ooxml/presentation/ooxml_presentation_element.h>
+#include <iterator>
+#include <new>
+#include <odr/document.h>
 #include <odr/file.h>
+#include <odr/quantity.h>
+#include <odr/style.h>
+#include <optional>
+#include <pugixml.hpp>
+#include <unordered_map>
+#include <utility>
 
 namespace odr::internal::ooxml::presentation {
 
@@ -71,14 +80,9 @@ pugi::xml_node Element::slide_(const abstract::Document *document,
 
 namespace {
 
-template <ElementType> class DefaultElement;
-class Root;
 class Slide;
-class Text;
-class TableElement;
 class TableColumn;
 class TableRow;
-class TableCell;
 
 template <typename Derived>
 abstract::Element *construct_default(const Document *document,

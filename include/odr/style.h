@@ -1,9 +1,11 @@
 #ifndef ODR_STYLE_H
 #define ODR_STYLE_H
 
+#include <cstdint>
 #include <odr/quantity.h>
 #include <optional>
 #include <string>
+#include <utility>
 
 namespace odr {
 

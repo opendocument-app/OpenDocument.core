@@ -1,3 +1,4 @@
+#include <internal/common/table_position.h>
 #include <internal/common/table_range.h>
 #include <stdexcept>
 

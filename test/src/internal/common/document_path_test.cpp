@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <internal/common/document_path.h>
+#include <memory>
 
 using namespace odr::internal::common;
 

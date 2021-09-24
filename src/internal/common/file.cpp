@@ -1,9 +1,13 @@
 #include <filesystem>
 #include <fstream>
+#include <internal/abstract/file.h>
 #include <internal/common/file.h>
+#include <internal/common/path.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <sstream>
+#include <stdint.h>
+#include <utility>
 
 namespace odr::internal::common {
 

@@ -1,11 +1,12 @@
-#include <codecvt>
 #include <cstdint>
 #include <cstring>
 #include <internal/crypto/crypto_util.h>
 #include <internal/ooxml/ooxml_crypto.h>
 #include <internal/util/string_util.h>
-#include <locale>
+#include <iosfwd>
 #include <odr/exceptions.h>
+#include <stdexcept>
+#include <utility>
 
 namespace {
 template <typename I, typename O> void to_little_endian(I in, O &out) {

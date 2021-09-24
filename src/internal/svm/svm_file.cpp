@@ -1,6 +1,12 @@
+#include <internal/abstract/file.h>
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_format.h>
 #include <odr/file.h>
+#include <utility>
+
+namespace odr::internal::abstract {
+class Image;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::svm {
 

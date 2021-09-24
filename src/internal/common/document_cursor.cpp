@@ -1,6 +1,13 @@
+#include <cstdint>
+#include <internal/abstract/document.h>
 #include <internal/common/document_cursor.h>
+#include <internal/common/document_path.h>
+#include <internal/common/style.h>
 #include <iostream>
-#include <odr/file.h>
+#include <memory>
+#include <odr/style.h>
+#include <stdexcept>
+#include <variant>
 
 namespace odr::internal::common {
 

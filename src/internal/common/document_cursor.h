@@ -5,7 +5,10 @@
 #include <internal/abstract/document.h>
 #include <internal/common/document_path.h>
 #include <internal/common/style.h>
+#include <iosfwd>
+#include <optional>
 #include <pugixml.hpp>
+#include <stdint.h>
 #include <string>
 #include <vector>
 

@@ -5,6 +5,14 @@
 #include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
+#include <pugixml.hpp>
+#include <unordered_map>
+#include <utility>
+
+namespace odr::internal::abstract {
+class DocumentCursor;
+class ReadableFilesystem;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::ooxml::spreadsheet {
 

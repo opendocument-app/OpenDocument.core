@@ -3,7 +3,8 @@
 #include <internal/common/file.h>
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_to_svg.h>
-#include <sstream>
+#include <memory>
+#include <odr/file.h>
 #include <string>
 #include <test_util.h>
 

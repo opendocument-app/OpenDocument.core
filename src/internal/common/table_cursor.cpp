@@ -1,4 +1,7 @@
 #include <internal/common/table_cursor.h>
+#include <internal/common/table_position.h>
+#include <iterator>
+#include <list>
 
 namespace odr::internal::common {
 

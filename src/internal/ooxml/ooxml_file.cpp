@@ -1,3 +1,4 @@
+#include <internal/abstract/archive.h>
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/archive.h>
@@ -11,6 +12,13 @@
 #include <internal/util/stream_util.h>
 #include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
+#include <odr/file.h>
+#include <optional>
+#include <utility>
+
+namespace odr::internal::abstract {
+class Document;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::ooxml {
 

@@ -1,6 +1,11 @@
+#include <internal/abstract/document.h>
+#include <internal/common/document_cursor.h>
 #include <internal/odf/odf_cursor.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_element.h>
+#include <iosfwd>
+#include <pugixml.hpp>
+#include <stdexcept>
 
 namespace odr::internal::odf {
 

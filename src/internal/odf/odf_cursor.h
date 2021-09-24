@@ -2,7 +2,17 @@
 #define ODR_INTERNAL_ODF_CURSOR_H
 
 #include <internal/common/document_cursor.h>
+#include <internal/common/style.h>
 #include <internal/odf/odf_style.h>
+#include <memory>
+
+namespace pugi {
+class xml_node;
+} // namespace pugi
+
+namespace odr::internal::abstract {
+class DocumentCursor;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::odf {
 class Document;

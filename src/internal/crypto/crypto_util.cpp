@@ -1,11 +1,16 @@
 #include <aes.h>
 #include <base64.h>
 #include <blowfish.h>
+#include <cryptlib.h>
+#include <cstdint>
 #include <des.h>
 #include <filters.h>
 #include <internal/crypto/crypto_util.h>
+#include <iterhash.h>
 #include <modes.h>
 #include <pwdbased.h>
+#include <queue.h>
+#include <secblock.h>
 #include <sha.h>
 #include <zinflate.h>
 

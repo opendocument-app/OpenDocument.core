@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_CRYPTO_UTIL_H
 #define ODR_INTERNAL_CRYPTO_UTIL_H
 
+#include <iosfwd>
 #include <string>
 
 namespace odr::internal::crypto::util {

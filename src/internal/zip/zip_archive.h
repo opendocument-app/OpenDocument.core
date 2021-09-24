@@ -1,7 +1,11 @@
 #ifndef ODR_INTERNAL_ZIP_ARCHIVE_H
 #define ODR_INTERNAL_ZIP_ARCHIVE_H
 
+#include <cstdint>
 #include <internal/common/path.h>
+#include <iosfwd>
+#include <iterator>
+#include <memory>
 #include <miniz.h>
 #include <vector>
 
@@ -90,6 +94,7 @@ public:
   explicit ZipArchive(const std::shared_ptr<ReadonlyZipArchive> &archive);
 
   class Entry;
+
   using Iterator = std::vector<Entry>::const_iterator;
 
   [[nodiscard]] Iterator begin() const;

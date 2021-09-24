@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_UTIL_XML_H
 #define ODR_INTERNAL_UTIL_XML_H
 
+#include <iosfwd>
 #include <string>
 #include <vector>
 

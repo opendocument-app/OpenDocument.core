@@ -1,13 +1,22 @@
+#include <algorithm>
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
+#include <internal/common/path.h>
 #include <internal/common/table_cursor.h>
 #include <internal/odf/odf_meta.h>
 #include <internal/util/map_util.h>
 #include <internal/util/stream_util.h>
 #include <internal/util/xml_util.h>
+#include <iterator>
+#include <memory>
 #include <odr/exceptions.h>
 #include <odr/file.h>
+#include <optional>
 #include <pugixml.hpp>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
 
 namespace odr::internal::odf {
 
@@ -123,45 +132,6 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
   result.document_meta = std::move(document_meta);
 
   return result;
-}
-
-void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
-                               std::uint32_t &cols,
-                               const std::uint32_t limit_rows,
-                               const std::uint32_t limit_cols) {
-  rows = 0;
-  cols = 0;
-
-  common::TableCursor cursor;
-
-  for (auto &&r : table.select_nodes(".//self::table:table-row")) {
-    const auto &&row = r.node();
-
-    const auto rows_repeated =
-        row.attribute("table:number-rows-repeated").as_uint(1);
-    cursor.add_row(rows_repeated);
-
-    for (auto &&c : row.select_nodes(".//self::table:table-cell")) {
-      const auto &&cell = c.node();
-
-      const auto columns_repeated =
-          cell.attribute("table:number-columns-repeated").as_uint(1);
-      const auto colspan =
-          cell.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan =
-          cell.attribute("table:number-rows-spanned").as_uint(1);
-      cursor.add_cell(colspan, rowspan, columns_repeated);
-
-      const auto new_rows = cursor.row();
-      const auto new_cols = std::max(cols, cursor.column());
-      if (cell.first_child() &&
-          (((limit_rows != 0) && (new_rows < limit_rows)) &&
-           ((limit_cols != 0) && (new_cols < limit_cols)))) {
-        rows = new_rows;
-        cols = new_cols;
-      }
-    }
-  }
 }
 
 } // namespace odr::internal::odf

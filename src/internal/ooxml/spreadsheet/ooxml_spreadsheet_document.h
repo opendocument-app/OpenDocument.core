@@ -2,7 +2,15 @@
 #define ODR_INTERNAL_OOXML_SPREADSHEET_DOCUMENT_H
 
 #include <internal/abstract/document.h>
+#include <internal/common/path.h>
+#include <memory>
+#include <odr/file.h>
 #include <pugixml.hpp>
+#include <string>
+
+namespace odr::internal::abstract {
+class ReadableFilesystem;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::ooxml::spreadsheet {
 class Element;

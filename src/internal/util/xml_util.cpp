@@ -1,9 +1,12 @@
+#include <cstdint>
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/util/xml_util.h>
+#include <memory>
 #include <odr/exceptions.h>
 #include <pugixml.hpp>
+#include <utility>
 
 namespace odr::internal::util {
 

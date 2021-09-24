@@ -1,7 +1,10 @@
+#include <algorithm>
+#include <cstdint>
 #include <cstring>
-#include <internal/abstract/file.h>
+#include <functional>
+#include <internal/abstract/document.h>
 #include <internal/abstract/filesystem.h>
-#include <internal/common/path.h>
+#include <internal/common/style.h>
 #include <internal/common/table_cursor.h>
 #include <internal/odf/odf_cursor.h>
 #include <internal/odf/odf_document.h>
@@ -9,8 +12,17 @@
 #include <internal/odf/odf_style.h>
 #include <internal/util/string_util.h>
 #include <internal/util/xml_util.h>
+#include <iosfwd>
+#include <iterator>
+#include <memory>
+#include <new>
 #include <odr/document.h>
 #include <odr/file.h>
+#include <odr/style.h>
+#include <optional>
+#include <pugixml.hpp>
+#include <string>
+#include <utility>
 
 namespace odr::internal::odf {
 
@@ -85,21 +97,11 @@ const StyleRegistry *Element::style_(const abstract::Document *document) {
 
 namespace {
 
-template <ElementType> class DefaultElement;
-class TextDocumentRoot;
-class PresentationRoot;
-class SpreadsheetRoot;
-class DrawingRoot;
-class MasterPage;
 class Slide;
 class Sheet;
 class Page;
-class Text;
-class TableElement;
 class TableColumn;
 class TableRow;
-class TableCell;
-class ImageElement;
 
 template <typename Derived>
 abstract::Element *construct_default(const Document *document,

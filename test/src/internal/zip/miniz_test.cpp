@@ -1,7 +1,8 @@
 #include <chrono>
+#include <cstdint>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <internal/common/path.h>
+#include <iostream>
 #include <miniz.h>
 #include <string>
 #include <test_util.h>

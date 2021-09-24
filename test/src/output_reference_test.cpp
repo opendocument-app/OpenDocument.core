@@ -1,15 +1,23 @@
+#include <algorithm>
+#include <chrono>
+#include <cstdint>
+#include <debug/vector>
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <internal/common/path.h>
 #include <internal/util/odr_meta_util.h>
 #include <internal/util/string_util.h>
+#include <iomanip>
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
 #include <odr/file.h>
 #include <odr/html.h>
+#include <odr/style.h>
+#include <optional>
+#include <string>
 #include <test_util.h>
-#include <utility>
 
 using namespace odr;
 using namespace odr::internal;

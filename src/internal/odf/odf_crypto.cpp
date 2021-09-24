@@ -1,11 +1,16 @@
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/file.h>
+#include <internal/common/path.h>
 #include <internal/crypto/crypto_util.h>
 #include <internal/odf/odf_crypto.h>
+#include <internal/odf/odf_manifest.h>
 #include <internal/util/stream_util.h>
+#include <iterator>
 #include <odr/exceptions.h>
 #include <sstream>
+#include <stdexcept>
+#include <utility>
 
 namespace odr::internal::odf {
 

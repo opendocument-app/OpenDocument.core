@@ -7,6 +7,10 @@
 #include <string>
 #include <typeindex>
 
+namespace std {
+template <typename _Tp> struct hash;
+} // namespace std
+
 namespace odr::internal::common {
 
 class Path final {

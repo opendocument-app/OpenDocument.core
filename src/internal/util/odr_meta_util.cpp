@@ -1,5 +1,7 @@
 #include <internal/util/odr_meta_util.h>
+#include <nlohmann/json.hpp>
 #include <odr/file.h>
+#include <optional>
 
 namespace odr::internal::util::meta {
 

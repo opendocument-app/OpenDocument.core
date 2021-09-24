@@ -4,8 +4,24 @@
 #include <internal/cfb/cfb_impl.h>
 #include <internal/common/file.h>
 #include <internal/common/path.h>
+#include <iosfwd>
+#include <iterator>
+#include <memory>
 #include <optional>
+#include <string>
 #include <vector>
+
+namespace odr::internal::abstract {
+class File;
+} // namespace odr::internal::abstract
+
+namespace odr::internal::cfb::impl {
+struct CompoundFileEntry;
+} // namespace odr::internal::cfb::impl
+
+namespace odr::internal::common {
+class MemoryFile;
+} // namespace odr::internal::common
 
 namespace odr::internal::cfb::util {
 class Archive;

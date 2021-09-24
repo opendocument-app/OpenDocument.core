@@ -1,11 +1,12 @@
 #include <internal/abstract/document.h>
-#include <internal/abstract/filesystem.h>
 #include <internal/common/document_path.h>
 #include <internal/common/path.h>
 #include <odr/document.h>
-#include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/style.h>
+#include <stdexcept>
+#include <stdint.h>
+#include <utility>
 
 namespace odr {
 

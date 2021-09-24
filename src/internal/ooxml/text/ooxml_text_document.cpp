@@ -2,9 +2,16 @@
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/text/ooxml_text_cursor.h>
 #include <internal/ooxml/text/ooxml_text_document.h>
+#include <internal/ooxml/text/ooxml_text_style.h>
 #include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
+#include <pugixml.hpp>
+#include <utility>
+
+namespace odr::internal::abstract {
+class DocumentCursor;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::ooxml::text {
 

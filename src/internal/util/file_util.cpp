@@ -1,9 +1,8 @@
-#include <cerrno>
-#include <cstring>
+#include <bits/exception.h>
 #include <fstream>
 #include <internal/util/file_util.h>
+#include <iterator>
 #include <odr/exceptions.h>
-#include <streambuf>
 
 namespace odr::internal::util {
 

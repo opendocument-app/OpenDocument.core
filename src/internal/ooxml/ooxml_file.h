@@ -2,7 +2,13 @@
 #define ODR_INTERNAL_OOXML_FILE_H
 
 #include <internal/abstract/file.h>
+#include <memory>
 #include <odr/file.h>
+#include <string>
+
+namespace odr::internal::abstract {
+class Document;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;

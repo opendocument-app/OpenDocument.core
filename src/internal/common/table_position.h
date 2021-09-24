@@ -3,7 +3,13 @@
 
 #include <cstdint>
 #include <functional>
+#include <iosfwd>
 #include <string>
+#include <string_view>
+
+namespace std {
+template <typename _Tp> struct hash;
+} // namespace std
 
 namespace odr::internal::common {
 

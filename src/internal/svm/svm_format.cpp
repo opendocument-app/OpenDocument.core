@@ -1,9 +1,7 @@
-#include <codecvt>
 #include <cstring>
 #include <glog/logging.h>
 #include <internal/svm/svm_format.h>
 #include <internal/util/string_util.h>
-#include <locale>
 #include <odr/exceptions.h>
 
 namespace odr::internal::svm {

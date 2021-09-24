@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_COMMON_DOCUMENT_PATH_H
 #define ODR_INTERNAL_COMMON_DOCUMENT_PATH_H
 
+#include <cstdint>
 #include <internal/util/string_util.h>
 #include <stdexcept>
 #include <string>

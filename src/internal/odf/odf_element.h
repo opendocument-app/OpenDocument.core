@@ -6,6 +6,10 @@
 #include <pugixml.hpp>
 
 namespace odr::internal::odf {
+class StyleRegistry;
+} // namespace odr::internal::odf
+
+namespace odr::internal::odf {
 class Document;
 
 class Element : public virtual abstract::Element {

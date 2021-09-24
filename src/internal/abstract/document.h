@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 
 #include <functional>
+#include <iosfwd>
 #include <memory>
 #include <odr/document.h>
 #include <optional>
@@ -9,6 +10,7 @@
 
 namespace odr {
 class File;
+
 enum class DocumentType;
 enum class ElementType;
 struct TextStyle;
@@ -29,7 +31,6 @@ class DocumentPath;
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
-
 class DocumentCursor;
 class Element;
 

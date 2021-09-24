@@ -1,8 +1,16 @@
-#include <internal/abstract/file.h>
 #include <internal/cfb/cfb_archive.h>
+#include <internal/cfb/cfb_impl.h>
 #include <internal/cfb/cfb_util.h>
+#include <internal/common/path.h>
 #include <internal/util/string_util.h>
-#include <odr/file.h>
+
+namespace odr::internal::abstract {
+class File;
+} // namespace odr::internal::abstract
+
+namespace odr::internal::common {
+class MemoryFile;
+} // namespace odr::internal::common
 
 namespace odr::internal::cfb {
 

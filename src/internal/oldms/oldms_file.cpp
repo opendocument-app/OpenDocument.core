@@ -1,9 +1,17 @@
-#include <internal/cfb/cfb_archive.h>
+#include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/oldms/oldms_file.h>
 #include <memory>
 #include <odr/exceptions.h>
+#include <odr/file.h>
+#include <optional>
 #include <unordered_map>
+#include <utility>
+
+namespace odr::internal::abstract {
+class Document;
+class File;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::oldms {
 

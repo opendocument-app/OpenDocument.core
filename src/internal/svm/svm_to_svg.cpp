@@ -1,10 +1,15 @@
+#include <debug/safe_iterator.h>
+#include <debug/vector>
 #include <glog/logging.h>
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_format.h>
 #include <internal/svm/svm_to_svg.h>
+#include <memory>
 #include <odr/exceptions.h>
+#include <stdint.h>
 #include <string>
-#include <vector>
+
+#include "internal/abstract/file.h"
 
 namespace odr::internal::svm {
 

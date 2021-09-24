@@ -2,6 +2,7 @@
 #include <internal/util/string_util.h>
 #include <iomanip>
 #include <odr/html.h>
+#include <odr/style.h>
 #include <sstream>
 
 namespace odr::internal::common {

@@ -1,9 +1,11 @@
+#include <cstdint>
 #include <internal/abstract/file.h>
 #include <internal/common/file.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <open_strategy.h>
+#include <optional>
 #include <utility>
 
 namespace odr {

@@ -2,6 +2,17 @@
 #define ODR_INTERNAL_OOXML_TEXT_CURSOR_H
 
 #include <internal/common/document_cursor.h>
+#include <memory>
+
+#include "internal/common/style.h"
+
+namespace pugi {
+class xml_node;
+} // namespace pugi
+
+namespace odr::internal::abstract {
+class DocumentCursor;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::ooxml::text {
 class Document;

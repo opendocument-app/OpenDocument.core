@@ -2,20 +2,29 @@
 #define ODR_INTERNAL_ODF_STYLE_H
 
 #include <any>
+#include <debug/unordered_map>
 #include <internal/common/style.h>
 #include <memory>
 #include <odr/document.h>
+#include <optional>
 #include <pugixml.hpp>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace odr {
 struct PageLayout;
+struct GraphicStyle;
+struct ParagraphStyle;
+struct TableCellStyle;
+struct TableColumnStyle;
+struct TableRowStyle;
+struct TableStyle;
+struct TextStyle;
 } // namespace odr
 
 namespace odr::internal::odf {
 class Document;
-
 class StyleRegistry;
 
 class Style final {

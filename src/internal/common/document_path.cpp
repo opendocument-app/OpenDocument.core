@@ -1,5 +1,6 @@
 #include <internal/common/document_path.h>
-#include <internal/common/table_position.h>
+#include <iosfwd>
+#include <iterator>
 
 namespace odr::internal::common {
 

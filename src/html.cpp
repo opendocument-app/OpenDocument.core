@@ -1,19 +1,22 @@
+#include <cstdint>
 #include <fstream>
-#include <internal/abstract/document.h>
+#include <initializer_list>
 #include <internal/common/file.h>
 #include <internal/common/html.h>
-#include <internal/common/table_cursor.h>
+#include <internal/common/table_position.h>
 #include <internal/crypto/crypto_util.h>
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_to_svg.h>
 #include <internal/util/stream_util.h>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
-#include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
+#include <odr/quantity.h>
 #include <odr/style.h>
-#include <sstream>
+#include <optional>
+#include <string>
 
 using namespace odr::internal;
 

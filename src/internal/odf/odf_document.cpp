@@ -4,12 +4,18 @@
 #include <internal/common/path.h>
 #include <internal/odf/odf_cursor.h>
 #include <internal/odf/odf_document.h>
+#include <internal/odf/odf_style.h>
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
+#include <iterator>
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <unordered_map>
+#include <pugixml.hpp>
 #include <utility>
+
+namespace odr::internal::abstract {
+class DocumentCursor;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::odf {
 

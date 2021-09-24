@@ -1,4 +1,6 @@
 #include <internal/common/style.h>
+#include <odr/style.h>
+#include <utility>
 
 namespace odr::internal::common {
 

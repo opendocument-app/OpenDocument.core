@@ -2,11 +2,19 @@
 #define ODR_INTERNAL_OOXML_UTIL_H
 
 #include <any>
+#include <debug/unordered_map>
 #include <functional>
 #include <odr/style.h>
+#include <optional>
 #include <pugixml.hpp>
 #include <string>
 #include <unordered_map>
+
+namespace pugi {
+class xml_attribute;
+class xml_document;
+class xml_node;
+} // namespace pugi
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;

@@ -2,8 +2,18 @@
 #include <internal/odf/odf_crypto.h>
 #include <internal/odf/odf_document.h>
 #include <internal/odf/odf_file.h>
+#include <internal/odf/odf_manifest.h>
+#include <internal/odf/odf_meta.h>
 #include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
+#include <odr/file.h>
+#include <optional>
+#include <utility>
+
+namespace odr::internal::abstract {
+class Document;
+class File;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::odf {
 

@@ -1,8 +1,15 @@
+#include <algorithm>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <internal/abstract/file.h>
 #include <internal/common/file.h>
+#include <internal/common/path.h>
 #include <internal/zip/zip_archive.h>
+#include <iostream>
+#include <iterator>
+#include <memory>
 #include <odr/exceptions.h>
+#include <odr/file.h>
 #include <string>
 #include <test_util.h>
 
