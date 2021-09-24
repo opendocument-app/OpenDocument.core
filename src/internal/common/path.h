@@ -56,7 +56,7 @@ private:
   std::uint32_t m_downwards;
   bool m_absolute;
 
-  friend struct ::std::hash<Path>;
+  friend struct std::hash<Path>;
   friend std::ostream &operator<<(std::ostream &, const Path &);
 
   void parent_();
