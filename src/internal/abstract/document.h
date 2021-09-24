@@ -301,6 +301,8 @@ public:
   [[nodiscard]] virtual bool covered(const Document *document) const = 0;
   [[nodiscard]] virtual TableDimensions
   span(const Document *document) const = 0;
+  [[nodiscard]] virtual ValueType
+  value_type(const Document *document) const = 0;
 
   [[nodiscard]] virtual std::optional<TableCellStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;

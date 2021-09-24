@@ -568,6 +568,10 @@ public:
     return {}; // TODO
   }
 
+  [[nodiscard]] ValueType value_type(const abstract::Document *) const final {
+    return ValueType::string;
+  }
+
   [[nodiscard]] std::optional<TableCellStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {

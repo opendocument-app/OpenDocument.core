@@ -791,6 +791,9 @@ void translate_sheet(DocumentCursor &cursor, std::ostream &out,
         if (auto style = table_cell.style()) {
           out << optional_style_attribute(translate_table_cell_style(*style));
         }
+        if (table_cell.value_type() == ValueType::float_number) {
+          out << " class=\"odr-value-type-float\"";
+        }
         out << ">";
         if ((row_index == 0) && (column_index == 0)) {
           shape_cursor.for_each_sheet_shape(

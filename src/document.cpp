@@ -289,6 +289,10 @@ TableDimensions Element::TableCell::span() const {
   return m_element ? m_element->span(m_document) : TableDimensions();
 }
 
+ValueType Element::TableCell::value_type() const {
+  return m_element ? m_element->value_type(m_document) : ValueType::string;
+}
+
 std::optional<TableCellStyle> Element::TableCell::style() const {
   return m_element ? m_element->style(m_document, m_cursor)
                    : std::optional<TableCellStyle>();

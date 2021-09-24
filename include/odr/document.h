@@ -86,6 +86,11 @@ enum class AnchorType {
   at_paragraph,
 };
 
+enum class ValueType {
+  string,
+  float_number,
+};
+
 class DocumentCursor;
 class Element;
 struct PageLayout;
@@ -310,6 +315,7 @@ public:
 
     [[nodiscard]] bool covered() const;
     [[nodiscard]] TableDimensions span() const;
+    [[nodiscard]] ValueType value_type() const;
 
     [[nodiscard]] std::optional<TableCellStyle> style() const;
   };

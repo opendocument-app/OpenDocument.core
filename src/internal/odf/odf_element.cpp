@@ -731,6 +731,14 @@ public:
             m_node.attribute("table:number-columns-spanned").as_uint(1)};
   }
 
+  [[nodiscard]] ValueType value_type(const abstract::Document *) const final {
+    auto value_type = m_node.attribute("office:value-type").value();
+    if (std::strcmp("float", value_type) == 0) {
+      return ValueType::float_number;
+    }
+    return ValueType::string;
+  }
+
   common::ResolvedStyle
   partial_style(const abstract::Document *document) const final {
     common::ResolvedStyle result;
