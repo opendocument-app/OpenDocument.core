@@ -5,19 +5,19 @@
 namespace odr::internal::abstract {
 
 FileCategory TextFile::file_category() const noexcept {
-  return FileCategory::TEXT;
+  return FileCategory::text;
 }
 
 FileCategory ImageFile::file_category() const noexcept {
-  return FileCategory::IMAGE;
+  return FileCategory::image;
 }
 
 FileCategory ArchiveFile::file_category() const noexcept {
-  return FileCategory::ARCHIVE;
+  return FileCategory::archive;
 }
 
 FileCategory DocumentFile::file_category() const noexcept {
-  return FileCategory::DOCUMENT;
+  return FileCategory::document;
 }
 
 DocumentType DocumentFile::document_type() const {

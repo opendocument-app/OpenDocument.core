@@ -22,7 +22,7 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
     auto memory_file = std::make_shared<common::MemoryFile>(*file);
 
     auto zip = common::ArchiveFile(zip::ReadonlyZipArchive(memory_file));
-    result.push_back(FileType::ZIP);
+    result.push_back(FileType::zip);
 
     auto filesystem = zip.archive()->filesystem();
 
@@ -45,7 +45,7 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
     auto memory_file = std::make_shared<common::MemoryFile>(*file);
 
     auto cfb = common::ArchiveFile(cfb::ReadonlyCfbArchive(memory_file));
-    result.push_back(FileType::COMPOUND_FILE_BINARY_FORMAT);
+    result.push_back(FileType::compound_file_binary_format);
 
     auto filesystem = cfb.archive()->filesystem();
 

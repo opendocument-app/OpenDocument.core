@@ -15,38 +15,38 @@ namespace {
 bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
   // https://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
   static const std::unordered_map<std::string, FileType> MIME_TYPES = {
-      {"application/vnd.oasis.opendocument.text", FileType::OPENDOCUMENT_TEXT},
+      {"application/vnd.oasis.opendocument.text", FileType::opendocument_text},
       {"application/vnd.oasis.opendocument.presentation",
-       FileType::OPENDOCUMENT_PRESENTATION},
+       FileType::opendocument_presentation},
       {"application/vnd.oasis.opendocument.spreadsheet",
-       FileType::OPENDOCUMENT_SPREADSHEET},
+       FileType::opendocument_spreadsheet},
       {"application/vnd.oasis.opendocument.graphics",
-       FileType::OPENDOCUMENT_GRAPHICS},
+       FileType::opendocument_graphics},
       // TODO any difference for template files?
       {"application/vnd.oasis.opendocument.text-template",
-       FileType::OPENDOCUMENT_TEXT},
+       FileType::opendocument_text},
       {"application/vnd.oasis.opendocument.presentation-template",
-       FileType::OPENDOCUMENT_PRESENTATION},
+       FileType::opendocument_presentation},
       {"application/vnd.oasis.opendocument.spreadsheet-template",
-       FileType::OPENDOCUMENT_SPREADSHEET},
+       FileType::opendocument_spreadsheet},
       {"application/vnd.oasis.opendocument.graphics-template",
-       FileType::OPENDOCUMENT_GRAPHICS},
+       FileType::opendocument_graphics},
       // TODO these staroffice types might deserve their own type
-      {"application/vnd.sun.xml.writer", FileType::OPENDOCUMENT_TEXT},
-      {"application/vnd.sun.xml.impress", FileType::OPENDOCUMENT_PRESENTATION},
-      {"application/vnd.sun.xml.calc", FileType::OPENDOCUMENT_SPREADSHEET},
-      {"application/vnd.sun.xml.draw", FileType::OPENDOCUMENT_GRAPHICS},
+      {"application/vnd.sun.xml.writer", FileType::opendocument_text},
+      {"application/vnd.sun.xml.impress", FileType::opendocument_presentation},
+      {"application/vnd.sun.xml.calc", FileType::opendocument_spreadsheet},
+      {"application/vnd.sun.xml.draw", FileType::opendocument_graphics},
       // TODO any difference for template files?
-      {"application/vnd.sun.xml.writer.template", FileType::OPENDOCUMENT_TEXT},
+      {"application/vnd.sun.xml.writer.template", FileType::opendocument_text},
       {"application/vnd.sun.xml.impress.template",
-       FileType::OPENDOCUMENT_PRESENTATION},
+       FileType::opendocument_presentation},
       {"application/vnd.sun.xml.calc.template",
-       FileType::OPENDOCUMENT_SPREADSHEET},
+       FileType::opendocument_spreadsheet},
       {"application/vnd.sun.xml.draw.template",
-       FileType::OPENDOCUMENT_GRAPHICS},
+       FileType::opendocument_graphics},
   };
   return util::map::lookup_map_default(MIME_TYPES, mime_type, file_type,
-                                       FileType::UNKNOWN);
+                                       FileType::unknown);
 }
 } // namespace
 
@@ -91,27 +91,27 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
                                             .child("meta:document-statistic");
       if (statistics) {
         switch (result.type) {
-        case FileType::OPENDOCUMENT_TEXT: {
-          document_meta.document_type = DocumentType::TEXT;
+        case FileType::opendocument_text: {
+          document_meta.document_type = DocumentType::text;
           const auto page_count = statistics.attribute("meta:page-count");
           if (!page_count) {
             break;
           }
           document_meta.entry_count = page_count.as_uint();
         } break;
-        case FileType::OPENDOCUMENT_PRESENTATION: {
-          document_meta.document_type = DocumentType::PRESENTATION;
+        case FileType::opendocument_presentation: {
+          document_meta.document_type = DocumentType::presentation;
         } break;
-        case FileType::OPENDOCUMENT_SPREADSHEET: {
-          document_meta.document_type = DocumentType::SPREADSHEET;
+        case FileType::opendocument_spreadsheet: {
+          document_meta.document_type = DocumentType::spreadsheet;
           const auto table_count = statistics.attribute("meta:table-count");
           if (!table_count) {
             break;
           }
           document_meta.entry_count = table_count.as_uint();
         } break;
-        case FileType::OPENDOCUMENT_GRAPHICS: {
-          document_meta.document_type = DocumentType::DRAWING;
+        case FileType::opendocument_graphics: {
+          document_meta.document_type = DocumentType::drawing;
         } break;
         default:
           break;

@@ -11,29 +11,29 @@ namespace odr {
 namespace {
 std::string type_to_string(const FileType type) {
   switch (type) {
-  case FileType::ZIP:
+  case FileType::zip:
     return "zip";
-  case FileType::COMPOUND_FILE_BINARY_FORMAT:
+  case FileType::compound_file_binary_format:
     return "cfb";
-  case FileType::OPENDOCUMENT_TEXT:
+  case FileType::opendocument_text:
     return "odt";
-  case FileType::OPENDOCUMENT_PRESENTATION:
+  case FileType::opendocument_presentation:
     return "odp";
-  case FileType::OPENDOCUMENT_SPREADSHEET:
+  case FileType::opendocument_spreadsheet:
     return "ods";
-  case FileType::OPENDOCUMENT_GRAPHICS:
+  case FileType::opendocument_graphics:
     return "odg";
-  case FileType::OFFICE_OPEN_XML_DOCUMENT:
+  case FileType::office_open_xml_document:
     return "docx";
-  case FileType::OFFICE_OPEN_XML_PRESENTATION:
+  case FileType::office_open_xml_presentation:
     return "pptx";
-  case FileType::OFFICE_OPEN_XML_WORKBOOK:
+  case FileType::office_open_xml_workbook:
     return "xlsx";
-  case FileType::LEGACY_WORD_DOCUMENT:
+  case FileType::legacy_word_document:
     return "doc";
-  case FileType::LEGACY_POWERPOINT_PRESENTATION:
+  case FileType::legacy_powerpoint_presentation:
     return "ppt";
-  case FileType::LEGACY_EXCEL_WORKSHEETS:
+  case FileType::legacy_excel_worksheets:
     return "xls";
   default:
     return "unnamed";
@@ -49,66 +49,66 @@ DocumentMeta::DocumentMeta(const DocumentType document_type,
 
 FileType FileMeta::type_by_extension(const std::string &extension) noexcept {
   if (extension == "zip") {
-    return FileType::ZIP;
+    return FileType::zip;
   }
   if (extension == "cfb") {
-    return FileType::COMPOUND_FILE_BINARY_FORMAT;
+    return FileType::compound_file_binary_format;
   }
   if (extension == "odt" || extension == "sxw") {
-    return FileType::OPENDOCUMENT_TEXT;
+    return FileType::opendocument_text;
   }
   if (extension == "odp" || extension == "sxi") {
-    return FileType::OPENDOCUMENT_PRESENTATION;
+    return FileType::opendocument_presentation;
   }
   if (extension == "ods" || extension == "sxc") {
-    return FileType::OPENDOCUMENT_SPREADSHEET;
+    return FileType::opendocument_spreadsheet;
   }
   if (extension == "odg" || extension == "sxd") {
-    return FileType::OPENDOCUMENT_GRAPHICS;
+    return FileType::opendocument_graphics;
   }
   if (extension == "docx") {
-    return FileType::OFFICE_OPEN_XML_DOCUMENT;
+    return FileType::office_open_xml_document;
   }
   if (extension == "pptx") {
-    return FileType::OFFICE_OPEN_XML_PRESENTATION;
+    return FileType::office_open_xml_presentation;
   }
   if (extension == "xlsx") {
-    return FileType::OFFICE_OPEN_XML_WORKBOOK;
+    return FileType::office_open_xml_workbook;
   }
   if (extension == "doc") {
-    return FileType::LEGACY_WORD_DOCUMENT;
+    return FileType::legacy_word_document;
   }
   if (extension == "ppt") {
-    return FileType::LEGACY_POWERPOINT_PRESENTATION;
+    return FileType::legacy_powerpoint_presentation;
   }
   if (extension == "xls") {
-    return FileType::LEGACY_EXCEL_WORKSHEETS;
+    return FileType::legacy_excel_worksheets;
   }
   if (extension == "svm") {
-    return FileType::STARVIEW_METAFILE;
+    return FileType::starview_metafile;
   }
 
-  return FileType::UNKNOWN;
+  return FileType::unknown;
 }
 
 FileCategory FileMeta::category_by_type(const FileType type) noexcept {
   switch (type) {
-  case FileType::ZIP:
-  case FileType::COMPOUND_FILE_BINARY_FORMAT:
-    return FileCategory::ARCHIVE;
-  case FileType::OPENDOCUMENT_TEXT:
-  case FileType::OPENDOCUMENT_PRESENTATION:
-  case FileType::OPENDOCUMENT_SPREADSHEET:
-  case FileType::OPENDOCUMENT_GRAPHICS:
-  case FileType::OFFICE_OPEN_XML_DOCUMENT:
-  case FileType::OFFICE_OPEN_XML_PRESENTATION:
-  case FileType::OFFICE_OPEN_XML_WORKBOOK:
-  case FileType::LEGACY_WORD_DOCUMENT:
-  case FileType::LEGACY_POWERPOINT_PRESENTATION:
-  case FileType::LEGACY_EXCEL_WORKSHEETS:
-    return FileCategory::DOCUMENT;
+  case FileType::zip:
+  case FileType::compound_file_binary_format:
+    return FileCategory::archive;
+  case FileType::opendocument_text:
+  case FileType::opendocument_presentation:
+  case FileType::opendocument_spreadsheet:
+  case FileType::opendocument_graphics:
+  case FileType::office_open_xml_document:
+  case FileType::office_open_xml_presentation:
+  case FileType::office_open_xml_workbook:
+  case FileType::legacy_word_document:
+  case FileType::legacy_powerpoint_presentation:
+  case FileType::legacy_excel_worksheets:
+    return FileCategory::document;
   default:
-    return FileCategory::UNKNOWN;
+    return FileCategory::unknown;
   }
 }
 

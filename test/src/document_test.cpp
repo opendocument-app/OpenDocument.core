@@ -12,11 +12,11 @@ TEST(DocumentTest, odt) {
   DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"));
 
-  EXPECT_EQ(document_file.file_type(), FileType::OPENDOCUMENT_TEXT);
+  EXPECT_EQ(document_file.file_type(), FileType::opendocument_text);
 
   Document document = document_file.document();
 
-  EXPECT_EQ(document.document_type(), DocumentType::TEXT);
+  EXPECT_EQ(document.document_type(), DocumentType::text);
 
   auto cursor = document.root_element();
 
@@ -33,11 +33,11 @@ TEST(DocumentTest, odg) {
   DocumentFile document_file(
       TestData::test_file_path("odr-public/odg/sample.odg"));
 
-  EXPECT_EQ(document_file.file_type(), FileType::OPENDOCUMENT_GRAPHICS);
+  EXPECT_EQ(document_file.file_type(), FileType::opendocument_graphics);
 
   Document document = document_file.document();
 
-  EXPECT_EQ(document.document_type(), DocumentType::DRAWING);
+  EXPECT_EQ(document.document_type(), DocumentType::drawing);
 
   auto cursor = document.root_element();
 

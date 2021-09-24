@@ -8,16 +8,16 @@ namespace odr::internal::ooxml {
 
 FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
-      {"word/document.xml", FileType::OFFICE_OPEN_XML_DOCUMENT},
-      {"ppt/presentation.xml", FileType::OFFICE_OPEN_XML_PRESENTATION},
-      {"xl/workbook.xml", FileType::OFFICE_OPEN_XML_WORKBOOK},
+      {"word/document.xml", FileType::office_open_xml_document},
+      {"ppt/presentation.xml", FileType::office_open_xml_presentation},
+      {"xl/workbook.xml", FileType::office_open_xml_workbook},
   };
 
   FileMeta result;
 
   if (filesystem.is_file("/EncryptionInfo") &&
       filesystem.is_file("/EncryptedPackage")) {
-    result.type = FileType::OFFICE_OPEN_XML_ENCRYPTED;
+    result.type = FileType::office_open_xml_encrypted;
     result.password_encrypted = true;
     return result;
   }

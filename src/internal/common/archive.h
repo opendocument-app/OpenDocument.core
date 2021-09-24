@@ -52,7 +52,7 @@ public:
   }
 
   [[nodiscard]] FileType file_type() const noexcept final {
-    return FileType::UNKNOWN; // TODO
+    return FileType::unknown; // TODO
   }
 
   [[nodiscard]] FileMeta file_meta() const noexcept final {

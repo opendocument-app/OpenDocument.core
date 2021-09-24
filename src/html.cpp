@@ -940,7 +940,7 @@ void html::translate(const Document &document, const std::string &path,
   out << common::html::default_headers();
   out << "<style>";
   out << common::html::default_style();
-  if (document.document_type() == DocumentType::SPREADSHEET) {
+  if (document.document_type() == DocumentType::spreadsheet) {
     out << common::html::default_spreadsheet_style();
   }
   out << "</style>";
@@ -950,13 +950,13 @@ void html::translate(const Document &document, const std::string &path,
 
   auto cursor = document.root_element();
 
-  if (document.document_type() == DocumentType::TEXT) {
+  if (document.document_type() == DocumentType::text) {
     translate_text_document(cursor, out, config);
-  } else if (document.document_type() == DocumentType::PRESENTATION) {
+  } else if (document.document_type() == DocumentType::presentation) {
     translate_presentation(cursor, out, config);
-  } else if (document.document_type() == DocumentType::SPREADSHEET) {
+  } else if (document.document_type() == DocumentType::spreadsheet) {
     translate_spreadsheet(cursor, out, config);
-  } else if (document.document_type() == DocumentType::DRAWING) {
+  } else if (document.document_type() == DocumentType::drawing) {
     translate_drawing(cursor, out, config);
   } else {
     // TODO throw?

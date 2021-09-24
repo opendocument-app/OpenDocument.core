@@ -14,7 +14,7 @@ TEST(SvmFile, open) {
   svm::SvmFile svm(std::make_shared<common::DiscFile>(
       TestData::test_file_path("odr-public/svm/chart-1.svm")));
 
-  EXPECT_EQ(odr::FileType::STARVIEW_METAFILE, svm.file_type());
+  EXPECT_EQ(odr::FileType::starview_metafile, svm.file_type());
 }
 
 TEST(SvmToSvg, string) {

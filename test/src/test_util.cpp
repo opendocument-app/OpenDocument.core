@@ -44,7 +44,7 @@ std::vector<TestFile> get_test_files(const std::string &input) {
       const bool encrypted = !password.empty();
       const std::string file_name = fs::path(path).filename().string();
 
-      if (type == FileType::UNKNOWN) {
+      if (type == FileType::unknown) {
         continue;
       }
       result.emplace_back(path, type, encrypted, std::move(password));
@@ -66,7 +66,7 @@ std::vector<TestFile> get_test_files(const std::string &input) {
 
     const auto file = get_test_file(path);
 
-    if (file.type == FileType::UNKNOWN) {
+    if (file.type == FileType::unknown) {
       continue;
     }
     result.push_back(file);

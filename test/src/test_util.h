@@ -11,7 +11,7 @@ namespace odr::test {
 
 struct TestFile {
   std::string path;
-  FileType type{FileType::UNKNOWN};
+  FileType type{FileType::unknown};
   bool password_encrypted{false};
   std::string password;
 

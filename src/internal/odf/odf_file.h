@@ -30,7 +30,7 @@ public:
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
-  EncryptionState m_encryption_state{EncryptionState::NOT_ENCRYPTED};
+  EncryptionState m_encryption_state{EncryptionState::not_encrypted};
   FileMeta m_file_meta;
   Manifest m_manifest;
 };

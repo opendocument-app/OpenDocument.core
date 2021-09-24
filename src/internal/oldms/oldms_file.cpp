@@ -12,13 +12,13 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
   static const std::unordered_map<common::Path, FileType> TYPES = {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
-      {"WordDocument", FileType::LEGACY_WORD_DOCUMENT},
+      {"WordDocument", FileType::legacy_word_document},
       // MS-PPT: The "PowerPoint Document" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd911009(v=office.12).aspx
-      {"PowerPoint Document", FileType::LEGACY_POWERPOINT_PRESENTATION},
+      {"PowerPoint Document", FileType::legacy_powerpoint_presentation},
       // MS-XLS: The "Workbook" stream MUST be present in the file.
       // https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt/1fc22d56-28f9-4818-bd45-67c2bf721ccf
-      {"Workbook", FileType::LEGACY_EXCEL_WORKSHEETS},
+      {"Workbook", FileType::legacy_excel_worksheets},
   };
 
   FileMeta result;
@@ -30,7 +30,7 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
     }
   }
 
-  if (result.type == FileType::UNKNOWN) {
+  if (result.type == FileType::unknown) {
     throw UnknownFileType();
   }
 
@@ -57,7 +57,7 @@ bool LegacyMicrosoftFile::password_encrypted() const noexcept {
 }
 
 EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {
-  return EncryptionState::UNKNOWN;
+  return EncryptionState::unknown;
 }
 
 bool LegacyMicrosoftFile::decrypt(const std::string &) {

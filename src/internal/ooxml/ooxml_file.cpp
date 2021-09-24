@@ -57,18 +57,18 @@ bool OfficeOpenXmlFile::decrypt(const std::string &password) {
       zip::ReadonlyZipArchive(memory_file));
   m_filesystem = zip->archive()->filesystem();
   m_meta = parse_file_meta(*m_filesystem);
-  m_encryption_state = EncryptionState::DECRYPTED;
+  m_encryption_state = EncryptionState::decrypted;
   return true;
 }
 
 std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
   // TODO throw if encrypted
   switch (file_type()) {
-  case FileType::OFFICE_OPEN_XML_DOCUMENT:
+  case FileType::office_open_xml_document:
     return std::make_shared<text::Document>(m_filesystem);
-  case FileType::OFFICE_OPEN_XML_PRESENTATION:
+  case FileType::office_open_xml_presentation:
     return std::make_shared<presentation::Document>(m_filesystem);
-  case FileType::OFFICE_OPEN_XML_WORKBOOK:
+  case FileType::office_open_xml_workbook:
     return std::make_shared<spreadsheet::Document>(m_filesystem);
   default:
     throw UnsupportedOperation();

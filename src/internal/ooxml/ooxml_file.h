@@ -29,7 +29,7 @@ public:
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
   FileMeta m_meta;
-  EncryptionState m_encryption_state{EncryptionState::NOT_ENCRYPTED};
+  EncryptionState m_encryption_state{EncryptionState::not_encrypted};
 };
 
 } // namespace odr::internal::ooxml

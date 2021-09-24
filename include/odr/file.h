@@ -21,74 +21,74 @@ class DocumentFile;
 class Document;
 
 enum class FileType {
-  UNKNOWN,
+  unknown,
 
   // https://en.wikipedia.org/wiki/OpenDocument
-  OPENDOCUMENT_TEXT,
-  OPENDOCUMENT_PRESENTATION,
-  OPENDOCUMENT_SPREADSHEET,
-  OPENDOCUMENT_GRAPHICS,
+  opendocument_text,
+  opendocument_presentation,
+  opendocument_spreadsheet,
+  opendocument_graphics,
 
   // https://en.wikipedia.org/wiki/Office_Open_XML
-  OFFICE_OPEN_XML_DOCUMENT,
-  OFFICE_OPEN_XML_PRESENTATION,
-  OFFICE_OPEN_XML_WORKBOOK,
-  OFFICE_OPEN_XML_ENCRYPTED,
+  office_open_xml_document,
+  office_open_xml_presentation,
+  office_open_xml_workbook,
+  office_open_xml_encrypted,
 
   // https://en.wikipedia.org/wiki/List_of_Microsoft_Office_filename_extensions
-  LEGACY_WORD_DOCUMENT,
-  LEGACY_POWERPOINT_PRESENTATION,
-  LEGACY_EXCEL_WORKSHEETS,
+  legacy_word_document,
+  legacy_powerpoint_presentation,
+  legacy_excel_worksheets,
 
   // https://en.wikipedia.org/wiki/Rich_Text_Format
-  RICH_TEXT_FORMAT,
+  rich_text_format,
 
   // https://en.wikipedia.org/wiki/PDF
-  PORTABLE_DOCUMENT_FORMAT,
+  portable_document_format,
 
   // https://en.wikipedia.org/wiki/Text_file
-  TEXT_FILE,
+  text_file,
   // https://en.wikipedia.org/wiki/Comma-separated_values
-  COMMA_SEPARATED_VALUES,
+  comma_separated_values,
   // https://en.wikipedia.org/wiki/Markdown
-  MARKDOWN,
+  markdown,
 
   // https://en.wikipedia.org/wiki/Zip_(file_format)
-  ZIP,
+  zip,
   // https://en.wikipedia.org/wiki/Compound_File_Binary_Format
-  COMPOUND_FILE_BINARY_FORMAT,
+  compound_file_binary_format,
 
-  STARVIEW_METAFILE,
+  starview_metafile,
 };
 
 enum class FileCategory {
-  UNKNOWN,
-  TEXT,
-  IMAGE,
-  ARCHIVE,
-  DOCUMENT,
+  unknown,
+  text,
+  image,
+  archive,
+  document,
 };
 
 enum class FileLocation {
-  UNKNOWN,
-  MEMORY,
-  DISC,
-  NETWORK,
+  unknown,
+  memory,
+  disc,
+  network,
 };
 
 enum class EncryptionState {
-  UNKNOWN,
-  NOT_ENCRYPTED,
-  ENCRYPTED,
-  DECRYPTED,
+  unknown,
+  not_encrypted,
+  encrypted,
+  decrypted,
 };
 
 enum class DocumentType {
-  UNKNOWN,
-  TEXT,
-  PRESENTATION,
-  SPREADSHEET,
-  DRAWING,
+  unknown,
+  text,
+  presentation,
+  spreadsheet,
+  drawing,
 };
 
 struct DocumentMeta final {
@@ -96,7 +96,7 @@ struct DocumentMeta final {
   DocumentMeta(DocumentType document_type,
                std::optional<std::uint32_t> entry_count);
 
-  DocumentType document_type{DocumentType::UNKNOWN};
+  DocumentType document_type{DocumentType::unknown};
   std::optional<std::uint32_t> entry_count;
 };
 
@@ -108,7 +108,7 @@ struct FileMeta final {
   FileMeta(FileType type, bool password_encrypted,
            std::optional<DocumentMeta> document_meta);
 
-  FileType type{FileType::UNKNOWN};
+  FileType type{FileType::unknown};
   bool password_encrypted{false};
   std::optional<DocumentMeta> document_meta;
 

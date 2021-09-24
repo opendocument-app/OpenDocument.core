@@ -21,7 +21,7 @@ OpenDocumentFile::OpenDocumentFile(
   }
 
   if (m_file_meta.password_encrypted) {
-    m_encryption_state = EncryptionState::ENCRYPTED;
+    m_encryption_state = EncryptionState::encrypted;
   }
 }
 
@@ -47,7 +47,7 @@ bool OpenDocumentFile::decrypt(const std::string &password) {
     return false;
   }
   m_file_meta = parse_file_meta(*m_filesystem, nullptr, true);
-  m_encryption_state = EncryptionState::DECRYPTED;
+  m_encryption_state = EncryptionState::decrypted;
   return true;
 }
 
@@ -56,14 +56,14 @@ FileMeta OpenDocumentFile::file_meta() const noexcept { return m_file_meta; }
 std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
   // TODO throw if encrypted
   switch (file_type()) {
-  case FileType::OPENDOCUMENT_TEXT:
-    return std::make_shared<Document>(DocumentType::TEXT, m_filesystem);
-  case FileType::OPENDOCUMENT_PRESENTATION:
-    return std::make_shared<Document>(DocumentType::PRESENTATION, m_filesystem);
-  case FileType::OPENDOCUMENT_SPREADSHEET:
-    return std::make_shared<Document>(DocumentType::SPREADSHEET, m_filesystem);
-  case FileType::OPENDOCUMENT_GRAPHICS:
-    return std::make_shared<Document>(DocumentType::DRAWING, m_filesystem);
+  case FileType::opendocument_text:
+    return std::make_shared<Document>(DocumentType::text, m_filesystem);
+  case FileType::opendocument_presentation:
+    return std::make_shared<Document>(DocumentType::presentation, m_filesystem);
+  case FileType::opendocument_spreadsheet:
+    return std::make_shared<Document>(DocumentType::spreadsheet, m_filesystem);
+  case FileType::opendocument_graphics:
+    return std::make_shared<Document>(DocumentType::drawing, m_filesystem);
   default:
     throw UnsupportedOperation();
   }

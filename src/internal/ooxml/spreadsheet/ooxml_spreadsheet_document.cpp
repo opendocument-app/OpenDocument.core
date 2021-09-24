@@ -36,7 +36,7 @@ void Document::save(const common::Path & /*path*/,
 }
 
 DocumentType Document::document_type() const noexcept {
-  return DocumentType::SPREADSHEET;
+  return DocumentType::spreadsheet;
 }
 
 std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {

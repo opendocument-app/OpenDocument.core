@@ -1,13 +1,10 @@
 #ifndef ODR_DOCUMENT_H
 #define ODR_DOCUMENT_H
 
-#include <any>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
 namespace odr::internal::abstract {
 class Document;
