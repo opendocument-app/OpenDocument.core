@@ -13,8 +13,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 # use ccache if available
 find_program(CCACHE_FOUND ccache)
 if (CCACHE_FOUND)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    message(STATUS "using ccache")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_FOUND}")
+    message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
 add_subdirectory(3rdparty)
