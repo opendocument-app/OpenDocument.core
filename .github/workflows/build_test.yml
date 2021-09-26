@@ -83,6 +83,8 @@ jobs:
         with:
           name: bin-${{ matrix.os }}
           path: build/test
+      - name: fix artifact permissions
+        run:  chmod +x build/test/odr_test
 
       - name: test
         working-directory: build/test
