@@ -19,6 +19,8 @@ jobs:
         if: startsWith(matrix.config.os, 'macos')
         run: brew install ccache
 
+      - run: ccache -V
+
       - name: checkout
         uses: actions/checkout@v2
 
@@ -28,6 +30,7 @@ jobs:
           path: ~/.ccache
           key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}-rev7
 
+      - run: ccache -p
       - run: ccache -s
 
       - name: cmake
