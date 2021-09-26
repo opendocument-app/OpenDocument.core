@@ -75,7 +75,8 @@ class Comparator:
             if browser is None:
                 Config.thread_local.browser = get_browser()
 
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, initializer=initializer)
+        self._executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max_workers, initializer=initializer)
         self._result = {}
         self._future = {}
 
@@ -227,7 +228,9 @@ iframe_b.contentWindow.addEventListener('scroll', function(event) {{
 
 @app.route('/image_diff/<path:path>')
 def image_diff(path):
-    diff, _ = html_render_diff(Config.browser, os.path.join(Config.path_a, path), os.path.join(Config.path_b, path))
+    diff, _ = html_render_diff(Config.browser,
+                               os.path.join(Config.path_a, path),
+                               os.path.join(Config.path_b, path))
     tmp = io.BytesIO()
     diff.save(tmp, 'JPEG', quality=70)
     tmp.seek(0)

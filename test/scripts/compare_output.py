@@ -100,8 +100,10 @@ def compare_dirs(a, b, diff_output=None, level=0, prefix='', **kwargs):
             ])
 
     for name in common_files:
-        cmp = compare_files(os.path.join(a, name), os.path.join(b, name),
-                            diff_output=None if diff_output is None else os.path.join(diff_output, name),
+        cmp = compare_files(os.path.join(a, name),
+                            os.path.join(b, name),
+                            diff_output=None if diff_output is None else
+                            os.path.join(diff_output, name),
                             **kwargs)
         if cmp:
             print(f'{prefix_file}{bcolors.OKGREEN}{name} ✓{bcolors.ENDC}')
@@ -141,7 +143,8 @@ def compare_dirs(a, b, diff_output=None, level=0, prefix='', **kwargs):
         print(prefix + '├── ' + name)
         subresult = compare_dirs(os.path.join(a, name),
                                  os.path.join(b, name),
-                                 diff_output=None if diff_output is None else os.path.join(diff_output, name),
+                                 diff_output=None if diff_output is None else
+                                 os.path.join(diff_output, name),
                                  level=level + 1,
                                  prefix=prefix + '│   ',
                                  **kwargs)
@@ -161,7 +164,10 @@ def main():
     parser.add_argument('--diff-output')
     args = parser.parse_args()
 
-    result = compare_dirs(args.a, args.b, browser=get_browser(), diff_output=args.diff_output)
+    result = compare_dirs(args.a,
+                          args.b,
+                          browser=get_browser(),
+                          diff_output=args.diff_output)
     if result['left_files_missing'] or result['right_files_missing'] or result[
             'left_dirs_missing'] or result['right_dirs_missing'] or result[
                 'files_different']:
