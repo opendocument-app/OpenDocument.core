@@ -6,10 +6,10 @@ import sys
 import argparse
 import json
 import threading
+import filecmp
 from concurrent.futures import ThreadPoolExecutor
 from html_render_diff import get_browser, html_render_diff
 from common import bcolors
-import filecmp
 
 
 class Config:
