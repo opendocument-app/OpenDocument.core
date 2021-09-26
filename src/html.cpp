@@ -16,6 +16,7 @@
 #include <odr/quantity.h>
 #include <odr/style.h>
 #include <optional>
+#include <sstream>
 #include <string>
 
 using namespace odr::internal;
