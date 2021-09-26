@@ -209,7 +209,9 @@ def main():
     def initializer():
         browser = getattr(Config.thread_local, 'browser', None)
         if browser is None:
-            Config.thread_local.browser = get_browser()
+            browser = get_browser()
+            browser.set_page_load_timeout(30)
+            Config.thread_local.browser = browser
 
     executor = ThreadPoolExecutor(max_workers=args.max_workers,
                                   initializer=initializer)
