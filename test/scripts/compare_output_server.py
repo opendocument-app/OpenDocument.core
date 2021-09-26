@@ -4,7 +4,7 @@
 import os
 import sys
 import argparse
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 import threading
 import io
 from html_render_diff import get_browser, html_render_diff
@@ -77,8 +77,8 @@ class Comparator:
                 Config.thread_local.browser_a = get_browser()
                 Config.thread_local.browser_b = get_browser()
 
-        self._executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max_workers, initializer=initializer)
+        self._executor = ThreadPoolExecutor(max_workers=max_workers,
+                                            initializer=initializer)
         self._result = {}
         self._future = {}
 

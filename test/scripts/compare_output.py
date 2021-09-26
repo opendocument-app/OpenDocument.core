@@ -5,7 +5,7 @@ import os
 import sys
 import argparse
 import json
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 from html_render_diff import get_browser, html_render_diff
 from common import bcolors
 import filecmp
@@ -168,7 +168,7 @@ def main():
     parser.add_argument('--diff-output')
     args = parser.parse_args()
 
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    executor = ThreadPoolExecutor(max_workers=2)
     result = compare_dirs(args.a,
                           args.b,
                           browser=get_browser(),
