@@ -227,7 +227,7 @@ iframe_b.contentWindow.addEventListener('scroll', function(event) {{
 
 @app.route('/image_diff/<path:path>')
 def image_diff(path):
-    diff = html_render_diff(Config.browser, os.path.join(Config.path_a, path), os.path.join(Config.path_b, path))
+    diff, _ = html_render_diff(Config.browser, os.path.join(Config.path_a, path), os.path.join(Config.path_b, path))
     tmp = io.BytesIO()
     diff.save(tmp, 'JPEG', quality=70)
     tmp.seek(0)

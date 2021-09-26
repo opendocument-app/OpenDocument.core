@@ -37,7 +37,7 @@ def html_render_diff(browser, a, b):
     image_b = screenshot(browser, to_url(b)).convert('RGB')
 
     diff = ImageChops.difference(image_a, image_b)
-    return diff
+    return diff, (image_a, image_b)
 
 
 def main():
@@ -50,7 +50,7 @@ def main():
     args = parser.parse_args()
 
     browser = get_browser(args.driver, args.max_width, args.max_height)
-    diff = html_render_diff(browser, args.a, args.b)
+    diff, _ = html_render_diff(browser, args.a, args.b)
     browser.quit()
     bounding_box = diff.getbbox()
 

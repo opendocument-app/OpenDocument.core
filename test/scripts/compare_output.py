@@ -24,10 +24,12 @@ def compare_json(a, b):
 def compare_html(a, b, browser=None, diff_output=None):
     if browser is None:
         browser = get_browser()
-    diff = html_render_diff(browser, a, b)
+    diff, (image_a, image_b) = html_render_diff(browser, a, b)
     result = True if diff.getbbox() is None else False
     if not result:
         os.makedirs(diff_output, exist_ok=True)
+        image_a.save(os.path.join(diff_output, 'a.png'))
+        image_b.save(os.path.join(diff_output, 'b.png'))
         diff.save(os.path.join(diff_output, 'diff.png'))
     return result
 
