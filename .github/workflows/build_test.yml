@@ -27,7 +27,9 @@ jobs:
       - name: ccache
         uses: actions/cache@v2
         with:
-          path: ~/.ccache
+          path: |
+            /home/runner/.ccache
+            /Users/runner/Library/Caches/ccache
           key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}-rev7
 
       - run: ccache -p
