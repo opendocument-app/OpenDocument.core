@@ -1,4 +1,3 @@
-#include <bits/exception.h>
 #include <fstream>
 #include <internal/util/file_util.h>
 #include <iterator>
