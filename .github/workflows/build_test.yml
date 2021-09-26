@@ -28,6 +28,8 @@ jobs:
           path: ~/.ccache
           key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}-rev7
 
+      - run: ccache -s
+
       - name: cmake
         env:
           CC: ${{ matrix.config.cc }}
