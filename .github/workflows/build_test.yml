@@ -23,10 +23,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: ccache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ~/.ccache
-          key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}-rev5
+          key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}-rev6
 
       - name: cmake
         env:
