@@ -8,6 +8,7 @@
 #include <odr/file.h>
 #include <pugixml.hpp>
 #include <string>
+#include <unordered_map>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;

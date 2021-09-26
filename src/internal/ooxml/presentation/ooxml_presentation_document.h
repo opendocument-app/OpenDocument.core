@@ -3,6 +3,7 @@
 
 #include <internal/abstract/document.h>
 #include <pugixml.hpp>
+#include <unordered_map>
 
 namespace odr::internal::ooxml::presentation {
 class Element;
