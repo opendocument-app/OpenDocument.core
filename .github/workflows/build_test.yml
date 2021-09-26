@@ -102,7 +102,10 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: test-public-diff
-          path: test/diff
+          path: |
+            test/diff
+            build/test/output/odr-public/odt/style-various-1.odt
+            build/test/output/odr-public/odt/XYZ-Rechnung.odt
 
       - name: tidy private test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-private
