@@ -32,10 +32,20 @@ def get_browser(driver='chrome', max_width=1000, max_height=10000):
     return browser
 
 
-def html_render_diff(browser, a, b):
-    image_a = screenshot(browser, to_url(a)).convert('RGB')
-    image_b = screenshot(browser, to_url(b)).convert('RGB')
+def html_render_diff(a, b, browser, browser_b=None, executor=None):
+    if browser_b is None:
+        browser_b = browser
+    if executor is not None:
+        image_a = executor.submit(screenshot, browser, to_url(a))
+        image_b = executor.submit(screenshot, browser_b, to_url(b))
+        image_a = image_a.result()
+        image_b = image_b.result()
+    else:
+        image_a = screenshot(browser, to_url(a))
+        image_b = screenshot(browser_b, to_url(b))
 
+    image_a = image_a.convert('RGB')
+    image_b = image_b.convert('RGB')
     diff = ImageChops.difference(image_a, image_b)
     return diff, (image_a, image_b)
 
@@ -50,7 +60,7 @@ def main():
     args = parser.parse_args()
 
     browser = get_browser(args.driver, args.max_width, args.max_height)
-    diff, _ = html_render_diff(browser, args.a, args.b)
+    diff, _ = html_render_diff(args.a, args.b, browser)
     browser.quit()
     bounding_box = diff.getbbox()
 

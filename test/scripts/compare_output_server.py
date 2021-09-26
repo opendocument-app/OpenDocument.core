@@ -18,7 +18,8 @@ class Config:
     path_a = None
     path_b = None
     comparator = None
-    browser = get_browser()
+    browser_a = get_browser()
+    browser_b = get_browser()
     thread_local = threading.local()
 
 
@@ -73,7 +74,8 @@ class Comparator:
         def initializer():
             browser = getattr(Config.thread_local, 'browser', None)
             if browser is None:
-                Config.thread_local.browser = get_browser()
+                Config.thread_local.browser_a = get_browser()
+                Config.thread_local.browser_b = get_browser()
 
         self._executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=max_workers, initializer=initializer)
@@ -93,10 +95,12 @@ class Comparator:
         self._future[path] = self._executor.submit(self.compare, path)
 
     def compare(self, path):
-        browser = getattr(Config.thread_local, 'browser', None)
+        browser_a = getattr(Config.thread_local, 'browser_a', None)
+        browser_b = getattr(Config.thread_local, 'browser_b', None)
         result = compare_files(os.path.join(Config.path_a, path),
                                os.path.join(Config.path_b, path),
-                               browser=browser)
+                               browser=browser_a,
+                               browser_b=browser_b)
         self._result[path] = 'same' if result else 'different'
         self._future.pop(path)
 
@@ -228,9 +232,9 @@ iframe_b.contentWindow.addEventListener('scroll', function(event) {{
 
 @app.route('/image_diff/<path:path>')
 def image_diff(path):
-    diff, _ = html_render_diff(Config.browser,
-                               os.path.join(Config.path_a, path),
-                               os.path.join(Config.path_b, path))
+    diff, _ = html_render_diff(os.path.join(Config.path_a, path),
+                               os.path.join(Config.path_b, path),
+                               Config.browser_a, Config.browser_b)
     tmp = io.BytesIO()
     diff.save(tmp, 'JPEG', quality=70)
     tmp.seek(0)

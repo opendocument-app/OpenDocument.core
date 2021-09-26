@@ -5,6 +5,7 @@ import os
 import sys
 import argparse
 import json
+import concurrent.futures
 from html_render_diff import get_browser, html_render_diff
 from common import bcolors
 import filecmp
@@ -21,10 +22,13 @@ def compare_json(a, b):
     return json_a == json_b
 
 
-def compare_html(a, b, browser=None, diff_output=None):
+def compare_html(a, b, browser=None, diff_output=None, **kwargs):
     if browser is None:
         browser = get_browser()
-    diff, (image_a, image_b) = html_render_diff(browser, a, b)
+    diff, (image_a, image_b) = html_render_diff(a,
+                                                b,
+                                                browser=browser,
+                                                **kwargs)
     result = True if diff.getbbox() is None else False
     if diff_output is not None and not result:
         os.makedirs(diff_output, exist_ok=True)
@@ -164,9 +168,12 @@ def main():
     parser.add_argument('--diff-output')
     args = parser.parse_args()
 
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
     result = compare_dirs(args.a,
                           args.b,
                           browser=get_browser(),
+                          browser_b=get_browser(),
+                          executor=executor,
                           diff_output=args.diff_output)
     if result['left_files_missing'] or result['right_files_missing'] or result[
             'left_dirs_missing'] or result['right_dirs_missing'] or result[
