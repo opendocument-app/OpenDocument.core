@@ -57,10 +57,10 @@ jobs:
 
     steps:
       - name: ubuntu install tidy
-        if: startsWith(matrix.config.os, 'ubuntu')
+        if: startsWith(matrix.os, 'ubuntu')
         run: sudo apt install tidy
       - name: macos install tidy
-        if: startsWith(matrix.config.os, 'macos')
+        if: startsWith(matrix.os, 'macos')
         run: brew install tidy-html5
 
       - name: checkout
@@ -81,7 +81,7 @@ jobs:
       - name: download binaries
         uses: actions/download-artifact@v2
         with:
-          name: bin-${{ matrix.config.os }}
+          name: bin-${{ matrix.os }}
 
       - name: test
         working-directory: build/test
