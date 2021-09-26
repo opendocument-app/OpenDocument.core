@@ -76,11 +76,15 @@ std::string TablePosition::to_string() const noexcept {
   return to_column_string(m_column) + to_row_string(m_row);
 }
 
+std::size_t TablePosition::hash() const noexcept {
+  std::size_t result = 0;
+  odr::internal::util::hash::hash_combine(result, m_row, m_column);
+  return result;
+}
+
 } // namespace odr::internal::common
 
 std::size_t std::hash<odr::internal::common::TablePosition>::operator()(
     const odr::internal::common::TablePosition &k) const {
-  std::size_t result = 0;
-  odr::internal::util::hash::hash_combine(result, k.m_row, k.m_column);
-  return result;
+  return k.hash();
 }

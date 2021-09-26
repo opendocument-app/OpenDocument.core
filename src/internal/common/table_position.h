@@ -7,10 +7,6 @@
 #include <string>
 #include <string_view>
 
-namespace std {
-template <typename _Tp> struct hash;
-} // namespace std
-
 namespace odr::internal::common {
 
 class TablePosition final {
@@ -30,12 +26,11 @@ public:
   [[nodiscard]] std::uint32_t row() const noexcept;
   [[nodiscard]] std::uint32_t column() const noexcept;
   [[nodiscard]] std::string to_string() const noexcept;
+  [[nodiscard]] std::size_t hash() const noexcept;
 
 private:
   std::uint32_t m_row{0};
   std::uint32_t m_column{0};
-
-  friend struct std::hash<odr::internal::common::TablePosition>;
 };
 
 } // namespace odr::internal::common

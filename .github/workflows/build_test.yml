@@ -14,25 +14,10 @@ jobs:
     steps:
       - name: ubuntu install ccache
         if: startsWith(matrix.config.os, 'ubuntu')
-        run: sudo apt install ccache tidy
+        run: sudo apt install ccache
       - name: macos install ccache
         if: startsWith(matrix.config.os, 'macos')
-        run: brew install ccache tidy-html5
-
-      - name: checkout
-        uses: actions/checkout@v2
-        with:
-          token: ${{ secrets.PAT_ANDIWAND }}
-          submodules: true
-
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: install python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r test/scripts/requirements.txt
+        run: brew install ccache
 
       - name: ccache
         uses: actions/cache@v1
@@ -52,6 +37,47 @@ jobs:
         run: |
           cd build
           cmake --build .
+
+      - name: upload binaries
+        uses: actions/upload-artifact@v2
+        with:
+          name: bin-${{ matrix.config.os }}
+          path: build
+
+  test:
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04, macos-10.15 ]
+
+    steps:
+      - name: ubuntu install tidy
+        if: startsWith(matrix.config.os, 'ubuntu')
+        run: sudo apt install tidy
+      - name: macos install tidy
+        if: startsWith(matrix.config.os, 'macos')
+        run: brew install tidy-html5
+
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.PAT_ANDIWAND }}
+          submodules: true
+
+      - name: set up python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r test/scripts/requirements.txt
+
+      - name: download binaries
+        uses: actions/download-artifact@v2
+        with:
+          name: bin-${{ matrix.config.os }}
 
       - name: test
         working-directory: build/test
