@@ -11,6 +11,7 @@
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <pugixml.hpp>
+#include <sstream>
 #include <utility>
 
 namespace odr::internal::abstract {
