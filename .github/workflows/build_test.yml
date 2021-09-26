@@ -26,7 +26,7 @@ jobs:
           path: |
             /home/runner/.ccache
             /Users/runner/Library/Caches/ccache
-          key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}-rev8
+          key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}-rev9
 
       - name: checkout
         uses: actions/checkout@v2

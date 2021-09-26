@@ -10,10 +10,6 @@ import shlex
 from common import bcolors
 
 
-class HtmlTidyError(Exception):
-    pass
-
-
 def tidy_json(path):
     try:
         with open(path, 'r') as f:
