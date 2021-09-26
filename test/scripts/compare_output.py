@@ -21,11 +21,15 @@ def compare_json(a, b):
     return json_a == json_b
 
 
-def compare_html(a, b, browser=None):
+def compare_html(a, b, browser=None, diff_output=None):
     if browser is None:
         browser = get_browser()
     diff = html_render_diff(browser, a, b)
-    return True if diff.getbbox() is None else False
+    result = True if diff.getbbox() is None else False
+    if not result:
+        os.makedirs(diff_output, exist_ok=True)
+        diff.save(os.path.join(diff_output, 'diff.png'))
+    return result
 
 
 def compare_files(a, b, **kwargs):
@@ -33,7 +37,7 @@ def compare_files(a, b, **kwargs):
         return True
     if a.endswith('.json'):
         return compare_json(a, b)
-    elif a.endswith('.html'):
+    if a.endswith('.html'):
         return compare_html(a, b, **kwargs)
 
 
@@ -45,7 +49,7 @@ def comparable_file(path):
     return False
 
 
-def compare_dirs(a, b, level=0, prefix='', **kwargs):
+def compare_dirs(a, b, diff_output=None, level=0, prefix='', **kwargs):
     prefix_file = prefix + '├── '
     if level == 0:
         print(f'compare dir {a} with {b}')
@@ -95,6 +99,7 @@ def compare_dirs(a, b, level=0, prefix='', **kwargs):
 
     for name in common_files:
         cmp = compare_files(os.path.join(a, name), os.path.join(b, name),
+                            diff_output=None if diff_output is None else os.path.join(diff_output, name),
                             **kwargs)
         if cmp:
             print(f'{prefix_file}{bcolors.OKGREEN}{name} ✓{bcolors.ENDC}')
@@ -134,6 +139,7 @@ def compare_dirs(a, b, level=0, prefix='', **kwargs):
         print(prefix + '├── ' + name)
         subresult = compare_dirs(os.path.join(a, name),
                                  os.path.join(b, name),
+                                 diff_output=None if diff_output is None else os.path.join(diff_output, name),
                                  level=level + 1,
                                  prefix=prefix + '│   ',
                                  **kwargs)
@@ -150,9 +156,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('a')
     parser.add_argument('b')
+    parser.add_argument('--diff-output')
     args = parser.parse_args()
 
-    result = compare_dirs(args.a, args.b, browser=get_browser())
+    result = compare_dirs(args.a, args.b, browser=get_browser(), diff_output=args.diff_output)
     if result['left_files_missing'] or result['right_files_missing'] or result[
             'left_dirs_missing'] or result['right_dirs_missing'] or result[
                 'files_different']:

@@ -60,7 +60,13 @@ jobs:
       - name: tidy public test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-public
       - name: compare public test outputs
-        run: python3 -u test/scripts/compare_output.py test/data/reference-output/odr-public build/test/output/odr-public
+        run: python3 -u test/scripts/compare_output.py test/data/reference-output/odr-public build/test/output/odr-public --diff-output test/diff || true
+
+      - name: archive public test output diff
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-public-diff
+          path: test/diff
 
       - name: tidy private test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-private
