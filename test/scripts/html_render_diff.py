@@ -32,17 +32,9 @@ def get_browser(driver='chrome', max_width=1000, max_height=10000):
     return browser
 
 
-def html_render_diff(a, b, browser, browser_b=None, executor=None):
-    if browser_b is None:
-        browser_b = browser
-    if executor is not None:
-        image_a = executor.submit(screenshot, browser, to_url(a))
-        image_b = executor.submit(screenshot, browser_b, to_url(b))
-        image_a = image_a.result()
-        image_b = image_b.result()
-    else:
-        image_a = screenshot(browser, to_url(a))
-        image_b = screenshot(browser_b, to_url(b))
+def html_render_diff(a, b, browser):
+    image_a = screenshot(browser, to_url(a))
+    image_b = screenshot(browser, to_url(b))
 
     image_a = image_a.convert('RGB')
     image_b = image_b.convert('RGB')

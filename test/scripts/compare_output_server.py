@@ -75,7 +75,6 @@ class Comparator:
             browser = getattr(Config.thread_local, 'browser', None)
             if browser is None:
                 browser = get_browser()
-                browser.set_page_load_timeout(30)
                 Config.thread_local.browser = browser
 
         self._executor = ThreadPoolExecutor(max_workers=max_workers,

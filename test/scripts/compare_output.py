@@ -27,13 +27,12 @@ def compare_json(a, b):
     return json_a == json_b
 
 
-def compare_html(a, b, browser=None, diff_output=None, **kwargs):
+def compare_html(a, b, browser=None, diff_output=None):
     if browser is None:
         browser = get_browser()
     diff, (image_a, image_b) = html_render_diff(a,
                                                 b,
-                                                browser=browser,
-                                                **kwargs)
+                                                browser=browser)
     result = True if diff.getbbox() is None else False
     if diff_output is not None and not result:
         os.makedirs(diff_output, exist_ok=True)
@@ -210,7 +209,6 @@ def main():
         browser = getattr(Config.thread_local, 'browser', None)
         if browser is None:
             browser = get_browser()
-            browser.set_page_load_timeout(30)
             Config.thread_local.browser = browser
 
     executor = ThreadPoolExecutor(max_workers=args.max_workers,
