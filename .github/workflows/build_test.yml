@@ -19,6 +19,8 @@ jobs:
         if: startsWith(matrix.config.os, 'macos')
         run: brew install ccache
       - run: ccache -V
+      - run: ccache -s
+      - run: ccache -p
 
       - name: ccache
         uses: actions/cache@v2
