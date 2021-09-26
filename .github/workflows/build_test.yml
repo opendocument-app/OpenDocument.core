@@ -45,7 +45,8 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: bin-${{ matrix.config.os }}
-          path: build
+          path: |
+            build/test/odr_test
 
   test:
     needs: build

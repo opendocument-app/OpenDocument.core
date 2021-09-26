@@ -7,10 +7,10 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
+      - run: clang-format --version
+
       - name: checkout
         uses: actions/checkout@v2
-
-      - run: clang-format --version
 
       - name: apply clang-format
         run: |

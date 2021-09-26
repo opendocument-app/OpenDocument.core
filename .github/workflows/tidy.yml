@@ -8,11 +8,10 @@ jobs:
 
     steps:
       - run: sudo apt install clang-tidy-12
+      - run: clang-tidy-12 --version
 
       - name: checkout
         uses: actions/checkout@v2
-
-      - run: clang-tidy-12 --version
 
       - name: cmake
         run: |
