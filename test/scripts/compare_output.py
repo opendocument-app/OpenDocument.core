@@ -201,14 +201,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('a')
     parser.add_argument('b')
+    parser.add_argument('--driver', choices=['chrome', 'firefox', 'phantomjs'], default='firefox')
     parser.add_argument('--diff-output')
-    parser.add_argument('--max-workers', type=int, default=4)
+    parser.add_argument('--max-workers', type=int, default=1)
     args = parser.parse_args()
 
     def initializer():
         browser = getattr(Config.thread_local, 'browser', None)
         if browser is None:
-            browser = get_browser()
+            browser = get_browser(driver=args.driver)
             Config.thread_local.browser = browser
 
     executor = ThreadPoolExecutor(max_workers=args.max_workers,

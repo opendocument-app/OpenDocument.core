@@ -17,6 +17,7 @@ import watchdog.events
 class Config:
     path_a = None
     path_b = None
+    driver = None
     observer = None
     comparator = None
     browser = get_browser()
@@ -74,7 +75,7 @@ class Comparator:
         def initializer():
             browser = getattr(Config.thread_local, 'browser', None)
             if browser is None:
-                browser = get_browser()
+                browser = get_browser(driver=Config.driver)
                 Config.thread_local.browser = browser
 
         self._executor = ThreadPoolExecutor(max_workers=max_workers,
@@ -253,12 +254,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('a')
     parser.add_argument('b')
-    parser.add_argument('--max-workers', type=int, default=4)
+    parser.add_argument('--driver', choices=['chrome', 'firefox', 'phantomjs'], default='firefox')
+    parser.add_argument('--max-workers', type=int, default=1)
     parser.add_argument('--compare', action='store_true')
     args = parser.parse_args()
 
     Config.path_a = args.a
     Config.path_b = args.b
+    Config.driver = args.driver
 
     if args.compare:
         Config.comparator = Comparator(max_workers=args.max_workers)

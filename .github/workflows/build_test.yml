@@ -98,9 +98,9 @@ jobs:
       - name: tidy public test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-public
       - name: compare public test outputs
-        run: python3 -u test/scripts/compare_output.py --max-workers 1 test/data/reference-output/odr-public build/test/output/odr-public
+        run: python3 -u test/scripts/compare_output.py --driver firefox --max-workers 1 test/data/reference-output/odr-public build/test/output/odr-public
 
       - name: tidy private test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-private
       - name: compare private test outputs
-        run: python3 -u test/scripts/compare_output.py --max-workers 1 test/data/reference-output/odr-private build/test/output/odr-private
+        run: python3 -u test/scripts/compare_output.py --driver firefox --max-workers 1 test/data/reference-output/odr-private build/test/output/odr-private
