@@ -17,7 +17,8 @@ if (CCACHE_FOUND)
     message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
-add_subdirectory(3rdparty)
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup(TARGETS)
 
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
@@ -106,11 +107,11 @@ target_include_directories(odr-object
         )
 target_link_libraries(odr-object
         PRIVATE
-        pugixml
-        miniz
-        glog
-        cryptopp-static
-        nlohmann_json::nlohmann_json
+        CONAN_PKG::pugixml
+        CONAN_PKG::miniz
+        CONAN_PKG::glog
+        CONAN_PKG::cryptopp
+        CONAN_PKG::nlohmann_json
         )
 set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -123,11 +124,11 @@ target_include_directories(odr-static
         )
 target_link_libraries(odr-static
         PRIVATE
-        pugixml
-        miniz
-        glog
-        cryptopp-static
-        nlohmann_json::nlohmann_json
+        CONAN_PKG::pugixml
+        CONAN_PKG::miniz
+        CONAN_PKG::glog
+        CONAN_PKG::cryptopp
+        CONAN_PKG::nlohmann_json
         )
 
 add_library(odr-shared SHARED
@@ -139,11 +140,11 @@ target_include_directories(odr-shared
         )
 target_link_libraries(odr-shared
         PRIVATE
-        pugixml
-        miniz
-        glog
-        cryptopp-static
-        nlohmann_json::nlohmann_json
+        CONAN_PKG::pugixml
+        CONAN_PKG::miniz
+        CONAN_PKG::glog
+        CONAN_PKG::cryptopp
+        CONAN_PKG::nlohmann_json
         )
 
 add_subdirectory(cli)
