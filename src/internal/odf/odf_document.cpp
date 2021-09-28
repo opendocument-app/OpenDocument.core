@@ -7,10 +7,8 @@
 #include <internal/odf/odf_style.h>
 #include <internal/util/xml_util.h>
 #include <internal/zip/zip_archive.h>
-#include <iterator>
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <pugixml.hpp>
 #include <sstream>
 #include <utility>
 

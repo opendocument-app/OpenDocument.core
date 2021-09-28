@@ -21,25 +21,6 @@ public:
 
   explicit Element(pugi::xml_node node);
 
-  [[nodiscard]] bool equals(const abstract::Document *document,
-                            const abstract::DocumentCursor *cursor,
-                            const abstract::Element &rhs) const override;
-
-  abstract::Element *parent(const abstract::Document *document,
-                            const abstract::DocumentCursor *cursor,
-                            const abstract::Allocator *allocator) override;
-  abstract::Element *first_child(const abstract::Document *document,
-                                 const abstract::DocumentCursor *cursor,
-                                 const abstract::Allocator *allocator) override;
-  abstract::Element *
-  previous_sibling(const abstract::Document *document,
-                   const abstract::DocumentCursor *cursor,
-                   const abstract::Allocator *allocator) override;
-  abstract::Element *
-  next_sibling(const abstract::Document *document,
-               const abstract::DocumentCursor *cursor,
-               const abstract::Allocator *allocator) override;
-
   virtual common::ResolvedStyle
   partial_style(const abstract::Document *document) const;
   virtual common::ResolvedStyle
@@ -47,8 +28,6 @@ public:
                      const abstract::DocumentCursor *cursor) const;
 
 protected:
-  pugi::xml_node m_node;
-
   static const Document *document_(const abstract::Document *document);
   static const StyleRegistry *style_(const abstract::Document *document);
   static const std::unordered_map<std::string, std::string> &

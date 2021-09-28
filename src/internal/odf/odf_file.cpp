@@ -7,7 +7,6 @@
 #include <internal/util/xml_util.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <optional>
 #include <utility>
 
 namespace odr::internal::abstract {

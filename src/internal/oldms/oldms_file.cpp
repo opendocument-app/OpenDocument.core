@@ -4,7 +4,6 @@
 #include <memory>
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <optional>
 #include <unordered_map>
 #include <utility>
 

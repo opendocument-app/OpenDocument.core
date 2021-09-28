@@ -164,11 +164,11 @@ ReadonlyCfbArchive::Iterator::operator->() const {
 
 bool ReadonlyCfbArchive::Iterator::operator==(const Iterator &other) const {
   return m_entry == other.m_entry;
-};
+}
 
 bool ReadonlyCfbArchive::Iterator::operator!=(const Iterator &other) const {
   return m_entry != other.m_entry;
-};
+}
 
 ReadonlyCfbArchive::Iterator &ReadonlyCfbArchive::Iterator::operator++() {
   next_();
@@ -186,12 +186,10 @@ ReadonlyCfbArchive::ReadonlyCfbArchive(
     : m_cfb{std::make_shared<util::Archive>(file)} {}
 
 ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::begin() const {
-  return Iterator(*this, *m_cfb->cfb().get_root_entry());
+  return {*this, *m_cfb->cfb().get_root_entry()};
 }
 
-ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::end() const {
-  return Iterator();
-}
+ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::end() const { return {}; }
 
 ReadonlyCfbArchive::Iterator
 ReadonlyCfbArchive::find(const common::Path &path) const {

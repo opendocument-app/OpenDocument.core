@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <fstream>
-#include <initializer_list>
 #include <internal/common/file.h>
 #include <internal/common/html.h>
 #include <internal/common/table_position.h>
@@ -13,7 +12,6 @@
 #include <odr/document.h>
 #include <odr/file.h>
 #include <odr/html.h>
-#include <odr/quantity.h>
 #include <odr/style.h>
 #include <optional>
 #include <sstream>

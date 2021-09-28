@@ -6,7 +6,6 @@
 #include <miniz.h>
 #include <miniz_zip.h>
 #include <odr/exceptions.h>
-#include <ostream>
 #include <string>
 #include <utility>
 #include <vector>

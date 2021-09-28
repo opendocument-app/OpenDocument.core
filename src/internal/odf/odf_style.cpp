@@ -2,7 +2,6 @@
 #include <cstring>
 #include <internal/common/style.h>
 #include <internal/odf/odf_style.h>
-#include <iterator>
 #include <odr/quantity.h>
 #include <odr/style.h>
 #include <pugixml.hpp>

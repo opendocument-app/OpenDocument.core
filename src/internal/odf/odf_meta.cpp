@@ -2,19 +2,14 @@
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
-#include <internal/common/table_cursor.h>
 #include <internal/odf/odf_meta.h>
 #include <internal/util/map_util.h>
 #include <internal/util/stream_util.h>
 #include <internal/util/xml_util.h>
-#include <iterator>
 #include <memory>
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <optional>
 #include <pugixml.hpp>
-#include <string>
-#include <type_traits>
 #include <unordered_map>
 #include <utility>
 

@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <glog/logging.h>
-#include <internal/abstract/file.h>
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_format.h>
 #include <internal/svm/svm_to_svg.h>

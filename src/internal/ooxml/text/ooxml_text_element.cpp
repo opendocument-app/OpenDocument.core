@@ -24,41 +24,6 @@ namespace odr::internal::ooxml::text {
 
 Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
 
-bool Element::equals(const abstract::Document *,
-                     const abstract::DocumentCursor *,
-                     const abstract::Element &rhs) const {
-  return m_node == *dynamic_cast<const Element &>(rhs).m_node;
-}
-
-abstract::Element *Element::parent(const abstract::Document *document,
-                                   const abstract::DocumentCursor *,
-                                   const abstract::Allocator *allocator) {
-  return common::construct_parent_element(construct_default_element, m_node,
-                                          document_(document), allocator);
-}
-
-abstract::Element *Element::first_child(const abstract::Document *document,
-                                        const abstract::DocumentCursor *,
-                                        const abstract::Allocator *allocator) {
-  return common::construct_first_child_element(
-      construct_default_element, m_node, document_(document), allocator);
-}
-
-abstract::Element *
-Element::previous_sibling(const abstract::Document *document,
-                          const abstract::DocumentCursor *,
-                          const abstract::Allocator *allocator) {
-  return common::construct_previous_sibling_element(
-      construct_default_element, m_node, document_(document), allocator);
-}
-
-abstract::Element *Element::next_sibling(const abstract::Document *document,
-                                         const abstract::DocumentCursor *,
-                                         const abstract::Allocator *allocator) {
-  return common::construct_next_sibling_element(
-      construct_default_element, m_node, document_(document), allocator);
-}
-
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
   return {}; // TODO
 }
