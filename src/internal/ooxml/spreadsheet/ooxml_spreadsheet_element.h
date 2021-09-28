@@ -47,22 +47,8 @@ protected:
 };
 
 abstract::Element *
-construct_default_element(const Document *document, pugi::xml_node node,
+construct_default_element(pugi::xml_node node, const Document *document,
                           const abstract::Allocator *allocator);
-abstract::Element *
-construct_default_parent_element(const Document *document, pugi::xml_node node,
-                                 const abstract::Allocator *allocator);
-abstract::Element *
-construct_default_first_child_element(const Document *document,
-                                      pugi::xml_node node,
-                                      const abstract::Allocator *allocator);
-abstract::Element *construct_default_previous_sibling_element(
-    const Document *document, pugi::xml_node node,
-    const abstract::Allocator *allocator);
-abstract::Element *
-construct_default_next_sibling_element(const Document *document,
-                                       pugi::xml_node node,
-                                       const abstract::Allocator *allocator);
 
 } // namespace odr::internal::ooxml::spreadsheet
 

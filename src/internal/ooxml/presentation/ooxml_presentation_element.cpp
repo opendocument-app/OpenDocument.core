@@ -1,5 +1,6 @@
 #include <functional>
 #include <internal/abstract/document.h>
+#include <internal/common/element.h>
 #include <internal/common/style.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/presentation/ooxml_presentation_cursor.h>
@@ -29,30 +30,30 @@ bool Element::equals(const abstract::Document *,
 abstract::Element *Element::parent(const abstract::Document *document,
                                    const abstract::DocumentCursor *,
                                    const abstract::Allocator *allocator) {
-  return construct_default_parent_element(document_(document), m_node,
-                                          allocator);
+  return common::construct_parent_element(construct_default_element, m_node,
+                                          document_(document), allocator);
 }
 
 abstract::Element *Element::first_child(const abstract::Document *document,
                                         const abstract::DocumentCursor *,
                                         const abstract::Allocator *allocator) {
-  return construct_default_first_child_element(document_(document), m_node,
-                                               allocator);
+  return common::construct_first_child_element(
+      construct_default_element, m_node, document_(document), allocator);
 }
 
 abstract::Element *
 Element::previous_sibling(const abstract::Document *document,
                           const abstract::DocumentCursor *,
                           const abstract::Allocator *allocator) {
-  return construct_default_previous_sibling_element(document_(document), m_node,
-                                                    allocator);
+  return common::construct_previous_sibling_element(
+      construct_default_element, m_node, document_(document), allocator);
 }
 
 abstract::Element *Element::next_sibling(const abstract::Document *document,
                                          const abstract::DocumentCursor *,
                                          const abstract::Allocator *allocator) {
-  return construct_default_next_sibling_element(document_(document), m_node,
-                                                allocator);
+  return common::construct_next_sibling_element(
+      construct_default_element, m_node, document_(document), allocator);
 }
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
@@ -143,9 +144,10 @@ public:
   abstract::Element *first_child(const abstract::Document *document,
                                  const abstract::DocumentCursor *,
                                  const abstract::Allocator *allocator) final {
-    return construct_default_first_child_element(
-        document_(document),
-        slide_node_(document).child("p:cSld").child("p:spTree"), allocator);
+    return common::construct_first_child_element(
+        construct_default_element,
+        slide_node_(document).child("p:cSld").child("p:spTree"),
+        document_(document), allocator);
   }
 
   abstract::Element *previous_sibling(const abstract::Document *,
@@ -207,15 +209,15 @@ public:
   previous_sibling(const abstract::Document *document,
                    const abstract::DocumentCursor *,
                    const abstract::Allocator *allocator) final {
-    return construct_default_previous_sibling_element(document_(document),
-                                                      first_(), allocator);
+    return common::construct_previous_sibling_element(
+        construct_default_element, first_(), document_(document), allocator);
   }
 
   abstract::Element *next_sibling(const abstract::Document *document,
                                   const abstract::DocumentCursor *,
                                   const abstract::Allocator *allocator) final {
-    return construct_default_next_sibling_element(document_(document), last_(),
-                                                  allocator);
+    return common::construct_next_sibling_element(
+        construct_default_element, last_(), document_(document), allocator);
   }
 
   [[nodiscard]] std::string content(const abstract::Document *) const final {
@@ -517,8 +519,8 @@ public:
 namespace odr::internal::ooxml {
 
 abstract::Element *
-presentation::construct_default_element(const Document *document,
-                                        pugi::xml_node node,
+presentation::construct_default_element(pugi::xml_node node,
+                                        const Document *document,
                                         const abstract::Allocator *allocator) {
   using Constructor = std::function<abstract::Element *(
       const Document *document, pugi::xml_node node,
@@ -546,50 +548,6 @@ presentation::construct_default_element(const Document *document,
     return constructor_it->second(document, node, allocator);
   }
 
-  return {};
-}
-
-abstract::Element *presentation::construct_default_parent_element(
-    const Document *document, pugi::xml_node node,
-    const abstract::Allocator *allocator) {
-  for (node = node.parent(); node; node = node.parent()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-abstract::Element *presentation::construct_default_first_child_element(
-    const Document *document, pugi::xml_node node,
-    const abstract::Allocator *allocator) {
-  for (node = node.first_child(); node; node = node.next_sibling()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-abstract::Element *presentation::construct_default_previous_sibling_element(
-    const Document *document, pugi::xml_node node,
-    const abstract::Allocator *allocator) {
-  for (node = node.previous_sibling(); node; node = node.previous_sibling()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-abstract::Element *presentation::construct_default_next_sibling_element(
-    const Document *document, pugi::xml_node node,
-    const abstract::Allocator *allocator) {
-  for (node = node.next_sibling(); node; node = node.next_sibling()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
   return {};
 }
 

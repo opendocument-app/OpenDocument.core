@@ -1,5 +1,6 @@
 #include <functional>
 #include <internal/abstract/document.h>
+#include <internal/common/element.h>
 #include <internal/common/style.h>
 #include <internal/common/table_position.h>
 #include <internal/common/table_range.h>
@@ -28,30 +29,30 @@ bool Element::equals(const abstract::Document *,
 abstract::Element *Element::parent(const abstract::Document *document,
                                    const abstract::DocumentCursor *,
                                    const abstract::Allocator *allocator) {
-  return construct_default_parent_element(document_(document), m_node,
-                                          allocator);
+  return common::construct_parent_element(construct_default_element, m_node,
+                                          document_(document), allocator);
 }
 
 abstract::Element *Element::first_child(const abstract::Document *document,
                                         const abstract::DocumentCursor *,
                                         const abstract::Allocator *allocator) {
-  return construct_default_first_child_element(document_(document), m_node,
-                                               allocator);
+  return common::construct_first_child_element(
+      construct_default_element, m_node, document_(document), allocator);
 }
 
 abstract::Element *
 Element::previous_sibling(const abstract::Document *document,
                           const abstract::DocumentCursor *,
                           const abstract::Allocator *allocator) {
-  return construct_default_previous_sibling_element(document_(document), m_node,
-                                                    allocator);
+  return common::construct_previous_sibling_element(
+      construct_default_element, m_node, document_(document), allocator);
 }
 
 abstract::Element *Element::next_sibling(const abstract::Document *document,
                                          const abstract::DocumentCursor *,
                                          const abstract::Allocator *allocator) {
-  return construct_default_next_sibling_element(document_(document), m_node,
-                                                allocator);
+  return common::construct_next_sibling_element(
+      construct_default_element, m_node, document_(document), allocator);
 }
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
@@ -187,8 +188,9 @@ public:
     return {};
   }
 
-  [[nodiscard]] TableDimensions content(const abstract::Document *document,
-                                        std::optional<TableDimensions>) const {
+  [[nodiscard]] TableDimensions
+  content(const abstract::Document *document,
+          std::optional<TableDimensions>) const final {
     return dimensions(document); // TODO
   }
 
@@ -362,15 +364,15 @@ public:
   previous_sibling(const abstract::Document *document,
                    const abstract::DocumentCursor *,
                    const abstract::Allocator *allocator) final {
-    return construct_default_previous_sibling_element(document_(document),
-                                                      first_(), allocator);
+    return common::construct_previous_sibling_element(
+        construct_default_element, first_(), document_(document), allocator);
   }
 
   abstract::Element *next_sibling(const abstract::Document *document,
                                   const abstract::DocumentCursor *,
                                   const abstract::Allocator *allocator) final {
-    return construct_default_next_sibling_element(document_(document), last_(),
-                                                  allocator);
+    return common::construct_next_sibling_element(
+        construct_default_element, last_(), document_(document), allocator);
   }
 
   [[nodiscard]] std::string content(const abstract::Document *) const final {
@@ -440,8 +442,8 @@ private:
 namespace odr::internal::ooxml {
 
 abstract::Element *
-spreadsheet::construct_default_element(const Document *document,
-                                       pugi::xml_node node,
+spreadsheet::construct_default_element(pugi::xml_node node,
+                                       const Document *document,
                                        const abstract::Allocator *allocator) {
   using Constructor = std::function<abstract::Element *(
       const Document *document, pugi::xml_node node,
@@ -461,50 +463,6 @@ spreadsheet::construct_default_element(const Document *document,
     return constructor_it->second(document, node, allocator);
   }
 
-  return {};
-}
-
-abstract::Element *spreadsheet::construct_default_parent_element(
-    const Document *document, pugi::xml_node node,
-    const abstract::Allocator *allocator) {
-  for (node = node.parent(); node; node = node.parent()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-abstract::Element *spreadsheet::construct_default_first_child_element(
-    const Document *document, pugi::xml_node node,
-    const abstract::Allocator *allocator) {
-  for (node = node.first_child(); node; node = node.next_sibling()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-abstract::Element *spreadsheet::construct_default_previous_sibling_element(
-    const Document *document, pugi::xml_node node,
-    const abstract::Allocator *allocator) {
-  for (node = node.previous_sibling(); node; node = node.previous_sibling()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
-  return {};
-}
-
-abstract::Element *spreadsheet::construct_default_next_sibling_element(
-    const Document *document, pugi::xml_node node,
-    const abstract::Allocator *allocator) {
-  for (node = node.next_sibling(); node; node = node.next_sibling()) {
-    if (auto result = construct_default_element(document, node, allocator)) {
-      return result;
-    }
-  }
   return {};
 }
 
