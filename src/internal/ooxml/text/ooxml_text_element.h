@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_OOXML_TEXT_ELEMENT_H
 
 #include <internal/abstract/document.h>
+#include <internal/common/element.h>
 #include <internal/common/style.h>
 #include <pugixml.hpp>
 #include <string>
@@ -11,9 +12,14 @@ class Document;
 class StyleRegistry;
 class Style;
 
-class Element : public virtual abstract::Element {
+class Element : public common::Element<Element> {
 public:
-  Element(const Document *document, pugi::xml_node node);
+  static abstract::Element *
+  construct_default_element(pugi::xml_node node,
+                            const abstract::Document *document,
+                            const abstract::Allocator *allocator);
+
+  explicit Element(pugi::xml_node node);
 
   [[nodiscard]] bool equals(const abstract::Document *document,
                             const abstract::DocumentCursor *cursor,
@@ -50,10 +56,6 @@ protected:
 
   friend class Style;
 };
-
-abstract::Element *
-construct_default_element(pugi::xml_node node, const Document *document,
-                          const abstract::Allocator *allocator);
 
 } // namespace odr::internal::ooxml::text
 

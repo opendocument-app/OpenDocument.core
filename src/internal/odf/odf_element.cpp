@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <functional>
@@ -14,9 +13,6 @@
 #include <internal/util/string_util.h>
 #include <internal/util/xml_util.h>
 #include <iosfwd>
-#include <iterator>
-#include <memory>
-#include <new>
 #include <odr/document.h>
 #include <odr/file.h>
 #include <odr/style.h>
@@ -31,42 +27,7 @@ namespace {
 const char *default_style_name(pugi::xml_node node);
 }
 
-Element::Element(const Document *, pugi::xml_node node) : m_node{node} {}
-
-bool Element::equals(const abstract::Document *,
-                     const abstract::DocumentCursor *,
-                     const abstract::Element &rhs) const {
-  return m_node == *dynamic_cast<const Element &>(rhs).m_node;
-}
-
-abstract::Element *Element::parent(const abstract::Document *document,
-                                   const abstract::DocumentCursor *,
-                                   const abstract::Allocator *allocator) {
-  return common::construct_parent_element(construct_default_element, m_node,
-                                          document_(document), allocator);
-}
-
-abstract::Element *Element::first_child(const abstract::Document *document,
-                                        const abstract::DocumentCursor *,
-                                        const abstract::Allocator *allocator) {
-  return common::construct_first_child_element(
-      construct_default_element, m_node, document_(document), allocator);
-}
-
-abstract::Element *
-Element::previous_sibling(const abstract::Document *document,
-                          const abstract::DocumentCursor *,
-                          const abstract::Allocator *allocator) {
-  return common::construct_previous_sibling_element(
-      construct_default_element, m_node, document_(document), allocator);
-}
-
-abstract::Element *Element::next_sibling(const abstract::Document *document,
-                                         const abstract::DocumentCursor *,
-                                         const abstract::Allocator *allocator) {
-  return common::construct_next_sibling_element(
-      construct_default_element, m_node, document_(document), allocator);
-}
+Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
 
 common::ResolvedStyle
 Element::partial_style(const abstract::Document *document) const {
@@ -103,24 +64,6 @@ class Sheet;
 class Page;
 class TableColumn;
 class TableRow;
-
-template <typename Derived>
-abstract::Element *construct_default(const Document *document,
-                                     pugi::xml_node node,
-                                     const abstract::Allocator *allocator) {
-  auto alloc = (*allocator)(sizeof(Derived));
-  return new (alloc) Derived(document, node);
-}
-
-template <typename Derived>
-abstract::Element *
-construct_default_optional(const Document *document, pugi::xml_node node,
-                           const abstract::Allocator *allocator) {
-  if (!node) {
-    return nullptr;
-  }
-  return construct_default<Derived>(document, node, allocator);
-}
 
 const char *default_style_name(const pugi::xml_node node) {
   for (auto attribute : node.attributes()) {
@@ -187,8 +130,7 @@ public:
     if (auto first_master_page = style_(document)->first_master_page()) {
       auto master_page_node =
           style_(document)->master_page_node(*first_master_page);
-      return MasterPage(document_(document), master_page_node)
-          .page_layout(document);
+      return MasterPage(master_page_node).page_layout(document);
     }
     return {};
   }
@@ -200,8 +142,8 @@ public:
     if (auto first_master_page = style_(document)->first_master_page()) {
       auto master_page_node =
           style_(document)->master_page_node(*first_master_page);
-      return construct_default_optional<MasterPage>(
-          document_(document), master_page_node, allocator);
+      return common::construct_optional<MasterPage>(master_page_node,
+                                                    allocator);
     }
     return nullptr;
   }
@@ -211,11 +153,11 @@ class PresentationRoot final : public Root {
 public:
   using Root::Root;
 
-  abstract::Element *first_child(const abstract::Document *document,
+  abstract::Element *first_child(const abstract::Document *,
                                  const abstract::DocumentCursor *,
                                  const abstract::Allocator *allocator) final {
-    return construct_default_optional<Slide>(
-        document_(document), m_node.child("draw:page"), allocator);
+    return common::construct_optional<Slide>(m_node.child("draw:page"),
+                                             allocator);
   }
 };
 
@@ -223,11 +165,11 @@ class SpreadsheetRoot final : public Root {
 public:
   using Root::Root;
 
-  abstract::Element *first_child(const abstract::Document *document,
+  abstract::Element *first_child(const abstract::Document *,
                                  const abstract::DocumentCursor *,
                                  const abstract::Allocator *allocator) final {
-    return construct_default_optional<Sheet>(
-        document_(document), m_node.child("table:table"), allocator);
+    return common::construct_optional<Sheet>(m_node.child("table:table"),
+                                             allocator);
   }
 };
 
@@ -235,11 +177,11 @@ class DrawingRoot final : public Root {
 public:
   using Root::Root;
 
-  abstract::Element *first_child(const abstract::Document *document,
+  abstract::Element *first_child(const abstract::Document *,
                                  const abstract::DocumentCursor *,
                                  const abstract::Allocator *allocator) final {
-    return construct_default_optional<Page>(
-        document_(document), m_node.child("draw:page"), allocator);
+    return common::construct_optional<Page>(m_node.child("draw:page"),
+                                            allocator);
   }
 };
 
@@ -270,8 +212,7 @@ public:
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final {
     if (auto master_page_node = master_page_node_(document)) {
-      return MasterPage(document_(document), master_page_node)
-          .page_layout(document);
+      return MasterPage(master_page_node).page_layout(document);
     }
     return {};
   }
@@ -281,8 +222,8 @@ public:
               const abstract::DocumentCursor *,
               const abstract::Allocator *allocator) const final {
     if (auto master_page_node = master_page_node_(document)) {
-      return construct_default_optional<MasterPage>(
-          document_(document), master_page_node, allocator);
+      return common::construct_optional<MasterPage>(master_page_node,
+                                                    allocator);
     }
     return {};
   }
@@ -328,8 +269,7 @@ public:
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final {
     if (auto master_page_node = master_page_node_(document)) {
-      return MasterPage(document_(document), master_page_node)
-          .page_layout(document);
+      return MasterPage(master_page_node).page_layout(document);
     }
     return {};
   }
@@ -339,8 +279,8 @@ public:
               const abstract::DocumentCursor *,
               const abstract::Allocator *allocator) const final {
     if (auto master_page_node = master_page_node_(document)) {
-      return construct_default_optional<MasterPage>(
-          document_(document), master_page_node, allocator);
+      return common::construct_optional<MasterPage>(master_page_node,
+                                                    allocator);
     }
     return {};
   }
@@ -559,19 +499,17 @@ public:
   }
 
   abstract::Element *
-  first_column(const abstract::Document *document,
-               const abstract::DocumentCursor *,
+  first_column(const abstract::Document *, const abstract::DocumentCursor *,
                const abstract::Allocator *allocator) const final {
-    return construct_default_optional<TableColumn>(
-        document_(document), m_node.child("table:table-column"), allocator);
+    return common::construct_optional<TableColumn>(
+        m_node.child("table:table-column"), allocator);
   }
 
   abstract::Element *
-  first_row(const abstract::Document *document,
-            const abstract::DocumentCursor *,
+  first_row(const abstract::Document *, const abstract::DocumentCursor *,
             const abstract::Allocator *allocator) const final {
-    return construct_default_optional<TableRow>(
-        document_(document), m_node.child("table:table-row"), allocator);
+    return common::construct_optional<TableRow>(m_node.child("table:table-row"),
+                                                allocator);
   }
 };
 
@@ -694,11 +632,10 @@ class TableCell final : public TableComponent,
                         public abstract::TableCellElement {
 public:
   // TODO this only works for first cells
-  TableCell(const Document *document, pugi::xml_node node)
-      : TableComponent(document, node), m_column{document,
-                                                 node.parent().parent().child(
-                                                     "table:table-column")},
-        m_row{document, node.parent()} {}
+  explicit TableCell(pugi::xml_node node)
+      : TableComponent(node), m_column{node.parent().parent().child(
+                                  "table:table-column")},
+        m_row{node.parent()} {}
 
   abstract::Element *
   previous_sibling(const abstract::Document *document,
@@ -1066,16 +1003,12 @@ public:
 
 } // namespace
 
-} // namespace odr::internal::odf
-
-namespace odr::internal {
-
 abstract::Element *
-odf::construct_default_element(pugi::xml_node node, const Document *document,
-                               const abstract::Allocator *allocator) {
+Element::construct_default_element(pugi::xml_node node,
+                                   const abstract::Document *,
+                                   const abstract::Allocator *allocator) {
   using Constructor = std::function<abstract::Element *(
-      const Document *document, pugi::xml_node node,
-      const abstract::Allocator *allocator)>;
+      pugi::xml_node node, const abstract::Allocator *allocator)>;
 
   using Span = DefaultElement<ElementType::span>;
   using LineBreak = DefaultElement<ElementType::line_break>;
@@ -1084,54 +1017,54 @@ odf::construct_default_element(pugi::xml_node node, const Document *document,
   using PageBreak = DefaultElement<ElementType::page_break>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
-      {"office:text", construct_default<TextDocumentRoot>},
-      {"office:presentation", construct_default<PresentationRoot>},
-      {"office:spreadsheet", construct_default<SpreadsheetRoot>},
-      {"office:drawing", construct_default<DrawingRoot>},
-      {"text:p", construct_default<Paragraph>},
-      {"text:h", construct_default<Paragraph>},
-      {"text:span", construct_default<Span>},
-      {"text:s", construct_default<Text>},
-      {"text:tab", construct_default<Text>},
-      {"text:line-break", construct_default<LineBreak>},
-      {"text:a", construct_default<Link>},
-      {"text:bookmark", construct_default<Bookmark>},
-      {"text:bookmark-start", construct_default<Bookmark>},
-      {"text:list", construct_default<List>},
-      {"text:list-item", construct_default<ListItem>},
-      {"text:index-title", construct_default<Group>},
-      {"text:table-of-content", construct_default<Group>},
-      {"text:index-body", construct_default<Group>},
-      {"text:soft-page-break", construct_default<PageBreak>},
-      {"text:date", construct_default<Group>},
-      {"text:time", construct_default<Group>},
-      //{"text:page-number", construct_default<Group>},
-      //{"text:page-continuation", construct_default<Group>},
-      {"table:table", construct_default<TableElement>},
-      {"table:table-column", construct_default<TableColumn>},
-      {"table:table-row", construct_default<TableRow>},
-      {"table:table-cell", construct_default<TableCell>},
-      {"table:covered-table-cell", construct_default<TableCell>},
-      {"draw:frame", construct_default<Frame>},
-      {"draw:image", construct_default<ImageElement>},
-      {"draw:rect", construct_default<Rect>},
-      {"draw:line", construct_default<Line>},
-      {"draw:circle", construct_default<Circle>},
-      {"draw:custom-shape", construct_default<CustomShape>},
-      {"draw:text-box", construct_default<Group>},
-      {"draw:g", construct_default<Group>},
+      {"office:text", common::construct<TextDocumentRoot>},
+      {"office:presentation", common::construct<PresentationRoot>},
+      {"office:spreadsheet", common::construct<SpreadsheetRoot>},
+      {"office:drawing", common::construct<DrawingRoot>},
+      {"text:p", common::construct<Paragraph>},
+      {"text:h", common::construct<Paragraph>},
+      {"text:span", common::construct<Span>},
+      {"text:s", common::construct<Text>},
+      {"text:tab", common::construct<Text>},
+      {"text:line-break", common::construct<LineBreak>},
+      {"text:a", common::construct<Link>},
+      {"text:bookmark", common::construct<Bookmark>},
+      {"text:bookmark-start", common::construct<Bookmark>},
+      {"text:list", common::construct<List>},
+      {"text:list-item", common::construct<ListItem>},
+      {"text:index-title", common::construct<Group>},
+      {"text:table-of-content", common::construct<Group>},
+      {"text:index-body", common::construct<Group>},
+      {"text:soft-page-break", common::construct<PageBreak>},
+      {"text:date", common::construct<Group>},
+      {"text:time", common::construct<Group>},
+      //{"text:page-number", common::construct<Group>},
+      //{"text:page-continuation", common::construct<Group>},
+      {"table:table", common::construct<TableElement>},
+      {"table:table-column", common::construct<TableColumn>},
+      {"table:table-row", common::construct<TableRow>},
+      {"table:table-cell", common::construct<TableCell>},
+      {"table:covered-table-cell", common::construct<TableCell>},
+      {"draw:frame", common::construct<Frame>},
+      {"draw:image", common::construct<ImageElement>},
+      {"draw:rect", common::construct<Rect>},
+      {"draw:line", common::construct<Line>},
+      {"draw:circle", common::construct<Circle>},
+      {"draw:custom-shape", common::construct<CustomShape>},
+      {"draw:text-box", common::construct<Group>},
+      {"draw:g", common::construct<Group>},
   };
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {
-    return construct_default<Text>(document, node, allocator);
+    return common::construct<Text>(node, allocator);
   }
 
   if (auto constructor_it = constructor_table.find(node.name());
       constructor_it != std::end(constructor_table)) {
-    return constructor_it->second(document, node, allocator);
+    return constructor_it->second(node, allocator);
   }
 
   return {};
 }
 
-} // namespace odr::internal
+} // namespace odr::internal::odf

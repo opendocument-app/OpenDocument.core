@@ -14,7 +14,7 @@ DocumentCursor::DocumentCursor(const Document *document, pugi::xml_node root)
   abstract::Allocator allocator = [this](std::size_t size) {
     return push_(size);
   };
-  auto element = construct_default_element(root, document, &allocator);
+  auto element = Element::construct_default_element(root, document, &allocator);
   if (!element) {
     throw std::invalid_argument("root element invalid");
   }

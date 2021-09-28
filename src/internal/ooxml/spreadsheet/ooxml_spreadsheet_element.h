@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_OOXML_SPREADSHEET_ELEMENT_H
 
 #include <internal/abstract/document.h>
+#include <internal/common/element.h>
 #include <internal/common/style.h>
 #include <pugixml.hpp>
 #include <string>
@@ -9,28 +10,14 @@
 namespace odr::internal::ooxml::spreadsheet {
 class Document;
 
-class Element : public virtual abstract::Element {
+class Element : public common::Element<Element> {
 public:
-  Element(const Document *document, pugi::xml_node node);
+  static abstract::Element *
+  construct_default_element(pugi::xml_node node,
+                            const abstract::Document *document,
+                            const abstract::Allocator *allocator);
 
-  [[nodiscard]] bool equals(const abstract::Document *document,
-                            const abstract::DocumentCursor *cursor,
-                            const abstract::Element &rhs) const override;
-
-  abstract::Element *parent(const abstract::Document *document,
-                            const abstract::DocumentCursor *cursor,
-                            const abstract::Allocator *allocator) override;
-  abstract::Element *first_child(const abstract::Document *document,
-                                 const abstract::DocumentCursor *cursor,
-                                 const abstract::Allocator *allocator) override;
-  abstract::Element *
-  previous_sibling(const abstract::Document *document,
-                   const abstract::DocumentCursor *cursor,
-                   const abstract::Allocator *allocator) override;
-  abstract::Element *
-  next_sibling(const abstract::Document *document,
-               const abstract::DocumentCursor *cursor,
-               const abstract::Allocator *allocator) override;
+  explicit Element(pugi::xml_node node);
 
   common::ResolvedStyle partial_style(const abstract::Document *document) const;
   common::ResolvedStyle
@@ -38,17 +25,10 @@ public:
                      const abstract::DocumentCursor *cursor) const;
 
 protected:
-  pugi::xml_node m_node;
-
   static const Document *document_(const abstract::Document *document);
-  static pugi::xml_node root_(const abstract::Document *document);
   static pugi::xml_node sheet_(const abstract::Document *document,
                                const std::string &id);
 };
-
-abstract::Element *
-construct_default_element(pugi::xml_node node, const Document *document,
-                          const abstract::Allocator *allocator);
 
 } // namespace odr::internal::ooxml::spreadsheet
 

@@ -4,10 +4,34 @@
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {
+class Document;
 class Element;
 } // namespace odr::internal::abstract
 
 namespace odr::internal::common {
+
+template <typename Derived>
+abstract::Element *construct(pugi::xml_node node,
+                             const abstract::Allocator *allocator) {
+  auto alloc = (*allocator)(sizeof(Derived));
+  return new (alloc) Derived(node);
+}
+
+template <typename Derived, typename... Args>
+abstract::Element *construct_2(const abstract::Allocator *allocator,
+                               Args &&...args) {
+  auto alloc = (*allocator)(sizeof(Derived));
+  return new (alloc) Derived(std::forward<Args>(args)...);
+}
+
+template <typename Derived>
+abstract::Element *construct_optional(pugi::xml_node node,
+                                      const abstract::Allocator *allocator) {
+  if (!node) {
+    return nullptr;
+  }
+  return construct<Derived>(node, allocator);
+}
 
 template <typename ElementConstructor, typename... Args>
 abstract::Element *construct_parent_element(ElementConstructor constructor,
@@ -56,6 +80,51 @@ construct_next_sibling_element(ElementConstructor constructor,
   }
   return {};
 }
+
+template <typename Derived> class Element : public virtual abstract::Element {
+public:
+  explicit Element(const pugi::xml_node node) : m_node{node} {}
+
+  [[nodiscard]] bool equals(const abstract::Document *,
+                            const abstract::DocumentCursor *,
+                            const abstract::Element &rhs) const override {
+    return m_node == *dynamic_cast<const Element &>(rhs).m_node;
+  }
+
+  abstract::Element *parent(const abstract::Document *document,
+                            const abstract::DocumentCursor *,
+                            const abstract::Allocator *allocator) override {
+    return common::construct_parent_element(Derived::construct_default_element,
+                                            m_node, document, allocator);
+  }
+
+  abstract::Element *
+  first_child(const abstract::Document *document,
+              const abstract::DocumentCursor *,
+              const abstract::Allocator *allocator) override {
+    return common::construct_first_child_element(
+        Derived::construct_default_element, m_node, document, allocator);
+  }
+
+  abstract::Element *
+  previous_sibling(const abstract::Document *document,
+                   const abstract::DocumentCursor *,
+                   const abstract::Allocator *allocator) override {
+    return common::construct_previous_sibling_element(
+        Derived::construct_default_element, m_node, document, allocator);
+  }
+
+  abstract::Element *
+  next_sibling(const abstract::Document *document,
+               const abstract::DocumentCursor *,
+               const abstract::Allocator *allocator) override {
+    return common::construct_next_sibling_element(
+        Derived::construct_default_element, m_node, document, allocator);
+  }
+
+protected:
+  pugi::xml_node m_node;
+};
 
 } // namespace odr::internal::common
 

@@ -2,58 +2,19 @@
 #include <internal/abstract/document.h>
 #include <internal/common/element.h>
 #include <internal/common/style.h>
-#include <internal/common/table_position.h>
 #include <internal/common/table_range.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_document.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_element.h>
-#include <iterator>
-#include <new>
 #include <odr/document.h>
 #include <odr/style.h>
 #include <optional>
 #include <pugixml.hpp>
 #include <unordered_map>
-#include <utility>
 
 namespace odr::internal::ooxml::spreadsheet {
 
-Element::Element(const Document *, pugi::xml_node node) : m_node{node} {}
-
-bool Element::equals(const abstract::Document *,
-                     const abstract::DocumentCursor *,
-                     const abstract::Element &rhs) const {
-  return m_node == *dynamic_cast<const Element &>(rhs).m_node;
-}
-
-abstract::Element *Element::parent(const abstract::Document *document,
-                                   const abstract::DocumentCursor *,
-                                   const abstract::Allocator *allocator) {
-  return common::construct_parent_element(construct_default_element, m_node,
-                                          document_(document), allocator);
-}
-
-abstract::Element *Element::first_child(const abstract::Document *document,
-                                        const abstract::DocumentCursor *,
-                                        const abstract::Allocator *allocator) {
-  return common::construct_first_child_element(
-      construct_default_element, m_node, document_(document), allocator);
-}
-
-abstract::Element *
-Element::previous_sibling(const abstract::Document *document,
-                          const abstract::DocumentCursor *,
-                          const abstract::Allocator *allocator) {
-  return common::construct_previous_sibling_element(
-      construct_default_element, m_node, document_(document), allocator);
-}
-
-abstract::Element *Element::next_sibling(const abstract::Document *document,
-                                         const abstract::DocumentCursor *,
-                                         const abstract::Allocator *allocator) {
-  return common::construct_next_sibling_element(
-      construct_default_element, m_node, document_(document), allocator);
-}
+Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
   return {}; // TODO
@@ -69,10 +30,6 @@ const Document *Element::document_(const abstract::Document *document) {
   return dynamic_cast<const Document *>(document);
 }
 
-pugi::xml_node Element::root_(const abstract::Document *document) {
-  return document_(document)->m_workbook_xml.document_element();
-}
-
 pugi::xml_node Element::sheet_(const abstract::Document *document,
                                const std::string &id) {
   return document_(document)->m_sheets_xml.at(id).document_element();
@@ -83,24 +40,6 @@ namespace {
 class Sheet;
 class TableColumn;
 class TableRow;
-
-template <typename Derived>
-abstract::Element *construct_default(const Document *document,
-                                     pugi::xml_node node,
-                                     const abstract::Allocator *allocator) {
-  auto alloc = (*allocator)(sizeof(Derived));
-  return new (alloc) Derived(document, node);
-}
-
-template <typename Derived>
-abstract::Element *
-construct_default_optional(const Document *document, pugi::xml_node node,
-                           const abstract::Allocator *allocator) {
-  if (!node) {
-    return nullptr;
-  }
-  return construct_default<Derived>(document, node, allocator);
-}
 
 template <ElementType element_type> class DefaultElement : public Element {
 public:
@@ -115,11 +54,11 @@ class Root final : public DefaultElement<ElementType::root> {
 public:
   using DefaultElement::DefaultElement;
 
-  abstract::Element *first_child(const abstract::Document *document,
+  abstract::Element *first_child(const abstract::Document *,
                                  const abstract::DocumentCursor *,
                                  const abstract::Allocator *allocator) final {
-    return construct_default_optional<Sheet>(
-        document_(document), m_node.child("sheets").child("sheet"), allocator);
+    return common::construct_optional<Sheet>(
+        m_node.child("sheets").child("sheet"), allocator);
   }
 
   abstract::Element *previous_sibling(const abstract::Document *,
@@ -198,17 +137,15 @@ public:
   first_column(const abstract::Document *document,
                const abstract::DocumentCursor *,
                const abstract::Allocator *allocator) const final {
-    return construct_default_optional<TableColumn>(
-        document_(document), sheet_node_(document).child("cols").child("col"),
-        allocator);
+    return common::construct_optional<TableColumn>(
+        sheet_node_(document).child("cols").child("col"), allocator);
   }
 
   abstract::Element *
   first_row(const abstract::Document *document,
             const abstract::DocumentCursor *,
             const abstract::Allocator *allocator) const final {
-    return construct_default_optional<TableRow>(
-        document_(document),
+    return common::construct_optional<TableRow>(
         sheet_node_(document).child("sheetData").child("row"), allocator);
   }
 
@@ -437,33 +374,28 @@ private:
 
 } // namespace
 
-} // namespace odr::internal::ooxml::spreadsheet
-
-namespace odr::internal::ooxml {
-
 abstract::Element *
-spreadsheet::construct_default_element(pugi::xml_node node,
-                                       const Document *document,
-                                       const abstract::Allocator *allocator) {
+Element::construct_default_element(pugi::xml_node node,
+                                   const abstract::Document *,
+                                   const abstract::Allocator *allocator) {
   using Constructor = std::function<abstract::Element *(
-      const Document *document, pugi::xml_node node,
-      const abstract::Allocator *allocator)>;
+      pugi::xml_node node, const abstract::Allocator *allocator)>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{
-      {"workbook", construct_default<Root>},
-      {"worksheet", construct_default<Sheet>},
-      {"col", construct_default<TableColumn>},
-      {"row", construct_default<TableRow>},
-      {"c", construct_default<TableCell>},
-      {"t", construct_default<Text>},
+      {"workbook", common::construct<Root>},
+      {"worksheet", common::construct<Sheet>},
+      {"col", common::construct<TableColumn>},
+      {"row", common::construct<TableRow>},
+      {"c", common::construct<TableCell>},
+      {"t", common::construct<Text>},
   };
 
   if (auto constructor_it = constructor_table.find(node.name());
       constructor_it != std::end(constructor_table)) {
-    return constructor_it->second(document, node, allocator);
+    return constructor_it->second(node, allocator);
   }
 
   return {};
 }
 
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::spreadsheet
