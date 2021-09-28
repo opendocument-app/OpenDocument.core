@@ -3,7 +3,6 @@
 #include <internal/ooxml/ooxml_meta.h>
 #include <odr/file.h>
 #include <unordered_map>
-#include <utility>
 
 namespace odr::internal::ooxml {
 

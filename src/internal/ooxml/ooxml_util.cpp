@@ -5,12 +5,9 @@
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/util/xml_util.h>
-#include <iterator>
 #include <odr/quantity.h>
 #include <odr/style.h>
 #include <pugixml.hpp>
-#include <stdlib.h>
-#include <utility>
 
 namespace odr::internal {
 

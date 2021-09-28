@@ -13,7 +13,6 @@
 #include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <optional>
 #include <utility>
 
 namespace odr::internal::abstract {

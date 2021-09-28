@@ -24,7 +24,7 @@ public:
   [[nodiscard]] std::unique_ptr<abstract::DocumentCursor> copy() const final;
 
 private:
-  common::ResolvedStyle partial_style() const final;
+  [[nodiscard]] common::ResolvedStyle partial_style() const final;
 };
 
 } // namespace odr::internal::ooxml::text
