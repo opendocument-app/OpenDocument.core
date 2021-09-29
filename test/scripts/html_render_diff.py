@@ -30,7 +30,8 @@ def get_browser(driver='chrome', max_width=1000, max_height=10000):
     elif driver == 'firefox':
         options = webdriver.FirefoxOptions()
         options.headless = True
-        browser = webdriver.Firefox(options=options)
+        browser = webdriver.Firefox(options=options,
+                                    service_log_path=os.path.devnull)
     else:  # chrome or unknown
         options = webdriver.ChromeOptions()
         options.headless = True
@@ -53,7 +54,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('a')
     parser.add_argument('b')
-    parser.add_argument('--driver', choices=['chrome', 'firefox', 'phantomjs'], default='firefox')
+    parser.add_argument('--driver',
+                        choices=['chrome', 'firefox', 'phantomjs'],
+                        default='firefox')
     parser.add_argument('--max-width', default=1000)
     parser.add_argument('--max-height', default=10000)
     args = parser.parse_args()

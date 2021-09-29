@@ -30,9 +30,7 @@ def compare_json(a, b):
 def compare_html(a, b, browser=None, diff_output=None):
     if browser is None:
         browser = get_browser()
-    diff, (image_a, image_b) = html_render_diff(a,
-                                                b,
-                                                browser=browser)
+    diff, (image_a, image_b) = html_render_diff(a, b, browser=browser)
     result = True if diff.getbbox() is None else False
     if diff_output is not None and not result:
         os.makedirs(diff_output, exist_ok=True)
@@ -201,7 +199,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('a')
     parser.add_argument('b')
-    parser.add_argument('--driver', choices=['chrome', 'firefox', 'phantomjs'], default='firefox')
+    parser.add_argument('--driver',
+                        choices=['chrome', 'firefox', 'phantomjs'],
+                        default='firefox')
     parser.add_argument('--diff-output')
     parser.add_argument('--max-workers', type=int, default=1)
     args = parser.parse_args()
