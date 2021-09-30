@@ -97,23 +97,25 @@ read_vertical_align(pugi::xml_attribute attribute) {
   return {};
 }
 
-bool read_text_wrap(pugi::xml_attribute attribute) {
+std::optional<TextWrap> read_text_wrap(pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
   auto value = attribute.value();
+  if ((std::strcmp("none", value) == 0)) {
+    return TextWrap::none;
+  }
   if ((std::strcmp("biggest", value) == 0) ||
       (std::strcmp("dynamic", value) == 0) ||
       (std::strcmp("left", value) == 0) ||
       (std::strcmp("parallel", value) == 0) ||
       (std::strcmp("right", value) == 0)) {
-    return true;
+    return TextWrap::after;
   }
-  if ((std::strcmp("none", value) == 0) ||
-      (std::strcmp("run-through", value) == 0)) {
-    return false;
+  if ((std::strcmp("run-through", value) == 0)) {
+    return TextWrap::run_through;
   }
-  return false;
+  return {};
 }
 
 std::optional<PrintOrientation>

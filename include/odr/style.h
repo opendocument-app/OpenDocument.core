@@ -39,6 +39,12 @@ enum class PrintOrientation {
   landscape,
 };
 
+enum class TextWrap {
+  none,
+  after,
+  run_through,
+};
+
 struct Color final {
   std::uint8_t red{0};
   std::uint8_t green{0};
@@ -151,7 +157,7 @@ struct GraphicStyle final {
   std::optional<Color> stroke_color;
   std::optional<Color> fill_color;
   std::optional<VerticalAlign> vertical_align;
-  bool text_wrap{false};
+  std::optional<TextWrap> text_wrap;
 
   void override(const GraphicStyle &other);
 };

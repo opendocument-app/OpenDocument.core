@@ -271,14 +271,27 @@ std::string translate_drawing_style(const GraphicStyle &graphic_style) {
 }
 
 std::string translate_frame_properties(const Element::Frame &frame) {
+  auto text_wrap = TextWrap::run_through;
+  if (auto style = frame.style(); style && style->text_wrap) {
+    text_wrap = *style->text_wrap;
+  }
+
   std::string result;
   if (auto anchor_type = frame.anchor_type();
       anchor_type == AnchorType::as_char) {
     result += "display:inline-block;";
-  } else if (anchor_type == AnchorType::at_char) {
+  } else if (text_wrap == TextWrap::after) {
     result += "display:block;";
     result += "float:left;clear:both;";
     result += "shape-outside:content-box;";
+    if (auto x = frame.x()) {
+      result += "margin-left:" + *x + ";";
+    }
+    if (auto y = frame.y()) {
+      result += "margin-top:" + *y + ";";
+    }
+  } else if (text_wrap == TextWrap::none) {
+    result += "display:block;";
     if (auto x = frame.x()) {
       result += "margin-left:" + *x + ";";
     }
@@ -548,7 +561,8 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
   // TODO choosing <span> by default because it is valid inside <p>;
   // alternatives?
   const bool span = (frame.anchor_type() == AnchorType::as_char) ||
-                    (style && style->text_wrap);
+                    (style && style->text_wrap &&
+                     (*style->text_wrap != TextWrap::run_through));
   if (span) {
     out << "<span";
   } else {
