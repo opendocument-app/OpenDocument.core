@@ -392,13 +392,13 @@ void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
                          const HtmlConfig &config) {
   auto paragraph = cursor.element().paragraph();
 
-  out << "<p";
+  out << "<div class=\"odr-paragraph\"";
   if (auto style = paragraph.style()) {
     out << optional_style_attribute(translate_paragraph_style(*style));
   }
   out << ">";
   translate_children(cursor, out, config);
-  out << "</p>";
+  out << "</div>";
 }
 
 void translate_span(DocumentCursor &cursor, std::ostream &out,
@@ -558,16 +558,7 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
   auto frame = cursor.element().frame();
   auto style = frame.style();
 
-  // TODO choosing <span> by default because it is valid inside <p>;
-  // alternatives?
-  const bool span = (frame.anchor_type() == AnchorType::as_char) ||
-                    (style && style->text_wrap &&
-                     (*style->text_wrap != TextWrap::run_through));
-  if (span) {
-    out << "<span";
-  } else {
-    out << "<div";
-  }
+  out << "<div";
 
   out << optional_style_attribute(
       translate_frame_properties(frame) +
@@ -575,11 +566,7 @@ void translate_frame(DocumentCursor &cursor, std::ostream &out,
   out << ">";
   translate_children(cursor, out, config);
 
-  if (span) {
-    out << "</span>";
-  } else {
-    out << "</div>";
-  }
+  out << "</div>";
 }
 
 void translate_rect(DocumentCursor &cursor, std::ostream &out,

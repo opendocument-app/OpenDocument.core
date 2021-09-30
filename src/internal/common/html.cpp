@@ -21,7 +21,7 @@ const char *html::default_headers() noexcept {
 <base target="_blank"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes"/>
 <title>odr</title>
-  )V0G0N";
+)V0G0N";
   // clang-format on
 }
 
@@ -35,15 +35,15 @@ const char *html::default_style() noexcept {
 body {
   padding: 5px;
 }
-p {
+.odr-paragraph {
   padding: 0;
 }
-p:after {
+.odr-paragraph:after {
   content: "";
   display: inline-block;
   width: 0;
 }
-p:empty:after {
+.odr-paragraph:empty:after {
   width: 0.01mm;
 }
 span {
@@ -53,7 +53,7 @@ span {
 /* https://github.com/marcelblanarik/js-keyword-highlighter/blob/dd69436bee06f8c658abe1e12e2abb35d3bf250b/index.html#L81-L82 */
 mark { background: yellow; }
 mark.current { background: orange; }
-  )V0G0N";
+)V0G0N";
   // clang-format on
 }
 
@@ -70,11 +70,11 @@ td {
   height: inherit;
 }
 
-p {
+.odr-paragraph {
   font-family: "Arial";
   font-size: 10pt;
 }
-td p {
+td .odr-paragraph {
   height: inherit;
 }
 
@@ -90,7 +90,7 @@ td p {
 table td.odr-value-type-float {
   text-align: right;
 }
-  )V0G0N";
+)V0G0N";
   // clang-format on
 }
 
