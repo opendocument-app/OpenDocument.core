@@ -12,7 +12,7 @@ char-encoding: utf8
 clean: no
 coerce-endtags: no
 css-prefix: c
-custom-tags: no
+custom-tags: inline
 decorate-inferred-ul: no
 doctype: html5
 drop-empty-elements: no
@@ -20,13 +20,13 @@ drop-empty-paras: no
 drop-proprietary-attributes: no
 enclose-block-text: no
 enclose-text: no
-error-file: 
+error-file:
 escape-cdata: no
 escape-scripts: yes
 fix-backslash: yes
-fix-bad-comments: auto
+fix-bad-comments: yes
 fix-style-tags: yes
-fix-uri: yes
+fix-uri: false
 force-output: yes
 gdoc: no
 gnu-emacs: no
@@ -49,24 +49,24 @@ markup: yes
 merge-divs: auto
 merge-emphasis: yes
 merge-spans: auto
-mute: 
+mute:
 mute-id: no
 ncr: yes
-new-blocklevel-tags: 
-new-empty-tags: 
-new-inline-tags: 
-new-pre-tags: 
+new-blocklevel-tags:
+new-empty-tags:
+new-inline-tags: x-s
+new-pre-tags:
 newline: LF
 numeric-entities: no
 omit-optional-tags: no
 output-bom: auto
 output-encoding: utf8
-output-file: 
+output-file:
 output-html: no
 output-xhtml: no
 output-xml: no
 preserve-entities: yes
-priority-attributes: 
+priority-attributes:
 punctuation-wrap: no
 quiet: no
 quote-ampersand: yes

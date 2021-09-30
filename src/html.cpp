@@ -375,7 +375,7 @@ void translate_text(const DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
   auto text = cursor.element().text();
 
-  out << "<span";
+  out << "<x-s";
   if (auto style = text.style()) {
     out << optional_style_attribute(translate_text_style(*style));
   }
@@ -385,27 +385,27 @@ void translate_text(const DocumentCursor &cursor, std::ostream &out,
   }
   out << ">";
   out << common::html::escape_text(cursor.element().text().content());
-  out << "</span>";
+  out << "</x-s>";
 }
 
 void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
                          const HtmlConfig &config) {
   auto paragraph = cursor.element().paragraph();
 
-  out << "<div class=\"odr-paragraph\"";
+  out << "<x-p";
   if (auto style = paragraph.style()) {
     out << optional_style_attribute(translate_paragraph_style(*style));
   }
   out << ">";
   translate_children(cursor, out, config);
-  out << "</div>";
+  out << "</x-p>";
 }
 
 void translate_span(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
-  out << "<span>";
+  out << "<x-s>";
   translate_children(cursor, out, config);
-  out << "</span>";
+  out << "</x-s>";
 }
 
 void translate_link(DocumentCursor &cursor, std::ostream &out,
@@ -965,11 +965,11 @@ void html::translate(const Document &document, const std::string &path,
     // TODO throw?
   }
 
-  out << "</body>";
-
   out << "<script>";
   out << common::html::default_script();
   out << "</script>";
+
+  out << "</body>";
   out << "</html>";
 }
 
