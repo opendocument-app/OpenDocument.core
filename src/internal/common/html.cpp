@@ -30,7 +30,6 @@ const char *html::default_style() noexcept {
   return R"V0G0N(
 * {
   margin: 0px;
-  position: relative;
 }
 body {
   padding: 5px;
@@ -42,9 +41,6 @@ x-p:after {
   content: "";
   display: inline-block;
   width: 0;
-}
-x-p:empty:after {
-  width: 0.01mm;
 }
 x-s {
   display: inline;
