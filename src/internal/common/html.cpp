@@ -29,7 +29,7 @@ const char *html::default_style() noexcept {
   // clang-format off
   return R"V0G0N(
 * {
-  margin: 0px;
+  margin: 0;
   position: relative;
 }
 body {
@@ -38,6 +38,11 @@ body {
 
 x-p {
   display: block;
+}
+x-p:after {
+  content: "";
+  display: inline-block;
+  width: 0;
 }
 x-s {
   display: inline;

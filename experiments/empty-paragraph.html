@@ -2,13 +2,12 @@
 <html>
 <head>
     <meta charset="UTF-8"/>
-    <title>odr</title>
+    <title>empty paragraph experiment</title>
     <style>
         div {
             outline: 1px solid green;
         }
         p {
-            font-size: 16pt;
             outline: 1px solid red;
         }
         .paragraph {
@@ -23,13 +22,13 @@
 <body>
     <div style="width:200px;height:500px;float:left;clear:both;"></div>
     <p>a</p>
-    <p class="paragraph"></p>
+    <p style="font-size:16pt;" class="paragraph"></p>
     <p>b</p>
-    <p><br></p>
+    <p><br style="font-size:16pt;"></p>
     <p>c</p>
-    <p>&nbsp;</p>
+    <p style="font-size:16pt;">&nbsp;</p>
     <p>d</p>
-    <p><span style="display:inline-block"></span></p>
+    <p><span style="display:inline-block;font-size:16pt;"></span></p>
     <p>e</p>
 </body>
 </html>
