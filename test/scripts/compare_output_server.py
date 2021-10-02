@@ -272,7 +272,7 @@ def main():
         Config.observer = Observer()
         Config.observer.start()
 
-    app.run()
+    app.run(host='0.0.0.0')
 
     if args.compare:
         Config.observer.stop()

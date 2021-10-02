@@ -118,8 +118,8 @@ ooxml::read_font_weight_attribute(const pugi::xml_node node) {
     return {};
   }
   auto val = node.attribute("w:val").value();
-  if (std::strcmp("false", val) == 0) {
-    return {};
+  if ((std::strcmp("false", val) == 0) || (std::strcmp("0", val) == 0)) {
+    return FontWeight::normal;
   }
   return FontWeight::bold;
 }

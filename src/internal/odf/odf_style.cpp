@@ -5,7 +5,6 @@
 #include <odr/quantity.h>
 #include <odr/style.h>
 #include <pugixml.hpp>
-#include <stdlib.h>
 #include <unordered_map>
 #include <utility>
 
