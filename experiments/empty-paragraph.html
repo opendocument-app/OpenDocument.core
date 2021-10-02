@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <title>odr</title>
+    <style>
+        div {
+            outline: 1px solid green;
+        }
+        p {
+            font-size: 16pt;
+            outline: 1px solid red;
+        }
+        .paragraph {
+            display: block;
+        }
+        .paragraph:after {
+            content: "";
+            display: inline-block;
+            width: 0;
+        }
+    </style>
+<body>
+    <div style="width:100px;height:300px;float:left;clear:both;"></div>
+    <p>a</p>
+    <p class="paragraph"></p>
+    <p>b</p>
+    <p><br></p>
+    <p>c</p>
+    <p>&nbsp;</p>
+    <p>d</p>
+</body>
+</html>
