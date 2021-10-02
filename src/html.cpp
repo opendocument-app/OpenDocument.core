@@ -391,6 +391,10 @@ void translate_text(const DocumentCursor &cursor, std::ostream &out,
 void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
                          const HtmlConfig &config) {
   auto paragraph = cursor.element().paragraph();
+  auto text_style_attribute = optional_style_attribute(
+      "display:inline-block;" +
+      (paragraph.text_style() ? translate_text_style(*paragraph.text_style())
+                              : ""));
 
   out << "<x-p";
   if (auto style = paragraph.style()) {
@@ -398,6 +402,7 @@ void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
   }
   out << ">";
   translate_children(cursor, out, config);
+  out << "<x-s" << text_style_attribute << "></x-s>";
   out << "</x-p>";
 }
 

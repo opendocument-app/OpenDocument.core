@@ -39,11 +39,6 @@ body {
 x-p {
   display: block;
 }
-x-p:after {
-  content: "";
-  display: inline-block;
-  width: 0;
-}
 x-s {
   display: inline;
 }

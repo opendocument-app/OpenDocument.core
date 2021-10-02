@@ -238,6 +238,11 @@ std::optional<ParagraphStyle> Element::Paragraph::style() const {
                    : std::optional<ParagraphStyle>();
 }
 
+std::optional<TextStyle> Element::Paragraph::text_style() const {
+  return m_element ? m_element->text_style(m_document, m_cursor)
+                   : std::optional<TextStyle>();
+}
+
 std::string Element::Link::href() const {
   return m_element ? m_element->href(m_document) : "";
 }

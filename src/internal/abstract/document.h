@@ -198,6 +198,8 @@ public:
 
   [[nodiscard]] virtual std::optional<ParagraphStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
+  [[nodiscard]] virtual std::optional<TextStyle>
+  text_style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class SpanElement : public virtual Element {

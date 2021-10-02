@@ -308,6 +308,12 @@ public:
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).paragraph_style;
   }
+
+  [[nodiscard]] std::optional<TextStyle>
+  text_style(const abstract::Document *document,
+             const abstract::DocumentCursor *) const final {
+    return partial_style(document).text_style;
+  }
 };
 
 class Text final : public Element, public abstract::TextElement {

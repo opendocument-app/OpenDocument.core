@@ -245,6 +245,7 @@ public:
     using Extension::Extension;
 
     [[nodiscard]] std::optional<ParagraphStyle> style() const;
+    [[nodiscard]] std::optional<TextStyle> text_style() const;
   };
 
   class Text final : public Extension<internal::abstract::TextElement> {
