@@ -142,8 +142,19 @@ void resolve_graphic_style_(pugi::xml_node, std::optional<GraphicStyle> &) {
 }
 } // namespace
 
+Style::Style(pugi::xml_node node) : m_node{node} {
+  m_resolved.text_style = TextStyle();
+  m_resolved.text_style->font_size = Measure(12, DynamicUnit("pt"));
+
+  resolve_default_style_();
+}
+
 Style::Style(std::string name, pugi::xml_node node, const Style *parent)
     : m_name{std::move(name)}, m_node{node}, m_parent{parent} {
+  if (const Style *copy_from = m_parent) {
+    m_resolved = copy_from->m_resolved;
+  }
+
   resolve_style_();
 }
 
@@ -162,11 +173,22 @@ void Style::resolve_style_() {
   resolve_graphic_style_(m_node, m_resolved.graphic_style);
 }
 
+void Style::resolve_default_style_() {
+  resolve_text_style_(m_node.child("w:rPrDefault"), m_resolved.text_style);
+  resolve_paragraph_style_(m_node.child("w:pPrDefault"),
+                           m_resolved.paragraph_style);
+  resolve_table_style_(m_node.child("w:tblPrDefault"), m_resolved.table_style);
+  resolve_table_row_style_(m_node.child("w:trPrDefault"),
+                           m_resolved.table_row_style);
+  resolve_table_cell_style_(m_node.child("w:tcPrDefault"),
+                            m_resolved.table_cell_style);
+}
+
 StyleRegistry::StyleRegistry() = default;
 
 StyleRegistry::StyleRegistry(const pugi::xml_node styles_root) {
   generate_indices_(styles_root);
-  generate_styles_();
+  generate_styles_(styles_root);
 }
 
 Style *StyleRegistry::style(const std::string &name) const {
@@ -182,10 +204,13 @@ StyleRegistry::partial_text_style(const pugi::xml_node node) const {
     return {};
   }
   common::ResolvedStyle result;
+  if (m_default_style) {
+    result.text_style = m_default_style->resolved().text_style;
+  }
   if (auto style_name =
           node.child("w:rPr").child("w:rStyle").attribute("w:val")) {
     if (auto style = this->style(style_name.value())) {
-      result = style->resolved();
+      result.text_style = style->resolved().text_style;
     }
   }
   resolve_text_style_(node, result.text_style);
@@ -198,6 +223,9 @@ StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
     return {};
   }
   common::ResolvedStyle result;
+  if (m_default_style) {
+    result.paragraph_style = m_default_style->resolved().paragraph_style;
+  }
   if (auto style_name =
           node.child("w:pPr").child("w:pStyle").attribute("w:val")) {
     if (auto style = this->style(style_name.value())) {
@@ -205,12 +233,7 @@ StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
     }
   }
   resolve_paragraph_style_(node, result.paragraph_style);
-  if (auto text_style = partial_text_style(node.child("w:pPr")).text_style) {
-    if (!result.text_style) {
-      result.text_style = TextStyle();
-    }
-    result.text_style->override(*text_style);
-  }
+  result.override(partial_text_style(node.child("w:pPr")));
   return result;
 }
 
@@ -220,6 +243,9 @@ StyleRegistry::partial_table_style(const pugi::xml_node node) const {
     return {};
   }
   common::ResolvedStyle result;
+  if (m_default_style) {
+    result.table_style = m_default_style->resolved().table_style;
+  }
   resolve_table_style_(node, result.table_style);
   return result;
 }
@@ -235,6 +261,9 @@ StyleRegistry::partial_table_cell_style(const pugi::xml_node node) const {
     return {};
   }
   common::ResolvedStyle result;
+  if (m_default_style) {
+    result.table_cell_style = m_default_style->resolved().table_cell_style;
+  }
   resolve_table_cell_style_(node, result.table_cell_style);
   return result;
 }
@@ -249,7 +278,9 @@ void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
   }
 }
 
-void StyleRegistry::generate_styles_() {
+void StyleRegistry::generate_styles_(const pugi::xml_node styles_root) {
+  m_default_style = std::make_unique<Style>(styles_root.child("w:docDefaults"));
+
   for (auto &&e : m_index) {
     generate_style_(e.first, e.second);
   }
@@ -269,6 +300,8 @@ Style *StyleRegistry::generate_style_(const std::string &name,
     if (auto parent_node = m_index[parent_attr.value()]) {
       parent = generate_style_(parent_attr.value(), parent_node);
     }
+  } else {
+    parent = m_default_style.get();
   }
 
   style = std::make_unique<Style>(name, node, parent);

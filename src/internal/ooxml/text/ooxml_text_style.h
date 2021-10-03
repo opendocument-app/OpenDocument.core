@@ -10,21 +10,23 @@ namespace odr::internal::ooxml::text {
 
 class Style final {
 public:
+  explicit Style(pugi::xml_node node);
   Style(std::string name, pugi::xml_node node, const Style *parent);
 
-  std::string name() const;
-  const Style *parent() const;
+  [[nodiscard]] std::string name() const;
+  [[nodiscard]] const Style *parent() const;
 
-  const common::ResolvedStyle &resolved() const;
+  [[nodiscard]] const common::ResolvedStyle &resolved() const;
 
 private:
   std::string m_name;
   pugi::xml_node m_node;
-  const Style *m_parent;
+  const Style *m_parent{nullptr};
 
   common::ResolvedStyle m_resolved;
 
   void resolve_style_();
+  void resolve_default_style_();
 };
 
 class StyleRegistry final {
@@ -43,10 +45,11 @@ public:
 private:
   std::unordered_map<std::string, pugi::xml_node> m_index;
 
+  std::unique_ptr<Style> m_default_style;
   std::unordered_map<std::string, std::unique_ptr<Style>> m_styles;
 
   void generate_indices_(pugi::xml_node styles_root);
-  void generate_styles_();
+  void generate_styles_(pugi::xml_node styles_root);
   Style *generate_style_(const std::string &name, pugi::xml_node node);
 };
 
