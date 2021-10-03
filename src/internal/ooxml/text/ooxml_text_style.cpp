@@ -191,6 +191,8 @@ StyleRegistry::StyleRegistry(const pugi::xml_node styles_root) {
   generate_styles_(styles_root);
 }
 
+Style *StyleRegistry::default_style() const { return m_default_style.get(); }
+
 Style *StyleRegistry::style(const std::string &name) const {
   if (auto styles_it = m_styles.find(name); styles_it != std::end(m_styles)) {
     return styles_it->second.get();
@@ -200,13 +202,8 @@ Style *StyleRegistry::style(const std::string &name) const {
 
 common::ResolvedStyle
 StyleRegistry::partial_text_style(const pugi::xml_node node) const {
-  if (!node) {
-    return {};
-  }
   common::ResolvedStyle result;
-  if (m_default_style) {
-    result.text_style = m_default_style->resolved().text_style;
-  }
+  // TODO consider w:default="1"
   if (auto style_name =
           node.child("w:rPr").child("w:rStyle").attribute("w:val")) {
     if (auto style = this->style(style_name.value())) {
@@ -219,13 +216,8 @@ StyleRegistry::partial_text_style(const pugi::xml_node node) const {
 
 common::ResolvedStyle
 StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
-  if (!node) {
-    return {};
-  }
   common::ResolvedStyle result;
-  if (m_default_style) {
-    result.paragraph_style = m_default_style->resolved().paragraph_style;
-  }
+  // TODO consider w:default="1"
   if (auto style_name =
           node.child("w:pPr").child("w:pStyle").attribute("w:val")) {
     if (auto style = this->style(style_name.value())) {
@@ -239,13 +231,7 @@ StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
 
 common::ResolvedStyle
 StyleRegistry::partial_table_style(const pugi::xml_node node) const {
-  if (!node) {
-    return {};
-  }
   common::ResolvedStyle result;
-  if (m_default_style) {
-    result.table_style = m_default_style->resolved().table_style;
-  }
   resolve_table_style_(node, result.table_style);
   return result;
 }
@@ -257,13 +243,7 @@ StyleRegistry::partial_table_row_style(const pugi::xml_node) const {
 
 common::ResolvedStyle
 StyleRegistry::partial_table_cell_style(const pugi::xml_node node) const {
-  if (!node) {
-    return {};
-  }
   common::ResolvedStyle result;
-  if (m_default_style) {
-    result.table_cell_style = m_default_style->resolved().table_cell_style;
-  }
   resolve_table_cell_style_(node, result.table_cell_style);
   return result;
 }
@@ -300,8 +280,6 @@ Style *StyleRegistry::generate_style_(const std::string &name,
     if (auto parent_node = m_index[parent_attr.value()]) {
       parent = generate_style_(parent_attr.value(), parent_node);
     }
-  } else {
-    parent = m_default_style.get();
   }
 
   style = std::make_unique<Style>(name, node, parent);

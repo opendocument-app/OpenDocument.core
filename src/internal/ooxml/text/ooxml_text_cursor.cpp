@@ -18,6 +18,7 @@ DocumentCursor::DocumentCursor(const Document *document, pugi::xml_node root)
   if (!element) {
     throw std::invalid_argument("root element invalid");
   }
+  push_style_(document->m_style_registry.default_style()->resolved());
 }
 
 [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>

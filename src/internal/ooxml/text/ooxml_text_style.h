@@ -34,6 +34,7 @@ public:
   StyleRegistry();
   explicit StyleRegistry(pugi::xml_node styles_root);
 
+  [[nodiscard]] Style *default_style() const;
   [[nodiscard]] Style *style(const std::string &name) const;
 
   common::ResolvedStyle partial_text_style(pugi::xml_node node) const;

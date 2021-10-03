@@ -245,7 +245,16 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
     }
     if (auto font_size =
             read_measure(text_properties.attribute("fo:font-size"))) {
-      result->font_size = font_size;
+      // TODO
+      if (font_size->unit().name() != "%") {
+        result->font_size = font_size;
+      } else {
+        if (auto parent_font_size = result->font_size) {
+          result->font_size = Measure(parent_font_size->magnitude() *
+                                          font_size->magnitude() * 1e-2,
+                                      parent_font_size->unit());
+        }
+      }
     }
     if (auto font_weight =
             read_font_weight(text_properties.attribute("fo:font-weight"))) {

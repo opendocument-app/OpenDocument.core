@@ -96,8 +96,8 @@ public:
 
   [[nodiscard]] std::optional<TextStyle>
   text_style(const abstract::Document *document,
-             const abstract::DocumentCursor *) const final {
-    return partial_style(document).text_style;
+             const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
   }
 };
 

@@ -47,6 +47,7 @@ protected:
   const abstract::Document *m_document;
 
   void *push_(std::size_t size);
+  void push_style_(ResolvedStyle style);
 
   virtual void pushed_(abstract::Element *element);
   virtual void popping_(abstract::Element *element);
@@ -68,6 +69,7 @@ private:
   [[nodiscard]] std::int32_t back_offset_() const;
 
   void pop_();
+  void pop_style_();
 };
 
 } // namespace odr::internal::common

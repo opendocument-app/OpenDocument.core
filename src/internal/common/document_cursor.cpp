@@ -53,16 +53,22 @@ void DocumentCursor::pop_() {
   m_element_stack.resize(next_offset);
 }
 
-void DocumentCursor::pushed_(abstract::Element *) {
+void DocumentCursor::push_style_(ResolvedStyle style) {
   if (m_style_stack.empty()) {
     m_style_stack.emplace_back();
   } else {
     m_style_stack.emplace_back(m_style_stack.back());
   }
-  m_style_stack.back().override(partial_style());
+  m_style_stack.back().override(style);
 }
 
-void DocumentCursor::popping_(abstract::Element *) { m_style_stack.pop_back(); }
+void DocumentCursor::pop_style_() { m_style_stack.pop_back(); }
+
+void DocumentCursor::pushed_(abstract::Element *) {
+  push_style_(partial_style());
+}
+
+void DocumentCursor::popping_(abstract::Element *) { pop_style_(); }
 
 ResolvedStyle DocumentCursor::partial_style() const { return {}; }
 
