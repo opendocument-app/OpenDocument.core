@@ -16,6 +16,7 @@ class SlideElement;
 class SheetElement;
 class PageElement;
 class ParagraphElement;
+class SpanElement;
 class TextElement;
 class LinkElement;
 class BookmarkElement;
@@ -248,6 +249,13 @@ public:
     [[nodiscard]] std::optional<TextStyle> text_style() const;
   };
 
+  class Span final : public Extension<internal::abstract::SpanElement> {
+  public:
+    using Extension::Extension;
+
+    [[nodiscard]] std::optional<TextStyle> style() const;
+  };
+
   class Text final : public Extension<internal::abstract::TextElement> {
   public:
     using Extension::Extension;
@@ -395,6 +403,7 @@ public:
   [[nodiscard]] Sheet sheet() const;
   [[nodiscard]] Page page() const;
   [[nodiscard]] Paragraph paragraph() const;
+  [[nodiscard]] Span span() const;
   [[nodiscard]] Text text() const;
   [[nodiscard]] Link link() const;
   [[nodiscard]] Bookmark bookmark() const;

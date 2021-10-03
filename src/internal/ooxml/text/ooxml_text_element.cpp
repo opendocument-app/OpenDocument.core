@@ -109,6 +109,12 @@ public:
   partial_style(const abstract::Document *document) const final {
     return style_(document)->partial_text_style(m_node);
   }
+
+  [[nodiscard]] std::optional<TextStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
+  }
 };
 
 class Text final : public Element, public abstract::TextElement {

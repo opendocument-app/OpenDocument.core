@@ -392,7 +392,6 @@ void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
                          const HtmlConfig &config) {
   auto paragraph = cursor.element().paragraph();
   auto text_style_attribute = optional_style_attribute(
-      "display:inline-block;" +
       (paragraph.text_style() ? translate_text_style(*paragraph.text_style())
                               : ""));
 
@@ -401,14 +400,25 @@ void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
     out << optional_style_attribute(translate_paragraph_style(*style));
   }
   out << ">";
+  out << "<wbr>";
   translate_children(cursor, out, config);
-  out << "<x-s" << text_style_attribute << "></x-s>";
+  if (cursor.move_to_first_child()) {
+    cursor.move_to_parent();
+  } else {
+    out << "<x-s" << text_style_attribute << "></x-s>";
+  }
   out << "</x-p>";
 }
 
 void translate_span(DocumentCursor &cursor, std::ostream &out,
                     const HtmlConfig &config) {
-  out << "<x-s>";
+  auto span = cursor.element().span();
+
+  out << "<x-s";
+  if (auto style = span.style()) {
+    out << optional_style_attribute(translate_text_style(*style));
+  }
+  out << ">";
   translate_children(cursor, out, config);
   out << "</x-s>";
 }

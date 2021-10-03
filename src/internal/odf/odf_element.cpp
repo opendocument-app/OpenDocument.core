@@ -316,6 +316,17 @@ public:
   }
 };
 
+class Span final : public Element, public abstract::SpanElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] std::optional<TextStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
+  }
+};
+
 class Text final : public Element, public abstract::TextElement {
 public:
   using Element::Element;
@@ -1016,7 +1027,6 @@ Element::construct_default_element(pugi::xml_node node,
   using Constructor = std::function<abstract::Element *(
       pugi::xml_node node, const abstract::Allocator *allocator)>;
 
-  using Span = DefaultElement<ElementType::span>;
   using LineBreak = DefaultElement<ElementType::line_break>;
   using List = DefaultElement<ElementType::list>;
   using Group = DefaultElement<ElementType::group>;

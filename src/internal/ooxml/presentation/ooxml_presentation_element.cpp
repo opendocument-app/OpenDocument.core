@@ -146,6 +146,17 @@ public:
   }
 };
 
+class Span final : public Element, public abstract::SpanElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] std::optional<TextStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *) const final {
+    return partial_style(document).text_style;
+  }
+};
+
 class Text final : public Element, public abstract::TextElement {
 public:
   using Element::Element;
@@ -463,7 +474,6 @@ Element::construct_default_element(pugi::xml_node node,
   using Constructor = std::function<abstract::Element *(
       pugi::xml_node node, const abstract::Allocator *allocator)>;
 
-  using Span = DefaultElement<ElementType::span>;
   using Group = DefaultElement<ElementType::group>;
 
   static std::unordered_map<std::string, Constructor> constructor_table{

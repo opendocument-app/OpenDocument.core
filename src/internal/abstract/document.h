@@ -207,6 +207,9 @@ public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::span;
   }
+
+  [[nodiscard]] virtual std::optional<TextStyle>
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
 class TextElement : public virtual Element {

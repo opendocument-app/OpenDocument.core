@@ -243,6 +243,11 @@ std::optional<TextStyle> Element::Paragraph::text_style() const {
                    : std::optional<TextStyle>();
 }
 
+std::optional<TextStyle> Element::Span::style() const {
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<TextStyle>();
+}
+
 std::string Element::Link::href() const {
   return m_element ? m_element->href(m_document) : "";
 }
@@ -450,6 +455,10 @@ Element::Page Element::page() const {
 }
 
 Element::Paragraph Element::paragraph() const {
+  return {m_document, m_cursor, m_element};
+}
+
+Element::Span Element::span() const {
   return {m_document, m_cursor, m_element};
 }
 

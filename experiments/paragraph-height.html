@@ -8,18 +8,36 @@
             margin: 0;
             outline: 1px solid red;
         }
+        span {
+            outline: 1px solid green;
+        }
 
         div {
             margin-bottom: 20px;
         }
 
-        .solution p {
+        .try1 p {
             line-height: 0;
+        }
+
+        .try2 p {
+            display: block;
+            font-size: 0;
+            outline: 1px solid red;
         }
     </style>
 <body>
     <div class="problem">
         <h1>Problem</h1>
+        <p><span style="font-size:12pt">This is some text</span></p>
+        <p><span style="font-size:10pt">This is some text</span></p>
+        <p><span style="font-size:8pt">This is some text</span></p>
+        <p><span style="font-size:6pt">This is some text</span></p>
+        <p><span style="font-size:6pt;display:inline-block"></span></p>
+        <p><span style="font-size:32pt;display:inline-block"></span></p>
+    </div>
+    <div class="try1">
+        <h1>Try 1</h1>
         <p><span style="font-size:12pt;line-height:12pt;">This is some text</span></p>
         <p><span style="font-size:10pt;line-height:10pt;">This is some text</span></p>
         <p><span style="font-size:8pt;line-height:8pt;">This is some text</span></p>
@@ -27,14 +45,14 @@
         <p><span style="font-size:6pt;line-height:6pt;display:inline-block;"></span></p>
         <p><span style="font-size:32pt;line-height:32pt;display:inline-block;"></span></p>
     </div>
-    <div class="solution">
-        <h1>Solution</h1>
-        <p><span style="font-size:12pt;line-height:12pt;">This is some text</span></p>
-        <p><span style="font-size:10pt;line-height:10pt;">This is some text</span></p>
-        <p><span style="font-size:8pt;line-height:8pt;">This is some text</span></p>
-        <p><span style="font-size:6pt;line-height:6pt;">This is some text</span></p>
-        <p><span style="font-size:6pt;line-height:6pt;display:inline-block;"></span></p>
-        <p><span style="font-size:32pt;line-height:32pt;display:inline-block;"></span></p>
+    <div class="try2">
+        <h1>Try 2</h1>
+        <p><span style="font-size:12pt">This is some text<wbr></span></p>
+        <p><span style="font-size:10pt">This is some text<wbr></span></p>
+        <p><span style="font-size:8pt">This is some text<wbr></span></p>
+        <p><span style="font-size:6pt">This is some text<wbr></span></p>
+        <p><span style="font-size:6pt"><wbr></span></p>
+        <p><span style="font-size:32pt"><wbr></span></p>
     </div>
 </body>
 </html>
