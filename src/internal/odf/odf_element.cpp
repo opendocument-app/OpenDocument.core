@@ -299,6 +299,17 @@ private:
   }
 };
 
+class LineBreak final : public Element, public abstract::LineBreakElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] std::optional<TextStyle>
+  style(const abstract::Document *document,
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
+  }
+};
+
 class Paragraph final : public Element, public abstract::ParagraphElement {
 public:
   using Element::Element;
@@ -1027,7 +1038,6 @@ Element::construct_default_element(pugi::xml_node node,
   using Constructor = std::function<abstract::Element *(
       pugi::xml_node node, const abstract::Allocator *allocator)>;
 
-  using LineBreak = DefaultElement<ElementType::line_break>;
   using List = DefaultElement<ElementType::list>;
   using Group = DefaultElement<ElementType::group>;
   using PageBreak = DefaultElement<ElementType::page_break>;

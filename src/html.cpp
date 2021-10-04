@@ -168,6 +168,9 @@ std::string translate_paragraph_style(const ParagraphStyle &paragraph_style) {
         .append(margin_bottom->to_string())
         .append(";");
   }
+  if (auto line_height = paragraph_style.line_height) {
+    result.append("line-height:").append(line_height->to_string()).append(";");
+  }
   return result;
 }
 
@@ -388,6 +391,18 @@ void translate_text(const DocumentCursor &cursor, std::ostream &out,
   out << "</x-s>";
 }
 
+void translate_line_break(DocumentCursor &cursor, std::ostream &out,
+                          const HtmlConfig &) {
+  auto line_break = cursor.element().line_break();
+
+  out << "<br>";
+  out << "<x-s";
+  if (auto style = line_break.style()) {
+    out << optional_style_attribute(translate_text_style(*style));
+  }
+  out << "></x-s>";
+}
+
 void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
                          const HtmlConfig &config) {
   auto paragraph = cursor.element().paragraph();
@@ -403,6 +418,13 @@ void translate_paragraph(DocumentCursor &cursor, std::ostream &out,
   out << "<wbr>";
   translate_children(cursor, out, config);
   if (cursor.move_to_first_child()) {
+    // TODO if element is content (e.g. bookmark does not count)
+
+    // TODO example `encrypted-exception-3$aabbcc$.odt` at the very bottom
+    // TODO has a missing line break after "As the result of the project we ..."
+
+    // TODO example `style-missing+image-1.odt` first paragraph has no height
+
     cursor.move_to_parent();
   } else {
     out << "<x-s" << text_style_attribute << "></x-s>";
@@ -659,7 +681,7 @@ void translate_element(DocumentCursor &cursor, std::ostream &out,
   if (cursor.element_type() == ElementType::text) {
     translate_text(cursor, out, config);
   } else if (cursor.element_type() == ElementType::line_break) {
-    out << "<br>";
+    translate_line_break(cursor, out, config);
   } else if (cursor.element_type() == ElementType::paragraph) {
     translate_paragraph(cursor, out, config);
   } else if (cursor.element_type() == ElementType::span) {

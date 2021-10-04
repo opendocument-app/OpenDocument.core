@@ -120,6 +120,7 @@ struct TextStyle final {
 struct ParagraphStyle final {
   std::optional<TextAlign> text_align;
   DirectionalStyle<Measure> margin;
+  std::optional<Measure> line_height;
 
   void override(const ParagraphStyle &other);
 };

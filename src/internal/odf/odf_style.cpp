@@ -302,23 +302,45 @@ void Style::resolve_paragraph_style_(pugi::xml_node node,
     }
     if (auto margin =
             read_measure(paragraph_properties.attribute("fo:margin"))) {
-      result->margin = margin;
+      // TODO
+      if (margin->unit().name() != "%") {
+        result->margin = margin;
+      }
     }
     if (auto margin_right =
             read_measure(paragraph_properties.attribute("fo:margin-right"))) {
-      result->margin.right = margin_right;
+      // TODO
+      if (margin_right->unit().name() != "%") {
+        result->margin.right = margin_right;
+      }
     }
     if (auto margin_top =
             read_measure(paragraph_properties.attribute("fo:margin-top"))) {
-      result->margin.top = margin_top;
+      // TODO
+      if (margin_top->unit().name() != "%") {
+        result->margin.top = margin_top;
+      }
     }
     if (auto margin_left =
             read_measure(paragraph_properties.attribute("fo:margin-left"))) {
-      result->margin.left = margin_left;
+      // TODO
+      if (margin_left->unit().name() != "%") {
+        result->margin.left = margin_left;
+      }
     }
     if (auto margin_bottom =
             read_measure(paragraph_properties.attribute("fo:margin-bottom"))) {
-      result->margin.bottom = margin_bottom;
+      // TODO
+      if (margin_bottom->unit().name() != "%") {
+        result->margin.bottom = margin_bottom;
+      }
+    }
+    if (auto line_height =
+            read_measure(paragraph_properties.attribute("fo:line-height"))) {
+      // TODO
+      if (line_height->unit().name() != "%") {
+        result->line_height = line_height;
+      }
     }
   }
 }

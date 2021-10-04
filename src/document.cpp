@@ -218,17 +218,7 @@ PageLayout Element::Page::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
 }
 
-std::string Element::Text::content() const {
-  return m_element ? m_element->content(m_document) : "";
-}
-
-void Element::Text::set_content(const std::string &text) const {
-  if (m_element) {
-    m_element->set_content(m_document, text);
-  }
-}
-
-std::optional<TextStyle> Element::Text::style() const {
+std::optional<TextStyle> Element::LineBreak::style() const {
   return m_element ? m_element->style(m_document, m_cursor)
                    : std::optional<TextStyle>();
 }
@@ -244,6 +234,21 @@ std::optional<TextStyle> Element::Paragraph::text_style() const {
 }
 
 std::optional<TextStyle> Element::Span::style() const {
+  return m_element ? m_element->style(m_document, m_cursor)
+                   : std::optional<TextStyle>();
+}
+
+std::string Element::Text::content() const {
+  return m_element ? m_element->content(m_document) : "";
+}
+
+void Element::Text::set_content(const std::string &text) const {
+  if (m_element) {
+    m_element->set_content(m_document, text);
+  }
+}
+
+std::optional<TextStyle> Element::Text::style() const {
   return m_element ? m_element->style(m_document, m_cursor)
                    : std::optional<TextStyle>();
 }
@@ -451,6 +456,10 @@ Element::Sheet Element::sheet() const {
 }
 
 Element::Page Element::page() const {
+  return {m_document, m_cursor, m_element};
+}
+
+Element::LineBreak Element::line_break() const {
   return {m_document, m_cursor, m_element};
 }
 

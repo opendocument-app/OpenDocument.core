@@ -72,6 +72,9 @@ void ParagraphStyle::override(const ParagraphStyle &other) {
     text_align = other.text_align;
   }
   margin.override(other.margin);
+  if (other.line_height) {
+    line_height = other.line_height;
+  }
 }
 
 void TableStyle::override(const TableStyle &other) {

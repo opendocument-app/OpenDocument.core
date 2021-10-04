@@ -190,6 +190,16 @@ public:
   page_layout(const Document *document) const = 0;
 };
 
+class LineBreakElement : public virtual Element {
+public:
+  [[nodiscard]] ElementType type(const Document *) const override {
+    return ElementType::line_break;
+  }
+
+  [[nodiscard]] virtual std::optional<TextStyle>
+  style(const Document *document, const DocumentCursor *cursor) const = 0;
+};
+
 class ParagraphElement : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {

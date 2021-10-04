@@ -15,6 +15,7 @@ class TextRootElement;
 class SlideElement;
 class SheetElement;
 class PageElement;
+class LineBreakElement;
 class ParagraphElement;
 class SpanElement;
 class TextElement;
@@ -240,6 +241,14 @@ public:
     [[nodiscard]] PageLayout page_layout() const;
   };
 
+  class LineBreak final
+      : public Extension<internal::abstract::LineBreakElement> {
+  public:
+    using Extension::Extension;
+
+    [[nodiscard]] std::optional<TextStyle> style() const;
+  };
+
   class Paragraph final
       : public Extension<internal::abstract::ParagraphElement> {
   public:
@@ -402,6 +411,7 @@ public:
   [[nodiscard]] Slide slide() const;
   [[nodiscard]] Sheet sheet() const;
   [[nodiscard]] Page page() const;
+  [[nodiscard]] LineBreak line_break() const;
   [[nodiscard]] Paragraph paragraph() const;
   [[nodiscard]] Span span() const;
   [[nodiscard]] Text text() const;
