@@ -65,6 +65,26 @@ public:
   root_element() const = 0;
 };
 
+class TextDocument : public virtual Document {
+public:
+  [[nodiscard]] virtual PageLayout page_layout() const = 0;
+};
+
+class Presentation : public virtual Document {
+public:
+  [[nodiscard]] virtual std::uint32_t slide_count() const = 0;
+};
+
+class Spreadsheet : public virtual Document {
+public:
+  [[nodiscard]] virtual std::uint32_t sheet_count() const = 0;
+};
+
+class Drawing : public virtual Document {
+public:
+  [[nodiscard]] virtual std::uint32_t page_count() const = 0;
+};
+
 class DocumentCursor {
 public:
   virtual ~DocumentCursor() = default;

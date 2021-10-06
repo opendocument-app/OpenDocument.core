@@ -273,7 +273,7 @@ std::string translate_drawing_style(const GraphicStyle &graphic_style) {
   return result;
 }
 
-std::string translate_frame_properties(const Element::Frame &frame) {
+std::string translate_frame_properties(const Frame &frame) {
   auto text_wrap = TextWrap::run_through;
   if (auto style = frame.style(); style && style->text_wrap) {
     text_wrap = *style->text_wrap;
@@ -323,7 +323,7 @@ std::string translate_frame_properties(const Element::Frame &frame) {
   return result;
 }
 
-std::string translate_rect_properties(const Element::Rect &rect) {
+std::string translate_rect_properties(const Rect &rect) {
   std::string result;
   result += "position:absolute;";
   result += "left:" + rect.x() + ";";
@@ -333,7 +333,7 @@ std::string translate_rect_properties(const Element::Rect &rect) {
   return result;
 }
 
-std::string translate_circle_properties(const Element::Circle &circle) {
+std::string translate_circle_properties(const Circle &circle) {
   std::string result;
   result += "position:absolute;";
   result += "left:" + circle.x() + ";";
@@ -343,8 +343,7 @@ std::string translate_circle_properties(const Element::Circle &circle) {
   return result;
 }
 
-std::string
-translate_custom_shape_properties(const Element::CustomShape &custom_shape) {
+std::string translate_custom_shape_properties(const CustomShape &custom_shape) {
   std::string result;
   result += "position:absolute;";
   if (auto x = custom_shape.x()) {

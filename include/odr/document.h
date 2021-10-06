@@ -8,6 +8,11 @@
 
 namespace odr::internal::abstract {
 class Document;
+class TextDocument;
+class Presentation;
+class Spreadsheet;
+class Drawing;
+
 class DocumentCursor;
 
 class Element;
@@ -39,6 +44,14 @@ namespace odr {
 enum class DocumentType;
 class File;
 class DocumentFile;
+struct TextStyle;
+struct ParagraphStyle;
+struct TableStyle;
+struct TableColumnStyle;
+struct TableRowStyle;
+struct TableCellStyle;
+struct GraphicStyle;
+struct PageLayout;
 struct TableDimensions;
 
 enum class ElementType {
@@ -90,20 +103,38 @@ enum class ValueType {
   float_number,
 };
 
+class TextDocument;
+class Presentation;
+class Spreadsheet;
+class Drawing;
 class DocumentCursor;
 class Element;
-struct PageLayout;
+class TextRoot;
+class Slide;
+class Sheet;
+class Page;
+class LineBreak;
+class Paragraph;
+class Span;
+class Text;
+class Link;
+class Bookmark;
+class ListItem;
+class Table;
+class TableColumn;
+class TableRow;
+class TableCell;
+class Frame;
+class Rect;
+class Line;
+class Circle;
+class CustomShape;
+class Image;
 
-struct TextStyle;
-struct ParagraphStyle;
-struct TableStyle;
-struct TableColumnStyle;
-struct TableRowStyle;
-struct TableCellStyle;
-struct GraphicStyle;
-
-class Document final {
+class Document {
 public:
+  explicit Document(std::shared_ptr<internal::abstract::Document> document);
+
   [[nodiscard]] bool editable() const noexcept;
   [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
 
@@ -114,12 +145,60 @@ public:
 
   [[nodiscard]] DocumentCursor root_element() const;
 
+  [[nodiscard]] TextDocument text_document() const;
+  [[nodiscard]] Presentation presentation() const;
+  [[nodiscard]] Spreadsheet spreadsheet() const;
+  [[nodiscard]] Drawing drawing() const;
+
 private:
   std::shared_ptr<internal::abstract::Document> m_document;
 
-  explicit Document(std::shared_ptr<internal::abstract::Document> document);
-
   friend DocumentFile;
+};
+
+template <typename T> class TypedDocument : public Document {
+public:
+  explicit TypedDocument(std::shared_ptr<T> document)
+      : Document(document), m_document{std::move(m_document)} {}
+  explicit TypedDocument(std::shared_ptr<internal::abstract::Document> document)
+      : Document(document), m_document{std::dynamic_pointer_cast<T>(
+                                std::move(document))} {}
+
+  explicit operator bool() const { return m_document; }
+
+protected:
+  std::shared_ptr<T> m_document;
+};
+
+class TextDocument final
+    : public TypedDocument<internal::abstract::TextDocument> {
+public:
+  using TypedDocument::TypedDocument;
+
+  [[nodiscard]] PageLayout page_layout() const;
+};
+
+class Presentation final
+    : public TypedDocument<internal::abstract::Presentation> {
+public:
+  using TypedDocument::TypedDocument;
+
+  [[nodiscard]] std::uint32_t slide_count() const;
+};
+
+class Spreadsheet final
+    : public TypedDocument<internal::abstract::Spreadsheet> {
+public:
+  using TypedDocument::TypedDocument;
+
+  [[nodiscard]] std::uint32_t sheet_count() const;
+};
+
+class Drawing final : public TypedDocument<internal::abstract::Drawing> {
+public:
+  using TypedDocument::TypedDocument;
+
+  [[nodiscard]] std::uint32_t page_count() const;
 };
 
 class DocumentCursor final {
@@ -175,8 +254,9 @@ private:
   friend Document;
 };
 
-class Element final {
+class Element {
 public:
+  Element() = default;
   Element(const internal::abstract::Document *document,
           const internal::abstract::DocumentCursor *cursor,
           internal::abstract::Element *element);
@@ -187,225 +267,6 @@ public:
   explicit operator bool() const;
 
   [[nodiscard]] ElementType type() const;
-
-  template <typename T> class Extension {
-  public:
-    Extension() = default;
-    Extension(const internal::abstract::Document *document,
-              const internal::abstract::DocumentCursor *cursor, T *element)
-        : m_document{document}, m_cursor{cursor}, m_element{element} {}
-    Extension(const internal::abstract::Document *document,
-              const internal::abstract::DocumentCursor *cursor,
-              internal::abstract::Element *element)
-        : m_document{document}, m_cursor{cursor}, m_element{dynamic_cast<T *>(
-                                                      element)} {}
-
-    explicit operator bool() const { return m_element; }
-
-  protected:
-    const internal::abstract::Document *m_document;
-    const internal::abstract::DocumentCursor *m_cursor;
-    T *m_element;
-  };
-
-  class TextRoot final : public Extension<internal::abstract::TextRootElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] PageLayout page_layout() const;
-  };
-
-  class Slide final : public Extension<internal::abstract::SlideElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::string name() const;
-
-    [[nodiscard]] PageLayout page_layout() const;
-  };
-
-  class Sheet final : public Extension<internal::abstract::SheetElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::string name() const;
-
-    [[nodiscard]] TableDimensions
-    content(std::optional<TableDimensions> range) const;
-  };
-
-  class Page final : public Extension<internal::abstract::PageElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] PageLayout page_layout() const;
-  };
-
-  class LineBreak final
-      : public Extension<internal::abstract::LineBreakElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::optional<TextStyle> style() const;
-  };
-
-  class Paragraph final
-      : public Extension<internal::abstract::ParagraphElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::optional<ParagraphStyle> style() const;
-    [[nodiscard]] std::optional<TextStyle> text_style() const;
-  };
-
-  class Span final : public Extension<internal::abstract::SpanElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::optional<TextStyle> style() const;
-  };
-
-  class Text final : public Extension<internal::abstract::TextElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::string content() const;
-    void set_content(const std::string &text) const;
-
-    [[nodiscard]] std::optional<TextStyle> style() const;
-  };
-
-  class Link final : public Extension<internal::abstract::LinkElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::string href() const;
-  };
-
-  class Bookmark final : public Extension<internal::abstract::BookmarkElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::string name() const;
-  };
-
-  class ListItem final : public Extension<internal::abstract::ListItemElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::optional<TextStyle> style() const;
-  };
-
-  class Table final : public Extension<internal::abstract::TableElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] TableDimensions dimensions() const;
-
-    [[nodiscard]] std::optional<TableStyle> style() const;
-  };
-
-  class TableColumn final
-      : public Extension<internal::abstract::TableColumnElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::optional<TableColumnStyle> style() const;
-  };
-
-  class TableRow final : public Extension<internal::abstract::TableRowElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::optional<TableRowStyle> style() const;
-  };
-
-  class TableCell final
-      : public Extension<internal::abstract::TableCellElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] TableColumn column() const;
-    [[nodiscard]] TableRow row() const;
-
-    [[nodiscard]] bool covered() const;
-    [[nodiscard]] TableDimensions span() const;
-    [[nodiscard]] ValueType value_type() const;
-
-    [[nodiscard]] std::optional<TableCellStyle> style() const;
-  };
-
-  class Frame final : public Extension<internal::abstract::FrameElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] AnchorType anchor_type() const;
-    [[nodiscard]] std::optional<std::string> x() const;
-    [[nodiscard]] std::optional<std::string> y() const;
-    [[nodiscard]] std::optional<std::string> width() const;
-    [[nodiscard]] std::optional<std::string> height() const;
-    [[nodiscard]] std::optional<std::string> z_index() const;
-
-    [[nodiscard]] std::optional<GraphicStyle> style() const;
-  };
-
-  class Rect final : public Extension<internal::abstract::RectElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::string x() const;
-    [[nodiscard]] std::string y() const;
-    [[nodiscard]] std::string width() const;
-    [[nodiscard]] std::string height() const;
-
-    [[nodiscard]] std::optional<GraphicStyle> style() const;
-  };
-
-  class Line final : public Extension<internal::abstract::LineElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::string x1() const;
-    [[nodiscard]] std::string y1() const;
-    [[nodiscard]] std::string x2() const;
-    [[nodiscard]] std::string y2() const;
-
-    [[nodiscard]] std::optional<GraphicStyle> style() const;
-  };
-
-  class Circle final : public Extension<internal::abstract::CircleElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::string x() const;
-    [[nodiscard]] std::string y() const;
-    [[nodiscard]] std::string width() const;
-    [[nodiscard]] std::string height() const;
-
-    [[nodiscard]] std::optional<GraphicStyle> style() const;
-  };
-
-  class CustomShape final
-      : public Extension<internal::abstract::CustomShapeElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] std::optional<std::string> x() const;
-    [[nodiscard]] std::optional<std::string> y() const;
-    [[nodiscard]] std::string width() const;
-    [[nodiscard]] std::string height() const;
-
-    [[nodiscard]] std::optional<GraphicStyle> style() const;
-  };
-
-  class Image final : public Extension<internal::abstract::ImageElement> {
-  public:
-    using Extension::Extension;
-
-    [[nodiscard]] bool internal() const;
-    [[nodiscard]] std::optional<odr::File> file() const;
-    [[nodiscard]] std::string href() const;
-  };
 
   [[nodiscard]] TextRoot text_root() const;
   [[nodiscard]] Slide slide() const;
@@ -429,10 +290,229 @@ public:
   [[nodiscard]] CustomShape custom_shape() const;
   [[nodiscard]] Image image() const;
 
-private:
-  const internal::abstract::Document *m_document;
-  const internal::abstract::DocumentCursor *m_cursor;
-  internal::abstract::Element *m_element;
+protected:
+  const internal::abstract::Document *m_document{nullptr};
+  const internal::abstract::DocumentCursor *m_cursor{nullptr};
+  internal::abstract::Element *m_element{nullptr};
+};
+
+template <typename T> class TypedElement : public Element {
+public:
+  TypedElement() = default;
+  TypedElement(const internal::abstract::Document *document,
+               const internal::abstract::DocumentCursor *cursor, T *element)
+      : Element(document, cursor, element), m_element{element} {}
+  TypedElement(const internal::abstract::Document *document,
+               const internal::abstract::DocumentCursor *cursor,
+               internal::abstract::Element *element)
+      : Element(document, cursor, element), m_element{
+                                                dynamic_cast<T *>(element)} {}
+
+protected:
+  T *m_element{nullptr};
+};
+
+class TextRoot final
+    : public TypedElement<internal::abstract::TextRootElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] PageLayout page_layout() const;
+};
+
+class Slide final : public TypedElement<internal::abstract::SlideElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::string name() const;
+
+  [[nodiscard]] PageLayout page_layout() const;
+};
+
+class Sheet final : public TypedElement<internal::abstract::SheetElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::string name() const;
+
+  [[nodiscard]] TableDimensions
+  content(std::optional<TableDimensions> range) const;
+};
+
+class Page final : public TypedElement<internal::abstract::PageElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] PageLayout page_layout() const;
+};
+
+class LineBreak final
+    : public TypedElement<internal::abstract::LineBreakElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::optional<TextStyle> style() const;
+};
+
+class Paragraph final
+    : public TypedElement<internal::abstract::ParagraphElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::optional<ParagraphStyle> style() const;
+  [[nodiscard]] std::optional<TextStyle> text_style() const;
+};
+
+class Span final : public TypedElement<internal::abstract::SpanElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::optional<TextStyle> style() const;
+};
+
+class Text final : public TypedElement<internal::abstract::TextElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::string content() const;
+  void set_content(const std::string &text) const;
+
+  [[nodiscard]] std::optional<TextStyle> style() const;
+};
+
+class Link final : public TypedElement<internal::abstract::LinkElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::string href() const;
+};
+
+class Bookmark final
+    : public TypedElement<internal::abstract::BookmarkElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::string name() const;
+};
+
+class ListItem final
+    : public TypedElement<internal::abstract::ListItemElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::optional<TextStyle> style() const;
+};
+
+class Table final : public TypedElement<internal::abstract::TableElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] TableDimensions dimensions() const;
+
+  [[nodiscard]] std::optional<TableStyle> style() const;
+};
+
+class TableColumn final
+    : public TypedElement<internal::abstract::TableColumnElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::optional<TableColumnStyle> style() const;
+};
+
+class TableRow final
+    : public TypedElement<internal::abstract::TableRowElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::optional<TableRowStyle> style() const;
+};
+
+class TableCell final
+    : public TypedElement<internal::abstract::TableCellElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] TableColumn column() const;
+  [[nodiscard]] TableRow row() const;
+
+  [[nodiscard]] bool covered() const;
+  [[nodiscard]] TableDimensions span() const;
+  [[nodiscard]] ValueType value_type() const;
+
+  [[nodiscard]] std::optional<TableCellStyle> style() const;
+};
+
+class Frame final : public TypedElement<internal::abstract::FrameElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] AnchorType anchor_type() const;
+  [[nodiscard]] std::optional<std::string> x() const;
+  [[nodiscard]] std::optional<std::string> y() const;
+  [[nodiscard]] std::optional<std::string> width() const;
+  [[nodiscard]] std::optional<std::string> height() const;
+  [[nodiscard]] std::optional<std::string> z_index() const;
+
+  [[nodiscard]] std::optional<GraphicStyle> style() const;
+};
+
+class Rect final : public TypedElement<internal::abstract::RectElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::string x() const;
+  [[nodiscard]] std::string y() const;
+  [[nodiscard]] std::string width() const;
+  [[nodiscard]] std::string height() const;
+
+  [[nodiscard]] std::optional<GraphicStyle> style() const;
+};
+
+class Line final : public TypedElement<internal::abstract::LineElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::string x1() const;
+  [[nodiscard]] std::string y1() const;
+  [[nodiscard]] std::string x2() const;
+  [[nodiscard]] std::string y2() const;
+
+  [[nodiscard]] std::optional<GraphicStyle> style() const;
+};
+
+class Circle final : public TypedElement<internal::abstract::CircleElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::string x() const;
+  [[nodiscard]] std::string y() const;
+  [[nodiscard]] std::string width() const;
+  [[nodiscard]] std::string height() const;
+
+  [[nodiscard]] std::optional<GraphicStyle> style() const;
+};
+
+class CustomShape final
+    : public TypedElement<internal::abstract::CustomShapeElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] std::optional<std::string> x() const;
+  [[nodiscard]] std::optional<std::string> y() const;
+  [[nodiscard]] std::string width() const;
+  [[nodiscard]] std::string height() const;
+
+  [[nodiscard]] std::optional<GraphicStyle> style() const;
+};
+
+class Image final : public TypedElement<internal::abstract::ImageElement> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] bool internal() const;
+  [[nodiscard]] std::optional<odr::File> file() const;
+  [[nodiscard]] std::string href() const;
 };
 
 } // namespace odr
