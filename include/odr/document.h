@@ -8,10 +8,6 @@
 
 namespace odr::internal::abstract {
 class Document;
-class TextDocument;
-class Presentation;
-class Spreadsheet;
-class Drawing;
 
 class DocumentCursor;
 
@@ -131,7 +127,7 @@ class Circle;
 class CustomShape;
 class Image;
 
-class Document {
+class Document final {
 public:
   explicit Document(std::shared_ptr<internal::abstract::Document> document);
 
@@ -145,60 +141,10 @@ public:
 
   [[nodiscard]] DocumentCursor root_element() const;
 
-  [[nodiscard]] TextDocument text_document() const;
-  [[nodiscard]] Presentation presentation() const;
-  [[nodiscard]] Spreadsheet spreadsheet() const;
-  [[nodiscard]] Drawing drawing() const;
-
 private:
   std::shared_ptr<internal::abstract::Document> m_document;
 
   friend DocumentFile;
-};
-
-template <typename T> class TypedDocument : public Document {
-public:
-  explicit TypedDocument(std::shared_ptr<T> document)
-      : Document(document), m_document{std::move(m_document)} {}
-  explicit TypedDocument(std::shared_ptr<internal::abstract::Document> document)
-      : Document(document), m_document{std::dynamic_pointer_cast<T>(
-                                std::move(document))} {}
-
-  explicit operator bool() const { return m_document; }
-
-protected:
-  std::shared_ptr<T> m_document;
-};
-
-class TextDocument final
-    : public TypedDocument<internal::abstract::TextDocument> {
-public:
-  using TypedDocument::TypedDocument;
-
-  [[nodiscard]] PageLayout page_layout() const;
-};
-
-class Presentation final
-    : public TypedDocument<internal::abstract::Presentation> {
-public:
-  using TypedDocument::TypedDocument;
-
-  [[nodiscard]] std::uint32_t slide_count() const;
-};
-
-class Spreadsheet final
-    : public TypedDocument<internal::abstract::Spreadsheet> {
-public:
-  using TypedDocument::TypedDocument;
-
-  [[nodiscard]] std::uint32_t sheet_count() const;
-};
-
-class Drawing final : public TypedDocument<internal::abstract::Drawing> {
-public:
-  using TypedDocument::TypedDocument;
-
-  [[nodiscard]] std::uint32_t page_count() const;
 };
 
 class DocumentCursor final {

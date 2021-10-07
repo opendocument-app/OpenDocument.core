@@ -38,30 +38,6 @@ DocumentCursor Document::root_element() const {
   return {m_document, m_document->root_element()};
 }
 
-TextDocument Document::text_document() const {
-  return TextDocument(m_document);
-}
-
-Presentation Document::presentation() const { return Presentation(m_document); }
-
-Spreadsheet Document::spreadsheet() const { return Spreadsheet(m_document); }
-
-Drawing Document::drawing() const { return Drawing(m_document); }
-
-PageLayout TextDocument::page_layout() const {
-  return m_document->page_layout();
-}
-
-std::uint32_t Presentation::slide_count() const {
-  return m_document->slide_count();
-}
-
-std::uint32_t Spreadsheet::sheet_count() const {
-  return m_document->sheet_count();
-}
-
-std::uint32_t Drawing::page_count() const { return m_document->page_count(); }
-
 DocumentCursor::DocumentCursor(
     std::shared_ptr<internal::abstract::Document> document,
     std::unique_ptr<internal::abstract::DocumentCursor> cursor)
