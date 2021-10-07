@@ -12,7 +12,6 @@
 #include <internal/odf/odf_style.h>
 #include <internal/util/string_util.h>
 #include <internal/util/xml_util.h>
-#include <iosfwd>
 #include <odr/document.h>
 #include <odr/file.h>
 #include <odr/style.h>

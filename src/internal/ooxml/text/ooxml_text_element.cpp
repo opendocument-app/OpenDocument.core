@@ -11,7 +11,6 @@
 #include <internal/ooxml/text/ooxml_text_element.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
 #include <internal/util/xml_util.h>
-#include <iosfwd>
 #include <odr/document.h>
 #include <odr/file.h>
 #include <odr/quantity.h>

@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <iosfwd>
 #include <string>
 
 namespace odr::internal::cfb::impl {

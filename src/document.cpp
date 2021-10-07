@@ -1,5 +1,7 @@
 #include <cstdint>
 #include <internal/abstract/document.h>
+#include <internal/abstract/document_cursor.h>
+#include <internal/abstract/document_element.h>
 #include <internal/common/document_path.h>
 #include <internal/common/path.h>
 #include <odr/document.h>

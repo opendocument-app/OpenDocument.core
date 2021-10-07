@@ -2,7 +2,6 @@
 #define ODR_INTERNAL_STRING_UTIL_H
 
 #include <cstdint>
-#include <iosfwd>
 #include <string>
 
 namespace odr::internal::util::string {

@@ -4,7 +4,6 @@
 #include <internal/cfb/cfb_impl.h>
 #include <internal/common/file.h>
 #include <internal/common/path.h>
-#include <iosfwd>
 #include <iterator>
 #include <memory>
 #include <optional>

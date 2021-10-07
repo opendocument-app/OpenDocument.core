@@ -3,14 +3,17 @@
 
 #include <cstdint>
 #include <functional>
-#include <internal/abstract/document.h>
+#include <internal/abstract/document_cursor.h>
 #include <internal/common/document_path.h>
 #include <internal/common/style.h>
-#include <iosfwd>
 #include <optional>
 #include <pugixml.hpp>
 #include <string>
 #include <vector>
+
+namespace odr::internal::abstract {
+class Document;
+}
 
 namespace odr::internal::common {
 
@@ -47,7 +50,7 @@ protected:
   const abstract::Document *m_document;
 
   void *push_(std::size_t size);
-  void push_style_(ResolvedStyle style);
+  void push_style_(const ResolvedStyle &style);
 
   virtual void pushed_(abstract::Element *element);
   virtual void popping_(abstract::Element *element);

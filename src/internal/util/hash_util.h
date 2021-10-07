@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <iosfwd>
 
 namespace odr::internal::util::hash {
 

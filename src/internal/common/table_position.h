@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <iosfwd>
 #include <string>
 #include <string_view>
 

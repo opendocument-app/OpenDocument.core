@@ -1,11 +1,10 @@
 #include <cstdint>
-#include <internal/abstract/document.h>
+#include <internal/abstract/allocator.h>
+#include <internal/abstract/document_cursor.h>
+#include <internal/abstract/document_element.h>
 #include <internal/common/document_cursor.h>
 #include <internal/common/document_path.h>
 #include <internal/common/style.h>
-#include <iostream>
-#include <memory>
-#include <odr/style.h>
 #include <stdexcept>
 #include <variant>
 
@@ -53,7 +52,7 @@ void DocumentCursor::pop_() {
   m_element_stack.resize(next_offset);
 }
 
-void DocumentCursor::push_style_(ResolvedStyle style) {
+void DocumentCursor::push_style_(const ResolvedStyle &style) {
   if (m_style_stack.empty()) {
     m_style_stack.emplace_back();
   } else {

@@ -1,6 +1,8 @@
 #ifndef ODR_INTERNAL_COMMON_ELEMENT_H
 #define ODR_INTERNAL_COMMON_ELEMENT_H
 
+#include <internal/abstract/allocator.h>
+#include <internal/abstract/document_element.h>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {

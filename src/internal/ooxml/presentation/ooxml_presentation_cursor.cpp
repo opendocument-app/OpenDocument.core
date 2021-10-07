@@ -3,7 +3,6 @@
 #include <internal/ooxml/presentation/ooxml_presentation_cursor.h>
 #include <internal/ooxml/presentation/ooxml_presentation_document.h>
 #include <internal/ooxml/presentation/ooxml_presentation_element.h>
-#include <iosfwd>
 #include <pugixml.hpp>
 #include <stdexcept>
 

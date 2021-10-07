@@ -3,7 +3,6 @@
 #include <internal/ooxml/text/ooxml_text_cursor.h>
 #include <internal/ooxml/text/ooxml_text_document.h>
 #include <internal/ooxml/text/ooxml_text_element.h>
-#include <iosfwd>
 #include <pugixml.hpp>
 #include <stdexcept>
 

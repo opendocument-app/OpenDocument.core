@@ -3,7 +3,6 @@
 #include <internal/crypto/crypto_util.h>
 #include <internal/ooxml/ooxml_crypto.h>
 #include <internal/util/string_util.h>
-#include <iosfwd>
 #include <odr/exceptions.h>
 #include <stdexcept>
 #include <utility>

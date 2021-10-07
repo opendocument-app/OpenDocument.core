@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <internal/common/path.h>
-#include <iosfwd>
 #include <string>
 #include <unordered_map>
 
