@@ -99,10 +99,6 @@ enum class ValueType {
   float_number,
 };
 
-class TextDocument;
-class Presentation;
-class Spreadsheet;
-class Drawing;
 class DocumentCursor;
 class Element;
 class TextRoot;

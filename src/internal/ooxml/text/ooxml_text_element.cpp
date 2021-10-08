@@ -65,15 +65,15 @@ class Root final : public DefaultElement<ElementType::root> {
 public:
   using DefaultElement::DefaultElement;
 
-  abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::DocumentCursor *,
-                                      const abstract::Allocator *) final {
+  abstract::Element *
+  construct_previous_sibling(const abstract::Document *,
+                             const abstract::Allocator *) const final {
     return nullptr;
   }
 
-  abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *) final {
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator *) const final {
     return nullptr;
   }
 };
@@ -121,18 +121,17 @@ public:
   using Element::Element;
 
   abstract::Element *
-  previous_sibling(const abstract::Document *document,
-                   const abstract::DocumentCursor *,
-                   const abstract::Allocator *allocator) final {
-    return common::construct_previous_sibling_element(
-        construct_default_element, first_(), document_(document), allocator);
+  construct_previous_sibling(const abstract::Document *document,
+                             const abstract::Allocator *allocator) const final {
+    return common::construct_previous_sibling_element(construct_default_element,
+                                                      first_(), allocator);
   }
 
-  abstract::Element *next_sibling(const abstract::Document *document,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *allocator) final {
-    return common::construct_next_sibling_element(
-        construct_default_element, last_(), document_(document), allocator);
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *document,
+                         const abstract::Allocator *allocator) const final {
+    return common::construct_next_sibling_element(construct_default_element,
+                                                  last_(), allocator);
   }
 
   [[nodiscard]] std::string content(const abstract::Document *) const final {
@@ -279,29 +278,40 @@ public:
     return ElementType::list;
   }
 
-  abstract::Element *first_child(const abstract::Document *,
-                                 const abstract::DocumentCursor *,
-                                 const abstract::Allocator *allocator) final {
+  abstract::Element *
+  construct_first_child(const abstract::Document *,
+                        const abstract::Allocator *allocator) const final {
     if (m_level == level(m_node)) {
       return common::construct<ListItemParagraph>(m_node, allocator);
     }
     return common::construct_2<ListElement>(allocator, m_node, m_level + 1);
   }
 
-  abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::DocumentCursor *,
-                                      const abstract::Allocator *) final {
+  abstract::Element *
+  construct_previous_sibling(const abstract::Document *,
+                             const abstract::Allocator *) const final {
     return nullptr; // TODO
   }
 
-  abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *) final {
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator *allocator) const final {
     if (auto node = m_node.next_sibling(); node && is_list_item(node)) {
-      m_node = node;
-      return this;
+      return common::construct_2<ListElement>(allocator, m_node, m_level);
     }
     return nullptr;
+  }
+
+  bool move_to_previous_sibling(const abstract::Document *) final {
+    return false;
+  }
+
+  bool move_to_next_sibling(const abstract::Document *) final {
+    if (auto node = m_node.next_sibling(); node && is_list_item(node)) {
+      m_node = node;
+      return true;
+    }
+    return false;
   }
 
   [[nodiscard]] std::optional<TextStyle>
@@ -322,31 +332,30 @@ public:
     return ElementType::list;
   }
 
-  abstract::Element *first_child(const abstract::Document *,
-                                 const abstract::DocumentCursor *,
-                                 const abstract::Allocator *allocator) final {
+  abstract::Element *
+  construct_first_child(const abstract::Document *,
+                        const abstract::Allocator *allocator) const final {
     return common::construct_2<ListElement>(allocator, m_node, 0);
   }
 
   abstract::Element *
-  previous_sibling(const abstract::Document *document,
-                   const abstract::DocumentCursor *,
-                   const abstract::Allocator *allocator) final {
+  construct_previous_sibling(const abstract::Document *,
+                             const abstract::Allocator *allocator) const final {
     auto node = m_node.previous_sibling();
     for (; node && ListElement::is_list_item(node);
          node = node.previous_sibling()) {
     }
-    return construct_default_element(node, document_(document), allocator);
+    return construct_default_element(node, allocator);
   }
 
-  abstract::Element *next_sibling(const abstract::Document *document,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *allocator) final {
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator *allocator) const final {
     auto node = m_node.next_sibling();
     for (; node && ListElement::is_list_item(node);
          node = node.next_sibling()) {
     }
-    return construct_default_element(node, document_(document), allocator);
+    return construct_default_element(node, allocator);
   }
 };
 
@@ -354,15 +363,15 @@ class ListItemParagraph : public Paragraph {
 public:
   using Paragraph::Paragraph;
 
-  abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::DocumentCursor *,
-                                      const abstract::Allocator *) final {
+  abstract::Element *
+  construct_previous_sibling(const abstract::Document *,
+                             const abstract::Allocator *) const final {
     return nullptr;
   }
 
-  abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *) final {
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator *) const final {
     return nullptr;
   }
 };
@@ -371,9 +380,9 @@ class TableElement : public Element, public abstract::TableElement {
 public:
   using Element::Element;
 
-  abstract::Element *first_child(const abstract::Document *,
-                                 const abstract::DocumentCursor *,
-                                 const abstract::Allocator *) final {
+  abstract::Element *
+  construct_first_child(const abstract::Document *,
+                        const abstract::Allocator *) const final {
     return nullptr;
   }
 
@@ -383,15 +392,15 @@ public:
   }
 
   abstract::Element *
-  first_column(const abstract::Document *, const abstract::DocumentCursor *,
-               const abstract::Allocator *allocator) const final {
+  construct_first_column(const abstract::Document *,
+                         const abstract::Allocator *allocator) const final {
     return common::construct_optional<TableColumn>(
         m_node.child("w:tblGrid").child("w:gridCol"), allocator);
   }
 
   abstract::Element *
-  first_row(const abstract::Document *, const abstract::DocumentCursor *,
-            const abstract::Allocator *allocator) const final {
+  construct_first_row(const abstract::Document *,
+                      const abstract::Allocator *allocator) const final {
     return common::construct_optional<TableRow>(m_node.child("w:tr"),
                                                 allocator);
   }
@@ -407,24 +416,34 @@ class TableColumn final : public Element, public abstract::TableColumnElement {
 public:
   using Element::Element;
 
-  abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::DocumentCursor *,
-                                      const abstract::Allocator *) final {
-    if (auto previous_sibling = m_node.previous_sibling("w:gridCol")) {
-      m_node = previous_sibling;
-      return this;
-    }
-    return nullptr;
+  abstract::Element *
+  construct_previous_sibling(const abstract::Document *,
+                             const abstract::Allocator *allocator) const final {
+    return common::construct_optional<TableColumn>(
+        m_node.previous_sibling("w:gridCol"), allocator);
   }
 
-  abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *) final {
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator *allocator) const final {
+    return common::construct_optional<TableColumn>(
+        m_node.next_sibling("w:gridCol"), allocator);
+  }
+
+  bool move_to_previous_sibling(const abstract::Document *) final {
+    if (auto previous_sibling = m_node.previous_sibling("w:gridCol")) {
+      m_node = previous_sibling;
+      return true;
+    }
+    return false;
+  }
+
+  bool move_to_next_sibling(const abstract::Document *) final {
     if (auto next_sibling = m_node.next_sibling("w:gridCol")) {
       m_node = next_sibling;
-      return this;
+      return true;
     }
-    return nullptr;
+    return false;
   }
 
   [[nodiscard]] std::optional<TableColumnStyle>
@@ -442,24 +461,34 @@ class TableRow final : public Element, public abstract::TableRowElement {
 public:
   using Element::Element;
 
-  abstract::Element *previous_sibling(const abstract::Document *,
-                                      const abstract::DocumentCursor *,
-                                      const abstract::Allocator *) final {
-    if (auto previous_sibling = m_node.previous_sibling("w:tr")) {
-      m_node = previous_sibling;
-      return this;
-    }
-    return nullptr;
+  abstract::Element *
+  construct_previous_sibling(const abstract::Document *,
+                             const abstract::Allocator *allocator) const final {
+    return common::construct_optional<TableRow>(m_node.previous_sibling("w:tr"),
+                                                allocator);
   }
 
-  abstract::Element *next_sibling(const abstract::Document *,
-                                  const abstract::DocumentCursor *,
-                                  const abstract::Allocator *) final {
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator *allocator) const final {
+    return common::construct_optional<TableRow>(m_node.next_sibling("w:tr"),
+                                                allocator);
+  }
+
+  bool move_to_previous_sibling(const abstract::Document *) final {
+    if (auto previous_sibling = m_node.previous_sibling("w:tr")) {
+      m_node = previous_sibling;
+      return true;
+    }
+    return false;
+  }
+
+  bool move_to_next_sibling(const abstract::Document *) final {
     if (auto next_sibling = m_node.next_sibling("w:tr")) {
       m_node = next_sibling;
-      return this;
+      return true;
     }
-    return nullptr;
+    return false;
   }
 
   [[nodiscard]] std::optional<TableRowStyle>
@@ -477,26 +506,46 @@ public:
         m_column{node.parent().parent().child("w:tblGrid").child("w:gridCol")},
         m_row{node.parent()} {}
 
-  abstract::Element *previous_sibling(const abstract::Document *document,
-                                      const abstract::DocumentCursor *cursor,
-                                      const abstract::Allocator *) final {
-    m_column.previous_sibling(document, cursor, nullptr);
-    if (auto previous_sibling = m_node.previous_sibling("w:tc")) {
-      m_node = previous_sibling;
-      return this;
+  abstract::Element *construct_previous_sibling(
+      const abstract::Document *document,
+      const abstract::Allocator *allocator) const override {
+    if (m_node.previous_sibling("w:tc")) {
+      auto result = construct_copy(allocator);
+      result->move_to_previous_sibling(document);
+      return result;
     }
+
     return nullptr;
   }
 
-  abstract::Element *next_sibling(const abstract::Document *document,
-                                  const abstract::DocumentCursor *cursor,
-                                  const abstract::Allocator *) final {
-    m_column.next_sibling(document, cursor, nullptr);
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *document,
+                         const abstract::Allocator *allocator) const override {
+    if (m_node.next_sibling("w:tc")) {
+      auto result = construct_copy(allocator);
+      result->move_to_previous_sibling(document);
+      return result;
+    }
+
+    return nullptr;
+  }
+
+  bool move_to_previous_sibling(const abstract::Document *document) final {
+    m_column.move_to_previous_sibling(document);
+    if (auto previous_sibling = m_node.previous_sibling("w:tc")) {
+      m_node = previous_sibling;
+      return true;
+    }
+    return false;
+  }
+
+  bool move_to_next_sibling(const abstract::Document *document) final {
+    m_column.move_to_next_sibling(document);
     if (auto next_sibling = m_node.next_sibling("w:tc")) {
       m_node = next_sibling;
-      return this;
+      return true;
     }
-    return nullptr;
+    return false;
   }
 
   [[nodiscard]] abstract::Element *
@@ -536,12 +585,12 @@ class Frame final : public Element, public abstract::FrameElement {
 public:
   using Element::Element;
 
-  abstract::Element *first_child(const abstract::Document *document,
-                                 const abstract::DocumentCursor *,
-                                 const abstract::Allocator *allocator) final {
+  abstract::Element *
+  construct_first_child(const abstract::Document *,
+                        const abstract::Allocator *allocator) const final {
     return common::construct_first_child_element(
         construct_default_element, m_node.child("wp:inline").child("a:graphic"),
-        document_(document), allocator);
+        allocator);
   }
 
   [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final {
@@ -635,7 +684,6 @@ public:
 
 abstract::Element *
 Element::construct_default_element(pugi::xml_node node,
-                                   const abstract::Document *,
                                    const abstract::Allocator *allocator) {
   using Constructor = std::function<abstract::Element *(
       pugi::xml_node node, const abstract::Allocator *allocator)>;

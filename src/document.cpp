@@ -186,7 +186,7 @@ Element::Element(const internal::abstract::Document *document,
     : m_document{document}, m_cursor{cursor}, m_element{element} {}
 
 bool Element::operator==(const Element &rhs) const {
-  return m_element->equals(m_document, m_cursor, *rhs.m_element);
+  return m_element->equals(*rhs.m_element);
 }
 
 bool Element::operator!=(const Element &rhs) const { return !operator==(rhs); }

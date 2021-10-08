@@ -30,24 +30,29 @@ class Element {
 public:
   virtual ~Element() = default;
 
-  [[nodiscard]] virtual bool equals(const Document *document,
-                                    const DocumentCursor *cursor,
-                                    const Element &other) const = 0;
+  [[nodiscard]] virtual bool equals(const Element &other) const = 0;
 
-  [[nodiscard]] virtual ElementType type(const Document *document) const = 0;
+  [[nodiscard]] virtual ElementType type(const Document *) const = 0;
 
-  virtual Element *parent(const Document *document,
-                          const DocumentCursor *cursor,
-                          const Allocator *allocator) = 0;
-  virtual Element *first_child(const Document *document,
-                               const DocumentCursor *cursor,
-                               const Allocator *allocator) = 0;
-  virtual Element *previous_sibling(const Document *document,
-                                    const DocumentCursor *cursor,
-                                    const Allocator *allocator) = 0;
-  virtual Element *next_sibling(const Document *document,
-                                const DocumentCursor *cursor,
-                                const Allocator *allocator) = 0;
+  [[nodiscard]] virtual Element *
+  construct_copy(const Allocator *allocator) const = 0;
+  [[nodiscard]] virtual Element *
+  construct_parent(const Document *document,
+                   const Allocator *allocator) const = 0;
+  [[nodiscard]] virtual Element *
+  construct_first_child(const Document *document,
+                        const Allocator *allocator) const = 0;
+  [[nodiscard]] virtual Element *
+  construct_previous_sibling(const Document *document,
+                             const Allocator *allocator) const = 0;
+  [[nodiscard]] virtual Element *
+  construct_next_sibling(const Document *document,
+                         const Allocator *allocator) const = 0;
+
+  virtual bool move_to_parent(const Document *document) = 0;
+  virtual bool move_to_first_child(const Document *document) = 0;
+  virtual bool move_to_previous_sibling(const Document *document) = 0;
+  virtual bool move_to_next_sibling(const Document *document) = 0;
 };
 
 class TextRootElement : public virtual Element {
@@ -93,8 +98,8 @@ public:
           std::optional<TableDimensions> range) const = 0;
 
   [[nodiscard]] virtual Element *
-  first_shape(const Document *document, const DocumentCursor *cursor,
-              const Allocator *allocator) const = 0;
+  construct_first_shape(const Document *document,
+                        const Allocator *allocator) const = 0;
 };
 
 class PageElement : public virtual Element {
@@ -206,11 +211,11 @@ public:
   [[nodiscard]] virtual TableDimensions
   dimensions(const Document *document) const = 0;
   [[nodiscard]] virtual Element *
-  first_column(const Document *document, const DocumentCursor *cursor,
-               const Allocator *allocator) const = 0;
+  construct_first_column(const Document *document,
+                         const Allocator *allocator) const = 0;
   [[nodiscard]] virtual Element *
-  first_row(const Document *document, const DocumentCursor *cursor,
-            const Allocator *allocator) const = 0;
+  construct_first_row(const Document *document,
+                      const Allocator *allocator) const = 0;
 
   [[nodiscard]] virtual std::optional<TableStyle>
   style(const Document *document, const DocumentCursor *cursor) const = 0;
@@ -242,6 +247,7 @@ public:
     return ElementType::table_cell;
   }
 
+  // TODO should return const
   [[nodiscard]] virtual Element *column(const Document *document,
                                         const DocumentCursor *cursor) = 0;
   [[nodiscard]] virtual Element *row(const Document *document,

@@ -87,41 +87,52 @@ template <typename Derived> class Element : public virtual abstract::Element {
 public:
   explicit Element(const pugi::xml_node node) : m_node{node} {}
 
-  [[nodiscard]] bool equals(const abstract::Document *,
-                            const abstract::DocumentCursor *,
-                            const abstract::Element &rhs) const override {
+  [[nodiscard]] bool equals(const abstract::Element &rhs) const override {
     return m_node == *dynamic_cast<const Element &>(rhs).m_node;
   }
 
-  abstract::Element *parent(const abstract::Document *document,
-                            const abstract::DocumentCursor *,
-                            const abstract::Allocator *allocator) override {
+  abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const override {
+    return Derived::construct_default_element(m_node, allocator);
+  }
+
+  abstract::Element *
+  construct_parent(const abstract::Document *,
+                   const abstract::Allocator *allocator) const override {
     return common::construct_parent_element(Derived::construct_default_element,
-                                            m_node, document, allocator);
+                                            m_node, allocator);
   }
 
   abstract::Element *
-  first_child(const abstract::Document *document,
-              const abstract::DocumentCursor *,
-              const abstract::Allocator *allocator) override {
+  construct_first_child(const abstract::Document *,
+                        const abstract::Allocator *allocator) const override {
     return common::construct_first_child_element(
-        Derived::construct_default_element, m_node, document, allocator);
+        Derived::construct_default_element, m_node, allocator);
   }
 
-  abstract::Element *
-  previous_sibling(const abstract::Document *document,
-                   const abstract::DocumentCursor *,
-                   const abstract::Allocator *allocator) override {
+  abstract::Element *construct_previous_sibling(
+      const abstract::Document *,
+      const abstract::Allocator *allocator) const override {
     return common::construct_previous_sibling_element(
-        Derived::construct_default_element, m_node, document, allocator);
+        Derived::construct_default_element, m_node, allocator);
   }
 
   abstract::Element *
-  next_sibling(const abstract::Document *document,
-               const abstract::DocumentCursor *,
-               const abstract::Allocator *allocator) override {
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator *allocator) const override {
     return common::construct_next_sibling_element(
-        Derived::construct_default_element, m_node, document, allocator);
+        Derived::construct_default_element, m_node, allocator);
+  }
+
+  bool move_to_parent(const abstract::Document *) override { return false; }
+  bool move_to_first_child(const abstract::Document *) override {
+    return false;
+  }
+  bool move_to_previous_sibling(const abstract::Document *) override {
+    return false;
+  }
+  bool move_to_next_sibling(const abstract::Document *) override {
+    return false;
   }
 
 protected:

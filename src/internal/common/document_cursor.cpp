@@ -22,8 +22,7 @@ DocumentCursor::~DocumentCursor() {
 }
 
 bool DocumentCursor::equals(const abstract::DocumentCursor &other) const {
-  return back_()->equals(m_document, this,
-                         *dynamic_cast<const DocumentCursor &>(other).back_());
+  return back_()->equals(*dynamic_cast<const DocumentCursor &>(other).back_());
 }
 
 [[nodiscard]] DocumentPath DocumentCursor::document_path() const {
@@ -111,7 +110,7 @@ bool DocumentCursor::move_to_first_child() {
   abstract::Allocator allocator = [this](const std::size_t size) {
     return push_(size);
   };
-  auto element = back_()->first_child(m_document, this, &allocator);
+  auto element = back_()->construct_first_child(m_document, &allocator);
   if (!element) {
     return false;
   }
@@ -124,30 +123,36 @@ bool DocumentCursor::move_to_first_child() {
 }
 
 bool DocumentCursor::move_to_previous_sibling() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    pop_();
-    return push_(size);
-  };
-  auto element = back_()->previous_sibling(m_document, this, &allocator);
-  if (!element) {
-    return false;
+  auto element = back_();
+  if (!back_()->move_to_previous_sibling(m_document)) {
+    abstract::Allocator allocator = [this](const std::size_t size) {
+      pop_();
+      return push_(size);
+    };
+    element = back_()->construct_previous_sibling(m_document, &allocator);
+    if (!element) {
+      return false;
+    }
   }
-  popping_(element);
+  popping_(nullptr);
   pushed_(element);
   std::visit([](auto &&c) { --c; }, *m_current_component);
   return true;
 }
 
 bool DocumentCursor::move_to_next_sibling() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    pop_();
-    return push_(size);
-  };
-  auto element = back_()->next_sibling(m_document, this, &allocator);
-  if (!element) {
-    return false;
+  auto element = back_();
+  if (!back_()->move_to_next_sibling(m_document)) {
+    abstract::Allocator allocator = [this](const std::size_t size) {
+      pop_();
+      return push_(size);
+    };
+    element = back_()->construct_next_sibling(m_document, &allocator);
+    if (!element) {
+      return false;
+    }
   }
-  popping_(element);
+  popping_(nullptr);
   pushed_(element);
   std::visit([](auto &&c) { ++c; }, *m_current_component);
   return true;
@@ -183,7 +188,7 @@ bool DocumentCursor::move_to_first_table_column() {
   abstract::Allocator allocator = [this](const std::size_t size) {
     return push_(size);
   };
-  auto element = table->first_column(m_document, this, &allocator);
+  auto element = table->construct_first_column(m_document, &allocator);
   if (!element) {
     return false;
   }
@@ -204,7 +209,7 @@ bool DocumentCursor::move_to_first_table_row() {
   abstract::Allocator allocator = [this](const std::size_t size) {
     return push_(size);
   };
-  auto element = table->first_row(m_document, this, &allocator);
+  auto element = table->construct_first_row(m_document, &allocator);
   if (!element) {
     return false;
   }
@@ -225,7 +230,7 @@ bool DocumentCursor::move_to_first_sheet_shape() {
   abstract::Allocator allocator = [this](const std::size_t size) {
     return push_(size);
   };
-  auto element = sheet->first_shape(m_document, this, &allocator);
+  auto element = sheet->construct_first_shape(m_document, &allocator);
   if (!element) {
     return false;
   }
