@@ -297,7 +297,7 @@ public:
   construct_next_sibling(const abstract::Document *,
                          const abstract::Allocator *allocator) const final {
     if (auto node = m_node.next_sibling(); node && is_list_item(node)) {
-      return common::construct_2<ListElement>(allocator, m_node, m_level);
+      return common::construct_2<ListElement>(allocator, node, m_level);
     }
     return nullptr;
   }
@@ -506,6 +506,11 @@ public:
         m_column{node.parent().parent().child("w:tblGrid").child("w:gridCol")},
         m_row{node.parent()} {}
 
+  abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const override {
+    return common::construct_2<TableCell>(allocator, *this);
+  }
+
   abstract::Element *construct_previous_sibling(
       const abstract::Document *document,
       const abstract::Allocator *allocator) const override {
@@ -523,7 +528,7 @@ public:
                          const abstract::Allocator *allocator) const override {
     if (m_node.next_sibling("w:tc")) {
       auto result = construct_copy(allocator);
-      result->move_to_previous_sibling(document);
+      result->move_to_next_sibling(document);
       return result;
     }
 

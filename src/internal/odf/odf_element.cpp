@@ -589,7 +589,7 @@ public:
                          const abstract::Allocator *allocator) const override {
     if ((m_repeated_index < number_repeated_() - 1) || next_node_()) {
       auto result = construct_copy(allocator);
-      result->move_to_previous_sibling(document);
+      result->move_to_next_sibling(document);
       return result;
     }
 
