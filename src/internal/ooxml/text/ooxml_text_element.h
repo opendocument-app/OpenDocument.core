@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_OOXML_TEXT_ELEMENT_H
 
 #include <internal/abstract/document.h>
-#include <internal/common/element.h>
+#include <internal/common/document_element.h>
 #include <internal/common/style.h>
 #include <pugixml.hpp>
 #include <string>

@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_COMMON_ELEMENT_H
-#define ODR_INTERNAL_COMMON_ELEMENT_H
+#ifndef ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H
+#define ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H
 
 #include <internal/abstract/allocator.h>
 #include <internal/abstract/document_element.h>
@@ -92,11 +92,6 @@ public:
   }
 
   abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const override {
-    return Derived::construct_default_element(m_node, allocator);
-  }
-
-  abstract::Element *
   construct_parent(const abstract::Document *,
                    const abstract::Allocator *allocator) const override {
     return common::construct_parent_element(Derived::construct_default_element,
@@ -141,4 +136,4 @@ protected:
 
 } // namespace odr::internal::common
 
-#endif // ODR_INTERNAL_COMMON_ELEMENT_H
+#endif // ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H

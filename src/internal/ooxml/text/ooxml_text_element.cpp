@@ -2,7 +2,7 @@
 #include <functional>
 #include <internal/abstract/document.h>
 #include <internal/abstract/filesystem.h>
-#include <internal/common/element.h>
+#include <internal/common/document_element.h>
 #include <internal/common/path.h>
 #include <internal/common/style.h>
 #include <internal/ooxml/ooxml_util.h>
@@ -59,11 +59,21 @@ public:
   [[nodiscard]] ElementType type(const abstract::Document *) const override {
     return _element_type;
   }
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const override {
+    return common::construct_2<DefaultElement>(allocator, *this);
+  }
 };
 
 class Root final : public DefaultElement<ElementType::root> {
 public:
   using DefaultElement::DefaultElement;
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<Root>(allocator, *this);
+  }
 
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
@@ -81,6 +91,11 @@ public:
 class Paragraph : public Element, public abstract::ParagraphElement {
 public:
   using Element::Element;
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const override {
+    return common::construct_2<Paragraph>(allocator, *this);
+  }
 
   common::ResolvedStyle
   partial_style(const abstract::Document *document) const final {
@@ -104,6 +119,11 @@ class Span final : public Element, public abstract::SpanElement {
 public:
   using Element::Element;
 
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<Span>(allocator, *this);
+  }
+
   common::ResolvedStyle
   partial_style(const abstract::Document *document) const final {
     return style_(document)->partial_text_style(m_node);
@@ -119,6 +139,11 @@ public:
 class Text final : public Element, public abstract::TextElement {
 public:
   using Element::Element;
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<Text>(allocator, *this);
+  }
 
   abstract::Element *
   construct_previous_sibling(const abstract::Document *document,
@@ -230,6 +255,11 @@ class Link final : public Element, public abstract::LinkElement {
 public:
   using Element::Element;
 
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<Link>(allocator, *this);
+  }
+
   [[nodiscard]] std::string
   href(const abstract::Document *document) const final {
     if (auto anchor = m_node.attribute("w:anchor")) {
@@ -248,6 +278,11 @@ public:
 class Bookmark final : public Element, public abstract::BookmarkElement {
 public:
   using Element::Element;
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<Bookmark>(allocator, *this);
+  }
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
     return m_node.attribute("w:name").value();
@@ -276,6 +311,11 @@ public:
       return ElementType::list_item;
     }
     return ElementType::list;
+  }
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<ListElement>(allocator, *this);
   }
 
   abstract::Element *
@@ -332,6 +372,11 @@ public:
     return ElementType::list;
   }
 
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<ListRoot>(allocator, *this);
+  }
+
   abstract::Element *
   construct_first_child(const abstract::Document *,
                         const abstract::Allocator *allocator) const final {
@@ -363,6 +408,11 @@ class ListItemParagraph : public Paragraph {
 public:
   using Paragraph::Paragraph;
 
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<ListItemParagraph>(allocator, *this);
+  }
+
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator *) const final {
@@ -379,6 +429,11 @@ public:
 class TableElement : public Element, public abstract::TableElement {
 public:
   using Element::Element;
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<TableElement>(allocator, *this);
+  }
 
   abstract::Element *
   construct_first_child(const abstract::Document *,
@@ -415,6 +470,11 @@ public:
 class TableColumn final : public Element, public abstract::TableColumnElement {
 public:
   using Element::Element;
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<TableColumn>(allocator, *this);
+  }
 
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
@@ -461,6 +521,11 @@ class TableRow final : public Element, public abstract::TableRowElement {
 public:
   using Element::Element;
 
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<TableRow>(allocator, *this);
+  }
+
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator *allocator) const final {
@@ -506,8 +571,8 @@ public:
         m_column{node.parent().parent().child("w:tblGrid").child("w:gridCol")},
         m_row{node.parent()} {}
 
-  abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const override {
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
     return common::construct_2<TableCell>(allocator, *this);
   }
 
@@ -590,6 +655,11 @@ class Frame final : public Element, public abstract::FrameElement {
 public:
   using Element::Element;
 
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<Frame>(allocator, *this);
+  }
+
   abstract::Element *
   construct_first_child(const abstract::Document *,
                         const abstract::Allocator *allocator) const final {
@@ -648,6 +718,11 @@ public:
 class ImageElement final : public Element, public abstract::ImageElement {
 public:
   using Element::Element;
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator *allocator) const final {
+    return common::construct_2<ImageElement>(allocator, *this);
+  }
 
   [[nodiscard]] bool internal(const abstract::Document *document) const final {
     auto doc = document_(document);
