@@ -1,8 +1,8 @@
 #include <cstdint>
 #include <cstring>
 #include <internal/abstract/filesystem.h>
-#include <internal/common/html.h>
 #include <internal/common/path.h>
+#include <internal/html/common.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/util/xml_util.h>
 #include <odr/quantity.h>
@@ -189,7 +189,7 @@ ooxml::read_border_attribute(const pugi::xml_node node) {
     result.append("solid ");
   }
   if (auto color = read_color_attribute(node.attribute("w:color"))) {
-    result.append(common::html::color(*color));
+    result.append(internal::html::color(*color));
   }
   return result;
 }

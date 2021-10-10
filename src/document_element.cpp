@@ -327,10 +327,4 @@ std::string Image::href() const {
   return m_element ? m_element->href(m_document) : "";
 }
 
-TableDimensions::TableDimensions() = default;
-
-TableDimensions::TableDimensions(const std::uint32_t rows,
-                                 const std::uint32_t columns)
-    : rows{rows}, columns{columns} {}
-
 } // namespace odr

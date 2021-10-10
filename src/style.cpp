@@ -135,4 +135,10 @@ void GraphicStyle::override(const GraphicStyle &other) {
   }
 }
 
+TableDimensions::TableDimensions() = default;
+
+TableDimensions::TableDimensions(const std::uint32_t rows,
+                                 const std::uint32_t columns)
+    : rows{rows}, columns{columns} {}
+
 } // namespace odr

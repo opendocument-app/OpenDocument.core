@@ -1,11 +1,11 @@
-#include <internal/common/html.h>
+#include <internal/html/common.h>
 #include <internal/util/string_util.h>
 #include <iomanip>
 #include <odr/html.h>
 #include <odr/style.h>
 #include <sstream>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 const char *html::doctype() noexcept {
   // clang-format off
@@ -163,4 +163,4 @@ std::string html::color(const Color &color) noexcept {
   return ss.str();
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

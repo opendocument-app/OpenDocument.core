@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_COMMON_HTML_H
-#define ODR_INTERNAL_COMMON_HTML_H
+#ifndef ODR_INTERNAL_HTML_COMMON_H
+#define ODR_INTERNAL_HTML_COMMON_H
 
 #include <string>
 
@@ -8,7 +8,8 @@ struct Color;
 struct HtmlConfig;
 } // namespace odr
 
-namespace odr::internal::common::html {
+namespace odr::internal::html {
+
 const char *doctype() noexcept;
 
 const char *default_headers() noexcept;
@@ -23,6 +24,7 @@ std::string body_attributes(const HtmlConfig &config) noexcept;
 std::string escape_text(std::string text) noexcept;
 
 std::string color(const Color &color) noexcept;
-} // namespace odr::internal::common::html
 
-#endif // ODR_INTERNAL_COMMON_HTML_H
+} // namespace odr::internal::html
+
+#endif // ODR_INTERNAL_HTML_COMMON_H

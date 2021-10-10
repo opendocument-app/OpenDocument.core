@@ -43,7 +43,6 @@ add_library(odr-object OBJECT
         src/internal/common/document_path.cpp
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
-        src/internal/common/html.cpp
         src/internal/common/path.cpp
         src/internal/common/style.cpp
         src/internal/common/table_cursor.cpp
@@ -52,7 +51,11 @@ add_library(odr-object OBJECT
 
         src/internal/crypto/crypto_util.cpp
 
+        src/internal/html/common.cpp
         src/internal/html/css_writer.cpp
+        src/internal/html/document.cpp
+        src/internal/html/document_style.cpp
+        src/internal/html/document_element.cpp
         src/internal/html/html_writer.cpp
 
         src/internal/odf/odf_crypto.cpp
