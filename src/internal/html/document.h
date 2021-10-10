@@ -4,6 +4,7 @@
 #include <iosfwd>
 
 namespace odr {
+class Document;
 class DocumentCursor;
 
 struct HtmlConfig;
@@ -11,15 +12,15 @@ struct HtmlConfig;
 
 namespace odr::internal::html {
 
+void translate_document(const Document &document, std::ostream &out,
+                        const HtmlConfig &config);
+
 void translate_text_document(DocumentCursor &cursor, std::ostream &out,
                              const HtmlConfig &config);
-
 void translate_presentation(DocumentCursor &cursor, std::ostream &out,
                             const HtmlConfig &config);
-
 void translate_spreadsheet(DocumentCursor &cursor, std::ostream &out,
                            const HtmlConfig &config);
-
 void translate_drawing(DocumentCursor &cursor, std::ostream &out,
                        const HtmlConfig &config);
 

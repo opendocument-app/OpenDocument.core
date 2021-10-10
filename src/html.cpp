@@ -1,5 +1,4 @@
 #include <fstream>
-#include <internal/html/common.h>
 #include <internal/html/document.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
@@ -28,39 +27,7 @@ void html::translate(const Document &document, const std::string &path,
     return; // TODO throw
   }
 
-  out << internal::html::doctype();
-  out << "<html><head>";
-  out << internal::html::default_headers();
-  out << "<style>";
-  out << internal::html::default_style();
-  if (document.document_type() == DocumentType::spreadsheet) {
-    out << internal::html::default_spreadsheet_style();
-  }
-  out << "</style>";
-  out << "</head>";
-
-  out << "<body " << internal::html::body_attributes(config) << ">";
-
-  auto cursor = document.root_element();
-
-  if (document.document_type() == DocumentType::text) {
-    internal::html::translate_text_document(cursor, out, config);
-  } else if (document.document_type() == DocumentType::presentation) {
-    internal::html::translate_presentation(cursor, out, config);
-  } else if (document.document_type() == DocumentType::spreadsheet) {
-    internal::html::translate_spreadsheet(cursor, out, config);
-  } else if (document.document_type() == DocumentType::drawing) {
-    internal::html::translate_drawing(cursor, out, config);
-  } else {
-    // TODO throw?
-  }
-
-  out << "<script>";
-  out << internal::html::default_script();
-  out << "</script>";
-
-  out << "</body>";
-  out << "</html>";
+  internal::html::translate_document(document, out, config);
 }
 
 void html::edit(const Document &document, const std::string &diff) {
