@@ -3,7 +3,7 @@
 
 #include <internal/abstract/allocator.h>
 #include <memory>
-#include <odr/document.h>
+#include <odr/document_element.h>
 #include <optional>
 #include <string>
 

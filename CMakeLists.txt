@@ -24,6 +24,8 @@ target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-object OBJECT
         src/document.cpp
+        src/document_cursor.cpp
+        src/document_element.cpp
         src/exceptions.cpp
         src/file.cpp
         src/html.cpp

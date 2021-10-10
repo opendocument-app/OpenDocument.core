@@ -146,14 +146,14 @@ public:
   }
 
   abstract::Element *
-  construct_previous_sibling(const abstract::Document *document,
+  construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator *allocator) const final {
     return common::construct_previous_sibling_element(construct_default_element,
                                                       first_(), allocator);
   }
 
   abstract::Element *
-  construct_next_sibling(const abstract::Document *document,
+  construct_next_sibling(const abstract::Document *,
                          const abstract::Allocator *allocator) const final {
     return common::construct_next_sibling_element(construct_default_element,
                                                   last_(), allocator);

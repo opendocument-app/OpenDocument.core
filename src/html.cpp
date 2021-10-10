@@ -10,6 +10,8 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
+#include <odr/document_cursor.h>
+#include <odr/document_element.h>
 #include <odr/file.h>
 #include <odr/html.h>
 #include <odr/style.h>
