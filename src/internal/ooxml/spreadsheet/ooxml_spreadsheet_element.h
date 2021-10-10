@@ -14,7 +14,7 @@ class Element : public common::Element<Element> {
 public:
   static abstract::Element *
   construct_default_element(pugi::xml_node node,
-                            const abstract::Allocator *allocator);
+                            const abstract::Allocator &allocator);
 
   explicit Element(pugi::xml_node node);
 

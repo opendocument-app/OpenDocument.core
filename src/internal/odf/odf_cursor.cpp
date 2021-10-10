@@ -11,9 +11,9 @@ namespace odr::internal::odf {
 DocumentCursor::DocumentCursor(const Document *document, pugi::xml_node root)
     : common::DocumentCursor(document) {
   abstract::Allocator allocator = [this](std::size_t size) {
-    return push_(size);
+    return reset_current_(size);
   };
-  auto element = Element::construct_default_element(root, &allocator);
+  auto element = Element::construct_default_element(root, allocator);
   if (!element) {
     throw std::invalid_argument("root element invalid");
   }
@@ -25,7 +25,7 @@ DocumentCursor::copy() const {
 }
 
 common::ResolvedStyle DocumentCursor::partial_style() const {
-  return dynamic_cast<const Element *>(back_())->partial_style(m_document);
+  return dynamic_cast<const Element *>(element())->partial_style(m_document);
 }
 
 } // namespace odr::internal::odf

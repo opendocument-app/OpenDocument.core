@@ -12,7 +12,6 @@
 #include <internal/odf/odf_style.h>
 #include <internal/util/string_util.h>
 #include <internal/util/xml_util.h>
-#include <odr/document.h>
 #include <odr/file.h>
 #include <odr/style.h>
 #include <optional>
@@ -25,6 +24,8 @@ namespace odr::internal::odf {
 namespace {
 const char *default_style_name(pugi::xml_node node);
 }
+
+Element::Element() = default;
 
 Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
 
@@ -82,7 +83,7 @@ public:
   }
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const override {
+  construct_copy(const abstract::Allocator &allocator) const override {
     return common::construct_2<DefaultElement>(allocator, *this);
   }
 };
@@ -92,7 +93,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<MasterPage>(allocator, *this);
   }
 
@@ -114,19 +115,19 @@ public:
   }
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const override {
+  construct_copy(const abstract::Allocator &allocator) const override {
     return common::construct_2<Root>(allocator, *this);
   }
 
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
-                             const abstract::Allocator *) const final {
+                             const abstract::Allocator &) const final {
     return nullptr;
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
-                         const abstract::Allocator *) const final {
+                         const abstract::Allocator &) const final {
     return nullptr;
   }
 };
@@ -140,7 +141,7 @@ public:
   }
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<TextDocumentRoot>(allocator, *this);
   }
 
@@ -157,7 +158,7 @@ public:
   [[nodiscard]] abstract::Element *
   first_master_page(const abstract::Document *document,
                     const abstract::DocumentCursor *,
-                    const abstract::Allocator *allocator) const final {
+                    const abstract::Allocator &allocator) const final {
     if (auto first_master_page = style_(document)->first_master_page()) {
       auto master_page_node =
           style_(document)->master_page_node(*first_master_page);
@@ -174,7 +175,7 @@ public:
 
   abstract::Element *
   construct_first_child(const abstract::Document *,
-                        const abstract::Allocator *allocator) const final {
+                        const abstract::Allocator &allocator) const final {
     return common::construct_optional<Slide>(m_node.child("draw:page"),
                                              allocator);
   }
@@ -185,13 +186,13 @@ public:
   using Root::Root;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<SpreadsheetRoot>(allocator, *this);
   }
 
   abstract::Element *
   construct_first_child(const abstract::Document *,
-                        const abstract::Allocator *allocator) const final {
+                        const abstract::Allocator &allocator) const final {
     return common::construct_optional<Sheet>(m_node.child("table:table"),
                                              allocator);
   }
@@ -202,13 +203,13 @@ public:
   using Root::Root;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<DrawingRoot>(allocator, *this);
   }
 
   abstract::Element *
   construct_first_child(const abstract::Document *,
-                        const abstract::Allocator *allocator) const final {
+                        const abstract::Allocator &allocator) const final {
     return common::construct_optional<Page>(m_node.child("draw:page"),
                                             allocator);
   }
@@ -219,38 +220,22 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Slide>(allocator, *this);
   }
 
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
-                             const abstract::Allocator *allocator) const final {
+                             const abstract::Allocator &allocator) const final {
     return common::construct_optional<Slide>(
         m_node.previous_sibling("draw:page"), allocator);
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
-                         const abstract::Allocator *allocator) const final {
+                         const abstract::Allocator &allocator) const final {
     return common::construct_optional<Slide>(m_node.next_sibling("draw:page"),
                                              allocator);
-  }
-
-  bool move_to_previous_sibling(const abstract::Document *) final {
-    if (auto previous_sibling = m_node.previous_sibling("draw:page")) {
-      m_node = previous_sibling;
-      return true;
-    }
-    return false;
-  }
-
-  bool move_to_next_sibling(const abstract::Document *) final {
-    if (auto next_sibling = m_node.next_sibling("draw:page")) {
-      m_node = next_sibling;
-      return true;
-    }
-    return false;
   }
 
   [[nodiscard]] PageLayout
@@ -262,9 +247,8 @@ public:
   }
 
   [[nodiscard]] abstract::Element *
-  master_page(const abstract::Document *document,
-              const abstract::DocumentCursor *,
-              const abstract::Allocator *allocator) const final {
+  construct_master_page(const abstract::Document *document,
+                        const abstract::Allocator &allocator) const final {
     if (auto master_page_node = master_page_node_(document)) {
       return common::construct_optional<MasterPage>(master_page_node,
                                                     allocator);
@@ -291,38 +275,22 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Page>(allocator, *this);
   }
 
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
-                             const abstract::Allocator *allocator) const final {
+                             const abstract::Allocator &allocator) const final {
     return common::construct_optional<Page>(
         m_node.previous_sibling("draw:page"), allocator);
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
-                         const abstract::Allocator *allocator) const final {
+                         const abstract::Allocator &allocator) const final {
     return common::construct_optional<Page>(m_node.next_sibling("draw:page"),
                                             allocator);
-  }
-
-  bool move_to_previous_sibling(const abstract::Document *) final {
-    if (auto previous_sibling = m_node.previous_sibling("draw:page")) {
-      m_node = previous_sibling;
-      return true;
-    }
-    return false;
-  }
-
-  bool move_to_next_sibling(const abstract::Document *) final {
-    if (auto next_sibling = m_node.next_sibling("draw:page")) {
-      m_node = next_sibling;
-      return true;
-    }
-    return false;
   }
 
   [[nodiscard]] PageLayout
@@ -336,7 +304,7 @@ public:
   [[nodiscard]] abstract::Element *
   master_page(const abstract::Document *document,
               const abstract::DocumentCursor *,
-              const abstract::Allocator *allocator) const final {
+              const abstract::Allocator &allocator) const final {
     if (auto master_page_node = master_page_node_(document)) {
       return common::construct_optional<MasterPage>(master_page_node,
                                                     allocator);
@@ -363,7 +331,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<LineBreak>(allocator, *this);
   }
 
@@ -379,7 +347,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Paragraph>(allocator, *this);
   }
 
@@ -401,7 +369,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Span>(allocator, *this);
   }
 
@@ -417,20 +385,20 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Text>(allocator, *this);
   }
 
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
-                             const abstract::Allocator *allocator) const final {
+                             const abstract::Allocator &allocator) const final {
     return common::construct_previous_sibling_element(construct_default_element,
                                                       first_(), allocator);
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
-                         const abstract::Allocator *allocator) const final {
+                         const abstract::Allocator &allocator) const final {
     return common::construct_next_sibling_element(construct_default_element,
                                                   last_(), allocator);
   }
@@ -539,7 +507,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Link>(allocator, *this);
   }
 
@@ -553,7 +521,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Bookmark>(allocator, *this);
   }
 
@@ -567,7 +535,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<ListItem>(allocator, *this);
   }
 
@@ -583,13 +551,13 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const override {
+  construct_copy(const abstract::Allocator &allocator) const override {
     return common::construct_2<TableElement>(allocator, *this);
   }
 
   abstract::Element *
   construct_first_child(const abstract::Document *,
-                        const abstract::Allocator *) const final {
+                        const abstract::Allocator &) const final {
     return nullptr;
   }
 
@@ -626,20 +594,20 @@ public:
 
   abstract::Element *
   construct_first_column(const abstract::Document *,
-                         const abstract::Allocator *allocator) const final {
+                         const abstract::Allocator &allocator) const final {
     return common::construct_optional<TableColumn>(
         m_node.child("table:table-column"), allocator);
   }
 
   abstract::Element *
   construct_first_row(const abstract::Document *,
-                      const abstract::Allocator *allocator) const final {
+                      const abstract::Allocator &allocator) const final {
     return common::construct_optional<TableRow>(m_node.child("table:table-row"),
                                                 allocator);
   }
 };
 
-class TableComponent : public Element {
+template <typename Derived> class TableComponent : public Element {
 public:
   using Element::Element;
 
@@ -647,60 +615,33 @@ public:
       : Element(node), m_repeated_index{repeated_index} {}
 
   abstract::Element *construct_previous_sibling(
-      const abstract::Document *document,
-      const abstract::Allocator *allocator) const override {
-    if ((m_repeated_index > 0) || previous_node_()) {
-      auto result = construct_copy(allocator);
-      result->move_to_previous_sibling(document);
-      return result;
+      const abstract::Document *,
+      const abstract::Allocator &allocator) const override {
+    if (m_repeated_index > 0) {
+      return common::construct_2<Derived>(allocator, m_node,
+                                          m_repeated_index - 1);
     }
-
+    if (auto previous_sibling = previous_node_()) {
+      // TODO not 0 but last repeated
+      return common::construct_2<Derived>(allocator, previous_sibling, 0);
+    }
     return nullptr;
   }
 
   abstract::Element *
-  construct_next_sibling(const abstract::Document *document,
-                         const abstract::Allocator *allocator) const override {
-    if ((m_repeated_index < number_repeated_() - 1) || next_node_()) {
-      auto result = construct_copy(allocator);
-      result->move_to_next_sibling(document);
-      return result;
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator &allocator) const override {
+    if (m_repeated_index < number_repeated_() - 1) {
+      return common::construct_2<Derived>(allocator, m_node,
+                                          m_repeated_index + 1);
     }
-
+    if (auto next_sibling = next_node_()) {
+      return common::construct_2<Derived>(allocator, next_sibling, 0);
+    }
     return nullptr;
   }
 
-  bool move_to_previous_sibling(const abstract::Document *) override {
-    if (m_repeated_index > 0) {
-      --m_repeated_index;
-      return true;
-    }
-
-    if (auto previous_sibling = previous_node_()) {
-      m_node = previous_sibling;
-      m_repeated_index = 0;
-      return true;
-    }
-
-    return false;
-  }
-
-  bool move_to_next_sibling(const abstract::Document *) override {
-    if (m_repeated_index < number_repeated_() - 1) {
-      ++m_repeated_index;
-      return true;
-    }
-
-    if (auto next_sibling = next_node_()) {
-      m_node = next_sibling;
-      m_repeated_index = 0;
-      return true;
-    }
-
-    return false;
-  }
-
-private:
+protected:
   std::uint32_t m_repeated_index{0};
 
   [[nodiscard]] virtual std::uint32_t number_repeated_() const = 0;
@@ -708,13 +649,13 @@ private:
   [[nodiscard]] virtual pugi::xml_node next_node_() const = 0;
 };
 
-class TableColumn final : public TableComponent,
+class TableColumn final : public TableComponent<TableColumn>,
                           public abstract::TableColumnElement {
 public:
   using TableComponent::TableComponent;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<TableColumn>(allocator, *this);
   }
 
@@ -748,12 +689,13 @@ private:
   }
 };
 
-class TableRow final : public TableComponent, public abstract::TableRowElement {
+class TableRow final : public TableComponent<TableRow>,
+                       public abstract::TableRowElement {
 public:
   using TableComponent::TableComponent;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<TableRow>(allocator, *this);
   }
 
@@ -787,28 +729,65 @@ private:
   }
 };
 
-class TableCell final : public TableComponent,
+class TableCell final : public TableComponent<TableCell>,
                         public abstract::TableCellElement {
 public:
+  using TableComponent::TableComponent;
+
   // TODO this only works for first cells
   explicit TableCell(pugi::xml_node node)
       : TableComponent(node), m_column{node.parent().parent().child(
                                   "table:table-column")},
         m_row{node.parent()} {}
+  TableCell(pugi::xml_node node, std::uint32_t repeated_index,
+            TableColumn column)
+      : TableComponent(node, repeated_index), m_column{std::move(column)},
+        m_row{node.parent()} {}
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<TableCell>(allocator, *this);
   }
 
-  bool move_to_previous_sibling(const abstract::Document *document) final {
-    m_column.move_to_previous_sibling(document);
-    return TableComponent::move_to_previous_sibling(document);
+  abstract::Element *construct_previous_sibling(
+      const abstract::Document *document,
+      const abstract::Allocator &allocator) const override {
+    if (m_repeated_index > 0) {
+      TableColumn previous_column;
+      m_column.construct_previous_sibling(
+          document, [&](std::size_t) { return &previous_column; });
+      return common::construct_2<TableCell>(
+          allocator, m_node, m_repeated_index - 1, previous_column);
+    }
+    if (auto previous_sibling = previous_node_()) {
+      TableColumn previous_column;
+      m_column.construct_previous_sibling(
+          document, [&](std::size_t) { return &previous_column; });
+      // TODO not 0 but last repeated
+      return common::construct_2<TableCell>(allocator, previous_sibling, 0,
+                                            previous_column);
+    }
+    return nullptr;
   }
 
-  bool move_to_next_sibling(const abstract::Document *document) final {
-    m_column.move_to_next_sibling(document);
-    return TableComponent::move_to_next_sibling(document);
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *document,
+                         const abstract::Allocator &allocator) const override {
+    if (m_repeated_index < number_repeated_() - 1) {
+      TableColumn next_column;
+      m_column.construct_next_sibling(
+          document, [&](std::size_t) { return &next_column; });
+      return common::construct_2<TableCell>(allocator, m_node,
+                                            m_repeated_index + 1, next_column);
+    }
+    if (auto next_sibling = next_node_()) {
+      TableColumn next_column;
+      m_column.construct_next_sibling(
+          document, [&](std::size_t) { return &next_column; });
+      return common::construct_2<TableCell>(allocator, next_sibling, 0,
+                                            next_column);
+    }
+    return nullptr;
   }
 
   [[nodiscard]] abstract::Element *
@@ -882,7 +861,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Frame>(allocator, *this);
   }
 
@@ -955,7 +934,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Rect>(allocator, *this);
   }
 
@@ -987,7 +966,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Line>(allocator, *this);
   }
 
@@ -1019,7 +998,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Circle>(allocator, *this);
   }
 
@@ -1051,7 +1030,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<CustomShape>(allocator, *this);
   }
 
@@ -1085,7 +1064,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<ImageElement>(allocator, *this);
   }
 
@@ -1120,8 +1099,22 @@ public:
   using TableElement::TableElement;
 
   [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator *allocator) const final {
+  construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<Sheet>(allocator, *this);
+  }
+
+  [[nodiscard]] abstract::Element *
+  construct_previous_sibling(const abstract::Document *,
+                             const abstract::Allocator &allocator) const final {
+    return common::construct_optional<Sheet>(
+        m_node.previous_sibling("table:table"), allocator);
+  }
+
+  [[nodiscard]] abstract::Element *
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator &allocator) const final {
+    return common::construct_optional<Sheet>(m_node.next_sibling("table:table"),
+                                             allocator);
   }
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
@@ -1130,22 +1123,6 @@ public:
 
   [[nodiscard]] ElementType type(const abstract::Document *) const override {
     return ElementType::sheet;
-  }
-
-  bool move_to_previous_sibling(const abstract::Document *) final {
-    if (auto previous_sibling = m_node.previous_sibling("table:table")) {
-      m_node = previous_sibling;
-      return true;
-    }
-    return false;
-  }
-
-  bool move_to_next_sibling(const abstract::Document *) final {
-    if (auto next_sibling = m_node.next_sibling("table:table")) {
-      m_node = next_sibling;
-      return true;
-    }
-    return false;
   }
 
   [[nodiscard]] TableDimensions
@@ -1183,7 +1160,7 @@ public:
 
   [[nodiscard]] abstract::Element *
   construct_first_shape(const abstract::Document *,
-                        const abstract::Allocator *allocator) const final {
+                        const abstract::Allocator &allocator) const final {
     return common::construct_first_child_element(
         construct_default_element, m_node.child("table:shapes"), allocator);
   }
@@ -1193,9 +1170,9 @@ public:
 
 abstract::Element *
 Element::construct_default_element(pugi::xml_node node,
-                                   const abstract::Allocator *allocator) {
+                                   const abstract::Allocator &allocator) {
   using Constructor = std::function<abstract::Element *(
-      pugi::xml_node node, const abstract::Allocator *allocator)>;
+      pugi::xml_node node, const abstract::Allocator &allocator)>;
 
   using List = DefaultElement<ElementType::list>;
   using Group = DefaultElement<ElementType::group>;

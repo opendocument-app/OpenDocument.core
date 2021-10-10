@@ -49,29 +49,36 @@ public:
 protected:
   const abstract::Document *m_document;
 
-  void *push_(std::size_t size);
+  void *reset_current_(std::size_t size);
   void push_style_(const ResolvedStyle &style);
 
   virtual void pushed_(abstract::Element *element);
   virtual void popping_(abstract::Element *element);
 
-  abstract::Element *back_();
-  [[nodiscard]] const abstract::Element *back_() const;
-
   [[nodiscard]] virtual ResolvedStyle partial_style() const;
 
 private:
-  std::vector<std::int32_t> m_element_stack_top;
-  std::string m_element_stack;
+  std::vector<std::int32_t> m_parent_element_stack_top;
+  std::string m_parent_element_stack;
+  std::string m_current_element;
+  std::string m_temporary_element;
+
   std::vector<ResolvedStyle> m_style_stack;
 
   DocumentPath m_parent_path;
   std::optional<DocumentPath::Component> m_current_component;
 
-  [[nodiscard]] std::int32_t next_offset_() const;
-  [[nodiscard]] std::int32_t back_offset_() const;
+  [[nodiscard]] abstract::Element *temporary_();
+  [[nodiscard]] abstract::Element *parent_();
 
-  void pop_();
+  [[nodiscard]] std::int32_t parent_next_offset_() const;
+  [[nodiscard]] std::int32_t parent_back_offset_() const;
+
+  void swap_current_temporary();
+
+  void *reset_temporary_(std::size_t size);
+  void *push_parent_(std::size_t size);
+  void pop_parent_();
   void pop_style_();
 };
 

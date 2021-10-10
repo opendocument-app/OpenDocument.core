@@ -14,21 +14,21 @@ namespace odr::internal::common {
 
 template <typename Derived>
 abstract::Element *construct(pugi::xml_node node,
-                             const abstract::Allocator *allocator) {
-  auto alloc = (*allocator)(sizeof(Derived));
+                             const abstract::Allocator &allocator) {
+  auto alloc = allocator(sizeof(Derived));
   return new (alloc) Derived(node);
 }
 
 template <typename Derived, typename... Args>
-abstract::Element *construct_2(const abstract::Allocator *allocator,
+abstract::Element *construct_2(const abstract::Allocator &allocator,
                                Args &&...args) {
-  auto alloc = (*allocator)(sizeof(Derived));
+  auto alloc = allocator(sizeof(Derived));
   return new (alloc) Derived(std::forward<Args>(args)...);
 }
 
 template <typename Derived>
 abstract::Element *construct_optional(pugi::xml_node node,
-                                      const abstract::Allocator *allocator) {
+                                      const abstract::Allocator &allocator) {
   if (!node) {
     return nullptr;
   }
@@ -85,6 +85,8 @@ construct_next_sibling_element(ElementConstructor constructor,
 
 template <typename Derived> class Element : public virtual abstract::Element {
 public:
+  Element() = default;
+
   explicit Element(const pugi::xml_node node) : m_node{node} {}
 
   [[nodiscard]] bool equals(const abstract::Element &rhs) const override {
@@ -93,41 +95,30 @@ public:
 
   abstract::Element *
   construct_parent(const abstract::Document *,
-                   const abstract::Allocator *allocator) const override {
+                   const abstract::Allocator &allocator) const override {
     return common::construct_parent_element(Derived::construct_default_element,
                                             m_node, allocator);
   }
 
   abstract::Element *
   construct_first_child(const abstract::Document *,
-                        const abstract::Allocator *allocator) const override {
+                        const abstract::Allocator &allocator) const override {
     return common::construct_first_child_element(
         Derived::construct_default_element, m_node, allocator);
   }
 
   abstract::Element *construct_previous_sibling(
       const abstract::Document *,
-      const abstract::Allocator *allocator) const override {
+      const abstract::Allocator &allocator) const override {
     return common::construct_previous_sibling_element(
         Derived::construct_default_element, m_node, allocator);
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
-                         const abstract::Allocator *allocator) const override {
+                         const abstract::Allocator &allocator) const override {
     return common::construct_next_sibling_element(
         Derived::construct_default_element, m_node, allocator);
-  }
-
-  bool move_to_parent(const abstract::Document *) override { return false; }
-  bool move_to_first_child(const abstract::Document *) override {
-    return false;
-  }
-  bool move_to_previous_sibling(const abstract::Document *) override {
-    return false;
-  }
-  bool move_to_next_sibling(const abstract::Document *) override {
-    return false;
   }
 
 protected:

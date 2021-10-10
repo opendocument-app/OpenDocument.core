@@ -11,9 +11,9 @@ namespace odr::internal::ooxml::spreadsheet {
 DocumentCursor::DocumentCursor(const Document *document, pugi::xml_node root)
     : common::DocumentCursor(document) {
   abstract::Allocator allocator = [this](std::size_t size) {
-    return push_(size);
+    return reset_current_(size);
   };
-  auto element = Element::construct_default_element(root, &allocator);
+  auto element = Element::construct_default_element(root, allocator);
   if (!element) {
     throw std::invalid_argument("root element invalid");
   }
