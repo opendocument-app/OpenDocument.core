@@ -108,19 +108,15 @@ public:
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator &allocator) const final {
-    if (auto previous_sibling = m_node.previous_sibling("sheet")) {
-      return common::construct<Sheet>(previous_sibling, allocator);
-    }
-    return nullptr;
+    return common::construct_optional<Sheet>(m_node.previous_sibling("sheet"),
+                                             allocator);
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
                          const abstract::Allocator &allocator) const final {
-    if (auto next_sibling = m_node.next_sibling("sheet")) {
-      return common::construct<Sheet>(next_sibling, allocator);
-    }
-    return nullptr;
+    return common::construct_optional<Sheet>(m_node.next_sibling("sheet"),
+                                             allocator);
   }
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
@@ -190,19 +186,15 @@ public:
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator &allocator) const final {
-    if (auto previous_sibling = m_node.previous_sibling("col")) {
-      return common::construct<TableColumn>(previous_sibling, allocator);
-    }
-    return nullptr;
+    return common::construct_optional<TableColumn>(
+        m_node.previous_sibling("col"), allocator);
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
                          const abstract::Allocator &allocator) const final {
-    if (auto next_sibling = m_node.next_sibling("col")) {
-      return common::construct<TableColumn>(next_sibling, allocator);
-    }
-    return nullptr;
+    return common::construct_optional<TableColumn>(m_node.next_sibling("col"),
+                                                   allocator);
   }
 
   [[nodiscard]] std::optional<TableColumnStyle>
@@ -224,19 +216,15 @@ public:
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator &allocator) const final {
-    if (auto previous_sibling = m_node.previous_sibling("row")) {
-      return common::construct<TableColumn>(previous_sibling, allocator);
-    }
-    return nullptr;
+    return common::construct_optional<TableRow>(m_node.previous_sibling("row"),
+                                                allocator);
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
                          const abstract::Allocator &allocator) const final {
-    if (auto next_sibling = m_node.next_sibling("row")) {
-      return common::construct<TableColumn>(next_sibling, allocator);
-    }
-    return nullptr;
+    return common::construct_optional<TableRow>(m_node.next_sibling("row"),
+                                                allocator);
   }
 
   [[nodiscard]] std::optional<TableRowStyle>
@@ -258,19 +246,15 @@ public:
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator &allocator) const final {
-    if (auto previous_sibling = m_node.previous_sibling("c")) {
-      return common::construct<TableColumn>(previous_sibling, allocator);
-    }
-    return nullptr;
+    return common::construct_optional<TableCell>(m_node.previous_sibling("c"),
+                                                 allocator);
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
                          const abstract::Allocator &allocator) const final {
-    if (auto next_sibling = m_node.next_sibling("c")) {
-      return common::construct<TableColumn>(next_sibling, allocator);
-    }
-    return nullptr;
+    return common::construct_optional<TableCell>(m_node.next_sibling("c"),
+                                                 allocator);
   }
 
   [[nodiscard]] abstract::Element *

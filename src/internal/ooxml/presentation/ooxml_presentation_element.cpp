@@ -102,6 +102,20 @@ public:
         slide_node_(document).child("p:cSld").child("p:spTree"), allocator);
   }
 
+  abstract::Element *
+  construct_previous_sibling(const abstract::Document *,
+                             const abstract::Allocator &allocator) const final {
+    return common::construct_optional<Slide>(m_node.previous_sibling("p:sldId"),
+                                             allocator);
+  }
+
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *,
+                         const abstract::Allocator &allocator) const final {
+    return common::construct_optional<Slide>(m_node.next_sibling("p:sldId"),
+                                             allocator);
+  }
+
   [[nodiscard]] PageLayout page_layout(const abstract::Document *) const final {
     return {}; // TODO
   }
