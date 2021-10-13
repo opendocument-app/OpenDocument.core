@@ -608,8 +608,7 @@ public:
   construct_first_child(const abstract::Document *,
                         const abstract::Allocator &allocator) const final {
     return common::construct_first_child_element(
-        construct_default_element, m_node.child("wp:inline").child("a:graphic"),
-        allocator);
+        construct_default_element, inner_node_().child("a:graphic"), allocator);
   }
 
   [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final {
@@ -632,7 +631,7 @@ public:
   [[nodiscard]] std::optional<std::string>
   width(const abstract::Document *) const final {
     if (auto width = read_emus_attribute(
-            m_node.child("wp:inline").child("wp:extent").attribute("cx"))) {
+            inner_node_().child("wp:extent").attribute("cx"))) {
       return width->to_string();
     }
     return {};
@@ -641,7 +640,7 @@ public:
   [[nodiscard]] std::optional<std::string>
   height(const abstract::Document *) const final {
     if (auto height = read_emus_attribute(
-            m_node.child("wp:inline").child("wp:extent").attribute("cy"))) {
+            inner_node_().child("wp:extent").attribute("cy"))) {
       return height->to_string();
     }
     return {};
@@ -655,6 +654,16 @@ public:
   [[nodiscard]] std::optional<GraphicStyle>
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
+    return {};
+  }
+
+private:
+  [[nodiscard]] pugi::xml_node inner_node_() const {
+    if (auto anchor = m_node.child("wp:anchor")) {
+      return anchor;
+    } else if (auto inline_node = m_node.child("wp:inline")) {
+      return inline_node;
+    }
     return {};
   }
 };
@@ -729,6 +738,7 @@ Element::construct_default_element(pugi::xml_node node,
       {"w:sdt", common::construct<Group>},
       {"w:sdtContent", common::construct<Group>},
       {"w:drawing", common::construct<Frame>},
+      {"wp:anchor", common::construct<Group>},
       {"a:graphicData", common::construct<ImageElement>},
   };
 
