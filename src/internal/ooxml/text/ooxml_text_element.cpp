@@ -175,18 +175,25 @@ public:
     auto parent = m_node.parent();
     auto old_start = m_node;
 
+    auto container = parent.insert_child_before("w:t", old_start);
+
     auto tokens = util::xml::tokenize_text(text);
     for (auto &&token : tokens) {
       switch (token.type) {
       case util::xml::StringToken::Type::none:
         break;
       case util::xml::StringToken::Type::string: {
-        auto text_node = parent.insert_child_before(
-            pugi::xml_node_type::node_pcdata, old_start);
-        text_node.text().set(token.string.c_str());
+        auto text_node = parent.insert_child_before("w:t", old_start);
+        text_node.append_child(pugi::xml_node_type::node_pcdata)
+            .text()
+            .set(token.string.c_str());
       } break;
       case util::xml::StringToken::Type::spaces: {
-        // TODO
+        auto text_node = parent.insert_child_before("w:t", old_start);
+        text_node.append_attribute("xml:space").set_value("preserve");
+        text_node.append_child(pugi::xml_node_type::node_pcdata)
+            .text()
+            .set(token.string.c_str());
       } break;
       case util::xml::StringToken::Type::tabs: {
         for (std::size_t i = 0; i < token.string.size(); ++i) {

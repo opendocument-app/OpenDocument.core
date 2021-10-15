@@ -1,11 +1,16 @@
+#include <fstream>
+#include <internal/abstract/filesystem.h>
+#include <internal/common/file.h>
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/text/ooxml_text_cursor.h>
 #include <internal/ooxml/text/ooxml_text_document.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
 #include <internal/util/xml_util.h>
+#include <internal/zip/zip_archive.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
+#include <sstream>
 #include <utility>
 
 namespace odr::internal::abstract {
@@ -27,12 +32,34 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
 
 bool Document::editable() const noexcept { return false; }
 
-bool Document::savable(const bool /*encrypted*/) const noexcept {
-  return false;
+bool Document::savable(const bool encrypted) const noexcept {
+  return !encrypted;
 }
 
-void Document::save(const common::Path & /*path*/) const {
-  throw UnsupportedOperation();
+void Document::save(const common::Path &path) const {
+  // TODO this would decrypt/inflate and encrypt/deflate again
+  zip::ZipArchive archive;
+
+  for (auto walker = m_filesystem->file_walker(""); !walker->end();
+       walker->next()) {
+    auto p = walker->path();
+    if (m_filesystem->is_directory(p)) {
+      archive.insert_directory(std::end(archive), p);
+      continue;
+    }
+    if (p == "word/document.xml") {
+      // TODO stream
+      std::stringstream out;
+      m_document_xml.print(out);
+      auto tmp = std::make_shared<common::MemoryFile>(out.str());
+      archive.insert_file(std::end(archive), p, tmp);
+      continue;
+    }
+    archive.insert_file(std::end(archive), p, m_filesystem->open(p));
+  }
+
+  std::ofstream ostream(path.path());
+  archive.save(ostream);
 }
 
 void Document::save(const common::Path & /*path*/,

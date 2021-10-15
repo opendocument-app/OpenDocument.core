@@ -77,6 +77,26 @@ TEST(Document, edit_odt) {
   DocumentFile("about_edit.odt");
 }
 
+TEST(Document, edit_docx) {
+  DocumentFile document_file(
+      TestData::test_file_path("odr-public/docx/style-various-1.docx"));
+  Document document = document_file.document();
+  auto cursor = document.root_element();
+
+  DocumentCursor::ChildVisitor edit = [&](DocumentCursor &cursor,
+                                          const std::uint32_t) {
+    cursor.for_each_child(edit);
+
+    if (auto text = cursor.element().text()) {
+      text.set_content("hello world!");
+    }
+  };
+  edit(cursor, 0);
+
+  document.save("style-various-1_edit.docx");
+  DocumentFile("style-various-1_edit.docx");
+}
+
 TEST(Document, edit_odt_diff) {
   auto diff =
       R"({"modifiedText":{"/child:16/child:0":"Outasdfsdafdline","/child:24/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0":"Text hello world!"}})";
@@ -88,4 +108,17 @@ TEST(Document, edit_odt_diff) {
 
   document.save("style-various-1_edit_diff.odt");
   DocumentFile("style-various-1_edit_diff.odt");
+}
+
+TEST(Document, edit_docx_diff) {
+  auto diff =
+      R"({"modifiedText":{"/child:16/child:0/child:0":"Outasdfsdafdline","/child:24/child:0/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0/child:0":"Text hello world!"}})";
+  DocumentFile document_file(
+      TestData::test_file_path("odr-public/docx/style-various-1.docx"));
+  Document document = document_file.document();
+
+  html::edit(document, diff);
+
+  document.save("style-various-1_edit_diff.docx");
+  DocumentFile("style-various-1_edit_diff.docx");
 }
