@@ -41,6 +41,7 @@ enum class PrintOrientation {
 
 enum class TextWrap {
   none,
+  before,
   after,
   run_through,
 };

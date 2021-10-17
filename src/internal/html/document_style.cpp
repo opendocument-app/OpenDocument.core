@@ -268,6 +268,19 @@ std::string html::translate_frame_properties(const Frame &frame) {
   if (auto anchor_type = frame.anchor_type();
       anchor_type == AnchorType::as_char) {
     result += "display:inline-block;";
+  } else if (text_wrap == TextWrap::before) {
+    result += "display:block;";
+    result += "float:right;clear:both;";
+    result += "shape-outside:content-box;";
+    if (auto x = frame.x()) {
+      result += "margin-left:" + *x + ";";
+    }
+    if (auto y = frame.y()) {
+      result += "margin-top:" + *y + ";";
+    }
+    result.append("margin-right:calc(100% - ")
+        .append(frame.x().value_or("0in"))
+        .append(" - ").append(*frame.width()).append(");");
   } else if (text_wrap == TextWrap::after) {
     result += "display:block;";
     result += "float:left;clear:both;";

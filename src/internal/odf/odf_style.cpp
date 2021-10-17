@@ -107,8 +107,10 @@ std::optional<TextWrap> read_text_wrap(pugi::xml_attribute attribute) {
   if ((std::strcmp("biggest", value) == 0) ||
       (std::strcmp("dynamic", value) == 0) ||
       (std::strcmp("left", value) == 0) ||
-      (std::strcmp("parallel", value) == 0) ||
-      (std::strcmp("right", value) == 0)) {
+      (std::strcmp("parallel", value) == 0)) {
+    return TextWrap::before;
+  }
+  if ((std::strcmp("right", value) == 0)) {
     return TextWrap::after;
   }
   if ((std::strcmp("run-through", value) == 0)) {
