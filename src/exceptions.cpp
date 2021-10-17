@@ -7,8 +7,6 @@ UnsupportedOperation::UnsupportedOperation()
 
 FileNotFound::FileNotFound() : std::runtime_error("file not found") {}
 
-FileNotCreated::FileNotCreated() : std::runtime_error("file not created") {}
-
 UnknownFileType::UnknownFileType() : std::runtime_error("unknown file type") {}
 
 FileReadError::FileReadError() : std::runtime_error("file read error") {}
@@ -32,12 +30,6 @@ NoOpenDocumentFile::NoOpenDocumentFile()
 
 NoXml::NoXml() : std::runtime_error("not xml") {}
 
-PropertyNotOptional::PropertyNotOptional()
-    : std::runtime_error("property not optional") {}
-
-PropertyReadOnly::PropertyReadOnly()
-    : std::runtime_error("property is readonly") {}
-
 UnsupportedCryptoAlgorithm::UnsupportedCryptoAlgorithm()
     : std::runtime_error("unsupported crypto algorithm") {}
 
@@ -51,5 +43,7 @@ UnsupportedEndian::UnsupportedEndian()
 
 MsUnsupportedCryptoAlgorithm::MsUnsupportedCryptoAlgorithm()
     : std::runtime_error("unsupported crypto algorithm") {}
+
+WrongPassword::WrongPassword() : std::runtime_error("wrong password") {}
 
 } // namespace odr

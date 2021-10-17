@@ -30,7 +30,7 @@ void html::translate(const Document &document, const std::string &path,
   internal::html::translate_document(document, out, config);
 }
 
-void html::edit(const Document &document, const std::string &diff) {
+void html::edit(const Document &document, const char *diff) {
   auto json = nlohmann::json::parse(diff);
 
   for (auto &&i : json["modifiedText"].items()) {

@@ -41,7 +41,7 @@ HtmlConfig parse_config(const std::string &path);
 
 void translate(const Document &document, const std::string &path,
                const HtmlConfig &config);
-void edit(const Document &document, const std::string &diff);
+void edit(const Document &document, const char *diff);
 } // namespace odr::html
 
 #endif // ODR_HTML_H
