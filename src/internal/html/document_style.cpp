@@ -280,7 +280,9 @@ std::string html::translate_frame_properties(const Frame &frame) {
     }
     result.append("margin-right:calc(100% - ")
         .append(frame.x().value_or("0in"))
-        .append(" - ").append(*frame.width()).append(");");
+        .append(" - ")
+        .append(*frame.width())
+        .append(");");
   } else if (text_wrap == TextWrap::after) {
     result += "display:block;";
     result += "float:left;clear:both;";
