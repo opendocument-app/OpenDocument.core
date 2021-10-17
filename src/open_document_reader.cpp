@@ -43,4 +43,6 @@ void OpenDocumentReader::edit(Document &document, const char *diff,
   document.save(path);
 }
 
+OpenDocumentReader::OpenDocumentReader() = default;
+
 } // namespace odr

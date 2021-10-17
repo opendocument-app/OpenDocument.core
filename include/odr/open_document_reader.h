@@ -19,7 +19,7 @@ public:
                    const std::string &path);
 
 private:
-  OpenDocumentReader() = default;
+  OpenDocumentReader();
 };
 
 } // namespace odr
