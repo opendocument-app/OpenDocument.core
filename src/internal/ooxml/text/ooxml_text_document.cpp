@@ -50,7 +50,7 @@ void Document::save(const common::Path &path) const {
     if (p == "word/document.xml") {
       // TODO stream
       std::stringstream out;
-      m_document_xml.print(out);
+      m_document_xml.print(out, "", pugi::format_raw);
       auto tmp = std::make_shared<common::MemoryFile>(out.str());
       archive.insert_file(std::end(archive), p, tmp);
       continue;

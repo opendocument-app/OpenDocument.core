@@ -32,6 +32,8 @@ int main(int argc, char **argv) {
   auto document = document_file.document();
 
   HtmlConfig config;
+  config.editable = true;
+
   html::translate(document, output, config);
 
   return 0;
