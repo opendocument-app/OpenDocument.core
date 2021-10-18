@@ -43,8 +43,8 @@ OpenDocumentReader::OpenDocumentReader() = default;
 
 Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages,
            Document document)
-    : m_file_type{file_type}, m_config{std::move(config)},
-      m_pages{std::move(pages)}, m_document{std::move(document)} {}
+    : m_file_type{file_type}, m_config{config}, m_pages{std::move(pages)},
+      m_document{std::move(document)} {}
 
 FileType Html::file_type() const { return m_file_type; }
 
