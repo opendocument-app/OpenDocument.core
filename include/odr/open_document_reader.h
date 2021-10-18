@@ -1,12 +1,13 @@
 #ifndef ODR_OPEN_DOCUMENT_READER_H
 #define ODR_OPEN_DOCUMENT_READER_H
 
+#include <odr/document.h>
+#include <odr/file.h>
+#include <odr/html.h>
 #include <optional>
 #include <string>
 
 namespace odr {
-struct HtmlConfig;
-class Document;
 class Html;
 class HtmlPage;
 
@@ -15,8 +16,8 @@ public:
   [[nodiscard]] static std::string version() noexcept;
   [[nodiscard]] static std::string commit() noexcept;
 
-  static Html html(const std::string &path, const char *password,
-                   const HtmlConfig &config);
+  [[nodiscard]] static Html html(const std::string &path, const char *password,
+                                 const HtmlConfig &config);
 
 private:
   OpenDocumentReader();
@@ -24,6 +25,7 @@ private:
 
 class Html final {
 public:
+  FileType file_type() const;
   const std::vector<HtmlPage> &pages() const;
 
   void edit(const char *diff);

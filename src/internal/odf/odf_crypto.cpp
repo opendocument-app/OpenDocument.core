@@ -135,17 +135,18 @@ bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
   if (!manifest.encrypted) {
     return true;
   }
-  if (!can_decrypt(*manifest.smallest_file_entry)) {
+  auto &&smallest_file_path = manifest.smallest_file_path;
+  auto &&smallest_file_entry = manifest.smallest_file_entry();
+  if (!can_decrypt(smallest_file_entry)) {
     throw UnsupportedCryptoAlgorithm();
   }
-  const std::string start_key =
-      odf::start_key(*manifest.smallest_file_entry, password);
+  const std::string start_key = odf::start_key(smallest_file_entry, password);
   // TODO stream decrypt
   const std::string input =
-      util::stream::read(*storage->open(*manifest.smallest_file_path)->read());
+      util::stream::read(*storage->open(smallest_file_path)->read());
   const std::string decrypt =
-      derive_key_and_decrypt(*manifest.smallest_file_entry, start_key, input);
-  if (!validate_password(*manifest.smallest_file_entry, decrypt)) {
+      derive_key_and_decrypt(smallest_file_entry, start_key, input);
+  if (!validate_password(smallest_file_entry, decrypt)) {
     return false;
   }
   storage = std::make_shared<DecryptedFilesystem>(std::move(storage), manifest,
