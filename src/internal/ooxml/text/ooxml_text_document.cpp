@@ -27,7 +27,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_style_registry = StyleRegistry(m_styles_xml.document_element());
 
   m_document_relations =
-      parse_relationships(*m_filesystem.get(), "word/document.xml");
+      parse_relationships(*m_filesystem, "word/document.xml");
 }
 
 bool Document::editable() const noexcept { return false; }
@@ -77,7 +77,7 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
 
 std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
   return std::make_unique<DocumentCursor>(
-      this, m_document_xml.document_element().first_child());
+      this, m_document_xml.document_element().child("w:body"));
 }
 
 } // namespace odr::internal::ooxml::text
