@@ -175,8 +175,6 @@ public:
     auto parent = m_node.parent();
     auto old_start = m_node;
 
-    auto container = parent.insert_child_before("w:t", old_start);
-
     auto tokens = util::xml::tokenize_text(text);
     for (auto &&token : tokens) {
       switch (token.type) {

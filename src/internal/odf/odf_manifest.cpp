@@ -55,8 +55,14 @@ bool lookup_start_key_types(const std::string &checksum,
 }
 } // namespace
 
+const Manifest::Entry &Manifest::smallest_file_entry() const {
+  return entries.at(smallest_file_path);
+}
+
 Manifest parse_manifest(const pugi::xml_document &manifest) {
   Manifest result;
+
+  std::optional<std::uint64_t> smallest_file_size;
 
   for (auto &&e : manifest.child("manifest:manifest").children()) {
     const common::Path path = e.attribute("manifest:full-path").as_string();
@@ -116,13 +122,12 @@ Manifest parse_manifest(const pugi::xml_document &manifest) {
         crypto::util::base64_decode(entry.initialisation_vector);
     entry.key_salt = crypto::util::base64_decode(entry.key_salt);
 
-    const auto it = result.entries.emplace(path, entry).first;
-    if ((result.smallest_file_path == nullptr) ||
-        (entry.size < result.smallest_file_size)) {
-      result.smallest_file_size = entry.size;
-      result.smallest_file_path = &it->first;
-      result.smallest_file_entry = &it->second;
+    if (!smallest_file_size || (entry.size < *smallest_file_size)) {
+      smallest_file_size = entry.size;
+      result.smallest_file_path = path;
     }
+
+    result.entries.emplace(path, std::move(entry));
   }
 
   return result;
