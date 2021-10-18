@@ -28,9 +28,8 @@ std::optional<Document> OpenDocumentReader::html(const std::string &path,
       }
     }
     auto document = document_file.document();
-
+    // TODO translate into individual files
     html::translate(document, path, config);
-
     return document;
   }
 
