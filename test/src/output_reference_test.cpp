@@ -81,26 +81,13 @@ TEST_P(OutputReferenceTests, all) {
   if (file.file_category() == FileCategory::document) {
     auto document_file = file.document_file();
     auto document = document_file.document();
-
-    if (document.document_type() == DocumentType::text) {
-      const std::string html_output = output_path + "/document.html";
-      html = OpenDocumentReader::html(document, html_output, config);
-    } else if (document.document_type() == DocumentType::presentation) {
-      const std::string html_output = output_path + "/slide{index}.html";
-      html = OpenDocumentReader::html(document, html_output, config);
-    } else if (document.document_type() == DocumentType::spreadsheet) {
-      const std::string html_output = output_path + "/sheet{index}.html";
-      html = OpenDocumentReader::html(document, html_output, config);
-    } else if (document.document_type() == DocumentType::drawing) {
-      const std::string html_output = output_path + "/page{index}.html";
-      html = OpenDocumentReader::html(document, html_output, config);
-    }
+    html = OpenDocumentReader::html(document, output_path, config);
   }
 
   EXPECT_TRUE(html);
   for (auto &&html_page : html->pages()) {
-    EXPECT_TRUE(fs::is_regular_file(html_page.path()));
-    EXPECT_LT(0, fs::file_size(html_page.path()));
+    EXPECT_TRUE(fs::is_regular_file(html_page.path));
+    EXPECT_LT(0, fs::file_size(html_page.path));
   }
 }
 

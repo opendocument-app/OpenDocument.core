@@ -9,7 +9,7 @@
 
 namespace odr {
 class Document;
-class HtmlPage;
+struct HtmlPage;
 
 enum class HtmlTableGridlines {
   none,
@@ -18,8 +18,21 @@ enum class HtmlTableGridlines {
 };
 
 struct HtmlConfig {
+  // TODO implement
   bool compact_presentation{false};
+  bool compact_spreadsheet{false};
   bool compact_drawing{false};
+
+  // document output file names
+  std::string text_document_output_file_name{"document.html"};
+  std::string presentation_output_file_name{"presentation.html"};
+  std::string spreadsheet_output_file_name{"spreadsheet.html"};
+  std::string drawing_output_file_name{"drawing.html"};
+
+  // document element output file names
+  std::string slide_output_file_name{"slide{index}.html"};
+  std::string sheet_output_file_name{"sheet{index}.html"};
+  std::string page_output_file_name{"page{index}.html"};
 
   // create editable output
   bool editable{false};
@@ -52,16 +65,11 @@ private:
   std::optional<Document> m_document;
 };
 
-class HtmlPage final {
-public:
+struct HtmlPage final {
+  std::string name;
+  std::string path;
+
   HtmlPage(std::string name, std::string path);
-
-  const std::string &name() const;
-  const std::string &path() const;
-
-private:
-  std::string m_name;
-  std::string m_path;
 };
 
 namespace html {

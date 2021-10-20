@@ -42,14 +42,17 @@ void back(const Document &, std::ostream &out, const HtmlConfig &) {
 }
 
 std::string fill_path_variables(const std::string &path,
-                                const std::uint32_t index) {
+                                std::optional<std::uint32_t> index = {}) {
   std::string result = path;
-  internal::util::string::replace_all(result, "{index}", std::to_string(index));
+  internal::util::string::replace_all(result, "{index}",
+                                      index ? std::to_string(*index) : "");
   return result;
 }
 
-std::ofstream output(const std::string &path) {
-  std::ofstream out(path);
+std::ofstream output(const std::string &path,
+                     std::optional<std::uint32_t> index = {}) {
+  auto filled_path = fill_path_variables(path, index);
+  std::ofstream out(filled_path);
   if (!out.is_open()) {
     throw FileWriteError();
   }
@@ -76,7 +79,9 @@ Html html::translate_document(const Document &document, const std::string &path,
 Html html::translate_text_document(const Document &document,
                                    const std::string &path,
                                    const HtmlConfig &config) {
-  auto out = output(path);
+  auto filled_path =
+      fill_path_variables(path + "/" + config.text_document_output_file_name);
+  auto out = output(filled_path);
 
   auto cursor = document.root_element();
   auto element = cursor.element().text_root();
@@ -99,7 +104,7 @@ Html html::translate_text_document(const Document &document,
   }
   back(document, out, config);
 
-  return {FileType::unknown, config, {{"document", path}}, document};
+  return {FileType::unknown, config, {{"document", filled_path}}, document};
 }
 
 Html html::translate_presentation(const Document &document,
@@ -109,7 +114,8 @@ Html html::translate_presentation(const Document &document,
 
   auto cursor = document.root_element();
   cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
-    auto filled_path = fill_path_variables(path, i);
+    auto filled_path =
+        fill_path_variables(path + "/" + config.slide_output_file_name, i);
     auto out = output(filled_path);
 
     front(document, out, config);
@@ -129,7 +135,8 @@ Html html::translate_spreadsheet(const Document &document,
 
   auto cursor = document.root_element();
   cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
-    auto filled_path = fill_path_variables(path, i);
+    auto filled_path =
+        fill_path_variables(path + "/" + config.sheet_output_file_name, i);
     auto out = output(filled_path);
 
     front(document, out, config);
@@ -148,7 +155,8 @@ Html html::translate_drawing(const Document &document, const std::string &path,
 
   auto cursor = document.root_element();
   cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
-    auto filled_path = fill_path_variables(path, i);
+    auto filled_path =
+        fill_path_variables(path + "/" + config.page_output_file_name, i);
     auto out = output(filled_path);
 
     front(document, out, config);

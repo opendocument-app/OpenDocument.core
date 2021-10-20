@@ -31,11 +31,7 @@ void Html::save(const std::string &path) const {
 }
 
 HtmlPage::HtmlPage(std::string name, std::string path)
-    : m_name{std::move(name)}, m_path{std::move(path)} {}
-
-const std::string &HtmlPage::name() const { return m_name; }
-
-const std::string &HtmlPage::path() const { return m_path; }
+    : name{std::move(name)}, path{std::move(path)} {}
 
 Html html::translate(const Document &document, const std::string &path,
                      const HtmlConfig &config) {
