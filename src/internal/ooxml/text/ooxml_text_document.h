@@ -27,7 +27,9 @@ public:
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const char *password) const final;
 
+  [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] DocumentType document_type() const noexcept final;
+
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 

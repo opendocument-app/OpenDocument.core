@@ -9,7 +9,7 @@ class Document;
 } // namespace odr::internal::abstract
 
 namespace odr {
-
+enum class FileType;
 enum class DocumentType;
 class DocumentFile;
 class DocumentCursor;
@@ -24,6 +24,7 @@ public:
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
 
+  [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] DocumentType document_type() const noexcept;
 
   [[nodiscard]] DocumentCursor root_element() const;

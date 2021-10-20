@@ -3,6 +3,7 @@
 #include <internal/common/path.h>
 #include <odr/document.h>
 #include <odr/document_cursor.h>
+#include <odr/file.h>
 #include <stdexcept>
 #include <utility>
 
@@ -26,6 +27,10 @@ void Document::save(const std::string &path) const { m_document->save(path); }
 void Document::save(const std::string &path,
                     const std::string &password) const {
   m_document->save(path, password.c_str());
+}
+
+FileType Document::file_type() const noexcept {
+  return m_document->file_type();
 }
 
 DocumentType Document::document_type() const noexcept {

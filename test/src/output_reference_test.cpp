@@ -1,20 +1,13 @@
-#include <algorithm>
-#include <chrono>
-#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <internal/common/path.h>
 #include <internal/util/odr_meta_util.h>
 #include <internal/util/string_util.h>
-#include <iomanip>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <odr/document.h>
-#include <odr/document_cursor.h>
-#include <odr/document_element.h>
 #include <odr/file.h>
 #include <odr/html.h>
+#include <odr/open_document_reader.h>
 #include <odr/style.h>
 #include <optional>
 #include <string>
@@ -50,7 +43,7 @@ TEST_P(OutputReferenceTests, all) {
 
   HtmlConfig config;
   config.editable = true;
-  config.table_limit = TableDimensions(4000, 500);
+  config.spreadsheet_limit = TableDimensions(4000, 500);
 
   const DecodedFile file{test_file.path};
 
@@ -83,50 +76,31 @@ TEST_P(OutputReferenceTests, all) {
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
+  std::optional<Html> html;
+
   if (file.file_category() == FileCategory::document) {
     auto document_file = file.document_file();
     auto document = document_file.document();
-    auto cursor = document.root_element();
 
     if (document.document_type() == DocumentType::text) {
       const std::string html_output = output_path + "/document.html";
-      fs::create_directories(fs::path(html_output).parent_path());
-      html::translate(document, html_output, config);
-      EXPECT_TRUE(fs::is_regular_file(html_output));
-      EXPECT_LT(0, fs::file_size(html_output));
+      html = OpenDocumentReader::html(document, html_output, config);
     } else if (document.document_type() == DocumentType::presentation) {
-      cursor.for_each_child([&](DocumentCursor &, const std::uint32_t i) {
-        config.entry_offset = i;
-        config.entry_count = 1;
-        const std::string html_output =
-            output_path + "/slide" + std::to_string(i) + ".html";
-        html::translate(document, html_output, config);
-        EXPECT_TRUE(fs::is_regular_file(html_output));
-        EXPECT_LT(0, fs::file_size(html_output));
-      });
+      const std::string html_output = output_path + "/slide{index}.html";
+      html = OpenDocumentReader::html(document, html_output, config);
     } else if (document.document_type() == DocumentType::spreadsheet) {
-      cursor.for_each_child([&](DocumentCursor &, const std::uint32_t i) {
-        config.entry_offset = i;
-        config.entry_count = 1;
-        const std::string html_output =
-            output_path + "/sheet" + std::to_string(i) + ".html";
-        html::translate(document, html_output, config);
-        EXPECT_TRUE(fs::is_regular_file(html_output));
-        EXPECT_LT(0, fs::file_size(html_output));
-      });
+      const std::string html_output = output_path + "/sheet{index}.html";
+      html = OpenDocumentReader::html(document, html_output, config);
     } else if (document.document_type() == DocumentType::drawing) {
-      cursor.for_each_child([&](DocumentCursor &, const std::uint32_t i) {
-        config.entry_offset = i;
-        config.entry_count = 1;
-        const std::string html_output =
-            output_path + "/page" + std::to_string(i) + ".html";
-        html::translate(document, html_output, config);
-        EXPECT_TRUE(fs::is_regular_file(html_output));
-        EXPECT_LT(0, fs::file_size(html_output));
-      });
-    } else {
-      EXPECT_TRUE(false);
+      const std::string html_output = output_path + "/page{index}.html";
+      html = OpenDocumentReader::html(document, html_output, config);
     }
+  }
+
+  EXPECT_TRUE(html);
+  for (auto &&html_page : html->pages()) {
+    EXPECT_TRUE(fs::is_regular_file(html_page.path()));
+    EXPECT_LT(0, fs::file_size(html_page.path()));
   }
 }
 

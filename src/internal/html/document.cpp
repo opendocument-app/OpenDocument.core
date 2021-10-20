@@ -1,18 +1,23 @@
+#include <fstream>
 #include <internal/html/common.h>
 #include <internal/html/document.h>
 #include <internal/html/document_element.h>
 #include <internal/html/document_style.h>
+#include <internal/util/string_util.h>
 #include <iostream>
 #include <odr/document.h>
 #include <odr/document_cursor.h>
 #include <odr/document_element.h>
+#include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
 
 namespace odr::internal {
 
-void html::translate_document(const Document &document, std::ostream &out,
-                              const HtmlConfig &config) {
+namespace {
+
+void front(const Document &document, std::ostream &out,
+           const HtmlConfig &config) {
   out << internal::html::doctype();
   out << "<html><head>";
   out << internal::html::default_headers();
@@ -25,21 +30,9 @@ void html::translate_document(const Document &document, std::ostream &out,
   out << "</head>";
 
   out << "<body " << internal::html::body_attributes(config) << ">";
+}
 
-  auto cursor = document.root_element();
-
-  if (document.document_type() == DocumentType::text) {
-    internal::html::translate_text_document(cursor, out, config);
-  } else if (document.document_type() == DocumentType::presentation) {
-    internal::html::translate_presentation(cursor, out, config);
-  } else if (document.document_type() == DocumentType::spreadsheet) {
-    internal::html::translate_spreadsheet(cursor, out, config);
-  } else if (document.document_type() == DocumentType::drawing) {
-    internal::html::translate_drawing(cursor, out, config);
-  } else {
-    // TODO throw?
-  }
-
+void back(const Document &, std::ostream &out, const HtmlConfig &) {
   out << "<script>";
   out << internal::html::default_script();
   out << "</script>";
@@ -48,10 +41,47 @@ void html::translate_document(const Document &document, std::ostream &out,
   out << "</html>";
 }
 
-void html::translate_text_document(DocumentCursor &cursor, std::ostream &out,
+std::string fill_path_variables(const std::string &path,
+                                const std::uint32_t index) {
+  std::string result = path;
+  internal::util::string::replace_all(result, "{index}", std::to_string(index));
+  return path;
+}
+
+std::ofstream output(const std::string &path) {
+  std::ofstream out(path);
+  if (!out.is_open()) {
+    throw FileWriteError();
+  }
+  return out;
+}
+
+} // namespace
+
+Html html::translate_document(const Document &document, const std::string &path,
+                              const HtmlConfig &config) {
+  if (document.document_type() == DocumentType::text) {
+    return internal::html::translate_text_document(document, path, config);
+  } else if (document.document_type() == DocumentType::presentation) {
+    return internal::html::translate_presentation(document, path, config);
+  } else if (document.document_type() == DocumentType::spreadsheet) {
+    return internal::html::translate_spreadsheet(document, path, config);
+  } else if (document.document_type() == DocumentType::drawing) {
+    return internal::html::translate_drawing(document, path, config);
+  } else {
+    throw UnknownDocumentType();
+  }
+}
+
+Html html::translate_text_document(const Document &document,
+                                   const std::string &path,
                                    const HtmlConfig &config) {
+  auto out = output(path);
+
+  auto cursor = document.root_element();
   auto element = cursor.element().text_root();
 
+  front(document, out, config);
   if (config.text_document_margin) {
     out << "<div";
     out << optional_style_attribute(
@@ -67,85 +97,68 @@ void html::translate_text_document(DocumentCursor &cursor, std::ostream &out,
   } else {
     translate_children(cursor, out, config);
   }
+  back(document, out, config);
+
+  return {FileType::unknown, config, {{"document", path}}, document};
 }
 
-void html::translate_presentation(DocumentCursor &cursor, std::ostream &out,
+Html html::translate_presentation(const Document &document,
+                                  const std::string &path,
                                   const HtmlConfig &config) {
-  // TODO indexing is kind of ugly here and duplicated
-  std::uint32_t begin_entry = config.entry_offset;
-  std::optional<std::uint32_t> end_entry;
+  std::vector<HtmlPage> pages;
 
-  if (config.entry_count > 0) {
-    end_entry = begin_entry + config.entry_count;
-  }
-
+  auto cursor = document.root_element();
   cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
-    if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
-      return;
-    }
-    auto slide = cursor.element().slide();
+    auto filled_path = fill_path_variables(path, i);
+    auto out = output(filled_path);
 
-    out << "<div";
-    out << optional_style_attribute(
-        translate_outer_page_style(slide.page_layout()));
-    out << ">";
-    out << "<div";
-    out << optional_style_attribute(
-        translate_inner_page_style(slide.page_layout()));
-    out << ">";
-    translate_master_page(cursor, out, config);
-    translate_children(cursor, out, config);
-    out << "</div>";
-    out << "</div>";
+    front(document, out, config);
+    internal::html::translate_slide(cursor, out, config);
+    back(document, out, config);
+
+    pages.push_back({cursor.element().slide().name(), filled_path});
   });
+
+  return {FileType::unknown, config, std::move(pages), document};
 }
 
-void html::translate_spreadsheet(DocumentCursor &cursor, std::ostream &out,
+Html html::translate_spreadsheet(const Document &document,
+                                 const std::string &path,
                                  const HtmlConfig &config) {
-  std::uint32_t begin_entry = config.entry_offset;
-  std::optional<std::uint32_t> end_entry;
+  std::vector<HtmlPage> pages;
 
-  if (config.entry_count > 0) {
-    end_entry = begin_entry + config.entry_count;
-  }
-
+  auto cursor = document.root_element();
   cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
-    if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
-      return;
-    }
+    auto filled_path = fill_path_variables(path, i);
+    auto out = output(filled_path);
 
+    front(document, out, config);
     translate_sheet(cursor, out, config);
+    back(document, out, config);
+
+    pages.push_back({cursor.element().sheet().name(), filled_path});
   });
+
+  return {FileType::unknown, config, std::move(pages), document};
 }
 
-void html::translate_drawing(DocumentCursor &cursor, std::ostream &out,
+Html html::translate_drawing(const Document &document, const std::string &path,
                              const HtmlConfig &config) {
-  std::uint32_t begin_entry = config.entry_offset;
-  std::optional<std::uint32_t> end_entry;
+  std::vector<HtmlPage> pages;
 
-  if (config.entry_count > 0) {
-    end_entry = begin_entry + config.entry_count;
-  }
-
+  auto cursor = document.root_element();
   cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
-    if ((i < begin_entry) || (end_entry && (i >= end_entry))) {
-      return;
-    }
-    auto page = cursor.element().page();
+    auto filled_path = fill_path_variables(path, i);
+    auto out = output(filled_path);
 
-    out << "<div";
-    out << optional_style_attribute(
-        translate_outer_page_style(page.page_layout()));
-    out << ">";
-    out << "<div";
-    out << optional_style_attribute(
-        translate_inner_page_style(page.page_layout()));
-    out << ">";
-    translate_master_page(cursor, out, config);
-    translate_children(cursor, out, config);
-    out << "</div>";
-    out << "</div>";
+    front(document, out, config);
+    internal::html::translate_page(cursor, out, config);
+    back(document, out, config);
+
+    pages.push_back({cursor.element().page().name(), filled_path});
   });
+
+  return {FileType::unknown, config, std::move(pages), document};
 }
 
 } // namespace odr::internal

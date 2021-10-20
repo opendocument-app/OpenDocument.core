@@ -6,6 +6,7 @@
 
 namespace odr {
 class File;
+enum class FileType;
 enum class DocumentType;
 } // namespace odr
 
@@ -35,6 +36,9 @@ public:
   /// \param path the destination path.
   /// \param password the encryption password.
   virtual void save(const common::Path &path, const char *password) const = 0;
+
+  /// \return the type of the document.
+  [[nodiscard]] virtual FileType file_type() const noexcept = 0;
 
   /// \return the type of the document.
   [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;

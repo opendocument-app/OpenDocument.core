@@ -21,6 +21,10 @@ struct FileReadError final : public std::runtime_error {
   FileReadError();
 };
 
+struct FileWriteError final : public std::runtime_error {
+  FileWriteError();
+};
+
 struct NoZipFile : public std::runtime_error {
   NoZipFile();
 };
@@ -79,6 +83,10 @@ struct MsUnsupportedCryptoAlgorithm final : public std::runtime_error {
 
 struct WrongPassword final : public std::runtime_error {
   WrongPassword();
+};
+
+struct UnknownDocumentType final : public std::runtime_error {
+  UnknownDocumentType();
 };
 
 } // namespace odr

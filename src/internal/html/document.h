@@ -1,27 +1,28 @@
 #ifndef ODR_INTERNAL_HTML_DOCUMENT_H
 #define ODR_INTERNAL_HTML_DOCUMENT_H
 
-#include <iosfwd>
+#include <string>
 
 namespace odr {
 class Document;
 class DocumentCursor;
 
 struct HtmlConfig;
+class Html;
 } // namespace odr
 
 namespace odr::internal::html {
 
-void translate_document(const Document &document, std::ostream &out,
+Html translate_document(const Document &document, const std::string &path,
                         const HtmlConfig &config);
 
-void translate_text_document(DocumentCursor &cursor, std::ostream &out,
+Html translate_text_document(const Document &document, const std::string &path,
                              const HtmlConfig &config);
-void translate_presentation(DocumentCursor &cursor, std::ostream &out,
+Html translate_presentation(const Document &document, const std::string &path,
                             const HtmlConfig &config);
-void translate_spreadsheet(DocumentCursor &cursor, std::ostream &out,
+Html translate_spreadsheet(const Document &document, const std::string &path,
                            const HtmlConfig &config);
-void translate_drawing(DocumentCursor &cursor, std::ostream &out,
+Html translate_drawing(const Document &document, const std::string &path,
                        const HtmlConfig &config);
 
 } // namespace odr::internal::html

@@ -11,6 +11,8 @@ UnknownFileType::UnknownFileType() : std::runtime_error("unknown file type") {}
 
 FileReadError::FileReadError() : std::runtime_error("file read error") {}
 
+FileWriteError::FileWriteError() : std::runtime_error("file write error") {}
+
 NoZipFile::NoZipFile() : std::runtime_error("not a zip file") {}
 
 ZipSaveError::ZipSaveError() : std::runtime_error("zip save error") {}
@@ -45,5 +47,8 @@ MsUnsupportedCryptoAlgorithm::MsUnsupportedCryptoAlgorithm()
     : std::runtime_error("unsupported crypto algorithm") {}
 
 WrongPassword::WrongPassword() : std::runtime_error("wrong password") {}
+
+UnknownDocumentType::UnknownDocumentType()
+    : std::runtime_error("unknown document type") {}
 
 } // namespace odr

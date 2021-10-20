@@ -16,6 +16,13 @@ void translate_children(DocumentCursor &cursor, std::ostream &out,
 void translate_element(DocumentCursor &cursor, std::ostream &out,
                        const HtmlConfig &config);
 
+void translate_slide(DocumentCursor &cursor, std::ostream &out,
+                     const HtmlConfig &config);
+void translate_sheet(DocumentCursor &cursor, std::ostream &out,
+                     const HtmlConfig &config);
+void translate_page(DocumentCursor &cursor, std::ostream &out,
+                    const HtmlConfig &config);
+
 void translate_master_page(DocumentCursor &cursor, std::ostream &out,
                            const HtmlConfig &config);
 
@@ -49,8 +56,6 @@ void translate_circle(DocumentCursor &cursor, std::ostream &out,
                       const HtmlConfig &config);
 void translate_custom_shape(DocumentCursor &cursor, std::ostream &out,
                             const HtmlConfig &config);
-void translate_sheet(DocumentCursor &cursor, std::ostream &out,
-                     const HtmlConfig &config);
 
 } // namespace odr::internal::html
 

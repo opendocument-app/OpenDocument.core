@@ -11,7 +11,6 @@
 #include <odr/document_cursor.h>
 #include <odr/document_element.h>
 #include <odr/html.h>
-#include <sstream>
 
 namespace odr::internal {
 
@@ -59,6 +58,171 @@ void html::translate_element(DocumentCursor &cursor, std::ostream &out,
   } else {
     // TODO log
   }
+}
+
+void html::translate_slide(DocumentCursor &cursor, std::ostream &out,
+                           const HtmlConfig &config) {
+  auto slide = cursor.element().slide();
+
+  out << "<div";
+  out << optional_style_attribute(
+      translate_outer_page_style(slide.page_layout()));
+  out << ">";
+  out << "<div";
+  out << optional_style_attribute(
+      translate_inner_page_style(slide.page_layout()));
+  out << ">";
+  translate_master_page(cursor, out, config);
+  translate_children(cursor, out, config);
+  out << "</div>";
+  out << "</div>";
+}
+
+void html::translate_sheet(DocumentCursor &cursor, std::ostream &out,
+                           const HtmlConfig &config) {
+  // TODO table column width does not work
+  // TODO table row height does not work
+
+  out << "<table";
+  out << R"( cellpadding="0" border="0" cellspacing="0")";
+  out << ">";
+
+  auto table = cursor.element().table();
+  auto sheet = cursor.element().sheet();
+  auto dimensions = table.dimensions();
+  std::uint32_t end_row = dimensions.rows;
+  std::uint32_t end_column = dimensions.columns;
+  if (config.spreadsheet_limit) {
+    end_row = config.spreadsheet_limit->rows;
+    end_column = config.spreadsheet_limit->columns;
+  }
+  if (config.spreadsheet_limit_by_content) {
+    const auto content = sheet.content(config.spreadsheet_limit);
+    end_row = content.rows;
+    end_column = content.columns;
+  }
+
+  auto shape_cursor = cursor;
+
+  std::uint32_t column_index = 0;
+  std::uint32_t row_index = 0;
+
+  out << "<col>";
+
+  column_index = 0;
+  cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
+    auto table_column = cursor.element().table_column();
+
+    out << "<col";
+    if (auto style = table_column.style()) {
+      out << optional_style_attribute(translate_table_column_style(*style));
+    }
+    out << ">";
+
+    ++column_index;
+    return column_index < end_column;
+  });
+
+  {
+    out << "<tr>";
+    out << "<td style=\"width:30px;height:20px;\"/>";
+
+    column_index = 0;
+    cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
+      out << "<td style=\"text-align:center;vertical-align:middle;\">";
+      out << common::TablePosition::to_column_string(column_index);
+      out << "</td>";
+
+      ++column_index;
+      return column_index < end_column;
+    });
+
+    out << "</tr>";
+  }
+
+  cursor.for_each_table_row([&](DocumentCursor &cursor, const std::uint32_t) {
+    auto table_row = cursor.element().table_row();
+    auto table_row_style = table_row.style();
+
+    out << "<tr";
+    if (table_row_style) {
+      out << optional_style_attribute(
+          translate_table_row_style(*table_row_style));
+    }
+    out << ">";
+
+    out << "<td style=\"text-align:center;vertical-align:middle;";
+    if (table_row_style) {
+      if (auto height = table_row_style->height) {
+        out << "height:" << height->to_string() << ";";
+        out << "max-height:" << height->to_string() << ";";
+      }
+    }
+    out << "\">";
+    out << common::TablePosition::to_row_string(row_index);
+    out << "</td>";
+
+    column_index = 0;
+    cursor.for_each_table_cell([&](DocumentCursor &cursor,
+                                   const std::uint32_t) {
+      auto table_cell = cursor.element().table_cell();
+
+      if (!table_cell.covered()) {
+        auto cell_span = table_cell.span();
+
+        out << "<td";
+        if (cell_span.rows > 1) {
+          out << " rowspan=\"" << cell_span.rows << "\"";
+        }
+        if (cell_span.columns > 1) {
+          out << " colspan=\"" << cell_span.columns << "\"";
+        }
+        if (auto style = table_cell.style()) {
+          out << optional_style_attribute(translate_table_cell_style(*style));
+        }
+        if (table_cell.value_type() == ValueType::float_number) {
+          out << " class=\"odr-value-type-float\"";
+        }
+        out << ">";
+        if ((row_index == 0) && (column_index == 0)) {
+          shape_cursor.for_each_sheet_shape(
+              [&](DocumentCursor &cursor, const std::uint32_t) {
+                translate_element(cursor, out, config);
+              });
+        }
+        translate_children(cursor, out, config);
+        out << "</td>";
+      }
+
+      ++column_index;
+      return column_index < end_column;
+    });
+
+    out << "</tr>";
+
+    ++row_index;
+    return row_index < end_row;
+  });
+
+  out << "</table>";
+}
+
+void html::translate_page(DocumentCursor &cursor, std::ostream &out,
+                          const HtmlConfig &config) {
+  auto page = cursor.element().page();
+
+  out << "<div";
+  out << optional_style_attribute(
+      translate_outer_page_style(page.page_layout()));
+  out << ">";
+  out << "<div";
+  out << optional_style_attribute(
+      translate_inner_page_style(page.page_layout()));
+  out << ">";
+  translate_master_page(cursor, out, config);
+  translate_children(cursor, out, config);
+  out << "</div>";
+  out << "</div>";
 }
 
 void html::translate_master_page(DocumentCursor &cursor, std::ostream &out,
@@ -368,135 +532,6 @@ void html::translate_custom_shape(DocumentCursor &cursor, std::ostream &out,
   translate_children(cursor, out, config);
   // TODO draw shape in svg
   out << "</div>";
-}
-
-void html::translate_sheet(DocumentCursor &cursor, std::ostream &out,
-                           const HtmlConfig &config) {
-  // TODO table column width does not work
-  // TODO table row height does not work
-
-  out << "<table";
-  out << R"( cellpadding="0" border="0" cellspacing="0")";
-  out << ">";
-
-  auto table = cursor.element().table();
-  auto sheet = cursor.element().sheet();
-  auto dimensions = table.dimensions();
-  std::uint32_t end_row = dimensions.rows;
-  std::uint32_t end_column = dimensions.columns;
-  if (config.table_limit) {
-    end_row = config.table_limit->rows;
-    end_column = config.table_limit->columns;
-  }
-  if (config.table_limit_by_content) {
-    const auto content = sheet.content(config.table_limit);
-    end_row = content.rows;
-    end_column = content.columns;
-  }
-
-  auto shape_cursor = cursor;
-
-  std::uint32_t column_index = 0;
-  std::uint32_t row_index = 0;
-
-  out << "<col>";
-
-  column_index = 0;
-  cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
-    auto table_column = cursor.element().table_column();
-
-    out << "<col";
-    if (auto style = table_column.style()) {
-      out << optional_style_attribute(translate_table_column_style(*style));
-    }
-    out << ">";
-
-    ++column_index;
-    return column_index < end_column;
-  });
-
-  {
-    out << "<tr>";
-    out << "<td style=\"width:30px;height:20px;\"/>";
-
-    column_index = 0;
-    cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
-      out << "<td style=\"text-align:center;vertical-align:middle;\">";
-      out << common::TablePosition::to_column_string(column_index);
-      out << "</td>";
-
-      ++column_index;
-      return column_index < end_column;
-    });
-
-    out << "</tr>";
-  }
-
-  cursor.for_each_table_row([&](DocumentCursor &cursor, const std::uint32_t) {
-    auto table_row = cursor.element().table_row();
-    auto table_row_style = table_row.style();
-
-    out << "<tr";
-    if (table_row_style) {
-      out << optional_style_attribute(
-          translate_table_row_style(*table_row_style));
-    }
-    out << ">";
-
-    out << "<td style=\"text-align:center;vertical-align:middle;";
-    if (table_row_style) {
-      if (auto height = table_row_style->height) {
-        out << "height:" << height->to_string() << ";";
-        out << "max-height:" << height->to_string() << ";";
-      }
-    }
-    out << "\">";
-    out << common::TablePosition::to_row_string(row_index);
-    out << "</td>";
-
-    column_index = 0;
-    cursor.for_each_table_cell([&](DocumentCursor &cursor,
-                                   const std::uint32_t) {
-      auto table_cell = cursor.element().table_cell();
-
-      if (!table_cell.covered()) {
-        auto cell_span = table_cell.span();
-
-        out << "<td";
-        if (cell_span.rows > 1) {
-          out << " rowspan=\"" << cell_span.rows << "\"";
-        }
-        if (cell_span.columns > 1) {
-          out << " colspan=\"" << cell_span.columns << "\"";
-        }
-        if (auto style = table_cell.style()) {
-          out << optional_style_attribute(translate_table_cell_style(*style));
-        }
-        if (table_cell.value_type() == ValueType::float_number) {
-          out << " class=\"odr-value-type-float\"";
-        }
-        out << ">";
-        if ((row_index == 0) && (column_index == 0)) {
-          shape_cursor.for_each_sheet_shape(
-              [&](DocumentCursor &cursor, const std::uint32_t) {
-                translate_element(cursor, out, config);
-              });
-        }
-        translate_children(cursor, out, config);
-        out << "</td>";
-      }
-
-      ++column_index;
-      return column_index < end_column;
-    });
-
-    out << "</tr>";
-
-    ++row_index;
-    return row_index < end_row;
-  });
-
-  out << "</table>";
 }
 
 } // namespace odr::internal

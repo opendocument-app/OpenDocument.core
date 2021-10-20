@@ -98,6 +98,10 @@ TableDimensions Sheet::content(std::optional<TableDimensions> range) const {
   return m_element ? m_element->content(m_document, range) : TableDimensions();
 }
 
+std::string Page::name() const {
+  return m_element ? m_element->name(m_document) : "";
+}
+
 PageLayout Page::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
 }

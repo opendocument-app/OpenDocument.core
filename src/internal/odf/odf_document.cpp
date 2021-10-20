@@ -18,9 +18,10 @@ class DocumentCursor;
 
 namespace odr::internal::odf {
 
-Document::Document(const DocumentType document_type,
+Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : m_document_type{document_type}, m_filesystem{std::move(filesystem)} {
+    : m_file_type{file_type}, m_document_type{document_type},
+      m_filesystem{std::move(filesystem)} {
   m_content_xml = util::xml::parse(*m_filesystem, "content.xml");
 
   if (m_filesystem->exists("styles.xml")) {
@@ -77,6 +78,8 @@ void Document::save(const common::Path & /*path*/,
   // TODO throw if not savable
   throw UnsupportedOperation();
 }
+
+FileType Document::file_type() const noexcept { return m_file_type; }
 
 DocumentType Document::document_type() const noexcept {
   return m_document_type;

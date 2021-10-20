@@ -17,7 +17,7 @@ class Element;
 
 class Document : public abstract::Document {
 public:
-  Document(DocumentType document_type,
+  Document(FileType file_type, DocumentType document_type,
            std::shared_ptr<abstract::ReadableFilesystem> files);
 
   bool editable() const noexcept final;
@@ -26,7 +26,9 @@ public:
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const char *password) const final;
 
+  [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] DocumentType document_type() const noexcept final;
+
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
@@ -34,6 +36,7 @@ public:
   root_element() const final;
 
 protected:
+  FileType m_file_type;
   DocumentType m_document_type;
 
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;

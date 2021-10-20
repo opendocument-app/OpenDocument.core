@@ -1,58 +1,28 @@
 #ifndef ODR_OPEN_DOCUMENT_READER_H
 #define ODR_OPEN_DOCUMENT_READER_H
 
-#include <odr/document.h>
-#include <odr/file.h>
-#include <odr/html.h>
-#include <optional>
 #include <string>
 
 namespace odr {
 class Html;
-class HtmlPage;
+struct HtmlConfig;
+class Document;
 
 class OpenDocumentReader final {
 public:
   [[nodiscard]] static std::string version() noexcept;
   [[nodiscard]] static std::string commit() noexcept;
 
-  [[nodiscard]] static Html html(const std::string &path, const char *password,
+  [[nodiscard]] static Html html(const std::string &input_path,
+                                 const char *password,
+                                 const std::string &output_path,
+                                 const HtmlConfig &config);
+  [[nodiscard]] static Html html(Document document,
+                                 const std::string &output_path,
                                  const HtmlConfig &config);
 
 private:
   OpenDocumentReader();
-};
-
-class Html final {
-public:
-  FileType file_type() const;
-  const std::vector<HtmlPage> &pages() const;
-
-  void edit(const char *diff);
-  void save(const std::string &path) const;
-
-private:
-  Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages,
-       Document document);
-
-  FileType m_file_type;
-  HtmlConfig m_config;
-  std::vector<HtmlPage> m_pages;
-  std::optional<Document> m_document;
-
-  friend class OpenDocumentReader;
-};
-
-class HtmlPage final {
-public:
-  const std::string &name() const;
-  const std::string &path() const;
-
-private:
-  HtmlPage(std::string name, std::string path);
-
-  std::string m_name;
-  std::string m_path;
 };
 
 } // namespace odr

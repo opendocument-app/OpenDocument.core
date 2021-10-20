@@ -1,4 +1,5 @@
 #include <internal/common/constants.h>
+#include <internal/html/document.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -16,6 +17,7 @@ std::string OpenDocumentReader::commit() noexcept {
 }
 
 Html OpenDocumentReader::html(const std::string &path, const char *password,
+                              const std::string &output_path,
                               const HtmlConfig &config) {
   DecodedFile file(path);
 
@@ -26,47 +28,17 @@ Html OpenDocumentReader::html(const std::string &path, const char *password,
         throw WrongPassword();
       }
     }
-    auto document = document_file.document();
-
-    std::vector<HtmlPage> pages;
-
-    html::translate(document, path, config);
-
-    return Html(file.file_type(), config, std::move(pages),
-                std::move(document));
+    return html(document_file.document(), output_path, config);
   }
 
   throw UnknownFileType();
 }
 
+Html OpenDocumentReader::html(Document document, const std::string &output_path,
+                              const HtmlConfig &config) {
+  return internal::html::translate_document(document, output_path, config);
+}
+
 OpenDocumentReader::OpenDocumentReader() = default;
-
-Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages,
-           Document document)
-    : m_file_type{file_type}, m_config{std::move(config)},
-      m_pages{std::move(pages)}, m_document{std::move(document)} {}
-
-FileType Html::file_type() const { return m_file_type; }
-
-const std::vector<HtmlPage> &Html::pages() const { return m_pages; }
-
-void Html::edit(const char *diff) {
-  if (m_document) {
-    html::edit(*m_document, diff);
-  }
-}
-
-void Html::save(const std::string &path) const {
-  if (m_document) {
-    m_document->save(path);
-  }
-}
-
-HtmlPage::HtmlPage(std::string name, std::string path)
-    : m_name{std::move(name)}, m_path{std::move(path)} {}
-
-const std::string &HtmlPage::name() const { return m_name; }
-
-const std::string &HtmlPage::path() const { return m_path; }
 
 } // namespace odr

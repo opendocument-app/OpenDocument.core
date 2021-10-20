@@ -1,12 +1,15 @@
 #ifndef ODR_HTML_H
 #define ODR_HTML_H
 
+#include <odr/document.h>
+#include <odr/file.h>
 #include <odr/style.h>
 #include <optional>
 #include <string>
 
 namespace odr {
 class Document;
+class HtmlPage;
 
 enum class HtmlTableGridlines {
   none,
@@ -15,13 +18,9 @@ enum class HtmlTableGridlines {
 };
 
 struct HtmlConfig {
-  // starting sheet for spreadsheet, starting page for presentation, ignored for
-  // text, ignored for graphics
-  std::uint32_t entry_offset{0};
-  // translate only N sheets / pages; zero means translate all
-  std::uint32_t entry_count{0};
-  // create output for each entry
-  bool split_entries{false};
+  bool compact_presentation{false};
+  bool compact_drawing{false};
+
   // create editable output
   bool editable{false};
 
@@ -29,19 +28,48 @@ struct HtmlConfig {
   bool text_document_margin{false};
 
   // spreadsheet table limit
-  std::optional<TableDimensions> table_limit = TableDimensions(10000, 500);
-  bool table_limit_by_content{true};
+  std::optional<TableDimensions> spreadsheet_limit{TableDimensions(10000, 500)};
+  bool spreadsheet_limit_by_content{true};
   // spreadsheet gridlines
-  HtmlTableGridlines table_gridlines{HtmlTableGridlines::soft};
+  HtmlTableGridlines spreadsheet_gridlines{HtmlTableGridlines::soft};
 };
-} // namespace odr
 
-namespace odr::html {
-HtmlConfig parse_config(const std::string &path);
+class Html final {
+public:
+  Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages,
+       Document document);
 
-void translate(const Document &document, const std::string &path,
+  FileType file_type() const;
+  const std::vector<HtmlPage> &pages() const;
+
+  void edit(const char *diff);
+  void save(const std::string &path) const;
+
+private:
+  FileType m_file_type;
+  HtmlConfig m_config;
+  std::vector<HtmlPage> m_pages;
+  std::optional<Document> m_document;
+};
+
+class HtmlPage final {
+public:
+  HtmlPage(std::string name, std::string path);
+
+  const std::string &name() const;
+  const std::string &path() const;
+
+private:
+  std::string m_name;
+  std::string m_path;
+};
+
+namespace html {
+Html translate(const Document &document, const std::string &path,
                const HtmlConfig &config);
 void edit(const Document &document, const char *diff);
-} // namespace odr::html
+} // namespace html
+
+} // namespace odr
 
 #endif // ODR_HTML_H

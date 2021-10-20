@@ -207,6 +207,8 @@ class Page final : public TypedElement<internal::abstract::PageElement> {
 public:
   using TypedElement::TypedElement;
 
+  [[nodiscard]] std::string name() const;
+
   [[nodiscard]] PageLayout page_layout() const;
 };
 

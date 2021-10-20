@@ -67,6 +67,10 @@ void Document::save(const common::Path & /*path*/,
   throw UnsupportedOperation();
 }
 
+FileType Document::file_type() const noexcept {
+  return FileType::office_open_xml_document;
+}
+
 DocumentType Document::document_type() const noexcept {
   return DocumentType::text;
 }
