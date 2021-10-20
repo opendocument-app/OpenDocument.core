@@ -61,9 +61,24 @@ void Document::save(const common::Path &path) const {
     if (p == "content.xml") {
       // TODO stream
       std::stringstream out;
-      m_content_xml.print(out);
+      m_content_xml.print(out, "", pugi::format_raw);
       auto tmp = std::make_shared<common::MemoryFile>(out.str());
       archive.insert_file(std::end(archive), p, tmp);
+      continue;
+    }
+    if (p == "META-INF/manifest.xml") {
+      // TODO
+      auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
+
+      for (auto &&node : manifest.select_nodes("//manifest:encryption-data")) {
+        node.node().parent().remove_child(node.node());
+      }
+
+      std::stringstream out;
+      manifest.print(out, "", pugi::format_raw);
+      auto tmp = std::make_shared<common::MemoryFile>(out.str());
+      archive.insert_file(std::end(archive), p, tmp);
+
       continue;
     }
     archive.insert_file(std::end(archive), p, m_filesystem->open(p));
