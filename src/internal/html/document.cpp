@@ -45,7 +45,7 @@ std::string fill_path_variables(const std::string &path,
                                 const std::uint32_t index) {
   std::string result = path;
   internal::util::string::replace_all(result, "{index}", std::to_string(index));
-  return path;
+  return result;
 }
 
 std::ofstream output(const std::string &path) {
