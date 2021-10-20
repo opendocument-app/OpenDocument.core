@@ -10,109 +10,11 @@
 
 namespace odr {
 
-namespace {
-std::string type_to_string(const FileType type) {
-  switch (type) {
-  case FileType::zip:
-    return "zip";
-  case FileType::compound_file_binary_format:
-    return "cfb";
-  case FileType::opendocument_text:
-    return "odt";
-  case FileType::opendocument_presentation:
-    return "odp";
-  case FileType::opendocument_spreadsheet:
-    return "ods";
-  case FileType::opendocument_graphics:
-    return "odg";
-  case FileType::office_open_xml_document:
-    return "docx";
-  case FileType::office_open_xml_presentation:
-    return "pptx";
-  case FileType::office_open_xml_workbook:
-    return "xlsx";
-  case FileType::legacy_word_document:
-    return "doc";
-  case FileType::legacy_powerpoint_presentation:
-    return "ppt";
-  case FileType::legacy_excel_worksheets:
-    return "xls";
-  default:
-    return "unnamed";
-  }
-}
-} // namespace
-
 DocumentMeta::DocumentMeta() = default;
 
 DocumentMeta::DocumentMeta(const DocumentType document_type,
                            const std::optional<std::uint32_t> entry_count)
     : document_type{document_type}, entry_count{entry_count} {}
-
-FileType FileMeta::type_by_extension(const std::string &extension) noexcept {
-  if (extension == "zip") {
-    return FileType::zip;
-  }
-  if (extension == "cfb") {
-    return FileType::compound_file_binary_format;
-  }
-  if (extension == "odt" || extension == "sxw") {
-    return FileType::opendocument_text;
-  }
-  if (extension == "odp" || extension == "sxi") {
-    return FileType::opendocument_presentation;
-  }
-  if (extension == "ods" || extension == "sxc") {
-    return FileType::opendocument_spreadsheet;
-  }
-  if (extension == "odg" || extension == "sxd") {
-    return FileType::opendocument_graphics;
-  }
-  if (extension == "docx") {
-    return FileType::office_open_xml_document;
-  }
-  if (extension == "pptx") {
-    return FileType::office_open_xml_presentation;
-  }
-  if (extension == "xlsx") {
-    return FileType::office_open_xml_workbook;
-  }
-  if (extension == "doc") {
-    return FileType::legacy_word_document;
-  }
-  if (extension == "ppt") {
-    return FileType::legacy_powerpoint_presentation;
-  }
-  if (extension == "xls") {
-    return FileType::legacy_excel_worksheets;
-  }
-  if (extension == "svm") {
-    return FileType::starview_metafile;
-  }
-
-  return FileType::unknown;
-}
-
-FileCategory FileMeta::category_by_type(const FileType type) noexcept {
-  switch (type) {
-  case FileType::zip:
-  case FileType::compound_file_binary_format:
-    return FileCategory::archive;
-  case FileType::opendocument_text:
-  case FileType::opendocument_presentation:
-  case FileType::opendocument_spreadsheet:
-  case FileType::opendocument_graphics:
-  case FileType::office_open_xml_document:
-  case FileType::office_open_xml_presentation:
-  case FileType::office_open_xml_workbook:
-  case FileType::legacy_word_document:
-  case FileType::legacy_powerpoint_presentation:
-  case FileType::legacy_excel_worksheets:
-    return FileCategory::document;
-  default:
-    return FileCategory::unknown;
-  }
-}
 
 FileMeta::FileMeta() = default;
 
@@ -120,10 +22,6 @@ FileMeta::FileMeta(const FileType type, const bool password_encrypted,
                    std::optional<DocumentMeta> document_meta)
     : type{type}, password_encrypted{password_encrypted},
       document_meta{std::move(document_meta)} {}
-
-std::string FileMeta::type_as_string() const noexcept {
-  return type_to_string(type);
-}
 
 File::File(std::shared_ptr<internal::abstract::File> impl)
     : m_impl{std::move(impl)} {}

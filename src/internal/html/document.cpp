@@ -104,7 +104,7 @@ Html html::translate_text_document(const Document &document,
   }
   back(document, out, config);
 
-  return {FileType::unknown, config, {{"document", filled_path}}, document};
+  return {document.file_type(), config, {{"document", filled_path}}, document};
 }
 
 Html html::translate_presentation(const Document &document,
@@ -122,10 +122,10 @@ Html html::translate_presentation(const Document &document,
     internal::html::translate_slide(cursor, out, config);
     back(document, out, config);
 
-    pages.push_back({cursor.element().slide().name(), filled_path});
+    pages.emplace_back(cursor.element().slide().name(), filled_path);
   });
 
-  return {FileType::unknown, config, std::move(pages), document};
+  return {document.file_type(), config, std::move(pages), document};
 }
 
 Html html::translate_spreadsheet(const Document &document,
@@ -143,10 +143,10 @@ Html html::translate_spreadsheet(const Document &document,
     translate_sheet(cursor, out, config);
     back(document, out, config);
 
-    pages.push_back({cursor.element().sheet().name(), filled_path});
+    pages.emplace_back(cursor.element().sheet().name(), filled_path);
   });
 
-  return {FileType::unknown, config, std::move(pages), document};
+  return {document.file_type(), config, std::move(pages), document};
 }
 
 Html html::translate_drawing(const Document &document, const std::string &path,
@@ -163,10 +163,10 @@ Html html::translate_drawing(const Document &document, const std::string &path,
     internal::html::translate_page(cursor, out, config);
     back(document, out, config);
 
-    pages.push_back({cursor.element().page().name(), filled_path});
+    pages.emplace_back(cursor.element().page().name(), filled_path);
   });
 
-  return {FileType::unknown, config, std::move(pages), document};
+  return {document.file_type(), config, std::move(pages), document};
 }
 
 } // namespace odr::internal

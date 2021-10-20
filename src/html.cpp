@@ -9,8 +9,8 @@ using namespace odr::internal;
 
 namespace odr {
 
-Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages,
-           Document document)
+Html::Html(const FileType file_type, HtmlConfig config,
+           std::vector<HtmlPage> pages, Document document)
     : m_file_type{file_type}, m_config{std::move(config)},
       m_pages{std::move(pages)}, m_document{std::move(document)} {}
 
