@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <functional>
 #include <gtest/gtest.h>
 #include <memory>
 #include <odr/document.h>

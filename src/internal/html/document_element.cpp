@@ -11,7 +11,6 @@
 #include <odr/document_cursor.h>
 #include <odr/document_element.h>
 #include <odr/html.h>
-#include <sstream>
 
 namespace odr::internal {
 

@@ -5,7 +5,6 @@
 #include <internal/svm/svm_to_svg.h>
 #include <memory>
 #include <odr/file.h>
-#include <string>
 #include <test_util.h>
 
 using namespace odr::internal;

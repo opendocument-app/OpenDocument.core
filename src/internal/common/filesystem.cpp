@@ -7,7 +7,6 @@
 #include <internal/common/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/util/stream_util.h>
-#include <iterator>
 #include <map>
 #include <odr/exceptions.h>
 #include <system_error>

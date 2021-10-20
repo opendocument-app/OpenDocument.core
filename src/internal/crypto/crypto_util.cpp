@@ -9,8 +9,6 @@
 #include <iterhash.h>
 #include <modes.h>
 #include <pwdbased.h>
-#include <queue.h>
-#include <secblock.h>
 #include <sha.h>
 #include <zinflate.h>
 

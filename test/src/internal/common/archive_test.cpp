@@ -2,7 +2,6 @@
 #include <internal/cfb/cfb_archive.h>
 #include <internal/common/archive.h>
 #include <internal/common/file.h>
-#include <internal/common/path.h>
 #include <internal/zip/zip_archive.h>
 #include <memory>
 #include <test_util.h>

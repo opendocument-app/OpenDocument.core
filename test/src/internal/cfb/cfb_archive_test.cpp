@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include <internal/cfb/cfb_archive.h>
 #include <internal/common/file.h>
-#include <iterator>
 #include <memory>
 #include <odr/exceptions.h>
 #include <test_util.h>

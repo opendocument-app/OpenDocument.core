@@ -1,6 +1,5 @@
 #include <memory>
 #include <odr/quantity.h>
-#include <string>
 #include <unordered_map>
 
 namespace odr {
