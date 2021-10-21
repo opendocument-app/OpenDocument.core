@@ -8,8 +8,10 @@ jobs:
     strategy:
       matrix:
         config:
-          - { os: ubuntu-20.04, arch: x86_64, cc: clang, cxx: clang++ }
-          - { os: macos-10.15, arch: x86_64, cc: clang, cxx: clang++ }
+          - { os: ubuntu-20.04, arch: x64, cc: clang, cxx: clang++ }
+          - { os: ubuntu-20.04, arch: x86, cc: clang, cxx: clang++ }
+          - { os: macos-10.15, arch: x86, cc: clang, cxx: clang++ }
+          - { os: macos-10.15, arch: x64, cc: clang, cxx: clang++ }
 
     steps:
       - name: ubuntu install ccache
@@ -40,7 +42,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Release ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_GENERATOR_PLATFORM=${{ matrix.config.arch }} ..
       - name: make
         run: |
           cd build
@@ -49,7 +51,7 @@ jobs:
       - name: upload binaries
         uses: actions/upload-artifact@v2
         with:
-          name: bin-${{ matrix.config.os }}
+          name: bin-${{ matrix.config.os }}-${{ matrix.config.arch }}
           path: |
             build/test/odr_test
 
