@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <iostream>
 #include <miniz.h>
 #include <string>
 #include <test_util.h>
@@ -10,25 +9,20 @@
 using namespace odr::test;
 
 TEST(miniz, list) {
-  bool state;
-
   mz_zip_archive zip{};
-  state = mz_zip_reader_init_file(
+  bool state = mz_zip_reader_init_file(
       &zip,
       TestData::test_file_path("odr-public/odt/style-various-1.odt").c_str(),
       0);
   EXPECT_TRUE(state);
 
-  // TODO remove
   auto num_files = mz_zip_reader_get_num_files(&zip);
   for (std::uint32_t i = 0; i < num_files; ++i) {
     mz_zip_archive_file_stat stat{};
     mz_zip_reader_file_stat(&zip, i, &stat);
-    std::cout << stat.m_is_directory << std::endl;
-    std::cout << stat.m_filename << std::endl;
-    std::cout << stat.m_method << std::endl;
-    std::cout << std::endl;
   }
+
+  EXPECT_EQ(19, num_files);
 }
 
 TEST(miniz, create) {
