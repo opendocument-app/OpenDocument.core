@@ -418,12 +418,14 @@ void html::translate_table(DocumentCursor &cursor, std::ostream &out,
 
 void html::translate_image(DocumentCursor &cursor, std::ostream &out,
                            const HtmlConfig & /*config*/) {
+  auto image = cursor.element().image();
+
   out << "<img style=\"position:absolute;left:0;top:0;width:100%;height:100%\"";
   out << " alt=\"Error: image not found or unsupported\"";
   out << " src=\"";
 
-  if (cursor.element().image().internal()) {
-    auto image_file = cursor.element().image().file().value();
+  if (image.internal()) {
+    auto image_file = image.file().value();
 
     // TODO use stream
     std::string image_data;
@@ -450,7 +452,7 @@ void html::translate_image(DocumentCursor &cursor, std::ostream &out,
     // TODO stream
     out << crypto::util::base64_encode(image_data);
   } else {
-    out << cursor.element().image().href();
+    out << image.href();
   }
 
   out << "\">";

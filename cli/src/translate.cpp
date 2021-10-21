@@ -2,8 +2,10 @@
 #include <odr/file.h>
 #include <odr/html.h>
 #include <string>
+#include <filesystem>
 
 using namespace odr;
+namespace fs = std::filesystem;
 
 int main(int argc, char **argv) {
   const std::string input{argv[1]};
@@ -33,6 +35,7 @@ int main(int argc, char **argv) {
   HtmlConfig config;
   config.editable = true;
 
+  fs::create_directories(output);
   html::translate(document, output, config);
 
   return 0;

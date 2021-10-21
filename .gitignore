@@ -36,8 +36,7 @@
 
 ## OpenDocument.core
 build/
-cmake-build-debug/
-cmake-build-release/
+cmake-build-*/
 
 *.zip
 *.svg
