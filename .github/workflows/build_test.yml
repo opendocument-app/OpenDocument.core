@@ -10,7 +10,6 @@ jobs:
         config:
           - { os: ubuntu-20.04, arch: x86_64, cc: clang, cxx: clang++ }
           - { os: ubuntu-20.04, arch: x86_64, cc: gcc, cxx: g++ }
-          - { os: ubuntu-20.04, arch: x86, cc: clang, cxx: clang++, cflags: -m32, cxxflags: -m32 }
           - { os: macos-10.15, arch: x86_64, cc: clang, cxx: clang++ }
 
     steps:
@@ -39,8 +38,6 @@ jobs:
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
-          CFLAGS: ${{ matrix.config.cflags }}
-          CXXFLAGS: ${{ matrix.config.cxxflags }}
         run: |
           mkdir -p build
           cd build
