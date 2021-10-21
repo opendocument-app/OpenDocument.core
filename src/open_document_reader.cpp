@@ -135,7 +135,7 @@ Html OpenDocumentReader::html(const std::string &path, const char *password,
 Html OpenDocumentReader::html(const Document &document,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  return internal::html::translate_document(document, output_path, config);
+  return html::translate(document, output_path, config);
 }
 
 OpenDocumentReader::OpenDocumentReader() = default;

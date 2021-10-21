@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <internal/html/document.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
@@ -6,6 +7,7 @@
 #include <odr/html.h>
 
 using namespace odr::internal;
+namespace fs = std::filesystem;
 
 namespace odr {
 
@@ -35,6 +37,7 @@ HtmlPage::HtmlPage(std::string name, std::string path)
 
 Html html::translate(const Document &document, const std::string &path,
                      const HtmlConfig &config) {
+  fs::create_directories(path);
   return internal::html::translate_document(document, path, config);
 }
 
