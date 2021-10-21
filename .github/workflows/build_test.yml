@@ -56,19 +56,19 @@ jobs:
 
   test:
     needs: build
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
         config:
-          - { os: ubuntu-20.04, arch: x86_64, cxx: clang++ }
-          - { os: macos-10.15, arch: x86_64, cxx: clang++ }
+          - { os: ubuntu-20.04, arch: x86_64, cc: clang, cxx: clang++ }
+          - { os: macos-10.15, arch: x86_64, cc: clang, cxx: clang++ }
 
     steps:
       - name: ubuntu install tidy
-        if: startsWith(matrix.os, 'ubuntu')
+        if: startsWith(matrix.config.os, 'ubuntu')
         run: sudo apt install tidy
       - name: macos install tidy
-        if: startsWith(matrix.os, 'macos')
+        if: startsWith(matrix.config.os, 'macos')
         run: brew install tidy-html5
 
       - name: checkout
@@ -89,7 +89,7 @@ jobs:
       - name: download binaries
         uses: actions/download-artifact@v2
         with:
-          name: bin-${{ matrix.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}
+          name: bin-${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}
           path: build/test
       - name: fix artifact permissions
         run:  chmod +x build/test/odr_test
