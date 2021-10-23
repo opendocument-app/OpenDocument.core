@@ -2,7 +2,7 @@
 
 ## General
 
-this implementation relies on [ZIP](../zip/README.md)
+this implementation relies on [ZIP](../zip/README.md) and [SVM](../svm/README.md)
 
 ## Features
 
