@@ -13,6 +13,8 @@
 
 namespace odr::internal::ooxml::spreadsheet {
 
+Element::Element() = default;
+
 Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
@@ -34,11 +36,18 @@ pugi::xml_node Element::sheet_(const abstract::Document *document,
   return document_(document)->m_sheets_xml.at(id).document_element();
 }
 
+std::vector<pugi::xml_node>
+Element::shared_strings_(const abstract::Document *document) {
+  return document_(document)->m_shared_strings;
+}
+
 namespace {
 
 class Sheet;
 class TableColumn;
 class TableRow;
+class TableCell;
+class Text;
 
 template <ElementType element_type> class DefaultElement : public Element {
 public:
@@ -128,7 +137,7 @@ public:
             sheet_node_(document).child("dimension").attribute("ref")) {
       try {
         auto range = common::TableRange(dimension.value());
-        return {range.to().row(), range.to().column()};
+        return {range.to().row() + 1, range.to().column() + 1};
       } catch (...) {
       }
     }
@@ -177,6 +186,9 @@ class TableColumn final : public Element, public abstract::TableColumnElement {
 public:
   using Element::Element;
 
+  TableColumn(pugi::xml_node node, std::uint32_t column)
+      : Element(node), m_column{column} {}
+
   [[nodiscard]] abstract::Element *
   construct_copy(const abstract::Allocator &allocator) const final {
     return common::construct_2<TableColumn>(allocator, *this);
@@ -185,27 +197,53 @@ public:
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator &allocator) const final {
-    return common::construct_optional<TableColumn>(
-        m_node.previous_sibling("col"), allocator);
+    if (min_() <= m_column - 1) {
+      return common::construct_2<TableColumn>(allocator, m_node, m_column - 1);
+    }
+    if (auto previous_sibling = m_node.previous_sibling()) {
+      return common::construct_2<TableColumn>(allocator, previous_sibling,
+                                              m_column - 1);
+    }
+    return nullptr;
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
                          const abstract::Allocator &allocator) const final {
-    return common::construct_optional<TableColumn>(m_node.next_sibling("col"),
-                                                   allocator);
+    if (max_() >= m_column + 1) {
+      return common::construct_2<TableColumn>(allocator, m_node, m_column + 1);
+    }
+    if (auto next_sibling = m_node.next_sibling()) {
+      return common::construct_2<TableColumn>(allocator, next_sibling,
+                                              m_column + 1);
+    }
+    return nullptr;
   }
 
   [[nodiscard]] std::optional<TableColumnStyle>
-  style(const abstract::Document *document,
+  style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_column_style;
+    TableColumnStyle result;
+    if (auto width = m_node.attribute("width")) {
+      result.width = Measure(width.as_float(), DynamicUnit("ch"));
+    }
+    return result;
   }
+
+private:
+  std::uint32_t m_column{0};
+
+  std::uint32_t min_() const { return m_node.attribute("min").as_uint() - 1; }
+
+  std::uint32_t max_() const { return m_node.attribute("min").as_uint() - 1; }
 };
 
 class TableRow final : public Element, public abstract::TableRowElement {
 public:
   using Element::Element;
+
+  TableRow(pugi::xml_node node, std::uint32_t row)
+      : Element(node), m_row{row} {}
 
   [[nodiscard]] abstract::Element *
   construct_copy(const abstract::Allocator &allocator) const final {
@@ -213,29 +251,53 @@ public:
   }
 
   abstract::Element *
+  construct_first_child(const abstract::Document *,
+                        const abstract::Allocator &allocator) const final {
+    return common::construct_2<TableCell>(
+        allocator, m_node.child("c"), *this,
+        TableColumn(m_node.parent().parent().child("cols").child("col")));
+  }
+
+  abstract::Element *
   construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator &allocator) const final {
-    return common::construct_optional<TableRow>(m_node.previous_sibling("row"),
-                                                allocator);
+    if (auto previous_sibling = m_node.previous_sibling()) {
+      return common::construct_2<TableRow>(allocator, previous_sibling,
+                                           m_row - 1);
+    }
+    return nullptr;
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
                          const abstract::Allocator &allocator) const final {
-    return common::construct_optional<TableRow>(m_node.next_sibling("row"),
-                                                allocator);
+    if (auto next_sibling = m_node.next_sibling()) {
+      return common::construct_2<TableRow>(allocator, next_sibling, m_row + 1);
+    }
+    return nullptr;
   }
 
   [[nodiscard]] std::optional<TableRowStyle>
-  style(const abstract::Document *document,
+  style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_row_style;
+    TableRowStyle result;
+    if (auto height = m_node.attribute("ht")) {
+      result.height = Measure(height.as_float(), DynamicUnit("pt"));
+    }
+    return result;
   }
+
+private:
+  std::uint32_t m_row{0};
 };
 
 class TableCell final : public Element, public abstract::TableCellElement {
 public:
+  // TODO remove
   using Element::Element;
+
+  TableCell(pugi::xml_node node, TableRow row, TableColumn column)
+      : Element(node), m_row{row}, m_column{column} {}
 
   [[nodiscard]] abstract::Element *
   construct_copy(const abstract::Allocator &allocator) const final {
@@ -243,27 +305,50 @@ public:
   }
 
   abstract::Element *
-  construct_previous_sibling(const abstract::Document *,
-                             const abstract::Allocator &allocator) const final {
-    return common::construct_optional<TableCell>(m_node.previous_sibling("c"),
-                                                 allocator);
+  construct_first_child(const abstract::Document *document,
+                        const abstract::Allocator &allocator) const final {
+    if (auto child = m_node.child("v")) {
+      auto replacement =
+          shared_strings_(document)[child.text().as_uint()].first_child();
+      return construct_default_element(replacement, allocator);
+    }
+    return nullptr;
   }
 
   abstract::Element *
-  construct_next_sibling(const abstract::Document *,
+  construct_previous_sibling(const abstract::Document *document,
+                             const abstract::Allocator &allocator) const final {
+    if (auto previous_sibling = m_node.previous_sibling("c")) {
+      TableColumn previous_column;
+      m_column.construct_previous_sibling(
+          document, [&](std::size_t) { return &previous_column; });
+      return common::construct_2<TableCell>(allocator, previous_sibling, m_row,
+                                            previous_column);
+    }
+    return nullptr;
+  }
+
+  abstract::Element *
+  construct_next_sibling(const abstract::Document *document,
                          const abstract::Allocator &allocator) const final {
-    return common::construct_optional<TableCell>(m_node.next_sibling("c"),
-                                                 allocator);
+    if (auto next_sibling = m_node.next_sibling("c")) {
+      TableColumn previous_column;
+      m_column.construct_previous_sibling(
+          document, [&](std::size_t) { return &previous_column; });
+      return common::construct_2<TableCell>(allocator, next_sibling, m_row,
+                                            previous_column);
+    }
+    return nullptr;
   }
 
   [[nodiscard]] abstract::Element *
   column(const abstract::Document *, const abstract::DocumentCursor *) final {
-    return nullptr;
+    return &m_column;
   }
 
   [[nodiscard]] abstract::Element *row(const abstract::Document *,
                                        const abstract::DocumentCursor *) final {
-    return nullptr;
+    return &m_row;
   }
 
   [[nodiscard]] bool covered(const abstract::Document *) const final {
@@ -283,28 +368,10 @@ public:
         const abstract::DocumentCursor *) const final {
     return partial_style(document).table_cell_style;
   }
-};
 
-class Paragraph final : public Element, public abstract::ParagraphElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] abstract::Element *
-  construct_copy(const abstract::Allocator &allocator) const final {
-    return common::construct_2<Paragraph>(allocator, *this);
-  }
-
-  [[nodiscard]] std::optional<ParagraphStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).paragraph_style;
-  }
-
-  [[nodiscard]] std::optional<TextStyle>
-  text_style(const abstract::Document *document,
-             const abstract::DocumentCursor *) const final {
-    return partial_style(document).text_style;
-  }
+private:
+  TableRow m_row;
+  TableColumn m_column;
 };
 
 class Span final : public Element, public abstract::SpanElement {
@@ -354,10 +421,7 @@ private:
   static bool is_text_(const pugi::xml_node node) {
     std::string name = node.name();
 
-    if (name == "a:t") {
-      return true;
-    }
-    if (name == "a:tab") {
+    if (name == "t") {
       return true;
     }
 
@@ -367,11 +431,8 @@ private:
   static std::string text_(const pugi::xml_node node) {
     std::string name = node.name();
 
-    if (name == "a:t") {
+    if (name == "t") {
       return node.text().get();
-    }
-    if (name == "a:tab") {
-      return "\t";
     }
 
     return "";
@@ -405,7 +466,7 @@ Element::construct_default_element(pugi::xml_node node,
       {"worksheet", common::construct<Sheet>},
       {"col", common::construct<TableColumn>},
       {"row", common::construct<TableRow>},
-      {"c", common::construct<TableCell>},
+      {"r", common::construct<Span>},
       {"t", common::construct<Text>},
   };
 

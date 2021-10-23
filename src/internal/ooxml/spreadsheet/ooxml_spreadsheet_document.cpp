@@ -24,6 +24,13 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     m_sheets_xml[relationships.first] = util::xml::parse(
         *m_filesystem, common::Path("xl").join(relationships.second));
   }
+
+  m_shared_strings_xml =
+      util::xml::parse(*m_filesystem, "xl/sharedStrings.xml");
+
+  for (auto shared_string : m_shared_strings_xml.document_element()) {
+    m_shared_strings.push_back(shared_string);
+  }
 }
 
 bool Document::editable() const noexcept { return false; }

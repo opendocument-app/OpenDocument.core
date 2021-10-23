@@ -16,6 +16,7 @@ public:
   construct_default_element(pugi::xml_node node,
                             const abstract::Allocator &allocator);
 
+  Element();
   explicit Element(pugi::xml_node node);
 
   common::ResolvedStyle partial_style(const abstract::Document *document) const;
@@ -27,6 +28,8 @@ protected:
   static const Document *document_(const abstract::Document *document);
   static pugi::xml_node sheet_(const abstract::Document *document,
                                const std::string &id);
+  static std::vector<pugi::xml_node>
+  shared_strings_(const abstract::Document *document);
 };
 
 } // namespace odr::internal::ooxml::spreadsheet

@@ -42,6 +42,9 @@ private:
   pugi::xml_document m_styles_xml;
   std::unordered_map<std::string, pugi::xml_document> m_sheets_xml;
 
+  pugi::xml_document m_shared_strings_xml;
+  std::vector<pugi::xml_node> m_shared_strings;
+
   friend class Element;
 };
 
