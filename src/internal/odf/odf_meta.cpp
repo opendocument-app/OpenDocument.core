@@ -16,6 +16,7 @@
 namespace odr::internal::odf {
 
 namespace {
+
 bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
   // https://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
   static const std::unordered_map<std::string, FileType> MIME_TYPES = {
@@ -28,6 +29,8 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
        FileType::opendocument_graphics},
       // TODO any difference for template files?
       {"application/vnd.oasis.opendocument.text-template",
+       FileType::opendocument_text},
+      {"application/vnd.oasis.opendocument.text-master",
        FileType::opendocument_text},
       {"application/vnd.oasis.opendocument.presentation-template",
        FileType::opendocument_presentation},
@@ -52,6 +55,7 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
   return util::map::lookup_map_default(MIME_TYPES, mime_type, file_type,
                                        FileType::unknown);
 }
+
 } // namespace
 
 FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
@@ -86,41 +90,30 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
 
   DocumentMeta document_meta;
 
-  if (result.password_encrypted == decrypted) {
-    if (filesystem.is_file("meta.xml")) {
-      const auto meta_xml = util::xml::parse(filesystem, "meta.xml");
+  if ((result.password_encrypted == decrypted) &&
+      filesystem.is_file("meta.xml")) {
+    const auto meta_xml = util::xml::parse(filesystem, "meta.xml");
 
-      const pugi::xml_node statistics = meta_xml.child("office:document-meta")
-                                            .child("office:meta")
-                                            .child("meta:document-statistic");
-      if (statistics) {
-        switch (result.type) {
-        case FileType::opendocument_text: {
-          document_meta.document_type = DocumentType::text;
-          const auto page_count = statistics.attribute("meta:page-count");
-          if (!page_count) {
-            break;
-          }
-          document_meta.entry_count = page_count.as_uint();
-        } break;
-        case FileType::opendocument_presentation: {
-          document_meta.document_type = DocumentType::presentation;
-        } break;
-        case FileType::opendocument_spreadsheet: {
-          document_meta.document_type = DocumentType::spreadsheet;
-          const auto table_count = statistics.attribute("meta:table-count");
-          if (!table_count) {
-            break;
-          }
-          document_meta.entry_count = table_count.as_uint();
-        } break;
-        case FileType::opendocument_graphics: {
-          document_meta.document_type = DocumentType::drawing;
-        } break;
-        default:
-          break;
-        }
+    const pugi::xml_node statistics = meta_xml.child("office:document-meta")
+                                          .child("office:meta")
+                                          .child("meta:document-statistic");
+
+    if (statistics && (result.type == FileType::opendocument_text)) {
+      document_meta.document_type = DocumentType::text;
+      if (auto page_count = statistics.attribute("meta:page-count")) {
+        document_meta.entry_count = page_count.as_uint();
       }
+    } else if (statistics &&
+               (result.type == FileType::opendocument_presentation)) {
+      document_meta.document_type = DocumentType::presentation;
+    } else if (statistics &&
+               (result.type == FileType::opendocument_spreadsheet)) {
+      document_meta.document_type = DocumentType::spreadsheet;
+      if (auto table_count = statistics.attribute("meta:table-count")) {
+        document_meta.entry_count = table_count.as_uint();
+      }
+    } else if (statistics && (result.type == FileType::opendocument_graphics)) {
+      document_meta.document_type = DocumentType::drawing;
     }
   }
 

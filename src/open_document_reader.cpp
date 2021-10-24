@@ -24,16 +24,17 @@ OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
   if (extension == "cfb") {
     return FileType::compound_file_binary_format;
   }
-  if (extension == "odt" || extension == "sxw") {
+  if (extension == "odt" || extension == "fodt" || extension == "ott" ||
+      extension == "odm") {
     return FileType::opendocument_text;
   }
-  if (extension == "odp" || extension == "sxi") {
+  if (extension == "odp" || extension == "fodp" || extension == "otp") {
     return FileType::opendocument_presentation;
   }
-  if (extension == "ods" || extension == "sxc") {
+  if (extension == "ods" || extension == "fods" || extension == "ots") {
     return FileType::opendocument_spreadsheet;
   }
-  if (extension == "odg" || extension == "sxd") {
+  if (extension == "odg" || extension == "fodg" || extension == "otg") {
     return FileType::opendocument_graphics;
   }
   if (extension == "docx") {
