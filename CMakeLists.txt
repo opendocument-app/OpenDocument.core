@@ -29,7 +29,7 @@ conan_cmake_install(PATH_OR_REFERENCE ..
         ENV CC=${CMAKE_C_COMPILER}
         ENV CXX=${CMAKE_CXX_COMPILER})
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup(TARGETS)
+conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
 
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)

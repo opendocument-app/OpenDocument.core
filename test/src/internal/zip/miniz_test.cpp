@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <miniz.h>
+#include <miniz/miniz.h>
 #include <string>
 #include <test_util.h>
 
