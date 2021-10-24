@@ -1,11 +1,11 @@
-#include <codecvt>
 #include <cstdint>
 #include <cstring>
 #include <internal/crypto/crypto_util.h>
 #include <internal/ooxml/ooxml_crypto.h>
 #include <internal/util/string_util.h>
-#include <locale>
 #include <odr/exceptions.h>
+#include <stdexcept>
+#include <utility>
 
 namespace {
 template <typename I, typename O> void to_little_endian(I in, O &out) {
@@ -36,7 +36,7 @@ std::string xor_bytes(const std::string &a, const std::string &b) {
 }
 } // namespace
 
-namespace odr::internal::ooxml::Crypto {
+namespace odr::internal::ooxml::crypto {
 
 ECMA376Standard::ECMA376Standard(const EncryptionHeader &encryption_header,
                                  const EncryptionVerifier &encryption_verifier,
@@ -77,16 +77,17 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
         reinterpret_cast<const char *>(password_u16.data()),
         2 * password_u16.size());
 
-    hash = crypto::util::sha1(std::string(m_encryption_verifier.salt,
-                                          m_encryption_verifier.salt_size) +
-                              password_u16_bytes);
+    hash = internal::crypto::util::sha1(
+        std::string(m_encryption_verifier.salt,
+                    m_encryption_verifier.salt_size) +
+        password_u16_bytes);
     std::string ibytes(4, ' ');
     for (std::uint32_t i = 0; i < ITER_COUNT; ++i) {
       to_little_endian(i, ibytes);
-      hash = crypto::util::sha1(ibytes + hash);
+      hash = internal::crypto::util::sha1(ibytes + hash);
     }
     to_little_endian((std::uint32_t)0, ibytes);
-    hash = crypto::util::sha1(hash + ibytes);
+    hash = internal::crypto::util::sha1(hash + ibytes);
   }
 
   std::string result;
@@ -97,10 +98,10 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
 
     std::string buf1(64, '\x36');
     buf1 = xor_bytes(hash, buf1.substr(0, cb_hash)) + buf1.substr(cb_hash);
-    const auto x1 = crypto::util::sha1(buf1);
+    const auto x1 = internal::crypto::util::sha1(buf1);
     std::string buf2(64, '\x5c');
     buf2 = xor_bytes(hash, buf2.substr(0, cb_hash)) + buf2.substr(cb_hash);
-    const auto x2 = crypto::util::sha1(buf2);
+    const auto x2 = internal::crypto::util::sha1(buf2);
     const auto x3 = x1 + x2;
     result = x3.substr(0, cb_required_key_length);
   }
@@ -111,12 +112,12 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
 bool ECMA376Standard::verify(const std::string &key) const noexcept {
   // https://msdn.microsoft.com/en-us/library/dd926426(v=office.12).aspx
 
-  const std::string verifier = crypto::util::decrypt_AES(
+  const std::string verifier = internal::crypto::util::decrypt_AES(
       key, std::string(m_encryption_verifier.encrypted_verifier,
                        sizeof(m_encryption_verifier.encrypted_verifier)));
-  const std::string hash = crypto::util::sha1(verifier);
+  const std::string hash = internal::crypto::util::sha1(verifier);
   const std::string verifier_hash =
-      crypto::util::decrypt_AES(key, m_encrypted_verifier_hash)
+      internal::crypto::util::decrypt_AES(key, m_encrypted_verifier_hash)
           .substr(0, hash.size());
 
   return hash == verifier_hash;
@@ -127,7 +128,7 @@ std::string ECMA376Standard::decrypt(const std::string &encrypted_package,
   const std::uint64_t total_size =
       *(reinterpret_cast<const std::uint64_t *>(encrypted_package.data()));
   std::string result =
-      crypto::util::decrypt_AES(key, encrypted_package.substr(8))
+      internal::crypto::util::decrypt_AES(key, encrypted_package.substr(8))
           .substr(0, total_size);
 
   return result;
@@ -173,4 +174,4 @@ std::string Util::decrypt(const std::string &encrypted_package,
   return impl->decrypt(encrypted_package, key);
 }
 
-} // namespace odr::internal::ooxml::Crypto
+} // namespace odr::internal::ooxml::crypto

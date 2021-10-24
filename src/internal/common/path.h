@@ -24,6 +24,7 @@ public:
   operator std::string() const noexcept;
   operator std::filesystem::path() const noexcept;
   operator const std::string &() const noexcept;
+
   [[nodiscard]] const std::string &string() const noexcept;
   [[nodiscard]] std::filesystem::path path() const noexcept;
   [[nodiscard]] std::size_t hash() const noexcept;
@@ -51,7 +52,6 @@ private:
   std::uint32_t m_downwards;
   bool m_absolute;
 
-  friend struct ::std::hash<Path>;
   friend std::ostream &operator<<(std::ostream &, const Path &);
 
   void parent_();

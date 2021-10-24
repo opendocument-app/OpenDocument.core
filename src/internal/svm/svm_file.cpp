@@ -1,6 +1,12 @@
+#include <internal/abstract/file.h>
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_format.h>
-#include <odr/file_meta.h>
+#include <odr/file.h>
+#include <utility>
+
+namespace odr::internal::abstract {
+class Image;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::svm {
 
@@ -16,12 +22,12 @@ std::shared_ptr<abstract::File> SvmFile::file() const noexcept {
 }
 
 FileType SvmFile::file_type() const noexcept {
-  return FileType::STARVIEW_METAFILE;
+  return FileType::starview_metafile;
 }
 
 FileMeta SvmFile::file_meta() const noexcept {
   FileMeta result;
-  result.type = FileType::STARVIEW_METAFILE;
+  result.type = FileType::starview_metafile;
   return result;
 }
 

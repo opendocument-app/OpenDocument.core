@@ -1,12 +1,12 @@
 #ifndef ODR_INTERNAL_OOXML_CRYPTO_H
 #define ODR_INTERNAL_OOXML_CRYPTO_H
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
-namespace odr::internal::ooxml {
+namespace odr::internal::ooxml::crypto {
 
-namespace Crypto {
 // TODO support big endian
 #pragma pack(push, 1)
 struct VersionInfo {
@@ -94,8 +94,6 @@ private:
   std::unique_ptr<Algorithm> impl;
 };
 
-} // namespace Crypto
-
-} // namespace odr::internal::ooxml
+} // namespace odr::internal::ooxml::crypto
 
 #endif // ODR_INTERNAL_OOXML_CRYPTO_H

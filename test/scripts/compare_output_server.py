@@ -4,11 +4,12 @@
 import os
 import sys
 import argparse
-import concurrent.futures
 import threading
-from html_render_diff import get_browser
+import io
+from concurrent.futures import ThreadPoolExecutor
+from html_render_diff import get_browser, html_render_diff
 from compare_output import comparable_file, compare_files
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, send_file
 import watchdog.observers
 import watchdog.events
 
@@ -16,7 +17,10 @@ import watchdog.events
 class Config:
     path_a = None
     path_b = None
+    driver = None
+    observer = None
     comparator = None
+    browser = None
     thread_local = threading.local()
 
 
@@ -71,9 +75,11 @@ class Comparator:
         def initializer():
             browser = getattr(Config.thread_local, 'browser', None)
             if browser is None:
-                Config.thread_local.browser = get_browser()
+                browser = get_browser(driver=Config.driver)
+                Config.thread_local.browser = browser
 
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, initializer=initializer)
+        self._executor = ThreadPoolExecutor(max_workers=max_workers,
+                                            initializer=initializer)
         self._result = {}
         self._future = {}
 
@@ -171,10 +177,14 @@ def root():
             result += f'<li><b>B dirs missing: {right_dirs_missing}</b></li>'
 
         for name in common_files:
-            symbol = Config.comparator.result_symbol(
-                os.path.join(common_path, name))
-            css = Config.comparator.result_css(os.path.join(common_path, name))
-            result += f'<li style="{css}"><a style="{css}" href="/compare/{os.path.join(common_path, name)}">{name}</a> {symbol}</li>'
+            if Config.comparator is None:
+                result += f'<li><a href="/compare/{os.path.join(common_path, name)}">{name}</a></li>'
+            else:
+                symbol = Config.comparator.result_symbol(
+                    os.path.join(common_path, name))
+                css = Config.comparator.result_css(
+                    os.path.join(common_path, name))
+                result += f'<li style="{css}"><a style="{css}" href="/compare/{os.path.join(common_path, name)}">{name}</a> {symbol}</li>'
 
         for name in common_dirs:
             result += f'<li>{name}'
@@ -223,6 +233,17 @@ iframe_b.contentWindow.addEventListener('scroll', function(event) {{
 '''
 
 
+@app.route('/image_diff/<path:path>')
+def image_diff(path):
+    diff, _ = html_render_diff(os.path.join(Config.path_a, path),
+                               os.path.join(Config.path_b, path),
+                               Config.browser)
+    tmp = io.BytesIO()
+    diff.save(tmp, 'JPEG', quality=70)
+    tmp.seek(0)
+    return send_file(tmp, mimetype='image/jpeg')
+
+
 @app.route('/file/<variant>/<path:path>')
 def file(variant, path):
     variant_root = Config.path_a if variant == 'a' else Config.path_b
@@ -233,20 +254,29 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('a')
     parser.add_argument('b')
+    parser.add_argument('--driver',
+                        choices=['chrome', 'firefox', 'phantomjs'],
+                        default='firefox')
+    parser.add_argument('--max-workers', type=int, default=1)
+    parser.add_argument('--compare', action='store_true')
     args = parser.parse_args()
 
     Config.path_a = args.a
     Config.path_b = args.b
+    Config.driver = args.driver
+    Config.browser = get_browser(driver=args.driver)
 
-    Config.comparator = Comparator(max_workers=4)
+    if args.compare:
+        Config.comparator = Comparator(max_workers=args.max_workers)
 
-    observer = Observer()
-    observer.start()
+        Config.observer = Observer()
+        Config.observer.start()
 
-    app.run()
+    app.run(host='0.0.0.0')
 
-    observer.stop()
-    observer.join()
+    if args.compare:
+        Config.observer.stop()
+        Config.observer.join()
 
     return 0
 

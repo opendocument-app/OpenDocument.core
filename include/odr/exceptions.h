@@ -13,16 +13,16 @@ struct FileNotFound final : public std::runtime_error {
   FileNotFound();
 };
 
-struct FileNotCreated final : public std::runtime_error {
-  FileNotCreated();
-};
-
 struct UnknownFileType final : public std::runtime_error {
   UnknownFileType();
 };
 
 struct FileReadError final : public std::runtime_error {
   FileReadError();
+};
+
+struct FileWriteError final : public std::runtime_error {
+  FileWriteError();
 };
 
 struct NoZipFile : public std::runtime_error {
@@ -61,14 +61,6 @@ struct NoXml final : public std::runtime_error {
   NoXml();
 };
 
-struct PropertyNotOptional final : public std::runtime_error {
-  PropertyNotOptional();
-};
-
-struct PropertyReadOnly final : public std::runtime_error {
-  PropertyReadOnly();
-};
-
 struct UnsupportedCryptoAlgorithm final : public std::runtime_error {
   UnsupportedCryptoAlgorithm();
 };
@@ -87,6 +79,14 @@ struct UnsupportedEndian final : public std::runtime_error {
 
 struct MsUnsupportedCryptoAlgorithm final : public std::runtime_error {
   MsUnsupportedCryptoAlgorithm();
+};
+
+struct WrongPassword final : public std::runtime_error {
+  WrongPassword();
+};
+
+struct UnknownDocumentType final : public std::runtime_error {
+  UnknownDocumentType();
 };
 
 } // namespace odr

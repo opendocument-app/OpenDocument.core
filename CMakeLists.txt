@@ -7,12 +7,14 @@ option(ODR_TEST "enable tests" ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -D_GLIBCXX_DEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+# benchmarking
+#set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-omit-frame-pointer")
 
 # use ccache if available
 find_program(CCACHE_FOUND ccache)
 if (CCACHE_FOUND)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_FOUND}")
+    message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
 add_subdirectory(3rdparty)
@@ -22,47 +24,72 @@ target_include_directories(odr-interface INTERFACE include)
 
 add_library(odr-object OBJECT
         src/document.cpp
+        src/document_cursor.cpp
+        src/document_element.cpp
         src/exceptions.cpp
-        src/file_meta.cpp
-
-        src/internal/abstract/file.cpp
+        src/file.cpp
+        src/html.cpp
+        src/open_document_reader.cpp
+        src/open_strategy.cpp
+        src/quantity.cpp
+        src/style.cpp
 
         src/internal/cfb/cfb_archive.cpp
         src/internal/cfb/cfb_impl.cpp
         src/internal/cfb/cfb_util.cpp
 
         src/internal/common/constants.cpp
+        src/internal/common/document_cursor.cpp
+        src/internal/common/document_path.cpp
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
-        src/internal/common/html.cpp
         src/internal/common/path.cpp
+        src/internal/common/style.cpp
         src/internal/common/table_cursor.cpp
         src/internal/common/table_position.cpp
         src/internal/common/table_range.cpp
 
         src/internal/crypto/crypto_util.cpp
 
+        src/internal/html/common.cpp
+        src/internal/html/css_writer.cpp
+        src/internal/html/document.cpp
+        src/internal/html/document_style.cpp
+        src/internal/html/document_element.cpp
+        src/internal/html/html_writer.cpp
+
         src/internal/odf/odf_crypto.cpp
+        src/internal/odf/odf_cursor.cpp
+        src/internal/odf/odf_document.cpp
+        src/internal/odf/odf_element.cpp
+        src/internal/odf/odf_file.cpp
         src/internal/odf/odf_manifest.cpp
         src/internal/odf/odf_meta.cpp
-        src/internal/odf/odf_translator.cpp
-        src/internal/odf/odf_translator_content.cpp
-        src/internal/odf/odf_translator_style.cpp
+        src/internal/odf/odf_style.cpp
 
-        src/internal/oldms/oldms_translator.cpp
+        src/internal/oldms/oldms_file.cpp
 
+        src/internal/ooxml/presentation/ooxml_presentation_document.cpp
+        src/internal/ooxml/presentation/ooxml_presentation_element.cpp
+        src/internal/ooxml/presentation/ooxml_presentation_cursor.cpp
+        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.cpp
+        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.cpp
+        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.cpp
+        src/internal/ooxml/text/ooxml_text_cursor.cpp
+        src/internal/ooxml/text/ooxml_text_document.cpp
+        src/internal/ooxml/text/ooxml_text_element.cpp
+        src/internal/ooxml/text/ooxml_text_style.cpp
         src/internal/ooxml/ooxml_crypto.cpp
-        src/internal/ooxml/ooxml_document_translator.cpp
+        src/internal/ooxml/ooxml_file.cpp
         src/internal/ooxml/ooxml_meta.cpp
-        src/internal/ooxml/ooxml_presentation_translator.cpp
-        src/internal/ooxml/ooxml_translator.cpp
-        src/internal/ooxml/ooxml_workbook_translator.cpp
+        src/internal/ooxml/ooxml_util.cpp
 
         src/internal/svm/svm_file.cpp
         src/internal/svm/svm_format.cpp
         src/internal/svm/svm_to_svg.cpp
 
         src/internal/util/file_util.cpp
+        src/internal/util/hash_util.cpp
         src/internal/util/odr_meta_util.cpp
         src/internal/util/stream_util.cpp
         src/internal/util/string_util.cpp

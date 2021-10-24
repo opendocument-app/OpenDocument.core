@@ -1,11 +1,14 @@
 #include <chrono>
 #include <internal/abstract/file.h>
-#include <internal/common/file.h>
 #include <internal/common/path.h>
 #include <internal/zip/zip_archive.h>
 #include <internal/zip/zip_util.h>
+#include <miniz.h>
+#include <miniz_zip.h>
 #include <odr/exceptions.h>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace odr::internal::zip {
 
@@ -25,7 +28,7 @@ common::Path ReadonlyZipArchive::Entry::path() const {
   char filename[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
   mz_zip_reader_get_filename(m_parent.m_zip->zip(), m_index, filename,
                              MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE);
-  return common::Path(filename);
+  return {filename};
 }
 
 Method ReadonlyZipArchive::Entry::method() const {
@@ -89,11 +92,11 @@ ReadonlyZipArchive::ReadonlyZipArchive(
     : m_zip{std::make_shared<util::Archive>(file)} {}
 
 ReadonlyZipArchive::Iterator ReadonlyZipArchive::begin() const {
-  return Iterator(*this, 0);
+  return {*this, 0};
 }
 
 ReadonlyZipArchive::Iterator ReadonlyZipArchive::end() const {
-  return Iterator(*this, mz_zip_reader_get_num_files(m_zip->zip()));
+  return {*this, mz_zip_reader_get_num_files(m_zip->zip())};
 }
 
 ReadonlyZipArchive::Iterator
@@ -177,15 +180,18 @@ ZipArchive::insert_file(Iterator at, common::Path path,
                         std::shared_ptr<abstract::File> file,
                         std::uint32_t compression_level) {
   return m_entries.insert(
-      std::move(at),
+      at,
       ZipArchive::Entry(std::move(path), std::move(file), compression_level));
 }
 
 ZipArchive::Iterator ZipArchive::insert_directory(Iterator at,
                                                   common::Path path) {
-  return m_entries.insert(std::move(at),
-                          ZipArchive::Entry(std::move(path), {}, 0));
+  return m_entries.insert(at, ZipArchive::Entry(std::move(path), {}, 0));
 }
+
+bool ZipArchive::move(common::Path, common::Path) { return false; }
+
+bool ZipArchive::remove(common::Path) { return false; }
 
 void ZipArchive::save(std::ostream &out) const {
   bool state;

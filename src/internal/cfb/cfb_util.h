@@ -5,6 +5,7 @@
 #include <internal/cfb/cfb_impl.h>
 #include <istream>
 #include <memory>
+#include <odr/file.h>
 #include <string>
 
 namespace odr::internal::common {

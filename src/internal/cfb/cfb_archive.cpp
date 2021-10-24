@@ -1,7 +1,16 @@
-#include <internal/abstract/file.h>
 #include <internal/cfb/cfb_archive.h>
+#include <internal/cfb/cfb_impl.h>
 #include <internal/cfb/cfb_util.h>
+#include <internal/common/path.h>
 #include <internal/util/string_util.h>
+
+namespace odr::internal::abstract {
+class File;
+} // namespace odr::internal::abstract
+
+namespace odr::internal::common {
+class MemoryFile;
+} // namespace odr::internal::common
 
 namespace odr::internal::cfb {
 
@@ -155,11 +164,11 @@ ReadonlyCfbArchive::Iterator::operator->() const {
 
 bool ReadonlyCfbArchive::Iterator::operator==(const Iterator &other) const {
   return m_entry == other.m_entry;
-};
+}
 
 bool ReadonlyCfbArchive::Iterator::operator!=(const Iterator &other) const {
   return m_entry != other.m_entry;
-};
+}
 
 ReadonlyCfbArchive::Iterator &ReadonlyCfbArchive::Iterator::operator++() {
   next_();
@@ -177,12 +186,10 @@ ReadonlyCfbArchive::ReadonlyCfbArchive(
     : m_cfb{std::make_shared<util::Archive>(file)} {}
 
 ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::begin() const {
-  return Iterator(*this, *m_cfb->cfb().get_root_entry());
+  return {*this, *m_cfb->cfb().get_root_entry()};
 }
 
-ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::end() const {
-  return Iterator();
-}
+ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::end() const { return {}; }
 
 ReadonlyCfbArchive::Iterator
 ReadonlyCfbArchive::find(const common::Path &path) const {

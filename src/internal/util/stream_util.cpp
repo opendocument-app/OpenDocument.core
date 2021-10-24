@@ -1,4 +1,6 @@
+#include <cstdint>
 #include <internal/util/stream_util.h>
+#include <iterator>
 
 namespace odr::internal::util {
 

@@ -10,10 +10,6 @@ import shlex
 from common import bcolors
 
 
-class HtmlTidyError(Exception):
-    pass
-
-
 def tidy_json(path):
     try:
         with open(path, 'r') as f:
@@ -26,7 +22,9 @@ def tidy_json(path):
 
 
 def tidy_html(path):
-    cmd = shlex.split(f'tidy -config .html-tidy -q -m "{path}"')
+    config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                               ".html-tidy")
+    cmd = shlex.split(f'tidy -config "{config_path}" -q "{path}"')
     result = subprocess.run(cmd,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT)

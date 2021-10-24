@@ -1,9 +1,10 @@
+#include <algorithm>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <internal/common/file.h>
 #include <internal/zip/zip_archive.h>
+#include <memory>
 #include <odr/exceptions.h>
-#include <string>
 #include <test_util.h>
 
 using namespace odr;
@@ -31,9 +32,9 @@ TEST(ReadonlyZipArchive, open) {
   ReadonlyZipArchive zip(std::make_shared<DiscFile>(
       TestData::test_file_path("odr-public/odt/style-various-1.odt")));
 
-  for (auto &&e : zip) {
-    std::cout << e.path() << std::endl;
-  }
+  EXPECT_EQ(
+      19, std::vector<ReadonlyZipArchive::Entry>(std::begin(zip), std::end(zip))
+              .size());
 }
 
 TEST(ZipArchive, create_and_save) {

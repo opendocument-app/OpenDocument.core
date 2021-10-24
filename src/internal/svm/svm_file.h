@@ -3,19 +3,24 @@
 
 #include <internal/abstract/file.h>
 #include <memory>
+#include <odr/file.h>
+
+namespace odr::internal::abstract {
+class Image;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::svm {
 
-class SvmFile final {
+class SvmFile final : public abstract::ImageFile {
 public:
   explicit SvmFile(std::shared_ptr<abstract::File> file);
 
-  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept;
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 
-  [[nodiscard]] FileType file_type() const noexcept;
-  [[nodiscard]] FileMeta file_meta() const noexcept;
+  [[nodiscard]] FileType file_type() const noexcept final;
+  [[nodiscard]] FileMeta file_meta() const noexcept final;
 
-  [[nodiscard]] std::shared_ptr<abstract::Image> image() const;
+  [[nodiscard]] std::shared_ptr<abstract::Image> image() const final;
 
 private:
   std::shared_ptr<abstract::File> m_file;

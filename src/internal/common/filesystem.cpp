@@ -1,11 +1,16 @@
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <internal/abstract/file.h>
+#include <internal/abstract/filesystem.h>
 #include <internal/common/file.h>
 #include <internal/common/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/util/stream_util.h>
+#include <map>
 #include <odr/exceptions.h>
 #include <system_error>
+#include <utility>
 
 namespace odr::internal::common {
 
@@ -146,11 +151,12 @@ public:
   }
 
   [[nodiscard]] std::unique_ptr<FileWalker> clone() const final {
-    return std::make_unique<VirtualFileWalker>(*this); // TODO
+    return std::make_unique<VirtualFileWalker>(*this);
   }
 
-  [[nodiscard]] bool equals(const FileWalker & /*rhs*/) const final {
-    return false; // TODO
+  [[nodiscard]] bool equals(const FileWalker &rhs_) const final {
+    auto &&rhs = dynamic_cast<const VirtualFileWalker &>(rhs_);
+    return m_iterator == rhs.m_iterator;
   }
 
   [[nodiscard]] bool end() const final {
@@ -161,17 +167,13 @@ public:
     return 0; // TODO
   }
 
-  [[nodiscard]] Path path() const final {
-    return {}; // TODO
-  }
+  [[nodiscard]] Path path() const final { return m_iterator->first; }
 
   [[nodiscard]] bool is_file() const final {
-    return false; // TODO
+    return m_iterator->second.operator bool();
   }
 
-  [[nodiscard]] bool is_directory() const final {
-    return false; // TODO
-  }
+  [[nodiscard]] bool is_directory() const final { return !is_file(); }
 
   void pop() final {
     // TODO
@@ -212,10 +214,8 @@ bool VirtualFilesystem::is_directory(Path path) const {
 }
 
 std::unique_ptr<abstract::FileWalker>
-VirtualFilesystem::file_walker(Path /*path*/) const {
-  throw UnsupportedOperation();
-  // TODO
-  // return std::make_unique<VirtualFileWalker>(std::move(path), m_files);
+VirtualFilesystem::file_walker(Path path) const {
+  return std::make_unique<VirtualFileWalker>(std::move(path), m_files);
 }
 
 std::shared_ptr<abstract::File> VirtualFilesystem::open(Path path) const {

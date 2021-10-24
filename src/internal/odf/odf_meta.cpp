@@ -1,54 +1,61 @@
+#include <algorithm>
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
-#include <internal/common/table_cursor.h>
+#include <internal/common/path.h>
 #include <internal/odf/odf_meta.h>
 #include <internal/util/map_util.h>
 #include <internal/util/stream_util.h>
 #include <internal/util/xml_util.h>
+#include <memory>
 #include <odr/exceptions.h>
-#include <odr/file_meta.h>
-#include <odr/file_type.h>
+#include <odr/file.h>
 #include <pugixml.hpp>
+#include <unordered_map>
+#include <utility>
 
 namespace odr::internal::odf {
 
 namespace {
+
 bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
   // https://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
   static const std::unordered_map<std::string, FileType> MIME_TYPES = {
-      {"application/vnd.oasis.opendocument.text", FileType::OPENDOCUMENT_TEXT},
+      {"application/vnd.oasis.opendocument.text", FileType::opendocument_text},
       {"application/vnd.oasis.opendocument.presentation",
-       FileType::OPENDOCUMENT_PRESENTATION},
+       FileType::opendocument_presentation},
       {"application/vnd.oasis.opendocument.spreadsheet",
-       FileType::OPENDOCUMENT_SPREADSHEET},
+       FileType::opendocument_spreadsheet},
       {"application/vnd.oasis.opendocument.graphics",
-       FileType::OPENDOCUMENT_GRAPHICS},
+       FileType::opendocument_graphics},
       // TODO any difference for template files?
       {"application/vnd.oasis.opendocument.text-template",
-       FileType::OPENDOCUMENT_TEXT},
+       FileType::opendocument_text},
+      {"application/vnd.oasis.opendocument.text-master",
+       FileType::opendocument_text},
       {"application/vnd.oasis.opendocument.presentation-template",
-       FileType::OPENDOCUMENT_PRESENTATION},
+       FileType::opendocument_presentation},
       {"application/vnd.oasis.opendocument.spreadsheet-template",
-       FileType::OPENDOCUMENT_SPREADSHEET},
+       FileType::opendocument_spreadsheet},
       {"application/vnd.oasis.opendocument.graphics-template",
-       FileType::OPENDOCUMENT_GRAPHICS},
+       FileType::opendocument_graphics},
       // TODO these staroffice types might deserve their own type
-      {"application/vnd.sun.xml.writer", FileType::OPENDOCUMENT_TEXT},
-      {"application/vnd.sun.xml.impress", FileType::OPENDOCUMENT_PRESENTATION},
-      {"application/vnd.sun.xml.calc", FileType::OPENDOCUMENT_SPREADSHEET},
-      {"application/vnd.sun.xml.draw", FileType::OPENDOCUMENT_GRAPHICS},
+      {"application/vnd.sun.xml.writer", FileType::opendocument_text},
+      {"application/vnd.sun.xml.impress", FileType::opendocument_presentation},
+      {"application/vnd.sun.xml.calc", FileType::opendocument_spreadsheet},
+      {"application/vnd.sun.xml.draw", FileType::opendocument_graphics},
       // TODO any difference for template files?
-      {"application/vnd.sun.xml.writer.template", FileType::OPENDOCUMENT_TEXT},
+      {"application/vnd.sun.xml.writer.template", FileType::opendocument_text},
       {"application/vnd.sun.xml.impress.template",
-       FileType::OPENDOCUMENT_PRESENTATION},
+       FileType::opendocument_presentation},
       {"application/vnd.sun.xml.calc.template",
-       FileType::OPENDOCUMENT_SPREADSHEET},
+       FileType::opendocument_spreadsheet},
       {"application/vnd.sun.xml.draw.template",
-       FileType::OPENDOCUMENT_GRAPHICS},
+       FileType::opendocument_graphics},
   };
   return util::map::lookup_map_default(MIME_TYPES, mime_type, file_type,
-                                       FileType::UNKNOWN);
+                                       FileType::unknown);
 }
+
 } // namespace
 
 FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
@@ -77,120 +84,42 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
       }
     }
     if (!manifest->select_nodes("//manifest:encryption-data").empty()) {
-      result.encrypted = true;
+      result.password_encrypted = true;
     }
   }
 
-  if (result.encrypted == decrypted) {
-    if (filesystem.is_file("meta.xml")) {
-      const auto meta_xml = util::xml::parse(filesystem, "meta.xml");
+  DocumentMeta document_meta;
 
-      const pugi::xml_node statistics = meta_xml.child("office:document-meta")
-                                            .child("office:meta")
-                                            .child("meta:document-statistic");
-      if (statistics) {
-        switch (result.type) {
-        case FileType::OPENDOCUMENT_TEXT: {
-          const auto page_count = statistics.attribute("meta:page-count");
-          if (!page_count) {
-            break;
-          }
-          result.entry_count = page_count.as_uint();
-        } break;
-        case FileType::OPENDOCUMENT_PRESENTATION: {
-          result.entry_count = 0;
-        } break;
-        case FileType::OPENDOCUMENT_SPREADSHEET: {
-          const auto table_count = statistics.attribute("meta:table-count");
-          if (!table_count) {
-            break;
-          }
-          result.entry_count = table_count.as_uint();
-        } break;
-        case FileType::OPENDOCUMENT_GRAPHICS: {
-        } break;
-        default:
-          break;
-        }
-      }
-    }
+  if ((result.password_encrypted == decrypted) &&
+      filesystem.is_file("meta.xml")) {
+    const auto meta_xml = util::xml::parse(filesystem, "meta.xml");
 
-    // TODO dont load content twice (happens in case of translation)
-    const auto content_xml = util::xml::parse(filesystem, "content.xml");
-    const auto body =
-        content_xml.child("office:document-content").child("office:body");
-    if (!body) {
-      throw NoOpenDocumentFile();
-    }
+    const pugi::xml_node statistics = meta_xml.child("office:document-meta")
+                                          .child("office:meta")
+                                          .child("meta:document-statistic");
 
-    switch (result.type) {
-    case FileType::OPENDOCUMENT_GRAPHICS:
-    case FileType::OPENDOCUMENT_PRESENTATION: {
-      result.entry_count = 0;
-      for (auto &&e : body.select_nodes("//draw:page")) {
-        ++result.entry_count;
-        FileMeta::Entry entry;
-        entry.name = e.node().attribute("draw:name").as_string();
-        result.entries.emplace_back(entry);
+    if (statistics && (result.type == FileType::opendocument_text)) {
+      document_meta.document_type = DocumentType::text;
+      if (auto page_count = statistics.attribute("meta:page-count")) {
+        document_meta.entry_count = page_count.as_uint();
       }
-    } break;
-    case FileType::OPENDOCUMENT_SPREADSHEET: {
-      result.entry_count = 0;
-      for (auto &&e : body.select_nodes("//table:table")) {
-        ++result.entry_count;
-        FileMeta::Entry entry;
-        entry.name = e.node().attribute("table:name").as_string();
-        // TODO configuration
-        estimate_table_dimensions(e.node(), entry.row_count, entry.column_count,
-                                  10000, 500);
-        result.entries.emplace_back(entry);
+    } else if (statistics &&
+               (result.type == FileType::opendocument_presentation)) {
+      document_meta.document_type = DocumentType::presentation;
+    } else if (statistics &&
+               (result.type == FileType::opendocument_spreadsheet)) {
+      document_meta.document_type = DocumentType::spreadsheet;
+      if (auto table_count = statistics.attribute("meta:table-count")) {
+        document_meta.entry_count = table_count.as_uint();
       }
-    } break;
-    default:
-      break;
+    } else if (statistics && (result.type == FileType::opendocument_graphics)) {
+      document_meta.document_type = DocumentType::drawing;
     }
   }
+
+  result.document_meta = std::move(document_meta);
 
   return result;
-}
-
-void estimate_table_dimensions(const pugi::xml_node &table, std::uint32_t &rows,
-                               std::uint32_t &cols,
-                               const std::uint32_t limit_rows,
-                               const std::uint32_t limit_cols) {
-  rows = 0;
-  cols = 0;
-
-  common::TableCursor cursor;
-
-  for (auto &&r : table.select_nodes(".//self::table:table-row")) {
-    const auto &&row = r.node();
-
-    const auto rows_repeated =
-        row.attribute("table:number-rows-repeated").as_uint(1);
-    cursor.add_row(rows_repeated);
-
-    for (auto &&c : row.select_nodes(".//self::table:table-cell")) {
-      const auto &&cell = c.node();
-
-      const auto columns_repeated =
-          cell.attribute("table:number-columns-repeated").as_uint(1);
-      const auto colspan =
-          cell.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan =
-          cell.attribute("table:number-rows-spanned").as_uint(1);
-      cursor.add_cell(colspan, rowspan, columns_repeated);
-
-      const auto new_rows = cursor.row();
-      const auto new_cols = std::max(cols, cursor.col());
-      if (cell.first_child() &&
-          (((limit_rows != 0) && (new_rows < limit_rows)) &&
-           ((limit_cols != 0) && (new_cols < limit_cols)))) {
-        rows = new_rows;
-        cols = new_cols;
-      }
-    }
-  }
 }
 
 } // namespace odr::internal::odf

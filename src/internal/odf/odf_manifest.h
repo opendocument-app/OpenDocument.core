@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <internal/common/path.h>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -35,9 +36,9 @@ struct Manifest {
   bool encrypted{false};
   std::unordered_map<common::Path, Entry> entries;
 
-  std::uint64_t smallest_file_size{0};
-  const common::Path *smallest_file_path{nullptr};
-  const Entry *smallest_file_entry{nullptr};
+  common::Path smallest_file_path;
+
+  const Entry &smallest_file_entry() const;
 };
 
 Manifest parse_manifest(const pugi::xml_document &manifest);

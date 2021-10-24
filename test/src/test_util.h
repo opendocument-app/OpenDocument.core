@@ -2,7 +2,7 @@
 #define ODR_TEST_META_H
 
 #include <nlohmann/json.hpp>
-#include <odr/file_type.h>
+#include <odr/file.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -11,7 +11,7 @@ namespace odr::test {
 
 struct TestFile {
   std::string path;
-  FileType type{FileType::UNKNOWN};
+  FileType type{FileType::unknown};
   bool password_encrypted{false};
   std::string password;
 

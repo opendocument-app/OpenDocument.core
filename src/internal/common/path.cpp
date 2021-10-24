@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <internal/common/path.h>
 #include <stdexcept>
 

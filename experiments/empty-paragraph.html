@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <title>empty paragraph experiment</title>
+    <style>
+        div {
+            outline: 1px solid green;
+        }
+        p {
+            outline: 1px solid red;
+        }
+        .paragraph {
+            display: block;
+        }
+        .paragraph:after {
+            content: "";
+            display: inline-block;
+            width: 0;
+        }
+    </style>
+<body>
+    <div style="width:200px;height:500px;float:left;clear:both;"></div>
+    <p>a</p>
+    <p style="font-size:16pt;" class="paragraph"></p>
+    <p>b</p>
+    <p><br style="font-size:16pt;"></p>
+    <p>c</p>
+    <p style="font-size:16pt;">&nbsp;</p>
+    <p>d</p>
+    <p><span style="display:inline-block;font-size:16pt;"></span></p>
+    <p>e</p>
+</body>
+</html>

@@ -1,7 +1,8 @@
 #include <internal/util/file_util.h>
 #include <iostream>
 #include <odr/document.h>
-#include <odr/html_config.h>
+#include <odr/file.h>
+#include <odr/html.h>
 #include <string>
 
 using namespace odr;
@@ -11,22 +12,18 @@ int main(int, char **argv) {
   const std::string diff_path{argv[2]};
   const std::string output{argv[3]};
 
-  HtmlConfig config;
-  config.entry_offset = 0;
-  config.entry_count = 0;
-  config.editable = true;
+  const DocumentFile document_file{input};
 
-  const Document document{input};
-
-  if (document.encrypted()) {
+  if (document_file.password_encrypted()) {
     std::cerr << "encrypted documents are not supported" << std::endl;
     return 1;
   }
 
-  document.translate(output, config);
+  Document document = document_file.document();
 
-  const std::string back_diff = internal::util::file::read(diff_path);
-  document.edit(back_diff);
+  const std::string diff = odr::internal::util::file::read(diff_path);
+  html::edit(document, diff.c_str());
+
   document.save(output);
 
   return 0;

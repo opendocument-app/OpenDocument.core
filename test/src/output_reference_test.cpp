@@ -1,15 +1,17 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <internal/common/path.h>
 #include <internal/util/odr_meta_util.h>
 #include <internal/util/string_util.h>
+#include <iostream>
 #include <nlohmann/json.hpp>
-#include <odr/document.h>
-#include <odr/file_meta.h>
-#include <odr/html_config.h>
+#include <odr/file.h>
+#include <odr/html.h>
+#include <odr/open_document_reader.h>
+#include <odr/style.h>
+#include <optional>
+#include <string>
 #include <test_util.h>
-#include <utility>
 
 using namespace odr;
 using namespace odr::internal;
@@ -25,94 +27,67 @@ TEST_P(OutputReferenceTests, all) {
 
   std::cout << test_file.path << " to " << output_path << std::endl;
 
-  if ((test_file.type == FileType::ZIP) ||
-      (test_file.type == FileType::PORTABLE_DOCUMENT_FORMAT)) {
+  if ((test_file.type == FileType::zip) ||
+      (test_file.type == FileType::portable_document_format)) {
+    GTEST_SKIP();
+  }
+
+  // TODO remove
+  if (util::string::ends_with(test_file.path, ".sxw") ||
+      (test_file.type == FileType::legacy_word_document) ||
+      (test_file.type == FileType::legacy_powerpoint_presentation) ||
+      (test_file.type == FileType::legacy_excel_worksheets) ||
+      (test_file.type == FileType::starview_metafile)) {
     GTEST_SKIP();
   }
 
   HtmlConfig config;
   config.editable = true;
-  config.table_limit_rows = 4000;
-  config.table_limit_cols = 500;
+  config.spreadsheet_limit = TableDimensions(4000, 500);
 
-  const Document document{test_file.path};
+  const DecodedFile file{test_file.path};
 
-  auto meta = document.meta();
+  auto file_meta = file.file_meta();
 
   // encrypted ooxml type cannot be inspected
-  if (document.type() != FileType::OFFICE_OPEN_XML_ENCRYPTED) {
-    EXPECT_EQ(test_file.type, document.type());
+  if ((file.file_type() != FileType::office_open_xml_encrypted)) {
+    EXPECT_EQ(test_file.type, file.file_type());
   }
 
-  if ((test_file.type == FileType::LEGACY_WORD_DOCUMENT) ||
-      (test_file.type == FileType::LEGACY_POWERPOINT_PRESENTATION) ||
-      (test_file.type == FileType::LEGACY_EXCEL_WORKSHEETS)) {
-    GTEST_SKIP();
-  }
+  if (file.file_category() == FileCategory::document) {
+    auto document_file = file.document_file();
 
-  EXPECT_EQ(test_file.password_encrypted, document.encrypted());
-  if (document.encrypted()) {
-    EXPECT_TRUE(document.decrypt(test_file.password));
+    EXPECT_EQ(test_file.password_encrypted, document_file.password_encrypted());
+    if (document_file.password_encrypted()) {
+      EXPECT_TRUE(document_file.decrypt(test_file.password));
+    }
+    EXPECT_EQ(test_file.type, document_file.file_type());
   }
-  EXPECT_EQ(test_file.type, document.type());
 
   fs::create_directories(output_path);
-  meta = document.meta();
+  file_meta = file.file_meta();
 
   {
     const std::string meta_output = output_path + "/meta.json";
-    const auto json = internal::util::meta::meta_to_json(meta);
+    const auto json = odr::internal::util::meta::meta_to_json(file_meta);
     std::ofstream o(meta_output);
     o << std::setw(4) << json << std::endl;
     EXPECT_TRUE(fs::is_regular_file(meta_output));
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
-  if (!document.translatable()) {
-    return;
+  std::optional<Html> html;
+
+  if (file.file_category() == FileCategory::document) {
+    auto document_file = file.document_file();
+    auto document = document_file.document();
+    html = OpenDocumentReader::html(document, output_path, config);
   }
 
-  if ((meta.type == FileType::OPENDOCUMENT_TEXT) ||
-      (meta.type == FileType::OFFICE_OPEN_XML_DOCUMENT)) {
-    const std::string html_output = output_path + "/document.html";
-    fs::create_directories(fs::path(html_output).parent_path());
-    document.translate(html_output, config);
-    EXPECT_TRUE(fs::is_regular_file(html_output));
-    EXPECT_LT(0, fs::file_size(html_output));
-  } else if ((meta.type == FileType::OPENDOCUMENT_PRESENTATION) ||
-             (meta.type == FileType::OFFICE_OPEN_XML_PRESENTATION)) {
-    for (std::uint32_t i = 0; i < meta.entry_count; ++i) {
-      config.entry_offset = i;
-      config.entry_count = 1;
-      const std::string html_output =
-          output_path + "/slide" + std::to_string(i) + ".html";
-      document.translate(html_output, config);
-      EXPECT_TRUE(fs::is_regular_file(html_output));
-      EXPECT_LT(0, fs::file_size(html_output));
-    }
-  } else if ((meta.type == FileType::OPENDOCUMENT_SPREADSHEET) ||
-             (meta.type == FileType::OFFICE_OPEN_XML_WORKBOOK)) {
-    for (std::uint32_t i = 0; i < meta.entry_count; ++i) {
-      config.entry_offset = i;
-      config.entry_count = 1;
-      const std::string html_output =
-          output_path + "/sheet" + std::to_string(i) + ".html";
-      document.translate(html_output, config);
-      EXPECT_TRUE(fs::is_regular_file(html_output));
-      EXPECT_LT(0, fs::file_size(html_output));
-    }
-  } else if (meta.type == FileType::OPENDOCUMENT_GRAPHICS) {
-    for (std::uint32_t i = 0; i < meta.entry_count; ++i) {
-      config.entry_offset = i;
-      config.entry_count = 1;
-      const std::string html_output =
-          output_path + "/page" + std::to_string(i) + ".html";
-      document.translate(html_output, config);
-      EXPECT_TRUE(fs::is_regular_file(html_output));
-      EXPECT_LT(0, fs::file_size(html_output));
-    }
-  } else {
-    EXPECT_TRUE(false);
+  EXPECT_TRUE(html);
+  for (auto &&html_page : html->pages()) {
+    EXPECT_TRUE(fs::is_regular_file(html_page.path));
+    EXPECT_LT(0, fs::file_size(html_page.path));
   }
 }
 

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <title>line break experiment</title>
+    <style>
+        p {
+            margin: 0;
+            outline: 1px solid red;
+        }
+        p:empty {
+            outline: 1px solid blue;
+        }
+        span {
+            outline: 1px solid green;
+        }
+
+        .try2 p:after {
+            content: "";
+            display: inline-block;
+            width: 0;
+        }
+
+        .try4 p:after {
+            content: "";
+            display: inline-block;
+            width: 0;
+        }
+    </style>
+<body>
+    <div class="problem">
+        <h1>Problem</h1>
+        <p></p>
+    </div>
+    <div class="try1">
+        <h1>Try 1</h1>
+        <p><br></p>
+    </div>
+    <div class="try2">
+        <h1>Try 2</h1>
+        <p></p>
+    </div>
+    <div class="try3">
+        <h1>Try 3</h1>
+        <p>&ZeroWidthSpace;</p>
+    </div>
+    <div class="try4">
+        <h1>Try 4</h1>
+        <p><span></span></p>
+    </div>
+</body>
+</html>

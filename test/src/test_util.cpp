@@ -1,9 +1,12 @@
-#include <csv.hpp>
+#include <algorithm>
 #include <filesystem>
 #include <internal/common/path.h>
-#include <nlohmann/json.hpp>
-#include <odr/file_meta.h>
+#include <internal/csv_reader.hpp>
+#include <odr/file.h>
+#include <odr/open_document_reader.h>
 #include <test_util.h>
+#include <unordered_map>
+#include <utility>
 
 using namespace odr;
 using namespace odr::internal;
@@ -14,7 +17,7 @@ namespace odr::test {
 namespace {
 TestFile get_test_file(std::string input) {
   const FileType type =
-      FileMeta::type_by_extension(common::Path(input).extension());
+      OpenDocumentReader::type_by_extension(common::Path(input).extension());
   const std::string file_name = fs::path(input).filename().string();
   std::string password;
   if (const auto left = file_name.find('$'), right = file_name.rfind('$');
@@ -40,12 +43,13 @@ std::vector<TestFile> get_test_files(const std::string &input) {
       fs::is_regular_file(index)) {
     for (auto &&row : csv::CSVReader(index)) {
       const std::string path = input + "/" + row["path"].get<>();
-      const FileType type = FileMeta::type_by_extension(row["type"].get<>());
+      const FileType type =
+          OpenDocumentReader::type_by_extension(row["type"].get<>());
       std::string password = row["password"].get<>();
       const bool encrypted = !password.empty();
       const std::string file_name = fs::path(path).filename().string();
 
-      if (type == FileType::UNKNOWN) {
+      if (type == FileType::unknown) {
         continue;
       }
       result.emplace_back(path, type, encrypted, std::move(password));
@@ -67,7 +71,7 @@ std::vector<TestFile> get_test_files(const std::string &input) {
 
     const auto file = get_test_file(path);
 
-    if (file.type == FileType::UNKNOWN) {
+    if (file.type == FileType::unknown) {
       continue;
     }
     result.push_back(file);

@@ -1,9 +1,13 @@
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <internal/abstract/file.h>
 #include <internal/common/file.h>
+#include <internal/common/path.h>
 #include <odr/exceptions.h>
-#include <odr/file_location.h>
+#include <odr/file.h>
 #include <sstream>
+#include <utility>
 
 namespace odr::internal::common {
 
@@ -17,7 +21,7 @@ DiscFile::DiscFile(common::Path path) : m_path{std::move(path)} {
   }
 }
 
-FileLocation DiscFile::location() const noexcept { return FileLocation::DISC; }
+FileLocation DiscFile::location() const noexcept { return FileLocation::disc; }
 
 std::size_t DiscFile::size() const {
   return std::filesystem::file_size(m_path.string());
@@ -64,7 +68,7 @@ MemoryFile::MemoryFile(const abstract::File &file) : m_data(file.size(), ' ') {
 }
 
 FileLocation MemoryFile::location() const noexcept {
-  return FileLocation::MEMORY;
+  return FileLocation::memory;
 }
 
 std::size_t MemoryFile::size() const { return m_data.size(); }

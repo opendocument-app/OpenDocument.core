@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_STRING_UTIL_H
 #define ODR_INTERNAL_STRING_UTIL_H
 
+#include <cstdint>
 #include <string>
 
 namespace odr::internal::util::string {

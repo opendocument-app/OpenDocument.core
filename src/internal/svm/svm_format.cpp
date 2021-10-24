@@ -1,9 +1,7 @@
-#include <codecvt>
 #include <cstring>
 #include <glog/logging.h>
 #include <internal/svm/svm_format.h>
 #include <internal/util/string_util.h>
-#include <locale>
 #include <odr/exceptions.h>
 
 namespace odr::internal::svm {
@@ -103,7 +101,6 @@ Header read_header(std::istream &in) {
   Header result;
 
   char magic[6];
-  std::cout << in.tellg() << std::endl;
   in.read(magic, sizeof(magic));
   if (std::strncmp("VCLMTF", magic, sizeof(magic)) != 0) {
     throw NoSvmFile();

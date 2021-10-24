@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_ABSTRACT_FILESYSTEM_H
 #define ODR_INTERNAL_ABSTRACT_FILESYSTEM_H
 
+#include <cstdint>
 #include <memory>
 
 namespace odr::internal::common {

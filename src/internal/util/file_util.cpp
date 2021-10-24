@@ -1,9 +1,7 @@
-#include <cerrno>
-#include <cstring>
 #include <fstream>
 #include <internal/util/file_util.h>
+#include <iterator>
 #include <odr/exceptions.h>
-#include <streambuf>
 
 namespace odr::internal::util {
 

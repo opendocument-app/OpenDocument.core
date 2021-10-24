@@ -5,8 +5,7 @@
 #include <internal/abstract/file.h>
 #include <internal/common/filesystem.h>
 #include <odr/exceptions.h>
-#include <odr/file_meta.h>
-#include <odr/file_type.h>
+#include <odr/file.h>
 
 namespace odr::internal::common {
 
@@ -46,13 +45,14 @@ template <typename Impl> class ArchiveFile : public abstract::ArchiveFile {
 public:
   template <typename... Args>
   ArchiveFile(Args &&...args) : m_impl{std::forward<Args>(args)...} {}
+  explicit ArchiveFile(Impl impl) : m_impl{std::move(impl)} {}
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final {
     return {}; // TODO
   }
 
   [[nodiscard]] FileType file_type() const noexcept final {
-    return FileType::UNKNOWN; // TODO
+    return FileType::unknown; // TODO
   }
 
   [[nodiscard]] FileMeta file_meta() const noexcept final {

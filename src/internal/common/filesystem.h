@@ -3,7 +3,13 @@
 
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
+#include <iosfwd>
 #include <map>
+#include <memory>
+
+namespace odr::internal::abstract {
+class File;
+} // namespace odr::internal::abstract
 
 namespace odr::internal::common {
 

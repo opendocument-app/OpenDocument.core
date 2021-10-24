@@ -25,32 +25,44 @@ def screenshot(browser, url):
 
 
 def get_browser(driver='chrome', max_width=1000, max_height=10000):
-    options = webdriver.ChromeOptions()
-    options.headless = True
-    browser = webdriver.Chrome(options=options)
+    if driver == 'phantomjs':
+        browser = webdriver.PhantomJS()
+    elif driver == 'firefox':
+        options = webdriver.FirefoxOptions()
+        options.headless = True
+        browser = webdriver.Firefox(options=options,
+                                    service_log_path=os.path.devnull)
+    else:  # chrome or unknown
+        options = webdriver.ChromeOptions()
+        options.headless = True
+        browser = webdriver.Chrome(options=options)
     browser.set_window_size(max_width, max_height)
     return browser
 
 
-def html_render_diff(browser, a, b):
-    image_a = screenshot(browser, to_url(a)).convert('RGB')
-    image_b = screenshot(browser, to_url(b)).convert('RGB')
+def html_render_diff(a, b, browser):
+    image_a = screenshot(browser, to_url(a))
+    image_b = screenshot(browser, to_url(b))
 
+    image_a = image_a.convert('RGB')
+    image_b = image_b.convert('RGB')
     diff = ImageChops.difference(image_a, image_b)
-    return diff
+    return diff, (image_a, image_b)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('a')
     parser.add_argument('b')
-    parser.add_argument('--driver', choices=['chrome'], default='chrome')
+    parser.add_argument('--driver',
+                        choices=['chrome', 'firefox', 'phantomjs'],
+                        default='firefox')
     parser.add_argument('--max-width', default=1000)
     parser.add_argument('--max-height', default=10000)
     args = parser.parse_args()
 
     browser = get_browser(args.driver, args.max_width, args.max_height)
-    diff = html_render_diff(browser, args.a, args.b)
+    diff, _ = html_render_diff(args.a, args.b, browser)
     browser.quit()
     bounding_box = diff.getbbox()
 

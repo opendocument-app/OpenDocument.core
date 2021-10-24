@@ -1,11 +1,14 @@
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/file.h>
+#include <internal/common/path.h>
 #include <internal/crypto/crypto_util.h>
 #include <internal/odf/odf_crypto.h>
+#include <internal/odf/odf_manifest.h>
 #include <internal/util/stream_util.h>
 #include <odr/exceptions.h>
-#include <sstream>
+#include <stdexcept>
+#include <utility>
 
 namespace odr::internal::odf {
 
@@ -132,17 +135,18 @@ bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
   if (!manifest.encrypted) {
     return true;
   }
-  if (!can_decrypt(*manifest.smallest_file_entry)) {
+  auto &&smallest_file_path = manifest.smallest_file_path;
+  auto &&smallest_file_entry = manifest.smallest_file_entry();
+  if (!can_decrypt(smallest_file_entry)) {
     throw UnsupportedCryptoAlgorithm();
   }
-  const std::string start_key =
-      odf::start_key(*manifest.smallest_file_entry, password);
+  const std::string start_key = odf::start_key(smallest_file_entry, password);
   // TODO stream decrypt
   const std::string input =
-      util::stream::read(*storage->open(*manifest.smallest_file_path)->read());
+      util::stream::read(*storage->open(smallest_file_path)->read());
   const std::string decrypt =
-      derive_key_and_decrypt(*manifest.smallest_file_entry, start_key, input);
-  if (!validate_password(*manifest.smallest_file_entry, decrypt)) {
+      derive_key_and_decrypt(smallest_file_entry, start_key, input);
+  if (!validate_password(smallest_file_entry, decrypt)) {
     return false;
   }
   storage = std::make_shared<DecryptedFilesystem>(std::move(storage), manifest,
