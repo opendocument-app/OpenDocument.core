@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.12.4)
 project(odr C CXX)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ODR_TEST "enable tests" ON)
 
@@ -17,13 +19,15 @@ if (CCACHE_FOUND)
     message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
-include(conan.cmake)
+include(cmake/conan.cmake)
 conan_cmake_configure(GENERATORS cmake)
 conan_cmake_autodetect(settings)
 conan_cmake_install(PATH_OR_REFERENCE ..
         BUILD missing
-        REMOTE conancenter
-        SETTINGS ${settings})
+        SETTINGS ${settings}
+        SETTINGS compiler.cppstd=17
+        ENV CC=${CMAKE_C_COMPILER}
+        ENV CXX=${CMAKE_CXX_COMPILER})
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
