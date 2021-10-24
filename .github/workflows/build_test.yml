@@ -33,13 +33,14 @@ jobs:
           pip install --upgrade pip
           pip install conan
 
-      - name: ccache
+      - name: cache
         uses: actions/cache@v2
         with:
           path: |
-            /home/runner/.ccache
+            ~/.ccache
+            ~/.conan/data
             /Users/runner/Library/Caches/ccache
-          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev12
+          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev13
           restore-keys: |
             ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
 
