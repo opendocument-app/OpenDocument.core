@@ -17,6 +17,13 @@ if (CCACHE_FOUND)
     message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
+include(conan.cmake)
+conan_cmake_configure(GENERATORS cmake)
+conan_cmake_autodetect(settings)
+conan_cmake_install(PATH_OR_REFERENCE ..
+        BUILD missing
+        REMOTE conancenter
+        SETTINGS ${settings})
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
