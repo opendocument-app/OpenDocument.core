@@ -8,9 +8,9 @@ jobs:
     strategy:
       matrix:
         config:
-          - { os: ubuntu-20.04, arch: x86_64, cc: clang, cxx: clang++ }
-          - { os: ubuntu-20.04, arch: x86_64, cc: gcc, cxx: g++ }
-          - { os: macos-10.15, arch: x86_64, cc: clang, cxx: clang++ }
+          - { os: ubuntu-20.04, cc: clang, cxx: clang++ }
+          - { os: ubuntu-20.04, cc: gcc, cxx: g++ }
+          - { os: macos-10.15, cc: clang, cxx: clang++ }
 
     steps:
       - name: ubuntu install ccache
@@ -27,9 +27,9 @@ jobs:
           path: |
             /home/runner/.ccache
             /Users/runner/Library/Caches/ccache
-          key: ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}-rev11
+          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev12
           restore-keys: |
-            ${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}-
+            ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
 
       - name: checkout
         uses: actions/checkout@v2
@@ -50,7 +50,7 @@ jobs:
       - name: upload binaries
         uses: actions/upload-artifact@v2
         with:
-          name: bin-${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}
+          name: bin-${{ matrix.config.os }}-${{ matrix.config.cxx }}
           path: |
             build/test/odr_test
 
@@ -60,8 +60,8 @@ jobs:
     strategy:
       matrix:
         config:
-          - { os: ubuntu-20.04, arch: x86_64, cc: clang, cxx: clang++ }
-          - { os: macos-10.15, arch: x86_64, cc: clang, cxx: clang++ }
+          - { os: ubuntu-20.04, cc: clang, cxx: clang++ }
+          - { os: macos-10.15, cc: clang, cxx: clang++ }
 
     steps:
       - name: ubuntu install tidy
@@ -89,7 +89,7 @@ jobs:
       - name: download binaries
         uses: actions/download-artifact@v2
         with:
-          name: bin-${{ matrix.config.os }}-${{ matrix.config.arch }}-${{ matrix.config.cxx }}
+          name: bin-${{ matrix.config.os }}-${{ matrix.config.cxx }}
           path: build/test
       - name: fix artifact permissions
         run:  chmod +x build/test/odr_test
