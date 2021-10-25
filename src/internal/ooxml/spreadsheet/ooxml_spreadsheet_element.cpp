@@ -333,34 +333,35 @@ public:
   abstract::Element *
   construct_previous_sibling(const abstract::Document *document,
                              const abstract::Allocator &allocator) const final {
-    if (auto previous_sibling = m_node.previous_sibling("c")) {
-      TableColumn previous_column;
-      m_column.construct_previous_sibling(
-          document, [&](std::size_t) { return &previous_column; });
-      if (node_position_(previous_sibling).column() !=
-          previous_column.m_column) {
-        previous_sibling = m_node;
-      }
-      return common::construct_2<TableCell>(allocator, previous_sibling, m_row,
-                                            previous_column);
+    auto previous_sibling = m_node.previous_sibling("c");
+    if (!previous_sibling) {
+      return nullptr;
     }
-    return nullptr;
+    TableColumn previous_column;
+    m_column.construct_previous_sibling(
+        document, [&](std::size_t) { return &previous_column; });
+    if (node_position_(previous_sibling).column() != previous_column.m_column) {
+      previous_sibling = m_node;
+    }
+    return common::construct_2<TableCell>(allocator, previous_sibling, m_row,
+                                          previous_column);
   }
 
   abstract::Element *
   construct_next_sibling(const abstract::Document *document,
                          const abstract::Allocator &allocator) const final {
-    if (auto next_sibling = m_node.next_sibling("c")) {
-      TableColumn next_column;
-      m_column.construct_next_sibling(
-          document, [&](std::size_t) { return &next_column; });
-      if (node_position_(next_sibling).column() != next_column.m_column) {
-        next_sibling = m_node;
-      }
-      return common::construct_2<TableCell>(allocator, next_sibling, m_row,
-                                            next_column);
+    auto next_sibling = m_node.next_sibling("c");
+    if (!next_sibling) {
+      return nullptr;
     }
-    return nullptr;
+    TableColumn next_column;
+    m_column.construct_next_sibling(document,
+                                    [&](std::size_t) { return &next_column; });
+    if (node_position_(next_sibling).column() != next_column.m_column) {
+      next_sibling = m_node;
+    }
+    return common::construct_2<TableCell>(allocator, next_sibling, m_row,
+                                          next_column);
   }
 
   [[nodiscard]] abstract::Element *
