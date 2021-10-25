@@ -238,9 +238,14 @@ public:
 private:
   std::uint32_t m_column{0};
 
-  std::uint32_t min_() const { return m_node.attribute("min").as_uint() - 1; }
+  [[nodiscard]] std::uint32_t min_() const {
+    return m_node.attribute("min").as_uint() - 1;
+  }
+  [[nodiscard]] std::uint32_t max_() const {
+    return m_node.attribute("min").as_uint() - 1;
+  }
 
-  std::uint32_t max_() const { return m_node.attribute("min").as_uint() - 1; }
+  friend class TableCell;
 };
 
 class TableRow final : public Element, public abstract::TableRowElement {
@@ -294,6 +299,8 @@ public:
 
 private:
   std::uint32_t m_row{0};
+
+  friend class TableCell;
 };
 
 class TableCell final : public Element, public abstract::TableCellElement {
@@ -312,6 +319,9 @@ public:
   abstract::Element *
   construct_first_child(const abstract::Document *document,
                         const abstract::Allocator &allocator) const final {
+    if (skip_()) {
+      return nullptr;
+    }
     if (auto child = m_node.child("v")) {
       auto replacement =
           shared_strings_(document).at(child.text().as_uint()).first_child();
@@ -327,6 +337,10 @@ public:
       TableColumn previous_column;
       m_column.construct_previous_sibling(
           document, [&](std::size_t) { return &previous_column; });
+      if (node_position_(previous_sibling).column() !=
+          previous_column.m_column) {
+        previous_sibling = m_node;
+      }
       return common::construct_2<TableCell>(allocator, previous_sibling, m_row,
                                             previous_column);
     }
@@ -337,11 +351,14 @@ public:
   construct_next_sibling(const abstract::Document *document,
                          const abstract::Allocator &allocator) const final {
     if (auto next_sibling = m_node.next_sibling("c")) {
-      TableColumn previous_column;
-      m_column.construct_previous_sibling(
-          document, [&](std::size_t) { return &previous_column; });
+      TableColumn next_column;
+      m_column.construct_next_sibling(
+          document, [&](std::size_t) { return &next_column; });
+      if (node_position_(next_sibling).column() != next_column.m_column) {
+        next_sibling = m_node;
+      }
       return common::construct_2<TableCell>(allocator, next_sibling, m_row,
-                                            previous_column);
+                                            next_column);
     }
     return nullptr;
   }
@@ -370,6 +387,9 @@ public:
 
   common::ResolvedStyle
   partial_style(const abstract::Document *document) const final {
+    if (skip_()) {
+      return {};
+    }
     if (auto id = m_node.attribute("s")) {
       return style_registry_(document)->cell_style(id.as_uint());
     }
@@ -385,6 +405,19 @@ public:
 private:
   TableRow m_row;
   TableColumn m_column;
+
+  [[nodiscard]] static common::TablePosition
+  node_position_(pugi::xml_node node) {
+    return common::TablePosition(node.attribute("r").value());
+  }
+
+  [[nodiscard]] common::TablePosition position_() const {
+    return {m_row.m_row, m_column.m_column};
+  }
+
+  [[nodiscard]] bool skip_() const {
+    return position_() != node_position_(m_node);
+  }
 };
 
 class Span final : public Element, public abstract::SpanElement {
