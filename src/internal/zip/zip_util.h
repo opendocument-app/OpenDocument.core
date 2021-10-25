@@ -6,8 +6,8 @@
 #include <internal/abstract/file.h>
 #include <istream>
 #include <memory>
-#include <miniz.h>
-#include <miniz_zip.h>
+#include <miniz/miniz.h>
+#include <miniz/miniz_zip.h>
 #include <odr/file.h>
 #include <string>
 #include <sys/types.h>

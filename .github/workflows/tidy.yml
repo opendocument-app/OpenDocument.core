@@ -7,8 +7,19 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - run: sudo apt install clang-tidy-12
-      - run: clang-tidy-12 --version
+      - name: ubuntu install clang-tidy
+        run: |
+          sudo apt install clang-tidy-12
+          clang-tidy-12 --version
+
+      - name: set up python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: install python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install conan
 
       - name: checkout
         uses: actions/checkout@v2
@@ -17,7 +28,8 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+          conan install ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
 
       - name: clang-tidy
         run: |
