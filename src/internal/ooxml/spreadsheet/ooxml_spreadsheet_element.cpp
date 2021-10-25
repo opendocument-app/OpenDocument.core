@@ -322,12 +322,14 @@ public:
     if (skip_()) {
       return nullptr;
     }
-    if (auto child = m_node.child("v")) {
+    std::string type = m_node.attribute("t").value();
+    auto child = m_node.child("v");
+    if (type == "s") {
       auto replacement =
           shared_strings_(document).at(child.text().as_uint()).first_child();
       return construct_default_element(replacement, allocator);
     }
-    return nullptr;
+    return construct_default_element(child, allocator);
   }
 
   abstract::Element *
@@ -468,7 +470,7 @@ private:
   static bool is_text_(const pugi::xml_node node) {
     std::string name = node.name();
 
-    if (name == "t") {
+    if (name == "t" || name == "v") {
       return true;
     }
 
@@ -478,7 +480,7 @@ private:
   static std::string text_(const pugi::xml_node node) {
     std::string name = node.name();
 
-    if (name == "t") {
+    if (name == "t" || name == "v") {
       return node.text().get();
     }
 
@@ -515,6 +517,7 @@ Element::construct_default_element(pugi::xml_node node,
       {"row", common::construct<TableRow>},
       {"r", common::construct<Span>},
       {"t", common::construct<Text>},
+      {"v", common::construct<Text>},
   };
 
   if (auto constructor_it = constructor_table.find(node.name());
