@@ -260,8 +260,8 @@ std::string html::translate_drawing_style(const GraphicStyle &graphic_style) {
 
 std::string html::translate_frame_properties(const Frame &frame) {
   auto text_wrap = TextWrap::run_through;
-  if (auto style = frame.style(); style && style->text_wrap) {
-    text_wrap = *style->text_wrap;
+  if (auto style = frame.style(); style.text_wrap) {
+    text_wrap = *style.text_wrap;
   }
 
   std::string result;

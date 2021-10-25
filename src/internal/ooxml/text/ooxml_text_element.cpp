@@ -103,13 +103,13 @@ public:
     return style_(document)->partial_paragraph_style(m_node);
   }
 
-  [[nodiscard]] std::optional<ParagraphStyle>
+  [[nodiscard]] ParagraphStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).paragraph_style;
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   text_style(const abstract::Document *document,
              const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -130,7 +130,7 @@ public:
     return style_(document)->partial_text_style(m_node);
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -209,7 +209,7 @@ public:
     }
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -351,7 +351,7 @@ public:
     return nullptr;
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -457,9 +457,8 @@ public:
                                                 allocator);
   }
 
-  [[nodiscard]] std::optional<TableStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
+  [[nodiscard]] TableStyle style(const abstract::Document *document,
+                                 const abstract::DocumentCursor *) const final {
     return style_(document)->partial_table_style(m_node).table_style;
   }
 };
@@ -487,7 +486,7 @@ public:
         m_node.next_sibling("w:gridCol"), allocator);
   }
 
-  [[nodiscard]] std::optional<TableColumnStyle>
+  [[nodiscard]] TableColumnStyle
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     TableColumnStyle result;
@@ -521,7 +520,7 @@ public:
                                                 allocator);
   }
 
-  [[nodiscard]] std::optional<TableRowStyle>
+  [[nodiscard]] TableRowStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return style_(document)->partial_table_row_style(m_node).table_row_style;
@@ -591,7 +590,7 @@ public:
     return ValueType::string;
   }
 
-  [[nodiscard]] std::optional<TableCellStyle>
+  [[nodiscard]] TableCellStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return style_(document)->partial_table_cell_style(m_node).table_cell_style;
@@ -658,7 +657,7 @@ public:
     return {};
   }
 
-  [[nodiscard]] std::optional<GraphicStyle>
+  [[nodiscard]] GraphicStyle
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     return {};

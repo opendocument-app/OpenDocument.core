@@ -10,6 +10,7 @@
 #include <optional>
 #include <pugixml.hpp>
 #include <unordered_map>
+#include <utility>
 
 namespace odr::internal::ooxml::spreadsheet {
 
@@ -175,9 +176,8 @@ public:
     return nullptr;
   }
 
-  [[nodiscard]] std::optional<TableStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
+  [[nodiscard]] TableStyle style(const abstract::Document *document,
+                                 const abstract::DocumentCursor *) const final {
     return partial_style(document).table_style;
   }
 
@@ -225,7 +225,7 @@ public:
     return nullptr;
   }
 
-  [[nodiscard]] std::optional<TableColumnStyle>
+  [[nodiscard]] TableColumnStyle
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     TableColumnStyle result;
@@ -282,7 +282,7 @@ public:
     return nullptr;
   }
 
-  [[nodiscard]] std::optional<TableRowStyle>
+  [[nodiscard]] TableRowStyle
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     TableRowStyle result;
@@ -302,7 +302,7 @@ public:
   using Element::Element;
 
   TableCell(pugi::xml_node node, TableRow row, TableColumn column)
-      : Element(node), m_row{row}, m_column{column} {}
+      : Element(node), m_row{std::move(row)}, m_column{std::move(column)} {}
 
   [[nodiscard]] abstract::Element *
   construct_copy(const abstract::Allocator &allocator) const final {
@@ -376,7 +376,7 @@ public:
     return {};
   }
 
-  [[nodiscard]] std::optional<TableCellStyle>
+  [[nodiscard]] TableCellStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return partial_style(document).table_cell_style;
@@ -396,7 +396,7 @@ public:
     return common::construct_2<Span>(allocator, *this);
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -424,7 +424,7 @@ public:
     // TODO
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;

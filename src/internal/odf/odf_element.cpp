@@ -335,7 +335,7 @@ public:
     return common::construct_2<LineBreak>(allocator, *this);
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -351,13 +351,13 @@ public:
     return common::construct_2<Paragraph>(allocator, *this);
   }
 
-  [[nodiscard]] std::optional<ParagraphStyle>
+  [[nodiscard]] ParagraphStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).paragraph_style;
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   text_style(const abstract::Document *document,
              const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -373,7 +373,7 @@ public:
     return common::construct_2<Span>(allocator, *this);
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -445,7 +445,7 @@ public:
     }
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -539,7 +539,7 @@ public:
     return common::construct_2<ListItem>(allocator, *this);
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).text_style;
@@ -561,9 +561,8 @@ public:
     return nullptr;
   }
 
-  [[nodiscard]] std::optional<TableStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
+  [[nodiscard]] TableStyle style(const abstract::Document *document,
+                                 const abstract::DocumentCursor *) const final {
     return partial_style(document).table_style;
   }
 
@@ -659,7 +658,7 @@ public:
     return common::construct_2<TableColumn>(allocator, *this);
   }
 
-  [[nodiscard]] std::optional<TableColumnStyle>
+  [[nodiscard]] TableColumnStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return partial_style(document).table_column_style;
@@ -699,7 +698,7 @@ public:
     return common::construct_2<TableRow>(allocator, *this);
   }
 
-  [[nodiscard]] std::optional<TableRowStyle>
+  [[nodiscard]] TableRowStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return partial_style(document).table_row_style;
@@ -826,7 +825,7 @@ public:
     return result;
   }
 
-  [[nodiscard]] std::optional<TableCellStyle>
+  [[nodiscard]] TableCellStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return partial_style(document).table_cell_style;
@@ -922,7 +921,7 @@ public:
     return {};
   }
 
-  [[nodiscard]] std::optional<GraphicStyle>
+  [[nodiscard]] GraphicStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).graphic_style;
@@ -954,7 +953,7 @@ public:
     return m_node.attribute("svg:height").value();
   }
 
-  [[nodiscard]] std::optional<GraphicStyle>
+  [[nodiscard]] GraphicStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).graphic_style;
@@ -986,7 +985,7 @@ public:
     return m_node.attribute("svg:y2").value();
   }
 
-  [[nodiscard]] std::optional<GraphicStyle>
+  [[nodiscard]] GraphicStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).graphic_style;
@@ -1018,7 +1017,7 @@ public:
     return m_node.attribute("svg:height").value();
   }
 
-  [[nodiscard]] std::optional<GraphicStyle>
+  [[nodiscard]] GraphicStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).graphic_style;
@@ -1052,7 +1051,7 @@ public:
     return m_node.attribute("svg:height").value();
   }
 
-  [[nodiscard]] std::optional<GraphicStyle>
+  [[nodiscard]] GraphicStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
     return intermediate_style(document, cursor).graphic_style;

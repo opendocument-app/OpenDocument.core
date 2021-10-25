@@ -217,7 +217,7 @@ class LineBreak final
 public:
   using TypedElement::TypedElement;
 
-  [[nodiscard]] std::optional<TextStyle> style() const;
+  [[nodiscard]] TextStyle style() const;
 };
 
 class Paragraph final
@@ -225,15 +225,15 @@ class Paragraph final
 public:
   using TypedElement::TypedElement;
 
-  [[nodiscard]] std::optional<ParagraphStyle> style() const;
-  [[nodiscard]] std::optional<TextStyle> text_style() const;
+  [[nodiscard]] ParagraphStyle style() const;
+  [[nodiscard]] TextStyle text_style() const;
 };
 
 class Span final : public TypedElement<internal::abstract::SpanElement> {
 public:
   using TypedElement::TypedElement;
 
-  [[nodiscard]] std::optional<TextStyle> style() const;
+  [[nodiscard]] TextStyle style() const;
 };
 
 class Text final : public TypedElement<internal::abstract::TextElement> {
@@ -243,7 +243,7 @@ public:
   [[nodiscard]] std::string content() const;
   void set_content(const std::string &text) const;
 
-  [[nodiscard]] std::optional<TextStyle> style() const;
+  [[nodiscard]] TextStyle style() const;
 };
 
 class Link final : public TypedElement<internal::abstract::LinkElement> {
@@ -266,7 +266,7 @@ class ListItem final
 public:
   using TypedElement::TypedElement;
 
-  [[nodiscard]] std::optional<TextStyle> style() const;
+  [[nodiscard]] TextStyle style() const;
 };
 
 class Table final : public TypedElement<internal::abstract::TableElement> {
@@ -275,7 +275,7 @@ public:
 
   [[nodiscard]] TableDimensions dimensions() const;
 
-  [[nodiscard]] std::optional<TableStyle> style() const;
+  [[nodiscard]] TableStyle style() const;
 };
 
 class TableColumn final
@@ -283,7 +283,7 @@ class TableColumn final
 public:
   using TypedElement::TypedElement;
 
-  [[nodiscard]] std::optional<TableColumnStyle> style() const;
+  [[nodiscard]] TableColumnStyle style() const;
 };
 
 class TableRow final
@@ -291,7 +291,7 @@ class TableRow final
 public:
   using TypedElement::TypedElement;
 
-  [[nodiscard]] std::optional<TableRowStyle> style() const;
+  [[nodiscard]] TableRowStyle style() const;
 };
 
 class TableCell final
@@ -306,7 +306,7 @@ public:
   [[nodiscard]] TableDimensions span() const;
   [[nodiscard]] ValueType value_type() const;
 
-  [[nodiscard]] std::optional<TableCellStyle> style() const;
+  [[nodiscard]] TableCellStyle style() const;
 };
 
 class Frame final : public TypedElement<internal::abstract::FrameElement> {
@@ -320,7 +320,7 @@ public:
   [[nodiscard]] std::optional<std::string> height() const;
   [[nodiscard]] std::optional<std::string> z_index() const;
 
-  [[nodiscard]] std::optional<GraphicStyle> style() const;
+  [[nodiscard]] GraphicStyle style() const;
 };
 
 class Rect final : public TypedElement<internal::abstract::RectElement> {
@@ -332,7 +332,7 @@ public:
   [[nodiscard]] std::string width() const;
   [[nodiscard]] std::string height() const;
 
-  [[nodiscard]] std::optional<GraphicStyle> style() const;
+  [[nodiscard]] GraphicStyle style() const;
 };
 
 class Line final : public TypedElement<internal::abstract::LineElement> {
@@ -344,7 +344,7 @@ public:
   [[nodiscard]] std::string x2() const;
   [[nodiscard]] std::string y2() const;
 
-  [[nodiscard]] std::optional<GraphicStyle> style() const;
+  [[nodiscard]] GraphicStyle style() const;
 };
 
 class Circle final : public TypedElement<internal::abstract::CircleElement> {
@@ -356,7 +356,7 @@ public:
   [[nodiscard]] std::string width() const;
   [[nodiscard]] std::string height() const;
 
-  [[nodiscard]] std::optional<GraphicStyle> style() const;
+  [[nodiscard]] GraphicStyle style() const;
 };
 
 class CustomShape final
@@ -369,7 +369,7 @@ public:
   [[nodiscard]] std::string width() const;
   [[nodiscard]] std::string height() const;
 
-  [[nodiscard]] std::optional<GraphicStyle> style() const;
+  [[nodiscard]] GraphicStyle style() const;
 };
 
 class Image final : public TypedElement<internal::abstract::ImageElement> {
