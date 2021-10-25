@@ -7,8 +7,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(ODR_TEST "enable tests" ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -D_GLIBCXX_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+# debugging
+#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")
 # benchmarking
 #set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-omit-frame-pointer")
 
@@ -25,9 +27,7 @@ conan_cmake_autodetect(settings)
 conan_cmake_install(PATH_OR_REFERENCE ..
         BUILD missing
         SETTINGS ${settings}
-        SETTINGS compiler.cppstd=17
-        ENV CC=${CMAKE_C_COMPILER}
-        ENV CXX=${CMAKE_CXX_COMPILER})
+        SETTINGS compiler.cppstd=17)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
 
