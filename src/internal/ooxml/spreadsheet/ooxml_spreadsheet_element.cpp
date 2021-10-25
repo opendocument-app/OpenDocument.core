@@ -419,7 +419,7 @@ private:
   }
 
   [[nodiscard]] bool skip_() const {
-    return position_() != node_position_(m_node);
+    return !m_node || position_() != node_position_(m_node);
   }
 };
 
