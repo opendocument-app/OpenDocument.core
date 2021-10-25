@@ -25,7 +25,7 @@ Element::Element() = default;
 Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
-  return {}; // TODO
+  return {};
 }
 
 common::ResolvedStyle

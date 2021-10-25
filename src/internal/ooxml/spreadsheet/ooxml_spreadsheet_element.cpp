@@ -18,7 +18,7 @@ Element::Element() = default;
 Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
-  return {}; // TODO
+  return {};
 }
 
 common::ResolvedStyle
@@ -29,6 +29,11 @@ Element::intermediate_style(const abstract::Document *,
 
 const Document *Element::document_(const abstract::Document *document) {
   return dynamic_cast<const Document *>(document);
+}
+
+const StyleRegistry *
+Element::style_registry_(const abstract::Document *document) {
+  return &document_(document)->m_style_registry;
 }
 
 pugi::xml_node Element::sheet_(const abstract::Document *document,
@@ -309,7 +314,7 @@ public:
                         const abstract::Allocator &allocator) const final {
     if (auto child = m_node.child("v")) {
       auto replacement =
-          shared_strings_(document)[child.text().as_uint()].first_child();
+          shared_strings_(document).at(child.text().as_uint()).first_child();
       return construct_default_element(replacement, allocator);
     }
     return nullptr;
@@ -363,6 +368,14 @@ public:
     return ValueType::string;
   }
 
+  common::ResolvedStyle
+  partial_style(const abstract::Document *document) const final {
+    if (auto id = m_node.attribute("s")) {
+      return style_registry_(document)->cell_style(id.as_uint());
+    }
+    return {};
+  }
+
   [[nodiscard]] std::optional<TableCellStyle>
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
@@ -385,8 +398,8 @@ public:
 
   [[nodiscard]] std::optional<TextStyle>
   style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).text_style;
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
   }
 };
 
@@ -413,8 +426,8 @@ public:
 
   [[nodiscard]] std::optional<TextStyle>
   style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).text_style;
+        const abstract::DocumentCursor *cursor) const final {
+    return intermediate_style(document, cursor).text_style;
   }
 
 private:

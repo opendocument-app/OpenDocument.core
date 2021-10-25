@@ -20,6 +20,9 @@ public:
   DocumentCursor(const Document *document, pugi::xml_node root);
 
   [[nodiscard]] std::unique_ptr<abstract::DocumentCursor> copy() const final;
+
+private:
+  [[nodiscard]] common::ResolvedStyle partial_style() const final;
 };
 
 } // namespace odr::internal::ooxml::spreadsheet

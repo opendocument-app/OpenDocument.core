@@ -24,4 +24,8 @@ DocumentCursor::copy() const {
   return std::make_unique<DocumentCursor>(*this);
 }
 
+common::ResolvedStyle DocumentCursor::partial_style() const {
+  return dynamic_cast<const Element *>(element())->partial_style(m_document);
+}
+
 } // namespace odr::internal::ooxml::spreadsheet
