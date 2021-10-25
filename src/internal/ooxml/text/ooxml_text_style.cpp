@@ -5,6 +5,7 @@
 namespace odr::internal::ooxml::text {
 
 namespace {
+
 void resolve_text_style_(pugi::xml_node node,
                          std::optional<TextStyle> &result) {
   if (auto run_properties = node.child("w:rPr")) {
@@ -140,6 +141,7 @@ void resolve_table_cell_style_(pugi::xml_node node,
 void resolve_graphic_style_(pugi::xml_node, std::optional<GraphicStyle> &) {
   // TODO
 }
+
 } // namespace
 
 Style::Style(pugi::xml_node node) : m_node{node} {

@@ -19,6 +19,8 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
 
+  m_style_registry = StyleRegistry(m_styles_xml.document_element());
+
   for (auto relationships :
        parse_relationships(*m_filesystem, "xl/workbook.xml")) {
     m_sheets_xml[relationships.first] = util::xml::parse(

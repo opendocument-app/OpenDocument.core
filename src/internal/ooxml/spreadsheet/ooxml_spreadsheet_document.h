@@ -3,6 +3,7 @@
 
 #include <internal/abstract/document.h>
 #include <internal/common/path.h>
+#include <internal/ooxml/spreadsheet/ooxml_spreadsheet_style.h>
 #include <memory>
 #include <odr/file.h>
 #include <pugixml.hpp>
@@ -41,6 +42,8 @@ private:
   pugi::xml_document m_workbook_xml;
   pugi::xml_document m_styles_xml;
   std::unordered_map<std::string, pugi::xml_document> m_sheets_xml;
+
+  StyleRegistry m_style_registry;
 
   pugi::xml_document m_shared_strings_xml;
   std::vector<pugi::xml_node> m_shared_strings;
