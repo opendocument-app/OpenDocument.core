@@ -3,8 +3,8 @@
 #include <internal/common/path.h>
 #include <internal/zip/zip_archive.h>
 #include <internal/zip/zip_util.h>
-#include <miniz.h>
-#include <miniz_zip.h>
+#include <miniz/miniz.h>
+#include <miniz/miniz_zip.h>
 #include <odr/exceptions.h>
 #include <string>
 #include <utility>
