@@ -16,10 +16,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
-      - name: install python dependencies
-        run: |
-          pip install --upgrade pip
-          pip install conan
+      - run: pip install conan
 
       - name: cache
         uses: actions/cache@v2
@@ -29,14 +26,14 @@ jobs:
             ~/.conan/data
             /Users/runner/Library/Caches/ccache
             C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev13
+          key: ${{ matrix.config.os }}-rev13
           restore-keys: |
-            ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
+            ${{ matrix.config.os }}-
 
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: cmake
+      - name: conan and cmake
         run: |
           mkdir -p build
           cd build
