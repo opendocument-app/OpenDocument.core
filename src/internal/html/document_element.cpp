@@ -163,6 +163,7 @@ void html::translate_sheet(DocumentCursor &cursor, std::ostream &out,
           auto table_cell = cursor.element().table_cell();
 
           if (!table_cell.covered()) {
+            auto cell_style = table_cell.style();
             auto cell_span = table_cell.span();
 
             out << "<td";

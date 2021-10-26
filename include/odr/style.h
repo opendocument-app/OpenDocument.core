@@ -66,7 +66,7 @@ struct Color final {
         std::uint8_t alpha);
 
   [[nodiscard]] std::uint32_t rgb() const;
-  [[nodiscard]] std::uint32_t rgba() const;
+  [[nodiscard]] std::uint32_t argb() const;
 };
 
 template <typename T> struct DirectionalStyle final {
@@ -156,6 +156,7 @@ struct TableCellStyle final {
   std::optional<Color> background_color;
   DirectionalStyle<Measure> padding;
   DirectionalStyle<std::string> border;
+  std::optional<double> text_rotation;
 
   void override(const TableCellStyle &other);
 };

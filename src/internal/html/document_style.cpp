@@ -248,6 +248,11 @@ html::translate_table_cell_style(const TableCellStyle &table_cell_style) {
   if (auto border_bottom = table_cell_style.border.bottom) {
     result.append("border-bottom:").append(*border_bottom).append(";");
   }
+  if (auto text_rotation = table_cell_style.text_rotation;
+      text_rotation && (*text_rotation != 0)) {
+    // TODO covers only the -90° case
+    result.append("writing-mode:vertical-lr;");
+  }
   return result;
 }
 

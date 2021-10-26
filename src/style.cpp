@@ -28,12 +28,12 @@ std::uint32_t Color::rgb() const {
   return result;
 }
 
-std::uint32_t Color::rgba() const {
+std::uint32_t Color::argb() const {
   std::uint32_t result{0};
-  result |= red << 24;
-  result |= green << 16;
-  result |= blue << 8;
-  result |= alpha << 0;
+  result |= alpha << 24;
+  result |= red << 16;
+  result |= green << 8;
+  result |= blue << 0;
   return result;
 }
 
@@ -107,6 +107,9 @@ void TableCellStyle::override(const TableCellStyle &other) {
   }
   padding.override(other.padding);
   border.override(other.border);
+  if (other.text_rotation) {
+    text_rotation = other.text_rotation;
+  }
 }
 
 void GraphicStyle::override(const GraphicStyle &other) {
