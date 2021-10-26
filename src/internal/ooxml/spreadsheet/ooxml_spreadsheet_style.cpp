@@ -1,4 +1,5 @@
 #include <cstring>
+#include <internal/html/common.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_style.h>
 
 namespace odr::internal::ooxml::spreadsheet {
@@ -54,6 +55,22 @@ std::optional<Color> read_color(pugi::xml_node node) {
     }
   }
   return {};
+}
+
+std::optional<std::string> read_border(pugi::xml_node node) {
+  if (!node) {
+    return {};
+  }
+  std::string result;
+  if (!node.attribute("style")) {
+    return {};
+  }
+  // TODO: thin only
+  result.append("0.75pt solid ");
+  if (auto color = read_color(node.child("color"))) {
+    result.append(internal::html::color(*color));
+  }
+  return result;
 }
 
 } // namespace
@@ -129,7 +146,12 @@ void StyleRegistry::resolve_fill_(std::uint32_t i,
 
 void StyleRegistry::resolve_border_(std::uint32_t i,
                                     common::ResolvedStyle &result) const {
-  // TODO
+  auto border = m_borders_index.at(i);
+
+  result.table_cell_style.border.right = read_border(border.child("right"));
+  result.table_cell_style.border.top = read_border(border.child("top"));
+  result.table_cell_style.border.left = read_border(border.child("left"));
+  result.table_cell_style.border.bottom = read_border(border.child("bottom"));
 }
 
 void StyleRegistry::generate_indices_(pugi::xml_node styles_root) {

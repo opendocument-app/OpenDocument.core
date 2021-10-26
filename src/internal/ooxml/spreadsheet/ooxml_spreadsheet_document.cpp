@@ -1,3 +1,4 @@
+#include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.h>
@@ -27,8 +28,10 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
         *m_filesystem, common::Path("xl").join(relationships.second));
   }
 
-  m_shared_strings_xml =
-      util::xml::parse(*m_filesystem, "xl/sharedStrings.xml");
+  if (m_filesystem->exists("xl/sharedStrings.xml")) {
+    m_shared_strings_xml =
+        util::xml::parse(*m_filesystem, "xl/sharedStrings.xml");
+  }
 
   for (auto shared_string : m_shared_strings_xml.document_element()) {
     m_shared_strings.push_back(shared_string);
