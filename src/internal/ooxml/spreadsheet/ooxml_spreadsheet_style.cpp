@@ -1,3 +1,4 @@
+#include <cstring>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_style.h>
 
 namespace odr::internal::ooxml::spreadsheet {
@@ -21,10 +22,10 @@ const std::vector<Color> &color_index() {
   return color_index;
 }
 
-std::optional<TextAlign> read_horizontal(pugi::xml_attribute attribute) {
+std::optional<HorizontalAlign> read_horizontal(pugi::xml_attribute attribute) {
   std::string value = attribute.value();
   if (value == "center") {
-    return TextAlign::center;
+    return HorizontalAlign::center;
   }
   return {};
 }
@@ -40,6 +41,17 @@ std::optional<VerticalAlign> read_vertical(pugi::xml_attribute attribute) {
 std::optional<Color> read_color(pugi::xml_node node) {
   if (auto indexed = node.attribute("indexed")) {
     return color_index().at(indexed.as_uint());
+  }
+  if (auto rgb = node.attribute("rgb")) {
+    auto value = rgb.value();
+    if (std::strlen(value) == 8) {
+      std::uint32_t color = std::strtoull(value, nullptr, 16);
+      return Color(color, false);
+    }
+    if (std::strlen(value) == 6) {
+      std::uint32_t color = std::strtoull(value, nullptr, 16);
+      return Color(color);
+    }
   }
   return {};
 }
@@ -62,19 +74,19 @@ common::ResolvedStyle StyleRegistry::cell_style(std::uint32_t i) const {
     resolve_font_(font_id.as_uint(), result);
   }
 
-  if (auto fill_id = cell_format.attribute("fillId");
-      cell_format.attribute("applyFill").as_bool() && fill_id) {
+  if (auto fill_id = cell_format.attribute("fillId")) {
     resolve_fill_(fill_id.as_uint(), result);
   }
 
   if (auto border_id = cell_format.attribute("borderId");
       cell_format.attribute("applyBorder").as_bool() && border_id) {
-    resolve_fill_(border_id.as_uint(), result);
+    resolve_border_(border_id.as_uint(), result);
   }
 
   if (auto alignment = cell_format.child("alignment");
       cell_format.attribute("applyAlignment").as_bool() && alignment) {
-    read_vertical(alignment.attribute("horizontal")); // TODO
+    result.table_cell_style.horizontal_align =
+        read_horizontal(alignment.attribute("horizontal"));
     result.table_cell_style.vertical_align =
         read_vertical(alignment.attribute("vertical"));
   }
@@ -100,11 +112,19 @@ void StyleRegistry::resolve_font_(std::uint32_t i,
   if (font.child("b")) {
     result.text_style.font_weight = FontWeight::bold;
   }
+  if (auto color = font.child("color")) {
+    result.text_style.font_color = read_color(color);
+  }
 }
 
 void StyleRegistry::resolve_fill_(std::uint32_t i,
                                   common::ResolvedStyle &result) const {
-  // TODO
+  auto fill = m_fills_index.at(i);
+
+  if (auto pattern = fill.child("patternFill")) {
+    result.table_cell_style.background_color =
+        read_color(pattern.child("bgColor"));
+  }
 }
 
 void StyleRegistry::resolve_border_(std::uint32_t i,
