@@ -28,17 +28,21 @@ if (CCACHE_FOUND)
     message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
-include(cmake/conan.cmake)
-conan_cmake_configure(GENERATORS cmake)
-conan_cmake_autodetect(settings)
-conan_cmake_install(PATH_OR_REFERENCE ..
-        BUILD missing
-        SETTINGS ${settings}
-        SETTINGS compiler.cppstd=17
-        ENV CC=${CMAKE_C_COMPILER}
-        ENV CXX=${CMAKE_CXX_COMPILER})
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+if (NOT DEFINED CONAN_PACKAGE_NAME)
+    if (NOT DEFINED CONAN_EXPORTED)
+        include(cmake/conan.cmake)
+        conan_cmake_configure(GENERATORS cmake)
+        conan_cmake_autodetect(settings)
+        conan_cmake_install(PATH_OR_REFERENCE ..
+                BUILD missing
+                SETTINGS ${settings}
+                SETTINGS compiler.cppstd=17
+                ENV CC=${CMAKE_C_COMPILER}
+                ENV CXX=${CMAKE_CXX_COMPILER})
+    endif ()
+    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+endif ()
 
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
