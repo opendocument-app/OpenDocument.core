@@ -75,20 +75,18 @@ jobs:
         if: startsWith(matrix.config.os, 'macos')
         run: brew install tidy-html5
 
+      - name: set up python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
       - name: checkout
         uses: actions/checkout@v2
         with:
           token: ${{ secrets.PAT_ANDIWAND }}
           submodules: true
 
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: install python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r test/scripts/requirements.txt
+      - run: pip install -r test/scripts/requirements.txt
 
       - name: download binaries
         uses: actions/download-artifact@v2
