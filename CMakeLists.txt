@@ -19,7 +19,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
     #set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-omit-frame-pointer")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     # using Visual Studio C++
-endif()
+endif ()
 
 # use ccache if available
 find_program(CCACHE_FOUND ccache)
@@ -28,15 +28,7 @@ if (CCACHE_FOUND)
     message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
-include(cmake/conan.cmake)
-conan_cmake_configure(GENERATORS cmake)
-conan_cmake_autodetect(settings)
-conan_cmake_install(PATH_OR_REFERENCE ..
-        BUILD missing
-        SETTINGS ${settings}
-        SETTINGS compiler.cppstd=17)
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+add_subdirectory(3rdparty)
 
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
@@ -125,11 +117,11 @@ target_include_directories(odr-object
         )
 target_link_libraries(odr-object
         PRIVATE
-        CONAN_PKG::pugixml
-        CONAN_PKG::miniz
-        CONAN_PKG::glog
-        CONAN_PKG::cryptopp
-        CONAN_PKG::nlohmann_json
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
         )
 set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -142,11 +134,11 @@ target_include_directories(odr-static
         )
 target_link_libraries(odr-static
         PRIVATE
-        CONAN_PKG::pugixml
-        CONAN_PKG::miniz
-        CONAN_PKG::glog
-        CONAN_PKG::cryptopp
-        CONAN_PKG::nlohmann_json
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
         )
 
 add_library(odr-shared SHARED
@@ -158,11 +150,11 @@ target_include_directories(odr-shared
         )
 target_link_libraries(odr-shared
         PRIVATE
-        CONAN_PKG::pugixml
-        CONAN_PKG::miniz
-        CONAN_PKG::glog
-        CONAN_PKG::cryptopp
-        CONAN_PKG::nlohmann_json
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
         )
 
 add_subdirectory(cli)

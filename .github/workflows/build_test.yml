@@ -11,7 +11,6 @@ jobs:
           - { os: ubuntu-20.04, cc: clang, cxx: clang++ }
           - { os: ubuntu-20.04, cc: gcc, cxx: g++ }
           - { os: macos-10.15, cc: clang, cxx: clang++ }
-          - { os: windows-2019 }
 
     steps:
       - name: ubuntu install ccache
@@ -25,35 +24,26 @@ jobs:
           brew install ccache
           ccache -V
 
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - run: pip install conan
-
-      - name: cache
+      - name: ccache
         uses: actions/cache@v2
         with:
           path: |
-            ~/.ccache
-            ~/.conan/data
+            /home/runner/.ccache
             /Users/runner/Library/Caches/ccache
-            C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev13
+          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev14
           restore-keys: |
             ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
 
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: conan and cmake
+      - name: cmake
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
         run: |
           mkdir -p build
           cd build
-          conan install ..
           cmake -DCMAKE_BUILD_TYPE=Release ..
       - name: make
         run: |

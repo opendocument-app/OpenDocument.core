@@ -1,7 +1,7 @@
 add_executable(meta src/meta.cpp)
 target_link_libraries(meta
         PRIVATE
-        CONAN_PKG::nlohmann_json
+        nlohmann_json::nlohmann_json
 
         odr-static
         )
