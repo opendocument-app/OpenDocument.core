@@ -11,7 +11,6 @@ jobs:
           - { os: ubuntu-20.04, cc: clang, cxx: clang++ }
           - { os: ubuntu-20.04, cc: gcc, cxx: g++ }
           - { os: macos-10.15, cc: clang, cxx: clang++ }
-          - { os: windows-2019 }
 
     steps:
       - name: ubuntu install ccache
