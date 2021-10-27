@@ -40,13 +40,14 @@ target_include_directories(odr_test
         )
 target_link_libraries(odr_test
         PRIVATE
-        CONAN_PKG::pugixml
-        CONAN_PKG::miniz
-        CONAN_PKG::glog
-        CONAN_PKG::cryptopp
-        CONAN_PKG::nlohmann_json
-        CONAN_PKG::vincentlaucsb-csv-parser
-        CONAN_PKG::gtest
+        pugixml
+        miniz
+        glog
+        cryptopp-static
+        nlohmann_json::nlohmann_json
+        csv
+        gtest_main
+        gtest
 
         odr-static
         )

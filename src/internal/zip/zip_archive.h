@@ -6,7 +6,7 @@
 #include <iosfwd>
 #include <iterator>
 #include <memory>
-#include <miniz/miniz.h>
+#include <miniz.h>
 #include <vector>
 
 namespace odr::internal::abstract {
