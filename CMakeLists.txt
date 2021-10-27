@@ -34,7 +34,9 @@ conan_cmake_autodetect(settings)
 conan_cmake_install(PATH_OR_REFERENCE ..
         BUILD missing
         SETTINGS ${settings}
-        SETTINGS compiler.cppstd=17)
+        SETTINGS compiler.cppstd=17
+        ENV CC=${CMAKE_C_COMPILER}
+        ENV CXX=${CMAKE_CXX_COMPILER})
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
 
