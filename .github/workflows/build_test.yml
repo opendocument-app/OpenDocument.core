@@ -16,11 +16,14 @@ jobs:
     steps:
       - name: ubuntu install ccache
         if: startsWith(matrix.config.os, 'ubuntu')
-        run: sudo apt install ccache
+        run: |
+          sudo apt install ccache
+          ccache -V
       - name: macos install ccache
         if: startsWith(matrix.config.os, 'macos')
-        run: brew install ccache
-      - run: ccache -V
+        run: |
+          brew install ccache
+          ccache -V
 
       - name: ccache
         uses: actions/cache@v2
