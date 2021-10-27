@@ -37,15 +37,22 @@ public:
   root_element() const final;
 
 private:
+  struct Sheet final {
+    common::Path sheet_path;
+    pugi::xml_document sheet_xml;
+    std::optional<common::Path> drawing_path;
+    pugi::xml_document drawing_xml;
+  };
+
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
 
   pugi::xml_document m_workbook_xml;
   pugi::xml_document m_styles_xml;
-  std::unordered_map<std::string, pugi::xml_document> m_sheets_xml;
+  std::unordered_map<std::string, Sheet> m_sheets;
+  std::unordered_map<std::string, pugi::xml_document> m_drawings_xml;
+  pugi::xml_document m_shared_strings_xml;
 
   StyleRegistry m_style_registry;
-
-  pugi::xml_document m_shared_strings_xml;
   std::vector<pugi::xml_node> m_shared_strings;
 
   friend class Element;

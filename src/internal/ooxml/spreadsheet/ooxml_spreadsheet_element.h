@@ -32,7 +32,9 @@ protected:
   style_registry_(const abstract::Document *document);
   static pugi::xml_node sheet_(const abstract::Document *document,
                                const std::string &id);
-  static std::vector<pugi::xml_node>
+  static pugi::xml_node drawing_(const abstract::Document *document,
+                                 const std::string &id);
+  static const std::vector<pugi::xml_node> &
   shared_strings_(const abstract::Document *document);
 };
 

@@ -1,8 +1,10 @@
 #include <functional>
 #include <internal/abstract/document.h>
+#include <internal/abstract/filesystem.h>
 #include <internal/common/document_element.h>
 #include <internal/common/style.h>
 #include <internal/common/table_range.h>
+#include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_document.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_element.h>
@@ -39,10 +41,15 @@ Element::style_registry_(const abstract::Document *document) {
 
 pugi::xml_node Element::sheet_(const abstract::Document *document,
                                const std::string &id) {
-  return document_(document)->m_sheets_xml.at(id).document_element();
+  return document_(document)->m_sheets.at(id).sheet_xml.document_element();
 }
 
-std::vector<pugi::xml_node>
+pugi::xml_node Element::drawing_(const abstract::Document *document,
+                                 const std::string &id) {
+  return document_(document)->m_sheets.at(id).drawing_xml.document_element();
+}
+
+const std::vector<pugi::xml_node> &
 Element::shared_strings_(const abstract::Document *document) {
   return document_(document)->m_shared_strings;
 }
@@ -54,6 +61,7 @@ class TableColumn;
 class TableRow;
 class TableCell;
 class Text;
+class ImageElement;
 
 template <ElementType element_type> class DefaultElement : public Element {
 public:
@@ -171,9 +179,10 @@ public:
   }
 
   [[nodiscard]] abstract::Element *
-  construct_first_shape(const abstract::Document *,
-                        const abstract::Allocator &) const final {
-    return nullptr;
+  construct_first_shape(const abstract::Document *document,
+                        const abstract::Allocator &allocator) const final {
+    return common::construct_first_child_element(
+        construct_default_element, drawing_node_(document), allocator);
   }
 
   [[nodiscard]] TableStyle style(const abstract::Document *document,
@@ -184,6 +193,10 @@ public:
 private:
   pugi::xml_node sheet_node_(const abstract::Document *document) const {
     return sheet_(document, m_node.attribute("r:id").value());
+  }
+
+  pugi::xml_node drawing_node_(const abstract::Document *document) const {
+    return drawing_(document, m_node.attribute("r:id").value());
   }
 };
 
@@ -502,6 +515,129 @@ private:
   }
 };
 
+class Frame final : public Element, public abstract::FrameElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator &allocator) const final {
+    return common::construct_2<Frame>(allocator, *this);
+  }
+
+  abstract::Element *
+  construct_first_child(const abstract::Document *,
+                        const abstract::Allocator &allocator) const final {
+    return common::construct_optional<ImageElement>(
+        m_node.child("xdr:pic").child("xdr:blipFill").child("a:blip"),
+        allocator);
+  }
+
+  [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final {
+    return AnchorType::at_page;
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  x(const abstract::Document *) const final {
+    if (auto x = read_emus_attribute(m_node.child("xdr:pic")
+                                         .child("xdr:spPr")
+                                         .child("a:xfrm")
+                                         .child("a:off")
+                                         .attribute("x"))) {
+      return x->to_string();
+    }
+    return {};
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  y(const abstract::Document *) const final {
+    if (auto y = read_emus_attribute(m_node.child("xdr:pic")
+                                         .child("xdr:spPr")
+                                         .child("a:xfrm")
+                                         .child("a:off")
+                                         .attribute("y"))) {
+      return y->to_string();
+    }
+    return {};
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  width(const abstract::Document *) const final {
+    if (auto width = read_emus_attribute(m_node.child("xdr:pic")
+                                             .child("xdr:spPr")
+                                             .child("a:xfrm")
+                                             .child("a:ext")
+                                             .attribute("cx"))) {
+      return width->to_string();
+    }
+    return {};
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  height(const abstract::Document *) const final {
+    if (auto height = read_emus_attribute(m_node.child("xdr:pic")
+                                              .child("xdr:spPr")
+                                              .child("a:xfrm")
+                                              .child("a:ext")
+                                              .attribute("cy"))) {
+      return height->to_string();
+    }
+    return {};
+  }
+
+  [[nodiscard]] std::optional<std::string>
+  z_index(const abstract::Document *) const final {
+    return {};
+  }
+
+  [[nodiscard]] GraphicStyle
+  style(const abstract::Document *,
+        const abstract::DocumentCursor *) const final {
+    return {};
+  }
+};
+
+class ImageElement final : public Element, public abstract::ImageElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] abstract::Element *
+  construct_copy(const abstract::Allocator &allocator) const final {
+    return common::construct_2<ImageElement>(allocator, *this);
+  }
+
+  [[nodiscard]] bool internal(const abstract::Document *document) const final {
+    auto doc = document_(document);
+    if (!doc || !doc->files()) {
+      return false;
+    }
+    try {
+      return doc->files()->is_file(href(document));
+    } catch (...) {
+    }
+    return false;
+  }
+
+  [[nodiscard]] std::optional<odr::File>
+  file(const abstract::Document *document) const final {
+    auto doc = document_(document);
+    if (!doc || !internal(document)) {
+      return {};
+    }
+    return File(doc->files()->open(href(document)));
+  }
+
+  [[nodiscard]] std::string href(const abstract::Document *) const final {
+    if (auto ref = m_node.attribute("r:embed")) {
+      /* TODO
+      auto relations = document_relations_(document);
+      if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
+        return common::Path("word").join(rel->second).string();
+      }*/
+    }
+    return ""; // TODO
+  }
+};
+
 } // namespace
 
 abstract::Element *
@@ -518,6 +654,7 @@ Element::construct_default_element(pugi::xml_node node,
       {"r", common::construct<Span>},
       {"t", common::construct<Text>},
       {"v", common::construct<Text>},
+      {"xdr:twoCellAnchor", common::construct<Frame>},
   };
 
   if (auto constructor_it = constructor_table.find(node.name());
