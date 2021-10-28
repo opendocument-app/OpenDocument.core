@@ -327,10 +327,13 @@ public:
   abstract::Element *
   construct_first_child(const abstract::Document *,
                         const abstract::Allocator &allocator) const final {
-    if (m_level == level(m_node)) {
+    auto node_level = level(m_node);
+    if (m_level == node_level) {
       return common::construct<ListItemParagraph>(m_node, allocator);
+    } else if (m_level < node_level) {
+      return common::construct_2<ListElement>(allocator, m_node, m_level + 1);
     }
-    return common::construct_2<ListElement>(allocator, m_node, m_level + 1);
+    return {};
   }
 
   abstract::Element *
