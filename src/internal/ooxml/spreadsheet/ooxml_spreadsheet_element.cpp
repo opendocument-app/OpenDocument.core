@@ -276,17 +276,30 @@ public:
   abstract::Element *
   construct_first_child(const abstract::Document *,
                         const abstract::Allocator &allocator) const final {
-    return common::construct_2<TableCell>(
-        allocator, m_node.child("c"), *this,
-        TableColumn(m_node.parent().parent().child("cols").child("col")));
+    if (skip_()) {
+      return nullptr;
+    }
+    if (auto first_child = m_node.child("c")) {
+      return common::construct_2<TableCell>(
+          allocator, first_child, *this,
+          TableColumn(m_node.parent().parent().child("cols").child("col")));
+    }
+    return nullptr;
   }
 
   abstract::Element *
   construct_previous_sibling(const abstract::Document *,
                              const abstract::Allocator &allocator) const final {
-    if (auto previous_sibling = m_node.previous_sibling()) {
-      return common::construct_2<TableRow>(allocator, previous_sibling,
-                                           m_row - 1);
+    if (m_row <= 0) {
+      return nullptr;
+    }
+    auto previous_row = m_row - 1;
+    if (node_position_(m_node) <= previous_row) {
+      return common::construct_2<TableRow>(allocator, m_node, previous_row);
+    }
+    if (auto next_sibling = m_node.next_sibling("row")) {
+      return common::construct_2<TableRow>(allocator, next_sibling,
+                                           previous_row);
     }
     return nullptr;
   }
@@ -294,8 +307,12 @@ public:
   abstract::Element *
   construct_next_sibling(const abstract::Document *,
                          const abstract::Allocator &allocator) const final {
-    if (auto next_sibling = m_node.next_sibling()) {
-      return common::construct_2<TableRow>(allocator, next_sibling, m_row + 1);
+    auto next_row = m_row + 1;
+    if (node_position_(m_node) >= next_row) {
+      return common::construct_2<TableRow>(allocator, m_node, next_row);
+    }
+    if (auto next_sibling = m_node.next_sibling("row")) {
+      return common::construct_2<TableRow>(allocator, next_sibling, next_row);
     }
     return nullptr;
   }
@@ -312,6 +329,14 @@ public:
 
 private:
   std::uint32_t m_row{0};
+
+  [[nodiscard]] static std::uint32_t node_position_(pugi::xml_node node) {
+    return node.attribute("r").as_ullong() - 1;
+  }
+
+  [[nodiscard]] bool skip_() const {
+    return !m_node || m_row != node_position_(m_node);
+  }
 
   friend class TableCell;
 };
@@ -348,15 +373,16 @@ public:
   abstract::Element *
   construct_previous_sibling(const abstract::Document *document,
                              const abstract::Allocator &allocator) const final {
-    auto previous_sibling = m_node.previous_sibling("c");
-    if (!previous_sibling) {
-      return nullptr;
-    }
     TableColumn previous_column;
     m_column.construct_previous_sibling(
         document, [&](std::size_t) { return &previous_column; });
-    if (node_position_(previous_sibling).column() != previous_column.m_column) {
-      previous_sibling = m_node;
+    if (node_position_(m_node).column() <= previous_column.m_column) {
+      return common::construct_2<TableCell>(allocator, m_node, m_row,
+                                            previous_column);
+    }
+    auto previous_sibling = m_node.previous_sibling("c");
+    if (!previous_sibling) {
+      return nullptr;
     }
     return common::construct_2<TableCell>(allocator, previous_sibling, m_row,
                                           previous_column);
@@ -365,15 +391,16 @@ public:
   abstract::Element *
   construct_next_sibling(const abstract::Document *document,
                          const abstract::Allocator &allocator) const final {
-    auto next_sibling = m_node.next_sibling("c");
-    if (!next_sibling) {
-      return nullptr;
-    }
     TableColumn next_column;
     m_column.construct_next_sibling(document,
                                     [&](std::size_t) { return &next_column; });
-    if (node_position_(next_sibling).column() != next_column.m_column) {
-      next_sibling = m_node;
+    if (node_position_(m_node).column() >= next_column.m_column) {
+      return common::construct_2<TableCell>(allocator, m_node, m_row,
+                                            next_column);
+    }
+    auto next_sibling = m_node.next_sibling("c");
+    if (!next_sibling) {
+      return nullptr;
     }
     return common::construct_2<TableCell>(allocator, next_sibling, m_row,
                                           next_column);
