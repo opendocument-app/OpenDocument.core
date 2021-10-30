@@ -6,6 +6,11 @@ this implementation relies on [OOXML](../README.md)
 
 ## Features
 
+### Functional
+
+- [x] edit
+  - [x] text
+
 ### Styles
 
 - [x] font
@@ -19,7 +24,6 @@ this implementation relies on [OOXML](../README.md)
 - [x] links
 - [x] tables
 - [x] images
-  - [x] svm
 - [x] listings
   - [x] bullets
   - [ ] numbering
