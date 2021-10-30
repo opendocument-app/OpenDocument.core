@@ -68,7 +68,7 @@ void Document::save(const common::Path & /*path*/,
 }
 
 FileType Document::file_type() const noexcept {
-  return FileType::office_open_xml_document;
+  return FileType::office_open_xml_workbook;
 }
 
 DocumentType Document::document_type() const noexcept {
