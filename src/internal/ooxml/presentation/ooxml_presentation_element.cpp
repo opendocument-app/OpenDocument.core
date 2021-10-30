@@ -145,13 +145,13 @@ public:
     return common::construct_2<Paragraph>(allocator, *this);
   }
 
-  [[nodiscard]] std::optional<ParagraphStyle>
+  [[nodiscard]] ParagraphStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return partial_style(document).paragraph_style;
   }
 
-  [[nodiscard]] std::optional<TextStyle>
+  [[nodiscard]] TextStyle
   text_style(const abstract::Document *document,
              const abstract::DocumentCursor *) const final {
     return partial_style(document).text_style;
@@ -167,9 +167,8 @@ public:
     return common::construct_2<Span>(allocator, *this);
   }
 
-  [[nodiscard]] std::optional<TextStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
+  [[nodiscard]] TextStyle style(const abstract::Document *document,
+                                const abstract::DocumentCursor *) const final {
     return partial_style(document).text_style;
   }
 };
@@ -209,9 +208,8 @@ public:
     // TODO
   }
 
-  [[nodiscard]] std::optional<TextStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
+  [[nodiscard]] TextStyle style(const abstract::Document *document,
+                                const abstract::DocumentCursor *) const final {
     return partial_style(document).text_style;
   }
 
@@ -291,9 +289,8 @@ public:
                                                 allocator);
   }
 
-  [[nodiscard]] std::optional<TableStyle>
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
+  [[nodiscard]] TableStyle style(const abstract::Document *document,
+                                 const abstract::DocumentCursor *) const final {
     return partial_style(document).table_style;
   }
 };
@@ -325,7 +322,7 @@ public:
     return nullptr;
   }
 
-  [[nodiscard]] std::optional<TableColumnStyle>
+  [[nodiscard]] TableColumnStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return partial_style(document).table_column_style;
@@ -359,7 +356,7 @@ public:
     return nullptr;
   }
 
-  [[nodiscard]] std::optional<TableRowStyle>
+  [[nodiscard]] TableRowStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return partial_style(document).table_row_style;
@@ -415,7 +412,7 @@ public:
     return ValueType::string;
   }
 
-  [[nodiscard]] std::optional<TableCellStyle>
+  [[nodiscard]] TableCellStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
     return partial_style(document).table_cell_style;
@@ -480,7 +477,7 @@ public:
     return {}; // TODO
   }
 
-  [[nodiscard]] std::optional<GraphicStyle>
+  [[nodiscard]] GraphicStyle
   style(const abstract::Document *,
         const abstract::DocumentCursor *) const final {
     return {}; // TODO

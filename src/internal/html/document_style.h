@@ -5,6 +5,7 @@
 
 namespace odr {
 enum class TextAlign;
+enum class HorizontalAlign;
 enum class VerticalAlign;
 enum class FontWeight;
 enum class FontStyle;
@@ -27,6 +28,7 @@ struct PageLayout;
 namespace odr::internal::html {
 
 const char *translate_text_align(TextAlign text_align);
+const char *translate_horizontal_align(HorizontalAlign horizontal_align);
 const char *translate_vertical_align(VerticalAlign vertical_align);
 const char *translate_font_weight(FontWeight font_weight);
 const char *translate_font_style(FontStyle font_style);

@@ -50,21 +50,17 @@ private:
   void resolve_style_();
 
   static void resolve_text_style_(const StyleRegistry *registry,
-                                  pugi::xml_node node,
-                                  std::optional<TextStyle> &result);
+                                  pugi::xml_node node, TextStyle &result);
   static void resolve_paragraph_style_(pugi::xml_node node,
-                                       std::optional<ParagraphStyle> &result);
-  static void resolve_table_style_(pugi::xml_node node,
-                                   std::optional<TableStyle> &result);
-  static void
-  resolve_table_column_style_(pugi::xml_node node,
-                              std::optional<TableColumnStyle> &result);
+                                       ParagraphStyle &result);
+  static void resolve_table_style_(pugi::xml_node node, TableStyle &result);
+  static void resolve_table_column_style_(pugi::xml_node node,
+                                          TableColumnStyle &result);
   static void resolve_table_row_style_(pugi::xml_node node,
-                                       std::optional<TableRowStyle> &result);
+                                       TableRowStyle &result);
   static void resolve_table_cell_style_(pugi::xml_node node,
-                                        std::optional<TableCellStyle> &result);
-  static void resolve_graphic_style_(pugi::xml_node node,
-                                     std::optional<GraphicStyle> &result);
+                                        TableCellStyle &result);
+  static void resolve_graphic_style_(pugi::xml_node node, GraphicStyle &result);
 };
 
 class StyleRegistry final {
