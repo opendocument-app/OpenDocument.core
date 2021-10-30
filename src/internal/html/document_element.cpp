@@ -93,14 +93,14 @@ void html::translate_sheet(DocumentCursor &cursor, std::ostream &out,
   auto dimensions = table.dimensions();
   std::uint32_t end_row = dimensions.rows;
   std::uint32_t end_column = dimensions.columns;
-  if (config.spreadsheet_limit) {
-    end_row = config.spreadsheet_limit->rows;
-    end_column = config.spreadsheet_limit->columns;
-  }
   if (config.spreadsheet_limit_by_content) {
     const auto content = sheet.content(config.spreadsheet_limit);
     end_row = content.rows;
     end_column = content.columns;
+  }
+  if (config.spreadsheet_limit) {
+    end_row = std::min(end_row, config.spreadsheet_limit->rows);
+    end_column = std::min(end_column, config.spreadsheet_limit->columns);
   }
 
   auto shape_cursor = cursor;
