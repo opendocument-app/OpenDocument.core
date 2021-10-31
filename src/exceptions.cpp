@@ -1,4 +1,5 @@
 #include <odr/exceptions.h>
+#include <odr/file.h>
 
 namespace odr {
 
@@ -8,6 +9,9 @@ UnsupportedOperation::UnsupportedOperation()
 FileNotFound::FileNotFound() : std::runtime_error("file not found") {}
 
 UnknownFileType::UnknownFileType() : std::runtime_error("unknown file type") {}
+
+UnsupportedFileType::UnsupportedFileType(const FileType file_type)
+    : std::runtime_error("unknown file type"), file_type{file_type} {}
 
 FileReadError::FileReadError() : std::runtime_error("file read error") {}
 

@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 namespace odr {
+enum class FileType;
 
 struct UnsupportedOperation final : public std::runtime_error {
   UnsupportedOperation();
@@ -15,6 +16,12 @@ struct FileNotFound final : public std::runtime_error {
 
 struct UnknownFileType final : public std::runtime_error {
   UnknownFileType();
+};
+
+struct UnsupportedFileType final : public std::runtime_error {
+  FileType file_type;
+
+  explicit UnsupportedFileType(FileType file_type);
 };
 
 struct FileReadError final : public std::runtime_error {
