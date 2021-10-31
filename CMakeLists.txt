@@ -101,6 +101,8 @@ add_library(odr-object OBJECT
         src/internal/svm/svm_format.cpp
         src/internal/svm/svm_to_svg.cpp
 
+        src/internal/text/text_file.cpp
+
         src/internal/util/file_util.cpp
         src/internal/util/hash_util.cpp
         src/internal/util/odr_meta_util.cpp
@@ -123,6 +125,7 @@ target_link_libraries(odr-object
         miniz
         cryptopp-static
         nlohmann_json::nlohmann_json
+        libuchardet
         )
 set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -139,6 +142,7 @@ target_link_libraries(odr-static
         miniz
         cryptopp-static
         nlohmann_json::nlohmann_json
+        libuchardet
         )
 
 add_library(odr-shared SHARED
@@ -154,6 +158,7 @@ target_link_libraries(odr-shared
         miniz
         cryptopp-static
         nlohmann_json::nlohmann_json
+        libuchardet
         )
 
 add_subdirectory(cli)
