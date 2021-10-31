@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace odr::internal::util::string {
 bool starts_with(const std::string &string, const std::string &with);
