@@ -20,45 +20,34 @@ FileType
 OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
   if (extension == "zip") {
     return FileType::zip;
-  }
-  if (extension == "cfb") {
+  } else if (extension == "cfb") {
     return FileType::compound_file_binary_format;
-  }
-  if (extension == "odt" || extension == "fodt" || extension == "ott" ||
-      extension == "odm") {
+  } else if (extension == "odt" || extension == "fodt" || extension == "ott" ||
+             extension == "odm") {
     return FileType::opendocument_text;
-  }
-  if (extension == "odp" || extension == "fodp" || extension == "otp") {
+  } else if (extension == "odp" || extension == "fodp" || extension == "otp") {
     return FileType::opendocument_presentation;
-  }
-  if (extension == "ods" || extension == "fods" || extension == "ots") {
+  } else if (extension == "ods" || extension == "fods" || extension == "ots") {
     return FileType::opendocument_spreadsheet;
-  }
-  if (extension == "odg" || extension == "fodg" || extension == "otg") {
+  } else if (extension == "odg" || extension == "fodg" || extension == "otg") {
     return FileType::opendocument_graphics;
-  }
-  if (extension == "docx") {
+  } else if (extension == "docx") {
     return FileType::office_open_xml_document;
-  }
-  if (extension == "pptx") {
+  } else if (extension == "pptx") {
     return FileType::office_open_xml_presentation;
-  }
-  if (extension == "xlsx") {
+  } else if (extension == "xlsx") {
     return FileType::office_open_xml_workbook;
-  }
-  if (extension == "doc") {
+  } else if (extension == "doc") {
     return FileType::legacy_word_document;
-  }
-  if (extension == "ppt") {
+  } else if (extension == "ppt") {
     return FileType::legacy_powerpoint_presentation;
-  }
-  if (extension == "xls") {
+  } else if (extension == "xls") {
     return FileType::legacy_excel_worksheets;
-  }
-  if (extension == "svm") {
+  } else if (extension == "svm") {
     return FileType::starview_metafile;
+  } else if (extension == "pdf") {
+    return FileType::portable_document_format;
   }
-
   return FileType::unknown;
 }
 
@@ -110,6 +99,10 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
     return "ppt";
   case FileType::legacy_excel_worksheets:
     return "xls";
+  case FileType::starview_metafile:
+    return "svm";
+  case FileType::portable_document_format:
+    return "pdf";
   default:
     return "unnamed";
   }

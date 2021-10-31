@@ -1,4 +1,6 @@
 #include <internal/abstract/file.h>
+#include <internal/util/string_util.h>
+#include <iostream>
 #include <magic.h>
 
 namespace odr {
@@ -6,13 +8,25 @@ namespace odr {
 namespace {
 
 bool match_magic(const std::string &head, const std::string &pattern) {
-  // TODO
-
+  auto bytes = internal::util::string::split(pattern, " ");
+  if (bytes.size() > head.size()) {
+    return false;
+  }
+  for (std::uint32_t i = 0; i < bytes.size(); ++i) {
+    if (bytes[i] == "??") {
+      continue;
+    }
+    auto num = (char)std::stoul(bytes[i], nullptr, 16);
+    if (head[i] != num) {
+      return false;
+    }
+  }
   return true;
 }
 
 } // namespace
-::FileType magic::file_type(const std::string &head) {
+
+FileType magic::file_type(const std::string &head) {
   // https://en.wikipedia.org/wiki/List_of_file_signatures
   if (match_magic(head, "50 4B 03 04")) {
     return FileType::zip;
@@ -41,9 +55,12 @@ bool match_magic(const std::string &head, const std::string &pattern) {
 }
 
 FileType magic::file_type(const internal::abstract::File &file) {
-  auto in = file.read();
-  // TODO read n bytes
-  return file_type("");
+  static constexpr auto max_head_size = 12;
+
+  char head[max_head_size];
+  file.read()->read(head, sizeof(head));
+
+  return file_type(std::string(head, max_head_size));
 }
 
 } // namespace odr

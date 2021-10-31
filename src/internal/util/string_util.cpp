@@ -25,6 +25,25 @@ void string::replace_all(std::string &string, const std::string &search,
   }
 }
 
+void string::split(const std::string &string, const std::string &delimiter,
+                   std::function<void(const std::string &)> callback) {
+  std::size_t pos = 0;
+  std::size_t last = 0;
+  while ((pos = string.find(delimiter, pos)) != std::string::npos) {
+    callback(string.substr(last, pos));
+    last = pos;
+    pos += delimiter.size();
+  }
+}
+
+std::vector<std::string> string::split(const std::string &string,
+                                       const std::string &delimiter) {
+  std::vector<std::string> result;
+  split(string, delimiter,
+        [&result](const std::string &part) { result.push_back(part); });
+  return result;
+}
+
 std::string string::to_string(const double d, const std::uint32_t precision) {
   std::stringstream stream;
   stream << std::fixed << std::setprecision(precision) << d;

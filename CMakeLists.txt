@@ -40,6 +40,7 @@ add_library(odr-object OBJECT
         src/exceptions.cpp
         src/file.cpp
         src/html.cpp
+        src/magic.cpp
         src/open_document_reader.cpp
         src/open_strategy.cpp
         src/quantity.cpp
