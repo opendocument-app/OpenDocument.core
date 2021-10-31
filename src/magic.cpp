@@ -35,17 +35,17 @@ FileType magic::file_type(const std::string &head) {
   } else if (match_magic(head, "25 50 44 46 2D")) {
     return FileType::portable_document_format;
   } else if (match_magic(head, "89 50 4E 47 0D 0A 1A 0A")) {
-    // TODO PNG
+    return FileType::portable_network_graphics;
   } else if (match_magic(head, "FF D8 FF DB") ||
              match_magic(head, "FF D8 FF E0 00 10 4A 46 49 46 00 01") ||
              match_magic(head, "FF D8 FF EE") ||
              match_magic(head, "FF D8 FF E1 ?? ?? 45 78 69 66 00 00")) {
-    // TODO JPEG
+    return FileType::jpeg;
   } else if (match_magic(head, "42 4D")) {
-    // TODO BMP
+    return FileType::bitmap_image_file;
   } else if (match_magic(head, "47 49 46 38 37 61") ||
              match_magic(head, "47 49 46 38 39 61")) {
-    // TODO GIF
+    return FileType::graphics_interchange_format;
   } else if (match_magic(head, "56 43 4C 4D 54 46")) {
     return FileType::starview_metafile;
   } else if (match_magic(head, "7B 5C 72 74 66 31")) {

@@ -43,10 +43,19 @@ OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
     return FileType::legacy_powerpoint_presentation;
   } else if (extension == "xls") {
     return FileType::legacy_excel_worksheets;
-  } else if (extension == "svm") {
-    return FileType::starview_metafile;
   } else if (extension == "pdf") {
     return FileType::portable_document_format;
+  } else if (extension == "png") {
+    return FileType::portable_network_graphics;
+  } else if (extension == "gif") {
+    return FileType::graphics_interchange_format;
+  } else if (extension == "jpg" || extension == "jpeg" || extension == "jpe" ||
+             extension == "jif" || extension == "jfif" || extension == "jfi") {
+    return FileType::jpeg;
+  } else if (extension == "bmp" || extension == "dib") {
+    return FileType::bitmap_image_file;
+  } else if (extension == "svm") {
+    return FileType::starview_metafile;
   }
   return FileType::unknown;
 }
@@ -68,6 +77,12 @@ OpenDocumentReader::category_by_type(const FileType type) noexcept {
   case FileType::legacy_powerpoint_presentation:
   case FileType::legacy_excel_worksheets:
     return FileCategory::document;
+  case FileType::portable_network_graphics:
+  case FileType::graphics_interchange_format:
+  case FileType::jpeg:
+  case FileType::bitmap_image_file:
+  case FileType::starview_metafile:
+    return FileCategory::image;
   default:
     return FileCategory::unknown;
   }
@@ -99,10 +114,18 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
     return "ppt";
   case FileType::legacy_excel_worksheets:
     return "xls";
-  case FileType::starview_metafile:
-    return "svm";
   case FileType::portable_document_format:
     return "pdf";
+  case FileType::portable_network_graphics:
+    return "png";
+  case FileType::graphics_interchange_format:
+    return "gif";
+  case FileType::jpeg:
+    return "jpg";
+  case FileType::bitmap_image_file:
+    return "bmp";
+  case FileType::starview_metafile:
+    return "svm";
   default:
     return "unnamed";
   }

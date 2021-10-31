@@ -58,6 +58,11 @@ enum class FileType {
   // https://en.wikipedia.org/wiki/Compound_File_Binary_Format
   compound_file_binary_format,
 
+  portable_network_graphics,
+  graphics_interchange_format,
+  jpeg,
+  bitmap_image_file,
+
   starview_metafile,
 };
 
