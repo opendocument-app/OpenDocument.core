@@ -6,6 +6,7 @@
 #include <internal/oldms/oldms_file.h>
 #include <internal/ooxml/ooxml_file.h>
 #include <internal/zip/zip_archive.h>
+#include <magic.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <open_strategy.h>
@@ -19,7 +20,9 @@ std::vector<FileType>
 open_strategy::types(std::shared_ptr<abstract::File> file) {
   std::vector<FileType> result;
 
-  try {
+  auto file_type = magic::file_type(*file);
+
+  if (file_type == FileType::zip) {
     // TODO if `file` is in memory we would copy it unnecessarily
     auto memory_file = std::make_shared<common::MemoryFile>(*file);
 
@@ -37,12 +40,7 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
       result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
     } catch (...) {
     }
-
-    return result;
-  } catch (...) {
-  }
-
-  try {
+  } else if (file_type == FileType::compound_file_binary_format) {
     // TODO if `file` is in memory we would copy it unnecessarily
     auto memory_file = std::make_shared<common::MemoryFile>(*file);
 
@@ -62,9 +60,6 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
       result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
     } catch (...) {
     }
-
-    return result;
-  } catch (...) {
   }
 
   return result;
@@ -72,7 +67,9 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
 
 std::unique_ptr<abstract::DecodedFile>
 open_strategy::open_file(std::shared_ptr<abstract::File> file) {
-  try {
+  auto file_type = magic::file_type(*file);
+
+  if (file_type == FileType::zip) {
     // TODO if `file` is in memory we would copy it unnecessarily
     auto memory_file = std::make_shared<common::MemoryFile>(*file);
 
@@ -92,10 +89,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
     }
 
     return zip;
-  } catch (...) {
-  }
-
-  try {
+  } else if (file_type == FileType::compound_file_binary_format) {
     // TODO if `file` is in memory we would copy it unnecessarily
     auto memory_file = std::make_unique<common::MemoryFile>(*file);
 
@@ -117,21 +111,25 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
     }
 
     return cfb;
-  } catch (...) {
+  } else if (file_type == FileType::unknown) {
+    throw UnknownFileType();
   }
 
-  return {};
+  throw UnsupportedFileType(file_type);
 }
 
 std::unique_ptr<abstract::DecodedFile>
-open_strategy::open_file(std::shared_ptr<abstract::File>, const FileType) {
+open_strategy::open_file(std::shared_ptr<abstract::File> /*file*/,
+                         const FileType /*as*/) {
   // TODO implement
   throw UnknownFileType();
 }
 
 std::unique_ptr<abstract::DocumentFile>
 open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
-  try {
+  auto file_type = magic::file_type(*file);
+
+  if (file_type == FileType::zip) {
     // TODO if `file` is in memory we would copy it unnecessarily
     auto memory_file = std::make_shared<common::MemoryFile>(*file);
 
@@ -149,14 +147,9 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
     }
-
-    return {};
-  } catch (...) {
-  }
-
-  try {
+  } else if (file_type == FileType::compound_file_binary_format) {
     // TODO if `file` is in memory we would copy it unnecessarily
-    auto memory_file = std::make_shared<common::MemoryFile>(*file);
+    auto memory_file = std::make_unique<common::MemoryFile>(*file);
 
     auto cfb = std::make_unique<common::ArchiveFile<cfb::ReadonlyCfbArchive>>(
         cfb::ReadonlyCfbArchive(std::move(memory_file)));
@@ -174,13 +167,9 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
     }
-
-    return {};
-  } catch (...) {
   }
 
-  // TODO throw
-  return {};
+  throw NoDocumentFile();
 }
 
 } // namespace odr
