@@ -20,7 +20,7 @@ namespace fs = std::filesystem;
 
 using OutputReferenceTests = ::testing::TestWithParam<std::string>;
 
-TEST_P(OutputReferenceTests, all) {
+TEST_P(OutputReferenceTests, html_meta) {
   const auto test_file_path = GetParam();
   TestFile test_file = TestData::test_file(test_file_path);
   const std::string output_path = "./output/" + test_file_path;

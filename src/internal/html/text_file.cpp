@@ -43,7 +43,7 @@ Html html::translate_text_file(const TextFile &text_file,
       out << "<td>";
       util::stream::getline(*in, out);
       out << "</td></tr>";
-      if (!*in) {
+      if (in->eof()) {
         break;
       }
       ++line;
