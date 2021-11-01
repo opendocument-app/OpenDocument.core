@@ -6,6 +6,7 @@
 namespace odr {
 enum class FileType;
 enum class FileCategory;
+class TextFile;
 class Document;
 class Html;
 struct HtmlConfig;
@@ -22,6 +23,9 @@ public:
 
   [[nodiscard]] static Html html(const std::string &input_path,
                                  const char *password,
+                                 const std::string &output_path,
+                                 const HtmlConfig &config);
+  [[nodiscard]] static Html html(const TextFile &text_file,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
   [[nodiscard]] static Html html(const Document &document,

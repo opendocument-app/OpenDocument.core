@@ -16,6 +16,7 @@ class DocumentFile;
 } // namespace odr::internal::abstract
 
 namespace odr {
+class TextFile;
 class ImageFile;
 class DocumentFile;
 
@@ -146,7 +147,7 @@ public:
   [[nodiscard]] FileCategory file_category() const noexcept;
   [[nodiscard]] FileMeta file_meta() const noexcept;
 
-  [[nodiscard]] ImageFile text_file() const;
+  [[nodiscard]] TextFile text_file() const;
   [[nodiscard]] ImageFile image_file() const;
   [[nodiscard]] DocumentFile document_file() const;
 
@@ -158,10 +159,10 @@ class TextFile final : public DecodedFile {
 public:
   explicit TextFile(std::shared_ptr<internal::abstract::TextFile>);
 
-  std::optional<std::string> charset() const;
+  [[nodiscard]] std::optional<std::string> charset() const;
 
-  std::unique_ptr<std::istream> stream() const;
-  std::string text() const;
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const;
+  [[nodiscard]] std::string text() const;
 
 private:
   std::shared_ptr<internal::abstract::TextFile> m_impl;
@@ -171,7 +172,7 @@ class ImageFile final : public DecodedFile {
 public:
   explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile>);
 
-  std::unique_ptr<std::istream> stream() const;
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const;
 
 private:
   std::shared_ptr<internal::abstract::ImageFile> m_impl;

@@ -69,6 +69,7 @@ add_library(odr-object OBJECT
         src/internal/html/document_style.cpp
         src/internal/html/document_element.cpp
         src/internal/html/html_writer.cpp
+        src/internal/html/text_file.cpp
 
         src/internal/odf/odf_crypto.cpp
         src/internal/odf/odf_cursor.cpp

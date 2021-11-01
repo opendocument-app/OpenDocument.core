@@ -136,7 +136,9 @@ Html OpenDocumentReader::html(const std::string &path, const char *password,
                               const HtmlConfig &config) {
   DecodedFile file(path);
 
-  if (file.file_category() == FileCategory::document) {
+  if (file.file_type() == FileType::text_file) {
+    return html(file.text_file(), output_path, config);
+  } else if (file.file_category() == FileCategory::document) {
     auto document_file = file.document_file();
     if (document_file.password_encrypted()) {
       if ((password == nullptr) || !document_file.decrypt(password)) {
@@ -147,6 +149,12 @@ Html OpenDocumentReader::html(const std::string &path, const char *password,
   }
 
   throw UnknownFileType();
+}
+
+Html OpenDocumentReader::html(const TextFile &text_file,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
+  return html::translate(text_file, output_path, config);
 }
 
 Html OpenDocumentReader::html(const Document &document,

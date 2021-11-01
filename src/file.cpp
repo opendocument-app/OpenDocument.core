@@ -75,22 +75,28 @@ FileCategory DecodedFile::file_category() const noexcept {
 
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
 
-ImageFile DecodedFile::image_file() const {
-  auto imageFile =
-      std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl);
-  if (!imageFile) {
-    throw NoImageFile();
+TextFile DecodedFile::text_file() const {
+  if (auto text_file =
+          std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl)) {
+    return TextFile(text_file);
   }
-  return ImageFile(imageFile);
+  throw NoImageFile();
+}
+
+ImageFile DecodedFile::image_file() const {
+  if (auto image_file =
+          std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl)) {
+    return ImageFile(image_file);
+  }
+  throw NoImageFile();
 }
 
 DocumentFile DecodedFile::document_file() const {
-  auto documentFile =
-      std::dynamic_pointer_cast<internal::abstract::DocumentFile>(m_impl);
-  if (!documentFile) {
-    throw NoDocumentFile();
+  if (auto document_file =
+          std::dynamic_pointer_cast<internal::abstract::DocumentFile>(m_impl)) {
+    return DocumentFile(document_file);
   }
-  return DocumentFile(documentFile);
+  throw NoDocumentFile();
 }
 
 TextFile::TextFile(std::shared_ptr<internal::abstract::TextFile> impl)

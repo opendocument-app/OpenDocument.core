@@ -8,6 +8,7 @@
 #include <string>
 
 namespace odr {
+class TextFile;
 class Document;
 struct HtmlPage;
 
@@ -49,11 +50,12 @@ struct HtmlConfig {
 
 class Html final {
 public:
+  Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages);
   Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages,
        Document document);
 
-  FileType file_type() const;
-  const std::vector<HtmlPage> &pages() const;
+  [[nodiscard]] FileType file_type() const;
+  [[nodiscard]] const std::vector<HtmlPage> &pages() const;
 
   void edit(const char *diff);
   void save(const std::string &path) const;
@@ -73,6 +75,8 @@ struct HtmlPage final {
 };
 
 namespace html {
+Html translate(const TextFile &document, const std::string &path,
+               const HtmlConfig &config);
 Html translate(const Document &document, const std::string &path,
                const HtmlConfig &config);
 void edit(const Document &document, const char *diff);
