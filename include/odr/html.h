@@ -75,7 +75,7 @@ struct HtmlPage final {
 };
 
 namespace html {
-Html translate(const TextFile &document, const std::string &path,
+Html translate(const TextFile &text_file, const std::string &path,
                const HtmlConfig &config);
 Html translate(const Document &document, const std::string &path,
                const HtmlConfig &config);
