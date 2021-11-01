@@ -121,7 +121,6 @@ target_link_libraries(odr-object
         PRIVATE
         pugixml
         miniz
-        glog
         cryptopp-static
         nlohmann_json::nlohmann_json
         )
@@ -138,7 +137,6 @@ target_link_libraries(odr-static
         PRIVATE
         pugixml
         miniz
-        glog
         cryptopp-static
         nlohmann_json::nlohmann_json
         )

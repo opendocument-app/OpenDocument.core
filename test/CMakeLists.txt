@@ -43,7 +43,6 @@ target_link_libraries(odr_test
         PRIVATE
         pugixml
         miniz
-        glog
         cryptopp-static
         nlohmann_json::nlohmann_json
         csv
