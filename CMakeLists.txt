@@ -152,7 +152,6 @@ target_link_libraries(odr-shared
         PRIVATE
         pugixml
         miniz
-        glog
         cryptopp-static
         nlohmann_json::nlohmann_json
         )
