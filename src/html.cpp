@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <internal/html/document.h>
+#include <internal/html/text_file.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
 #include <odr/document_cursor.h>
@@ -47,8 +48,7 @@ HtmlPage::HtmlPage(std::string name, std::string path)
 
 Html html::translate(const TextFile &text_file, const std::string &path,
                      const HtmlConfig &config) {
-  // TODO
-  return Html(FileType::text_file, config, {});
+  return internal::html::translate_text_file(text_file, path, config);
 }
 
 Html html::translate(const Document &document, const std::string &path,
