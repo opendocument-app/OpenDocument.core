@@ -33,7 +33,7 @@ FileLocation File::location() const noexcept { return m_impl->location(); }
 
 std::size_t File::size() const { return m_impl->size(); }
 
-std::unique_ptr<std::istream> File::read() const { return m_impl->read(); }
+std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
 
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
@@ -93,8 +93,27 @@ DocumentFile DecodedFile::document_file() const {
   return DocumentFile(documentFile);
 }
 
+TextFile::TextFile(std::shared_ptr<internal::abstract::TextFile> impl)
+    : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+std::optional<std::string> TextFile::charset() const {
+  return {}; // TODO
+}
+
+std::unique_ptr<std::istream> TextFile::stream() const {
+  return m_impl->file()->stream();
+}
+
+std::string TextFile::text() const {
+  return ""; // TODO
+}
+
 ImageFile::ImageFile(std::shared_ptr<internal::abstract::ImageFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+std::unique_ptr<std::istream> ImageFile::stream() const {
+  return m_impl->file()->stream();
+}
 
 FileType DocumentFile::type(const std::string &path) {
   return DocumentFile(path).file_type();

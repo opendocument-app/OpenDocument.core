@@ -10,6 +10,7 @@
 namespace odr::internal::abstract {
 class File;
 class DecodedFile;
+class TextFile;
 class ImageFile;
 class DocumentFile;
 } // namespace odr::internal::abstract
@@ -115,14 +116,14 @@ struct FileMeta final {
   std::optional<DocumentMeta> document_meta;
 };
 
-class File {
+class File final {
 public:
   explicit File(std::shared_ptr<internal::abstract::File>);
   explicit File(const std::string &path);
 
   [[nodiscard]] FileLocation location() const noexcept;
   [[nodiscard]] std::size_t size() const;
-  [[nodiscard]] std::unique_ptr<std::istream> read() const;
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const;
 
   // TODO `impl()` might be a bit dirty
   [[nodiscard]] std::shared_ptr<internal::abstract::File> impl() const;
@@ -145,6 +146,7 @@ public:
   [[nodiscard]] FileCategory file_category() const noexcept;
   [[nodiscard]] FileMeta file_meta() const noexcept;
 
+  [[nodiscard]] ImageFile text_file() const;
   [[nodiscard]] ImageFile image_file() const;
   [[nodiscard]] DocumentFile document_file() const;
 
@@ -152,15 +154,30 @@ protected:
   std::shared_ptr<internal::abstract::DecodedFile> m_impl;
 };
 
-class ImageFile : public DecodedFile {
+class TextFile final : public DecodedFile {
+public:
+  explicit TextFile(std::shared_ptr<internal::abstract::TextFile>);
+
+  std::optional<std::string> charset() const;
+
+  std::unique_ptr<std::istream> stream() const;
+  std::string text() const;
+
+private:
+  std::shared_ptr<internal::abstract::TextFile> m_impl;
+};
+
+class ImageFile final : public DecodedFile {
 public:
   explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile>);
+
+  std::unique_ptr<std::istream> stream() const;
 
 private:
   std::shared_ptr<internal::abstract::ImageFile> m_impl;
 };
 
-class DocumentFile : public DecodedFile {
+class DocumentFile final : public DecodedFile {
 public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);

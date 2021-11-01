@@ -116,7 +116,7 @@ public:
       throw UnsupportedCryptoAlgorithm();
     }
     // TODO stream
-    auto source = m_parent->open(path)->read();
+    auto source = m_parent->open(path)->stream();
     const std::string input = util::stream::read(*source);
     std::string result = crypto::util::inflate(
         derive_key_and_decrypt(it->second, m_start_key, input));
@@ -143,7 +143,7 @@ bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
   const std::string start_key = odf::start_key(smallest_file_entry, password);
   // TODO stream decrypt
   const std::string input =
-      util::stream::read(*storage->open(smallest_file_path)->read());
+      util::stream::read(*storage->open(smallest_file_path)->stream());
   const std::string decrypt =
       derive_key_and_decrypt(smallest_file_entry, start_key, input);
   if (!validate_password(smallest_file_entry, decrypt)) {

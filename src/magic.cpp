@@ -58,7 +58,7 @@ FileType magic::file_type(const internal::abstract::File &file) {
   static constexpr auto max_head_size = 12;
 
   char head[max_head_size];
-  file.read()->read(head, sizeof(head));
+  file.stream()->read(head, sizeof(head));
 
   return file_type(std::string(head, max_head_size));
 }

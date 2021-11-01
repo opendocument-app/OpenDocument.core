@@ -422,7 +422,7 @@ void html::translate_image(DocumentCursor &cursor, std::ostream &out,
       out << "data:image/svg+xml;base64, ";
     } catch (...) {
       // else we guess that it is a usual image
-      image_data = util::stream::read(*image_file.read());
+      image_data = util::stream::read(*image_file.stream());
       // TODO hacky - `image/jpg` works for all common image types in chrome
       out << "data:image/jpg;base64, ";
     }
