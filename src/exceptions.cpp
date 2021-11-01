@@ -27,6 +27,10 @@ NoCfbFile::NoCfbFile() : CfbError("no cfb file") {}
 
 CfbFileCorrupted::CfbFileCorrupted() : CfbError("cfb file corrupted") {}
 
+NoTextFile::NoTextFile() : std::runtime_error("not a text file") {}
+
+UnknownCharset::UnknownCharset() : std::runtime_error("unknown charset") {}
+
 NoImageFile::NoImageFile() : std::runtime_error("not an image file") {}
 
 NoDocumentFile::NoDocumentFile() : std::runtime_error("not a document file") {}

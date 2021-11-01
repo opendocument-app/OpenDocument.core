@@ -5,6 +5,7 @@
 #include <internal/odf/odf_file.h>
 #include <internal/oldms/oldms_file.h>
 #include <internal/ooxml/ooxml_file.h>
+#include <internal/text/text_file.h>
 #include <internal/zip/zip_archive.h>
 #include <magic.h>
 #include <odr/exceptions.h>
@@ -49,17 +50,20 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
 
     auto filesystem = cfb.archive()->filesystem();
 
-    // legacy microsoft
     try {
       result.push_back(oldms::LegacyMicrosoftFile(filesystem).file_type());
     } catch (...) {
     }
 
-    // encrypted ooxml
     try {
       result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
     } catch (...) {
     }
+  }
+
+  try {
+    result.push_back(text::TextFile(file).file_type());
+  } catch (...) {
   }
 
   return result;
@@ -98,13 +102,11 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
 
     auto filesystem = cfb->archive()->filesystem();
 
-    // legacy microsoft
     try {
       return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
     } catch (...) {
     }
 
-    // encrypted ooxml
     try {
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
@@ -112,6 +114,11 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
 
     return cfb;
   } else if (file_type == FileType::unknown) {
+    try {
+      return std::make_unique<text::TextFile>(file);
+    } catch (...) {
+    }
+
     throw UnknownFileType();
   }
 
@@ -156,13 +163,11 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
 
     auto filesystem = cfb->archive()->filesystem();
 
-    // legacy microsoft
     try {
       return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
     } catch (...) {
     }
 
-    // encrypted ooxml
     try {
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {

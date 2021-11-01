@@ -10,6 +10,7 @@ namespace odr::internal::text {
 class TextFile final : public abstract::TextFile {
 public:
   explicit TextFile(std::shared_ptr<abstract::File> file);
+  TextFile(std::shared_ptr<abstract::File> file, std::string charset);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 
@@ -18,6 +19,7 @@ public:
 
 private:
   std::shared_ptr<abstract::File> m_file;
+  std::string m_charset;
 };
 
 } // namespace odr::internal::text

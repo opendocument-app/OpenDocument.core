@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <gtest/gtest.h>
-#include <memory>
 #include <odr/document.h>
 #include <odr/document_cursor.h>
 #include <odr/document_element.h>

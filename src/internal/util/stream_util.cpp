@@ -4,15 +4,13 @@
 
 namespace odr::internal::util {
 
-namespace {
-constexpr std::uint32_t BUFFER_SIZE = 4096;
-}
-
 std::string stream::read(std::istream &in) {
   return std::string{std::istreambuf_iterator<char>(in), {}};
 }
 
 void stream::pipe(std::istream &in, std::ostream &out) {
+  static constexpr auto BUFFER_SIZE = 4096;
+
   char buffer[BUFFER_SIZE];
 
   while (true) {
