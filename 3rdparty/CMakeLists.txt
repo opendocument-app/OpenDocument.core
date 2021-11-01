@@ -13,14 +13,6 @@ FetchContent_Declare(
         GIT_TAG 4159f8c
 )
 FetchContent_Declare(
-        glog
-        #GIT_REPOSITORY https://github.com/google/glog.git
-        #GIT_TAG v0.4.0
-        # TODO quick fix
-        GIT_REPOSITORY https://github.com/TomTasche/glog.git
-        GIT_TAG 9aed7a1
-)
-FetchContent_Declare(
         cryptopp_cmake
         GIT_REPOSITORY https://github.com/noloader/cryptopp-cmake.git
         #GIT_TAG CRYPTOPP_8_2_0
@@ -51,12 +43,9 @@ FetchContent_Declare(
 )
 
 # cryptopp: fixes "phony targets" duplicate error during Android build
-# also disables building unit tests for glog
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 # miniz
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-# glog
-set(CMAKE_DEBUG_POSTFIX "" CACHE BOOL "" FORCE)
 
 FetchContent_GetProperties(pugixml)
 if (NOT pugixml_POPULATED)
@@ -71,12 +60,6 @@ if (NOT miniz_POPULATED)
     # miniz defines a lot of macros without that
     target_compile_definitions(miniz PUBLIC MINIZ_NO_ZLIB_COMPATIBLE_NAMES)
     set_property(TARGET miniz PROPERTY POSITION_INDEPENDENT_CODE ON)
-endif ()
-FetchContent_GetProperties(glog)
-if (NOT glog_POPULATED)
-    FetchContent_Populate(glog)
-    set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-    add_subdirectory(${glog_SOURCE_DIR} ${glog_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
 FetchContent_GetProperties(cryptopp)
 FetchContent_GetProperties(cryptopp_cmake)

@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <glog/logging.h>
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_format.h>
 #include <internal/svm/svm_to_svg.h>
@@ -91,7 +90,8 @@ void write_style(std::ostream &out, Context &context, const int styles) {
     write_text_style(out, context);
     break;
   default:
-    DLOG(WARNING) << "not implemented";
+    // TODO log or throw
+    break;
   }
   out << "\"";
 }
@@ -218,12 +218,9 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   case META_POP_ACTION:
   case META_TEXTLANGUAGE_ACTION:
   case META_COMMENT_ACTION:
-    in.ignore(action_header.vl.length);
-    break;
+    // TODO implement
   default:
-    DLOG(WARNING) << "unhandled action_header " << action_header.type
-                  << " version " << action_header.vl.version << " length "
-                  << action_header.vl.length;
+    // TODO log unhandled action
     in.ignore(action_header.vl.length);
     break;
   }
@@ -259,13 +256,9 @@ void Translator::svg(const SvmFile &file, std::ostream &out) {
     const std::int64_t left =
         action_header.vl.length - ((std::int64_t)in.tellg() - start);
     if (left > 0) {
-      DLOG(WARNING) << "skipping " << left << " bytes of action "
-                    << action_header.type << " version "
-                    << action_header.vl.version;
+      // TODO log skipping
       in.ignore(left);
     } else if (left < 0) {
-      LOG(ERROR) << -left << " bytes missing action " << action_header.type
-                 << " version " << action_header.vl.version;
       throw MalformedSvmFile();
     }
   }
