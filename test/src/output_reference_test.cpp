@@ -18,7 +18,7 @@ using namespace odr::internal;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
-class OutputReferenceTests : public testing::TestWithParam<std::string> {};
+using OutputReferenceTests = ::testing::TestWithParam<std::string>;
 
 TEST_P(OutputReferenceTests, all) {
   const auto test_file_path = GetParam();
@@ -93,5 +93,15 @@ TEST_P(OutputReferenceTests, all) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(all, OutputReferenceTests,
-                         testing::ValuesIn(TestData::test_file_paths()));
+INSTANTIATE_TEST_SUITE_P(all_test_files, OutputReferenceTests,
+                         testing::ValuesIn(TestData::test_file_paths()),
+                         [](const ::testing::TestParamInfo<std::string> &info) {
+                           auto path = info.param;
+                           internal::util::string::replace_all(path, "/", "_");
+                           internal::util::string::replace_all(path, "-", "_");
+                           internal::util::string::replace_all(path, "+", "_");
+                           internal::util::string::replace_all(path, ".", "_");
+                           internal::util::string::replace_all(path, " ", "_");
+                           internal::util::string::replace_all(path, "$", "");
+                           return path;
+                         });
