@@ -56,6 +56,8 @@ OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
     return FileType::bitmap_image_file;
   } else if (extension == "svm") {
     return FileType::starview_metafile;
+  } else if (extension == "txt") {
+    return FileType::text_file;
   }
   return FileType::unknown;
 }
@@ -83,6 +85,10 @@ OpenDocumentReader::category_by_type(const FileType type) noexcept {
   case FileType::bitmap_image_file:
   case FileType::starview_metafile:
     return FileCategory::image;
+  case FileType::text_file:
+  case FileType::comma_separated_values:
+  case FileType::markdown:
+    return FileCategory::text;
   default:
     return FileCategory::unknown;
   }
@@ -126,6 +132,8 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
     return "bmp";
   case FileType::starview_metafile:
     return "svm";
+  case FileType::text_file:
+    return "txt";
   default:
     return "unnamed";
   }

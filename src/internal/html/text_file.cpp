@@ -11,7 +11,8 @@ namespace odr::internal {
 Html html::translate_text_file(const TextFile &text_file,
                                const std::string &path,
                                const HtmlConfig &config) {
-  std::ofstream out(path);
+  auto output_path = path + "/text.html";
+  std::ofstream out(output_path);
   if (!out.is_open()) {
     throw FileWriteError();
   }
@@ -31,7 +32,7 @@ Html html::translate_text_file(const TextFile &text_file,
   out << "</body>";
   out << "</html>";
 
-  return {text_file.file_type(), config, {{"document", path}}};
+  return {text_file.file_type(), config, {{"document", output_path}}};
 }
 
 } // namespace odr::internal

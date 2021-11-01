@@ -78,7 +78,9 @@ TEST_P(OutputReferenceTests, all) {
 
   std::optional<Html> html;
 
-  if (file.file_category() == FileCategory::document) {
+  if (file.file_type() == FileType::text_file) {
+    html = OpenDocumentReader::html(file.text_file(), output_path, config);
+  } else if (file.file_category() == FileCategory::document) {
     auto document_file = file.document_file();
     auto document = document_file.document();
     html = OpenDocumentReader::html(document, output_path, config);

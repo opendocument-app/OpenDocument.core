@@ -48,6 +48,7 @@ HtmlPage::HtmlPage(std::string name, std::string path)
 
 Html html::translate(const TextFile &text_file, const std::string &path,
                      const HtmlConfig &config) {
+  fs::create_directories(path);
   return internal::html::translate_text_file(text_file, path, config);
 }
 
