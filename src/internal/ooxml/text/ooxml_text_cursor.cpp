@@ -10,13 +10,11 @@ namespace odr::internal::ooxml::text {
 
 DocumentCursor::DocumentCursor(const Document *document, pugi::xml_node root)
     : common::DocumentCursor(document) {
-  abstract::Allocator allocator = [this](std::size_t size) {
-    return reset_current_(size);
-  };
-  auto element = Element::construct_default_element(root, allocator);
+  auto element = Element::construct_default_element(root);
   if (!element) {
     throw std::invalid_argument("root element invalid");
   }
+  push_element_(std::move(element));
   push_style_(document->m_style_registry.default_style()->resolved());
 }
 

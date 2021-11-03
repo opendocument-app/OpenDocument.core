@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <internal/abstract/document_cursor.h>
+#include <internal/abstract/document_element.h>
 #include <internal/common/document_path.h>
 #include <internal/common/style.h>
 #include <optional>
@@ -20,7 +21,7 @@ namespace odr::internal::common {
 class DocumentCursor : public abstract::DocumentCursor {
 public:
   explicit DocumentCursor(const abstract::Document *document);
-  ~DocumentCursor() override;
+  DocumentCursor(const DocumentCursor &other);
 
   [[nodiscard]] bool
   equals(const abstract::DocumentCursor &other) const override;
@@ -49,7 +50,7 @@ public:
 protected:
   const abstract::Document *m_document;
 
-  void *reset_current_(std::size_t size);
+  void push_element_(std::unique_ptr<abstract::Element> element);
   void push_style_(const ResolvedStyle &style);
 
   virtual void pushed_(abstract::Element *element);
@@ -58,27 +59,12 @@ protected:
   [[nodiscard]] virtual ResolvedStyle partial_style() const;
 
 private:
-  std::vector<std::int32_t> m_parent_element_stack_top;
-  std::string m_parent_element_stack;
-  std::string m_current_element;
-  std::string m_temporary_element;
-
+  std::vector<std::unique_ptr<abstract::Element>> m_element_stack;
   std::vector<ResolvedStyle> m_style_stack;
 
   DocumentPath m_parent_path;
   std::optional<DocumentPath::Component> m_current_component;
 
-  [[nodiscard]] abstract::Element *temporary_();
-  [[nodiscard]] abstract::Element *parent_();
-
-  [[nodiscard]] std::int32_t parent_next_offset_() const;
-  [[nodiscard]] std::int32_t parent_back_offset_() const;
-
-  void swap_current_temporary();
-
-  void *reset_temporary_(std::size_t size);
-  void *push_parent_(std::size_t size);
-  void pop_parent_();
   void pop_style_();
 };
 

@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <internal/abstract/allocator.h>
 #include <internal/abstract/document_cursor.h>
 #include <internal/abstract/document_element.h>
 #include <internal/common/document_cursor.h>
@@ -13,12 +12,12 @@ namespace odr::internal::common {
 DocumentCursor::DocumentCursor(const abstract::Document *document)
     : m_document{document} {}
 
-DocumentCursor::~DocumentCursor() {
-  if (!m_current_element.empty()) {
-    DocumentCursor::element()->~Element();
-  }
-  while (!m_parent_element_stack.empty()) {
-    pop_parent_();
+DocumentCursor::DocumentCursor(const DocumentCursor &other)
+    : m_document{other.m_document}, m_style_stack{other.m_style_stack},
+      m_parent_path{other.m_parent_path}, m_current_component{
+                                              other.m_current_component} {
+  for (auto &&element : other.m_element_stack) {
+    m_element_stack.push_back(element->construct_copy());
   }
 }
 
@@ -35,42 +34,22 @@ bool DocumentCursor::equals(const abstract::DocumentCursor &other) const {
 }
 
 abstract::Element *DocumentCursor::element() {
-  return reinterpret_cast<abstract::Element *>(m_current_element.data());
+  if (m_element_stack.empty()) {
+    return nullptr;
+  }
+  return m_element_stack.back().get();
 }
 
 const abstract::Element *DocumentCursor::element() const {
-  return reinterpret_cast<const abstract::Element *>(m_current_element.data());
-}
-
-void *DocumentCursor::reset_current_(const std::size_t size) {
-  if (!m_current_element.empty()) {
-    element()->~Element();
+  if (m_element_stack.empty()) {
+    return nullptr;
   }
-  m_current_element.resize(size);
-  return m_current_element.data();
+  return m_element_stack.back().get();
 }
 
-void *DocumentCursor::reset_temporary_(const std::size_t size) {
-  if (!m_temporary_element.empty()) {
-    temporary_()->~Element();
-  }
-  m_temporary_element.resize(size);
-  return m_temporary_element.data();
-}
-
-void *DocumentCursor::push_parent_(const std::size_t size) {
-  std::int32_t offset = parent_next_offset_();
-  std::int32_t next_offset = offset + size;
-  m_parent_element_stack_top.push_back(next_offset);
-  m_parent_element_stack.resize(next_offset);
-  return m_parent_element_stack.data() + offset;
-}
-
-void DocumentCursor::pop_parent_() {
-  parent_()->~Element();
-  m_parent_element_stack_top.pop_back();
-  std::int32_t next_offset = parent_next_offset_();
-  m_parent_element_stack.resize(next_offset);
+void DocumentCursor::push_element_(std::unique_ptr<abstract::Element> element) {
+  m_element_stack.push_back(std::move(element));
+  pushed_(this->element());
 }
 
 void DocumentCursor::push_style_(const ResolvedStyle &style) {
@@ -92,45 +71,13 @@ void DocumentCursor::popping_(abstract::Element *) { pop_style_(); }
 
 ResolvedStyle DocumentCursor::partial_style() const { return {}; }
 
-abstract::Element *DocumentCursor::temporary_() {
-  return reinterpret_cast<abstract::Element *>(m_temporary_element.data());
-}
-
-abstract::Element *DocumentCursor::parent_() {
-  auto offset = parent_back_offset_();
-  return reinterpret_cast<abstract::Element *>(m_parent_element_stack.data() +
-                                               offset);
-}
-
-std::int32_t DocumentCursor::parent_next_offset_() const {
-  return m_parent_element_stack_top.empty()
-             ? 0
-             : m_parent_element_stack_top[m_parent_element_stack_top.size() -
-                                          1];
-}
-
-std::int32_t DocumentCursor::parent_back_offset_() const {
-  return m_parent_element_stack_top.size() <= 1
-             ? 0
-             : m_parent_element_stack_top[m_parent_element_stack_top.size() -
-                                          2];
-}
-
-void DocumentCursor::swap_current_temporary() {
-  std::swap(m_current_element, m_temporary_element);
-}
-
 bool DocumentCursor::move_to_parent() {
-  if (m_parent_element_stack_top.empty()) {
+  if (m_element_stack.empty()) {
     return false;
   }
 
   popping_(element());
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    return reset_current_(size);
-  };
-  parent_()->construct_copy(allocator);
-  pop_parent_();
+  m_element_stack.pop_back();
 
   if (m_parent_path.empty()) {
     m_current_component = {};
@@ -143,17 +90,12 @@ bool DocumentCursor::move_to_parent() {
 }
 
 bool DocumentCursor::move_to_first_child() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    return reset_temporary_(size);
-  };
-  auto first_child = element()->construct_first_child(m_document, allocator);
+  auto first_child = element()->construct_first_child(m_document);
   if (!first_child) {
     return false;
   }
-  allocator = [this](const std::size_t size) { return push_parent_(size); };
-  element()->construct_copy(allocator);
-  swap_current_temporary();
-  pushed_(first_child);
+  m_element_stack.push_back(std::move(first_child));
+  pushed_(element());
 
   if (m_current_component) {
     m_parent_path = m_parent_path.join(*m_current_component);
@@ -164,16 +106,13 @@ bool DocumentCursor::move_to_first_child() {
 }
 
 bool DocumentCursor::move_to_previous_sibling() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    return reset_temporary_(size);
-  };
-  auto previous_sibling =
-      element()->construct_previous_sibling(m_document, allocator);
+  auto previous_sibling = element()->construct_previous_sibling(m_document);
   if (!previous_sibling) {
     return false;
   }
-  swap_current_temporary();
   popping_(nullptr);
+  m_element_stack.pop_back();
+  m_element_stack.push_back(std::move(previous_sibling));
   pushed_(element());
 
   std::visit([](auto &&c) { --c; }, *m_current_component);
@@ -182,15 +121,13 @@ bool DocumentCursor::move_to_previous_sibling() {
 }
 
 bool DocumentCursor::move_to_next_sibling() {
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    return reset_temporary_(size);
-  };
-  auto next_sibling = element()->construct_next_sibling(m_document, allocator);
+  auto next_sibling = element()->construct_next_sibling(m_document);
   if (!next_sibling) {
     return false;
   }
-  swap_current_temporary();
   popping_(nullptr);
+  m_element_stack.pop_back();
+  m_element_stack.push_back(std::move(next_sibling));
   pushed_(element());
 
   std::visit([](auto &&c) { ++c; }, *m_current_component);
@@ -204,17 +141,12 @@ bool DocumentCursor::move_to_master_page() {
     return false;
   }
 
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    return reset_temporary_(size);
-  };
-  auto master_page = slide->construct_master_page(m_document, allocator);
+  auto master_page = slide->construct_master_page(m_document);
   if (!master_page) {
     return false;
   }
-  allocator = [this](const std::size_t size) { return push_parent_(size); };
-  element()->construct_copy(allocator);
-  swap_current_temporary();
-  pushed_(master_page);
+  m_element_stack.push_back(std::move(master_page));
+  pushed_(element());
 
   if (m_current_component) {
     m_parent_path = m_parent_path.join(*m_current_component);
@@ -230,17 +162,12 @@ bool DocumentCursor::move_to_first_table_column() {
     return false;
   }
 
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    return reset_temporary_(size);
-  };
-  auto first_column = table->construct_first_column(m_document, allocator);
+  auto first_column = table->construct_first_column(m_document);
   if (!first_column) {
     return false;
   }
-  allocator = [this](const std::size_t size) { return push_parent_(size); };
-  element()->construct_copy(allocator);
-  swap_current_temporary();
-  pushed_(first_column);
+  m_element_stack.push_back(std::move(first_column));
+  pushed_(element());
 
   if (m_current_component) {
     m_parent_path = m_parent_path.join(*m_current_component);
@@ -256,17 +183,12 @@ bool DocumentCursor::move_to_first_table_row() {
     return false;
   }
 
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    return reset_temporary_(size);
-  };
-  auto first_row = table->construct_first_row(m_document, allocator);
+  auto first_row = table->construct_first_row(m_document);
   if (!first_row) {
     return false;
   }
-  allocator = [this](const std::size_t size) { return push_parent_(size); };
-  element()->construct_copy(allocator);
-  swap_current_temporary();
-  pushed_(first_row);
+  m_element_stack.push_back(std::move(first_row));
+  pushed_(element());
 
   if (m_current_component) {
     m_parent_path = m_parent_path.join(*m_current_component);
@@ -282,17 +204,12 @@ bool DocumentCursor::move_to_first_sheet_shape() {
     return false;
   }
 
-  abstract::Allocator allocator = [this](const std::size_t size) {
-    return reset_temporary_(size);
-  };
-  auto first_shape = sheet->construct_first_shape(m_document, allocator);
+  auto first_shape = sheet->construct_first_shape(m_document);
   if (!first_shape) {
     return false;
   }
-  allocator = [this](const std::size_t size) { return push_parent_(size); };
-  element()->construct_copy(allocator);
-  swap_current_temporary();
-  pushed_(first_shape);
+  m_element_stack.push_back(std::move(first_shape));
+  pushed_(element());
 
   if (m_current_component) {
     m_parent_path = m_parent_path.join(*m_current_component);
