@@ -721,47 +721,35 @@ public:
 
   std::unique_ptr<abstract::Element> construct_previous_sibling(
       const abstract::Document *document) const override {
+    TableColumn previous_column;
+    if (auto previous_column_ptr =
+            m_column.construct_previous_sibling(document)) {
+      previous_column = dynamic_cast<const TableColumn &>(*previous_column_ptr);
+    }
     if (m_repeated_index > 0) {
-      auto previous_column = m_column.construct_previous_sibling(document);
-      if (!previous_column) {
-        return {};
-      }
-      return common::construct_2<TableCell>(
-          m_node, m_repeated_index - 1,
-          dynamic_cast<const TableColumn &>(*previous_column.get()));
+      return common::construct_2<TableCell>(m_node, m_repeated_index - 1,
+                                            previous_column);
     }
     if (auto previous_sibling = previous_node_()) {
-      auto previous_column = m_column.construct_previous_sibling(document);
-      if (!previous_column) {
-        return {};
-      }
       // TODO not 0 but last repeated
-      return common::construct_2<TableCell>(
-          previous_sibling, 0,
-          dynamic_cast<const TableColumn &>(*previous_column.get()));
+      return common::construct_2<TableCell>(previous_sibling, 0,
+                                            previous_column);
     }
     return {};
   }
 
   std::unique_ptr<abstract::Element>
   construct_next_sibling(const abstract::Document *document) const override {
+    TableColumn next_column;
+    if (auto next_column_ptr = m_column.construct_next_sibling(document)) {
+      next_column = dynamic_cast<const TableColumn &>(*next_column_ptr);
+    }
     if (m_repeated_index < number_repeated_() - 1) {
-      auto next_column = m_column.construct_next_sibling(document);
-      if (!next_column) {
-        return {};
-      }
-      return common::construct_2<TableCell>(
-          m_node, m_repeated_index + 1,
-          dynamic_cast<const TableColumn &>(*next_column.get()));
+      return common::construct_2<TableCell>(m_node, m_repeated_index + 1,
+                                            next_column);
     }
     if (auto next_sibling = next_node_()) {
-      auto next_column = m_column.construct_next_sibling(document);
-      if (!next_column) {
-        return {};
-      }
-      return common::construct_2<TableCell>(
-          next_sibling, 0,
-          dynamic_cast<const TableColumn &>(*next_column.get()));
+      return common::construct_2<TableCell>(next_sibling, 0, next_column);
     }
     return {};
   }

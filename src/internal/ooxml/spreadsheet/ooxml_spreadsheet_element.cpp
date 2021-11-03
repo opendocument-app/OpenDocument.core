@@ -352,12 +352,11 @@ public:
 
   std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *document) const final {
-    auto previous_column_ptr = m_column.construct_previous_sibling(document);
-    if (!previous_column_ptr) {
-      return {};
+    TableColumn previous_column;
+    if (auto previous_column_ptr =
+            m_column.construct_previous_sibling(document)) {
+      previous_column = dynamic_cast<const TableColumn &>(*previous_column_ptr);
     }
-    const auto &previous_column =
-        dynamic_cast<const TableColumn &>(*previous_column_ptr.get());
     if (node_position_(m_node).column() <= previous_column.m_column) {
       return common::construct_2<TableCell>(m_node, m_row, previous_column);
     }
@@ -371,12 +370,10 @@ public:
 
   std::unique_ptr<abstract::Element>
   construct_next_sibling(const abstract::Document *document) const final {
-    auto next_column_ptr = m_column.construct_next_sibling(document);
-    if (!next_column_ptr) {
-      return {};
+    TableColumn next_column;
+    if (auto next_column_ptr = m_column.construct_next_sibling(document)) {
+      next_column = dynamic_cast<const TableColumn &>(*next_column_ptr);
     }
-    const auto &next_column =
-        dynamic_cast<const TableColumn &>(*next_column_ptr.get());
     if (node_position_(m_node).column() >= next_column.m_column) {
       return common::construct_2<TableCell>(m_node, m_row, next_column);
     }
