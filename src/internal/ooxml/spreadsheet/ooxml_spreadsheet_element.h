@@ -13,9 +13,8 @@ class StyleRegistry;
 
 class Element : public common::Element<Element> {
 public:
-  static abstract::Element *
-  construct_default_element(pugi::xml_node node,
-                            const abstract::Allocator &allocator);
+  static std::unique_ptr<abstract::Element>
+  construct_default_element(pugi::xml_node node);
 
   Element();
   explicit Element(pugi::xml_node node);

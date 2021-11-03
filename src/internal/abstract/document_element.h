@@ -1,7 +1,6 @@
 #ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_ELEMENT_H
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_ELEMENT_H
 
-#include <internal/abstract/allocator.h>
 #include <memory>
 #include <odr/document_element.h>
 #include <optional>
@@ -34,16 +33,15 @@ public:
 
   [[nodiscard]] virtual ElementType type(const Document *) const = 0;
 
-  virtual Element *construct_copy(const Allocator &allocator) const = 0;
-  virtual Element *construct_parent(const Document *document,
-                                    const Allocator &allocator) const = 0;
-  virtual Element *construct_first_child(const Document *document,
-                                         const Allocator &allocator) const = 0;
-  virtual Element *
-  construct_previous_sibling(const Document *document,
-                             const Allocator &allocator) const = 0;
-  virtual Element *construct_next_sibling(const Document *document,
-                                          const Allocator &allocator) const = 0;
+  virtual std::unique_ptr<Element> construct_copy() const = 0;
+  virtual std::unique_ptr<Element>
+  construct_parent(const Document *document) const = 0;
+  virtual std::unique_ptr<Element>
+  construct_first_child(const Document *document) const = 0;
+  virtual std::unique_ptr<Element>
+  construct_previous_sibling(const Document *document) const = 0;
+  virtual std::unique_ptr<Element>
+  construct_next_sibling(const Document *document) const = 0;
 };
 
 class TextRootElement : public virtual Element {
@@ -55,9 +53,9 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual Element *
-  first_master_page(const Document *document, const DocumentCursor *cursor,
-                    const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  first_master_page(const Document *document,
+                    const DocumentCursor *cursor) const = 0;
 };
 
 class SlideElement : public virtual Element {
@@ -69,9 +67,8 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual Element *
-  construct_master_page(const Document *document,
-                        const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  construct_master_page(const Document *document) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
@@ -88,9 +85,8 @@ public:
   content(const Document *document,
           std::optional<TableDimensions> range) const = 0;
 
-  [[nodiscard]] virtual Element *
-  construct_first_shape(const Document *document,
-                        const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  construct_first_shape(const Document *document) const = 0;
 };
 
 class PageElement : public virtual Element {
@@ -102,9 +98,8 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual Element *
-  master_page(const Document *document, const DocumentCursor *cursor,
-              const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  master_page(const Document *document, const DocumentCursor *cursor) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
@@ -201,12 +196,10 @@ public:
 
   [[nodiscard]] virtual TableDimensions
   dimensions(const Document *document) const = 0;
-  [[nodiscard]] virtual Element *
-  construct_first_column(const Document *document,
-                         const Allocator &allocator) const = 0;
-  [[nodiscard]] virtual Element *
-  construct_first_row(const Document *document,
-                      const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  construct_first_column(const Document *document) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  construct_first_row(const Document *document) const = 0;
 
   [[nodiscard]] virtual TableStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
