@@ -78,7 +78,8 @@ void resolve_table_style_(pugi::xml_node node, TableStyle &result) {
   }
 }
 
-void resolve_table_row_style_(pugi::xml_node node, TableRowStyle & /*result*/) {
+void resolve_table_row_style_(pugi::xml_node /*node*/,
+                              TableRowStyle & /*result*/) {
   // TODO
   // auto table_row_properties = node.child("w:trPr");
 }
