@@ -1,3 +1,5 @@
+import * as error from 'error';
+
 export function generateDiff() {
   const result = {
     modifiedText: {},
@@ -32,3 +34,10 @@ const config = {
   characterData: true,
 };
 observer.observe(document.body, config);
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    error.onError(error.error_illegal_edit_new_line.code, error.error_illegal_edit_new_line.message);
+  }
+});
