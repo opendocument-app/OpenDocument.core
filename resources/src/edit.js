@@ -1,4 +1,4 @@
-import * as error from 'error';
+import * as error from './error';
 
 export function generateDiff() {
   const result = {
