@@ -1,2 +1,2 @@
-import './edit';
-import './search';
+export * from './edit';
+export * from './search';

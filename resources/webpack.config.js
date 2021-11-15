@@ -5,5 +5,9 @@ module.exports = {
   output: {
     filename: 'odr.js',
     path: path.resolve(__dirname, 'dist'),
+    library: {
+      type: 'umd',
+      name: 'odr',
+    }
   },
 };
