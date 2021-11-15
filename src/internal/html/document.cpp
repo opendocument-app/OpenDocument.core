@@ -19,25 +19,27 @@ namespace {
 void front(const Document &document, std::ostream &out,
            const HtmlConfig &config) {
   out << internal::html::doctype();
-  out << "<html><head>";
+  out << "<html>\n";
+  out << "<head>\n";
   out << internal::html::default_headers();
-  out << "<style>";
+  out << "\n";
+  out << "<style>\n";
   out << internal::html::default_style();
   if (document.document_type() == DocumentType::spreadsheet) {
     out << internal::html::default_spreadsheet_style();
   }
-  out << "</style>";
-  out << "</head>";
-
-  out << "<body " << internal::html::body_attributes(config) << ">";
+  out << "\n";
+  out << "</style>\n";
+  out << "</head>\n";
+  out << "<body " << internal::html::body_attributes(config) << ">\n";
 }
 
 void back(const Document &, std::ostream &out, const HtmlConfig &) {
-  out << "<script>";
+  out << "\n";
+  out << "<script>\n";
   out << internal::html::default_script();
-  out << "</script>";
-
-  out << "</body>";
+  out << "</script>\n";
+  out << "</body>\n";
   out << "</html>";
 }
 
