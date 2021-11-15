@@ -16,19 +16,16 @@ const char *html::doctype() noexcept {
 
 const char *html::default_headers() noexcept {
   // clang-format off
-  return R"V0G0N(
-<meta charset="UTF-8"/>
+  return R"V0G0N(<meta charset="UTF-8"/>
 <base target="_blank"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes"/>
-<title>odr</title>
-)V0G0N";
+<title>odr</title>)V0G0N";
   // clang-format on
 }
 
 const char *html::default_style() noexcept {
   // clang-format off
-  return R"V0G0N(
-* {
+  return R"V0G0N(* {
   margin: 0;
   position: relative;
 }
@@ -46,15 +43,13 @@ x-s {
 
 /* https://github.com/marcelblanarik/js-keyword-highlighter/blob/dd69436bee06f8c658abe1e12e2abb35d3bf250b/index.html#L81-L82 */
 mark { background: yellow; }
-mark.current { background: orange; }
-)V0G0N";
+mark.current { background: orange; })V0G0N";
   // clang-format on
 }
 
 const char *html::default_spreadsheet_style() noexcept {
   // clang-format off
-  return R"V0G0N(
-table {
+  return R"V0G0N(table {
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -83,8 +78,7 @@ td x-p {
 
 table td.odr-value-type-float {
   text-align: right;
-}
-)V0G0N";
+})V0G0N";
   // clang-format on
 }
 

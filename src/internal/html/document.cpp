@@ -38,6 +38,7 @@ void back(const Document &, std::ostream &out, const HtmlConfig &) {
   out << "\n";
   out << "<script>\n";
   out << internal::html::default_script();
+  out << "\n";
   out << "</script>\n";
   out << "</body>\n";
   out << "</html>";
