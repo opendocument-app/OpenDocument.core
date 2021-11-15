@@ -209,12 +209,16 @@ def compare(path):
 html,body {{height:100%;margin:0;}}
 </style>
 </head>
-<body style="display:flex;">
-<div style="flex:1;display:flex;flex-flow:column;margin:5px;">
+<body style="display:flex;flex-flow:row;">
+<div style="display:flex;flex:1;flex-flow:column;margin:5px;">
   <a href="/file/a/{path}">{os.path.join(Config.path_a, path)}</a>
   <iframe id="a" src="/file/a/{path}" title="a" frameborder="0" align="left" style="flex:1;"></iframe>
 </div>
-<div style="flex:1;display:flex;flex-flow:column;margin:5px;">
+<div style="display:flex;flex:0 0 50px;flex-flow:column;">
+  <a href="/image_diff/{path}">diff</a>
+  <img src="/image_diff/{path}" width="50" height="0" style="flex:1;">
+</div>
+<div style="display:flex;flex:1;flex-flow:column;margin:5px;">
   <a href="/file/b/{path}">{os.path.join(Config.path_b, path)}</a>
   <iframe id="b" src="/file/b/{path}" title="b" frameborder="0" align="right" style="flex:1;"></iframe>
 </div>
