@@ -11,6 +11,7 @@ add_executable(odr_test
 
         src/document_test.cpp
         src/file_test.cpp
+        src/magic_test.cpp
         src/open_document_reader_test.cpp
         src/output_reference_test.cpp
         src/quantity_test.cpp
@@ -42,7 +43,6 @@ target_link_libraries(odr_test
         PRIVATE
         CONAN_PKG::pugixml
         CONAN_PKG::miniz
-        CONAN_PKG::glog
         CONAN_PKG::cryptopp
         CONAN_PKG::nlohmann_json
         CONAN_PKG::vincentlaucsb-csv-parser

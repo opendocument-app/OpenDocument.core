@@ -8,9 +8,9 @@ Color::Color(const std::uint32_t rgb)
     : red{(std::uint8_t)(rgb >> 16)}, green{(std::uint8_t)(rgb >> 8)},
       blue{(std::uint8_t)(rgb >> 0)} {}
 
-Color::Color(const std::uint32_t rgba, bool)
-    : red{(std::uint8_t)(rgba >> 24)}, green{(std::uint8_t)(rgba >> 16)},
-      blue{(std::uint8_t)(rgba >> 8)}, alpha{(std::uint8_t)(rgba >> 0)} {}
+Color::Color(const std::uint32_t argb, bool)
+    : red{(std::uint8_t)(argb >> 16)}, green{(std::uint8_t)(argb >> 8)},
+      blue{(std::uint8_t)(argb >> 0)}, alpha{(std::uint8_t)(argb >> 24)} {}
 
 Color::Color(const std::uint8_t red, const std::uint8_t green,
              const std::uint8_t blue)
@@ -28,12 +28,12 @@ std::uint32_t Color::rgb() const {
   return result;
 }
 
-std::uint32_t Color::rgba() const {
+std::uint32_t Color::argb() const {
   std::uint32_t result{0};
-  result |= red << 24;
-  result |= green << 16;
-  result |= blue << 8;
-  result |= alpha << 0;
+  result |= alpha << 24;
+  result |= red << 16;
+  result |= green << 8;
+  result |= blue << 0;
   return result;
 }
 
@@ -96,6 +96,9 @@ void TableRowStyle::override(const TableRowStyle &other) {
 }
 
 void TableCellStyle::override(const TableCellStyle &other) {
+  if (other.horizontal_align) {
+    horizontal_align = other.horizontal_align;
+  }
   if (other.vertical_align) {
     vertical_align = other.vertical_align;
   }
@@ -104,17 +107,9 @@ void TableCellStyle::override(const TableCellStyle &other) {
   }
   padding.override(other.padding);
   border.override(other.border);
-}
-
-void TableCellStyle::override(TableCellStyle &&other) {
-  if (other.vertical_align) {
-    vertical_align = other.vertical_align;
+  if (other.text_rotation) {
+    text_rotation = other.text_rotation;
   }
-  if (other.background_color) {
-    background_color = std::move(other.background_color);
-  }
-  padding.override(std::move(other.padding));
-  border.override(std::move(other.border));
 }
 
 void GraphicStyle::override(const GraphicStyle &other) {

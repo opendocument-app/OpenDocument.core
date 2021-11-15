@@ -30,7 +30,7 @@ TEST(Path, join_root) {
   EXPECT_EQ("/tmp", a.join(b).string());
 }
 
-TEST(Path, root_parent) { EXPECT_ANY_THROW(Path("/").parent()); }
+TEST(Path, root_parent) { EXPECT_ANY_THROW(auto tmp = Path("/").parent()); }
 
 TEST(Path, one_parent) { EXPECT_EQ("/", Path("/tmp").parent().string()); }
 

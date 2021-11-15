@@ -234,246 +234,212 @@ void Style::resolve_style_() {
 }
 
 void Style::resolve_text_style_(const StyleRegistry *registry,
-                                pugi::xml_node node,
-                                std::optional<TextStyle> &result) {
-  if (auto text_properties = node.child("style:text-properties")) {
-    if (!result) {
-      result = TextStyle();
-    }
+                                pugi::xml_node node, TextStyle &result) {
+  auto text_properties = node.child("style:text-properties");
 
-    if (auto font_name = text_properties.attribute("style:font-name")) {
-      read_font_face(font_name.value(),
-                     registry->font_face_node(font_name.value()), *result);
-    }
-    if (auto font_size =
-            read_measure(text_properties.attribute("fo:font-size"))) {
-      // TODO
-      if (font_size->unit().name() != "%") {
-        result->font_size = font_size;
-      } else {
-        if (auto parent_font_size = result->font_size) {
-          result->font_size = Measure(parent_font_size->magnitude() *
-                                          font_size->magnitude() * 1e-2,
-                                      parent_font_size->unit());
-        }
+  if (auto font_name = text_properties.attribute("style:font-name")) {
+    read_font_face(font_name.value(),
+                   registry->font_face_node(font_name.value()), result);
+  }
+  if (auto font_size =
+          read_measure(text_properties.attribute("fo:font-size"))) {
+    // TODO
+    if (font_size->unit().name() != "%") {
+      result.font_size = font_size;
+    } else {
+      if (auto parent_font_size = result.font_size) {
+        result.font_size = Measure(parent_font_size->magnitude() *
+                                       font_size->magnitude() * 1e-2,
+                                   parent_font_size->unit());
       }
     }
-    if (auto font_weight =
-            read_font_weight(text_properties.attribute("fo:font-weight"))) {
-      result->font_weight = font_weight;
-    }
-    if (auto font_style =
-            read_font_style(text_properties.attribute("fo:font-style"))) {
-      result->font_style = font_style;
-    }
-    if (auto font_underline =
-            text_properties.attribute("style:text-underline-style");
-        font_underline && (std::strcmp("none", font_underline.value()) != 0)) {
-      result->font_underline = true;
-    }
-    if (auto font_line_through =
-            text_properties.attribute("style:text-line-through-style");
-        font_line_through &&
-        (std::strcmp("none", font_line_through.value()) != 0)) {
-      result->font_line_through = true;
-    }
-    if (auto font_shadow =
-            read_string(text_properties.attribute("fo:text-shadow"))) {
-      result->font_shadow = font_shadow;
-    }
-    if (auto font_color = read_color(text_properties.attribute("fo:color"))) {
-      result->font_color = font_color;
-    }
-    if (auto background_color =
-            read_color(text_properties.attribute("fo:background-color"))) {
-      result->background_color = background_color;
-    }
+  }
+  if (auto font_weight =
+          read_font_weight(text_properties.attribute("fo:font-weight"))) {
+    result.font_weight = font_weight;
+  }
+  if (auto font_style =
+          read_font_style(text_properties.attribute("fo:font-style"))) {
+    result.font_style = font_style;
+  }
+  if (auto font_underline =
+          text_properties.attribute("style:text-underline-style");
+      font_underline && (std::strcmp("none", font_underline.value()) != 0)) {
+    result.font_underline = true;
+  }
+  if (auto font_line_through =
+          text_properties.attribute("style:text-line-through-style");
+      font_line_through &&
+      (std::strcmp("none", font_line_through.value()) != 0)) {
+    result.font_line_through = true;
+  }
+  if (auto font_shadow =
+          read_string(text_properties.attribute("fo:text-shadow"))) {
+    result.font_shadow = font_shadow;
+  }
+  if (auto font_color = read_color(text_properties.attribute("fo:color"))) {
+    result.font_color = font_color;
+  }
+  if (auto background_color =
+          read_color(text_properties.attribute("fo:background-color"))) {
+    result.background_color = background_color;
   }
 }
 
 void Style::resolve_paragraph_style_(pugi::xml_node node,
-                                     std::optional<ParagraphStyle> &result) {
-  if (auto paragraph_properties = node.child("style:paragraph-properties")) {
-    if (!result) {
-      result = ParagraphStyle();
-    }
+                                     ParagraphStyle &result) {
+  auto paragraph_properties = node.child("style:paragraph-properties");
 
-    if (auto text_align =
-            read_text_align(paragraph_properties.attribute("fo:text-align"))) {
-      result->text_align = text_align;
+  if (auto text_align =
+          read_text_align(paragraph_properties.attribute("fo:text-align"))) {
+    result.text_align = text_align;
+  }
+  if (auto margin = read_measure(paragraph_properties.attribute("fo:margin"))) {
+    // TODO
+    if (margin->unit().name() != "%") {
+      result.margin = margin;
     }
-    if (auto margin =
-            read_measure(paragraph_properties.attribute("fo:margin"))) {
-      // TODO
-      if (margin->unit().name() != "%") {
-        result->margin = margin;
-      }
+  }
+  if (auto margin_right =
+          read_measure(paragraph_properties.attribute("fo:margin-right"))) {
+    // TODO
+    if (margin_right->unit().name() != "%") {
+      result.margin.right = margin_right;
     }
-    if (auto margin_right =
-            read_measure(paragraph_properties.attribute("fo:margin-right"))) {
-      // TODO
-      if (margin_right->unit().name() != "%") {
-        result->margin.right = margin_right;
-      }
+  }
+  if (auto margin_top =
+          read_measure(paragraph_properties.attribute("fo:margin-top"))) {
+    // TODO
+    if (margin_top->unit().name() != "%") {
+      result.margin.top = margin_top;
     }
-    if (auto margin_top =
-            read_measure(paragraph_properties.attribute("fo:margin-top"))) {
-      // TODO
-      if (margin_top->unit().name() != "%") {
-        result->margin.top = margin_top;
-      }
+  }
+  if (auto margin_left =
+          read_measure(paragraph_properties.attribute("fo:margin-left"))) {
+    // TODO
+    if (margin_left->unit().name() != "%") {
+      result.margin.left = margin_left;
     }
-    if (auto margin_left =
-            read_measure(paragraph_properties.attribute("fo:margin-left"))) {
-      // TODO
-      if (margin_left->unit().name() != "%") {
-        result->margin.left = margin_left;
-      }
+  }
+  if (auto margin_bottom =
+          read_measure(paragraph_properties.attribute("fo:margin-bottom"))) {
+    // TODO
+    if (margin_bottom->unit().name() != "%") {
+      result.margin.bottom = margin_bottom;
     }
-    if (auto margin_bottom =
-            read_measure(paragraph_properties.attribute("fo:margin-bottom"))) {
-      // TODO
-      if (margin_bottom->unit().name() != "%") {
-        result->margin.bottom = margin_bottom;
-      }
-    }
-    if (auto line_height =
-            read_measure(paragraph_properties.attribute("fo:line-height"))) {
-      // TODO
-      if (line_height->unit().name() != "%") {
-        result->line_height = line_height;
-      }
+  }
+  if (auto line_height =
+          read_measure(paragraph_properties.attribute("fo:line-height"))) {
+    // TODO
+    if (line_height->unit().name() != "%") {
+      result.line_height = line_height;
     }
   }
 }
 
-void Style::resolve_table_style_(pugi::xml_node node,
-                                 std::optional<TableStyle> &result) {
-  if (auto table_properties = node.child("style:table-properties")) {
-    if (!result) {
-      result = TableStyle();
-    }
+void Style::resolve_table_style_(pugi::xml_node node, TableStyle &result) {
+  auto table_properties = node.child("style:table-properties");
 
-    if (auto width = read_measure(table_properties.attribute("style:width"))) {
-      result->width = width;
-    }
+  if (auto width = read_measure(table_properties.attribute("style:width"))) {
+    result.width = width;
   }
 }
 
-void Style::resolve_table_column_style_(
-    pugi::xml_node node, std::optional<TableColumnStyle> &result) {
-  if (auto table_column_properties =
-          node.child("style:table-column-properties")) {
-    if (!result) {
-      result = TableColumnStyle();
-    }
+void Style::resolve_table_column_style_(pugi::xml_node node,
+                                        TableColumnStyle &result) {
+  auto table_column_properties = node.child("style:table-column-properties");
 
-    if (auto width = read_measure(
-            table_column_properties.attribute("style:column-width"))) {
-      result->width = width;
-    }
+  if (auto width = read_measure(
+          table_column_properties.attribute("style:column-width"))) {
+    result.width = width;
   }
 }
 
 void Style::resolve_table_row_style_(pugi::xml_node node,
-                                     std::optional<TableRowStyle> &result) {
-  if (auto table_row_properties = node.child("style:table-row-properties")) {
-    if (!result) {
-      result = TableRowStyle();
-    }
+                                     TableRowStyle &result) {
+  auto table_row_properties = node.child("style:table-row-properties");
 
-    if (auto height =
-            read_measure(table_row_properties.attribute("style:row-height"))) {
-      result->height = height;
-    }
+  if (auto height =
+          read_measure(table_row_properties.attribute("style:row-height"))) {
+    result.height = height;
   }
 }
 
 void Style::resolve_table_cell_style_(pugi::xml_node node,
-                                      std::optional<TableCellStyle> &result) {
-  if (auto table_cell_properties = node.child("style:table-cell-properties")) {
-    if (!result) {
-      result = TableCellStyle();
-    }
+                                      TableCellStyle &result) {
+  auto table_cell_properties = node.child("style:table-cell-properties");
 
-    if (auto vertical_align = read_vertical_align(
-            table_cell_properties.attribute("style:vertical-align"))) {
-      result->vertical_align = vertical_align;
-    }
-    if (auto background_color = read_color(
-            table_cell_properties.attribute("fo:background-color"))) {
-      result->background_color = background_color;
-    }
-    if (auto padding =
-            read_measure(table_cell_properties.attribute("fo:padding"))) {
-      result->padding = padding;
-    }
-    if (auto padding_right =
-            read_measure(table_cell_properties.attribute("fo:padding-right"))) {
-      result->padding.right = padding_right;
-    }
-    if (auto padding_top =
-            read_measure(table_cell_properties.attribute("fo:padding-top"))) {
-      result->padding.top = padding_top;
-    }
-    if (auto padding_left =
-            read_measure(table_cell_properties.attribute("fo:padding-left"))) {
-      result->padding.left = padding_left;
-    }
-    if (auto padding_bottom = read_measure(
-            table_cell_properties.attribute("fo:padding-bottom"))) {
-      result->padding.bottom = padding_bottom;
-    }
-    if (auto border =
-            read_border(table_cell_properties.attribute("fo:border"))) {
-      result->border = border;
-    }
-    if (auto border_right =
-            read_border(table_cell_properties.attribute("fo:border-right"))) {
-      result->border.right = border_right;
-    }
-    if (auto border_top =
-            read_border(table_cell_properties.attribute("fo:border-top"))) {
-      result->border.top = border_top;
-    }
-    if (auto border_left =
-            read_border(table_cell_properties.attribute("fo:border-left"))) {
-      result->border.left = border_left;
-    }
-    if (auto border_bottom =
-            read_border(table_cell_properties.attribute("fo:border-bottom"))) {
-      result->border.bottom = border_bottom;
-    }
+  if (auto vertical_align = read_vertical_align(
+          table_cell_properties.attribute("style:vertical-align"))) {
+    result.vertical_align = vertical_align;
+  }
+  if (auto background_color =
+          read_color(table_cell_properties.attribute("fo:background-color"))) {
+    result.background_color = background_color;
+  }
+  if (auto padding =
+          read_measure(table_cell_properties.attribute("fo:padding"))) {
+    result.padding = padding;
+  }
+  if (auto padding_right =
+          read_measure(table_cell_properties.attribute("fo:padding-right"))) {
+    result.padding.right = padding_right;
+  }
+  if (auto padding_top =
+          read_measure(table_cell_properties.attribute("fo:padding-top"))) {
+    result.padding.top = padding_top;
+  }
+  if (auto padding_left =
+          read_measure(table_cell_properties.attribute("fo:padding-left"))) {
+    result.padding.left = padding_left;
+  }
+  if (auto padding_bottom =
+          read_measure(table_cell_properties.attribute("fo:padding-bottom"))) {
+    result.padding.bottom = padding_bottom;
+  }
+  if (auto border = read_border(table_cell_properties.attribute("fo:border"))) {
+    result.border = border;
+  }
+  if (auto border_right =
+          read_border(table_cell_properties.attribute("fo:border-right"))) {
+    result.border.right = border_right;
+  }
+  if (auto border_top =
+          read_border(table_cell_properties.attribute("fo:border-top"))) {
+    result.border.top = border_top;
+  }
+  if (auto border_left =
+          read_border(table_cell_properties.attribute("fo:border-left"))) {
+    result.border.left = border_left;
+  }
+  if (auto border_bottom =
+          read_border(table_cell_properties.attribute("fo:border-bottom"))) {
+    result.border.bottom = border_bottom;
   }
 }
 
-void Style::resolve_graphic_style_(pugi::xml_node node,
-                                   std::optional<GraphicStyle> &result) {
-  if (auto graphic_properties = node.child("style:graphic-properties")) {
-    if (!result) {
-      result = GraphicStyle();
-    }
+void Style::resolve_graphic_style_(pugi::xml_node node, GraphicStyle &result) {
+  auto graphic_properties = node.child("style:graphic-properties");
 
-    if (auto stroke_width =
-            read_measure(graphic_properties.attribute("svg:stroke-width"))) {
-      result->stroke_width = stroke_width;
-    }
-    if (auto stroke_color =
-            read_color(graphic_properties.attribute("svg:stroke-color"))) {
-      result->stroke_color = stroke_color;
-    }
-    if (auto fill_color =
-            read_color(graphic_properties.attribute("draw:fill-color"))) {
-      result->fill_color = fill_color;
-    }
-    if (auto vertical_align = read_vertical_align(
-            graphic_properties.attribute("draw:textarea-vertical-align"))) {
-      result->vertical_align = vertical_align;
-    }
-    if (auto text_wrap =
-            read_text_wrap(graphic_properties.attribute("style:wrap"))) {
-      result->text_wrap = text_wrap;
-    }
+  if (auto stroke_width =
+          read_measure(graphic_properties.attribute("svg:stroke-width"))) {
+    result.stroke_width = stroke_width;
+  }
+  if (auto stroke_color =
+          read_color(graphic_properties.attribute("svg:stroke-color"))) {
+    result.stroke_color = stroke_color;
+  }
+  if (auto fill_color =
+          read_color(graphic_properties.attribute("draw:fill-color"))) {
+    result.fill_color = fill_color;
+  }
+  if (auto vertical_align = read_vertical_align(
+          graphic_properties.attribute("draw:textarea-vertical-align"))) {
+    result.vertical_align = vertical_align;
+  }
+  if (auto text_wrap =
+          read_text_wrap(graphic_properties.attribute("style:wrap"))) {
+    result.text_wrap = text_wrap;
   }
 }
 

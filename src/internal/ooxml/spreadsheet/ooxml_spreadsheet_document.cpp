@@ -1,3 +1,4 @@
+#include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.h>
@@ -19,10 +20,35 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
 
-  for (auto relationships :
+  m_style_registry = StyleRegistry(m_styles_xml.document_element());
+
+  for (const auto &relationships :
        parse_relationships(*m_filesystem, "xl/workbook.xml")) {
-    m_sheets_xml[relationships.first] = util::xml::parse(
-        *m_filesystem, common::Path("xl").join(relationships.second));
+    auto sheet_path = common::Path("xl").join(relationships.second);
+    auto sheet_xml = util::xml::parse(*m_filesystem, sheet_path);
+
+    if (auto drawing = sheet_xml.document_element().child("drawing")) {
+      auto sheet_relationships = parse_relationships(*m_filesystem, sheet_path);
+      auto drawing_path =
+          common::Path("xl/worksheets")
+              .join(sheet_relationships.at(drawing.attribute("r:id").value()));
+      auto drawing_xml = util::xml::parse(*m_filesystem, drawing_path);
+
+      m_sheets[relationships.first].sheet_path = std::move(drawing_path);
+      m_sheets[relationships.first].drawing_xml = std::move(drawing_xml);
+    }
+
+    m_sheets[relationships.first].sheet_path = std::move(sheet_path);
+    m_sheets[relationships.first].sheet_xml = std::move(sheet_xml);
+  }
+
+  if (m_filesystem->exists("xl/sharedStrings.xml")) {
+    m_shared_strings_xml =
+        util::xml::parse(*m_filesystem, "xl/sharedStrings.xml");
+  }
+
+  for (auto shared_string : m_shared_strings_xml.document_element()) {
+    m_shared_strings.push_back(shared_string);
   }
 }
 
@@ -42,7 +68,7 @@ void Document::save(const common::Path & /*path*/,
 }
 
 FileType Document::file_type() const noexcept {
-  return FileType::office_open_xml_document;
+  return FileType::office_open_xml_workbook;
 }
 
 DocumentType Document::document_type() const noexcept {

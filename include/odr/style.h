@@ -28,6 +28,12 @@ enum class TextAlign {
   justify,
 };
 
+enum class HorizontalAlign {
+  left,
+  center,
+  right,
+};
+
 enum class VerticalAlign {
   top,
   middle,
@@ -53,14 +59,14 @@ struct Color final {
   std::uint8_t alpha{255};
 
   Color();
-  explicit Color(std::uint32_t rgb);
-  Color(std::uint32_t rgba, bool dummy);
+  Color(std::uint32_t rgb);
+  Color(std::uint32_t argb, bool dummy);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue,
         std::uint8_t alpha);
 
   [[nodiscard]] std::uint32_t rgb() const;
-  [[nodiscard]] std::uint32_t rgba() const;
+  [[nodiscard]] std::uint32_t argb() const;
 };
 
 template <typename T> struct DirectionalStyle final {
@@ -145,13 +151,14 @@ struct TableRowStyle final {
 };
 
 struct TableCellStyle final {
+  std::optional<HorizontalAlign> horizontal_align;
   std::optional<VerticalAlign> vertical_align;
   std::optional<Color> background_color;
   DirectionalStyle<Measure> padding;
   DirectionalStyle<std::string> border;
+  std::optional<double> text_rotation;
 
   void override(const TableCellStyle &other);
-  void override(TableCellStyle &&other);
 };
 
 struct GraphicStyle final {

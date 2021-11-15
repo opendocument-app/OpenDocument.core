@@ -54,6 +54,7 @@ add_library(odr-object OBJECT
         src/exceptions.cpp
         src/file.cpp
         src/html.cpp
+        src/magic.cpp
         src/open_document_reader.cpp
         src/open_strategy.cpp
         src/quantity.cpp
@@ -94,12 +95,13 @@ add_library(odr-object OBJECT
 
         src/internal/oldms/oldms_file.cpp
 
+        src/internal/ooxml/presentation/ooxml_presentation_cursor.cpp
         src/internal/ooxml/presentation/ooxml_presentation_document.cpp
         src/internal/ooxml/presentation/ooxml_presentation_element.cpp
-        src/internal/ooxml/presentation/ooxml_presentation_cursor.cpp
+        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.cpp
         src/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.cpp
         src/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.cpp
-        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.cpp
+        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.cpp
         src/internal/ooxml/text/ooxml_text_cursor.cpp
         src/internal/ooxml/text/ooxml_text_document.cpp
         src/internal/ooxml/text/ooxml_text_element.cpp
@@ -133,7 +135,6 @@ target_link_libraries(odr-object
         PRIVATE
         CONAN_PKG::pugixml
         CONAN_PKG::miniz
-        CONAN_PKG::glog
         CONAN_PKG::cryptopp
         CONAN_PKG::nlohmann_json
         )
@@ -150,7 +151,6 @@ target_link_libraries(odr-static
         PRIVATE
         CONAN_PKG::pugixml
         CONAN_PKG::miniz
-        CONAN_PKG::glog
         CONAN_PKG::cryptopp
         CONAN_PKG::nlohmann_json
         )
@@ -166,7 +166,6 @@ target_link_libraries(odr-shared
         PRIVATE
         CONAN_PKG::pugixml
         CONAN_PKG::miniz
-        CONAN_PKG::glog
         CONAN_PKG::cryptopp
         CONAN_PKG::nlohmann_json
         )

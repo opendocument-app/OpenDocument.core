@@ -1,7 +1,6 @@
 #ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_ELEMENT_H
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_ELEMENT_H
 
-#include <internal/abstract/allocator.h>
 #include <memory>
 #include <odr/document_element.h>
 #include <optional>
@@ -34,16 +33,15 @@ public:
 
   [[nodiscard]] virtual ElementType type(const Document *) const = 0;
 
-  virtual Element *construct_copy(const Allocator &allocator) const = 0;
-  virtual Element *construct_parent(const Document *document,
-                                    const Allocator &allocator) const = 0;
-  virtual Element *construct_first_child(const Document *document,
-                                         const Allocator &allocator) const = 0;
-  virtual Element *
-  construct_previous_sibling(const Document *document,
-                             const Allocator &allocator) const = 0;
-  virtual Element *construct_next_sibling(const Document *document,
-                                          const Allocator &allocator) const = 0;
+  virtual std::unique_ptr<Element> construct_copy() const = 0;
+  virtual std::unique_ptr<Element>
+  construct_parent(const Document *document) const = 0;
+  virtual std::unique_ptr<Element>
+  construct_first_child(const Document *document) const = 0;
+  virtual std::unique_ptr<Element>
+  construct_previous_sibling(const Document *document) const = 0;
+  virtual std::unique_ptr<Element>
+  construct_next_sibling(const Document *document) const = 0;
 };
 
 class TextRootElement : public virtual Element {
@@ -55,9 +53,9 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual Element *
-  first_master_page(const Document *document, const DocumentCursor *cursor,
-                    const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  first_master_page(const Document *document,
+                    const DocumentCursor *cursor) const = 0;
 };
 
 class SlideElement : public virtual Element {
@@ -69,9 +67,8 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual Element *
-  construct_master_page(const Document *document,
-                        const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  construct_master_page(const Document *document) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
@@ -88,9 +85,8 @@ public:
   content(const Document *document,
           std::optional<TableDimensions> range) const = 0;
 
-  [[nodiscard]] virtual Element *
-  construct_first_shape(const Document *document,
-                        const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  construct_first_shape(const Document *document) const = 0;
 };
 
 class PageElement : public virtual Element {
@@ -102,9 +98,8 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual Element *
-  master_page(const Document *document, const DocumentCursor *cursor,
-              const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  master_page(const Document *document, const DocumentCursor *cursor) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
@@ -125,8 +120,8 @@ public:
     return ElementType::line_break;
   }
 
-  [[nodiscard]] virtual std::optional<TextStyle>
-  style(const Document *document, const DocumentCursor *cursor) const = 0;
+  [[nodiscard]] virtual TextStyle style(const Document *document,
+                                        const DocumentCursor *cursor) const = 0;
 };
 
 class ParagraphElement : public virtual Element {
@@ -135,9 +130,9 @@ public:
     return ElementType::paragraph;
   }
 
-  [[nodiscard]] virtual std::optional<ParagraphStyle>
+  [[nodiscard]] virtual ParagraphStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
-  [[nodiscard]] virtual std::optional<TextStyle>
+  [[nodiscard]] virtual TextStyle
   text_style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -147,8 +142,8 @@ public:
     return ElementType::span;
   }
 
-  [[nodiscard]] virtual std::optional<TextStyle>
-  style(const Document *document, const DocumentCursor *cursor) const = 0;
+  [[nodiscard]] virtual TextStyle style(const Document *document,
+                                        const DocumentCursor *cursor) const = 0;
 };
 
 class TextElement : public virtual Element {
@@ -161,8 +156,8 @@ public:
   virtual void set_content(const Document *document,
                            const std::string &text) = 0;
 
-  [[nodiscard]] virtual std::optional<TextStyle>
-  style(const Document *document, const DocumentCursor *cursor) const = 0;
+  [[nodiscard]] virtual TextStyle style(const Document *document,
+                                        const DocumentCursor *cursor) const = 0;
 };
 
 class LinkElement : public virtual Element {
@@ -189,8 +184,8 @@ public:
     return ElementType::list_item;
   }
 
-  [[nodiscard]] virtual std::optional<TextStyle>
-  style(const Document *document, const DocumentCursor *cursor) const = 0;
+  [[nodiscard]] virtual TextStyle style(const Document *document,
+                                        const DocumentCursor *cursor) const = 0;
 };
 
 class TableElement : public virtual Element {
@@ -201,14 +196,12 @@ public:
 
   [[nodiscard]] virtual TableDimensions
   dimensions(const Document *document) const = 0;
-  [[nodiscard]] virtual Element *
-  construct_first_column(const Document *document,
-                         const Allocator &allocator) const = 0;
-  [[nodiscard]] virtual Element *
-  construct_first_row(const Document *document,
-                      const Allocator &allocator) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  construct_first_column(const Document *document) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<Element>
+  construct_first_row(const Document *document) const = 0;
 
-  [[nodiscard]] virtual std::optional<TableStyle>
+  [[nodiscard]] virtual TableStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -218,7 +211,7 @@ public:
     return ElementType::table_column;
   }
 
-  [[nodiscard]] virtual std::optional<TableColumnStyle>
+  [[nodiscard]] virtual TableColumnStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -228,7 +221,7 @@ public:
     return ElementType::table_row;
   }
 
-  [[nodiscard]] virtual std::optional<TableRowStyle>
+  [[nodiscard]] virtual TableRowStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -250,7 +243,7 @@ public:
   [[nodiscard]] virtual ValueType
   value_type(const Document *document) const = 0;
 
-  [[nodiscard]] virtual std::optional<TableCellStyle>
+  [[nodiscard]] virtual TableCellStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -273,7 +266,7 @@ public:
   [[nodiscard]] virtual std::optional<std::string>
   z_index(const Document *document) const = 0;
 
-  [[nodiscard]] virtual std::optional<GraphicStyle>
+  [[nodiscard]] virtual GraphicStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -288,7 +281,7 @@ public:
   [[nodiscard]] virtual std::string width(const Document *document) const = 0;
   [[nodiscard]] virtual std::string height(const Document *document) const = 0;
 
-  [[nodiscard]] virtual std::optional<GraphicStyle>
+  [[nodiscard]] virtual GraphicStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -303,7 +296,7 @@ public:
   [[nodiscard]] virtual std::string x2(const Document *document) const = 0;
   [[nodiscard]] virtual std::string y2(const Document *document) const = 0;
 
-  [[nodiscard]] virtual std::optional<GraphicStyle>
+  [[nodiscard]] virtual GraphicStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -318,7 +311,7 @@ public:
   [[nodiscard]] virtual std::string width(const Document *document) const = 0;
   [[nodiscard]] virtual std::string height(const Document *document) const = 0;
 
-  [[nodiscard]] virtual std::optional<GraphicStyle>
+  [[nodiscard]] virtual GraphicStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 
@@ -335,7 +328,7 @@ public:
   [[nodiscard]] virtual std::string width(const Document *document) const = 0;
   [[nodiscard]] virtual std::string height(const Document *document) const = 0;
 
-  [[nodiscard]] virtual std::optional<GraphicStyle>
+  [[nodiscard]] virtual GraphicStyle
   style(const Document *document, const DocumentCursor *cursor) const = 0;
 };
 

@@ -1,66 +1,68 @@
 #include <cstring>
-#include <glog/logging.h>
 #include <internal/svm/svm_format.h>
 #include <internal/util/string_util.h>
 #include <odr/exceptions.h>
 
-namespace odr::internal::svm {
-std::string read_ascii_string(std::istream &in, const std::uint32_t length) {
+namespace odr::internal {
+
+std::string svm::read_ascii_string(std::istream &in,
+                                   const std::uint32_t length) {
   std::string result(length, ' ');
   in.read(static_cast<char *>(result.data()), result.size());
   return result;
 }
 
-std::string read_utf16_string(std::istream &in, const std::uint32_t length) {
+std::string svm::read_utf16_string(std::istream &in,
+                                   const std::uint32_t length) {
   std::u16string result_u16(length, ' ');
   in.read(reinterpret_cast<char *>(result_u16.data()), length * 2);
   return util::string::u16string_to_string(result_u16);
 }
 
-std::string read_uint16_prefixed_ascii_string(std::istream &in) {
+std::string svm::read_uint16_prefixed_ascii_string(std::istream &in) {
   uint16_t length;
   read_primitive(in, length);
   return read_ascii_string(in, length);
 }
 
-std::string read_uint32_prefixed_utf16_string(std::istream &in) {
+std::string svm::read_uint32_prefixed_utf16_string(std::istream &in) {
   uint32_t length;
   read_primitive(in, length);
   return read_utf16_string(in, length);
 }
 
-std::string read_uint16_prefixed_utf16_string(std::istream &in) {
+std::string svm::read_uint16_prefixed_utf16_string(std::istream &in) {
   uint16_t length;
   read_primitive(in, length);
   return read_utf16_string(in, length);
 }
 
-std::string read_string_with_encoding(std::istream &in,
-                                      const TextEncoding encoding) {
+std::string svm::read_string_with_encoding(std::istream &in,
+                                           const TextEncoding encoding) {
   if (encoding == RTL_TEXTENCODING_UCS2) {
     return read_uint32_prefixed_utf16_string(in);
   }
   return read_uint16_prefixed_ascii_string(in);
 }
 
-VersionLength read_version_length(std::istream &in) {
+svm::VersionLength svm::read_version_length(std::istream &in) {
   VersionLength result;
   read_primitive(in, result.version);
   read_primitive(in, result.length);
   if (result.version <= 0) {
-    DLOG(WARNING) << "VersionLength illegal version";
+    // TODO log or throw illegal version
   }
   return result;
 }
 
-IntPair read_int_pair(std::istream &in) {
+svm::IntPair svm::read_int_pair(std::istream &in) {
   IntPair result;
   read_primitive(in, result.x);
   read_primitive(in, result.y);
   return result;
 }
 
-Rectangle read_rectangle(std::istream &in) {
+svm::Rectangle svm::read_rectangle(std::istream &in) {
   Rectangle result;
   read_primitive(in, result.left);
   read_primitive(in, result.top);
@@ -69,7 +71,7 @@ Rectangle read_rectangle(std::istream &in) {
   return result;
 }
 
-std::vector<IntPair> read_polygon(std::istream &in) {
+std::vector<svm::IntPair> svm::read_polygon(std::istream &in) {
   std::vector<IntPair> result;
 
   std::uint16_t size;
@@ -83,7 +85,8 @@ std::vector<IntPair> read_polygon(std::istream &in) {
   return result;
 }
 
-std::vector<std::vector<IntPair>> read_poly_polygon(std::istream &in) {
+std::vector<std::vector<svm::IntPair>>
+svm::read_poly_polygon(std::istream &in) {
   std::vector<std::vector<IntPair>> result;
 
   std::uint16_t size;
@@ -97,7 +100,7 @@ std::vector<std::vector<IntPair>> read_poly_polygon(std::istream &in) {
   return result;
 }
 
-Header read_header(std::istream &in) {
+svm::Header svm::read_header(std::istream &in) {
   Header result;
 
   char magic[6];
@@ -120,14 +123,14 @@ Header read_header(std::istream &in) {
 
   const std::size_t left = result.vl.length - ((std::size_t)in.tellg() - start);
   if (left > 0) {
-    DLOG(WARNING) << "Header skipping " << left << " bytes";
+    // TODO log header skipping bytes
     in.ignore(left);
   }
 
   return result;
 }
 
-ActionHeader read_action_header(std::istream &in) {
+svm::ActionHeader svm::read_action_header(std::istream &in) {
   ActionHeader result;
 
   read_primitive(in, result.type);
@@ -136,7 +139,7 @@ ActionHeader read_action_header(std::istream &in) {
   return result;
 }
 
-MapMode read_map_mode(std::istream &in) {
+svm::MapMode svm::read_map_mode(std::istream &in) {
   MapMode result;
 
   read_version_length(in);
@@ -150,7 +153,7 @@ MapMode read_map_mode(std::istream &in) {
   return result;
 }
 
-LineInfo read_line_info(std::istream &in) {
+svm::LineInfo svm::read_line_info(std::istream &in) {
   LineInfo result;
 
   VersionLength vl = read_version_length(in);
@@ -171,14 +174,13 @@ LineInfo read_line_info(std::istream &in) {
   }
 
   if (vl.version >= 4) {
-    // TODO
-    DLOG(WARNING) << "LineInfo version 4 not implemented";
+    // TODO log version 4 not implemented
   }
 
   return result;
 }
 
-Font read_font(std::istream &in) {
+svm::Font svm::read_font(std::istream &in) {
   Font result;
 
   result.vl = read_version_length(in);
@@ -214,8 +216,8 @@ Font read_font(std::istream &in) {
   return result;
 }
 
-PolyLineAction read_poly_line_action(std::istream &in,
-                                     const VersionLength &vl) {
+svm::PolyLineAction svm::read_poly_line_action(std::istream &in,
+                                               const VersionLength &vl) {
   PolyLineAction result;
 
   result.points = read_polygon(in);
@@ -229,15 +231,15 @@ PolyLineAction read_poly_line_action(std::istream &in,
     read_primitive(in, has_flags);
 
     if (has_flags) {
-      // TODO
-      DLOG(WARNING) << "PolyLineAction flags not implemented";
+      // TODO flags not implemented
     }
   }
 
   return result;
 }
 
-PolygonAction read_polygon_action(std::istream &in, const VersionLength &vl) {
+svm::PolygonAction svm::read_polygon_action(std::istream &in,
+                                            const VersionLength &vl) {
   PolygonAction result;
 
   result.points = read_polygon(in);
@@ -247,16 +249,15 @@ PolygonAction read_polygon_action(std::istream &in, const VersionLength &vl) {
     read_primitive(in, has_flags);
 
     if (has_flags) {
-      // TODO
-      DLOG(WARNING) << "PolygonAction flags not implemented";
+      // TODO flags not implemented
     }
   }
 
   return result;
 }
 
-PolyPolygonAction read_poly_polygon_action(std::istream &in,
-                                           const VersionLength &vl) {
+svm::PolyPolygonAction svm::read_poly_polygon_action(std::istream &in,
+                                                     const VersionLength &vl) {
   PolyPolygonAction result;
 
   result.polygons = read_poly_polygon(in);
@@ -266,16 +267,15 @@ PolyPolygonAction read_poly_polygon_action(std::istream &in,
     read_primitive(in, complex_polygons);
 
     if (complex_polygons > 0) {
-      // TODO
-      DLOG(WARNING) << "PolyPolygonAction complex not implemented";
+      // TODO complex not implemented
     }
   }
 
   return result;
 }
 
-TextAction read_text_action(std::istream &in, const VersionLength &vl,
-                            const TextEncoding encoding) {
+svm::TextAction svm::read_text_action(std::istream &in, const VersionLength &vl,
+                                      const TextEncoding encoding) {
   TextAction result;
 
   result.point = read_int_pair(in);
@@ -290,9 +290,9 @@ TextAction read_text_action(std::istream &in, const VersionLength &vl,
   return result;
 }
 
-TextArrayAction read_text_array_action(std::istream &in,
-                                       const VersionLength &vl,
-                                       const TextEncoding encoding) {
+svm::TextArrayAction svm::read_text_array_action(std::istream &in,
+                                                 const VersionLength &vl,
+                                                 const TextEncoding encoding) {
   TextArrayAction result;
 
   result.point = read_int_pair(in);
@@ -313,9 +313,9 @@ TextArrayAction read_text_array_action(std::istream &in,
   return result;
 }
 
-StretchTextAction read_stretch_text_action(std::istream &in,
-                                           const VersionLength &vl,
-                                           const TextEncoding encoding) {
+svm::StretchTextAction
+svm::read_stretch_text_action(std::istream &in, const VersionLength &vl,
+                              const TextEncoding encoding) {
   StretchTextAction result;
 
   result.point = read_int_pair(in);
@@ -331,9 +331,9 @@ StretchTextAction read_stretch_text_action(std::istream &in,
   return result;
 }
 
-TextRectangleAction read_text_rectangle_action(std::istream &in,
-                                               const VersionLength &vl,
-                                               const TextEncoding encoding) {
+svm::TextRectangleAction
+svm::read_text_rectangle_action(std::istream &in, const VersionLength &vl,
+                                const TextEncoding encoding) {
   TextRectangleAction result;
 
   result.rectangle = read_rectangle(in);
@@ -347,8 +347,8 @@ TextRectangleAction read_text_rectangle_action(std::istream &in,
   return result;
 }
 
-TextLineAction read_text_line_action(std::istream &in,
-                                     const VersionLength &vl) {
+svm::TextLineAction svm::read_text_line_action(std::istream &in,
+                                               const VersionLength &vl) {
   TextLineAction result;
 
   result.position = read_int_pair(in);
@@ -363,4 +363,4 @@ TextLineAction read_text_line_action(std::istream &in,
   return result;
 }
 
-} // namespace odr::internal::svm
+} // namespace odr::internal

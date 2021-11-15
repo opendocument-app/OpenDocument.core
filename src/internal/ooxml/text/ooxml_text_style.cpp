@@ -5,146 +5,122 @@
 namespace odr::internal::ooxml::text {
 
 namespace {
-void resolve_text_style_(pugi::xml_node node,
-                         std::optional<TextStyle> &result) {
-  if (auto run_properties = node.child("w:rPr")) {
-    if (!result) {
-      result = TextStyle();
-    }
 
-    if (auto font_name =
-            run_properties.child("w:rFonts").attribute("w:ascii")) {
-      result->font_name = font_name.value();
-    }
-    if (auto font_size = read_half_point_attribute(
-            run_properties.child("w:sz").attribute("w:val"))) {
-      result->font_size = font_size;
-    }
-    if (auto font_weight =
-            read_font_weight_attribute(run_properties.child("w:b"))) {
-      result->font_weight = font_weight;
-    }
-    if (auto font_style =
-            read_font_style_attribute(run_properties.child("w:i"))) {
-      result->font_style = font_style;
-    }
-    if (auto font_underline =
-            read_line_attribute(run_properties.child("w:u"))) {
-      result->font_underline = font_underline;
-    }
-    if (auto font_line_through =
-            read_line_attribute(run_properties.child("w:strike"))) {
-      result->font_line_through = font_line_through;
-    }
-    if (auto font_shadow =
-            read_shadow_attribute(run_properties.child("w:shadow"))) {
-      result->font_shadow = font_shadow;
-    }
-    if (auto font_color = read_color_attribute(
-            run_properties.child("w:color").attribute("w:val"))) {
-      result->font_color = font_color;
-    }
-    if (auto background_color = read_color_attribute(
-            run_properties.child("w:highlight").attribute("w:val"))) {
-      result->background_color = background_color;
-    }
+void resolve_text_style_(pugi::xml_node node, TextStyle &result) {
+  auto run_properties = node.child("w:rPr");
+
+  if (auto font_name = run_properties.child("w:rFonts").attribute("w:ascii")) {
+    result.font_name = font_name.value();
+  }
+  if (auto font_size = read_half_point_attribute(
+          run_properties.child("w:sz").attribute("w:val"))) {
+    result.font_size = font_size;
+  }
+  if (auto font_weight =
+          read_font_weight_attribute(run_properties.child("w:b"))) {
+    result.font_weight = font_weight;
+  }
+  if (auto font_style =
+          read_font_style_attribute(run_properties.child("w:i"))) {
+    result.font_style = font_style;
+  }
+  if (auto font_underline = read_line_attribute(run_properties.child("w:u"))) {
+    result.font_underline = font_underline;
+  }
+  if (auto font_line_through =
+          read_line_attribute(run_properties.child("w:strike"))) {
+    result.font_line_through = font_line_through;
+  }
+  if (auto font_shadow =
+          read_shadow_attribute(run_properties.child("w:shadow"))) {
+    result.font_shadow = font_shadow;
+  }
+  if (auto font_color = read_color_attribute(
+          run_properties.child("w:color").attribute("w:val"))) {
+    result.font_color = font_color;
+  }
+  if (auto background_color = read_color_attribute(
+          run_properties.child("w:highlight").attribute("w:val"))) {
+    result.background_color = background_color;
   }
 }
 
-void resolve_paragraph_style_(pugi::xml_node node,
-                              std::optional<ParagraphStyle> &result) {
-  if (auto paragraph_properties = node.child("w:pPr")) {
-    if (!result) {
-      result = ParagraphStyle();
-    }
+void resolve_paragraph_style_(pugi::xml_node node, ParagraphStyle &result) {
+  auto paragraph_properties = node.child("w:pPr");
 
-    if (auto text_align =
-            read_text_align_attribute(paragraph_properties.child("w:jc"))) {
-      result->text_align = text_align;
-    }
-    if (auto margin_left = read_twips_attribute(
-            paragraph_properties.child("w:ind").attribute("w:left"))) {
-      result->margin.left = margin_left;
-    }
-    if (auto margin_left = read_twips_attribute(
-            paragraph_properties.child("w:ind").attribute("w:start"))) {
-      result->margin.left = margin_left;
-    }
-    if (auto margin_right = read_twips_attribute(
-            paragraph_properties.child("w:ind").attribute("w:right"))) {
-      result->margin.right = margin_right;
-    }
-    if (auto margin_right = read_twips_attribute(
-            paragraph_properties.child("w:ind").attribute("w:end"))) {
-      result->margin.right = margin_right;
-    }
+  if (auto text_align =
+          read_text_align_attribute(paragraph_properties.child("w:jc"))) {
+    result.text_align = text_align;
+  }
+  if (auto margin_left = read_twips_attribute(
+          paragraph_properties.child("w:ind").attribute("w:left"))) {
+    result.margin.left = margin_left;
+  }
+  if (auto margin_left = read_twips_attribute(
+          paragraph_properties.child("w:ind").attribute("w:start"))) {
+    result.margin.left = margin_left;
+  }
+  if (auto margin_right = read_twips_attribute(
+          paragraph_properties.child("w:ind").attribute("w:right"))) {
+    result.margin.right = margin_right;
+  }
+  if (auto margin_right = read_twips_attribute(
+          paragraph_properties.child("w:ind").attribute("w:end"))) {
+    result.margin.right = margin_right;
   }
 }
 
-void resolve_table_style_(pugi::xml_node node,
-                          std::optional<TableStyle> &result) {
-  if (auto table_properties = node.child("w:tblPr")) {
-    if (!result) {
-      result = TableStyle();
-    }
+void resolve_table_style_(pugi::xml_node node, TableStyle &result) {
+  auto table_properties = node.child("w:tblPr");
 
-    if (auto width = read_width_attribute(table_properties.child("w:tblW"))) {
-      result->width = width;
-    }
+  if (auto width = read_width_attribute(table_properties.child("w:tblW"))) {
+    result.width = width;
   }
 }
 
-void resolve_table_row_style_(pugi::xml_node node,
-                              std::optional<TableRowStyle> &result) {
-  if (auto table_row_properties = node.child("w:trPr")) {
-    if (!result) {
-      result = TableRowStyle();
-    }
+void resolve_table_row_style_(pugi::xml_node /*node*/,
+                              TableRowStyle & /*result*/) {
+  // TODO
+  // auto table_row_properties = node.child("w:trPr");
+}
+
+void resolve_table_cell_style_(pugi::xml_node node, TableCellStyle &result) {
+  auto table_cell_properties = node.child("w:tcPr");
+
+  if (auto width = read_width_attribute(table_cell_properties.child("w:tcW"))) {
+    // result.width = width; // TODO
+  }
+  if (auto vertical_align = read_vertical_align_attribute(
+          table_cell_properties.child("w:vAlign").attribute("w:val"))) {
+    result.vertical_align = vertical_align;
+  }
+  if (auto border_right = read_border_attribute(
+          table_cell_properties.child("w:tcBorders").child("w:right"))) {
+    result.border.right = border_right;
+  }
+  if (auto border_top = read_border_attribute(
+          table_cell_properties.child("w:tcBorders").child("w:top"))) {
+    result.border.top = border_top;
+  }
+  if (auto border_left = read_border_attribute(
+          table_cell_properties.child("w:tcBorders").child("w:left"))) {
+    result.border.left = border_left;
+  }
+  if (auto border_bottom = read_border_attribute(
+          table_cell_properties.child("w:tcBorders").child("w:bottom"))) {
+    result.border.bottom = border_bottom;
   }
 }
 
-void resolve_table_cell_style_(pugi::xml_node node,
-                               std::optional<TableCellStyle> &result) {
-  if (auto table_cell_properties = node.child("w:tcPr")) {
-    if (!result) {
-      result = TableCellStyle();
-    }
-
-    if (auto width =
-            read_width_attribute(table_cell_properties.child("w:tcW"))) {
-      // result->width = width; // TODO
-    }
-    if (auto vertical_align = read_vertical_align_attribute(
-            table_cell_properties.child("w:vAlign").attribute("w:val"))) {
-      result->vertical_align = vertical_align;
-    }
-    if (auto border_right = read_border_attribute(
-            table_cell_properties.child("w:tcBorders").child("w:right"))) {
-      result->border.right = border_right;
-    }
-    if (auto border_top = read_border_attribute(
-            table_cell_properties.child("w:tcBorders").child("w:top"))) {
-      result->border.top = border_top;
-    }
-    if (auto border_left = read_border_attribute(
-            table_cell_properties.child("w:tcBorders").child("w:left"))) {
-      result->border.left = border_left;
-    }
-    if (auto border_bottom = read_border_attribute(
-            table_cell_properties.child("w:tcBorders").child("w:bottom"))) {
-      result->border.bottom = border_bottom;
-    }
-  }
-}
-
-void resolve_graphic_style_(pugi::xml_node, std::optional<GraphicStyle> &) {
+void resolve_graphic_style_(pugi::xml_node, GraphicStyle &) {
   // TODO
 }
+
 } // namespace
 
 Style::Style(pugi::xml_node node) : m_node{node} {
   m_resolved.text_style = TextStyle();
-  m_resolved.text_style->font_size = Measure(12, DynamicUnit("pt"));
+  m_resolved.text_style.font_size = Measure(12, DynamicUnit("pt"));
 
   resolve_default_style_();
 }

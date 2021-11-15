@@ -20,6 +20,20 @@ const char *html::translate_text_align(const TextAlign text_align) {
   }
 }
 
+const char *
+html::translate_horizontal_align(const HorizontalAlign horizontal_align) {
+  switch (horizontal_align) {
+  case HorizontalAlign::left:
+    return "left";
+  case HorizontalAlign::center:
+    return "center";
+  case HorizontalAlign::right:
+    return "right";
+  default:
+    return ""; // TODO log
+  }
+}
+
 const char *html::translate_vertical_align(const VerticalAlign vertical_align) {
   switch (vertical_align) {
   case VerticalAlign::top:
@@ -189,6 +203,11 @@ html::translate_table_row_style(const TableRowStyle &table_row_style) {
 std::string
 html::translate_table_cell_style(const TableCellStyle &table_cell_style) {
   std::string result;
+  if (auto horizontal_align = table_cell_style.horizontal_align) {
+    result.append("text-align:")
+        .append(translate_horizontal_align(*horizontal_align))
+        .append(";");
+  }
   if (auto vertical_align = table_cell_style.vertical_align) {
     result.append("vertical-align:")
         .append(translate_vertical_align(*vertical_align))
@@ -229,6 +248,11 @@ html::translate_table_cell_style(const TableCellStyle &table_cell_style) {
   if (auto border_bottom = table_cell_style.border.bottom) {
     result.append("border-bottom:").append(*border_bottom).append(";");
   }
+  if (auto text_rotation = table_cell_style.text_rotation;
+      text_rotation && (*text_rotation != 0)) {
+    // TODO covers only the -90° case
+    result.append("writing-mode:vertical-lr;");
+  }
   return result;
 }
 
@@ -260,8 +284,8 @@ std::string html::translate_drawing_style(const GraphicStyle &graphic_style) {
 
 std::string html::translate_frame_properties(const Frame &frame) {
   auto text_wrap = TextWrap::run_through;
-  if (auto style = frame.style(); style && style->text_wrap) {
-    text_wrap = *style->text_wrap;
+  if (auto style = frame.style(); style.text_wrap) {
+    text_wrap = *style.text_wrap;
   }
 
   std::string result;

@@ -2,13 +2,19 @@
 #define ODR_INTERNAL_STRING_UTIL_H
 
 #include <cstdint>
+#include <functional>
 #include <string>
+#include <vector>
 
 namespace odr::internal::util::string {
 bool starts_with(const std::string &string, const std::string &with);
 bool ends_with(const std::string &string, const std::string &with);
 void replace_all(std::string &string, const std::string &search,
                  const std::string &replace);
+void split(const std::string &string, const std::string &delimiter,
+           std::function<void(const std::string &)> callback);
+std::vector<std::string> split(const std::string &string,
+                               const std::string &delimiter);
 
 std::string to_string(double d, std::uint32_t precision);
 
