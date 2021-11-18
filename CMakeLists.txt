@@ -42,9 +42,7 @@ if (NOT DEFINED CONAN_PACKAGE_NAME)
                 SETTINGS ${settings}
                 SETTINGS compiler.cppstd=17
                 ENV CC=${CMAKE_C_COMPILER}
-                ENV CXX=${CMAKE_CXX_COMPILER}
-                ENV CFLAGS="${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}"
-                ENV CXXFLAGS="${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+                ENV CXX=${CMAKE_CXX_COMPILER})
     endif ()
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
     list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
