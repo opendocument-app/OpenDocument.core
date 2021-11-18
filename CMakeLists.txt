@@ -33,6 +33,7 @@ if (NOT DEFINED CONAN_PACKAGE_NAME)
         include(cmake/conan.cmake)
         conan_cmake_configure(GENERATORS cmake)
         conan_cmake_autodetect(settings)
+        # TODO forward compiler flags
         conan_cmake_install(PATH_OR_REFERENCE ..
                 BUILD missing
                 SETTINGS ${settings}
