@@ -34,7 +34,7 @@ FetchContent_Declare(
 FetchContent_Declare(
         uchardet
         GIT_REPOSITORY https://github.com/freedesktop/uchardet.git
-        GIT_TAG v0.0.7
+        GIT_TAG d7dad54
 )
 FetchContent_Declare(
         csv-parser
