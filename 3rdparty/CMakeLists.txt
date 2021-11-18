@@ -51,6 +51,8 @@ FetchContent_Declare(
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 # miniz
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+# uchardet
+set(BUILD_BINARY OFF CACHE BOOL "" FORCE)
 
 FetchContent_GetProperties(pugixml)
 if (NOT pugixml_POPULATED)
