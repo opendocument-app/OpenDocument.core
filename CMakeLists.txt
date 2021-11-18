@@ -41,8 +41,16 @@ if (NOT DEFINED CONAN_PACKAGE_NAME)
                 ENV CXX=${CMAKE_CXX_COMPILER})
     endif ()
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
+    list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
     conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
 endif ()
+
+find_package(pugixml REQUIRED CONFIG)
+find_package(miniz REQUIRED CONFIG)
+find_package(cryptopp REQUIRED CONFIG)
+find_package(nlohmann_json REQUIRED CONFIG)
+find_package(vincentlaucsb-csv-parser REQUIRED CONFIG)
 
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
@@ -133,10 +141,10 @@ target_include_directories(odr-object
         )
 target_link_libraries(odr-object
         PRIVATE
-        CONAN_PKG::pugixml
-        CONAN_PKG::miniz
-        CONAN_PKG::cryptopp
-        CONAN_PKG::nlohmann_json
+        pugixml::pugixml
+        miniz::miniz
+        cryptopp::cryptopp
+        nlohmann_json::nlohmann_json
         )
 set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -149,10 +157,10 @@ target_include_directories(odr-static
         )
 target_link_libraries(odr-static
         PRIVATE
-        CONAN_PKG::pugixml
-        CONAN_PKG::miniz
-        CONAN_PKG::cryptopp
-        CONAN_PKG::nlohmann_json
+        pugixml::pugixml
+        miniz::miniz
+        cryptopp::cryptopp
+        nlohmann_json::nlohmann_json
         )
 
 add_library(odr-shared SHARED
@@ -164,10 +172,10 @@ target_include_directories(odr-shared
         )
 target_link_libraries(odr-shared
         PRIVATE
-        CONAN_PKG::pugixml
-        CONAN_PKG::miniz
-        CONAN_PKG::cryptopp
-        CONAN_PKG::nlohmann_json
+        pugixml::pugixml
+        miniz::miniz
+        cryptopp::cryptopp
+        nlohmann_json::nlohmann_json
         )
 
 add_subdirectory(cli)
