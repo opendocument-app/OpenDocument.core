@@ -87,7 +87,6 @@ FetchContent_GetProperties(uchardet)
 if (NOT uchardet_POPULATED)
     FetchContent_Populate(uchardet)
     add_subdirectory(${uchardet_SOURCE_DIR} ${uchardet_BINARY_DIR} EXCLUDE_FROM_ALL)
-    target_include_directories(libuchardet PUBLIC "${uchardet_SOURCE_DIR}/src")
     set_property(TARGET libuchardet PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif ()
 
