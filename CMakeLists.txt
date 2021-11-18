@@ -6,6 +6,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ODR_TEST "enable tests" ON)
 
+# TODO defining global compiler flags seems to be bad practice with conan
+# TODO consider using conan profiles
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
         CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     # using clang or gcc
@@ -30,16 +32,19 @@ endif (CCACHE_FOUND)
 
 if (NOT DEFINED CONAN_PACKAGE_NAME)
     if (NOT DEFINED CONAN_EXPORTED)
+        string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
+
         include(cmake/conan.cmake)
         conan_cmake_configure(GENERATORS cmake)
         conan_cmake_autodetect(settings)
-        # TODO forward compiler flags
         conan_cmake_install(PATH_OR_REFERENCE ..
                 BUILD missing
                 SETTINGS ${settings}
                 SETTINGS compiler.cppstd=17
                 ENV CC=${CMAKE_C_COMPILER}
-                ENV CXX=${CMAKE_CXX_COMPILER})
+                ENV CXX=${CMAKE_CXX_COMPILER}
+                ENV CFLAGS="${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}"
+                ENV CXXFLAGS="${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
     endif ()
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
     list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
