@@ -34,7 +34,7 @@ FetchContent_Declare(
 FetchContent_Declare(
         uchardet
         GIT_REPOSITORY https://github.com/freedesktop/uchardet.git
-        GIT_TAG v0.0.7
+        GIT_TAG d7dad54
 )
 FetchContent_Declare(
         csv-parser
@@ -51,6 +51,8 @@ FetchContent_Declare(
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 # miniz
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+# uchardet
+set(BUILD_BINARY OFF CACHE BOOL "" FORCE)
 
 FetchContent_GetProperties(pugixml)
 if (NOT pugixml_POPULATED)
@@ -87,7 +89,6 @@ FetchContent_GetProperties(uchardet)
 if (NOT uchardet_POPULATED)
     FetchContent_Populate(uchardet)
     add_subdirectory(${uchardet_SOURCE_DIR} ${uchardet_BINARY_DIR} EXCLUDE_FROM_ALL)
-    target_include_directories(libuchardet PUBLIC "${uchardet_SOURCE_DIR}/src")
     set_property(TARGET libuchardet PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif ()
 
