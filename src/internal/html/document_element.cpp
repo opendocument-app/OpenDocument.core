@@ -268,7 +268,6 @@ void html::translate_paragraph(DocumentCursor &cursor, std::ostream &out,
   out << "<x-p";
   out << optional_style_attribute(translate_paragraph_style(paragraph.style()));
   out << ">";
-  out << "<wbr>";
   translate_children(cursor, out, config);
   if (cursor.move_to_first_child()) {
     // TODO if element is content (e.g. bookmark does not count)
@@ -282,6 +281,7 @@ void html::translate_paragraph(DocumentCursor &cursor, std::ostream &out,
   } else {
     out << "<x-s" << text_style_attribute << "></x-s>";
   }
+  out << "<wbr>";
   out << "</x-p>";
 }
 

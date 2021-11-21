@@ -1,7 +1,6 @@
 #ifndef ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H
 #define ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H
 
-#include <internal/abstract/allocator.h>
 #include <internal/abstract/document_element.h>
 #include <pugixml.hpp>
 
@@ -13,32 +12,27 @@ class Element;
 namespace odr::internal::common {
 
 template <typename Derived>
-abstract::Element *construct(pugi::xml_node node,
-                             const abstract::Allocator &allocator) {
-  auto alloc = allocator(sizeof(Derived));
-  return new (alloc) Derived(node);
+std::unique_ptr<abstract::Element> construct(pugi::xml_node node) {
+  return std::make_unique<Derived>(node);
 }
 
 template <typename Derived, typename... Args>
-abstract::Element *construct_2(const abstract::Allocator &allocator,
-                               Args &&...args) {
-  auto alloc = allocator(sizeof(Derived));
-  return new (alloc) Derived(std::forward<Args>(args)...);
+std::unique_ptr<abstract::Element> construct_2(Args &&...args) {
+  return std::make_unique<Derived>(std::forward<Args>(args)...);
 }
 
 template <typename Derived>
-abstract::Element *construct_optional(pugi::xml_node node,
-                                      const abstract::Allocator &allocator) {
+std::unique_ptr<abstract::Element> construct_optional(pugi::xml_node node) {
   if (!node) {
-    return nullptr;
+    return {};
   }
-  return construct<Derived>(node, allocator);
+  return construct<Derived>(node);
 }
 
 template <typename ElementConstructor, typename... Args>
-abstract::Element *construct_parent_element(ElementConstructor constructor,
-                                            pugi::xml_node node,
-                                            Args &&...args) {
+std::unique_ptr<abstract::Element>
+construct_parent_element(ElementConstructor constructor, pugi::xml_node node,
+                         Args &&...args) {
   for (node = node.parent(); node; node = node.parent()) {
     if (auto result = constructor(node, std::forward<Args>(args)...)) {
       return result;
@@ -48,9 +42,9 @@ abstract::Element *construct_parent_element(ElementConstructor constructor,
 }
 
 template <typename ElementConstructor, typename... Args>
-abstract::Element *construct_first_child_element(ElementConstructor constructor,
-                                                 pugi::xml_node node,
-                                                 Args &&...args) {
+std::unique_ptr<abstract::Element>
+construct_first_child_element(ElementConstructor constructor,
+                              pugi::xml_node node, Args &&...args) {
   for (node = node.first_child(); node; node = node.next_sibling()) {
     if (auto result = constructor(node, std::forward<Args>(args)...)) {
       return result;
@@ -60,7 +54,7 @@ abstract::Element *construct_first_child_element(ElementConstructor constructor,
 }
 
 template <typename ElementConstructor, typename... Args>
-abstract::Element *
+std::unique_ptr<abstract::Element>
 construct_previous_sibling_element(ElementConstructor constructor,
                                    pugi::xml_node node, Args &&...args) {
   for (node = node.previous_sibling(); node; node = node.previous_sibling()) {
@@ -72,7 +66,7 @@ construct_previous_sibling_element(ElementConstructor constructor,
 }
 
 template <typename ElementConstructor, typename... Args>
-abstract::Element *
+std::unique_ptr<abstract::Element>
 construct_next_sibling_element(ElementConstructor constructor,
                                pugi::xml_node node, Args &&...args) {
   for (node = node.next_sibling(); node; node = node.next_sibling()) {
@@ -93,32 +87,28 @@ public:
     return m_node == *dynamic_cast<const Element &>(rhs).m_node;
   }
 
-  abstract::Element *
-  construct_parent(const abstract::Document *,
-                   const abstract::Allocator &allocator) const override {
+  std::unique_ptr<abstract::Element>
+  construct_parent(const abstract::Document *) const override {
     return common::construct_parent_element(Derived::construct_default_element,
-                                            m_node, allocator);
+                                            m_node);
   }
 
-  abstract::Element *
-  construct_first_child(const abstract::Document *,
-                        const abstract::Allocator &allocator) const override {
+  std::unique_ptr<abstract::Element>
+  construct_first_child(const abstract::Document *) const override {
     return common::construct_first_child_element(
-        Derived::construct_default_element, m_node, allocator);
+        Derived::construct_default_element, m_node);
   }
 
-  abstract::Element *construct_previous_sibling(
-      const abstract::Document *,
-      const abstract::Allocator &allocator) const override {
+  std::unique_ptr<abstract::Element>
+  construct_previous_sibling(const abstract::Document *) const override {
     return common::construct_previous_sibling_element(
-        Derived::construct_default_element, m_node, allocator);
+        Derived::construct_default_element, m_node);
   }
 
-  abstract::Element *
-  construct_next_sibling(const abstract::Document *,
-                         const abstract::Allocator &allocator) const override {
+  std::unique_ptr<abstract::Element>
+  construct_next_sibling(const abstract::Document *) const override {
     return common::construct_next_sibling_element(
-        Derived::construct_default_element, m_node, allocator);
+        Derived::construct_default_element, m_node);
   }
 
 protected:
