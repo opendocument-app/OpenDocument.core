@@ -17,7 +17,7 @@ public:
 
   [[nodiscard]] virtual FileLocation location() const noexcept = 0;
   [[nodiscard]] virtual std::size_t size() const = 0;
-  [[nodiscard]] virtual std::unique_ptr<std::istream> read() const = 0;
+  [[nodiscard]] virtual std::unique_ptr<std::istream> stream() const = 0;
 };
 
 class DecodedFile {

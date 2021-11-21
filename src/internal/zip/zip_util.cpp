@@ -82,7 +82,7 @@ Archive::Archive(const std::shared_ptr<common::DiscFile> &file)
     : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
 
 Archive::Archive(std::shared_ptr<abstract::File> file)
-    : m_file{std::move(file)}, m_data{m_file->read()} {
+    : m_file{std::move(file)}, m_data{m_file->stream()} {
   init_();
 }
 
@@ -96,7 +96,7 @@ Archive &Archive::operator=(const Archive &other) {
   if (&other != this) {
     m_zip = other.m_zip;
     m_file = other.m_file;
-    m_data = m_file->read();
+    m_data = m_file->stream();
     init_();
   }
   return *this;
@@ -138,7 +138,7 @@ std::size_t FileInZip::size() const {
   return stat.m_uncomp_size;
 }
 
-std::unique_ptr<std::istream> FileInZip::read() const {
+std::unique_ptr<std::istream> FileInZip::stream() const {
   auto iter = mz_zip_reader_extract_iter_new(m_archive->zip(), m_index, 0);
   return std::make_unique<FileInZipIstream>(m_archive, iter);
 }

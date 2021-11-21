@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <memory>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 

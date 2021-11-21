@@ -18,9 +18,9 @@ using namespace odr::internal;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
-class OutputReferenceTests : public testing::TestWithParam<std::string> {};
+using OutputReferenceTests = ::testing::TestWithParam<std::string>;
 
-TEST_P(OutputReferenceTests, all) {
+TEST_P(OutputReferenceTests, html_meta) {
   const auto test_file_path = GetParam();
   TestFile test_file = TestData::test_file(test_file_path);
   const std::string output_path = "./output/" + test_file_path;
@@ -78,7 +78,9 @@ TEST_P(OutputReferenceTests, all) {
 
   std::optional<Html> html;
 
-  if (file.file_category() == FileCategory::document) {
+  if (file.file_type() == FileType::text_file) {
+    html = OpenDocumentReader::html(file.text_file(), output_path, config);
+  } else if (file.file_category() == FileCategory::document) {
     auto document_file = file.document_file();
     auto document = document_file.document();
     html = OpenDocumentReader::html(document, output_path, config);
@@ -91,5 +93,15 @@ TEST_P(OutputReferenceTests, all) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(all, OutputReferenceTests,
-                         testing::ValuesIn(TestData::test_file_paths()));
+INSTANTIATE_TEST_SUITE_P(all_test_files, OutputReferenceTests,
+                         testing::ValuesIn(TestData::test_file_paths()),
+                         [](const ::testing::TestParamInfo<std::string> &info) {
+                           auto path = info.param;
+                           internal::util::string::replace_all(path, "/", "_");
+                           internal::util::string::replace_all(path, "-", "_");
+                           internal::util::string::replace_all(path, "+", "_");
+                           internal::util::string::replace_all(path, ".", "_");
+                           internal::util::string::replace_all(path, " ", "_");
+                           internal::util::string::replace_all(path, "$", "");
+                           return path;
+                         });

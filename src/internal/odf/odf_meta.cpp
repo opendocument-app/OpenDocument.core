@@ -69,7 +69,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
 
   if (filesystem.is_file("mimetype")) {
     const auto mimeType =
-        util::stream::read(*filesystem.open("mimetype")->read());
+        util::stream::read(*filesystem.open("mimetype")->stream());
     lookup_file_type(mimeType, result.type);
   }
 

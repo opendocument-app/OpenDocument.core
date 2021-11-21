@@ -228,7 +228,7 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
 } // namespace
 
 void Translator::svg(const SvmFile &file, std::ostream &out) {
-  auto istream = file.file()->read();
+  auto istream = file.file()->stream();
   auto &in = *istream;
 
   Context context;

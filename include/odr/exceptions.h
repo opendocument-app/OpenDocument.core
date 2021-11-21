@@ -52,6 +52,14 @@ struct CfbFileCorrupted : public CfbError {
   CfbFileCorrupted();
 };
 
+struct NoTextFile final : public std::runtime_error {
+  NoTextFile();
+};
+
+struct UnknownCharset final : public std::runtime_error {
+  UnknownCharset();
+};
+
 struct NoImageFile final : public std::runtime_error {
   NoImageFile();
 };

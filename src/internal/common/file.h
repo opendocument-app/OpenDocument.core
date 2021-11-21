@@ -24,7 +24,7 @@ public:
   [[nodiscard]] std::size_t size() const final;
 
   [[nodiscard]] common::Path path() const;
-  [[nodiscard]] std::unique_ptr<std::istream> read() const final;
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
 private:
   common::Path m_path;
@@ -52,7 +52,7 @@ public:
   [[nodiscard]] std::size_t size() const final;
 
   [[nodiscard]] const std::string &content() const;
-  [[nodiscard]] std::unique_ptr<std::istream> read() const final;
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
 private:
   std::string m_data;

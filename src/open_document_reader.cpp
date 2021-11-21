@@ -56,6 +56,8 @@ OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
     return FileType::bitmap_image_file;
   } else if (extension == "svm") {
     return FileType::starview_metafile;
+  } else if (extension == "txt") {
+    return FileType::text_file;
   }
   return FileType::unknown;
 }
@@ -83,6 +85,10 @@ OpenDocumentReader::category_by_type(const FileType type) noexcept {
   case FileType::bitmap_image_file:
   case FileType::starview_metafile:
     return FileCategory::image;
+  case FileType::text_file:
+  case FileType::comma_separated_values:
+  case FileType::markdown:
+    return FileCategory::text;
   default:
     return FileCategory::unknown;
   }
@@ -126,6 +132,8 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
     return "bmp";
   case FileType::starview_metafile:
     return "svm";
+  case FileType::text_file:
+    return "txt";
   default:
     return "unnamed";
   }
@@ -136,7 +144,9 @@ Html OpenDocumentReader::html(const std::string &path, const char *password,
                               const HtmlConfig &config) {
   DecodedFile file(path);
 
-  if (file.file_category() == FileCategory::document) {
+  if (file.file_type() == FileType::text_file) {
+    return html(file.text_file(), output_path, config);
+  } else if (file.file_category() == FileCategory::document) {
     auto document_file = file.document_file();
     if (document_file.password_encrypted()) {
       if ((password == nullptr) || !document_file.decrypt(password)) {
@@ -147,6 +157,12 @@ Html OpenDocumentReader::html(const std::string &path, const char *password,
   }
 
   throw UnknownFileType();
+}
+
+Html OpenDocumentReader::html(const TextFile &text_file,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
+  return html::translate(text_file, output_path, config);
 }
 
 Html OpenDocumentReader::html(const Document &document,

@@ -35,7 +35,7 @@ pugi::xml_document xml::parse(const abstract::ReadableFilesystem &filesystem,
   if (!file) {
     throw FileNotFound();
   }
-  const auto success = result.load(*file->read());
+  const auto success = result.load(*file->stream());
   if (!success) {
     throw NoXml();
   }
