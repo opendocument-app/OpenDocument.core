@@ -23,7 +23,7 @@ Html html::translate_text_file(const TextFile &text_file,
   out << "<style>";
   // TODO style
   out << "*{font-family:monospace;}";
-  out << "td{white-space:nowrap;padding-left:10px;padding-right:10px;}";
+  out << "td{padding-left:10px;padding-right:10px;}";
   out << "</style>";
   out << "</head>";
 
