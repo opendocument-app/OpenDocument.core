@@ -4,11 +4,9 @@
 using namespace odr;
 
 TEST(OpenDocumentReader, version) {
-  // TODO check if not empty
-  EXPECT_EQ("", OpenDocumentReader::version());
+  EXPECT_FALSE(OpenDocumentReader::version().empty());
 }
 
 TEST(OpenDocumentReader, commit) {
-  // TODO check if not empty
-  EXPECT_EQ("", OpenDocumentReader::commit());
+  EXPECT_FALSE(OpenDocumentReader::commit().empty());
 }

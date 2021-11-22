@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.12.4)
-project(odr C CXX)
+project(odr
+        VERSION 2.0.0
+        LANGUAGES C CXX
+        )
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -30,6 +33,12 @@ endif (CCACHE_FOUND)
 
 add_subdirectory(3rdparty)
 
+configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
+
+set(PRE_CONFIGURE_FILE "src/internal/git_info.cpp.in")
+set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp")
+include(cmake/git_watcher.cmake)
+
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
 
@@ -46,11 +55,13 @@ add_library(odr-object OBJECT
         src/quantity.cpp
         src/style.cpp
 
+        ${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/src/internal/project_info.cpp
+
         src/internal/cfb/cfb_archive.cpp
         src/internal/cfb/cfb_impl.cpp
         src/internal/cfb/cfb_util.cpp
 
-        src/internal/common/constants.cpp
         src/internal/common/document_cursor.cpp
         src/internal/common/document_path.cpp
         src/internal/common/file.cpp
@@ -115,6 +126,7 @@ add_library(odr-object OBJECT
         src/internal/zip/zip_util.cpp
         src/internal/zip/zip_archive.cpp
         )
+add_dependencies(odr-object check_git)
 target_include_directories(odr-object
         PUBLIC
         include
