@@ -1,5 +1,6 @@
-#include <internal/common/constants.h>
+#include <internal/git_info.h>
 #include <internal/html/document.h>
+#include <internal/project_info.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -9,11 +10,11 @@
 namespace odr {
 
 std::string OpenDocumentReader::version() noexcept {
-  return internal::common::constants::version();
+  return internal::project_info::version();
 }
 
 std::string OpenDocumentReader::commit() noexcept {
-  return internal::common::constants::commit();
+  return internal::git_info::commit();
 }
 
 FileType
