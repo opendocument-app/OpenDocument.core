@@ -5,6 +5,7 @@
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
+#include <sstream>
 
 namespace odr::internal {
 
@@ -41,7 +42,11 @@ Html html::translate_text_file(const TextFile &text_file,
       out << "<tr><td style=\"text-align:right;user-select:none;\">" << line
           << "</td>";
       out << "<td>";
-      util::stream::getline(*in, out);
+
+      std::ostringstream ss_out;
+      util::stream::getline(*in, ss_out);
+      out << escape_text(ss_out.str());
+
       out << "</td></tr>";
       if (in->eof()) {
         break;
