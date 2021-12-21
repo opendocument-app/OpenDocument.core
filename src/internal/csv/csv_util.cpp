@@ -5,14 +5,21 @@
 namespace odr::internal {
 
 void csv::check_csv_file(std::istream &in) {
-  // TODO limit check size
-  ::csv::CSVReader parser;
-  // TODO feed in junks
+  // TODO it might be better to read the file from disk to decide on the format
+  // https://github.com/vincentlaucsb/csv-parser#memory-mapped-files-vs-streams
+
+  ::csv::CSVFormat format;
+  // TODO safe to say a CSV with variable columns is invalid?
+  format.variable_columns(::csv::VariableColumnPolicy::THROW);
+
+  ::csv::CSVReader parser(format);
+  // TODO feed in junks; limit check size
   parser.feed(util::stream::read(in));
   parser.end_feed();
-  // TODO check if that even works; if not we have to write the CSV to disk
-  // first
-  // https://github.com/vincentlaucsb/csv-parser#memory-mapped-files-vs-streams
+
+  // this will actually check `variable_columns`
+  for (auto &&_ : parser) {
+  }
 }
 
 } // namespace odr::internal
