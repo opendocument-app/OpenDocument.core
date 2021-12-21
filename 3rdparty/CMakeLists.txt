@@ -97,6 +97,7 @@ if (NOT csv-parser_POPULATED)
     set(CSV_DEVELOPER FALSE CACHE BOOL "" FORCE)
     add_subdirectory(${csv-parser_SOURCE_DIR} ${csv-parser_BINARY_DIR} EXCLUDE_FROM_ALL)
     target_include_directories(csv PUBLIC "${csv-parser_SOURCE_DIR}/include")
+    set_property(TARGET csv PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif ()
 
 if (ODR_TEST)
