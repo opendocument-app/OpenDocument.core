@@ -74,6 +74,9 @@ add_library(odr-object OBJECT
 
         src/internal/crypto/crypto_util.cpp
 
+        src/internal/csv/csv_file.cpp
+        src/internal/csv/csv_util.cpp
+
         src/internal/html/common.cpp
         src/internal/html/css_writer.cpp
         src/internal/html/document.cpp
@@ -81,6 +84,9 @@ add_library(odr-object OBJECT
         src/internal/html/document_element.cpp
         src/internal/html/html_writer.cpp
         src/internal/html/text_file.cpp
+
+        src/internal/json/json_file.cpp
+        src/internal/json/json_util.cpp
 
         src/internal/odf/odf_crypto.cpp
         src/internal/odf/odf_cursor.cpp
@@ -140,6 +146,7 @@ target_link_libraries(odr-object
         cryptopp-static
         nlohmann_json::nlohmann_json
         libuchardet
+        csv
         )
 set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -157,6 +164,7 @@ target_link_libraries(odr-static
         cryptopp-static
         nlohmann_json::nlohmann_json
         libuchardet
+        csv
         )
 
 add_library(odr-shared SHARED
@@ -173,6 +181,7 @@ target_link_libraries(odr-shared
         cryptopp-static
         nlohmann_json::nlohmann_json
         libuchardet
+        csv
         )
 
 add_subdirectory(cli)

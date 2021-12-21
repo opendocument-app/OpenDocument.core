@@ -25,6 +25,9 @@ add_executable(odr_test
         src/internal/common/table_position_test.cpp
         src/internal/common/table_range_test.cpp
 
+        src/internal/csv/csv_file_test.cpp
+        src/internal/csv/csv_test.cpp
+
         src/internal/ooxml/ooxml_crypto_test.cpp
 
         src/internal/svm/svm_test.cpp
