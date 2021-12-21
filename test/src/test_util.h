@@ -1,7 +1,6 @@
 #ifndef ODR_TEST_META_H
 #define ODR_TEST_META_H
 
-#include <nlohmann/json.hpp>
 #include <odr/file.h>
 #include <string>
 #include <unordered_map>

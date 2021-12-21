@@ -52,6 +52,8 @@ enum class FileType {
   text_file,
   // https://en.wikipedia.org/wiki/Comma-separated_values
   comma_separated_values,
+  // https://en.wikipedia.org/wiki/JSON
+  javascript_object_notation,
   // https://en.wikipedia.org/wiki/Markdown
   markdown,
 
