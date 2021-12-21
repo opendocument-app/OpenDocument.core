@@ -21,3 +21,8 @@ TEST(CsvFile, txt) {
                    std::make_shared<internal::text::TextFile>(file.impl())),
                std::runtime_error);
 }
+
+TEST(CsvFile, csv) {
+  File file(
+      TestData::test_file_path("odr-public/csv/file_example_ODS_5000.csv"));
+}
