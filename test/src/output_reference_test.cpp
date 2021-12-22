@@ -27,23 +27,17 @@ TEST_P(OutputReferenceTests, html_meta) {
 
   std::cout << test_file.path << " to " << output_path << std::endl;
 
-  if ((test_file.type == FileType::zip) ||
-      (test_file.type == FileType::portable_document_format)) {
-    GTEST_SKIP();
-  }
+  // TODO compare guessed file type VS actual file type
 
-  // TODO remove
+  // these files cannot be opened
   if (util::string::ends_with(test_file.path, ".sxw") ||
+      (test_file.type == FileType::portable_document_format) ||
       (test_file.type == FileType::legacy_word_document) ||
       (test_file.type == FileType::legacy_powerpoint_presentation) ||
       (test_file.type == FileType::legacy_excel_worksheets) ||
       (test_file.type == FileType::starview_metafile)) {
     GTEST_SKIP();
   }
-
-  HtmlConfig config;
-  config.editable = true;
-  config.spreadsheet_limit = TableDimensions(4000, 500);
 
   const DecodedFile file{test_file.path};
 
@@ -52,6 +46,12 @@ TEST_P(OutputReferenceTests, html_meta) {
   // encrypted ooxml type cannot be inspected
   if ((file.file_type() != FileType::office_open_xml_encrypted)) {
     EXPECT_EQ(test_file.type, file.file_type());
+  }
+
+  if ((test_file.type == FileType::zip) ||
+      (test_file.type == FileType::comma_separated_values) ||
+      (test_file.type == FileType::javascript_object_notation)) {
+    GTEST_SKIP();
   }
 
   if (file.file_category() == FileCategory::document) {
@@ -76,6 +76,9 @@ TEST_P(OutputReferenceTests, html_meta) {
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
+  HtmlConfig config;
+  config.editable = true;
+  config.spreadsheet_limit = TableDimensions(4000, 500);
   std::optional<Html> html;
 
   if (file.file_type() == FileType::text_file) {

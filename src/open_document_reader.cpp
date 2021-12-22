@@ -59,6 +59,10 @@ OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
     return FileType::starview_metafile;
   } else if (extension == "txt") {
     return FileType::text_file;
+  } else if (extension == "csv") {
+    return FileType::comma_separated_values;
+  } else if (extension == "json") {
+    return FileType::javascript_object_notation;
   }
   return FileType::unknown;
 }
@@ -88,6 +92,7 @@ OpenDocumentReader::category_by_type(const FileType type) noexcept {
     return FileCategory::image;
   case FileType::text_file:
   case FileType::comma_separated_values:
+  case FileType::javascript_object_notation:
   case FileType::markdown:
     return FileCategory::text;
   default:
@@ -135,6 +140,10 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
     return "svm";
   case FileType::text_file:
     return "txt";
+  case FileType::comma_separated_values:
+    return "csv";
+  case FileType::javascript_object_notation:
+    return "json";
   default:
     return "unnamed";
   }
