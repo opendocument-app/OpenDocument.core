@@ -33,31 +33,28 @@ if (CCACHE_FOUND)
     message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
-if (NOT DEFINED CONAN_PACKAGE_NAME)
-    if (NOT DEFINED CONAN_EXPORTED)
-        string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
-
-        include(cmake/conan.cmake)
-        conan_cmake_configure(GENERATORS cmake)
-        conan_cmake_autodetect(settings)
-        conan_cmake_install(PATH_OR_REFERENCE ..
-                BUILD missing
-                SETTINGS ${settings}
-                SETTINGS compiler.cppstd=17
-                ENV CC=${CMAKE_C_COMPILER}
-                ENV CXX=${CMAKE_CXX_COMPILER})
-    endif ()
-    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-    list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
-    list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
-    conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+if (NOT DEFINED CONAN_EXPORTED)
+    include(cmake/conan.cmake)
+    conan_cmake_configure(GENERATORS cmake)
+    conan_cmake_autodetect(settings)
+    conan_cmake_install(PATH_OR_REFERENCE ..
+            BUILD missing
+            SETTINGS ${settings}
+            SETTINGS compiler.cppstd=17
+            ENV CC=${CMAKE_C_COMPILER}
+            ENV CXX=${CMAKE_CXX_COMPILER})
+    #include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    #conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+    include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
 endif ()
 
-find_package(pugixml REQUIRED CONFIG)
-find_package(miniz REQUIRED CONFIG)
-find_package(cryptopp REQUIRED CONFIG)
-find_package(nlohmann_json REQUIRED CONFIG)
-find_package(vincentlaucsb-csv-parser REQUIRED CONFIG)
+find_package(pugixml REQUIRED)
+find_package(miniz REQUIRED)
+find_package(cryptopp REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(vincentlaucsb-csv-parser REQUIRED)
+find_package(uchardet REQUIRED)
+find_package(GTest REQUIRED)
 
 configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
 
@@ -171,8 +168,8 @@ target_link_libraries(odr-object
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        libuchardet
-        csv
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
         )
 set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -189,8 +186,8 @@ target_link_libraries(odr-static
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        libuchardet
-        csv
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
         )
 
 add_library(odr-shared SHARED
@@ -206,8 +203,8 @@ target_link_libraries(odr-shared
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        libuchardet
-        csv
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
         )
 
 add_subdirectory(cli)

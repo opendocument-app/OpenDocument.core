@@ -1,6 +1,3 @@
-find_package(GTest REQUIRED CONFIG)
-find_package(Threads REQUIRED)
-
 include(GoogleTest REQUIRED)
 
 set(ODR_TEST_DATA_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/data)
@@ -53,7 +50,9 @@ target_link_libraries(odr_test
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
-        GTest::GTest
+        uchardet::uchardet
+        GTest::gtest
+        GTest::gtest_main
 
         odr-static
         )
