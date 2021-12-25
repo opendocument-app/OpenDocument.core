@@ -13,7 +13,7 @@ void csv::check_csv_file(std::istream &in) {
   format.variable_columns(::csv::VariableColumnPolicy::THROW);
 
   // TODO feed in junks; limit check size
-  auto parser = ::csv::parse(util::stream::read(in));
+  auto parser = ::csv::parse(util::stream::read(in), format);
 
   // this will actually check `variable_columns`
   for (auto &&_ : parser) {

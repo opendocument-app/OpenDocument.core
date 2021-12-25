@@ -35,8 +35,8 @@ TEST(Csv, CSVReader_txt) {
   csv::CSVReader reader(path);
   const auto format = reader.get_format();
 
-  EXPECT_EQ(0, format.get_header());
+  EXPECT_EQ(1, format.get_header());
   EXPECT_EQ(',', format.get_delim());
   EXPECT_EQ(0, reader.n_rows());
-  EXPECT_EQ(6, reader.get_col_names().size());
+  EXPECT_EQ(12, reader.get_col_names().size());
 }
