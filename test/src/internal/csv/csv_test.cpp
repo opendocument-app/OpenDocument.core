@@ -23,7 +23,7 @@ TEST(Csv, CSVReader_csv) {
 
   EXPECT_EQ(0, format.get_header());
   EXPECT_EQ(',', format.get_delim());
-  EXPECT_EQ(0, reader.num_rows);
+  EXPECT_EQ(0, reader.n_rows());
   EXPECT_EQ(8, reader.get_col_names().size());
 }
 
@@ -37,6 +37,6 @@ TEST(Csv, CSVReader_txt) {
 
   EXPECT_EQ(0, format.get_header());
   EXPECT_EQ(',', format.get_delim());
-  EXPECT_EQ(0, reader.num_rows);
+  EXPECT_EQ(0, reader.n_rows());
   EXPECT_EQ(6, reader.get_col_names().size());
 }
