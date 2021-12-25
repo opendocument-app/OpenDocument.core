@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 #include <magic.h>
-#include <memory>
 #include <odr/file.h>
 #include <test_util.h>
 

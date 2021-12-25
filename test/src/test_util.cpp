@@ -39,8 +39,8 @@ std::vector<TestFile> get_test_files(const std::string &input) {
 
   std::vector<TestFile> result;
 
-  if (const std::string index = input + "/index.csv";
-      fs::is_regular_file(index)) {
+  const std::string index = input + "/index.csv";
+  if (fs::is_regular_file(index)) {
     for (auto &&row : csv::CSVReader(index)) {
       const std::string path = input + "/" + row["path"].get<>();
       const FileType type =
@@ -62,6 +62,10 @@ std::vector<TestFile> get_test_files(const std::string &input) {
       continue;
     }
     const std::string path = p.path().string();
+    if (path == index) {
+      continue;
+    }
+
     if (const auto it =
             std::find_if(std::begin(result), std::end(result),
                          [&](auto &&file) { return file.path == path; });
