@@ -6,6 +6,10 @@
 #include <odr/file.h>
 #include <string>
 
+namespace odr::internal::common {
+class Path;
+}
+
 namespace odr::internal::abstract {
 class Image;
 class Archive;
@@ -18,6 +22,28 @@ public:
   [[nodiscard]] virtual FileLocation location() const noexcept = 0;
   [[nodiscard]] virtual std::size_t size() const = 0;
   [[nodiscard]] virtual std::unique_ptr<std::istream> stream() const = 0;
+};
+
+class DiskFile : public File {
+public:
+  virtual ~DiskFile() = default;
+
+  [[nodiscard]] virtual FileLocation location() const noexcept final {
+    return FileLocation::disc;
+  }
+
+  [[nodiscard]] virtual common::Path path() const = 0;
+};
+
+class MemoryFile : public File {
+public:
+  virtual ~MemoryFile() = default;
+
+  [[nodiscard]] virtual FileLocation location() const noexcept final {
+    return FileLocation::memory;
+  }
+
+  [[nodiscard]] virtual const char *data() const = 0;
 };
 
 class DecodedFile {

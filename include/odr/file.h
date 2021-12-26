@@ -79,10 +79,8 @@ enum class FileCategory {
 };
 
 enum class FileLocation {
-  unknown,
   memory,
   disc,
-  network,
 };
 
 enum class EncryptionState {

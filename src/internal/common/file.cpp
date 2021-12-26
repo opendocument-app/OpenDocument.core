@@ -11,50 +11,48 @@
 
 namespace odr::internal::common {
 
-DiscFile::DiscFile(const char *path) : DiscFile{common::Path(path)} {}
+DiskFile::DiskFile(const char *path) : DiskFile{common::Path(path)} {}
 
-DiscFile::DiscFile(const std::string &path) : DiscFile{common::Path(path)} {}
+DiskFile::DiskFile(const std::string &path) : DiskFile{common::Path(path)} {}
 
-DiscFile::DiscFile(common::Path path) : m_path{std::move(path)} {
+DiskFile::DiskFile(common::Path path) : m_path{std::move(path)} {
   if (!std::filesystem::is_regular_file(m_path)) {
     throw FileNotFound();
   }
 }
 
-FileLocation DiscFile::location() const noexcept { return FileLocation::disc; }
-
-std::size_t DiscFile::size() const {
+std::size_t DiskFile::size() const {
   return std::filesystem::file_size(m_path.string());
 }
 
-common::Path DiscFile::path() const { return m_path; }
-
-std::unique_ptr<std::istream> DiscFile::stream() const {
+std::unique_ptr<std::istream> DiskFile::stream() const {
   return std::make_unique<std::ifstream>(m_path.string(),
                                          std::ifstream::binary);
 }
 
-TemporaryDiscFile::TemporaryDiscFile(const char *path) : DiscFile{path} {}
+common::Path DiskFile::path() const { return m_path; }
 
-TemporaryDiscFile::TemporaryDiscFile(std::string path)
-    : DiscFile{std::move(path)} {}
+TemporaryDiskFile::TemporaryDiskFile(const char *path) : DiskFile{path} {}
 
-TemporaryDiscFile::TemporaryDiscFile(common::Path path)
-    : DiscFile{std::move(path)} {}
+TemporaryDiskFile::TemporaryDiskFile(std::string path)
+    : DiskFile{std::move(path)} {}
 
-TemporaryDiscFile::TemporaryDiscFile(const TemporaryDiscFile &) = default;
+TemporaryDiskFile::TemporaryDiskFile(common::Path path)
+    : DiskFile{std::move(path)} {}
 
-TemporaryDiscFile::TemporaryDiscFile(TemporaryDiscFile &&) noexcept = default;
+TemporaryDiskFile::TemporaryDiskFile(const TemporaryDiskFile &) = default;
 
-TemporaryDiscFile::~TemporaryDiscFile() {
+TemporaryDiskFile::TemporaryDiskFile(TemporaryDiskFile &&) noexcept = default;
+
+TemporaryDiskFile::~TemporaryDiskFile() {
   std::filesystem::remove(path().string());
 }
 
-TemporaryDiscFile &
-TemporaryDiscFile::operator=(const TemporaryDiscFile &) = default;
+TemporaryDiskFile &
+TemporaryDiskFile::operator=(const TemporaryDiskFile &) = default;
 
-TemporaryDiscFile &
-TemporaryDiscFile::operator=(TemporaryDiscFile &&) noexcept = default;
+TemporaryDiskFile &
+TemporaryDiskFile::operator=(TemporaryDiskFile &&) noexcept = default;
 
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
 
@@ -67,16 +65,14 @@ MemoryFile::MemoryFile(const abstract::File &file) : m_data(file.size(), ' ') {
   }
 }
 
-FileLocation MemoryFile::location() const noexcept {
-  return FileLocation::memory;
-}
-
 std::size_t MemoryFile::size() const { return m_data.size(); }
-
-const std::string &MemoryFile::content() const { return m_data; }
 
 std::unique_ptr<std::istream> MemoryFile::stream() const {
   return std::make_unique<std::istringstream>(m_data);
 }
+
+const std::string &MemoryFile::content() const { return m_data; }
+
+const char *MemoryFile::data() const { return m_data.data(); }
 
 } // namespace odr::internal::common

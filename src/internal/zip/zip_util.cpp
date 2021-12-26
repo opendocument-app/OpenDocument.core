@@ -78,7 +78,7 @@ FileInZipIstream::FileInZipIstream(std::shared_ptr<Archive> archive,
 Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)
     : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
 
-Archive::Archive(const std::shared_ptr<common::DiscFile> &file)
+Archive::Archive(const std::shared_ptr<common::DiskFile> &file)
     : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
 
 Archive::Archive(std::shared_ptr<abstract::File> file)
