@@ -54,6 +54,7 @@ find_package(cryptopp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
+find_package(pdf2htmlEX REQUIRED)
 find_package(GTest REQUIRED)
 
 configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
@@ -106,6 +107,7 @@ add_library(odr-object OBJECT
         src/internal/html/document_style.cpp
         src/internal/html/document_element.cpp
         src/internal/html/html_writer.cpp
+        src/internal/html/pdf_file.cpp
         src/internal/html/text_file.cpp
 
         src/internal/json/json_file.cpp
@@ -137,6 +139,8 @@ add_library(odr-object OBJECT
         src/internal/ooxml/ooxml_file.cpp
         src/internal/ooxml/ooxml_meta.cpp
         src/internal/ooxml/ooxml_util.cpp
+
+        src/internal/pdf/pdf_file.cpp
 
         src/internal/svm/svm_file.cpp
         src/internal/svm/svm_format.cpp
@@ -170,6 +174,7 @@ target_link_libraries(odr-object
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
+        pdf2htmlEX::pdf2htmlEX
         )
 set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -188,6 +193,7 @@ target_link_libraries(odr-static
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
+        pdf2htmlEX::pdf2htmlEX
         )
 
 add_library(odr-shared SHARED
@@ -205,6 +211,7 @@ target_link_libraries(odr-shared
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
+        pdf2htmlEX::pdf2htmlEX
         )
 
 add_subdirectory(cli)

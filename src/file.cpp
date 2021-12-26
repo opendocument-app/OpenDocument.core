@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <internal/abstract/file.h>
 #include <internal/common/file.h>
+#include <internal/pdf/pdf_file.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -158,5 +159,10 @@ DocumentMeta DocumentFile::document_meta() const {
 }
 
 Document DocumentFile::document() const { return Document(m_impl->document()); }
+
+PdfFile::PdfFile(std::shared_ptr<internal::pdf::PdfFile> impl)
+    : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+std::shared_ptr<internal::pdf::PdfFile> PdfFile::impl() const { return m_impl; }
 
 } // namespace odr

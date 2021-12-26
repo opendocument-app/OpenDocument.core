@@ -29,6 +29,8 @@ add_executable(odr_test
 
         src/internal/ooxml/ooxml_crypto_test.cpp
 
+        src/internal/pdf/pdf_file_test.cpp
+
         src/internal/svm/svm_test.cpp
 
         src/internal/text/text_file_test.cpp
@@ -51,6 +53,7 @@ target_link_libraries(odr_test
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
+        pdf2htmlEX::pdf2htmlEX
         GTest::gtest
         GTest::gtest_main
 

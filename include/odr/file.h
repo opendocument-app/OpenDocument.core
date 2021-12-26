@@ -15,6 +15,10 @@ class ImageFile;
 class DocumentFile;
 } // namespace odr::internal::abstract
 
+namespace odr::internal::pdf {
+class PdfFile;
+} // namespace odr::internal::pdf
+
 namespace odr {
 class TextFile;
 class ImageFile;
@@ -121,7 +125,7 @@ struct FileMeta final {
 
 class File final {
 public:
-  explicit File(std::shared_ptr<internal::abstract::File>);
+  explicit File(std::shared_ptr<internal::abstract::File> impl);
   explicit File(const std::string &path);
 
   [[nodiscard]] FileLocation location() const noexcept;
@@ -141,7 +145,7 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile>);
+  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
   explicit DecodedFile(const std::string &path);
   DecodedFile(const std::string &path, FileType as);
 
@@ -159,7 +163,7 @@ protected:
 
 class TextFile final : public DecodedFile {
 public:
-  explicit TextFile(std::shared_ptr<internal::abstract::TextFile>);
+  explicit TextFile(std::shared_ptr<internal::abstract::TextFile> impl);
 
   [[nodiscard]] std::optional<std::string> charset() const;
 
@@ -185,7 +189,7 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
+  explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile> impl);
   explicit DocumentFile(const std::string &path);
 
   [[nodiscard]] bool password_encrypted() const;
@@ -199,6 +203,17 @@ public:
 
 private:
   std::shared_ptr<internal::abstract::DocumentFile> m_impl;
+};
+
+class PdfFile final : public DecodedFile {
+public:
+  explicit PdfFile(std::shared_ptr<internal::pdf::PdfFile> impl);
+
+  // TODO `impl()` might be a bit dirty
+  [[nodiscard]] std::shared_ptr<internal::pdf::PdfFile> impl() const;
+
+private:
+  std::shared_ptr<internal::pdf::PdfFile> m_impl;
 };
 
 } // namespace odr
