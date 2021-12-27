@@ -56,11 +56,11 @@ TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
     std::string file_name = m_random_file_name_generator();
     file_path = m_directory.join(file_name);
 
-    file.open(file_path, std::ios_base::in | std::ios_base::out);
+    file.open(file_path.string(), std::ios_base::in | std::ios_base::out);
 
     if (!file.is_open()) {
       file.clear();
-      file.open(file_path, std::ios_base::out);
+      file.open(file_path.string(), std::ios_base::out);
       break;
     }
 
