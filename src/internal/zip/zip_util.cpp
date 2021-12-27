@@ -138,6 +138,10 @@ std::size_t FileInZip::size() const {
   return stat.m_uncomp_size;
 }
 
+std::optional<common::Path> FileInZip::disk_path() const { return {}; }
+
+const char *FileInZip::memory_data() const { return nullptr; }
+
 std::unique_ptr<std::istream> FileInZip::stream() const {
   auto iter = mz_zip_reader_extract_iter_new(m_archive->zip(), m_index, 0);
   return std::make_unique<FileInZipIstream>(m_archive, iter);

@@ -21,16 +21,20 @@ DiskFile::DiskFile(common::Path path) : m_path{std::move(path)} {
   }
 }
 
+FileLocation DiskFile::location() const noexcept { return FileLocation::disk; }
+
 std::size_t DiskFile::size() const {
   return std::filesystem::file_size(m_path.string());
 }
+
+std::optional<common::Path> DiskFile::disk_path() const { return m_path; }
+
+const char *DiskFile::memory_data() const { return nullptr; }
 
 std::unique_ptr<std::istream> DiskFile::stream() const {
   return std::make_unique<std::ifstream>(m_path.string(),
                                          std::ifstream::binary);
 }
-
-common::Path DiskFile::path() const { return m_path; }
 
 TemporaryDiskFile::TemporaryDiskFile(const char *path) : DiskFile{path} {}
 
@@ -45,7 +49,7 @@ TemporaryDiskFile::TemporaryDiskFile(const TemporaryDiskFile &) = default;
 TemporaryDiskFile::TemporaryDiskFile(TemporaryDiskFile &&) noexcept = default;
 
 TemporaryDiskFile::~TemporaryDiskFile() {
-  std::filesystem::remove(path().string());
+  std::filesystem::remove(disk_path()->string());
 }
 
 TemporaryDiskFile &
@@ -65,14 +69,20 @@ MemoryFile::MemoryFile(const abstract::File &file) : m_data(file.size(), ' ') {
   }
 }
 
+FileLocation MemoryFile::location() const noexcept {
+  return FileLocation::disk;
+}
+
 std::size_t MemoryFile::size() const { return m_data.size(); }
+
+std::optional<common::Path> MemoryFile::disk_path() const { return {}; }
+
+const char *MemoryFile::memory_data() const { return m_data.data(); }
 
 std::unique_ptr<std::istream> MemoryFile::stream() const {
   return std::make_unique<std::istringstream>(m_data);
 }
 
 const std::string &MemoryFile::content() const { return m_data; }
-
-const char *MemoryFile::data() const { return m_data.data(); }
 
 } // namespace odr::internal::common

@@ -80,7 +80,7 @@ enum class FileCategory {
 
 enum class FileLocation {
   memory,
-  disc,
+  disk,
 };
 
 enum class EncryptionState {
@@ -124,6 +124,10 @@ public:
 
   [[nodiscard]] FileLocation location() const noexcept;
   [[nodiscard]] std::size_t size() const;
+
+  [[nodiscard]] std::optional<std::string> disk_path() const;
+  [[nodiscard]] const char *memory_data() const;
+
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
 
   // TODO `impl()` might be a bit dirty

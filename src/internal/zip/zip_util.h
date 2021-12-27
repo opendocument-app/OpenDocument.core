@@ -49,6 +49,10 @@ public:
 
   [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
+
+  [[nodiscard]] std::optional<common::Path> disk_path() const final;
+  [[nodiscard]] const char *memory_data() const final;
+
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
 private:

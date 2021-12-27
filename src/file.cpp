@@ -33,6 +33,15 @@ FileLocation File::location() const noexcept { return m_impl->location(); }
 
 std::size_t File::size() const { return m_impl->size(); }
 
+std::optional<std::string> File::disk_path() const {
+  if (auto path = m_impl->disk_path()) {
+    return path->string();
+  }
+  return {};
+}
+
+const char *File::memory_data() const { return m_impl->memory_data(); }
+
 std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
 
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
