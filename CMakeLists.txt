@@ -67,10 +67,12 @@ add_library(odr-object OBJECT
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
         src/internal/common/path.cpp
+        src/internal/common/random.cpp
         src/internal/common/style.cpp
         src/internal/common/table_cursor.cpp
         src/internal/common/table_position.cpp
         src/internal/common/table_range.cpp
+        src/internal/common/temporary_file.cpp
 
         src/internal/crypto/crypto_util.cpp
 

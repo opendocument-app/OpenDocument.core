@@ -27,11 +27,20 @@ File::File(std::shared_ptr<internal::abstract::File> impl)
     : m_impl{std::move(impl)} {}
 
 File::File(const std::string &path)
-    : m_impl{std::make_shared<internal::common::DiscFile>(path)} {}
+    : m_impl{std::make_shared<internal::common::DiskFile>(path)} {}
 
 FileLocation File::location() const noexcept { return m_impl->location(); }
 
 std::size_t File::size() const { return m_impl->size(); }
+
+std::optional<std::string> File::disk_path() const {
+  if (auto path = m_impl->disk_path()) {
+    return path->string();
+  }
+  return {};
+}
+
+const char *File::memory_data() const { return m_impl->memory_data(); }
 
 std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
 
@@ -39,7 +48,7 @@ std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
 std::vector<FileType> DecodedFile::types(const std::string &path) {
   return open_strategy::types(
-      std::make_shared<internal::common::DiscFile>(path));
+      std::make_shared<internal::common::DiskFile>(path));
 }
 
 FileType DecodedFile::type(const std::string &path) {
@@ -59,11 +68,11 @@ DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
 
 DecodedFile::DecodedFile(const std::string &path)
     : DecodedFile(open_strategy::open_file(
-          std::make_shared<internal::common::DiscFile>(path))) {}
+          std::make_shared<internal::common::DiskFile>(path))) {}
 
 DecodedFile::DecodedFile(const std::string &path, FileType as)
     : DecodedFile(open_strategy::open_file(
-          std::make_shared<internal::common::DiscFile>(path), as)) {}
+          std::make_shared<internal::common::DiskFile>(path), as)) {}
 
 FileType DecodedFile::file_type() const noexcept {
   return m_impl->file_meta().type;
@@ -135,7 +144,7 @@ DocumentFile::DocumentFile(
 
 DocumentFile::DocumentFile(const std::string &path)
     : DocumentFile(open_strategy::open_document_file(
-          std::make_shared<internal::common::DiscFile>(path))) {}
+          std::make_shared<internal::common::DiskFile>(path))) {}
 
 bool DocumentFile::password_encrypted() const {
   return m_impl->password_encrypted();

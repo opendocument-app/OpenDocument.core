@@ -88,7 +88,7 @@ ReadonlyZipArchive::ReadonlyZipArchive(
     : m_zip{std::make_shared<util::Archive>(file)} {}
 
 ReadonlyZipArchive::ReadonlyZipArchive(
-    const std::shared_ptr<common::DiscFile> &file)
+    const std::shared_ptr<common::DiskFile> &file)
     : m_zip{std::make_shared<util::Archive>(file)} {}
 
 ReadonlyZipArchive::Iterator ReadonlyZipArchive::begin() const {
@@ -139,7 +139,7 @@ ZipArchive::ZipArchive() = default;
 ZipArchive::ZipArchive(const std::shared_ptr<common::MemoryFile> &file)
     : ZipArchive(ReadonlyZipArchive(file)) {}
 
-ZipArchive::ZipArchive(const std::shared_ptr<common::DiscFile> &file)
+ZipArchive::ZipArchive(const std::shared_ptr<common::DiskFile> &file)
     : ZipArchive(ReadonlyZipArchive(file)) {}
 
 ZipArchive::ZipArchive(ReadonlyZipArchive archive)

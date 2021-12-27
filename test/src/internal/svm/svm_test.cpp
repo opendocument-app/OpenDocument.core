@@ -11,14 +11,14 @@ using namespace odr::internal;
 using namespace odr::test;
 
 TEST(SvmFile, open) {
-  svm::SvmFile svm(std::make_shared<common::DiscFile>(
+  svm::SvmFile svm(std::make_shared<common::DiskFile>(
       TestData::test_file_path("odr-public/svm/chart-1.svm")));
 
   EXPECT_EQ(odr::FileType::starview_metafile, svm.file_type());
 }
 
 TEST(SvmToSvg, string) {
-  svm::SvmFile svm(std::make_shared<common::DiscFile>(
+  svm::SvmFile svm(std::make_shared<common::DiskFile>(
       TestData::test_file_path("odr-public/svm/table-1.svm")));
 
   std::stringstream out;
