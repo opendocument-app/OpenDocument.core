@@ -31,18 +31,6 @@ private:
   common::Path m_path;
 };
 
-class TemporaryDiskFile final : public DiskFile {
-public:
-  explicit TemporaryDiskFile(const char *path);
-  explicit TemporaryDiskFile(std::string path);
-  explicit TemporaryDiskFile(common::Path path);
-  TemporaryDiskFile(const TemporaryDiskFile &);
-  TemporaryDiskFile(TemporaryDiskFile &&) noexcept;
-  ~TemporaryDiskFile() override;
-  TemporaryDiskFile &operator=(const TemporaryDiskFile &);
-  TemporaryDiskFile &operator=(TemporaryDiskFile &&) noexcept;
-};
-
 class MemoryFile final : public abstract::File {
 public:
   explicit MemoryFile(std::string data);

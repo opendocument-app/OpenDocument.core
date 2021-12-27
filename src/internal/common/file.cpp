@@ -36,28 +36,6 @@ std::unique_ptr<std::istream> DiskFile::stream() const {
                                          std::ifstream::binary);
 }
 
-TemporaryDiskFile::TemporaryDiskFile(const char *path) : DiskFile{path} {}
-
-TemporaryDiskFile::TemporaryDiskFile(std::string path)
-    : DiskFile{std::move(path)} {}
-
-TemporaryDiskFile::TemporaryDiskFile(common::Path path)
-    : DiskFile{std::move(path)} {}
-
-TemporaryDiskFile::TemporaryDiskFile(const TemporaryDiskFile &) = default;
-
-TemporaryDiskFile::TemporaryDiskFile(TemporaryDiskFile &&) noexcept = default;
-
-TemporaryDiskFile::~TemporaryDiskFile() {
-  std::filesystem::remove(disk_path()->string());
-}
-
-TemporaryDiskFile &
-TemporaryDiskFile::operator=(const TemporaryDiskFile &) = default;
-
-TemporaryDiskFile &
-TemporaryDiskFile::operator=(TemporaryDiskFile &&) noexcept = default;
-
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
 
 MemoryFile::MemoryFile(const abstract::File &file) : m_data(file.size(), ' ') {
