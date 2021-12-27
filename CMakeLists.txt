@@ -57,6 +57,8 @@ add_library(odr-object OBJECT
 
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/project_info.cpp
+        src/internal/resource.cpp
+        src/internal/resource_data.cpp
 
         src/internal/cfb/cfb_archive.cpp
         src/internal/cfb/cfb_impl.cpp
@@ -85,8 +87,6 @@ add_library(odr-object OBJECT
         src/internal/html/document.cpp
         src/internal/html/document_style.cpp
         src/internal/html/document_element.cpp
-        src/internal/html/html_writer.cpp
-        src/internal/html/image_file.cpp
         src/internal/html/text_file.cpp
 
         src/internal/json/json_file.cpp

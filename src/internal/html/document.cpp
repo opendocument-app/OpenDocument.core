@@ -1,8 +1,12 @@
 #include <fstream>
+#include <internal/abstract/file.h>
+#include <internal/common/path.h>
 #include <internal/html/common.h>
 #include <internal/html/document.h>
 #include <internal/html/document_element.h>
 #include <internal/html/document_style.h>
+#include <internal/resource.h>
+#include <internal/util/stream_util.h>
 #include <internal/util/string_util.h>
 #include <iostream>
 #include <odr/document.h>
@@ -24,9 +28,14 @@ void front(const Document &document, std::ostream &out,
   out << internal::html::default_headers();
   out << "\n";
   out << "<style>\n";
-  out << internal::html::default_style();
+  util::stream::pipe(
+      *Resources::instance().filesystem()->open("odr.css")->stream(), out);
   if (document.document_type() == DocumentType::spreadsheet) {
-    out << internal::html::default_spreadsheet_style();
+    util::stream::pipe(*Resources::instance()
+                            .filesystem()
+                            ->open("odr_spreadsheet.css")
+                            ->stream(),
+                       out);
   }
   out << "\n";
   out << "</style>\n";
@@ -37,7 +46,8 @@ void front(const Document &document, std::ostream &out,
 void back(const Document &, std::ostream &out, const HtmlConfig &) {
   out << "\n";
   out << "<script>\n";
-  out << internal::html::default_script();
+  util::stream::pipe(
+      *Resources::instance().filesystem()->open("odr.js")->stream(), out);
   out << "\n";
   out << "</script>\n";
   out << "</body>\n";
