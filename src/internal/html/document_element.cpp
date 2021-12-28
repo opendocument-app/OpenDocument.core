@@ -1,17 +1,12 @@
-#include <internal/common/file.h>
 #include <internal/common/table_range.h>
-#include <internal/crypto/crypto_util.h>
 #include <internal/html/common.h>
 #include <internal/html/document_element.h>
 #include <internal/html/document_style.h>
-#include <internal/svm/svm_file.h>
-#include <internal/svm/svm_to_svg.h>
-#include <internal/util/stream_util.h>
+#include <internal/html/image_file.h>
 #include <iostream>
 #include <odr/document_cursor.h>
 #include <odr/document_element.h>
 #include <odr/html.h>
-#include <sstream>
 
 namespace odr::internal {
 
@@ -395,7 +390,7 @@ void html::translate_table(DocumentCursor &cursor, std::ostream &out,
 }
 
 void html::translate_image(DocumentCursor &cursor, std::ostream &out,
-                           const HtmlConfig & /*config*/) {
+                           const HtmlConfig &config) {
   auto image = cursor.element().image();
 
   out << "<img style=\"position:absolute;left:0;top:0;width:100%;height:100%\"";
@@ -403,32 +398,7 @@ void html::translate_image(DocumentCursor &cursor, std::ostream &out,
   out << " src=\"";
 
   if (image.internal()) {
-    auto image_file = image.file().value();
-
-    // TODO use stream
-    std::string image_data;
-
-    try {
-      // try svm
-      // TODO `impl()` might be a bit dirty
-      auto image_file_impl = image_file.impl();
-      // TODO memory file might not be necessary; other istreams didn't support
-      // `tellg`
-      svm::SvmFile svm_file(
-          std::make_shared<common::MemoryFile>(*image_file_impl));
-      std::ostringstream svg_out;
-      svm::Translator::svg(svm_file, svg_out);
-      image_data = svg_out.str();
-      out << "data:image/svg+xml;base64, ";
-    } catch (...) {
-      // else we guess that it is a usual image
-      image_data = util::stream::read(*image_file.stream());
-      // TODO hacky - `image/jpg` works for all common image types in chrome
-      out << "data:image/jpg;base64, ";
-    }
-
-    // TODO stream
-    out << crypto::util::base64_encode(image_data);
+    translate_image_src(image.file().value(), out, config);
   } else {
     out << image.href();
   }

@@ -66,6 +66,12 @@ DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
   }
 }
 
+DecodedFile::DecodedFile(const File &file)
+    : DecodedFile(open_strategy::open_file(file.impl())) {}
+
+DecodedFile::DecodedFile(const File &file, FileType as)
+    : DecodedFile(open_strategy::open_file(file.impl(), as)) {}
+
 DecodedFile::DecodedFile(const std::string &path)
     : DecodedFile(open_strategy::open_file(
           std::make_shared<internal::common::DiskFile>(path))) {}
@@ -83,6 +89,8 @@ FileCategory DecodedFile::file_category() const noexcept {
 }
 
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
+
+File DecodedFile::file() const { return File(m_impl->file()); }
 
 TextFile DecodedFile::text_file() const {
   if (auto text_file =
