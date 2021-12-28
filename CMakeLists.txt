@@ -87,6 +87,7 @@ add_library(odr-object OBJECT
         src/internal/html/document.cpp
         src/internal/html/document_style.cpp
         src/internal/html/document_element.cpp
+        src/internal/html/image_file.cpp
         src/internal/html/text_file.cpp
 
         src/internal/json/json_file.cpp
