@@ -192,6 +192,10 @@ Path Path::rebase(const Path &on) const {
   return Path(result);
 }
 
+Path Path::common_root(const Path &other) const {
+  return {}; // TODO
+}
+
 std::ostream &operator<<(std::ostream &os, const Path &p) {
   return os << p.m_path;
 }

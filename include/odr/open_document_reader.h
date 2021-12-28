@@ -39,7 +39,7 @@ public:
                                  const std::string &output_path,
                                  const HtmlConfig &config);
 
-  static void export_resources(const std::string &output_path);
+  static void copy_resources(const std::string &to_path);
 
 private:
   OpenDocumentReader();

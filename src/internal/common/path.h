@@ -45,6 +45,7 @@ public:
   [[nodiscard]] Path parent() const;
   [[nodiscard]] Path join(const Path &other) const;
   [[nodiscard]] Path rebase(const Path &on) const;
+  [[nodiscard]] Path common_root(const Path &other) const;
 
 private:
   std::string m_path;

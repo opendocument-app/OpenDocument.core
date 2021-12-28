@@ -199,12 +199,12 @@ Html OpenDocumentReader::html(const Document &document,
   return html::translate(document, output_path, config);
 }
 
-void OpenDocumentReader::export_resources(const std::string &output_path) {
+void OpenDocumentReader::copy_resources(const std::string &to_path) {
   auto resources = internal::Resources::instance();
 
   for (auto resource : resources.resources()) {
     auto resource_output_path =
-        internal::common::Path(output_path).join(resource.path);
+        internal::common::Path(to_path).join(resource.path);
     std::filesystem::create_directories(resource_output_path.parent());
     std::ofstream out(resource_output_path.string(), std::ios::binary);
     out.write(resource.data, resource.size);
