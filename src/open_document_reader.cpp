@@ -1,6 +1,11 @@
+#include <fstream>
+#include <internal/common/path.h>
 #include <internal/git_info.h>
 #include <internal/html/document.h>
+#include <internal/open_strategy.h>
 #include <internal/project_info.h>
+#include <internal/resource.h>
+#include <internal/util/stream_util.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -149,11 +154,24 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
   }
 }
 
+std::vector<FileType> OpenDocumentReader::types(const std::string &path) {
+  File file(path);
+  return internal::open_strategy::types(file.impl());
+}
+
+DecodedFile OpenDocumentReader::open(const std::string &path) {
+  return DecodedFile(path);
+}
+
 Html OpenDocumentReader::html(const std::string &path, const char *password,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  DecodedFile file(path);
+  return html(DecodedFile(path), password, output_path, config);
+}
 
+Html OpenDocumentReader::html(const DecodedFile &file, const char *password,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
   if (file.file_type() == FileType::text_file) {
     return html(file.text_file(), output_path, config);
   } else if (file.file_category() == FileCategory::document) {
@@ -179,6 +197,18 @@ Html OpenDocumentReader::html(const Document &document,
                               const std::string &output_path,
                               const HtmlConfig &config) {
   return html::translate(document, output_path, config);
+}
+
+void OpenDocumentReader::export_resources(const std::string &output_path) {
+  auto resources = internal::Resources::instance();
+
+  for (auto resource : resources.resources()) {
+    auto resource_output_path =
+        internal::common::Path(output_path).join(resource.path);
+    std::filesystem::create_directories(resource_output_path.parent());
+    std::ofstream out(resource_output_path.string(), std::ios::binary);
+    out.write(resource.data, resource.size);
+  }
 }
 
 OpenDocumentReader::OpenDocumentReader() = default;

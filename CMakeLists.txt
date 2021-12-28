@@ -49,13 +49,13 @@ add_library(odr-object OBJECT
         src/exceptions.cpp
         src/file.cpp
         src/html.cpp
-        src/magic.cpp
         src/open_document_reader.cpp
-        src/open_strategy.cpp
         src/quantity.cpp
         src/style.cpp
 
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp
+        src/internal/magic.cpp
+        src/internal/open_strategy.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/project_info.cpp
         src/internal/resource.cpp
         src/internal/resource_data.cpp

@@ -5,21 +5,19 @@
 #include <internal/common/image_file.h>
 #include <internal/csv/csv_file.h>
 #include <internal/json/json_file.h>
+#include <internal/magic.h>
 #include <internal/odf/odf_file.h>
 #include <internal/oldms/oldms_file.h>
 #include <internal/ooxml/ooxml_file.h>
+#include <internal/open_strategy.h>
 #include <internal/svm/svm_file.h>
 #include <internal/text/text_file.h>
 #include <internal/zip/zip_archive.h>
-#include <magic.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <open_strategy.h>
 #include <utility>
 
-using namespace odr::internal;
-
-namespace odr {
+namespace odr::internal {
 
 std::vector<FileType>
 open_strategy::types(std::shared_ptr<abstract::File> file) {
@@ -216,4 +214,4 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
   throw NoDocumentFile();
 }
 
-} // namespace odr
+} // namespace odr::internal
