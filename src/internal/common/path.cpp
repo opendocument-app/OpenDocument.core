@@ -45,8 +45,12 @@ void Path::parent_() {
       m_path = m_path.substr(0, pos);
     }
   } else if (!m_absolute) {
+    if (m_upwards + m_downwards == 0) {
+      m_path = "..";
+    } else {
+      m_path = "../" + m_path;
+    }
     ++m_upwards;
-    m_path = "../" + m_path;
   } else {
     throw std::invalid_argument("absolute path violation");
   }
@@ -59,7 +63,7 @@ void Path::join_(const std::string &child) {
   if (child == "..") {
     parent_();
   } else {
-    if (m_downwards == 0) {
+    if (m_upwards + m_downwards == 0) {
       m_path += child;
     } else {
       m_path += "/" + child;
@@ -185,7 +189,8 @@ Path Path::rebase(const Path &b) const {
   Path sub_a;
   {
     auto it_a = begin();
-    for (std::uint32_t i = 0; i < common_root.m_downwards; ++i) {
+    for (std::uint32_t i = 0;
+         i < common_root.m_upwards + common_root.m_downwards; ++i) {
       ++it_a;
     }
     for (; it_a != end(); ++it_a) {
@@ -196,7 +201,8 @@ Path Path::rebase(const Path &b) const {
   Path sub_b;
   {
     auto it_b = b.begin();
-    for (std::uint32_t i = 0; i < common_root.m_downwards; ++i) {
+    for (std::uint32_t i = 0;
+         i < common_root.m_upwards + common_root.m_downwards; ++i) {
       ++it_b;
     }
     for (; it_b != b.end(); ++it_b) {
@@ -219,6 +225,9 @@ Path Path::common_root(const Path &b) const {
   if (m_absolute != b.m_absolute) {
     throw std::invalid_argument(
         "no common root between absolute and relative path");
+  }
+  if (b.m_upwards > m_upwards) {
+    throw std::invalid_argument("parent directories unknown");
   }
 
   Path result = m_absolute ? "/" : "";
