@@ -50,7 +50,8 @@ void front(const Document &document, const std::string &path, std::ostream &out,
     out << "<link rel=\"stylesheet\" href=\"" << odr_css_path << "\">\n";
     if (document.document_type() == DocumentType::spreadsheet) {
       auto odr_spreadsheet_css_path =
-          common::Path(config.external_resource_path).join("odr.css");
+          common::Path(config.external_resource_path)
+              .join("odr_spreadsheet.css");
       if (config.relative_resource_paths) {
         odr_spreadsheet_css_path =
             common::Path(odr_spreadsheet_css_path).rebase(path);
