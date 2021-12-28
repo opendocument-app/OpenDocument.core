@@ -66,6 +66,7 @@ add_library(odr-object OBJECT
         src/internal/common/document_path.cpp
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
+        src/internal/common/image_file.cpp
         src/internal/common/path.cpp
         src/internal/common/random.cpp
         src/internal/common/style.cpp
@@ -85,6 +86,7 @@ add_library(odr-object OBJECT
         src/internal/html/document_style.cpp
         src/internal/html/document_element.cpp
         src/internal/html/html_writer.cpp
+        src/internal/html/image_file.cpp
         src/internal/html/text_file.cpp
 
         src/internal/json/json_file.cpp

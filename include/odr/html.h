@@ -9,6 +9,7 @@
 
 namespace odr {
 class TextFile;
+class ImageFile;
 class Document;
 struct HtmlPage;
 
@@ -76,6 +77,8 @@ struct HtmlPage final {
 
 namespace html {
 Html translate(const TextFile &text_file, const std::string &path,
+               const HtmlConfig &config);
+Html translate(const ImageFile &image_file, const std::string &path,
                const HtmlConfig &config);
 Html translate(const Document &document, const std::string &path,
                const HtmlConfig &config);
