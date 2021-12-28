@@ -8,6 +8,10 @@ TEST(Path, empty) { EXPECT_EQ("", Path().string()); }
 
 TEST(Path, root) { EXPECT_EQ("/", Path("/").string()); }
 
+TEST(Path, something) {
+  EXPECT_EQ("/some/thing", Path("/some/thing").string());
+}
+
 TEST(Path, normalization) {
   EXPECT_EQ(Path("ppt/media/image8.png"), Path("./ppt/media/image8.png"));
   EXPECT_EQ(Path("ppt/media/image8.png"), Path("ppt/./media/image8.png"));
@@ -33,8 +37,9 @@ TEST(Path, rebase) {
 }
 
 TEST(Path, rebase_relative) {
-  EXPECT_EQ("image8.png",
-            Path("ppt/media").rebase("./ppt/media/image8.png").string());
+  EXPECT_EQ("../../other/directory", Path("ppt/media/other/directory")
+                                         .rebase("./ppt/media/some/directory")
+                                         .string());
 }
 
 TEST(Path, common_root) {

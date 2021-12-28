@@ -24,14 +24,8 @@ Path::Path(const std::string &path) {
   m_upwards = 0;
   m_downwards = 0;
 
-  std::size_t pos = m_absolute ? 1 : 0;
-  while (pos < path.size()) {
-    std::size_t next = path.find('/', pos);
-    if (next == std::string::npos) {
-      next = path.size();
-    }
-    join_(path.substr(pos, next - pos));
-    pos = next + 1;
+  for (auto it = Iterator(path, m_absolute ? 1 : 0); it != end(); ++it) {
+    join_(*it);
   }
 }
 
@@ -184,16 +178,123 @@ Path Path::join(const Path &b) const {
   return Path(m_path + "/" + b.m_path);
 }
 
-Path Path::rebase(const Path &on) const {
-  if (!ancestor_of(on)) {
-    throw std::invalid_argument("cannot rebase without ancestor");
+Path Path::rebase(const Path &b) const {
+  Path result = m_absolute ? "/" : "";
+  auto common_root = this->common_root(b);
+
+  Path sub_a;
+  {
+    auto it_a = begin();
+    for (std::uint32_t i = 0; i < common_root.m_downwards; ++i) {
+      ++it_a;
+    }
+    for (; it_a != end(); ++it_a) {
+      sub_a.join_(*it_a);
+    }
   }
-  const std::string result = m_path.substr(on.m_path.size() + 1);
-  return Path(result);
+
+  Path sub_b;
+  {
+    auto it_b = b.begin();
+    for (std::uint32_t i = 0; i < common_root.m_downwards; ++i) {
+      ++it_b;
+    }
+    for (; it_b != b.end(); ++it_b) {
+      sub_b.join_(*it_b);
+    }
+  }
+
+  for (std::uint32_t i = 0; i < sub_b.m_downwards; ++i) {
+    result.join_("..");
+  }
+
+  for (auto part : sub_a) {
+    result.join_(part);
+  }
+
+  return result;
 }
 
-Path Path::common_root(const Path &other) const {
-  return {}; // TODO
+Path Path::common_root(const Path &b) const {
+  if (m_absolute != b.m_absolute) {
+    throw std::invalid_argument(
+        "no common root between absolute and relative path");
+  }
+
+  Path result = m_absolute ? "/" : "";
+
+  auto it_a = begin();
+  auto it_b = b.begin();
+  while (true) {
+    if ((it_a == end()) || (it_b == b.end()) || (*it_a != *it_b)) {
+      break;
+    }
+    result.join_(*it_a);
+    ++it_a;
+    ++it_b;
+  }
+
+  return result;
+}
+
+Path::Iterator Path::begin() const { return Iterator(*this); }
+
+Path::Iterator Path::end() const { return Iterator(); }
+
+Path::Iterator::Iterator() : m_path{nullptr}, m_begin{std::string::npos} {}
+
+Path::Iterator::Iterator(const std::string &path) : Iterator(path, 0) {}
+
+Path::Iterator::Iterator(const std::string &path, const std::size_t begin)
+    : m_path{&path}, m_begin{begin} {
+  fill_();
+}
+
+Path::Iterator::Iterator(const Path &path)
+    : Iterator(path.m_path, path.m_absolute ? 1 : 0) {}
+
+void Path::Iterator::fill_() {
+  if (m_begin >= m_path->size()) {
+    m_begin = std::string::npos;
+  }
+
+  if (m_begin == std::string::npos) {
+    m_part = "";
+    return;
+  }
+
+  auto part_end = m_path->find('/', m_begin);
+  if (part_end == std::string::npos) {
+    part_end = m_path->size();
+  }
+  m_part = m_path->substr(m_begin, part_end - m_begin);
+}
+
+Path::Iterator::reference Path::Iterator::operator*() const { return m_part; }
+
+Path::Iterator::pointer Path::Iterator::operator->() const { return &m_part; }
+
+bool Path::Iterator::operator==(const Iterator &other) const {
+  return m_begin == other.m_begin;
+}
+
+bool Path::Iterator::operator!=(const Iterator &other) const {
+  return m_begin != other.m_begin;
+}
+
+Path::Iterator &Path::Iterator::operator++() {
+  m_begin = m_path->find('/', m_begin);
+  if (m_begin != std::string::npos) {
+    ++m_begin;
+  }
+  fill_();
+  return *this;
+}
+
+Path::Iterator Path::Iterator::operator++(int) {
+  auto old = *this;
+  this->operator++();
+  return old;
 }
 
 std::ostream &operator<<(std::ostream &os, const Path &p) {

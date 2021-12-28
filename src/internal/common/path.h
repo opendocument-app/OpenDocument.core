@@ -47,6 +47,39 @@ public:
   [[nodiscard]] Path rebase(const Path &on) const;
   [[nodiscard]] Path common_root(const Path &other) const;
 
+  class Iterator final {
+  public:
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = std::ptrdiff_t;
+    using value_type = std::string;
+    using pointer = const std::string *;
+    using reference = const std::string &;
+
+    Iterator();
+    explicit Iterator(const std::string &path);
+    Iterator(const std::string &path, std::size_t begin);
+    explicit Iterator(const Path &path);
+
+    reference operator*() const;
+    pointer operator->() const;
+
+    bool operator==(const Iterator &other) const;
+    bool operator!=(const Iterator &other) const;
+
+    Iterator &operator++();
+    Iterator operator++(int);
+
+  private:
+    const std::string *m_path{nullptr};
+    std::size_t m_begin{0};
+    std::string m_part;
+
+    void fill_();
+  };
+
+  Iterator begin() const;
+  Iterator end() const;
+
 private:
   std::string m_path;
   std::uint32_t m_upwards;
