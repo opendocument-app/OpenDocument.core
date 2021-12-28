@@ -45,7 +45,7 @@ void front(const Document &document, const std::string &path, std::ostream &out,
     auto odr_css_path =
         common::Path(config.external_resource_path).join("odr.css");
     if (config.relative_resource_paths) {
-      odr_css_path = common::Path(path).rebase(odr_css_path);
+      odr_css_path = common::Path(odr_css_path).rebase(path);
     }
     out << "<link rel=\"stylesheet\" href=\"" << odr_css_path << "\">\n";
     if (document.document_type() == DocumentType::spreadsheet) {
@@ -53,7 +53,7 @@ void front(const Document &document, const std::string &path, std::ostream &out,
           common::Path(config.external_resource_path).join("odr.css");
       if (config.relative_resource_paths) {
         odr_spreadsheet_css_path =
-            common::Path(path).rebase(odr_spreadsheet_css_path);
+            common::Path(odr_spreadsheet_css_path).rebase(path);
       }
       out << "<link rel=\"stylesheet\" href=\"" << odr_spreadsheet_css_path
           << "\">\n";
@@ -78,7 +78,7 @@ void back(const Document &, const std::string &path, std::ostream &out,
     auto odr_js_path =
         common::Path(config.external_resource_path).join("odr.js");
     if (config.relative_resource_paths) {
-      odr_js_path = common::Path(path).rebase(odr_js_path);
+      odr_js_path = common::Path(odr_js_path).rebase(path);
     }
     out << "<script type=\"text/javascript\" src=\"" << odr_js_path
         << "\"></script>";

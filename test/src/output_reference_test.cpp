@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <internal/common/path.h>
 #include <internal/util/odr_meta_util.h>
 #include <internal/util/string_util.h>
 #include <iostream>
@@ -23,7 +24,9 @@ using OutputReferenceTests = ::testing::TestWithParam<std::string>;
 TEST_P(OutputReferenceTests, html_meta) {
   const auto test_file_path = GetParam();
   TestFile test_file = TestData::test_file(test_file_path);
-  const std::string output_path = "./output/" + test_file_path;
+  const std::string output_path_prefix = "output";
+  const auto output_path =
+      common::Path(output_path_prefix).join(test_file_path).string();
 
   std::cout << test_file.path << " to " << output_path << std::endl;
 
@@ -76,7 +79,16 @@ TEST_P(OutputReferenceTests, html_meta) {
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
+  std::string resource_path = common::Path(output_path_prefix)
+                                  .join(*common::Path(test_file_path).begin())
+                                  .join("resources")
+                                  .string();
+  OpenDocumentReader::copy_resources(resource_path);
+
   HtmlConfig config;
+  config.embed_resources = false;
+  config.external_resource_path = resource_path;
+  config.relative_resource_paths = true;
   config.editable = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);
   std::optional<Html> html;
