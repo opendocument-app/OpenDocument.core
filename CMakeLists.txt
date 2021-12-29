@@ -164,6 +164,7 @@ add_library(odr-object OBJECT
         src/internal/zip/zip_util.cpp
         src/internal/zip/zip_archive.cpp
         )
+set_target_properties(odr-object PROPERTIES OUTPUT_NAME odr)
 if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
     add_dependencies(odr-object check_git)
 endif ()
@@ -187,6 +188,7 @@ set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_library(odr-static STATIC
         $<TARGET_OBJECTS:odr-object>
         )
+set_target_properties(odr-static PROPERTIES OUTPUT_NAME odr)
 target_include_directories(odr-static
         PUBLIC
         include
@@ -204,6 +206,7 @@ target_link_libraries(odr-static
 add_library(odr-shared SHARED
         $<TARGET_OBJECTS:odr-object>
         )
+set_target_properties(odr-shared PROPERTIES OUTPUT_NAME odr)
 target_include_directories(odr-shared
         PUBLIC
         include

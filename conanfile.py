@@ -2,7 +2,7 @@ from conans import ConanFile, CMake
 
 
 class OpenDocumentCoreConan(ConanFile):
-    name = "odr.core"
+    name = "odrcore"
     url = ""
     homepage = "https://github.com/opendocument-app/OpenDocument.core"
     description = "C++ library that translates office documents to HTML"
@@ -48,8 +48,8 @@ class OpenDocumentCoreConan(ConanFile):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["odr-static"]
+        self.cpp_info.libs = ["odr"]
 
-        self.cpp_info.names["cmake_find_package"] = "odr-static"
-        self.cpp_info.names["cmake_find_package_multi"] = "odr-static"
-        self.cpp_info.names["pkgconfig"] = "libodr-static"
+        self.cpp_info.names["cmake_find_package"] = "odr"
+        self.cpp_info.names["cmake_find_package_multi"] = "odr"
+        self.cpp_info.names["pkgconfig"] = "libodr"
