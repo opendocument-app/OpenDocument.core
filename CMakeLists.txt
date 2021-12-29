@@ -54,13 +54,18 @@ find_package(cryptopp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
-find_package(GTest REQUIRED)
 
 configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
 
 set(PRE_CONFIGURE_FILE "src/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp")
-include(cmake/git_watcher.cmake)
+if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
+    include(cmake/git_watcher.cmake)
+else ()
+    set(GIT_HEAD_SHA1 "unknown")
+    set(GIT_IS_DIRTY "false")
+    configure_file("${PRE_CONFIGURE_FILE}" "${POST_CONFIGURE_FILE}" @ONLY)
+endif ()
 
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
@@ -155,7 +160,9 @@ add_library(odr-object OBJECT
         src/internal/zip/zip_util.cpp
         src/internal/zip/zip_archive.cpp
         )
-add_dependencies(odr-object check_git)
+if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
+    add_dependencies(odr-object check_git)
+endif ()
 target_include_directories(odr-object
         PUBLIC
         include
