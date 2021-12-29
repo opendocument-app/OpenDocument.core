@@ -23,10 +23,15 @@ using OutputReferenceTests = ::testing::TestWithParam<std::string>;
 
 TEST_P(OutputReferenceTests, html_meta) {
   const auto test_file_path = GetParam();
-  TestFile test_file = TestData::test_file(test_file_path);
-  const std::string output_path_prefix = "output";
+  const auto test_file = TestData::test_file(test_file_path);
+
+  const auto test_repo = *common::Path(test_file_path).begin();
+  const auto output_path_prefix =
+      common::Path("output").join(test_repo).join("output").string();
   const auto output_path =
-      common::Path(output_path_prefix).join(test_file_path).string();
+      common::Path(output_path_prefix)
+          .join(common::Path(test_file_path).rebase(test_repo))
+          .string();
 
   std::cout << test_file.path << " to " << output_path << std::endl;
 
@@ -79,10 +84,8 @@ TEST_P(OutputReferenceTests, html_meta) {
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
-  std::string resource_path = common::Path(output_path_prefix)
-                                  .join(*common::Path(test_file_path).begin())
-                                  .join("resources")
-                                  .string();
+  const auto resource_path =
+      common::Path(output_path_prefix).parent().join("resources").string();
   OpenDocumentReader::copy_resources(resource_path);
 
   HtmlConfig config;
