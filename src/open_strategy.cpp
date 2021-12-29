@@ -2,9 +2,12 @@
 #include <internal/cfb/cfb_archive.h>
 #include <internal/common/archive.h>
 #include <internal/common/file.h>
+#include <internal/csv/csv_file.h>
+#include <internal/json/json_file.h>
 #include <internal/odf/odf_file.h>
 #include <internal/oldms/oldms_file.h>
 #include <internal/ooxml/ooxml_file.h>
+#include <internal/text/text_file.h>
 #include <internal/zip/zip_archive.h>
 #include <magic.h>
 #include <odr/exceptions.h>
@@ -49,17 +52,31 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
 
     auto filesystem = cfb.archive()->filesystem();
 
-    // legacy microsoft
     try {
       result.push_back(oldms::LegacyMicrosoftFile(filesystem).file_type());
     } catch (...) {
     }
 
-    // encrypted ooxml
     try {
       result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
     } catch (...) {
     }
+  }
+
+  try {
+    auto text = std::make_shared<text::TextFile>(file);
+    result.push_back(FileType::text_file);
+
+    try {
+      result.push_back(csv::CsvFile(text).file_type());
+    } catch (...) {
+    }
+
+    try {
+      result.push_back(json::JsonFile(text).file_type());
+    } catch (...) {
+    }
+  } catch (...) {
   }
 
   return result;
@@ -98,13 +115,11 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
 
     auto filesystem = cfb->archive()->filesystem();
 
-    // legacy microsoft
     try {
       return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
     } catch (...) {
     }
 
-    // encrypted ooxml
     try {
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
@@ -112,6 +127,25 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
 
     return cfb;
   } else if (file_type == FileType::unknown) {
+
+    try {
+      auto text = std::make_shared<text::TextFile>(file);
+
+      try {
+        return std::make_unique<csv::CsvFile>(text);
+      } catch (...) {
+      }
+
+      try {
+        return std::make_unique<json::JsonFile>(text);
+      } catch (...) {
+      }
+
+      // TODO looks dirty
+      return std::make_unique<text::TextFile>(file);
+    } catch (...) {
+    }
+
     throw UnknownFileType();
   }
 
@@ -156,13 +190,11 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
 
     auto filesystem = cfb->archive()->filesystem();
 
-    // legacy microsoft
     try {
       return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
     } catch (...) {
     }
 
-    // encrypted ooxml
     try {
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {

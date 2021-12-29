@@ -216,7 +216,7 @@ void ZipArchive::save(std::ostream &out) const {
 
     if (entry.is_file()) {
       auto file = entry.file();
-      auto istream = file->read();
+      auto istream = file->stream();
       auto size = file->size();
 
       state = util::append_file(archive, path.string(), *istream, size, time,

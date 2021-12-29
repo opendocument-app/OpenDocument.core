@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.12.4)
-project(odr C CXX)
+project(odr
+        VERSION 2.0.0
+        LANGUAGES C CXX
+        )
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -30,31 +33,34 @@ if (CCACHE_FOUND)
     message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
-if (NOT DEFINED CONAN_PACKAGE_NAME)
-    if (NOT DEFINED CONAN_EXPORTED)
-        string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
-
-        include(cmake/conan.cmake)
-        conan_cmake_configure(GENERATORS cmake)
-        conan_cmake_autodetect(settings)
-        conan_cmake_install(PATH_OR_REFERENCE ..
-                BUILD missing
-                SETTINGS ${settings}
-                SETTINGS compiler.cppstd=17
-                ENV CC=${CMAKE_C_COMPILER}
-                ENV CXX=${CMAKE_CXX_COMPILER})
-    endif ()
-    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-    list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
-    list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
-    conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+if (NOT DEFINED CONAN_EXPORTED)
+    include(cmake/conan.cmake)
+    conan_cmake_configure(GENERATORS cmake)
+    conan_cmake_autodetect(settings)
+    conan_cmake_install(PATH_OR_REFERENCE ..
+            BUILD missing
+            SETTINGS ${settings}
+            SETTINGS compiler.cppstd=17
+            ENV CC=${CMAKE_C_COMPILER}
+            ENV CXX=${CMAKE_CXX_COMPILER})
+    #include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    #conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+    include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
 endif ()
 
-find_package(pugixml REQUIRED CONFIG)
-find_package(miniz REQUIRED CONFIG)
-find_package(cryptopp REQUIRED CONFIG)
-find_package(nlohmann_json REQUIRED CONFIG)
-find_package(vincentlaucsb-csv-parser REQUIRED CONFIG)
+find_package(pugixml REQUIRED)
+find_package(miniz REQUIRED)
+find_package(cryptopp REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(vincentlaucsb-csv-parser REQUIRED)
+find_package(uchardet REQUIRED)
+find_package(GTest REQUIRED)
+
+configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
+
+set(PRE_CONFIGURE_FILE "src/internal/git_info.cpp.in")
+set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp")
+include(cmake/git_watcher.cmake)
 
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
@@ -72,11 +78,13 @@ add_library(odr-object OBJECT
         src/quantity.cpp
         src/style.cpp
 
+        ${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/src/internal/project_info.cpp
+
         src/internal/cfb/cfb_archive.cpp
         src/internal/cfb/cfb_impl.cpp
         src/internal/cfb/cfb_util.cpp
 
-        src/internal/common/constants.cpp
         src/internal/common/document_cursor.cpp
         src/internal/common/document_path.cpp
         src/internal/common/file.cpp
@@ -89,12 +97,19 @@ add_library(odr-object OBJECT
 
         src/internal/crypto/crypto_util.cpp
 
+        src/internal/csv/csv_file.cpp
+        src/internal/csv/csv_util.cpp
+
         src/internal/html/common.cpp
         src/internal/html/css_writer.cpp
         src/internal/html/document.cpp
         src/internal/html/document_style.cpp
         src/internal/html/document_element.cpp
         src/internal/html/html_writer.cpp
+        src/internal/html/text_file.cpp
+
+        src/internal/json/json_file.cpp
+        src/internal/json/json_util.cpp
 
         src/internal/odf/odf_crypto.cpp
         src/internal/odf/odf_cursor.cpp
@@ -127,6 +142,9 @@ add_library(odr-object OBJECT
         src/internal/svm/svm_format.cpp
         src/internal/svm/svm_to_svg.cpp
 
+        src/internal/text/text_file.cpp
+        src/internal/text/text_util.cpp
+
         src/internal/util/file_util.cpp
         src/internal/util/hash_util.cpp
         src/internal/util/odr_meta_util.cpp
@@ -137,6 +155,7 @@ add_library(odr-object OBJECT
         src/internal/zip/zip_util.cpp
         src/internal/zip/zip_archive.cpp
         )
+add_dependencies(odr-object check_git)
 target_include_directories(odr-object
         PUBLIC
         include
@@ -149,6 +168,8 @@ target_link_libraries(odr-object
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
         )
 set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -165,6 +186,8 @@ target_link_libraries(odr-static
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
         )
 
 add_library(odr-shared SHARED
@@ -180,6 +203,8 @@ target_link_libraries(odr-shared
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
         )
 
 add_subdirectory(cli)

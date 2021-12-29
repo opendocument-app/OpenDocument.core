@@ -18,32 +18,26 @@ using namespace odr::internal;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
-class OutputReferenceTests : public testing::TestWithParam<std::string> {};
+using OutputReferenceTests = ::testing::TestWithParam<std::string>;
 
-TEST_P(OutputReferenceTests, all) {
+TEST_P(OutputReferenceTests, html_meta) {
   const auto test_file_path = GetParam();
   TestFile test_file = TestData::test_file(test_file_path);
   const std::string output_path = "./output/" + test_file_path;
 
   std::cout << test_file.path << " to " << output_path << std::endl;
 
-  if ((test_file.type == FileType::zip) ||
-      (test_file.type == FileType::portable_document_format)) {
-    GTEST_SKIP();
-  }
+  // TODO compare guessed file type VS actual file type
 
-  // TODO remove
+  // these files cannot be opened
   if (util::string::ends_with(test_file.path, ".sxw") ||
+      (test_file.type == FileType::portable_document_format) ||
       (test_file.type == FileType::legacy_word_document) ||
       (test_file.type == FileType::legacy_powerpoint_presentation) ||
       (test_file.type == FileType::legacy_excel_worksheets) ||
       (test_file.type == FileType::starview_metafile)) {
     GTEST_SKIP();
   }
-
-  HtmlConfig config;
-  config.editable = true;
-  config.spreadsheet_limit = TableDimensions(4000, 500);
 
   const DecodedFile file{test_file.path};
 
@@ -52,6 +46,12 @@ TEST_P(OutputReferenceTests, all) {
   // encrypted ooxml type cannot be inspected
   if ((file.file_type() != FileType::office_open_xml_encrypted)) {
     EXPECT_EQ(test_file.type, file.file_type());
+  }
+
+  if ((test_file.type == FileType::zip) ||
+      (test_file.type == FileType::comma_separated_values) ||
+      (test_file.type == FileType::javascript_object_notation)) {
+    GTEST_SKIP();
   }
 
   if (file.file_category() == FileCategory::document) {
@@ -76,9 +76,14 @@ TEST_P(OutputReferenceTests, all) {
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
+  HtmlConfig config;
+  config.editable = true;
+  config.spreadsheet_limit = TableDimensions(4000, 500);
   std::optional<Html> html;
 
-  if (file.file_category() == FileCategory::document) {
+  if (file.file_type() == FileType::text_file) {
+    html = OpenDocumentReader::html(file.text_file(), output_path, config);
+  } else if (file.file_category() == FileCategory::document) {
     auto document_file = file.document_file();
     auto document = document_file.document();
     html = OpenDocumentReader::html(document, output_path, config);
@@ -91,5 +96,15 @@ TEST_P(OutputReferenceTests, all) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(all, OutputReferenceTests,
-                         testing::ValuesIn(TestData::test_file_paths()));
+INSTANTIATE_TEST_SUITE_P(all_test_files, OutputReferenceTests,
+                         testing::ValuesIn(TestData::test_file_paths()),
+                         [](const ::testing::TestParamInfo<std::string> &info) {
+                           auto path = info.param;
+                           internal::util::string::replace_all(path, "/", "_");
+                           internal::util::string::replace_all(path, "-", "_");
+                           internal::util::string::replace_all(path, "+", "_");
+                           internal::util::string::replace_all(path, ".", "_");
+                           internal::util::string::replace_all(path, " ", "_");
+                           internal::util::string::replace_all(path, "$", "");
+                           return path;
+                         });

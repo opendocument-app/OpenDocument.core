@@ -90,7 +90,7 @@ FileInCfb::FileInCfb(std::shared_ptr<Archive> archive,
 
 [[nodiscard]] std::size_t FileInCfb::size() const { return m_entry.size; }
 
-[[nodiscard]] std::unique_ptr<std::istream> FileInCfb::read() const {
+[[nodiscard]] std::unique_ptr<std::istream> FileInCfb::stream() const {
   return std::make_unique<FileInCfbIstream>(m_archive, m_archive->cfb(),
                                             m_entry);
 }

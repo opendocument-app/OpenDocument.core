@@ -29,7 +29,7 @@ std::size_t DiscFile::size() const {
 
 common::Path DiscFile::path() const { return m_path; }
 
-std::unique_ptr<std::istream> DiscFile::read() const {
+std::unique_ptr<std::istream> DiscFile::stream() const {
   return std::make_unique<std::ifstream>(m_path.string(),
                                          std::ifstream::binary);
 }
@@ -59,7 +59,7 @@ TemporaryDiscFile::operator=(TemporaryDiscFile &&) noexcept = default;
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
 
 MemoryFile::MemoryFile(const abstract::File &file) : m_data(file.size(), ' ') {
-  auto istream = file.read();
+  auto istream = file.stream();
   auto size = (std::int64_t)file.size();
   istream->read(m_data.data(), size);
   if (istream->gcount() != size) {
@@ -75,7 +75,7 @@ std::size_t MemoryFile::size() const { return m_data.size(); }
 
 const std::string &MemoryFile::content() const { return m_data; }
 
-std::unique_ptr<std::istream> MemoryFile::read() const {
+std::unique_ptr<std::istream> MemoryFile::stream() const {
   return std::make_unique<std::istringstream>(m_data);
 }
 

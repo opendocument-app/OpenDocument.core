@@ -1,4 +1,4 @@
-find_package(GTest REQUIRED CONFIG)
+find_package(GTest REQUIRED)
 
 include(GoogleTest REQUIRED)
 
@@ -26,9 +26,14 @@ add_executable(odr_test
         src/internal/common/table_position_test.cpp
         src/internal/common/table_range_test.cpp
 
+        src/internal/csv/csv_file_test.cpp
+        src/internal/csv/csv_test.cpp
+
         src/internal/ooxml/ooxml_crypto_test.cpp
 
         src/internal/svm/svm_test.cpp
+
+        src/internal/text/text_file_test.cpp
 
         src/internal/util/xml_util_test.cpp
 
@@ -47,7 +52,9 @@ target_link_libraries(odr_test
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
-        GTest::GTest
+        uchardet::uchardet
+        GTest::gtest
+        GTest::gtest_main
 
         odr-static
         )

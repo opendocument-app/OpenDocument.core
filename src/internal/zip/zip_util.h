@@ -49,7 +49,7 @@ public:
 
   [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
-  [[nodiscard]] std::unique_ptr<std::istream> read() const final;
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
 private:
   std::shared_ptr<Archive> m_archive;

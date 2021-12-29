@@ -112,7 +112,7 @@ bool SystemFilesystem::copy(Path from, Path to) {
 
 std::shared_ptr<abstract::File>
 SystemFilesystem::copy(const abstract::File &from, Path to) {
-  auto istream = from.read();
+  auto istream = from.stream();
   auto ostream = create_file(to_system_path_(to));
 
   util::stream::pipe(*istream, *ostream);

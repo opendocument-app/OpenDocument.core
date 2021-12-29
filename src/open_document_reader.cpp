@@ -1,5 +1,6 @@
-#include <internal/common/constants.h>
+#include <internal/git_info.h>
 #include <internal/html/document.h>
+#include <internal/project_info.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
@@ -9,11 +10,11 @@
 namespace odr {
 
 std::string OpenDocumentReader::version() noexcept {
-  return internal::common::constants::version();
+  return internal::project_info::version();
 }
 
 std::string OpenDocumentReader::commit() noexcept {
-  return internal::common::constants::commit();
+  return internal::git_info::commit();
 }
 
 FileType
@@ -56,6 +57,12 @@ OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
     return FileType::bitmap_image_file;
   } else if (extension == "svm") {
     return FileType::starview_metafile;
+  } else if (extension == "txt") {
+    return FileType::text_file;
+  } else if (extension == "csv") {
+    return FileType::comma_separated_values;
+  } else if (extension == "json") {
+    return FileType::javascript_object_notation;
   }
   return FileType::unknown;
 }
@@ -83,6 +90,11 @@ OpenDocumentReader::category_by_type(const FileType type) noexcept {
   case FileType::bitmap_image_file:
   case FileType::starview_metafile:
     return FileCategory::image;
+  case FileType::text_file:
+  case FileType::comma_separated_values:
+  case FileType::javascript_object_notation:
+  case FileType::markdown:
+    return FileCategory::text;
   default:
     return FileCategory::unknown;
   }
@@ -126,6 +138,12 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
     return "bmp";
   case FileType::starview_metafile:
     return "svm";
+  case FileType::text_file:
+    return "txt";
+  case FileType::comma_separated_values:
+    return "csv";
+  case FileType::javascript_object_notation:
+    return "json";
   default:
     return "unnamed";
   }
@@ -136,7 +154,9 @@ Html OpenDocumentReader::html(const std::string &path, const char *password,
                               const HtmlConfig &config) {
   DecodedFile file(path);
 
-  if (file.file_category() == FileCategory::document) {
+  if (file.file_type() == FileType::text_file) {
+    return html(file.text_file(), output_path, config);
+  } else if (file.file_category() == FileCategory::document) {
     auto document_file = file.document_file();
     if (document_file.password_encrypted()) {
       if ((password == nullptr) || !document_file.decrypt(password)) {
@@ -147,6 +167,12 @@ Html OpenDocumentReader::html(const std::string &path, const char *password,
   }
 
   throw UnknownFileType();
+}
+
+Html OpenDocumentReader::html(const TextFile &text_file,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
+  return html::translate(text_file, output_path, config);
 }
 
 Html OpenDocumentReader::html(const Document &document,
