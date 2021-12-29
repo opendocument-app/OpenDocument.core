@@ -1,5 +1,4 @@
 find_package(GTest REQUIRED CONFIG)
-find_package(Threads REQUIRED)
 
 include(GoogleTest REQUIRED)
 

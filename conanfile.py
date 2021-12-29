@@ -1,4 +1,5 @@
 from conans import ConanFile, CMake
+import os
 
 
 class OpenDocumentCoreConan(ConanFile):
@@ -19,11 +20,37 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": True,
     }
 
-    requires = "pugixml/1.11", "cryptopp/8.5.0", "miniz/2.1.0", "nlohmann_json/3.10.4", \
-               "vincentlaucsb-csv-parser/2.1.3", "gtest/1.11.0"
+    exports_sources = ["cli/*", "cmake/*", "include/*", "src/*", "CMakeLists.txt"]
+
+    requires = ["pugixml/1.11", "cryptopp/8.5.0", "miniz/2.1.0", "nlohmann_json/3.10.4",
+                "vincentlaucsb-csv-parser/2.1.3"]
+    build_requires = ["gtest/1.11.0"]
     generators = "cmake", "cmake_find_package_multi", "gcc", "txt"
 
+    _cmake = None
+
+    def _configure_cmake(self):
+        if self._cmake:
+            return self._cmake
+        self._cmake = CMake(self)
+        self._cmake.definitions["BUILD_SHARED_LIBS"] = self.options.shared
+        self._cmake.definitions["ODR_TEST"] = False
+        self._cmake.configure()
+        return self._cmake
+
     def build(self):
-        cmake = CMake(self)
-        cmake.configure()
+        cmake = self._configure_cmake()
         cmake.build()
+
+    def package(self):
+        self.copy("*.h", src="include", dst="include")
+
+        cmake = self._configure_cmake()
+        cmake.install()
+
+    def package_info(self):
+        self.cpp_info.libs = ["odr-static"]
+
+        self.cpp_info.names["cmake_find_package"] = "odr-static"
+        self.cpp_info.names["cmake_find_package_multi"] = "odr-static"
+        self.cpp_info.names["pkgconfig"] = "libodr-static"
