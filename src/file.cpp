@@ -1,10 +1,10 @@
 #include <cstdint>
 #include <internal/abstract/file.h>
 #include <internal/common/file.h>
+#include <internal/open_strategy.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <open_strategy.h>
 #include <optional>
 #include <utility>
 
@@ -27,19 +27,28 @@ File::File(std::shared_ptr<internal::abstract::File> impl)
     : m_impl{std::move(impl)} {}
 
 File::File(const std::string &path)
-    : m_impl{std::make_shared<internal::common::DiscFile>(path)} {}
+    : m_impl{std::make_shared<internal::common::DiskFile>(path)} {}
 
 FileLocation File::location() const noexcept { return m_impl->location(); }
 
 std::size_t File::size() const { return m_impl->size(); }
+
+std::optional<std::string> File::disk_path() const {
+  if (auto path = m_impl->disk_path()) {
+    return path->string();
+  }
+  return {};
+}
+
+const char *File::memory_data() const { return m_impl->memory_data(); }
 
 std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
 
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
 std::vector<FileType> DecodedFile::types(const std::string &path) {
-  return open_strategy::types(
-      std::make_shared<internal::common::DiscFile>(path));
+  return internal::open_strategy::types(
+      std::make_shared<internal::common::DiskFile>(path));
 }
 
 FileType DecodedFile::type(const std::string &path) {
@@ -57,13 +66,19 @@ DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
   }
 }
 
+DecodedFile::DecodedFile(const File &file)
+    : DecodedFile(internal::open_strategy::open_file(file.impl())) {}
+
+DecodedFile::DecodedFile(const File &file, FileType as)
+    : DecodedFile(internal::open_strategy::open_file(file.impl(), as)) {}
+
 DecodedFile::DecodedFile(const std::string &path)
-    : DecodedFile(open_strategy::open_file(
-          std::make_shared<internal::common::DiscFile>(path))) {}
+    : DecodedFile(internal::open_strategy::open_file(
+          std::make_shared<internal::common::DiskFile>(path))) {}
 
 DecodedFile::DecodedFile(const std::string &path, FileType as)
-    : DecodedFile(open_strategy::open_file(
-          std::make_shared<internal::common::DiscFile>(path), as)) {}
+    : DecodedFile(internal::open_strategy::open_file(
+          std::make_shared<internal::common::DiskFile>(path), as)) {}
 
 FileType DecodedFile::file_type() const noexcept {
   return m_impl->file_meta().type;
@@ -74,6 +89,8 @@ FileCategory DecodedFile::file_category() const noexcept {
 }
 
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
+
+File DecodedFile::file() const { return File(m_impl->file()); }
 
 TextFile DecodedFile::text_file() const {
   if (auto text_file =
@@ -134,8 +151,8 @@ DocumentFile::DocumentFile(
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 DocumentFile::DocumentFile(const std::string &path)
-    : DocumentFile(open_strategy::open_document_file(
-          std::make_shared<internal::common::DiscFile>(path))) {}
+    : DocumentFile(internal::open_strategy::open_document_file(
+          std::make_shared<internal::common::DiskFile>(path))) {}
 
 bool DocumentFile::password_encrypted() const {
   return m_impl->password_encrypted();

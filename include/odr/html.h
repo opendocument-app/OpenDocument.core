@@ -9,6 +9,7 @@
 
 namespace odr {
 class TextFile;
+class ImageFile;
 class Document;
 struct HtmlPage;
 
@@ -34,6 +35,13 @@ struct HtmlConfig {
   std::string slide_output_file_name{"slide{index}.html"};
   std::string sheet_output_file_name{"sheet{index}.html"};
   std::string page_output_file_name{"page{index}.html"};
+
+  // embedding
+  bool embed_resources{true};
+
+  // resources
+  std::string external_resource_path;
+  bool relative_resource_paths{true};
 
   // create editable output
   bool editable{false};
@@ -76,6 +84,8 @@ struct HtmlPage final {
 
 namespace html {
 Html translate(const TextFile &text_file, const std::string &path,
+               const HtmlConfig &config);
+Html translate(const ImageFile &image_file, const std::string &path,
                const HtmlConfig &config);
 Html translate(const Document &document, const std::string &path,
                const HtmlConfig &config);

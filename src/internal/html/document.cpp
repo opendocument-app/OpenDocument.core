@@ -1,8 +1,12 @@
 #include <fstream>
+#include <internal/abstract/file.h>
+#include <internal/common/path.h>
 #include <internal/html/common.h>
 #include <internal/html/document.h>
 #include <internal/html/document_element.h>
 #include <internal/html/document_style.h>
+#include <internal/resource.h>
+#include <internal/util/stream_util.h>
 #include <internal/util/string_util.h>
 #include <iostream>
 #include <odr/document.h>
@@ -16,30 +20,71 @@ namespace odr::internal {
 
 namespace {
 
-void front(const Document &document, std::ostream &out,
+void front(const Document &document, const std::string &path, std::ostream &out,
            const HtmlConfig &config) {
   out << internal::html::doctype();
   out << "<html>\n";
   out << "<head>\n";
   out << internal::html::default_headers();
   out << "\n";
-  out << "<style>\n";
-  out << internal::html::default_style();
-  if (document.document_type() == DocumentType::spreadsheet) {
-    out << internal::html::default_spreadsheet_style();
+
+  if (config.embed_resources) {
+    out << "<style>\n";
+    util::stream::pipe(
+        *Resources::instance().filesystem()->open("odr.css")->stream(), out);
+    if (document.document_type() == DocumentType::spreadsheet) {
+      util::stream::pipe(*Resources::instance()
+                              .filesystem()
+                              ->open("odr_spreadsheet.css")
+                              ->stream(),
+                         out);
+    }
+    out << "\n";
+    out << "</style>\n";
+  } else {
+    auto odr_css_path =
+        common::Path(config.external_resource_path).join("odr.css");
+    if (config.relative_resource_paths) {
+      odr_css_path = common::Path(odr_css_path).rebase(path);
+    }
+    out << "<link rel=\"stylesheet\" href=\"" << odr_css_path << "\">\n";
+    if (document.document_type() == DocumentType::spreadsheet) {
+      auto odr_spreadsheet_css_path =
+          common::Path(config.external_resource_path)
+              .join("odr_spreadsheet.css");
+      if (config.relative_resource_paths) {
+        odr_spreadsheet_css_path =
+            common::Path(odr_spreadsheet_css_path).rebase(path);
+      }
+      out << "<link rel=\"stylesheet\" href=\"" << odr_spreadsheet_css_path
+          << "\">\n";
+    }
   }
-  out << "\n";
-  out << "</style>\n";
+
   out << "</head>\n";
   out << "<body " << internal::html::body_attributes(config) << ">\n";
 }
 
-void back(const Document &, std::ostream &out, const HtmlConfig &) {
+void back(const Document &, const std::string &path, std::ostream &out,
+          const HtmlConfig &config) {
   out << "\n";
-  out << "<script>\n";
-  out << internal::html::default_script();
-  out << "\n";
-  out << "</script>\n";
+
+  if (config.embed_resources) {
+    out << "<script type=\"text/javascript\">\n";
+    util::stream::pipe(
+        *Resources::instance().filesystem()->open("odr.js")->stream(), out);
+    out << "\n";
+    out << "</script>\n";
+  } else {
+    auto odr_js_path =
+        common::Path(config.external_resource_path).join("odr.js");
+    if (config.relative_resource_paths) {
+      odr_js_path = common::Path(odr_js_path).rebase(path);
+    }
+    out << "<script type=\"text/javascript\" src=\"" << odr_js_path
+        << "\"></script>";
+  }
+
   out << "</body>\n";
   out << "</html>";
 }
@@ -89,7 +134,7 @@ Html html::translate_text_document(const Document &document,
   auto cursor = document.root_element();
   auto element = cursor.element().text_root();
 
-  front(document, out, config);
+  front(document, path, out, config);
   if (config.text_document_margin) {
     out << "<div";
     out << optional_style_attribute(
@@ -105,7 +150,7 @@ Html html::translate_text_document(const Document &document,
   } else {
     translate_children(cursor, out, config);
   }
-  back(document, out, config);
+  back(document, path, out, config);
 
   return {document.file_type(), config, {{"document", filled_path}}, document};
 }
@@ -121,9 +166,9 @@ Html html::translate_presentation(const Document &document,
         fill_path_variables(path + "/" + config.slide_output_file_name, i);
     auto out = output(filled_path);
 
-    front(document, out, config);
+    front(document, path, out, config);
     internal::html::translate_slide(cursor, out, config);
-    back(document, out, config);
+    back(document, path, out, config);
 
     pages.emplace_back(cursor.element().slide().name(), filled_path);
   });
@@ -142,9 +187,9 @@ Html html::translate_spreadsheet(const Document &document,
         fill_path_variables(path + "/" + config.sheet_output_file_name, i);
     auto out = output(filled_path);
 
-    front(document, out, config);
+    front(document, path, out, config);
     translate_sheet(cursor, out, config);
-    back(document, out, config);
+    back(document, path, out, config);
 
     pages.emplace_back(cursor.element().sheet().name(), filled_path);
   });
@@ -162,9 +207,9 @@ Html html::translate_drawing(const Document &document, const std::string &path,
         fill_path_variables(path + "/" + config.page_output_file_name, i);
     auto out = output(filled_path);
 
-    front(document, out, config);
+    front(document, path, out, config);
     internal::html::translate_page(cursor, out, config);
-    back(document, out, config);
+    back(document, path, out, config);
 
     pages.emplace_back(cursor.element().page().name(), filled_path);
   });

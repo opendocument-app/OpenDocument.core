@@ -79,10 +79,8 @@ enum class FileCategory {
 };
 
 enum class FileLocation {
-  unknown,
   memory,
-  disc,
-  network,
+  disk,
 };
 
 enum class EncryptionState {
@@ -121,11 +119,15 @@ struct FileMeta final {
 
 class File final {
 public:
-  explicit File(std::shared_ptr<internal::abstract::File>);
+  explicit File(std::shared_ptr<internal::abstract::File> impl);
   explicit File(const std::string &path);
 
   [[nodiscard]] FileLocation location() const noexcept;
   [[nodiscard]] std::size_t size() const;
+
+  [[nodiscard]] std::optional<std::string> disk_path() const;
+  [[nodiscard]] const char *memory_data() const;
+
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
 
   // TODO `impl()` might be a bit dirty
@@ -141,13 +143,17 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile>);
+  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
+  explicit DecodedFile(const File &file);
+  DecodedFile(const File &file, FileType as);
   explicit DecodedFile(const std::string &path);
   DecodedFile(const std::string &path, FileType as);
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] FileCategory file_category() const noexcept;
   [[nodiscard]] FileMeta file_meta() const noexcept;
+
+  [[nodiscard]] File file() const;
 
   [[nodiscard]] TextFile text_file() const;
   [[nodiscard]] ImageFile image_file() const;
@@ -159,7 +165,7 @@ protected:
 
 class TextFile final : public DecodedFile {
 public:
-  explicit TextFile(std::shared_ptr<internal::abstract::TextFile>);
+  explicit TextFile(std::shared_ptr<internal::abstract::TextFile> impl);
 
   [[nodiscard]] std::optional<std::string> charset() const;
 
@@ -172,7 +178,7 @@ private:
 
 class ImageFile final : public DecodedFile {
 public:
-  explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile>);
+  explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile> impl);
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
 
@@ -185,7 +191,7 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
+  explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile> impl);
   explicit DocumentFile(const std::string &path);
 
   [[nodiscard]] bool password_encrypted() const;

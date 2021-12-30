@@ -14,7 +14,7 @@
 
 namespace odr::internal::common {
 class MemoryFile;
-class DiscFile;
+class DiskFile;
 } // namespace odr::internal::common
 
 namespace odr::internal::zip::util {
@@ -22,7 +22,7 @@ namespace odr::internal::zip::util {
 class Archive final {
 public:
   explicit Archive(const std::shared_ptr<common::MemoryFile> &file);
-  explicit Archive(const std::shared_ptr<common::DiscFile> &file);
+  explicit Archive(const std::shared_ptr<common::DiskFile> &file);
   Archive(const Archive &);
   Archive(Archive &&) noexcept;
   ~Archive();
@@ -49,6 +49,10 @@ public:
 
   [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
+
+  [[nodiscard]] std::optional<common::Path> disk_path() const final;
+  [[nodiscard]] const char *memory_data() const final;
+
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
 private:

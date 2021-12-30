@@ -264,14 +264,14 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
   }
   if (auto font_underline =
           text_properties.attribute("style:text-underline-style");
-      font_underline && (std::strcmp("none", font_underline.value()) != 0)) {
-    result.font_underline = true;
+      font_underline) {
+    result.font_underline = std::strcmp("none", font_underline.value()) != 0;
   }
   if (auto font_line_through =
           text_properties.attribute("style:text-line-through-style");
-      font_line_through &&
-      (std::strcmp("none", font_line_through.value()) != 0)) {
-    result.font_line_through = true;
+      font_line_through) {
+    result.font_line_through =
+        std::strcmp("none", font_line_through.value()) != 0;
   }
   if (auto font_shadow =
           read_string(text_properties.attribute("fo:text-shadow"))) {

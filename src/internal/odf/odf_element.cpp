@@ -1153,6 +1153,7 @@ Element::construct_default_element(pugi::xml_node node) {
       {"text:bookmark", common::construct<Bookmark>},
       {"text:bookmark-start", common::construct<Bookmark>},
       {"text:list", common::construct<List>},
+      {"text:list-header", common::construct<ListItem>},
       {"text:list-item", common::construct<ListItem>},
       {"text:index-title", common::construct<Group>},
       {"text:table-of-content", common::construct<Group>},
