@@ -115,8 +115,8 @@ struct TextStyle final {
   std::optional<Measure> font_size;
   std::optional<FontWeight> font_weight;
   std::optional<FontStyle> font_style;
-  bool font_underline{false};
-  bool font_line_through{false};
+  std::optional<bool> font_underline;
+  std::optional<bool> font_line_through;
   std::optional<std::string> font_shadow;
   std::optional<Color> font_color;
   std::optional<Color> background_color;
