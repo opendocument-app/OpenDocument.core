@@ -9,6 +9,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ODR_TEST "enable tests" ON)
 
+# TODO defining global compiler flags seems to be bad practice with conan
+# TODO consider using conan profiles
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
         CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     # using clang or gcc
@@ -31,13 +33,43 @@ if (CCACHE_FOUND)
     message(STATUS "using ccache ${CCACHE_FOUND}")
 endif (CCACHE_FOUND)
 
-add_subdirectory(3rdparty)
+if (NOT DEFINED CONAN_EXPORTED)
+    include(cmake/conan.cmake)
+    conan_cmake_configure(GENERATORS cmake)
+    conan_cmake_autodetect(settings)
+    conan_cmake_install(PATH_OR_REFERENCE ..
+            BUILD missing
+            SETTINGS ${settings}
+            SETTINGS compiler.cppstd=17
+            ENV CC=${CMAKE_C_COMPILER}
+            ENV CXX=${CMAKE_CXX_COMPILER})
+    #include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    #conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+    include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
+endif ()
+
+find_package(pugixml REQUIRED)
+find_package(miniz REQUIRED)
+find_package(cryptopp REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(vincentlaucsb-csv-parser REQUIRED)
+find_package(uchardet REQUIRED)
 
 configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
 
 set(PRE_CONFIGURE_FILE "src/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp")
-include(cmake/git_watcher.cmake)
+if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
+    include(cmake/git_watcher.cmake)
+else ()
+    if (NOT DEFINED GIT_HEAD_SHA1)
+        set(GIT_HEAD_SHA1 "unknown")
+    endif ()
+    if (NOT DEFINED GIT_IS_DIRTY)
+        set(GIT_IS_DIRTY "false")
+    endif ()
+    configure_file("${PRE_CONFIGURE_FILE}" "${POST_CONFIGURE_FILE}" @ONLY)
+endif ()
 
 add_library(odr-interface INTERFACE)
 target_include_directories(odr-interface INTERFACE include)
@@ -137,7 +169,10 @@ add_library(odr-object OBJECT
         src/internal/zip/zip_util.cpp
         src/internal/zip/zip_archive.cpp
         )
-add_dependencies(odr-object check_git)
+set_target_properties(odr-object PROPERTIES OUTPUT_NAME odr)
+if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
+    add_dependencies(odr-object check_git)
+endif ()
 target_include_directories(odr-object
         PUBLIC
         include
@@ -146,47 +181,49 @@ target_include_directories(odr-object
         )
 target_link_libraries(odr-object
         PRIVATE
-        pugixml
-        miniz
-        cryptopp-static
+        pugixml::pugixml
+        miniz::miniz
+        cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        libuchardet
-        csv
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
         )
 set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_library(odr-static STATIC
         $<TARGET_OBJECTS:odr-object>
         )
+set_target_properties(odr-static PROPERTIES OUTPUT_NAME odr)
 target_include_directories(odr-static
         PUBLIC
         include
         )
 target_link_libraries(odr-static
         PRIVATE
-        pugixml
-        miniz
-        cryptopp-static
+        pugixml::pugixml
+        miniz::miniz
+        cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        libuchardet
-        csv
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
         )
 
 add_library(odr-shared SHARED
         $<TARGET_OBJECTS:odr-object>
         )
+set_target_properties(odr-shared PROPERTIES OUTPUT_NAME odr)
 target_include_directories(odr-shared
         PUBLIC
         include
         )
 target_link_libraries(odr-shared
         PRIVATE
-        pugixml
-        miniz
-        cryptopp-static
+        pugixml::pugixml
+        miniz::miniz
+        cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        libuchardet
-        csv
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
         )
 
 add_subdirectory(cli)

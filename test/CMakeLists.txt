@@ -1,4 +1,5 @@
-find_package(Threads REQUIRED)
+find_package(GTest REQUIRED)
+
 include(GoogleTest REQUIRED)
 
 set(ODR_TEST_DATA_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/data)
@@ -47,13 +48,14 @@ target_include_directories(odr_test
         )
 target_link_libraries(odr_test
         PRIVATE
-        pugixml
-        miniz
-        cryptopp-static
+        pugixml::pugixml
+        miniz::miniz
+        cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        csv
-        gtest_main
-        gtest
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
+        uchardet::uchardet
+        GTest::gtest
+        GTest::gtest_main
 
         odr-static
         )

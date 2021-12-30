@@ -1,8 +1,7 @@
 #include <internal/text/text_util.h>
-#include <internal/util/stream_util.h>
 #include <iostream>
 #include <odr/exceptions.h>
-#include <uchardet.h>
+#include <uchardet/uchardet.h>
 
 namespace odr::internal {
 

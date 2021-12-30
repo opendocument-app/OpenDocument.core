@@ -12,10 +12,8 @@ void csv::check_csv_file(std::istream &in) {
   // TODO safe to say a CSV with variable columns is invalid?
   format.variable_columns(::csv::VariableColumnPolicy::THROW);
 
-  ::csv::CSVReader parser(format);
   // TODO feed in junks; limit check size
-  parser.feed(util::stream::read(in));
-  parser.end_feed();
+  auto parser = ::csv::parse(util::stream::read(in), format);
 
   // this will actually check `variable_columns`
   for (auto &&_ : parser) {
