@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "srcPath": "dist/odr.js",
+      "dstPath": "odr.js",
+      "type": "text"
+    },
+    {
+      "srcPath": "dist/odr.css",
+      "dstPath": "odr.css",
+      "type": "text"
+    },
+    {
+      "srcPath": "dist/odr_spreadsheet.css",
+      "dstPath": "odr_spreadsheet.css",
+      "type": "text"
+    }
+  ]
+}

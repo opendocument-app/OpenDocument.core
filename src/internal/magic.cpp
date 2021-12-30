@@ -1,9 +1,9 @@
 #include <internal/abstract/file.h>
+#include <internal/magic.h>
 #include <internal/util/string_util.h>
 #include <iostream>
-#include <magic.h>
 
-namespace odr {
+namespace odr::internal {
 
 namespace {
 
@@ -63,4 +63,4 @@ FileType magic::file_type(const internal::abstract::File &file) {
   return file_type(std::string(head, max_head_size));
 }
 
-} // namespace odr
+} // namespace odr::internal

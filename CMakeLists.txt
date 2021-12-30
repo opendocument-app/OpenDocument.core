@@ -49,14 +49,16 @@ add_library(odr-object OBJECT
         src/exceptions.cpp
         src/file.cpp
         src/html.cpp
-        src/magic.cpp
         src/open_document_reader.cpp
-        src/open_strategy.cpp
         src/quantity.cpp
         src/style.cpp
 
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp
+        src/internal/magic.cpp
+        src/internal/open_strategy.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/project_info.cpp
+        src/internal/resource.cpp
+        src/internal/resource_data.cpp
 
         src/internal/cfb/cfb_archive.cpp
         src/internal/cfb/cfb_impl.cpp
@@ -85,7 +87,6 @@ add_library(odr-object OBJECT
         src/internal/html/document.cpp
         src/internal/html/document_style.cpp
         src/internal/html/document_element.cpp
-        src/internal/html/html_writer.cpp
         src/internal/html/image_file.cpp
         src/internal/html/text_file.cpp
 

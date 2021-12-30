@@ -1,10 +1,10 @@
 #include <cstdint>
 #include <internal/abstract/file.h>
 #include <internal/common/file.h>
+#include <internal/open_strategy.h>
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <open_strategy.h>
 #include <optional>
 #include <utility>
 
@@ -47,7 +47,7 @@ std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
 std::vector<FileType> DecodedFile::types(const std::string &path) {
-  return open_strategy::types(
+  return internal::open_strategy::types(
       std::make_shared<internal::common::DiskFile>(path));
 }
 
@@ -67,17 +67,17 @@ DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
 }
 
 DecodedFile::DecodedFile(const File &file)
-    : DecodedFile(open_strategy::open_file(file.impl())) {}
+    : DecodedFile(internal::open_strategy::open_file(file.impl())) {}
 
 DecodedFile::DecodedFile(const File &file, FileType as)
-    : DecodedFile(open_strategy::open_file(file.impl(), as)) {}
+    : DecodedFile(internal::open_strategy::open_file(file.impl(), as)) {}
 
 DecodedFile::DecodedFile(const std::string &path)
-    : DecodedFile(open_strategy::open_file(
+    : DecodedFile(internal::open_strategy::open_file(
           std::make_shared<internal::common::DiskFile>(path))) {}
 
 DecodedFile::DecodedFile(const std::string &path, FileType as)
-    : DecodedFile(open_strategy::open_file(
+    : DecodedFile(internal::open_strategy::open_file(
           std::make_shared<internal::common::DiskFile>(path), as)) {}
 
 FileType DecodedFile::file_type() const noexcept {
@@ -151,7 +151,7 @@ DocumentFile::DocumentFile(
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 DocumentFile::DocumentFile(const std::string &path)
-    : DocumentFile(open_strategy::open_document_file(
+    : DocumentFile(internal::open_strategy::open_document_file(
           std::make_shared<internal::common::DiskFile>(path))) {}
 
 bool DocumentFile::password_encrypted() const {

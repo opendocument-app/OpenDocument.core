@@ -36,6 +36,13 @@ struct HtmlConfig {
   std::string sheet_output_file_name{"sheet{index}.html"};
   std::string page_output_file_name{"page{index}.html"};
 
+  // embedding
+  bool embed_resources{true};
+
+  // resources
+  std::string external_resource_path;
+  bool relative_resource_paths{true};
+
   // create editable output
   bool editable{false};
 

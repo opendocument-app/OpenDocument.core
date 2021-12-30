@@ -6,6 +6,7 @@
 namespace odr {
 enum class FileType;
 enum class FileCategory;
+class DecodedFile;
 class TextFile;
 class Document;
 class Html;
@@ -21,8 +22,14 @@ public:
   [[nodiscard]] static FileCategory category_by_type(FileType type) noexcept;
   [[nodiscard]] static std::string type_to_string(FileType type) noexcept;
 
+  [[nodiscard]] static std::vector<FileType> types(const std::string &path);
+  [[nodiscard]] static DecodedFile open(const std::string &path);
+
   [[nodiscard]] static Html html(const std::string &input_path,
                                  const char *password,
+                                 const std::string &output_path,
+                                 const HtmlConfig &config);
+  [[nodiscard]] static Html html(const DecodedFile &file, const char *password,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
   [[nodiscard]] static Html html(const TextFile &text_file,
@@ -31,6 +38,8 @@ public:
   [[nodiscard]] static Html html(const Document &document,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
+
+  static void copy_resources(const std::string &to_path);
 
 private:
   OpenDocumentReader();
