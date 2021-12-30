@@ -119,10 +119,10 @@ std::string html::translate_text_style(const TextStyle &text_style) {
         .append(translate_font_style(*font_style))
         .append(";");
   }
-  if (text_style.font_underline) {
+  if (text_style.font_underline && *text_style.font_underline) {
     result += "text-decoration:underline;";
   }
-  if (text_style.font_line_through) {
+  if (text_style.font_line_through && *text_style.font_line_through) {
     result += "text-decoration:line-through;";
   }
   if (auto font_shadow = text_style.font_shadow) {
