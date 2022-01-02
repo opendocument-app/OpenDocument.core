@@ -18,6 +18,10 @@ void csv::check_csv_file(std::istream &in) {
   // this will actually check `variable_columns`
   for (auto &&_ : parser) {
   }
+
+  if (parser.get_col_names().size() <= 1) {
+    throw std::runtime_error("no csv file");
+  }
 }
 
 } // namespace odr::internal
