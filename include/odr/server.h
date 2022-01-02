@@ -5,10 +5,14 @@
 #include <memory>
 
 namespace odr {
+class File;
+class DecodedFile;
 
 struct ServerConfig final {
   const char *host;
   std::int32_t port;
+
+  // TODO temporary directory
 };
 
 class Server final {
@@ -16,6 +20,10 @@ public:
   explicit Server(const ServerConfig &config);
 
   void serve();
+
+  std::string add_file(const std::string &path);
+  std::string add_file(const File &file);
+  std::string add_file(const DecodedFile &file);
 
 private:
   class Impl;
