@@ -81,6 +81,7 @@ add_library(odr
         src/html.cpp
         src/open_document_reader.cpp
         src/quantity.cpp
+        src/server.cpp
         src/style.cpp
 
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp
