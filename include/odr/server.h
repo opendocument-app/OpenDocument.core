@@ -21,9 +21,9 @@ public:
 
   void serve();
 
-  std::string add_file(const std::string &path);
-  std::string add_file(const File &file);
-  std::string add_file(const DecodedFile &file);
+  std::string register_file(const std::string &path);
+  std::string register_file(const File &file);
+  std::string register_file(const DecodedFile &file);
 
 private:
   class Impl;

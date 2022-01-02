@@ -16,15 +16,15 @@ public:
     m_server.listen(m_config.host, m_config.port);
   }
 
-  std::string add_file(const std::string &path) {
-    return add_file(DecodedFile(path));
+  std::string register_file(const std::string &path) {
+    return register_file(DecodedFile(path));
   }
 
-  std::string add_file(const File &file) {
+  std::string register_file(const File &file) {
     return ""; // TODO
   }
 
-  std::string add_file(const DecodedFile &file) {
+  std::string register_file(const DecodedFile &file) {
     return ""; // TODO
   }
 
@@ -39,16 +39,16 @@ Server::Server(const ServerConfig &config)
 
 void Server::serve() { m_impl->serve(); }
 
-std::string Server::add_file(const std::string &path) {
-  return m_impl->add_file(path);
+std::string Server::register_file(const std::string &path) {
+  return m_impl->register_file(path);
 }
 
-std::string Server::add_file(const File &file) {
-  return m_impl->add_file(file);
+std::string Server::register_file(const File &file) {
+  return m_impl->register_file(file);
 }
 
-std::string Server::add_file(const DecodedFile &file) {
-  return m_impl->add_file(file);
+std::string Server::register_file(const DecodedFile &file) {
+  return m_impl->register_file(file);
 }
 
 } // namespace odr
