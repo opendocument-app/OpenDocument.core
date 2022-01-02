@@ -54,6 +54,7 @@ find_package(cryptopp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
+find_package(httplib REQUIRED)
 
 configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
 
@@ -184,6 +185,7 @@ target_link_libraries(odr
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
+        httplib::httplib
         )
 
 add_subdirectory(cli)
