@@ -57,6 +57,6 @@ target_link_libraries(odr_test
         GTest::gtest
         GTest::gtest_main
 
-        odr-static
+        odr
         )
 gtest_add_tests(TARGET odr_test)

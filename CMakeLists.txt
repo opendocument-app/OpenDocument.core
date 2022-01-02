@@ -71,10 +71,7 @@ else ()
     configure_file("${PRE_CONFIGURE_FILE}" "${POST_CONFIGURE_FILE}" @ONLY)
 endif ()
 
-add_library(odr-interface INTERFACE)
-target_include_directories(odr-interface INTERFACE include)
-
-add_library(odr-object OBJECT
+add_library(odr
         src/document.cpp
         src/document_cursor.cpp
         src/document_element.cpp
@@ -169,54 +166,17 @@ add_library(odr-object OBJECT
         src/internal/zip/zip_util.cpp
         src/internal/zip/zip_archive.cpp
         )
-set_target_properties(odr-object PROPERTIES OUTPUT_NAME odr)
+set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
 if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
-    add_dependencies(odr-object check_git)
+    add_dependencies(odr check_git)
 endif ()
-target_include_directories(odr-object
+target_include_directories(odr
         PUBLIC
         include
         PRIVATE
         src
         )
-target_link_libraries(odr-object
-        PRIVATE
-        pugixml::pugixml
-        miniz::miniz
-        cryptopp::cryptopp
-        nlohmann_json::nlohmann_json
-        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
-        uchardet::uchardet
-        )
-set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-add_library(odr-static STATIC
-        $<TARGET_OBJECTS:odr-object>
-        )
-set_target_properties(odr-static PROPERTIES OUTPUT_NAME odr)
-target_include_directories(odr-static
-        PUBLIC
-        include
-        )
-target_link_libraries(odr-static
-        PRIVATE
-        pugixml::pugixml
-        miniz::miniz
-        cryptopp::cryptopp
-        nlohmann_json::nlohmann_json
-        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
-        uchardet::uchardet
-        )
-
-add_library(odr-shared SHARED
-        $<TARGET_OBJECTS:odr-object>
-        )
-set_target_properties(odr-shared PROPERTIES OUTPUT_NAME odr)
-target_include_directories(odr-shared
-        PUBLIC
-        include
-        )
-target_link_libraries(odr-shared
+target_link_libraries(odr
         PRIVATE
         pugixml::pugixml
         miniz::miniz
@@ -234,8 +194,7 @@ endif ()
 
 install(
         TARGETS
-        odr-static
-        odr-shared
+        odr
         meta
         translate
         back_translate
