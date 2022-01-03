@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.12.4)
+
+file(READ "VERSION" VERSION)
+
 project(odr
-        VERSION 2.0.0
+        VERSION ${VERSION}
         LANGUAGES C CXX
         )
 set(CMAKE_CXX_STANDARD 17)
