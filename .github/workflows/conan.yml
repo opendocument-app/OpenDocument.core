@@ -25,7 +25,7 @@ jobs:
         run: |
           conan config set general.revisions_enabled=1
           conan remote add odr-conan-repo https://odr.jfrog.io/artifactory/api/conan/odr-conan
-          conan user stefl.andreas@gmail.com -r odr-conan-repo -p "${{ secrets.PAT_ARTIFACTORY }}"
+          conan user github -r odr-conan-repo -p "${{ secrets.PAT_ARTIFACTORY }}"
 
       - name: checkout
         uses: actions/checkout@v2
