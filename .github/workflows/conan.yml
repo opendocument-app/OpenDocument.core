@@ -29,13 +29,5 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: cmake
-        run: |
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
-
-      - name: clang-tidy
-        run: |
-          FILES=$( find . -path ./build -prune -false -o -type f \( -iname \*.cpp \) )
-          clang-tidy-12 -p build -header-filter '.*' $FILES
+      - run: conan create conanfile.py --build missing
+      - run: conan upload odrcore -r odr-conan-repo -c
