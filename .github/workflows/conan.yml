@@ -30,8 +30,8 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - run: conan create conanfile.py
+      - run: conan create conanfile.py --build missing
         env:
-          CC: clang-12
-          CXX: clang++-12
+          CC: gcc-10
+          CXX: g++-10
       - run: conan upload odrcore -r odr-conan-repo -c
