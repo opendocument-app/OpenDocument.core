@@ -1,0 +1,41 @@
+name: tidy
+
+on:
+  push:
+    branches:
+      - master
+      - feature/ci-conan-upload # TODO remove
+    tags:
+      - v*
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: set up python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: install python dependencies
+        run: |
+          pip install --upgrade pip conan
+
+      - name: conan repo and user
+        run: |
+          conan remote add odr-conan-repo https://odr.jfrog.io/artifactory/api/conan/odr-conan
+          conan user artifactory -r odr-conan-repo -p "${{ secrets.PAT_ARTIFACTORY }}"
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: cmake
+        run: |
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+
+      - name: clang-tidy
+        run: |
+          FILES=$( find . -path ./build -prune -false -o -type f \( -iname \*.cpp \) )
+          clang-tidy-12 -p build -header-filter '.*' $FILES

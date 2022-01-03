@@ -1,4 +1,5 @@
-from conans import ConanFile, CMake
+from conans import ConanFile, CMake, tools
+import os
 
 
 class OpenDocumentCoreConan(ConanFile):
@@ -19,7 +20,7 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": True,
     }
 
-    exports_sources = ["cli/*", "cmake/*", "include/*", "src/*", "CMakeLists.txt"]
+    exports_sources = ["cli/*", "cmake/*", "include/*", "src/*", "CMakeLists.txt", "VERSION"]
 
     requires = ["pugixml/1.11", "cryptopp/8.5.0", "miniz/2.1.0", "nlohmann_json/3.10.4",
                 "vincentlaucsb-csv-parser/2.1.3", "uchardet/0.0.7"]
@@ -27,6 +28,10 @@ class OpenDocumentCoreConan(ConanFile):
     generators = "cmake_paths", "cmake_find_package"
 
     _cmake = None
+
+    def set_version(self):
+        # TODO capture commit and dirty state
+        self.version = tools.load(os.path.join(self.recipe_folder, "VERSION"))
 
     def _configure_cmake(self):
         if self._cmake:
