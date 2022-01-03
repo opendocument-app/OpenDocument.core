@@ -25,7 +25,8 @@ void front(const Document &document, const std::string &path, std::ostream &out,
   out << internal::html::doctype();
   out << "<html>\n";
   out << "<head>\n";
-  if (config.text_document_margin) {
+  if (document.document_type() == DocumentType::text &&
+      config.text_document_margin) {
     out << R"V0G0N(<meta charset="UTF-8"/>
 <base target="_blank"/>
 <meta name="viewport" content="width=device-width,user-scalable=yes"/>
