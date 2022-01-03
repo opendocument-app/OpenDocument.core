@@ -30,8 +30,5 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - run: conan create conanfile.py --build missing
-        env:
-          CC: gcc-10
-          CXX: g++-10
+      - run: conan create conanfile.py -s compiler.libcxx=libstdc++11 --build missing
       - run: conan upload odrcore -r odr-conan-repo -c
