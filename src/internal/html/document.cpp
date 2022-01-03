@@ -25,7 +25,14 @@ void front(const Document &document, const std::string &path, std::ostream &out,
   out << internal::html::doctype();
   out << "<html>\n";
   out << "<head>\n";
-  out << internal::html::default_headers();
+  if (config.text_document_margin) {
+    out << R"V0G0N(<meta charset="UTF-8"/>
+<base target="_blank"/>
+<meta name="viewport" content="width=device-width,user-scalable=yes"/>
+<title>odr</title>)V0G0N";
+  } else {
+    out << internal::html::default_headers();
+  }
   out << "\n";
 
   if (config.embed_resources) {
@@ -137,12 +144,12 @@ Html html::translate_text_document(const Document &document,
   front(document, path, out, config);
   if (config.text_document_margin) {
     out << "<div";
-    out << optional_style_attribute(
-        translate_outer_page_style(element.page_layout()));
+    auto page_layout = element.page_layout();
+    page_layout.height = {};
+    out << optional_style_attribute(translate_outer_page_style(page_layout));
     out << ">";
     out << "<div";
-    out << optional_style_attribute(
-        translate_inner_page_style(element.page_layout()));
+    out << optional_style_attribute(translate_inner_page_style(page_layout));
     out << ">";
     translate_children(cursor, out, config);
     out << "</div>";
