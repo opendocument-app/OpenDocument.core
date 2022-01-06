@@ -48,14 +48,11 @@ target_include_directories(odr_test
         )
 target_link_libraries(odr_test
         PRIVATE
-        pugixml::pugixml
-        miniz::miniz
-        cryptopp::cryptopp
-        nlohmann_json::nlohmann_json
-        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
-        uchardet::uchardet
         GTest::gtest
         GTest::gtest_main
+        miniz::miniz
+        nlohmann_json::nlohmann_json
+        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
 
         odr
         )
