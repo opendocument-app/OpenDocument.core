@@ -1,17 +1,21 @@
 const TerserPlugin = require('terser-webpack-plugin');
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 
 module.exports = {
   entry: {
     odr: './src/odr.js',
     odr_spreadsheet: './src/odr_spreadsheet.js',
   },
+  output: {
+    filename: '[name].js',
+    library: '[name]',
+  },
   module: {
     rules: [
       {
         test: /.s?css$/,
-        use: [MiniCssExtractPlugin.loader, "css-loader"],
+        use: [ MiniCssExtractPlugin.loader, 'css-loader', ],
       },
     ],
   },
@@ -28,9 +32,9 @@ module.exports = {
       new CssMinimizerPlugin({
         minimizerOptions: {
           preset: [
-            "default",
+            'default',
             {
-              discardComments: { removeAll: true },
+              discardComments: { removeAll: true, },
             },
           ],
         },
@@ -39,5 +43,5 @@ module.exports = {
   },
   plugins: [
     new MiniCssExtractPlugin(),
-  ]
+  ],
 };
