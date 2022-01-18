@@ -1,5 +1,5 @@
-import './edit';
-import './search';
-import './error';
+export * from './edit';
+export * from './search';
+export * from './error';
 
 import './document.css';
