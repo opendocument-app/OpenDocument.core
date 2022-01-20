@@ -50,6 +50,8 @@ FileType magic::file_type(const std::string &head) {
     return FileType::starview_metafile;
   } else if (match_magic(head, "7B 5C 72 74 66 31")) {
     return FileType::rich_text_format;
+  } else if (match_magic(head, "FF 57 50 43")) {
+    return FileType::word_perfect;
   }
   return FileType::unknown;
 }

@@ -43,6 +43,7 @@ TEST_P(OutputReferenceTests, html_meta) {
       (test_file.type == FileType::legacy_word_document) ||
       (test_file.type == FileType::legacy_powerpoint_presentation) ||
       (test_file.type == FileType::legacy_excel_worksheets) ||
+      (test_file.type == FileType::word_perfect) ||
       (test_file.type == FileType::starview_metafile)) {
     GTEST_SKIP();
   }

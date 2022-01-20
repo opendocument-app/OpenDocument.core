@@ -42,6 +42,9 @@ enum class FileType {
   legacy_powerpoint_presentation,
   legacy_excel_worksheets,
 
+  // https://en.wikipedia.org/wiki/WordPerfect
+  word_perfect,
+
   // https://en.wikipedia.org/wiki/Rich_Text_Format
   rich_text_format,
 

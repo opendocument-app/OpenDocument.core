@@ -49,6 +49,10 @@ OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
     return FileType::legacy_powerpoint_presentation;
   } else if (extension == "xls") {
     return FileType::legacy_excel_worksheets;
+  } else if (extension == "wpd") {
+    return FileType::word_perfect;
+  } else if (extension == "rtf") {
+    return FileType::rich_text_format;
   } else if (extension == "pdf") {
     return FileType::portable_document_format;
   } else if (extension == "png") {
@@ -88,6 +92,8 @@ OpenDocumentReader::category_by_type(const FileType type) noexcept {
   case FileType::legacy_word_document:
   case FileType::legacy_powerpoint_presentation:
   case FileType::legacy_excel_worksheets:
+  case FileType::word_perfect:
+  case FileType::rich_text_format:
     return FileCategory::document;
   case FileType::portable_network_graphics:
   case FileType::graphics_interchange_format:
@@ -131,6 +137,10 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
     return "ppt";
   case FileType::legacy_excel_worksheets:
     return "xls";
+  case FileType::word_perfect:
+    return "wpd";
+  case FileType::rich_text_format:
+    return "rtf";
   case FileType::portable_document_format:
     return "pdf";
   case FileType::portable_network_graphics:
