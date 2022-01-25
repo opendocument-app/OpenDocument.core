@@ -1,6 +1,7 @@
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
 #include <internal/ooxml/ooxml_meta.h>
+#include <odr/exceptions.h>
 #include <odr/file.h>
 #include <unordered_map>
 
@@ -27,6 +28,10 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
       result.type = t.second;
       break;
     }
+  }
+
+  if (result.type == FileType::unknown) {
+    throw NoOfficeOpenXmlFile();
   }
 
   return result;

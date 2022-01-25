@@ -72,6 +72,10 @@ struct NoOpenDocumentFile final : public std::runtime_error {
   NoOpenDocumentFile();
 };
 
+struct NoOfficeOpenXmlFile final : public std::runtime_error {
+  NoOfficeOpenXmlFile();
+};
+
 struct NoXml final : public std::runtime_error {
   NoXml();
 };

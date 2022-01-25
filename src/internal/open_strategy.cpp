@@ -68,22 +68,24 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
       result.push_back(svm::SvmFile(memory_file).file_type());
     } catch (...) {
     }
-  }
-
-  try {
-    auto text = std::make_shared<text::TextFile>(file);
-    result.push_back(FileType::text_file);
-
+  } else if (file_type == FileType::unknown) {
     try {
-      result.push_back(csv::CsvFile(text).file_type());
+      auto text = std::make_shared<text::TextFile>(file);
+      result.push_back(FileType::text_file);
+
+      try {
+        result.push_back(csv::CsvFile(text).file_type());
+      } catch (...) {
+      }
+
+      try {
+        result.push_back(json::JsonFile(text).file_type());
+      } catch (...) {
+      }
     } catch (...) {
     }
-
-    try {
-      result.push_back(json::JsonFile(text).file_type());
-    } catch (...) {
-    }
-  } catch (...) {
+  } else {
+    result.push_back(file_type);
   }
 
   return result;
