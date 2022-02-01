@@ -8,7 +8,7 @@ using namespace odr::internal;
 using namespace odr::test;
 
 TEST(OpenDocumentReader, version) {
-  EXPECT_FALSE(OpenDocumentReader::version().empty());
+  EXPECT_TRUE(OpenDocumentReader::version().empty());
 }
 
 TEST(OpenDocumentReader, commit) {
