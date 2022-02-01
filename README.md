@@ -26,3 +26,7 @@ Replaces legacy projects [OpenDocument.java](https://github.com/andiwand/OpenDoc
 Potential test files: https://file-examples.com/
 
 ## [Documentation](docs/README.md)
+
+## Version
+
+Versions and history are tracked on [GitHub](https://github.com/opendocument-app/OpenDocument.core).
