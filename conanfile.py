@@ -32,6 +32,7 @@ class OpenDocumentCoreConan(ConanFile):
         if self._cmake:
             return self._cmake
         self._cmake = CMake(self)
+        self._cmake.definitions["CMAKE_PROJECT_VERSION"] = self.version
         self._cmake.definitions["BUILD_SHARED_LIBS"] = self.options.shared
         self._cmake.definitions["ODR_TEST"] = False
         self._cmake.configure()

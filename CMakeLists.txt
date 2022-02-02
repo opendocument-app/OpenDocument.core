@@ -55,6 +55,8 @@ find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 
+configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
+
 set(PRE_CONFIGURE_FILE "src/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp")
 if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
@@ -83,7 +85,7 @@ add_library(odr
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp
         src/internal/magic.cpp
         src/internal/open_strategy.cpp
-        src/internal/project_info.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/src/internal/project_info.cpp
         src/internal/resource.cpp
         src/internal/resource_data.cpp
 
