@@ -1,5 +1,4 @@
-from conans import ConanFile, CMake, tools
-import os
+from conans import ConanFile, CMake
 
 
 class OpenDocumentCoreConan(ConanFile):
@@ -20,7 +19,7 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": True,
     }
 
-    exports_sources = ["cli/*", "cmake/*", "include/*", "src/*", "CMakeLists.txt", "VERSION"]
+    exports_sources = ["cli/*", "cmake/*", "include/*", "src/*", "CMakeLists.txt"]
 
     requires = ["pugixml/1.11", "cryptopp/8.5.0", "miniz/2.1.0", "nlohmann_json/3.10.4",
                 "vincentlaucsb-csv-parser/2.1.3", "uchardet/0.0.7"]
@@ -29,14 +28,11 @@ class OpenDocumentCoreConan(ConanFile):
 
     _cmake = None
 
-    def set_version(self):
-        # TODO capture commit and dirty state
-        self.version = tools.load(os.path.join(self.recipe_folder, "VERSION"))
-
     def _configure_cmake(self):
         if self._cmake:
             return self._cmake
         self._cmake = CMake(self)
+        self._cmake.definitions["CMAKE_PROJECT_VERSION"] = self.version
         self._cmake.definitions["BUILD_SHARED_LIBS"] = self.options.shared
         self._cmake.definitions["ODR_TEST"] = False
         self._cmake.configure()
