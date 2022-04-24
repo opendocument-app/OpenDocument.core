@@ -1,9 +1,8 @@
 name: conan
 
 on:
-  push:
-    tags:
-      - v*
+  release:
+    types: [published]
 
 jobs:
   build:
