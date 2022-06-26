@@ -21,6 +21,11 @@ jobs:
           pip install --upgrade pip
           pip install conan
 
+      - name: setup odr conan repo
+        run: |
+          conan remote add odr-conan-repo https://odr.jfrog.io/artifactory/api/conan/odr-conan
+          conan config set general.revisions_enabled=1
+
       - name: checkout
         uses: actions/checkout@v2
 

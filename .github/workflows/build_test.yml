@@ -5,13 +5,15 @@ on: pull_request
 jobs:
   build:
     runs-on: ${{ matrix.config.os }}
+    continue-on-error: false
     strategy:
+      fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-20.04, cc: clang, cxx: clang++ }
-          - { os: ubuntu-20.04, cc: gcc, cxx: g++ }
+          - { os: ubuntu-20.04, cc: clang-12, cxx: clang++-12 }
+          - { os: ubuntu-20.04, cc: gcc-10, cxx: g++-10 }
           - { os: macos-10.15, cc: clang, cxx: clang++ }
-          - { os: windows-2019, cc: msvc, cxx: msvc }
+          - { os: windows-2019 }
 
     steps:
       - name: ubuntu install ccache
@@ -31,6 +33,11 @@ jobs:
           python-version: 3.8
       - run: pip install conan
 
+      - name: setup odr conan repo
+        run: |
+          conan remote add odr-conan-repo https://odr.jfrog.io/artifactory/api/conan/odr-conan
+          conan config set general.revisions_enabled=1
+
       - name: cache
         uses: actions/cache@v2
         with:
@@ -39,7 +46,7 @@ jobs:
             ~/.conan/data
             /Users/runner/Library/Caches/ccache
             C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev16
+          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev17
           restore-keys: |
             ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
 
@@ -69,7 +76,9 @@ jobs:
   test:
     needs: build
     runs-on: ${{ matrix.config.os }}
+    continue-on-error: false
     strategy:
+      fail-fast: false
       matrix:
         config:
           - { os: ubuntu-20.04, cc: clang, cxx: clang++ }

@@ -28,6 +28,10 @@ class OpenDocumentCoreConan(ConanFile):
 
     _cmake = None
 
+    def configure(self):
+        if self.settings.compiler == 'Visual Studio':
+            del self.options.fPIC
+
     def _configure_cmake(self):
         if self._cmake:
             return self._cmake
