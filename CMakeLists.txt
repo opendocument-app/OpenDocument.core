@@ -54,6 +54,7 @@ find_package(cryptopp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
+find_package(pdf2htmlEX REQUIRED)
 
 configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
 
@@ -112,10 +113,10 @@ add_library(odr
         src/internal/csv/csv_util.cpp
 
         src/internal/html/common.cpp
-        src/internal/html/css_writer.cpp
         src/internal/html/document.cpp
         src/internal/html/document_style.cpp
         src/internal/html/document_element.cpp
+        src/internal/html/pdf_file.cpp
         src/internal/html/image_file.cpp
         src/internal/html/text_file.cpp
 
@@ -148,6 +149,8 @@ add_library(odr
         src/internal/ooxml/ooxml_file.cpp
         src/internal/ooxml/ooxml_meta.cpp
         src/internal/ooxml/ooxml_util.cpp
+
+        src/internal/pdf/pdf_file.cpp
 
         src/internal/svm/svm_file.cpp
         src/internal/svm/svm_format.cpp
@@ -184,6 +187,8 @@ target_link_libraries(odr
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
+        pdf2htmlEX::pdf2htmlEX
+        poppler::poppler
         )
 
 add_subdirectory(cli)

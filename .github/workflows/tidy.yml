@@ -4,8 +4,13 @@ on: pull_request
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
-
+    runs-on: ${{ matrix.config.os }}
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { os: ubuntu-20.04, cc: clang-12, cxx: clang++-12 }
     steps:
       - name: ubuntu install clang-tidy
         run: |
@@ -21,10 +26,20 @@ jobs:
           pip install --upgrade pip
           pip install conan
 
+      - name: setup odr conan repo
+        run: |
+          conan remote remove conancenter
+          conan remote add odr-conan-repo https://odr.jfrog.io/artifactory/api/conan/odr-conan
+          conan remote add conancenter: https://center.conan.io
+          conan config set general.revisions_enabled=1
+
       - name: checkout
         uses: actions/checkout@v2
 
       - name: cmake
+        env:
+          CC: ${{ matrix.config.cc }}
+          CXX: ${{ matrix.config.cxx }}
         run: |
           mkdir -p build
           cd build

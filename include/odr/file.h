@@ -15,6 +15,10 @@ class ImageFile;
 class DocumentFile;
 } // namespace odr::internal::abstract
 
+namespace odr::internal::pdf {
+class PdfFile;
+} // namespace odr::internal::pdf
+
 namespace odr {
 class TextFile;
 class ImageFile;
@@ -208,6 +212,17 @@ public:
 
 private:
   std::shared_ptr<internal::abstract::DocumentFile> m_impl;
+};
+
+class PdfFile final : public DecodedFile {
+public:
+  explicit PdfFile(std::shared_ptr<internal::pdf::PdfFile> impl);
+
+  // TODO `impl()` might be a bit dirty
+  [[nodiscard]] std::shared_ptr<internal::pdf::PdfFile> impl() const;
+
+private:
+  std::shared_ptr<internal::pdf::PdfFile> m_impl;
 };
 
 } // namespace odr
