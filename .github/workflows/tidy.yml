@@ -23,7 +23,9 @@ jobs:
 
       - name: setup odr conan repo
         run: |
+          conan remote remove conancenter
           conan remote add odr-conan-repo https://odr.jfrog.io/artifactory/api/conan/odr-conan
+          conan remote add conancenter: https://center.conan.io
           conan config set general.revisions_enabled=1
 
       - name: checkout
