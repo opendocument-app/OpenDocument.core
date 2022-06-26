@@ -113,11 +113,9 @@ add_library(odr
         src/internal/csv/csv_util.cpp
 
         src/internal/html/common.cpp
-        src/internal/html/css_writer.cpp
         src/internal/html/document.cpp
         src/internal/html/document_style.cpp
         src/internal/html/document_element.cpp
-        src/internal/html/html_writer.cpp
         src/internal/html/pdf_file.cpp
         src/internal/html/image_file.cpp
         src/internal/html/text_file.cpp
