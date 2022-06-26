@@ -4,14 +4,13 @@ on: pull_request
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.config.os }}
     continue-on-error: false
     strategy:
       fail-fast: false
       matrix:
         config:
-          - { cc: clang-12, cxx: clang++-12 }
-
+          - { os: ubuntu-20.04, cc: clang-12, cxx: clang++-12 }
     steps:
       - name: ubuntu install clang-tidy
         run: |
@@ -38,6 +37,9 @@ jobs:
         uses: actions/checkout@v2
 
       - name: cmake
+        env:
+          CC: ${{ matrix.config.cc }}
+          CXX: ${{ matrix.config.cxx }}
         run: |
           mkdir -p build
           cd build

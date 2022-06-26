@@ -14,7 +14,6 @@ jobs:
           - { os: ubuntu-20.04, cc: gcc-10, cxx: g++-10 }
           - { os: macos-10.15, cc: clang, cxx: clang++ }
           - { os: windows-2019 }
-
     steps:
       - name: ubuntu install ccache
         if: startsWith(matrix.config.os, 'ubuntu')
@@ -63,6 +62,7 @@ jobs:
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Release ..
+
       - name: make
         run: |
           cd build
@@ -85,7 +85,6 @@ jobs:
         config:
           - { os: ubuntu-20.04, cc: clang, cxx: clang++ }
           - { os: macos-10.15, cc: clang, cxx: clang++ }
-
     steps:
       - name: ubuntu install tidy
         if: startsWith(matrix.config.os, 'ubuntu')
