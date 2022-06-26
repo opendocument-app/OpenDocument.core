@@ -29,6 +29,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
+      # TODO remove
+      - run: conan info
+
       - name: cmake
         run: |
           mkdir -p build
