@@ -188,6 +188,7 @@ target_link_libraries(odr
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
         pdf2htmlEX::pdf2htmlEX
+        poppler::poppler
         )
 
 add_subdirectory(cli)
