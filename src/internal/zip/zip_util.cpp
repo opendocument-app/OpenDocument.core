@@ -78,7 +78,7 @@ FileInZipIstream::FileInZipIstream(std::shared_ptr<Archive> archive,
 Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)
     : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
 
-Archive::Archive(const std::shared_ptr<common::DiscFile> &file)
+Archive::Archive(const std::shared_ptr<common::DiskFile> &file)
     : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
 
 Archive::Archive(std::shared_ptr<abstract::File> file)
@@ -137,6 +137,10 @@ std::size_t FileInZip::size() const {
   mz_zip_reader_file_stat(m_archive->zip(), m_index, &stat);
   return stat.m_uncomp_size;
 }
+
+std::optional<common::Path> FileInZip::disk_path() const { return {}; }
+
+const char *FileInZip::memory_data() const { return nullptr; }
 
 std::unique_ptr<std::istream> FileInZip::stream() const {
   auto iter = mz_zip_reader_extract_iter_new(m_archive->zip(), m_index, 0);

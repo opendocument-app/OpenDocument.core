@@ -86,7 +86,7 @@ SystemFilesystem::file_walker(Path path) const {
 }
 
 std::shared_ptr<abstract::File> SystemFilesystem::open(Path path) const {
-  return std::make_unique<DiscFile>(to_system_path_(path));
+  return std::make_unique<DiskFile>(to_system_path_(path));
 }
 
 std::unique_ptr<std::ostream> SystemFilesystem::create_file(Path path) {

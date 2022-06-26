@@ -1,0 +1,32 @@
+name: conan
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: set up python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: install python dependencies
+        run: |
+          pip install --upgrade pip conan
+
+      - name: conan repo and user setup
+        run: |
+          conan config set general.revisions_enabled=1
+          conan remote add odr-conan-repo https://odr.jfrog.io/artifactory/api/conan/odr-conan
+          conan user stefl.andreas@gmail.com -r odr-conan-repo -p "${{ secrets.PAT_ARTIFACTORY }}"
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+
+      - run: conan create conanfile.py odrcore/${VERSION}@ -s compiler.libcxx=libstdc++11 --build missing
+      - run: conan upload odrcore -r odr-conan-repo -c

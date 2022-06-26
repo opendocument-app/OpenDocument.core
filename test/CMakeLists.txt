@@ -1,3 +1,5 @@
+find_package(GTest REQUIRED)
+
 include(GoogleTest REQUIRED)
 
 set(ODR_TEST_DATA_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/data)
@@ -10,10 +12,11 @@ add_executable(odr_test
 
         src/document_test.cpp
         src/file_test.cpp
-        src/magic_test.cpp
         src/open_document_reader_test.cpp
         src/output_reference_test.cpp
         src/quantity_test.cpp
+
+        src/internal/magic_test.cpp
 
         src/internal/cfb/cfb_archive_test.cpp
 
@@ -57,6 +60,6 @@ target_link_libraries(odr_test
         GTest::gtest
         GTest::gtest_main
 
-        odr-static
+        odr
         )
 gtest_add_tests(TARGET odr_test)

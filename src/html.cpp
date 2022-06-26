@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <internal/html/document.h>
+#include <internal/html/image_file.h>
 #include <internal/html/text_file.h>
 #include <nlohmann/json.hpp>
 #include <odr/document.h>
@@ -50,6 +51,12 @@ Html html::translate(const TextFile &text_file, const std::string &path,
                      const HtmlConfig &config) {
   fs::create_directories(path);
   return internal::html::translate_text_file(text_file, path, config);
+}
+
+Html html::translate(const ImageFile &image_file, const std::string &path,
+                     const HtmlConfig &config) {
+  fs::create_directories(path);
+  return internal::html::translate_image_file(image_file, path, config);
 }
 
 Html html::translate(const Document &document, const std::string &path,

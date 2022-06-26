@@ -3,7 +3,7 @@ target_link_libraries(meta
         PRIVATE
         nlohmann_json::nlohmann_json
 
-        odr-static
+        odr
         )
 target_include_directories(meta
         PRIVATE
@@ -13,13 +13,13 @@ target_include_directories(meta
 add_executable(translate src/translate.cpp)
 target_link_libraries(translate
         PRIVATE
-        odr-static
+        odr
         )
 
 add_executable(back_translate src/back_translate.cpp)
 target_link_libraries(back_translate
         PRIVATE
-        odr-static
+        odr
         )
 target_include_directories(back_translate
         PRIVATE

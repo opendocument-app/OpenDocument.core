@@ -12,12 +12,12 @@ using namespace odr::test;
 
 TEST(Archive, smoke_zip) {
   Archive<zip::ReadonlyZipArchive>(
-      zip::ReadonlyZipArchive(std::make_shared<DiscFile>(
+      zip::ReadonlyZipArchive(std::make_shared<DiskFile>(
           TestData::test_file_path("odr-public/odt/style-various-1.odt"))));
 }
 
 TEST(Archive, smoke_cfb) {
   Archive<cfb::ReadonlyCfbArchive>(
-      cfb::ReadonlyCfbArchive(std::make_shared<MemoryFile>(DiscFile(
+      cfb::ReadonlyCfbArchive(std::make_shared<MemoryFile>(DiskFile(
           TestData::test_file_path("odr-public/docx/encrypted.docx")))));
 }

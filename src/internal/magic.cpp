@@ -1,9 +1,9 @@
 #include <internal/abstract/file.h>
+#include <internal/magic.h>
 #include <internal/util/string_util.h>
 #include <iostream>
-#include <magic.h>
 
-namespace odr {
+namespace odr::internal {
 
 namespace {
 
@@ -50,6 +50,8 @@ FileType magic::file_type(const std::string &head) {
     return FileType::starview_metafile;
   } else if (match_magic(head, "7B 5C 72 74 66 31")) {
     return FileType::rich_text_format;
+  } else if (match_magic(head, "FF 57 50 43")) {
+    return FileType::word_perfect;
   }
   return FileType::unknown;
 }
@@ -63,4 +65,4 @@ FileType magic::file_type(const internal::abstract::File &file) {
   return file_type(std::string(head, max_head_size));
 }
 
-} // namespace odr
+} // namespace odr::internal

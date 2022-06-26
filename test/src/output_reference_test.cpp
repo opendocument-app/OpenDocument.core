@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <internal/common/path.h>
 #include <internal/util/odr_meta_util.h>
 #include <internal/util/string_util.h>
 #include <iostream>
@@ -22,8 +23,15 @@ using OutputReferenceTests = ::testing::TestWithParam<std::string>;
 
 TEST_P(OutputReferenceTests, html_meta) {
   const auto test_file_path = GetParam();
-  TestFile test_file = TestData::test_file(test_file_path);
-  const std::string output_path = "./output/" + test_file_path;
+  const auto test_file = TestData::test_file(test_file_path);
+
+  const auto test_repo = *common::Path(test_file_path).begin();
+  const auto output_path_prefix =
+      common::Path("output").join(test_repo).join("output").string();
+  const auto output_path =
+      common::Path(output_path_prefix)
+          .join(common::Path(test_file_path).rebase(test_repo))
+          .string();
 
   std::cout << test_file.path << " to " << output_path << std::endl;
 
@@ -35,6 +43,7 @@ TEST_P(OutputReferenceTests, html_meta) {
       (test_file.type == FileType::legacy_word_document) ||
       (test_file.type == FileType::legacy_powerpoint_presentation) ||
       (test_file.type == FileType::legacy_excel_worksheets) ||
+      (test_file.type == FileType::word_perfect) ||
       (test_file.type == FileType::starview_metafile)) {
     GTEST_SKIP();
   }
@@ -76,7 +85,14 @@ TEST_P(OutputReferenceTests, html_meta) {
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
+  const auto resource_path =
+      common::Path(output_path_prefix).parent().join("resources").string();
+  OpenDocumentReader::copy_resources(resource_path);
+
   HtmlConfig config;
+  config.embed_resources = false;
+  config.external_resource_path = resource_path;
+  config.relative_resource_paths = true;
   config.editable = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);
   std::optional<Html> html;

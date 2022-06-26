@@ -13,33 +13,22 @@ enum class FileLocation;
 
 namespace odr::internal::common {
 
-class DiscFile : public abstract::File {
+class DiskFile : public abstract::File {
 public:
-  explicit DiscFile(const char *path);
-  explicit DiscFile(const std::string &path);
-  explicit DiscFile(common::Path path);
+  explicit DiskFile(const char *path);
+  explicit DiskFile(const std::string &path);
+  explicit DiskFile(common::Path path);
 
   [[nodiscard]] FileLocation location() const noexcept final;
-
   [[nodiscard]] std::size_t size() const final;
 
-  [[nodiscard]] common::Path path() const;
+  [[nodiscard]] std::optional<common::Path> disk_path() const final;
+  [[nodiscard]] const char *memory_data() const final;
+
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
 private:
   common::Path m_path;
-};
-
-class TemporaryDiscFile final : public DiscFile {
-public:
-  explicit TemporaryDiscFile(const char *path);
-  explicit TemporaryDiscFile(std::string path);
-  explicit TemporaryDiscFile(common::Path path);
-  TemporaryDiscFile(const TemporaryDiscFile &);
-  TemporaryDiscFile(TemporaryDiscFile &&) noexcept;
-  ~TemporaryDiscFile() override;
-  TemporaryDiscFile &operator=(const TemporaryDiscFile &);
-  TemporaryDiscFile &operator=(TemporaryDiscFile &&) noexcept;
 };
 
 class MemoryFile final : public abstract::File {
@@ -48,11 +37,14 @@ public:
   explicit MemoryFile(const abstract::File &file);
 
   [[nodiscard]] FileLocation location() const noexcept final;
-
   [[nodiscard]] std::size_t size() const final;
 
-  [[nodiscard]] const std::string &content() const;
+  [[nodiscard]] std::optional<common::Path> disk_path() const final;
+  [[nodiscard]] const char *memory_data() const final;
+
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
+
+  [[nodiscard]] const std::string &content() const;
 
 private:
   std::string m_data;

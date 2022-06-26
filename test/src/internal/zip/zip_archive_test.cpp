@@ -14,22 +14,22 @@ using namespace odr::internal::common;
 using namespace odr::test;
 
 TEST(ReadonlyZipArchive, open_directory) {
-  EXPECT_ANY_THROW(ReadonlyZipArchive(std::make_shared<DiscFile>("/")));
+  EXPECT_ANY_THROW(ReadonlyZipArchive(std::make_shared<DiskFile>("/")));
 }
 
 TEST(ReadonlyZipArchive, open_encrypted_docx) {
-  EXPECT_THROW(ReadonlyZipArchive(std::make_shared<DiscFile>(
+  EXPECT_THROW(ReadonlyZipArchive(std::make_shared<DiskFile>(
                    TestData::test_file_path("odr-public/docx/encrypted.docx"))),
                NoZipFile);
 }
 
 TEST(ReadonlyZipArchive, open_odt) {
-  ReadonlyZipArchive(std::make_shared<DiscFile>(
+  ReadonlyZipArchive(std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/odt/style-various-1.odt")));
 }
 
 TEST(ReadonlyZipArchive, open) {
-  ReadonlyZipArchive zip(std::make_shared<DiscFile>(
+  ReadonlyZipArchive zip(std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/odt/style-various-1.odt")));
 
   EXPECT_EQ(
@@ -74,7 +74,7 @@ TEST(ZipArchive, create) {
   }
 
   {
-    ReadonlyZipArchive zip(std::make_shared<DiscFile>(path));
+    ReadonlyZipArchive zip(std::make_shared<DiskFile>(path));
 
     EXPECT_TRUE(zip.find("one.txt")->is_file());
     EXPECT_TRUE(zip.find("two.txt")->is_file());
@@ -108,7 +108,7 @@ TEST(ZipArchive, create_order) {
   }
 
   {
-    ReadonlyZipArchive zip(std::make_shared<DiscFile>(path));
+    ReadonlyZipArchive zip(std::make_shared<DiskFile>(path));
 
     auto it = entries.begin();
     for (auto &&e : zip) {

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.12.4)
+
 project(odr
-        VERSION 2.0.0
         LANGUAGES C CXX
         )
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -55,32 +55,40 @@ find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 find_package(pdf2htmlEX REQUIRED)
-find_package(GTest REQUIRED)
 
 configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
 
 set(PRE_CONFIGURE_FILE "src/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp")
-include(cmake/git_watcher.cmake)
+if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
+    include(cmake/git_watcher.cmake)
+else ()
+    if (NOT DEFINED GIT_HEAD_SHA1)
+        set(GIT_HEAD_SHA1 "unknown")
+    endif ()
+    if (NOT DEFINED GIT_IS_DIRTY)
+        set(GIT_IS_DIRTY "false")
+    endif ()
+    configure_file("${PRE_CONFIGURE_FILE}" "${POST_CONFIGURE_FILE}" @ONLY)
+endif ()
 
-add_library(odr-interface INTERFACE)
-target_include_directories(odr-interface INTERFACE include)
-
-add_library(odr-object OBJECT
+add_library(odr
         src/document.cpp
         src/document_cursor.cpp
         src/document_element.cpp
         src/exceptions.cpp
         src/file.cpp
         src/html.cpp
-        src/magic.cpp
         src/open_document_reader.cpp
-        src/open_strategy.cpp
         src/quantity.cpp
         src/style.cpp
 
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp
+        src/internal/magic.cpp
+        src/internal/open_strategy.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/src/internal/project_info.cpp
+        src/internal/resource.cpp
+        src/internal/resource_data.cpp
 
         src/internal/cfb/cfb_archive.cpp
         src/internal/cfb/cfb_impl.cpp
@@ -90,11 +98,14 @@ add_library(odr-object OBJECT
         src/internal/common/document_path.cpp
         src/internal/common/file.cpp
         src/internal/common/filesystem.cpp
+        src/internal/common/image_file.cpp
         src/internal/common/path.cpp
+        src/internal/common/random.cpp
         src/internal/common/style.cpp
         src/internal/common/table_cursor.cpp
         src/internal/common/table_position.cpp
         src/internal/common/table_range.cpp
+        src/internal/common/temporary_file.cpp
 
         src/internal/crypto/crypto_util.cpp
 
@@ -108,6 +119,7 @@ add_library(odr-object OBJECT
         src/internal/html/document_element.cpp
         src/internal/html/html_writer.cpp
         src/internal/html/pdf_file.cpp
+        src/internal/html/image_file.cpp
         src/internal/html/text_file.cpp
 
         src/internal/json/json_file.cpp
@@ -159,51 +171,17 @@ add_library(odr-object OBJECT
         src/internal/zip/zip_util.cpp
         src/internal/zip/zip_archive.cpp
         )
-add_dependencies(odr-object check_git)
-target_include_directories(odr-object
+set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
+if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
+    add_dependencies(odr check_git)
+endif ()
+target_include_directories(odr
         PUBLIC
         include
         PRIVATE
         src
         )
-target_link_libraries(odr-object
-        PRIVATE
-        pugixml::pugixml
-        miniz::miniz
-        cryptopp::cryptopp
-        nlohmann_json::nlohmann_json
-        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
-        uchardet::uchardet
-        pdf2htmlEX::pdf2htmlEX
-        )
-set_property(TARGET odr-object PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-add_library(odr-static STATIC
-        $<TARGET_OBJECTS:odr-object>
-        )
-target_include_directories(odr-static
-        PUBLIC
-        include
-        )
-target_link_libraries(odr-static
-        PRIVATE
-        pugixml::pugixml
-        miniz::miniz
-        cryptopp::cryptopp
-        nlohmann_json::nlohmann_json
-        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
-        uchardet::uchardet
-        pdf2htmlEX::pdf2htmlEX
-        )
-
-add_library(odr-shared SHARED
-        $<TARGET_OBJECTS:odr-object>
-        )
-target_include_directories(odr-shared
-        PUBLIC
-        include
-        )
-target_link_libraries(odr-shared
+target_link_libraries(odr
         PRIVATE
         pugixml::pugixml
         miniz::miniz
@@ -222,8 +200,7 @@ endif ()
 
 install(
         TARGETS
-        odr-static
-        odr-shared
+        odr
         meta
         translate
         back_translate

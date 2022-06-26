@@ -46,6 +46,9 @@ enum class FileType {
   legacy_powerpoint_presentation,
   legacy_excel_worksheets,
 
+  // https://en.wikipedia.org/wiki/WordPerfect
+  word_perfect,
+
   // https://en.wikipedia.org/wiki/Rich_Text_Format
   rich_text_format,
 
@@ -83,10 +86,8 @@ enum class FileCategory {
 };
 
 enum class FileLocation {
-  unknown,
   memory,
-  disc,
-  network,
+  disk,
 };
 
 enum class EncryptionState {
@@ -130,6 +131,10 @@ public:
 
   [[nodiscard]] FileLocation location() const noexcept;
   [[nodiscard]] std::size_t size() const;
+
+  [[nodiscard]] std::optional<std::string> disk_path() const;
+  [[nodiscard]] const char *memory_data() const;
+
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
 
   // TODO `impl()` might be a bit dirty
@@ -146,12 +151,16 @@ public:
   static FileMeta meta(const std::string &path);
 
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
+  explicit DecodedFile(const File &file);
+  DecodedFile(const File &file, FileType as);
   explicit DecodedFile(const std::string &path);
   DecodedFile(const std::string &path, FileType as);
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] FileCategory file_category() const noexcept;
   [[nodiscard]] FileMeta file_meta() const noexcept;
+
+  [[nodiscard]] File file() const;
 
   [[nodiscard]] TextFile text_file() const;
   [[nodiscard]] ImageFile image_file() const;
@@ -176,7 +185,7 @@ private:
 
 class ImageFile final : public DecodedFile {
 public:
-  explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile>);
+  explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile> impl);
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
 
