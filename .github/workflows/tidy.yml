@@ -5,6 +5,12 @@ on: pull_request
 jobs:
   build:
     runs-on: ubuntu-20.04
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { cc: clang-12, cxx: clang++-12 }
 
     steps:
       - name: ubuntu install clang-tidy
