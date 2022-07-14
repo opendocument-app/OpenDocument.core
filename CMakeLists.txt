@@ -172,8 +172,6 @@ if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
 endif ()
 target_include_directories(odr
         PUBLIC
-        include
-        PRIVATE
         src
         )
 target_link_libraries(odr
