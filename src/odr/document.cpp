@@ -1,9 +1,9 @@
-#include <odr/document.h>
-#include <odr/document_cursor.h>
-#include <odr/file.h>
-#include <odr/internal/abstract/document.h>
-#include <odr/internal/abstract/document_cursor.h>
-#include <odr/internal/common/path.h>
+#include <odr/document.hpp>
+#include <odr/document_cursor.hpp>
+#include <odr/file.hpp>
+#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/abstract/document_cursor.hpp>
+#include <odr/internal/common/path.hpp>
 #include <stdexcept>
 #include <utility>
 

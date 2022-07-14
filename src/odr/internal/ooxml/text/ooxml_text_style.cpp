@@ -1,6 +1,6 @@
-#include <odr/internal/abstract/document.h>
-#include <odr/internal/ooxml/ooxml_util.h>
-#include <odr/internal/ooxml/text/ooxml_text_style.h>
+#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/ooxml/ooxml_util.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_style.hpp>
 
 namespace odr::internal::ooxml::text {
 

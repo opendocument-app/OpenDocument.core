@@ -1,9 +1,9 @@
-#include <odr/document_cursor.h>
-#include <odr/document_element.h>
-#include <odr/internal/abstract/document.h>
-#include <odr/internal/abstract/document_cursor.h>
-#include <odr/internal/abstract/document_element.h>
-#include <odr/internal/common/document_path.h>
+#include <odr/document_cursor.hpp>
+#include <odr/document_element.hpp>
+#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/abstract/document_cursor.hpp>
+#include <odr/internal/abstract/document_element.hpp>
+#include <odr/internal/common/document_path.hpp>
 
 namespace odr {
 

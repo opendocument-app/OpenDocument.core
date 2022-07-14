@@ -1,11 +1,11 @@
 #include <chrono>
 #include <miniz/miniz.h>
 #include <miniz/miniz_zip.h>
-#include <odr/exceptions.h>
-#include <odr/internal/abstract/file.h>
-#include <odr/internal/common/path.h>
-#include <odr/internal/zip/zip_archive.h>
-#include <odr/internal/zip/zip_util.h>
+#include <odr/exceptions.hpp>
+#include <odr/internal/abstract/file.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
+#include <odr/internal/zip/zip_util.hpp>
 #include <string>
 #include <utility>
 #include <vector>

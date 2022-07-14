@@ -7,7 +7,7 @@
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/sha.h>
 #include <cryptopp/zinflate.h>
-#include <odr/internal/crypto/crypto_util.h>
+#include <odr/internal/crypto/crypto_util.hpp>
 
 namespace odr::internal::crypto {
 

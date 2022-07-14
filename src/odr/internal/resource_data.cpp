@@ -1,4 +1,4 @@
-#include <odr/internal/resource_data.h>
+#include <odr/internal/resource_data.hpp>
 
 namespace odr::internal::resources {
 

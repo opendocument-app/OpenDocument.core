@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <iostream>
 #include <iterator>
-#include <odr/internal/util/stream_util.h>
+#include <odr/internal/util/stream_util.hpp>
 
 namespace odr::internal::util {
 

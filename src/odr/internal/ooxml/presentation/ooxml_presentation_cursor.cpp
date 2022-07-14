@@ -1,8 +1,8 @@
-#include <odr/internal/abstract/document.h>
-#include <odr/internal/common/document_cursor.h>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_cursor.h>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_document.h>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_element.h>
+#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/common/document_cursor.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_cursor.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
 #include <pugixml.hpp>
 #include <stdexcept>
 

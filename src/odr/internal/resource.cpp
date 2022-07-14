@@ -1,7 +1,7 @@
-#include <odr/internal/common/file.h>
-#include <odr/internal/common/filesystem.h>
-#include <odr/internal/resource.h>
-#include <odr/internal/resource_data.h>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/filesystem.hpp>
+#include <odr/internal/resource.hpp>
+#include <odr/internal/resource_data.hpp>
 
 namespace odr::internal {
 

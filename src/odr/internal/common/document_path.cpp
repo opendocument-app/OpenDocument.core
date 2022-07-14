@@ -1,5 +1,5 @@
 #include <iterator>
-#include <odr/internal/common/document_path.h>
+#include <odr/internal/common/document_path.hpp>
 
 namespace odr::internal::common {
 

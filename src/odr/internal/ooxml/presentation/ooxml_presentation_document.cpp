@@ -1,10 +1,10 @@
-#include <odr/exceptions.h>
-#include <odr/file.h>
-#include <odr/internal/common/path.h>
-#include <odr/internal/ooxml/ooxml_util.h>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_cursor.h>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_document.h>
-#include <odr/internal/util/xml_util.h>
+#include <odr/exceptions.hpp>
+#include <odr/file.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/ooxml/ooxml_util.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_cursor.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
+#include <odr/internal/util/xml_util.hpp>
 
 namespace odr::internal::ooxml::presentation {
 
