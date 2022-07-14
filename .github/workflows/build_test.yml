@@ -40,7 +40,7 @@ jobs:
             /Users/runner/Library/Caches/ccache
             C:/.conan
             C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev16
+          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev17
           restore-keys: |
             ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
 
