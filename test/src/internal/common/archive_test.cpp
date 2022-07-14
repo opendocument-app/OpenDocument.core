@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
-#include <internal/cfb/cfb_archive.h>
-#include <internal/common/archive.h>
-#include <internal/common/file.h>
-#include <internal/zip/zip_archive.h>
 #include <memory>
+#include <odr/internal/cfb/cfb_archive.h>
+#include <odr/internal/common/archive.h>
+#include <odr/internal/common/file.h>
+#include <odr/internal/zip/zip_archive.h>
 #include <test_util.h>
 
 using namespace odr::internal;

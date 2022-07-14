@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include <internal/cfb/cfb_archive.h>
-#include <internal/common/file.h>
 #include <memory>
 #include <odr/exceptions.h>
+#include <odr/internal/cfb/cfb_archive.h>
+#include <odr/internal/common/file.h>
 #include <test_util.h>
 
 using namespace odr::internal;

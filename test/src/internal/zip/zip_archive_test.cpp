@@ -1,10 +1,10 @@
 #include <algorithm>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <internal/common/file.h>
-#include <internal/zip/zip_archive.h>
 #include <memory>
 #include <odr/exceptions.h>
+#include <odr/internal/common/file.h>
+#include <odr/internal/zip/zip_archive.h>
 #include <test_util.h>
 
 using namespace odr;
