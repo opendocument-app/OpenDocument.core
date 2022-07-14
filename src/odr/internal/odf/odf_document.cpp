@@ -4,17 +4,12 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
-#include <odr/internal/odf/odf_cursor.hpp>
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/odf/odf_style.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 #include <sstream>
 #include <utility>
-
-namespace odr::internal::abstract {
-class DocumentCursor;
-} // namespace odr::internal::abstract
 
 namespace odr::internal::odf {
 

@@ -6,12 +6,11 @@
 namespace odr {
 
 Element::Element(const internal::abstract::Document *document,
-                 const internal::abstract::DocumentCursor *cursor,
                  internal::abstract::Element *element)
-    : m_document{document}, m_cursor{cursor}, m_element{element} {}
+    : m_document{document}, m_element{element} {}
 
 bool Element::operator==(const Element &rhs) const {
-  return m_element->equals(*rhs.m_element);
+  return m_element == rhs.m_element;
 }
 
 bool Element::operator!=(const Element &rhs) const { return !operator==(rhs); }
@@ -20,63 +19,47 @@ Element::operator bool() const { return m_element; }
 
 ElementType Element::type() const { return m_element->type(m_document); }
 
-TextRoot Element::text_root() const {
-  return {m_document, m_cursor, m_element};
-}
+TextRoot Element::text_root() const { return {m_document, m_element}; }
 
-Slide Element::slide() const { return {m_document, m_cursor, m_element}; }
+Slide Element::slide() const { return {m_document, m_element}; }
 
-Sheet Element::sheet() const { return {m_document, m_cursor, m_element}; }
+Sheet Element::sheet() const { return {m_document, m_element}; }
 
-Page Element::page() const { return {m_document, m_cursor, m_element}; }
+Page Element::page() const { return {m_document, m_element}; }
 
-LineBreak Element::line_break() const {
-  return {m_document, m_cursor, m_element};
-}
+LineBreak Element::line_break() const { return {m_document, m_element}; }
 
-Paragraph Element::paragraph() const {
-  return {m_document, m_cursor, m_element};
-}
+Paragraph Element::paragraph() const { return {m_document, m_element}; }
 
-Span Element::span() const { return {m_document, m_cursor, m_element}; }
+Span Element::span() const { return {m_document, m_element}; }
 
-Text Element::text() const { return {m_document, m_cursor, m_element}; }
+Text Element::text() const { return {m_document, m_element}; }
 
-Link Element::link() const { return {m_document, m_cursor, m_element}; }
+Link Element::link() const { return {m_document, m_element}; }
 
-Bookmark Element::bookmark() const { return {m_document, m_cursor, m_element}; }
+Bookmark Element::bookmark() const { return {m_document, m_element}; }
 
-ListItem Element::list_item() const {
-  return {m_document, m_cursor, m_element};
-}
+ListItem Element::list_item() const { return {m_document, m_element}; }
 
-Table Element::table() const { return {m_document, m_cursor, m_element}; }
+Table Element::table() const { return {m_document, m_element}; }
 
-TableColumn Element::table_column() const {
-  return {m_document, m_cursor, m_element};
-}
+TableColumn Element::table_column() const { return {m_document, m_element}; }
 
-TableRow Element::table_row() const {
-  return {m_document, m_cursor, m_element};
-}
+TableRow Element::table_row() const { return {m_document, m_element}; }
 
-TableCell Element::table_cell() const {
-  return {m_document, m_cursor, m_element};
-}
+TableCell Element::table_cell() const { return {m_document, m_element}; }
 
-Frame Element::frame() const { return {m_document, m_cursor, m_element}; }
+Frame Element::frame() const { return {m_document, m_element}; }
 
-Rect Element::rect() const { return {m_document, m_cursor, m_element}; }
+Rect Element::rect() const { return {m_document, m_element}; }
 
-Line Element::line() const { return {m_document, m_cursor, m_element}; }
+Line Element::line() const { return {m_document, m_element}; }
 
-Circle Element::circle() const { return {m_document, m_cursor, m_element}; }
+Circle Element::circle() const { return {m_document, m_element}; }
 
-CustomShape Element::custom_shape() const {
-  return {m_document, m_cursor, m_element};
-}
+CustomShape Element::custom_shape() const { return {m_document, m_element}; }
 
-Image Element::image() const { return {m_document, m_cursor, m_element}; }
+Image Element::image() const { return {m_document, m_element}; }
 
 PageLayout TextRoot::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
@@ -107,19 +90,19 @@ PageLayout Page::page_layout() const {
 }
 
 TextStyle LineBreak::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : TextStyle();
+  return m_element ? m_element->style(m_document) : TextStyle();
 }
 
 ParagraphStyle Paragraph::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : ParagraphStyle();
+  return m_element ? m_element->style(m_document) : ParagraphStyle();
 }
 
 TextStyle Paragraph::text_style() const {
-  return m_element ? m_element->text_style(m_document, m_cursor) : TextStyle();
+  return m_element ? m_element->text_style(m_document) : TextStyle();
 }
 
 TextStyle Span::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : TextStyle();
+  return m_element ? m_element->style(m_document) : TextStyle();
 }
 
 std::string Text::content() const {
@@ -133,7 +116,7 @@ void Text::set_content(const std::string &text) const {
 }
 
 TextStyle Text::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : TextStyle();
+  return m_element ? m_element->style(m_document) : TextStyle();
 }
 
 std::string Link::href() const {
@@ -145,7 +128,7 @@ std::string Bookmark::name() const {
 }
 
 TextStyle ListItem::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : TextStyle();
+  return m_element ? m_element->style(m_document) : TextStyle();
 }
 
 TableDimensions Table::dimensions() const {
@@ -153,27 +136,24 @@ TableDimensions Table::dimensions() const {
 }
 
 TableStyle Table::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : TableStyle();
+  return m_element ? m_element->style(m_document) : TableStyle();
 }
 
 TableColumnStyle TableColumn::style() const {
-  return m_element ? m_element->style(m_document, m_cursor)
-                   : TableColumnStyle();
+  return m_element ? m_element->style(m_document) : TableColumnStyle();
 }
 
 TableRowStyle TableRow::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : TableRowStyle();
+  return m_element ? m_element->style(m_document) : TableRowStyle();
 }
 
 TableColumn TableCell::column() const {
-  return m_element ? TableColumn(m_document, m_cursor,
-                                 m_element->column(m_document, m_cursor))
+  return m_element ? TableColumn(m_document, m_element->column(m_document))
                    : TableColumn();
 }
 
 TableRow TableCell::row() const {
-  return m_element ? TableRow(m_document, m_cursor,
-                              m_element->row(m_document, m_cursor))
+  return m_element ? TableRow(m_document, m_element->row(m_document))
                    : TableRow();
 }
 
@@ -190,7 +170,7 @@ ValueType TableCell::value_type() const {
 }
 
 TableCellStyle TableCell::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : TableCellStyle();
+  return m_element ? m_element->style(m_document) : TableCellStyle();
 }
 
 AnchorType Frame::anchor_type() const {
@@ -222,7 +202,7 @@ std::optional<std::string> Frame::z_index() const {
 }
 
 GraphicStyle Frame::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : GraphicStyle();
+  return m_element ? m_element->style(m_document) : GraphicStyle();
 }
 
 std::string Rect::x() const {
@@ -242,7 +222,7 @@ std::string Rect::height() const {
 }
 
 GraphicStyle Rect::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : GraphicStyle();
+  return m_element ? m_element->style(m_document) : GraphicStyle();
 }
 
 std::string Line::x1() const {
@@ -262,7 +242,7 @@ std::string Line::y2() const {
 }
 
 GraphicStyle Line::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : GraphicStyle();
+  return m_element ? m_element->style(m_document) : GraphicStyle();
 }
 
 std::string Circle::x() const {
@@ -282,7 +262,7 @@ std::string Circle::height() const {
 }
 
 GraphicStyle Circle::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : GraphicStyle();
+  return m_element ? m_element->style(m_document) : GraphicStyle();
 }
 
 std::optional<std::string> CustomShape::x() const {
@@ -302,7 +282,7 @@ std::string CustomShape::height() const {
 }
 
 GraphicStyle CustomShape::style() const {
-  return m_element ? m_element->style(m_document, m_cursor) : GraphicStyle();
+  return m_element ? m_element->style(m_document) : GraphicStyle();
 }
 
 bool Image::internal() const {

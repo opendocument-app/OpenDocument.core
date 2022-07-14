@@ -4,28 +4,23 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/document_element.hpp>
 #include <odr/internal/common/style.hpp>
+#include <memory>
 #include <pugixml.hpp>
-
-namespace odr::internal::odf {
-class StyleRegistry;
-} // namespace odr::internal::odf
+#include <vector>
 
 namespace odr::internal::odf {
 class Document;
+class StyleRegistry;
 
-class Element : public common::Element<Element> {
+class Element : public common::Element {
 public:
-  static std::unique_ptr<abstract::Element>
-  construct_default_element(pugi::xml_node node);
-
   Element();
   explicit Element(pugi::xml_node node);
 
   virtual common::ResolvedStyle
   partial_style(const abstract::Document *document) const;
   virtual common::ResolvedStyle
-  intermediate_style(const abstract::Document *document,
-                     const abstract::DocumentCursor *cursor) const;
+  intermediate_style(const abstract::Document *document) const;
 
 protected:
   virtual const char *style_name_(const abstract::Document *document) const;
@@ -33,6 +28,8 @@ protected:
   static const Document *document_(const abstract::Document *document);
   static const StyleRegistry *style_(const abstract::Document *document);
 };
+
+std::vector<std::unique_ptr<abstract::Element>> parse_tree(pugi::xml_node node);
 
 } // namespace odr::internal::odf
 

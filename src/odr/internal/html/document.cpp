@@ -1,7 +1,6 @@
 #include <fstream>
 #include <iostream>
 #include <odr/document.hpp>
-#include <odr/document_cursor.hpp>
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>

@@ -7,7 +7,6 @@
 
 namespace odr::internal::abstract {
 class Document;
-class DocumentCursor;
 
 class Element;
 class TextRootElement;
@@ -122,7 +121,6 @@ class Element {
 public:
   Element() = default;
   Element(const internal::abstract::Document *document,
-          const internal::abstract::DocumentCursor *cursor,
           internal::abstract::Element *element);
 
   bool operator==(const Element &rhs) const;
@@ -156,21 +154,17 @@ public:
 
 protected:
   const internal::abstract::Document *m_document{nullptr};
-  const internal::abstract::DocumentCursor *m_cursor{nullptr};
   internal::abstract::Element *m_element{nullptr};
 };
 
 template <typename T> class TypedElement : public Element {
 public:
   TypedElement() = default;
+  TypedElement(const internal::abstract::Document *document, T *element)
+      : Element(document, element), m_element{element} {}
   TypedElement(const internal::abstract::Document *document,
-               const internal::abstract::DocumentCursor *cursor, T *element)
-      : Element(document, cursor, element), m_element{element} {}
-  TypedElement(const internal::abstract::Document *document,
-               const internal::abstract::DocumentCursor *cursor,
                internal::abstract::Element *element)
-      : Element(document, cursor, element), m_element{
-                                                dynamic_cast<T *>(element)} {}
+      : Element(document, element), m_element{dynamic_cast<T *>(element)} {}
 
 protected:
   T *m_element{nullptr};

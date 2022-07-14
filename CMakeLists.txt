@@ -73,7 +73,6 @@ endif ()
 
 add_library(odr
         "src/odr/document.cpp"
-        "src/odr/document_cursor.cpp"
         "src/odr/document_element.cpp"
         "src/odr/exceptions.cpp"
         "src/odr/file.cpp"
@@ -93,7 +92,6 @@ add_library(odr
         "src/odr/internal/cfb/cfb_impl.cpp"
         "src/odr/internal/cfb/cfb_util.cpp"
 
-        "src/odr/internal/common/document_cursor.cpp"
         "src/odr/internal/common/document_path.cpp"
         "src/odr/internal/common/file.cpp"
         "src/odr/internal/common/filesystem.cpp"
@@ -123,7 +121,6 @@ add_library(odr
         "src/odr/internal/json/json_util.cpp"
 
         "src/odr/internal/odf/odf_crypto.cpp"
-        "src/odr/internal/odf/odf_cursor.cpp"
         "src/odr/internal/odf/odf_document.cpp"
         "src/odr/internal/odf/odf_element.cpp"
         "src/odr/internal/odf/odf_file.cpp"
@@ -133,14 +130,11 @@ add_library(odr
 
         "src/odr/internal/oldms/oldms_file.cpp"
 
-        "src/odr/internal/ooxml/presentation/ooxml_presentation_cursor.cpp"
         "src/odr/internal/ooxml/presentation/ooxml_presentation_document.cpp"
         "src/odr/internal/ooxml/presentation/ooxml_presentation_element.cpp"
-        "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.cpp"
-        "src/odr/internal/ooxml/text/ooxml_text_cursor.cpp"
         "src/odr/internal/ooxml/text/ooxml_text_document.cpp"
         "src/odr/internal/ooxml/text/ooxml_text_element.cpp"
         "src/odr/internal/ooxml/text/ooxml_text_style.cpp"

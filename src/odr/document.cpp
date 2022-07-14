@@ -1,8 +1,7 @@
 #include <odr/document.hpp>
-#include <odr/document_cursor.hpp>
+#include <odr/document_element.hpp>
 #include <odr/file.hpp>
 #include <odr/internal/abstract/document.hpp>
-#include <odr/internal/abstract/document_cursor.hpp>
 #include <odr/internal/common/path.hpp>
 #include <stdexcept>
 #include <utility>
@@ -37,8 +36,8 @@ DocumentType Document::document_type() const noexcept {
   return m_document->document_type();
 }
 
-DocumentCursor Document::root_element() const {
-  return {m_document, m_document->root_element()};
+Element Document::root_element() const {
+  return {m_document.get(), m_document->root_element()};
 }
 
 } // namespace odr

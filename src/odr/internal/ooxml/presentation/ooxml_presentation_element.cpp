@@ -4,7 +4,6 @@
 #include <odr/internal/common/document_element.hpp>
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_cursor.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
 #include <odr/quantity.hpp>

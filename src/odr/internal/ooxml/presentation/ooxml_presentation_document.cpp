@@ -2,8 +2,8 @@
 #include <odr/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_cursor.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
 namespace odr::internal::ooxml::presentation {
@@ -46,9 +46,6 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
-  return std::make_unique<DocumentCursor>(this,
-                                          m_document_xml.document_element());
-}
+abstract::Element *Document::root_element() const { return m_root; }
 
 } // namespace odr::internal::ooxml::presentation

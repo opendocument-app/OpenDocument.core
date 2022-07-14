@@ -7,7 +7,6 @@
 #include <odr/internal/common/document_element.hpp>
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/common/table_cursor.hpp>
-#include <odr/internal/odf/odf_cursor.hpp>
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/odf/odf_element.hpp>
 #include <odr/internal/odf/odf_style.hpp>
@@ -27,7 +26,7 @@ const char *default_style_name(pugi::xml_node node);
 
 Element::Element() = default;
 
-Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
+Element::Element(pugi::xml_node node) : common::Element(node) {}
 
 common::ResolvedStyle
 Element::partial_style(const abstract::Document *document) const {
@@ -40,9 +39,13 @@ Element::partial_style(const abstract::Document *document) const {
 }
 
 common::ResolvedStyle
-Element::intermediate_style(const abstract::Document *,
-                            const abstract::DocumentCursor *cursor) const {
-  return static_cast<const DocumentCursor *>(cursor)->intermediate_style();
+Element::intermediate_style(const abstract::Document *document) const {
+  if (m_parent == nullptr) {
+    return partial_style(document);
+  }
+  auto base = dynamic_cast<Element *>(m_parent)->intermediate_style(document);
+  base.override(partial_style(document));
+  return base;
 }
 
 const char *Element::style_name_(const abstract::Document *) const {
@@ -81,21 +84,11 @@ public:
   [[nodiscard]] ElementType type(const abstract::Document *) const final {
     return element_type;
   }
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const override {
-    return common::construct_2<DefaultElement>(*this);
-  }
 };
 
 class MasterPage final : public Element, public abstract::MasterPageElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<MasterPage>(*this);
-  }
 
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final {
@@ -113,21 +106,6 @@ public:
   [[nodiscard]] ElementType type(const abstract::Document *) const override {
     return ElementType::root;
   }
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const override {
-    return common::construct_2<Root>(*this);
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const final {
-    return {};
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const final {
-    return {};
-  }
 };
 
 class TextDocumentRoot final : public Root, public abstract::TextRootElement {
@@ -136,11 +114,6 @@ public:
 
   [[nodiscard]] ElementType type(const abstract::Document *) const final {
     return ElementType::root;
-  }
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TextDocumentRoot>(*this);
   }
 
   [[nodiscard]] PageLayout
@@ -153,66 +126,15 @@ public:
     return {};
   }
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  first_master_page(const abstract::Document *document,
-                    const abstract::DocumentCursor *) const final {
-    if (auto first_master_page = style_(document)->first_master_page()) {
-      auto master_page_node =
-          style_(document)->master_page_node(*first_master_page);
-      return common::construct_optional<MasterPage>(master_page_node);
-    }
-    return {};
-  }
-};
-
-class PresentationRoot final : public Root {
-public:
-  using Root::Root;
-
-  std::unique_ptr<abstract::Element>
-  construct_first_child(const abstract::Document *) const final {
-    return common::construct_optional<Slide>(m_node.child("draw:page"));
-  }
-};
-
-class SpreadsheetRoot final : public Root {
-public:
-  using Root::Root;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<SpreadsheetRoot>(*this);
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_first_child(const abstract::Document *) const final {
-    return common::construct_optional<Sheet>(m_node.child("table:table"));
-  }
-};
-
-class DrawingRoot final : public Root {
-public:
-  using Root::Root;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<DrawingRoot>(*this);
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_first_child(const abstract::Document *) const final {
-    return common::construct_optional<Page>(m_node.child("draw:page"));
+  [[nodiscard]] abstract::Element *
+  first_master_page(const abstract::Document *document) const final {
+    return m_first_child;
   }
 };
 
 class Slide final : public Element, public abstract::SlideElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Slide>(*this);
-  }
 
   std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *) const final {
@@ -258,11 +180,6 @@ private:
 class Page final : public Element, public abstract::PageElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Page>(*this);
-  }
 
   std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *) const final {
@@ -310,11 +227,6 @@ class LineBreak final : public Element, public abstract::LineBreakElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<LineBreak>(*this);
-  }
-
   [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
@@ -325,11 +237,6 @@ public:
 class Paragraph final : public Element, public abstract::ParagraphElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Paragraph>(*this);
-  }
 
   [[nodiscard]] ParagraphStyle
   style(const abstract::Document *document,
@@ -348,11 +255,6 @@ class Span final : public Element, public abstract::SpanElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Span>(*this);
-  }
-
   [[nodiscard]] TextStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *cursor) const final {
@@ -363,11 +265,6 @@ public:
 class Text final : public Element, public abstract::TextElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Text>(*this);
-  }
 
   std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *) const final {
@@ -484,11 +381,6 @@ class Link final : public Element, public abstract::LinkElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Link>(*this);
-  }
-
   [[nodiscard]] std::string href(const abstract::Document *) const final {
     return m_node.attribute("xlink:href").value();
   }
@@ -498,11 +390,6 @@ class Bookmark final : public Element, public abstract::BookmarkElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Bookmark>(*this);
-  }
-
   [[nodiscard]] std::string name(const abstract::Document *) const final {
     return m_node.attribute("text:name").value();
   }
@@ -511,11 +398,6 @@ public:
 class ListItem final : public Element, public abstract::ListItemElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<ListItem>(*this);
-  }
 
   [[nodiscard]] TextStyle
   style(const abstract::Document *document,
@@ -527,11 +409,6 @@ public:
 class TableElement : public Element, public abstract::TableElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const override {
-    return common::construct_2<TableElement>(*this);
-  }
 
   std::unique_ptr<abstract::Element>
   construct_first_child(const abstract::Document *) const final {
@@ -624,11 +501,6 @@ class TableColumn final : public TableComponent<TableColumn>,
 public:
   using TableComponent::TableComponent;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableColumn>(*this);
-  }
-
   [[nodiscard]] TableColumnStyle
   style(const abstract::Document *document,
         const abstract::DocumentCursor *) const final {
@@ -664,14 +536,8 @@ class TableRow final : public TableComponent<TableRow>,
 public:
   using TableComponent::TableComponent;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableRow>(*this);
-  }
-
   [[nodiscard]] TableRowStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
+  style(const abstract::Document *document) const final {
     return partial_style(document).table_row_style;
   }
 
@@ -714,11 +580,6 @@ public:
       : TableComponent(node, repeated_index), m_column{std::move(column)},
         m_row{node.parent()} {}
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableCell>(*this);
-  }
-
   std::unique_ptr<abstract::Element> construct_previous_sibling(
       const abstract::Document *document) const override {
     TableColumn previous_column;
@@ -754,13 +615,11 @@ public:
     return {};
   }
 
-  [[nodiscard]] abstract::Element *
-  column(const abstract::Document *, const abstract::DocumentCursor *) final {
+  [[nodiscard]] abstract::Element *column(const abstract::Document *) final {
     return &m_column;
   }
 
-  [[nodiscard]] abstract::Element *row(const abstract::Document *,
-                                       const abstract::DocumentCursor *) final {
+  [[nodiscard]] abstract::Element *row(const abstract::Document *) final {
     return &m_row;
   }
 
@@ -791,8 +650,7 @@ public:
   }
 
   [[nodiscard]] TableCellStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
+  style(const abstract::Document *document) const final {
     return partial_style(document).table_cell_style;
   }
 
@@ -823,11 +681,6 @@ private:
 class Frame final : public Element, public abstract::FrameElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Frame>(*this);
-  }
 
   [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final {
     auto anchor_type = m_node.attribute("text:anchor-type").value();
@@ -887,8 +740,7 @@ public:
   }
 
   [[nodiscard]] GraphicStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
+  style(const abstract::Document *document) const final {
     return intermediate_style(document, cursor).graphic_style;
   }
 };
@@ -896,11 +748,6 @@ public:
 class Rect final : public Element, public abstract::RectElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Rect>(*this);
-  }
 
   [[nodiscard]] std::string x(const abstract::Document *) const final {
     return m_node.attribute("svg:x").value();
@@ -919,8 +766,7 @@ public:
   }
 
   [[nodiscard]] GraphicStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
+  style(const abstract::Document *document) const final {
     return intermediate_style(document, cursor).graphic_style;
   }
 };
@@ -928,11 +774,6 @@ public:
 class Line final : public Element, public abstract::LineElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Line>(*this);
-  }
 
   [[nodiscard]] std::string x1(const abstract::Document *) const final {
     return m_node.attribute("svg:x1").value();
@@ -951,8 +792,7 @@ public:
   }
 
   [[nodiscard]] GraphicStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
+  style(const abstract::Document *document) const final {
     return intermediate_style(document, cursor).graphic_style;
   }
 };
@@ -960,11 +800,6 @@ public:
 class Circle final : public Element, public abstract::CircleElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Circle>(*this);
-  }
 
   [[nodiscard]] std::string x(const abstract::Document *) const final {
     return m_node.attribute("svg:x").value();
@@ -983,8 +818,7 @@ public:
   }
 
   [[nodiscard]] GraphicStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
+  style(const abstract::Document *document) const final {
     return intermediate_style(document, cursor).graphic_style;
   }
 };
@@ -992,11 +826,6 @@ public:
 class CustomShape final : public Element, public abstract::CustomShapeElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<CustomShape>(*this);
-  }
 
   [[nodiscard]] std::optional<std::string>
   x(const abstract::Document *) const final {
@@ -1017,8 +846,7 @@ public:
   }
 
   [[nodiscard]] GraphicStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
+  style(const abstract::Document *document) const final {
     return intermediate_style(document, cursor).graphic_style;
   }
 };
@@ -1026,11 +854,6 @@ public:
 class ImageElement final : public Element, public abstract::ImageElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<ImageElement>(*this);
-  }
 
   [[nodiscard]] bool internal(const abstract::Document *document) const final {
     auto doc = document_(document);
@@ -1061,11 +884,6 @@ public:
 class Sheet final : public TableElement, public abstract::SheetElement {
 public:
   using TableElement::TableElement;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Sheet>(*this);
-  }
 
   [[nodiscard]] std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *) const final {
@@ -1120,77 +938,132 @@ public:
     return result;
   }
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_first_shape(const abstract::Document *) const final {
-    return common::construct_first_child_element(construct_default_element,
-                                                 m_node.child("table:shapes"));
+  [[nodiscard]] abstract::Element *
+  first_shape(const abstract::Document *document) const final {
+    return m_first_child;
   }
 };
 
-} // namespace
+abstract::Element *
+parse_element(pugi::xml_node node,
+              std::vector<std::unique_ptr<abstract::Element>> &store);
 
-std::unique_ptr<abstract::Element>
-Element::construct_default_element(pugi::xml_node node) {
-  using Constructor =
-      std::function<std::unique_ptr<abstract::Element>(pugi::xml_node node)>;
+template <typename Derived>
+abstract::Element *
+default_parse_element(pugi::xml_node node,
+                      std::vector<std::unique_ptr<abstract::Element>> &store) {
+  auto element_unique = std::make_unique<Derived>(node);
+  auto element = element_unique.get();
+  store.push_back(std::move(element_unique));
+
+  for (auto child_node : node) {
+    auto child = parse_element(child_node, store);
+    if (child == nullptr) {
+      continue;
+    }
+
+    // TODO attach child to root
+  }
+
+  return element;
+}
+
+abstract::Element *
+parse_element(pugi::xml_node node,
+              std::vector<std::unique_ptr<abstract::Element>> &store) {
+  using Parser = std::function<abstract::Element *(
+      pugi::xml_node node,
+      std::vector<std::unique_ptr<abstract::Element>> & store)>;
 
   using List = DefaultElement<ElementType::list>;
   using Group = DefaultElement<ElementType::group>;
   using PageBreak = DefaultElement<ElementType::page_break>;
 
-  static std::unordered_map<std::string, Constructor> constructor_table{
-      {"office:text", common::construct<TextDocumentRoot>},
-      {"office:presentation", common::construct<PresentationRoot>},
-      {"office:spreadsheet", common::construct<SpreadsheetRoot>},
-      {"office:drawing", common::construct<DrawingRoot>},
-      {"text:p", common::construct<Paragraph>},
-      {"text:h", common::construct<Paragraph>},
-      {"text:span", common::construct<Span>},
-      {"text:s", common::construct<Text>},
-      {"text:tab", common::construct<Text>},
-      {"text:line-break", common::construct<LineBreak>},
-      {"text:a", common::construct<Link>},
-      {"text:bookmark", common::construct<Bookmark>},
-      {"text:bookmark-start", common::construct<Bookmark>},
-      {"text:list", common::construct<List>},
-      {"text:list-header", common::construct<ListItem>},
-      {"text:list-item", common::construct<ListItem>},
-      {"text:index-title", common::construct<Group>},
-      {"text:table-of-content", common::construct<Group>},
-      {"text:illustration-index", common::construct<Group>},
-      {"text:index-body", common::construct<Group>},
-      {"text:soft-page-break", common::construct<PageBreak>},
-      {"text:date", common::construct<Group>},
-      {"text:time", common::construct<Group>},
-      {"text:section", common::construct<Group>},
-      //{"text:page-number", common::construct<Group>},
-      //{"text:page-continuation", common::construct<Group>},
-      {"table:table", common::construct<TableElement>},
-      {"table:table-column", common::construct<TableColumn>},
-      {"table:table-row", common::construct<TableRow>},
-      {"table:table-cell", common::construct<TableCell>},
-      {"table:covered-table-cell", common::construct<TableCell>},
-      {"draw:frame", common::construct<Frame>},
-      {"draw:image", common::construct<ImageElement>},
-      {"draw:rect", common::construct<Rect>},
-      {"draw:line", common::construct<Line>},
-      {"draw:circle", common::construct<Circle>},
-      {"draw:custom-shape", common::construct<CustomShape>},
-      {"draw:text-box", common::construct<Group>},
-      {"draw:g", common::construct<Group>},
-      {"draw:a", common::construct<Link>},
+  static std::unordered_map<std::string, Parser> parser_table{
+      {"office:text", default_parse_element<TextDocumentRoot>},
+      {"office:presentation", default_parse_element<PresentationRoot>},
+      {"office:spreadsheet", default_parse_element<SpreadsheetRoot>},
+      {"office:drawing", default_parse_element<DrawingRoot>},
+      {"text:p", default_parse_element<Paragraph>},
+      {"text:h", default_parse_element<Paragraph>},
+      {"text:span", default_parse_element<Span>},
+      {"text:s", default_parse_element<Text>},
+      {"text:tab", default_parse_element<Text>},
+      {"text:line-break", default_parse_element<LineBreak>},
+      {"text:a", default_parse_element<Link>},
+      {"text:bookmark", default_parse_element<Bookmark>},
+      {"text:bookmark-start", default_parse_element<Bookmark>},
+      {"text:list", default_parse_element<List>},
+      {"text:list-header", default_parse_element<ListItem>},
+      {"text:list-item", default_parse_element<ListItem>},
+      {"text:index-title", default_parse_element<Group>},
+      {"text:table-of-content", default_parse_element<Group>},
+      {"text:illustration-index", default_parse_element<Group>},
+      {"text:index-body", default_parse_element<Group>},
+      {"text:soft-page-break", default_parse_element<PageBreak>},
+      {"text:date", default_parse_element<Group>},
+      {"text:time", default_parse_element<Group>},
+      {"text:section", default_parse_element<Group>},
+      //{"text:page-number", default_parse_element<Group>},
+      //{"text:page-continuation", default_parse_element<Group>},
+      {"table:table", default_parse_element<TableElement>},
+      {"table:table-column", default_parse_element<TableColumn>},
+      {"table:table-row", default_parse_element<TableRow>},
+      {"table:table-cell", default_parse_element<TableCell>},
+      {"table:covered-table-cell", default_parse_element<TableCell>},
+      {"draw:frame", default_parse_element<Frame>},
+      {"draw:image", default_parse_element<ImageElement>},
+      {"draw:rect", default_parse_element<Rect>},
+      {"draw:line", default_parse_element<Line>},
+      {"draw:circle", default_parse_element<Circle>},
+      {"draw:custom-shape", default_parse_element<CustomShape>},
+      {"draw:text-box", default_parse_element<Group>},
+      {"draw:g", default_parse_element<Group>},
+      {"draw:a", default_parse_element<Link>},
   };
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {
-    return common::construct<Text>(node);
+    return default_parse_element<Text>(node, store);
   }
 
-  if (auto constructor_it = constructor_table.find(node.name());
-      constructor_it != std::end(constructor_table)) {
-    return constructor_it->second(node);
+  if (auto constructor_it = parser_table.find(node.name());
+      constructor_it != std::end(parser_table)) {
+    return constructor_it->second(node, store);
   }
 
-  return {};
+  return nullptr;
 }
 
+} // namespace
+
 } // namespace odr::internal::odf
+
+namespace odr::internal {
+
+std::vector<std::unique_ptr<abstract::Element>>
+odf::parse_tree(pugi::xml_node node) {
+  std::vector<std::unique_ptr<abstract::Element>> result;
+
+  auto root_unique = construct_element(node);
+  if (!root_unique) {
+    return {};
+  }
+
+  auto root = root_unique.get();
+  result.push_back(std::move(root_unique));
+
+  for (auto child_node : node) {
+    auto child_unique = construct_element(child_node);
+    if (!child_unique) {
+      continue;
+    }
+
+    // TODO attach child to root
+
+    result.push_back(std::move(child_unique));
+  }
+
+  return result;
+}
+
+} // namespace odr::internal
