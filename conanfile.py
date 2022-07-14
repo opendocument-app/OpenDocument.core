@@ -43,7 +43,7 @@ class OpenDocumentCoreConan(ConanFile):
         cmake.build()
 
     def package(self):
-        self.copy("*.h", src="src", dst="include")
+        self.copy("*.hpp", src="src", dst="include")
 
         cmake = self._configure_cmake()
         cmake.install()
