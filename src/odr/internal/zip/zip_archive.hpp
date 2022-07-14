@@ -6,7 +6,7 @@
 #include <iterator>
 #include <memory>
 #include <miniz/miniz.h>
-#include <odr/internal/common/path.h>
+#include <odr/internal/common/path.hpp>
 #include <vector>
 
 namespace odr::internal::abstract {

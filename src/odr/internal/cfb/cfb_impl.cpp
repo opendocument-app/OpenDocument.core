@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <cstring>
-#include <odr/exceptions.h>
-#include <odr/internal/cfb/cfb_impl.h>
+#include <odr/exceptions.hpp>
+#include <odr/internal/cfb/cfb_impl.hpp>
 #include <stdexcept>
 
 namespace odr::internal::cfb::impl {

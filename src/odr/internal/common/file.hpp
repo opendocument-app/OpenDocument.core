@@ -3,8 +3,8 @@
 
 #include <iosfwd>
 #include <memory>
-#include <odr/internal/abstract/file.h>
-#include <odr/internal/common/path.h>
+#include <odr/internal/abstract/file.hpp>
+#include <odr/internal/common/path.hpp>
 #include <string>
 
 namespace odr {

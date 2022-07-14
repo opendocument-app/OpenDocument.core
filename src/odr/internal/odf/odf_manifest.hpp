@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_ODF_MANIFEST_H
 
 #include <cstdint>
-#include <odr/internal/common/path.h>
+#include <odr/internal/common/path.hpp>
 #include <optional>
 #include <string>
 #include <unordered_map>

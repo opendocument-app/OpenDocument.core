@@ -3,8 +3,8 @@
 
 #include <exception>
 #include <memory>
-#include <odr/internal/odf/odf_manifest.h>
-#include <odr/internal/odf/odf_meta.h>
+#include <odr/internal/odf/odf_manifest.hpp>
+#include <odr/internal/odf/odf_meta.hpp>
 #include <string>
 
 namespace odr::internal::abstract {

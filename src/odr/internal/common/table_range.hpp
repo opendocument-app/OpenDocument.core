@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_COMMON_TABLE_RANGE_H
 
 #include <cstdint>
-#include <odr/internal/common/table_position.h>
+#include <odr/internal/common/table_position.hpp>
 #include <string>
 
 namespace odr::internal::common {

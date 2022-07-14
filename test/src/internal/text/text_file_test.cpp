@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include <odr/exceptions.h>
-#include <odr/file.h>
-#include <odr/internal/text/text_file.h>
-#include <test_util.h>
+#include <odr/exceptions.hpp>
+#include <odr/file.hpp>
+#include <odr/internal/text/text_file.hpp>
+#include <test_util.hpp>
 
 using namespace odr;
 using namespace odr::test;

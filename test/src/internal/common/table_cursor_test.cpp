@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <memory>
-#include <odr/internal/common/table_cursor.h>
+#include <odr/internal/common/table_cursor.hpp>
 
 using namespace odr::internal::common;
 

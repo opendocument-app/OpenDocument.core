@@ -3,10 +3,10 @@
 
 #include <cstdint>
 #include <functional>
-#include <odr/internal/abstract/document_cursor.h>
-#include <odr/internal/abstract/document_element.h>
-#include <odr/internal/common/document_path.h>
-#include <odr/internal/common/style.h>
+#include <odr/internal/abstract/document_cursor.hpp>
+#include <odr/internal/abstract/document_element.hpp>
+#include <odr/internal/common/document_path.hpp>
+#include <odr/internal/common/style.hpp>
 #include <optional>
 #include <pugixml.hpp>
 #include <string>

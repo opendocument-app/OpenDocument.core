@@ -1,9 +1,9 @@
 #include <memory>
-#include <odr/exceptions.h>
-#include <odr/file.h>
-#include <odr/internal/abstract/filesystem.h>
-#include <odr/internal/common/path.h>
-#include <odr/internal/oldms/oldms_file.h>
+#include <odr/exceptions.hpp>
+#include <odr/file.hpp>
+#include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/oldms/oldms_file.hpp>
 #include <unordered_map>
 #include <utility>
 

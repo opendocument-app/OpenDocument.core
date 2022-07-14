@@ -1,4 +1,4 @@
-#include <odr/style.h>
+#include <odr/style.hpp>
 
 namespace odr {
 

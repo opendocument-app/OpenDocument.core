@@ -1,11 +1,11 @@
 #ifndef ODR_INTERNAL_COMMON_ARCHIVE_H
 #define ODR_INTERNAL_COMMON_ARCHIVE_H
 
-#include <odr/exceptions.h>
-#include <odr/file.h>
-#include <odr/internal/abstract/archive.h>
-#include <odr/internal/abstract/file.h>
-#include <odr/internal/common/filesystem.h>
+#include <odr/exceptions.hpp>
+#include <odr/file.hpp>
+#include <odr/internal/abstract/archive.hpp>
+#include <odr/internal/abstract/file.hpp>
+#include <odr/internal/common/filesystem.hpp>
 
 namespace odr::internal::common {
 

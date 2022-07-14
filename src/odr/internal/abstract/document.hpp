@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 
 #include <memory>
-#include <odr/document.h>
+#include <odr/document.hpp>
 
 namespace odr {
 class File;

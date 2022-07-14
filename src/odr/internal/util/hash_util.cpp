@@ -1,4 +1,4 @@
-#include <odr/internal/util/hash_util.h>
+#include <odr/internal/util/hash_util.hpp>
 
 namespace odr::internal::util {
 

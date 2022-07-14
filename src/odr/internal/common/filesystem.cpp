@@ -2,13 +2,13 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
-#include <odr/exceptions.h>
-#include <odr/internal/abstract/file.h>
-#include <odr/internal/abstract/filesystem.h>
-#include <odr/internal/common/file.h>
-#include <odr/internal/common/filesystem.h>
-#include <odr/internal/common/path.h>
-#include <odr/internal/util/stream_util.h>
+#include <odr/exceptions.hpp>
+#include <odr/internal/abstract/file.hpp>
+#include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/filesystem.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/util/stream_util.hpp>
 #include <system_error>
 #include <utility>
 

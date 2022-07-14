@@ -2,7 +2,7 @@
 #define ODR_STYLE_H
 
 #include <cstdint>
-#include <odr/quantity.h>
+#include <odr/quantity.hpp>
 #include <optional>
 #include <string>
 #include <utility>

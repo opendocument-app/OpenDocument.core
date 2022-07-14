@@ -3,9 +3,9 @@
 
 #include <iterator>
 #include <memory>
-#include <odr/internal/cfb/cfb_impl.h>
-#include <odr/internal/common/file.h>
-#include <odr/internal/common/path.h>
+#include <odr/internal/cfb/cfb_impl.hpp>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/path.hpp>
 #include <optional>
 #include <string>
 #include <vector>

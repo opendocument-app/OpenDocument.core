@@ -2,9 +2,9 @@
 #define ODR_INTERNAL_ODF_FILE_H
 
 #include <memory>
-#include <odr/file.h>
-#include <odr/internal/abstract/file.h>
-#include <odr/internal/odf/odf_manifest.h>
+#include <odr/file.hpp>
+#include <odr/internal/abstract/file.hpp>
+#include <odr/internal/odf/odf_manifest.hpp>
 #include <string>
 
 namespace odr::internal::abstract {

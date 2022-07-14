@@ -1,7 +1,7 @@
 #ifndef ODR_INTERNAL_COMMON_IMAGE_FILE_H
 #define ODR_INTERNAL_COMMON_IMAGE_FILE_H
 
-#include <odr/internal/abstract/file.h>
+#include <odr/internal/abstract/file.hpp>
 
 namespace odr::internal::common {
 

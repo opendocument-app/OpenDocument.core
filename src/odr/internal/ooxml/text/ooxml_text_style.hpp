@@ -1,8 +1,8 @@
 #ifndef ODR_INTERNAL_OOXML_TEXT_STYLE_H
 #define ODR_INTERNAL_OOXML_TEXT_STYLE_H
 
-#include <odr/document.h>
-#include <odr/internal/common/style.h>
+#include <odr/document.hpp>
+#include <odr/internal/common/style.hpp>
 #include <pugixml.hpp>
 #include <unordered_map>
 

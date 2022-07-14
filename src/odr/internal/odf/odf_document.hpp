@@ -2,10 +2,10 @@
 #define ODR_INTERNAL_ODF_DOCUMENT_H
 
 #include <memory>
-#include <odr/file.h>
-#include <odr/internal/abstract/document.h>
-#include <odr/internal/common/path.h>
-#include <odr/internal/odf/odf_style.h>
+#include <odr/file.hpp>
+#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/odf/odf_style.hpp>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {

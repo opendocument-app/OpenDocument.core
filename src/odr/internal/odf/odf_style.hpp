@@ -3,8 +3,8 @@
 
 #include <any>
 #include <memory>
-#include <odr/document.h>
-#include <odr/internal/common/style.h>
+#include <odr/document.hpp>
+#include <odr/internal/common/style.hpp>
 #include <optional>
 #include <pugixml.hpp>
 #include <string>

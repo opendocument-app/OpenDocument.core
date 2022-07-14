@@ -1,9 +1,9 @@
 #ifndef ODR_HTML_H
 #define ODR_HTML_H
 
-#include <odr/document.h>
-#include <odr/file.h>
-#include <odr/style.h>
+#include <odr/document.hpp>
+#include <odr/file.hpp>
+#include <odr/style.hpp>
 #include <optional>
 #include <string>
 

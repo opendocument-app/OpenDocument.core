@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include <list>
-#include <odr/internal/common/table_position.h>
+#include <odr/internal/common/table_position.hpp>
 
 namespace odr::internal::common {
 

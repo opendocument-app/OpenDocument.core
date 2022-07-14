@@ -2,8 +2,8 @@
 #define ODR_INTERNAL_JSON_FILE_H
 
 #include <memory>
-#include <odr/file.h>
-#include <odr/internal/text/text_file.h>
+#include <odr/file.hpp>
+#include <odr/internal/text/text_file.hpp>
 
 namespace odr::internal::json {
 

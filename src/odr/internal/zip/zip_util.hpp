@@ -7,10 +7,9 @@
 #include <memory>
 #include <miniz/miniz.h>
 #include <miniz/miniz_zip.h>
-#include <odr/file.h>
-#include <odr/internal/abstract/file.h>
+#include <odr/file.hpp>
+#include <odr/internal/abstract/file.hpp>
 #include <string>
-#include <sys/types.h>
 
 namespace odr::internal::common {
 class MemoryFile;

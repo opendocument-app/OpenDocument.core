@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_OOXML_PRESENTATION_CURSOR_H
 
 #include <memory>
-#include <odr/internal/common/document_cursor.h>
+#include <odr/internal/common/document_cursor.hpp>
 
 namespace pugi {
 class xml_node;

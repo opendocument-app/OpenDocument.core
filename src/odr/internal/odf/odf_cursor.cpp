@@ -1,8 +1,8 @@
-#include <odr/internal/abstract/document.h>
-#include <odr/internal/common/document_cursor.h>
-#include <odr/internal/odf/odf_cursor.h>
-#include <odr/internal/odf/odf_document.h>
-#include <odr/internal/odf/odf_element.h>
+#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/common/document_cursor.hpp>
+#include <odr/internal/odf/odf_cursor.hpp>
+#include <odr/internal/odf/odf_document.hpp>
+#include <odr/internal/odf/odf_element.hpp>
 #include <pugixml.hpp>
 #include <stdexcept>
 

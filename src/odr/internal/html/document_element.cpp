@@ -1,12 +1,12 @@
 #include <iostream>
-#include <odr/document_cursor.h>
-#include <odr/document_element.h>
-#include <odr/html.h>
-#include <odr/internal/common/table_range.h>
-#include <odr/internal/html/common.h>
-#include <odr/internal/html/document_element.h>
-#include <odr/internal/html/document_style.h>
-#include <odr/internal/html/image_file.h>
+#include <odr/document_cursor.hpp>
+#include <odr/document_element.hpp>
+#include <odr/html.hpp>
+#include <odr/internal/common/table_range.hpp>
+#include <odr/internal/html/common.hpp>
+#include <odr/internal/html/document_element.hpp>
+#include <odr/internal/html/document_style.hpp>
+#include <odr/internal/html/image_file.hpp>
 
 namespace odr::internal {
 

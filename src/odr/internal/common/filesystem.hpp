@@ -4,8 +4,8 @@
 #include <iosfwd>
 #include <map>
 #include <memory>
-#include <odr/internal/abstract/filesystem.h>
-#include <odr/internal/common/path.h>
+#include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/path.hpp>
 
 namespace odr::internal::abstract {
 class File;

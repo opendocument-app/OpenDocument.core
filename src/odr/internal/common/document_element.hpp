@@ -1,7 +1,7 @@
 #ifndef ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H
 #define ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H
 
-#include <odr/internal/abstract/document_element.h>
+#include <odr/internal/abstract/document_element.hpp>
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {

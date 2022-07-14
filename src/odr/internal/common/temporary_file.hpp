@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_COMMON_TEMPORARY_FILE_H
 
 #include <functional>
-#include <odr/internal/common/file.h>
+#include <odr/internal/common/file.hpp>
 
 namespace odr::internal::common {
 

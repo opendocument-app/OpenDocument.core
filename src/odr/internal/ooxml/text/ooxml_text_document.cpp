@@ -1,15 +1,15 @@
 #include <fstream>
-#include <odr/exceptions.h>
-#include <odr/file.h>
-#include <odr/internal/abstract/filesystem.h>
-#include <odr/internal/common/file.h>
-#include <odr/internal/common/path.h>
-#include <odr/internal/ooxml/ooxml_util.h>
-#include <odr/internal/ooxml/text/ooxml_text_cursor.h>
-#include <odr/internal/ooxml/text/ooxml_text_document.h>
-#include <odr/internal/ooxml/text/ooxml_text_style.h>
-#include <odr/internal/util/xml_util.h>
-#include <odr/internal/zip/zip_archive.h>
+#include <odr/exceptions.hpp>
+#include <odr/file.hpp>
+#include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/ooxml/ooxml_util.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_cursor.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_document.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_style.hpp>
+#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
 #include <sstream>
 #include <utility>
 

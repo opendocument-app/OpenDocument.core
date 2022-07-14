@@ -1,7 +1,7 @@
 #include <nlohmann/json.hpp>
-#include <odr/file.h>
-#include <odr/internal/util/odr_meta_util.h>
-#include <odr/open_document_reader.h>
+#include <odr/file.hpp>
+#include <odr/internal/util/odr_meta_util.hpp>
+#include <odr/open_document_reader.hpp>
 
 namespace odr::internal::util::meta {
 

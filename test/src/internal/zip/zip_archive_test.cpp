@@ -2,10 +2,10 @@
 #include <fstream>
 #include <gtest/gtest.h>
 #include <memory>
-#include <odr/exceptions.h>
-#include <odr/internal/common/file.h>
-#include <odr/internal/zip/zip_archive.h>
-#include <test_util.h>
+#include <odr/exceptions.hpp>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
+#include <test_util.hpp>
 
 using namespace odr;
 using namespace odr::internal;

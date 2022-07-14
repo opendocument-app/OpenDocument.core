@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_OOXML_SPREADSHEET_STYLE_H
 
 #include <memory>
-#include <odr/internal/common/style.h>
+#include <odr/internal/common/style.hpp>
 #include <pugixml.hpp>
 #include <unordered_map>
 #include <vector>

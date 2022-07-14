@@ -3,9 +3,9 @@
 
 #include <istream>
 #include <memory>
-#include <odr/file.h>
-#include <odr/internal/abstract/file.h>
-#include <odr/internal/cfb/cfb_impl.h>
+#include <odr/file.hpp>
+#include <odr/internal/abstract/file.hpp>
+#include <odr/internal/cfb/cfb_impl.hpp>
 #include <string>
 
 namespace odr::internal::common {

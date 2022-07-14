@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_COMMON_DOCUMENT_PATH_H
 
 #include <cstdint>
-#include <odr/internal/util/string_util.h>
+#include <odr/internal/util/string_util.hpp>
 #include <stdexcept>
 #include <string>
 #include <variant>

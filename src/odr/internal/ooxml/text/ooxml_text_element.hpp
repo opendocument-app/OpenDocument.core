@@ -1,9 +1,9 @@
 #ifndef ODR_INTERNAL_OOXML_TEXT_ELEMENT_H
 #define ODR_INTERNAL_OOXML_TEXT_ELEMENT_H
 
-#include <odr/internal/abstract/document.h>
-#include <odr/internal/common/document_element.h>
-#include <odr/internal/common/style.h>
+#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/common/document_element.hpp>
+#include <odr/internal/common/style.hpp>
 #include <pugixml.hpp>
 #include <string>
 

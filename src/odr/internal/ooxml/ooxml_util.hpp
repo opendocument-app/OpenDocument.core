@@ -3,7 +3,7 @@
 
 #include <any>
 #include <functional>
-#include <odr/style.h>
+#include <odr/style.hpp>
 #include <optional>
 #include <pugixml.hpp>
 #include <string>

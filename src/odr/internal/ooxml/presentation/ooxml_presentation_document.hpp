@@ -1,7 +1,7 @@
 #ifndef ODR_INTERNAL_OOXML_PRESENTATION_H
 #define ODR_INTERNAL_OOXML_PRESENTATION_H
 
-#include <odr/internal/abstract/document.h>
+#include <odr/internal/abstract/document.hpp>
 #include <pugixml.hpp>
 #include <unordered_map>
 

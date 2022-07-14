@@ -1,8 +1,8 @@
 #include <iostream>
-#include <odr/document.h>
-#include <odr/file.h>
-#include <odr/html.h>
-#include <odr/internal/util/file_util.h>
+#include <odr/document.hpp>
+#include <odr/file.hpp>
+#include <odr/html.hpp>
+#include <odr/internal/util/file_util.hpp>
 #include <string>
 
 using namespace odr;
