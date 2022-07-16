@@ -11,9 +11,9 @@ namespace odr::internal {
 
 void html::translate_children(Element &element, std::ostream &out,
                               const HtmlConfig &config) {
-  element.for_each_child([&](Element &element, const std::uint32_t) {
+  for (auto child : element) {
     translate_element(element, out, config);
-  });
+  }
 }
 
 void html::translate_element(Element &element, std::ostream &out,

@@ -167,18 +167,20 @@ Html html::translate_presentation(const Document &document,
                                   const HtmlConfig &config) {
   std::vector<HtmlPage> pages;
 
-  auto root = document.root_element();
-  root.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
+  std::uint32_t i = 0;
+  for (auto child : document.root_element()) {
     auto filled_path =
         fill_path_variables(path + "/" + config.slide_output_file_name, i);
     auto out = output(filled_path);
 
     front(document, path, out, config);
-    internal::html::translate_slide(cursor, out, config);
+    internal::html::translate_slide(child, out, config);
     back(document, path, out, config);
 
-    pages.emplace_back(cursor.element().slide().name(), filled_path);
-  });
+    pages.emplace_back(child.slide().name(), filled_path);
+
+    ++i;
+  }
 
   return {document.file_type(), config, std::move(pages), document};
 }
@@ -188,18 +190,20 @@ Html html::translate_spreadsheet(const Document &document,
                                  const HtmlConfig &config) {
   std::vector<HtmlPage> pages;
 
-  auto root = document.root_element();
-  root.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
+  std::uint32_t i = 0;
+  for (auto child : document.root_element()) {
     auto filled_path =
         fill_path_variables(path + "/" + config.sheet_output_file_name, i);
     auto out = output(filled_path);
 
     front(document, path, out, config);
-    translate_sheet(cursor, out, config);
+    translate_sheet(child, out, config);
     back(document, path, out, config);
 
-    pages.emplace_back(cursor.element().sheet().name(), filled_path);
-  });
+    pages.emplace_back(child.sheet().name(), filled_path);
+
+    ++i;
+  }
 
   return {document.file_type(), config, std::move(pages), document};
 }
@@ -208,18 +212,20 @@ Html html::translate_drawing(const Document &document, const std::string &path,
                              const HtmlConfig &config) {
   std::vector<HtmlPage> pages;
 
-  auto root = document.root_element();
-  root.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
+  std::uint32_t i = 0;
+  for (auto child : document.root_element()) {
     auto filled_path =
         fill_path_variables(path + "/" + config.page_output_file_name, i);
     auto out = output(filled_path);
 
     front(document, path, out, config);
-    internal::html::translate_page(cursor, out, config);
+    internal::html::translate_page(child, out, config);
     back(document, path, out, config);
 
-    pages.emplace_back(cursor.element().page().name(), filled_path);
-  });
+    pages.emplace_back(child.page().name(), filled_path);
+
+    ++i;
+  }
 
   return {document.file_type(), config, std::move(pages), document};
 }

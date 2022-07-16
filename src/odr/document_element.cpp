@@ -13,7 +13,9 @@ bool Element::operator==(const Element &rhs) const {
   return m_element == rhs.m_element;
 }
 
-bool Element::operator!=(const Element &rhs) const { return !operator==(rhs); }
+bool Element::operator!=(const Element &rhs) const {
+  return m_element != rhs.m_element;
+}
 
 Element::operator bool() const { return m_element; }
 
@@ -60,6 +62,42 @@ Circle Element::circle() const { return {m_document, m_element}; }
 CustomShape Element::custom_shape() const { return {m_document, m_element}; }
 
 Image Element::image() const { return {m_document, m_element}; }
+
+ElementIterator Element::begin() const {
+  return {m_document, m_element->first_child(m_document)};
+}
+
+ElementIterator Element::end() const { return {}; }
+
+ElementIterator::ElementIterator(const internal::abstract::Document *document,
+                                 internal::abstract::Element *element)
+    : m_document{document}, m_element{element} {}
+
+bool ElementIterator::operator==(const ElementIterator &rhs) const {
+  return m_element == rhs.m_element;
+}
+
+bool ElementIterator::operator!=(const ElementIterator &rhs) const {
+  return m_element != rhs.m_element;
+}
+
+ElementIterator::reference ElementIterator::operator*() const {
+  return Element(m_document, m_element);
+}
+
+ElementIterator &ElementIterator::operator++() {
+  if (m_element != nullptr) {
+    m_element = m_element->next_sibling(m_document);
+  }
+  return *this;
+}
+
+ElementIterator ElementIterator::operator++(int) {
+  if (m_element == nullptr) {
+    return {};
+  }
+  return {m_document, m_element->next_sibling(m_document)};
+}
 
 PageLayout TextRoot::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();

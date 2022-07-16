@@ -46,6 +46,7 @@ struct PageLayout;
 struct TableDimensions;
 
 class Element;
+class ElementIterator;
 class TextRoot;
 class Slide;
 class Sheet;
@@ -152,7 +153,35 @@ public:
   [[nodiscard]] CustomShape custom_shape() const;
   [[nodiscard]] Image image() const;
 
+  [[nodiscard]] ElementIterator begin() const;
+  [[nodiscard]] ElementIterator end() const;
+
 protected:
+  const internal::abstract::Document *m_document{nullptr};
+  internal::abstract::Element *m_element{nullptr};
+};
+
+class ElementIterator {
+public:
+  using value_type = Element;
+  using difference_type = std::ptrdiff_t;
+  using pointer = Element *;
+  using reference = Element;
+  using iterator_category = std::forward_iterator_tag;
+
+  ElementIterator() = default;
+  ElementIterator(const internal::abstract::Document *document,
+                  internal::abstract::Element *element);
+
+  bool operator==(const ElementIterator &rhs) const;
+  bool operator!=(const ElementIterator &rhs) const;
+
+  reference operator*() const;
+
+  ElementIterator &operator++();
+  ElementIterator operator++(int);
+
+private:
   const internal::abstract::Document *m_document{nullptr};
   internal::abstract::Element *m_element{nullptr};
 };
