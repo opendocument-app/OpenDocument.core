@@ -106,17 +106,18 @@ void html::translate_sheet(DocumentCursor &cursor, std::ostream &out,
   out << "<col>";
 
   column_index = 0;
-  cursor.for_each_table_column([&](DocumentCursor &, const std::uint32_t) {
-    auto table_column = cursor.element().table_column();
+  cursor.for_each_table_column(
+      [&](DocumentCursor &cursor, const std::uint32_t) {
+        auto table_column = cursor.element().table_column();
 
-    out << "<col";
-    out << optional_style_attribute(
-        translate_table_column_style(table_column.style()));
-    out << ">";
+        out << "<col";
+        out << optional_style_attribute(
+            translate_table_column_style(table_column.style()));
+        out << ">";
 
-    ++column_index;
-    return column_index < end_column;
-  });
+        ++column_index;
+        return column_index < end_column;
+      });
 
   {
     out << "<tr>";
