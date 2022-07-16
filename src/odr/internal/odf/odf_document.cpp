@@ -5,10 +5,10 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/odf/odf_document.hpp>
+#include <odr/internal/odf/odf_element.hpp>
 #include <odr/internal/odf/odf_style.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
-#include <sstream>
 #include <utility>
 
 namespace odr::internal::odf {
@@ -22,6 +22,10 @@ Document::Document(const FileType file_type, const DocumentType document_type,
   if (m_filesystem->exists("styles.xml")) {
     m_styles_xml = util::xml::parse(*m_filesystem, "styles.xml");
   }
+
+  m_elements = parse_tree(
+      m_content_xml.document_element().child("office:body").first_child());
+  m_root_element = nullptr; // TODO
 
   m_style_registry = StyleRegistry(m_content_xml.document_element(),
                                    m_styles_xml.document_element());
@@ -99,10 +103,6 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
-  return std::make_unique<DocumentCursor>(
-      this,
-      m_content_xml.document_element().child("office:body").first_child());
-}
+abstract::Element *Document::root_element() const { return m_root_element; }
 
 } // namespace odr::internal::odf

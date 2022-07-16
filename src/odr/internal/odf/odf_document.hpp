@@ -32,8 +32,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
-  root_element() const final;
+  [[nodiscard]] abstract::Element *root_element() const final;
 
 protected:
   FileType m_file_type;
@@ -43,6 +42,9 @@ protected:
 
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
+
+  std::vector<std::unique_ptr<abstract::Element>> m_elements;
+  abstract::Element *m_root_element;
 
   StyleRegistry m_style_registry;
 

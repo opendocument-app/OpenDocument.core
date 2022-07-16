@@ -138,8 +138,8 @@ Html html::translate_text_document(const Document &document,
       fill_path_variables(path + "/" + config.text_document_output_file_name);
   auto out = output(filled_path);
 
-  auto cursor = document.root_element();
-  auto element = cursor.element().text_root();
+  auto root = document.root_element();
+  auto element = root.text_root();
 
   front(document, path, out, config);
   if (config.text_document_margin) {
@@ -151,11 +151,11 @@ Html html::translate_text_document(const Document &document,
     out << "<div";
     out << optional_style_attribute(translate_inner_page_style(page_layout));
     out << ">";
-    translate_children(cursor, out, config);
+    translate_children(element, out, config);
     out << "</div>";
     out << "</div>";
   } else {
-    translate_children(cursor, out, config);
+    translate_children(element, out, config);
   }
   back(document, path, out, config);
 
@@ -167,8 +167,8 @@ Html html::translate_presentation(const Document &document,
                                   const HtmlConfig &config) {
   std::vector<HtmlPage> pages;
 
-  auto cursor = document.root_element();
-  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
+  auto root = document.root_element();
+  root.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
     auto filled_path =
         fill_path_variables(path + "/" + config.slide_output_file_name, i);
     auto out = output(filled_path);
@@ -188,8 +188,8 @@ Html html::translate_spreadsheet(const Document &document,
                                  const HtmlConfig &config) {
   std::vector<HtmlPage> pages;
 
-  auto cursor = document.root_element();
-  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
+  auto root = document.root_element();
+  root.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
     auto filled_path =
         fill_path_variables(path + "/" + config.sheet_output_file_name, i);
     auto out = output(filled_path);
@@ -208,8 +208,8 @@ Html html::translate_drawing(const Document &document, const std::string &path,
                              const HtmlConfig &config) {
   std::vector<HtmlPage> pages;
 
-  auto cursor = document.root_element();
-  cursor.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
+  auto root = document.root_element();
+  root.for_each_child([&](DocumentCursor &cursor, const std::uint32_t i) {
     auto filled_path =
         fill_path_variables(path + "/" + config.page_output_file_name, i);
     auto out = output(filled_path);
