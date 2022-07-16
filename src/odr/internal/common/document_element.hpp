@@ -13,26 +13,14 @@ namespace odr::internal::common {
 
 class Element : public virtual abstract::Element {
 public:
-  Element() = default;
+  Element();
+  explicit Element(const pugi::xml_node node);
 
-  explicit Element(const pugi::xml_node node) : m_node{node} {}
-
-  [[nodiscard]] Element *parent(const abstract::Document *) const final {
-    return m_parent;
-  }
-
-  [[nodiscard]] Element *first_child(const abstract::Document *) const final {
-    return m_first_child;
-  }
-
+  [[nodiscard]] Element *parent(const abstract::Document *) const final;
+  [[nodiscard]] Element *first_child(const abstract::Document *) const final;
   [[nodiscard]] Element *
-  previous_sibling(const abstract::Document *) const final {
-    return m_previous_sibling;
-  }
-
-  [[nodiscard]] Element *next_sibling(const abstract::Document *) const final {
-    return m_next_sibling;
-  }
+  previous_sibling(const abstract::Document *) const final;
+  [[nodiscard]] Element *next_sibling(const abstract::Document *) const final;
 
 protected:
   pugi::xml_node m_node;

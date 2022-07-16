@@ -5,6 +5,8 @@
 
 namespace odr {
 
+Element::Element() = default;
+
 Element::Element(const internal::abstract::Document *document,
                  internal::abstract::Element *element)
     : m_document{document}, m_element{element} {}
@@ -19,7 +21,30 @@ bool Element::operator!=(const Element &rhs) const {
 
 Element::operator bool() const { return m_element; }
 
-ElementType Element::type() const { return m_element->type(m_document); }
+ElementType Element::type() const {
+  return m_element ? m_element->type(m_document) : ElementType::none;
+}
+
+Element Element::parent() const {
+  return m_element ? Element(m_document, m_element->parent(m_document))
+                   : Element();
+}
+
+Element Element::first_child() const {
+  return m_element ? Element(m_document, m_element->first_child(m_document))
+                   : Element();
+}
+
+Element Element::previous_sibling() const {
+  return m_element
+             ? Element(m_document, m_element->previous_sibling(m_document))
+             : Element();
+}
+
+Element Element::next_sibling() const {
+  return m_element ? Element(m_document, m_element->next_sibling(m_document))
+                   : Element();
+}
 
 TextRoot Element::text_root() const { return {m_document, m_element}; }
 
@@ -69,6 +94,8 @@ ElementIterator Element::begin() const {
 
 ElementIterator Element::end() const { return {}; }
 
+ElementIterator::ElementIterator() = default;
+
 ElementIterator::ElementIterator(const internal::abstract::Document *document,
                                  internal::abstract::Element *element)
     : m_document{document}, m_element{element} {}
@@ -99,6 +126,17 @@ ElementIterator ElementIterator::operator++(int) {
   return {m_document, m_element->next_sibling(m_document)};
 }
 
+ElementRange::ElementRange() = default;
+
+ElementRange::ElementRange(ElementIterator begin) : m_begin{std::move(begin)} {}
+
+ElementRange::ElementRange(ElementIterator begin, ElementIterator end)
+    : m_begin{std::move(begin)}, m_end{std::move(end)} {}
+
+ElementIterator ElementRange::begin() const { return m_begin; }
+
+ElementIterator ElementRange::end() const { return m_end; }
+
 PageLayout TextRoot::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
 }
@@ -117,6 +155,12 @@ std::string Sheet::name() const {
 
 TableDimensions Sheet::content(std::optional<TableDimensions> range) const {
   return m_element ? m_element->content(m_document, range) : TableDimensions();
+}
+
+ElementRange Sheet::shapes() const {
+  return m_element ? ElementRange(ElementIterator(
+                         m_document, m_element->first_shape(m_document)))
+                   : ElementRange();
 }
 
 std::string Page::name() const {
@@ -167,6 +211,18 @@ std::string Bookmark::name() const {
 
 TextStyle ListItem::style() const {
   return m_element ? m_element->style(m_document) : TextStyle();
+}
+
+ElementRange Table::columns() const {
+  return m_element ? ElementRange(ElementIterator(
+                         m_document, m_element->first_column(m_document)))
+                   : ElementRange();
+}
+
+ElementRange Table::rows() const {
+  return m_element ? ElementRange(ElementIterator(
+                         m_document, m_element->first_row(m_document)))
+                   : ElementRange();
 }
 
 TableDimensions Table::dimensions() const {

@@ -120,7 +120,7 @@ enum class ValueType {
 
 class Element {
 public:
-  Element() = default;
+  Element();
   Element(const internal::abstract::Document *document,
           internal::abstract::Element *element);
 
@@ -130,6 +130,11 @@ public:
   explicit operator bool() const;
 
   [[nodiscard]] ElementType type() const;
+
+  [[nodiscard]] Element parent() const;
+  [[nodiscard]] Element first_child() const;
+  [[nodiscard]] Element previous_sibling() const;
+  [[nodiscard]] Element next_sibling() const;
 
   [[nodiscard]] TextRoot text_root() const;
   [[nodiscard]] Slide slide() const;
@@ -169,7 +174,7 @@ public:
   using reference = Element;
   using iterator_category = std::forward_iterator_tag;
 
-  ElementIterator() = default;
+  ElementIterator();
   ElementIterator(const internal::abstract::Document *document,
                   internal::abstract::Element *element);
 
@@ -199,6 +204,20 @@ protected:
   T *m_element{nullptr};
 };
 
+class ElementRange {
+public:
+  ElementRange();
+  explicit ElementRange(ElementIterator begin);
+  ElementRange(ElementIterator begin, ElementIterator end);
+
+  [[nodiscard]] ElementIterator begin() const;
+  [[nodiscard]] ElementIterator end() const;
+
+private:
+  ElementIterator m_begin;
+  ElementIterator m_end;
+};
+
 class TextRoot final
     : public TypedElement<internal::abstract::TextRootElement> {
 public:
@@ -224,6 +243,8 @@ public:
 
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;
+
+  [[nodiscard]] ElementRange shapes() const;
 };
 
 class Page final : public TypedElement<internal::abstract::PageElement> {
@@ -295,6 +316,9 @@ public:
 class Table final : public TypedElement<internal::abstract::TableElement> {
 public:
   using TypedElement::TypedElement;
+
+  [[nodiscard]] ElementRange columns() const;
+  [[nodiscard]] ElementRange rows() const;
 
   [[nodiscard]] TableDimensions dimensions() const;
 

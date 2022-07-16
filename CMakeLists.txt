@@ -92,6 +92,7 @@ add_library(odr
         "src/odr/internal/cfb/cfb_impl.cpp"
         "src/odr/internal/cfb/cfb_util.cpp"
 
+        "src/odr/internal/common/document_element.cpp"
         "src/odr/internal/common/document_path.cpp"
         "src/odr/internal/common/file.cpp"
         "src/odr/internal/common/filesystem.cpp"
