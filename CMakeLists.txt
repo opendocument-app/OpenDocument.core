@@ -74,6 +74,7 @@ endif ()
 add_library(odr
         "src/odr/document.cpp"
         "src/odr/document_element.cpp"
+        "src/odr/document_path.cpp"
         "src/odr/exceptions.cpp"
         "src/odr/file.cpp"
         "src/odr/html.cpp"
@@ -93,7 +94,6 @@ add_library(odr
         "src/odr/internal/cfb/cfb_util.cpp"
 
         "src/odr/internal/common/document_element.cpp"
-        "src/odr/internal/common/document_path.cpp"
         "src/odr/internal/common/file.cpp"
         "src/odr/internal/common/filesystem.cpp"
         "src/odr/internal/common/image_file.cpp"

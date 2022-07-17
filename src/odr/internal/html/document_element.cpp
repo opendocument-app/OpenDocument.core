@@ -1,5 +1,6 @@
 #include <iostream>
 #include <odr/document_element.hpp>
+#include <odr/document_path.hpp>
 #include <odr/html.hpp>
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/html/common.hpp>
@@ -237,7 +238,8 @@ void html::translate_text(const Element &element, std::ostream &out,
   out << optional_style_attribute(translate_text_style(text.style()));
   if (config.editable) {
     out << " contenteditable=\"true\"";
-    out << " data-odr-path=\"" << element.document_path() << "\"";
+    out << " data-odr-path=\"" << DocumentPath::extract(element).to_string()
+        << "\"";
   }
   out << ">";
   out << internal::html::escape_text(text.content());
