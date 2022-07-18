@@ -73,11 +73,22 @@ public:
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 
   [[nodiscard]] virtual TableDimensions
+  dimensions(const Document *document) const = 0;
+  [[nodiscard]] virtual TableDimensions
   content(const Document *document,
           std::optional<TableDimensions> range) const = 0;
 
+  [[nodiscard]] virtual Element *column(const Document *document,
+                                        std::uint32_t column) const = 0;
+  [[nodiscard]] virtual Element *row(const Document *document,
+                                     std::uint32_t column) const = 0;
+  [[nodiscard]] virtual Element *cell(const Document *document,
+                                      std::uint32_t column) const = 0;
+
   [[nodiscard]] virtual Element *
   first_shape(const Document *document) const = 0;
+
+  [[nodiscard]] virtual TableStyle style(const Document *document) const = 0;
 };
 
 class PageElement : public virtual Element {
@@ -215,9 +226,8 @@ public:
     return ElementType::table_cell;
   }
 
-  // TODO should return const
-  [[nodiscard]] virtual Element *column(const Document *document) = 0;
-  [[nodiscard]] virtual Element *row(const Document *document) = 0;
+  [[nodiscard]] virtual Element *column(const Document *document) const = 0;
+  [[nodiscard]] virtual Element *row(const Document *document) const = 0;
 
   [[nodiscard]] virtual bool covered(const Document *document) const = 0;
   [[nodiscard]] virtual TableDimensions

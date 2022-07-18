@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <odr/file.hpp>
@@ -22,7 +21,16 @@ namespace odr::internal::odf {
 
 namespace {
 const char *default_style_name(pugi::xml_node node);
-}
+
+std::tuple<abstract::Element *, pugi::xml_node>
+parse_element_tree(pugi::xml_node node,
+                   std::vector<std::unique_ptr<abstract::Element>> &store);
+
+template <typename Derived>
+std::tuple<abstract::Element *, pugi::xml_node> default_parse_element_tree(
+    pugi::xml_node node,
+    std::vector<std::unique_ptr<abstract::Element>> &store);
+} // namespace
 
 Element::Element() = default;
 
@@ -128,24 +136,34 @@ public:
 
   [[nodiscard]] abstract::Element *
   first_master_page(const abstract::Document *document) const final {
-    return m_first_child;
+    return nullptr; // TODO fix
   }
+};
+
+class PresentationRoot final : public Root {
+public:
+  static constexpr auto child_name = "draw:page";
+
+  using Root::Root;
+};
+
+class SpreadsheetRoot final : public Root {
+public:
+  static constexpr auto child_name = "table:table";
+
+  using Root::Root;
+};
+
+class DrawingRoot final : public Root {
+public:
+  static constexpr auto child_name = "draw:page";
+
+  using Root::Root;
 };
 
 class Slide final : public Element, public abstract::SlideElement {
 public:
   using Element::Element;
-
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const final {
-    return common::construct_optional<Slide>(
-        m_node.previous_sibling("draw:page"));
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const final {
-    return common::construct_optional<Slide>(m_node.next_sibling("draw:page"));
-  }
 
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final {
@@ -155,10 +173,10 @@ public:
     return {};
   }
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_master_page(const abstract::Document *document) const final {
+  [[nodiscard]] abstract::Element *
+  master_page(const abstract::Document *document) const final {
     if (auto master_page_node = master_page_node_(document)) {
-      return common::construct_optional<MasterPage>(master_page_node);
+      // TODO
     }
     return {};
   }
@@ -181,17 +199,6 @@ class Page final : public Element, public abstract::PageElement {
 public:
   using Element::Element;
 
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const final {
-    return common::construct_optional<Page>(
-        m_node.previous_sibling("draw:page"));
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const final {
-    return common::construct_optional<Page>(m_node.next_sibling("draw:page"));
-  }
-
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final {
     if (auto master_page_node = master_page_node_(document)) {
@@ -200,11 +207,10 @@ public:
     return {};
   }
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  master_page(const abstract::Document *document,
-              const abstract::DocumentCursor *) const final {
+  [[nodiscard]] abstract::Element *
+  master_page(const abstract::Document *document) const final {
     if (auto master_page_node = master_page_node_(document)) {
-      return common::construct_optional<MasterPage>(master_page_node);
+      // TODO
     }
     return {};
   }
@@ -228,9 +234,8 @@ public:
   using Element::Element;
 
   [[nodiscard]] TextStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
+  style(const abstract::Document *document) const final {
+    return intermediate_style(document).text_style;
   }
 };
 
@@ -239,15 +244,13 @@ public:
   using Element::Element;
 
   [[nodiscard]] ParagraphStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).paragraph_style;
+  style(const abstract::Document *document) const final {
+    return intermediate_style(document).paragraph_style;
   }
 
   [[nodiscard]] TextStyle
-  text_style(const abstract::Document *document,
-             const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
+  text_style(const abstract::Document *document) const final {
+    return intermediate_style(document).text_style;
   }
 };
 
@@ -256,27 +259,14 @@ public:
   using Element::Element;
 
   [[nodiscard]] TextStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
+  style(const abstract::Document *document) const final {
+    return intermediate_style(document).text_style;
   }
 };
 
 class Text final : public Element, public abstract::TextElement {
 public:
   using Element::Element;
-
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const final {
-    return common::construct_previous_sibling_element(construct_default_element,
-                                                      first_());
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const final {
-    return common::construct_next_sibling_element(construct_default_element,
-                                                  last_());
-  }
 
   [[nodiscard]] std::string content(const abstract::Document *) const final {
     std::string result;
@@ -321,9 +311,8 @@ public:
   }
 
   [[nodiscard]] TextStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
+  style(const abstract::Document *document) const final {
+    return intermediate_style(document).text_style;
   }
 
 private:
@@ -400,9 +389,8 @@ public:
   using Element::Element;
 
   [[nodiscard]] TextStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
+  style(const abstract::Document *document) const final {
+    return intermediate_style(document).text_style;
   }
 };
 
@@ -410,13 +398,8 @@ class TableElement : public Element, public abstract::TableElement {
 public:
   using Element::Element;
 
-  std::unique_ptr<abstract::Element>
-  construct_first_child(const abstract::Document *) const final {
-    return {};
-  }
-
-  [[nodiscard]] TableStyle style(const abstract::Document *document,
-                                 const abstract::DocumentCursor *) const final {
+  [[nodiscard]] TableStyle
+  style(const abstract::Document *document) const final {
     return partial_style(document).table_style;
   }
 
@@ -445,182 +428,46 @@ public:
     return result;
   }
 
-  std::unique_ptr<abstract::Element>
-  construct_first_column(const abstract::Document *) const final {
-    return common::construct_optional<TableColumn>(
-        m_node.child("table:table-column"));
+  abstract::Element *first_column(const abstract::Document *) const final {
+    return {}; // TODO
   }
 
-  std::unique_ptr<abstract::Element>
-  construct_first_row(const abstract::Document *) const final {
-    return common::construct_optional<TableRow>(
-        m_node.child("table:table-row"));
+  abstract::Element *first_row(const abstract::Document *) const final {
+    return {}; // TODO
   }
 };
 
-template <typename Derived> class TableComponent : public Element {
+class TableColumn final : public Element, public abstract::TableColumnElement {
 public:
   using Element::Element;
 
-  TableComponent(pugi::xml_node node, std::uint32_t repeated_index)
-      : Element(node), m_repeated_index{repeated_index} {}
-
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const override {
-    if (m_repeated_index > 0) {
-      return common::construct_2<Derived>(m_node, m_repeated_index - 1);
-    }
-    if (auto previous_sibling = previous_node_()) {
-      // TODO not 0 but last repeated
-      return common::construct_2<Derived>(previous_sibling, 0);
-    }
-    return {};
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const override {
-    if (m_repeated_index < number_repeated_() - 1) {
-      return common::construct_2<Derived>(m_node, m_repeated_index + 1);
-    }
-    if (auto next_sibling = next_node_()) {
-      return common::construct_2<Derived>(next_sibling, 0);
-    }
-    return {};
-  }
-
-protected:
-  std::uint32_t m_repeated_index{0};
-
-  [[nodiscard]] virtual std::uint32_t number_repeated_() const = 0;
-  [[nodiscard]] virtual pugi::xml_node previous_node_() const = 0;
-  [[nodiscard]] virtual pugi::xml_node next_node_() const = 0;
-};
-
-class TableColumn final : public TableComponent<TableColumn>,
-                          public abstract::TableColumnElement {
-public:
-  using TableComponent::TableComponent;
-
   [[nodiscard]] TableColumnStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
+  style(const abstract::Document *document) const final {
     return partial_style(document).table_column_style;
   }
-
-  common::ResolvedStyle
-  default_cell_style(const abstract::Document *document) const {
-    if (auto attribute = m_node.attribute("table:default-cell-style-name")) {
-      if (auto style = style_(document)->style(attribute.value())) {
-        return style->resolved();
-      }
-    }
-    return {};
-  }
-
-private:
-  [[nodiscard]] std::uint32_t number_repeated_() const final {
-    return m_node.attribute("table:number-columns-repeated").as_uint(1);
-  }
-
-  [[nodiscard]] pugi::xml_node previous_node_() const final {
-    return m_node.previous_sibling("table:table-column");
-  }
-
-  [[nodiscard]] pugi::xml_node next_node_() const final {
-    return m_node.next_sibling("table:table-column");
-  }
 };
 
-class TableRow final : public TableComponent<TableRow>,
-                       public abstract::TableRowElement {
+class TableRow final : public Element, public abstract::TableRowElement {
 public:
-  using TableComponent::TableComponent;
+  using Element::Element;
 
   [[nodiscard]] TableRowStyle
   style(const abstract::Document *document) const final {
     return partial_style(document).table_row_style;
   }
-
-  common::ResolvedStyle
-  default_cell_style(const abstract::Document *document) const {
-    if (auto attribute = m_node.attribute("table:default-cell-style-name")) {
-      if (auto style = style_(document)->style(attribute.value())) {
-        return style->resolved();
-      }
-    }
-    return {};
-  }
-
-private:
-  [[nodiscard]] std::uint32_t number_repeated_() const final {
-    return m_node.attribute("table:number-rows-repeated").as_uint(1);
-  }
-
-  [[nodiscard]] pugi::xml_node previous_node_() const final {
-    return m_node.previous_sibling("table:table-row");
-  }
-
-  [[nodiscard]] pugi::xml_node next_node_() const final {
-    return m_node.next_sibling("table:table-row");
-  }
 };
 
-class TableCell final : public TableComponent<TableCell>,
-                        public abstract::TableCellElement {
+class TableCell final : public Element, public abstract::TableCellElement {
 public:
-  using TableComponent::TableComponent;
+  using Element::Element;
 
-  // TODO this only works for first cells
-  explicit TableCell(pugi::xml_node node)
-      : TableComponent(node), m_column{node.parent().parent().child(
-                                  "table:table-column")},
-        m_row{node.parent()} {}
-  TableCell(pugi::xml_node node, std::uint32_t repeated_index,
-            TableColumn column)
-      : TableComponent(node, repeated_index), m_column{std::move(column)},
-        m_row{node.parent()} {}
-
-  std::unique_ptr<abstract::Element> construct_previous_sibling(
-      const abstract::Document *document) const override {
-    TableColumn previous_column;
-    if (auto previous_column_ptr =
-            m_column.construct_previous_sibling(document)) {
-      previous_column = dynamic_cast<const TableColumn &>(*previous_column_ptr);
-    }
-    if (m_repeated_index > 0) {
-      return common::construct_2<TableCell>(m_node, m_repeated_index - 1,
-                                            previous_column);
-    }
-    if (auto previous_sibling = previous_node_()) {
-      // TODO not 0 but last repeated
-      return common::construct_2<TableCell>(previous_sibling, 0,
-                                            previous_column);
-    }
-    return {};
+  [[nodiscard]] abstract::Element *
+  column(const abstract::Document *) const final {
+    return nullptr; // TODO
   }
 
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *document) const override {
-    TableColumn next_column;
-    if (auto next_column_ptr = m_column.construct_next_sibling(document)) {
-      next_column = dynamic_cast<const TableColumn &>(*next_column_ptr);
-    }
-    if (m_repeated_index < number_repeated_() - 1) {
-      return common::construct_2<TableCell>(m_node, m_repeated_index + 1,
-                                            next_column);
-    }
-    if (auto next_sibling = next_node_()) {
-      return common::construct_2<TableCell>(next_sibling, 0, next_column);
-    }
-    return {};
-  }
-
-  [[nodiscard]] abstract::Element *column(const abstract::Document *) final {
-    return &m_column;
-  }
-
-  [[nodiscard]] abstract::Element *row(const abstract::Document *) final {
-    return &m_row;
+  [[nodiscard]] abstract::Element *row(const abstract::Document *) const final {
+    return nullptr; // TODO
   }
 
   [[nodiscard]] bool covered(const abstract::Document *) const final {
@@ -640,41 +487,9 @@ public:
     return ValueType::string;
   }
 
-  common::ResolvedStyle
-  partial_style(const abstract::Document *document) const final {
-    common::ResolvedStyle result;
-    result.override(m_column.default_cell_style(document));
-    result.override(m_row.default_cell_style(document));
-    result.override(Element::partial_style(document));
-    return result;
-  }
-
   [[nodiscard]] TableCellStyle
   style(const abstract::Document *document) const final {
     return partial_style(document).table_cell_style;
-  }
-
-private:
-  TableColumn m_column;
-  TableRow m_row;
-
-  const char *style_name_(const abstract::Document *) const final {
-    if (auto style_name = m_node.attribute("table:style-name")) {
-      return style_name.value();
-    }
-    return {};
-  }
-
-  [[nodiscard]] std::uint32_t number_repeated_() const final {
-    return m_node.attribute("table:number-columns-repeated").as_uint(1);
-  }
-
-  [[nodiscard]] pugi::xml_node previous_node_() const final {
-    return m_node.previous_sibling();
-  }
-
-  [[nodiscard]] pugi::xml_node next_node_() const final {
-    return m_node.next_sibling();
   }
 };
 
@@ -741,7 +556,7 @@ public:
 
   [[nodiscard]] GraphicStyle
   style(const abstract::Document *document) const final {
-    return intermediate_style(document, cursor).graphic_style;
+    return intermediate_style(document).graphic_style;
   }
 };
 
@@ -767,7 +582,7 @@ public:
 
   [[nodiscard]] GraphicStyle
   style(const abstract::Document *document) const final {
-    return intermediate_style(document, cursor).graphic_style;
+    return intermediate_style(document).graphic_style;
   }
 };
 
@@ -793,7 +608,7 @@ public:
 
   [[nodiscard]] GraphicStyle
   style(const abstract::Document *document) const final {
-    return intermediate_style(document, cursor).graphic_style;
+    return intermediate_style(document).graphic_style;
   }
 };
 
@@ -819,7 +634,7 @@ public:
 
   [[nodiscard]] GraphicStyle
   style(const abstract::Document *document) const final {
-    return intermediate_style(document, cursor).graphic_style;
+    return intermediate_style(document).graphic_style;
   }
 };
 
@@ -847,7 +662,7 @@ public:
 
   [[nodiscard]] GraphicStyle
   style(const abstract::Document *document) const final {
-    return intermediate_style(document, cursor).graphic_style;
+    return intermediate_style(document).graphic_style;
   }
 };
 
@@ -884,18 +699,6 @@ public:
 class Sheet final : public TableElement, public abstract::SheetElement {
 public:
   using TableElement::TableElement;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const final {
-    return common::construct_optional<Sheet>(
-        m_node.previous_sibling("table:table"));
-  }
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const final {
-    return common::construct_optional<Sheet>(
-        m_node.next_sibling("table:table"));
-  }
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
     return m_node.attribute("table:name").value();
@@ -939,25 +742,29 @@ public:
   }
 
   [[nodiscard]] abstract::Element *
-  first_shape(const abstract::Document *document) const final {
-    return m_first_child;
+  first_shape(const abstract::Document *) const final {
+    return nullptr; // TODO
   }
 };
 
-abstract::Element *
-parse_element(pugi::xml_node node,
-              std::vector<std::unique_ptr<abstract::Element>> &store);
+std::tuple<abstract::Element *, pugi::xml_node>
+parse_element_tree(pugi::xml_node node,
+                   std::vector<std::unique_ptr<abstract::Element>> &store);
 
 template <typename Derived>
-abstract::Element *
-default_parse_element(pugi::xml_node node,
-                      std::vector<std::unique_ptr<abstract::Element>> &store) {
+std::tuple<abstract::Element *, pugi::xml_node> default_parse_element_tree(
+    pugi::xml_node node,
+    std::vector<std::unique_ptr<abstract::Element>> &store) {
+  if (!node) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
   auto element_unique = std::make_unique<Derived>(node);
-  auto element = element_unique.get();
+  auto element = dynamic_cast<abstract::Element *>(element_unique.get());
   store.push_back(std::move(element_unique));
 
   for (auto child_node : node) {
-    auto child = parse_element(child_node, store);
+    auto [child, _] = parse_element_tree(child_node, store);
     if (child == nullptr) {
       continue;
     }
@@ -965,13 +772,13 @@ default_parse_element(pugi::xml_node node,
     // TODO attach child to root
   }
 
-  return element;
+  return std::make_tuple(element, node.next_sibling());
 }
 
-abstract::Element *
-parse_element(pugi::xml_node node,
-              std::vector<std::unique_ptr<abstract::Element>> &store) {
-  using Parser = std::function<abstract::Element *(
+std::tuple<abstract::Element *, pugi::xml_node>
+parse_element_tree(pugi::xml_node node,
+                   std::vector<std::unique_ptr<abstract::Element>> &store) {
+  using Parser = std::function<std::tuple<abstract::Element *, pugi::xml_node>(
       pugi::xml_node node,
       std::vector<std::unique_ptr<abstract::Element>> & store)>;
 
@@ -980,50 +787,50 @@ parse_element(pugi::xml_node node,
   using PageBreak = DefaultElement<ElementType::page_break>;
 
   static std::unordered_map<std::string, Parser> parser_table{
-      {"office:text", default_parse_element<TextDocumentRoot>},
-      {"office:presentation", default_parse_element<PresentationRoot>},
-      {"office:spreadsheet", default_parse_element<SpreadsheetRoot>},
-      {"office:drawing", default_parse_element<DrawingRoot>},
-      {"text:p", default_parse_element<Paragraph>},
-      {"text:h", default_parse_element<Paragraph>},
-      {"text:span", default_parse_element<Span>},
-      {"text:s", default_parse_element<Text>},
-      {"text:tab", default_parse_element<Text>},
-      {"text:line-break", default_parse_element<LineBreak>},
-      {"text:a", default_parse_element<Link>},
-      {"text:bookmark", default_parse_element<Bookmark>},
-      {"text:bookmark-start", default_parse_element<Bookmark>},
-      {"text:list", default_parse_element<List>},
-      {"text:list-header", default_parse_element<ListItem>},
-      {"text:list-item", default_parse_element<ListItem>},
-      {"text:index-title", default_parse_element<Group>},
-      {"text:table-of-content", default_parse_element<Group>},
-      {"text:illustration-index", default_parse_element<Group>},
-      {"text:index-body", default_parse_element<Group>},
-      {"text:soft-page-break", default_parse_element<PageBreak>},
-      {"text:date", default_parse_element<Group>},
-      {"text:time", default_parse_element<Group>},
-      {"text:section", default_parse_element<Group>},
-      //{"text:page-number", default_parse_element<Group>},
-      //{"text:page-continuation", default_parse_element<Group>},
-      {"table:table", default_parse_element<TableElement>},
-      {"table:table-column", default_parse_element<TableColumn>},
-      {"table:table-row", default_parse_element<TableRow>},
-      {"table:table-cell", default_parse_element<TableCell>},
-      {"table:covered-table-cell", default_parse_element<TableCell>},
-      {"draw:frame", default_parse_element<Frame>},
-      {"draw:image", default_parse_element<ImageElement>},
-      {"draw:rect", default_parse_element<Rect>},
-      {"draw:line", default_parse_element<Line>},
-      {"draw:circle", default_parse_element<Circle>},
-      {"draw:custom-shape", default_parse_element<CustomShape>},
-      {"draw:text-box", default_parse_element<Group>},
-      {"draw:g", default_parse_element<Group>},
-      {"draw:a", default_parse_element<Link>},
+      {"office:text", default_parse_element_tree<TextDocumentRoot>},
+      {"office:presentation", default_parse_element_tree<PresentationRoot>},
+      {"office:spreadsheet", default_parse_element_tree<SpreadsheetRoot>},
+      {"office:drawing", default_parse_element_tree<DrawingRoot>},
+      {"text:p", default_parse_element_tree<Paragraph>},
+      {"text:h", default_parse_element_tree<Paragraph>},
+      {"text:span", default_parse_element_tree<Span>},
+      {"text:s", default_parse_element_tree<Text>},
+      {"text:tab", default_parse_element_tree<Text>},
+      {"text:line-break", default_parse_element_tree<LineBreak>},
+      {"text:a", default_parse_element_tree<Link>},
+      {"text:bookmark", default_parse_element_tree<Bookmark>},
+      {"text:bookmark-start", default_parse_element_tree<Bookmark>},
+      {"text:list", default_parse_element_tree<List>},
+      {"text:list-header", default_parse_element_tree<ListItem>},
+      {"text:list-item", default_parse_element_tree<ListItem>},
+      {"text:index-title", default_parse_element_tree<Group>},
+      {"text:table-of-content", default_parse_element_tree<Group>},
+      {"text:illustration-index", default_parse_element_tree<Group>},
+      {"text:index-body", default_parse_element_tree<Group>},
+      {"text:soft-page-break", default_parse_element_tree<PageBreak>},
+      {"text:date", default_parse_element_tree<Group>},
+      {"text:time", default_parse_element_tree<Group>},
+      {"text:section", default_parse_element_tree<Group>},
+      //{"text:page-number", default_parse_element_tree<Group>},
+      //{"text:page-continuation", default_parse_element_tree<Group>},
+      {"table:table", default_parse_element_tree<TableElement>},
+      {"table:table-column", default_parse_element_tree<TableColumn>},
+      {"table:table-row", default_parse_element_tree<TableRow>},
+      {"table:table-cell", default_parse_element_tree<TableCell>},
+      {"table:covered-table-cell", default_parse_element_tree<TableCell>},
+      {"draw:frame", default_parse_element_tree<Frame>},
+      {"draw:image", default_parse_element_tree<ImageElement>},
+      {"draw:rect", default_parse_element_tree<Rect>},
+      {"draw:line", default_parse_element_tree<Line>},
+      {"draw:circle", default_parse_element_tree<Circle>},
+      {"draw:custom-shape", default_parse_element_tree<CustomShape>},
+      {"draw:text-box", default_parse_element_tree<Group>},
+      {"draw:g", default_parse_element_tree<Group>},
+      {"draw:a", default_parse_element_tree<Link>},
   };
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {
-    return default_parse_element<Text>(node, store);
+    return default_parse_element_tree<Text>(node, store);
   }
 
   if (auto constructor_it = parser_table.find(node.name());
@@ -1031,7 +838,7 @@ parse_element(pugi::xml_node node,
     return constructor_it->second(node, store);
   }
 
-  return nullptr;
+  return std::make_tuple(nullptr, pugi::xml_node());
 }
 
 } // namespace
@@ -1040,30 +847,11 @@ parse_element(pugi::xml_node node,
 
 namespace odr::internal {
 
-std::vector<std::unique_ptr<abstract::Element>>
+std::tuple<abstract::Element *, std::vector<std::unique_ptr<abstract::Element>>>
 odf::parse_tree(pugi::xml_node node) {
-  std::vector<std::unique_ptr<abstract::Element>> result;
-
-  auto root_unique = construct_element(node);
-  if (!root_unique) {
-    return {};
-  }
-
-  auto root = root_unique.get();
-  result.push_back(std::move(root_unique));
-
-  for (auto child_node : node) {
-    auto child_unique = construct_element(child_node);
-    if (!child_unique) {
-      continue;
-    }
-
-    // TODO attach child to root
-
-    result.push_back(std::move(child_unique));
-  }
-
-  return result;
+  std::vector<std::unique_ptr<abstract::Element>> store;
+  auto [root, _] = parse_element_tree(node, store);
+  return std::make_tuple(root, store);
 }
 
 } // namespace odr::internal

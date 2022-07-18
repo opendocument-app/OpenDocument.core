@@ -23,9 +23,11 @@ Document::Document(const FileType file_type, const DocumentType document_type,
     m_styles_xml = util::xml::parse(*m_filesystem, "styles.xml");
   }
 
-  m_elements = parse_tree(
+  auto [root_element, elements] = parse_tree(
       m_content_xml.document_element().child("office:body").first_child());
-  m_root_element = nullptr; // TODO
+
+  m_elements = std::move(elements);
+  m_root_element = root_element;
 
   m_style_registry = StyleRegistry(m_content_xml.document_element(),
                                    m_styles_xml.document_element());
