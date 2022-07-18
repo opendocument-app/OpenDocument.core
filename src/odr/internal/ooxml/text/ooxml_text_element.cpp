@@ -7,7 +7,6 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/text/ooxml_text_cursor.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_element.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_style.hpp>
@@ -22,16 +21,20 @@ namespace odr::internal::ooxml::text {
 
 Element::Element() = default;
 
-Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
+Element::Element(pugi::xml_node node) : common::Element(node) {}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
   return {};
 }
 
 common::ResolvedStyle
-Element::intermediate_style(const abstract::Document *,
-                            const abstract::DocumentCursor *cursor) const {
-  return static_cast<const DocumentCursor *>(cursor)->intermediate_style();
+Element::intermediate_style(const abstract::Document *document) const {
+  if (m_parent == nullptr) {
+    return partial_style(document);
+  }
+  auto base = dynamic_cast<Element *>(m_parent)->intermediate_style(document);
+  base.override(partial_style(document));
+  return base;
 }
 
 const Document *Element::document_(const abstract::Document *document) {
@@ -60,21 +63,11 @@ public:
   [[nodiscard]] ElementType type(const abstract::Document *) const override {
     return _element_type;
   }
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const override {
-    return common::construct_2<DefaultElement>(*this);
-  }
 };
 
 class Root final : public DefaultElement<ElementType::root> {
 public:
   using DefaultElement::DefaultElement;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Root>(*this);
-  }
 
   std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *) const final {
@@ -91,26 +84,19 @@ class Paragraph : public Element, public abstract::ParagraphElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const override {
-    return common::construct_2<Paragraph>(*this);
-  }
-
   common::ResolvedStyle
   partial_style(const abstract::Document *document) const final {
     return style_(document)->partial_paragraph_style(m_node);
   }
 
   [[nodiscard]] ParagraphStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).paragraph_style;
+  style(const abstract::Document *document) const final {
+    return intermediate_style(document).paragraph_style;
   }
 
   [[nodiscard]] TextStyle
-  text_style(const abstract::Document *document,
-             const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
+  text_style(const abstract::Document *document) const final {
+    return intermediate_style(document).text_style;
   }
 };
 
@@ -118,31 +104,20 @@ class Span final : public Element, public abstract::SpanElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Span>(*this);
-  }
-
   common::ResolvedStyle
   partial_style(const abstract::Document *document) const final {
     return style_(document)->partial_text_style(m_node);
   }
 
   [[nodiscard]] TextStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
+  style(const abstract::Document *document) const final {
+    return intermediate_style(document).text_style;
   }
 };
 
 class Text final : public Element, public abstract::TextElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Text>(*this);
-  }
 
   std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *) const final {
@@ -206,9 +181,8 @@ public:
   }
 
   [[nodiscard]] TextStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
+  style(const abstract::Document *document) const final {
+    return intermediate_style(document).text_style;
   }
 
 private:
@@ -257,11 +231,6 @@ class Link final : public Element, public abstract::LinkElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Link>(*this);
-  }
-
   [[nodiscard]] std::string
   href(const abstract::Document *document) const final {
     if (auto anchor = m_node.attribute("w:anchor")) {
@@ -280,11 +249,6 @@ public:
 class Bookmark final : public Element, public abstract::BookmarkElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Bookmark>(*this);
-  }
 
   [[nodiscard]] std::string name(const abstract::Document *) const final {
     return m_node.attribute("w:name").value();
@@ -315,11 +279,6 @@ public:
     return ElementType::list;
   }
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<ListElement>(*this);
-  }
-
   std::unique_ptr<abstract::Element>
   construct_first_child(const abstract::Document *) const final {
     auto node_level = level(m_node);
@@ -345,9 +304,8 @@ public:
   }
 
   [[nodiscard]] TextStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *cursor) const final {
-    return intermediate_style(document, cursor).text_style;
+  style(const abstract::Document *document) const final {
+    return intermediate_style(document).text_style;
   }
 
 private:
@@ -360,11 +318,6 @@ public:
 
   [[nodiscard]] ElementType type(const abstract::Document *) const final {
     return ElementType::list;
-  }
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<ListRoot>(*this);
   }
 
   std::unique_ptr<abstract::Element>
@@ -395,11 +348,6 @@ class ListItemParagraph : public Paragraph {
 public:
   using Paragraph::Paragraph;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<ListItemParagraph>(*this);
-  }
-
   std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *) const final {
     return {};
@@ -414,11 +362,6 @@ public:
 class TableElement : public Element, public abstract::TableElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableElement>(*this);
-  }
 
   std::unique_ptr<abstract::Element>
   construct_first_child(const abstract::Document *) const final {
@@ -451,11 +394,6 @@ class TableColumn final : public Element, public abstract::TableColumnElement {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableColumn>(*this);
-  }
-
   std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *) const final {
     return common::construct_optional<TableColumn>(
@@ -482,11 +420,6 @@ public:
 class TableRow final : public Element, public abstract::TableRowElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableRow>(*this);
-  }
 
   std::unique_ptr<abstract::Element>
   construct_previous_sibling(const abstract::Document *) const final {
@@ -515,11 +448,6 @@ public:
         m_row{node.parent()} {}
   TableCell(pugi::xml_node node, TableColumn column)
       : Element(node), m_column{std::move(column)}, m_row{node.parent()} {}
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableCell>(*this);
-  }
 
   std::unique_ptr<abstract::Element> construct_previous_sibling(
       const abstract::Document *document) const override {
@@ -578,11 +506,6 @@ private:
 class Frame final : public Element, public abstract::FrameElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Frame>(*this);
-  }
 
   std::unique_ptr<abstract::Element>
   construct_first_child(const abstract::Document *) const final {
@@ -650,11 +573,6 @@ private:
 class ImageElement final : public Element, public abstract::ImageElement {
 public:
   using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<ImageElement>(*this);
-  }
 
   [[nodiscard]] bool internal(const abstract::Document *document) const final {
     auto doc = document_(document);

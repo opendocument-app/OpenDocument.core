@@ -2,6 +2,7 @@
 #include <nlohmann/json.hpp>
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
+#include <odr/document_path.hpp>
 #include <odr/html.hpp>
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/image_file.hpp>
@@ -28,12 +29,7 @@ const std::vector<HtmlPage> &Html::pages() const { return m_pages; }
 
 void Html::edit(const char *diff) {
   if (m_document) {
-    auto json = nlohmann::json::parse(diff);
-    for (auto &&i : json["modifiedText"].items()) {
-      auto cursor = m_document->root_element();
-      cursor.move(i.key());
-      cursor.element().text().set_content(i.value());
-    }
+    html::edit(*m_document, diff);
   }
 }
 
@@ -66,11 +62,10 @@ Html html::translate(const Document &document, const std::string &path,
 
 void html::edit(const Document &document, const char *diff) {
   auto json = nlohmann::json::parse(diff);
-
   for (auto &&i : json["modifiedText"].items()) {
-    auto cursor = document.root_element();
-    cursor.move(i.key());
-    cursor.element().text().set_content(i.value());
+    auto element =
+        DocumentPath::find(document.root_element(), DocumentPath(i.key()));
+    element.text().set_content(i.value());
   }
 }
 

@@ -11,7 +11,7 @@ namespace odr::internal::ooxml::spreadsheet {
 class Document;
 class StyleRegistry;
 
-class Element : public common::Element<Element> {
+class Element : public common::Element {
 public:
   static std::unique_ptr<abstract::Element>
   construct_default_element(pugi::xml_node node);
@@ -22,8 +22,7 @@ public:
   virtual common::ResolvedStyle
   partial_style(const abstract::Document *document) const;
   common::ResolvedStyle
-  intermediate_style(const abstract::Document *document,
-                     const abstract::DocumentCursor *cursor) const;
+  intermediate_style(const abstract::Document *document) const;
 
 protected:
   static const Document *document_(const abstract::Document *document);

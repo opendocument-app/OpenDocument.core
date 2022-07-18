@@ -4,6 +4,7 @@
 #include <memory>
 #include <odr/file.hpp>
 #include <odr/internal/abstract/document.hpp>
+#include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/odf/odf_style.hpp>
 #include <pugixml.hpp>

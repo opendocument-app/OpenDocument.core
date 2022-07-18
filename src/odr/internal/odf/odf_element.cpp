@@ -135,7 +135,7 @@ public:
   }
 
   [[nodiscard]] abstract::Element *
-  first_master_page(const abstract::Document *document) const final {
+  first_master_page(const abstract::Document *) const final {
     return nullptr; // TODO fix
   }
 };
