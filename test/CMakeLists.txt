@@ -10,6 +10,7 @@ add_executable(odr_test
         "src/test_util.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/src/test_constants.cpp"
 
+        "src/document_path_test.cpp"
         "src/document_test.cpp"
         "src/file_test.cpp"
         "src/open_document_reader_test.cpp"
@@ -21,7 +22,6 @@ add_executable(odr_test
         "src/internal/cfb/cfb_archive_test.cpp"
 
         "src/internal/common/archive_test.cpp"
-        "src/internal/common/document_path_test.cpp"
         "src/internal/common/path_test.cpp"
         "src/internal/common/table_cursor_test.cpp"
         "src/internal/common/table_position_test.cpp"

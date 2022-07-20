@@ -111,7 +111,7 @@ std::tuple<abstract::Element *, std::vector<std::unique_ptr<abstract::Element>>>
 odf::parse_tree(pugi::xml_node node) {
   std::vector<std::unique_ptr<abstract::Element>> store;
   auto [root, _] = parse_element_tree(node, store);
-  return std::make_tuple(root, store);
+  return std::make_tuple(root, std::move(store));
 }
 
 } // namespace odr::internal

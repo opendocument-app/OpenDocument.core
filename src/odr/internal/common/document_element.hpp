@@ -6,7 +6,6 @@
 
 namespace odr::internal::abstract {
 class Document;
-class Element;
 } // namespace odr::internal::abstract
 
 namespace odr::internal::common {

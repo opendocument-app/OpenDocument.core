@@ -199,12 +199,11 @@ TableDimensions TableElement::dimensions(const abstract::Document *) const {
 }
 
 abstract::Element *
-TableElement::first_column(const abstract::Document *document) const {
+TableElement::first_column(const abstract::Document *) const {
   return nullptr; // TODO
 }
 
-abstract::Element *
-TableElement::first_row(const abstract::Document *document) const {
+abstract::Element *TableElement::first_row(const abstract::Document *) const {
   return nullptr; // TODO
 }
 
