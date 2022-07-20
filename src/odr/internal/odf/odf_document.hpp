@@ -45,7 +45,7 @@ protected:
   pugi::xml_document m_styles_xml;
 
   std::vector<std::unique_ptr<abstract::Element>> m_elements;
-  abstract::Element *m_root_element;
+  abstract::Element *m_root_element{};
 
   StyleRegistry m_style_registry;
 

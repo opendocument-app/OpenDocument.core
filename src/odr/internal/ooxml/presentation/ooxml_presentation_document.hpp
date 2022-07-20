@@ -31,7 +31,7 @@ private:
   pugi::xml_document m_document_xml;
   std::unordered_map<std::string, pugi::xml_document> m_slides_xml;
 
-  Element *m_root;
+  Element *m_root{};
 
   friend class Element;
 };

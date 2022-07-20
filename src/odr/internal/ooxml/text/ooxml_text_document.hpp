@@ -46,7 +46,6 @@ private:
   std::unordered_map<std::string, std::string> m_document_relations;
 
   friend class Element;
-  friend class DocumentCursor;
 };
 
 } // namespace odr::internal::ooxml::text

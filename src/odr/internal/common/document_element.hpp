@@ -24,10 +24,10 @@ public:
 protected:
   pugi::xml_node m_node;
 
-  Element *m_parent;
-  Element *m_first_child;
-  Element *m_previous_sibling;
-  Element *m_next_sibling;
+  Element *m_parent{};
+  Element *m_first_child{};
+  Element *m_previous_sibling{};
+  Element *m_next_sibling{};
 };
 
 } // namespace odr::internal::common

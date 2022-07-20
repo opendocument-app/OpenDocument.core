@@ -89,7 +89,9 @@ CustomShape Element::custom_shape() const { return {m_document, m_element}; }
 Image Element::image() const { return {m_document, m_element}; }
 
 ElementIterator Element::begin() const {
-  return {m_document, m_element->first_child(m_document)};
+  return m_element
+             ? ElementIterator(m_document, m_element->first_child(m_document))
+             : ElementIterator();
 }
 
 ElementIterator Element::end() const { return {}; }
