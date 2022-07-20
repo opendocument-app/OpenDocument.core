@@ -6,6 +6,7 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/odf/odf_element.hpp>
+#include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/odf/odf_style.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>

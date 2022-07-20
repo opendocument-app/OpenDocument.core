@@ -342,11 +342,24 @@ public:
   name(const abstract::Document *document) const final;
 
   [[nodiscard]] TableDimensions
+  dimensions(const abstract::Document *document) const final;
+
+  [[nodiscard]] TableDimensions
   content(const abstract::Document *document,
           const std::optional<TableDimensions> range) const final;
 
+  [[nodiscard]] abstract::Element *column(const abstract::Document *document,
+                                          std::uint32_t column) const final;
+  [[nodiscard]] abstract::Element *row(const abstract::Document *document,
+                                       std::uint32_t column) const final;
+  [[nodiscard]] abstract::Element *cell(const abstract::Document *document,
+                                        std::uint32_t column) const final;
+
   [[nodiscard]] abstract::Element *
   first_shape(const abstract::Document *document) const final;
+
+  [[nodiscard]] TableStyle
+  style(const abstract::Document *document) const final;
 };
 
 } // namespace odr::internal::odf

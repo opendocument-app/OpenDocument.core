@@ -5,7 +5,6 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/text/ooxml_text_cursor.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_style.hpp>
 #include <odr/internal/util/xml_util.hpp>
@@ -79,9 +78,8 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
-  return std::make_unique<DocumentCursor>(
-      this, m_document_xml.document_element().child("w:body"));
+abstract::Element *Document::root_element() const {
+  return nullptr; // TODO
 }
 
 } // namespace odr::internal::ooxml::text

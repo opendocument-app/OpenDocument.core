@@ -78,9 +78,8 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
-  return std::make_unique<DocumentCursor>(this,
-                                          m_workbook_xml.document_element());
+abstract::Element *Document::root_element() const {
+  return nullptr; // TODO
 }
 
 } // namespace odr::internal::ooxml::spreadsheet

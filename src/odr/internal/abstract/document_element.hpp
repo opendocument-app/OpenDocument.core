@@ -194,6 +194,7 @@ public:
 
   [[nodiscard]] virtual TableDimensions
   dimensions(const Document *document) const = 0;
+
   [[nodiscard]] virtual Element *
   first_column(const Document *document) const = 0;
   [[nodiscard]] virtual Element *first_row(const Document *document) const = 0;

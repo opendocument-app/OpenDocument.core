@@ -33,8 +33,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
-  root_element() const final;
+  [[nodiscard]] abstract::Element *root_element() const final;
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
