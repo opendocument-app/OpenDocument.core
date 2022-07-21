@@ -42,7 +42,7 @@ Derived &DocumentPath::ComponentTemplate<Derived>::operator--() {
 template <typename Derived>
 std::string
 DocumentPath::ComponentTemplate<Derived>::to_string() const noexcept {
-  return prefix_string() + std::to_string(number);
+  return prefix_string() + ":" + std::to_string(number);
 }
 
 DocumentPath::Component
