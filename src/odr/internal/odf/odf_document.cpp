@@ -10,6 +10,7 @@
 #include <odr/internal/odf/odf_style.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
+#include <sstream>
 #include <utility>
 
 namespace odr::internal::odf {
