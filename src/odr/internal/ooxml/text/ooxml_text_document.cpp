@@ -6,15 +6,10 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
-#include <odr/internal/ooxml/text/ooxml_text_style.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
-#include <sstream>
 #include <utility>
-
-namespace odr::internal::abstract {
-class DocumentCursor;
-} // namespace odr::internal::abstract
 
 namespace odr::internal::ooxml::text {
 
@@ -23,10 +18,16 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_document_xml = util::xml::parse(*m_filesystem, "word/document.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "word/styles.xml");
 
-  m_style_registry = StyleRegistry(m_styles_xml.document_element());
-
   m_document_relations =
       parse_relationships(*m_filesystem, "word/document.xml");
+
+  auto [root_element, elements] =
+      parse_tree(m_document_xml.document_element().child("w:body"));
+
+  m_elements = std::move(elements);
+  m_root_element = root_element;
+
+  m_style_registry = StyleRegistry(m_styles_xml.document_element());
 }
 
 bool Document::editable() const noexcept { return false; }
@@ -78,8 +79,6 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-abstract::Element *Document::root_element() const {
-  return nullptr; // TODO
-}
+abstract::Element *Document::root_element() const { return m_root_element; }
 
 } // namespace odr::internal::ooxml::text

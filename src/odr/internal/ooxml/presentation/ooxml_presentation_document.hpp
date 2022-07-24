@@ -2,11 +2,11 @@
 #define ODR_INTERNAL_OOXML_PRESENTATION_H
 
 #include <odr/internal/abstract/document.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
 #include <pugixml.hpp>
 #include <unordered_map>
 
 namespace odr::internal::ooxml::presentation {
-class Element;
 
 class Document final : public abstract::Document {
 public:
@@ -28,10 +28,12 @@ public:
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
+
   pugi::xml_document m_document_xml;
   std::unordered_map<std::string, pugi::xml_document> m_slides_xml;
 
-  Element *m_root{};
+  std::vector<std::unique_ptr<Element>> m_elements;
+  Element *m_root_element{};
 
   friend class Element;
 };

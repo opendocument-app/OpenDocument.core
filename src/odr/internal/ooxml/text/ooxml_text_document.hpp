@@ -5,6 +5,7 @@
 #include <odr/file.hpp>
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_element.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_style.hpp>
 #include <pugixml.hpp>
 #include <string>
@@ -15,7 +16,6 @@ class ReadableFilesystem;
 }
 
 namespace odr::internal::ooxml::text {
-class Element;
 
 class Document final : public abstract::Document {
 public:
@@ -41,9 +41,12 @@ private:
   pugi::xml_document m_document_xml;
   pugi::xml_document m_styles_xml;
 
-  StyleRegistry m_style_registry;
-
   std::unordered_map<std::string, std::string> m_document_relations;
+
+  std::vector<std::unique_ptr<Element>> m_elements;
+  Element *m_root_element{};
+
+  StyleRegistry m_style_registry;
 
   friend class Element;
 };

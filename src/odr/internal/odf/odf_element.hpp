@@ -175,6 +175,8 @@ public:
 
 class Text final : public Element, public abstract::TextElement {
 public:
+  static std::string text(const pugi::xml_node node);
+
   Text();
   explicit Text(pugi::xml_node node);
   Text(pugi::xml_node first, pugi::xml_node last);
@@ -186,8 +188,6 @@ public:
   [[nodiscard]] TextStyle style(const abstract::Document *document) const final;
 
 private:
-  static std::string text_(const pugi::xml_node node);
-
   pugi::xml_node m_last;
 };
 

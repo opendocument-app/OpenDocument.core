@@ -71,20 +71,7 @@ TextStyle Span::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
 
-bool Text::is_text_(const pugi::xml_node node) {
-  std::string name = node.name();
-
-  if (name == "w:t") {
-    return true;
-  }
-  if (name == "w:tab") {
-    return true;
-  }
-
-  return false;
-}
-
-std::string Text::text_(const pugi::xml_node node) {
+std::string Text::text(const pugi::xml_node node) {
   std::string name = node.name();
 
   if (name == "w:t") {
@@ -108,7 +95,7 @@ std::string Text::content(const abstract::Document *) const {
   std::string result;
   for (auto node = m_node; node != m_last.next_sibling();
        node = node.next_sibling()) {
-    result += text_(node);
+    result += text(node);
   }
   return result;
 }

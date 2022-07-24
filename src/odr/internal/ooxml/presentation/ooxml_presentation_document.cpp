@@ -3,7 +3,7 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
 namespace odr::internal::ooxml::presentation {
@@ -11,6 +11,10 @@ namespace odr::internal::ooxml::presentation {
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   m_document_xml = util::xml::parse(*m_filesystem, "ppt/presentation.xml");
+
+  auto [root_element, elements] = parse_tree(m_document_xml.document_element());
+  m_elements = std::move(elements);
+  m_root_element = root_element;
 
   for (auto relationships :
        parse_relationships(*m_filesystem, "ppt/presentation.xml")) {
@@ -46,6 +50,6 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-abstract::Element *Document::root_element() const { return m_root; }
+abstract::Element *Document::root_element() const { return m_root_element; }
 
 } // namespace odr::internal::ooxml::presentation

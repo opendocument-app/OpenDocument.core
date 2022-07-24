@@ -71,8 +71,7 @@ public:
 
 class Text final : public Element, public abstract::TextElement {
 public:
-  static bool is_text_(const pugi::xml_node node);
-  static std::string text_(const pugi::xml_node node);
+  static std::string text(const pugi::xml_node node);
 
   Text();
   explicit Text(pugi::xml_node node);

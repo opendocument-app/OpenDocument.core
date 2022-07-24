@@ -5,6 +5,7 @@
 #include <odr/file.hpp>
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 #include <pugixml.hpp>
 #include <string>
@@ -15,7 +16,6 @@ class ReadableFilesystem;
 } // namespace odr::internal::abstract
 
 namespace odr::internal::ooxml::spreadsheet {
-class Element;
 
 class Document final : public abstract::Document {
 public:
@@ -50,6 +50,9 @@ private:
   std::unordered_map<std::string, Sheet> m_sheets;
   std::unordered_map<std::string, pugi::xml_document> m_drawings_xml;
   pugi::xml_document m_shared_strings_xml;
+
+  std::vector<std::unique_ptr<Element>> m_elements;
+  Element *m_root_element{};
 
   StyleRegistry m_style_registry;
   std::vector<pugi::xml_node> m_shared_strings;

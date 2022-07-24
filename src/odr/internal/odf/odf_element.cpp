@@ -229,7 +229,7 @@ TextStyle Span::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
 
-std::string Text::text_(const pugi::xml_node node) {
+std::string Text::text(const pugi::xml_node node) {
   if (node.type() == pugi::node_pcdata) {
     return node.value();
   }
@@ -256,7 +256,7 @@ std::string Text::content(const abstract::Document *) const {
   std::string result;
   for (auto node = m_node; node != m_last.next_sibling();
        node = node.next_sibling()) {
-    result += text_(node);
+    result += text(node);
   }
   return result;
 }

@@ -6,15 +6,12 @@
 #include <utility>
 #include <vector>
 
-namespace odr::internal::abstract {
-class Element;
-}
-
 namespace odr::internal::ooxml::presentation {
+class Element;
 
-std::tuple<abstract::Element *, std::vector<std::unique_ptr<abstract::Element>>>
+std::tuple<Element *, std::vector<std::unique_ptr<Element>>>
 parse_tree(pugi::xml_node node);
 
-}
+} // namespace odr::internal::ooxml::presentation
 
 #endif // ODR_INTERNAL_OOXML_PRESENTATION_PARSER_HPP

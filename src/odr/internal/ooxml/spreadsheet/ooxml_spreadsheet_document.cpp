@@ -4,13 +4,9 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <utility>
-
-namespace odr::internal::abstract {
-class DocumentCursor;
-class ReadableFilesystem;
-} // namespace odr::internal::abstract
 
 namespace odr::internal::ooxml::spreadsheet {
 
@@ -18,6 +14,10 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   m_workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
+
+  auto [root_element, elements] = parse_tree(m_workbook_xml.document_element());
+  m_elements = std::move(elements);
+  m_root_element = root_element;
 
   m_style_registry = StyleRegistry(m_styles_xml.document_element());
 
