@@ -6,6 +6,7 @@ jobs:
   build:
     runs-on: ${{ matrix.config.os }}
     strategy:
+      fail-fast: false
       matrix:
         config:
           - { os: ubuntu-20.04, cc: clang, cxx: clang++ }
