@@ -78,12 +78,11 @@ ElementType Root::type(const abstract::Document *) const {
   return ElementType::root;
 }
 
-ElementType TextDocumentRoot::type(const abstract::Document *) const {
+ElementType TextRoot::type(const abstract::Document *) const {
   return ElementType::root;
 }
 
-PageLayout
-TextDocumentRoot::page_layout(const abstract::Document *document) const {
+PageLayout TextRoot::page_layout(const abstract::Document *document) const {
   if (auto first_master_page = style_(document)->first_master_page()) {
     auto master_page_node =
         style_(document)->master_page_node(*first_master_page);
@@ -93,8 +92,8 @@ TextDocumentRoot::page_layout(const abstract::Document *document) const {
 }
 
 abstract::Element *
-TextDocumentRoot::first_master_page(const abstract::Document *) const {
-  return nullptr; // TODO fix
+TextRoot::first_master_page(const abstract::Document *) const {
+  return nullptr; // TODO
 }
 
 PageLayout Slide::page_layout(const abstract::Document *document) const {
@@ -122,6 +121,70 @@ Slide::master_page_node_(const abstract::Document *document) const {
     return style_(document)->master_page_node(master_page_name_attr.value());
   }
   return {};
+}
+
+std::string Sheet::name(const abstract::Document *) const {
+  return m_node.attribute("table:name").value();
+}
+
+TableDimensions Sheet::dimensions(const abstract::Document *document) const {
+  return {}; // TODO
+}
+
+TableDimensions
+Sheet::content(const abstract::Document *,
+               const std::optional<TableDimensions> range) const {
+  TableDimensions result;
+
+  common::TableCursor cursor;
+  for (auto row : m_node.children("table:table-row")) {
+    const auto rows_repeated =
+        row.attribute("table:number-rows-repeated").as_uint(1);
+    cursor.add_row(rows_repeated);
+
+    for (auto cell : row.children("table:table-cell")) {
+      const auto columns_repeated =
+          cell.attribute("table:number-columns-repeated").as_uint(1);
+      const auto colspan =
+          cell.attribute("table:number-columns-spanned").as_uint(1);
+      const auto rowspan =
+          cell.attribute("table:number-rows-spanned").as_uint(1);
+      cursor.add_cell(colspan, rowspan, columns_repeated);
+
+      const auto new_rows = cursor.row();
+      const auto new_cols = std::max(result.columns, cursor.column());
+      if (cell.first_child() &&
+          (range && (new_rows < range->rows) && (new_cols < range->columns))) {
+        result.rows = new_rows;
+        result.columns = new_cols;
+      }
+    }
+  }
+
+  return result;
+}
+
+abstract::Element *Sheet::column(const abstract::Document *document,
+                                 std::uint32_t column) const {
+  return nullptr; // TODO
+}
+
+abstract::Element *Sheet::row(const abstract::Document *document,
+                              std::uint32_t column) const {
+  return nullptr; // TODO
+}
+
+abstract::Element *Sheet::cell(const abstract::Document *document,
+                               std::uint32_t column) const {
+  return nullptr; // TODO
+}
+
+abstract::Element *Sheet::first_shape(const abstract::Document *) const {
+  return nullptr; // TODO
+}
+
+TableStyle Sheet::style(const abstract::Document *document) const {
+  return {}; // TODO
 }
 
 PageLayout Page::page_layout(const abstract::Document *document) const {
@@ -475,70 +538,6 @@ ImageElement::file(const abstract::Document *document) const {
 
 std::string ImageElement::href(const abstract::Document *) const {
   return m_node.attribute("xlink:href").value();
-}
-
-std::string Sheet::name(const abstract::Document *) const {
-  return m_node.attribute("table:name").value();
-}
-
-TableDimensions Sheet::dimensions(const abstract::Document *document) const {
-  return {}; // TODO
-}
-
-TableDimensions
-Sheet::content(const abstract::Document *,
-               const std::optional<TableDimensions> range) const {
-  TableDimensions result;
-
-  common::TableCursor cursor;
-  for (auto row : m_node.children("table:table-row")) {
-    const auto rows_repeated =
-        row.attribute("table:number-rows-repeated").as_uint(1);
-    cursor.add_row(rows_repeated);
-
-    for (auto cell : row.children("table:table-cell")) {
-      const auto columns_repeated =
-          cell.attribute("table:number-columns-repeated").as_uint(1);
-      const auto colspan =
-          cell.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan =
-          cell.attribute("table:number-rows-spanned").as_uint(1);
-      cursor.add_cell(colspan, rowspan, columns_repeated);
-
-      const auto new_rows = cursor.row();
-      const auto new_cols = std::max(result.columns, cursor.column());
-      if (cell.first_child() &&
-          (range && (new_rows < range->rows) && (new_cols < range->columns))) {
-        result.rows = new_rows;
-        result.columns = new_cols;
-      }
-    }
-  }
-
-  return result;
-}
-
-abstract::Element *Sheet::column(const abstract::Document *document,
-                                 std::uint32_t column) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *Sheet::row(const abstract::Document *document,
-                              std::uint32_t column) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *Sheet::cell(const abstract::Document *document,
-                               std::uint32_t column) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *Sheet::first_shape(const abstract::Document *) const {
-  return nullptr; // TODO
-}
-
-TableStyle Sheet::style(const abstract::Document *document) const {
-  return {}; // TODO
 }
 
 } // namespace odr::internal::odf

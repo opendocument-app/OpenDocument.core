@@ -32,6 +32,7 @@ public:
 
   [[nodiscard]] virtual Element *parent(const Document *) const = 0;
   [[nodiscard]] virtual Element *first_child(const Document *) const = 0;
+  [[nodiscard]] virtual Element *last_child(const Document *) const = 0;
   [[nodiscard]] virtual Element *previous_sibling(const Document *) const = 0;
   [[nodiscard]] virtual Element *next_sibling(const Document *) const = 0;
 };

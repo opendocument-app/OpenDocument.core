@@ -7,90 +7,163 @@ namespace odr::internal::odf {
 
 namespace {
 
-std::tuple<abstract::Element *, pugi::xml_node>
+template <typename Derived>
+std::tuple<Element *, pugi::xml_node>
 parse_element_tree(pugi::xml_node node,
-                   std::vector<std::unique_ptr<abstract::Element>> &store);
+                   std::vector<std::unique_ptr<Element>> &store);
+
+std::tuple<Element *, pugi::xml_node>
+parse_any_element_tree(pugi::xml_node node,
+                       std::vector<std::unique_ptr<Element>> &store);
+
+void parse_element_children(Element *element, pugi::xml_node node,
+                            std::vector<std::unique_ptr<Element>> &store) {
+  for (auto child_node = node.first_child(); child_node;) {
+    auto [child, next_sibling] = parse_any_element_tree(child_node, store);
+    if (child == nullptr) {
+      child_node = child_node.next_sibling();
+    } else {
+      element->init_append_child(child);
+      child_node = next_sibling;
+    }
+  }
+}
+
+void parse_element_children(PresentationRoot *element, pugi::xml_node node,
+                            std::vector<std::unique_ptr<Element>> &store) {
+  for (auto child_node : node.children("draw:page")) {
+    auto [child, _] = parse_element_tree<Slide>(child_node, store);
+    element->init_append_child(child);
+  }
+}
+
+void parse_element_children(SpreadsheetRoot *element, pugi::xml_node node,
+                            std::vector<std::unique_ptr<Element>> &store) {
+  for (auto child_node : node.children("table:table")) {
+    auto [child, _] = parse_element_tree<Sheet>(child_node, store);
+    element->init_append_child(child);
+  }
+}
+
+void parse_element_children(DrawingRoot *element, pugi::xml_node node,
+                            std::vector<std::unique_ptr<Element>> &store) {
+  for (auto child_node : node.children("draw:page")) {
+    auto [child, _] = parse_element_tree<Slide>(child_node, store);
+    element->init_append_child(child);
+  }
+}
 
 template <typename Derived>
-std::tuple<abstract::Element *, pugi::xml_node> default_parse_element_tree(
-    pugi::xml_node node,
-    std::vector<std::unique_ptr<abstract::Element>> &store) {
+std::tuple<Element *, pugi::xml_node>
+parse_element_tree(pugi::xml_node node,
+                   std::vector<std::unique_ptr<Element>> &store) {
   if (!node) {
     return std::make_tuple(nullptr, pugi::xml_node());
   }
 
   auto element_unique = std::make_unique<Derived>(node);
-  auto element = dynamic_cast<abstract::Element *>(element_unique.get());
+  auto element = element_unique.get();
   store.push_back(std::move(element_unique));
 
-  for (auto child_node : node) {
-    auto [child, _] = parse_element_tree(child_node, store);
-    if (child == nullptr) {
-      continue;
-    }
-
-    // TODO attach child to root
-  }
+  parse_element_children(element, node, store);
 
   return std::make_tuple(element, node.next_sibling());
 }
 
-std::tuple<abstract::Element *, pugi::xml_node>
-parse_element_tree(pugi::xml_node node,
-                   std::vector<std::unique_ptr<abstract::Element>> &store) {
-  using Parser = std::function<std::tuple<abstract::Element *, pugi::xml_node>(
-      pugi::xml_node node,
-      std::vector<std::unique_ptr<abstract::Element>> & store)>;
+bool is_text_node(const pugi::xml_node node) {
+  if (!node) {
+    return false;
+  }
+  if (node.type() == pugi::node_pcdata) {
+    return true;
+  }
+
+  std::string name = node.name();
+
+  if (name == "text:s") {
+    return true;
+  }
+  if (name == "text:tab") {
+    return true;
+  }
+
+  return false;
+}
+
+template <>
+std::tuple<Element *, pugi::xml_node>
+parse_element_tree<Text>(pugi::xml_node first,
+                         std::vector<std::unique_ptr<Element>> &store) {
+  if (!first) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
+  pugi::xml_node last = first;
+  for (; is_text_node(last); last = last.next_sibling()) {
+  }
+
+  auto element_unique = std::make_unique<Text>(first, last);
+  auto element = element_unique.get();
+  store.push_back(std::move(element_unique));
+
+  return std::make_tuple(element, last.next_sibling());
+}
+
+std::tuple<Element *, pugi::xml_node>
+parse_any_element_tree(pugi::xml_node node,
+                       std::vector<std::unique_ptr<Element>> &store) {
+  using Parser = std::function<std::tuple<Element *, pugi::xml_node>(
+      pugi::xml_node node, std::vector<std::unique_ptr<Element>> & store)>;
 
   using List = DefaultElement<ElementType::list>;
   using Group = DefaultElement<ElementType::group>;
   using PageBreak = DefaultElement<ElementType::page_break>;
 
   static std::unordered_map<std::string, Parser> parser_table{
-      {"office:text", default_parse_element_tree<TextDocumentRoot>},
-      {"office:presentation", default_parse_element_tree<PresentationRoot>},
-      {"office:spreadsheet", default_parse_element_tree<SpreadsheetRoot>},
-      {"office:drawing", default_parse_element_tree<DrawingRoot>},
-      {"text:p", default_parse_element_tree<Paragraph>},
-      {"text:h", default_parse_element_tree<Paragraph>},
-      {"text:span", default_parse_element_tree<Span>},
-      {"text:s", default_parse_element_tree<Text>},
-      {"text:tab", default_parse_element_tree<Text>},
-      {"text:line-break", default_parse_element_tree<LineBreak>},
-      {"text:a", default_parse_element_tree<Link>},
-      {"text:bookmark", default_parse_element_tree<Bookmark>},
-      {"text:bookmark-start", default_parse_element_tree<Bookmark>},
-      {"text:list", default_parse_element_tree<List>},
-      {"text:list-header", default_parse_element_tree<ListItem>},
-      {"text:list-item", default_parse_element_tree<ListItem>},
-      {"text:index-title", default_parse_element_tree<Group>},
-      {"text:table-of-content", default_parse_element_tree<Group>},
-      {"text:illustration-index", default_parse_element_tree<Group>},
-      {"text:index-body", default_parse_element_tree<Group>},
-      {"text:soft-page-break", default_parse_element_tree<PageBreak>},
-      {"text:date", default_parse_element_tree<Group>},
-      {"text:time", default_parse_element_tree<Group>},
-      {"text:section", default_parse_element_tree<Group>},
-      //{"text:page-number", default_parse_element_tree<Group>},
-      //{"text:page-continuation", default_parse_element_tree<Group>},
-      {"table:table", default_parse_element_tree<TableElement>},
-      {"table:table-column", default_parse_element_tree<TableColumn>},
-      {"table:table-row", default_parse_element_tree<TableRow>},
-      {"table:table-cell", default_parse_element_tree<TableCell>},
-      {"table:covered-table-cell", default_parse_element_tree<TableCell>},
-      {"draw:frame", default_parse_element_tree<Frame>},
-      {"draw:image", default_parse_element_tree<ImageElement>},
-      {"draw:rect", default_parse_element_tree<Rect>},
-      {"draw:line", default_parse_element_tree<Line>},
-      {"draw:circle", default_parse_element_tree<Circle>},
-      {"draw:custom-shape", default_parse_element_tree<CustomShape>},
-      {"draw:text-box", default_parse_element_tree<Group>},
-      {"draw:g", default_parse_element_tree<Group>},
-      {"draw:a", default_parse_element_tree<Link>},
+      {"office:text", parse_element_tree<TextRoot>},
+      {"office:presentation", parse_element_tree<PresentationRoot>},
+      {"office:spreadsheet", parse_element_tree<SpreadsheetRoot>},
+      {"office:drawing", parse_element_tree<DrawingRoot>},
+      {"text:p", parse_element_tree<Paragraph>},
+      {"text:h", parse_element_tree<Paragraph>},
+      {"text:span", parse_element_tree<Span>},
+      {"text:s", parse_element_tree<Text>},
+      {"text:tab", parse_element_tree<Text>},
+      {"text:line-break", parse_element_tree<LineBreak>},
+      {"text:a", parse_element_tree<Link>},
+      {"text:bookmark", parse_element_tree<Bookmark>},
+      {"text:bookmark-start", parse_element_tree<Bookmark>},
+      {"text:list", parse_element_tree<List>},
+      {"text:list-header", parse_element_tree<ListItem>},
+      {"text:list-item", parse_element_tree<ListItem>},
+      {"text:index-title", parse_element_tree<Group>},
+      {"text:table-of-content", parse_element_tree<Group>},
+      {"text:illustration-index", parse_element_tree<Group>},
+      {"text:index-body", parse_element_tree<Group>},
+      {"text:soft-page-break", parse_element_tree<PageBreak>},
+      {"text:date", parse_element_tree<Group>},
+      {"text:time", parse_element_tree<Group>},
+      {"text:section", parse_element_tree<Group>},
+      //{"text:page-number", parse_element_tree<Group>},
+      //{"text:page-continuation", parse_element_tree<Group>},
+      {"table:table", parse_element_tree<TableElement>},
+      {"table:table-column", parse_element_tree<TableColumn>},
+      {"table:table-row", parse_element_tree<TableRow>},
+      {"table:table-cell", parse_element_tree<TableCell>},
+      {"table:covered-table-cell", parse_element_tree<TableCell>},
+      {"draw:frame", parse_element_tree<Frame>},
+      {"draw:image", parse_element_tree<ImageElement>},
+      {"draw:rect", parse_element_tree<Rect>},
+      {"draw:line", parse_element_tree<Line>},
+      {"draw:circle", parse_element_tree<Circle>},
+      {"draw:custom-shape", parse_element_tree<CustomShape>},
+      {"draw:text-box", parse_element_tree<Group>},
+      {"draw:g", parse_element_tree<Group>},
+      {"draw:a", parse_element_tree<Link>},
   };
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {
-    return default_parse_element_tree<Text>(node, store);
+    return parse_element_tree<Text>(node, store);
   }
 
   if (auto constructor_it = parser_table.find(node.name());
@@ -107,10 +180,10 @@ parse_element_tree(pugi::xml_node node,
 
 namespace odr::internal {
 
-std::tuple<abstract::Element *, std::vector<std::unique_ptr<abstract::Element>>>
+std::tuple<odf::Element *, std::vector<std::unique_ptr<odf::Element>>>
 odf::parse_tree(pugi::xml_node node) {
-  std::vector<std::unique_ptr<abstract::Element>> store;
-  auto [root, _] = parse_element_tree(node, store);
+  std::vector<std::unique_ptr<odf::Element>> store;
+  auto [root, _] = parse_any_element_tree(node, store);
   return std::make_tuple(root, std::move(store));
 }
 

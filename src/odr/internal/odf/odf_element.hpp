@@ -51,7 +51,7 @@ public:
   type(const abstract::Document *document) const override;
 };
 
-class TextDocumentRoot final : public Root, public abstract::TextRootElement {
+class TextRoot final : public Root, public abstract::TextRootElement {
 public:
   using Root::Root;
 
@@ -101,6 +101,34 @@ public:
 
 private:
   pugi::xml_node master_page_node_(const abstract::Document *document) const;
+};
+
+class Sheet final : public Element, public abstract::SheetElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] std::string
+  name(const abstract::Document *document) const final;
+
+  [[nodiscard]] TableDimensions
+  dimensions(const abstract::Document *document) const final;
+
+  [[nodiscard]] TableDimensions
+  content(const abstract::Document *document,
+          const std::optional<TableDimensions> range) const final;
+
+  [[nodiscard]] abstract::Element *column(const abstract::Document *document,
+                                          std::uint32_t column) const final;
+  [[nodiscard]] abstract::Element *row(const abstract::Document *document,
+                                       std::uint32_t column) const final;
+  [[nodiscard]] abstract::Element *cell(const abstract::Document *document,
+                                        std::uint32_t column) const final;
+
+  [[nodiscard]] abstract::Element *
+  first_shape(const abstract::Document *document) const final;
+
+  [[nodiscard]] TableStyle
+  style(const abstract::Document *document) const final;
 };
 
 class Page final : public Element, public abstract::PageElement {
@@ -332,34 +360,6 @@ public:
 
   [[nodiscard]] std::string
   href(const abstract::Document *document) const final;
-};
-
-class Sheet final : public Element, public abstract::SheetElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::string
-  name(const abstract::Document *document) const final;
-
-  [[nodiscard]] TableDimensions
-  dimensions(const abstract::Document *document) const final;
-
-  [[nodiscard]] TableDimensions
-  content(const abstract::Document *document,
-          const std::optional<TableDimensions> range) const final;
-
-  [[nodiscard]] abstract::Element *column(const abstract::Document *document,
-                                          std::uint32_t column) const final;
-  [[nodiscard]] abstract::Element *row(const abstract::Document *document,
-                                       std::uint32_t column) const final;
-  [[nodiscard]] abstract::Element *cell(const abstract::Document *document,
-                                        std::uint32_t column) const final;
-
-  [[nodiscard]] abstract::Element *
-  first_shape(const abstract::Document *document) const final;
-
-  [[nodiscard]] TableStyle
-  style(const abstract::Document *document) const final;
 };
 
 } // namespace odr::internal::odf

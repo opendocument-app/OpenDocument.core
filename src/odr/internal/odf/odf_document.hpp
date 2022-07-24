@@ -6,6 +6,7 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/odf/odf_element.hpp>
 #include <odr/internal/odf/odf_style.hpp>
 #include <pugixml.hpp>
 
@@ -14,7 +15,6 @@ class ReadableFilesystem;
 } // namespace odr::internal::abstract
 
 namespace odr::internal::odf {
-class Element;
 
 class Document : public abstract::Document {
 public:
@@ -44,8 +44,8 @@ protected:
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
 
-  std::vector<std::unique_ptr<abstract::Element>> m_elements;
-  abstract::Element *m_root_element{};
+  std::vector<std::unique_ptr<Element>> m_elements;
+  Element *m_root_element{};
 
   StyleRegistry m_style_registry;
 

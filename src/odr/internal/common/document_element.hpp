@@ -17,15 +17,19 @@ public:
 
   [[nodiscard]] Element *parent(const abstract::Document *) const final;
   [[nodiscard]] Element *first_child(const abstract::Document *) const final;
+  [[nodiscard]] Element *last_child(const abstract::Document *) const final;
   [[nodiscard]] Element *
   previous_sibling(const abstract::Document *) const final;
   [[nodiscard]] Element *next_sibling(const abstract::Document *) const final;
 
-protected:
+  void init_append_child(Element *element);
+
+public:
   pugi::xml_node m_node;
 
   Element *m_parent{};
   Element *m_first_child{};
+  Element *m_last_child{};
   Element *m_previous_sibling{};
   Element *m_next_sibling{};
 };
