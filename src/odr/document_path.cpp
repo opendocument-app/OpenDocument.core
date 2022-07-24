@@ -147,9 +147,9 @@ DocumentPath::operator std::string() const noexcept { return to_string(); }
 std::string DocumentPath::to_string() const noexcept {
   std::string result;
 
-  for (auto &&component : m_components) {
+  for (const auto &component : m_components) {
     result.append("/");
-    std::visit([&result](auto &&c) { result.append(c.to_string()); },
+    std::visit([&result](const auto &c) { result.append(c.to_string()); },
                component);
   }
 
