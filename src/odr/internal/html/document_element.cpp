@@ -124,7 +124,7 @@ void html::translate_sheet(Element &element, std::ostream &out,
     out << "<td style=\"width:30px;height:20px;\"/>";
 
     column_index = 0;
-    for (auto column : table.columns()) {
+    for (auto _ : table.columns()) {
       if (column_index >= end_column) {
         break;
       }

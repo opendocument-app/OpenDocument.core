@@ -19,8 +19,8 @@ public:
 
     ComponentTemplate(const std::uint32_t number);
 
-    bool operator==(const Derived &other) const noexcept;
-    bool operator!=(const Derived &other) const noexcept;
+    bool operator==(const ComponentTemplate &other) const noexcept;
+    bool operator!=(const ComponentTemplate &other) const noexcept;
 
     Derived &operator++();
     Derived &operator--();

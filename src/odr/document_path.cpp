@@ -17,13 +17,13 @@ DocumentPath::ComponentTemplate<Derived>::ComponentTemplate(
 
 template <typename Derived>
 bool DocumentPath::ComponentTemplate<Derived>::operator==(
-    const Derived &other) const noexcept {
+    const ComponentTemplate &other) const noexcept {
   return number == other.number;
 }
 
 template <typename Derived>
 bool DocumentPath::ComponentTemplate<Derived>::operator!=(
-    const Derived &other) const noexcept {
+    const ComponentTemplate &other) const noexcept {
   return number != other.number;
 }
 
@@ -147,9 +147,9 @@ DocumentPath::operator std::string() const noexcept { return to_string(); }
 std::string DocumentPath::to_string() const noexcept {
   std::string result;
 
-  for (const auto &component : m_components) {
+  for (auto &&component : m_components) {
     result.append("/");
-    std::visit([&result](const auto &c) { result.append(c.to_string()); },
+    std::visit([&result](auto &&c) { result.append(c.to_string()); },
                component);
   }
 
