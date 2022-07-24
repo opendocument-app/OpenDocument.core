@@ -36,13 +36,13 @@ jobs:
         with:
           path: |
             ~/.ccache
-            ~/.conan/data
             /Users/runner/Library/Caches/ccache
+            ~/.conan/data
             C:/.conan
             C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev17
+          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev18
           restore-keys: |
-            ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
+            ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev18
 
       - name: checkout
         uses: actions/checkout@v2
