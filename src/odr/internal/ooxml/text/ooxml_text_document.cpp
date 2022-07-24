@@ -9,6 +9,7 @@
 #include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
+#include <sstream>
 #include <utility>
 
 namespace odr::internal::ooxml::text {

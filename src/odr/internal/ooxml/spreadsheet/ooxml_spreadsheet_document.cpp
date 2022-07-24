@@ -78,8 +78,6 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-abstract::Element *Document::root_element() const {
-  return nullptr; // TODO
-}
+abstract::Element *Document::root_element() const { return m_root_element; }
 
 } // namespace odr::internal::ooxml::spreadsheet
