@@ -9,10 +9,11 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-20.04, cc: clang, cxx: clang++ }
-          - { os: ubuntu-20.04, cc: gcc, cxx: g++ }
-          - { os: macos-10.15, cc: clang, cxx: clang++ }
-          - { os: windows-2019, cc: msvc, cxx: msvc }
+          - { os: ubuntu-22.04, cc: clang, cxx: clang++ }
+          - { os: ubuntu-22.04, cc: gcc, cxx: g++ }
+          - { os: macos-12, cc: clang, cxx: clang++ }
+          - { os: windows-2019 } # TODO use windows-2022; but https://github.com/conan-io/conan/issues/11698
+          - { os: ubuntu-20.04, cc: clang, cxx: clang++ } # TODO remove; but there is no firefox in 22.04 yet
 
     steps:
       - name: ubuntu install ccache
@@ -37,11 +38,11 @@ jobs:
         with:
           path: |
             ~/.ccache
-            ~/.conan/data
             /Users/runner/Library/Caches/ccache
+            ~/.conan/data
             C:/.conan
             C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev17
+          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev18
           restore-keys: |
             ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
 
@@ -72,10 +73,11 @@ jobs:
     needs: build
     runs-on: ${{ matrix.config.os }}
     strategy:
+      fail-fast: true
       matrix:
         config:
-          - { os: ubuntu-20.04, cc: clang, cxx: clang++ }
-          - { os: macos-10.15, cc: clang, cxx: clang++ }
+          - { os: ubuntu-20.04, bin: bin-ubuntu-20.04-clang++ }
+          - { os: macos-12, bin: bin-macos-12-clang++ }
 
     steps:
       - name: ubuntu install tidy
@@ -101,7 +103,7 @@ jobs:
       - name: download binaries
         uses: actions/download-artifact@v2
         with:
-          name: bin-${{ matrix.config.os }}-${{ matrix.config.cxx }}
+          name: ${{ matrix.config.bin }}
           path: build/test
       - name: fix artifact permissions
         run:  chmod +x build/test/odr_test
