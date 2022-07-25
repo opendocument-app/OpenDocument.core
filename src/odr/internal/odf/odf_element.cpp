@@ -84,9 +84,7 @@ ElementType TextRoot::type(const abstract::Document *) const {
 
 PageLayout TextRoot::page_layout(const abstract::Document *document) const {
   if (auto first_master_page = style_(document)->first_master_page()) {
-    auto master_page_node =
-        style_(document)->master_page_node(*first_master_page);
-    return MasterPage(master_page_node).page_layout(document);
+    return first_master_page->page_layout(document);
   }
   return {};
 }
@@ -97,28 +95,24 @@ TextRoot::first_master_page(const abstract::Document *) const {
 }
 
 PageLayout Slide::page_layout(const abstract::Document *document) const {
-  if (auto master_page_node = master_page_node_(document)) {
-    return MasterPage(master_page_node).page_layout(document);
+  if (auto master_page = master_page_(document)) {
+    return master_page->page_layout(document);
   }
   return {};
 }
 
 abstract::Element *
 Slide::master_page(const abstract::Document *document) const {
-  if (auto master_page_node = master_page_node_(document)) {
-    // TODO
-  }
-  return {};
+  return master_page_(document);
 }
 
 std::string Slide::name(const abstract::Document *) const {
   return m_node.attribute("draw:name").value();
 }
 
-pugi::xml_node
-Slide::master_page_node_(const abstract::Document *document) const {
+MasterPage *Slide::master_page_(const abstract::Document *document) const {
   if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
-    return style_(document)->master_page_node(master_page_name_attr.value());
+    return style_(document)->master_page(master_page_name_attr.value());
   }
   return {};
 }
@@ -188,27 +182,23 @@ TableStyle Sheet::style(const abstract::Document *document) const {
 }
 
 PageLayout Page::page_layout(const abstract::Document *document) const {
-  if (auto master_page_node = master_page_node_(document)) {
-    return MasterPage(master_page_node).page_layout(document);
+  if (auto master_page = master_page_(document)) {
+    return master_page->page_layout(document);
   }
   return {};
 }
 
 abstract::Element *Page::master_page(const abstract::Document *document) const {
-  if (auto master_page_node = master_page_node_(document)) {
-    // TODO
-  }
-  return {};
+  return master_page_(document);
 }
 
 std::string Page::name(const abstract::Document *) const {
   return m_node.attribute("draw:name").value();
 }
 
-pugi::xml_node
-Page::master_page_node_(const abstract::Document *document) const {
+MasterPage *Page::master_page_(const abstract::Document *document) const {
   if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
-    return style_(document)->master_page_node(master_page_name_attr.value());
+    return style_(document)->master_page(master_page_name_attr.value());
   }
   return {};
 }

@@ -8,23 +8,16 @@ namespace odr::internal::odf {
 namespace {
 
 template <typename Derived>
-std::tuple<Element *, pugi::xml_node>
-parse_element_tree(pugi::xml_node node,
-                   std::vector<std::unique_ptr<Element>> &store);
-
-std::tuple<Element *, pugi::xml_node>
-parse_any_element_tree(pugi::xml_node node,
-                       std::vector<std::unique_ptr<Element>> &store);
+Element *parse_element_tree(pugi::xml_node node,
+                            std::vector<std::unique_ptr<Element>> &store);
 
 void parse_element_children(Element *element, pugi::xml_node node,
                             std::vector<std::unique_ptr<Element>> &store) {
-  for (auto child_node = node.first_child(); child_node;) {
-    auto [child, next_sibling] = parse_any_element_tree(child_node, store);
-    if (child == nullptr) {
-      child_node = child_node.next_sibling();
-    } else {
+  for (auto child_node = node.first_child(); child_node;
+       child_node = child_node.next_sibling()) {
+    auto child = parse_tree(child_node, store);
+    if (child != nullptr) {
       element->init_append_child(child);
-      child_node = next_sibling;
     }
   }
 }
@@ -32,7 +25,7 @@ void parse_element_children(Element *element, pugi::xml_node node,
 void parse_element_children(PresentationRoot *element, pugi::xml_node node,
                             std::vector<std::unique_ptr<Element>> &store) {
   for (auto child_node : node.children("draw:page")) {
-    auto [child, _] = parse_element_tree<Slide>(child_node, store);
+    auto child = parse_element_tree<Slide>(child_node, store);
     element->init_append_child(child);
   }
 }
@@ -40,7 +33,7 @@ void parse_element_children(PresentationRoot *element, pugi::xml_node node,
 void parse_element_children(SpreadsheetRoot *element, pugi::xml_node node,
                             std::vector<std::unique_ptr<Element>> &store) {
   for (auto child_node : node.children("table:table")) {
-    auto [child, _] = parse_element_tree<Sheet>(child_node, store);
+    auto child = parse_element_tree<Sheet>(child_node, store);
     element->init_append_child(child);
   }
 }
@@ -48,17 +41,16 @@ void parse_element_children(SpreadsheetRoot *element, pugi::xml_node node,
 void parse_element_children(DrawingRoot *element, pugi::xml_node node,
                             std::vector<std::unique_ptr<Element>> &store) {
   for (auto child_node : node.children("draw:page")) {
-    auto [child, _] = parse_element_tree<Slide>(child_node, store);
+    auto child = parse_element_tree<Page>(child_node, store);
     element->init_append_child(child);
   }
 }
 
 template <typename Derived>
-std::tuple<Element *, pugi::xml_node>
-parse_element_tree(pugi::xml_node node,
-                   std::vector<std::unique_ptr<Element>> &store) {
+Element *parse_element_tree(pugi::xml_node node,
+                            std::vector<std::unique_ptr<Element>> &store) {
   if (!node) {
-    return std::make_tuple(nullptr, pugi::xml_node());
+    return nullptr;
   }
 
   auto element_unique = std::make_unique<Derived>(node);
@@ -67,7 +59,7 @@ parse_element_tree(pugi::xml_node node,
 
   parse_element_children(element, node, store);
 
-  return std::make_tuple(element, node.next_sibling());
+  return element;
 }
 
 bool is_text_node(const pugi::xml_node node) {
@@ -91,11 +83,11 @@ bool is_text_node(const pugi::xml_node node) {
 }
 
 template <>
-std::tuple<Element *, pugi::xml_node>
+Element *
 parse_element_tree<Text>(pugi::xml_node first,
                          std::vector<std::unique_ptr<Element>> &store) {
   if (!first) {
-    return std::make_tuple(nullptr, pugi::xml_node());
+    return nullptr;
   }
 
   pugi::xml_node last = first;
@@ -106,13 +98,19 @@ parse_element_tree<Text>(pugi::xml_node first,
   auto element = element_unique.get();
   store.push_back(std::move(element_unique));
 
-  return std::make_tuple(element, last.next_sibling());
+  return element;
 }
 
-std::tuple<Element *, pugi::xml_node>
-parse_any_element_tree(pugi::xml_node node,
-                       std::vector<std::unique_ptr<Element>> &store) {
-  using Parser = std::function<std::tuple<Element *, pugi::xml_node>(
+} // namespace
+
+} // namespace odr::internal::odf
+
+namespace odr::internal {
+
+odf::Element *
+odf::parse_tree(pugi::xml_node node,
+                std::vector<std::unique_ptr<odf::Element>> &store) {
+  using Parser = std::function<Element *(
       pugi::xml_node node, std::vector<std::unique_ptr<Element>> & store)>;
 
   using List = DefaultElement<ElementType::list>;
@@ -160,7 +158,7 @@ parse_any_element_tree(pugi::xml_node node,
       {"draw:text-box", parse_element_tree<Group>},
       {"draw:g", parse_element_tree<Group>},
       {"draw:a", parse_element_tree<Link>},
-  };
+      {"style:master-page", parse_element_tree<MasterPage>}};
 
   if (node.type() == pugi::xml_node_type::node_pcdata) {
     return parse_element_tree<Text>(node, store);
@@ -171,19 +169,13 @@ parse_any_element_tree(pugi::xml_node node,
     return constructor_it->second(node, store);
   }
 
-  return std::make_tuple(nullptr, pugi::xml_node());
+  return nullptr;
 }
-
-} // namespace
-
-} // namespace odr::internal::odf
-
-namespace odr::internal {
 
 std::tuple<odf::Element *, std::vector<std::unique_ptr<odf::Element>>>
 odf::parse_tree(pugi::xml_node node) {
   std::vector<std::unique_ptr<odf::Element>> store;
-  auto [root, _] = parse_any_element_tree(node, store);
+  auto root = parse_tree(node, store);
   return std::make_tuple(root, std::move(store));
 }
 

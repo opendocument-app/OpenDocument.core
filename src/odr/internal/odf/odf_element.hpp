@@ -67,22 +67,16 @@ public:
 
 class PresentationRoot final : public Root {
 public:
-  static constexpr auto child_name = "draw:page";
-
   using Root::Root;
 };
 
 class SpreadsheetRoot final : public Root {
 public:
-  static constexpr auto child_name = "table:table";
-
   using Root::Root;
 };
 
 class DrawingRoot final : public Root {
 public:
-  static constexpr auto child_name = "draw:page";
-
   using Root::Root;
 };
 
@@ -100,7 +94,7 @@ public:
   name(const abstract::Document *document) const final;
 
 private:
-  pugi::xml_node master_page_node_(const abstract::Document *document) const;
+  MasterPage *master_page_(const abstract::Document *document) const;
 };
 
 class Sheet final : public Element, public abstract::SheetElement {
@@ -145,7 +139,7 @@ public:
   name(const abstract::Document *document) const final;
 
 private:
-  pugi::xml_node master_page_node_(const abstract::Document *document) const;
+  MasterPage *master_page_(const abstract::Document *document) const;
 };
 
 class LineBreak final : public Element, public abstract::LineBreakElement {

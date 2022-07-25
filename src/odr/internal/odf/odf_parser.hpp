@@ -9,6 +9,9 @@
 namespace odr::internal::odf {
 class Element;
 
+Element *parse_tree(pugi::xml_node node,
+                    std::vector<std::unique_ptr<Element>> &store);
+
 std::tuple<Element *, std::vector<std::unique_ptr<Element>>>
 parse_tree(pugi::xml_node node);
 

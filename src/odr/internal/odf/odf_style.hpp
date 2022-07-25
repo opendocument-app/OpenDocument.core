@@ -5,6 +5,7 @@
 #include <memory>
 #include <odr/document.hpp>
 #include <odr/internal/common/style.hpp>
+#include <odr/internal/odf/odf_element.hpp>
 #include <optional>
 #include <pugixml.hpp>
 #include <string>
@@ -68,15 +69,14 @@ public:
   StyleRegistry();
   StyleRegistry(pugi::xml_node content_root, pugi::xml_node styles_root);
 
-  Style *style(const char *name) const;
+  [[nodiscard]] Style *style(const char *name) const;
 
   [[nodiscard]] PageLayout page_layout(const std::string &name) const;
 
-  [[nodiscard]] pugi::xml_node master_page_node(const std::string &name) const;
-
   [[nodiscard]] pugi::xml_node font_face_node(const std::string &name) const;
 
-  [[nodiscard]] std::optional<std::string> first_master_page() const;
+  [[nodiscard]] MasterPage *master_page(const std::string &name) const;
+  [[nodiscard]] MasterPage *first_master_page() const;
 
 private:
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
@@ -86,11 +86,14 @@ private:
   std::unordered_map<std::string, pugi::xml_node> m_index_outline_style;
   std::unordered_map<std::string, pugi::xml_node> m_index_page_layout;
   std::unordered_map<std::string, pugi::xml_node> m_index_master_page;
-
   std::optional<std::string> m_first_master_page;
 
   std::unordered_map<std::string, std::unique_ptr<Style>> m_default_styles;
   std::unordered_map<std::string, std::unique_ptr<Style>> m_styles;
+
+  std::vector<std::unique_ptr<Element>> m_elements;
+  std::unordered_map<std::string, MasterPage *> m_master_page_elements;
+  MasterPage *m_first_master_page_element{};
 
   void generate_indices_(pugi::xml_node content_root,
                          pugi::xml_node styles_root);
@@ -99,6 +102,8 @@ private:
   void generate_styles_();
   Style *generate_default_style_(const std::string &name, pugi::xml_node node);
   Style *generate_style_(const std::string &name, pugi::xml_node node);
+
+  void generate_master_pages_();
 };
 
 } // namespace odr::internal::odf
