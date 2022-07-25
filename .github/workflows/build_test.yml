@@ -12,7 +12,8 @@ jobs:
           - { os: ubuntu-22.04, cc: clang, cxx: clang++ }
           - { os: ubuntu-22.04, cc: gcc, cxx: g++ }
           - { os: macos-12, cc: clang, cxx: clang++ }
-          - { os: windows-2019 }
+          - { os: windows-2019 } # TODO use windows-2022; but https://github.com/conan-io/conan/issues/11698
+          - { os: ubuntu-20.04, cc: clang, cxx: clang++ } # TODO remove; but there is no firefox in 22.04 yet
 
     steps:
       - name: ubuntu install ccache
@@ -75,7 +76,7 @@ jobs:
       fail-fast: true
       matrix:
         config:
-          - { os: ubuntu-20.04, bin: bin-ubuntu-22.04-clang++ }
+          - { os: ubuntu-20.04, bin: bin-ubuntu-20.04-clang++ }
           - { os: macos-12, bin: bin-macos-12-clang++ }
 
     steps:
