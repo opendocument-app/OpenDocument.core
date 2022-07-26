@@ -19,12 +19,12 @@ def to_url(something):
 def screenshot(browser, url):
     browser.get(url)
 
-    body = browser.find_element_by_tag_name('body')
+    body = browser.find_element('tag name', 'body')
     png = body.screenshot_as_png
     return Image.open(io.BytesIO(png))
 
 
-def get_browser(driver='chrome', max_width=1000, max_height=10000):
+def get_browser(driver='firefox', max_width=1000, max_height=10000):
     if driver == 'phantomjs':
         browser = webdriver.PhantomJS()
     elif driver == 'firefox':
