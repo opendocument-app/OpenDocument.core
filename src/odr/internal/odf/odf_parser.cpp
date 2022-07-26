@@ -48,7 +48,7 @@ void parse_element_children(SpreadsheetRoot *element, pugi::xml_node node,
 void parse_element_children(DrawingRoot *element, pugi::xml_node node,
                             std::vector<std::unique_ptr<Element>> &store) {
   for (auto child_node : node.children("draw:page")) {
-    auto [child, _] = parse_element_tree<Slide>(child_node, store);
+    auto [child, _] = parse_element_tree<Page>(child_node, store);
     element->init_append_child(child);
   }
 }
