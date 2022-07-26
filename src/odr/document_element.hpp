@@ -198,7 +198,7 @@ public:
       : Element(document, element), m_element{element} {}
   TypedElement(const internal::abstract::Document *document,
                internal::abstract::Element *element)
-      : Element(document, element), m_element{dynamic_cast<T *>(element)} {}
+      : TypedElement(document, dynamic_cast<T *>(element)) {}
 
 protected:
   T *m_element{nullptr};

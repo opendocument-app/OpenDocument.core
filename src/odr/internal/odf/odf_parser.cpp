@@ -99,7 +99,7 @@ parse_element_tree<Text>(pugi::xml_node first,
   }
 
   pugi::xml_node last = first;
-  for (; is_text_node(last); last = last.next_sibling()) {
+  for (; is_text_node(last.next_sibling()); last = last.next_sibling()) {
   }
 
   auto element_unique = std::make_unique<Text>(first, last);
