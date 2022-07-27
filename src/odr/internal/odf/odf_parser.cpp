@@ -109,6 +109,31 @@ parse_element_tree<Text>(pugi::xml_node first,
   return std::make_tuple(element, last.next_sibling());
 }
 
+template <>
+std::tuple<Element *, pugi::xml_node>
+parse_element_tree<Table>(pugi::xml_node node,
+                          std::vector<std::unique_ptr<Element>> &store) {
+  if (!node) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
+  auto table_unique = std::make_unique<Table>(node);
+  auto table = table_unique.get();
+  store.push_back(std::move(table_unique));
+
+  for (auto column_node : node.children("table:table-column")) {
+    auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
+    table->init_append_column(column);
+  }
+
+  for (auto row_node : node.children("table:table-row")) {
+    auto [row, _] = parse_element_tree<TableRow>(row_node, store);
+    table->init_append_row(row);
+  }
+
+  return std::make_tuple(table, node.next_sibling());
+}
+
 std::tuple<Element *, pugi::xml_node>
 parse_any_element_tree(pugi::xml_node node,
                        std::vector<std::unique_ptr<Element>> &store) {
@@ -146,7 +171,7 @@ parse_any_element_tree(pugi::xml_node node,
       {"text:section", parse_element_tree<Group>},
       //{"text:page-number", parse_element_tree<Group>},
       //{"text:page-continuation", parse_element_tree<Group>},
-      {"table:table", parse_element_tree<TableElement>},
+      {"table:table", parse_element_tree<Table>},
       {"table:table-column", parse_element_tree<TableColumn>},
       {"table:table-row", parse_element_tree<TableRow>},
       {"table:table-cell", parse_element_tree<TableCell>},

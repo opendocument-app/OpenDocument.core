@@ -295,11 +295,11 @@ TextStyle ListItem::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
 
-TableStyle TableElement::style(const abstract::Document *document) const {
+TableStyle Table::style(const abstract::Document *document) const {
   return partial_style(document).table_style;
 }
 
-TableDimensions TableElement::dimensions(const abstract::Document *) const {
+TableDimensions Table::dimensions(const abstract::Document *) const {
   TableDimensions result;
   common::TableCursor cursor;
 
@@ -323,13 +323,34 @@ TableDimensions TableElement::dimensions(const abstract::Document *) const {
   return result;
 }
 
-abstract::Element *TableElement::first_row(const abstract::Document *) const {
-  return nullptr;
+abstract::Element *Table::first_column(const abstract::Document *) const {
+  return m_first_column;
 }
 
-abstract::Element *
-TableElement::first_column(const abstract::Document *) const {
-  return nullptr;
+abstract::Element *Table::first_row(const abstract::Document *) const {
+  return m_first_row;
+}
+
+void Table::init_append_column(Element *element) {
+  element->m_previous_sibling = m_last_column;
+  element->m_parent = this;
+  if (m_last_column == nullptr) {
+    m_first_column = element;
+  } else {
+    m_last_column->m_next_sibling = element;
+  }
+  m_last_column = element;
+}
+
+void Table::init_append_row(Element *element) {
+  element->m_previous_sibling = m_last_row;
+  element->m_parent = this;
+  if (m_last_row == nullptr) {
+    m_first_row = element;
+  } else {
+    m_last_row->m_next_sibling = element;
+  }
+  m_last_row = element;
 }
 
 TableColumnStyle TableColumn::style(const abstract::Document *document) const {

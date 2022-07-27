@@ -208,7 +208,7 @@ public:
   [[nodiscard]] TextStyle style(const abstract::Document *document) const final;
 };
 
-class TableElement : public Element, public abstract::TableElement {
+class Table : public Element, public abstract::TableElement {
 public:
   using Element::Element;
 
@@ -221,6 +221,16 @@ public:
   abstract::Element *
   first_column(const abstract::Document *document) const final;
   abstract::Element *first_row(const abstract::Document *document) const final;
+
+  void init_append_column(Element *element);
+  void init_append_row(Element *element);
+
+private:
+  Element *m_first_column{};
+  Element *m_last_column{};
+
+  Element *m_first_row{};
+  Element *m_last_row{};
 };
 
 class TableColumn final : public Element, public abstract::TableColumnElement {
