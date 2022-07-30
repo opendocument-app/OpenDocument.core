@@ -106,6 +106,8 @@ parse_any_element_tree(pugi::xml_node node,
       {"w:sdtContent", parse_element_tree<Group>},
       {"w:drawing", parse_element_tree<Frame>},
       {"wp:anchor", parse_element_tree<Group>},
+      {"wp:inline", parse_element_tree<Group>},
+      {"a:graphic", parse_element_tree<Group>},
       {"a:graphicData", parse_element_tree<ImageElement>},
   };
 
