@@ -48,7 +48,7 @@ public:
   using Root::Root;
 
   [[nodiscard]] ElementType
-  type(const abstract::Document *document) const override;
+  type(const abstract::Document *document) const final;
 
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final;

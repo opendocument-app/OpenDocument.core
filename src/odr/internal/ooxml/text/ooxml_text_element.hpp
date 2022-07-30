@@ -41,9 +41,15 @@ public:
   }
 };
 
-class Root final : public DefaultElement<ElementType::root> {
+class Root final : public Element, public abstract::TextRootElement {
 public:
-  using DefaultElement::DefaultElement;
+  using Element::Element;
+
+  [[nodiscard]] PageLayout
+  page_layout(const abstract::Document *document) const final;
+
+  [[nodiscard]] abstract::MasterPageElement *
+  first_master_page(const abstract::Document *document) const final;
 };
 
 class Paragraph : public Element, public abstract::ParagraphElement {

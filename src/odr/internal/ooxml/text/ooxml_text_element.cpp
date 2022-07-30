@@ -7,11 +7,7 @@
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
-#include <odr/internal/ooxml/text/ooxml_text_element.hpp>
-#include <odr/internal/ooxml/text/ooxml_text_style.hpp>
 #include <odr/internal/util/xml_util.hpp>
-#include <odr/quantity.hpp>
-#include <odr/style.hpp>
 #include <optional>
 #include <pugixml.hpp>
 #include <utility>
@@ -28,10 +24,12 @@ common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
 
 common::ResolvedStyle
 Element::intermediate_style(const abstract::Document *document) const {
+  common::ResolvedStyle base;
   if (m_parent == nullptr) {
-    return partial_style(document);
+    base = style_(document)->default_style()->resolved();
+  } else {
+    base = dynamic_cast<Element *>(m_parent)->intermediate_style(document);
   }
-  auto base = dynamic_cast<Element *>(m_parent)->intermediate_style(document);
   base.override(partial_style(document));
   return base;
 }
@@ -47,6 +45,15 @@ const StyleRegistry *Element::style_(const abstract::Document *document) {
 const std::unordered_map<std::string, std::string> &
 Element::document_relations_(const abstract::Document *document) {
   return dynamic_cast<const Document *>(document)->m_document_relations;
+}
+
+PageLayout Root::page_layout(const abstract::Document *document) const {
+  return {}; // TODO
+}
+
+abstract::MasterPageElement *
+Root::first_master_page(const abstract::Document *document) const {
+  return nullptr; // TODO
 }
 
 common::ResolvedStyle
