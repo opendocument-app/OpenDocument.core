@@ -111,6 +111,27 @@ parse_element_tree<Text>(pugi::xml_node first,
 
 template <>
 std::tuple<Element *, pugi::xml_node>
+parse_element_tree<TableRow>(pugi::xml_node node,
+                             std::vector<std::unique_ptr<Element>> &store) {
+  if (!node) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
+  auto table_row_unique = std::make_unique<TableRow>(node);
+  auto table_row = table_row_unique.get();
+  store.push_back(std::move(table_row_unique));
+
+  for (auto cell_node : node.children()) {
+    // TODO log warning if repeated
+    auto [cell, _] = parse_any_element_tree(cell_node, store);
+    table_row->init_append_child(cell);
+  }
+
+  return std::make_tuple(table_row, node.next_sibling());
+}
+
+template <>
+std::tuple<Element *, pugi::xml_node>
 parse_element_tree<Table>(pugi::xml_node node,
                           std::vector<std::unique_ptr<Element>> &store) {
   if (!node) {
@@ -122,11 +143,17 @@ parse_element_tree<Table>(pugi::xml_node node,
   store.push_back(std::move(table_unique));
 
   for (auto column_node : node.children("table:table-column")) {
-    auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
-    table->init_append_column(column);
+    for (std::uint32_t i = 0;
+         i < column_node.attribute("table:number-columns-repeated").as_uint(1);
+         ++i) {
+      // TODO mark as repeated
+      auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
+      table->init_append_column(column);
+    }
   }
 
   for (auto row_node : node.children("table:table-row")) {
+    // TODO log warning if repeated
     auto [row, _] = parse_element_tree<TableRow>(row_node, store);
     table->init_append_row(row);
   }

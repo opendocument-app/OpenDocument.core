@@ -46,7 +46,7 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual Element *
+  [[nodiscard]] virtual MasterPageElement *
   first_master_page(const Document *document) const = 0;
 };
 
@@ -59,7 +59,7 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual Element *
+  [[nodiscard]] virtual MasterPageElement *
   master_page(const Document *document) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
@@ -101,7 +101,7 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual Element *
+  [[nodiscard]] virtual MasterPageElement *
   master_page(const Document *document) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;

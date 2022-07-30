@@ -10,14 +10,14 @@
 
 namespace odr::internal {
 
-void html::translate_children(Element &element, std::ostream &out,
+void html::translate_children(Element element, std::ostream &out,
                               const HtmlConfig &config) {
   for (auto child : element) {
     translate_element(child, out, config);
   }
 }
 
-void html::translate_element(Element &element, std::ostream &out,
+void html::translate_element(Element element, std::ostream &out,
                              const HtmlConfig &config) {
   if (element.type() == ElementType::text) {
     translate_text(element, out, config);
@@ -56,7 +56,7 @@ void html::translate_element(Element &element, std::ostream &out,
   }
 }
 
-void html::translate_slide(Element &element, std::ostream &out,
+void html::translate_slide(Element element, std::ostream &out,
                            const HtmlConfig &config) {
   auto slide = element.slide();
 
@@ -68,13 +68,13 @@ void html::translate_slide(Element &element, std::ostream &out,
   out << optional_style_attribute(
       translate_inner_page_style(slide.page_layout()));
   out << ">";
-  translate_master_page(slide, out, config);
+  translate_master_page(slide.master_page(), out, config);
   translate_children(slide, out, config);
   out << "</div>";
   out << "</div>";
 }
 
-void html::translate_sheet(Element &element, std::ostream &out,
+void html::translate_sheet(Element element, std::ostream &out,
                            const HtmlConfig &config) {
   // TODO table column width does not work
   // TODO table row height does not work
@@ -98,12 +98,9 @@ void html::translate_sheet(Element &element, std::ostream &out,
     end_column = std::min(end_column, config.spreadsheet_limit->columns);
   }
 
-  std::uint32_t column_index = 0;
-  std::uint32_t row_index = 0;
-
   out << "<col>";
 
-  column_index = 0;
+  std::uint32_t column_index = 0;
   for (auto column : table.columns()) {
     if (column_index >= end_column) {
       break;
@@ -139,6 +136,7 @@ void html::translate_sheet(Element &element, std::ostream &out,
     out << "</tr>";
   }
 
+  std::uint32_t row_index = 0;
   for (auto row : table.rows()) {
     if (row_index >= end_row) {
       break;
@@ -204,7 +202,7 @@ void html::translate_sheet(Element &element, std::ostream &out,
   out << "</table>";
 }
 
-void html::translate_page(Element &element, std::ostream &out,
+void html::translate_page(Element element, std::ostream &out,
                           const HtmlConfig &config) {
   auto page = element.page();
 
@@ -216,13 +214,13 @@ void html::translate_page(Element &element, std::ostream &out,
   out << optional_style_attribute(
       translate_inner_page_style(page.page_layout()));
   out << ">";
-  translate_master_page(page, out, config);
+  translate_master_page(page.master_page(), out, config);
   translate_children(page, out, config);
   out << "</div>";
   out << "</div>";
 }
 
-void html::translate_master_page(Element &element, std::ostream &out,
+void html::translate_master_page(Element element, std::ostream &out,
                                  const HtmlConfig &config) {
   for (auto child : element) {
     // TODO filter placeholders
@@ -230,7 +228,7 @@ void html::translate_master_page(Element &element, std::ostream &out,
   }
 }
 
-void html::translate_text(const Element &element, std::ostream &out,
+void html::translate_text(const Element element, std::ostream &out,
                           const HtmlConfig &config) {
   auto text = element.text();
 
@@ -246,7 +244,7 @@ void html::translate_text(const Element &element, std::ostream &out,
   out << "</x-s>";
 }
 
-void html::translate_line_break(Element &element, std::ostream &out,
+void html::translate_line_break(Element element, std::ostream &out,
                                 const HtmlConfig &) {
   auto line_break = element.line_break();
 
@@ -256,7 +254,7 @@ void html::translate_line_break(Element &element, std::ostream &out,
   out << "></x-s>";
 }
 
-void html::translate_paragraph(Element &element, std::ostream &out,
+void html::translate_paragraph(Element element, std::ostream &out,
                                const HtmlConfig &config) {
   auto paragraph = element.paragraph();
   auto text_style_attribute =
@@ -280,7 +278,7 @@ void html::translate_paragraph(Element &element, std::ostream &out,
   out << "</x-p>";
 }
 
-void html::translate_span(Element &element, std::ostream &out,
+void html::translate_span(Element element, std::ostream &out,
                           const HtmlConfig &config) {
   auto span = element.span();
 
@@ -291,7 +289,7 @@ void html::translate_span(Element &element, std::ostream &out,
   out << "</x-s>";
 }
 
-void html::translate_link(Element &element, std::ostream &out,
+void html::translate_link(Element element, std::ostream &out,
                           const HtmlConfig &config) {
   auto link = element.link();
 
@@ -302,7 +300,7 @@ void html::translate_link(Element &element, std::ostream &out,
   out << "</a>";
 }
 
-void html::translate_bookmark(Element &element, std::ostream &out,
+void html::translate_bookmark(Element element, std::ostream &out,
                               const HtmlConfig & /*config*/) {
   auto bookmark = element.bookmark();
 
@@ -311,14 +309,14 @@ void html::translate_bookmark(Element &element, std::ostream &out,
   out << "\"></a>";
 }
 
-void html::translate_list(Element &element, std::ostream &out,
+void html::translate_list(Element element, std::ostream &out,
                           const HtmlConfig &config) {
   out << "<ul>";
   translate_children(element, out, config);
   out << "</ul>";
 }
 
-void html::translate_list_item(Element &element, std::ostream &out,
+void html::translate_list_item(Element element, std::ostream &out,
                                const HtmlConfig &config) {
   auto list_item = element.list_item();
 
@@ -329,7 +327,7 @@ void html::translate_list_item(Element &element, std::ostream &out,
   out << "</li>";
 }
 
-void html::translate_table(Element &element, std::ostream &out,
+void html::translate_table(Element element, std::ostream &out,
                            const HtmlConfig &config) {
   // TODO table column width does not work
   // TODO table row height does not work
@@ -384,7 +382,7 @@ void html::translate_table(Element &element, std::ostream &out,
   out << "</table>";
 }
 
-void html::translate_image(Element &element, std::ostream &out,
+void html::translate_image(Element element, std::ostream &out,
                            const HtmlConfig &config) {
   auto image = element.image();
 
@@ -401,7 +399,7 @@ void html::translate_image(Element &element, std::ostream &out,
   out << "\">";
 }
 
-void html::translate_frame(Element &element, std::ostream &out,
+void html::translate_frame(Element element, std::ostream &out,
                            const HtmlConfig &config) {
   auto frame = element.frame();
   auto style = frame.style();
@@ -416,7 +414,7 @@ void html::translate_frame(Element &element, std::ostream &out,
   out << "</div>";
 }
 
-void html::translate_rect(Element &element, std::ostream &out,
+void html::translate_rect(Element element, std::ostream &out,
                           const HtmlConfig &config) {
   auto rect = element.rect();
 
@@ -429,7 +427,7 @@ void html::translate_rect(Element &element, std::ostream &out,
   out << "</div>";
 }
 
-void html::translate_line(Element &element, std::ostream &out,
+void html::translate_line(Element element, std::ostream &out,
                           const HtmlConfig & /*config*/) {
   auto line = element.line();
 
@@ -446,7 +444,7 @@ void html::translate_line(Element &element, std::ostream &out,
   out << "</svg>";
 }
 
-void html::translate_circle(Element &element, std::ostream &out,
+void html::translate_circle(Element element, std::ostream &out,
                             const HtmlConfig &config) {
   auto circle = element.circle();
 
@@ -459,7 +457,7 @@ void html::translate_circle(Element &element, std::ostream &out,
   out << "</div>";
 }
 
-void html::translate_custom_shape(Element &element, std::ostream &out,
+void html::translate_custom_shape(Element element, std::ostream &out,
                                   const HtmlConfig &config) {
   auto custom_shape = element.custom_shape();
 

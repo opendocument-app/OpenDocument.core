@@ -54,6 +54,8 @@ Sheet Element::sheet() const { return {m_document, m_element}; }
 
 Page Element::page() const { return {m_document, m_element}; }
 
+MasterPage Element::master_page() const { return {m_document, m_element}; }
+
 LineBreak Element::line_break() const { return {m_document, m_element}; }
 
 Paragraph Element::paragraph() const { return {m_document, m_element}; }
@@ -143,12 +145,23 @@ PageLayout TextRoot::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
 }
 
+MasterPage TextRoot::first_master_page() const {
+  return m_element
+             ? MasterPage(m_document, m_element->first_master_page(m_document))
+             : MasterPage();
+}
+
 std::string Slide::name() const {
   return m_element ? m_element->name(m_document) : "";
 }
 
 PageLayout Slide::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
+}
+
+MasterPage Slide::master_page() const {
+  return m_element ? MasterPage(m_document, m_element->master_page(m_document))
+                   : MasterPage();
 }
 
 std::string Sheet::name() const {
@@ -170,6 +183,15 @@ std::string Page::name() const {
 }
 
 PageLayout Page::page_layout() const {
+  return m_element ? m_element->page_layout(m_document) : PageLayout();
+}
+
+MasterPage Page::master_page() const {
+  return m_element ? MasterPage(m_document, m_element->master_page(m_document))
+                   : MasterPage();
+}
+
+PageLayout MasterPage::page_layout() const {
   return m_element ? m_element->page_layout(m_document) : PageLayout();
 }
 

@@ -7,11 +7,8 @@
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_document.hpp>
-#include <odr/internal/odf/odf_element.hpp>
-#include <odr/internal/odf/odf_style.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
-#include <odr/style.hpp>
 #include <optional>
 #include <pugixml.hpp>
 #include <string>
@@ -83,38 +80,37 @@ ElementType TextRoot::type(const abstract::Document *) const {
 }
 
 PageLayout TextRoot::page_layout(const abstract::Document *document) const {
-  if (auto first_master_page = style_(document)->first_master_page()) {
-    return first_master_page->page_layout(document);
-  }
-  return {};
-}
-
-abstract::Element *
-TextRoot::first_master_page(const abstract::Document *) const {
-  return nullptr; // TODO
-}
-
-PageLayout Slide::page_layout(const abstract::Document *document) const {
-  if (auto master_page = master_page_(document)) {
+  if (auto master_page = this->first_master_page(document)) {
     return master_page->page_layout(document);
   }
   return {};
 }
 
-abstract::Element *
+abstract::MasterPageElement *
+TextRoot::first_master_page(const abstract::Document *document) const {
+  if (auto first_master_page = style_(document)->first_master_page()) {
+    return first_master_page;
+  }
+  return {};
+}
+
+PageLayout Slide::page_layout(const abstract::Document *document) const {
+  if (auto master_page = this->master_page(document)) {
+    return master_page->page_layout(document);
+  }
+  return {};
+}
+
+abstract::MasterPageElement *
 Slide::master_page(const abstract::Document *document) const {
-  return master_page_(document);
-}
-
-std::string Slide::name(const abstract::Document *) const {
-  return m_node.attribute("draw:name").value();
-}
-
-MasterPage *Slide::master_page_(const abstract::Document *document) const {
   if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
     return style_(document)->master_page(master_page_name_attr.value());
   }
   return {};
+}
+
+std::string Slide::name(const abstract::Document *) const {
+  return m_node.attribute("draw:name").value();
 }
 
 std::string Sheet::name(const abstract::Document *) const {
@@ -182,25 +178,22 @@ TableStyle Sheet::style(const abstract::Document *document) const {
 }
 
 PageLayout Page::page_layout(const abstract::Document *document) const {
-  if (auto master_page = master_page_(document)) {
+  if (auto master_page = this->master_page(document)) {
     return master_page->page_layout(document);
   }
   return {};
 }
 
-abstract::Element *Page::master_page(const abstract::Document *document) const {
-  return master_page_(document);
-}
-
-std::string Page::name(const abstract::Document *) const {
-  return m_node.attribute("draw:name").value();
-}
-
-MasterPage *Page::master_page_(const abstract::Document *document) const {
+abstract::MasterPageElement *
+Page::master_page(const abstract::Document *document) const {
   if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
     return style_(document)->master_page(master_page_name_attr.value());
   }
   return {};
+}
+
+std::string Page::name(const abstract::Document *) const {
+  return m_node.attribute("draw:name").value();
 }
 
 TextStyle LineBreak::style(const abstract::Document *document) const {
@@ -436,7 +429,7 @@ std::optional<std::string> Frame::height(const abstract::Document *) const {
 }
 
 std::optional<std::string> Frame::z_index(const abstract::Document *) const {
-  if (auto attribute = m_node.attribute("svg:height")) {
+  if (auto attribute = m_node.attribute("draw:z-index")) {
     return attribute.value();
   }
   return {};

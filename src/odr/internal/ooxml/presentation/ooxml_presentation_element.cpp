@@ -42,7 +42,8 @@ PageLayout Slide::page_layout(const abstract::Document *) const {
   return {}; // TODO
 }
 
-abstract::Element *Slide::master_page(const abstract::Document *) const {
+abstract::MasterPageElement *
+Slide::master_page(const abstract::Document *) const {
   return {}; // TODO
 }
 

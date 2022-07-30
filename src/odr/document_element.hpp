@@ -13,6 +13,7 @@ class TextRootElement;
 class SlideElement;
 class SheetElement;
 class PageElement;
+class MasterPageElement;
 class LineBreakElement;
 class ParagraphElement;
 class SpanElement;
@@ -51,6 +52,7 @@ class TextRoot;
 class Slide;
 class Sheet;
 class Page;
+class MasterPage;
 class LineBreak;
 class Paragraph;
 class Span;
@@ -140,6 +142,7 @@ public:
   [[nodiscard]] Slide slide() const;
   [[nodiscard]] Sheet sheet() const;
   [[nodiscard]] Page page() const;
+  [[nodiscard]] MasterPage master_page() const;
   [[nodiscard]] LineBreak line_break() const;
   [[nodiscard]] Paragraph paragraph() const;
   [[nodiscard]] Span span() const;
@@ -224,6 +227,8 @@ public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] PageLayout page_layout() const;
+
+  [[nodiscard]] MasterPage first_master_page() const;
 };
 
 class Slide final : public TypedElement<internal::abstract::SlideElement> {
@@ -233,6 +238,8 @@ public:
   [[nodiscard]] std::string name() const;
 
   [[nodiscard]] PageLayout page_layout() const;
+
+  [[nodiscard]] MasterPage master_page() const;
 };
 
 class Sheet final : public TypedElement<internal::abstract::SheetElement> {
@@ -252,6 +259,16 @@ public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] std::string name() const;
+
+  [[nodiscard]] PageLayout page_layout() const;
+
+  [[nodiscard]] MasterPage master_page() const;
+};
+
+class MasterPage final
+    : public TypedElement<internal::abstract::MasterPageElement> {
+public:
+  using TypedElement::TypedElement;
 
   [[nodiscard]] PageLayout page_layout() const;
 };

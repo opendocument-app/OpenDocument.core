@@ -35,14 +35,6 @@ public:
   }
 };
 
-class MasterPage final : public Element, public abstract::MasterPageElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] PageLayout
-  page_layout(const abstract::Document *document) const final;
-};
-
 class Root : public Element {
 public:
   using Element::Element;
@@ -61,7 +53,7 @@ public:
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final;
 
-  [[nodiscard]] abstract::Element *
+  [[nodiscard]] abstract::MasterPageElement *
   first_master_page(const abstract::Document *document) const final;
 };
 
@@ -87,14 +79,11 @@ public:
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final;
 
-  [[nodiscard]] abstract::Element *
+  [[nodiscard]] abstract::MasterPageElement *
   master_page(const abstract::Document *document) const final;
 
   [[nodiscard]] std::string
   name(const abstract::Document *document) const final;
-
-private:
-  MasterPage *master_page_(const abstract::Document *document) const;
 };
 
 class Sheet final : public Element, public abstract::SheetElement {
@@ -132,14 +121,19 @@ public:
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final;
 
-  [[nodiscard]] abstract::Element *
+  [[nodiscard]] abstract::MasterPageElement *
   master_page(const abstract::Document *document) const final;
 
   [[nodiscard]] std::string
   name(const abstract::Document *document) const final;
+};
 
-private:
-  MasterPage *master_page_(const abstract::Document *document) const;
+class MasterPage final : public Element, public abstract::MasterPageElement {
+public:
+  using Element::Element;
+
+  [[nodiscard]] PageLayout
+  page_layout(const abstract::Document *document) const final;
 };
 
 class LineBreak final : public Element, public abstract::LineBreakElement {

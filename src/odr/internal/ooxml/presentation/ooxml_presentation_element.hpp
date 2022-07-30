@@ -46,7 +46,7 @@ public:
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final;
 
-  [[nodiscard]] abstract::Element *
+  [[nodiscard]] abstract::MasterPageElement *
   master_page(const abstract::Document *document) const final;
 
   [[nodiscard]] std::string
