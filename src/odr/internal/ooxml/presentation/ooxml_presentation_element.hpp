@@ -12,7 +12,6 @@ class Document;
 
 class Element : public common::Element {
 public:
-  Element();
   explicit Element(pugi::xml_node node);
 
   common::ResolvedStyle partial_style(const abstract::Document *document) const;
@@ -76,7 +75,6 @@ public:
 
 class Text final : public Element, public abstract::TextElement {
 public:
-  Text();
   explicit Text(pugi::xml_node node);
   Text(pugi::xml_node first, pugi::xml_node last);
 

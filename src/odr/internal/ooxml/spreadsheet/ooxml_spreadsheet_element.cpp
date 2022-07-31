@@ -15,8 +15,6 @@
 
 namespace odr::internal::ooxml::spreadsheet {
 
-Element::Element() = default;
-
 Element::Element(pugi::xml_node node) : common::Element(node) {}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
@@ -172,8 +170,6 @@ TableCellStyle TableCell::style(const abstract::Document *document) const {
 TextStyle Span::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
-
-Text::Text() = default;
 
 Text::Text(pugi::xml_node node) : Text(node, node) {}
 

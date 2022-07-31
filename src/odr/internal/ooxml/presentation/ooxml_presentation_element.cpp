@@ -11,8 +11,6 @@
 
 namespace odr::internal::ooxml::presentation {
 
-Element::Element() = default;
-
 Element::Element(pugi::xml_node node) : common::Element(node) {}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
@@ -66,8 +64,6 @@ TextStyle Paragraph::text_style(const abstract::Document *document) const {
 TextStyle Span::style(const abstract::Document *document) const {
   return partial_style(document).text_style;
 }
-
-Text::Text() = default;
 
 Text::Text(pugi::xml_node node) : Text(node, node) {}
 

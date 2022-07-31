@@ -82,6 +82,51 @@ parse_element_tree<Text>(pugi::xml_node first,
   return std::make_tuple(element, last.next_sibling());
 }
 
+template <>
+std::tuple<Element *, pugi::xml_node>
+parse_element_tree<TableRow>(pugi::xml_node node,
+                             std::vector<std::unique_ptr<Element>> &store) {
+  if (!node) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
+  auto table_row_unique = std::make_unique<TableRow>(node);
+  auto table_row = table_row_unique.get();
+  store.push_back(std::move(table_row_unique));
+
+  for (auto cell_node : node.children("w:tc")) {
+    auto [cell, _] = parse_element_tree<TableCell>(cell_node, store);
+    table_row->init_append_child(cell);
+  }
+
+  return std::make_tuple(table_row, node.next_sibling());
+}
+
+template <>
+std::tuple<Element *, pugi::xml_node>
+parse_element_tree<Table>(pugi::xml_node node,
+                          std::vector<std::unique_ptr<Element>> &store) {
+  if (!node) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
+  auto table_unique = std::make_unique<Table>(node);
+  auto table = table_unique.get();
+  store.push_back(std::move(table_unique));
+
+  for (auto column_node : node.children("w:gridCol")) {
+    auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
+    table->init_append_column(column);
+  }
+
+  for (auto row_node : node.children("w:tr")) {
+    auto [row, _] = parse_element_tree<TableRow>(row_node, store);
+    table->init_append_row(row);
+  }
+
+  return std::make_tuple(table, node.next_sibling());
+}
+
 std::tuple<Element *, pugi::xml_node>
 parse_any_element_tree(pugi::xml_node node,
                        std::vector<std::unique_ptr<Element>> &store) {
@@ -98,7 +143,7 @@ parse_any_element_tree(pugi::xml_node node,
       {"w:r", parse_element_tree<Span>},
       {"w:bookmarkStart", parse_element_tree<Bookmark>},
       {"w:hyperlink", parse_element_tree<Link>},
-      {"w:tbl", parse_element_tree<TableElement>},
+      {"w:tbl", parse_element_tree<Table>},
       {"w:gridCol", parse_element_tree<TableColumn>},
       {"w:tr", parse_element_tree<TableRow>},
       {"w:tc", parse_element_tree<TableCell>},
