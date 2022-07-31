@@ -81,7 +81,7 @@ PageLayout TextRoot::page_layout(const abstract::Document *document) const {
   return {};
 }
 
-abstract::MasterPageElement *
+abstract::MasterPage *
 TextRoot::first_master_page(const abstract::Document *document) const {
   if (auto first_master_page = style_(document)->first_master_page()) {
     return first_master_page;
@@ -117,7 +117,7 @@ PageLayout Slide::page_layout(const abstract::Document *document) const {
   return {};
 }
 
-abstract::MasterPageElement *
+abstract::MasterPage *
 Slide::master_page(const abstract::Document *document) const {
   if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
     return style_(document)->master_page(master_page_name_attr.value());
@@ -204,7 +204,7 @@ PageLayout Page::page_layout(const abstract::Document *document) const {
   return {};
 }
 
-abstract::MasterPageElement *
+abstract::MasterPage *
 Page::master_page(const abstract::Document *document) const {
   if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
     return style_(document)->master_page(master_page_name_attr.value());
@@ -551,10 +551,9 @@ GraphicStyle CustomShape::style(const abstract::Document *document) const {
   return intermediate_style(document).graphic_style;
 }
 
-ImageElement::ImageElement(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
+Image::Image(pugi::xml_node node) : common::Element(node), Element(node) {}
 
-bool ImageElement::internal(const abstract::Document *document) const {
+bool Image::internal(const abstract::Document *document) const {
   auto doc = document_(document);
   if (!doc || !doc->files()) {
     return false;
@@ -566,8 +565,7 @@ bool ImageElement::internal(const abstract::Document *document) const {
   return false;
 }
 
-std::optional<odr::File>
-ImageElement::file(const abstract::Document *document) const {
+std::optional<odr::File> Image::file(const abstract::Document *document) const {
   auto doc = document_(document);
   if (!doc || !internal(document)) {
     return {};
@@ -575,7 +573,7 @@ ImageElement::file(const abstract::Document *document) const {
   return File(doc->files()->open(href(document)));
 }
 
-std::string ImageElement::href(const abstract::Document *) const {
+std::string Image::href(const abstract::Document *) const {
   return m_node.attribute("xlink:href").value();
 }
 

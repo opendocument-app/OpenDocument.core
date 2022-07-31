@@ -51,7 +51,7 @@ PageLayout Root::page_layout(const abstract::Document *document) const {
   return {}; // TODO
 }
 
-abstract::MasterPageElement *
+abstract::MasterPage *
 Root::first_master_page(const abstract::Document *document) const {
   return nullptr; // TODO
 }
@@ -312,10 +312,9 @@ pugi::xml_node Frame::inner_node_() const {
   return {};
 }
 
-ImageElement::ImageElement(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
+Image::Image(pugi::xml_node node) : common::Element(node), Element(node) {}
 
-bool ImageElement::internal(const abstract::Document *document) const {
+bool Image::internal(const abstract::Document *document) const {
   auto doc = document_(document);
   if (!doc || !doc->files()) {
     return false;
@@ -327,8 +326,7 @@ bool ImageElement::internal(const abstract::Document *document) const {
   return false;
 }
 
-std::optional<odr::File>
-ImageElement::file(const abstract::Document *document) const {
+std::optional<odr::File> Image::file(const abstract::Document *document) const {
   auto doc = document_(document);
   if (!doc || !internal(document)) {
     return {};
@@ -336,7 +334,7 @@ ImageElement::file(const abstract::Document *document) const {
   return File(doc->files()->open(href(document)));
 }
 
-std::string ImageElement::href(const abstract::Document *document) const {
+std::string Image::href(const abstract::Document *document) const {
   if (auto ref = m_node.child("pic:pic")
                      .child("pic:blipFill")
                      .child("a:blip")

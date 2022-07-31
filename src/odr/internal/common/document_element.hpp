@@ -35,7 +35,7 @@ public:
   Element *m_next_sibling{};
 };
 
-class Table : public virtual Element, public abstract::TableElement {
+class Table : public virtual Element, public abstract::Table {
 public:
   explicit Table(const pugi::xml_node node);
 

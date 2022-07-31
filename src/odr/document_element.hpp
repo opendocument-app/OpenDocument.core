@@ -9,28 +9,28 @@ namespace odr::internal::abstract {
 class Document;
 
 class Element;
-class TextRootElement;
-class SlideElement;
-class SheetElement;
-class PageElement;
-class MasterPageElement;
-class LineBreakElement;
-class ParagraphElement;
-class SpanElement;
-class TextElement;
-class LinkElement;
-class BookmarkElement;
-class ListItemElement;
-class TableElement;
-class TableColumnElement;
-class TableRowElement;
-class TableCellElement;
-class FrameElement;
-class RectElement;
-class LineElement;
-class CircleElement;
-class CustomShapeElement;
-class ImageElement;
+class TextRoot;
+class Slide;
+class Sheet;
+class Page;
+class MasterPage;
+class LineBreak;
+class Paragraph;
+class Span;
+class Text;
+class Link;
+class Bookmark;
+class ListItem;
+class Table;
+class TableColumn;
+class TableRow;
+class TableCell;
+class Frame;
+class Rect;
+class Line;
+class Circle;
+class CustomShape;
+class Image;
 } // namespace odr::internal::abstract
 
 namespace odr {
@@ -221,8 +221,7 @@ private:
   ElementIterator m_end;
 };
 
-class TextRoot final
-    : public TypedElement<internal::abstract::TextRootElement> {
+class TextRoot final : public TypedElement<internal::abstract::TextRoot> {
 public:
   using TypedElement::TypedElement;
 
@@ -231,7 +230,7 @@ public:
   [[nodiscard]] MasterPage first_master_page() const;
 };
 
-class Slide final : public TypedElement<internal::abstract::SlideElement> {
+class Slide final : public TypedElement<internal::abstract::Slide> {
 public:
   using TypedElement::TypedElement;
 
@@ -242,7 +241,7 @@ public:
   [[nodiscard]] MasterPage master_page() const;
 };
 
-class Sheet final : public TypedElement<internal::abstract::SheetElement> {
+class Sheet final : public TypedElement<internal::abstract::Sheet> {
 public:
   using TypedElement::TypedElement;
 
@@ -254,7 +253,7 @@ public:
   [[nodiscard]] ElementRange shapes() const;
 };
 
-class Page final : public TypedElement<internal::abstract::PageElement> {
+class Page final : public TypedElement<internal::abstract::Page> {
 public:
   using TypedElement::TypedElement;
 
@@ -265,24 +264,21 @@ public:
   [[nodiscard]] MasterPage master_page() const;
 };
 
-class MasterPage final
-    : public TypedElement<internal::abstract::MasterPageElement> {
+class MasterPage final : public TypedElement<internal::abstract::MasterPage> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] PageLayout page_layout() const;
 };
 
-class LineBreak final
-    : public TypedElement<internal::abstract::LineBreakElement> {
+class LineBreak final : public TypedElement<internal::abstract::LineBreak> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TextStyle style() const;
 };
 
-class Paragraph final
-    : public TypedElement<internal::abstract::ParagraphElement> {
+class Paragraph final : public TypedElement<internal::abstract::Paragraph> {
 public:
   using TypedElement::TypedElement;
 
@@ -290,14 +286,14 @@ public:
   [[nodiscard]] TextStyle text_style() const;
 };
 
-class Span final : public TypedElement<internal::abstract::SpanElement> {
+class Span final : public TypedElement<internal::abstract::Span> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TextStyle style() const;
 };
 
-class Text final : public TypedElement<internal::abstract::TextElement> {
+class Text final : public TypedElement<internal::abstract::Text> {
 public:
   using TypedElement::TypedElement;
 
@@ -307,30 +303,28 @@ public:
   [[nodiscard]] TextStyle style() const;
 };
 
-class Link final : public TypedElement<internal::abstract::LinkElement> {
+class Link final : public TypedElement<internal::abstract::Link> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] std::string href() const;
 };
 
-class Bookmark final
-    : public TypedElement<internal::abstract::BookmarkElement> {
+class Bookmark final : public TypedElement<internal::abstract::Bookmark> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] std::string name() const;
 };
 
-class ListItem final
-    : public TypedElement<internal::abstract::ListItemElement> {
+class ListItem final : public TypedElement<internal::abstract::ListItem> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TextStyle style() const;
 };
 
-class Table final : public TypedElement<internal::abstract::TableElement> {
+class Table final : public TypedElement<internal::abstract::Table> {
 public:
   using TypedElement::TypedElement;
 
@@ -342,24 +336,21 @@ public:
   [[nodiscard]] TableStyle style() const;
 };
 
-class TableColumn final
-    : public TypedElement<internal::abstract::TableColumnElement> {
+class TableColumn final : public TypedElement<internal::abstract::TableColumn> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TableColumnStyle style() const;
 };
 
-class TableRow final
-    : public TypedElement<internal::abstract::TableRowElement> {
+class TableRow final : public TypedElement<internal::abstract::TableRow> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TableRowStyle style() const;
 };
 
-class TableCell final
-    : public TypedElement<internal::abstract::TableCellElement> {
+class TableCell final : public TypedElement<internal::abstract::TableCell> {
 public:
   using TypedElement::TypedElement;
 
@@ -373,7 +364,7 @@ public:
   [[nodiscard]] TableCellStyle style() const;
 };
 
-class Frame final : public TypedElement<internal::abstract::FrameElement> {
+class Frame final : public TypedElement<internal::abstract::Frame> {
 public:
   using TypedElement::TypedElement;
 
@@ -387,7 +378,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class Rect final : public TypedElement<internal::abstract::RectElement> {
+class Rect final : public TypedElement<internal::abstract::Rect> {
 public:
   using TypedElement::TypedElement;
 
@@ -399,7 +390,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class Line final : public TypedElement<internal::abstract::LineElement> {
+class Line final : public TypedElement<internal::abstract::Line> {
 public:
   using TypedElement::TypedElement;
 
@@ -411,7 +402,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class Circle final : public TypedElement<internal::abstract::CircleElement> {
+class Circle final : public TypedElement<internal::abstract::Circle> {
 public:
   using TypedElement::TypedElement;
 
@@ -423,8 +414,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class CustomShape final
-    : public TypedElement<internal::abstract::CustomShapeElement> {
+class CustomShape final : public TypedElement<internal::abstract::CustomShape> {
 public:
   using TypedElement::TypedElement;
 
@@ -436,7 +426,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class Image final : public TypedElement<internal::abstract::ImageElement> {
+class Image final : public TypedElement<internal::abstract::Image> {
 public:
   using TypedElement::TypedElement;
 

@@ -37,7 +37,7 @@ public:
   [[nodiscard]] virtual Element *next_sibling(const Document *) const = 0;
 };
 
-class TextRootElement : public virtual Element {
+class TextRoot : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::root;
@@ -46,11 +46,11 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual MasterPageElement *
+  [[nodiscard]] virtual MasterPage *
   first_master_page(const Document *document) const = 0;
 };
 
-class SlideElement : public virtual Element {
+class Slide : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::slide;
@@ -59,13 +59,13 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual MasterPageElement *
+  [[nodiscard]] virtual MasterPage *
   master_page(const Document *document) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
 
-class SheetElement : public virtual Element {
+class Sheet : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::sheet;
@@ -92,7 +92,7 @@ public:
   [[nodiscard]] virtual TableStyle style(const Document *document) const = 0;
 };
 
-class PageElement : public virtual Element {
+class Page : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::page;
@@ -101,13 +101,13 @@ public:
   [[nodiscard]] virtual PageLayout
   page_layout(const Document *document) const = 0;
 
-  [[nodiscard]] virtual MasterPageElement *
+  [[nodiscard]] virtual MasterPage *
   master_page(const Document *document) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
 
-class MasterPageElement : public virtual Element {
+class MasterPage : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::master_page;
@@ -117,7 +117,7 @@ public:
   page_layout(const Document *document) const = 0;
 };
 
-class LineBreakElement : public virtual Element {
+class LineBreak : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::line_break;
@@ -126,7 +126,7 @@ public:
   [[nodiscard]] virtual TextStyle style(const Document *document) const = 0;
 };
 
-class ParagraphElement : public virtual Element {
+class Paragraph : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::paragraph;
@@ -138,7 +138,7 @@ public:
   text_style(const Document *document) const = 0;
 };
 
-class SpanElement : public virtual Element {
+class Span : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::span;
@@ -147,7 +147,7 @@ public:
   [[nodiscard]] virtual TextStyle style(const Document *document) const = 0;
 };
 
-class TextElement : public virtual Element {
+class Text : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::text;
@@ -160,7 +160,7 @@ public:
   [[nodiscard]] virtual TextStyle style(const Document *document) const = 0;
 };
 
-class LinkElement : public virtual Element {
+class Link : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::link;
@@ -169,7 +169,7 @@ public:
   [[nodiscard]] virtual std::string href(const Document *document) const = 0;
 };
 
-class BookmarkElement : public virtual Element {
+class Bookmark : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::bookmark;
@@ -178,7 +178,7 @@ public:
   [[nodiscard]] virtual std::string name(const Document *document) const = 0;
 };
 
-class ListItemElement : public virtual Element {
+class ListItem : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::list_item;
@@ -187,7 +187,7 @@ public:
   [[nodiscard]] virtual TextStyle style(const Document *document) const = 0;
 };
 
-class TableElement : public virtual Element {
+class Table : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::table;
@@ -203,7 +203,7 @@ public:
   [[nodiscard]] virtual TableStyle style(const Document *document) const = 0;
 };
 
-class TableColumnElement : public virtual Element {
+class TableColumn : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::table_column;
@@ -213,7 +213,7 @@ public:
   style(const Document *document) const = 0;
 };
 
-class TableRowElement : public virtual Element {
+class TableRow : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::table_row;
@@ -222,7 +222,7 @@ public:
   [[nodiscard]] virtual TableRowStyle style(const Document *document) const = 0;
 };
 
-class TableCellElement : public virtual Element {
+class TableCell : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::table_cell;
@@ -241,7 +241,7 @@ public:
   style(const Document *document) const = 0;
 };
 
-class FrameElement : public virtual Element {
+class Frame : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::frame;
@@ -263,7 +263,7 @@ public:
   [[nodiscard]] virtual GraphicStyle style(const Document *document) const = 0;
 };
 
-class RectElement : public virtual Element {
+class Rect : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::rect;
@@ -277,7 +277,7 @@ public:
   [[nodiscard]] virtual GraphicStyle style(const Document *document) const = 0;
 };
 
-class LineElement : public virtual Element {
+class Line : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::line;
@@ -291,7 +291,7 @@ public:
   [[nodiscard]] virtual GraphicStyle style(const Document *document) const = 0;
 };
 
-class CircleElement : public virtual Element {
+class Circle : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::circle;
@@ -305,7 +305,7 @@ public:
   [[nodiscard]] virtual GraphicStyle style(const Document *document) const = 0;
 };
 
-class CustomShapeElement : public virtual Element {
+class CustomShape : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::custom_shape;
@@ -321,7 +321,7 @@ public:
   [[nodiscard]] virtual GraphicStyle style(const Document *document) const = 0;
 };
 
-class ImageElement : public virtual Element {
+class Image : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
     return ElementType::image;

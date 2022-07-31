@@ -38,14 +38,14 @@ public:
   using DefaultElement::DefaultElement;
 };
 
-class Slide final : public Element, public abstract::SlideElement {
+class Slide final : public Element, public abstract::Slide {
 public:
   using Element::Element;
 
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final;
 
-  [[nodiscard]] abstract::MasterPageElement *
+  [[nodiscard]] abstract::MasterPage *
   master_page(const abstract::Document *document) const final;
 
   [[nodiscard]] std::string
@@ -55,7 +55,7 @@ private:
   pugi::xml_node slide_node_(const abstract::Document *document) const;
 };
 
-class Paragraph final : public Element, public abstract::ParagraphElement {
+class Paragraph final : public Element, public abstract::Paragraph {
 public:
   using Element::Element;
 
@@ -66,14 +66,14 @@ public:
   text_style(const abstract::Document *document) const final;
 };
 
-class Span final : public Element, public abstract::SpanElement {
+class Span final : public Element, public abstract::Span {
 public:
   using Element::Element;
 
   [[nodiscard]] TextStyle style(const abstract::Document *document) const final;
 };
 
-class Text final : public Element, public abstract::TextElement {
+class Text final : public Element, public abstract::Text {
 public:
   explicit Text(pugi::xml_node node);
   Text(pugi::xml_node first, pugi::xml_node last);
@@ -92,7 +92,7 @@ private:
   pugi::xml_node m_last;
 };
 
-class TableElement : public Element, public abstract::TableElement {
+class TableElement : public Element, public abstract::Table {
 public:
   using Element::Element;
 
@@ -109,7 +109,7 @@ public:
   style(const abstract::Document *document) const final;
 };
 
-class TableColumn final : public Element, public abstract::TableColumnElement {
+class TableColumn final : public Element, public abstract::TableColumn {
 public:
   using Element::Element;
 
@@ -117,7 +117,7 @@ public:
   style(const abstract::Document *document) const final;
 };
 
-class TableRow final : public Element, public abstract::TableRowElement {
+class TableRow final : public Element, public abstract::TableRow {
 public:
   using Element::Element;
 
@@ -125,7 +125,7 @@ public:
   style(const abstract::Document *document) const final;
 };
 
-class TableCell final : public Element, public abstract::TableCellElement {
+class TableCell final : public Element, public abstract::TableCell {
 public:
   using Element::Element;
 
@@ -146,7 +146,7 @@ public:
   style(const abstract::Document *document) const final;
 };
 
-class Frame final : public Element, public abstract::FrameElement {
+class Frame final : public Element, public abstract::Frame {
 public:
   using Element::Element;
 
@@ -169,7 +169,7 @@ public:
   style(const abstract::Document *document) const final;
 };
 
-class ImageElement final : public Element, public abstract::ImageElement {
+class ImageElement final : public Element, public abstract::Image {
 public:
   using Element::Element;
 

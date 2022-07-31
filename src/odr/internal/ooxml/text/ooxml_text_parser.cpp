@@ -153,7 +153,7 @@ parse_any_element_tree(pugi::xml_node node,
       {"wp:anchor", parse_element_tree<Group>},
       {"wp:inline", parse_element_tree<Group>},
       {"a:graphic", parse_element_tree<Group>},
-      {"a:graphicData", parse_element_tree<ImageElement>},
+      {"a:graphicData", parse_element_tree<Image>},
   };
 
   if (ListElement::is_list_item(node)) {

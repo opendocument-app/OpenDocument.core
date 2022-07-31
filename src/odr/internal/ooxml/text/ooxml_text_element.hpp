@@ -41,18 +41,18 @@ public:
   }
 };
 
-class Root final : public Element, public abstract::TextRootElement {
+class Root final : public Element, public abstract::TextRoot {
 public:
   explicit Root(pugi::xml_node node);
 
   [[nodiscard]] PageLayout
   page_layout(const abstract::Document *document) const final;
 
-  [[nodiscard]] abstract::MasterPageElement *
+  [[nodiscard]] abstract::MasterPage *
   first_master_page(const abstract::Document *document) const final;
 };
 
-class Paragraph : public Element, public abstract::ParagraphElement {
+class Paragraph : public Element, public abstract::Paragraph {
 public:
   explicit Paragraph(pugi::xml_node node);
 
@@ -66,7 +66,7 @@ public:
   text_style(const abstract::Document *document) const final;
 };
 
-class Span final : public Element, public abstract::SpanElement {
+class Span final : public Element, public abstract::Span {
 public:
   explicit Span(pugi::xml_node node);
 
@@ -76,7 +76,7 @@ public:
   [[nodiscard]] TextStyle style(const abstract::Document *document) const final;
 };
 
-class Text final : public Element, public abstract::TextElement {
+class Text final : public Element, public abstract::Text {
 public:
   static std::string text(const pugi::xml_node node);
 
@@ -93,7 +93,7 @@ private:
   pugi::xml_node m_last;
 };
 
-class Link final : public Element, public abstract::LinkElement {
+class Link final : public Element, public abstract::Link {
 public:
   explicit Link(pugi::xml_node node);
 
@@ -101,14 +101,14 @@ public:
   href(const abstract::Document *document) const final;
 };
 
-class Bookmark final : public Element, public abstract::BookmarkElement {
+class Bookmark final : public Element, public abstract::Bookmark {
 public:
   explicit Bookmark(pugi::xml_node node);
 
   [[nodiscard]] std::string name(const abstract::Document *) const final;
 };
 
-class ListElement final : public Element, public abstract::ListItemElement {
+class ListElement final : public Element, public abstract::ListItem {
 public:
   static bool is_list_item(const pugi::xml_node node);
   static std::int32_t level(const pugi::xml_node node);
@@ -143,14 +143,14 @@ public:
   style(const abstract::Document *document) const final;
 };
 
-class TableColumn final : public Element, public abstract::TableColumnElement {
+class TableColumn final : public Element, public abstract::TableColumn {
 public:
   explicit TableColumn(pugi::xml_node node);
 
   [[nodiscard]] TableColumnStyle style(const abstract::Document *) const final;
 };
 
-class TableRow final : public Element, public abstract::TableRowElement {
+class TableRow final : public Element, public abstract::TableRow {
 public:
   explicit TableRow(pugi::xml_node node);
 
@@ -158,7 +158,7 @@ public:
   style(const abstract::Document *document) const final;
 };
 
-class TableCell final : public Element, public abstract::TableCellElement {
+class TableCell final : public Element, public abstract::TableCell {
 public:
   explicit TableCell(pugi::xml_node node);
 
@@ -176,7 +176,7 @@ public:
   style(const abstract::Document *document) const final;
 };
 
-class Frame final : public Element, public abstract::FrameElement {
+class Frame final : public Element, public abstract::Frame {
 public:
   explicit Frame(pugi::xml_node node);
 
@@ -200,9 +200,9 @@ private:
   [[nodiscard]] pugi::xml_node inner_node_() const;
 };
 
-class ImageElement final : public Element, public abstract::ImageElement {
+class Image final : public Element, public abstract::Image {
 public:
-  explicit ImageElement(pugi::xml_node node);
+  explicit Image(pugi::xml_node node);
 
   [[nodiscard]] bool internal(const abstract::Document *document) const final;
 
