@@ -108,28 +108,18 @@ public:
   [[nodiscard]] std::string name(const abstract::Document *) const final;
 };
 
-class ListElement final : public Element, public abstract::ListItem {
+class List final : public Element {
 public:
-  static bool is_list_item(const pugi::xml_node node);
-  static std::int32_t level(const pugi::xml_node node);
-
-  explicit ListElement(pugi::xml_node node);
+  explicit List(pugi::xml_node node);
 
   [[nodiscard]] ElementType type(const abstract::Document *) const final;
+};
+
+class ListItem final : public Element, public abstract::ListItem {
+public:
+  explicit ListItem(pugi::xml_node node);
 
   [[nodiscard]] TextStyle style(const abstract::Document *document) const final;
-};
-
-class ListRoot final : public Element {
-public:
-  explicit ListRoot(pugi::xml_node node);
-
-  [[nodiscard]] ElementType type(const abstract::Document *) const final;
-};
-
-class ListItemParagraph final : public Paragraph {
-public:
-  explicit ListItemParagraph(pugi::xml_node node);
 };
 
 class Table final : public Element, public common::Table {

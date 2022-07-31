@@ -177,38 +177,18 @@ std::string Bookmark::name(const abstract::Document *) const {
   return m_node.attribute("w:name").value();
 }
 
-ListElement::ListElement(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
+List::List(pugi::xml_node node) : common::Element(node), Element(node) {}
 
-bool ListElement::is_list_item(const pugi::xml_node node) {
-  return node.child("w:pPr").child("w:numPr");
-}
-
-std::int32_t ListElement::level(const pugi::xml_node node) {
-  return node.child("w:pPr")
-      .child("w:numPr")
-      .child("w:ilvl")
-      .attribute("w:val")
-      .as_int(0);
-}
-
-ElementType ListElement::type(const abstract::Document *) const {
+ElementType List::type(const abstract::Document *) const {
   return ElementType::list;
 }
 
-TextStyle ListElement::style(const abstract::Document *document) const {
+ListItem::ListItem(pugi::xml_node node)
+    : common::Element(node), Element(node) {}
+
+TextStyle ListItem::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
-
-ListRoot::ListRoot(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
-
-ElementType ListRoot::type(const abstract::Document *) const {
-  return ElementType::list;
-}
-
-ListItemParagraph::ListItemParagraph(pugi::xml_node node)
-    : common::Element(node), Paragraph(node) {}
 
 Table::Table(pugi::xml_node node)
     : common::Element(node), Element(node), common::Table(node) {}

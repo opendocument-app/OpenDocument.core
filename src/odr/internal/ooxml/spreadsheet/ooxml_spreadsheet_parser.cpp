@@ -88,8 +88,6 @@ parse_any_element_tree(pugi::xml_node node,
   using Parser = std::function<std::tuple<Element *, pugi::xml_node>(
       pugi::xml_node node, std::vector<std::unique_ptr<Element>> & store)>;
 
-  using Group = DefaultElement<ElementType::group>;
-
   static std::unordered_map<std::string, Parser> parser_table{
       {"workbook", parse_element_tree<Root>},
       {"worksheet", parse_element_tree<Sheet>},

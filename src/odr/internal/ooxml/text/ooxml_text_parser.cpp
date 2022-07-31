@@ -46,7 +46,7 @@ parse_element_tree(pugi::xml_node node,
   return std::make_tuple(element, node.next_sibling());
 }
 
-bool is_text_node(const pugi::xml_node node) {
+bool is_text_node(pugi::xml_node node) {
   if (!node) {
     return false;
   }
@@ -82,6 +82,67 @@ parse_element_tree<Text>(pugi::xml_node first,
   return std::make_tuple(element, last.next_sibling());
 }
 
+bool is_list_item(pugi::xml_node node) {
+  return node.child("w:pPr").child("w:numPr");
+}
+
+std::int32_t list_level(pugi::xml_node node) {
+  return node.child("w:pPr")
+      .child("w:numPr")
+      .child("w:ilvl")
+      .attribute("w:val")
+      .as_int(0);
+}
+
+template <>
+std::tuple<Element *, pugi::xml_node>
+parse_element_tree<List>(pugi::xml_node first,
+                         std::vector<std::unique_ptr<Element>> &store) {
+  if (!first) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
+  auto list_unique = std::make_unique<List>(first);
+  auto list = list_unique.get();
+  store.push_back(std::move(list_unique));
+
+  pugi::xml_node node = first;
+  for (; is_list_item(node); node = node.next_sibling()) {
+    auto base = list;
+    auto level = list_level(node);
+
+    for (std::int32_t i = 0; i < level; ++i) {
+      /* TODO fix lists
+      auto list_item_unique = std::make_unique<ListItem>(node);
+      auto list_item = list_item_unique.get();
+      store.push_back(std::move(list_item_unique));
+
+      base->init_append_child(list_item);
+       */
+
+      auto nested_list_unique = std::make_unique<List>(node);
+      auto nested_list = nested_list_unique.get();
+      store.push_back(std::move(nested_list_unique));
+
+      // list_item->init_append_child(nested_list);
+
+      base->init_append_child(nested_list);
+      base = nested_list;
+    }
+
+    auto list_item_unique = std::make_unique<ListItem>(node);
+    auto list_item = list_item_unique.get();
+    store.push_back(std::move(list_item_unique));
+
+    base->init_append_child(list_item);
+
+    auto [element, _] = parse_element_tree<Paragraph>(node, store);
+    list_item->init_append_child(element);
+  }
+
+  return std::make_tuple(list, node);
+}
+
 template <>
 std::tuple<Element *, pugi::xml_node>
 parse_element_tree<TableRow>(pugi::xml_node node,
@@ -114,7 +175,7 @@ parse_element_tree<Table>(pugi::xml_node node,
   auto table = table_unique.get();
   store.push_back(std::move(table_unique));
 
-  for (auto column_node : node.children("w:gridCol")) {
+  for (auto column_node : node.child("w:tblGrid").children("w:gridCol")) {
     auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
     table->init_append_column(column);
   }
@@ -156,8 +217,8 @@ parse_any_element_tree(pugi::xml_node node,
       {"a:graphicData", parse_element_tree<Image>},
   };
 
-  if (ListElement::is_list_item(node)) {
-    return parse_element_tree<ListRoot>(node, store);
+  if (is_list_item(node)) {
+    return parse_element_tree<List>(node, store);
   }
 
   if (auto constructor_it = parser_table.find(node.name());
