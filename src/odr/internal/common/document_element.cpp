@@ -1,4 +1,5 @@
 #include <odr/internal/common/document_element.hpp>
+#include <stdexcept>
 
 namespace odr::internal::common {
 
