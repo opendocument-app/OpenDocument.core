@@ -99,7 +99,7 @@ DocumentPath DocumentPath::extract(Element element, Element root) {
   return DocumentPath(reverse);
 }
 
-Element DocumentPath::find(Element root, const DocumentPath &path) {
+Element DocumentPath::find(Element root, const DocumentPath & /*path*/) {
   return root; // TODO
 }
 

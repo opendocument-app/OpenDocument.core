@@ -135,7 +135,8 @@ std::string Sheet::name(const abstract::Document *) const {
   return m_node.attribute("table:name").value();
 }
 
-TableDimensions Sheet::dimensions(const abstract::Document *document) const {
+TableDimensions
+Sheet::dimensions(const abstract::Document * /*document*/) const {
   return {}; // TODO
 }
 
@@ -172,26 +173,27 @@ Sheet::content(const abstract::Document *,
   return result;
 }
 
-abstract::Element *Sheet::column(const abstract::Document *document,
-                                 std::uint32_t column) const {
+abstract::Element *Sheet::column(const abstract::Document * /*document*/,
+                                 std::uint32_t /*column*/) const {
   return nullptr; // TODO
 }
 
-abstract::Element *Sheet::row(const abstract::Document *document,
-                              std::uint32_t column) const {
+abstract::Element *Sheet::row(const abstract::Document * /*document*/,
+                              std::uint32_t /*column*/) const {
   return nullptr; // TODO
 }
 
-abstract::Element *Sheet::cell(const abstract::Document *document,
-                               std::uint32_t column) const {
+abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
+                               std::uint32_t /*column*/) const {
   return nullptr; // TODO
 }
 
-abstract::Element *Sheet::first_shape(const abstract::Document *) const {
+abstract::Element *
+Sheet::first_shape(const abstract::Document * /*document*/) const {
   return nullptr; // TODO
 }
 
-TableStyle Sheet::style(const abstract::Document *document) const {
+TableStyle Sheet::style(const abstract::Document * /*document*/) const {
   return {}; // TODO
 }
 

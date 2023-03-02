@@ -45,11 +45,11 @@ Element *Table::first_child(const abstract::Document *) const { return {}; }
 
 Element *Table::last_child(const abstract::Document *) const { return {}; }
 
-Element *Table::first_column(const abstract::Document *document) const {
+Element *Table::first_column(const abstract::Document * /*document*/) const {
   return m_first_column;
 }
 
-Element *Table::first_row(const abstract::Document *document) const {
+Element *Table::first_row(const abstract::Document * /*document*/) const {
   return m_first_child;
 }
 

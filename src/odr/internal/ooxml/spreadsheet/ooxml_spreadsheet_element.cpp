@@ -80,23 +80,23 @@ TableDimensions Sheet::content(const abstract::Document *document,
   return dimensions(document); // TODO
 }
 
-abstract::Element *Sheet::column(const abstract::Document *document,
-                                 std::uint32_t column) const {
+abstract::Element *Sheet::column(const abstract::Document * /*document*/,
+                                 std::uint32_t /*column*/) const {
   return nullptr; // TODO
 }
 
-abstract::Element *Sheet::row(const abstract::Document *document,
-                              std::uint32_t column) const {
+abstract::Element *Sheet::row(const abstract::Document * /*document*/,
+                              std::uint32_t /*column*/) const {
   return nullptr; // TODO
 }
 
-abstract::Element *Sheet::cell(const abstract::Document *document,
-                               std::uint32_t column) const {
+abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
+                               std::uint32_t /*column*/) const {
   return nullptr; // TODO
 }
 
 abstract::Element *
-Sheet::first_shape(const abstract::Document *document) const {
+Sheet::first_shape(const abstract::Document * /*document*/) const {
   return nullptr; // TODO
 }
 
@@ -127,7 +127,7 @@ TableColumnStyle TableColumn::style(const abstract::Document *) const {
   return m_node.attribute("min").as_uint() - 1;
 }
 
-TableRowStyle TableRow::style(const abstract::Document *) const {
+TableRowStyle TableRow::style(const abstract::Document * /*document*/) const {
   TableRowStyle result;
   if (auto height = m_node.attribute("ht")) {
     result.height = Measure(height.as_float(), DynamicUnit("pt"));
@@ -135,19 +135,21 @@ TableRowStyle TableRow::style(const abstract::Document *) const {
   return result;
 }
 
-abstract::Element *TableCell::column(const abstract::Document *) const {
+abstract::Element *
+TableCell::column(const abstract::Document * /*document*/) const {
   return nullptr; // TODO
 }
 
-abstract::Element *TableCell::row(const abstract::Document *) const {
+abstract::Element *
+TableCell::row(const abstract::Document * /*document*/) const {
   return nullptr; // TODO
 }
 
-bool TableCell::covered(const abstract::Document *) const {
+bool TableCell::covered(const abstract::Document * /*document*/) const {
   return false; // TODO
 }
 
-ValueType TableCell::value_type(const abstract::Document *) const {
+ValueType TableCell::value_type(const abstract::Document * /*document*/) const {
   return ValueType::string;
 }
 
@@ -159,7 +161,7 @@ TableCell::partial_style(const abstract::Document *document) const {
   return {};
 }
 
-TableDimensions TableCell::span(const abstract::Document *) const {
+TableDimensions TableCell::span(const abstract::Document * /*document*/) const {
   return {1, 1};
 }
 
@@ -176,7 +178,7 @@ Text::Text(pugi::xml_node node) : Text(node, node) {}
 Text::Text(pugi::xml_node first, pugi::xml_node last)
     : Element(first), m_last{last} {}
 
-std::string Text::content(const abstract::Document *) const {
+std::string Text::content(const abstract::Document * /*document*/) const {
   std::string result;
   for (auto node = m_node; node != m_last.next_sibling();
        node = node.next_sibling()) {
@@ -185,7 +187,8 @@ std::string Text::content(const abstract::Document *) const {
   return result;
 }
 
-void Text::set_content(const abstract::Document *, const std::string &) {
+void Text::set_content(const abstract::Document * /*document*/,
+                       const std::string & /*text*/) {
   // TODO
 }
 
@@ -203,11 +206,12 @@ std::string Text::text_(const pugi::xml_node node) {
   return "";
 }
 
-AnchorType Frame::anchor_type(const abstract::Document *) const {
+AnchorType Frame::anchor_type(const abstract::Document * /*document*/) const {
   return AnchorType::at_page;
 }
 
-std::optional<std::string> Frame::x(const abstract::Document *) const {
+std::optional<std::string>
+Frame::x(const abstract::Document * /*document*/) const {
   if (auto x = read_emus_attribute(m_node.child("xdr:pic")
                                        .child("xdr:spPr")
                                        .child("a:xfrm")
@@ -218,7 +222,8 @@ std::optional<std::string> Frame::x(const abstract::Document *) const {
   return {};
 }
 
-std::optional<std::string> Frame::y(const abstract::Document *) const {
+std::optional<std::string>
+Frame::y(const abstract::Document * /*document*/) const {
   if (auto y = read_emus_attribute(m_node.child("xdr:pic")
                                        .child("xdr:spPr")
                                        .child("a:xfrm")
@@ -229,7 +234,8 @@ std::optional<std::string> Frame::y(const abstract::Document *) const {
   return {};
 }
 
-std::optional<std::string> Frame::width(const abstract::Document *) const {
+std::optional<std::string>
+Frame::width(const abstract::Document * /*document*/) const {
   if (auto width = read_emus_attribute(m_node.child("xdr:pic")
                                            .child("xdr:spPr")
                                            .child("a:xfrm")
@@ -240,7 +246,8 @@ std::optional<std::string> Frame::width(const abstract::Document *) const {
   return {};
 }
 
-std::optional<std::string> Frame::height(const abstract::Document *) const {
+std::optional<std::string>
+Frame::height(const abstract::Document * /*document*/) const {
   if (auto height = read_emus_attribute(m_node.child("xdr:pic")
                                             .child("xdr:spPr")
                                             .child("a:xfrm")
@@ -251,11 +258,14 @@ std::optional<std::string> Frame::height(const abstract::Document *) const {
   return {};
 }
 
-std::optional<std::string> Frame::z_index(const abstract::Document *) const {
+std::optional<std::string>
+Frame::z_index(const abstract::Document * /*document*/) const {
   return {};
 }
 
-GraphicStyle Frame::style(const abstract::Document *) const { return {}; }
+GraphicStyle Frame::style(const abstract::Document * /*document*/) const {
+  return {};
+}
 
 bool ImageElement::internal(const abstract::Document *document) const {
   auto doc = document_(document);
@@ -278,7 +288,7 @@ ImageElement::file(const abstract::Document *document) const {
   return File(doc->files()->open(href(document)));
 }
 
-std::string ImageElement::href(const abstract::Document *) const {
+std::string ImageElement::href(const abstract::Document * /*document*/) const {
   if (auto ref = m_node.attribute("r:embed")) {
     /* TODO
     auto relations = document_relations_(document);

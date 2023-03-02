@@ -47,12 +47,12 @@ Element::document_relations_(const abstract::Document *document) {
 
 Root::Root(pugi::xml_node node) : common::Element(node), Element(node) {}
 
-PageLayout Root::page_layout(const abstract::Document *document) const {
+PageLayout Root::page_layout(const abstract::Document * /*document*/) const {
   return {}; // TODO
 }
 
 abstract::MasterPage *
-Root::first_master_page(const abstract::Document *document) const {
+Root::first_master_page(const abstract::Document * /*document*/) const {
   return nullptr; // TODO
 }
 
