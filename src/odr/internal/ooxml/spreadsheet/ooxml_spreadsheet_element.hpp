@@ -66,9 +66,10 @@ public:
   [[nodiscard]] abstract::Element *column(const abstract::Document *document,
                                           std::uint32_t column) const final;
   [[nodiscard]] abstract::Element *row(const abstract::Document *document,
-                                       std::uint32_t column) const final;
+                                       std::uint32_t row) const final;
   [[nodiscard]] abstract::Element *cell(const abstract::Document *document,
-                                        std::uint32_t column) const final;
+                                        std::uint32_t column,
+                                        std::uint32_t row) const final;
 
   [[nodiscard]] abstract::Element *
   first_shape(const abstract::Document *document) const final;

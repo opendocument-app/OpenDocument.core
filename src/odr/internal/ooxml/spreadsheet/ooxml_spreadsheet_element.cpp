@@ -86,12 +86,13 @@ abstract::Element *Sheet::column(const abstract::Document * /*document*/,
 }
 
 abstract::Element *Sheet::row(const abstract::Document * /*document*/,
-                              std::uint32_t /*column*/) const {
+                              std::uint32_t /*row*/) const {
   return nullptr; // TODO
 }
 
 abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
-                               std::uint32_t /*column*/) const {
+                               std::uint32_t /*column*/,
+                               std::uint32_t /*row*/) const {
   return nullptr; // TODO
 }
 

@@ -1,6 +1,7 @@
 #include <functional>
 #include <odr/internal/odf/odf_element.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
+#include <odr/internal/odf/odf_spreadsheet.hpp>
 #include <unordered_map>
 
 namespace odr::internal::odf {

@@ -128,6 +128,7 @@ add_library(odr
         "src/odr/internal/odf/odf_manifest.cpp"
         "src/odr/internal/odf/odf_meta.cpp"
         "src/odr/internal/odf/odf_parser.cpp"
+        "src/odr/internal/odf/odf_spreadsheet.cpp"
         "src/odr/internal/odf/odf_style.cpp"
 
         "src/odr/internal/oldms/oldms_file.cpp"

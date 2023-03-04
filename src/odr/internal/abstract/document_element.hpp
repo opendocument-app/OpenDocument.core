@@ -82,9 +82,10 @@ public:
   [[nodiscard]] virtual Element *column(const Document *document,
                                         std::uint32_t column) const = 0;
   [[nodiscard]] virtual Element *row(const Document *document,
-                                     std::uint32_t column) const = 0;
+                                     std::uint32_t row) const = 0;
   [[nodiscard]] virtual Element *cell(const Document *document,
-                                      std::uint32_t column) const = 0;
+                                      std::uint32_t column,
+                                      std::uint32_t row) const = 0;
 
   [[nodiscard]] virtual Element *
   first_shape(const Document *document) const = 0;

@@ -17,8 +17,8 @@ public:
                 std::uint32_t repeat = 1) noexcept;
 
   TablePosition position() const noexcept;
-  std::uint32_t row() const noexcept;
   std::uint32_t column() const noexcept;
+  std::uint32_t row() const noexcept;
 
 private:
   struct Range {
@@ -26,8 +26,8 @@ private:
     std::uint32_t end;
   };
 
-  std::uint32_t m_row{0};
   std::uint32_t m_col{0};
+  std::uint32_t m_row{0};
   std::list<std::list<Range>> m_sparse;
 
   void handle_rowspan_() noexcept;

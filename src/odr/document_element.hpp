@@ -247,10 +247,17 @@ public:
 
   [[nodiscard]] std::string name() const;
 
+  [[nodiscard]] TableDimensions dimensions() const;
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;
 
+  [[nodiscard]] TableColumn column(std::uint32_t column) const;
+  [[nodiscard]] TableRow row(std::uint32_t row) const;
+  [[nodiscard]] TableCell cell(std::uint32_t column, std::uint32_t row) const;
+
   [[nodiscard]] ElementRange shapes() const;
+
+  [[nodiscard]] TableStyle style() const;
 };
 
 class Page final : public TypedElement<internal::abstract::Page> {

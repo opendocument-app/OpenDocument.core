@@ -83,66 +83,48 @@ void html::translate_sheet(Element element, std::ostream &out,
   out << R"( cellpadding="0" border="0" cellspacing="0")";
   out << ">";
 
-  auto table = element.table();
   auto sheet = element.sheet();
-  auto dimensions = table.dimensions();
-  std::uint32_t end_row = dimensions.rows;
+  auto dimensions = sheet.dimensions();
   std::uint32_t end_column = dimensions.columns;
+  std::uint32_t end_row = dimensions.rows;
   if (config.spreadsheet_limit_by_content) {
     const auto content = sheet.content(config.spreadsheet_limit);
-    end_row = content.rows;
     end_column = content.columns;
+    end_row = content.rows;
   }
   if (config.spreadsheet_limit) {
-    end_row = std::min(end_row, config.spreadsheet_limit->rows);
     end_column = std::min(end_column, config.spreadsheet_limit->columns);
+    end_row = std::min(end_row, config.spreadsheet_limit->rows);
   }
 
   out << "<col>";
 
-  std::uint32_t column_index = 0;
-  for (auto column : table.columns()) {
-    if (column_index >= end_column) {
-      break;
-    }
-
-    auto table_column = column.table_column();
+  for (std::uint32_t column_index = 0; column_index < end_column;
+       ++column_index) {
+    auto table_column = sheet.column(column_index);
 
     out << "<col";
     out << optional_style_attribute(
         translate_table_column_style(table_column.style()));
     out << ">";
-
-    ++column_index;
   }
 
   {
     out << "<tr>";
     out << "<td style=\"width:30px;height:20px;\"/>";
 
-    column_index = 0;
-    for (auto _ : table.columns()) {
-      if (column_index >= end_column) {
-        break;
-      }
-
+    for (std::uint32_t column_index = 0; column_index < end_column;
+         ++column_index) {
       out << "<td style=\"text-align:center;vertical-align:middle;\">";
       out << common::TablePosition::to_column_string(column_index);
       out << "</td>";
-
-      ++column_index;
     }
 
     out << "</tr>";
   }
 
-  std::uint32_t row_index = 0;
-  for (auto row : table.rows()) {
-    if (row_index >= end_row) {
-      break;
-    }
-
-    auto table_row = row.table_row();
+  for (std::uint32_t row_index = 0; row_index < end_column; ++row_index) {
+    auto table_row = sheet.row(row_index);
     auto table_row_style = table_row.style();
 
     out << "<tr";
@@ -158,13 +140,9 @@ void html::translate_sheet(Element element, std::ostream &out,
     out << common::TablePosition::to_row_string(row_index);
     out << "</td>";
 
-    column_index = 0;
-    for (auto cell : table_row) {
-      if (column_index >= end_column) {
-        break;
-      }
-
-      auto table_cell = cell.table_cell();
+    for (std::uint32_t column_index = 0; column_index < end_column;
+         ++column_index) {
+      auto table_cell = sheet.cell(column_index, row_index);
 
       if (!table_cell.covered()) {
         auto cell_style = table_cell.style();
@@ -190,13 +168,9 @@ void html::translate_sheet(Element element, std::ostream &out,
         translate_children(table_cell, out, config);
         out << "</td>";
       }
-
-      ++column_index;
     }
 
     out << "</tr>";
-
-    ++row_index;
   }
 
   out << "</table>";

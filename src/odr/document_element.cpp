@@ -168,14 +168,39 @@ std::string Sheet::name() const {
   return m_element ? m_element->name(m_document) : "";
 }
 
+TableDimensions Sheet::dimensions() const {
+  return m_element ? m_element->dimensions(m_document) : TableDimensions();
+}
+
 TableDimensions Sheet::content(std::optional<TableDimensions> range) const {
   return m_element ? m_element->content(m_document, range) : TableDimensions();
+}
+
+TableColumn Sheet::column(std::uint32_t column) const {
+  return m_element
+             ? TableColumn(m_document, m_element->column(m_document, column))
+             : TableColumn();
+}
+
+TableRow Sheet::row(std::uint32_t row) const {
+  return m_element ? TableRow(m_document, m_element->row(m_document, row))
+                   : TableRow();
+}
+
+TableCell Sheet::cell(std::uint32_t column, std::uint32_t row) const {
+  return m_element
+             ? TableCell(m_document, m_element->cell(m_document, column, row))
+             : TableCell();
 }
 
 ElementRange Sheet::shapes() const {
   return m_element ? ElementRange(ElementIterator(
                          m_document, m_element->first_shape(m_document)))
                    : ElementRange();
+}
+
+TableStyle Sheet::style() const {
+  return m_element ? m_element->style(m_document) : TableStyle();
 }
 
 std::string Page::name() const {

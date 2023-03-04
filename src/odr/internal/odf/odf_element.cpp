@@ -92,9 +92,6 @@ TextRoot::first_master_page(const abstract::Document *document) const {
 PresentationRoot::PresentationRoot(pugi::xml_node node)
     : common::Element(node), Root(node) {}
 
-SpreadsheetRoot::SpreadsheetRoot(pugi::xml_node node)
-    : common::Element(node), Root(node) {}
-
 DrawingRoot::DrawingRoot(pugi::xml_node node)
     : common::Element(node), Root(node) {}
 
@@ -127,74 +124,6 @@ Slide::master_page(const abstract::Document *document) const {
 
 std::string Slide::name(const abstract::Document *) const {
   return m_node.attribute("draw:name").value();
-}
-
-Sheet::Sheet(pugi::xml_node node) : common::Element(node), Element(node) {}
-
-std::string Sheet::name(const abstract::Document *) const {
-  return m_node.attribute("table:name").value();
-}
-
-TableDimensions
-Sheet::dimensions(const abstract::Document * /*document*/) const {
-  return {}; // TODO
-}
-
-TableDimensions
-Sheet::content(const abstract::Document *,
-               const std::optional<TableDimensions> range) const {
-  TableDimensions result;
-
-  common::TableCursor cursor;
-  for (auto row : m_node.children("table:table-row")) {
-    const auto rows_repeated =
-        row.attribute("table:number-rows-repeated").as_uint(1);
-    cursor.add_row(rows_repeated);
-
-    for (auto cell : row.children("table:table-cell")) {
-      const auto columns_repeated =
-          cell.attribute("table:number-columns-repeated").as_uint(1);
-      const auto colspan =
-          cell.attribute("table:number-columns-spanned").as_uint(1);
-      const auto rowspan =
-          cell.attribute("table:number-rows-spanned").as_uint(1);
-      cursor.add_cell(colspan, rowspan, columns_repeated);
-
-      const auto new_rows = cursor.row();
-      const auto new_cols = std::max(result.columns, cursor.column());
-      if (cell.first_child() &&
-          (range && (new_rows < range->rows) && (new_cols < range->columns))) {
-        result.rows = new_rows;
-        result.columns = new_cols;
-      }
-    }
-  }
-
-  return result;
-}
-
-abstract::Element *Sheet::column(const abstract::Document * /*document*/,
-                                 std::uint32_t /*column*/) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *Sheet::row(const abstract::Document * /*document*/,
-                              std::uint32_t /*column*/) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
-                               std::uint32_t /*column*/) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *
-Sheet::first_shape(const abstract::Document * /*document*/) const {
-  return nullptr; // TODO
-}
-
-TableStyle Sheet::style(const abstract::Document * /*document*/) const {
-  return {}; // TODO
 }
 
 Page::Page(pugi::xml_node node) : common::Element(node), Element(node) {}
@@ -336,7 +265,8 @@ TableStyle Table::style(const abstract::Document *document) const {
   return partial_style(document).table_style;
 }
 
-TableDimensions Table::dimensions(const abstract::Document *) const {
+TableDimensions
+Table::dimensions(const abstract::Document * /*document*/) const {
   TableDimensions result;
   common::TableCursor cursor;
 
