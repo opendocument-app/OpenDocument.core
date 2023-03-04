@@ -53,6 +53,13 @@ public:
   Element *m_last_column{};
 };
 
+class Sheet : public virtual Element, public abstract::Sheet {
+public:
+  explicit Sheet(const pugi::xml_node node);
+
+  void init_child(Element *element);
+};
+
 } // namespace odr::internal::common
 
 #endif // ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H

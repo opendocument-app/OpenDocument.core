@@ -84,23 +84,6 @@ void odf::parse_element_children(DrawingRoot *element, pugi::xml_node node,
   }
 }
 
-template <typename Derived>
-std::tuple<odf::Element *, pugi::xml_node>
-odf::parse_element_tree(pugi::xml_node node,
-                        std::vector<std::unique_ptr<Element>> &store) {
-  if (!node) {
-    return std::make_tuple(nullptr, pugi::xml_node());
-  }
-
-  auto element_unique = std::make_unique<Derived>(node);
-  auto element = element_unique.get();
-  store.push_back(std::move(element_unique));
-
-  parse_element_children(element, node, store);
-
-  return std::make_tuple(element, node.next_sibling());
-}
-
 template <>
 std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Text>(
     pugi::xml_node first, std::vector<std::unique_ptr<Element>> &store) {
@@ -117,6 +100,38 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Text>(
   store.push_back(std::move(element_unique));
 
   return std::make_tuple(element, last.next_sibling());
+}
+
+template <>
+std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Table>(
+    pugi::xml_node node, std::vector<std::unique_ptr<Element>> &store) {
+  if (!node) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
+  auto table_unique = std::make_unique<Table>(node);
+  auto table = table_unique.get();
+  store.push_back(std::move(table_unique));
+
+  // TODO inflate table first?
+
+  for (auto column_node : node.children("table:table-column")) {
+    for (std::uint32_t i = 0;
+         i < column_node.attribute("table:number-columns-repeated").as_uint(1);
+         ++i) {
+      // TODO mark as repeated
+      auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
+      table->init_append_column(column);
+    }
+  }
+
+  for (auto row_node : node.children("table:table-row")) {
+    // TODO log warning if repeated
+    auto [row, _] = parse_element_tree<TableRow>(row_node, store);
+    table->init_append_row(row);
+  }
+
+  return std::make_tuple(table, node.next_sibling());
 }
 
 template <>
@@ -138,36 +153,6 @@ odf::parse_element_tree<odf::TableRow>(
   }
 
   return std::make_tuple(table_row, node.next_sibling());
-}
-
-template <>
-std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Table>(
-    pugi::xml_node node, std::vector<std::unique_ptr<Element>> &store) {
-  if (!node) {
-    return std::make_tuple(nullptr, pugi::xml_node());
-  }
-
-  auto table_unique = std::make_unique<Table>(node);
-  auto table = table_unique.get();
-  store.push_back(std::move(table_unique));
-
-  for (auto column_node : node.children("table:table-column")) {
-    for (std::uint32_t i = 0;
-         i < column_node.attribute("table:number-columns-repeated").as_uint(1);
-         ++i) {
-      // TODO mark as repeated
-      auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
-      table->init_append_column(column);
-    }
-  }
-
-  for (auto row_node : node.children("table:table-row")) {
-    // TODO log warning if repeated
-    auto [row, _] = parse_element_tree<TableRow>(row_node, store);
-    table->init_append_row(row);
-  }
-
-  return std::make_tuple(table, node.next_sibling());
 }
 
 std::tuple<odf::Element *, pugi::xml_node>

@@ -53,7 +53,7 @@ Element *Table::first_row(const abstract::Document * /*document*/) const {
   return m_first_child;
 }
 
-void Table::init_append_column(odr::internal::common::Element *element) {
+void Table::init_append_column(Element *element) {
   element->m_previous_sibling = m_last_column;
   element->m_parent = this;
   if (m_last_column == nullptr) {
@@ -64,8 +64,12 @@ void Table::init_append_column(odr::internal::common::Element *element) {
   m_last_column = element;
 }
 
-void Table::init_append_row(odr::internal::common::Element *element) {
+void Table::init_append_row(Element *element) {
   Element::init_append_child(element);
 }
+
+Sheet::Sheet(pugi::xml_node node) : Element(node) {}
+
+void Sheet::init_child(Element *element) { element->m_parent = this; }
 
 } // namespace odr::internal::common

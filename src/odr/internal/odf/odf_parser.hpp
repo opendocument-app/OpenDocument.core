@@ -24,7 +24,19 @@ parse_tree(pugi::xml_node node);
 template <typename Derived>
 std::tuple<Element *, pugi::xml_node>
 parse_element_tree(pugi::xml_node node,
-                   std::vector<std::unique_ptr<Element>> &store);
+                   std::vector<std::unique_ptr<Element>> &store) {
+  if (!node) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
+  auto element_unique = std::make_unique<Derived>(node);
+  auto element = element_unique.get();
+  store.push_back(std::move(element_unique));
+
+  parse_element_children(element, node, store);
+
+  return std::make_tuple(element, node.next_sibling());
+}
 template <>
 std::tuple<Element *, pugi::xml_node>
 parse_element_tree<Text>(pugi::xml_node first,
