@@ -52,8 +52,8 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
       {"application/vnd.sun.xml.draw.template",
        FileType::opendocument_graphics},
   };
-  return util::map::lookup_map_default(MIME_TYPES, mime_type, file_type,
-                                       FileType::unknown);
+  return util::map::lookup_default(MIME_TYPES, mime_type, file_type,
+                                   FileType::unknown);
 }
 
 } // namespace

@@ -51,9 +51,12 @@ public:
   [[nodiscard]] TableStyle
   style(const abstract::Document *document) const final;
 
-  void init_column(std::uint32_t column, Element *element);
-  void init_row(std::uint32_t row, Element *element);
-  void init_cell(std::uint32_t column, std::uint32_t row, Element *element);
+  void init_column(std::uint32_t column, std::uint32_t repeated,
+                   Element *element);
+  void init_row(std::uint32_t row, std::uint32_t repeated, Element *element);
+  void init_cell(std::uint32_t column, std::uint32_t row,
+                 std::uint32_t columns_repeated, std::uint32_t rows_repeated,
+                 Element *element);
   void init_dimensions(TableDimensions dimensions);
 
 private:
@@ -69,6 +72,7 @@ private:
 
   Element *m_first_shape{nullptr};
 };
+
 template <>
 std::tuple<odf::Element *, pugi::xml_node>
 parse_element_tree<Sheet>(pugi::xml_node node,

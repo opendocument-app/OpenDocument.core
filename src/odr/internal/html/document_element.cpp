@@ -123,7 +123,7 @@ void html::translate_sheet(Element element, std::ostream &out,
     out << "</tr>";
   }
 
-  for (std::uint32_t row_index = 0; row_index < end_column; ++row_index) {
+  for (std::uint32_t row_index = 0; row_index < end_row; ++row_index) {
     auto table_row = sheet.row(row_index);
     auto table_row_style = table_row.style();
 

@@ -16,8 +16,8 @@ bool lookup_checksum_type(const std::string &checksum,
       {"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0#sha256-1k",
        ChecksumType::SHA256_1K},
   };
-  return util::map::lookup_map_default(CHECKSUM_TYPES, checksum, checksum_type,
-                                       ChecksumType::UNKNOWN);
+  return util::map::lookup_default(CHECKSUM_TYPES, checksum, checksum_type,
+                                   ChecksumType::UNKNOWN);
 }
 
 bool lookup_algorithm_types(const std::string &algorithm,
@@ -29,8 +29,8 @@ bool lookup_algorithm_types(const std::string &algorithm,
           {"", AlgorithmType::TRIPLE_DES_CBC},
           {"Blowfish CFB", AlgorithmType::BLOWFISH_CFB},
       };
-  return util::map::lookup_map_default(ALGORITHM_TYPES, algorithm,
-                                       algorithm_type, AlgorithmType::UNKNOWN);
+  return util::map::lookup_default(ALGORITHM_TYPES, algorithm, algorithm_type,
+                                   AlgorithmType::UNKNOWN);
 }
 
 bool lookup_key_derivation_types(const std::string &key_derivation,
@@ -39,9 +39,9 @@ bool lookup_key_derivation_types(const std::string &key_derivation,
       KEY_DERIVATION_TYPES = {
           {"PBKDF2", KeyDerivationType::PBKDF2},
       };
-  return util::map::lookup_map_default(KEY_DERIVATION_TYPES, key_derivation,
-                                       key_derivation_type,
-                                       KeyDerivationType::UNKNOWN);
+  return util::map::lookup_default(KEY_DERIVATION_TYPES, key_derivation,
+                                   key_derivation_type,
+                                   KeyDerivationType::UNKNOWN);
 }
 
 bool lookup_start_key_types(const std::string &checksum,
@@ -50,8 +50,8 @@ bool lookup_start_key_types(const std::string &checksum,
       {"SHA1", ChecksumType::SHA1},
       {"http://www.w3.org/2000/09/xmldsig#sha256", ChecksumType::SHA256},
   };
-  return util::map::lookup_map_default(STARTKEY_TYPES, checksum, checksumType,
-                                       ChecksumType::UNKNOWN);
+  return util::map::lookup_default(STARTKEY_TYPES, checksum, checksumType,
+                                   ChecksumType::UNKNOWN);
 }
 } // namespace
 

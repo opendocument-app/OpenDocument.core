@@ -1,5 +1,6 @@
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_spreadsheet.hpp>
+#include <odr/internal/util/map_util.hpp>
 #include <stdexcept>
 
 namespace odr::internal::odf {
@@ -115,7 +116,8 @@ Sheet::content(const abstract::Document * /*document*/,
 
 abstract::Element *Sheet::column(const abstract::Document * /*document*/,
                                  std::uint32_t column) const {
-  if (auto it = m_columns.lower_bound(column); it != std::end(m_columns)) {
+  if (auto it = util::map::lookup_greater_or_equals(m_columns, column);
+      it != std::end(m_columns)) {
     return it->second;
   }
   throw std::runtime_error("column not found");
@@ -123,7 +125,8 @@ abstract::Element *Sheet::column(const abstract::Document * /*document*/,
 
 abstract::Element *Sheet::row(const abstract::Document * /*document*/,
                               std::uint32_t row) const {
-  if (auto it = m_rows.lower_bound(row); it != std::end(m_rows)) {
+  if (auto it = util::map::lookup_greater_or_equals(m_rows, row);
+      it != std::end(m_rows)) {
     return it->second.element;
   }
   throw std::runtime_error("row not found");
@@ -131,9 +134,10 @@ abstract::Element *Sheet::row(const abstract::Document * /*document*/,
 
 abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
                                std::uint32_t column, std::uint32_t row) const {
-  if (auto row_it = m_rows.lower_bound(row); row_it != std::end(m_rows)) {
+  if (auto row_it = util::map::lookup_greater_or_equals(m_rows, row);
+      row_it != std::end(m_rows)) {
     auto &cells = row_it->second.cells;
-    if (auto column_it = cells.lower_bound(column);
+    if (auto column_it = util::map::lookup_greater_or_equals(cells, column);
         column_it != std::end(cells)) {
       return column_it->second;
     }
@@ -144,30 +148,33 @@ abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
 
 abstract::Element *
 Sheet::first_shape(const abstract::Document * /*document*/) const {
-  return {}; // TODO
+  return m_first_shape;
 }
 
 TableStyle Sheet::style(const abstract::Document * /*document*/) const {
   return {}; // TODO
 }
 
-void Sheet::init_column(std::uint32_t column, Element *element) {
+void Sheet::init_column(std::uint32_t column, std::uint32_t repeated,
+                        Element *element) {
   init_child(element);
 
-  m_columns[column] = element;
+  m_columns[column + repeated] = element;
 }
 
-void Sheet::init_row(std::uint32_t row, Element *element) {
+void Sheet::init_row(std::uint32_t row, std::uint32_t repeated,
+                     Element *element) {
   init_child(element);
 
-  m_rows[row].element = element;
+  m_rows[row + repeated].element = element;
 }
 
 void Sheet::init_cell(std::uint32_t column, std::uint32_t row,
-                      Element *element) {
+                      std::uint32_t columns_repeated,
+                      std::uint32_t rows_repeated, Element *element) {
   init_child(element);
 
-  m_rows[row].cells[column] = element;
+  m_rows[row + rows_repeated].cells[column + columns_repeated] = element;
 }
 
 void Sheet::init_dimensions(TableDimensions dimensions) {
@@ -198,7 +205,7 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
 
     auto [column, _] = parse_element_tree<SheetColumn>(column_node, store);
 
-    sheet->init_column(cursor.column(), column);
+    sheet->init_column(cursor.column(), columns_repeated, column);
 
     cursor.add_column(columns_repeated);
   }
@@ -211,7 +218,7 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
 
     auto [row, _] = parse_element_tree<SheetRow>(row_node, store);
 
-    sheet->init_row(cursor.row(), row);
+    sheet->init_row(cursor.row(), rows_repeated, row);
 
     for (auto cell_node : row_node.children("table:table-cell")) {
       const auto columns_repeated =
@@ -223,7 +230,8 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
 
       auto [cell, _] = parse_element_tree<SheetCell>(cell_node, store);
 
-      sheet->init_cell(cursor.column(), cursor.row(), cell);
+      sheet->init_cell(cursor.column(), cursor.row(), columns_repeated,
+                       rows_repeated, cell);
 
       cursor.add_cell(colspan, rowspan, columns_repeated);
     }
@@ -232,6 +240,8 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
   }
 
   dimensions.rows = cursor.row();
+
+  sheet->init_dimensions(dimensions);
 
   // TODO shapes
 
