@@ -15,7 +15,7 @@ jobs:
           python-version: 3.8
       - name: install python dependencies
         run: |
-          pip install --upgrade pip conan
+          pip install --upgrade pip conan==1.*
 
       - name: conan repo and user setup
         run: |
