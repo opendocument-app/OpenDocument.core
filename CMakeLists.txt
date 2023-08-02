@@ -34,10 +34,10 @@ if (CCACHE_FOUND)
 endif (CCACHE_FOUND)
 
 if (NOT DEFINED CONAN_EXPORTED)
-    include("cmake/conan.cmake")
+    include(cmake/conan.cmake)
     conan_cmake_configure(GENERATORS cmake)
     conan_cmake_autodetect(settings)
-    conan_cmake_install(PATH_OR_REFERENCE ".."
+    conan_cmake_install(PATH_OR_REFERENCE ..
             BUILD missing
             SETTINGS ${settings}
             SETTINGS compiler.cppstd=17
@@ -45,7 +45,7 @@ if (NOT DEFINED CONAN_EXPORTED)
             ENV CXX=${CMAKE_CXX_COMPILER})
     #include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
     #conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
-    include("${CMAKE_BINARY_DIR}/conan_paths.cmake")
+    include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
 endif ()
 
 find_package(pugixml REQUIRED)
@@ -55,12 +55,12 @@ find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 
-configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
+configure_file(src/internal/project_info.cpp.in src/internal/project_info.cpp)
 
-set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
-set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp")
-if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
-    include("cmake/git_watcher.cmake")
+set(PRE_CONFIGURE_FILE "src/internal/git_info.cpp.in")
+set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp")
+if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
+    include(cmake/git_watcher.cmake)
 else ()
     if (NOT DEFINED GIT_HEAD_SHA1)
         set(GIT_HEAD_SHA1 "unknown")
@@ -72,106 +72,108 @@ else ()
 endif ()
 
 add_library(odr
-        "src/odr/document.cpp"
-        "src/odr/document_cursor.cpp"
-        "src/odr/document_element.cpp"
-        "src/odr/exceptions.cpp"
-        "src/odr/file.cpp"
-        "src/odr/html.cpp"
-        "src/odr/open_document_reader.cpp"
-        "src/odr/quantity.cpp"
-        "src/odr/style.cpp"
+        src/document.cpp
+        src/document_cursor.cpp
+        src/document_element.cpp
+        src/exceptions.cpp
+        src/file.cpp
+        src/html.cpp
+        src/open_document_reader.cpp
+        src/quantity.cpp
+        src/style.cpp
 
-        "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp"
-        "src/odr/internal/magic.cpp"
-        "src/odr/internal/open_strategy.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/project_info.cpp"
-        "src/odr/internal/resource.cpp"
-        "src/odr/internal/resource_data.cpp"
+        ${CMAKE_CURRENT_BINARY_DIR}/src/internal/git_info.cpp
+        src/internal/magic.cpp
+        src/internal/open_strategy.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/src/internal/project_info.cpp
+        src/internal/resource.cpp
+        src/internal/resource_data.cpp
 
-        "src/odr/internal/cfb/cfb_archive.cpp"
-        "src/odr/internal/cfb/cfb_impl.cpp"
-        "src/odr/internal/cfb/cfb_util.cpp"
+        src/internal/cfb/cfb_archive.cpp
+        src/internal/cfb/cfb_impl.cpp
+        src/internal/cfb/cfb_util.cpp
 
-        "src/odr/internal/common/document_cursor.cpp"
-        "src/odr/internal/common/document_path.cpp"
-        "src/odr/internal/common/file.cpp"
-        "src/odr/internal/common/filesystem.cpp"
-        "src/odr/internal/common/image_file.cpp"
-        "src/odr/internal/common/path.cpp"
-        "src/odr/internal/common/random.cpp"
-        "src/odr/internal/common/style.cpp"
-        "src/odr/internal/common/table_cursor.cpp"
-        "src/odr/internal/common/table_position.cpp"
-        "src/odr/internal/common/table_range.cpp"
-        "src/odr/internal/common/temporary_file.cpp"
+        src/internal/common/document_cursor.cpp
+        src/internal/common/document_path.cpp
+        src/internal/common/file.cpp
+        src/internal/common/filesystem.cpp
+        src/internal/common/image_file.cpp
+        src/internal/common/path.cpp
+        src/internal/common/random.cpp
+        src/internal/common/style.cpp
+        src/internal/common/table_cursor.cpp
+        src/internal/common/table_position.cpp
+        src/internal/common/table_range.cpp
+        src/internal/common/temporary_file.cpp
 
-        "src/odr/internal/crypto/crypto_util.cpp"
+        src/internal/crypto/crypto_util.cpp
 
-        "src/odr/internal/csv/csv_file.cpp"
-        "src/odr/internal/csv/csv_util.cpp"
+        src/internal/csv/csv_file.cpp
+        src/internal/csv/csv_util.cpp
 
-        "src/odr/internal/html/common.cpp"
-        "src/odr/internal/html/css_writer.cpp"
-        "src/odr/internal/html/document.cpp"
-        "src/odr/internal/html/document_style.cpp"
-        "src/odr/internal/html/document_element.cpp"
-        "src/odr/internal/html/image_file.cpp"
-        "src/odr/internal/html/text_file.cpp"
+        src/internal/html/common.cpp
+        src/internal/html/css_writer.cpp
+        src/internal/html/document.cpp
+        src/internal/html/document_style.cpp
+        src/internal/html/document_element.cpp
+        src/internal/html/image_file.cpp
+        src/internal/html/text_file.cpp
 
-        "src/odr/internal/json/json_file.cpp"
-        "src/odr/internal/json/json_util.cpp"
+        src/internal/json/json_file.cpp
+        src/internal/json/json_util.cpp
 
-        "src/odr/internal/odf/odf_crypto.cpp"
-        "src/odr/internal/odf/odf_cursor.cpp"
-        "src/odr/internal/odf/odf_document.cpp"
-        "src/odr/internal/odf/odf_element.cpp"
-        "src/odr/internal/odf/odf_file.cpp"
-        "src/odr/internal/odf/odf_manifest.cpp"
-        "src/odr/internal/odf/odf_meta.cpp"
-        "src/odr/internal/odf/odf_style.cpp"
+        src/internal/odf/odf_crypto.cpp
+        src/internal/odf/odf_cursor.cpp
+        src/internal/odf/odf_document.cpp
+        src/internal/odf/odf_element.cpp
+        src/internal/odf/odf_file.cpp
+        src/internal/odf/odf_manifest.cpp
+        src/internal/odf/odf_meta.cpp
+        src/internal/odf/odf_style.cpp
 
-        "src/odr/internal/oldms/oldms_file.cpp"
+        src/internal/oldms/oldms_file.cpp
 
-        "src/odr/internal/ooxml/presentation/ooxml_presentation_cursor.cpp"
-        "src/odr/internal/ooxml/presentation/ooxml_presentation_document.cpp"
-        "src/odr/internal/ooxml/presentation/ooxml_presentation_element.cpp"
-        "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.cpp"
-        "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.cpp"
-        "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.cpp"
-        "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.cpp"
-        "src/odr/internal/ooxml/text/ooxml_text_cursor.cpp"
-        "src/odr/internal/ooxml/text/ooxml_text_document.cpp"
-        "src/odr/internal/ooxml/text/ooxml_text_element.cpp"
-        "src/odr/internal/ooxml/text/ooxml_text_style.cpp"
-        "src/odr/internal/ooxml/ooxml_crypto.cpp"
-        "src/odr/internal/ooxml/ooxml_file.cpp"
-        "src/odr/internal/ooxml/ooxml_meta.cpp"
-        "src/odr/internal/ooxml/ooxml_util.cpp"
+        src/internal/ooxml/presentation/ooxml_presentation_cursor.cpp
+        src/internal/ooxml/presentation/ooxml_presentation_document.cpp
+        src/internal/ooxml/presentation/ooxml_presentation_element.cpp
+        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.cpp
+        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.cpp
+        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.cpp
+        src/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.cpp
+        src/internal/ooxml/text/ooxml_text_cursor.cpp
+        src/internal/ooxml/text/ooxml_text_document.cpp
+        src/internal/ooxml/text/ooxml_text_element.cpp
+        src/internal/ooxml/text/ooxml_text_style.cpp
+        src/internal/ooxml/ooxml_crypto.cpp
+        src/internal/ooxml/ooxml_file.cpp
+        src/internal/ooxml/ooxml_meta.cpp
+        src/internal/ooxml/ooxml_util.cpp
 
-        "src/odr/internal/svm/svm_file.cpp"
-        "src/odr/internal/svm/svm_format.cpp"
-        "src/odr/internal/svm/svm_to_svg.cpp"
+        src/internal/svm/svm_file.cpp
+        src/internal/svm/svm_format.cpp
+        src/internal/svm/svm_to_svg.cpp
 
-        "src/odr/internal/text/text_file.cpp"
-        "src/odr/internal/text/text_util.cpp"
+        src/internal/text/text_file.cpp
+        src/internal/text/text_util.cpp
 
-        "src/odr/internal/util/file_util.cpp"
-        "src/odr/internal/util/hash_util.cpp"
-        "src/odr/internal/util/odr_meta_util.cpp"
-        "src/odr/internal/util/stream_util.cpp"
-        "src/odr/internal/util/string_util.cpp"
-        "src/odr/internal/util/xml_util.cpp"
+        src/internal/util/file_util.cpp
+        src/internal/util/hash_util.cpp
+        src/internal/util/odr_meta_util.cpp
+        src/internal/util/stream_util.cpp
+        src/internal/util/string_util.cpp
+        src/internal/util/xml_util.cpp
 
-        "src/odr/internal/zip/zip_util.cpp"
-        "src/odr/internal/zip/zip_archive.cpp"
+        src/internal/zip/zip_util.cpp
+        src/internal/zip/zip_archive.cpp
         )
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
-if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
+if (EXISTS ${PROJECT_SOURCE_DIR}/.git)
     add_dependencies(odr check_git)
 endif ()
 target_include_directories(odr
         PUBLIC
+        include
+        PRIVATE
         src
         )
 target_link_libraries(odr
@@ -184,10 +186,10 @@ target_link_libraries(odr
         uchardet::uchardet
         )
 
-add_subdirectory("cli")
+add_subdirectory(cli)
 
 if (ODR_TEST)
-    add_subdirectory("test")
+    add_subdirectory(test)
 endif ()
 
 install(
@@ -196,7 +198,7 @@ install(
         meta
         translate
         back_translate
-        RUNTIME DESTINATION "bin"
-        BUNDLE DESTINATION "bin"
-        LIBRARY DESTINATION "lib"
+        RUNTIME DESTINATION bin
+        BUNDLE DESTINATION bin
+        LIBRARY DESTINATION lib
 )

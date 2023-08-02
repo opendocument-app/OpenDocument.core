@@ -19,7 +19,7 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": True,
     }
 
-    exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
+    exports_sources = ["cli/*", "cmake/*", "include/*", "src/*", "CMakeLists.txt"]
 
     requires = ["pugixml/1.11", "cryptopp/8.5.0", "miniz/2.1.0", "nlohmann_json/3.10.4",
                 "vincentlaucsb-csv-parser/2.1.3", "uchardet/0.0.7"]
@@ -43,7 +43,7 @@ class OpenDocumentCoreConan(ConanFile):
         cmake.build()
 
     def package(self):
-        self.copy("*.hpp", src="src", dst="include")
+        self.copy("*.h", src="include", dst="include")
 
         cmake = self._configure_cmake()
         cmake.install()

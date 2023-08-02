@@ -1,13 +1,13 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <internal/common/path.h>
+#include <internal/util/odr_meta_util.h>
+#include <internal/util/string_util.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <odr/file.h>
 #include <odr/html.h>
-#include <odr/internal/common/path.h>
-#include <odr/internal/util/odr_meta_util.h>
-#include <odr/internal/util/string_util.h>
 #include <odr/open_document_reader.h>
 #include <odr/style.h>
 #include <optional>

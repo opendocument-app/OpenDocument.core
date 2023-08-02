@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
+#include <internal/magic.h>
 #include <odr/file.h>
-#include <odr/internal/magic.h>
 #include <test_util.h>
 
 using namespace odr;
