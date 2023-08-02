@@ -65,7 +65,7 @@ jobs:
       - name: make
         run: |
           cd build
-          cmake --build . --config Release
+          cmake --build . --config Release -v
 
       - name: upload binaries
         uses: actions/upload-artifact@v2
