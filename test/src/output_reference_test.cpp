@@ -3,16 +3,16 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <odr/file.hpp>
-#include <odr/html.hpp>
-#include <odr/internal/common/path.hpp>
-#include <odr/internal/util/odr_meta_util.hpp>
-#include <odr/internal/util/string_util.hpp>
-#include <odr/open_document_reader.hpp>
-#include <odr/style.hpp>
+#include <odr/file.h>
+#include <odr/html.h>
+#include <odr/internal/common/path.h>
+#include <odr/internal/util/odr_meta_util.h>
+#include <odr/internal/util/string_util.h>
+#include <odr/open_document_reader.h>
+#include <odr/style.h>
 #include <optional>
 #include <string>
-#include <test_util.hpp>
+#include <test_util.h>
 
 using namespace odr;
 using namespace odr::internal;

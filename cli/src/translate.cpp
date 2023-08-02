@@ -1,6 +1,6 @@
 #include <iostream>
-#include <odr/file.hpp>
-#include <odr/html.hpp>
+#include <odr/file.h>
+#include <odr/html.h>
 #include <string>
 
 using namespace odr;

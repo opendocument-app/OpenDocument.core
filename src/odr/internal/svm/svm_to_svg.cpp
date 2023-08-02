@@ -1,9 +1,9 @@
 #include <cstdint>
 #include <memory>
-#include <odr/exceptions.hpp>
-#include <odr/internal/svm/svm_file.hpp>
-#include <odr/internal/svm/svm_format.hpp>
-#include <odr/internal/svm/svm_to_svg.hpp>
+#include <odr/exceptions.h>
+#include <odr/internal/svm/svm_file.h>
+#include <odr/internal/svm/svm_format.h>
+#include <odr/internal/svm/svm_to_svg.h>
 #include <string>
 
 namespace odr::internal::svm {

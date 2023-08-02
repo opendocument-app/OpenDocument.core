@@ -1,8 +1,8 @@
-#include <odr/internal/abstract/document.hpp>
-#include <odr/internal/common/document_cursor.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.hpp>
+#include <odr/internal/abstract/document.h>
+#include <odr/internal/common/document_cursor.h>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.h>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.h>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.h>
 #include <pugixml.hpp>
 #include <stdexcept>
 

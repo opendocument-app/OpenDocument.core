@@ -1,7 +1,7 @@
 #include <cstring>
 #include <iostream>
-#include <odr/internal/html/common.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
+#include <odr/internal/html/common.h>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.h>
 
 namespace odr::internal::ooxml::spreadsheet {
 

@@ -1,7 +1,7 @@
 #include <iostream>
-#include <odr/internal/abstract/file.hpp>
-#include <odr/internal/magic.hpp>
-#include <odr/internal/util/string_util.hpp>
+#include <odr/internal/abstract/file.h>
+#include <odr/internal/magic.h>
+#include <odr/internal/util/string_util.h>
 
 namespace odr::internal {
 

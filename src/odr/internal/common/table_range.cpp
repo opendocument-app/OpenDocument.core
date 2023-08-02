@@ -1,5 +1,5 @@
-#include <odr/internal/common/table_position.hpp>
-#include <odr/internal/common/table_range.hpp>
+#include <odr/internal/common/table_position.h>
+#include <odr/internal/common/table_range.h>
 #include <stdexcept>
 
 namespace odr::internal::common {

@@ -1,6 +1,6 @@
 #include <iostream>
-#include <odr/exceptions.hpp>
-#include <odr/internal/text/text_util.hpp>
+#include <odr/exceptions.h>
+#include <odr/internal/text/text_util.h>
 #include <uchardet/uchardet.h>
 
 namespace odr::internal {

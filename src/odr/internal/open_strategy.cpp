@@ -1,20 +1,20 @@
-#include <odr/exceptions.hpp>
-#include <odr/file.hpp>
-#include <odr/internal/abstract/archive.hpp>
-#include <odr/internal/cfb/cfb_archive.hpp>
-#include <odr/internal/common/archive.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/common/image_file.hpp>
-#include <odr/internal/csv/csv_file.hpp>
-#include <odr/internal/json/json_file.hpp>
-#include <odr/internal/magic.hpp>
-#include <odr/internal/odf/odf_file.hpp>
-#include <odr/internal/oldms/oldms_file.hpp>
-#include <odr/internal/ooxml/ooxml_file.hpp>
-#include <odr/internal/open_strategy.hpp>
-#include <odr/internal/svm/svm_file.hpp>
-#include <odr/internal/text/text_file.hpp>
-#include <odr/internal/zip/zip_archive.hpp>
+#include <odr/exceptions.h>
+#include <odr/file.h>
+#include <odr/internal/abstract/archive.h>
+#include <odr/internal/cfb/cfb_archive.h>
+#include <odr/internal/common/archive.h>
+#include <odr/internal/common/file.h>
+#include <odr/internal/common/image_file.h>
+#include <odr/internal/csv/csv_file.h>
+#include <odr/internal/json/json_file.h>
+#include <odr/internal/magic.h>
+#include <odr/internal/odf/odf_file.h>
+#include <odr/internal/oldms/oldms_file.h>
+#include <odr/internal/ooxml/ooxml_file.h>
+#include <odr/internal/open_strategy.h>
+#include <odr/internal/svm/svm_file.h>
+#include <odr/internal/text/text_file.h>
+#include <odr/internal/zip/zip_archive.h>
 #include <utility>
 
 namespace odr::internal {

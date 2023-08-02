@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <miniz/miniz.h>
 #include <string>
-#include <test_util.hpp>
+#include <test_util.h>
 
 using namespace odr::test;
 

@@ -1,12 +1,12 @@
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <odr/document.hpp>
-#include <odr/document_cursor.hpp>
-#include <odr/document_element.hpp>
-#include <odr/html.hpp>
-#include <odr/internal/html/document.hpp>
-#include <odr/internal/html/image_file.hpp>
-#include <odr/internal/html/text_file.hpp>
+#include <odr/document.h>
+#include <odr/document_cursor.h>
+#include <odr/document_element.h>
+#include <odr/html.h>
+#include <odr/internal/html/document.h>
+#include <odr/internal/html/image_file.h>
+#include <odr/internal/html/text_file.h>
 
 using namespace odr::internal;
 namespace fs = std::filesystem;

@@ -1,4 +1,4 @@
-#include <odr/internal/project_info.hpp>
+#include <odr/internal/project_info.h>
 
 namespace odr::internal {
 

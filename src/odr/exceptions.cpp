@@ -1,5 +1,5 @@
-#include <odr/exceptions.hpp>
-#include <odr/file.hpp>
+#include <odr/exceptions.h>
+#include <odr/file.h>
 
 namespace odr {
 

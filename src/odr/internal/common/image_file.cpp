@@ -1,4 +1,4 @@
-#include <odr/internal/common/image_file.hpp>
+#include <odr/internal/common/image_file.h>
 
 namespace odr::internal::common {
 

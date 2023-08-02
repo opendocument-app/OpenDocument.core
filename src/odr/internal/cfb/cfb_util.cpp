@@ -1,9 +1,9 @@
 #include <algorithm>
 #include <cstdint>
-#include <odr/internal/abstract/file.hpp>
-#include <odr/internal/cfb/cfb_impl.hpp>
-#include <odr/internal/cfb/cfb_util.hpp>
-#include <odr/internal/common/file.hpp>
+#include <odr/internal/abstract/file.h>
+#include <odr/internal/cfb/cfb_impl.h>
+#include <odr/internal/cfb/cfb_util.h>
+#include <odr/internal/common/file.h>
 #include <string>
 #include <utility>
 

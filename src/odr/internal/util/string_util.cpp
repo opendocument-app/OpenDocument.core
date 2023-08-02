@@ -1,7 +1,7 @@
 #include <codecvt>
 #include <iomanip>
 #include <locale>
-#include <odr/internal/util/string_util.hpp>
+#include <odr/internal/util/string_util.h>
 #include <sstream>
 
 namespace odr::internal::util {

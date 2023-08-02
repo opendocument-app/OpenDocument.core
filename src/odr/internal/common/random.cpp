@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <odr/internal/common/random.hpp>
+#include <odr/internal/common/random.h>
 
 namespace odr::internal {
 

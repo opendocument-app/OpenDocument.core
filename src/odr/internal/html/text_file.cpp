@@ -1,10 +1,10 @@
 #include <fstream>
-#include <odr/exceptions.hpp>
-#include <odr/file.hpp>
-#include <odr/html.hpp>
-#include <odr/internal/html/common.hpp>
-#include <odr/internal/html/text_file.hpp>
-#include <odr/internal/util/stream_util.hpp>
+#include <odr/exceptions.h>
+#include <odr/file.h>
+#include <odr/html.h>
+#include <odr/internal/html/common.h>
+#include <odr/internal/html/text_file.h>
+#include <odr/internal/util/stream_util.h>
 #include <sstream>
 
 namespace odr::internal {

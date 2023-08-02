@@ -1,5 +1,5 @@
-#include <odr/internal/common/style.hpp>
-#include <odr/style.hpp>
+#include <odr/internal/common/style.h>
+#include <odr/style.h>
 #include <utility>
 
 namespace odr::internal::common {

@@ -1,7 +1,7 @@
-#include <odr/file.hpp>
-#include <odr/internal/abstract/file.hpp>
-#include <odr/internal/svm/svm_file.hpp>
-#include <odr/internal/svm/svm_format.hpp>
+#include <odr/file.h>
+#include <odr/internal/abstract/file.h>
+#include <odr/internal/svm/svm_file.h>
+#include <odr/internal/svm/svm_format.h>
 #include <utility>
 
 namespace odr::internal::abstract {

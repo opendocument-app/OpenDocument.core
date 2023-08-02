@@ -1,11 +1,11 @@
-#include <odr/exceptions.hpp>
-#include <odr/file.hpp>
-#include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/path.hpp>
-#include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/exceptions.h>
+#include <odr/file.h>
+#include <odr/internal/abstract/filesystem.h>
+#include <odr/internal/common/path.h>
+#include <odr/internal/ooxml/ooxml_util.h>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.h>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.h>
+#include <odr/internal/util/xml_util.h>
 #include <utility>
 
 namespace odr::internal::abstract {

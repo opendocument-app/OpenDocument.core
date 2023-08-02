@@ -1,12 +1,12 @@
 #include <cstdint>
 #include <cstring>
-#include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/path.hpp>
-#include <odr/internal/html/common.hpp>
-#include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
-#include <odr/quantity.hpp>
-#include <odr/style.hpp>
+#include <odr/internal/abstract/filesystem.h>
+#include <odr/internal/common/path.h>
+#include <odr/internal/html/common.h>
+#include <odr/internal/ooxml/ooxml_util.h>
+#include <odr/internal/util/xml_util.h>
+#include <odr/quantity.h>
+#include <odr/style.h>
 #include <pugixml.hpp>
 
 namespace odr::internal {

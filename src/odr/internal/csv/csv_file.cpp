@@ -1,6 +1,6 @@
 #include <iostream>
-#include <odr/internal/csv/csv_file.hpp>
-#include <odr/internal/csv/csv_util.hpp>
+#include <odr/internal/csv/csv_file.h>
+#include <odr/internal/csv/csv_util.h>
 
 namespace odr::internal::csv {
 

@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 #include <memory>
-#include <odr/internal/cfb/cfb_archive.hpp>
-#include <odr/internal/common/archive.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/zip/zip_archive.hpp>
-#include <test_util.hpp>
+#include <odr/internal/cfb/cfb_archive.h>
+#include <odr/internal/common/archive.h>
+#include <odr/internal/common/file.h>
+#include <odr/internal/zip/zip_archive.h>
+#include <test_util.h>
 
 using namespace odr::internal;
 using namespace odr::internal::common;

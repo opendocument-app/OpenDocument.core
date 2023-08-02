@@ -1,11 +1,11 @@
 #include <fstream>
 #include <gtest/gtest.h>
 #include <memory>
-#include <odr/file.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/svm/svm_file.hpp>
-#include <odr/internal/svm/svm_to_svg.hpp>
-#include <test_util.hpp>
+#include <odr/file.h>
+#include <odr/internal/common/file.h>
+#include <odr/internal/svm/svm_file.h>
+#include <odr/internal/svm/svm_to_svg.h>
+#include <test_util.h>
 
 using namespace odr::internal;
 using namespace odr::test;

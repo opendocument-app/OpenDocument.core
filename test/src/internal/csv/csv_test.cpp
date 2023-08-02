@@ -1,6 +1,6 @@
 #include <csv.hpp>
 #include <gtest/gtest.h>
-#include <test_util.hpp>
+#include <test_util.h>
 
 using namespace odr;
 using namespace odr::test;

@@ -1,8 +1,8 @@
-#include <odr/internal/cfb/cfb_archive.hpp>
-#include <odr/internal/cfb/cfb_impl.hpp>
-#include <odr/internal/cfb/cfb_util.hpp>
-#include <odr/internal/common/path.hpp>
-#include <odr/internal/util/string_util.hpp>
+#include <odr/internal/cfb/cfb_archive.h>
+#include <odr/internal/cfb/cfb_impl.h>
+#include <odr/internal/cfb/cfb_util.h>
+#include <odr/internal/common/path.h>
+#include <odr/internal/util/string_util.h>
 
 namespace odr::internal::abstract {
 class File;

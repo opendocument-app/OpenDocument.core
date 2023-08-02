@@ -1,6 +1,6 @@
 #include <iostream>
-#include <odr/internal/json/json_file.hpp>
-#include <odr/internal/json/json_util.hpp>
+#include <odr/internal/json/json_file.h>
+#include <odr/internal/json/json_util.h>
 
 namespace odr::internal::json {
 

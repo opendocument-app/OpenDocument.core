@@ -1,5 +1,5 @@
 #include <nlohmann/json.hpp>
-#include <odr/internal/json/json_util.hpp>
+#include <odr/internal/json/json_util.h>
 
 namespace odr::internal {
 

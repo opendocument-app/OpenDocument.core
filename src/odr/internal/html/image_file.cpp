@@ -1,14 +1,14 @@
 #include <fstream>
-#include <odr/exceptions.hpp>
-#include <odr/file.hpp>
-#include <odr/html.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/crypto/crypto_util.hpp>
-#include <odr/internal/html/common.hpp>
-#include <odr/internal/html/image_file.hpp>
-#include <odr/internal/svm/svm_file.hpp>
-#include <odr/internal/svm/svm_to_svg.hpp>
-#include <odr/internal/util/stream_util.hpp>
+#include <odr/exceptions.h>
+#include <odr/file.h>
+#include <odr/html.h>
+#include <odr/internal/common/file.h>
+#include <odr/internal/crypto/crypto_util.h>
+#include <odr/internal/html/common.h>
+#include <odr/internal/html/image_file.h>
+#include <odr/internal/svm/svm_file.h>
+#include <odr/internal/svm/svm_to_svg.h>
+#include <odr/internal/util/stream_util.h>
 #include <sstream>
 
 namespace odr::internal {
