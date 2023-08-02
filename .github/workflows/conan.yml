@@ -17,12 +17,6 @@ jobs:
         run: |
           pip install --upgrade pip conan==1.*
 
-      - name: conan repo and user setup
-        run: |
-          conan config set general.revisions_enabled=1
-          conan remote add odr-conan-repo https://odr.jfrog.io/artifactory/api/conan/odr-conan
-          conan user stefl.andreas@gmail.com -r odr-conan-repo -p "${{ secrets.PAT_ARTIFACTORY }}"
-
       - name: checkout
         uses: actions/checkout@v2
 
