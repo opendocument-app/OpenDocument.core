@@ -21,9 +21,7 @@ jobs:
         with:
           python-version: 3.8
       - name: install python dependencies
-        run: |
-          pip install --upgrade pip
-          pip install conan
+        run: pip install --upgrade pip conan==1.*
 
       - name: checkout
         uses: actions/checkout@v2
