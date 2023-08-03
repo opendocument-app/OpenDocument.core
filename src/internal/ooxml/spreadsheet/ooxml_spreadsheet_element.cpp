@@ -1,4 +1,7 @@
-#include <functional>
+#include <internal/ooxml/spreadsheet/ooxml_spreadsheet_element.h>
+
+#include <odr/style.h>
+
 #include <internal/abstract/document.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/document_element.h>
@@ -7,10 +10,11 @@
 #include <internal/ooxml/ooxml_util.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_document.h>
-#include <internal/ooxml/spreadsheet/ooxml_spreadsheet_element.h>
-#include <odr/style.h>
-#include <optional>
+
 #include <pugixml.hpp>
+
+#include <functional>
+#include <optional>
 #include <unordered_map>
 #include <utility>
 

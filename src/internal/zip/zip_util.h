@@ -1,16 +1,18 @@
 #ifndef ODR_INTERNAL_ZIP_UTIL_H
 #define ODR_INTERNAL_ZIP_UTIL_H
 
-#include <chrono>
-#include <cstdint>
+#include <odr/file.h>
+
 #include <internal/abstract/file.h>
-#include <istream>
-#include <memory>
+
 #include <miniz/miniz.h>
 #include <miniz/miniz_zip.h>
-#include <odr/file.h>
+
+#include <chrono>
+#include <cstdint>
+#include <istream>
+#include <memory>
 #include <string>
-#include <sys/types.h>
 
 namespace odr::internal::common {
 class MemoryFile;

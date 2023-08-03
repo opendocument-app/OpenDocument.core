@@ -1,7 +1,11 @@
+#include <internal/open_strategy.h>
+
+#include <odr/exceptions.h>
+#include <odr/file.h>
+
 #include <internal/abstract/archive.h>
 #include <internal/cfb/cfb_archive.h>
 #include <internal/common/archive.h>
-#include <internal/common/file.h>
 #include <internal/common/image_file.h>
 #include <internal/csv/csv_file.h>
 #include <internal/json/json_file.h>
@@ -9,12 +13,9 @@
 #include <internal/odf/odf_file.h>
 #include <internal/oldms/oldms_file.h>
 #include <internal/ooxml/ooxml_file.h>
-#include <internal/open_strategy.h>
 #include <internal/svm/svm_file.h>
-#include <internal/text/text_file.h>
 #include <internal/zip/zip_archive.h>
-#include <odr/exceptions.h>
-#include <odr/file.h>
+
 #include <utility>
 
 namespace odr::internal {

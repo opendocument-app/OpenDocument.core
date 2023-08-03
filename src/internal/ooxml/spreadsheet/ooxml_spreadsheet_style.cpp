@@ -1,6 +1,8 @@
-#include <cstring>
-#include <internal/html/common.h>
 #include <internal/ooxml/spreadsheet/ooxml_spreadsheet_style.h>
+
+#include <internal/html/common.h>
+
+#include <cstring>
 #include <iostream>
 
 namespace odr::internal::ooxml::spreadsheet {

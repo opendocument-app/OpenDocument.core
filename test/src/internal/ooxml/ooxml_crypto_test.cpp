@@ -1,6 +1,8 @@
-#include <cstring>
 #include <gtest/gtest.h>
+
 #include <internal/ooxml/ooxml_crypto.h>
+
+#include <cstring>
 #include <string>
 
 using namespace odr::internal::ooxml;

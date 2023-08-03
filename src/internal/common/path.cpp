@@ -1,4 +1,5 @@
 #include <internal/common/path.h>
+
 #include <stdexcept>
 
 std::size_t std::hash<::odr::internal::common::Path>::operator()(

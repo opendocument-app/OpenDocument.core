@@ -1,10 +1,12 @@
-#include <cstdint>
+#include <odr/file.h>
+
+#include <odr/document.h>
+#include <odr/exceptions.h>
+
 #include <internal/abstract/file.h>
 #include <internal/common/file.h>
 #include <internal/open_strategy.h>
-#include <odr/document.h>
-#include <odr/exceptions.h>
-#include <odr/file.h>
+
 #include <optional>
 #include <utility>
 

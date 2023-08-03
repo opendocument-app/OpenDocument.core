@@ -1,6 +1,7 @@
+#include <internal/resource.h>
+
 #include <internal/common/file.h>
 #include <internal/common/filesystem.h>
-#include <internal/resource.h>
 #include <internal/resource_data.h>
 
 namespace odr::internal {

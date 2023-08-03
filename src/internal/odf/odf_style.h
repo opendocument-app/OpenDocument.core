@@ -1,12 +1,15 @@
 #ifndef ODR_INTERNAL_ODF_STYLE_H
 #define ODR_INTERNAL_ODF_STYLE_H
 
-#include <any>
-#include <internal/common/style.h>
-#include <memory>
 #include <odr/document.h>
-#include <optional>
+
+#include <internal/common/style.h>
+
 #include <pugixml.hpp>
+
+#include <any>
+#include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>

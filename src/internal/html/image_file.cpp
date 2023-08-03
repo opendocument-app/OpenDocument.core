@@ -1,14 +1,17 @@
-#include <fstream>
-#include <internal/common/file.h>
-#include <internal/crypto/crypto_util.h>
-#include <internal/html/common.h>
 #include <internal/html/image_file.h>
-#include <internal/svm/svm_file.h>
-#include <internal/svm/svm_to_svg.h>
-#include <internal/util/stream_util.h>
+
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
+
+#include <internal/common/file.h>
+#include <internal/crypto/crypto_util.h>
+#include <internal/html/common.h>
+#include <internal/svm/svm_file.h>
+#include <internal/svm/svm_to_svg.h>
+#include <internal/util/stream_util.h>
+
+#include <fstream>
 #include <sstream>
 
 namespace odr::internal {

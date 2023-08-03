@@ -1,12 +1,15 @@
 #ifndef ODR_INTERNAL_ODF_DOCUMENT_H
 #define ODR_INTERNAL_ODF_DOCUMENT_H
 
+#include <odr/file.h>
+
 #include <internal/abstract/document.h>
 #include <internal/common/path.h>
 #include <internal/odf/odf_style.h>
-#include <memory>
-#include <odr/file.h>
+
 #include <pugixml.hpp>
+
+#include <memory>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;

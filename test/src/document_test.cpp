@@ -1,12 +1,12 @@
-#include <cstdint>
 #include <gtest/gtest.h>
+#include <test_util.h>
+
 #include <odr/document.h>
 #include <odr/document_cursor.h>
 #include <odr/document_element.h>
 #include <odr/file.h>
 #include <odr/html.h>
 #include <odr/style.h>
-#include <test_util.h>
 
 using namespace odr;
 using namespace odr::test;

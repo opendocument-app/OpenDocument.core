@@ -1,7 +1,9 @@
-#include <internal/abstract/document_element.h>
 #include <odr/document_element.h>
+
 #include <odr/file.h>
 #include <odr/style.h>
+
+#include <internal/abstract/document_element.h>
 
 namespace odr {
 

@@ -1,6 +1,8 @@
-#include <cstdint>
-#include <cstring>
-#include <functional>
+#include <internal/odf/odf_element.h>
+
+#include <odr/file.h>
+#include <odr/style.h>
+
 #include <internal/abstract/document.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/document_element.h>
@@ -8,14 +10,13 @@
 #include <internal/common/table_cursor.h>
 #include <internal/odf/odf_cursor.h>
 #include <internal/odf/odf_document.h>
-#include <internal/odf/odf_element.h>
-#include <internal/odf/odf_style.h>
-#include <internal/util/string_util.h>
 #include <internal/util/xml_util.h>
-#include <odr/file.h>
-#include <odr/style.h>
-#include <optional>
+
 #include <pugixml.hpp>
+
+#include <cstring>
+#include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 

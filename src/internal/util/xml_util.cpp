@@ -8,8 +8,6 @@
 
 #include <pugixml.hpp>
 
-#include <cstdint>
-#include <memory>
 #include <utility>
 
 namespace odr::internal::util {

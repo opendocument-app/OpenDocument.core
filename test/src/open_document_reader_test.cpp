@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
+#include <test_util.h>
+
 #include <odr/file.h>
 #include <odr/open_document_reader.h>
-#include <test_util.h>
 
 using namespace odr;
 using namespace odr::internal;

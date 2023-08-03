@@ -1,9 +1,11 @@
-#include <cstdint>
-#include <cstring>
-#include <internal/common/style.h>
 #include <internal/odf/odf_style.h>
+
 #include <odr/quantity.h>
 #include <odr/style.h>
+
+#include <internal/common/style.h>
+
+#include <cstring>
 #include <pugixml.hpp>
 #include <unordered_map>
 #include <utility>

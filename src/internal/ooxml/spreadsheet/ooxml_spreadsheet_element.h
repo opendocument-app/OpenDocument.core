@@ -4,8 +4,11 @@
 #include <internal/abstract/document.h>
 #include <internal/common/document_element.h>
 #include <internal/common/style.h>
+
 #include <pugixml.hpp>
+
 #include <string>
+#include <vector>
 
 namespace odr::internal::ooxml::spreadsheet {
 class Document;

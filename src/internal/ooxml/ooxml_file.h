@@ -1,9 +1,11 @@
 #ifndef ODR_INTERNAL_OOXML_FILE_H
 #define ODR_INTERNAL_OOXML_FILE_H
 
-#include <internal/abstract/file.h>
-#include <memory>
 #include <odr/file.h>
+
+#include <internal/abstract/file.h>
+
+#include <memory>
 #include <string>
 
 namespace odr::internal::abstract {

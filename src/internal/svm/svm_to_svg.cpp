@@ -1,9 +1,10 @@
-#include <cstdint>
+#include <internal/svm/svm_to_svg.h>
+
+#include <odr/exceptions.h>
+
 #include <internal/svm/svm_file.h>
 #include <internal/svm/svm_format.h>
-#include <internal/svm/svm_to_svg.h>
-#include <memory>
-#include <odr/exceptions.h>
+
 #include <string>
 
 namespace odr::internal::svm {

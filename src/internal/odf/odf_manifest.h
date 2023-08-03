@@ -1,8 +1,9 @@
 #ifndef ODR_INTERNAL_ODF_MANIFEST_H
 #define ODR_INTERNAL_ODF_MANIFEST_H
 
-#include <cstdint>
 #include <internal/common/path.h>
+
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <unordered_map>

@@ -1,12 +1,15 @@
-#include <internal/common/table_range.h>
-#include <internal/html/common.h>
 #include <internal/html/document_element.h>
-#include <internal/html/document_style.h>
-#include <internal/html/image_file.h>
-#include <iostream>
+
 #include <odr/document_cursor.h>
 #include <odr/document_element.h>
 #include <odr/html.h>
+
+#include <internal/common/table_range.h>
+#include <internal/html/common.h>
+#include <internal/html/document_style.h>
+#include <internal/html/image_file.h>
+
+#include <iostream>
 
 namespace odr::internal {
 

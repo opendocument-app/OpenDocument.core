@@ -1,10 +1,13 @@
-#include <fstream>
-#include <internal/html/common.h>
 #include <internal/html/text_file.h>
-#include <internal/util/stream_util.h>
+
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
+
+#include <internal/html/common.h>
+#include <internal/util/stream_util.h>
+
+#include <fstream>
 #include <sstream>
 
 namespace odr::internal {

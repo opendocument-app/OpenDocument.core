@@ -1,4 +1,5 @@
 #include <internal/common/document_path.h>
+
 #include <iterator>
 
 namespace odr::internal::common {

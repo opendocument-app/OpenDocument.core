@@ -1,8 +1,9 @@
 #include <internal/util/file_util.h>
 
+#include <odr/exceptions.h>
+
 #include <fstream>
 #include <iterator>
-#include <odr/exceptions.h>
 
 namespace odr::internal::util {
 

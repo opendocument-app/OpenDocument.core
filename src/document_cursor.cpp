@@ -1,9 +1,11 @@
+#include <odr/document_cursor.h>
+
+#include <odr/document_element.h>
+
 #include <internal/abstract/document.h>
 #include <internal/abstract/document_cursor.h>
 #include <internal/abstract/document_element.h>
 #include <internal/common/document_path.h>
-#include <odr/document_cursor.h>
-#include <odr/document_element.h>
 
 namespace odr {
 

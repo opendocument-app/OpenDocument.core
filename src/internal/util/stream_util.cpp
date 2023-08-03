@@ -1,6 +1,5 @@
 #include <internal/util/stream_util.h>
 
-#include <cstdint>
 #include <iostream>
 #include <iterator>
 

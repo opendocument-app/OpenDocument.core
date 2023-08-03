@@ -1,8 +1,10 @@
-#include <internal/common/path.h>
-#include <internal/crypto/crypto_util.h>
 #include <internal/odf/odf_manifest.h>
+
+#include <internal/crypto/crypto_util.h>
 #include <internal/util/map_util.h>
+
 #include <pugixml.hpp>
+
 #include <unordered_map>
 
 namespace odr::internal::odf {

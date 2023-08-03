@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_COMMON_STYLE_H
 
 #include <odr/style.h>
+
 #include <optional>
 
 namespace odr::internal::common {

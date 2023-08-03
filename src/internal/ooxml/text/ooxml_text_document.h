@@ -1,12 +1,15 @@
 #ifndef ODR_INTERNAL_OOXML_TEXT_DOCUMENT_H
 #define ODR_INTERNAL_OOXML_TEXT_DOCUMENT_H
 
+#include <odr/file.h>
+
 #include <internal/abstract/document.h>
 #include <internal/common/path.h>
 #include <internal/ooxml/text/ooxml_text_style.h>
-#include <memory>
-#include <odr/file.h>
+
 #include <pugixml.hpp>
+
+#include <memory>
 #include <string>
 #include <unordered_map>
 

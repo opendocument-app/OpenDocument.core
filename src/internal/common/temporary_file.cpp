@@ -1,7 +1,9 @@
-#include <fstream>
-#include <internal/common/random.h>
 #include <internal/common/temporary_file.h>
+
+#include <internal/common/random.h>
 #include <internal/util/stream_util.h>
+
+#include <fstream>
 
 namespace odr::internal::common {
 

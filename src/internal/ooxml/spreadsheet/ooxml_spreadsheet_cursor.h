@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_OOXML_SPREADSHEET_CURSOR_H
 
 #include <internal/common/document_cursor.h>
+
 #include <memory>
 
 namespace pugi {

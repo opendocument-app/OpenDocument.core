@@ -1,7 +1,9 @@
-#include <internal/abstract/file.h>
 #include <internal/svm/svm_file.h>
-#include <internal/svm/svm_format.h>
+
 #include <odr/file.h>
+
+#include <internal/svm/svm_format.h>
+
 #include <utility>
 
 namespace odr::internal::abstract {

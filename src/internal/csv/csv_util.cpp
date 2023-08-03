@@ -1,6 +1,8 @@
-#include <csv.hpp>
 #include <internal/csv/csv_util.h>
+
 #include <internal/util/stream_util.h>
+
+#include <csv.hpp>
 
 namespace odr::internal {
 

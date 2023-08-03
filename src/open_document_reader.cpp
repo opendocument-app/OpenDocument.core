@@ -1,16 +1,17 @@
-#include <fstream>
-#include <internal/common/path.h>
-#include <internal/git_info.h>
-#include <internal/html/document.h>
-#include <internal/open_strategy.h>
-#include <internal/project_info.h>
-#include <internal/resource.h>
-#include <internal/util/stream_util.h>
+#include <odr/open_document_reader.h>
+
 #include <odr/document.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
-#include <odr/open_document_reader.h>
+
+#include <internal/common/path.h>
+#include <internal/git_info.h>
+#include <internal/open_strategy.h>
+#include <internal/project_info.h>
+#include <internal/resource.h>
+
+#include <fstream>
 
 namespace odr {
 

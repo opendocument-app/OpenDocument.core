@@ -1,3 +1,5 @@
+#include <internal/crypto/crypto_util.h>
+
 #include <cryptopp/aes.h>
 #include <cryptopp/base64.h>
 #include <cryptopp/blowfish.h>
@@ -7,7 +9,6 @@
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/sha.h>
 #include <cryptopp/zinflate.h>
-#include <internal/crypto/crypto_util.h>
 
 namespace odr::internal::crypto {
 
