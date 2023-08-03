@@ -40,7 +40,7 @@ if (NOT DEFINED CONAN_EXPORTED)
     conan_cmake_install(PATH_OR_REFERENCE ..
             BUILD missing
             SETTINGS ${settings}
-            SETTINGS compiler.cppstd=${CMAKE_CXX_STANDARD}
+            SETTINGS compiler.cppstd=17
             ENV CC=${CMAKE_C_COMPILER}
             ENV CXX=${CMAKE_CXX_COMPILER})
     #include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
