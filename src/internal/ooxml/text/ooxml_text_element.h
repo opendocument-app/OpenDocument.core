@@ -8,6 +8,7 @@
 #include <pugixml.hpp>
 
 #include <string>
+#include <unordered_map>
 
 namespace odr::internal::ooxml::text {
 class Document;

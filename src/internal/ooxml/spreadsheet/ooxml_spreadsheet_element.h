@@ -8,6 +8,7 @@
 #include <pugixml.hpp>
 
 #include <string>
+#include <vector>
 
 namespace odr::internal::ooxml::spreadsheet {
 class Document;
