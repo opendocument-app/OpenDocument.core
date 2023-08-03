@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
-#include <test_util.h>
+#include <test_util.hpp>
 
-#include <odr/exceptions.h>
-#include <odr/file.h>
+#include <odr/exceptions.hpp>
+#include <odr/file.hpp>
 
-#include <internal/text/text_file.h>
+#include <odr/internal/text/text_file.hpp>
 
 using namespace odr;
 using namespace odr::test;

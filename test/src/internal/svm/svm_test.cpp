@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
-#include <test_util.h>
+#include <test_util.hpp>
 
-#include <odr/file.h>
+#include <odr/file.hpp>
 
-#include <internal/common/file.h>
-#include <internal/svm/svm_file.h>
-#include <internal/svm/svm_to_svg.h>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/svm/svm_file.hpp>
+#include <odr/internal/svm/svm_to_svg.hpp>
 
 #include <memory>
 

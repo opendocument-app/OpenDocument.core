@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
-#include <test_util.h>
+#include <test_util.hpp>
 
-#include <odr/file.h>
+#include <odr/file.hpp>
 
-#include <internal/magic.h>
+#include <odr/internal/magic.hpp>
 
 using namespace odr;
 using namespace odr::internal;

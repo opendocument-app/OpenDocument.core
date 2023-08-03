@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <internal/common/table_position.h>
+#include <odr/internal/common/table_position.hpp>
 
 #include <string>
 

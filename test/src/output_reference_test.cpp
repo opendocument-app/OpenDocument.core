@@ -1,14 +1,12 @@
 #include <gtest/gtest.h>
-#include <test_util.h>
+#include <test_util.hpp>
 
-#include <odr/file.h>
-#include <odr/html.h>
-#include <odr/open_document_reader.h>
-#include <odr/style.h>
+#include <odr/html.hpp>
+#include <odr/open_document_reader.hpp>
 
-#include <internal/common/path.h>
-#include <internal/util/odr_meta_util.h>
-#include <internal/util/string_util.h>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/util/odr_meta_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <nlohmann/json.hpp>
 

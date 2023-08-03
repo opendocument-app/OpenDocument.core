@@ -1,7 +1,0 @@
-#include <internal/project_info.h>
-
-namespace odr::internal {
-
-const char *project_info::version() noexcept { return "${CMAKE_PROJECT_VERSION}"; }
-
-} // namespace odr::internal

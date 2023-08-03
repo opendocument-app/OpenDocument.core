@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <test_util.h>
+#include <test_util.hpp>
 
 #include <miniz/miniz.h>
 
