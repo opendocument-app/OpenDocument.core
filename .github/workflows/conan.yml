@@ -22,4 +22,3 @@ jobs:
       - run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - run: conan create conanfile.py odrcore/${VERSION}@ -s compiler.libcxx=libstdc++11 --build missing
-      - run: conan upload odrcore -r odr-conan-repo -c
