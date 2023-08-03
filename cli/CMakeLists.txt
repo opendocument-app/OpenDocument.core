@@ -1,9 +1,8 @@
 add_executable(meta src/meta.cpp)
 target_link_libraries(meta
         PRIVATE
-        nlohmann_json::nlohmann_json
-
         odr
+        nlohmann_json::nlohmann_json
         )
 target_include_directories(meta
         PRIVATE

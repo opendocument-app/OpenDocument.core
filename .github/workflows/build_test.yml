@@ -47,7 +47,7 @@ jobs:
             ~/.conan/data
             C:/.conan
             C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev18
+          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-rev19
           restore-keys: |
             ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
 

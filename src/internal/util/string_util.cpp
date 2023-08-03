@@ -1,5 +1,6 @@
-#include <codecvt>
 #include <internal/util/string_util.h>
+
+#include <codecvt>
 #include <iomanip>
 #include <locale>
 #include <sstream>
