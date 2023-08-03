@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
-#include <test_util.h>
+#include <test_util.hpp>
 
-#include <internal/cfb/cfb_archive.h>
-#include <internal/common/archive.h>
-#include <internal/zip/zip_archive.h>
+#include <odr/internal/cfb/cfb_archive.hpp>
+#include <odr/internal/common/archive.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
 
 #include <memory>
 

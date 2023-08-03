@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <internal/util/xml_util.h>
+#include <odr/internal/util/xml_util.hpp>
 
 #include <memory>
 
