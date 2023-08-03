@@ -5,8 +5,8 @@
 
 #include <internal/common/style.h>
 
-#include <pugixml.hpp>
 #include <cstring>
+#include <pugixml.hpp>
 #include <unordered_map>
 #include <utility>
 

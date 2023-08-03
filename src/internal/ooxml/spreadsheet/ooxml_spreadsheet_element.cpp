@@ -13,10 +13,10 @@
 
 #include <pugixml.hpp>
 
+#include <functional>
 #include <optional>
 #include <unordered_map>
 #include <utility>
-#include <functional>
 
 namespace odr::internal::ooxml::spreadsheet {
 

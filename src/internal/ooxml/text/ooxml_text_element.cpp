@@ -16,9 +16,9 @@
 
 #include <pugixml.hpp>
 
+#include <functional>
 #include <optional>
 #include <utility>
-#include <functional>
 
 namespace odr::internal::ooxml::text {
 

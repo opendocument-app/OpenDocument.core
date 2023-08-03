@@ -11,7 +11,6 @@
 #include <internal/svm/svm_to_svg.h>
 #include <internal/util/stream_util.h>
 
-
 #include <fstream>
 #include <sstream>
 
