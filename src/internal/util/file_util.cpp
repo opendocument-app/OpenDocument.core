@@ -1,5 +1,6 @@
-#include <fstream>
 #include <internal/util/file_util.h>
+
+#include <fstream>
 #include <iterator>
 #include <odr/exceptions.h>
 

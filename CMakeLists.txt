@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(odr
-        LANGUAGES C CXX
-        )
-set(CMAKE_CXX_STANDARD 20)
+project(odr LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -17,7 +15,6 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
     # debugging
     #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")
     # benchmarking
@@ -40,7 +37,7 @@ if (NOT DEFINED CONAN_EXPORTED)
     conan_cmake_install(PATH_OR_REFERENCE ..
             BUILD missing
             SETTINGS ${settings}
-            SETTINGS compiler.cppstd=17
+            SETTINGS compiler.cppstd=${CMAKE_CXX_STANDARD}
             ENV CC=${CMAKE_C_COMPILER}
             ENV CXX=${CMAKE_CXX_COMPILER})
     #include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
@@ -201,4 +198,4 @@ install(
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION bin
         LIBRARY DESTINATION lib
-)
+        )

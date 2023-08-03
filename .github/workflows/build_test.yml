@@ -44,7 +44,8 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
-      - run: pip install conan
+      - name: install python dependencies
+        run: pip install --upgrade pip conan==1.*
 
       - name: cache
         uses: actions/cache@v2
@@ -73,7 +74,7 @@ jobs:
       - name: make
         run: |
           cd build
-          cmake --build . --config Release
+          cmake --build . --config Release # `config Release` somehow necessary by windows
 
       - name: upload binaries
         uses: actions/upload-artifact@v2
