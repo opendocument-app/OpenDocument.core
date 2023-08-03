@@ -1,20 +1,23 @@
-#include <fstream>
-#include <internal/abstract/file.h>
-#include <internal/common/path.h>
-#include <internal/html/common.h>
 #include <internal/html/document.h>
-#include <internal/html/document_element.h>
-#include <internal/html/document_style.h>
-#include <internal/resource.h>
-#include <internal/util/stream_util.h>
-#include <internal/util/string_util.h>
-#include <iostream>
+
 #include <odr/document.h>
 #include <odr/document_cursor.h>
 #include <odr/document_element.h>
 #include <odr/exceptions.h>
 #include <odr/file.h>
 #include <odr/html.h>
+
+#include <internal/abstract/file.h>
+#include <internal/common/path.h>
+#include <internal/html/common.h>
+#include <internal/html/document_element.h>
+#include <internal/html/document_style.h>
+#include <internal/resource.h>
+#include <internal/util/stream_util.h>
+#include <internal/util/string_util.h>
+
+#include <fstream>
+#include <iostream>
 
 namespace odr::internal {
 

@@ -1,9 +1,11 @@
 #ifndef ODR_INTERNAL_JSON_FILE_H
 #define ODR_INTERNAL_JSON_FILE_H
 
-#include <internal/text/text_file.h>
-#include <memory>
 #include <odr/file.h>
+
+#include <internal/text/text_file.h>
+
+#include <memory>
 
 namespace odr::internal::json {
 

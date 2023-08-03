@@ -1,6 +1,8 @@
-#include <internal/util/odr_meta_util.h>
-#include <iostream>
 #include <odr/file.h>
+
+#include <internal/util/odr_meta_util.h>
+
+#include <iostream>
 #include <string>
 
 using namespace odr;

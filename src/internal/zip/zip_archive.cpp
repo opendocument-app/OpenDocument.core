@@ -1,11 +1,14 @@
-#include <chrono>
-#include <internal/abstract/file.h>
-#include <internal/common/path.h>
 #include <internal/zip/zip_archive.h>
+
+#include <odr/exceptions.h>
+
+#include <internal/abstract/file.h>
 #include <internal/zip/zip_util.h>
+
 #include <miniz/miniz.h>
 #include <miniz/miniz_zip.h>
-#include <odr/exceptions.h>
+
+#include <chrono>
 #include <string>
 #include <utility>
 #include <vector>

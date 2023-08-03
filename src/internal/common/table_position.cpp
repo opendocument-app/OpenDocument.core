@@ -1,5 +1,7 @@
 #include <internal/common/table_position.h>
+
 #include <internal/util/hash_util.h>
+
 #include <stdexcept>
 
 namespace odr::internal::common {

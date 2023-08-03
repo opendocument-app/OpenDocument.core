@@ -4,7 +4,9 @@
 #include <internal/abstract/document.h>
 #include <internal/common/document_element.h>
 #include <internal/common/style.h>
+
 #include <pugixml.hpp>
+
 #include <string>
 
 namespace odr::internal::ooxml::text {

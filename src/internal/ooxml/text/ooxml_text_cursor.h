@@ -3,6 +3,7 @@
 
 #include <internal/common/document_cursor.h>
 #include <internal/common/style.h>
+
 #include <memory>
 
 namespace pugi {

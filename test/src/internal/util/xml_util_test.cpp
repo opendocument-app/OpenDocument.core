@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+
 #include <internal/util/xml_util.h>
+
 #include <memory>
 
 using namespace odr::internal::util::xml;

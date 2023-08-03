@@ -1,6 +1,8 @@
-#include <internal/abstract/file.h>
 #include <internal/magic.h>
+
+#include <internal/abstract/file.h>
 #include <internal/util/string_util.h>
+
 #include <iostream>
 
 namespace odr::internal {

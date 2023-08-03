@@ -1,7 +1,9 @@
-#include <internal/html/common.h>
 #include <internal/html/document_style.h>
+
 #include <odr/document_element.h>
 #include <odr/style.h>
+
+#include <internal/html/common.h>
 
 namespace odr::internal {
 

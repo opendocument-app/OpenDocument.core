@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_RESOURCE_H
 
 #include <internal/abstract/filesystem.h>
+
 #include <memory>
 #include <vector>
 

@@ -4,6 +4,7 @@
 #include <internal/common/document_cursor.h>
 #include <internal/common/style.h>
 #include <internal/odf/odf_style.h>
+
 #include <memory>
 
 namespace pugi {

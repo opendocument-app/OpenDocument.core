@@ -1,8 +1,9 @@
 #ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_ELEMENT_H
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_ELEMENT_H
 
-#include <memory>
 #include <odr/document_element.h>
+
+#include <memory>
 #include <optional>
 #include <string>
 

@@ -1,5 +1,7 @@
 #include <internal/text/text_file.h>
+
 #include <internal/text/text_util.h>
+
 #include <iostream>
 
 namespace odr::internal::text {

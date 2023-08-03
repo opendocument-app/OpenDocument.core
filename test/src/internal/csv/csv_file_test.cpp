@@ -1,9 +1,10 @@
 #include <gtest/gtest.h>
-#include <internal/csv/csv_file.h>
-#include <internal/text/text_file.h>
+#include <test_util.h>
+
 #include <odr/exceptions.h>
 #include <odr/file.h>
-#include <test_util.h>
+
+#include <internal/csv/csv_file.h>
 
 using namespace odr;
 using namespace odr::test;

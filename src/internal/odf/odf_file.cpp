@@ -1,12 +1,13 @@
+#include <internal/odf/odf_file.h>
+
+#include <odr/exceptions.h>
+#include <odr/file.h>
+
 #include <internal/abstract/filesystem.h>
 #include <internal/odf/odf_crypto.h>
 #include <internal/odf/odf_document.h>
-#include <internal/odf/odf_file.h>
-#include <internal/odf/odf_manifest.h>
-#include <internal/odf/odf_meta.h>
 #include <internal/util/xml_util.h>
-#include <odr/exceptions.h>
-#include <odr/file.h>
+
 #include <utility>
 
 namespace odr::internal::abstract {

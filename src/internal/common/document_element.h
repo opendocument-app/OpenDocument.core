@@ -2,6 +2,7 @@
 #define ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H
 
 #include <internal/abstract/document_element.h>
+
 #include <pugixml.hpp>
 
 namespace odr::internal::abstract {

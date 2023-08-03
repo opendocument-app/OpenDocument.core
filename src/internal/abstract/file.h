@@ -1,9 +1,10 @@
 #ifndef ODR_INTERNAL_ABSTRACT_FILE_H
 #define ODR_INTERNAL_ABSTRACT_FILE_H
 
+#include <odr/file.h>
+
 #include <iosfwd>
 #include <memory>
-#include <odr/file.h>
 #include <string>
 
 namespace odr::internal::common {

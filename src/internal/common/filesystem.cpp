@@ -1,14 +1,14 @@
-#include <cstdint>
+#include <internal/common/filesystem.h>
+
+#include <odr/exceptions.h>
+
+#include <internal/abstract/file.h>
+#include <internal/common/file.h>
+#include <internal/util/stream_util.h>
+
 #include <filesystem>
 #include <fstream>
-#include <internal/abstract/file.h>
-#include <internal/abstract/filesystem.h>
-#include <internal/common/file.h>
-#include <internal/common/filesystem.h>
-#include <internal/common/path.h>
-#include <internal/util/stream_util.h>
 #include <map>
-#include <odr/exceptions.h>
 #include <system_error>
 #include <utility>
 

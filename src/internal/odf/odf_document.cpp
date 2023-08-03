@@ -1,14 +1,15 @@
-#include <fstream>
-#include <internal/abstract/filesystem.h>
-#include <internal/common/file.h>
-#include <internal/common/path.h>
-#include <internal/odf/odf_cursor.h>
 #include <internal/odf/odf_document.h>
-#include <internal/odf/odf_style.h>
-#include <internal/util/xml_util.h>
-#include <internal/zip/zip_archive.h>
+
 #include <odr/exceptions.h>
 #include <odr/file.h>
+
+#include <internal/abstract/filesystem.h>
+#include <internal/common/file.h>
+#include <internal/odf/odf_cursor.h>
+#include <internal/util/xml_util.h>
+#include <internal/zip/zip_archive.h>
+
+#include <fstream>
 #include <sstream>
 #include <utility>
 

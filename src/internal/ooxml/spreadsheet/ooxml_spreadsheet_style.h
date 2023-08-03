@@ -2,8 +2,10 @@
 #define ODR_INTERNAL_OOXML_SPREADSHEET_STYLE_H
 
 #include <internal/common/style.h>
-#include <memory>
+
 #include <pugixml.hpp>
+
+#include <memory>
 #include <unordered_map>
 #include <vector>
 

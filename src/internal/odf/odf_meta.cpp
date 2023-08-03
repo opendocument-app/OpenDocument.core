@@ -1,15 +1,18 @@
-#include <algorithm>
+#include <internal/odf/odf_meta.h>
+
+#include <odr/exceptions.h>
+#include <odr/file.h>
+
 #include <internal/abstract/file.h>
 #include <internal/abstract/filesystem.h>
 #include <internal/common/path.h>
-#include <internal/odf/odf_meta.h>
 #include <internal/util/map_util.h>
 #include <internal/util/stream_util.h>
 #include <internal/util/xml_util.h>
-#include <memory>
-#include <odr/exceptions.h>
-#include <odr/file.h>
+
 #include <pugixml.hpp>
+
+#include <algorithm>
 #include <unordered_map>
 #include <utility>
 

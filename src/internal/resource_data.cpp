@@ -1,4 +1,4 @@
-#include <internal/resource_data.h>
+#include <cstdint>
 
 namespace odr::internal::resources {
 

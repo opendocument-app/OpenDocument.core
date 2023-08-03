@@ -1,14 +1,16 @@
 #ifndef ODR_INTERNAL_COMMON_DOCUMENT_CURSOR_H
 #define ODR_INTERNAL_COMMON_DOCUMENT_CURSOR_H
 
-#include <cstdint>
-#include <functional>
 #include <internal/abstract/document_cursor.h>
 #include <internal/abstract/document_element.h>
 #include <internal/common/document_path.h>
 #include <internal/common/style.h>
-#include <optional>
+
 #include <pugixml.hpp>
+
+#include <cstdint>
+#include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 

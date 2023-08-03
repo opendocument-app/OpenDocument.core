@@ -1,8 +1,11 @@
-#include <internal/abstract/filesystem.h>
-#include <internal/common/path.h>
 #include <internal/ooxml/ooxml_meta.h>
+
 #include <odr/exceptions.h>
 #include <odr/file.h>
+
+#include <internal/abstract/filesystem.h>
+#include <internal/common/path.h>
+
 #include <unordered_map>
 
 namespace odr::internal::ooxml {

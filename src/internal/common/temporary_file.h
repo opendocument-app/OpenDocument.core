@@ -1,8 +1,9 @@
 #ifndef ODR_INTERNAL_COMMON_TEMPORARY_FILE_H
 #define ODR_INTERNAL_COMMON_TEMPORARY_FILE_H
 
-#include <functional>
 #include <internal/common/file.h>
+
+#include <functional>
 
 namespace odr::internal::common {
 
