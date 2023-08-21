@@ -27,6 +27,10 @@ Potential test files: https://file-examples.com/
 
 ## [Documentation](docs/README.md)
 
+## Local build
+
+To consume this library on other platforms (e.g. Android or iOS), run: `conan export . odrcore/VERSION@`
+
 ## Version
 
 Versions and history are tracked on [GitHub](https://github.com/opendocument-app/OpenDocument.core).
