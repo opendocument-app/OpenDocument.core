@@ -18,8 +18,7 @@ void csv::check_csv_file(std::istream &in) {
   auto parser = ::csv::parse(util::stream::read(in), format);
 
   // this will actually check `variable_columns`
-  for (auto &&_ : parser) {
-    (void)_;
+  for ([[maybe_unused]] auto &&_ : parser) {
   }
 
   if (parser.get_col_names().size() <= 1) {
