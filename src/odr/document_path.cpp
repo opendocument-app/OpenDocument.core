@@ -1,5 +1,7 @@
 #include <odr/document_element.hpp>
 #include <odr/document_path.hpp>
+
+#include <algorithm>
 #include <stdexcept>
 
 namespace odr {
