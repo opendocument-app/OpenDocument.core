@@ -1,6 +1,7 @@
 #ifndef ODR_DOCUMENT_ELEMENT_H
 #define ODR_DOCUMENT_ELEMENT_H
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
