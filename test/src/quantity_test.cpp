@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <memory>
+
 #include <odr/quantity.hpp>
 
 using namespace odr;

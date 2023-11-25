@@ -1,7 +1,10 @@
-#include <iostream>
-#include <odr/exceptions.hpp>
 #include <odr/internal/text/text_util.hpp>
+
+#include <odr/exceptions.hpp>
+
 #include <uchardet/uchardet.h>
+
+#include <iostream>
 
 namespace odr::internal {
 

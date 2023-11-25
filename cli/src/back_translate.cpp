@@ -1,8 +1,10 @@
-#include <iostream>
 #include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+
 #include <odr/internal/util/file_util.hpp>
+
+#include <iostream>
 #include <string>
 
 using namespace odr;

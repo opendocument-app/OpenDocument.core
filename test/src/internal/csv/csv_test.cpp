@@ -1,6 +1,7 @@
-#include <csv.hpp>
 #include <gtest/gtest.h>
 #include <test_util.hpp>
+
+#include <csv.hpp>
 
 using namespace odr;
 using namespace odr::test;

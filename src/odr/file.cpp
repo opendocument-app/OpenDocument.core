@@ -1,10 +1,12 @@
-#include <cstdint>
+#include <odr/file.hpp>
+
 #include <odr/document.hpp>
 #include <odr/exceptions.hpp>
-#include <odr/file.hpp>
+
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/open_strategy.hpp>
+
 #include <optional>
 #include <utility>
 

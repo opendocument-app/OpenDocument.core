@@ -1,11 +1,14 @@
-#include <algorithm>
-#include <fstream>
 #include <gtest/gtest.h>
-#include <memory>
+#include <test_util.hpp>
+
 #include <odr/exceptions.hpp>
+
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
-#include <test_util.hpp>
+
+#include <algorithm>
+#include <fstream>
+#include <memory>
 
 using namespace odr;
 using namespace odr::internal;

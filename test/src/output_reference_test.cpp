@@ -1,18 +1,20 @@
-#include <filesystem>
-#include <fstream>
 #include <gtest/gtest.h>
-#include <iostream>
-#include <nlohmann/json.hpp>
-#include <odr/file.hpp>
+#include <test_util.hpp>
+
 #include <odr/html.hpp>
+#include <odr/open_document_reader.hpp>
+
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/util/odr_meta_util.hpp>
 #include <odr/internal/util/string_util.hpp>
-#include <odr/open_document_reader.hpp>
-#include <odr/style.hpp>
+
+#include <nlohmann/json.hpp>
+
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <optional>
 #include <string>
-#include <test_util.hpp>
 
 using namespace odr;
 using namespace odr::internal;

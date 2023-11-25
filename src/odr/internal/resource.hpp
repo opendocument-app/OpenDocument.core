@@ -1,8 +1,9 @@
 #ifndef ODR_INTERNAL_RESOURCE_H
 #define ODR_INTERNAL_RESOURCE_H
 
-#include <memory>
 #include <odr/internal/abstract/filesystem.hpp>
+
+#include <memory>
 #include <vector>
 
 namespace odr::internal {

@@ -1,9 +1,11 @@
 #ifndef ODR_INTERNAL_OOXML_SPREADSHEET_STYLE_H
 #define ODR_INTERNAL_OOXML_SPREADSHEET_STYLE_H
 
-#include <memory>
 #include <odr/internal/common/style.hpp>
+
 #include <pugixml.hpp>
+
+#include <memory>
 #include <unordered_map>
 #include <vector>
 

@@ -1,9 +1,11 @@
 #ifndef ODR_INTERNAL_CSV_FILE_H
 #define ODR_INTERNAL_CSV_FILE_H
 
-#include <memory>
 #include <odr/file.hpp>
+
 #include <odr/internal/text/text_file.hpp>
+
+#include <memory>
 
 namespace odr::internal::csv {
 

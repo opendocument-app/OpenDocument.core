@@ -1,9 +1,11 @@
 #ifndef ODR_INTERNAL_TEXT_FILE_H
 #define ODR_INTERNAL_TEXT_FILE_H
 
-#include <memory>
 #include <odr/file.hpp>
+
 #include <odr/internal/abstract/file.hpp>
+
+#include <memory>
 
 namespace odr::internal::text {
 

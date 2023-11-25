@@ -1,11 +1,13 @@
 #ifndef ODR_INTERNAL_CFB_UTIL_H
 #define ODR_INTERNAL_CFB_UTIL_H
 
-#include <istream>
-#include <memory>
 #include <odr/file.hpp>
+
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/cfb/cfb_impl.hpp>
+
+#include <istream>
+#include <memory>
 #include <string>
 
 namespace odr::internal::common {

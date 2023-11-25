@@ -1,6 +1,14 @@
 name: tidy
 
-on: pull_request
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -17,9 +25,7 @@ jobs:
         with:
           python-version: 3.8
       - name: install python dependencies
-        run: |
-          pip install --upgrade pip
-          pip install conan
+        run: pip install --upgrade pip conan==1.*
 
       - name: checkout
         uses: actions/checkout@v2

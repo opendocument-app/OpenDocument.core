@@ -1,13 +1,16 @@
 #ifndef ODR_INTERNAL_OOXML_SPREADSHEET_DOCUMENT_H
 #define ODR_INTERNAL_OOXML_SPREADSHEET_DOCUMENT_H
 
-#include <memory>
 #include <odr/file.hpp>
+
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
+
 #include <pugixml.hpp>
+
+#include <memory>
 #include <string>
 #include <unordered_map>
 

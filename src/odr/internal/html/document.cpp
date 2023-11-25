@@ -1,19 +1,22 @@
-#include <fstream>
-#include <iostream>
+#include <odr/internal/html/document.hpp>
+
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
-#include <odr/internal/html/document.hpp>
 #include <odr/internal/html/document_element.hpp>
 #include <odr/internal/html/document_style.hpp>
 #include <odr/internal/resource.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
+
+#include <fstream>
+#include <iostream>
 
 namespace odr::internal {
 

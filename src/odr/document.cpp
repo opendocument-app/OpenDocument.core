@@ -1,8 +1,10 @@
 #include <odr/document.hpp>
+
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/path.hpp>
+
 #include <stdexcept>
 #include <utility>
 

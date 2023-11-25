@@ -1,7 +1,6 @@
-#include <iterator>
-#include <list>
 #include <odr/internal/common/table_cursor.hpp>
-#include <odr/internal/common/table_position.hpp>
+
+#include <list>
 
 namespace odr::internal::common {
 

@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
-#include <memory>
-#include <odr/exceptions.hpp>
-#include <odr/internal/cfb/cfb_archive.hpp>
-#include <odr/internal/common/file.hpp>
 #include <test_util.hpp>
+
+#include <odr/exceptions.hpp>
+
+#include <odr/internal/cfb/cfb_archive.hpp>
+
+#include <memory>
 
 using namespace odr::internal;
 using namespace odr::test;

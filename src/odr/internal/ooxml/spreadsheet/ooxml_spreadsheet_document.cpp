@@ -1,11 +1,13 @@
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
+
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+
 #include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
+
 #include <utility>
 
 namespace odr::internal::ooxml::spreadsheet {

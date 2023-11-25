@@ -4,7 +4,9 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/document_element.hpp>
 #include <odr/internal/common/style.hpp>
+
 #include <pugixml.hpp>
+
 #include <string>
 #include <unordered_map>
 

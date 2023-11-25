@@ -1,6 +1,6 @@
 # OpenDocument.core
 
-![build status](https://github.com/opendocument-app/OpenDocument.core/workflows/build/badge.svg)
+![build status](https://github.com/opendocument-app/OpenDocument.core/workflows/build_test/badge.svg)
 
 C++ library to visualize files, especially documents, in HTML.
 
@@ -26,6 +26,10 @@ Replaces legacy projects [OpenDocument.java](https://github.com/andiwand/OpenDoc
 Potential test files: https://file-examples.com/
 
 ## [Documentation](docs/README.md)
+
+## Local build
+
+To consume this library on other platforms (e.g. Android or iOS), run: `conan export . odrcore/VERSION@`
 
 ## Version
 

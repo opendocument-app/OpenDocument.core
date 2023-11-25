@@ -1,11 +1,13 @@
 #ifndef ODR_INTERNAL_OOXML_UTIL_H
 #define ODR_INTERNAL_OOXML_UTIL_H
 
+#include <odr/style.hpp>
+
+#include <pugixml.hpp>
+
 #include <any>
 #include <functional>
-#include <odr/style.hpp>
 #include <optional>
-#include <pugixml.hpp>
 #include <string>
 #include <unordered_map>
 

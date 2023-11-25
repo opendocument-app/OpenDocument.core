@@ -2,8 +2,13 @@
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/odf/odf_style.hpp>
+
 #include <odr/quantity.hpp>
 #include <odr/style.hpp>
+
+#include <odr/internal/common/style.hpp>
+
+#include <cstring>
 #include <pugixml.hpp>
 #include <unordered_map>
 #include <utility>

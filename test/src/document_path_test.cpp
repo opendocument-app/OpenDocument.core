@@ -1,5 +1,6 @@
-#include <gtest/gtest.h>
 #include <odr/document_path.hpp>
+
+#include <gtest/gtest.h>
 
 using namespace odr;
 

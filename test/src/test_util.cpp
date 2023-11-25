@@ -1,9 +1,12 @@
-#include <algorithm>
-#include <csv.hpp>
-#include <filesystem>
 #include <odr/file.hpp>
-#include <odr/internal/common/path.hpp>
 #include <odr/open_document_reader.hpp>
+
+#include <odr/internal/common/path.hpp>
+
+#include <csv.hpp>
+
+#include <algorithm>
+#include <filesystem>
 #include <test_util.hpp>
 #include <unordered_map>
 #include <utility>

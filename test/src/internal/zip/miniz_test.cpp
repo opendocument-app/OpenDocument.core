@@ -1,10 +1,11 @@
-#include <chrono>
-#include <cstdint>
-#include <fstream>
 #include <gtest/gtest.h>
-#include <miniz/miniz.h>
-#include <string>
 #include <test_util.hpp>
+
+#include <miniz/miniz.h>
+
+#include <chrono>
+#include <fstream>
+#include <string>
 
 using namespace odr::test;
 

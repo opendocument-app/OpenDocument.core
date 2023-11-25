@@ -1,8 +1,9 @@
 #ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 
-#include <memory>
 #include <odr/document.hpp>
+
+#include <memory>
 
 namespace odr {
 class File;

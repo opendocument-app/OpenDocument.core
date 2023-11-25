@@ -1,7 +1,9 @@
+#include <odr/internal/util/file_util.hpp>
+
+#include <odr/exceptions.hpp>
+
 #include <fstream>
 #include <iterator>
-#include <odr/exceptions.hpp>
-#include <odr/internal/util/file_util.hpp>
 
 namespace odr::internal::util {
 

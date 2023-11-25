@@ -1,12 +1,14 @@
 #ifndef ODR_INTERNAL_ZIP_ARCHIVE_H
 #define ODR_INTERNAL_ZIP_ARCHIVE_H
 
+#include <odr/internal/common/path.hpp>
+
+#include <miniz/miniz.h>
+
 #include <cstdint>
 #include <iosfwd>
 #include <iterator>
 #include <memory>
-#include <miniz/miniz.h>
-#include <odr/internal/common/path.hpp>
 #include <vector>
 
 namespace odr::internal::abstract {

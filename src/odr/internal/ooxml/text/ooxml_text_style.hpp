@@ -2,8 +2,11 @@
 #define ODR_INTERNAL_OOXML_TEXT_STYLE_H
 
 #include <odr/document.hpp>
+
 #include <odr/internal/common/style.hpp>
+
 #include <pugixml.hpp>
+
 #include <unordered_map>
 
 namespace odr::internal::ooxml::text {

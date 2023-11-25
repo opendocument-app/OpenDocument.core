@@ -1,6 +1,4 @@
 #include <odr/internal/common/style.hpp>
-#include <odr/style.hpp>
-#include <utility>
 
 namespace odr::internal::common {
 

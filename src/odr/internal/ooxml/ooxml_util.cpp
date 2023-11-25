@@ -1,13 +1,16 @@
-#include <cstdint>
-#include <cstring>
+#include <odr/internal/ooxml/ooxml_util.hpp>
+
+#include <odr/quantity.hpp>
+#include <odr/style.hpp>
+
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
-#include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
-#include <odr/quantity.hpp>
-#include <odr/style.hpp>
+
 #include <pugixml.hpp>
+
+#include <cstring>
 
 namespace odr::internal {
 

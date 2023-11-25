@@ -1,7 +1,9 @@
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
+
+#include <odr/internal/html/common.hpp>
+
 #include <cstring>
 #include <iostream>
-#include <odr/internal/html/common.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
 

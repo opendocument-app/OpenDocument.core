@@ -1,6 +1,8 @@
-#include <iostream>
 #include <odr/internal/text/text_file.hpp>
+
 #include <odr/internal/text/text_util.hpp>
+
+#include <iostream>
 
 namespace odr::internal::text {
 

@@ -1,11 +1,10 @@
-#include <cstdint>
-#include <filesystem>
-#include <fstream>
+#include <odr/internal/common/file.hpp>
+
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
-#include <odr/internal/abstract/file.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/common/path.hpp>
+
+#include <filesystem>
+#include <fstream>
 #include <sstream>
 #include <utility>
 

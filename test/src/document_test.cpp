@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
+#include <test_util.hpp>
+
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/file.hpp>
 #include <odr/html.hpp>
-#include <odr/style.hpp>
-#include <test_util.hpp>
 
 using namespace odr;
 using namespace odr::test;

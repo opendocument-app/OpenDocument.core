@@ -1,16 +1,17 @@
-#include <fstream>
+#include <odr/open_document_reader.hpp>
+
 #include <odr/document.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/git_info.hpp>
-#include <odr/internal/html/document.hpp>
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/project_info.hpp>
 #include <odr/internal/resource.hpp>
-#include <odr/internal/util/stream_util.hpp>
-#include <odr/open_document_reader.hpp>
+
+#include <fstream>
 
 namespace odr {
 

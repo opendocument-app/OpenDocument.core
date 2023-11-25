@@ -1,8 +1,9 @@
 #ifndef ODR_INTERNAL_COMMON_TABLE_RANGE_H
 #define ODR_INTERNAL_COMMON_TABLE_RANGE_H
 
-#include <cstdint>
 #include <odr/internal/common/table_position.hpp>
+
+#include <cstdint>
 #include <string>
 
 namespace odr::internal::common {

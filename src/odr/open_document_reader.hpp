@@ -2,6 +2,7 @@
 #define ODR_OPEN_DOCUMENT_READER_H
 
 #include <string>
+#include <vector>
 
 namespace odr {
 enum class FileType;

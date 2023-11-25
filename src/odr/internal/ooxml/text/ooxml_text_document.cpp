@@ -1,14 +1,16 @@
-#include <fstream>
+#include <odr/internal/ooxml/text/ooxml_text_document.hpp>
+
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/text/ooxml_text_document.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
+
+#include <fstream>
 #include <sstream>
 #include <utility>
 

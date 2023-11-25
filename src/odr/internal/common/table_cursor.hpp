@@ -1,9 +1,10 @@
 #ifndef ODR_INTERNAL_COMMON_TABLE_CURSOR_H
 #define ODR_INTERNAL_COMMON_TABLE_CURSOR_H
 
+#include <odr/internal/common/table_position.hpp>
+
 #include <cstdint>
 #include <list>
-#include <odr/internal/common/table_position.hpp>
 
 namespace odr::internal::common {
 

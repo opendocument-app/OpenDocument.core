@@ -1,9 +1,10 @@
 #ifndef ODR_INTERNAL_ODF_META_H
 #define ODR_INTERNAL_ODF_META_H
 
+#include <odr/internal/common/path.hpp>
+
 #include <cstdint>
 #include <exception>
-#include <odr/internal/common/path.hpp>
 #include <string>
 #include <unordered_map>
 

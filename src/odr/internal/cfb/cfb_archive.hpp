@@ -1,11 +1,12 @@
 #ifndef ODR_INTERNAL_CFB_ARCHIVE_H
 #define ODR_INTERNAL_CFB_ARCHIVE_H
 
-#include <iterator>
-#include <memory>
 #include <odr/internal/cfb/cfb_impl.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
+
+#include <iterator>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>

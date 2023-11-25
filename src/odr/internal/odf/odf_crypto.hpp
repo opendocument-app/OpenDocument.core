@@ -1,10 +1,11 @@
 #ifndef ODR_INTERNAL_ODF_CRYPTO_H
 #define ODR_INTERNAL_ODF_CRYPTO_H
 
-#include <exception>
-#include <memory>
 #include <odr/internal/odf/odf_manifest.hpp>
 #include <odr/internal/odf/odf_meta.hpp>
+
+#include <exception>
+#include <memory>
 #include <string>
 
 namespace odr::internal::abstract {

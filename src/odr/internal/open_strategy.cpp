@@ -1,9 +1,11 @@
+#include <odr/internal/open_strategy.hpp>
+
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+
 #include <odr/internal/abstract/archive.hpp>
 #include <odr/internal/cfb/cfb_archive.hpp>
 #include <odr/internal/common/archive.hpp>
-#include <odr/internal/common/file.hpp>
 #include <odr/internal/common/image_file.hpp>
 #include <odr/internal/csv/csv_file.hpp>
 #include <odr/internal/json/json_file.hpp>
@@ -11,10 +13,9 @@
 #include <odr/internal/odf/odf_file.hpp>
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
-#include <odr/internal/open_strategy.hpp>
 #include <odr/internal/svm/svm_file.hpp>
-#include <odr/internal/text/text_file.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
+
 #include <utility>
 
 namespace odr::internal {

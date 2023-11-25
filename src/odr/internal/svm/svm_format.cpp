@@ -1,7 +1,10 @@
-#include <cstring>
-#include <odr/exceptions.hpp>
 #include <odr/internal/svm/svm_format.hpp>
+
+#include <odr/exceptions.hpp>
+
 #include <odr/internal/util/string_util.hpp>
+
+#include <cstring>
 
 namespace odr::internal {
 

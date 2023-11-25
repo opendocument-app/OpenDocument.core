@@ -1,7 +1,9 @@
-#include <odr/document_element.hpp>
-#include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_style.hpp>
+
+#include <odr/document_element.hpp>
 #include <odr/style.hpp>
+
+#include <odr/internal/html/common.hpp>
 
 namespace odr::internal {
 

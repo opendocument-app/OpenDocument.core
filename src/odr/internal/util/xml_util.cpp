@@ -1,11 +1,13 @@
-#include <cstdint>
-#include <memory>
+#include <odr/internal/util/xml_util.hpp>
+
 #include <odr/exceptions.hpp>
+
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
-#include <odr/internal/util/xml_util.hpp>
+
 #include <pugixml.hpp>
+
 #include <utility>
 
 namespace odr::internal::util {

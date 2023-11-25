@@ -1,11 +1,12 @@
 #ifndef ODR_INTERNAL_COMMON_FILESYSTEM_H
 #define ODR_INTERNAL_COMMON_FILESYSTEM_H
 
+#include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/path.hpp>
+
 #include <iosfwd>
 #include <map>
 #include <memory>
-#include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/path.hpp>
 
 namespace odr::internal::abstract {
 class File;

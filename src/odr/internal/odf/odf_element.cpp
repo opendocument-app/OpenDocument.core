@@ -1,6 +1,8 @@
-#include <cstring>
-#include <functional>
+#include <odr/internal/odf/odf_element.hpp>
+
 #include <odr/file.hpp>
+#include <odr/style.hpp>
+
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/document_element.hpp>
@@ -9,8 +11,12 @@
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
-#include <optional>
+
 #include <pugixml.hpp>
+
+#include <cstring>
+#include <functional>
+#include <optional>
 #include <string>
 
 namespace odr::internal::odf {

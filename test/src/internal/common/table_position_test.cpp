@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+
 #include <odr/internal/common/table_position.hpp>
+
 #include <string>
 
 using namespace odr::internal::common;

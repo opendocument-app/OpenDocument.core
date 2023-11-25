@@ -1,9 +1,11 @@
-#include <cstdint>
-#include <cstring>
-#include <odr/exceptions.hpp>
-#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/ooxml/ooxml_crypto.hpp>
+
+#include <odr/exceptions.hpp>
+
+#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/string_util.hpp>
+
+#include <cstring>
 #include <stdexcept>
 #include <utility>
 

@@ -1,5 +1,9 @@
-#include <functional>
+#include <odr/internal/ooxml/text/ooxml_text_element.hpp>
+
 #include <odr/file.hpp>
+#include <odr/quantity.hpp>
+#include <odr/style.hpp>
+
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/document_element.hpp>
@@ -8,8 +12,11 @@
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
 #include <odr/internal/util/xml_util.hpp>
-#include <optional>
+
 #include <pugixml.hpp>
+
+#include <functional>
+#include <optional>
 #include <utility>
 
 namespace odr::internal::ooxml::text {

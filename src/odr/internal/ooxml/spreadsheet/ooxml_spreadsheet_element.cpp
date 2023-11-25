@@ -1,4 +1,7 @@
-#include <functional>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.hpp>
+
+#include <odr/style.hpp>
+
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/document_element.hpp>
@@ -6,10 +9,11 @@
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.hpp>
-#include <odr/style.hpp>
-#include <optional>
+
 #include <pugixml.hpp>
+
+#include <functional>
+#include <optional>
 #include <unordered_map>
 #include <utility>
 

@@ -1,12 +1,13 @@
+#include <odr/internal/odf/odf_crypto.hpp>
+
 #include <odr/exceptions.hpp>
+
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
-#include <odr/internal/odf/odf_crypto.hpp>
-#include <odr/internal/odf/odf_manifest.hpp>
 #include <odr/internal/util/stream_util.hpp>
+
 #include <stdexcept>
 #include <utility>
 

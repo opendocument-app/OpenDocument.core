@@ -1,9 +1,11 @@
-#include <iomanip>
-#include <odr/html.hpp>
 #include <odr/internal/html/common.hpp>
-#include <odr/internal/resource.hpp>
+
 #include <odr/internal/util/string_util.hpp>
+
+#include <odr/html.hpp>
 #include <odr/style.hpp>
+
+#include <iomanip>
 #include <sstream>
 
 namespace odr::internal {

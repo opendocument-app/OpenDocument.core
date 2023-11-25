@@ -1,14 +1,17 @@
 #ifndef ODR_INTERNAL_ZIP_UTIL_H
 #define ODR_INTERNAL_ZIP_UTIL_H
 
+#include <odr/file.hpp>
+
+#include <odr/internal/abstract/file.hpp>
+
+#include <miniz/miniz.h>
+#include <miniz/miniz_zip.h>
+
 #include <chrono>
 #include <cstdint>
 #include <istream>
 #include <memory>
-#include <miniz/miniz.h>
-#include <miniz/miniz_zip.h>
-#include <odr/file.hpp>
-#include <odr/internal/abstract/file.hpp>
 #include <string>
 
 namespace odr::internal::common {
