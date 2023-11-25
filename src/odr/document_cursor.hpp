@@ -1,6 +1,7 @@
 #ifndef ODR_DOCUMENT_CURSOR_H
 #define ODR_DOCUMENT_CURSOR_H
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
