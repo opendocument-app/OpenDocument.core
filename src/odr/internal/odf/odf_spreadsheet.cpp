@@ -120,7 +120,7 @@ abstract::Element *Sheet::column(const abstract::Document * /*document*/,
       it != std::end(m_columns)) {
     return it->second;
   }
-  throw std::runtime_error("column not found");
+  return nullptr;
 }
 
 abstract::Element *Sheet::row(const abstract::Document * /*document*/,
@@ -129,7 +129,7 @@ abstract::Element *Sheet::row(const abstract::Document * /*document*/,
       it != std::end(m_rows)) {
     return it->second.element;
   }
-  throw std::runtime_error("row not found");
+  return nullptr;
 }
 
 abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
@@ -141,9 +141,9 @@ abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
         column_it != std::end(cells)) {
       return column_it->second;
     }
-    throw std::runtime_error("column not found");
+    return nullptr;
   }
-  throw std::runtime_error("row not found");
+  return nullptr;
 }
 
 abstract::Element *
