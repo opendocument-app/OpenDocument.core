@@ -134,10 +134,10 @@ abstract::Element *Sheet::row(const abstract::Document * /*document*/,
 
 abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
                                std::uint32_t column, std::uint32_t row) const {
-  if (auto row_it = util::map::lookup_greater_or_equals(m_rows, row);
+  if (auto row_it = util::map::lookup_greater_than(m_rows, row);
       row_it != std::end(m_rows)) {
     auto &cells = row_it->second.cells;
-    if (auto column_it = util::map::lookup_greater_or_equals(cells, column);
+    if (auto column_it = util::map::lookup_greater_than(cells, column);
         column_it != std::end(cells)) {
       return column_it->second;
     }

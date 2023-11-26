@@ -36,6 +36,7 @@ add_executable(odr_test
 
         "src/internal/text/text_file_test.cpp"
 
+        "src/internal/util/map_util_test.cpp"
         "src/internal/util/xml_util_test.cpp"
 
         "src/internal/zip/miniz_test.cpp"

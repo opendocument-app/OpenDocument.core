@@ -1,6 +1,8 @@
 #ifndef ODR_INTERNAL_UTIL_MAP_H
 #define ODR_INTERNAL_UTIL_MAP_H
 
+#include <iterator>
+
 namespace odr::internal::util::map {
 
 template <typename Map, typename Key>
@@ -36,13 +38,15 @@ lookup_default(const Map &map, const Key &key,
 }
 
 template <typename Map, typename Key>
+typename Map::const_iterator lookup_greater_than(const Map &map,
+                                                 const Key &key) {
+  return map.upper_bound(key);
+}
+
+template <typename Map, typename Key>
 typename Map::const_iterator lookup_greater_or_equals(const Map &map,
                                                       const Key &key) {
-  auto lower_bound = map.lower_bound(key);
-  if (lower_bound == std::begin(map)) {
-    return lower_bound;
-  }
-  return lower_bound;
+  return map.lower_bound(key);
 }
 
 } // namespace odr::internal::util::map
