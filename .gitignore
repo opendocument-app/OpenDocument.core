@@ -37,6 +37,7 @@
 ## OpenDocument.core
 build/
 cmake-build-*/
+venv/
 
 *.zip
 *.svg
