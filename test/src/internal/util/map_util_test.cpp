@@ -1,8 +1,8 @@
 #include <odr/internal/util/map_util.hpp>
 
-#include <map>
-
 #include <gtest/gtest.h>
+
+#include <map>
 
 using namespace odr::internal::util::map;
 

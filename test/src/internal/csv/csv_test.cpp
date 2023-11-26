@@ -1,5 +1,6 @@
-#include <gtest/gtest.h>
 #include <test_util.hpp>
+
+#include <gtest/gtest.h>
 
 #include <csv.hpp>
 

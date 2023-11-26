@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
-
 #include <odr/internal/common/path.hpp>
+
+#include <gtest/gtest.h>
 
 #include <memory>
 

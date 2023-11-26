@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
-
 #include <odr/quantity.hpp>
+
+#include <gtest/gtest.h>
 
 using namespace odr;
 

@@ -1,9 +1,10 @@
-#include <gtest/gtest.h>
-#include <test_util.hpp>
-
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/cfb/cfb_archive.hpp>
+
+#include <test_util.hpp>
+
+#include <gtest/gtest.h>
 
 #include <memory>
 
