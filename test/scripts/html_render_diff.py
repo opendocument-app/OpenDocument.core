@@ -29,12 +29,11 @@ def get_browser(driver='firefox', max_width=1000, max_height=10000):
         browser = webdriver.PhantomJS()
     elif driver == 'firefox':
         options = webdriver.FirefoxOptions()
-        options.headless = True
-        browser = webdriver.Firefox(options=options,
-                                    service_log_path=os.path.devnull)
+        options.add_argument("--headless")
+        browser = webdriver.Firefox(options=options)
     else:  # chrome or unknown
         options = webdriver.ChromeOptions()
-        options.headless = True
+        options.add_argument("--headless=new")
         browser = webdriver.Chrome(options=options)
     browser.set_window_size(max_width, max_height)
     return browser
