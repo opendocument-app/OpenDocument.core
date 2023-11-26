@@ -31,6 +31,9 @@ class Observer:
                 self._path = path
 
             def dispatch(self, event):
+                if event.event_type in ['opened']:
+                    return
+
                 if os.path.isfile(event.src_path):
                     Config.comparator.submit(
                         os.path.relpath(event.src_path, self._path))
