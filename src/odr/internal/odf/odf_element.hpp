@@ -205,11 +205,6 @@ class TableCell final : public Element, public abstract::TableCell {
 public:
   explicit TableCell(pugi::xml_node node);
 
-  [[nodiscard]] abstract::Element *
-  column(const abstract::Document *document) const final;
-  [[nodiscard]] abstract::Element *
-  row(const abstract::Document *document) const final;
-
   [[nodiscard]] bool covered(const abstract::Document *document) const final;
 
   [[nodiscard]] TableDimensions

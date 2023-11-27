@@ -229,14 +229,6 @@ TableRowStyle TableRow::style(const abstract::Document *document) const {
 TableCell::TableCell(pugi::xml_node node)
     : common::Element(node), Element(node) {}
 
-abstract::Element *TableCell::column(const abstract::Document *) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *TableCell::row(const abstract::Document *) const {
-  return nullptr; // TODO
-}
-
 bool TableCell::covered(const abstract::Document *) const { return false; }
 
 TableDimensions TableCell::span(const abstract::Document *) const {

@@ -124,14 +124,6 @@ TableRowStyle TableRow::style(const abstract::Document *document) const {
   return partial_style(document).table_row_style;
 }
 
-abstract::Element *TableCell::column(const abstract::Document *) const {
-  return {}; // TODO
-}
-
-abstract::Element *TableCell::row(const abstract::Document *) const {
-  return {}; // TODO
-}
-
 bool TableCell::covered(const abstract::Document *) const { return false; }
 
 TableDimensions TableCell::span(const abstract::Document *) const {

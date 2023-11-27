@@ -230,9 +230,6 @@ public:
     return ElementType::table_cell;
   }
 
-  [[nodiscard]] virtual Element *column(const Document *document) const = 0;
-  [[nodiscard]] virtual Element *row(const Document *document) const = 0;
-
   [[nodiscard]] virtual bool covered(const Document *document) const = 0;
   [[nodiscard]] virtual TableDimensions
   span(const Document *document) const = 0;

@@ -109,10 +109,6 @@ class TableCell final : public Element, public abstract::TableCell {
 public:
   using Element::Element;
 
-  [[nodiscard]] abstract::Element *
-  column(const abstract::Document *) const final;
-  [[nodiscard]] abstract::Element *row(const abstract::Document *) const final;
-
   [[nodiscard]] bool covered(const abstract::Document *) const final;
 
   [[nodiscard]] TableDimensions span(const abstract::Document *) const final;

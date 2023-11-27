@@ -1,12 +1,8 @@
 #include <odr/internal/odf/odf_element.hpp>
 
 #include <odr/file.hpp>
-#include <odr/style.hpp>
 
-#include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/document_element.hpp>
-#include <odr/internal/common/style.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/util/string_util.hpp>
@@ -15,7 +11,6 @@
 #include <pugixml.hpp>
 
 #include <cstring>
-#include <functional>
 #include <optional>
 #include <string>
 
@@ -312,14 +307,6 @@ TableRowStyle TableRow::style(const abstract::Document *document) const {
 
 TableCell::TableCell(pugi::xml_node node)
     : common::Element(node), Element(node) {}
-
-abstract::Element *TableCell::column(const abstract::Document *) const {
-  return nullptr;
-}
-
-abstract::Element *TableCell::row(const abstract::Document *) const {
-  return nullptr;
-}
 
 bool TableCell::covered(const abstract::Document *) const {
   return std::strcmp(m_node.name(), "table:covered-table-cell") == 0;

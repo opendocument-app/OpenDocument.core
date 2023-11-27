@@ -292,16 +292,6 @@ TableRowStyle TableRow::style() const {
   return m_element ? m_element->style(m_document) : TableRowStyle();
 }
 
-TableColumn TableCell::column() const {
-  return m_element ? TableColumn(m_document, m_element->column(m_document))
-                   : TableColumn();
-}
-
-TableRow TableCell::row() const {
-  return m_element ? TableRow(m_document, m_element->row(m_document))
-                   : TableRow();
-}
-
 bool TableCell::covered() const {
   return m_element && m_element->covered(m_document);
 }

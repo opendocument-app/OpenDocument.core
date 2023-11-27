@@ -5,14 +5,12 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/util/map_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
 #include <pugixml.hpp>
 
-#include <algorithm>
 #include <unordered_map>
 #include <utility>
 

@@ -1,10 +1,69 @@
-#include <cstring>
-#include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_spreadsheet.hpp>
+
+#include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/util/map_util.hpp>
+
+#include <cstring>
 #include <stdexcept>
 
 namespace odr::internal::odf {
+
+namespace {
+
+class SheetColumn final : public Element, public abstract::TableColumn {
+public:
+  explicit SheetColumn(pugi::xml_node node)
+      : common::Element(node), Element(node) {}
+
+  [[nodiscard]] TableColumnStyle
+  style(const abstract::Document *document) const final {
+    return partial_style(document).table_column_style;
+  }
+};
+
+class SheetRow final : public Element, public abstract::TableRow {
+public:
+  explicit SheetRow(pugi::xml_node node)
+      : common::Element(node), Element(node) {}
+
+  [[nodiscard]] TableRowStyle
+  style(const abstract::Document *document) const final {
+    return partial_style(document).table_row_style;
+  }
+};
+
+class SheetCell final : public Element, public abstract::TableCell {
+public:
+  explicit SheetCell(pugi::xml_node node)
+      : common::Element(node), Element(node) {}
+
+  [[nodiscard]] bool
+  covered(const abstract::Document * /*document*/) const final {
+    return std::strcmp(m_node.name(), "table:covered-table-cell") == 0;
+  }
+
+  [[nodiscard]] TableDimensions
+  span(const abstract::Document * /*document*/) const final {
+    return {m_node.attribute("table:number-rows-spanned").as_uint(1),
+            m_node.attribute("table:number-columns-spanned").as_uint(1)};
+  }
+
+  [[nodiscard]] ValueType
+  value_type(const abstract::Document * /*document*/) const final {
+    auto value_type = m_node.attribute("office:value-type").value();
+    if (std::strcmp("float", value_type) == 0) {
+      return ValueType::float_number;
+    }
+    return ValueType::string;
+  }
+
+  [[nodiscard]] TableCellStyle
+  style(const abstract::Document *document) const final {
+    return partial_style(document).table_cell_style;
+  }
+};
+
+} // namespace
 
 SpreadsheetRoot::SpreadsheetRoot(pugi::xml_node node)
     : common::Element(node), Root(node) {}
@@ -143,7 +202,7 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
     const auto columns_repeated =
         column_node.attribute("table:number-columns-repeated").as_uint(1);
 
-    auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
+    auto [column, _] = parse_element_tree<SheetColumn>(column_node, store);
 
     sheet.init_column(cursor.column(), columns_repeated, column);
 
@@ -157,7 +216,7 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
     const auto rows_repeated =
         row_node.attribute("table:number-rows-repeated").as_uint(1);
 
-    auto [row, _] = parse_element_tree<TableRow>(row_node, store);
+    auto [row, _] = parse_element_tree<SheetRow>(row_node, store);
 
     sheet.init_row(cursor.row(), rows_repeated, row);
 
@@ -169,7 +228,7 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
       const auto rowspan =
           cell_node.attribute("table:number-rows-spanned").as_uint(1);
 
-      auto [cell, _] = parse_element_tree<TableCell>(cell_node, store);
+      auto [cell, _] = parse_element_tree<SheetCell>(cell_node, store);
 
       sheet.init_cell(cursor.column(), cursor.row(), columns_repeated,
                       rows_repeated, cell);

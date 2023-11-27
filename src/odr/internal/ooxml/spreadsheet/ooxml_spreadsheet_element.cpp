@@ -140,16 +140,6 @@ TableRowStyle TableRow::style(const abstract::Document * /*document*/) const {
   return result;
 }
 
-abstract::Element *
-TableCell::column(const abstract::Document * /*document*/) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *
-TableCell::row(const abstract::Document * /*document*/) const {
-  return nullptr; // TODO
-}
-
 bool TableCell::covered(const abstract::Document * /*document*/) const {
   return false; // TODO
 }
