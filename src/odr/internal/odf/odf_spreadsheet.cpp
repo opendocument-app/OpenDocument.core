@@ -1,70 +1,10 @@
+#include <cstring>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_spreadsheet.hpp>
 #include <odr/internal/util/map_util.hpp>
 #include <stdexcept>
 
 namespace odr::internal::odf {
-
-namespace {
-
-class SheetColumn final : public Element, public abstract::TableColumn {
-public:
-  explicit SheetColumn(pugi::xml_node node)
-      : common::Element(node), Element(node) {}
-
-  [[nodiscard]] TableColumnStyle
-  style(const abstract::Document * /*document*/) const final {
-    return {}; // TODO
-  }
-};
-
-class SheetRow final : public Element, public abstract::TableRow {
-public:
-  explicit SheetRow(pugi::xml_node node)
-      : common::Element(node), Element(node) {}
-
-  [[nodiscard]] TableRowStyle
-  style(const abstract::Document * /*document*/) const final {
-    return {}; // TODO
-  }
-};
-
-class SheetCell final : public Element, public abstract::TableCell {
-public:
-  explicit SheetCell(pugi::xml_node node)
-      : common::Element(node), Element(node) {}
-
-  [[nodiscard]] abstract::Element *
-  column(const abstract::Document * /*document*/) const final {
-    return {}; // TODO
-  }
-  [[nodiscard]] abstract::Element *
-  row(const abstract::Document * /*document*/) const final {
-    return {}; // TODO
-  }
-
-  [[nodiscard]] bool
-  covered(const abstract::Document * /*document*/) const final {
-    return false; // TODO
-  }
-
-  [[nodiscard]] TableDimensions
-  span(const abstract::Document * /*document*/) const final {
-    return {1, 1}; // TODO
-  }
-
-  [[nodiscard]] ValueType
-  value_type(const abstract::Document * /*document*/) const final {
-    return ValueType::string; // TODO
-  }
-
-  [[nodiscard]] TableCellStyle
-  style(const abstract::Document * /*document*/) const final {
-    return {}; // TODO
-  }
-};
-
-} // namespace
 
 SpreadsheetRoot::SpreadsheetRoot(pugi::xml_node node)
     : common::Element(node), Root(node) {}
@@ -116,7 +56,7 @@ Sheet::content(const abstract::Document * /*document*/,
 
 abstract::Element *Sheet::column(const abstract::Document * /*document*/,
                                  std::uint32_t column) const {
-  if (auto it = util::map::lookup_greater_or_equals(m_columns, column);
+  if (auto it = util::map::lookup_greater_than(m_columns, column);
       it != std::end(m_columns)) {
     return it->second;
   }
@@ -125,7 +65,7 @@ abstract::Element *Sheet::column(const abstract::Document * /*document*/,
 
 abstract::Element *Sheet::row(const abstract::Document * /*document*/,
                               std::uint32_t row) const {
-  if (auto it = util::map::lookup_greater_or_equals(m_rows, row);
+  if (auto it = util::map::lookup_greater_than(m_rows, row);
       it != std::end(m_rows)) {
     return it->second.element;
   }
@@ -151,8 +91,8 @@ Sheet::first_shape(const abstract::Document * /*document*/) const {
   return m_first_shape;
 }
 
-TableStyle Sheet::style(const abstract::Document * /*document*/) const {
-  return {}; // TODO
+TableStyle Sheet::style(const abstract::Document *document) const {
+  return partial_style(document).table_style;
 }
 
 void Sheet::init_column(std::uint32_t column, std::uint32_t repeated,
@@ -193,7 +133,7 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
   }
 
   auto sheet_unique = std::make_unique<Sheet>(node);
-  auto sheet = sheet_unique.get();
+  auto &sheet = *sheet_unique;
   store.push_back(std::move(sheet_unique));
 
   TableDimensions dimensions;
@@ -203,22 +143,23 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
     const auto columns_repeated =
         column_node.attribute("table:number-columns-repeated").as_uint(1);
 
-    auto [column, _] = parse_element_tree<SheetColumn>(column_node, store);
+    auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
 
-    sheet->init_column(cursor.column(), columns_repeated, column);
+    sheet.init_column(cursor.column(), columns_repeated, column);
 
     cursor.add_column(columns_repeated);
   }
 
   dimensions.columns = cursor.column();
+  cursor = {};
 
   for (auto row_node : node.children("table:table-row")) {
     const auto rows_repeated =
         row_node.attribute("table:number-rows-repeated").as_uint(1);
 
-    auto [row, _] = parse_element_tree<SheetRow>(row_node, store);
+    auto [row, _] = parse_element_tree<TableRow>(row_node, store);
 
-    sheet->init_row(cursor.row(), rows_repeated, row);
+    sheet.init_row(cursor.row(), rows_repeated, row);
 
     for (auto cell_node : row_node.children("table:table-cell")) {
       const auto columns_repeated =
@@ -228,10 +169,10 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
       const auto rowspan =
           cell_node.attribute("table:number-rows-spanned").as_uint(1);
 
-      auto [cell, _] = parse_element_tree<SheetCell>(cell_node, store);
+      auto [cell, _] = parse_element_tree<TableCell>(cell_node, store);
 
-      sheet->init_cell(cursor.column(), cursor.row(), columns_repeated,
-                       rows_repeated, cell);
+      sheet.init_cell(cursor.column(), cursor.row(), columns_repeated,
+                      rows_repeated, cell);
 
       cursor.add_cell(colspan, rowspan, columns_repeated);
     }
@@ -241,11 +182,11 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Sheet>(
 
   dimensions.rows = cursor.row();
 
-  sheet->init_dimensions(dimensions);
+  sheet.init_dimensions(dimensions);
 
   // TODO shapes
 
-  return std::make_tuple(sheet, node.next_sibling());
+  return std::make_tuple(&sheet, node.next_sibling());
 }
 
 } // namespace odr::internal
