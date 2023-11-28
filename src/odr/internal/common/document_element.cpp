@@ -10,21 +10,27 @@ Element::Element(pugi::xml_node node) : m_node{node} {
   }
 }
 
-Element *Element::parent(const abstract::Document *) const { return m_parent; }
+Element *Element::parent(const abstract::Document *, ElementIdentifier) const {
+  return m_parent;
+}
 
-Element *Element::first_child(const abstract::Document *) const {
+Element *Element::first_child(const abstract::Document *,
+                              ElementIdentifier) const {
   return m_first_child;
 }
 
-Element *Element::last_child(const abstract::Document *) const {
+Element *Element::last_child(const abstract::Document *,
+                             ElementIdentifier) const {
   return m_last_child;
 }
 
-Element *Element::previous_sibling(const abstract::Document *) const {
+Element *Element::previous_sibling(const abstract::Document *,
+                                   ElementIdentifier) const {
   return m_previous_sibling;
 }
 
-Element *Element::next_sibling(const abstract::Document *) const {
+Element *Element::next_sibling(const abstract::Document *,
+                               ElementIdentifier) const {
   return m_next_sibling;
 }
 
@@ -41,15 +47,22 @@ void Element::init_append_child(Element *element) {
 
 Table::Table(pugi::xml_node node) : Element(node) {}
 
-Element *Table::first_child(const abstract::Document *) const { return {}; }
+Element *Table::first_child(const abstract::Document *,
+                            ElementIdentifier) const {
+  return {};
+}
 
-Element *Table::last_child(const abstract::Document *) const { return {}; }
+Element *Table::last_child(const abstract::Document *,
+                           ElementIdentifier) const {
+  return {};
+}
 
-Element *Table::first_column(const abstract::Document * /*document*/) const {
+Element *Table::first_column(const abstract::Document *,
+                             ElementIdentifier) const {
   return m_first_column;
 }
 
-Element *Table::first_row(const abstract::Document * /*document*/) const {
+Element *Table::first_row(const abstract::Document *, ElementIdentifier) const {
   return m_first_child;
 }
 

@@ -15,13 +15,16 @@ class Element : public virtual abstract::Element {
 public:
   explicit Element(const pugi::xml_node node);
 
-  [[nodiscard]] Element *parent(const abstract::Document *) const override;
-  [[nodiscard]] Element *first_child(const abstract::Document *) const override;
-  [[nodiscard]] Element *last_child(const abstract::Document *) const override;
-  [[nodiscard]] Element *
-  previous_sibling(const abstract::Document *) const override;
-  [[nodiscard]] Element *
-  next_sibling(const abstract::Document *) const override;
+  [[nodiscard]] Element *parent(const abstract::Document *,
+                                ElementIdentifier) const override;
+  [[nodiscard]] Element *first_child(const abstract::Document *,
+                                     ElementIdentifier) const override;
+  [[nodiscard]] Element *last_child(const abstract::Document *,
+                                    ElementIdentifier) const override;
+  [[nodiscard]] Element *previous_sibling(const abstract::Document *,
+                                          ElementIdentifier) const override;
+  [[nodiscard]] Element *next_sibling(const abstract::Document *,
+                                      ElementIdentifier) const override;
 
   void init_append_child(Element *element);
 
@@ -40,11 +43,14 @@ class Table : public virtual Element, public abstract::Table {
 public:
   explicit Table(const pugi::xml_node node);
 
-  [[nodiscard]] Element *first_child(const abstract::Document *) const final;
-  [[nodiscard]] Element *last_child(const abstract::Document *) const final;
+  [[nodiscard]] Element *first_child(const abstract::Document *,
+                                     ElementIdentifier) const final;
+  [[nodiscard]] Element *last_child(const abstract::Document *,
+                                    ElementIdentifier) const final;
 
-  Element *first_column(const abstract::Document *document) const final;
-  Element *first_row(const abstract::Document *document) const final;
+  Element *first_column(const abstract::Document *,
+                        ElementIdentifier) const final;
+  Element *first_row(const abstract::Document *, ElementIdentifier) const final;
 
   void init_append_column(Element *element);
   void init_append_row(Element *element);

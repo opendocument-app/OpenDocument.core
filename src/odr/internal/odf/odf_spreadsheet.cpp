@@ -15,8 +15,8 @@ public:
   explicit SheetColumn(pugi::xml_node node)
       : common::Element(node), Element(node) {}
 
-  [[nodiscard]] TableColumnStyle
-  style(const abstract::Document *document) const final {
+  [[nodiscard]] TableColumnStyle style(const abstract::Document *document,
+                                       ElementIdentifier) const final {
     return partial_style(document).table_column_style;
   }
 };
@@ -26,8 +26,8 @@ public:
   explicit SheetRow(pugi::xml_node node)
       : common::Element(node), Element(node) {}
 
-  [[nodiscard]] TableRowStyle
-  style(const abstract::Document *document) const final {
+  [[nodiscard]] TableRowStyle style(const abstract::Document *document,
+                                    ElementIdentifier) const final {
     return partial_style(document).table_row_style;
   }
 };
@@ -37,19 +37,19 @@ public:
   explicit SheetCell(pugi::xml_node node)
       : common::Element(node), Element(node) {}
 
-  [[nodiscard]] bool
-  covered(const abstract::Document * /*document*/) const final {
+  [[nodiscard]] bool covered(const abstract::Document *,
+                             ElementIdentifier) const final {
     return std::strcmp(m_node.name(), "table:covered-table-cell") == 0;
   }
 
-  [[nodiscard]] TableDimensions
-  span(const abstract::Document * /*document*/) const final {
+  [[nodiscard]] TableDimensions span(const abstract::Document *,
+                                     ElementIdentifier) const final {
     return {m_node.attribute("table:number-rows-spanned").as_uint(1),
             m_node.attribute("table:number-columns-spanned").as_uint(1)};
   }
 
-  [[nodiscard]] ValueType
-  value_type(const abstract::Document * /*document*/) const final {
+  [[nodiscard]] ValueType value_type(const abstract::Document *,
+                                     ElementIdentifier) const final {
     auto value_type = m_node.attribute("office:value-type").value();
     if (std::strcmp("float", value_type) == 0) {
       return ValueType::float_number;
@@ -57,8 +57,8 @@ public:
     return ValueType::string;
   }
 
-  [[nodiscard]] TableCellStyle
-  style(const abstract::Document *document) const final {
+  [[nodiscard]] TableCellStyle style(const abstract::Document *document,
+                                     ElementIdentifier) const final {
     return partial_style(document).table_cell_style;
   }
 };
@@ -71,17 +71,17 @@ SpreadsheetRoot::SpreadsheetRoot(pugi::xml_node node)
 Sheet::Sheet(pugi::xml_node node)
     : common::Element(node), Element(node), common::Sheet(node) {}
 
-std::string Sheet::name(const abstract::Document * /*document*/) const {
+std::string Sheet::name(const abstract::Document *, ElementIdentifier) const {
   return m_node.attribute("table:name").value();
 }
 
-TableDimensions
-Sheet::dimensions(const abstract::Document * /*document*/) const {
+TableDimensions Sheet::dimensions(const abstract::Document *,
+                                  ElementIdentifier) const {
   return m_dimensions;
 }
 
 TableDimensions
-Sheet::content(const abstract::Document * /*document*/,
+Sheet::content(const abstract::Document *, ElementIdentifier,
                const std::optional<TableDimensions> range) const {
   TableDimensions result;
 
@@ -113,8 +113,8 @@ Sheet::content(const abstract::Document * /*document*/,
   return result;
 }
 
-abstract::Element *Sheet::column(const abstract::Document * /*document*/,
-                                 std::uint32_t column) const {
+abstract::Element *Sheet::column(const abstract::Document *, ElementIdentifier,
+                                 ColumnIndex column) const {
   if (auto it = util::map::lookup_greater_than(m_columns, column);
       it != std::end(m_columns)) {
     return it->second;
@@ -122,8 +122,8 @@ abstract::Element *Sheet::column(const abstract::Document * /*document*/,
   return nullptr;
 }
 
-abstract::Element *Sheet::row(const abstract::Document * /*document*/,
-                              std::uint32_t row) const {
+abstract::Element *Sheet::row(const abstract::Document *, ElementIdentifier,
+                              RowIndex row) const {
   if (auto it = util::map::lookup_greater_than(m_rows, row);
       it != std::end(m_rows)) {
     return it->second.element;
@@ -131,8 +131,8 @@ abstract::Element *Sheet::row(const abstract::Document * /*document*/,
   return nullptr;
 }
 
-abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
-                               std::uint32_t column, std::uint32_t row) const {
+abstract::Element *Sheet::cell(const abstract::Document *, ElementIdentifier,
+                               ColumnIndex column, RowIndex row) const {
   if (auto row_it = util::map::lookup_greater_than(m_rows, row);
       row_it != std::end(m_rows)) {
     auto &cells = row_it->second.cells;
@@ -145,30 +145,30 @@ abstract::Element *Sheet::cell(const abstract::Document * /*document*/,
   return nullptr;
 }
 
-abstract::Element *
-Sheet::first_shape(const abstract::Document * /*document*/) const {
+abstract::Element *Sheet::first_shape(const abstract::Document *,
+                                      ElementIdentifier) const {
   return m_first_shape;
 }
 
-TableStyle Sheet::style(const abstract::Document *document) const {
+TableStyle Sheet::style(const abstract::Document *document,
+                        ElementIdentifier) const {
   return partial_style(document).table_style;
 }
 
-void Sheet::init_column(std::uint32_t column, std::uint32_t repeated,
+void Sheet::init_column(ColumnIndex column, std::uint32_t repeated,
                         Element *element) {
   init_child(element);
 
   m_columns[column + repeated] = element;
 }
 
-void Sheet::init_row(std::uint32_t row, std::uint32_t repeated,
-                     Element *element) {
+void Sheet::init_row(RowIndex row, std::uint32_t repeated, Element *element) {
   init_child(element);
 
   m_rows[row + repeated].element = element;
 }
 
-void Sheet::init_cell(std::uint32_t column, std::uint32_t row,
+void Sheet::init_cell(ColumnIndex column, RowIndex row,
                       std::uint32_t columns_repeated,
                       std::uint32_t rows_repeated, Element *element) {
   init_child(element);

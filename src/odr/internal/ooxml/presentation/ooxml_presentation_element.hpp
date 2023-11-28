@@ -28,7 +28,8 @@ template <ElementType element_type> class DefaultElement : public Element {
 public:
   using Element::Element;
 
-  [[nodiscard]] ElementType type(const abstract::Document *) const override {
+  [[nodiscard]] ElementType type(const abstract::Document *,
+                                 ElementIdentifier) const override {
     return element_type;
   }
 };
@@ -42,14 +43,14 @@ class Slide final : public Element, public abstract::Slide {
 public:
   using Element::Element;
 
-  [[nodiscard]] PageLayout
-  page_layout(const abstract::Document *document) const final;
+  [[nodiscard]] PageLayout page_layout(const abstract::Document *,
+                                       ElementIdentifier) const final;
 
   [[nodiscard]] abstract::MasterPage *
-  master_page(const abstract::Document *document) const final;
+  master_page(const abstract::Document *, ElementIdentifier) const final;
 
-  [[nodiscard]] std::string
-  name(const abstract::Document *document) const final;
+  [[nodiscard]] std::string name(const abstract::Document *,
+                                 ElementIdentifier) const final;
 
 private:
   pugi::xml_node slide_node_(const abstract::Document *document) const;
@@ -59,18 +60,19 @@ class Paragraph final : public Element, public abstract::Paragraph {
 public:
   using Element::Element;
 
-  [[nodiscard]] ParagraphStyle
-  style(const abstract::Document *document) const final;
+  [[nodiscard]] ParagraphStyle style(const abstract::Document *,
+                                     ElementIdentifier) const final;
 
-  [[nodiscard]] TextStyle
-  text_style(const abstract::Document *document) const final;
+  [[nodiscard]] TextStyle text_style(const abstract::Document *,
+                                     ElementIdentifier) const final;
 };
 
 class Span final : public Element, public abstract::Span {
 public:
   using Element::Element;
 
-  [[nodiscard]] TextStyle style(const abstract::Document *document) const final;
+  [[nodiscard]] TextStyle style(const abstract::Document *,
+                                ElementIdentifier) const final;
 };
 
 class Text final : public Element, public abstract::Text {
@@ -78,13 +80,14 @@ public:
   explicit Text(pugi::xml_node node);
   Text(pugi::xml_node first, pugi::xml_node last);
 
-  [[nodiscard]] std::string
-  content(const abstract::Document *document) const final;
+  [[nodiscard]] std::string content(const abstract::Document *,
+                                    ElementIdentifier) const final;
 
-  void set_content(const abstract::Document *document,
+  void set_content(const abstract::Document *, ElementIdentifier,
                    const std::string &content);
 
-  [[nodiscard]] TextStyle style(const abstract::Document *document) const final;
+  [[nodiscard]] TextStyle style(const abstract::Document *,
+                                ElementIdentifier) const final;
 
 private:
   static std::string text_(const pugi::xml_node node);
@@ -96,85 +99,87 @@ class TableElement : public Element, public abstract::Table {
 public:
   using Element::Element;
 
-  [[nodiscard]] TableDimensions
-  dimensions(const abstract::Document *document) const final;
+  [[nodiscard]] TableDimensions dimensions(const abstract::Document *,
+                                           ElementIdentifier) const final;
 
-  [[nodiscard]] abstract::Element *
-  first_column(const abstract::Document *document) const final;
+  [[nodiscard]] abstract::Element *first_column(const abstract::Document *,
+                                                ElementIdentifier) const final;
 
-  [[nodiscard]] abstract::Element *
-  first_row(const abstract::Document *document) const final;
+  [[nodiscard]] abstract::Element *first_row(const abstract::Document *,
+                                             ElementIdentifier) const final;
 
-  [[nodiscard]] TableStyle
-  style(const abstract::Document *document) const final;
+  [[nodiscard]] TableStyle style(const abstract::Document *,
+                                 ElementIdentifier) const final;
 };
 
 class TableColumn final : public Element, public abstract::TableColumn {
 public:
   using Element::Element;
 
-  [[nodiscard]] TableColumnStyle
-  style(const abstract::Document *document) const final;
+  [[nodiscard]] TableColumnStyle style(const abstract::Document *,
+                                       ElementIdentifier) const final;
 };
 
 class TableRow final : public Element, public abstract::TableRow {
 public:
   using Element::Element;
 
-  [[nodiscard]] TableRowStyle
-  style(const abstract::Document *document) const final;
+  [[nodiscard]] TableRowStyle style(const abstract::Document *,
+                                    ElementIdentifier) const final;
 };
 
 class TableCell final : public Element, public abstract::TableCell {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool covered(const abstract::Document *document) const final;
+  [[nodiscard]] bool covered(const abstract::Document *,
+                             ElementIdentifier) const final;
 
-  [[nodiscard]] TableDimensions
-  span(const abstract::Document *document) const final;
+  [[nodiscard]] TableDimensions span(const abstract::Document *,
+                                     ElementIdentifier) const final;
 
-  [[nodiscard]] ValueType
-  value_type(const abstract::Document *document) const final;
+  [[nodiscard]] ValueType value_type(const abstract::Document *,
+                                     ElementIdentifier) const final;
 
-  [[nodiscard]] TableCellStyle
-  style(const abstract::Document *document) const final;
+  [[nodiscard]] TableCellStyle style(const abstract::Document *,
+                                     ElementIdentifier) const final;
 };
 
 class Frame final : public Element, public abstract::Frame {
 public:
   using Element::Element;
 
-  [[nodiscard]] AnchorType
-  anchor_type(const abstract::Document *document) const final;
+  [[nodiscard]] AnchorType anchor_type(const abstract::Document *,
+                                       ElementIdentifier) const final;
+
+  [[nodiscard]] std::optional<std::string> x(const abstract::Document *,
+                                             ElementIdentifier) const final;
+  [[nodiscard]] std::optional<std::string> y(const abstract::Document *,
+                                             ElementIdentifier) const final;
+  [[nodiscard]] std::optional<std::string> width(const abstract::Document *,
+                                                 ElementIdentifier) const final;
+  [[nodiscard]] std::optional<std::string>
+  height(const abstract::Document *, ElementIdentifier) const final;
 
   [[nodiscard]] std::optional<std::string>
-  x(const abstract::Document *document) const final;
-  [[nodiscard]] std::optional<std::string>
-  y(const abstract::Document *document) const final;
-  [[nodiscard]] std::optional<std::string>
-  width(const abstract::Document *document) const final;
-  [[nodiscard]] std::optional<std::string>
-  height(const abstract::Document *document) const final;
+  z_index(const abstract::Document *, ElementIdentifier) const final;
 
-  [[nodiscard]] std::optional<std::string>
-  z_index(const abstract::Document *document) const final;
-
-  [[nodiscard]] GraphicStyle
-  style(const abstract::Document *document) const final;
+  [[nodiscard]] GraphicStyle style(const abstract::Document *,
+                                   ElementIdentifier) const final;
 };
 
 class ImageElement final : public Element, public abstract::Image {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool internal(const abstract::Document *document) const final;
+  [[nodiscard]] bool internal(const abstract::Document *,
+                              ElementIdentifier) const final;
 
-  [[nodiscard]] std::optional<odr::File>
-  file(const abstract::Document *document) const final;
+  [[nodiscard]] std::optional<odr::File> file(const abstract::Document *,
+                                              ElementIdentifier) const final;
 
-  [[nodiscard]] std::string
-  href(const abstract::Document *document) const final;
+  [[nodiscard]] std::string href(const abstract::Document *,
+                                 ElementIdentifier) const final;
 };
 
 } // namespace odr::internal::ooxml::presentation

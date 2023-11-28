@@ -72,6 +72,10 @@ class Circle;
 class CustomShape;
 class Image;
 
+using ElementIdentifier = std::uint64_t;
+using ColumnIndex = std::uint32_t;
+using RowIndex = std::uint32_t;
+
 enum class ElementType {
   none,
 
@@ -168,6 +172,7 @@ public:
 protected:
   const internal::abstract::Document *m_document{nullptr};
   internal::abstract::Element *m_element{nullptr};
+  ElementIdentifier m_elementId{0};
 };
 
 class ElementIterator {
@@ -193,6 +198,7 @@ public:
 private:
   const internal::abstract::Document *m_document{nullptr};
   internal::abstract::Element *m_element{nullptr};
+  ElementIdentifier m_elementId{0};
 };
 
 template <typename T> class TypedElement : public Element {
@@ -252,9 +258,9 @@ public:
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;
 
-  [[nodiscard]] TableColumn column(std::uint32_t column) const;
-  [[nodiscard]] TableRow row(std::uint32_t row) const;
-  [[nodiscard]] TableCell cell(std::uint32_t column, std::uint32_t row) const;
+  [[nodiscard]] TableColumn column(ColumnIndex column) const;
+  [[nodiscard]] TableRow row(RowIndex row) const;
+  [[nodiscard]] TableCell cell(ColumnIndex column, RowIndex row) const;
 
   [[nodiscard]] ElementRange shapes() const;
 
