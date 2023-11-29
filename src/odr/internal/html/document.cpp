@@ -154,11 +154,11 @@ Html html::translate_text_document(const Document &document,
     out << "<div";
     out << optional_style_attribute(translate_inner_page_style(page_layout));
     out << ">";
-    translate_children(element, out, config);
+    translate_children(element.children(), out, config);
     out << "</div>";
     out << "</div>";
   } else {
-    translate_children(element, out, config);
+    translate_children(element.children(), out, config);
   }
   back(document, path, out, config);
 
@@ -171,7 +171,7 @@ Html html::translate_presentation(const Document &document,
   std::vector<HtmlPage> pages;
 
   std::uint32_t i = 0;
-  for (auto child : document.root_element()) {
+  for (auto child : document.root_element().children()) {
     auto filled_path =
         fill_path_variables(path + "/" + config.slide_output_file_name, i);
     auto out = output(filled_path);
@@ -194,7 +194,7 @@ Html html::translate_spreadsheet(const Document &document,
   std::vector<HtmlPage> pages;
 
   std::uint32_t i = 0;
-  for (auto child : document.root_element()) {
+  for (auto child : document.root_element().children()) {
     auto filled_path =
         fill_path_variables(path + "/" + config.sheet_output_file_name, i);
     auto out = output(filled_path);
@@ -216,7 +216,7 @@ Html html::translate_drawing(const Document &document, const std::string &path,
   std::vector<HtmlPage> pages;
 
   std::uint32_t i = 0;
-  for (auto child : document.root_element()) {
+  for (auto child : document.root_element().children()) {
     auto filled_path =
         fill_path_variables(path + "/" + config.page_output_file_name, i);
     auto out = output(filled_path);

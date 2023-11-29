@@ -49,6 +49,7 @@ struct TableDimensions;
 
 class Element;
 class ElementIterator;
+class ElementRange;
 class TextRoot;
 class Slide;
 class Sheet;
@@ -75,6 +76,10 @@ class Image;
 using ElementIdentifier = std::uint64_t;
 using ColumnIndex = std::uint32_t;
 using RowIndex = std::uint32_t;
+using InternalElement =
+    std::pair<internal::abstract::Element *, ElementIdentifier>;
+template <typename T>
+using TypedInternalElement = std::pair<T *, ElementIdentifier>;
 
 enum class ElementType {
   none,
@@ -128,10 +133,7 @@ enum class ValueType {
 class Element {
 public:
   Element();
-  Element(const internal::abstract::Document *, internal::abstract::Element *,
-          ElementIdentifier);
-  Element(const internal::abstract::Document *,
-          std::pair<internal::abstract::Element *, ElementIdentifier>);
+  Element(const internal::abstract::Document *, InternalElement);
 
   bool operator==(const Element &rhs) const;
   bool operator!=(const Element &rhs) const;
@@ -144,6 +146,8 @@ public:
   [[nodiscard]] Element first_child() const;
   [[nodiscard]] Element previous_sibling() const;
   [[nodiscard]] Element next_sibling() const;
+
+  [[nodiscard]] ElementRange children() const;
 
   [[nodiscard]] TextRoot text_root() const;
   [[nodiscard]] Slide slide() const;
@@ -168,13 +172,13 @@ public:
   [[nodiscard]] CustomShape custom_shape() const;
   [[nodiscard]] Image image() const;
 
-  [[nodiscard]] ElementIterator begin() const;
-  [[nodiscard]] ElementIterator end() const;
-
 protected:
   const internal::abstract::Document *m_document{nullptr};
-  internal::abstract::Element *m_element{nullptr};
-  ElementIdentifier m_elementId{0};
+  InternalElement m_element;
+
+  bool exists_() const;
+  internal::abstract::Element *element_() const;
+  ElementIdentifier id_() const;
 };
 
 class ElementIterator {
@@ -186,10 +190,7 @@ public:
   using iterator_category = std::forward_iterator_tag;
 
   ElementIterator();
-  ElementIterator(const internal::abstract::Document *,
-                  internal::abstract::Element *, ElementIdentifier);
-  ElementIterator(const internal::abstract::Document *,
-                  std::pair<internal::abstract::Element *, ElementIdentifier>);
+  ElementIterator(const internal::abstract::Document *, InternalElement);
 
   bool operator==(const ElementIterator &rhs) const;
   bool operator!=(const ElementIterator &rhs) const;
@@ -201,33 +202,11 @@ public:
 
 private:
   const internal::abstract::Document *m_document{nullptr};
-  internal::abstract::Element *m_element{nullptr};
-  ElementIdentifier m_elementId{0};
-};
+  InternalElement m_element;
 
-template <typename T> class TypedElement : public Element {
-public:
-  TypedElement() = default;
-
-  TypedElement(const internal::abstract::Document *document, T *element,
-               ElementIdentifier elementId)
-      : Element(document, element, elementId), m_element{element} {}
-  TypedElement(const internal::abstract::Document *document,
-               std::pair<T *, ElementIdentifier> element)
-      : Element(document, element), m_element{element} {}
-
-  TypedElement(const internal::abstract::Document *document,
-               internal::abstract::Element *element,
-               ElementIdentifier elementId)
-      : TypedElement(document, dynamic_cast<T *>(element), elementId) {}
-  TypedElement(
-      const internal::abstract::Document *document,
-      std::pair<internal::abstract::Element *, ElementIdentifier> element)
-      : TypedElement(document, dynamic_cast<T *>(element.first),
-                     element.second) {}
-
-protected:
-  T *m_element{nullptr};
+  bool exists_() const;
+  internal::abstract::Element *element_() const;
+  ElementIdentifier id_() const;
 };
 
 class ElementRange {
@@ -242,6 +221,27 @@ public:
 private:
   ElementIterator m_begin;
   ElementIterator m_end;
+};
+
+template <typename T> class TypedElement : public Element {
+public:
+  TypedElement() = default;
+  TypedElement(const internal::abstract::Document *document,
+               InternalElement element)
+      : Element(document, element), m_typed_element{
+                                        dynamic_cast<T *>(element.first)} {}
+
+  bool operator==(const TypedElement &rhs) const {
+    return m_element == rhs.m_element;
+  }
+  bool operator!=(const TypedElement &rhs) const {
+    return m_element != rhs.m_element;
+  }
+
+protected:
+  T *m_typed_element;
+
+  T *element_() const { return m_typed_element; }
 };
 
 class TextRoot final : public TypedElement<internal::abstract::TextRoot> {

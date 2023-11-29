@@ -38,7 +38,7 @@ TEST(Document, odg) {
 
   EXPECT_EQ(document.document_type(), DocumentType::drawing);
 
-  for (auto child : document.root_element()) {
+  for (auto child : document.root_element().children()) {
     auto page_layout = child.page().page_layout();
     EXPECT_TRUE(page_layout.width);
     EXPECT_EQ(Measure("21cm"), page_layout.width);
@@ -55,7 +55,7 @@ TEST(Document, edit_odt) {
   Document document = document_file.document();
 
   std::function<void(Element)> edit = [&](Element element) {
-    for (Element child : element) {
+    for (Element child : element.children()) {
       edit(child);
     }
     if (auto text = element.text()) {
@@ -74,7 +74,7 @@ TEST(Document, edit_docx) {
   Document document = document_file.document();
 
   std::function<void(Element)> edit = [&](Element element) {
-    for (Element child : element) {
+    for (Element child : element.children()) {
       edit(child);
     }
     if (auto text = element.text()) {

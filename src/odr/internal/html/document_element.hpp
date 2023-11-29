@@ -11,7 +11,7 @@ struct HtmlConfig;
 
 namespace odr::internal::html {
 
-void translate_children(Element element, std::ostream &out,
+void translate_children(ElementRange range, std::ostream &out,
                         const HtmlConfig &config);
 void translate_element(Element element, std::ostream &out,
                        const HtmlConfig &config);
@@ -23,7 +23,7 @@ void translate_sheet(Element element, std::ostream &out,
 void translate_page(Element element, std::ostream &out,
                     const HtmlConfig &config);
 
-void translate_master_page(Element element, std::ostream &out,
+void translate_master_page(MasterPage element, std::ostream &out,
                            const HtmlConfig &config);
 
 void translate_text(const Element element, std::ostream &out,
