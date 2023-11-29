@@ -46,7 +46,7 @@ public:
   [[nodiscard]] PageLayout page_layout(const abstract::Document *,
                                        ElementIdentifier) const final;
 
-  [[nodiscard]] abstract::MasterPage *
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
   master_page(const abstract::Document *, ElementIdentifier) const final;
 
   [[nodiscard]] std::string name(const abstract::Document *,
@@ -102,11 +102,11 @@ public:
   [[nodiscard]] TableDimensions dimensions(const abstract::Document *,
                                            ElementIdentifier) const final;
 
-  [[nodiscard]] abstract::Element *first_column(const abstract::Document *,
-                                                ElementIdentifier) const final;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  first_column(const abstract::Document *, ElementIdentifier) const final;
 
-  [[nodiscard]] abstract::Element *first_row(const abstract::Document *,
-                                             ElementIdentifier) const final;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  first_row(const abstract::Document *, ElementIdentifier) const final;
 
   [[nodiscard]] TableStyle style(const abstract::Document *,
                                  ElementIdentifier) const final;

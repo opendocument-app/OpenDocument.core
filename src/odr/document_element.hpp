@@ -128,8 +128,10 @@ enum class ValueType {
 class Element {
 public:
   Element();
-  Element(const internal::abstract::Document *document,
-          internal::abstract::Element *element);
+  Element(const internal::abstract::Document *, internal::abstract::Element *,
+          ElementIdentifier);
+  Element(const internal::abstract::Document *,
+          std::pair<internal::abstract::Element *, ElementIdentifier>);
 
   bool operator==(const Element &rhs) const;
   bool operator!=(const Element &rhs) const;
@@ -184,8 +186,10 @@ public:
   using iterator_category = std::forward_iterator_tag;
 
   ElementIterator();
-  ElementIterator(const internal::abstract::Document *document,
-                  internal::abstract::Element *element);
+  ElementIterator(const internal::abstract::Document *,
+                  internal::abstract::Element *, ElementIdentifier);
+  ElementIterator(const internal::abstract::Document *,
+                  std::pair<internal::abstract::Element *, ElementIdentifier>);
 
   bool operator==(const ElementIterator &rhs) const;
   bool operator!=(const ElementIterator &rhs) const;
@@ -204,11 +208,23 @@ private:
 template <typename T> class TypedElement : public Element {
 public:
   TypedElement() = default;
-  TypedElement(const internal::abstract::Document *document, T *element)
-      : Element(document, element), m_element{element} {}
+
+  TypedElement(const internal::abstract::Document *document, T *element,
+               ElementIdentifier elementId)
+      : Element(document, element, elementId), m_element{element} {}
   TypedElement(const internal::abstract::Document *document,
-               internal::abstract::Element *element)
-      : TypedElement(document, dynamic_cast<T *>(element)) {}
+               std::pair<T *, ElementIdentifier> element)
+      : Element(document, element), m_element{element} {}
+
+  TypedElement(const internal::abstract::Document *document,
+               internal::abstract::Element *element,
+               ElementIdentifier elementId)
+      : TypedElement(document, dynamic_cast<T *>(element), elementId) {}
+  TypedElement(
+      const internal::abstract::Document *document,
+      std::pair<internal::abstract::Element *, ElementIdentifier> element)
+      : TypedElement(document, dynamic_cast<T *>(element.first),
+                     element.second) {}
 
 protected:
   T *m_element{nullptr};

@@ -59,7 +59,7 @@ public:
   [[nodiscard]] PageLayout page_layout(const abstract::Document *,
                                        ElementIdentifier) const final;
 
-  [[nodiscard]] abstract::MasterPage *
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
   first_master_page(const abstract::Document *, ElementIdentifier) const final;
 };
 
@@ -88,7 +88,7 @@ public:
   [[nodiscard]] PageLayout page_layout(const abstract::Document *,
                                        ElementIdentifier) const final;
 
-  [[nodiscard]] abstract::MasterPage *
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
   master_page(const abstract::Document *, ElementIdentifier) const final;
 
   [[nodiscard]] std::string name(const abstract::Document *,
@@ -102,7 +102,7 @@ public:
   [[nodiscard]] PageLayout page_layout(const abstract::Document *,
                                        ElementIdentifier) const final;
 
-  [[nodiscard]] abstract::MasterPage *
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
   master_page(const abstract::Document *, ElementIdentifier) const final;
 
   [[nodiscard]] std::string name(const abstract::Document *,

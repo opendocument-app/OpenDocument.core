@@ -62,9 +62,9 @@ PageLayout Root::page_layout(const abstract::Document *,
   return {}; // TODO
 }
 
-abstract::MasterPage *Root::first_master_page(const abstract::Document *,
-                                              ElementIdentifier) const {
-  return nullptr; // TODO
+std::pair<abstract::Element *, ElementIdentifier>
+Root::first_master_page(const abstract::Document *, ElementIdentifier) const {
+  return {}; // TODO
 }
 
 Paragraph::Paragraph(pugi::xml_node node)

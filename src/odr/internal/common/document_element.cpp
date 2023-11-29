@@ -10,28 +10,29 @@ Element::Element(pugi::xml_node node) : m_node{node} {
   }
 }
 
-Element *Element::parent(const abstract::Document *, ElementIdentifier) const {
-  return m_parent;
+std::pair<abstract::Element *, ElementIdentifier>
+Element::parent(const abstract::Document *, ElementIdentifier) const {
+  return {m_parent, 0}; // TODO
 }
 
-Element *Element::first_child(const abstract::Document *,
-                              ElementIdentifier) const {
-  return m_first_child;
+std::pair<abstract::Element *, ElementIdentifier>
+Element::first_child(const abstract::Document *, ElementIdentifier) const {
+  return {m_first_child, 0}; // TODO
 }
 
-Element *Element::last_child(const abstract::Document *,
-                             ElementIdentifier) const {
-  return m_last_child;
+std::pair<abstract::Element *, ElementIdentifier>
+Element::last_child(const abstract::Document *, ElementIdentifier) const {
+  return {m_last_child, 0}; // TODO
 }
 
-Element *Element::previous_sibling(const abstract::Document *,
-                                   ElementIdentifier) const {
-  return m_previous_sibling;
+std::pair<abstract::Element *, ElementIdentifier>
+Element::previous_sibling(const abstract::Document *, ElementIdentifier) const {
+  return {m_previous_sibling, 0}; // TODO
 }
 
-Element *Element::next_sibling(const abstract::Document *,
-                               ElementIdentifier) const {
-  return m_next_sibling;
+std::pair<abstract::Element *, ElementIdentifier>
+Element::next_sibling(const abstract::Document *, ElementIdentifier) const {
+  return {m_next_sibling, 0};
 }
 
 void Element::init_append_child(Element *element) {
@@ -47,23 +48,24 @@ void Element::init_append_child(Element *element) {
 
 Table::Table(pugi::xml_node node) : Element(node) {}
 
-Element *Table::first_child(const abstract::Document *,
-                            ElementIdentifier) const {
+std::pair<abstract::Element *, ElementIdentifier>
+Table::first_child(const abstract::Document *, ElementIdentifier) const {
   return {};
 }
 
-Element *Table::last_child(const abstract::Document *,
-                           ElementIdentifier) const {
+std::pair<abstract::Element *, ElementIdentifier>
+Table::last_child(const abstract::Document *, ElementIdentifier) const {
   return {};
 }
 
-Element *Table::first_column(const abstract::Document *,
-                             ElementIdentifier) const {
-  return m_first_column;
+std::pair<abstract::Element *, ElementIdentifier>
+Table::first_column(const abstract::Document *, ElementIdentifier) const {
+  return {m_first_column, 0}; // TODO
 }
 
-Element *Table::first_row(const abstract::Document *, ElementIdentifier) const {
-  return m_first_child;
+std::pair<abstract::Element *, ElementIdentifier>
+Table::first_row(const abstract::Document *, ElementIdentifier) const {
+  return {m_first_child, 0}; // TODO
 }
 
 void Table::init_append_column(Element *element) {

@@ -78,17 +78,18 @@ ElementType TextRoot::type(const abstract::Document *,
 
 PageLayout TextRoot::page_layout(const abstract::Document *document,
                                  ElementIdentifier elementId) const {
-  if (auto master_page = this->first_master_page(document, elementId)) {
+  if (auto master_page = dynamic_cast<MasterPage *>(
+          this->first_master_page(document, elementId).first)) {
     return master_page->page_layout(document, elementId);
   }
   return {};
 }
 
-abstract::MasterPage *
+std::pair<abstract::Element *, ElementIdentifier>
 TextRoot::first_master_page(const abstract::Document *document,
                             ElementIdentifier) const {
   if (auto first_master_page = style_(document)->first_master_page()) {
-    return first_master_page;
+    return {first_master_page, 0}; // TODO
   }
   return {};
 }
@@ -114,16 +115,19 @@ Slide::Slide(pugi::xml_node node) : common::Element(node), Element(node) {}
 
 PageLayout Slide::page_layout(const abstract::Document *document,
                               ElementIdentifier elementId) const {
-  if (auto master_page = this->master_page(document, elementId)) {
+  if (auto master_page = dynamic_cast<MasterPage *>(
+          this->master_page(document, elementId).first)) {
     return master_page->page_layout(document, elementId);
   }
   return {};
 }
 
-abstract::MasterPage *Slide::master_page(const abstract::Document *document,
-                                         ElementIdentifier) const {
+std::pair<abstract::Element *, ElementIdentifier>
+Slide::master_page(const abstract::Document *document,
+                   ElementIdentifier) const {
   if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
-    return style_(document)->master_page(master_page_name_attr.value());
+    return {style_(document)->master_page(master_page_name_attr.value()),
+            0}; // TODO
   }
   return {};
 }
@@ -136,16 +140,18 @@ Page::Page(pugi::xml_node node) : common::Element(node), Element(node) {}
 
 PageLayout Page::page_layout(const abstract::Document *document,
                              ElementIdentifier elementId) const {
-  if (auto master_page = this->master_page(document, elementId)) {
+  if (auto master_page = dynamic_cast<MasterPage *>(
+          this->master_page(document, elementId).first)) {
     return master_page->page_layout(document, elementId);
   }
   return {};
 }
 
-abstract::MasterPage *Page::master_page(const abstract::Document *document,
-                                        ElementIdentifier) const {
+std::pair<abstract::Element *, ElementIdentifier>
+Page::master_page(const abstract::Document *document, ElementIdentifier) const {
   if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
-    return style_(document)->master_page(master_page_name_attr.value());
+    return {style_(document)->master_page(master_page_name_attr.value()),
+            0}; // TODO
   }
   return {};
 }

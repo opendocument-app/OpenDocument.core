@@ -41,8 +41,8 @@ PageLayout Slide::page_layout(const abstract::Document *,
   return {}; // TODO
 }
 
-abstract::MasterPage *Slide::master_page(const abstract::Document *,
-                                         ElementIdentifier) const {
+std::pair<abstract::Element *, ElementIdentifier>
+Slide::master_page(const abstract::Document *, ElementIdentifier) const {
   return {}; // TODO
 }
 
@@ -111,13 +111,14 @@ TableDimensions TableElement::dimensions(const abstract::Document *,
   return {}; // TODO
 }
 
-abstract::Element *TableElement::first_column(const abstract::Document *,
-                                              ElementIdentifier) const {
+std::pair<abstract::Element *, ElementIdentifier>
+TableElement::first_column(const abstract::Document *,
+                           ElementIdentifier) const {
   return {}; // TODO
 }
 
-abstract::Element *TableElement::first_row(const abstract::Document *,
-                                           ElementIdentifier) const {
+std::pair<abstract::Element *, ElementIdentifier>
+TableElement::first_row(const abstract::Document *, ElementIdentifier) const {
   return {}; // TODO
 }
 

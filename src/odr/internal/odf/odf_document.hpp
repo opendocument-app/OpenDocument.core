@@ -36,7 +36,8 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] abstract::Element *root_element() const final;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  root_element() const final;
 
 protected:
   FileType m_file_type;

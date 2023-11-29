@@ -33,16 +33,16 @@ public:
   [[nodiscard]] virtual ElementType type(const Document *,
                                          ElementIdentifier) const = 0;
 
-  [[nodiscard]] virtual Element *parent(const Document *,
-                                        ElementIdentifier) const = 0;
-  [[nodiscard]] virtual Element *first_child(const Document *,
-                                             ElementIdentifier) const = 0;
-  [[nodiscard]] virtual Element *last_child(const Document *,
-                                            ElementIdentifier) const = 0;
-  [[nodiscard]] virtual Element *previous_sibling(const Document *,
-                                                  ElementIdentifier) const = 0;
-  [[nodiscard]] virtual Element *next_sibling(const Document *,
-                                              ElementIdentifier) const = 0;
+  [[nodiscard]] virtual std::pair<Element *, ElementIdentifier>
+  parent(const Document *, ElementIdentifier) const = 0;
+  [[nodiscard]] virtual std::pair<Element *, ElementIdentifier>
+  first_child(const Document *, ElementIdentifier) const = 0;
+  [[nodiscard]] virtual std::pair<Element *, ElementIdentifier>
+  last_child(const Document *, ElementIdentifier) const = 0;
+  [[nodiscard]] virtual std::pair<Element *, ElementIdentifier>
+  previous_sibling(const Document *, ElementIdentifier) const = 0;
+  [[nodiscard]] virtual std::pair<Element *, ElementIdentifier>
+  next_sibling(const Document *, ElementIdentifier) const = 0;
 };
 
 class TextRoot : public virtual Element {
@@ -55,7 +55,7 @@ public:
   [[nodiscard]] virtual PageLayout page_layout(const Document *,
                                                ElementIdentifier) const = 0;
 
-  [[nodiscard]] virtual MasterPage *
+  [[nodiscard]] virtual std::pair<abstract::Element *, ElementIdentifier>
   first_master_page(const Document *, ElementIdentifier) const = 0;
 };
 
@@ -69,8 +69,8 @@ public:
   [[nodiscard]] virtual PageLayout page_layout(const Document *,
                                                ElementIdentifier) const = 0;
 
-  [[nodiscard]] virtual MasterPage *master_page(const Document *,
-                                                ElementIdentifier) const = 0;
+  [[nodiscard]] virtual std::pair<abstract::Element *, ElementIdentifier>
+  master_page(const Document *, ElementIdentifier) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *,
                                          ElementIdentifier) const = 0;
@@ -117,8 +117,8 @@ public:
   [[nodiscard]] virtual PageLayout page_layout(const Document *,
                                                ElementIdentifier) const = 0;
 
-  [[nodiscard]] virtual MasterPage *master_page(const Document *,
-                                                ElementIdentifier) const = 0;
+  [[nodiscard]] virtual std::pair<abstract::Element *, ElementIdentifier>
+  master_page(const Document *, ElementIdentifier) const = 0;
 
   [[nodiscard]] virtual std::string name(const Document *,
                                          ElementIdentifier) const = 0;
@@ -229,10 +229,10 @@ public:
   [[nodiscard]] virtual TableDimensions dimensions(const Document *,
                                                    ElementIdentifier) const = 0;
 
-  [[nodiscard]] virtual Element *first_column(const Document *,
-                                              ElementIdentifier) const = 0;
-  [[nodiscard]] virtual Element *first_row(const Document *,
-                                           ElementIdentifier) const = 0;
+  [[nodiscard]] virtual std::pair<abstract::Element *, ElementIdentifier>
+  first_column(const Document *, ElementIdentifier) const = 0;
+  [[nodiscard]] virtual std::pair<abstract::Element *, ElementIdentifier>
+  first_row(const Document *, ElementIdentifier) const = 0;
 
   [[nodiscard]] virtual TableStyle style(const Document *,
                                          ElementIdentifier) const = 0;
@@ -404,8 +404,8 @@ public:
     return ElementType::table_column;
   }
 
-  [[nodiscard]] virtual TableColumnStyle
-  style(const Document *, ElementIdentifier, ColumnIndex) const = 0;
+  [[nodiscard]] virtual TableColumnStyle style(const Document *,
+                                               ColumnIndex) const = 0;
 };
 
 class SheetRow : public virtual Element {
@@ -415,7 +415,7 @@ public:
     return ElementType::table_row;
   }
 
-  [[nodiscard]] virtual TableRowStyle style(const Document *, ElementIdentifier,
+  [[nodiscard]] virtual TableRowStyle style(const Document *,
                                             RowIndex) const = 0;
 };
 
@@ -426,16 +426,15 @@ public:
     return ElementType::table_cell;
   }
 
-  [[nodiscard]] virtual bool covered(const Document *, ElementIdentifier,
-                                     ColumnIndex, RowIndex) const = 0;
-  [[nodiscard]] virtual TableDimensions
-  span(const Document *, ElementIdentifier, ColumnIndex, RowIndex) const = 0;
-  [[nodiscard]] virtual ValueType value_type(const Document *,
-                                             ElementIdentifier, ColumnIndex,
+  [[nodiscard]] virtual bool covered(const Document *, ColumnIndex,
+                                     RowIndex) const = 0;
+  [[nodiscard]] virtual TableDimensions span(const Document *, ColumnIndex,
+                                             RowIndex) const = 0;
+  [[nodiscard]] virtual ValueType value_type(const Document *, ColumnIndex,
                                              RowIndex) const = 0;
 
-  [[nodiscard]] virtual TableCellStyle
-  style(const Document *, ElementIdentifier, ColumnIndex, RowIndex) const = 0;
+  [[nodiscard]] virtual TableCellStyle style(const Document *, ColumnIndex,
+                                             RowIndex) const = 0;
 };
 
 } // namespace odr::internal::abstract

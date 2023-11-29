@@ -10,8 +10,15 @@ namespace odr {
 Element::Element() = default;
 
 Element::Element(const internal::abstract::Document *document,
-                 internal::abstract::Element *element)
-    : m_document{document}, m_element{element} {}
+                 internal::abstract::Element *element,
+                 ElementIdentifier elementId)
+    : m_document{document}, m_element{element}, m_elementId{elementId} {}
+
+Element::Element(
+    const internal::abstract::Document *document,
+    std::pair<internal::abstract::Element *, ElementIdentifier> element)
+    : m_document{document}, m_element{element.first}, m_elementId{
+                                                          element.second} {}
 
 bool Element::operator==(const Element &rhs) const {
   return m_element == rhs.m_element;
@@ -53,49 +60,69 @@ Element Element::next_sibling() const {
                    : Element();
 }
 
-TextRoot Element::text_root() const { return {m_document, m_element}; }
+TextRoot Element::text_root() const {
+  return {m_document, m_element, m_elementId};
+}
 
-Slide Element::slide() const { return {m_document, m_element}; }
+Slide Element::slide() const { return {m_document, m_element, m_elementId}; }
 
-Sheet Element::sheet() const { return {m_document, m_element}; }
+Sheet Element::sheet() const { return {m_document, m_element, m_elementId}; }
 
-Page Element::page() const { return {m_document, m_element}; }
+Page Element::page() const { return {m_document, m_element, m_elementId}; }
 
-MasterPage Element::master_page() const { return {m_document, m_element}; }
+MasterPage Element::master_page() const {
+  return {m_document, m_element, m_elementId};
+}
 
-LineBreak Element::line_break() const { return {m_document, m_element}; }
+LineBreak Element::line_break() const {
+  return {m_document, m_element, m_elementId};
+}
 
-Paragraph Element::paragraph() const { return {m_document, m_element}; }
+Paragraph Element::paragraph() const {
+  return {m_document, m_element, m_elementId};
+}
 
-Span Element::span() const { return {m_document, m_element}; }
+Span Element::span() const { return {m_document, m_element, m_elementId}; }
 
-Text Element::text() const { return {m_document, m_element}; }
+Text Element::text() const { return {m_document, m_element, m_elementId}; }
 
-Link Element::link() const { return {m_document, m_element}; }
+Link Element::link() const { return {m_document, m_element, m_elementId}; }
 
-Bookmark Element::bookmark() const { return {m_document, m_element}; }
+Bookmark Element::bookmark() const {
+  return {m_document, m_element, m_elementId};
+}
 
-ListItem Element::list_item() const { return {m_document, m_element}; }
+ListItem Element::list_item() const {
+  return {m_document, m_element, m_elementId};
+}
 
-Table Element::table() const { return {m_document, m_element}; }
+Table Element::table() const { return {m_document, m_element, m_elementId}; }
 
-TableColumn Element::table_column() const { return {m_document, m_element}; }
+TableColumn Element::table_column() const {
+  return {m_document, m_element, m_elementId};
+}
 
-TableRow Element::table_row() const { return {m_document, m_element}; }
+TableRow Element::table_row() const {
+  return {m_document, m_element, m_elementId};
+}
 
-TableCell Element::table_cell() const { return {m_document, m_element}; }
+TableCell Element::table_cell() const {
+  return {m_document, m_element, m_elementId};
+}
 
-Frame Element::frame() const { return {m_document, m_element}; }
+Frame Element::frame() const { return {m_document, m_element, m_elementId}; }
 
-Rect Element::rect() const { return {m_document, m_element}; }
+Rect Element::rect() const { return {m_document, m_element, m_elementId}; }
 
-Line Element::line() const { return {m_document, m_element}; }
+Line Element::line() const { return {m_document, m_element, m_elementId}; }
 
-Circle Element::circle() const { return {m_document, m_element}; }
+Circle Element::circle() const { return {m_document, m_element, m_elementId}; }
 
-CustomShape Element::custom_shape() const { return {m_document, m_element}; }
+CustomShape Element::custom_shape() const {
+  return {m_document, m_element, m_elementId};
+}
 
-Image Element::image() const { return {m_document, m_element}; }
+Image Element::image() const { return {m_document, m_element, m_elementId}; }
 
 ElementIterator Element::begin() const {
   return m_element
@@ -109,8 +136,15 @@ ElementIterator Element::end() const { return {}; }
 ElementIterator::ElementIterator() = default;
 
 ElementIterator::ElementIterator(const internal::abstract::Document *document,
-                                 internal::abstract::Element *element)
-    : m_document{document}, m_element{element} {}
+                                 internal::abstract::Element *element,
+                                 ElementIdentifier elementId)
+    : m_document{document}, m_element{element}, m_elementId{elementId} {}
+
+ElementIterator::ElementIterator(
+    const internal::abstract::Document *document,
+    std::pair<internal::abstract::Element *, ElementIdentifier> element)
+    : m_document{document}, m_element{element.first}, m_elementId{
+                                                          element.second} {}
 
 bool ElementIterator::operator==(const ElementIterator &rhs) const {
   return m_elementId == rhs.m_elementId;
@@ -121,12 +155,14 @@ bool ElementIterator::operator!=(const ElementIterator &rhs) const {
 }
 
 ElementIterator::reference ElementIterator::operator*() const {
-  return Element(m_document, m_element);
+  return Element(m_document, m_element, m_elementId);
 }
 
 ElementIterator &ElementIterator::operator++() {
   if (m_element != nullptr) {
-    m_element = m_element->next_sibling(m_document, m_elementId);
+    auto element = m_element->next_sibling(m_document, m_elementId);
+    m_element = element.first;
+    m_elementId = element.second;
   }
   return *this;
 }
@@ -193,27 +229,31 @@ TableDimensions Sheet::content(std::optional<TableDimensions> range) const {
 TableColumn Sheet::column(std::uint32_t column) const {
   return m_element
              ? TableColumn(m_document,
-                           m_element->column(m_document, m_elementId, column))
+                           m_element->column(m_document, m_elementId, column),
+                           0) // TODO
              : TableColumn();
 }
 
 TableRow Sheet::row(std::uint32_t row) const {
-  return m_element ? TableRow(m_document,
-                              m_element->row(m_document, m_elementId, row))
-                   : TableRow();
+  return m_element
+             ? TableRow(m_document,
+                        m_element->row(m_document, m_elementId, row), 0) // TODO
+             : TableRow();
 }
 
 TableCell Sheet::cell(std::uint32_t column, std::uint32_t row) const {
   return m_element
              ? TableCell(m_document,
-                         m_element->cell(m_document, m_elementId, column, row))
+                         m_element->cell(m_document, m_elementId, column, row),
+                         0) // TODO
              : TableCell();
 }
 
 ElementRange Sheet::shapes() const {
   return m_element
              ? ElementRange(ElementIterator(
-                   m_document, m_element->first_shape(m_document, m_elementId)))
+                   m_document, m_element->first_shape(m_document, m_elementId),
+                   0)) // TODO
              : ElementRange();
 }
 

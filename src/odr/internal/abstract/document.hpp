@@ -1,6 +1,8 @@
 #ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 
+#include <odr/document_element.hpp>
+
 #include <memory>
 
 namespace odr {
@@ -46,7 +48,8 @@ public:
   files() const noexcept = 0;
 
   /// \return cursor to the root element of the document.
-  [[nodiscard]] virtual Element *root_element() const = 0;
+  [[nodiscard]] virtual std::pair<Element *, ElementIdentifier>
+  root_element() const = 0;
 };
 
 } // namespace odr::internal::abstract

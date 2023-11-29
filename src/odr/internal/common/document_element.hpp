@@ -15,16 +15,17 @@ class Element : public virtual abstract::Element {
 public:
   explicit Element(const pugi::xml_node node);
 
-  [[nodiscard]] Element *parent(const abstract::Document *,
-                                ElementIdentifier) const override;
-  [[nodiscard]] Element *first_child(const abstract::Document *,
-                                     ElementIdentifier) const override;
-  [[nodiscard]] Element *last_child(const abstract::Document *,
-                                    ElementIdentifier) const override;
-  [[nodiscard]] Element *previous_sibling(const abstract::Document *,
-                                          ElementIdentifier) const override;
-  [[nodiscard]] Element *next_sibling(const abstract::Document *,
-                                      ElementIdentifier) const override;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  parent(const abstract::Document *, ElementIdentifier) const override;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  first_child(const abstract::Document *, ElementIdentifier) const override;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  last_child(const abstract::Document *, ElementIdentifier) const override;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  previous_sibling(const abstract::Document *,
+                   ElementIdentifier) const override;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  next_sibling(const abstract::Document *, ElementIdentifier) const override;
 
   void init_append_child(Element *element);
 
@@ -43,14 +44,15 @@ class Table : public virtual Element, public abstract::Table {
 public:
   explicit Table(const pugi::xml_node node);
 
-  [[nodiscard]] Element *first_child(const abstract::Document *,
-                                     ElementIdentifier) const final;
-  [[nodiscard]] Element *last_child(const abstract::Document *,
-                                    ElementIdentifier) const final;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  first_child(const abstract::Document *, ElementIdentifier) const final;
+  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
+  last_child(const abstract::Document *, ElementIdentifier) const final;
 
-  Element *first_column(const abstract::Document *,
-                        ElementIdentifier) const final;
-  Element *first_row(const abstract::Document *, ElementIdentifier) const final;
+  std::pair<abstract::Element *, ElementIdentifier>
+  first_column(const abstract::Document *, ElementIdentifier) const final;
+  std::pair<abstract::Element *, ElementIdentifier>
+  first_row(const abstract::Document *, ElementIdentifier) const final;
 
   void init_append_column(Element *element);
   void init_append_row(Element *element);
