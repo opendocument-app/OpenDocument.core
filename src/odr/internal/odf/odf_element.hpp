@@ -24,6 +24,8 @@ public:
   intermediate_style(const abstract::Document *) const;
 
 protected:
+  pugi::xml_node m_node;
+
   virtual const char *style_name_(const abstract::Document *) const;
 
   static const Document *document_(const abstract::Document *);
@@ -32,8 +34,7 @@ protected:
 
 template <ElementType element_type> class DefaultElement : public Element {
 public:
-  explicit DefaultElement(pugi::xml_node node)
-      : common::Element(node), Element(node) {}
+  explicit DefaultElement(pugi::xml_node node) : Element(node) {}
 
   [[nodiscard]] ElementType type(const abstract::Document *,
                                  ElementIdentifier) const final {

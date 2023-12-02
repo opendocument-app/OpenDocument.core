@@ -12,8 +12,7 @@ namespace {
 
 class SheetColumn final : public Element, public abstract::TableColumn {
 public:
-  explicit SheetColumn(pugi::xml_node node)
-      : common::Element(node), Element(node) {}
+  explicit SheetColumn(pugi::xml_node node) : Element(node) {}
 
   [[nodiscard]] TableColumnStyle style(const abstract::Document *document,
                                        ElementIdentifier) const final {
@@ -23,8 +22,7 @@ public:
 
 class SheetRow final : public Element, public abstract::TableRow {
 public:
-  explicit SheetRow(pugi::xml_node node)
-      : common::Element(node), Element(node) {}
+  explicit SheetRow(pugi::xml_node node) : Element(node) {}
 
   [[nodiscard]] TableRowStyle style(const abstract::Document *document,
                                     ElementIdentifier) const final {
@@ -34,8 +32,7 @@ public:
 
 class SheetCell final : public Element, public abstract::TableCell {
 public:
-  explicit SheetCell(pugi::xml_node node)
-      : common::Element(node), Element(node) {}
+  explicit SheetCell(pugi::xml_node node) : Element(node) {}
 
   [[nodiscard]] bool covered(const abstract::Document *,
                              ElementIdentifier) const final {
@@ -65,11 +62,9 @@ public:
 
 } // namespace
 
-SpreadsheetRoot::SpreadsheetRoot(pugi::xml_node node)
-    : common::Element(node), Root(node) {}
+SpreadsheetRoot::SpreadsheetRoot(pugi::xml_node node) : Root(node) {}
 
-Sheet::Sheet(pugi::xml_node node)
-    : common::Element(node), Element(node), common::Sheet(node) {}
+Sheet::Sheet(pugi::xml_node node) : Element(node) {}
 
 std::string Sheet::name(const abstract::Document *, ElementIdentifier) const {
   return m_node.attribute("table:name").value();

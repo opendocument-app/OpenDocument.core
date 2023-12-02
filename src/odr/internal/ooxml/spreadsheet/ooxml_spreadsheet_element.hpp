@@ -24,6 +24,8 @@ public:
                                            ElementIdentifier) const;
 
 protected:
+  pugi::xml_node m_node;
+
   static const Document *document_(const abstract::Document *);
   static const StyleRegistry *style_registry_(const abstract::Document *);
   static pugi::xml_node sheet_(const abstract::Document *,

@@ -19,6 +19,8 @@ public:
   intermediate_style(const abstract::Document *document) const;
 
 protected:
+  pugi::xml_node m_node;
+
   static const Document *document_(const abstract::Document *document);
   static pugi::xml_node slide_(const abstract::Document *document,
                                const std::string &id);

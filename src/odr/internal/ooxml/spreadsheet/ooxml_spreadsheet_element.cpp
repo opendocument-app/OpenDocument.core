@@ -19,7 +19,12 @@
 
 namespace odr::internal::ooxml::spreadsheet {
 
-Element::Element(pugi::xml_node node) : common::Element(node) {}
+Element::Element(pugi::xml_node node) : m_node{node} {
+  if (!node) {
+    // TODO log error
+    throw std::runtime_error("node not set");
+  }
+}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *,
                                              ElementIdentifier) const {

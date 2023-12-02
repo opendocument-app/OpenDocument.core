@@ -25,6 +25,8 @@ public:
                                                    ElementIdentifier) const;
 
 protected:
+  pugi::xml_node m_node;
+
   static const Document *document_(const abstract::Document *);
   static const StyleRegistry *style_(const abstract::Document *);
   static const std::unordered_map<std::string, std::string> &
@@ -35,8 +37,7 @@ protected:
 
 template <ElementType _element_type> class DefaultElement : public Element {
 public:
-  explicit DefaultElement(pugi::xml_node node)
-      : common::Element(node), Element(node) {}
+  explicit DefaultElement(pugi::xml_node node) : Element(node) {}
 
   [[nodiscard]] ElementType type(const abstract::Document *,
                                  ElementIdentifier) const override {

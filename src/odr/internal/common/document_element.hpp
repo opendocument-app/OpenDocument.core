@@ -11,10 +11,18 @@ class Document;
 
 namespace odr::internal::common {
 
+struct InternalElementContainer {
+  abstract::Element *element;
+
+  ElementIdentifier parent;
+  ElementIdentifier first_child;
+  ElementIdentifier last_child;
+  ElementIdentifier previous_sibling;
+  ElementIdentifier next_sibling;
+};
+
 class Element : public virtual abstract::Element {
 public:
-  explicit Element(const pugi::xml_node node);
-
   [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
   parent(const abstract::Document *, ElementIdentifier) const override;
   [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
@@ -29,21 +37,15 @@ public:
 
   void init_append_child(Element *element);
 
-  // TODO protect members
-public:
-  pugi::xml_node m_node;
-
   Element *m_parent{};
   Element *m_first_child{};
   Element *m_last_child{};
-  Element *m_previous_sibling{};
   Element *m_next_sibling{};
+  Element *m_previous_sibling{};
 };
 
 class Table : public virtual Element, public abstract::Table {
 public:
-  explicit Table(const pugi::xml_node node);
-
   [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
   first_child(const abstract::Document *, ElementIdentifier) const final;
   [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
@@ -57,15 +59,12 @@ public:
   void init_append_column(Element *element);
   void init_append_row(Element *element);
 
-public:
   Element *m_first_column{};
   Element *m_last_column{};
 };
 
 class Sheet : public virtual Element, public abstract::Sheet {
 public:
-  explicit Sheet(const pugi::xml_node node);
-
   void init_child(Element *element);
 };
 

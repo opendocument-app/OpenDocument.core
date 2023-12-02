@@ -21,7 +21,12 @@
 
 namespace odr::internal::ooxml::text {
 
-Element::Element(pugi::xml_node node) : common::Element(node) {}
+Element::Element(pugi::xml_node node) : m_node{node} {
+  if (!node) {
+    // TODO log error
+    throw std::runtime_error("node not set");
+  }
+}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *,
                                              ElementIdentifier) const {
@@ -55,7 +60,7 @@ Element::document_relations_(const abstract::Document *document) {
   return dynamic_cast<const Document *>(document)->m_document_relations;
 }
 
-Root::Root(pugi::xml_node node) : common::Element(node), Element(node) {}
+Root::Root(pugi::xml_node node) : Element(node) {}
 
 PageLayout Root::page_layout(const abstract::Document *,
                              ElementIdentifier) const {
@@ -67,8 +72,7 @@ Root::first_master_page(const abstract::Document *, ElementIdentifier) const {
   return {}; // TODO
 }
 
-Paragraph::Paragraph(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
+Paragraph::Paragraph(pugi::xml_node node) : Element(node) {}
 
 common::ResolvedStyle
 Paragraph::partial_style(const abstract::Document *document,
@@ -86,7 +90,7 @@ TextStyle Paragraph::text_style(const abstract::Document *document,
   return intermediate_style(document, elementId).text_style;
 }
 
-Span::Span(pugi::xml_node node) : common::Element(node), Element(node) {}
+Span::Span(pugi::xml_node node) : Element(node) {}
 
 common::ResolvedStyle Span::partial_style(const abstract::Document *document,
                                           ElementIdentifier) const {
@@ -114,7 +118,7 @@ std::string Text::text(const pugi::xml_node node) {
 Text::Text(pugi::xml_node node) : Text(node, node) {}
 
 Text::Text(pugi::xml_node first, pugi::xml_node last)
-    : common::Element(first), Element(first), m_last{last} {
+    : Element(first), m_last{last} {
   if (!last) {
     // TODO log error
     throw std::runtime_error("last not set");
@@ -172,7 +176,7 @@ TextStyle Text::style(const abstract::Document *document,
   return intermediate_style(document, elementId).text_style;
 }
 
-Link::Link(pugi::xml_node node) : common::Element(node), Element(node) {}
+Link::Link(pugi::xml_node node) : Element(node) {}
 
 std::string Link::href(const abstract::Document *document,
                        ElementIdentifier) const {
@@ -188,30 +192,27 @@ std::string Link::href(const abstract::Document *document,
   return "";
 }
 
-Bookmark::Bookmark(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
+Bookmark::Bookmark(pugi::xml_node node) : Element(node) {}
 
 std::string Bookmark::name(const abstract::Document *,
                            ElementIdentifier) const {
   return m_node.attribute("w:name").value();
 }
 
-List::List(pugi::xml_node node) : common::Element(node), Element(node) {}
+List::List(pugi::xml_node node) : Element(node) {}
 
 ElementType List::type(const abstract::Document *, ElementIdentifier) const {
   return ElementType::list;
 }
 
-ListItem::ListItem(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
+ListItem::ListItem(pugi::xml_node node) : Element(node) {}
 
 TextStyle ListItem::style(const abstract::Document *document,
                           ElementIdentifier elementId) const {
   return intermediate_style(document, elementId).text_style;
 }
 
-Table::Table(pugi::xml_node node)
-    : common::Element(node), Element(node), common::Table(node) {}
+Table::Table(pugi::xml_node node) : Element(node) {}
 
 TableDimensions Table::dimensions(const abstract::Document *,
                                   ElementIdentifier) const {
@@ -223,8 +224,7 @@ TableStyle Table::style(const abstract::Document *document,
   return style_(document)->partial_table_style(m_node).table_style;
 }
 
-TableColumn::TableColumn(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
+TableColumn::TableColumn(pugi::xml_node node) : Element(node) {}
 
 TableColumnStyle TableColumn::style(const abstract::Document *,
                                     ElementIdentifier) const {
@@ -235,16 +235,14 @@ TableColumnStyle TableColumn::style(const abstract::Document *,
   return result;
 }
 
-TableRow::TableRow(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
+TableRow::TableRow(pugi::xml_node node) : Element(node) {}
 
 TableRowStyle TableRow::style(const abstract::Document *document,
                               ElementIdentifier) const {
   return style_(document)->partial_table_row_style(m_node).table_row_style;
 }
 
-TableCell::TableCell(pugi::xml_node node)
-    : common::Element(node), Element(node) {}
+TableCell::TableCell(pugi::xml_node node) : Element(node) {}
 
 bool TableCell::covered(const abstract::Document *, ElementIdentifier) const {
   return false;
@@ -265,7 +263,7 @@ TableCellStyle TableCell::style(const abstract::Document *document,
   return style_(document)->partial_table_cell_style(m_node).table_cell_style;
 }
 
-Frame::Frame(pugi::xml_node node) : common::Element(node), Element(node) {}
+Frame::Frame(pugi::xml_node node) : Element(node) {}
 
 AnchorType Frame::anchor_type(const abstract::Document *,
                               ElementIdentifier) const {
@@ -321,7 +319,7 @@ pugi::xml_node Frame::inner_node_() const {
   return {};
 }
 
-Image::Image(pugi::xml_node node) : common::Element(node), Element(node) {}
+Image::Image(pugi::xml_node node) : Element(node) {}
 
 bool Image::internal(const abstract::Document *document,
                      ElementIdentifier elementId) const {

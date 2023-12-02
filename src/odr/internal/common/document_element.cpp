@@ -3,13 +3,6 @@
 
 namespace odr::internal::common {
 
-Element::Element(pugi::xml_node node) : m_node{node} {
-  if (!node) {
-    // TODO log error
-    throw std::runtime_error("node not set");
-  }
-}
-
 std::pair<abstract::Element *, ElementIdentifier>
 Element::parent(const abstract::Document *, ElementIdentifier) const {
   return {m_parent, 0}; // TODO
@@ -46,8 +39,6 @@ void Element::init_append_child(Element *element) {
   m_last_child = element;
 }
 
-Table::Table(pugi::xml_node node) : Element(node) {}
-
 std::pair<abstract::Element *, ElementIdentifier>
 Table::first_child(const abstract::Document *, ElementIdentifier) const {
   return {};
@@ -82,8 +73,6 @@ void Table::init_append_column(Element *element) {
 void Table::init_append_row(Element *element) {
   Element::init_append_child(element);
 }
-
-Sheet::Sheet(pugi::xml_node node) : Element(node) {}
 
 void Sheet::init_child(Element *element) { element->m_parent = this; }
 
