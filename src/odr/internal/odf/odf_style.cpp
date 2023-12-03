@@ -2,11 +2,11 @@
 
 #include <odr/internal/odf/odf_parser.hpp>
 
-#include <pugixml.hpp>
-
 #include <cstring>
 #include <unordered_map>
 #include <utility>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 

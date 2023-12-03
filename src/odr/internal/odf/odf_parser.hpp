@@ -2,9 +2,10 @@
 #define ODR_INTERNAL_ODF_PARSER_H
 
 #include <memory>
-#include <pugixml.hpp>
 #include <utility>
 #include <vector>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 class Element;

@@ -5,14 +5,14 @@
 
 #include <odr/internal/abstract/file.hpp>
 
-#include <miniz/miniz.h>
-#include <miniz/miniz_zip.h>
-
 #include <chrono>
 #include <cstdint>
 #include <istream>
 #include <memory>
 #include <string>
+
+#include <miniz/miniz.h>
+#include <miniz/miniz_zip.h>
 
 namespace odr::internal::common {
 class MemoryFile;

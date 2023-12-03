@@ -8,11 +8,11 @@
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
-#include <pugixml.hpp>
-
 #include <cstring>
 #include <optional>
 #include <string>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 

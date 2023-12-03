@@ -9,9 +9,9 @@
 #include <odr/internal/odf/odf_element.hpp>
 #include <odr/internal/odf/odf_style.hpp>
 
-#include <pugixml.hpp>
-
 #include <memory>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;

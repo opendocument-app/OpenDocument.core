@@ -6,14 +6,14 @@
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/odf/odf_element.hpp>
 
-#include <pugixml.hpp>
-
 #include <any>
 #include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include <pugixml.hpp>
 
 namespace odr {
 struct PageLayout;

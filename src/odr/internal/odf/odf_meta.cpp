@@ -9,10 +9,10 @@
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
-#include <pugixml.hpp>
-
 #include <unordered_map>
 #include <utility>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 

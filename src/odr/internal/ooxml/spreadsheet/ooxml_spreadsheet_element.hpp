@@ -5,10 +5,10 @@
 #include <odr/internal/common/document_element.hpp>
 #include <odr/internal/common/style.hpp>
 
-#include <pugixml.hpp>
-
 #include <string>
 #include <vector>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
 class Document;

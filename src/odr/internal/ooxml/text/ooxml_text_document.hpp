@@ -8,11 +8,11 @@
 #include <odr/internal/ooxml/text/ooxml_text_element.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_style.hpp>
 
-#include <pugixml.hpp>
-
 #include <memory>
 #include <string>
 #include <unordered_map>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
