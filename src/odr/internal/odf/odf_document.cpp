@@ -34,9 +34,9 @@ Document::Document(const FileType file_type, const DocumentType document_type,
                                    m_styles_xml.document_element());
 }
 
-bool Document::editable() const noexcept { return true; }
+bool Document::is_editable() const noexcept { return true; }
 
-bool Document::savable(const bool encrypted) const noexcept {
+bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;
 }
 

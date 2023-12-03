@@ -4,7 +4,6 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/document_element.hpp>
 #include <odr/internal/common/style.hpp>
-
 #include <odr/internal/common/table_position.hpp>
 
 namespace pugi {
@@ -22,6 +21,8 @@ public:
   virtual common::ResolvedStyle partial_style(const abstract::Document *) const;
   virtual common::ResolvedStyle
   intermediate_style(const abstract::Document *) const;
+
+  bool is_editable(const abstract::Document *document) const override;
 
 protected:
   pugi::xml_node m_node;
@@ -43,14 +44,14 @@ public:
 
 class Root : public Element {
 public:
-  explicit Root(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] ElementType type(const abstract::Document *) const override;
 };
 
 class TextRoot final : public Root, public abstract::TextRoot {
 public:
-  explicit TextRoot(pugi::xml_node);
+  using Root::Root;
 
   [[nodiscard]] ElementType type(const abstract::Document *) const final;
 
@@ -62,24 +63,24 @@ public:
 
 class PresentationRoot final : public Root {
 public:
-  explicit PresentationRoot(pugi::xml_node);
+  using Root::Root;
 };
 
 class DrawingRoot final : public Root {
 public:
-  explicit DrawingRoot(pugi::xml_node);
+  using Root::Root;
 };
 
 class MasterPage final : public Element, public abstract::MasterPage {
 public:
-  explicit MasterPage(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] PageLayout page_layout(const abstract::Document *) const final;
 };
 
 class Slide final : public Element, public abstract::Slide {
 public:
-  explicit Slide(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] PageLayout page_layout(const abstract::Document *) const final;
 
@@ -91,7 +92,7 @@ public:
 
 class Page final : public Element, public abstract::Page {
 public:
-  explicit Page(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] PageLayout page_layout(const abstract::Document *) const final;
 
@@ -103,14 +104,14 @@ public:
 
 class LineBreak final : public Element, public abstract::LineBreak {
 public:
-  explicit LineBreak(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] TextStyle style(const abstract::Document *) const final;
 };
 
 class Paragraph final : public Element, public abstract::Paragraph {
 public:
-  explicit Paragraph(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] ParagraphStyle style(const abstract::Document *) const final;
 
@@ -119,15 +120,13 @@ public:
 
 class Span final : public Element, public abstract::Span {
 public:
-  explicit Span(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] TextStyle style(const abstract::Document *) const final;
 };
 
 class Text final : public Element, public abstract::Text {
 public:
-  static std::string text(const pugi::xml_node);
-
   explicit Text(pugi::xml_node);
   Text(pugi::xml_node first, pugi::xml_node last);
 
@@ -139,32 +138,34 @@ public:
 
 private:
   pugi::xml_node m_last;
+
+  static std::string text_(const pugi::xml_node);
 };
 
 class Link final : public Element, public abstract::Link {
 public:
-  explicit Link(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] std::string href(const abstract::Document *) const final;
 };
 
 class Bookmark final : public Element, public abstract::Bookmark {
 public:
-  explicit Bookmark(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] std::string name(const abstract::Document *) const final;
 };
 
 class ListItem final : public Element, public abstract::ListItem {
 public:
-  explicit ListItem(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] TextStyle style(const abstract::Document *) const final;
 };
 
 class Table : public Element, public common::Table {
 public:
-  explicit Table(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] TableStyle style(const abstract::Document *) const final;
 
@@ -174,21 +175,21 @@ public:
 
 class TableColumn final : public Element, public abstract::TableColumn {
 public:
-  explicit TableColumn(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] TableColumnStyle style(const abstract::Document *) const final;
 };
 
 class TableRow final : public Element, public abstract::TableRow {
 public:
-  explicit TableRow(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] TableRowStyle style(const abstract::Document *) const final;
 };
 
 class TableCell final : public Element, public abstract::TableCell {
 public:
-  explicit TableCell(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] bool covered(const abstract::Document *) const final;
 
@@ -201,7 +202,7 @@ public:
 
 class Frame final : public Element, public abstract::Frame {
 public:
-  explicit Frame(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final;
 
@@ -222,7 +223,7 @@ public:
 
 class Rect final : public Element, public abstract::Rect {
 public:
-  explicit Rect(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] std::string x(const abstract::Document *) const final;
   [[nodiscard]] std::string y(const abstract::Document *) const final;
@@ -234,7 +235,7 @@ public:
 
 class Line final : public Element, public abstract::Line {
 public:
-  explicit Line(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] std::string x1(const abstract::Document *) const final;
   [[nodiscard]] std::string y1(const abstract::Document *) const final;
@@ -246,7 +247,7 @@ public:
 
 class Circle final : public Element, public abstract::Circle {
 public:
-  explicit Circle(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] std::string x(const abstract::Document *) const final;
   [[nodiscard]] std::string y(const abstract::Document *) const final;
@@ -258,7 +259,7 @@ public:
 
 class CustomShape final : public Element, public abstract::CustomShape {
 public:
-  explicit CustomShape(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] std::optional<std::string>
   x(const abstract::Document *) const final;
@@ -272,7 +273,7 @@ public:
 
 class Image final : public Element, public abstract::Image {
 public:
-  explicit Image(pugi::xml_node);
+  using Element::Element;
 
   [[nodiscard]] bool internal(const abstract::Document *) const final;
 

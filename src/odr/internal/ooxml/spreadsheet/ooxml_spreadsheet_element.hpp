@@ -21,6 +21,8 @@ public:
   virtual common::ResolvedStyle partial_style(const abstract::Document *) const;
   common::ResolvedStyle intermediate_style(const abstract::Document *) const;
 
+  bool is_editable(const abstract::Document *) const override;
+
 protected:
   pugi::xml_node m_node;
 

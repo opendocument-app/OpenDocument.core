@@ -17,10 +17,10 @@ Document::Document(std::shared_ptr<internal::abstract::Document> document)
   }
 }
 
-bool Document::editable() const noexcept { return m_document->editable(); }
+bool Document::editable() const noexcept { return m_document->is_editable(); }
 
 bool Document::savable(const bool encrypted) const noexcept {
-  return m_document->savable(encrypted);
+  return m_document->is_savable(encrypted);
 }
 
 void Document::save(const std::string &path) const { m_document->save(path); }

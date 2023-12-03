@@ -20,8 +20,8 @@ class Document final : public common::TemplateDocument<Element> {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
-  [[nodiscard]] bool editable() const noexcept final;
-  [[nodiscard]] bool savable(bool encrypted) const noexcept final;
+  [[nodiscard]] bool is_editable() const noexcept final;
+  [[nodiscard]] bool is_savable(bool encrypted) const noexcept final;
 
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const char *password) const final;

@@ -37,6 +37,9 @@ public:
   [[nodiscard]] virtual Element *last_child(const Document *) const = 0;
   [[nodiscard]] virtual Element *previous_sibling(const Document *) const = 0;
   [[nodiscard]] virtual Element *next_sibling(const Document *) const = 0;
+
+  [[nodiscard]] virtual bool
+  is_editable(const abstract::Document *document) const = 0;
 };
 
 class TextRoot : public virtual Element {

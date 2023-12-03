@@ -31,6 +31,13 @@ Element::intermediate_style(const abstract::Document *document) const {
   return base;
 }
 
+bool Element::is_editable(const abstract::Document *document) const {
+  if (m_parent == nullptr) {
+    return document_(document)->is_editable();
+  }
+  return m_parent->is_editable(document);
+}
+
 const Document *Element::document_(const abstract::Document *document) {
   return dynamic_cast<const Document *>(document);
 }

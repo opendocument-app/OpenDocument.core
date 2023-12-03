@@ -24,11 +24,11 @@ public:
   virtual ~Document() = default;
 
   /// \return `true` if the document is editable in any way.
-  [[nodiscard]] virtual bool editable() const noexcept = 0;
+  [[nodiscard]] virtual bool is_editable() const noexcept = 0;
 
   /// \param encrypted to ask for encrypted saves.
-  /// \return `true` if the document is savable.
-  [[nodiscard]] virtual bool savable(bool encrypted) const noexcept = 0;
+  /// \return `true` if the document is is_savable.
+  [[nodiscard]] virtual bool is_savable(bool encrypted) const noexcept = 0;
 
   /// \param path the destination path.
   virtual void save(const common::Path &path) const = 0;

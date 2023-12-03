@@ -19,6 +19,8 @@ public:
   common::ResolvedStyle partial_style(const abstract::Document *) const;
   common::ResolvedStyle intermediate_style(const abstract::Document *) const;
 
+  bool is_editable(const abstract::Document *document) const override;
+
 protected:
   static const Document *document_(const abstract::Document *);
   static pugi::xml_node slide_(const abstract::Document *,

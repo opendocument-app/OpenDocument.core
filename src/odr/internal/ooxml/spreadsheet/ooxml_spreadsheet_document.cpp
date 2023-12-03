@@ -52,9 +52,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   }
 }
 
-bool Document::editable() const noexcept { return false; }
+bool Document::is_editable() const noexcept { return false; }
 
-bool Document::savable(const bool /*encrypted*/) const noexcept {
+bool Document::is_savable(const bool /*encrypted*/) const noexcept {
   return false;
 }
 
