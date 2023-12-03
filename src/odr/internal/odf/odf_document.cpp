@@ -16,8 +16,8 @@ namespace odr::internal::odf {
 
 Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : m_file_type{file_type}, m_document_type{document_type},
-      m_filesystem{std::move(filesystem)} {
+    : common::TemplateDocument<Element>(file_type, document_type,
+                                        std::move(filesystem)) {
   m_content_xml = util::xml::parse(*m_filesystem, "content.xml");
 
   if (m_filesystem->exists("styles.xml")) {
@@ -95,17 +95,5 @@ void Document::save(const common::Path & /*path*/,
   // TODO throw if not savable
   throw UnsupportedOperation();
 }
-
-FileType Document::file_type() const noexcept { return m_file_type; }
-
-DocumentType Document::document_type() const noexcept {
-  return m_document_type;
-}
-
-std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
-  return m_filesystem;
-}
-
-abstract::Element *Document::root_element() const { return m_root_element; }
 
 } // namespace odr::internal::odf

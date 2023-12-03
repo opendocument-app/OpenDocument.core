@@ -3,7 +3,7 @@
 
 #include <odr/file.hpp>
 
-#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/common/document.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_element.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_style.hpp>
@@ -14,13 +14,9 @@
 
 #include <pugixml.hpp>
 
-namespace odr::internal::abstract {
-class ReadableFilesystem;
-}
-
 namespace odr::internal::ooxml::text {
 
-class Document final : public abstract::Document {
+class Document final : public common::TemplateDocument<Element> {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
@@ -30,26 +26,11 @@ public:
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const char *password) const final;
 
-  [[nodiscard]] FileType file_type() const noexcept final;
-  [[nodiscard]] DocumentType document_type() const noexcept final;
-
-  [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
-  files() const noexcept final;
-
-  [[nodiscard]] abstract::Element *root_element() const final;
-
-  void register_element_(std::unique_ptr<Element> element);
-
 private:
-  std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
-
   pugi::xml_document m_document_xml;
   pugi::xml_document m_styles_xml;
 
   std::unordered_map<std::string, std::string> m_document_relations;
-
-  std::vector<std::unique_ptr<Element>> m_elements;
-  Element *m_root_element{};
 
   StyleRegistry m_style_registry;
 

@@ -16,7 +16,9 @@
 namespace odr::internal::ooxml::text {
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : m_filesystem{std::move(filesystem)} {
+    : common::TemplateDocument<Element>(FileType::office_open_xml_document,
+                                        DocumentType::text,
+                                        std::move(filesystem)) {
   m_document_xml = util::xml::parse(*m_filesystem, "word/document.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "word/styles.xml");
 
@@ -64,24 +66,6 @@ void Document::save(const common::Path &path) const {
 void Document::save(const common::Path & /*path*/,
                     const char * /*password*/) const {
   throw UnsupportedOperation();
-}
-
-FileType Document::file_type() const noexcept {
-  return FileType::office_open_xml_document;
-}
-
-DocumentType Document::document_type() const noexcept {
-  return DocumentType::text;
-}
-
-std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
-  return m_filesystem;
-}
-
-abstract::Element *Document::root_element() const { return m_root_element; }
-
-void Document::register_element_(std::unique_ptr<Element> element) {
-  m_elements.push_back(std::move(element));
 }
 
 } // namespace odr::internal::ooxml::text
