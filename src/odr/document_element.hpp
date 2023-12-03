@@ -73,14 +73,6 @@ class Circle;
 class CustomShape;
 class Image;
 
-using ElementIdentifier = std::uint64_t;
-using ColumnIndex = std::uint32_t;
-using RowIndex = std::uint32_t;
-using InternalElement =
-    std::pair<internal::abstract::Element *, ElementIdentifier>;
-template <typename T>
-using TypedInternalElement = std::pair<T *, ElementIdentifier>;
-
 enum class ElementType {
   none,
 
@@ -133,7 +125,7 @@ enum class ValueType {
 class Element {
 public:
   Element();
-  Element(const internal::abstract::Document *, InternalElement);
+  Element(const internal::abstract::Document *, internal::abstract::Element *);
 
   bool operator==(const Element &rhs) const;
   bool operator!=(const Element &rhs) const;
@@ -174,11 +166,9 @@ public:
 
 protected:
   const internal::abstract::Document *m_document{nullptr};
-  InternalElement m_element;
+  internal::abstract::Element *m_element{nullptr};
 
   bool exists_() const;
-  internal::abstract::Element *element_() const;
-  ElementIdentifier id_() const;
 };
 
 class ElementIterator {
@@ -190,7 +180,8 @@ public:
   using iterator_category = std::forward_iterator_tag;
 
   ElementIterator();
-  ElementIterator(const internal::abstract::Document *, InternalElement);
+  ElementIterator(const internal::abstract::Document *,
+                  internal::abstract::Element *);
 
   bool operator==(const ElementIterator &rhs) const;
   bool operator!=(const ElementIterator &rhs) const;
@@ -202,11 +193,9 @@ public:
 
 private:
   const internal::abstract::Document *m_document{nullptr};
-  InternalElement m_element;
+  internal::abstract::Element *m_element{nullptr};
 
   bool exists_() const;
-  internal::abstract::Element *element_() const;
-  ElementIdentifier id_() const;
 };
 
 class ElementRange {
@@ -227,9 +216,8 @@ template <typename T> class TypedElement : public Element {
 public:
   TypedElement() = default;
   TypedElement(const internal::abstract::Document *document,
-               InternalElement element)
-      : Element(document, element), m_typed_element{
-                                        dynamic_cast<T *>(element.first)} {}
+               internal::abstract::Element *element)
+      : Element(document, element), m_element{dynamic_cast<T *>(element)} {}
 
   bool operator==(const TypedElement &rhs) const {
     return m_element == rhs.m_element;
@@ -239,9 +227,7 @@ public:
   }
 
 protected:
-  T *m_typed_element;
-
-  T *element_() const { return m_typed_element; }
+  T *m_element;
 };
 
 class TextRoot final : public TypedElement<internal::abstract::TextRoot> {
@@ -274,9 +260,9 @@ public:
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;
 
-  [[nodiscard]] TableColumn column(ColumnIndex column) const;
-  [[nodiscard]] TableRow row(RowIndex row) const;
-  [[nodiscard]] TableCell cell(ColumnIndex column, RowIndex row) const;
+  [[nodiscard]] TableColumn column(std::uint32_t column) const;
+  [[nodiscard]] TableRow row(std::uint32_t row) const;
+  [[nodiscard]] TableCell cell(std::uint32_t column, std::uint32_t row) const;
 
   [[nodiscard]] ElementRange shapes() const;
 

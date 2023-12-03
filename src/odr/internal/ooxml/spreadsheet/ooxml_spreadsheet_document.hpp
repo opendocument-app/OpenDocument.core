@@ -8,11 +8,11 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
-#include <pugixml.hpp>
-
 #include <memory>
 #include <string>
 #include <unordered_map>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -36,8 +36,9 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
-  root_element() const final;
+  [[nodiscard]] abstract::Element *root_element() const final;
+
+  void register_element_(std::unique_ptr<Element> element);
 
 private:
   struct Sheet final {

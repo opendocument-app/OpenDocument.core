@@ -2,15 +2,16 @@
 #define ODR_INTERNAL_OOXML_TEXT_PARSER_HPP
 
 #include <memory>
-#include <pugixml.hpp>
 #include <utility>
 #include <vector>
 
+#include <pugixml.hpp>
+
 namespace odr::internal::ooxml::text {
+class Document;
 class Element;
 
-std::tuple<Element *, std::vector<std::unique_ptr<Element>>>
-parse_tree(pugi::xml_node node);
+Element *parse_tree(Document &document, pugi::xml_node node);
 
 } // namespace odr::internal::ooxml::text
 

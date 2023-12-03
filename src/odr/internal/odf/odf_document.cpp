@@ -106,9 +106,6 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Document::root_element() const {
-  return {m_root_element, 0}; // TODO
-}
+abstract::Element *Document::root_element() const { return m_root_element; }
 
 } // namespace odr::internal::odf

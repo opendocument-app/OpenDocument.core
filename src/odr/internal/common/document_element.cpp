@@ -1,34 +1,28 @@
 #include <odr/internal/common/document_element.hpp>
-#include <stdexcept>
 
 namespace odr::internal::common {
 
-std::pair<abstract::Element *, ElementIdentifier>
-Element::parent(const abstract::Document *, ElementIdentifier) const {
-  return {m_parent, 0}; // TODO
+abstract::Element *Element::parent(const abstract::Document *) const {
+  return m_parent;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Element::first_child(const abstract::Document *, ElementIdentifier) const {
-  return {m_first_child, 0}; // TODO
+abstract::Element *Element::first_child(const abstract::Document *) const {
+  return m_first_child;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Element::last_child(const abstract::Document *, ElementIdentifier) const {
-  return {m_last_child, 0}; // TODO
+abstract::Element *Element::last_child(const abstract::Document *) const {
+  return m_last_child;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Element::previous_sibling(const abstract::Document *, ElementIdentifier) const {
-  return {m_previous_sibling, 0}; // TODO
+abstract::Element *Element::previous_sibling(const abstract::Document *) const {
+  return m_previous_sibling;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Element::next_sibling(const abstract::Document *, ElementIdentifier) const {
-  return {m_next_sibling, 0};
+abstract::Element *Element::next_sibling(const abstract::Document *) const {
+  return m_next_sibling;
 }
 
-void Element::init_append_child(Element *element) {
+void Element::append_child_(Element *element) {
   element->m_previous_sibling = m_last_child;
   element->m_parent = this;
   if (m_last_child == nullptr) {
@@ -39,27 +33,15 @@ void Element::init_append_child(Element *element) {
   m_last_child = element;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Table::first_child(const abstract::Document *, ElementIdentifier) const {
-  return {};
+abstract::Element *Table::first_column(const abstract::Document *) const {
+  return m_first_column;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Table::last_child(const abstract::Document *, ElementIdentifier) const {
-  return {};
+abstract::Element *Table::first_row(const abstract::Document *) const {
+  return m_first_child;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Table::first_column(const abstract::Document *, ElementIdentifier) const {
-  return {m_first_column, 0}; // TODO
-}
-
-std::pair<abstract::Element *, ElementIdentifier>
-Table::first_row(const abstract::Document *, ElementIdentifier) const {
-  return {m_first_child, 0}; // TODO
-}
-
-void Table::init_append_column(Element *element) {
+void Table::append_column_(Element *element) {
   element->m_previous_sibling = m_last_column;
   element->m_parent = this;
   if (m_last_column == nullptr) {
@@ -70,10 +52,6 @@ void Table::init_append_column(Element *element) {
   m_last_column = element;
 }
 
-void Table::init_append_row(Element *element) {
-  Element::init_append_child(element);
-}
-
-void Sheet::init_child(Element *element) { element->m_parent = this; }
+void Table::append_row_(Element *element) { Element::append_child_(element); }
 
 } // namespace odr::internal::common

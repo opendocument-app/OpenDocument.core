@@ -1,23 +1,18 @@
 #include <odr/internal/ooxml/text/ooxml_text_element.hpp>
 
 #include <odr/file.hpp>
-#include <odr/quantity.hpp>
-#include <odr/style.hpp>
 
-#include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/document_element.hpp>
 #include <odr/internal/common/path.hpp>
-#include <odr/internal/common/style.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
-#include <pugixml.hpp>
-
 #include <functional>
 #include <optional>
 #include <utility>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::text {
 
@@ -28,22 +23,20 @@ Element::Element(pugi::xml_node node) : m_node{node} {
   }
 }
 
-common::ResolvedStyle Element::partial_style(const abstract::Document *,
-                                             ElementIdentifier) const {
+common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
   return {};
 }
 
 common::ResolvedStyle
-Element::intermediate_style(const abstract::Document *document,
-                            ElementIdentifier elementId) const {
+Element::intermediate_style(const abstract::Document *document) const {
   common::ResolvedStyle base;
-  if (m_parent == nullptr) {
+  abstract::Element *parent = this->parent(document);
+  if (parent == nullptr) {
     base = style_(document)->default_style()->resolved();
   } else {
-    base = dynamic_cast<Element *>(m_parent)->intermediate_style(document,
-                                                                 elementId);
+    base = dynamic_cast<Element *>(parent)->intermediate_style(document);
   }
-  base.override(partial_style(document, elementId));
+  base.override(partial_style(document));
   return base;
 }
 
@@ -60,59 +53,34 @@ Element::document_relations_(const abstract::Document *document) {
   return dynamic_cast<const Document *>(document)->m_document_relations;
 }
 
-Root::Root(pugi::xml_node node) : Element(node) {}
-
-PageLayout Root::page_layout(const abstract::Document *,
-                             ElementIdentifier) const {
+PageLayout Root::page_layout(const abstract::Document *) const {
   return {}; // TODO
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Root::first_master_page(const abstract::Document *, ElementIdentifier) const {
+abstract::Element *Root::first_master_page(const abstract::Document *) const {
   return {}; // TODO
 }
-
-Paragraph::Paragraph(pugi::xml_node node) : Element(node) {}
 
 common::ResolvedStyle
-Paragraph::partial_style(const abstract::Document *document,
-                         ElementIdentifier) const {
+Paragraph::partial_style(const abstract::Document *document) const {
   return style_(document)->partial_paragraph_style(m_node);
 }
 
-ParagraphStyle Paragraph::style(const abstract::Document *document,
-                                ElementIdentifier elementId) const {
-  return intermediate_style(document, elementId).paragraph_style;
+ParagraphStyle Paragraph::style(const abstract::Document *document) const {
+  return intermediate_style(document).paragraph_style;
 }
 
-TextStyle Paragraph::text_style(const abstract::Document *document,
-                                ElementIdentifier elementId) const {
-  return intermediate_style(document, elementId).text_style;
+TextStyle Paragraph::text_style(const abstract::Document *document) const {
+  return intermediate_style(document).text_style;
 }
 
-Span::Span(pugi::xml_node node) : Element(node) {}
-
-common::ResolvedStyle Span::partial_style(const abstract::Document *document,
-                                          ElementIdentifier) const {
+common::ResolvedStyle
+Span::partial_style(const abstract::Document *document) const {
   return style_(document)->partial_text_style(m_node);
 }
 
-TextStyle Span::style(const abstract::Document *document,
-                      ElementIdentifier elementId) const {
-  return intermediate_style(document, elementId).text_style;
-}
-
-std::string Text::text(const pugi::xml_node node) {
-  std::string name = node.name();
-
-  if (name == "w:t") {
-    return node.text().get();
-  }
-  if (name == "w:tab") {
-    return "\t";
-  }
-
-  return "";
+TextStyle Span::style(const abstract::Document *document) const {
+  return intermediate_style(document).text_style;
 }
 
 Text::Text(pugi::xml_node node) : Text(node, node) {}
@@ -125,17 +93,16 @@ Text::Text(pugi::xml_node first, pugi::xml_node last)
   }
 }
 
-std::string Text::content(const abstract::Document *, ElementIdentifier) const {
+std::string Text::content(const abstract::Document *) const {
   std::string result;
   for (auto node = m_node; node != m_last.next_sibling();
        node = node.next_sibling()) {
-    result += text(node);
+    result += text_(node);
   }
   return result;
 }
 
-void Text::set_content(const abstract::Document *, ElementIdentifier,
-                       const std::string &text) {
+void Text::set_content(const abstract::Document *, const std::string &text) {
   // TODO http://officeopenxml.com/WPtextSpacing.php
   // <w:t xml:space="preserve">
   // use `xml:space`
@@ -171,15 +138,24 @@ void Text::set_content(const abstract::Document *, ElementIdentifier,
   // TODO remove other
 }
 
-TextStyle Text::style(const abstract::Document *document,
-                      ElementIdentifier elementId) const {
-  return intermediate_style(document, elementId).text_style;
+TextStyle Text::style(const abstract::Document *document) const {
+  return intermediate_style(document).text_style;
 }
 
-Link::Link(pugi::xml_node node) : Element(node) {}
+std::string Text::text_(const pugi::xml_node node) {
+  std::string name = node.name();
 
-std::string Link::href(const abstract::Document *document,
-                       ElementIdentifier) const {
+  if (name == "w:t") {
+    return node.text().get();
+  }
+  if (name == "w:tab") {
+    return "\t";
+  }
+
+  return "";
+}
+
+std::string Link::href(const abstract::Document *document) const {
   if (auto anchor = m_node.attribute("w:anchor")) {
     return std::string("#") + anchor.value();
   }
@@ -192,42 +168,27 @@ std::string Link::href(const abstract::Document *document,
   return "";
 }
 
-Bookmark::Bookmark(pugi::xml_node node) : Element(node) {}
-
-std::string Bookmark::name(const abstract::Document *,
-                           ElementIdentifier) const {
+std::string Bookmark::name(const abstract::Document *) const {
   return m_node.attribute("w:name").value();
 }
 
-List::List(pugi::xml_node node) : Element(node) {}
-
-ElementType List::type(const abstract::Document *, ElementIdentifier) const {
+ElementType List::type(const abstract::Document *) const {
   return ElementType::list;
 }
 
-ListItem::ListItem(pugi::xml_node node) : Element(node) {}
-
-TextStyle ListItem::style(const abstract::Document *document,
-                          ElementIdentifier elementId) const {
-  return intermediate_style(document, elementId).text_style;
+TextStyle ListItem::style(const abstract::Document *document) const {
+  return intermediate_style(document).text_style;
 }
 
-Table::Table(pugi::xml_node node) : Element(node) {}
-
-TableDimensions Table::dimensions(const abstract::Document *,
-                                  ElementIdentifier) const {
+TableDimensions Table::dimensions(const abstract::Document *) const {
   return {}; // TODO
 }
 
-TableStyle Table::style(const abstract::Document *document,
-                        ElementIdentifier) const {
+TableStyle Table::style(const abstract::Document *document) const {
   return style_(document)->partial_table_style(m_node).table_style;
 }
 
-TableColumn::TableColumn(pugi::xml_node node) : Element(node) {}
-
-TableColumnStyle TableColumn::style(const abstract::Document *,
-                                    ElementIdentifier) const {
+TableColumnStyle TableColumn::style(const abstract::Document *) const {
   TableColumnStyle result;
   if (auto width = read_twips_attribute(m_node.attribute("w:w"))) {
     result.width = width;
@@ -235,82 +196,64 @@ TableColumnStyle TableColumn::style(const abstract::Document *,
   return result;
 }
 
-TableRow::TableRow(pugi::xml_node node) : Element(node) {}
-
-TableRowStyle TableRow::style(const abstract::Document *document,
-                              ElementIdentifier) const {
+TableRowStyle TableRow::style(const abstract::Document *document) const {
   return style_(document)->partial_table_row_style(m_node).table_row_style;
 }
 
-TableCell::TableCell(pugi::xml_node node) : Element(node) {}
+bool TableCell::covered(const abstract::Document *) const { return false; }
 
-bool TableCell::covered(const abstract::Document *, ElementIdentifier) const {
-  return false;
-}
-
-TableDimensions TableCell::span(const abstract::Document *,
-                                ElementIdentifier) const {
+TableDimensions TableCell::span(const abstract::Document *) const {
   return {1, 1};
 }
 
-ValueType TableCell::value_type(const abstract::Document *,
-                                ElementIdentifier) const {
+ValueType TableCell::value_type(const abstract::Document *) const {
   return ValueType::string;
 }
 
-TableCellStyle TableCell::style(const abstract::Document *document,
-                                ElementIdentifier) const {
+TableCellStyle TableCell::style(const abstract::Document *document) const {
   return style_(document)->partial_table_cell_style(m_node).table_cell_style;
 }
 
-Frame::Frame(pugi::xml_node node) : Element(node) {}
-
-AnchorType Frame::anchor_type(const abstract::Document *,
-                              ElementIdentifier) const {
+AnchorType Frame::anchor_type(const abstract::Document *) const {
   if (m_node.child("wp:inline")) {
     return AnchorType::as_char;
   }
   return AnchorType::as_char; // TODO default?
 }
 
-std::optional<std::string> Frame::x(const abstract::Document *,
-                                    ElementIdentifier) const {
+std::optional<std::string> Frame::x(const abstract::Document *) const {
   return {};
 }
 
-std::optional<std::string> Frame::y(const abstract::Document *,
-                                    ElementIdentifier) const {
+std::optional<std::string> Frame::y(const abstract::Document *) const {
   return {};
 }
 
-std::optional<std::string> Frame::width(const abstract::Document *,
-                                        ElementIdentifier) const {
+std::optional<std::string>
+Frame::width(const abstract::Document *document) const {
   if (auto width = read_emus_attribute(
-          inner_node_().child("wp:extent").attribute("cx"))) {
+          inner_node_(document).child("wp:extent").attribute("cx"))) {
     return width->to_string();
   }
   return {};
 }
 
-std::optional<std::string> Frame::height(const abstract::Document *,
-                                         ElementIdentifier) const {
+std::optional<std::string>
+Frame::height(const abstract::Document *document) const {
   if (auto height = read_emus_attribute(
-          inner_node_().child("wp:extent").attribute("cy"))) {
+          inner_node_(document).child("wp:extent").attribute("cy"))) {
     return height->to_string();
   }
   return {};
 }
 
-std::optional<std::string> Frame::z_index(const abstract::Document *,
-                                          ElementIdentifier) const {
+std::optional<std::string> Frame::z_index(const abstract::Document *) const {
   return {};
 }
 
-GraphicStyle Frame::style(const abstract::Document *, ElementIdentifier) const {
-  return {};
-}
+GraphicStyle Frame::style(const abstract::Document *) const { return {}; }
 
-pugi::xml_node Frame::inner_node_() const {
+pugi::xml_node Frame::inner_node_(const abstract::Document *) const {
   if (auto anchor = m_node.child("wp:anchor")) {
     return anchor;
   } else if (auto inline_node = m_node.child("wp:inline")) {
@@ -319,32 +262,27 @@ pugi::xml_node Frame::inner_node_() const {
   return {};
 }
 
-Image::Image(pugi::xml_node node) : Element(node) {}
-
-bool Image::internal(const abstract::Document *document,
-                     ElementIdentifier elementId) const {
+bool Image::internal(const abstract::Document *document) const {
   auto doc = document_(document);
   if (!doc || !doc->files()) {
     return false;
   }
   try {
-    return doc->files()->is_file(href(document, elementId));
+    return doc->files()->is_file(href(document));
   } catch (...) {
   }
   return false;
 }
 
-std::optional<odr::File> Image::file(const abstract::Document *document,
-                                     ElementIdentifier elementId) const {
+std::optional<odr::File> Image::file(const abstract::Document *document) const {
   auto doc = document_(document);
-  if (!doc || !internal(document, elementId)) {
+  if (!doc || !internal(document)) {
     return {};
   }
-  return File(doc->files()->open(href(document, elementId)));
+  return File(doc->files()->open(href(document)));
 }
 
-std::string Image::href(const abstract::Document *document,
-                        ElementIdentifier) const {
+std::string Image::href(const abstract::Document *document) const {
   if (auto ref = m_node.child("pic:pic")
                      .child("pic:blipFill")
                      .child("a:blip")

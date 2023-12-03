@@ -48,8 +48,7 @@ public:
   files() const noexcept = 0;
 
   /// \return cursor to the root element of the document.
-  [[nodiscard]] virtual std::pair<Element *, ElementIdentifier>
-  root_element() const = 0;
+  [[nodiscard]] virtual Element *root_element() const = 0;
 };
 
 } // namespace odr::internal::abstract

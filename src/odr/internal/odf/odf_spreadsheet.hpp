@@ -1,14 +1,15 @@
 #ifndef ODR_INTERNAL_ODF_SPREADSHEET_H
 #define ODR_INTERNAL_ODF_SPREADSHEET_H
 
-#include <map>
-#include <memory>
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/document_element.hpp>
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/common/table_position.hpp>
 #include <odr/internal/odf/odf_element.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
+
+#include <map>
+#include <memory>
 #include <unordered_map>
 
 namespace pugi {
@@ -27,30 +28,27 @@ class Sheet final : public Element, public common::Sheet {
 public:
   explicit Sheet(pugi::xml_node node);
 
-  [[nodiscard]] std::string name(const abstract::Document *,
-                                 ElementIdentifier) const final;
-
-  [[nodiscard]] TableDimensions dimensions(const abstract::Document *,
-                                           ElementIdentifier) const final;
+  [[nodiscard]] std::string name(const abstract::Document *) const final;
 
   [[nodiscard]] TableDimensions
-  content(const abstract::Document *, ElementIdentifier,
+  dimensions(const abstract::Document *) const final;
+
+  [[nodiscard]] TableDimensions
+  content(const abstract::Document *,
           const std::optional<TableDimensions> range) const final;
 
   [[nodiscard]] abstract::Element *column(const abstract::Document *,
-                                          ElementIdentifier,
-                                          ColumnIndex column) const final;
-  [[nodiscard]] abstract::Element *
-  row(const abstract::Document *, ElementIdentifier, RowIndex row) const final;
+                                          std::uint32_t column) const final;
+  [[nodiscard]] abstract::Element *row(const abstract::Document *,
+                                       std::uint32_t row) const final;
   [[nodiscard]] abstract::Element *cell(const abstract::Document *,
-                                        ElementIdentifier, ColumnIndex column,
-                                        RowIndex row) const final;
+                                        std::uint32_t column,
+                                        std::uint32_t row) const final;
 
-  [[nodiscard]] abstract::Element *first_shape(const abstract::Document *,
-                                               ElementIdentifier) const final;
+  [[nodiscard]] abstract::Element *
+  first_shape(const abstract::Document *) const final;
 
-  [[nodiscard]] TableStyle style(const abstract::Document *,
-                                 ElementIdentifier) const final;
+  [[nodiscard]] TableStyle style(const abstract::Document *) const final;
 
   void init_column(std::uint32_t column, std::uint32_t repeated,
                    Element *element);

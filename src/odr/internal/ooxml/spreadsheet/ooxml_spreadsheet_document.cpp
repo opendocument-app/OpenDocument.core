@@ -1,7 +1,6 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 
 #include <odr/exceptions.hpp>
-#include <odr/file.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
@@ -17,9 +16,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
 
-  auto [root_element, elements] = parse_tree(m_workbook_xml.document_element());
-  m_elements = std::move(elements);
-  m_root_element = root_element;
+  m_root_element = parse_tree(*this, m_workbook_xml.document_element());
 
   m_style_registry = StyleRegistry(m_styles_xml.document_element());
 
@@ -80,9 +77,10 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Document::root_element() const {
-  return {m_root_element, 0}; // TODO
+abstract::Element *Document::root_element() const { return m_root_element; }
+
+void Document::register_element_(std::unique_ptr<Element> element) {
+  m_elements.push_back(std::move(element));
 }
 
 } // namespace odr::internal::ooxml::spreadsheet

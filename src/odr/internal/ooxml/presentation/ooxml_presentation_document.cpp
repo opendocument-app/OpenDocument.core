@@ -1,8 +1,10 @@
+#include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
+
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
@@ -12,9 +14,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   m_document_xml = util::xml::parse(*m_filesystem, "ppt/presentation.xml");
 
-  auto [root_element, elements] = parse_tree(m_document_xml.document_element());
-  m_elements = std::move(elements);
-  m_root_element = root_element;
+  m_root_element = parse_tree(*this, m_document_xml.document_element());
 
   for (auto relationships :
        parse_relationships(*m_filesystem, "ppt/presentation.xml")) {
@@ -50,9 +50,10 @@ std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
   return m_filesystem;
 }
 
-std::pair<abstract::Element *, ElementIdentifier>
-Document::root_element() const {
-  return {m_root_element, 0}; // TODO
+abstract::Element *Document::root_element() const { return m_root_element; }
+
+void Document::register_element_(std::unique_ptr<Element> element) {
+  m_elements.push_back(std::move(element));
 }
 
 } // namespace odr::internal::ooxml::presentation

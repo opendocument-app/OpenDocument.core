@@ -3,8 +3,11 @@
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
-#include <pugixml.hpp>
+
 #include <unordered_map>
+#include <vector>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::presentation {
 
@@ -24,8 +27,9 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   files() const noexcept final;
 
-  [[nodiscard]] std::pair<abstract::Element *, ElementIdentifier>
-  root_element() const final;
+  [[nodiscard]] abstract::Element *root_element() const final;
+
+  void register_element_(std::unique_ptr<Element> element);
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;

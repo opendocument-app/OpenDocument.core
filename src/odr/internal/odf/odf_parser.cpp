@@ -56,7 +56,7 @@ void odf::parse_element_children(Element *element, pugi::xml_node node,
     if (child == nullptr) {
       child_node = child_node.next_sibling();
     } else {
-      element->init_append_child(child);
+      element->append_child_(child);
       child_node = next_sibling;
     }
   }
@@ -66,7 +66,7 @@ void odf::parse_element_children(PresentationRoot *element, pugi::xml_node node,
                                  std::vector<std::unique_ptr<Element>> &store) {
   for (auto child_node : node.children("draw:page")) {
     auto [child, _] = parse_element_tree<Slide>(child_node, store);
-    element->init_append_child(child);
+    element->append_child_(child);
   }
 }
 
@@ -74,7 +74,7 @@ void odf::parse_element_children(SpreadsheetRoot *element, pugi::xml_node node,
                                  std::vector<std::unique_ptr<Element>> &store) {
   for (auto child_node : node.children("table:table")) {
     auto [child, _] = parse_element_tree<Sheet>(child_node, store);
-    element->init_append_child(child);
+    element->append_child_(child);
   }
 }
 
@@ -82,7 +82,7 @@ void odf::parse_element_children(DrawingRoot *element, pugi::xml_node node,
                                  std::vector<std::unique_ptr<Element>> &store) {
   for (auto child_node : node.children("draw:page")) {
     auto [child, _] = parse_element_tree<Page>(child_node, store);
-    element->init_append_child(child);
+    element->append_child_(child);
   }
 }
 
@@ -123,14 +123,14 @@ std::tuple<odf::Element *, pugi::xml_node> odf::parse_element_tree<odf::Table>(
          ++i) {
       // TODO mark as repeated
       auto [column, _] = parse_element_tree<TableColumn>(column_node, store);
-      table->init_append_column(column);
+      table->append_column_(column);
     }
   }
 
   for (auto row_node : node.children("table:table-row")) {
     // TODO log warning if repeated
     auto [row, _] = parse_element_tree<TableRow>(row_node, store);
-    table->init_append_row(row);
+    table->append_row_(row);
   }
 
   return std::make_tuple(table, node.next_sibling());
@@ -151,7 +151,7 @@ odf::parse_element_tree<odf::TableRow>(
   for (auto cell_node : node.children()) {
     // TODO log warning if repeated
     auto [cell, _] = parse_any_element_tree(cell_node, store);
-    table_row->init_append_child(cell);
+    table_row->append_child_(cell);
   }
 
   return std::make_tuple(table_row, node.next_sibling());
