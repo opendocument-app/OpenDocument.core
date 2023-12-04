@@ -20,14 +20,14 @@ class TableRow;
 
 Element *parse_tree(Document &document, pugi::xml_node node);
 
-template <typename Derived>
-std::tuple<Element *, pugi::xml_node> parse_element_tree(Document &document,
-                                                         pugi::xml_node node) {
+template <typename element_t>
+std::tuple<element_t *, pugi::xml_node>
+parse_element_tree(Document &document, pugi::xml_node node) {
   if (!node) {
     return std::make_tuple(nullptr, pugi::xml_node());
   }
 
-  auto element_unique = std::make_unique<Derived>(node);
+  auto element_unique = std::make_unique<element_t>(node);
   auto element = element_unique.get();
   document.register_element_(std::move(element_unique));
 
@@ -36,13 +36,13 @@ std::tuple<Element *, pugi::xml_node> parse_element_tree(Document &document,
   return std::make_tuple(element, node.next_sibling());
 }
 template <>
-std::tuple<Element *, pugi::xml_node>
+std::tuple<Text *, pugi::xml_node>
 parse_element_tree<Text>(Document &document, pugi::xml_node first);
 template <>
-std::tuple<Element *, pugi::xml_node>
+std::tuple<Table *, pugi::xml_node>
 parse_element_tree<Table>(Document &document, pugi::xml_node node);
 template <>
-std::tuple<Element *, pugi::xml_node>
+std::tuple<TableRow *, pugi::xml_node>
 parse_element_tree<TableRow>(Document &document, pugi::xml_node node);
 
 std::tuple<Element *, pugi::xml_node>

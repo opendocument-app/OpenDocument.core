@@ -28,6 +28,8 @@ public:
                                         std::uint32_t row) const = 0;
 
   [[nodiscard]] virtual Element *first_shape(const Document *) const = 0;
+
+  [[nodiscard]] virtual TableStyle style(const Document *) const = 0;
 };
 
 class SheetColumn : public virtual Element {
@@ -36,7 +38,7 @@ public:
     return ElementType::table_column;
   }
 
-  [[nodiscard]] virtual TableColumnStyle style(const Document *, const Sheet *,
+  [[nodiscard]] virtual TableColumnStyle style(const Document *, Sheet *,
                                                std::uint32_t column) const = 0;
 };
 
@@ -46,7 +48,7 @@ public:
     return ElementType::table_row;
   }
 
-  [[nodiscard]] virtual TableRowStyle style(const Document *, const Sheet *,
+  [[nodiscard]] virtual TableRowStyle style(const Document *, Sheet *,
                                             std::uint32_t row) const = 0;
 };
 
@@ -56,17 +58,17 @@ public:
     return ElementType::table_cell;
   }
 
-  [[nodiscard]] virtual bool is_covered(const Document *, const Sheet *,
+  [[nodiscard]] virtual bool is_covered(const Document *, Sheet *,
                                         std::uint32_t column,
                                         std::uint32_t row) const = 0;
-  [[nodiscard]] virtual TableDimensions span(const Document *, const Sheet *,
+  [[nodiscard]] virtual TableDimensions span(const Document *, Sheet *,
                                              std::uint32_t column,
                                              std::uint32_t row) const = 0;
-  [[nodiscard]] virtual ValueType value_type(const Document *, const Sheet *,
+  [[nodiscard]] virtual ValueType value_type(const Document *, Sheet *,
                                              std::uint32_t column,
                                              std::uint32_t row) const = 0;
 
-  [[nodiscard]] virtual TableCellStyle style(const Document *, const Sheet *,
+  [[nodiscard]] virtual TableCellStyle style(const Document *, Sheet *,
                                              std::uint32_t column,
                                              std::uint32_t row) const = 0;
 };

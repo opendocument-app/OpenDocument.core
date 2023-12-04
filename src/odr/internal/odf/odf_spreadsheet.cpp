@@ -8,42 +8,50 @@
 
 namespace odr::internal::odf {
 
-namespace {
-
-class SheetColumn final : public Element, public abstract::TableColumn {
+class SheetColumn final : public Element, public abstract::SheetColumn {
 public:
   using Element::Element;
 
-  [[nodiscard]] TableColumnStyle
-  style(const abstract::Document *document) const final {
+  [[nodiscard]] TableColumnStyle style(const abstract::Document *document,
+                                       abstract::Sheet *,
+                                       std::uint32_t /*column*/) const final {
     return partial_style(document).table_column_style;
   }
 };
 
-class SheetRow final : public Element, public abstract::TableRow {
+class SheetRow final : public Element, public abstract::SheetRow {
 public:
   using Element::Element;
 
-  [[nodiscard]] TableRowStyle
-  style(const abstract::Document *document) const final {
+  [[nodiscard]] TableRowStyle style(const abstract::Document *document,
+                                    abstract::Sheet *,
+                                    std::uint32_t /*column*/) const final {
     return partial_style(document).table_row_style;
   }
 };
 
-class SheetCell final : public Element, public abstract::TableCell {
+class SheetCell final : public Element, public abstract::SheetCell {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool is_covered(const abstract::Document *) const final {
+  [[nodiscard]] bool is_covered(const abstract::Document *, abstract::Sheet *,
+                                std::uint32_t /*column*/,
+                                std::uint32_t /*row*/) const final {
     return std::strcmp(m_node.name(), "table:covered-table-cell") == 0;
   }
 
-  [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
+  [[nodiscard]] TableDimensions span(const abstract::Document *,
+                                     abstract::Sheet *,
+                                     std::uint32_t /*column*/,
+                                     std::uint32_t /*row*/) const final {
     return {m_node.attribute("table:number-rows-spanned").as_uint(1),
             m_node.attribute("table:number-columns-spanned").as_uint(1)};
   }
 
-  [[nodiscard]] ValueType value_type(const abstract::Document *) const final {
+  [[nodiscard]] ValueType value_type(const abstract::Document *,
+                                     abstract::Sheet *,
+                                     std::uint32_t /*column*/,
+                                     std::uint32_t /*row*/) const final {
     auto value_type = m_node.attribute("office:value-type").value();
     if (std::strcmp("float", value_type) == 0) {
       return ValueType::float_number;
@@ -51,13 +59,24 @@ public:
     return ValueType::string;
   }
 
-  [[nodiscard]] TableCellStyle
-  style(const abstract::Document *document) const final {
-    return partial_style(document).table_cell_style;
+  [[nodiscard]] TableCellStyle style(const abstract::Document *document,
+                                     abstract::Sheet *sheet,
+                                     std::uint32_t column,
+                                     std::uint32_t /*row*/) const final {
+    auto style_name = style_name_(document);
+    if (style_name == nullptr) {
+      style_name = dynamic_cast<SheetColumn *>(sheet->column(document, column))
+                       ->m_node.attribute("table:default-cell-style-name")
+                       .value();
+    }
+    if (style_name == nullptr) {
+      return {};
+    }
+    if (auto style = style_(document)->style(style_name)) {
+      return style->resolved().table_cell_style;
+    }
   }
 };
-
-} // namespace
 
 std::string Sheet::name(const abstract::Document *) const {
   return m_node.attribute("table:name").value();
@@ -100,87 +119,16 @@ Sheet::content(const abstract::Document *,
   return result;
 }
 
-abstract::Element *Sheet::first_cell_element(const abstract::Document *document,
-                                             std::uint32_t column,
-                                             std::uint32_t row) const {
-  auto cell = cell_(document, column, row);
-  if (cell == nullptr) {
-    return nullptr;
-  }
-  return cell->first_child(document);
-}
-
-abstract::Element *Sheet::first_shape(const abstract::Document *) const {
-  return m_first_shape;
-}
-
-TableStyle Sheet::style(const abstract::Document *document) const {
-  return partial_style(document).table_style;
-}
-
-TableColumnStyle Sheet::column_style(const abstract::Document *,
-                                     std::uint32_t /*column*/) const {
-  return TableColumnStyle(); // TODO
-}
-
-TableRowStyle Sheet::row_style(const abstract::Document *,
-                               std::uint32_t /*row*/) const {
-  return TableRowStyle(); // TODO
-}
-
-TableCellStyle Sheet::cell_style(const abstract::Document *,
-                                 std::uint32_t /*column*/,
-                                 std::uint32_t /*row*/) const {
-  return TableCellStyle(); // TODO
-}
-
-bool Sheet::is_covered(const abstract::Document *, std::uint32_t /*column*/,
-                       std::uint32_t /*row*/) const {
-  return false; // TODO
-}
-
-TableDimensions Sheet::span(const abstract::Document *,
-                            std::uint32_t /*column*/,
-                            std::uint32_t /*row*/) const {
-  return TableDimensions(); // TODO
-}
-
-ValueType Sheet::value_type(const abstract::Document *,
-                            std::uint32_t /*column*/,
-                            std::uint32_t /*row*/) const {
-  return ValueType::unknown; // TODO
-}
-
-void Sheet::init_column_(std::uint32_t column, std::uint32_t repeated,
-                         Element *element) {
-  m_columns[column + repeated] = element;
-}
-
-void Sheet::init_row_(std::uint32_t row, std::uint32_t repeated,
-                      Element *element) {
-  m_rows[row + repeated].element = element;
-}
-
-void Sheet::init_cell_(std::uint32_t column, std::uint32_t row,
-                       std::uint32_t columns_repeated,
-                       std::uint32_t rows_repeated, Element *element) {
-  m_rows[row + rows_repeated].cells[column + columns_repeated] = element;
-}
-
-void Sheet::init_dimensions_(TableDimensions dimensions) {
-  m_dimensions = dimensions;
-}
-
-abstract::Element *Sheet::column_(const abstract::Document *,
-                                  std::uint32_t column) const {
+abstract::SheetColumn *Sheet::column(const abstract::Document *,
+                                     std::uint32_t column) const {
   if (auto it = util::map::lookup_greater_than(m_columns, column);
       it != std::end(m_columns)) {
-    return it->second;
+    return dynamic_cast<abstract::SheetColumn *>(it->second);
   }
   return nullptr;
 }
 
-abstract::Element *Sheet::row_(const abstract::Document *,
+abstract::SheetRow *Sheet::row(const abstract::Document *,
                                std::uint32_t row) const {
   if (auto it = util::map::lookup_greater_than(m_rows, row);
       it != std::end(m_rows)) {
@@ -189,8 +137,9 @@ abstract::Element *Sheet::row_(const abstract::Document *,
   return nullptr;
 }
 
-abstract::Element *Sheet::cell_(const abstract::Document *,
-                                std::uint32_t column, std::uint32_t row) const {
+abstract::SheetCell *Sheet::cell(const abstract::Document *,
+                                 std::uint32_t column,
+                                 std::uint32_t row) const {
   if (auto row_it = util::map::lookup_greater_than(m_rows, row);
       row_it != std::end(m_rows)) {
     auto &cells = row_it->second.cells;
@@ -203,12 +152,41 @@ abstract::Element *Sheet::cell_(const abstract::Document *,
   return nullptr;
 }
 
+abstract::Element *Sheet::first_shape(const abstract::Document *) const {
+  return m_first_shape;
+}
+
+TableStyle Sheet::style(const abstract::Document *document) const {
+  return partial_style(document).table_style;
+}
+
+void Sheet::init_column_(std::uint32_t column, std::uint32_t repeated,
+                         SheetColumn *element) {
+  m_columns[column + repeated] = dynamic_cast<abstract::SheetColumn *>(element);
+}
+
+void Sheet::init_row_(std::uint32_t row, std::uint32_t repeated,
+                      SheetRow *element) {
+  m_rows[row + repeated].element = dynamic_cast<abstract::SheetRow *>(element);
+}
+
+void Sheet::init_cell_(std::uint32_t column, std::uint32_t row,
+                       std::uint32_t columns_repeated,
+                       std::uint32_t rows_repeated, SheetCell *element) {
+  m_rows[row + rows_repeated].cells[column + columns_repeated] =
+      dynamic_cast<abstract::SheetCell *>(element);
+}
+
+void Sheet::init_dimensions_(TableDimensions dimensions) {
+  m_dimensions = dimensions;
+}
+
 } // namespace odr::internal::odf
 
 namespace odr::internal {
 
 template <>
-std::tuple<odf::Element *, pugi::xml_node>
+std::tuple<odf::Sheet *, pugi::xml_node>
 odf::parse_element_tree<odf::Sheet>(Document &document, pugi::xml_node node) {
   if (!node) {
     return std::make_tuple(nullptr, pugi::xml_node());

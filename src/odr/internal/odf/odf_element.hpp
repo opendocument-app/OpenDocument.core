@@ -24,9 +24,9 @@ public:
 
   bool is_editable(const abstract::Document *document) const override;
 
-protected:
   pugi::xml_node m_node;
 
+protected:
   virtual const char *style_name_(const abstract::Document *) const;
 
   static const Document *document_(const abstract::Document *);

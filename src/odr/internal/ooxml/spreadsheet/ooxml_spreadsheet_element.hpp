@@ -77,6 +77,8 @@ public:
   [[nodiscard]] abstract::Element *
   first_shape(const abstract::Document *) const final;
 
+  [[nodiscard]] TableStyle style(const abstract::Document *) const final;
+
 private:
   pugi::xml_node sheet_node_(const abstract::Document *) const;
   pugi::xml_node drawing_node_(const abstract::Document *) const;
@@ -87,7 +89,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] TableColumnStyle style(const abstract::Document *,
-                                       const abstract::Sheet *,
+                                       abstract::Sheet *,
                                        std::uint32_t column) const final;
 
 private:
@@ -100,7 +102,7 @@ public:
   using Element::Element;
 
   [[nodiscard]] TableRowStyle style(const abstract::Document *,
-                                    const abstract::Sheet *,
+                                    abstract::Sheet *,
                                     std::uint32_t row) const final;
 };
 
@@ -108,21 +110,18 @@ class SheetCell final : public Element, public abstract::SheetCell {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool is_covered(const abstract::Document *,
-                                const abstract::Sheet *, std::uint32_t column,
+  [[nodiscard]] bool is_covered(const abstract::Document *, abstract::Sheet *,
+                                std::uint32_t column,
                                 std::uint32_t row) const final;
   [[nodiscard]] TableDimensions span(const abstract::Document *,
-                                     const abstract::Sheet *,
-                                     std::uint32_t column,
+                                     abstract::Sheet *, std::uint32_t column,
                                      std::uint32_t row) const final;
   [[nodiscard]] ValueType value_type(const abstract::Document *,
-                                     const abstract::Sheet *,
-                                     std::uint32_t column,
+                                     abstract::Sheet *, std::uint32_t column,
                                      std::uint32_t row) const final;
 
   [[nodiscard]] TableCellStyle style(const abstract::Document *,
-                                     const abstract::Sheet *,
-                                     std::uint32_t column,
+                                     abstract::Sheet *, std::uint32_t column,
                                      std::uint32_t row) const final;
 
   [[nodiscard]] common::ResolvedStyle

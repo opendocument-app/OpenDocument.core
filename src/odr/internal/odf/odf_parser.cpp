@@ -78,7 +78,7 @@ void odf::parse_element_children(Document &document, DrawingRoot *element,
 }
 
 template <>
-std::tuple<odf::Element *, pugi::xml_node>
+std::tuple<odf::Text *, pugi::xml_node>
 odf::parse_element_tree<odf::Text>(Document &document, pugi::xml_node first) {
   if (!first) {
     return std::make_tuple(nullptr, pugi::xml_node());
@@ -96,7 +96,7 @@ odf::parse_element_tree<odf::Text>(Document &document, pugi::xml_node first) {
 }
 
 template <>
-std::tuple<odf::Element *, pugi::xml_node>
+std::tuple<odf::Table *, pugi::xml_node>
 odf::parse_element_tree<odf::Table>(Document &document, pugi::xml_node node) {
   if (!node) {
     return std::make_tuple(nullptr, pugi::xml_node());
@@ -128,7 +128,7 @@ odf::parse_element_tree<odf::Table>(Document &document, pugi::xml_node node) {
 }
 
 template <>
-std::tuple<odf::Element *, pugi::xml_node>
+std::tuple<odf::TableRow *, pugi::xml_node>
 odf::parse_element_tree<odf::TableRow>(Document &document,
                                        pugi::xml_node node) {
   if (!node) {
