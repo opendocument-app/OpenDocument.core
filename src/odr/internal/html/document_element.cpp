@@ -104,7 +104,8 @@ void html::translate_sheet(Element element, std::ostream &out,
 
   for (std::uint32_t column_index = 0; column_index < end_column;
        ++column_index) {
-    auto table_column_style = sheet.column_style(column_index);
+    auto table_column = sheet.column(column_index);
+    auto table_column_style = table_column.style();
 
     out << "<col";
     out << optional_style_attribute(
@@ -127,7 +128,8 @@ void html::translate_sheet(Element element, std::ostream &out,
   }
 
   for (std::uint32_t row_index = 0; row_index < end_row; ++row_index) {
-    auto table_row_style = sheet.row_style(row_index);
+    auto table_row = sheet.row(row_index);
+    auto table_row_style = table_row.style();
 
     out << "<tr";
     out << optional_style_attribute(translate_table_row_style(table_row_style));
@@ -144,16 +146,18 @@ void html::translate_sheet(Element element, std::ostream &out,
 
     for (std::uint32_t column_index = 0; column_index < end_column;
          ++column_index) {
-      if (sheet.is_covered(column_index, row_index)) {
+      auto cell = sheet.cell(column_index, row_index);
+
+      if (cell.is_covered()) {
         continue;
       }
 
       // TODO looks a bit odd to query the same (col, row) all the time. maybe
       // there could be a struct to get all the info?
-      auto cell_style = sheet.cell_style(column_index, row_index);
-      auto cell_span = sheet.span(column_index, row_index);
-      auto cell_value_type = sheet.value_type(column_index, row_index);
-      auto cell_elements = sheet.cell_elements(column_index, row_index);
+      auto cell_style = cell.style();
+      auto cell_span = cell.span();
+      auto cell_value_type = cell.value_type();
+      auto cell_elements = cell.children();
 
       out << "<td";
       if (cell_span.rows > 1) {

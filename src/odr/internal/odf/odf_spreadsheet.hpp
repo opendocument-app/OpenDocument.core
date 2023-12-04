@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_ODF_SPREADSHEET_H
 
 #include <odr/internal/abstract/document.hpp>
-#include <odr/internal/common/document_element.hpp>
+#include <odr/internal/abstract/sheet_element.hpp>
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/common/table_position.hpp>
 #include <odr/internal/odf/odf_element.hpp>
@@ -24,7 +24,7 @@ public:
   using Root::Root;
 };
 
-class Sheet final : public Element, public common::Sheet {
+class Sheet final : public Element, public abstract::Sheet {
 public:
   using Element::Element;
 
@@ -38,29 +38,7 @@ public:
           const std::optional<TableDimensions> range) const final;
 
   [[nodiscard]] abstract::Element *
-  first_cell_element(const abstract::Document *, std::uint32_t column,
-                     std::uint32_t row) const final;
-  [[nodiscard]] abstract::Element *
   first_shape(const abstract::Document *) const final;
-
-  [[nodiscard]] TableStyle style(const abstract::Document *) const final;
-  [[nodiscard]] TableColumnStyle column_style(const abstract::Document *,
-                                              std::uint32_t column) const final;
-  [[nodiscard]] TableRowStyle row_style(const abstract::Document *,
-                                        std::uint32_t row) const final;
-  [[nodiscard]] TableCellStyle cell_style(const abstract::Document *,
-                                          std::uint32_t column,
-                                          std::uint32_t row) const final;
-
-  [[nodiscard]] bool is_covered(const abstract::Document *,
-                                std::uint32_t column,
-                                std::uint32_t row) const final;
-  [[nodiscard]] TableDimensions span(const abstract::Document *,
-                                     std::uint32_t column,
-                                     std::uint32_t row) const final;
-  [[nodiscard]] ValueType value_type(const abstract::Document *,
-                                     std::uint32_t column,
-                                     std::uint32_t row) const final;
 
   void init_column_(std::uint32_t column, std::uint32_t repeated,
                     Element *element);

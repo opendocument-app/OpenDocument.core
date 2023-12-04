@@ -88,8 +88,8 @@ parse_any_element_tree(Document &document, pugi::xml_node node) {
   static std::unordered_map<std::string, Parser> parser_table{
       {"workbook", parse_element_tree<Root>},
       {"worksheet", parse_element_tree<Sheet>},
-      {"col", parse_element_tree<TableColumn>},
-      {"row", parse_element_tree<TableRow>},
+      {"col", parse_element_tree<SheetColumn>},
+      {"row", parse_element_tree<SheetRow>},
       {"r", parse_element_tree<Span>},
       {"t", parse_element_tree<Text>},
       {"v", parse_element_tree<Text>},

@@ -13,6 +13,9 @@ class Element;
 class TextRoot;
 class Slide;
 class Sheet;
+class SheetColumn;
+class SheetRow;
+class SheetCell;
 class Page;
 class MasterPage;
 class LineBreak;
@@ -53,6 +56,9 @@ class ElementRange;
 class TextRoot;
 class Slide;
 class Sheet;
+class SheetColumn;
+class SheetRow;
+class SheetCell;
 class Page;
 class MasterPage;
 class LineBreak;
@@ -216,6 +222,8 @@ private:
 template <typename T> class TypedElement : public Element {
 public:
   TypedElement() = default;
+  TypedElement(const internal::abstract::Document *document, T *element)
+      : Element(document, element), m_element{element} {}
   TypedElement(const internal::abstract::Document *document,
                internal::abstract::Element *element)
       : Element(document, element), m_element{dynamic_cast<T *>(element)} {}
@@ -261,21 +269,58 @@ public:
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;
 
-  [[nodiscard]] ElementRange cell_elements(std::uint32_t column,
-                                           std::uint32_t row) const;
+  [[nodiscard]] SheetColumn column(std::uint32_t column) const;
+  [[nodiscard]] SheetRow row(std::uint32_t row) const;
+  [[nodiscard]] SheetCell cell(std::uint32_t column, std::uint32_t row) const;
+
   [[nodiscard]] ElementRange shapes() const;
+};
 
-  [[nodiscard]] TableStyle style() const;
-  [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;
-  [[nodiscard]] TableRowStyle row_style(std::uint32_t row) const;
-  [[nodiscard]] TableCellStyle cell_style(std::uint32_t column,
-                                          std::uint32_t row) const;
+class SheetColumn final : public TypedElement<internal::abstract::SheetColumn> {
+public:
+  SheetColumn() = default;
+  SheetColumn(const internal::abstract::Document *document,
+              internal::abstract::Sheet *sheet, std::uint32_t column,
+              internal::abstract::SheetColumn *element);
 
-  [[nodiscard]] bool is_covered(std::uint32_t column, std::uint32_t row) const;
-  [[nodiscard]] TableDimensions span(std::uint32_t column,
-                                     std::uint32_t row) const;
-  [[nodiscard]] ValueType value_type(std::uint32_t column,
-                                     std::uint32_t row) const;
+  [[nodiscard]] TableColumnStyle style() const;
+
+private:
+  internal::abstract::Sheet *m_sheet{};
+  std::uint32_t m_column{};
+};
+
+class SheetRow final : public TypedElement<internal::abstract::SheetRow> {
+public:
+  SheetRow() = default;
+  SheetRow(const internal::abstract::Document *document,
+           internal::abstract::Sheet *sheet, std::uint32_t row,
+           internal::abstract::SheetRow *element);
+
+  [[nodiscard]] TableRowStyle style() const;
+
+private:
+  internal::abstract::Sheet *m_sheet{};
+  std::uint32_t m_row{};
+};
+
+class SheetCell final : public TypedElement<internal::abstract::SheetCell> {
+public:
+  SheetCell() = default;
+  SheetCell(const internal::abstract::Document *document,
+            internal::abstract::Sheet *sheet, std::uint32_t column,
+            std::uint32_t row, internal::abstract::SheetCell *element);
+
+  [[nodiscard]] bool is_covered() const;
+  [[nodiscard]] TableDimensions span() const;
+  [[nodiscard]] ValueType value_type() const;
+
+  [[nodiscard]] TableCellStyle style() const;
+
+private:
+  internal::abstract::Sheet *m_sheet{};
+  std::uint32_t m_column{};
+  std::uint32_t m_row{};
 };
 
 class Page final : public TypedElement<internal::abstract::Page> {
@@ -378,9 +423,6 @@ public:
 class TableCell final : public TypedElement<internal::abstract::TableCell> {
 public:
   using TypedElement::TypedElement;
-
-  [[nodiscard]] TableColumn column() const;
-  [[nodiscard]] TableRow row() const;
 
   [[nodiscard]] bool is_covered() const;
   [[nodiscard]] TableDimensions span() const;
