@@ -35,8 +35,8 @@ protected:
 template <typename element_t> class TemplateDocument : public Document {
 public:
   TemplateDocument(FileType file_type, DocumentType document_type,
-                   std::shared_ptr<abstract::ReadableFilesystem> files)
-      : Document(file_type, document_type, std::move(files)) {}
+                   std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+      : Document(file_type, document_type, std::move(filesystem)) {}
 
   [[nodiscard]] abstract::Element *root_element() const final {
     return m_root_element;

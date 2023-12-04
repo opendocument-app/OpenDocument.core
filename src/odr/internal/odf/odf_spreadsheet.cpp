@@ -62,19 +62,35 @@ public:
   [[nodiscard]] TableCellStyle style(const abstract::Document *document,
                                      abstract::Sheet *sheet,
                                      std::uint32_t column,
-                                     std::uint32_t /*row*/) const final {
+                                     std::uint32_t row) const final {
     auto style_name = style_name_(document);
     if (style_name == nullptr) {
-      style_name = dynamic_cast<SheetColumn *>(sheet->column(document, column))
-                       ->m_node.attribute("table:default-cell-style-name")
-                       .value();
+      auto row_element = sheet->row(document, row);
+      // TODO should this ever be null?
+      if (row_element != nullptr) {
+        auto row_node = dynamic_cast<SheetRow *>(row_element)->m_node;
+        if (auto attr = row_node.attribute("table:default-cell-style-name")) {
+          style_name = attr.value();
+        }
+      }
     }
     if (style_name == nullptr) {
-      return {};
+      auto column_element = sheet->column(document, column);
+      // TODO should this ever be null?
+      if (column_element != nullptr) {
+        auto column_node = dynamic_cast<SheetColumn *>(column_element)->m_node;
+        if (auto attr =
+                column_node.attribute("table:default-cell-style-name")) {
+          style_name = attr.value();
+        }
+      }
     }
-    if (auto style = style_(document)->style(style_name)) {
-      return style->resolved().table_cell_style;
+    if (style_name != nullptr) {
+      if (auto style = style_(document)->style(style_name)) {
+        return style->resolved().table_cell_style;
+      }
     }
+    return {};
   }
 };
 

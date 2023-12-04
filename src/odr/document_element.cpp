@@ -212,7 +212,8 @@ SheetColumn::SheetColumn(const internal::abstract::Document *document,
     : TypedElement(document, element), m_sheet{sheet}, m_column{column} {}
 
 TableColumnStyle SheetColumn::style() const {
-  return m_element->style(m_document, m_sheet, m_column);
+  return exists_() ? m_element->style(m_document, m_sheet, m_column)
+                   : TableColumnStyle();
 }
 
 SheetRow::SheetRow(const internal::abstract::Document *document,

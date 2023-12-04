@@ -237,6 +237,8 @@ public:
 
 protected:
   T *m_element;
+
+  bool exists_() const { return m_element != nullptr; }
 };
 
 class TextRoot final : public TypedElement<internal::abstract::TextRoot> {
