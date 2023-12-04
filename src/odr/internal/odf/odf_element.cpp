@@ -278,7 +278,7 @@ TableRowStyle TableRow::style(const abstract::Document *document) const {
   return partial_style(document).table_row_style;
 }
 
-bool TableCell::covered(const abstract::Document *) const {
+bool TableCell::is_covered(const abstract::Document *) const {
   return std::strcmp(m_node.name(), "table:covered-table-cell") == 0;
 }
 
@@ -435,7 +435,7 @@ GraphicStyle CustomShape::style(const abstract::Document *document) const {
   return intermediate_style(document).graphic_style;
 }
 
-bool Image::internal(const abstract::Document *document) const {
+bool Image::is_internal(const abstract::Document *document) const {
   auto doc = document_(document);
   if (!doc || !doc->files()) {
     return false;
@@ -449,7 +449,7 @@ bool Image::internal(const abstract::Document *document) const {
 
 std::optional<odr::File> Image::file(const abstract::Document *document) const {
   auto doc = document_(document);
-  if (!doc || !internal(document)) {
+  if (!doc || !is_internal(document)) {
     return {};
   }
   return File(doc->files()->open(href(document)));

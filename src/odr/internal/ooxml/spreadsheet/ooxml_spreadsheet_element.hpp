@@ -54,29 +54,38 @@ class Sheet final : public Element, public abstract::Sheet {
 public:
   using Element::Element;
 
-  [[nodiscard]] ElementType type(const abstract::Document *) const final;
-
   [[nodiscard]] std::string name(const abstract::Document *) const final;
 
   [[nodiscard]] TableDimensions
   dimensions(const abstract::Document *) const final;
-
   [[nodiscard]] TableDimensions
   content(const abstract::Document *,
           std::optional<TableDimensions>) const final;
 
-  [[nodiscard]] abstract::Element *column(const abstract::Document *,
-                                          std::uint32_t column) const final;
-  [[nodiscard]] abstract::Element *row(const abstract::Document *,
-                                       std::uint32_t row) const final;
-  [[nodiscard]] abstract::Element *cell(const abstract::Document *,
-                                        std::uint32_t column,
-                                        std::uint32_t row) const final;
-
+  [[nodiscard]] abstract::Element *
+  first_cell_element(const abstract::Document *, std::uint32_t column,
+                     std::uint32_t row) const final;
   [[nodiscard]] abstract::Element *
   first_shape(const abstract::Document *) const final;
 
   [[nodiscard]] TableStyle style(const abstract::Document *) const final;
+  [[nodiscard]] TableColumnStyle column_style(const abstract::Document *,
+                                              std::uint32_t column) const final;
+  [[nodiscard]] TableRowStyle row_style(const abstract::Document *,
+                                        std::uint32_t row) const final;
+  [[nodiscard]] TableCellStyle cell_style(const abstract::Document *,
+                                          std::uint32_t column,
+                                          std::uint32_t row) const final;
+
+  [[nodiscard]] bool is_covered(const abstract::Document *,
+                                std::uint32_t column,
+                                std::uint32_t row) const final;
+  [[nodiscard]] TableDimensions span(const abstract::Document *,
+                                     std::uint32_t column,
+                                     std::uint32_t row) const final;
+  [[nodiscard]] ValueType value_type(const abstract::Document *,
+                                     std::uint32_t column,
+                                     std::uint32_t row) const final;
 
 private:
   pugi::xml_node sheet_node_(const abstract::Document *) const;
@@ -105,7 +114,7 @@ class TableCell final : public Element, public abstract::TableCell {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool covered(const abstract::Document *) const final;
+  [[nodiscard]] bool is_covered(const abstract::Document *) const final;
 
   [[nodiscard]] TableDimensions span(const abstract::Document *) const final;
 
@@ -165,7 +174,7 @@ class ImageElement final : public Element, public abstract::Image {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool internal(const abstract::Document *) const final;
+  [[nodiscard]] bool is_internal(const abstract::Document *) const final;
 
   [[nodiscard]] std::optional<odr::File>
   file(const abstract::Document *) const final;

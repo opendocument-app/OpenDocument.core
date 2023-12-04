@@ -65,10 +65,6 @@ Element::shared_strings_(const abstract::Document *document) {
   return document_(document)->m_shared_strings;
 }
 
-ElementType Sheet::type(const abstract::Document *) const {
-  return ElementType::sheet;
-}
-
 std::string Sheet::name(const abstract::Document *) const {
   return m_node.attribute("name").value();
 }
@@ -90,19 +86,9 @@ TableDimensions Sheet::content(const abstract::Document *document,
   return dimensions(document); // TODO
 }
 
-abstract::Element *Sheet::column(const abstract::Document *,
-                                 std::uint32_t /*column*/) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *Sheet::row(const abstract::Document *,
-                              std::uint32_t /*row*/) const {
-  return nullptr; // TODO
-}
-
-abstract::Element *Sheet::cell(const abstract::Document *,
-                               std::uint32_t /*column*/,
-                               std::uint32_t /*row*/) const {
+abstract::Element *Sheet::first_cell_element(const abstract::Document *,
+                                             std::uint32_t /*column*/,
+                                             std::uint32_t /*row*/) const {
   return nullptr; // TODO
 }
 
@@ -112,6 +98,39 @@ abstract::Element *Sheet::first_shape(const abstract::Document *) const {
 
 TableStyle Sheet::style(const abstract::Document *document) const {
   return partial_style(document).table_style;
+}
+
+TableColumnStyle Sheet::column_style(const abstract::Document *,
+                                     std::uint32_t /*column*/) const {
+  return {}; // TODO
+}
+
+TableRowStyle Sheet::row_style(const abstract::Document *,
+                               std::uint32_t /*row*/) const {
+  return {}; // TODO
+}
+
+TableCellStyle Sheet::cell_style(const abstract::Document *,
+                                 std::uint32_t /*column*/,
+                                 std::uint32_t /*row*/) const {
+  return {}; // TODO
+}
+
+bool Sheet::is_covered(const abstract::Document *, std::uint32_t /*column*/,
+                       std::uint32_t /*row*/) const {
+  return false; // TODO
+}
+
+TableDimensions Sheet::span(const abstract::Document *,
+                            std::uint32_t /*column*/,
+                            std::uint32_t /*row*/) const {
+  return TableDimensions(); // TODO
+}
+
+ValueType Sheet::value_type(const abstract::Document *,
+                            std::uint32_t /*column*/,
+                            std::uint32_t /*row*/) const {
+  return ValueType::unknown; // TODO
 }
 
 pugi::xml_node Sheet::sheet_node_(const abstract::Document *document) const {
@@ -148,7 +167,7 @@ TableRowStyle TableRow::style(const abstract::Document *) const {
   return result;
 }
 
-bool TableCell::covered(const abstract::Document *) const {
+bool TableCell::is_covered(const abstract::Document *) const {
   return false; // TODO
 }
 
@@ -262,7 +281,7 @@ std::optional<std::string> Frame::z_index(const abstract::Document *) const {
 
 GraphicStyle Frame::style(const abstract::Document *) const { return {}; }
 
-bool ImageElement::internal(const abstract::Document *document) const {
+bool ImageElement::is_internal(const abstract::Document *document) const {
   auto doc = document_(document);
   if (!doc || !doc->files()) {
     return false;
@@ -277,7 +296,7 @@ bool ImageElement::internal(const abstract::Document *document) const {
 std::optional<odr::File>
 ImageElement::file(const abstract::Document *document) const {
   auto doc = document_(document);
-  if (!doc || !internal(document)) {
+  if (!doc || !is_internal(document)) {
     return {};
   }
   return File(doc->files()->open(href(document)));

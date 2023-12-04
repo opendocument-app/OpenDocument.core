@@ -118,6 +118,7 @@ enum class AnchorType {
 };
 
 enum class ValueType {
+  unknown,
   string,
   float_number,
 };
@@ -260,13 +261,21 @@ public:
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;
 
-  [[nodiscard]] TableColumn column(std::uint32_t column) const;
-  [[nodiscard]] TableRow row(std::uint32_t row) const;
-  [[nodiscard]] TableCell cell(std::uint32_t column, std::uint32_t row) const;
-
+  [[nodiscard]] ElementRange cell_elements(std::uint32_t column,
+                                           std::uint32_t row) const;
   [[nodiscard]] ElementRange shapes() const;
 
   [[nodiscard]] TableStyle style() const;
+  [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;
+  [[nodiscard]] TableRowStyle row_style(std::uint32_t row) const;
+  [[nodiscard]] TableCellStyle cell_style(std::uint32_t column,
+                                          std::uint32_t row) const;
+
+  [[nodiscard]] bool is_covered(std::uint32_t column, std::uint32_t row) const;
+  [[nodiscard]] TableDimensions span(std::uint32_t column,
+                                     std::uint32_t row) const;
+  [[nodiscard]] ValueType value_type(std::uint32_t column,
+                                     std::uint32_t row) const;
 };
 
 class Page final : public TypedElement<internal::abstract::Page> {
@@ -373,7 +382,7 @@ public:
   [[nodiscard]] TableColumn column() const;
   [[nodiscard]] TableRow row() const;
 
-  [[nodiscard]] bool covered() const;
+  [[nodiscard]] bool is_covered() const;
   [[nodiscard]] TableDimensions span() const;
   [[nodiscard]] ValueType value_type() const;
 
@@ -446,7 +455,7 @@ class Image final : public TypedElement<internal::abstract::Image> {
 public:
   using TypedElement::TypedElement;
 
-  [[nodiscard]] bool internal() const;
+  [[nodiscard]] bool is_internal() const;
   [[nodiscard]] std::optional<odr::File> file() const;
   [[nodiscard]] std::string href() const;
 };

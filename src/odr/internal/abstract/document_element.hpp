@@ -67,30 +67,6 @@ public:
   [[nodiscard]] virtual std::string name(const Document *) const = 0;
 };
 
-class Sheet : public virtual Element {
-public:
-  [[nodiscard]] ElementType type(const Document *) const override {
-    return ElementType::sheet;
-  }
-
-  [[nodiscard]] virtual std::string name(const Document *) const = 0;
-
-  [[nodiscard]] virtual TableDimensions dimensions(const Document *) const = 0;
-  [[nodiscard]] virtual TableDimensions
-  content(const Document *, std::optional<TableDimensions> range) const = 0;
-
-  [[nodiscard]] virtual Element *column(const Document *,
-                                        std::uint32_t column) const = 0;
-  [[nodiscard]] virtual Element *row(const Document *,
-                                     std::uint32_t row) const = 0;
-  [[nodiscard]] virtual Element *cell(const Document *, std::uint32_t column,
-                                      std::uint32_t row) const = 0;
-
-  [[nodiscard]] virtual Element *first_shape(const Document *) const = 0;
-
-  [[nodiscard]] virtual TableStyle style(const Document *) const = 0;
-};
-
 class Page : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
@@ -218,7 +194,7 @@ public:
     return ElementType::table_cell;
   }
 
-  [[nodiscard]] virtual bool covered(const Document *) const = 0;
+  [[nodiscard]] virtual bool is_covered(const Document *) const = 0;
   [[nodiscard]] virtual TableDimensions span(const Document *) const = 0;
   [[nodiscard]] virtual ValueType value_type(const Document *) const = 0;
 
@@ -310,47 +286,10 @@ public:
     return ElementType::image;
   }
 
-  [[nodiscard]] virtual bool internal(const Document *) const = 0;
+  [[nodiscard]] virtual bool is_internal(const Document *) const = 0;
   [[nodiscard]] virtual std::optional<odr::File>
   file(const Document *) const = 0;
   [[nodiscard]] virtual std::string href(const Document *) const = 0;
-};
-
-class SheetColumn : public virtual Element {
-public:
-  [[nodiscard]] ElementType type(const Document *) const override {
-    return ElementType::table_column;
-  }
-
-  [[nodiscard]] virtual TableColumnStyle style(const Document *,
-                                               std::uint32_t column) const = 0;
-};
-
-class SheetRow : public virtual Element {
-public:
-  [[nodiscard]] ElementType type(const Document *) const override {
-    return ElementType::table_row;
-  }
-
-  [[nodiscard]] virtual TableRowStyle style(const Document *) const = 0;
-};
-
-class SheetCell : public virtual Element {
-public:
-  [[nodiscard]] ElementType type(const Document *) const override {
-    return ElementType::table_cell;
-  }
-
-  [[nodiscard]] virtual bool covered(const Document *, std::uint32_t column,
-                                     std::uint32_t row) const = 0;
-  [[nodiscard]] virtual TableDimensions
-  span(const Document *, std::uint32_t column, std::uint32_t row) const = 0;
-  [[nodiscard]] virtual ValueType value_type(const Document *,
-                                             std::uint32_t column,
-                                             std::uint32_t row) const = 0;
-
-  [[nodiscard]] virtual TableCellStyle
-  style(const Document *, std::uint32_t column, std::uint32_t row) const = 0;
 };
 
 } // namespace odr::internal::abstract

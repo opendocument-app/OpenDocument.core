@@ -4,6 +4,7 @@
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/document_element.hpp>
+#include <odr/internal/abstract/sheet_element.hpp>
 
 namespace odr {
 
@@ -181,21 +182,12 @@ TableDimensions Sheet::content(std::optional<TableDimensions> range) const {
   return exists_() ? m_element->content(m_document, range) : TableDimensions();
 }
 
-TableColumn Sheet::column(std::uint32_t column) const {
-  return exists_()
-             ? TableColumn(m_document, m_element->column(m_document, column))
-             : TableColumn();
-}
-
-TableRow Sheet::row(std::uint32_t row) const {
-  return exists_() ? TableRow(m_document, m_element->row(m_document, row))
-                   : TableRow();
-}
-
-TableCell Sheet::cell(std::uint32_t column, std::uint32_t row) const {
-  return exists_()
-             ? TableCell(m_document, m_element->cell(m_document, column, row))
-             : TableCell();
+ElementRange Sheet::cell_elements(std::uint32_t column,
+                                  std::uint32_t row) const {
+  return exists_() ? ElementRange(ElementIterator(m_document,
+                                                  m_element->first_cell_element(
+                                                      m_document, column, row)))
+                   : ElementRange();
 }
 
 ElementRange Sheet::shapes() const {
@@ -206,6 +198,35 @@ ElementRange Sheet::shapes() const {
 
 TableStyle Sheet::style() const {
   return exists_() ? m_element->style(m_document) : TableStyle();
+}
+
+TableColumnStyle Sheet::column_style(std::uint32_t column) const {
+  return exists_() ? m_element->column_style(m_document, column)
+                   : TableColumnStyle();
+}
+
+TableRowStyle Sheet::row_style(std::uint32_t row) const {
+  return exists_() ? m_element->row_style(m_document, row) : TableRowStyle();
+}
+
+TableCellStyle Sheet::cell_style(std::uint32_t column,
+                                 std::uint32_t row) const {
+  return exists_() ? m_element->cell_style(m_document, column, row)
+                   : TableCellStyle();
+}
+
+bool Sheet::is_covered(std::uint32_t column, std::uint32_t row) const {
+  return exists_() ? m_element->is_covered(m_document, column, row) : false;
+}
+
+TableDimensions Sheet::span(std::uint32_t column, std::uint32_t row) const {
+  return exists_() ? m_element->span(m_document, column, row)
+                   : TableDimensions();
+}
+
+ValueType Sheet::value_type(std::uint32_t column, std::uint32_t row) const {
+  return exists_() ? m_element->value_type(m_document, column, row)
+                   : ValueType::unknown;
 }
 
 std::string Page::name() const {
@@ -295,8 +316,8 @@ TableRowStyle TableRow::style() const {
   return exists_() ? m_element->style(m_document) : TableRowStyle();
 }
 
-bool TableCell::covered() const {
-  return exists_() && m_element->covered(m_document);
+bool TableCell::is_covered() const {
+  return exists_() && m_element->is_covered(m_document);
 }
 
 TableDimensions TableCell::span() const {
@@ -423,8 +444,8 @@ GraphicStyle CustomShape::style() const {
   return exists_() ? m_element->style(m_document) : GraphicStyle();
 }
 
-bool Image::internal() const {
-  return exists_() && m_element->internal(m_document);
+bool Image::is_internal() const {
+  return exists_() && m_element->is_internal(m_document);
 }
 
 std::optional<File> Image::file() const {

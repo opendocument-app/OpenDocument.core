@@ -135,7 +135,7 @@ TableRowStyle TableRow::style(const abstract::Document *document) const {
   return partial_style(document).table_row_style;
 }
 
-bool TableCell::covered(const abstract::Document *) const { return false; }
+bool TableCell::is_covered(const abstract::Document *) const { return false; }
 
 TableDimensions TableCell::span(const abstract::Document *) const {
   return {1, 1}; // TODO
@@ -197,7 +197,9 @@ GraphicStyle Frame::style(const abstract::Document *) const {
   return {}; // TODO
 }
 
-bool ImageElement::internal(const abstract::Document *) const { return false; }
+bool ImageElement::is_internal(const abstract::Document *) const {
+  return false;
+}
 
 std::optional<File> ImageElement::file(const abstract::Document *) const {
   return {}; // TODO

@@ -70,7 +70,8 @@ private:
 class StyleRegistry final {
 public:
   StyleRegistry();
-  StyleRegistry(pugi::xml_node content_root, pugi::xml_node styles_root);
+  StyleRegistry(Document &document, pugi::xml_node content_root,
+                pugi::xml_node styles_root);
 
   [[nodiscard]] Style *style(const char *name) const;
 
@@ -94,7 +95,6 @@ private:
   std::unordered_map<std::string, std::unique_ptr<Style>> m_default_styles;
   std::unordered_map<std::string, std::unique_ptr<Style>> m_styles;
 
-  std::vector<std::unique_ptr<Element>> m_elements;
   std::unordered_map<std::string, MasterPage *> m_master_page_elements;
   MasterPage *m_first_master_page_element{};
 
@@ -106,7 +106,7 @@ private:
   Style *generate_default_style_(const std::string &name, pugi::xml_node node);
   Style *generate_style_(const std::string &name, pugi::xml_node node);
 
-  void generate_master_pages_();
+  void generate_master_pages_(Document &);
 };
 
 } // namespace odr::internal::odf

@@ -125,7 +125,7 @@ class TableCell final : public Element, public abstract::TableCell {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool covered(const abstract::Document *) const final;
+  [[nodiscard]] bool is_covered(const abstract::Document *) const final;
 
   [[nodiscard]] TableDimensions span(const abstract::Document *) const final;
 
@@ -159,7 +159,7 @@ class ImageElement final : public Element, public abstract::Image {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool internal(const abstract::Document *) const final;
+  [[nodiscard]] bool is_internal(const abstract::Document *) const final;
 
   [[nodiscard]] std::optional<odr::File>
   file(const abstract::Document *) const final;

@@ -445,11 +445,12 @@ void Style::resolve_graphic_style_(pugi::xml_node node, GraphicStyle &result) {
 
 StyleRegistry::StyleRegistry() = default;
 
-StyleRegistry::StyleRegistry(const pugi::xml_node content_root,
+StyleRegistry::StyleRegistry(Document &document,
+                             const pugi::xml_node content_root,
                              const pugi::xml_node styles_root) {
   generate_indices_(content_root, styles_root);
   generate_styles_();
-  generate_master_pages_();
+  generate_master_pages_(document);
 }
 
 void StyleRegistry::generate_indices_(const pugi::xml_node content_root,
@@ -534,10 +535,10 @@ Style *StyleRegistry::generate_style_(const std::string &name,
   return style.get();
 }
 
-void StyleRegistry::generate_master_pages_() {
+void StyleRegistry::generate_master_pages_(Document &document) {
   for (auto &&e : m_index_master_page) {
     m_master_page_elements[e.first] =
-        dynamic_cast<MasterPage *>(parse_tree(e.second, m_elements));
+        dynamic_cast<MasterPage *>(parse_tree(document, e.second));
   }
 
   if (m_first_master_page) {

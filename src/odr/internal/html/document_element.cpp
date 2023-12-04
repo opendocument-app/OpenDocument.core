@@ -104,11 +104,11 @@ void html::translate_sheet(Element element, std::ostream &out,
 
   for (std::uint32_t column_index = 0; column_index < end_column;
        ++column_index) {
-    auto table_column = sheet.column(column_index);
+    auto table_column_style = sheet.column_style(column_index);
 
     out << "<col";
     out << optional_style_attribute(
-        translate_table_column_style(table_column.style()));
+        translate_table_column_style(table_column_style));
     out << ">";
   }
 
@@ -127,8 +127,7 @@ void html::translate_sheet(Element element, std::ostream &out,
   }
 
   for (std::uint32_t row_index = 0; row_index < end_row; ++row_index) {
-    auto table_row = sheet.row(row_index);
-    auto table_row_style = table_row.style();
+    auto table_row_style = sheet.row_style(row_index);
 
     out << "<tr";
     out << optional_style_attribute(translate_table_row_style(table_row_style));
@@ -145,32 +144,36 @@ void html::translate_sheet(Element element, std::ostream &out,
 
     for (std::uint32_t column_index = 0; column_index < end_column;
          ++column_index) {
-      auto table_cell = sheet.cell(column_index, row_index);
-
-      if (!table_cell.covered()) {
-        auto cell_style = table_cell.style();
-        auto cell_span = table_cell.span();
-
-        out << "<td";
-        if (cell_span.rows > 1) {
-          out << " rowspan=\"" << cell_span.rows << "\"";
-        }
-        if (cell_span.columns > 1) {
-          out << " colspan=\"" << cell_span.columns << "\"";
-        }
-        out << optional_style_attribute(translate_table_cell_style(cell_style));
-        if (table_cell.value_type() == ValueType::float_number) {
-          out << " class=\"odr-value-type-float\"";
-        }
-        out << ">";
-        if ((row_index == 0) && (column_index == 0)) {
-          for (auto shape : sheet.shapes()) {
-            translate_element(shape, out, config);
-          }
-        }
-        translate_children(table_cell.children(), out, config);
-        out << "</td>";
+      if (sheet.is_covered(column_index, row_index)) {
+        continue;
       }
+
+      // TODO looks a bit odd to query the same (col, row) all the time. maybe
+      // there could be a struct to get all the info?
+      auto cell_style = sheet.cell_style(column_index, row_index);
+      auto cell_span = sheet.span(column_index, row_index);
+      auto cell_value_type = sheet.value_type(column_index, row_index);
+      auto cell_elements = sheet.cell_elements(column_index, row_index);
+
+      out << "<td";
+      if (cell_span.rows > 1) {
+        out << " rowspan=\"" << cell_span.rows << "\"";
+      }
+      if (cell_span.columns > 1) {
+        out << " colspan=\"" << cell_span.columns << "\"";
+      }
+      out << optional_style_attribute(translate_table_cell_style(cell_style));
+      if (cell_value_type == ValueType::float_number) {
+        out << " class=\"odr-value-type-float\"";
+      }
+      out << ">";
+      if ((row_index == 0) && (column_index == 0)) {
+        for (auto shape : sheet.shapes()) {
+          translate_element(shape, out, config);
+        }
+      }
+      translate_children(cell_elements, out, config);
+      out << "</td>";
     }
 
     out << "</tr>";
@@ -335,7 +338,7 @@ void html::translate_table(Element element, std::ostream &out,
     for (auto cell : table_row.children()) {
       auto table_cell = cell.table_cell();
 
-      if (!table_cell.covered()) {
+      if (!table_cell.is_covered()) {
         auto cell_span = table_cell.span();
 
         out << "<td";
@@ -367,7 +370,7 @@ void html::translate_image(Element element, std::ostream &out,
   out << " alt=\"Error: image not found or unsupported\"";
   out << " src=\"";
 
-  if (image.internal()) {
+  if (image.is_internal()) {
     translate_image_src(image.file().value(), out, config);
   } else {
     out << image.href();

@@ -207,7 +207,7 @@ TableRowStyle TableRow::style(const abstract::Document *document) const {
   return style_(document)->partial_table_row_style(m_node).table_row_style;
 }
 
-bool TableCell::covered(const abstract::Document *) const { return false; }
+bool TableCell::is_covered(const abstract::Document *) const { return false; }
 
 TableDimensions TableCell::span(const abstract::Document *) const {
   return {1, 1};
@@ -269,7 +269,7 @@ pugi::xml_node Frame::inner_node_(const abstract::Document *) const {
   return {};
 }
 
-bool Image::internal(const abstract::Document *document) const {
+bool Image::is_internal(const abstract::Document *document) const {
   auto doc = document_(document);
   if (!doc || !doc->files()) {
     return false;
@@ -283,7 +283,7 @@ bool Image::internal(const abstract::Document *document) const {
 
 std::optional<odr::File> Image::file(const abstract::Document *document) const {
   auto doc = document_(document);
-  if (!doc || !internal(document)) {
+  if (!doc || !is_internal(document)) {
     return {};
   }
   return File(doc->files()->open(href(document)));

@@ -58,10 +58,6 @@ public:
   Element *m_last_column{};
 };
 
-class Sheet : public virtual Element, public abstract::Sheet {
-public:
-};
-
 } // namespace odr::internal::common
 
 #endif // ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_H
