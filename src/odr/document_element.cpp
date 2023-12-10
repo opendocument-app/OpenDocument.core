@@ -183,15 +183,11 @@ TableDimensions Sheet::content(std::optional<TableDimensions> range) const {
 }
 
 SheetColumn Sheet::column(std::uint32_t column) const {
-  return exists_() ? SheetColumn(m_document, m_element, column,
-                                 m_element->column(m_document, column))
-                   : SheetColumn();
+  return exists_() ? SheetColumn(m_document, m_element, column) : SheetColumn();
 }
 
 SheetRow Sheet::row(std::uint32_t row) const {
-  return exists_() ? SheetRow(m_document, m_element, row,
-                              m_element->row(m_document, row))
-                   : SheetRow();
+  return exists_() ? SheetRow(m_document, m_element, row) : SheetRow();
 }
 
 SheetCell Sheet::cell(std::uint32_t column, std::uint32_t row) const {
@@ -207,22 +203,20 @@ ElementRange Sheet::shapes() const {
 }
 
 SheetColumn::SheetColumn(const internal::abstract::Document *document,
-                         internal::abstract::Sheet *sheet, std::uint32_t column,
-                         internal::abstract::SheetColumn *element)
-    : TypedElement(document, element), m_sheet{sheet}, m_column{column} {}
+                         internal::abstract::Sheet *sheet, std::uint32_t column)
+    : TypedElement(document, sheet), m_column{column} {}
 
 TableColumnStyle SheetColumn::style() const {
-  return exists_() ? m_element->style(m_document, m_sheet, m_column)
+  return exists_() ? m_element->column_style(m_document, m_column)
                    : TableColumnStyle();
 }
 
 SheetRow::SheetRow(const internal::abstract::Document *document,
-                   internal::abstract::Sheet *sheet, std::uint32_t row,
-                   internal::abstract::SheetRow *element)
-    : TypedElement(document, element), m_sheet{sheet}, m_row{row} {}
+                   internal::abstract::Sheet *sheet, std::uint32_t row)
+    : TypedElement(document, sheet), m_row{row} {}
 
 TableRowStyle SheetRow::style() const {
-  return m_element->style(m_document, m_sheet, m_row);
+  return exists_() ? m_element->row_style(m_document, m_row) : TableRowStyle();
 }
 
 SheetCell::SheetCell(const internal::abstract::Document *document,
@@ -232,23 +226,20 @@ SheetCell::SheetCell(const internal::abstract::Document *document,
       m_row{row} {}
 
 bool SheetCell::is_covered() const {
-  return exists_() ? m_element->is_covered(m_document, m_sheet, m_column, m_row)
-                   : false;
+  return exists_() ? m_element->is_covered(m_document) : false;
 }
 
 TableDimensions SheetCell::span() const {
-  return exists_() ? m_element->span(m_document, m_sheet, m_column, m_row)
-                   : TableDimensions();
+  return exists_() ? m_element->span(m_document) : TableDimensions(1, 1);
 }
 
 ValueType SheetCell::value_type() const {
-  return exists_() ? m_element->value_type(m_document, m_sheet, m_column, m_row)
-                   : ValueType::unknown;
+  return exists_() ? m_element->value_type(m_document) : ValueType::unknown;
 }
 
 TableCellStyle SheetCell::style() const {
-  return exists_() ? m_element->style(m_document, m_sheet, m_column, m_row)
-                   : TableCellStyle();
+  return m_sheet != nullptr ? m_sheet->cell_style(m_document, m_column, m_row)
+                            : TableCellStyle();
 }
 
 std::string Page::name() const {

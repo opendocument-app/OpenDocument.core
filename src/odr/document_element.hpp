@@ -278,31 +278,27 @@ public:
   [[nodiscard]] ElementRange shapes() const;
 };
 
-class SheetColumn final : public TypedElement<internal::abstract::SheetColumn> {
+class SheetColumn final : public TypedElement<internal::abstract::Sheet> {
 public:
   SheetColumn() = default;
   SheetColumn(const internal::abstract::Document *document,
-              internal::abstract::Sheet *sheet, std::uint32_t column,
-              internal::abstract::SheetColumn *element);
+              internal::abstract::Sheet *sheet, std::uint32_t column);
 
   [[nodiscard]] TableColumnStyle style() const;
 
 private:
-  internal::abstract::Sheet *m_sheet{};
   std::uint32_t m_column{};
 };
 
-class SheetRow final : public TypedElement<internal::abstract::SheetRow> {
+class SheetRow final : public TypedElement<internal::abstract::Sheet> {
 public:
   SheetRow() = default;
   SheetRow(const internal::abstract::Document *document,
-           internal::abstract::Sheet *sheet, std::uint32_t row,
-           internal::abstract::SheetRow *element);
+           internal::abstract::Sheet *sheet, std::uint32_t row);
 
   [[nodiscard]] TableRowStyle style() const;
 
 private:
-  internal::abstract::Sheet *m_sheet{};
   std::uint32_t m_row{};
 };
 
@@ -320,7 +316,7 @@ public:
   [[nodiscard]] TableCellStyle style() const;
 
 private:
-  internal::abstract::Sheet *m_sheet{};
+  internal::abstract::Sheet *m_sheet;
   std::uint32_t m_column{};
   std::uint32_t m_row{};
 };

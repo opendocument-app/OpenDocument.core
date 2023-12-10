@@ -18,8 +18,6 @@ class xml_node;
 
 namespace odr::internal::odf {
 class Document;
-class SheetColumn;
-class SheetRow;
 class SheetCell;
 
 class SpreadsheetRoot final : public Root {
@@ -40,10 +38,6 @@ public:
   content(const abstract::Document *,
           const std::optional<TableDimensions> range) const final;
 
-  abstract::SheetColumn *column(const abstract::Document *,
-                                std::uint32_t column) const final;
-  abstract::SheetRow *row(const abstract::Document *,
-                          std::uint32_t row) const final;
   abstract::SheetCell *cell(const abstract::Document *, std::uint32_t column,
                             std::uint32_t row) const final;
 
@@ -51,25 +45,43 @@ public:
   first_shape(const abstract::Document *) const final;
 
   [[nodiscard]] TableStyle style(const abstract::Document *) const final;
+  [[nodiscard]] TableColumnStyle column_style(const abstract::Document *,
+                                              std::uint32_t column) const final;
+  [[nodiscard]] TableRowStyle row_style(const abstract::Document *,
+                                        std::uint32_t row) const final;
+  [[nodiscard]] TableCellStyle cell_style(const abstract::Document *,
+                                          std::uint32_t column,
+                                          std::uint32_t row) const final;
 
   void init_column_(std::uint32_t column, std::uint32_t repeated,
-                    SheetColumn *element);
-  void init_row_(std::uint32_t row, std::uint32_t repeated, SheetRow *element);
+                    pugi::xml_node element);
+  void init_row_(std::uint32_t row, std::uint32_t repeated,
+                 pugi::xml_node element);
   void init_cell_(std::uint32_t column, std::uint32_t row,
                   std::uint32_t columns_repeated, std::uint32_t rows_repeated,
-                  SheetCell *element);
+                  pugi::xml_node element);
+  void init_cell_element_(std::uint32_t column, std::uint32_t row,
+                          SheetCell *element);
   void init_dimensions_(TableDimensions dimensions);
+
+  pugi::xml_node column_(std::uint32_t) const;
+  pugi::xml_node row_(std::uint32_t) const;
+
+  common::ResolvedStyle cell_style_(const abstract::Document *,
+                                    std::uint32_t column,
+                                    std::uint32_t row) const;
 
 private:
   struct Row {
-    abstract::SheetRow *element{nullptr};
-    std::map<std::uint32_t, abstract::SheetCell *> cells;
+    pugi::xml_node row;
+    std::map<std::uint32_t, pugi::xml_node> cells;
   };
 
   TableDimensions m_dimensions;
 
-  std::map<std::uint32_t, abstract::SheetColumn *> m_columns;
+  std::map<std::uint32_t, pugi::xml_node> m_columns;
   std::map<std::uint32_t, Row> m_rows;
+  std::unordered_map<common::TablePosition, SheetCell *> m_cells;
 
   Element *m_first_shape{nullptr};
 };

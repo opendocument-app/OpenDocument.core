@@ -20,14 +20,15 @@ class TableRow;
 
 Element *parse_tree(Document &document, pugi::xml_node node);
 
-template <typename element_t>
+template <typename element_t, typename... args_t>
 std::tuple<element_t *, pugi::xml_node>
-parse_element_tree(Document &document, pugi::xml_node node) {
+parse_element_tree(Document &document, pugi::xml_node node, args_t &&...args) {
   if (!node) {
     return std::make_tuple(nullptr, pugi::xml_node());
   }
 
-  auto element_unique = std::make_unique<element_t>(node);
+  auto element_unique =
+      std::make_unique<element_t>(node, std::forward<args_t>(args)...);
   auto element = element_unique.get();
   document.register_element_(std::move(element_unique));
 

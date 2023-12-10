@@ -66,10 +66,6 @@ public:
   content(const abstract::Document *,
           std::optional<TableDimensions>) const final;
 
-  [[nodiscard]] abstract::SheetColumn *column(const abstract::Document *,
-                                              std::uint32_t column) const final;
-  [[nodiscard]] abstract::SheetRow *row(const abstract::Document *,
-                                        std::uint32_t row) const final;
   [[nodiscard]] abstract::SheetCell *cell(const abstract::Document *,
                                           std::uint32_t column,
                                           std::uint32_t row) const final;
@@ -78,51 +74,28 @@ public:
   first_shape(const abstract::Document *) const final;
 
   [[nodiscard]] TableStyle style(const abstract::Document *) const final;
+  [[nodiscard]] TableColumnStyle column_style(const abstract::Document *,
+                                              std::uint32_t column) const final;
+  [[nodiscard]] TableRowStyle row_style(const abstract::Document *,
+                                        std::uint32_t row) const final;
+  [[nodiscard]] TableCellStyle cell_style(const abstract::Document *,
+                                          std::uint32_t column,
+                                          std::uint32_t row) const final;
 
 private:
   pugi::xml_node sheet_node_(const abstract::Document *) const;
   pugi::xml_node drawing_node_(const abstract::Document *) const;
 };
 
-class SheetColumn final : public Element, public abstract::SheetColumn {
-public:
-  using Element::Element;
-
-  [[nodiscard]] TableColumnStyle style(const abstract::Document *,
-                                       abstract::Sheet *,
-                                       std::uint32_t column) const final;
-
-private:
-  [[nodiscard]] std::uint32_t min_(const abstract::Document *) const;
-  [[nodiscard]] std::uint32_t max_(const abstract::Document *) const;
-};
-
-class SheetRow final : public Element, public abstract::SheetRow {
-public:
-  using Element::Element;
-
-  [[nodiscard]] TableRowStyle style(const abstract::Document *,
-                                    abstract::Sheet *,
-                                    std::uint32_t row) const final;
-};
-
 class SheetCell final : public Element, public abstract::SheetCell {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool is_covered(const abstract::Document *, abstract::Sheet *,
-                                std::uint32_t column,
-                                std::uint32_t row) const final;
-  [[nodiscard]] TableDimensions span(const abstract::Document *,
-                                     abstract::Sheet *, std::uint32_t column,
-                                     std::uint32_t row) const final;
-  [[nodiscard]] ValueType value_type(const abstract::Document *,
-                                     abstract::Sheet *, std::uint32_t column,
-                                     std::uint32_t row) const final;
+  [[nodiscard]] bool is_covered(const abstract::Document *) const final;
+  [[nodiscard]] TableDimensions span(const abstract::Document *) const final;
+  [[nodiscard]] ValueType value_type(const abstract::Document *) const final;
 
-  [[nodiscard]] TableCellStyle style(const abstract::Document *,
-                                     abstract::Sheet *, std::uint32_t column,
-                                     std::uint32_t row) const final;
+  [[nodiscard]] TableCellStyle style(const abstract::Document *) const final;
 
   [[nodiscard]] common::ResolvedStyle
   partial_style(const abstract::Document *) const final;

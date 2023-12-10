@@ -9,6 +9,7 @@
 #include <odr/internal/html/document_style.hpp>
 #include <odr/internal/html/image_file.hpp>
 
+#include "odr/internal/common/table_cursor.hpp"
 #include <iostream>
 
 namespace odr::internal {
@@ -99,6 +100,8 @@ void html::translate_sheet(Element element, std::ostream &out,
     end_column = std::min(end_column, config.spreadsheet_limit->columns);
     end_row = std::min(end_row, config.spreadsheet_limit->rows);
   }
+  end_column = std::max(1u, end_column);
+  end_row = std::max(1u, end_row);
 
   out << "<col>";
 
@@ -127,7 +130,9 @@ void html::translate_sheet(Element element, std::ostream &out,
     out << "</tr>";
   }
 
-  for (std::uint32_t row_index = 0; row_index < end_row; ++row_index) {
+  common::TableCursor cursor;
+  for (std::uint32_t row_index = cursor.row(); row_index < end_row;
+       row_index = cursor.row()) {
     auto table_row = sheet.row(row_index);
     auto table_row_style = table_row.style();
 
@@ -144,8 +149,8 @@ void html::translate_sheet(Element element, std::ostream &out,
     out << common::TablePosition::to_row_string(row_index);
     out << "</td>";
 
-    for (std::uint32_t column_index = 0; column_index < end_column;
-         ++column_index) {
+    for (std::uint32_t column_index = cursor.column();
+         column_index < end_column; column_index = cursor.column()) {
       auto cell = sheet.cell(column_index, row_index);
 
       if (cell.is_covered()) {
@@ -160,27 +165,31 @@ void html::translate_sheet(Element element, std::ostream &out,
       auto cell_elements = cell.children();
 
       out << "<td";
-      if (cell_span.rows > 1) {
-        out << " rowspan=\"" << cell_span.rows << "\"";
-      }
       if (cell_span.columns > 1) {
         out << " colspan=\"" << cell_span.columns << "\"";
+      }
+      if (cell_span.rows > 1) {
+        out << " rowspan=\"" << cell_span.rows << "\"";
       }
       out << optional_style_attribute(translate_table_cell_style(cell_style));
       if (cell_value_type == ValueType::float_number) {
         out << " class=\"odr-value-type-float\"";
       }
       out << ">";
-      if ((row_index == 0) && (column_index == 0)) {
+      if ((column_index == 0) && (row_index == 0)) {
         for (auto shape : sheet.shapes()) {
           translate_element(shape, out, config);
         }
       }
       translate_children(cell_elements, out, config);
       out << "</td>";
+
+      cursor.add_cell(cell_span.columns, cell_span.rows);
     }
 
     out << "</tr>";
+
+    cursor.add_row();
   }
 
   out << "</table>";
