@@ -101,18 +101,18 @@ TableStyle Sheet::style(const abstract::Document *) const {
 }
 
 TableColumnStyle Sheet::column_style(const abstract::Document *,
-                                     std::uint32_t column) const {
+                                     std::uint32_t /*column*/) const {
   return TableColumnStyle(); // TODO
 }
 
 TableRowStyle Sheet::row_style(const abstract::Document *,
-                               std::uint32_t row) const {
+                               std::uint32_t /*row*/) const {
   return TableRowStyle(); // TODO
 }
 
 TableCellStyle Sheet::cell_style(const abstract::Document *,
-                                 std::uint32_t column,
-                                 std::uint32_t row) const {
+                                 std::uint32_t /*column*/,
+                                 std::uint32_t /*row*/) const {
   return TableCellStyle(); // TODO
 }
 

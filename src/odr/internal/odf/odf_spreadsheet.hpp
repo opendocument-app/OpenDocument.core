@@ -66,6 +66,7 @@ public:
 
   pugi::xml_node column_(std::uint32_t) const;
   pugi::xml_node row_(std::uint32_t) const;
+  pugi::xml_node cell_(std::uint32_t column, std::uint32_t row) const;
 
   common::ResolvedStyle cell_style_(const abstract::Document *,
                                     std::uint32_t column,

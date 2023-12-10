@@ -108,17 +108,24 @@ pugi::xml_node Sheet::row_(std::uint32_t row) const {
   return {};
 }
 
+pugi::xml_node Sheet::cell_(std::uint32_t column, std::uint32_t row) const {
+  if (auto row_it = util::map::lookup_greater_than(m_rows, row);
+      row_it != std::end(m_rows)) {
+    const auto &cells = row_it->second.cells;
+    if (auto cell_it = util::map::lookup_greater_than(cells, column);
+        cell_it != std::end(cells)) {
+      return cell_it->second;
+    }
+  }
+  return {};
+}
+
 common::ResolvedStyle Sheet::cell_style_(const abstract::Document *document,
                                          std::uint32_t column,
                                          std::uint32_t row) const {
-  auto it = m_cells.find({column, row});
-  if (it == std::end(m_cells)) {
-    return common::ResolvedStyle();
-  }
-
   const char *style_name = nullptr;
 
-  auto cell_node = it->second->m_node;
+  auto cell_node = cell_(column, row);
   if (auto attr = cell_node.attribute("table:style-name")) {
     style_name = attr.value();
   }
