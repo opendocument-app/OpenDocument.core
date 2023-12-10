@@ -146,6 +146,8 @@ public:
   [[nodiscard]] Element previous_sibling() const;
   [[nodiscard]] Element next_sibling() const;
 
+  [[nodiscard]] bool is_editable() const;
+
   [[nodiscard]] ElementRange children() const;
 
   [[nodiscard]] TextRoot text_root() const;

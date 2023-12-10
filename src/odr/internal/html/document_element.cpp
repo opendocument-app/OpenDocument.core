@@ -227,7 +227,7 @@ void html::translate_text(const Element element, std::ostream &out,
 
   out << "<x-s";
   out << optional_style_attribute(translate_text_style(text.style()));
-  if (config.editable) {
+  if (config.editable && element.is_editable()) {
     out << " contenteditable=\"true\"";
     out << " data-odr-path=\"" << DocumentPath::extract(element).to_string()
         << "\"";

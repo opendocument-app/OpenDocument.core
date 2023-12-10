@@ -51,6 +51,10 @@ Element Element::next_sibling() const {
                    : Element();
 }
 
+bool Element::is_editable() const {
+  return exists_() ? m_element->is_editable(m_document) : false;
+}
+
 TextRoot Element::text_root() const { return {m_document, m_element}; }
 
 Slide Element::slide() const { return {m_document, m_element}; }

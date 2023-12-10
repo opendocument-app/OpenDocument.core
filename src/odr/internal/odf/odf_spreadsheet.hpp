@@ -25,6 +25,30 @@ public:
   using Root::Root;
 };
 
+struct SheetIndex final {
+  struct Row {
+    pugi::xml_node row;
+    std::map<std::uint32_t, pugi::xml_node> cells;
+  };
+
+  TableDimensions dimensions;
+
+  std::map<std::uint32_t, pugi::xml_node> columns;
+  std::map<std::uint32_t, Row> rows;
+
+  void init_column(std::uint32_t column, std::uint32_t repeated,
+                   pugi::xml_node element);
+  void init_row(std::uint32_t row, std::uint32_t repeated,
+                pugi::xml_node element);
+  void init_cell(std::uint32_t column, std::uint32_t row,
+                 std::uint32_t columns_repeated, std::uint32_t rows_repeated,
+                 pugi::xml_node element);
+
+  pugi::xml_node column(std::uint32_t) const;
+  pugi::xml_node row(std::uint32_t) const;
+  pugi::xml_node cell(std::uint32_t column, std::uint32_t row) const;
+};
+
 class Sheet final : public Element, public abstract::Sheet {
 public:
   using Element::Element;
@@ -64,26 +88,14 @@ public:
                           SheetCell *element);
   void init_dimensions_(TableDimensions dimensions);
 
-  pugi::xml_node column_(std::uint32_t) const;
-  pugi::xml_node row_(std::uint32_t) const;
-  pugi::xml_node cell_(std::uint32_t column, std::uint32_t row) const;
-
   common::ResolvedStyle cell_style_(const abstract::Document *,
                                     std::uint32_t column,
                                     std::uint32_t row) const;
 
 private:
-  struct Row {
-    pugi::xml_node row;
-    std::map<std::uint32_t, pugi::xml_node> cells;
-  };
+  SheetIndex m_index;
 
-  TableDimensions m_dimensions;
-
-  std::map<std::uint32_t, pugi::xml_node> m_columns;
-  std::map<std::uint32_t, Row> m_rows;
   std::unordered_map<common::TablePosition, SheetCell *> m_cells;
-
   Element *m_first_shape{nullptr};
 };
 

@@ -8,10 +8,57 @@
 
 namespace odr::internal::odf {
 
+void SheetIndex::init_column(std::uint32_t column, std::uint32_t repeated,
+                             pugi::xml_node element) {
+  columns[column + repeated] = element;
+}
+
+void SheetIndex::init_row(std::uint32_t row, std::uint32_t repeated,
+                          pugi::xml_node element) {
+  rows[row + repeated].row = element;
+}
+
+void SheetIndex::init_cell(std::uint32_t column, std::uint32_t row,
+                           std::uint32_t columns_repeated,
+                           std::uint32_t rows_repeated,
+                           pugi::xml_node element) {
+  rows[row + rows_repeated].cells[column + columns_repeated] = element;
+}
+
+pugi::xml_node SheetIndex::column(std::uint32_t column) const {
+  if (auto it = util::map::lookup_greater_than(columns, column);
+      it != std::end(columns)) {
+    return it->second;
+  }
+  return {};
+}
+
+pugi::xml_node SheetIndex::row(std::uint32_t row) const {
+  if (auto it = util::map::lookup_greater_than(rows, row);
+      it != std::end(rows)) {
+    return it->second.row;
+  }
+  return {};
+}
+
+pugi::xml_node SheetIndex::cell(std::uint32_t column, std::uint32_t row) const {
+  if (auto row_it = util::map::lookup_greater_than(rows, row);
+      row_it != std::end(rows)) {
+    const auto &cells = row_it->second.cells;
+    if (auto cell_it = util::map::lookup_greater_than(cells, column);
+        cell_it != std::end(cells)) {
+      return cell_it->second;
+    }
+  }
+  return {};
+}
+
 class SheetCell final : public Element, public abstract::SheetCell {
 public:
-  SheetCell(pugi::xml_node node, std::uint32_t column, std::uint32_t row)
-      : Element(node), m_column{column}, m_row{row} {}
+  SheetCell(pugi::xml_node node, std::uint32_t column, std::uint32_t row,
+            bool is_repeated)
+      : Element(node), m_column{column}, m_row{row}, m_is_repeated{
+                                                         is_repeated} {}
 
   [[nodiscard]] bool is_covered(const abstract::Document *) const final {
     return std::strcmp(m_node.name(), "table:covered-table-cell") == 0;
@@ -46,9 +93,14 @@ public:
     return intermediate_style(document).table_cell_style;
   }
 
+  bool is_editable(const abstract::Document *) const final {
+    return !m_is_repeated;
+  }
+
 private:
-  std::uint32_t m_column;
-  std::uint32_t m_row;
+  std::uint32_t m_column{};
+  std::uint32_t m_row{};
+  bool m_is_repeated{};
 };
 
 std::string Sheet::name(const abstract::Document *) const {
@@ -56,7 +108,7 @@ std::string Sheet::name(const abstract::Document *) const {
 }
 
 TableDimensions Sheet::dimensions(const abstract::Document *) const {
-  return m_dimensions;
+  return m_index.dimensions;
 }
 
 TableDimensions
@@ -92,65 +144,37 @@ Sheet::content(const abstract::Document *,
   return result;
 }
 
-pugi::xml_node Sheet::column_(std::uint32_t column) const {
-  if (auto it = util::map::lookup_greater_than(m_columns, column);
-      it != std::end(m_columns)) {
-    return it->second;
-  }
-  return {};
-}
-
-pugi::xml_node Sheet::row_(std::uint32_t row) const {
-  if (auto it = util::map::lookup_greater_than(m_rows, row);
-      it != std::end(m_rows)) {
-    return it->second.row;
-  }
-  return {};
-}
-
-pugi::xml_node Sheet::cell_(std::uint32_t column, std::uint32_t row) const {
-  if (auto row_it = util::map::lookup_greater_than(m_rows, row);
-      row_it != std::end(m_rows)) {
-    const auto &cells = row_it->second.cells;
-    if (auto cell_it = util::map::lookup_greater_than(cells, column);
-        cell_it != std::end(cells)) {
-      return cell_it->second;
-    }
-  }
-  return {};
-}
-
 common::ResolvedStyle Sheet::cell_style_(const abstract::Document *document,
                                          std::uint32_t column,
                                          std::uint32_t row) const {
   const char *style_name = nullptr;
 
-  auto cell_node = cell_(column, row);
+  auto cell_node = m_index.cell(column, row);
   if (auto attr = cell_node.attribute("table:style-name")) {
     style_name = attr.value();
   }
 
   if (style_name == nullptr) {
-    auto row_node = row_(row);
+    auto row_node = m_index.row(row);
     if (auto attr = row_node.attribute("table:default-cell-style-name")) {
       style_name = attr.value();
     }
   }
   if (style_name == nullptr) {
-    auto column_node = column_(column);
+    auto column_node = m_index.column(column);
     if (auto attr = column_node.attribute("table:default-cell-style-name")) {
       style_name = attr.value();
     }
   }
 
-  if (style_name == nullptr) {
-    return common::ResolvedStyle();
+  if (style_name != nullptr) {
+    auto style = style_(document)->style(style_name);
+    if (style != nullptr) {
+      return style->resolved();
+    }
   }
-  auto style = style_(document)->style(style_name);
-  if (style == nullptr) {
-    return common::ResolvedStyle();
-  }
-  return style->resolved();
+
+  return common::ResolvedStyle();
 }
 
 abstract::SheetCell *Sheet::cell(const abstract::Document *,
@@ -173,8 +197,7 @@ TableStyle Sheet::style(const abstract::Document *document) const {
 
 TableColumnStyle Sheet::column_style(const abstract::Document *document,
                                      std::uint32_t column) const {
-  auto column_node = column_(column);
-  if (column_node) {
+  if (auto column_node = m_index.column(column); column_node) {
     if (auto attr = column_node.attribute("table:style-name")) {
       auto style = style_(document)->style(attr.value());
       if (style != nullptr) {
@@ -187,8 +210,7 @@ TableColumnStyle Sheet::column_style(const abstract::Document *document,
 
 TableRowStyle Sheet::row_style(const abstract::Document *document,
                                std::uint32_t row) const {
-  auto column_node = row_(row);
-  if (column_node) {
+  if (auto column_node = m_index.row(row); column_node) {
     if (auto attr = column_node.attribute("table:style-name")) {
       auto style = style_(document)->style(attr.value());
       if (style != nullptr) {
@@ -207,18 +229,18 @@ TableCellStyle Sheet::cell_style(const abstract::Document *document,
 
 void Sheet::init_column_(std::uint32_t column, std::uint32_t repeated,
                          pugi::xml_node element) {
-  m_columns[column + repeated] = element;
+  m_index.init_column(column, repeated, element);
 }
 
 void Sheet::init_row_(std::uint32_t row, std::uint32_t repeated,
                       pugi::xml_node element) {
-  m_rows[row + repeated].row = element;
+  m_index.init_row(row, repeated, element);
 }
 
 void Sheet::init_cell_(std::uint32_t column, std::uint32_t row,
                        std::uint32_t columns_repeated,
                        std::uint32_t rows_repeated, pugi::xml_node element) {
-  m_rows[row + rows_repeated].cells[column + columns_repeated] = element;
+  m_index.init_cell(column, row, columns_repeated, rows_repeated, element);
 }
 
 void Sheet::init_cell_element_(std::uint32_t column, std::uint32_t row,
@@ -228,7 +250,7 @@ void Sheet::init_cell_element_(std::uint32_t column, std::uint32_t row,
 }
 
 void Sheet::init_dimensions_(TableDimensions dimensions) {
-  m_dimensions = dimensions;
+  m_index.dimensions = dimensions;
 }
 
 } // namespace odr::internal::odf
@@ -275,6 +297,7 @@ odf::parse_element_tree<odf::Sheet>(Document &document, pugi::xml_node node) {
           cell_node.attribute("table:number-columns-spanned").as_uint(1);
       const auto rowspan =
           cell_node.attribute("table:number-rows-spanned").as_uint(1);
+      const bool is_repeated = (columns_repeated > 1) || (rows_repeated > 1);
 
       sheet.init_cell_(cursor.column(), cursor.row(), columns_repeated,
                        rows_repeated, cell_node);
@@ -291,7 +314,7 @@ odf::parse_element_tree<odf::Sheet>(Document &document, pugi::xml_node node) {
                column_repeat < columns_repeated; ++column_repeat) {
             auto [cell, _] = parse_element_tree<SheetCell>(
                 document, cell_node, cursor.column() + column_repeat,
-                cursor.row() + row_repeat);
+                cursor.row() + row_repeat, is_repeated);
             sheet.init_cell_element_(cursor.column() + column_repeat,
                                      cursor.row() + row_repeat, cell);
           }
