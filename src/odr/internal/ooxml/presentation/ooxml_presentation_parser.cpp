@@ -29,6 +29,16 @@ void parse_element_children(Document &document, Element *element,
   }
 }
 
+void parse_element_children(Document &document, Root *element,
+                            pugi::xml_node node) {
+  for (auto child_node : node.child("p:sldIdLst").children("p:sldId")) {
+    const char *id = child_node.attribute("r:id").value();
+    auto slide_node = document.m_slides_xml.at(id).document_element();
+    auto [slide, _] = parse_element_tree<Slide>(document, slide_node);
+    element->append_child_(slide);
+  }
+}
+
 template <typename element_t>
 std::tuple<Element *, pugi::xml_node> parse_element_tree(Document &document,
                                                          pugi::xml_node node) {

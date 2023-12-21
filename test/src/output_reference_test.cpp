@@ -7,15 +7,14 @@
 
 #include <test_util.hpp>
 
-#include <gtest/gtest.h>
-
-#include <nlohmann/json.hpp>
-
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <string>
+
+#include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 using namespace odr;
 using namespace odr::internal;
