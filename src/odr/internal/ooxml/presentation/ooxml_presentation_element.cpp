@@ -9,6 +9,75 @@
 
 namespace odr::internal::ooxml::presentation {
 
+namespace {
+
+void resolve_text_style_(pugi::xml_node node, TextStyle &result) {
+  auto run_properties = node.child("a:rPr");
+
+  if (auto font_name = run_properties.child("rFonts").attribute("ascii")) {
+    result.font_name = font_name.value();
+  }
+  if (auto font_size =
+          read_hundredth_point_attribute(run_properties.attribute("sz"))) {
+    result.font_size = font_size;
+  }
+  if (auto font_weight =
+          read_font_weight_attribute(run_properties.attribute("b"))) {
+    result.font_weight = font_weight;
+  }
+  if (auto font_style =
+          read_font_style_attribute(run_properties.attribute("i"))) {
+    result.font_style = font_style;
+  }
+  if (auto font_underline =
+          read_line_attribute(run_properties.attribute("u"))) {
+    result.font_underline = font_underline;
+  }
+  if (auto font_line_through =
+          read_line_attribute(run_properties.attribute("strike"))) {
+    result.font_line_through = font_line_through;
+  }
+  if (auto font_shadow =
+          read_shadow_attribute(run_properties.attribute("shadow"))) {
+    result.font_shadow = font_shadow;
+  }
+  if (auto font_color =
+          read_color_attribute(run_properties.attribute("color"))) {
+    result.font_color = font_color;
+  }
+  if (auto background_color =
+          read_color_attribute(run_properties.attribute("highlight"))) {
+    result.background_color = background_color;
+  }
+}
+
+void resolve_paragraph_style_(pugi::xml_node node, ParagraphStyle &result) {
+  auto paragraph_properties = node.child("a:pPr");
+
+  if (auto text_align =
+          read_text_align_attribute(paragraph_properties.attribute("jc"))) {
+    result.text_align = text_align;
+  }
+  if (auto margin_left = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("left"))) {
+    result.margin.left = margin_left;
+  }
+  if (auto margin_left = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("start"))) {
+    result.margin.left = margin_left;
+  }
+  if (auto margin_right = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("right"))) {
+    result.margin.right = margin_right;
+  }
+  if (auto margin_right = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("end"))) {
+    result.margin.right = margin_right;
+  }
+}
+
+} // namespace
+
 Element::Element(pugi::xml_node node) : m_node{node} {
   if (!node) {
     // TODO log error
@@ -17,7 +86,7 @@ Element::Element(pugi::xml_node node) : m_node{node} {
 }
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
-  return {}; // TODO
+  return {};
 }
 
 common::ResolvedStyle
@@ -63,12 +132,26 @@ pugi::xml_node Slide::slide_node_(const abstract::Document *document) const {
   return slide_(document, m_node.attribute("r:id").value());
 }
 
+common::ResolvedStyle
+Paragraph::partial_style(const abstract::Document *) const {
+  common::ResolvedStyle result;
+  resolve_text_style_(m_node, result.text_style);
+  resolve_paragraph_style_(m_node, result.paragraph_style);
+  return result;
+}
+
 ParagraphStyle Paragraph::style(const abstract::Document *document) const {
   return partial_style(document).paragraph_style;
 }
 
 TextStyle Paragraph::text_style(const abstract::Document *document) const {
   return partial_style(document).text_style;
+}
+
+common::ResolvedStyle Span::partial_style(const abstract::Document *) const {
+  common::ResolvedStyle result;
+  resolve_text_style_(m_node, result.text_style);
+  return result;
 }
 
 TextStyle Span::style(const abstract::Document *document) const {
@@ -94,7 +177,7 @@ void Text::set_content(const abstract::Document *, const std::string &) {
 }
 
 TextStyle Text::style(const abstract::Document *document) const {
-  return partial_style(document).text_style;
+  return intermediate_style(document).text_style;
 }
 
 std::string Text::text_(const pugi::xml_node node) {

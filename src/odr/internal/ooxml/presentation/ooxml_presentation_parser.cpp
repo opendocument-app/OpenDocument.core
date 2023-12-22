@@ -3,6 +3,7 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
 
 #include <functional>
+#include <iostream>
 #include <unordered_map>
 
 namespace odr::internal::ooxml::presentation {
@@ -37,6 +38,12 @@ void parse_element_children(Document &document, Root *element,
     auto [slide, _] = parse_element_tree<Slide>(document, slide_node);
     element->append_child_(slide);
   }
+}
+
+void parse_element_children(Document &document, Slide *element,
+                            pugi::xml_node node) {
+  parse_element_children(document, dynamic_cast<Element *>(element),
+                         node.child("p:cSld").child("p:spTree"));
 }
 
 template <typename element_t>

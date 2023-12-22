@@ -16,10 +16,13 @@ class Element : public common::Element {
 public:
   explicit Element(pugi::xml_node);
 
-  common::ResolvedStyle partial_style(const abstract::Document *) const;
-  common::ResolvedStyle intermediate_style(const abstract::Document *) const;
+  [[nodiscard]] virtual common::ResolvedStyle
+  partial_style(const abstract::Document *) const;
+  [[nodiscard]] virtual common::ResolvedStyle
+  intermediate_style(const abstract::Document *) const;
 
-  bool is_editable(const abstract::Document *document) const override;
+  [[nodiscard]] bool
+  is_editable(const abstract::Document *document) const override;
 
 protected:
   static const Document *document_(const abstract::Document *);
@@ -62,6 +65,9 @@ class Paragraph final : public Element, public abstract::Paragraph {
 public:
   using Element::Element;
 
+  [[nodiscard]] common::ResolvedStyle
+  partial_style(const abstract::Document *) const final;
+
   [[nodiscard]] ParagraphStyle style(const abstract::Document *) const final;
 
   [[nodiscard]] TextStyle text_style(const abstract::Document *) const final;
@@ -70,6 +76,9 @@ public:
 class Span final : public Element, public abstract::Span {
 public:
   using Element::Element;
+
+  [[nodiscard]] common::ResolvedStyle
+  partial_style(const abstract::Document *) const final;
 
   [[nodiscard]] TextStyle style(const abstract::Document *) const final;
 };

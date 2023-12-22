@@ -17,23 +17,24 @@ void resolve_text_style_(pugi::xml_node node, TextStyle &result) {
           run_properties.child("w:sz").attribute("w:val"))) {
     result.font_size = font_size;
   }
-  if (auto font_weight =
-          read_font_weight_attribute(run_properties.child("w:b"))) {
+  if (auto font_weight = read_font_weight_attribute(
+          run_properties.child("w:b").attribute("w:val"))) {
     result.font_weight = font_weight;
   }
-  if (auto font_style =
-          read_font_style_attribute(run_properties.child("w:i"))) {
+  if (auto font_style = read_font_style_attribute(
+          run_properties.child("w:i").attribute("w:val"))) {
     result.font_style = font_style;
   }
-  if (auto font_underline = read_line_attribute(run_properties.child("w:u"))) {
+  if (auto font_underline =
+          read_line_attribute(run_properties.child("w:u").attribute("w:val"))) {
     result.font_underline = font_underline;
   }
-  if (auto font_line_through =
-          read_line_attribute(run_properties.child("w:strike"))) {
+  if (auto font_line_through = read_line_attribute(
+          run_properties.child("w:strike").attribute("w:val"))) {
     result.font_line_through = font_line_through;
   }
-  if (auto font_shadow =
-          read_shadow_attribute(run_properties.child("w:shadow"))) {
+  if (auto font_shadow = read_shadow_attribute(
+          run_properties.child("w:shadow").attribute("w:val"))) {
     result.font_shadow = font_shadow;
   }
   if (auto font_color = read_color_attribute(
@@ -49,8 +50,8 @@ void resolve_text_style_(pugi::xml_node node, TextStyle &result) {
 void resolve_paragraph_style_(pugi::xml_node node, ParagraphStyle &result) {
   auto paragraph_properties = node.child("w:pPr");
 
-  if (auto text_align =
-          read_text_align_attribute(paragraph_properties.child("w:jc"))) {
+  if (auto text_align = read_text_align_attribute(
+          paragraph_properties.child("w:jc").attribute("w:val"))) {
     result.text_align = text_align;
   }
   if (auto margin_left = read_twips_attribute(
@@ -128,8 +129,8 @@ Style::Style(pugi::xml_node node) : m_node{node} {
 
 Style::Style(std::string name, pugi::xml_node node, const Style *parent)
     : m_name{std::move(name)}, m_node{node}, m_parent{parent} {
-  if (const Style *copy_from = m_parent) {
-    m_resolved = copy_from->m_resolved;
+  if (parent != nullptr) {
+    m_resolved = parent->m_resolved;
   }
 
   resolve_style_();

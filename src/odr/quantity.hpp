@@ -58,9 +58,8 @@ public:
   }
 
   std::string to_string() const {
-    std::stringstream ss;
-    ss << std::fixed << std::setprecision(4);
-    to_stream(ss);
+    std::ostringstream ss;
+    ss << std::setprecision(4) << m_magnitude << m_unit.to_string();
     return ss.str();
   }
 
