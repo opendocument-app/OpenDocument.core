@@ -141,13 +141,23 @@ TableStyle Sheet::style(const abstract::Document *) const {
 }
 
 TableColumnStyle Sheet::column_style(const abstract::Document *,
-                                     std::uint32_t /*column*/) const {
-  return TableColumnStyle(); // TODO
+                                     std::uint32_t column) const {
+  TableColumnStyle result;
+  pugi::xml_node column_node = m_index.column(column);
+  if (auto width = column_node.attribute("width")) {
+    result.width = Measure(width.as_float(), DynamicUnit("ch"));
+  }
+  return result;
 }
 
 TableRowStyle Sheet::row_style(const abstract::Document *,
-                               std::uint32_t /*row*/) const {
-  return TableRowStyle(); // TODO
+                               std::uint32_t row) const {
+  TableRowStyle result;
+  pugi::xml_node row_node = m_index.row(row);
+  if (auto height = row_node.attribute("ht")) {
+    result.height = Measure(height.as_float(), DynamicUnit("pt"));
+  }
+  return result;
 }
 
 TableCellStyle Sheet::cell_style(const abstract::Document *,

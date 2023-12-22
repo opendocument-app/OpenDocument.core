@@ -38,10 +38,6 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     m_sheets[relationships.first].sheet_xml = std::move(sheet_xml);
   }
 
-  m_root_element = parse_tree(*this, m_workbook_xml.document_element());
-
-  m_style_registry = StyleRegistry(m_styles_xml.document_element());
-
   if (m_filesystem->exists("xl/sharedStrings.xml")) {
     m_shared_strings_xml =
         util::xml::parse(*m_filesystem, "xl/sharedStrings.xml");
@@ -50,6 +46,10 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   for (auto shared_string : m_shared_strings_xml.document_element()) {
     m_shared_strings.push_back(shared_string);
   }
+
+  m_style_registry = StyleRegistry(m_styles_xml.document_element());
+
+  m_root_element = parse_tree(*this, m_workbook_xml.document_element());
 }
 
 bool Document::is_editable() const noexcept { return false; }
@@ -72,6 +72,10 @@ pugi::xml_node Document::get_sheet_root(const std::string &ref) const {
     return it->second.sheet_xml.document_element();
   }
   return {};
+}
+
+pugi::xml_node Document::get_shared_string(std::size_t index) const {
+  return m_shared_strings.at(index);
 }
 
 } // namespace odr::internal::ooxml::spreadsheet

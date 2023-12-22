@@ -43,6 +43,21 @@ void parse_element_children(Document &document, Root *element,
   }
 }
 
+void parse_element_children(Document &document, SheetCell *element,
+                            pugi::xml_node node) {
+  if (auto type_attr = node.attribute("t");
+      type_attr.value() == std::string("s")) {
+    pugi::xml_node v_node = node.child("v");
+    std::size_t ref = v_node.first_child().text().as_ullong();
+    pugi::xml_node shared_node = document.get_shared_string(ref);
+    parse_element_children(document, dynamic_cast<Element *>(element),
+                           shared_node);
+    return;
+  }
+
+  parse_element_children(document, dynamic_cast<Element *>(element), node);
+}
+
 template <typename element_t, typename... args_t>
 std::tuple<element_t *, pugi::xml_node>
 parse_element_tree(Document &document, pugi::xml_node node, args_t &&...args) {
