@@ -10,11 +10,15 @@
 #include <string>
 #include <vector>
 
+#include "odr/internal/common/table_position.hpp"
+#include <map>
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
 class Document;
 class StyleRegistry;
+
+class SheetCell;
 
 class Element : public common::Element {
 public:
@@ -54,6 +58,28 @@ public:
   using DefaultElement::DefaultElement;
 };
 
+struct SheetIndex final {
+  struct Row {
+    pugi::xml_node row;
+    std::map<std::uint32_t, pugi::xml_node> cells;
+  };
+
+  TableDimensions dimensions;
+
+  std::map<std::uint32_t, pugi::xml_node> columns;
+  std::map<std::uint32_t, Row> rows;
+
+  void init_column(std::uint32_t min, std::uint32_t max,
+                   pugi::xml_node element);
+  void init_row(std::uint32_t row, pugi::xml_node element);
+  void init_cell(std::uint32_t column, std::uint32_t row,
+                 pugi::xml_node element);
+
+  pugi::xml_node column(std::uint32_t) const;
+  pugi::xml_node row(std::uint32_t) const;
+  pugi::xml_node cell(std::uint32_t column, std::uint32_t row) const;
+};
+
 class Sheet final : public Element, public abstract::Sheet {
 public:
   using Element::Element;
@@ -82,7 +108,21 @@ public:
                                           std::uint32_t column,
                                           std::uint32_t row) const final;
 
+  void init_column_(std::uint32_t min, std::uint32_t max,
+                    pugi::xml_node element);
+  void init_row_(std::uint32_t row, pugi::xml_node element);
+  void init_cell_(std::uint32_t column, std::uint32_t row,
+                  pugi::xml_node element);
+  void init_cell_element_(std::uint32_t column, std::uint32_t row,
+                          SheetCell *element);
+  void init_dimensions_(TableDimensions dimensions);
+
 private:
+  SheetIndex m_index;
+
+  std::unordered_map<common::TablePosition, SheetCell *> m_cells;
+  Element *m_first_shape{nullptr};
+
   pugi::xml_node sheet_node_(const abstract::Document *) const;
   pugi::xml_node drawing_node_(const abstract::Document *) const;
 };

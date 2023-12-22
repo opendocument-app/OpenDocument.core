@@ -33,7 +33,7 @@ void parse_element_children(Document &document, Root *element,
                             pugi::xml_node node) {
   for (auto child_node : node.child("p:sldIdLst").children("p:sldId")) {
     const char *id = child_node.attribute("r:id").value();
-    auto slide_node = document.m_slides_xml.at(id).document_element();
+    auto slide_node = document.get_slide_root(id);
     auto [slide, _] = parse_element_tree<Slide>(document, slide_node);
     element->append_child_(slide);
   }

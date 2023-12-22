@@ -26,6 +26,8 @@ public:
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const char *password) const final;
 
+  pugi::xml_node get_sheet_root(const std::string &ref) const;
+
 private:
   struct Sheet final {
     common::Path sheet_path;

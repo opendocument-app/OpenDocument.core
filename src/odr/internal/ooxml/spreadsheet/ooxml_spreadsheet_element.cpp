@@ -4,6 +4,7 @@
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
+#include <odr/internal/util/map_util.hpp>
 
 #include <functional>
 #include <optional>
@@ -65,20 +66,55 @@ Element::shared_strings_(const abstract::Document *document) {
   return document_(document)->m_shared_strings;
 }
 
+void SheetIndex::init_column(std::uint32_t /*min*/, std::uint32_t max,
+                             pugi::xml_node element) {
+  columns[max] = element;
+}
+
+void SheetIndex::init_row(std::uint32_t row, pugi::xml_node element) {
+  rows[row].row = element;
+}
+
+void SheetIndex::init_cell(std::uint32_t column, std::uint32_t row,
+                           pugi::xml_node element) {
+  rows[row].cells[column] = element;
+}
+
+pugi::xml_node SheetIndex::column(std::uint32_t column) const {
+  if (auto it = util::map::lookup_greater_than(columns, column);
+      it != std::end(columns)) {
+    return it->second;
+  }
+  return {};
+}
+
+pugi::xml_node SheetIndex::row(std::uint32_t row) const {
+  if (auto it = util::map::lookup_greater_than(rows, row);
+      it != std::end(rows)) {
+    return it->second.row;
+  }
+  return {};
+}
+
+pugi::xml_node SheetIndex::cell(std::uint32_t column, std::uint32_t row) const {
+  if (auto row_it = util::map::lookup_greater_than(rows, row);
+      row_it != std::end(rows)) {
+    const auto &cells = row_it->second.cells;
+    if (auto cell_it = util::map::lookup_greater_than(cells, column);
+        cell_it != std::end(cells)) {
+      return cell_it->second;
+    }
+  }
+  return {};
+}
+
 std::string Sheet::name(const abstract::Document *) const {
   return m_node.attribute("name").value();
 }
 
-TableDimensions Sheet::dimensions(const abstract::Document *document) const {
-  if (auto dimension =
-          sheet_node_(document).child("dimension").attribute("ref")) {
-    try {
-      auto range = common::TableRange(dimension.value());
-      return {range.to().row() + 1, range.to().column() + 1};
-    } catch (...) {
-    }
-  }
-  return {};
+TableDimensions
+Sheet::dimensions(const abstract::Document * /*document*/) const {
+  return m_index.dimensions;
 }
 
 TableDimensions Sheet::content(const abstract::Document *document,
@@ -87,13 +123,17 @@ TableDimensions Sheet::content(const abstract::Document *document,
 }
 
 abstract::SheetCell *Sheet::cell(const abstract::Document *,
-                                 std::uint32_t /*column*/,
-                                 std::uint32_t /*row*/) const {
-  return nullptr; // TODO
+                                 std::uint32_t column,
+                                 std::uint32_t row) const {
+  if (auto cell_it = m_cells.find({column, row});
+      cell_it != std::end(m_cells)) {
+    return cell_it->second;
+  }
+  return nullptr;
 }
 
 abstract::Element *Sheet::first_shape(const abstract::Document *) const {
-  return nullptr; // TODO
+  return m_first_shape;
 }
 
 TableStyle Sheet::style(const abstract::Document *) const {
@@ -114,6 +154,30 @@ TableCellStyle Sheet::cell_style(const abstract::Document *,
                                  std::uint32_t /*column*/,
                                  std::uint32_t /*row*/) const {
   return TableCellStyle(); // TODO
+}
+
+void Sheet::init_column_(std::uint32_t min, std::uint32_t max,
+                         pugi::xml_node element) {
+  m_index.init_column(min, max, element);
+}
+
+void Sheet::init_row_(std::uint32_t row, pugi::xml_node element) {
+  m_index.init_row(row, element);
+}
+
+void Sheet::init_cell_(std::uint32_t column, std::uint32_t row,
+                       pugi::xml_node element) {
+  m_index.init_cell(column, row, element);
+}
+
+void Sheet::init_cell_element_(std::uint32_t column, std::uint32_t row,
+                               SheetCell *element) {
+  m_cells[{column, row}] = element;
+  element->m_parent = this;
+}
+
+void Sheet::init_dimensions_(TableDimensions dimensions) {
+  m_index.dimensions = dimensions;
 }
 
 pugi::xml_node Sheet::sheet_node_(const abstract::Document *document) const {

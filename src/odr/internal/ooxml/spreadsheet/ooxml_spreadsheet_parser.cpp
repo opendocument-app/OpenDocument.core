@@ -2,6 +2,7 @@
 
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 
+#include "odr/internal/common/table_range.hpp"
 #include <functional>
 #include <unordered_map>
 
@@ -9,9 +10,12 @@ namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
 
-template <typename element_t>
-std::tuple<Element *, pugi::xml_node> parse_element_tree(Document &document,
-                                                         pugi::xml_node node);
+template <typename element_t, typename... args_t>
+std::tuple<element_t *, pugi::xml_node>
+parse_element_tree(Document &document, pugi::xml_node node, args_t &&...args);
+template <>
+std::tuple<Sheet *, pugi::xml_node>
+parse_element_tree<Sheet>(Document &document, pugi::xml_node node);
 
 std::tuple<Element *, pugi::xml_node>
 parse_any_element_tree(Document &document, pugi::xml_node node);
@@ -29,18 +33,75 @@ void parse_element_children(Document &document, Element *element,
   }
 }
 
-template <typename element_t>
-std::tuple<Element *, pugi::xml_node> parse_element_tree(Document &document,
-                                                         pugi::xml_node node) {
+void parse_element_children(Document &document, Root *element,
+                            pugi::xml_node node) {
+  for (auto child_node : node.child("sheets").children("sheet")) {
+    const char *id = child_node.attribute("r:id").value();
+    auto sheet_node = document.get_sheet_root(id);
+    auto [sheet, _] = parse_element_tree<Sheet>(document, sheet_node);
+    element->append_child_(sheet);
+  }
+}
+
+template <typename element_t, typename... args_t>
+std::tuple<element_t *, pugi::xml_node>
+parse_element_tree(Document &document, pugi::xml_node node, args_t &&...args) {
   if (!node) {
     return std::make_tuple(nullptr, pugi::xml_node());
   }
 
-  auto element_unique = std::make_unique<element_t>(node);
+  auto element_unique =
+      std::make_unique<element_t>(node, std::forward<args_t>(args)...);
   auto element = element_unique.get();
   document.register_element_(std::move(element_unique));
 
   parse_element_children(document, element, node);
+
+  return std::make_tuple(element, node.next_sibling());
+}
+
+template <>
+std::tuple<Sheet *, pugi::xml_node>
+parse_element_tree<Sheet>(Document &document, pugi::xml_node node) {
+  if (!node) {
+    return std::make_tuple(nullptr, pugi::xml_node());
+  }
+
+  auto element_unique = std::make_unique<Sheet>(node);
+  auto element = element_unique.get();
+  document.register_element_(std::move(element_unique));
+
+  for (auto col_node : node.child("cols").children("col")) {
+    std::uint32_t min = col_node.attribute("min").as_uint() - 1;
+    std::uint32_t max = col_node.attribute("max").as_uint() - 1;
+    element->init_column_(min, max, col_node);
+  }
+
+  for (auto row_node : node.child("sheetData").children("row")) {
+    std::uint32_t row = row_node.attribute("r").as_uint() - 1;
+    element->init_row_(row, row_node);
+
+    for (auto cell_node : row_node.children("c")) {
+      auto position = common::TablePosition(cell_node.attribute("r").value());
+      element->init_cell_(position.column(), position.row(), cell_node);
+
+      auto [cell, _] = parse_element_tree<SheetCell>(document, cell_node);
+      element->init_cell_element_(position.column(), position.row(), cell);
+    }
+  }
+
+  {
+    std::string dimension_ref =
+        node.child("dimension").attribute("ref").value();
+    common::TablePosition position_to;
+    if (dimension_ref.find(":") == std::string::npos) {
+      position_to = common::TablePosition(dimension_ref);
+    } else {
+      position_to = common::TableRange(dimension_ref).to();
+    }
+    element->init_dimensions_(
+        TableDimensions(position_to.row() + 1, position_to.column() + 1));
+  }
 
   return std::make_tuple(element, node.next_sibling());
 }
@@ -63,7 +124,7 @@ bool is_text_node(const pugi::xml_node node) {
 }
 
 template <>
-std::tuple<Element *, pugi::xml_node>
+std::tuple<Text *, pugi::xml_node>
 parse_element_tree<Text>(Document &document, pugi::xml_node first) {
   if (!first) {
     return std::make_tuple(nullptr, pugi::xml_node());
@@ -88,9 +149,6 @@ parse_any_element_tree(Document &document, pugi::xml_node node) {
   static std::unordered_map<std::string, Parser> parser_table{
       {"workbook", parse_element_tree<Root>},
       {"worksheet", parse_element_tree<Sheet>},
-      // TODO
-      //{"col", parse_element_tree<SheetColumn>},
-      //{"row", parse_element_tree<SheetRow>},
       {"r", parse_element_tree<Span>},
       {"t", parse_element_tree<Text>},
       {"v", parse_element_tree<Text>},

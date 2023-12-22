@@ -40,4 +40,11 @@ void Document::save(const common::Path & /*path*/,
   throw UnsupportedOperation();
 }
 
+pugi::xml_node Document::get_slide_root(const std::string &ref) const {
+  if (auto it = m_slides_xml.find(ref); it != std::end(m_slides_xml)) {
+    return it->second.document_element();
+  }
+  return {};
+}
+
 } // namespace odr::internal::ooxml::presentation

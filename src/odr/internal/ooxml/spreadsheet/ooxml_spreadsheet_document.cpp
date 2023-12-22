@@ -18,10 +18,6 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_workbook_xml = util::xml::parse(*m_filesystem, "xl/workbook.xml");
   m_styles_xml = util::xml::parse(*m_filesystem, "xl/styles.xml");
 
-  m_root_element = parse_tree(*this, m_workbook_xml.document_element());
-
-  m_style_registry = StyleRegistry(m_styles_xml.document_element());
-
   for (const auto &relationships :
        parse_relationships(*m_filesystem, "xl/workbook.xml")) {
     auto sheet_path = common::Path("xl").join(relationships.second);
@@ -41,6 +37,10 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     m_sheets[relationships.first].sheet_path = std::move(sheet_path);
     m_sheets[relationships.first].sheet_xml = std::move(sheet_xml);
   }
+
+  m_root_element = parse_tree(*this, m_workbook_xml.document_element());
+
+  m_style_registry = StyleRegistry(m_styles_xml.document_element());
 
   if (m_filesystem->exists("xl/sharedStrings.xml")) {
     m_shared_strings_xml =
@@ -65,6 +65,13 @@ void Document::save(const common::Path & /*path*/) const {
 void Document::save(const common::Path & /*path*/,
                     const char * /*password*/) const {
   throw UnsupportedOperation();
+}
+
+pugi::xml_node Document::get_sheet_root(const std::string &ref) const {
+  if (auto it = m_sheets.find(ref); it != std::end(m_sheets)) {
+    return it->second.sheet_xml.document_element();
+  }
+  return {};
 }
 
 } // namespace odr::internal::ooxml::spreadsheet
