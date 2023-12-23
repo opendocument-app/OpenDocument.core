@@ -253,6 +253,17 @@ void Sheet::init_dimensions_(TableDimensions dimensions) {
   m_index.dimensions = dimensions;
 }
 
+void Sheet::append_shape_(Element *shape) {
+  shape->m_previous_sibling = m_last_shape;
+  shape->m_parent = this;
+  if (m_last_shape == nullptr) {
+    m_first_shape = shape;
+  } else {
+    m_last_shape->m_next_sibling = shape;
+  }
+  m_last_shape = shape;
+}
+
 } // namespace odr::internal::odf
 
 namespace odr::internal {
@@ -331,7 +342,12 @@ odf::parse_element_tree<odf::Sheet>(Document &document, pugi::xml_node node) {
 
   sheet.init_dimensions_(dimensions);
 
-  // TODO shapes
+  for (auto shape_node : node.child("table:shapes").children()) {
+    auto [shape, _] = parse_any_element_tree(document, shape_node);
+    if (shape != nullptr) {
+      sheet.append_shape_(shape);
+    }
+  }
 
   return std::make_tuple(&sheet, node.next_sibling());
 }

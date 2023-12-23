@@ -196,7 +196,7 @@ odf::parse_any_element_tree(Document &document, pugi::xml_node node) {
       {"draw:circle", parse_element_tree<Circle>},
       {"draw:custom-shape", parse_element_tree<CustomShape>},
       {"draw:text-box", parse_element_tree<Group>},
-      {"draw:g", parse_element_tree<Group>},
+      {"draw:g", parse_element_tree<Frame>},
       {"draw:a", parse_element_tree<Link>},
       {"style:master-page", parse_element_tree<MasterPage>}};
 

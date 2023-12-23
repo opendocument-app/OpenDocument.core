@@ -250,11 +250,10 @@ void html::translate_line_break(Element element, std::ostream &out,
 void html::translate_paragraph(Element element, std::ostream &out,
                                const HtmlConfig &config) {
   auto paragraph = element.paragraph();
-  auto text_style_attribute =
-      optional_style_attribute(translate_text_style(paragraph.text_style()));
 
   out << "<x-p";
-  out << optional_style_attribute(translate_paragraph_style(paragraph.style()));
+  out << optional_style_attribute("display:block;" +
+                                  translate_paragraph_style(paragraph.style()));
   out << ">";
   translate_children(paragraph.children(), out, config);
   if (paragraph.first_child()) {
@@ -265,6 +264,8 @@ void html::translate_paragraph(Element element, std::ostream &out,
 
     // TODO example `style-missing+image-1.odt` first paragraph has no height
   } else {
+    auto text_style_attribute =
+        optional_style_attribute(translate_text_style(paragraph.text_style()));
     out << "<x-s" << text_style_attribute << "></x-s>";
   }
   out << "<wbr>";
@@ -398,12 +399,10 @@ void html::translate_frame(Element element, std::ostream &out,
   auto style = frame.style();
 
   out << "<div";
-
   out << optional_style_attribute(translate_frame_properties(frame) +
                                   translate_drawing_style(style));
   out << ">";
   translate_children(frame.children(), out, config);
-
   out << "</div>";
 }
 

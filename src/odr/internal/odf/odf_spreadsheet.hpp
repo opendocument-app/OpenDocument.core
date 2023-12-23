@@ -87,6 +87,7 @@ public:
   void init_cell_element_(std::uint32_t column, std::uint32_t row,
                           SheetCell *element);
   void init_dimensions_(TableDimensions dimensions);
+  void append_shape_(Element *shape);
 
   common::ResolvedStyle cell_style_(const abstract::Document *,
                                     std::uint32_t column,
@@ -97,6 +98,7 @@ private:
 
   std::unordered_map<common::TablePosition, SheetCell *> m_cells;
   Element *m_first_shape{nullptr};
+  Element *m_last_shape{nullptr};
 };
 
 template <>
