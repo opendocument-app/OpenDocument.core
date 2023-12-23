@@ -35,12 +35,16 @@ std::optional<Measure> read_emus_attribute(pugi::xml_attribute);
 std::optional<Measure> read_twips_attribute(pugi::xml_attribute);
 std::optional<Measure> read_width_attribute(pugi::xml_node);
 bool read_line_attribute(pugi::xml_attribute);
+bool read_line_attribute(pugi::xml_node);
 std::optional<std::string> read_shadow_attribute(pugi::xml_attribute);
+std::optional<std::string> read_shadow_attribute(pugi::xml_node);
 std::optional<FontWeight> read_font_weight_attribute(pugi::xml_attribute);
+std::optional<FontWeight> read_font_weight_attribute(pugi::xml_node);
 std::optional<FontStyle> read_font_style_attribute(pugi::xml_attribute);
+std::optional<FontStyle> read_font_style_attribute(pugi::xml_node);
 std::optional<TextAlign> read_text_align_attribute(pugi::xml_attribute);
 std::optional<VerticalAlign> read_vertical_align_attribute(pugi::xml_attribute);
-std::optional<std::string> read_border_attribute(pugi::xml_node);
+std::optional<std::string> read_border_node(pugi::xml_node);
 
 std::string read_text_property(pugi::xml_node);
 

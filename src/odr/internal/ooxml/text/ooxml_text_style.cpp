@@ -17,24 +17,23 @@ void resolve_text_style_(pugi::xml_node node, TextStyle &result) {
           run_properties.child("w:sz").attribute("w:val"))) {
     result.font_size = font_size;
   }
-  if (auto font_weight = read_font_weight_attribute(
-          run_properties.child("w:b").attribute("w:val"))) {
+  if (auto font_weight =
+          read_font_weight_attribute(run_properties.child("w:b"))) {
     result.font_weight = font_weight;
   }
-  if (auto font_style = read_font_style_attribute(
-          run_properties.child("w:i").attribute("w:val"))) {
+  if (auto font_style =
+          read_font_style_attribute(run_properties.child("w:i"))) {
     result.font_style = font_style;
   }
-  if (auto font_underline =
-          read_line_attribute(run_properties.child("w:u").attribute("w:val"))) {
+  if (auto font_underline = read_line_attribute(run_properties.child("w:u"))) {
     result.font_underline = font_underline;
   }
-  if (auto font_line_through = read_line_attribute(
-          run_properties.child("w:strike").attribute("w:val"))) {
+  if (auto font_line_through =
+          read_line_attribute(run_properties.child("w:strike"))) {
     result.font_line_through = font_line_through;
   }
-  if (auto font_shadow = read_shadow_attribute(
-          run_properties.child("w:shadow").attribute("w:val"))) {
+  if (auto font_shadow =
+          read_shadow_attribute(run_properties.child("w:shadow"))) {
     result.font_shadow = font_shadow;
   }
   if (auto font_color = read_color_attribute(
@@ -96,19 +95,19 @@ void resolve_table_cell_style_(pugi::xml_node node, TableCellStyle &result) {
           table_cell_properties.child("w:vAlign").attribute("w:val"))) {
     result.vertical_align = vertical_align;
   }
-  if (auto border_right = read_border_attribute(
+  if (auto border_right = read_border_node(
           table_cell_properties.child("w:tcBorders").child("w:right"))) {
     result.border.right = border_right;
   }
-  if (auto border_top = read_border_attribute(
+  if (auto border_top = read_border_node(
           table_cell_properties.child("w:tcBorders").child("w:top"))) {
     result.border.top = border_top;
   }
-  if (auto border_left = read_border_attribute(
+  if (auto border_left = read_border_node(
           table_cell_properties.child("w:tcBorders").child("w:left"))) {
     result.border.left = border_left;
   }
-  if (auto border_bottom = read_border_attribute(
+  if (auto border_bottom = read_border_node(
           table_cell_properties.child("w:tcBorders").child("w:bottom"))) {
     result.border.bottom = border_bottom;
   }
