@@ -19,11 +19,11 @@ enum class HtmlCloseType {
 
 using HtmlWriteCallback = std::function<void(std::ostream &)>;
 using HtmlWritable = std::variant<const char *, std::string, HtmlWriteCallback>;
-using HtmlAttributeWriterFunction =
+using HtmlAttributesVector = std::vector<std::pair<HtmlWritable, HtmlWritable>>;
+using HtmlAttributeWriterCallback =
     std::function<void(const HtmlWritable &, const HtmlWritable &)>;
 using HtmlAttributeCallback =
-    std::function<void(const HtmlAttributeWriterFunction &)>;
-using HtmlAttributesVector = std::vector<std::pair<HtmlWritable, HtmlWritable>>;
+    std::function<void(const HtmlAttributeWriterCallback &)>;
 using HtmlAttributes =
     std::variant<HtmlAttributesVector, HtmlAttributeCallback>;
 

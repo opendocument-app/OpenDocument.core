@@ -169,7 +169,7 @@ void html::translate_sheet(Element element, HtmlWriter &out,
 
       out.write_element_begin(
           "td", {.attributes =
-                     [&](const HtmlAttributeWriterFunction &clb) {
+                     [&](const HtmlAttributeWriterCallback &clb) {
                        if (cell_span.columns > 1) {
                          clb("colspan", std::to_string(cell_span.columns));
                        }
@@ -232,7 +232,7 @@ void html::translate_text(const Element element, HtmlWriter &out,
   out.write_element_begin(
       "x-s", {.inline_element = true,
               .attributes =
-                  [&](const HtmlAttributeWriterFunction &clb) {
+                  [&](const HtmlAttributeWriterCallback &clb) {
                     if (config.editable && element.is_editable()) {
                       clb("contenteditable", "true");
                       clb("data-odr-path",
@@ -362,7 +362,7 @@ void html::translate_table(Element element, HtmlWriter &out,
 
         out.write_element_begin(
             "td", {.attributes =
-                       [&](const HtmlAttributeWriterFunction &clb) {
+                       [&](const HtmlAttributeWriterCallback &clb) {
                          if (cell_span.columns > 1) {
                            clb("colspan", std::to_string(cell_span.columns));
                          }
