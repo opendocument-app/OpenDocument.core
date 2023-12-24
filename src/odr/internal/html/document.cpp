@@ -8,56 +8,54 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/path.hpp>
-#include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_element.hpp>
 #include <odr/internal/html/document_style.hpp>
+#include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/resource.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <fstream>
-#include <iostream>
 
 namespace odr::internal {
 
 namespace {
 
-void front(const Document &document, const std::string &path, std::ostream &out,
-           const HtmlConfig &config) {
-  out << internal::html::doctype();
-  out << "<html>\n";
-  out << "<head>\n";
+void front(const Document &document, const std::string &path,
+           internal::html::HtmlWriter &out, const HtmlConfig &config) {
+  out.write_begin();
+  out.write_header_begin();
+  out.write_header_charset("UTF-8");
+  out.write_header_target("_blank");
+  out.write_header_title("odr");
   if (document.document_type() == DocumentType::text &&
       config.text_document_margin) {
-    out << R"V0G0N(<meta charset="UTF-8"/>
-<base target="_blank"/>
-<meta name="viewport" content="width=device-width,user-scalable=yes"/>
-<title>odr</title>)V0G0N";
+    out.write_header_viewport("width=device-width,user-scalable=yes");
   } else {
-    out << internal::html::default_headers();
+    out.write_header_viewport(
+        "width=device-width,initial-scale=1.0,user-scalable=yes");
   }
-  out << "\n";
 
   if (config.embed_resources) {
-    out << "<style>\n";
+    out.write_header_style_begin();
     util::stream::pipe(
-        *Resources::instance().filesystem()->open("odr.css")->stream(), out);
+        *Resources::instance().filesystem()->open("odr.css")->stream(),
+        out.out());
     if (document.document_type() == DocumentType::spreadsheet) {
       util::stream::pipe(*Resources::instance()
                               .filesystem()
                               ->open("odr_spreadsheet.css")
                               ->stream(),
-                         out);
+                         out.out());
     }
-    out << "\n";
-    out << "</style>\n";
+    out.write_header_style_end();
   } else {
     auto odr_css_path =
         common::Path(config.external_resource_path).join("odr.css");
     if (config.relative_resource_paths) {
       odr_css_path = common::Path(odr_css_path).rebase(path);
     }
-    out << "<link rel=\"stylesheet\" href=\"" << odr_css_path << "\">\n";
+    out.write_header_style(odr_css_path.string().c_str());
     if (document.document_type() == DocumentType::spreadsheet) {
       auto odr_spreadsheet_css_path =
           common::Path(config.external_resource_path)
@@ -66,37 +64,48 @@ void front(const Document &document, const std::string &path, std::ostream &out,
         odr_spreadsheet_css_path =
             common::Path(odr_spreadsheet_css_path).rebase(path);
       }
-      out << "<link rel=\"stylesheet\" href=\"" << odr_spreadsheet_css_path
-          << "\">\n";
+      out.write_header_style(odr_spreadsheet_css_path.string().c_str());
     }
   }
 
-  out << "</head>\n";
-  out << "<body " << internal::html::body_attributes(config) << ">\n";
+  out.write_header_end();
+
+  std::string body_clazz;
+  switch (config.spreadsheet_gridlines) {
+  case HtmlTableGridlines::soft:
+    body_clazz = "odr-gridlines-soft";
+    break;
+  case HtmlTableGridlines::hard:
+    body_clazz = "odr-gridlines-hard";
+    break;
+  case HtmlTableGridlines::none:
+  default:
+    body_clazz = "odr-gridlines-none";
+    break;
+  }
+
+  out.write_body_begin({.clazz = body_clazz});
 }
 
-void back(const Document &, const std::string &path, std::ostream &out,
-          const HtmlConfig &config) {
-  out << "\n";
-
+void back(const Document &, const std::string &path,
+          internal::html::HtmlWriter &out, const HtmlConfig &config) {
   if (config.embed_resources) {
-    out << "<script type=\"text/javascript\">\n";
+    out.write_script_begin();
     util::stream::pipe(
-        *Resources::instance().filesystem()->open("odr.js")->stream(), out);
-    out << "\n";
-    out << "</script>\n";
+        *Resources::instance().filesystem()->open("odr.js")->stream(),
+        out.out());
+    out.write_script_end();
   } else {
     auto odr_js_path =
         common::Path(config.external_resource_path).join("odr.js");
     if (config.relative_resource_paths) {
       odr_js_path = common::Path(odr_js_path).rebase(path);
     }
-    out << "<script type=\"text/javascript\" src=\"" << odr_js_path
-        << "\"></script>";
+    out.write_script(odr_js_path.string().c_str());
   }
 
-  out << "</body>\n";
-  out << "</html>";
+  out.write_body_end();
+  out.write_end();
 }
 
 std::string fill_path_variables(const std::string &path,
@@ -107,10 +116,8 @@ std::string fill_path_variables(const std::string &path,
   return result;
 }
 
-std::ofstream output(const std::string &path,
-                     std::optional<std::uint32_t> index = {}) {
-  auto filled_path = fill_path_variables(path, index);
-  std::ofstream out(filled_path);
+std::ofstream output(const std::string &path) {
+  std::ofstream out(path);
   if (!out.is_open()) {
     throw FileWriteError();
   }
@@ -139,24 +146,28 @@ Html html::translate_text_document(const Document &document,
                                    const HtmlConfig &config) {
   auto filled_path =
       fill_path_variables(path + "/" + config.text_document_output_file_name);
-  auto out = output(filled_path);
+  auto ostream = output(filled_path);
+  internal::html::HtmlWriter out(ostream, config.format_html,
+                                 config.html_indent);
 
   auto root = document.root_element();
   auto element = root.text_root();
 
   front(document, path, out, config);
   if (config.text_document_margin) {
-    out << "<div";
+    out.write_element_begin("div");
     auto page_layout = element.page_layout();
     page_layout.height = {};
-    out << optional_style_attribute(translate_outer_page_style(page_layout));
-    out << ">";
-    out << "<div";
-    out << optional_style_attribute(translate_inner_page_style(page_layout));
-    out << ">";
+
+    out.write_element_begin("div",
+                            {.style = translate_outer_page_style(page_layout)});
+    out.write_element_begin("div",
+                            {.style = translate_inner_page_style(page_layout)});
+
     translate_children(element.children(), out, config);
-    out << "</div>";
-    out << "</div>";
+
+    out.write_element_end("div");
+    out.write_element_end("div");
   } else {
     translate_children(element.children(), out, config);
   }
@@ -174,7 +185,9 @@ Html html::translate_presentation(const Document &document,
   for (auto child : document.root_element().children()) {
     auto filled_path =
         fill_path_variables(path + "/" + config.slide_output_file_name, i);
-    auto out = output(filled_path);
+    auto ostream = output(filled_path);
+    internal::html::HtmlWriter out(ostream, config.format_html,
+                                   config.html_indent);
 
     front(document, path, out, config);
     internal::html::translate_slide(child, out, config);
@@ -197,7 +210,9 @@ Html html::translate_spreadsheet(const Document &document,
   for (auto child : document.root_element().children()) {
     auto filled_path =
         fill_path_variables(path + "/" + config.sheet_output_file_name, i);
-    auto out = output(filled_path);
+    auto ostream = output(filled_path);
+    internal::html::HtmlWriter out(ostream, config.format_html,
+                                   config.html_indent);
 
     front(document, path, out, config);
     translate_sheet(child, out, config);
@@ -219,7 +234,9 @@ Html html::translate_drawing(const Document &document, const std::string &path,
   for (auto child : document.root_element().children()) {
     auto filled_path =
         fill_path_variables(path + "/" + config.page_output_file_name, i);
-    auto out = output(filled_path);
+    auto ostream = output(filled_path);
+    internal::html::HtmlWriter out(ostream, config.format_html,
+                                   config.html_indent);
 
     front(document, path, out, config);
     internal::html::translate_page(child, out, config);

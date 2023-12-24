@@ -55,6 +55,10 @@ struct HtmlConfig {
   bool spreadsheet_limit_by_content{true};
   // spreadsheet gridlines
   HtmlTableGridlines spreadsheet_gridlines{HtmlTableGridlines::soft};
+
+  // formatting
+  bool format_html{false};
+  std::uint8_t html_indent{2};
 };
 
 class Html final {

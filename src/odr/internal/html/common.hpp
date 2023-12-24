@@ -10,12 +10,6 @@ struct HtmlConfig;
 
 namespace odr::internal::html {
 
-const char *doctype() noexcept;
-
-const char *default_headers() noexcept;
-
-std::string body_attributes(const HtmlConfig &config) noexcept;
-
 std::string escape_text(std::string text) noexcept;
 
 std::string color(const Color &color) noexcept;

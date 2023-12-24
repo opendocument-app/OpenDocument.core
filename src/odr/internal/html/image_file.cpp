@@ -6,7 +6,7 @@
 
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
-#include <odr/internal/html/common.hpp>
+#include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/svm/svm_to_svg.hpp>
 #include <odr/internal/util/stream_util.hpp>
@@ -63,33 +63,36 @@ Html html::translate_image_file(const ImageFile &image_file,
                                 const std::string &path,
                                 const HtmlConfig &config) {
   auto output_path = path + "/image.html";
-  std::ofstream out(output_path);
-  if (!out.is_open()) {
+  std::ofstream ostream(output_path);
+  if (!ostream.is_open()) {
     throw FileWriteError();
   }
+  HtmlWriter out(ostream, config.format_html, config.html_indent);
 
-  out << internal::html::doctype();
-  out << "<html><head>";
-  out << internal::html::default_headers();
-  out << "<style>";
-  // TODO style
-  out << "</style>";
-  out << "</head>";
+  out.write_begin();
+  out.write_header_begin();
+  out.write_header_charset("UTF-8");
+  out.write_header_target("_blank");
+  out.write_header_title("odr");
+  out.write_header_viewport(
+      "width=device-width,initial-scale=1.0,user-scalable=yes");
+  out.write_header_end();
 
-  out << "<body " << internal::html::body_attributes(config) << ">";
+  out.write_body_begin();
 
   {
-    out << "<img";
-    out << " alt=\"Error: image not found or unsupported\"";
-    out << " src=\"";
+    out.write_new_line();
+    out.out() << "<img";
+    out.out() << " alt=\"Error: image not found or unsupported\"";
+    out.out() << " src=\"";
 
-    translate_image_src(image_file, out, config);
+    translate_image_src(image_file, out.out(), config);
 
-    out << "\">";
+    out.out() << "\">";
   }
 
-  out << "</body>";
-  out << "</html>";
+  out.write_body_end();
+  out.write_end();
 
   return {image_file.file_type(), config, {{"image", output_path}}};
 }

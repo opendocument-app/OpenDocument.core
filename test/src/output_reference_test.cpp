@@ -97,6 +97,8 @@ TEST_P(OutputReferenceTests, html_meta) {
   config.relative_resource_paths = true;
   config.editable = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);
+  config.format_html = true;
+  config.html_indent = 2;
   std::optional<Html> html;
 
   if (file.file_type() == FileType::text_file) {

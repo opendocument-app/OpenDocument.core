@@ -3,25 +3,23 @@
 #include <odr/document_path.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/common/table_range.hpp>
+#include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_element.hpp>
 #include <odr/internal/html/document_style.hpp>
+#include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
-
-#include "odr/internal/common/table_cursor.hpp"
-#include <iostream>
 
 namespace odr::internal {
 
-void html::translate_children(ElementRange range, std::ostream &out,
+void html::translate_children(ElementRange range, HtmlWriter &out,
                               const HtmlConfig &config) {
   for (auto child : range) {
     translate_element(child, out, config);
   }
 }
 
-void html::translate_element(Element element, std::ostream &out,
+void html::translate_element(Element element, HtmlWriter &out,
                              const HtmlConfig &config) {
   if (element.type() == ElementType::text) {
     translate_text(element, out, config);
@@ -60,32 +58,32 @@ void html::translate_element(Element element, std::ostream &out,
   }
 }
 
-void html::translate_slide(Element element, std::ostream &out,
+void html::translate_slide(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
   auto slide = element.slide();
 
-  out << "<div";
-  out << optional_style_attribute(
-      translate_outer_page_style(slide.page_layout()));
-  out << ">";
-  out << "<div";
-  out << optional_style_attribute(
-      translate_inner_page_style(slide.page_layout()));
-  out << ">";
+  out.write_element_begin(
+      "div",
+      {.style = translate_outer_page_style(slide.page_layout()).c_str()});
+  out.write_element_begin(
+      "div",
+      {.style = translate_inner_page_style(slide.page_layout()).c_str()});
+
   translate_master_page(slide.master_page(), out, config);
   translate_children(slide.children(), out, config);
-  out << "</div>";
-  out << "</div>";
+
+  out.write_element_end("div");
+  out.write_element_end("div");
 }
 
-void html::translate_sheet(Element element, std::ostream &out,
+void html::translate_sheet(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
   // TODO table column width does not work
   // TODO table row height does not work
 
-  out << "<table";
-  out << R"( cellpadding="0" border="0" cellspacing="0")";
-  out << ">";
+  out.write_element_begin("table", {.attributes = {{"cellpadding", "0"},
+                                                   {"border", "0"},
+                                                   {"cellspacing", "0"}}});
 
   auto sheet = element.sheet();
   auto dimensions = sheet.dimensions();
@@ -103,31 +101,35 @@ void html::translate_sheet(Element element, std::ostream &out,
   end_column = std::max(1u, end_column);
   end_row = std::max(1u, end_row);
 
-  out << "<col>";
+  out.write_element_begin("col", {.close_type = HtmlCloseType::none});
 
   for (std::uint32_t column_index = 0; column_index < end_column;
        ++column_index) {
     auto table_column = sheet.column(column_index);
     auto table_column_style = table_column.style();
 
-    out << "<col";
-    out << optional_style_attribute(
-        translate_table_column_style(table_column_style));
-    out << ">";
+    out.write_element_begin(
+        "col",
+        {.close_type = HtmlCloseType::none,
+         .style = translate_table_column_style(table_column_style).c_str()});
   }
 
   {
-    out << "<tr>";
-    out << "<td style=\"width:30px;height:20px;\"/>";
+    out.write_element_begin("tr");
+
+    out.write_element_begin("td", {.close_type = HtmlCloseType::trailing,
+                                   .style = "width:30px;height:20px;"});
 
     for (std::uint32_t column_index = 0; column_index < end_column;
          ++column_index) {
-      out << "<td style=\"text-align:center;vertical-align:middle;\">";
-      out << common::TablePosition::to_column_string(column_index);
-      out << "</td>";
+      out.write_element_begin(
+          "td", {.inline_element = true,
+                 .style = "text-align:center;vertical-align:middle;"});
+      out.out() << common::TablePosition::to_column_string(column_index);
+      out.write_element_end("td");
     }
 
-    out << "</tr>";
+    out.write_element_end("tr");
   }
 
   common::TableCursor cursor;
@@ -136,18 +138,18 @@ void html::translate_sheet(Element element, std::ostream &out,
     auto table_row = sheet.row(row_index);
     auto table_row_style = table_row.style();
 
-    out << "<tr";
-    out << optional_style_attribute(translate_table_row_style(table_row_style));
-    out << ">";
+    out.write_element_begin(
+        "tr", {.style = translate_table_row_style(table_row_style).c_str()});
 
-    out << "<td style=\"text-align:center;vertical-align:middle;";
+    std::string td_style = "text-align:center;vertical-align:middle";
     if (auto height = table_row_style.height) {
-      out << "height:" << height->to_string() << ";";
-      out << "max-height:" << height->to_string() << ";";
+      td_style += "height:" + height->to_string() + ";";
+      td_style += "max-height:" + height->to_string() + ";";
     }
-    out << "\">";
-    out << common::TablePosition::to_row_string(row_index);
-    out << "</td>";
+    out.write_element_begin(
+        "td", {.inline_element = true, .style = td_style.c_str()});
+    out.out() << common::TablePosition::to_row_string(row_index);
+    out.write_element_end("td");
 
     for (std::uint32_t column_index = cursor.column();
          column_index < end_column; column_index = cursor.column()) {
@@ -164,56 +166,56 @@ void html::translate_sheet(Element element, std::ostream &out,
       auto cell_value_type = cell.value_type();
       auto cell_elements = cell.children();
 
-      out << "<td";
+      HtmlAttributes td_attributes;
       if (cell_span.columns > 1) {
-        out << " colspan=\"" << cell_span.columns << "\"";
+        td_attributes.emplace_back("colspan",
+                                   std::to_string(cell_span.columns));
       }
       if (cell_span.rows > 1) {
-        out << " rowspan=\"" << cell_span.rows << "\"";
+        td_attributes.emplace_back("rowspan", std::to_string(cell_span.rows));
       }
-      out << optional_style_attribute(translate_table_cell_style(cell_style));
+      std::string td_class;
       if (cell_value_type == ValueType::float_number) {
-        out << " class=\"odr-value-type-float\"";
+        td_class = "odr-value-type-float";
       }
-      out << ">";
+      out.write_element_begin("td",
+                              {.attributes = td_attributes,
+                               .style = translate_table_cell_style(cell_style),
+                               .clazz = td_class});
       if ((column_index == 0) && (row_index == 0)) {
         for (auto shape : sheet.shapes()) {
           translate_element(shape, out, config);
         }
       }
       translate_children(cell_elements, out, config);
-      out << "</td>";
+      out.write_element_end("td");
 
       cursor.add_cell(cell_span.columns, cell_span.rows);
     }
 
-    out << "</tr>";
+    out.write_element_end("tr");
 
     cursor.add_row();
   }
 
-  out << "</table>";
+  out.write_element_end("table");
 }
 
-void html::translate_page(Element element, std::ostream &out,
+void html::translate_page(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
   auto page = element.page();
 
-  out << "<div";
-  out << optional_style_attribute(
-      translate_outer_page_style(page.page_layout()));
-  out << ">";
-  out << "<div";
-  out << optional_style_attribute(
-      translate_inner_page_style(page.page_layout()));
-  out << ">";
+  out.write_element_begin(
+      "div", {.style = translate_outer_page_style(page.page_layout())});
+  out.write_element_begin(
+      "div", {.style = translate_inner_page_style(page.page_layout())});
   translate_master_page(page.master_page(), out, config);
   translate_children(page.children(), out, config);
-  out << "</div>";
-  out << "</div>";
+  out.write_element_end("div");
+  out.write_element_end("div");
 }
 
-void html::translate_master_page(MasterPage element, std::ostream &out,
+void html::translate_master_page(MasterPage element, HtmlWriter &out,
                                  const HtmlConfig &config) {
   for (auto child : element.children()) {
     // TODO filter placeholders
@@ -221,40 +223,40 @@ void html::translate_master_page(MasterPage element, std::ostream &out,
   }
 }
 
-void html::translate_text(const Element element, std::ostream &out,
+void html::translate_text(const Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
   auto text = element.text();
 
-  out << "<x-s";
-  out << optional_style_attribute(translate_text_style(text.style()));
+  HtmlAttributes attributes;
   if (config.editable && element.is_editable()) {
-    out << " contenteditable=\"true\"";
-    out << " data-odr-path=\"" << DocumentPath::extract(element).to_string()
-        << "\"";
+    attributes.emplace_back("contenteditable", "true");
+    attributes.emplace_back("data-odr-path",
+                            DocumentPath::extract(element).to_string());
   }
-  out << ">";
-  out << internal::html::escape_text(text.content());
-  out << "</x-s>";
+  out.write_element_begin("x-s", {.inline_element = true,
+                                  .style = translate_text_style(text.style())});
+  out.out() << internal::html::escape_text(text.content());
+  out.write_element_end("x-s");
 }
 
-void html::translate_line_break(Element element, std::ostream &out,
+void html::translate_line_break(Element element, HtmlWriter &out,
                                 const HtmlConfig &) {
   auto line_break = element.line_break();
 
-  out << "<br>";
-  out << "<x-s";
-  out << optional_style_attribute(translate_text_style(line_break.style()));
-  out << "></x-s>";
+  out.write_element_begin("br", {.close_type = HtmlCloseType::none});
+  out.write_element_begin("x-s",
+                          {.inline_element = true,
+                           .style = translate_text_style(line_break.style())});
+  out.write_element_end("x-s");
 }
 
-void html::translate_paragraph(Element element, std::ostream &out,
+void html::translate_paragraph(Element element, HtmlWriter &out,
                                const HtmlConfig &config) {
   auto paragraph = element.paragraph();
 
-  out << "<x-p";
-  out << optional_style_attribute("display:block;" +
-                                  translate_paragraph_style(paragraph.style()));
-  out << ">";
+  out.write_element_begin(
+      "x-p", {.style = "display:block;" +
+                       translate_paragraph_style(paragraph.style())});
   translate_children(paragraph.children(), out, config);
   if (paragraph.first_child()) {
     // TODO if element is content (e.g. bookmark does not count)
@@ -264,90 +266,86 @@ void html::translate_paragraph(Element element, std::ostream &out,
 
     // TODO example `style-missing+image-1.odt` first paragraph has no height
   } else {
-    auto text_style_attribute =
-        optional_style_attribute(translate_text_style(paragraph.text_style()));
-    out << "<x-s" << text_style_attribute << "></x-s>";
+    out.write_element_begin(
+        "x-s", {.inline_element = true,
+                .style = translate_text_style(paragraph.text_style())});
+    out.write_element_end("x-s");
   }
-  out << "<wbr>";
-  out << "</x-p>";
+  out.write_element_begin("wbr", {.close_type = HtmlCloseType::none});
+  out.write_element_end("x-p");
 }
 
-void html::translate_span(Element element, std::ostream &out,
+void html::translate_span(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
   auto span = element.span();
 
-  out << "<x-s";
-  out << optional_style_attribute(translate_text_style(span.style()));
-  out << ">";
+  out.write_element_begin("x-s", {.inline_element = true,
+                                  .style = translate_text_style(span.style())});
   translate_children(span.children(), out, config);
-  out << "</x-s>";
+  out.write_element_end("x-s");
 }
 
-void html::translate_link(Element element, std::ostream &out,
+void html::translate_link(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
   auto link = element.link();
 
-  out << "<a href=\"";
-  out << link.href();
-  out << "\">";
+  out.write_element_begin(
+      "a", {.inline_element = true, .attributes = {{"href", link.href()}}});
   translate_children(link.children(), out, config);
-  out << "</a>";
+  out.write_element_end("a");
 }
 
-void html::translate_bookmark(Element element, std::ostream &out,
+void html::translate_bookmark(Element element, HtmlWriter &out,
                               const HtmlConfig & /*config*/) {
   auto bookmark = element.bookmark();
 
-  out << "<a id=\"";
-  out << bookmark.name();
-  out << "\"></a>";
+  out.write_element_begin(
+      "a", {.inline_element = true, .attributes = {{"id", bookmark.name()}}});
+  out.write_element_end("a");
 }
 
-void html::translate_list(Element element, std::ostream &out,
+void html::translate_list(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
-  out << "<ul>";
+  out.write_element_begin("ul");
   translate_children(element.children(), out, config);
-  out << "</ul>";
+  out.write_element_end("ul");
 }
 
-void html::translate_list_item(Element element, std::ostream &out,
+void html::translate_list_item(Element element, HtmlWriter &out,
                                const HtmlConfig &config) {
   auto list_item = element.list_item();
 
-  out << "<li";
-  out << optional_style_attribute(translate_text_style(list_item.style()));
-  out << ">";
+  out.write_element_begin("ul",
+                          {.style = translate_text_style(list_item.style())});
   translate_children(list_item.children(), out, config);
-  out << "</li>";
+  out.write_element_end("ul");
 }
 
-void html::translate_table(Element element, std::ostream &out,
+void html::translate_table(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
   // TODO table column width does not work
   // TODO table row height does not work
   auto table = element.table();
 
-  out << "<table";
-  out << optional_style_attribute(translate_table_style(table.style()));
-  out << R"( cellpadding="0" border="0" cellspacing="0")";
-  out << ">";
+  out.write_element_begin("table",
+                          {.attributes = {{"cellpadding", "0"},
+                                          {"border", "0"},
+                                          {"cellspacing", "0"}},
+                           .style = translate_table_style(table.style())});
 
   for (auto column : table.columns()) {
     auto table_column = column.table_column();
 
-    out << "<col";
-    out << optional_style_attribute(
-        translate_table_column_style(table_column.style()));
-    out << ">";
+    out.write_element_begin(
+        "col", {.close_type = HtmlCloseType::none,
+                .style = translate_table_column_style(table_column.style())});
   }
 
   for (auto row : table.rows()) {
     auto table_row = row.table_row();
 
-    out << "<tr";
-    out << optional_style_attribute(
-        translate_table_row_style(table_row.style()));
-    out << ">";
+    out.write_element_begin(
+        "tr", {.style = translate_table_row_style(table_row.style())});
 
     for (auto cell : table_row.children()) {
       auto table_cell = cell.table_cell();
@@ -355,112 +353,122 @@ void html::translate_table(Element element, std::ostream &out,
       if (!table_cell.is_covered()) {
         auto cell_span = table_cell.span();
 
-        out << "<td";
-        if (cell_span.rows > 1) {
-          out << " rowspan=\"" << cell_span.rows << "\"";
-        }
+        HtmlAttributes td_attributes;
         if (cell_span.columns > 1) {
-          out << " colspan=\"" << cell_span.columns << "\"";
+          td_attributes.emplace_back("colspan",
+                                     std::to_string(cell_span.columns));
         }
-        out << optional_style_attribute(
-            translate_table_cell_style(table_cell.style()));
-        out << ">";
+        if (cell_span.rows > 1) {
+          td_attributes.emplace_back("rowspan", std::to_string(cell_span.rows));
+        }
+        out.write_element_begin(
+            "td", {.attributes = td_attributes,
+                   .style = translate_table_cell_style(table_cell.style())});
+
         translate_children(cell.children(), out, config);
-        out << "</td>";
+
+        out.write_element_end("td");
       }
     }
 
-    out << "</tr>";
+    out.write_element_end("tr");
   }
 
-  out << "</table>";
+  out.write_element_end("table");
 }
 
-void html::translate_image(Element element, std::ostream &out,
+void html::translate_image(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
   auto image = element.image();
 
-  out << "<img style=\"position:absolute;left:0;top:0;width:100%;height:100%\"";
-  out << " alt=\"Error: image not found or unsupported\"";
-  out << " src=\"";
+  out.write_new_line();
+  out.out()
+      << "<img style=\"position:absolute;left:0;top:0;width:100%;height:100%\"";
+  out.out() << " alt=\"Error: image not found or unsupported\"";
+  out.out() << " src=\"";
 
   if (image.is_internal()) {
-    translate_image_src(image.file().value(), out, config);
+    translate_image_src(image.file().value(), out.out(), config);
   } else {
-    out << image.href();
+    out.out() << image.href();
   }
 
-  out << "\">";
+  out.out() << "\">";
 }
 
-void html::translate_frame(Element element, std::ostream &out,
+void html::translate_frame(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
   auto frame = element.frame();
   auto style = frame.style();
 
-  out << "<div";
-  out << optional_style_attribute(translate_frame_properties(frame) +
-                                  translate_drawing_style(style));
-  out << ">";
+  out.write_element_begin("div", {.style = translate_frame_properties(frame) +
+                                           translate_drawing_style(style)});
   translate_children(frame.children(), out, config);
-  out << "</div>";
+  out.write_element_end("div");
 }
 
-void html::translate_rect(Element element, std::ostream &out,
+void html::translate_rect(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
   auto rect = element.rect();
+  auto style = rect.style();
 
-  out << "<div";
-  out << optional_style_attribute(translate_rect_properties(rect) +
-                                  translate_drawing_style(rect.style()));
-  out << ">";
+  out.write_element_begin("div", {.style = translate_rect_properties(rect) +
+                                           translate_drawing_style(style)});
   translate_children(rect.children(), out, config);
-  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
-  out << "</div>";
+  out.write_new_line();
+  out.out()
+      << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
+  out.write_element_end("div");
 }
 
-void html::translate_line(Element element, std::ostream &out,
+void html::translate_line(Element element, HtmlWriter &out,
                           const HtmlConfig & /*config*/) {
   auto line = element.line();
+  auto style = line.style();
 
-  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
-  out << optional_style_attribute("z-index:-1;position:absolute;top:0;left:0;" +
-                                  translate_drawing_style(line.style()));
-  out << ">";
+  out.write_new_line();
+  out.out()
+      << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
+  out.out() << optional_style_attribute(
+      "z-index:-1;position:absolute;top:0;left:0;" +
+      translate_drawing_style(style));
+  out.out() << ">";
 
-  out << "<line";
-  out << " x1=\"" << line.x1() << "\" y1=\"" << line.y1() << "\"";
-  out << " x2=\"" << line.x2() << "\" y2=\"" << line.y2() << "\"";
-  out << " />";
+  out.write_new_line();
+  out.out() << "<line";
+  out.out() << " x1=\"" << line.x1() << "\" y1=\"" << line.y1() << "\"";
+  out.out() << " x2=\"" << line.x2() << "\" y2=\"" << line.y2() << "\"";
+  out.out() << " />";
 
-  out << "</svg>";
+  out.write_new_line();
+  out.out() << "</svg>";
 }
 
-void html::translate_circle(Element element, std::ostream &out,
+void html::translate_circle(Element element, HtmlWriter &out,
                             const HtmlConfig &config) {
   auto circle = element.circle();
+  auto style = circle.style();
 
-  out << "<div";
-  out << optional_style_attribute(translate_circle_properties(circle) +
-                                  translate_drawing_style(circle.style()));
-  out << ">";
+  out.write_element_begin("div", {.style = translate_circle_properties(circle) +
+                                           translate_drawing_style(style)});
+  out.write_new_line();
   translate_children(circle.children(), out, config);
-  out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
-  out << "</div>";
+  out.out()
+      << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
+  out.write_element_end("div");
 }
 
-void html::translate_custom_shape(Element element, std::ostream &out,
+void html::translate_custom_shape(Element element, HtmlWriter &out,
                                   const HtmlConfig &config) {
   auto custom_shape = element.custom_shape();
+  auto style = custom_shape.style();
 
-  out << "<div";
-  out << optional_style_attribute(
-      translate_custom_shape_properties(custom_shape) +
-      translate_drawing_style(custom_shape.style()));
-  out << ">";
+  out.write_element_begin(
+      "div", {.style = translate_custom_shape_properties(custom_shape) +
+                       translate_drawing_style(style)});
   translate_children(custom_shape.children(), out, config);
   // TODO draw shape in svg
-  out << "</div>";
+  out.write_element_end("div");
 }
 
 } // namespace odr::internal
