@@ -48,6 +48,8 @@ std::optional<std::string> read_border_node(pugi::xml_node);
 
 std::string read_text_property(pugi::xml_node);
 
+using Relations = std::unordered_map<std::string, std::string>;
+
 std::unordered_map<std::string, std::string>
 parse_relationships(const pugi::xml_document &relations);
 std::unordered_map<std::string, std::string>

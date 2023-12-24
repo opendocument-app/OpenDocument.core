@@ -12,6 +12,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "odr/internal/ooxml/ooxml_util.hpp"
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
@@ -26,25 +27,19 @@ public:
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const char *password) const final;
 
-  pugi::xml_node get_sheet_root(const std::string &ref) const;
+  std::pair<const pugi::xml_document &, const Relations &>
+  get_xml(const common::Path &) const;
   pugi::xml_node get_shared_string(std::size_t index) const;
 
 private:
-  struct Sheet final {
-    common::Path sheet_path;
-    pugi::xml_document sheet_xml;
-    std::optional<common::Path> drawing_path;
-    pugi::xml_document drawing_xml;
-  };
-
-  pugi::xml_document m_workbook_xml;
-  pugi::xml_document m_styles_xml;
-  std::unordered_map<std::string, Sheet> m_sheets;
-  std::unordered_map<std::string, pugi::xml_document> m_drawings_xml;
-  pugi::xml_document m_shared_strings_xml;
+  std::unordered_map<common::Path, std::pair<pugi::xml_document, Relations>>
+      m_xml;
 
   StyleRegistry m_style_registry;
   std::vector<pugi::xml_node> m_shared_strings;
+
+  std::pair<pugi::xml_document &, Relations &>
+  parse_xml_(const common::Path &path);
 
   friend class Element;
 };

@@ -13,7 +13,9 @@
 
 namespace odr::internal::ooxml::spreadsheet {
 
-Element::Element(pugi::xml_node node) : m_node{node} {
+Element::Element(pugi::xml_node node, common::Path /*document_path*/,
+                 const Relations & /*document_relations*/)
+    : m_node{node} {
   if (!node) {
     // TODO log error
     throw std::runtime_error("node not set");
@@ -51,19 +53,28 @@ Element::style_registry_(const abstract::Document *document) {
   return &document_(document)->m_style_registry;
 }
 
-pugi::xml_node Element::sheet_(const abstract::Document *document,
-                               const std::string &id) {
-  return document_(document)->m_sheets.at(id).sheet_xml.document_element();
+const common::Path &
+Element::document_path_(const abstract::Document *document) const {
+  return dynamic_cast<Element *>(m_parent)->document_path_(document);
 }
 
-pugi::xml_node Element::drawing_(const abstract::Document *document,
-                                 const std::string &id) {
-  return document_(document)->m_sheets.at(id).drawing_xml.document_element();
+const Relations &
+Element::document_relations_(const abstract::Document *document) const {
+  return dynamic_cast<Element *>(m_parent)->document_relations_(document);
 }
 
-const std::vector<pugi::xml_node> &
-Element::shared_strings_(const abstract::Document *document) {
-  return document_(document)->m_shared_strings;
+Root::Root(pugi::xml_node node, common::Path document_path,
+           const Relations &document_relations)
+    : DefaultElement(node, document_path, document_relations),
+      m_document_path{std::move(document_path)}, m_document_relations{
+                                                     document_relations} {}
+
+const common::Path &Root::document_path_(const abstract::Document *) const {
+  return m_document_path;
+}
+
+const Relations &Root::document_relations_(const abstract::Document *) const {
+  return m_document_relations;
 }
 
 void SheetIndex::init_column(std::uint32_t /*min*/, std::uint32_t max,
@@ -81,7 +92,7 @@ void SheetIndex::init_cell(std::uint32_t column, std::uint32_t row,
 }
 
 pugi::xml_node SheetIndex::column(std::uint32_t column) const {
-  if (auto it = util::map::lookup_greater_than(columns, column);
+  if (auto it = util::map::lookup_greater_or_equals(columns, column);
       it != std::end(columns)) {
     return it->second;
   }
@@ -89,7 +100,7 @@ pugi::xml_node SheetIndex::column(std::uint32_t column) const {
 }
 
 pugi::xml_node SheetIndex::row(std::uint32_t row) const {
-  if (auto it = util::map::lookup_greater_than(rows, row);
+  if (auto it = util::map::lookup_greater_or_equals(rows, row);
       it != std::end(rows)) {
     return it->second.row;
   }
@@ -97,15 +108,29 @@ pugi::xml_node SheetIndex::row(std::uint32_t row) const {
 }
 
 pugi::xml_node SheetIndex::cell(std::uint32_t column, std::uint32_t row) const {
-  if (auto row_it = util::map::lookup_greater_than(rows, row);
+  if (auto row_it = util::map::lookup_greater_or_equals(rows, row);
       row_it != std::end(rows)) {
     const auto &cells = row_it->second.cells;
-    if (auto cell_it = util::map::lookup_greater_than(cells, column);
+    if (auto cell_it = util::map::lookup_greater_or_equals(cells, column);
         cell_it != std::end(cells)) {
       return cell_it->second;
     }
   }
   return {};
+}
+
+Sheet::Sheet(pugi::xml_node node, common::Path document_path,
+             const Relations &document_relations)
+    : Element(node, document_path, document_relations),
+      m_document_path{std::move(document_path)}, m_document_relations{
+                                                     document_relations} {}
+
+const common::Path &Sheet::document_path_(const abstract::Document *) const {
+  return m_document_path;
+}
+
+const Relations &Sheet::document_relations_(const abstract::Document *) const {
+  return m_document_relations;
 }
 
 std::string Sheet::name(const abstract::Document *) const {
@@ -144,7 +169,7 @@ TableColumnStyle Sheet::column_style(const abstract::Document *,
                                      std::uint32_t column) const {
   TableColumnStyle result;
   pugi::xml_node column_node = m_index.column(column);
-  if (auto width = column_node.attribute("width")) {
+  if (pugi::xml_attribute width = column_node.attribute("width")) {
     result.width = Measure(width.as_float(), DynamicUnit("ch"));
   }
   return result;
@@ -154,16 +179,24 @@ TableRowStyle Sheet::row_style(const abstract::Document *,
                                std::uint32_t row) const {
   TableRowStyle result;
   pugi::xml_node row_node = m_index.row(row);
-  if (auto height = row_node.attribute("ht")) {
+  if (pugi::xml_attribute height = row_node.attribute("ht")) {
     result.height = Measure(height.as_float(), DynamicUnit("pt"));
   }
   return result;
 }
 
-TableCellStyle Sheet::cell_style(const abstract::Document *,
-                                 std::uint32_t /*column*/,
-                                 std::uint32_t /*row*/) const {
-  return TableCellStyle(); // TODO
+TableCellStyle Sheet::cell_style(const abstract::Document *document,
+                                 std::uint32_t column,
+                                 std::uint32_t row) const {
+  TableCellStyle result;
+  if (pugi::xml_attribute style_attr = m_index.cell(column, row).attribute("s");
+      style_attr) {
+    std::uint32_t style_id = style_attr.as_uint();
+    common::ResolvedStyle style =
+        style_registry_(document)->cell_style(style_id);
+    result.override(style.table_cell_style);
+  }
+  return result;
 }
 
 void Sheet::init_column_(std::uint32_t min, std::uint32_t max,
@@ -190,12 +223,15 @@ void Sheet::init_dimensions_(TableDimensions dimensions) {
   m_index.dimensions = dimensions;
 }
 
-pugi::xml_node Sheet::sheet_node_(const abstract::Document *document) const {
-  return sheet_(document, m_node.attribute("r:id").value());
-}
-
-pugi::xml_node Sheet::drawing_node_(const abstract::Document *document) const {
-  return drawing_(document, m_node.attribute("r:id").value());
+void Sheet::append_shape_(Element *shape) {
+  shape->m_previous_sibling = m_last_shape;
+  shape->m_parent = this;
+  if (m_last_shape == nullptr) {
+    m_first_shape = shape;
+  } else {
+    m_last_shape->m_next_sibling = shape;
+  }
+  m_last_shape = shape;
 }
 
 bool SheetCell::is_covered(const abstract::Document *) const {
@@ -226,10 +262,13 @@ TextStyle Span::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
 
-Text::Text(pugi::xml_node node) : Text(node, node) {}
+Text::Text(pugi::xml_node node, common::Path document_path,
+           const Relations &document_relations)
+    : Text(node, node, document_path, document_relations) {}
 
-Text::Text(pugi::xml_node first, pugi::xml_node last)
-    : Element(first), m_last{last} {}
+Text::Text(pugi::xml_node first, pugi::xml_node last,
+           common::Path document_path, const Relations &document_relations)
+    : Element(first, document_path, document_relations), m_last{last} {}
 
 std::string Text::content(const abstract::Document *) const {
   std::string result;
@@ -258,49 +297,65 @@ std::string Text::text_(const pugi::xml_node node) {
   return "";
 }
 
+Frame::Frame(pugi::xml_node node, common::Path document_path,
+             const Relations &document_relations)
+    : Element(node, document_path, document_relations),
+      m_document_path{std::move(document_path)}, m_document_relations{
+                                                     document_relations} {}
+
+const common::Path &Frame::document_path_(const abstract::Document *) const {
+  return m_document_path;
+}
+
+const Relations &Frame::document_relations_(const abstract::Document *) const {
+  return m_document_relations;
+}
+
 AnchorType Frame::anchor_type(const abstract::Document *) const {
   return AnchorType::at_page;
 }
 
 std::optional<std::string> Frame::x(const abstract::Document *) const {
-  if (auto x = read_emus_attribute(m_node.child("xdr:pic")
-                                       .child("xdr:spPr")
-                                       .child("a:xfrm")
-                                       .child("a:off")
-                                       .attribute("x"))) {
+  if (std::optional<Measure> x = read_emus_attribute(m_node.child("xdr:pic")
+                                                         .child("xdr:spPr")
+                                                         .child("a:xfrm")
+                                                         .child("a:off")
+                                                         .attribute("x"))) {
     return x->to_string();
   }
   return {};
 }
 
 std::optional<std::string> Frame::y(const abstract::Document *) const {
-  if (auto y = read_emus_attribute(m_node.child("xdr:pic")
-                                       .child("xdr:spPr")
-                                       .child("a:xfrm")
-                                       .child("a:off")
-                                       .attribute("y"))) {
+  if (std::optional<Measure> y = read_emus_attribute(m_node.child("xdr:pic")
+                                                         .child("xdr:spPr")
+                                                         .child("a:xfrm")
+                                                         .child("a:off")
+                                                         .attribute("y"))) {
     return y->to_string();
   }
   return {};
 }
 
 std::optional<std::string> Frame::width(const abstract::Document *) const {
-  if (auto width = read_emus_attribute(m_node.child("xdr:pic")
-                                           .child("xdr:spPr")
-                                           .child("a:xfrm")
-                                           .child("a:ext")
-                                           .attribute("cx"))) {
+  if (std::optional<Measure> width =
+          read_emus_attribute(m_node.child("xdr:pic")
+                                  .child("xdr:spPr")
+                                  .child("a:xfrm")
+                                  .child("a:ext")
+                                  .attribute("cx"))) {
     return width->to_string();
   }
   return {};
 }
 
 std::optional<std::string> Frame::height(const abstract::Document *) const {
-  if (auto height = read_emus_attribute(m_node.child("xdr:pic")
-                                            .child("xdr:spPr")
-                                            .child("a:xfrm")
-                                            .child("a:ext")
-                                            .attribute("cy"))) {
+  if (std::optional<Measure> height =
+          read_emus_attribute(m_node.child("xdr:pic")
+                                  .child("xdr:spPr")
+                                  .child("a:xfrm")
+                                  .child("a:ext")
+                                  .attribute("cy"))) {
     return height->to_string();
   }
   return {};
@@ -313,8 +368,8 @@ std::optional<std::string> Frame::z_index(const abstract::Document *) const {
 GraphicStyle Frame::style(const abstract::Document *) const { return {}; }
 
 bool ImageElement::is_internal(const abstract::Document *document) const {
-  auto doc = document_(document);
-  if (!doc || !doc->files()) {
+  const Document *doc = document_(document);
+  if (doc == nullptr || !doc->files()) {
     return false;
   }
   try {
@@ -326,20 +381,19 @@ bool ImageElement::is_internal(const abstract::Document *document) const {
 
 std::optional<odr::File>
 ImageElement::file(const abstract::Document *document) const {
-  auto doc = document_(document);
-  if (!doc || !is_internal(document)) {
+  const Document *doc = document_(document);
+  if (doc == nullptr || !is_internal(document)) {
     return {};
   }
   return File(doc->files()->open(href(document)));
 }
 
-std::string ImageElement::href(const abstract::Document *) const {
-  if (auto ref = m_node.attribute("r:embed")) {
-    /* TODO
+std::string ImageElement::href(const abstract::Document *document) const {
+  if (pugi::xml_attribute ref = m_node.attribute("r:embed")) {
     auto relations = document_relations_(document);
     if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
-      return common::Path("word").join(rel->second).string();
-    }*/
+      return document_path_(document).parent().join(rel->second).string();
+    }
   }
   return ""; // TODO
 }

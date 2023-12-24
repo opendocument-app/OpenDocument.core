@@ -10,7 +10,9 @@
 #include <string>
 #include <vector>
 
+#include "odr/internal/common/path.hpp"
 #include "odr/internal/common/table_position.hpp"
+#include "odr/internal/ooxml/ooxml_util.hpp"
 #include <map>
 #include <pugixml.hpp>
 
@@ -22,7 +24,8 @@ class SheetCell;
 
 class Element : public common::Element {
 public:
-  explicit Element(pugi::xml_node node);
+  Element(pugi::xml_node node, common::Path document_path,
+          const Relations &document_relations);
 
   [[nodiscard]] virtual common::ResolvedStyle
   partial_style(const abstract::Document *) const;
@@ -31,17 +34,16 @@ public:
 
   [[nodiscard]] bool is_editable(const abstract::Document *) const override;
 
+  [[nodiscard]] virtual const common::Path &
+  document_path_(const abstract::Document *) const;
+  [[nodiscard]] virtual const Relations &
+  document_relations_(const abstract::Document *) const;
+
 protected:
   pugi::xml_node m_node;
 
   static const Document *document_(const abstract::Document *);
   static const StyleRegistry *style_registry_(const abstract::Document *);
-  static pugi::xml_node sheet_(const abstract::Document *,
-                               const std::string &id);
-  static pugi::xml_node drawing_(const abstract::Document *,
-                                 const std::string &id);
-  static const std::vector<pugi::xml_node> &
-  shared_strings_(const abstract::Document *);
 };
 
 template <ElementType element_type> class DefaultElement : public Element {
@@ -55,7 +57,17 @@ public:
 
 class Root final : public DefaultElement<ElementType::root> {
 public:
-  using DefaultElement::DefaultElement;
+  Root(pugi::xml_node node, common::Path document_path,
+       const Relations &document_relations);
+
+  [[nodiscard]] const common::Path &
+  document_path_(const abstract::Document *) const final;
+  [[nodiscard]] const Relations &
+  document_relations_(const abstract::Document *) const final;
+
+private:
+  common::Path m_document_path;
+  const Relations &m_document_relations;
 };
 
 struct SheetIndex final {
@@ -82,7 +94,8 @@ struct SheetIndex final {
 
 class Sheet final : public Element, public abstract::Sheet {
 public:
-  using Element::Element;
+  Sheet(pugi::xml_node node, common::Path document_path,
+        const Relations &document_relations);
 
   [[nodiscard]] std::string name(const abstract::Document *) const final;
 
@@ -116,15 +129,23 @@ public:
   void init_cell_element_(std::uint32_t column, std::uint32_t row,
                           SheetCell *element);
   void init_dimensions_(TableDimensions dimensions);
+  void append_shape_(Element *shape);
+
+protected:
+  [[nodiscard]] const common::Path &
+  document_path_(const abstract::Document *) const final;
+  [[nodiscard]] const Relations &
+  document_relations_(const abstract::Document *) const final;
 
 private:
+  common::Path m_document_path;
+  const Relations &m_document_relations;
+
   SheetIndex m_index;
 
   std::unordered_map<common::TablePosition, SheetCell *> m_cells;
   Element *m_first_shape{nullptr};
-
-  pugi::xml_node sheet_node_(const abstract::Document *) const;
-  pugi::xml_node drawing_node_(const abstract::Document *) const;
+  Element *m_last_shape{nullptr};
 };
 
 class SheetCell final : public Element, public abstract::SheetCell {
@@ -150,8 +171,10 @@ public:
 
 class Text final : public Element, public abstract::Text {
 public:
-  explicit Text(pugi::xml_node node);
-  Text(pugi::xml_node first, pugi::xml_node last);
+  explicit Text(pugi::xml_node node, common::Path document_path,
+                const Relations &document_relations);
+  Text(pugi::xml_node first, pugi::xml_node last, common::Path document_path,
+       const Relations &document_relations);
 
   [[nodiscard]] std::string content(const abstract::Document *) const final;
 
@@ -167,7 +190,8 @@ private:
 
 class Frame final : public Element, public abstract::Frame {
 public:
-  using Element::Element;
+  Frame(pugi::xml_node node, common::Path document_path,
+        const Relations &document_relations);
 
   [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final;
 
@@ -184,6 +208,15 @@ public:
   z_index(const abstract::Document *) const final;
 
   [[nodiscard]] GraphicStyle style(const abstract::Document *) const final;
+
+  [[nodiscard]] const common::Path &
+  document_path_(const abstract::Document *) const final;
+  [[nodiscard]] const Relations &
+  document_relations_(const abstract::Document *) const final;
+
+private:
+  common::Path m_document_path;
+  const Relations &m_document_relations;
 };
 
 class ImageElement final : public Element, public abstract::Image {
