@@ -81,9 +81,10 @@ void html::translate_sheet(Element element, HtmlWriter &out,
   // TODO table column width does not work
   // TODO table row height does not work
 
-  out.write_element_begin("table", {.attributes = {{"cellpadding", "0"},
-                                                   {"border", "0"},
-                                                   {"cellspacing", "0"}}});
+  out.write_element_begin(
+      "table",
+      {.attributes = HtmlAttributesVector{
+           {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}}});
 
   auto sheet = element.sheet();
   auto dimensions = sheet.dimensions();
@@ -166,22 +167,23 @@ void html::translate_sheet(Element element, HtmlWriter &out,
       auto cell_value_type = cell.value_type();
       auto cell_elements = cell.children();
 
-      HtmlAttributes td_attributes;
-      if (cell_span.columns > 1) {
-        td_attributes.emplace_back("colspan",
-                                   std::to_string(cell_span.columns));
-      }
-      if (cell_span.rows > 1) {
-        td_attributes.emplace_back("rowspan", std::to_string(cell_span.rows));
-      }
-      std::string td_class;
-      if (cell_value_type == ValueType::float_number) {
-        td_class = "odr-value-type-float";
-      }
-      out.write_element_begin("td",
-                              {.attributes = td_attributes,
-                               .style = translate_table_cell_style(cell_style),
-                               .clazz = td_class});
+      out.write_element_begin(
+          "td", {.attributes =
+                     [&](const HtmlAttributeWriterFunction &clb) {
+                       if (cell_span.columns > 1) {
+                         clb("colspan", std::to_string(cell_span.columns));
+                       }
+                       if (cell_span.rows > 1) {
+                         clb("rowspan", std::to_string(cell_span.rows));
+                       }
+                     },
+                 .style = translate_table_cell_style(cell_style),
+                 .clazz = [&]() -> std::optional<HtmlWritable> {
+                   if (cell_value_type == ValueType::float_number) {
+                     return "odr-value-type-float";
+                   }
+                   return std::nullopt;
+                 }()});
       if ((column_index == 0) && (row_index == 0)) {
         for (auto shape : sheet.shapes()) {
           translate_element(shape, out, config);
@@ -227,14 +229,17 @@ void html::translate_text(const Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
   auto text = element.text();
 
-  HtmlAttributes attributes;
-  if (config.editable && element.is_editable()) {
-    attributes.emplace_back("contenteditable", "true");
-    attributes.emplace_back("data-odr-path",
-                            DocumentPath::extract(element).to_string());
-  }
-  out.write_element_begin("x-s", {.inline_element = true,
-                                  .style = translate_text_style(text.style())});
+  out.write_element_begin(
+      "x-s", {.inline_element = true,
+              .attributes =
+                  [&](const HtmlAttributeWriterFunction &clb) {
+                    if (config.editable && element.is_editable()) {
+                      clb("contenteditable", "true");
+                      clb("data-odr-path",
+                          DocumentPath::extract(element).to_string());
+                    }
+                  },
+              .style = translate_text_style(text.style())});
   out.out() << internal::html::escape_text(text.content());
   out.write_element_end("x-s");
 }
@@ -290,7 +295,8 @@ void html::translate_link(Element element, HtmlWriter &out,
   auto link = element.link();
 
   out.write_element_begin(
-      "a", {.inline_element = true, .attributes = {{"href", link.href()}}});
+      "a", {.inline_element = true,
+            .attributes = HtmlAttributesVector{{"href", link.href()}}});
   translate_children(link.children(), out, config);
   out.write_element_end("a");
 }
@@ -300,7 +306,8 @@ void html::translate_bookmark(Element element, HtmlWriter &out,
   auto bookmark = element.bookmark();
 
   out.write_element_begin(
-      "a", {.inline_element = true, .attributes = {{"id", bookmark.name()}}});
+      "a", {.inline_element = true,
+            .attributes = HtmlAttributesVector{{"id", bookmark.name()}}});
   out.write_element_end("a");
 }
 
@@ -327,11 +334,11 @@ void html::translate_table(Element element, HtmlWriter &out,
   // TODO table row height does not work
   auto table = element.table();
 
-  out.write_element_begin("table",
-                          {.attributes = {{"cellpadding", "0"},
-                                          {"border", "0"},
-                                          {"cellspacing", "0"}},
-                           .style = translate_table_style(table.style())});
+  out.write_element_begin(
+      "table", {.attributes = HtmlAttributesVector{{"cellpadding", "0"},
+                                                   {"border", "0"},
+                                                   {"cellspacing", "0"}},
+                .style = translate_table_style(table.style())});
 
   for (auto column : table.columns()) {
     auto table_column = column.table_column();
@@ -353,16 +360,16 @@ void html::translate_table(Element element, HtmlWriter &out,
       if (!table_cell.is_covered()) {
         auto cell_span = table_cell.span();
 
-        HtmlAttributes td_attributes;
-        if (cell_span.columns > 1) {
-          td_attributes.emplace_back("colspan",
-                                     std::to_string(cell_span.columns));
-        }
-        if (cell_span.rows > 1) {
-          td_attributes.emplace_back("rowspan", std::to_string(cell_span.rows));
-        }
         out.write_element_begin(
-            "td", {.attributes = td_attributes,
+            "td", {.attributes =
+                       [&](const HtmlAttributeWriterFunction &clb) {
+                         if (cell_span.columns > 1) {
+                           clb("colspan", std::to_string(cell_span.columns));
+                         }
+                         if (cell_span.rows > 1) {
+                           clb("rowspan", std::to_string(cell_span.rows));
+                         }
+                       },
                    .style = translate_table_cell_style(table_cell.style())});
 
         translate_children(cell.children(), out, config);

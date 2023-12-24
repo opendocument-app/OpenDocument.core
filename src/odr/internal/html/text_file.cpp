@@ -42,9 +42,10 @@ Html html::translate_text_file(const TextFile &text_file,
     auto in = text_file.stream();
     std::uint32_t line = 1;
 
-    out.write_element_begin("table", {.attributes = {{"cellpadding", "0"},
-                                                     {"border", "0"},
-                                                     {"cellspacing", "0"}}});
+    out.write_element_begin(
+        "table",
+        {.attributes = HtmlAttributesVector{
+             {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}}});
 
     while (true) {
       out.write_element_begin("tr");

@@ -1,9 +1,12 @@
 #ifndef ODR_INTERNAL_HTML_HTML_WRITER_H
 #define ODR_INTERNAL_HTML_HTML_WRITER_H
 
-#include "odr/html.hpp"
+#include <odr/html.hpp>
+
+#include <functional>
 #include <iosfwd>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace odr::internal::html {
@@ -14,18 +17,26 @@ enum class HtmlCloseType {
   none,
 };
 
-using HtmlAttributes = std::vector<std::pair<std::string, std::string>>;
+using HtmlWriteCallback = std::function<void(std::ostream &)>;
+using HtmlWritable = std::variant<const char *, std::string, HtmlWriteCallback>;
+using HtmlAttributeWriterFunction =
+    std::function<void(const HtmlWritable &, const HtmlWritable &)>;
+using HtmlAttributeCallback =
+    std::function<void(const HtmlAttributeWriterFunction &)>;
+using HtmlAttributesVector = std::vector<std::pair<HtmlWritable, HtmlWritable>>;
+using HtmlAttributes =
+    std::variant<HtmlAttributesVector, HtmlAttributeCallback>;
 
 struct HtmlElementOptions {
   bool inline_element{false};
   HtmlCloseType close_type{HtmlCloseType::standard};
 
-  HtmlAttributes attributes{};
+  std::optional<HtmlAttributes> attributes{};
 
-  std::string style{};
-  std::string clazz{};
+  std::optional<HtmlWritable> style{};
+  std::optional<HtmlWritable> clazz{};
 
-  std::string extra{};
+  std::optional<HtmlWritable> extra{};
 };
 
 class HtmlWriter {
@@ -58,6 +69,7 @@ public:
 
   bool is_inline_mode() const;
   void write_new_line();
+  void write_raw(const HtmlWritable &writable, bool new_line = true);
 
   std::ostream &out();
 

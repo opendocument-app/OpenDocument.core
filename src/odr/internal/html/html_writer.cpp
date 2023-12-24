@@ -7,6 +7,71 @@
 
 namespace odr::internal::html {
 
+namespace {
+
+template <class... Ts> struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+void write_writable(std::ostream &out, const HtmlWritable &writable) {
+  std::visit(overloaded{
+                 [&out](const char *str) { out << str; },
+                 [&out](const std::string &str) { out << str; },
+                 [&out](const HtmlWriteCallback &clb) { clb(out); },
+             },
+             writable);
+}
+
+void write_key_value(std::ostream &out, const HtmlWritable &key,
+                     const HtmlWritable &value) {
+  out << " ";
+  write_writable(out, key);
+  out << "=\"";
+  write_writable(out, value);
+  out << "\"";
+}
+
+void write_attributes(std::ostream &out, const HtmlAttributes &attributes) {
+  std::visit(overloaded{
+                 [&out](const HtmlAttributesVector &vector) {
+                   for (const auto &[key, value] : vector) {
+                     write_key_value(out, key, value);
+                   }
+                 },
+                 [&out](const HtmlAttributeCallback &callback) {
+                   callback([&out](const HtmlWritable &key,
+                                   const HtmlWritable &value) {
+                     write_key_value(out, key, value);
+                   });
+                 },
+             },
+             attributes);
+}
+
+void write_element_options(std::ostream &out,
+                           const HtmlElementOptions &options) {
+  if (options.clazz) {
+    out << " class=\"";
+    write_writable(out, *options.clazz);
+    out << "\"";
+  }
+  if (options.style) {
+    out << " style=\"";
+    write_writable(out, *options.style);
+    out << "\"";
+  }
+  if (options.attributes) {
+    write_attributes(out, *options.attributes);
+  }
+  if (options.extra) {
+    out << " ";
+    write_writable(out, *options.extra);
+  }
+}
+
+} // namespace
+
 HtmlWriter::HtmlWriter(std::ostream &out, bool format, std::uint8_t indent)
     : m_out{out}, m_format{format}, m_indent(indent, ' ') {}
 
@@ -112,20 +177,7 @@ void HtmlWriter::write_body_begin(HtmlElementOptions options) {
   ++m_current_indent;
 
   m_out << "<body";
-
-  if (!options.clazz.empty()) {
-    m_out << " class=\"" << options.clazz << "\"";
-  }
-  if (!options.style.empty()) {
-    m_out << " style=\"" << options.style << "\"";
-  }
-  for (const auto &[key, value] : options.attributes) {
-    m_out << " " << key << "=\"" << value << "\"";
-  }
-  if (!options.extra.empty()) {
-    m_out << " " << options.extra;
-  }
-
+  write_element_options(m_out, options);
   m_out << ">";
 }
 
@@ -145,20 +197,7 @@ void HtmlWriter::write_element_begin(const std::string &name,
   }
 
   m_out << "<" << name;
-
-  if (!options.clazz.empty()) {
-    m_out << " class=\"" << options.clazz << "\"";
-  }
-  if (!options.style.empty()) {
-    m_out << " style=\"" << options.style << "\"";
-  }
-  for (const auto &[key, value] : options.attributes) {
-    m_out << " " << key << "=\"" << value << "\"";
-  }
-  if (!options.extra.empty()) {
-    m_out << " " << options.extra;
-  }
-
+  write_element_options(m_out, options);
   if (options.close_type == HtmlCloseType::trailing) {
     m_out << "/>";
   } else {
@@ -202,6 +241,14 @@ void HtmlWriter::write_new_line() {
   for (std::uint32_t i = 0; i < m_current_indent; ++i) {
     m_out << m_indent;
   }
+}
+
+void HtmlWriter::write_raw(const HtmlWritable &writable, bool new_line) {
+  if (new_line) {
+    write_new_line();
+  }
+
+  write_writable(m_out, writable);
 }
 
 std::ostream &HtmlWriter::out() { return m_out; }
