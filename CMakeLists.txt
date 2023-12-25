@@ -8,8 +8,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(ODR_TEST "enable tests" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-
 # TODO defining global compiler flags seems to be bad practice with conan
 # TODO consider using conan profiles
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
