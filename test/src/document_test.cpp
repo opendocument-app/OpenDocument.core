@@ -1,6 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/html.hpp>
+#include <odr/quantity.hpp>
 
 #include <test_util.hpp>
 
