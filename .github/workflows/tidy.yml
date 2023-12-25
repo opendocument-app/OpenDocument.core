@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: cmake
-        run: cmake -B build -S . -GNinja -DCMAKE_BUILD_TYPE=Release -DODR_CLANG_TIDY
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DODR_CLANG_TIDY
 
       - name: clang-tidy
         run: cmake --build build
