@@ -68,7 +68,7 @@ jobs:
           CXX: ${{ matrix.config.cxx }}
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
       - name: build
-        run: cmake --build build --config Release # `config Release` somehow necessary by windows
+        run: cmake --build build
 
       - name: upload binaries
         uses: actions/upload-artifact@v2
