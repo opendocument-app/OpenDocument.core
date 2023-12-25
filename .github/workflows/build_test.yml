@@ -22,11 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-22.04, cc: clang, cxx: clang++ }
-          - { os: ubuntu-22.04, cc: gcc, cxx: g++ }
-          - { os: macos-12, cc: clang, cxx: clang++ }
-          - { os: windows-2022 }
-          - { os: ubuntu-20.04, cc: clang, cxx: clang++ } # TODO remove; but there is no firefox in 22.04 yet
+          - { os: ubuntu-22.04, compiler: clang, cc: clang-15, cxx: clang++-15 }
+          - { os: ubuntu-22.04, compiler: gcc, cc: gcc-13, cxx: g++-13 }
+          - { os: macos-12, compiler: clang, cc: clang, cxx: clang++ }
+          - { os: windows-2022, compiler: msvc }
 
     steps:
       - name: ubuntu install ccache
@@ -56,9 +55,9 @@ jobs:
             ~/.conan/data
             C:/.conan
             C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.cxx }}-${{ env.CCACHE_KEY_SUFFIX }}
+          key: ${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ env.CCACHE_KEY_SUFFIX }}
           restore-keys: |
-            ${{ matrix.config.os }}-${{ matrix.config.cxx }}-
+            ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
 
       - name: checkout
         uses: actions/checkout@v2
@@ -79,7 +78,7 @@ jobs:
       - name: upload binaries
         uses: actions/upload-artifact@v2
         with:
-          name: bin-${{ matrix.config.os }}-${{ matrix.config.cxx }}
+          name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
           path: |
             build/test/odr_test
 
@@ -90,8 +89,8 @@ jobs:
       fail-fast: true
       matrix:
         config:
-          - { os: ubuntu-20.04, bin: bin-ubuntu-20.04-clang++ }
-          - { os: macos-12, bin: bin-macos-12-clang++ }
+          - { os: ubuntu-22.04, bin: bin-ubuntu-22.04-clang }
+          - { os: macos-12, bin: bin-macos-12-clang }
 
     steps:
       - name: ubuntu install tidy
