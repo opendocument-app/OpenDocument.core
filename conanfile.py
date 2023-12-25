@@ -21,7 +21,7 @@ class OpenDocumentCoreConan(ConanFile):
 
     exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
 
-    requires = ["pugixml/1.11", "cryptopp/8.5.0", "miniz/2.1.0", "nlohmann_json/3.10.4",
+    requires = ["pugixml/1.14", "cryptopp/8.8.0", "miniz/2.2.0", "nlohmann_json/3.11.3",
                 "vincentlaucsb-csv-parser/2.1.3", "uchardet/0.0.7"]
     build_requires = ["gtest/1.14.0"]
     generators = "cmake_paths", "cmake_find_package"
