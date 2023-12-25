@@ -141,7 +141,7 @@ void html::translate_sheet(Element element, HtmlWriter &out,
 
     out.write_element_begin(
         "td", {.inline_element = true, .style = [&]() {
-                 std::string style = "text-align:center;vertical-align:middle";
+                 std::string style = "text-align:center;vertical-align:middle;";
                  if (auto height = table_row_style.height) {
                    style += "height:" + height->to_string() + ";";
                    style += "max-height:" + height->to_string() + ";";
@@ -258,7 +258,8 @@ void html::translate_paragraph(Element element, HtmlWriter &out,
   auto paragraph = element.paragraph();
 
   out.write_element_begin(
-      "x-p", {.style = "display:block;" +
+      "x-p", {.inline_element = true,
+              .style = "display:block;" +
                        translate_paragraph_style(paragraph.style())});
   translate_children(paragraph.children(), out, config);
   if (paragraph.first_child()) {
