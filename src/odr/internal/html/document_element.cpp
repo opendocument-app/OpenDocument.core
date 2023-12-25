@@ -320,10 +320,10 @@ void html::translate_list_item(Element element, HtmlWriter &out,
                                const HtmlConfig &config) {
   auto list_item = element.list_item();
 
-  out.write_element_begin("ul",
+  out.write_element_begin("li",
                           {.style = translate_text_style(list_item.style())});
   translate_children(list_item.children(), out, config);
-  out.write_element_end("ul");
+  out.write_element_end("li");
 }
 
 void html::translate_table(Element element, HtmlWriter &out,
