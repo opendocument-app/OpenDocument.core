@@ -67,7 +67,7 @@ jobs:
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
-        run: cmake -B build -S . -GNinja -DCMAKE_BUILD_TYPE=Release ..
+        run: cmake -B build -S . -GNinja -DCMAKE_BUILD_TYPE=Release
       - name: build
         run: cmake --build build --config Release # `config Release` somehow necessary by windows
 
