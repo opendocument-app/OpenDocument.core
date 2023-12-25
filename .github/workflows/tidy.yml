@@ -15,10 +15,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: ubuntu install clang-tidy
-        run: |
-          sudo apt install clang-tidy-12
-          clang-tidy-12 --version
+      - run: clang-tidy --version
 
       - name: set up python 3.8
         uses: actions/setup-python@v2
@@ -31,12 +28,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: cmake
-        run: |
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+        run: cmake -B build -S . -GNinja -DCMAKE_BUILD_TYPE=Release -DODR_CLANG_TIDY
 
       - name: clang-tidy
-        run: |
-          FILES=$( find . -path ./build -prune -false -o -type f \( -iname \*.cpp \) )
-          clang-tidy-12 -p build -header-filter '.*' $FILES
+        run: cmake --build build
