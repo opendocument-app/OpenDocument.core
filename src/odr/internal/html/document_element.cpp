@@ -301,7 +301,9 @@ void html::translate_link(Element element, HtmlWriter &out,
 }
 
 void html::translate_bookmark(Element element, HtmlWriter &out,
-                              const HtmlConfig & /*config*/) {
+                              const HtmlConfig &config) {
+  (void)config;
+
   auto bookmark = element.bookmark();
 
   out.write_element_begin(
