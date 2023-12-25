@@ -5,15 +5,15 @@
 #include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/sheet_element.hpp>
 #include <odr/internal/common/document_element.hpp>
+#include <odr/internal/common/path.hpp>
 #include <odr/internal/common/style.hpp>
+#include <odr/internal/common/table_position.hpp>
+#include <odr/internal/ooxml/ooxml_util.hpp>
 
+#include <map>
 #include <string>
 #include <vector>
 
-#include "odr/internal/common/path.hpp"
-#include "odr/internal/common/table_position.hpp"
-#include "odr/internal/ooxml/ooxml_util.hpp"
-#include <map>
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {

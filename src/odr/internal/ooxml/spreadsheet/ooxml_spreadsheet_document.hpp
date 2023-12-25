@@ -5,6 +5,7 @@
 
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
@@ -12,7 +13,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "odr/internal/ooxml/ooxml_util.hpp"
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
