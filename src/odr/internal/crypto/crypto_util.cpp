@@ -1,5 +1,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 
+#include <cstdint>
+
 #include <cryptopp/aes.h>
 #include <cryptopp/base64.h>
 #include <cryptopp/blowfish.h>

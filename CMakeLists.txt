@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ODR_TEST "enable tests" ON)
+option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 
 # TODO defining global compiler flags seems to be bad practice with conan
 # TODO consider using conan profiles
@@ -38,7 +39,6 @@ if (NOT DEFINED CONAN_EXPORTED)
     conan_cmake_install(PATH_OR_REFERENCE ".."
             BUILD missing
             SETTINGS ${settings}
-            SETTINGS compiler.cppstd=${CMAKE_CXX_STANDARD}
             ENV CC=${CMAKE_C_COMPILER}
             ENV CXX=${CMAKE_CXX_COMPILER})
     #include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
@@ -164,7 +164,7 @@ add_library(odr
 
         "src/odr/internal/zip/zip_util.cpp"
         "src/odr/internal/zip/zip_archive.cpp"
-        )
+)
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
     add_dependencies(odr check_git)
@@ -172,7 +172,7 @@ endif ()
 target_include_directories(odr
         PUBLIC
         src
-        )
+)
 target_link_libraries(odr
         PRIVATE
         pugixml::pugixml
@@ -181,12 +181,16 @@ target_link_libraries(odr
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
-        )
+)
 
 add_subdirectory("cli")
 
 if (ODR_TEST)
     add_subdirectory("test")
+endif ()
+
+if (ODR_CLANG_TIDY)
+    add_subdirectory("static_analysis/clang-tidy")
 endif ()
 
 install(
