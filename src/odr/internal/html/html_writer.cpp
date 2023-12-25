@@ -2,6 +2,7 @@
 
 #include <odr/internal/html/common.hpp>
 
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
 
@@ -13,6 +14,16 @@ template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
 };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+bool is_empty(const HtmlWritable &writable) {
+  return std::visit(
+      overloaded{
+          [](const char *str) { return std::strcmp(str, "") == 0; },
+          [](const std::string &str) { return str.empty(); },
+          [](const HtmlWriteCallback &) { return false; },
+      },
+      writable);
+}
 
 void write_writable(std::ostream &out, const HtmlWritable &writable) {
   std::visit(overloaded{
@@ -51,12 +62,12 @@ void write_attributes(std::ostream &out, const HtmlAttributes &attributes) {
 
 void write_element_options(std::ostream &out,
                            const HtmlElementOptions &options) {
-  if (options.clazz) {
+  if (options.clazz && !is_empty(*options.clazz)) {
     out << " class=\"";
     write_writable(out, *options.clazz);
     out << "\"";
   }
-  if (options.style) {
+  if (options.style && !is_empty(*options.style)) {
     out << " style=\"";
     write_writable(out, *options.style);
     out << "\"";

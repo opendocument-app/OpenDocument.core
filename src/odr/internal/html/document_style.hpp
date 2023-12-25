@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_HTML_DOCUMENT_STYLE_H
 #define ODR_INTERNAL_HTML_DOCUMENT_STYLE_H
 
+#include <optional>
 #include <string>
 
 namespace odr {
@@ -48,8 +49,6 @@ std::string translate_frame_properties(const Frame &frame);
 std::string translate_rect_properties(const Rect &rect);
 std::string translate_circle_properties(const Circle &circle);
 std::string translate_custom_shape_properties(const CustomShape &custom_shape);
-
-std::string optional_style_attribute(const std::string &style);
 
 } // namespace odr::internal::html
 

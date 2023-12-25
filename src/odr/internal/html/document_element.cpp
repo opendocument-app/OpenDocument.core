@@ -63,11 +63,9 @@ void html::translate_slide(Element element, HtmlWriter &out,
   auto slide = element.slide();
 
   out.write_element_begin(
-      "div",
-      {.style = translate_outer_page_style(slide.page_layout()).c_str()});
+      "div", {.style = translate_outer_page_style(slide.page_layout())});
   out.write_element_begin(
-      "div",
-      {.style = translate_inner_page_style(slide.page_layout()).c_str()});
+      "div", {.style = translate_inner_page_style(slide.page_layout())});
 
   translate_master_page(slide.master_page(), out, config);
   translate_children(slide.children(), out, config);
@@ -110,9 +108,8 @@ void html::translate_sheet(Element element, HtmlWriter &out,
     auto table_column_style = table_column.style();
 
     out.write_element_begin(
-        "col",
-        {.close_type = HtmlCloseType::none,
-         .style = translate_table_column_style(table_column_style).c_str()});
+        "col", {.close_type = HtmlCloseType::none,
+                .style = translate_table_column_style(table_column_style)});
   }
 
   {
@@ -140,15 +137,17 @@ void html::translate_sheet(Element element, HtmlWriter &out,
     auto table_row_style = table_row.style();
 
     out.write_element_begin(
-        "tr", {.style = translate_table_row_style(table_row_style).c_str()});
+        "tr", {.style = translate_table_row_style(table_row_style)});
 
-    std::string td_style = "text-align:center;vertical-align:middle";
-    if (auto height = table_row_style.height) {
-      td_style += "height:" + height->to_string() + ";";
-      td_style += "max-height:" + height->to_string() + ";";
-    }
     out.write_element_begin(
-        "td", {.inline_element = true, .style = td_style.c_str()});
+        "td", {.inline_element = true, .style = [&]() {
+                 std::string style = "text-align:center;vertical-align:middle";
+                 if (auto height = table_row_style.height) {
+                   style += "height:" + height->to_string() + ";";
+                   style += "max-height:" + height->to_string() + ";";
+                 }
+                 return style;
+               }()});
     out.out() << common::TablePosition::to_row_string(row_index);
     out.write_element_end("td");
 
@@ -206,7 +205,6 @@ void html::translate_sheet(Element element, HtmlWriter &out,
 void html::translate_page(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
   auto page = element.page();
-
   out.write_element_begin(
       "div", {.style = translate_outer_page_style(page.page_layout())});
   out.write_element_begin(
@@ -388,19 +386,21 @@ void html::translate_image(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
   auto image = element.image();
 
-  out.write_new_line();
-  out.out()
-      << "<img style=\"position:absolute;left:0;top:0;width:100%;height:100%\"";
-  out.out() << " alt=\"Error: image not found or unsupported\"";
-  out.out() << " src=\"";
-
-  if (image.is_internal()) {
-    translate_image_src(image.file().value(), out.out(), config);
-  } else {
-    out.out() << image.href();
-  }
-
-  out.out() << "\">";
+  out.write_element_begin(
+      "img",
+      {.close_type = HtmlCloseType::trailing,
+       .attributes =
+           [&](const HtmlAttributeWriterCallback &clb) {
+             clb("alt", "Error: image not found or unsupported");
+             if (image.is_internal()) {
+               clb("src", [&](std::ostream &o) {
+                 translate_image_src(image.file().value(), o, config);
+               });
+             } else {
+               clb("src", image.href());
+             }
+           },
+       .style = "position:absolute;left:0;top:0;width:100%;height:100%"});
 }
 
 void html::translate_frame(Element element, HtmlWriter &out,
@@ -423,8 +423,8 @@ void html::translate_rect(Element element, HtmlWriter &out,
                                            translate_drawing_style(style)});
   translate_children(rect.children(), out, config);
   out.write_new_line();
-  out.out()
-      << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)";
+  out.write_raw(
+      R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)");
   out.write_element_end("div");
 }
 
@@ -433,22 +433,22 @@ void html::translate_line(Element element, HtmlWriter &out,
   auto line = element.line();
   auto style = line.style();
 
-  out.write_new_line();
-  out.out()
-      << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible")";
-  out.out() << optional_style_attribute(
-      "z-index:-1;position:absolute;top:0;left:0;" +
-      translate_drawing_style(style));
-  out.out() << ">";
+  out.write_element_begin(
+      "svg", {.attributes =
+                  HtmlAttributesVector{{"xmlns", "http://www.w3.org/2000/svg"},
+                                       {"version", "1.1"},
+                                       {"overflow", "visible"}},
+              .style = "z-index:-1;position:absolute;top:0;left:0;" +
+                       translate_drawing_style(style)});
 
-  out.write_new_line();
-  out.out() << "<line";
-  out.out() << " x1=\"" << line.x1() << "\" y1=\"" << line.y1() << "\"";
-  out.out() << " x2=\"" << line.x2() << "\" y2=\"" << line.y2() << "\"";
-  out.out() << " />";
+  out.write_element_begin(
+      "line", {.close_type = HtmlCloseType::trailing,
+               .attributes = HtmlAttributesVector{{"x1", line.x1()},
+                                                  {"y1", line.y1()},
+                                                  {"x2", line.x2()},
+                                                  {"y2", line.y2()}}});
 
-  out.write_new_line();
-  out.out() << "</svg>";
+  out.write_element_end("svg");
 }
 
 void html::translate_circle(Element element, HtmlWriter &out,
@@ -460,8 +460,8 @@ void html::translate_circle(Element element, HtmlWriter &out,
                                            translate_drawing_style(style)});
   out.write_new_line();
   translate_children(circle.children(), out, config);
-  out.out()
-      << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)";
+  out.write_raw(
+      R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)");
   out.write_element_end("div");
 }
 

@@ -388,11 +388,4 @@ html::translate_custom_shape_properties(const CustomShape &custom_shape) {
   return result;
 }
 
-std::string html::optional_style_attribute(const std::string &style) {
-  if (style.empty()) {
-    return "";
-  }
-  return " style=\"" + style + "\"";
-}
-
 } // namespace odr::internal
