@@ -302,6 +302,7 @@ void html::translate_link(Element element, HtmlWriter &out,
 
 void html::translate_bookmark(Element element, HtmlWriter &out,
                               const HtmlConfig &config) {
+  // TODO remove; necessary because of weird MSVC bug
   (void)config;
 
   auto bookmark = element.bookmark();
@@ -432,7 +433,10 @@ void html::translate_rect(Element element, HtmlWriter &out,
 }
 
 void html::translate_line(Element element, HtmlWriter &out,
-                          const HtmlConfig & /*config*/) {
+                          const HtmlConfig &config) {
+  // TODO remove; necessary because of weird MSVC bug
+  (void)config;
+
   auto line = element.line();
   auto style = line.style();
 
