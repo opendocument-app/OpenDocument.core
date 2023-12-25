@@ -23,7 +23,7 @@ class OpenDocumentCoreConan(ConanFile):
 
     requires = ["pugixml/1.11", "cryptopp/8.5.0", "miniz/2.1.0", "nlohmann_json/3.10.4",
                 "vincentlaucsb-csv-parser/2.1.3", "uchardet/0.0.7"]
-    build_requires = ["gtest/1.11.0"]
+    build_requires = ["gtest/1.14.0"]
     generators = "cmake_paths", "cmake_find_package"
 
     _cmake = None
