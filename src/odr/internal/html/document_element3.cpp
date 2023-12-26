@@ -100,23 +100,24 @@ void html::translate_sheet(Element element, HtmlWriter &out,
       TableDimensions cell_span = cell.span();
       ValueType cell_value_type = cell.value_type();
 
-      out.write_element_begin(
-          "td", {.attributes =
-                     [&](const HtmlAttributeWriterCallback &clb) {
-                       if (cell_span.columns > 1) {
-                         clb("colspan", std::to_string(cell_span.columns));
-                       }
-                       if (cell_span.rows > 1) {
-                         clb("rowspan", std::to_string(cell_span.rows));
-                       }
-                     },
-                 .style = translate_table_cell_style(cell_style),
-                 .clazz = [&]() -> std::optional<HtmlWritable> {
-                   if (cell_value_type == ValueType::float_number) {
-                     return "odr-value-type-float";
-                   }
-                   return std::nullopt;
-                 }()});
+      auto attributes = [&](const HtmlAttributeWriterCallback &clb) {
+        if (cell_span.columns > 1) {
+          clb("colspan", std::to_string(cell_span.columns));
+        }
+        if (cell_span.rows > 1) {
+          clb("rowspan", std::to_string(cell_span.rows));
+        }
+      };
+      auto clazz = [&]() -> std::optional<HtmlWritable> {
+        if (cell_value_type == ValueType::float_number) {
+          return "odr-value-type-float";
+        }
+        return std::nullopt;
+      }();
+      out.write_element_begin("td",
+                              {.attributes = attributes,
+                               .style = translate_table_cell_style(cell_style),
+                               .clazz = clazz});
       if ((column_index == 0) && (row_index == 0)) {
         for (Element shape : sheet.shapes()) {
           translate_element(shape, out, config);
@@ -134,6 +135,8 @@ void html::translate_sheet(Element element, HtmlWriter &out,
   }
 
   out.write_element_end("table");
+
+  return;
 }
 
 } // namespace odr::internal
