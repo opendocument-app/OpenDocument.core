@@ -25,8 +25,7 @@ jobs:
           - { os: ubuntu-22.04, compiler: clang, cc: clang-15, cxx: clang++-15 }
           - { os: ubuntu-22.04, compiler: gcc, cc: gcc-13, cxx: g++-13 }
           - { os: macos-12, compiler: clang, cc: clang, cxx: clang++ }
-          # TODO compiler crashes; try again with other version
-          #- { os: windows-2022, compiler: msvc }
+          - { os: windows-2022, compiler: msvc }
 
     steps:
       - name: ubuntu install ccache
