@@ -15,6 +15,8 @@ namespace odr::internal {
 
 Html html::translate_text_file(const TextFile &text_file,
                                const std::string &path,
-                               const HtmlConfig &config) {}
+                               const HtmlConfig &config) {
+  return Html(FileType::text_file, config, {});
+}
 
 } // namespace odr::internal
