@@ -60,10 +60,10 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
 }
 
 Html html::translate_image_file(const ImageFile &image_file,
-                                const std::string &path,
+                                const std::string &output_path,
                                 const HtmlConfig &config) {
-  auto output_path = path + "/image.html";
-  std::ofstream ostream(output_path);
+  auto output_file_path = output_path + "/image.html";
+  std::ofstream ostream(output_file_path);
   if (!ostream.is_open()) {
     throw FileWriteError();
   }
@@ -94,7 +94,7 @@ Html html::translate_image_file(const ImageFile &image_file,
   out.write_body_end();
   out.write_end();
 
-  return {image_file.file_type(), config, {{"image", output_path}}};
+  return {image_file.file_type(), config, {{"image", output_file_path}}};
 }
 
 } // namespace odr::internal

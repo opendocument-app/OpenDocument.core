@@ -90,25 +90,25 @@ public:
       : m_parent(std::move(parent)), m_manifest(std::move(manifest)),
         m_start_key(std::move(start_key)) {}
 
-  [[nodiscard]] bool exists(common::Path p) const final {
-    return m_parent->exists(std::move(p));
+  [[nodiscard]] bool exists(const common::Path &path) const final {
+    return m_parent->exists(path);
   }
 
-  [[nodiscard]] bool is_file(common::Path p) const final {
-    return m_parent->is_file(std::move(p));
+  [[nodiscard]] bool is_file(const common::Path &path) const final {
+    return m_parent->is_file(path);
   }
 
-  [[nodiscard]] bool is_directory(common::Path p) const final {
-    return m_parent->is_directory(std::move(p));
+  [[nodiscard]] bool is_directory(const common::Path &path) const final {
+    return m_parent->is_directory(path);
   }
 
   [[nodiscard]] std::unique_ptr<abstract::FileWalker>
-  file_walker(common::Path path) const final {
+  file_walker(const common::Path &path) const final {
     return m_parent->file_walker(path);
   }
 
   [[nodiscard]] std::shared_ptr<abstract::File>
-  open(common::Path path) const final {
+  open(const common::Path &path) const final {
     const auto it = m_manifest.entries.find(path);
     if (it == std::end(m_manifest.entries)) {
       return m_parent->open(path);

@@ -88,11 +88,11 @@ struct HtmlPage final {
 };
 
 namespace html {
-Html translate(const TextFile &text_file, const std::string &path,
+Html translate(const TextFile &text_file, const std::string &output_path,
                const HtmlConfig &config);
-Html translate(const ImageFile &image_file, const std::string &path,
+Html translate(const ImageFile &image_file, const std::string &output_path,
                const HtmlConfig &config);
-Html translate(const Document &document, const std::string &path,
+Html translate(const Document &document, const std::string &output_path,
                const HtmlConfig &config);
 void edit(const Document &document, const char *diff);
 } // namespace html

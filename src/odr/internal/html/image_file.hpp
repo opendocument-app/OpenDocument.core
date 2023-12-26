@@ -18,7 +18,8 @@ void translate_image_src(const File &file, std::ostream &out,
 void translate_image_src(const ImageFile &image_file, std::ostream &out,
                          const HtmlConfig &config);
 
-Html translate_image_file(const ImageFile &image_file, const std::string &path,
+Html translate_image_file(const ImageFile &image_file,
+                          const std::string &output_path,
                           const HtmlConfig &config);
 
 } // namespace odr::internal::html

@@ -23,8 +23,8 @@ using namespace odr;
 using namespace odr::internal;
 using namespace odr::internal::html;
 
-void front(const Document &document, const std::string &path, HtmlWriter &out,
-           const HtmlConfig &config) {
+void front(const Document &document, const std::string &output_path,
+           HtmlWriter &out, const HtmlConfig &config) {
   out.write_begin();
   out.write_header_begin();
   out.write_header_charset("UTF-8");
@@ -55,7 +55,7 @@ void front(const Document &document, const std::string &path, HtmlWriter &out,
     auto odr_css_path =
         common::Path(config.external_resource_path).join("odr.css");
     if (config.relative_resource_paths) {
-      odr_css_path = common::Path(odr_css_path).rebase(path);
+      odr_css_path = common::Path(odr_css_path).rebase(output_path);
     }
     out.write_header_style(odr_css_path.string().c_str());
     if (document.document_type() == DocumentType::spreadsheet) {
@@ -64,7 +64,7 @@ void front(const Document &document, const std::string &path, HtmlWriter &out,
               .join("odr_spreadsheet.css");
       if (config.relative_resource_paths) {
         odr_spreadsheet_css_path =
-            common::Path(odr_spreadsheet_css_path).rebase(path);
+            common::Path(odr_spreadsheet_css_path).rebase(output_path);
       }
       out.write_header_style(odr_spreadsheet_css_path.string().c_str());
     }
@@ -89,7 +89,7 @@ void front(const Document &document, const std::string &path, HtmlWriter &out,
   out.write_body_begin(HtmlElementOptions().set_class(body_clazz));
 }
 
-void back(const Document &, const std::string &path,
+void back(const Document &, const std::string &output_path,
           internal::html::HtmlWriter &out, const HtmlConfig &config) {
   if (config.embed_resources) {
     out.write_script_begin();
@@ -101,7 +101,7 @@ void back(const Document &, const std::string &path,
     auto odr_js_path =
         common::Path(config.external_resource_path).join("odr.js");
     if (config.relative_resource_paths) {
-      odr_js_path = common::Path(odr_js_path).rebase(path);
+      odr_js_path = common::Path(odr_js_path).rebase(output_path);
     }
     out.write_script(odr_js_path.string().c_str());
   }
@@ -130,26 +130,29 @@ std::ofstream output(const std::string &path) {
 
 namespace odr::internal {
 
-Html html::translate_document(const Document &document, const std::string &path,
+Html html::translate_document(const Document &document,
+                              const std::string &output_path,
                               const HtmlConfig &config) {
   if (document.document_type() == DocumentType::text) {
-    return internal::html::translate_text_document(document, path, config);
+    return internal::html::translate_text_document(document, output_path,
+                                                   config);
   } else if (document.document_type() == DocumentType::presentation) {
-    return internal::html::translate_presentation(document, path, config);
+    return internal::html::translate_presentation(document, output_path,
+                                                  config);
   } else if (document.document_type() == DocumentType::spreadsheet) {
-    return internal::html::translate_spreadsheet(document, path, config);
+    return internal::html::translate_spreadsheet(document, output_path, config);
   } else if (document.document_type() == DocumentType::drawing) {
-    return internal::html::translate_drawing(document, path, config);
+    return internal::html::translate_drawing(document, output_path, config);
   } else {
     throw UnknownDocumentType();
   }
 }
 
 Html html::translate_text_document(const Document &document,
-                                   const std::string &path,
+                                   const std::string &output_path,
                                    const HtmlConfig &config) {
-  auto filled_path =
-      fill_path_variables(path + "/" + config.text_document_output_file_name);
+  auto filled_path = fill_path_variables(output_path + "/" +
+                                         config.text_document_output_file_name);
   auto ostream = output(filled_path);
   internal::html::HtmlWriter out(ostream, config.format_html,
                                  config.html_indent);
@@ -157,7 +160,7 @@ Html html::translate_text_document(const Document &document,
   auto root = document.root_element();
   auto element = root.text_root();
 
-  front(document, path, out, config);
+  front(document, output_path, out, config);
   if (config.text_document_margin) {
     out.write_element_begin("div");
     auto page_layout = element.page_layout();
@@ -177,27 +180,27 @@ Html html::translate_text_document(const Document &document,
   } else {
     translate_children(element.children(), out, config);
   }
-  back(document, path, out, config);
+  back(document, output_path, out, config);
 
   return {document.file_type(), config, {{"document", filled_path}}, document};
 }
 
 Html html::translate_presentation(const Document &document,
-                                  const std::string &path,
+                                  const std::string &output_path,
                                   const HtmlConfig &config) {
   std::vector<HtmlPage> pages;
 
   std::uint32_t i = 0;
   for (auto child : document.root_element().children()) {
-    auto filled_path =
-        fill_path_variables(path + "/" + config.slide_output_file_name, i);
+    auto filled_path = fill_path_variables(
+        output_path + "/" + config.slide_output_file_name, i);
     auto ostream = output(filled_path);
     internal::html::HtmlWriter out(ostream, config.format_html,
                                    config.html_indent);
 
-    front(document, path, out, config);
+    front(document, output_path, out, config);
     internal::html::translate_slide(child, out, config);
-    back(document, path, out, config);
+    back(document, output_path, out, config);
 
     pages.emplace_back(child.slide().name(), filled_path);
 
@@ -208,21 +211,21 @@ Html html::translate_presentation(const Document &document,
 }
 
 Html html::translate_spreadsheet(const Document &document,
-                                 const std::string &path,
+                                 const std::string &output_path,
                                  const HtmlConfig &config) {
   std::vector<HtmlPage> pages;
 
   std::uint32_t i = 0;
   for (auto child : document.root_element().children()) {
-    auto filled_path =
-        fill_path_variables(path + "/" + config.sheet_output_file_name, i);
+    auto filled_path = fill_path_variables(
+        output_path + "/" + config.sheet_output_file_name, i);
     auto ostream = output(filled_path);
     internal::html::HtmlWriter out(ostream, config.format_html,
                                    config.html_indent);
 
-    front(document, path, out, config);
+    front(document, output_path, out, config);
     translate_sheet(child, out, config);
-    back(document, path, out, config);
+    back(document, output_path, out, config);
 
     pages.emplace_back(child.sheet().name(), filled_path);
 
@@ -232,21 +235,22 @@ Html html::translate_spreadsheet(const Document &document,
   return {document.file_type(), config, std::move(pages), document};
 }
 
-Html html::translate_drawing(const Document &document, const std::string &path,
+Html html::translate_drawing(const Document &document,
+                             const std::string &output_path,
                              const HtmlConfig &config) {
   std::vector<HtmlPage> pages;
 
   std::uint32_t i = 0;
   for (auto child : document.root_element().children()) {
-    auto filled_path =
-        fill_path_variables(path + "/" + config.page_output_file_name, i);
+    auto filled_path = fill_path_variables(
+        output_path + "/" + config.page_output_file_name, i);
     auto ostream = output(filled_path);
     internal::html::HtmlWriter out(ostream, config.format_html,
                                    config.html_indent);
 
-    front(document, path, out, config);
+    front(document, output_path, out, config);
     internal::html::translate_page(child, out, config);
-    back(document, path, out, config);
+    back(document, output_path, out, config);
 
     pages.emplace_back(child.page().name(), filled_path);
 

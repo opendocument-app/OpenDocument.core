@@ -14,7 +14,7 @@ nlohmann::json meta_to_json(const FileMeta &meta) {
   result["encrypted"] = meta.password_encrypted;
 
   if (meta.document_meta) {
-    auto &&document_meta = *meta.document_meta;
+    const auto &document_meta = *meta.document_meta;
 
     if (document_meta.entry_count) {
       result["entryCount"] = *document_meta.entry_count;
