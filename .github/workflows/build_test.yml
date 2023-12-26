@@ -62,20 +62,20 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: cmake
+      - name: cmake unix
         if: !startsWith(matrix.config.os, 'windows')
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-      - name: cmake
+      - name: cmake windows
         if: startsWith(matrix.config.os, 'windows')
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
 
-      - name: build
+      - name: build unix
         if: !startsWith(matrix.config.os, 'windows')
         run: cmake --build build
-      - name: build
+      - name: build windows
         if: startsWith(matrix.config.os, 'windows')
         run: cmake --build build --config Debug
 
