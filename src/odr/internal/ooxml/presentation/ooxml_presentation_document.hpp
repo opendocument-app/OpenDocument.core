@@ -1,34 +1,29 @@
 #ifndef ODR_INTERNAL_OOXML_PRESENTATION_H
 #define ODR_INTERNAL_OOXML_PRESENTATION_H
 
-#include <odr/internal/abstract/document.hpp>
-#include <pugixml.hpp>
+#include <odr/internal/common/document.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
+
 #include <unordered_map>
+#include <vector>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::presentation {
-class Element;
 
-class Document final : public abstract::Document {
+class Document final : public common::TemplateDocument<Element> {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
-  [[nodiscard]] bool editable() const noexcept final;
-  [[nodiscard]] bool savable(bool encrypted) const noexcept final;
+  [[nodiscard]] bool is_editable() const noexcept final;
+  [[nodiscard]] bool is_savable(bool encrypted) const noexcept final;
 
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const char *password) const final;
 
-  [[nodiscard]] FileType file_type() const noexcept final;
-  [[nodiscard]] DocumentType document_type() const noexcept final;
-
-  [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
-  files() const noexcept final;
-
-  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
-  root_element() const final;
+  pugi::xml_node get_slide_root(const std::string &ref) const;
 
 private:
-  std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
   pugi::xml_document m_document_xml;
   std::unordered_map<std::string, pugi::xml_document> m_slides_xml;
 

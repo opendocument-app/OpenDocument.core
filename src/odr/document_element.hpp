@@ -1,36 +1,40 @@
 #ifndef ODR_DOCUMENT_ELEMENT_H
 #define ODR_DOCUMENT_ELEMENT_H
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 
 namespace odr::internal::abstract {
 class Document;
-class DocumentCursor;
 
 class Element;
-class TextRootElement;
-class SlideElement;
-class SheetElement;
-class PageElement;
-class LineBreakElement;
-class ParagraphElement;
-class SpanElement;
-class TextElement;
-class LinkElement;
-class BookmarkElement;
-class ListItemElement;
-class TableElement;
-class TableColumnElement;
-class TableRowElement;
-class TableCellElement;
-class FrameElement;
-class RectElement;
-class LineElement;
-class CircleElement;
-class CustomShapeElement;
-class ImageElement;
+class TextRoot;
+class Slide;
+class Sheet;
+class SheetColumn;
+class SheetRow;
+class SheetCell;
+class Page;
+class MasterPage;
+class LineBreak;
+class Paragraph;
+class Span;
+class Text;
+class Link;
+class Bookmark;
+class ListItem;
+class Table;
+class TableColumn;
+class TableRow;
+class TableCell;
+class Frame;
+class Rect;
+class Line;
+class Circle;
+class CustomShape;
+class Image;
 } // namespace odr::internal::abstract
 
 namespace odr {
@@ -47,10 +51,16 @@ struct PageLayout;
 struct TableDimensions;
 
 class Element;
+class ElementIterator;
+class ElementRange;
 class TextRoot;
 class Slide;
 class Sheet;
+class SheetColumn;
+class SheetRow;
+class SheetCell;
 class Page;
+class MasterPage;
 class LineBreak;
 class Paragraph;
 class Span;
@@ -114,16 +124,15 @@ enum class AnchorType {
 };
 
 enum class ValueType {
+  unknown,
   string,
   float_number,
 };
 
 class Element {
 public:
-  Element() = default;
-  Element(const internal::abstract::Document *document,
-          const internal::abstract::DocumentCursor *cursor,
-          internal::abstract::Element *element);
+  Element();
+  Element(const internal::abstract::Document *, internal::abstract::Element *);
 
   bool operator==(const Element &rhs) const;
   bool operator!=(const Element &rhs) const;
@@ -132,10 +141,20 @@ public:
 
   [[nodiscard]] ElementType type() const;
 
+  [[nodiscard]] Element parent() const;
+  [[nodiscard]] Element first_child() const;
+  [[nodiscard]] Element previous_sibling() const;
+  [[nodiscard]] Element next_sibling() const;
+
+  [[nodiscard]] bool is_editable() const;
+
+  [[nodiscard]] ElementRange children() const;
+
   [[nodiscard]] TextRoot text_root() const;
   [[nodiscard]] Slide slide() const;
   [[nodiscard]] Sheet sheet() const;
   [[nodiscard]] Page page() const;
+  [[nodiscard]] MasterPage master_page() const;
   [[nodiscard]] LineBreak line_break() const;
   [[nodiscard]] Paragraph paragraph() const;
   [[nodiscard]] Span span() const;
@@ -156,72 +175,180 @@ public:
 
 protected:
   const internal::abstract::Document *m_document{nullptr};
-  const internal::abstract::DocumentCursor *m_cursor{nullptr};
   internal::abstract::Element *m_element{nullptr};
+
+  bool exists_() const;
+};
+
+class ElementIterator {
+public:
+  using value_type = Element;
+  using difference_type = std::ptrdiff_t;
+  using pointer = Element *;
+  using reference = Element;
+  using iterator_category = std::forward_iterator_tag;
+
+  ElementIterator();
+  ElementIterator(const internal::abstract::Document *,
+                  internal::abstract::Element *);
+
+  bool operator==(const ElementIterator &rhs) const;
+  bool operator!=(const ElementIterator &rhs) const;
+
+  reference operator*() const;
+
+  ElementIterator &operator++();
+  ElementIterator operator++(int);
+
+private:
+  const internal::abstract::Document *m_document{nullptr};
+  internal::abstract::Element *m_element{nullptr};
+
+  bool exists_() const;
+};
+
+class ElementRange {
+public:
+  ElementRange();
+  explicit ElementRange(ElementIterator begin);
+  ElementRange(ElementIterator begin, ElementIterator end);
+
+  [[nodiscard]] ElementIterator begin() const;
+  [[nodiscard]] ElementIterator end() const;
+
+private:
+  ElementIterator m_begin;
+  ElementIterator m_end;
 };
 
 template <typename T> class TypedElement : public Element {
 public:
   TypedElement() = default;
+  TypedElement(const internal::abstract::Document *document, T *element)
+      : Element(document, element), m_element{element} {}
   TypedElement(const internal::abstract::Document *document,
-               const internal::abstract::DocumentCursor *cursor, T *element)
-      : Element(document, cursor, element), m_element{element} {}
-  TypedElement(const internal::abstract::Document *document,
-               const internal::abstract::DocumentCursor *cursor,
                internal::abstract::Element *element)
-      : Element(document, cursor, element), m_element{
-                                                dynamic_cast<T *>(element)} {}
+      : Element(document, element), m_element{dynamic_cast<T *>(element)} {}
+
+  bool operator==(const TypedElement &rhs) const {
+    return m_element == rhs.m_element;
+  }
+  bool operator!=(const TypedElement &rhs) const {
+    return m_element != rhs.m_element;
+  }
 
 protected:
-  T *m_element{nullptr};
+  T *m_element;
+
+  bool exists_() const { return m_element != nullptr; }
 };
 
-class TextRoot final
-    : public TypedElement<internal::abstract::TextRootElement> {
+class TextRoot final : public TypedElement<internal::abstract::TextRoot> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] PageLayout page_layout() const;
+
+  [[nodiscard]] MasterPage first_master_page() const;
 };
 
-class Slide final : public TypedElement<internal::abstract::SlideElement> {
+class Slide final : public TypedElement<internal::abstract::Slide> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] std::string name() const;
 
   [[nodiscard]] PageLayout page_layout() const;
+
+  [[nodiscard]] MasterPage master_page() const;
 };
 
-class Sheet final : public TypedElement<internal::abstract::SheetElement> {
+class Sheet final : public TypedElement<internal::abstract::Sheet> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] std::string name() const;
 
+  [[nodiscard]] TableDimensions dimensions() const;
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;
+
+  [[nodiscard]] SheetColumn column(std::uint32_t column) const;
+  [[nodiscard]] SheetRow row(std::uint32_t row) const;
+  [[nodiscard]] SheetCell cell(std::uint32_t column, std::uint32_t row) const;
+
+  [[nodiscard]] ElementRange shapes() const;
 };
 
-class Page final : public TypedElement<internal::abstract::PageElement> {
+class SheetColumn final : public TypedElement<internal::abstract::Sheet> {
+public:
+  SheetColumn() = default;
+  SheetColumn(const internal::abstract::Document *document,
+              internal::abstract::Sheet *sheet, std::uint32_t column);
+
+  [[nodiscard]] TableColumnStyle style() const;
+
+private:
+  std::uint32_t m_column{};
+};
+
+class SheetRow final : public TypedElement<internal::abstract::Sheet> {
+public:
+  SheetRow() = default;
+  SheetRow(const internal::abstract::Document *document,
+           internal::abstract::Sheet *sheet, std::uint32_t row);
+
+  [[nodiscard]] TableRowStyle style() const;
+
+private:
+  std::uint32_t m_row{};
+};
+
+class SheetCell final : public TypedElement<internal::abstract::SheetCell> {
+public:
+  SheetCell() = default;
+  SheetCell(const internal::abstract::Document *document,
+            internal::abstract::Sheet *sheet, std::uint32_t column,
+            std::uint32_t row, internal::abstract::SheetCell *element);
+
+  [[nodiscard]] bool is_covered() const;
+  [[nodiscard]] TableDimensions span() const;
+  [[nodiscard]] ValueType value_type() const;
+
+  [[nodiscard]] TableCellStyle style() const;
+
+private:
+  internal::abstract::Sheet *m_sheet;
+  std::uint32_t m_column{};
+  std::uint32_t m_row{};
+};
+
+class Page final : public TypedElement<internal::abstract::Page> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] std::string name() const;
 
   [[nodiscard]] PageLayout page_layout() const;
+
+  [[nodiscard]] MasterPage master_page() const;
 };
 
-class LineBreak final
-    : public TypedElement<internal::abstract::LineBreakElement> {
+class MasterPage final : public TypedElement<internal::abstract::MasterPage> {
+public:
+  using TypedElement::TypedElement;
+
+  [[nodiscard]] PageLayout page_layout() const;
+};
+
+class LineBreak final : public TypedElement<internal::abstract::LineBreak> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TextStyle style() const;
 };
 
-class Paragraph final
-    : public TypedElement<internal::abstract::ParagraphElement> {
+class Paragraph final : public TypedElement<internal::abstract::Paragraph> {
 public:
   using TypedElement::TypedElement;
 
@@ -229,14 +356,14 @@ public:
   [[nodiscard]] TextStyle text_style() const;
 };
 
-class Span final : public TypedElement<internal::abstract::SpanElement> {
+class Span final : public TypedElement<internal::abstract::Span> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TextStyle style() const;
 };
 
-class Text final : public TypedElement<internal::abstract::TextElement> {
+class Text final : public TypedElement<internal::abstract::Text> {
 public:
   using TypedElement::TypedElement;
 
@@ -246,70 +373,65 @@ public:
   [[nodiscard]] TextStyle style() const;
 };
 
-class Link final : public TypedElement<internal::abstract::LinkElement> {
+class Link final : public TypedElement<internal::abstract::Link> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] std::string href() const;
 };
 
-class Bookmark final
-    : public TypedElement<internal::abstract::BookmarkElement> {
+class Bookmark final : public TypedElement<internal::abstract::Bookmark> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] std::string name() const;
 };
 
-class ListItem final
-    : public TypedElement<internal::abstract::ListItemElement> {
+class ListItem final : public TypedElement<internal::abstract::ListItem> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TextStyle style() const;
 };
 
-class Table final : public TypedElement<internal::abstract::TableElement> {
+class Table final : public TypedElement<internal::abstract::Table> {
 public:
   using TypedElement::TypedElement;
+
+  [[nodiscard]] ElementRange columns() const;
+  [[nodiscard]] ElementRange rows() const;
 
   [[nodiscard]] TableDimensions dimensions() const;
 
   [[nodiscard]] TableStyle style() const;
 };
 
-class TableColumn final
-    : public TypedElement<internal::abstract::TableColumnElement> {
+class TableColumn final : public TypedElement<internal::abstract::TableColumn> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TableColumnStyle style() const;
 };
 
-class TableRow final
-    : public TypedElement<internal::abstract::TableRowElement> {
+class TableRow final : public TypedElement<internal::abstract::TableRow> {
 public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] TableRowStyle style() const;
 };
 
-class TableCell final
-    : public TypedElement<internal::abstract::TableCellElement> {
+class TableCell final : public TypedElement<internal::abstract::TableCell> {
 public:
   using TypedElement::TypedElement;
 
-  [[nodiscard]] TableColumn column() const;
-  [[nodiscard]] TableRow row() const;
-
-  [[nodiscard]] bool covered() const;
+  [[nodiscard]] bool is_covered() const;
   [[nodiscard]] TableDimensions span() const;
   [[nodiscard]] ValueType value_type() const;
 
   [[nodiscard]] TableCellStyle style() const;
 };
 
-class Frame final : public TypedElement<internal::abstract::FrameElement> {
+class Frame final : public TypedElement<internal::abstract::Frame> {
 public:
   using TypedElement::TypedElement;
 
@@ -323,7 +445,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class Rect final : public TypedElement<internal::abstract::RectElement> {
+class Rect final : public TypedElement<internal::abstract::Rect> {
 public:
   using TypedElement::TypedElement;
 
@@ -335,7 +457,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class Line final : public TypedElement<internal::abstract::LineElement> {
+class Line final : public TypedElement<internal::abstract::Line> {
 public:
   using TypedElement::TypedElement;
 
@@ -347,7 +469,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class Circle final : public TypedElement<internal::abstract::CircleElement> {
+class Circle final : public TypedElement<internal::abstract::Circle> {
 public:
   using TypedElement::TypedElement;
 
@@ -359,8 +481,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class CustomShape final
-    : public TypedElement<internal::abstract::CustomShapeElement> {
+class CustomShape final : public TypedElement<internal::abstract::CustomShape> {
 public:
   using TypedElement::TypedElement;
 
@@ -372,11 +493,11 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-class Image final : public TypedElement<internal::abstract::ImageElement> {
+class Image final : public TypedElement<internal::abstract::Image> {
 public:
   using TypedElement::TypedElement;
 
-  [[nodiscard]] bool internal() const;
+  [[nodiscard]] bool is_internal() const;
   [[nodiscard]] std::optional<odr::File> file() const;
   [[nodiscard]] std::string href() const;
 };

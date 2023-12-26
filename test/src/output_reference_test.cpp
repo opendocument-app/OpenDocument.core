@@ -1,6 +1,3 @@
-#include <gtest/gtest.h>
-#include <test_util.hpp>
-
 #include <odr/html.hpp>
 #include <odr/open_document_reader.hpp>
 
@@ -8,13 +5,16 @@
 #include <odr/internal/util/odr_meta_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <nlohmann/json.hpp>
+#include <test_util.hpp>
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <string>
+
+#include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 using namespace odr;
 using namespace odr::internal;
@@ -97,6 +97,8 @@ TEST_P(OutputReferenceTests, html_meta) {
   config.relative_resource_paths = true;
   config.editable = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);
+  config.format_html = true;
+  config.html_indent = 2;
   std::optional<Html> html;
 
   if (file.file_type() == FileType::text_file) {

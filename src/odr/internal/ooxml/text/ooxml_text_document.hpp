@@ -3,54 +3,38 @@
 
 #include <odr/file.hpp>
 
-#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/common/document.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_element.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_style.hpp>
-
-#include <pugixml.hpp>
 
 #include <memory>
 #include <string>
 #include <unordered_map>
 
-namespace odr::internal::abstract {
-class ReadableFilesystem;
-}
+#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::text {
-class Element;
 
-class Document final : public abstract::Document {
+class Document final : public common::TemplateDocument<Element> {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
-  [[nodiscard]] bool editable() const noexcept final;
-  [[nodiscard]] bool savable(bool encrypted) const noexcept final;
+  [[nodiscard]] bool is_editable() const noexcept final;
+  [[nodiscard]] bool is_savable(bool encrypted) const noexcept final;
 
   void save(const common::Path &path) const final;
   void save(const common::Path &path, const char *password) const final;
 
-  [[nodiscard]] FileType file_type() const noexcept final;
-  [[nodiscard]] DocumentType document_type() const noexcept final;
-
-  [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
-  files() const noexcept final;
-
-  [[nodiscard]] std::unique_ptr<abstract::DocumentCursor>
-  root_element() const final;
-
 private:
-  std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
-
   pugi::xml_document m_document_xml;
   pugi::xml_document m_styles_xml;
 
-  StyleRegistry m_style_registry;
-
   std::unordered_map<std::string, std::string> m_document_relations;
 
+  StyleRegistry m_style_registry;
+
   friend class Element;
-  friend class DocumentCursor;
 };
 
 } // namespace odr::internal::ooxml::text

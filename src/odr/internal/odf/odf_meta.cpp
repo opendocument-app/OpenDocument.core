@@ -5,16 +5,14 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/util/map_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
-#include <pugixml.hpp>
-
-#include <algorithm>
 #include <unordered_map>
 #include <utility>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 
@@ -55,8 +53,8 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
       {"application/vnd.sun.xml.draw.template",
        FileType::opendocument_graphics},
   };
-  return util::map::lookup_map_default(MIME_TYPES, mime_type, file_type,
-                                       FileType::unknown);
+  return util::map::lookup_default(MIME_TYPES, mime_type, file_type,
+                                   FileType::unknown);
 }
 
 } // namespace

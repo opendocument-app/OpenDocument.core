@@ -1,8 +1,8 @@
+#include <odr/document_path.hpp>
+
 #include <gtest/gtest.h>
 
-#include <odr/internal/common/document_path.hpp>
-
-using namespace odr::internal::common;
+using namespace odr;
 
 TEST(DocumentPath, empty) { EXPECT_EQ("", DocumentPath().to_string()); }
 

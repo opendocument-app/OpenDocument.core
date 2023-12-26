@@ -12,7 +12,7 @@ namespace odr {
 enum class FileType;
 enum class DocumentType;
 class DocumentFile;
-class DocumentCursor;
+class Element;
 
 class Document final {
 public:
@@ -27,7 +27,7 @@ public:
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] DocumentType document_type() const noexcept;
 
-  [[nodiscard]] DocumentCursor root_element() const;
+  [[nodiscard]] Element root_element() const;
 
 private:
   std::shared_ptr<internal::abstract::Document> m_document;

@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
-
 #include <odr/internal/ooxml/ooxml_crypto.hpp>
+
+#include <gtest/gtest.h>
 
 #include <cstring>
 #include <string>

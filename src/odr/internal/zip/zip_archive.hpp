@@ -3,13 +3,13 @@
 
 #include <odr/internal/common/path.hpp>
 
-#include <miniz/miniz.h>
-
 #include <cstdint>
 #include <iosfwd>
 #include <iterator>
 #include <memory>
 #include <vector>
+
+#include <miniz/miniz.h>
 
 namespace odr::internal::abstract {
 class File;

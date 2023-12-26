@@ -48,6 +48,13 @@ bool DynamicUnit::operator!=(const DynamicUnit &rhs) const {
 
 const std::string &DynamicUnit::name() const { return m_unit->name; }
 
+void DynamicUnit::to_stream(std::ostream &out) const { out << m_unit->name; }
+
 std::string DynamicUnit::to_string() const { return m_unit->name; }
 
 } // namespace odr
+
+std::ostream &operator<<(std::ostream &out, const odr::DynamicUnit &unit) {
+  unit.to_stream(out);
+  return out;
+}

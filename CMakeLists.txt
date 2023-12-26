@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12.4)
 
 project(odr LANGUAGES C CXX)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -23,14 +23,9 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
     #set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-omit-frame-pointer")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     # using Visual Studio C++
-endif ()
 
-# use ccache if available
-find_program(CCACHE_FOUND ccache)
-if (CCACHE_FOUND)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_FOUND}")
-    message(STATUS "using ccache ${CCACHE_FOUND}")
-endif (CCACHE_FOUND)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+endif ()
 
 if (NOT DEFINED CONAN_EXPORTED)
     include("cmake/conan.cmake")
@@ -71,8 +66,8 @@ endif ()
 
 add_library(odr
         "src/odr/document.cpp"
-        "src/odr/document_cursor.cpp"
         "src/odr/document_element.cpp"
+        "src/odr/document_path.cpp"
         "src/odr/exceptions.cpp"
         "src/odr/file.cpp"
         "src/odr/html.cpp"
@@ -91,8 +86,8 @@ add_library(odr
         "src/odr/internal/cfb/cfb_impl.cpp"
         "src/odr/internal/cfb/cfb_util.cpp"
 
-        "src/odr/internal/common/document_cursor.cpp"
-        "src/odr/internal/common/document_path.cpp"
+        "src/odr/internal/common/document.cpp"
+        "src/odr/internal/common/document_element.cpp"
         "src/odr/internal/common/file.cpp"
         "src/odr/internal/common/filesystem.cpp"
         "src/odr/internal/common/image_file.cpp"
@@ -110,10 +105,10 @@ add_library(odr
         "src/odr/internal/csv/csv_util.cpp"
 
         "src/odr/internal/html/common.cpp"
-        "src/odr/internal/html/css_writer.cpp"
         "src/odr/internal/html/document.cpp"
         "src/odr/internal/html/document_style.cpp"
         "src/odr/internal/html/document_element.cpp"
+        "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
         "src/odr/internal/html/text_file.cpp"
 
@@ -121,26 +116,27 @@ add_library(odr
         "src/odr/internal/json/json_util.cpp"
 
         "src/odr/internal/odf/odf_crypto.cpp"
-        "src/odr/internal/odf/odf_cursor.cpp"
         "src/odr/internal/odf/odf_document.cpp"
         "src/odr/internal/odf/odf_element.cpp"
         "src/odr/internal/odf/odf_file.cpp"
         "src/odr/internal/odf/odf_manifest.cpp"
         "src/odr/internal/odf/odf_meta.cpp"
+        "src/odr/internal/odf/odf_parser.cpp"
+        "src/odr/internal/odf/odf_spreadsheet.cpp"
         "src/odr/internal/odf/odf_style.cpp"
 
         "src/odr/internal/oldms/oldms_file.cpp"
 
-        "src/odr/internal/ooxml/presentation/ooxml_presentation_cursor.cpp"
         "src/odr/internal/ooxml/presentation/ooxml_presentation_document.cpp"
         "src/odr/internal/ooxml/presentation/ooxml_presentation_element.cpp"
-        "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_cursor.cpp"
+        "src/odr/internal/ooxml/presentation/ooxml_presentation_parser.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.cpp"
+        "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.cpp"
-        "src/odr/internal/ooxml/text/ooxml_text_cursor.cpp"
         "src/odr/internal/ooxml/text/ooxml_text_document.cpp"
         "src/odr/internal/ooxml/text/ooxml_text_element.cpp"
+        "src/odr/internal/ooxml/text/ooxml_text_parser.cpp"
         "src/odr/internal/ooxml/text/ooxml_text_style.cpp"
         "src/odr/internal/ooxml/ooxml_crypto.cpp"
         "src/odr/internal/ooxml/ooxml_file.cpp"

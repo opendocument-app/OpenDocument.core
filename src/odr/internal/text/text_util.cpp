@@ -2,9 +2,9 @@
 
 #include <odr/exceptions.hpp>
 
-#include <uchardet/uchardet.h>
-
 #include <iostream>
+
+#include <uchardet/uchardet.h>
 
 namespace odr::internal {
 

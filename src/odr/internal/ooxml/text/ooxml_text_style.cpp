@@ -49,8 +49,8 @@ void resolve_text_style_(pugi::xml_node node, TextStyle &result) {
 void resolve_paragraph_style_(pugi::xml_node node, ParagraphStyle &result) {
   auto paragraph_properties = node.child("w:pPr");
 
-  if (auto text_align =
-          read_text_align_attribute(paragraph_properties.child("w:jc"))) {
+  if (auto text_align = read_text_align_attribute(
+          paragraph_properties.child("w:jc").attribute("w:val"))) {
     result.text_align = text_align;
   }
   if (auto margin_left = read_twips_attribute(
@@ -95,19 +95,19 @@ void resolve_table_cell_style_(pugi::xml_node node, TableCellStyle &result) {
           table_cell_properties.child("w:vAlign").attribute("w:val"))) {
     result.vertical_align = vertical_align;
   }
-  if (auto border_right = read_border_attribute(
+  if (auto border_right = read_border_node(
           table_cell_properties.child("w:tcBorders").child("w:right"))) {
     result.border.right = border_right;
   }
-  if (auto border_top = read_border_attribute(
+  if (auto border_top = read_border_node(
           table_cell_properties.child("w:tcBorders").child("w:top"))) {
     result.border.top = border_top;
   }
-  if (auto border_left = read_border_attribute(
+  if (auto border_left = read_border_node(
           table_cell_properties.child("w:tcBorders").child("w:left"))) {
     result.border.left = border_left;
   }
-  if (auto border_bottom = read_border_attribute(
+  if (auto border_bottom = read_border_node(
           table_cell_properties.child("w:tcBorders").child("w:bottom"))) {
     result.border.bottom = border_bottom;
   }
@@ -128,8 +128,8 @@ Style::Style(pugi::xml_node node) : m_node{node} {
 
 Style::Style(std::string name, pugi::xml_node node, const Style *parent)
     : m_name{std::move(name)}, m_node{node}, m_parent{parent} {
-  if (const Style *copy_from = m_parent) {
-    m_resolved = copy_from->m_resolved;
+  if (parent != nullptr) {
+    m_resolved = parent->m_resolved;
   }
 
   resolve_style_();

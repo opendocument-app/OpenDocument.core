@@ -1,9 +1,10 @@
 #ifndef ODR_INTERNAL_SVM_FILE_H
 #define ODR_INTERNAL_SVM_FILE_H
 
-#include <memory>
 #include <odr/file.hpp>
 #include <odr/internal/abstract/file.hpp>
+
+#include <memory>
 
 namespace odr::internal::abstract {
 class Image;

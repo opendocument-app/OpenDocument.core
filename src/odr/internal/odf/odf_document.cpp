@@ -1,11 +1,10 @@
 #include <odr/internal/odf/odf_document.hpp>
 
 #include <odr/exceptions.hpp>
-#include <odr/file.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/odf/odf_cursor.hpp>
+#include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
@@ -13,29 +12,29 @@
 #include <sstream>
 #include <utility>
 
-namespace odr::internal::abstract {
-class DocumentCursor;
-} // namespace odr::internal::abstract
-
 namespace odr::internal::odf {
 
 Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : m_file_type{file_type}, m_document_type{document_type},
-      m_filesystem{std::move(filesystem)} {
+    : common::TemplateDocument<Element>(file_type, document_type,
+                                        std::move(filesystem)) {
   m_content_xml = util::xml::parse(*m_filesystem, "content.xml");
 
   if (m_filesystem->exists("styles.xml")) {
     m_styles_xml = util::xml::parse(*m_filesystem, "styles.xml");
   }
 
-  m_style_registry = StyleRegistry(m_content_xml.document_element(),
+  m_root_element = parse_tree(
+      *this,
+      m_content_xml.document_element().child("office:body").first_child());
+
+  m_style_registry = StyleRegistry(*this, m_content_xml.document_element(),
                                    m_styles_xml.document_element());
 }
 
-bool Document::editable() const noexcept { return true; }
+bool Document::is_editable() const noexcept { return true; }
 
-bool Document::savable(const bool encrypted) const noexcept {
+bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;
 }
 
@@ -93,22 +92,6 @@ void Document::save(const common::Path & /*path*/,
                     const char * /*password*/) const {
   // TODO throw if not savable
   throw UnsupportedOperation();
-}
-
-FileType Document::file_type() const noexcept { return m_file_type; }
-
-DocumentType Document::document_type() const noexcept {
-  return m_document_type;
-}
-
-std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
-  return m_filesystem;
-}
-
-std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
-  return std::make_unique<DocumentCursor>(
-      this,
-      m_content_xml.document_element().child("office:body").first_child());
 }
 
 } // namespace odr::internal::odf

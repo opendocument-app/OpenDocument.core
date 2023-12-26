@@ -5,9 +5,9 @@
 
 #include <odr/internal/common/style.hpp>
 
-#include <pugixml.hpp>
-
 #include <unordered_map>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::text {
 
