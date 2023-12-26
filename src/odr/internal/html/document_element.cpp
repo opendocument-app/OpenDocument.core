@@ -14,11 +14,9 @@ namespace odr::internal {
 
 void html::translate_children(ElementRange range, HtmlWriter &out,
                               const HtmlConfig &config) {
-  for (auto child : range) {
+  for (Element child : range) {
     translate_element(child, out, config);
   }
-
-  return;
 }
 
 void html::translate_element(Element element, HtmlWriter &out,
@@ -58,13 +56,11 @@ void html::translate_element(Element element, HtmlWriter &out,
   } else {
     // TODO log
   }
-
-  return;
 }
 
 void html::translate_slide(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
-  auto slide = element.slide();
+  Slide slide = element.slide();
 
   out.write_element_begin(
       "div", {.style = translate_outer_page_style(slide.page_layout())});
@@ -76,26 +72,22 @@ void html::translate_slide(Element element, HtmlWriter &out,
 
   out.write_element_end("div");
   out.write_element_end("div");
-
-  return;
 }
 
 void html::translate_sheet(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
-  // TODO table column width does not work
-  // TODO table row height does not work
+  Sheet sheet = element.sheet();
 
   out.write_element_begin(
       "table",
       {.attributes = HtmlAttributesVector{
            {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}}});
 
-  auto sheet = element.sheet();
-  auto dimensions = sheet.dimensions();
+  TableDimensions dimensions = sheet.dimensions();
   std::uint32_t end_column = dimensions.columns;
   std::uint32_t end_row = dimensions.rows;
   if (config.spreadsheet_limit_by_content) {
-    const auto content = sheet.content(config.spreadsheet_limit);
+    TableDimensions content = sheet.content(config.spreadsheet_limit);
     end_column = content.columns;
     end_row = content.rows;
   }
@@ -110,8 +102,8 @@ void html::translate_sheet(Element element, HtmlWriter &out,
 
   for (std::uint32_t column_index = 0; column_index < end_column;
        ++column_index) {
-    auto table_column = sheet.column(column_index);
-    auto table_column_style = table_column.style();
+    SheetColumn table_column = sheet.column(column_index);
+    TableColumnStyle table_column_style = table_column.style();
 
     out.write_element_begin(
         "col", {.close_type = HtmlCloseType::none,
@@ -139,8 +131,8 @@ void html::translate_sheet(Element element, HtmlWriter &out,
   common::TableCursor cursor;
   for (std::uint32_t row_index = cursor.row(); row_index < end_row;
        row_index = cursor.row()) {
-    auto table_row = sheet.row(row_index);
-    auto table_row_style = table_row.style();
+    SheetRow table_row = sheet.row(row_index);
+    TableRowStyle table_row_style = table_row.style();
 
     out.write_element_begin(
         "tr", {.style = translate_table_row_style(table_row_style)});
@@ -159,7 +151,7 @@ void html::translate_sheet(Element element, HtmlWriter &out,
 
     for (std::uint32_t column_index = cursor.column();
          column_index < end_column; column_index = cursor.column()) {
-      auto cell = sheet.cell(column_index, row_index);
+      SheetCell cell = sheet.cell(column_index, row_index);
 
       if (cell.is_covered()) {
         continue;
@@ -167,10 +159,9 @@ void html::translate_sheet(Element element, HtmlWriter &out,
 
       // TODO looks a bit odd to query the same (col, row) all the time. maybe
       // there could be a struct to get all the info?
-      auto cell_style = cell.style();
-      auto cell_span = cell.span();
-      auto cell_value_type = cell.value_type();
-      auto cell_elements = cell.children();
+      TableCellStyle cell_style = cell.style();
+      TableDimensions cell_span = cell.span();
+      ValueType cell_value_type = cell.value_type();
 
       out.write_element_begin(
           "td", {.attributes =
@@ -190,11 +181,11 @@ void html::translate_sheet(Element element, HtmlWriter &out,
                    return std::nullopt;
                  }()});
       if ((column_index == 0) && (row_index == 0)) {
-        for (auto shape : sheet.shapes()) {
+        for (Element shape : sheet.shapes()) {
           translate_element(shape, out, config);
         }
       }
-      translate_children(cell_elements, out, config);
+      translate_children(cell.children(), out, config);
       out.write_element_end("td");
 
       cursor.add_cell(cell_span.columns, cell_span.rows);
@@ -206,13 +197,12 @@ void html::translate_sheet(Element element, HtmlWriter &out,
   }
 
   out.write_element_end("table");
-
-  return;
 }
 
 void html::translate_page(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
-  auto page = element.page();
+  Page page = element.page();
+
   out.write_element_begin(
       "div", {.style = translate_outer_page_style(page.page_layout())});
   out.write_element_begin(
@@ -221,23 +211,19 @@ void html::translate_page(Element element, HtmlWriter &out,
   translate_children(page.children(), out, config);
   out.write_element_end("div");
   out.write_element_end("div");
-
-  return;
 }
 
 void html::translate_master_page(MasterPage element, HtmlWriter &out,
                                  const HtmlConfig &config) {
-  for (auto child : element.children()) {
+  for (Element child : element.children()) {
     // TODO filter placeholders
     translate_element(child, out, config);
   }
-
-  return;
 }
 
 void html::translate_text(const Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
-  auto text = element.text();
+  Text text = element.text();
 
   out.write_element_begin(
       "x-s", {.inline_element = true,
@@ -252,26 +238,22 @@ void html::translate_text(const Element element, HtmlWriter &out,
               .style = translate_text_style(text.style())});
   out.out() << internal::html::escape_text(text.content());
   out.write_element_end("x-s");
-
-  return;
 }
 
 void html::translate_line_break(Element element, HtmlWriter &out,
                                 const HtmlConfig &) {
-  auto line_break = element.line_break();
+  LineBreak line_break = element.line_break();
 
   out.write_element_begin("br", {.close_type = HtmlCloseType::none});
   out.write_element_begin("x-s",
                           {.inline_element = true,
                            .style = translate_text_style(line_break.style())});
   out.write_element_end("x-s");
-
-  return;
 }
 
 void html::translate_paragraph(Element element, HtmlWriter &out,
                                const HtmlConfig &config) {
-  auto paragraph = element.paragraph();
+  Paragraph paragraph = element.paragraph();
 
   out.write_element_begin(
       "x-p", {.inline_element = true,
@@ -293,45 +275,37 @@ void html::translate_paragraph(Element element, HtmlWriter &out,
   }
   out.write_element_begin("wbr", {.close_type = HtmlCloseType::none});
   out.write_element_end("x-p");
-
-  return;
 }
 
 void html::translate_span(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
-  auto span = element.span();
+  Span span = element.span();
 
   out.write_element_begin("x-s", {.inline_element = true,
                                   .style = translate_text_style(span.style())});
   translate_children(span.children(), out, config);
   out.write_element_end("x-s");
-
-  return;
 }
 
 void html::translate_link(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
-  auto link = element.link();
+  Link link = element.link();
 
   out.write_element_begin(
       "a", {.inline_element = true,
             .attributes = HtmlAttributesVector{{"href", link.href()}}});
   translate_children(link.children(), out, config);
   out.write_element_end("a");
-
-  return;
 }
 
 void html::translate_bookmark(Element element, HtmlWriter &out,
                               const HtmlConfig & /*config*/) {
-  auto bookmark = element.bookmark();
+  Bookmark bookmark = element.bookmark();
 
   out.write_element_begin(
       "a", {.inline_element = true,
             .attributes = HtmlAttributesVector{{"id", bookmark.name()}}});
   out.write_element_end("a");
-
-  return;
 }
 
 void html::translate_list(Element element, HtmlWriter &out,
@@ -339,27 +313,21 @@ void html::translate_list(Element element, HtmlWriter &out,
   out.write_element_begin("ul");
   translate_children(element.children(), out, config);
   out.write_element_end("ul");
-
-  return;
 }
 
 void html::translate_list_item(Element element, HtmlWriter &out,
                                const HtmlConfig &config) {
-  auto list_item = element.list_item();
+  ListItem list_item = element.list_item();
 
   out.write_element_begin("li",
                           {.style = translate_text_style(list_item.style())});
   translate_children(list_item.children(), out, config);
   out.write_element_end("li");
-
-  return;
 }
 
 void html::translate_table(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
-  // TODO table column width does not work
-  // TODO table row height does not work
-  auto table = element.table();
+  Table table = element.table();
 
   out.write_element_begin(
       "table", {.attributes = HtmlAttributesVector{{"cellpadding", "0"},
@@ -367,25 +335,25 @@ void html::translate_table(Element element, HtmlWriter &out,
                                                    {"cellspacing", "0"}},
                 .style = translate_table_style(table.style())});
 
-  for (auto column : table.columns()) {
-    auto table_column = column.table_column();
+  for (Element column : table.columns()) {
+    TableColumn table_column = column.table_column();
 
     out.write_element_begin(
         "col", {.close_type = HtmlCloseType::none,
                 .style = translate_table_column_style(table_column.style())});
   }
 
-  for (auto row : table.rows()) {
-    auto table_row = row.table_row();
+  for (Element row : table.rows()) {
+    TableRow table_row = row.table_row();
 
     out.write_element_begin(
         "tr", {.style = translate_table_row_style(table_row.style())});
 
-    for (auto cell : table_row.children()) {
-      auto table_cell = cell.table_cell();
+    for (Element cell : table_row.children()) {
+      TableCell table_cell = cell.table_cell();
 
       if (!table_cell.is_covered()) {
-        auto cell_span = table_cell.span();
+        TableDimensions cell_span = table_cell.span();
 
         out.write_element_begin(
             "td", {.attributes =
@@ -409,13 +377,11 @@ void html::translate_table(Element element, HtmlWriter &out,
   }
 
   out.write_element_end("table");
-
-  return;
 }
 
 void html::translate_image(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
-  auto image = element.image();
+  Image image = element.image();
 
   out.write_element_begin(
       "img",
@@ -432,27 +398,23 @@ void html::translate_image(Element element, HtmlWriter &out,
              }
            },
        .style = "position:absolute;left:0;top:0;width:100%;height:100%"});
-
-  return;
 }
 
 void html::translate_frame(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
-  auto frame = element.frame();
-  auto style = frame.style();
+  Frame frame = element.frame();
+  GraphicStyle style = frame.style();
 
   out.write_element_begin("div", {.style = translate_frame_properties(frame) +
                                            translate_drawing_style(style)});
   translate_children(frame.children(), out, config);
   out.write_element_end("div");
-
-  return;
 }
 
 void html::translate_rect(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
-  auto rect = element.rect();
-  auto style = rect.style();
+  Rect rect = element.rect();
+  GraphicStyle style = rect.style();
 
   out.write_element_begin("div", {.style = translate_rect_properties(rect) +
                                            translate_drawing_style(style)});
@@ -461,14 +423,12 @@ void html::translate_rect(Element element, HtmlWriter &out,
   out.write_raw(
       R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)");
   out.write_element_end("div");
-
-  return;
 }
 
 void html::translate_line(Element element, HtmlWriter &out,
                           const HtmlConfig & /*config*/) {
-  auto line = element.line();
-  auto style = line.style();
+  Line line = element.line();
+  GraphicStyle style = line.style();
 
   out.write_element_begin(
       "svg", {.attributes =
@@ -486,14 +446,12 @@ void html::translate_line(Element element, HtmlWriter &out,
                                                   {"y2", line.y2()}}});
 
   out.write_element_end("svg");
-
-  return;
 }
 
 void html::translate_circle(Element element, HtmlWriter &out,
                             const HtmlConfig &config) {
-  auto circle = element.circle();
-  auto style = circle.style();
+  Circle circle = element.circle();
+  GraphicStyle style = circle.style();
 
   out.write_element_begin("div", {.style = translate_circle_properties(circle) +
                                            translate_drawing_style(style)});
@@ -502,14 +460,12 @@ void html::translate_circle(Element element, HtmlWriter &out,
   out.write_raw(
       R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)");
   out.write_element_end("div");
-
-  return;
 }
 
 void html::translate_custom_shape(Element element, HtmlWriter &out,
                                   const HtmlConfig &config) {
-  auto custom_shape = element.custom_shape();
-  auto style = custom_shape.style();
+  CustomShape custom_shape = element.custom_shape();
+  GraphicStyle style = custom_shape.style();
 
   out.write_element_begin(
       "div", {.style = translate_custom_shape_properties(custom_shape) +
@@ -517,8 +473,6 @@ void html::translate_custom_shape(Element element, HtmlWriter &out,
   translate_children(custom_shape.children(), out, config);
   // TODO draw shape in svg
   out.write_element_end("div");
-
-  return;
 }
 
 } // namespace odr::internal
