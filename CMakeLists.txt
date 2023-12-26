@@ -107,7 +107,7 @@ add_library(odr
         "src/odr/internal/html/common.cpp"
         "src/odr/internal/html/document.cpp"
         "src/odr/internal/html/document_style.cpp"
-        "src/odr/internal/html/document_element.cpp"
+        "src/odr/internal/html/html_document_element.cpp"
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
         "src/odr/internal/html/text_file.cpp"

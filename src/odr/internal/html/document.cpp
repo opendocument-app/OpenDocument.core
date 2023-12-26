@@ -8,8 +8,8 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/path.hpp>
-#include <odr/internal/html/document_element.hpp>
 #include <odr/internal/html/document_style.hpp>
+#include <odr/internal/html/html_document_element.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/resource.hpp>
 #include <odr/internal/util/stream_util.hpp>
