@@ -283,7 +283,8 @@ void html::translate_paragraph(Element element, HtmlWriter &out,
                                 translate_text_style(paragraph.text_style())));
     out.write_element_end("x-s");
   }
-  out.write_element_begin("wbr", {.close_type = HtmlCloseType::none});
+  out.write_element_begin(
+      "wbr", HtmlElementOptions().set_close_type(HtmlCloseType::none));
   out.write_element_end("x-p");
 }
 
