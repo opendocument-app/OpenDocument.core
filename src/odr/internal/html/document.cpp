@@ -164,9 +164,11 @@ Html html::translate_text_document(const Document &document,
     page_layout.height = {};
 
     out.write_element_begin("div",
-                            {.style = translate_outer_page_style(page_layout)});
+                            HtmlElementOptions().set_style(
+                                translate_outer_page_style(page_layout)));
     out.write_element_begin("div",
-                            {.style = translate_inner_page_style(page_layout)});
+                            HtmlElementOptions().set_style(
+                                translate_inner_page_style(page_layout)));
 
     translate_children(element.children(), out, config);
 
