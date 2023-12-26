@@ -154,15 +154,15 @@ bool append_file(mz_zip_archive &archive, const std::string &path,
                  const std::time_t &time, const std::string &comment,
                  const std::uint32_t level_and_flags) {
   auto read_callback = [](void *opaque, std::uint64_t /*offset*/, void *buffer,
-                          std::size_t size) {
+                          std::size_t size) -> std::size_t {
     auto istream = static_cast<std::istream *>(opaque);
     istream->read(static_cast<char *>(buffer), size);
-    return size;
+    return istream->gcount();
   };
 
   return mz_zip_writer_add_read_buf_callback(
       &archive, path.c_str(), read_callback, &istream, size, &time,
-      comment.c_str(), comment.size(), level_and_flags, nullptr, 0, nullptr, 0);
+      comment.c_str(), comment.size(), level_and_flags, "", 0, "", 0);
 }
 
 } // namespace odr::internal::zip::util

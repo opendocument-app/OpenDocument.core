@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12.4)
 
 project(odr LANGUAGES C CXX)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -161,8 +161,9 @@ add_library(odr
         "src/odr/internal/util/string_util.cpp"
         "src/odr/internal/util/xml_util.cpp"
 
-        "src/odr/internal/zip/zip_util.cpp"
         "src/odr/internal/zip/zip_archive.cpp"
+        "src/odr/internal/zip/zip_exceptions.cpp"
+        "src/odr/internal/zip/zip_util.cpp"
 )
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
