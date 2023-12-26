@@ -17,6 +17,8 @@ void html::translate_children(ElementRange range, HtmlWriter &out,
   for (auto child : range) {
     translate_element(child, out, config);
   }
+
+  return;
 }
 
 void html::translate_element(Element element, HtmlWriter &out,
@@ -56,6 +58,8 @@ void html::translate_element(Element element, HtmlWriter &out,
   } else {
     // TODO log
   }
+
+  return;
 }
 
 void html::translate_slide(Element element, HtmlWriter &out,
@@ -72,6 +76,8 @@ void html::translate_slide(Element element, HtmlWriter &out,
 
   out.write_element_end("div");
   out.write_element_end("div");
+
+  return;
 }
 
 void html::translate_sheet(Element element, HtmlWriter &out,
@@ -200,6 +206,8 @@ void html::translate_sheet(Element element, HtmlWriter &out,
   }
 
   out.write_element_end("table");
+
+  return;
 }
 
 void html::translate_page(Element element, HtmlWriter &out,
@@ -213,6 +221,8 @@ void html::translate_page(Element element, HtmlWriter &out,
   translate_children(page.children(), out, config);
   out.write_element_end("div");
   out.write_element_end("div");
+
+  return;
 }
 
 void html::translate_master_page(MasterPage element, HtmlWriter &out,
@@ -221,6 +231,8 @@ void html::translate_master_page(MasterPage element, HtmlWriter &out,
     // TODO filter placeholders
     translate_element(child, out, config);
   }
+
+  return;
 }
 
 void html::translate_text(const Element element, HtmlWriter &out,
@@ -240,6 +252,8 @@ void html::translate_text(const Element element, HtmlWriter &out,
               .style = translate_text_style(text.style())});
   out.out() << internal::html::escape_text(text.content());
   out.write_element_end("x-s");
+
+  return;
 }
 
 void html::translate_line_break(Element element, HtmlWriter &out,
@@ -251,6 +265,8 @@ void html::translate_line_break(Element element, HtmlWriter &out,
                           {.inline_element = true,
                            .style = translate_text_style(line_break.style())});
   out.write_element_end("x-s");
+
+  return;
 }
 
 void html::translate_paragraph(Element element, HtmlWriter &out,
@@ -277,6 +293,8 @@ void html::translate_paragraph(Element element, HtmlWriter &out,
   }
   out.write_element_begin("wbr", {.close_type = HtmlCloseType::none});
   out.write_element_end("x-p");
+
+  return;
 }
 
 void html::translate_span(Element element, HtmlWriter &out,
@@ -287,6 +305,8 @@ void html::translate_span(Element element, HtmlWriter &out,
                                   .style = translate_text_style(span.style())});
   translate_children(span.children(), out, config);
   out.write_element_end("x-s");
+
+  return;
 }
 
 void html::translate_link(Element element, HtmlWriter &out,
@@ -298,6 +318,8 @@ void html::translate_link(Element element, HtmlWriter &out,
             .attributes = HtmlAttributesVector{{"href", link.href()}}});
   translate_children(link.children(), out, config);
   out.write_element_end("a");
+
+  return;
 }
 
 void html::translate_bookmark(Element element, HtmlWriter &out,
@@ -317,6 +339,8 @@ void html::translate_list(Element element, HtmlWriter &out,
   out.write_element_begin("ul");
   translate_children(element.children(), out, config);
   out.write_element_end("ul");
+
+  return;
 }
 
 void html::translate_list_item(Element element, HtmlWriter &out,
@@ -327,6 +351,8 @@ void html::translate_list_item(Element element, HtmlWriter &out,
                           {.style = translate_text_style(list_item.style())});
   translate_children(list_item.children(), out, config);
   out.write_element_end("li");
+
+  return;
 }
 
 void html::translate_table(Element element, HtmlWriter &out,
@@ -383,6 +409,8 @@ void html::translate_table(Element element, HtmlWriter &out,
   }
 
   out.write_element_end("table");
+
+  return;
 }
 
 void html::translate_image(Element element, HtmlWriter &out,
@@ -404,6 +432,8 @@ void html::translate_image(Element element, HtmlWriter &out,
              }
            },
        .style = "position:absolute;left:0;top:0;width:100%;height:100%"});
+
+  return;
 }
 
 void html::translate_frame(Element element, HtmlWriter &out,
@@ -415,6 +445,8 @@ void html::translate_frame(Element element, HtmlWriter &out,
                                            translate_drawing_style(style)});
   translate_children(frame.children(), out, config);
   out.write_element_end("div");
+
+  return;
 }
 
 void html::translate_rect(Element element, HtmlWriter &out,
@@ -429,6 +461,8 @@ void html::translate_rect(Element element, HtmlWriter &out,
   out.write_raw(
       R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)");
   out.write_element_end("div");
+
+  return;
 }
 
 void html::translate_line(Element element, HtmlWriter &out,
@@ -452,6 +486,8 @@ void html::translate_line(Element element, HtmlWriter &out,
                                                   {"y2", line.y2()}}});
 
   out.write_element_end("svg");
+
+  return;
 }
 
 void html::translate_circle(Element element, HtmlWriter &out,
@@ -466,6 +502,8 @@ void html::translate_circle(Element element, HtmlWriter &out,
   out.write_raw(
       R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)");
   out.write_element_end("div");
+
+  return;
 }
 
 void html::translate_custom_shape(Element element, HtmlWriter &out,
@@ -479,6 +517,8 @@ void html::translate_custom_shape(Element element, HtmlWriter &out,
   translate_children(custom_shape.children(), out, config);
   // TODO draw shape in svg
   out.write_element_end("div");
+
+  return;
 }
 
 } // namespace odr::internal
