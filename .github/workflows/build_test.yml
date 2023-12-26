@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: cmake unix
-        if: !startsWith(matrix.config.os, 'windows')
+        if: !(startsWith(matrix.config.os, 'windows'))
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
@@ -73,7 +73,7 @@ jobs:
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
 
       - name: build unix
-        if: !startsWith(matrix.config.os, 'windows')
+        if: !(startsWith(matrix.config.os, 'windows'))
         run: cmake --build build
       - name: build windows
         if: startsWith(matrix.config.os, 'windows')
