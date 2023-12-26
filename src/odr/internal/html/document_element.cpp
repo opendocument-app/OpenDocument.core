@@ -308,6 +308,8 @@ void html::translate_bookmark(Element element, HtmlWriter &out,
       "a", {.inline_element = true,
             .attributes = HtmlAttributesVector{{"id", bookmark.name()}}});
   out.write_element_end("a");
+
+  return;
 }
 
 void html::translate_list(Element element, HtmlWriter &out,
