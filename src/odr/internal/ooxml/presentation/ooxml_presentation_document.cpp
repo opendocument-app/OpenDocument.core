@@ -1,15 +1,19 @@
+#include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
+
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_cursor.hpp>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
 namespace odr::internal::ooxml::presentation {
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : m_filesystem{std::move(filesystem)} {
+    : common::TemplateDocument<Element>(FileType::office_open_xml_presentation,
+                                        DocumentType::presentation,
+                                        std::move(filesystem)) {
   m_document_xml = util::xml::parse(*m_filesystem, "ppt/presentation.xml");
 
   for (auto relationships :
@@ -17,11 +21,13 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     m_slides_xml[relationships.first] = util::xml::parse(
         *m_filesystem, common::Path("ppt").join(relationships.second));
   }
+
+  m_root_element = parse_tree(*this, m_document_xml.document_element());
 }
 
-bool Document::editable() const noexcept { return false; }
+bool Document::is_editable() const noexcept { return false; }
 
-bool Document::savable(const bool /*encrypted*/) const noexcept {
+bool Document::is_savable(const bool /*encrypted*/) const noexcept {
   return false;
 }
 
@@ -34,21 +40,11 @@ void Document::save(const common::Path & /*path*/,
   throw UnsupportedOperation();
 }
 
-FileType Document::file_type() const noexcept {
-  return FileType::office_open_xml_presentation;
-}
-
-DocumentType Document::document_type() const noexcept {
-  return DocumentType::presentation;
-}
-
-std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
-  return m_filesystem;
-}
-
-std::unique_ptr<abstract::DocumentCursor> Document::root_element() const {
-  return std::make_unique<DocumentCursor>(this,
-                                          m_document_xml.document_element());
+pugi::xml_node Document::get_slide_root(const std::string &ref) const {
+  if (auto it = m_slides_xml.find(ref); it != std::end(m_slides_xml)) {
+    return it->second.document_element();
+  }
+  return {};
 }
 
 } // namespace odr::internal::ooxml::presentation

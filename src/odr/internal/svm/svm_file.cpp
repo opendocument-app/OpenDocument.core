@@ -1,7 +1,5 @@
 #include <odr/internal/svm/svm_file.hpp>
 
-#include <odr/file.hpp>
-
 #include <odr/internal/svm/svm_format.hpp>
 
 #include <utility>

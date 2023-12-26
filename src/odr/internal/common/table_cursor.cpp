@@ -42,11 +42,11 @@ void TableCursor::add_cell(const std::uint32_t colspan,
   handle_rowspan_();
 }
 
-TablePosition TableCursor::position() const noexcept { return {m_row, m_col}; }
-
-std::uint32_t TableCursor::row() const noexcept { return m_row; }
+TablePosition TableCursor::position() const noexcept { return {m_col, m_row}; }
 
 std::uint32_t TableCursor::column() const noexcept { return m_col; }
+
+std::uint32_t TableCursor::row() const noexcept { return m_row; }
 
 void TableCursor::handle_rowspan_() noexcept {
   auto &s = m_sparse.front();

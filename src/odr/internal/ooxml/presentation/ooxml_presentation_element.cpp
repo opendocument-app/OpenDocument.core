@@ -1,30 +1,110 @@
-#include <functional>
-#include <odr/file.hpp>
-#include <odr/internal/abstract/document.hpp>
-#include <odr/internal/common/document_element.hpp>
-#include <odr/internal/common/style.hpp>
-#include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_cursor.hpp>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
-#include <odr/quantity.hpp>
-#include <odr/style.hpp>
-#include <optional>
+
+#include <odr/file.hpp>
+
+#include <odr/internal/ooxml/ooxml_util.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
+
 #include <pugixml.hpp>
-#include <unordered_map>
 
 namespace odr::internal::ooxml::presentation {
 
-Element::Element(pugi::xml_node node) : common::Element<Element>(node) {}
+namespace {
+
+void resolve_text_style_(pugi::xml_node node, TextStyle &result) {
+  auto run_properties = node.child("a:rPr");
+
+  if (auto font_name = run_properties.child("rFonts").attribute("ascii")) {
+    result.font_name = font_name.value();
+  }
+  if (auto font_size =
+          read_hundredth_point_attribute(run_properties.attribute("sz"))) {
+    result.font_size = font_size;
+  }
+  if (auto font_weight =
+          read_font_weight_attribute(run_properties.attribute("b"))) {
+    result.font_weight = font_weight;
+  }
+  if (auto font_style =
+          read_font_style_attribute(run_properties.attribute("i"))) {
+    result.font_style = font_style;
+  }
+  if (auto font_underline =
+          read_line_attribute(run_properties.attribute("u"))) {
+    result.font_underline = font_underline;
+  }
+  if (auto font_line_through =
+          read_line_attribute(run_properties.attribute("strike"))) {
+    result.font_line_through = font_line_through;
+  }
+  if (auto font_shadow =
+          read_shadow_attribute(run_properties.attribute("shadow"))) {
+    result.font_shadow = font_shadow;
+  }
+  if (auto font_color =
+          read_color_attribute(run_properties.attribute("color"))) {
+    result.font_color = font_color;
+  }
+  if (auto background_color =
+          read_color_attribute(run_properties.attribute("highlight"))) {
+    result.background_color = background_color;
+  }
+}
+
+void resolve_paragraph_style_(pugi::xml_node node, ParagraphStyle &result) {
+  auto paragraph_properties = node.child("a:pPr");
+
+  if (auto text_align =
+          read_text_align_attribute(paragraph_properties.attribute("jc"))) {
+    result.text_align = text_align;
+  }
+  if (auto margin_left = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("left"))) {
+    result.margin.left = margin_left;
+  }
+  if (auto margin_left = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("start"))) {
+    result.margin.left = margin_left;
+  }
+  if (auto margin_right = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("right"))) {
+    result.margin.right = margin_right;
+  }
+  if (auto margin_right = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("end"))) {
+    result.margin.right = margin_right;
+  }
+}
+
+} // namespace
+
+Element::Element(pugi::xml_node node) : m_node{node} {
+  if (!node) {
+    // TODO log error
+    throw std::runtime_error("node not set");
+  }
+}
 
 common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
-  return {}; // TODO
+  return {};
 }
 
 common::ResolvedStyle
-Element::intermediate_style(const abstract::Document *,
-                            const abstract::DocumentCursor *cursor) const {
-  return static_cast<const DocumentCursor *>(cursor)->intermediate_style();
+Element::intermediate_style(const abstract::Document *document) const {
+  abstract::Element *parent = this->parent(document);
+  if (parent == nullptr) {
+    return partial_style(document);
+  }
+  auto base = dynamic_cast<Element *>(parent)->intermediate_style(document);
+  base.override(partial_style(document));
+  return base;
+}
+
+bool Element::is_editable(const abstract::Document *document) const {
+  if (m_parent == nullptr) {
+    return document_(document)->is_editable();
+  }
+  return m_parent->is_editable(document);
 }
 
 const Document *Element::document_(const abstract::Document *document) {
@@ -36,486 +116,180 @@ pugi::xml_node Element::slide_(const abstract::Document *document,
   return document_(document)->m_slides_xml.at(id).document_element();
 }
 
-namespace {
+PageLayout Slide::page_layout(const abstract::Document *) const {
+  return {}; // TODO
+}
 
-class Slide;
-class TableColumn;
-class TableRow;
+abstract::Element *Slide::master_page(const abstract::Document *) const {
+  return {}; // TODO
+}
 
-template <ElementType element_type> class DefaultElement : public Element {
-public:
-  using Element::Element;
+std::string Slide::name(const abstract::Document *) const {
+  return {}; // TODO
+}
 
-  [[nodiscard]] ElementType type(const abstract::Document *) const override {
-    return element_type;
-  }
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const override {
-    return common::construct_2<DefaultElement>(*this);
-  }
-};
-
-class Root final : public DefaultElement<ElementType::root> {
-public:
-  using DefaultElement::DefaultElement;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Root>(*this);
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_first_child(const abstract::Document *) const final {
-    return common::construct_optional<Slide>(
-        m_node.child("p:sldIdLst").child("p:sldId"));
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const final {
-    return {};
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const final {
-    return {};
-  }
-};
-
-class Slide final : public Element, public abstract::SlideElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Slide>(*this);
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_first_child(const abstract::Document *document) const final {
-    return common::construct_first_child_element(
-        construct_default_element,
-        slide_node_(document).child("p:cSld").child("p:spTree"));
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const final {
-    return common::construct_optional<Slide>(
-        m_node.previous_sibling("p:sldId"));
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const final {
-    return common::construct_optional<Slide>(m_node.next_sibling("p:sldId"));
-  }
-
-  [[nodiscard]] PageLayout page_layout(const abstract::Document *) const final {
-    return {}; // TODO
-  }
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_master_page(const abstract::Document *) const final {
-    return {}; // TODO
-  }
-
-  [[nodiscard]] std::string name(const abstract::Document *) const final {
-    return {}; // TODO
-  }
-
-private:
-  pugi::xml_node slide_node_(const abstract::Document *document) const {
-    return slide_(document, m_node.attribute("r:id").value());
-  }
-};
-
-class Paragraph final : public Element, public abstract::ParagraphElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Paragraph>(*this);
-  }
-
-  [[nodiscard]] ParagraphStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).paragraph_style;
-  }
-
-  [[nodiscard]] TextStyle
-  text_style(const abstract::Document *document,
-             const abstract::DocumentCursor *) const final {
-    return partial_style(document).text_style;
-  }
-};
-
-class Span final : public Element, public abstract::SpanElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Span>(*this);
-  }
-
-  [[nodiscard]] TextStyle style(const abstract::Document *document,
-                                const abstract::DocumentCursor *) const final {
-    return partial_style(document).text_style;
-  }
-};
-
-class Text final : public Element, public abstract::TextElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Text>(*this);
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const final {
-    return common::construct_previous_sibling_element(construct_default_element,
-                                                      first_());
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const final {
-    return common::construct_next_sibling_element(construct_default_element,
-                                                  last_());
-  }
-
-  [[nodiscard]] std::string content(const abstract::Document *) const final {
-    std::string result;
-    for (auto node = first_(); is_text_(node); node = node.next_sibling()) {
-      result += text_(node);
-    }
-    return result;
-  }
-
-  void set_content(const abstract::Document *, const std::string &) final {
-    // TODO
-  }
-
-  [[nodiscard]] TextStyle style(const abstract::Document *document,
-                                const abstract::DocumentCursor *) const final {
-    return partial_style(document).text_style;
-  }
-
-private:
-  static bool is_text_(const pugi::xml_node node) {
-    std::string name = node.name();
-
-    if (name == "a:t") {
-      return true;
-    }
-    if (name == "a:tab") {
-      return true;
-    }
-
-    return false;
-  }
-
-  static std::string text_(const pugi::xml_node node) {
-    std::string name = node.name();
-
-    if (name == "a:t") {
-      return node.text().get();
-    }
-    if (name == "a:tab") {
-      return "\t";
-    }
-
-    return "";
-  }
-
-  [[nodiscard]] pugi::xml_node first_() const {
-    auto node = m_node;
-    for (; is_text_(node.previous_sibling()); node = node.previous_sibling()) {
-    }
-    return node;
-  }
-
-  [[nodiscard]] pugi::xml_node last_() const {
-    auto node = m_node;
-    for (; is_text_(node.next_sibling()); node = node.next_sibling()) {
-    }
-    return node;
-  }
-};
-
-class TableElement : public Element, public abstract::TableElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableElement>(*this);
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_first_child(const abstract::Document *) const final {
-    return {};
-  }
-
-  [[nodiscard]] TableDimensions
-  dimensions(const abstract::Document *) const final {
-    return {}; // TODO
-  }
+pugi::xml_node Slide::slide_node_(const abstract::Document *document) const {
+  return slide_(document, m_node.attribute("r:id").value());
+}
 
-  std::unique_ptr<abstract::Element>
-  construct_first_column(const abstract::Document *) const final {
-    return common::construct_optional<TableColumn>(
-        m_node.child("w:tblGrid").child("w:gridCol"));
-  }
-
-  std::unique_ptr<abstract::Element>
-  construct_first_row(const abstract::Document *) const final {
-    return common::construct_optional<TableRow>(m_node.child("w:tr"));
-  }
+common::ResolvedStyle
+Paragraph::partial_style(const abstract::Document *) const {
+  common::ResolvedStyle result;
+  resolve_text_style_(m_node, result.text_style);
+  resolve_paragraph_style_(m_node, result.paragraph_style);
+  return result;
+}
 
-  [[nodiscard]] TableStyle style(const abstract::Document *document,
-                                 const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_style;
-  }
-};
-
-class TableColumn final : public Element, public abstract::TableColumnElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableColumn>(*this);
-  }
+ParagraphStyle Paragraph::style(const abstract::Document *document) const {
+  return partial_style(document).paragraph_style;
+}
 
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const override {
-    if (auto previous_sibling = m_node.previous_sibling("w:gridCol")) {
-      return common::construct_2<TableColumn>(previous_sibling);
-    }
-    return {};
-  }
+TextStyle Paragraph::text_style(const abstract::Document *document) const {
+  return partial_style(document).text_style;
+}
 
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const override {
-    if (auto next_sibling = m_node.next_sibling("w:gridCol")) {
-      return common::construct_2<TableColumn>(next_sibling);
-    }
-    return {};
-  }
+common::ResolvedStyle Span::partial_style(const abstract::Document *) const {
+  common::ResolvedStyle result;
+  resolve_text_style_(m_node, result.text_style);
+  return result;
+}
 
-  [[nodiscard]] TableColumnStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_column_style;
-  }
-};
-
-class TableRow final : public Element, public abstract::TableRowElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableRow>(*this);
-  }
+TextStyle Span::style(const abstract::Document *document) const {
+  return partial_style(document).text_style;
+}
 
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const override {
-    if (auto previous_sibling = m_node.previous_sibling("w:tr")) {
-      return common::construct_2<TableColumn>(previous_sibling);
-    }
-    return {};
-  }
+Text::Text(pugi::xml_node node) : Text(node, node) {}
 
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const override {
-    if (auto next_sibling = m_node.next_sibling("w:tr")) {
-      return common::construct_2<TableColumn>(next_sibling);
-    }
-    return {};
-  }
+Text::Text(pugi::xml_node first, pugi::xml_node last)
+    : Element(first), m_last{last} {}
 
-  [[nodiscard]] TableRowStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_row_style;
+std::string Text::content(const abstract::Document *) const {
+  std::string result;
+  for (auto node = m_node; node != m_last.next_sibling();
+       node = node.next_sibling()) {
+    result += text_(node);
   }
-};
-
-class TableCell final : public Element, public abstract::TableCellElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<TableCell>(*this);
-  }
+  return result;
+}
 
-  std::unique_ptr<abstract::Element>
-  construct_previous_sibling(const abstract::Document *) const override {
-    if (auto previous_sibling = m_node.previous_sibling("w:tc")) {
-      return common::construct_2<TableColumn>(previous_sibling);
-    }
-    return {};
-  }
+void Text::set_content(const abstract::Document *, const std::string &) {
+  // TODO
+}
 
-  std::unique_ptr<abstract::Element>
-  construct_next_sibling(const abstract::Document *) const override {
-    if (auto next_sibling = m_node.next_sibling("w:tc")) {
-      return common::construct_2<TableColumn>(next_sibling);
-    }
-    return {};
-  }
+TextStyle Text::style(const abstract::Document *document) const {
+  return intermediate_style(document).text_style;
+}
 
-  [[nodiscard]] abstract::Element *
-  column(const abstract::Document *, const abstract::DocumentCursor *) final {
-    return {};
-  }
+std::string Text::text_(const pugi::xml_node node) {
+  std::string name = node.name();
 
-  [[nodiscard]] abstract::Element *row(const abstract::Document *,
-                                       const abstract::DocumentCursor *) final {
-    return {};
+  if (name == "a:t") {
+    return node.text().get();
   }
-
-  [[nodiscard]] bool covered(const abstract::Document *) const final {
-    return false;
+  if (name == "a:tab") {
+    return "\t";
   }
 
-  [[nodiscard]] TableDimensions span(const abstract::Document *) const final {
-    return {}; // TODO
-  }
+  return "";
+}
 
-  [[nodiscard]] ValueType value_type(const abstract::Document *) const final {
-    return ValueType::string;
-  }
+TableDimensions TableElement::dimensions(const abstract::Document *) const {
+  return {}; // TODO
+}
 
-  [[nodiscard]] TableCellStyle
-  style(const abstract::Document *document,
-        const abstract::DocumentCursor *) const final {
-    return partial_style(document).table_cell_style;
-  }
-};
-
-class Frame final : public Element, public abstract::FrameElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<Frame>(*this);
-  }
+abstract::Element *
+TableElement::first_column(const abstract::Document *) const {
+  return {}; // TODO
+}
 
-  [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final {
-    return AnchorType::at_page;
-  }
+abstract::Element *TableElement::first_row(const abstract::Document *) const {
+  return {}; // TODO
+}
 
-  [[nodiscard]] std::optional<std::string>
-  x(const abstract::Document *) const final {
-    if (auto x = read_emus_attribute(
-            m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute(
-                "x"))) {
-      return x->to_string();
-    }
-    return {};
-  }
+TableStyle TableElement::style(const abstract::Document *document) const {
+  return partial_style(document).table_style;
+}
 
-  [[nodiscard]] std::optional<std::string>
-  y(const abstract::Document *) const final {
-    if (auto y = read_emus_attribute(
-            m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute(
-                "y"))) {
-      return y->to_string();
-    }
-    return {};
-  }
+TableColumnStyle TableColumn::style(const abstract::Document *document) const {
+  return partial_style(document).table_column_style;
+}
 
-  [[nodiscard]] std::optional<std::string>
-  width(const abstract::Document *) const final {
-    if (auto cx = read_emus_attribute(
-            m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute(
-                "cx"))) {
-      return cx->to_string();
-    }
-    return {};
-  }
+TableRowStyle TableRow::style(const abstract::Document *document) const {
+  return partial_style(document).table_row_style;
+}
 
-  [[nodiscard]] std::optional<std::string>
-  height(const abstract::Document *) const final {
-    if (auto cy = read_emus_attribute(
-            m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute(
-                "cy"))) {
-      return cy->to_string();
-    }
-    return {};
-  }
+bool TableCell::is_covered(const abstract::Document *) const { return false; }
 
-  [[nodiscard]] std::optional<std::string>
-  z_index(const abstract::Document *) const final {
-    return {}; // TODO
-  }
+TableDimensions TableCell::span(const abstract::Document *) const {
+  return {1, 1}; // TODO
+}
 
-  [[nodiscard]] GraphicStyle
-  style(const abstract::Document *,
-        const abstract::DocumentCursor *) const final {
-    return {}; // TODO
-  }
-};
-
-class ImageElement final : public Element, public abstract::ImageElement {
-public:
-  using Element::Element;
-
-  [[nodiscard]] std::unique_ptr<abstract::Element>
-  construct_copy() const final {
-    return common::construct_2<ImageElement>(*this);
-  }
+ValueType TableCell::value_type(const abstract::Document *) const {
+  return ValueType::string;
+}
 
-  [[nodiscard]] bool internal(const abstract::Document *) const final {
-    return false;
-  }
+TableCellStyle TableCell::style(const abstract::Document *document) const {
+  return partial_style(document).table_cell_style;
+}
 
-  [[nodiscard]] std::optional<odr::File>
-  file(const abstract::Document *) const final {
-    return {}; // TODO
-  }
+AnchorType Frame::anchor_type(const abstract::Document *) const {
+  return AnchorType::at_page;
+}
 
-  [[nodiscard]] std::string href(const abstract::Document *) const final {
-    return ""; // TODO
+std::optional<std::string> Frame::x(const abstract::Document *) const {
+  if (auto x = read_emus_attribute(
+          m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute(
+              "x"))) {
+    return x->to_string();
   }
-};
-
-} // namespace
-
-std::unique_ptr<abstract::Element>
-Element::construct_default_element(pugi::xml_node node) {
-  using Constructor =
-      std::function<std::unique_ptr<abstract::Element>(pugi::xml_node node)>;
-
-  using Group = DefaultElement<ElementType::group>;
-
-  static std::unordered_map<std::string, Constructor> constructor_table{
-      {"p:presentation", common::construct<Root>},
-      {"p:sld", common::construct<Slide>},
-      {"p:sp", common::construct<Frame>},
-      {"p:txBody", common::construct<Group>},
-      {"a:t", common::construct<Text>},
-      {"a:p", common::construct<Paragraph>},
-      {"a:r", common::construct<Span>},
-      {"a:tbl", common::construct<TableElement>},
-      {"a:gridCol", common::construct<TableColumn>},
-      {"a:tr", common::construct<TableRow>},
-      {"a:tc", common::construct<TableCell>},
-  };
-
-  if (auto constructor_it = constructor_table.find(node.name());
-      constructor_it != std::end(constructor_table)) {
-    return constructor_it->second(node);
-  }
-
   return {};
+}
+
+std::optional<std::string> Frame::y(const abstract::Document *) const {
+  if (auto y = read_emus_attribute(
+          m_node.child("p:spPr").child("a:xfrm").child("a:off").attribute(
+              "y"))) {
+    return y->to_string();
+  }
+  return {};
+}
+
+std::optional<std::string> Frame::width(const abstract::Document *) const {
+  if (auto cx = read_emus_attribute(
+          m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute(
+              "cx"))) {
+    return cx->to_string();
+  }
+  return {};
+}
+
+std::optional<std::string> Frame::height(const abstract::Document *) const {
+  if (auto cy = read_emus_attribute(
+          m_node.child("p:spPr").child("a:xfrm").child("a:ext").attribute(
+              "cy"))) {
+    return cy->to_string();
+  }
+  return {};
+}
+
+std::optional<std::string> Frame::z_index(const abstract::Document *) const {
+  return {}; // TODO
+}
+
+GraphicStyle Frame::style(const abstract::Document *) const {
+  return {}; // TODO
+}
+
+bool ImageElement::is_internal(const abstract::Document *) const {
+  return false;
+}
+
+std::optional<File> ImageElement::file(const abstract::Document *) const {
+  return {}; // TODO
+}
+
+std::string ImageElement::href(const abstract::Document *) const {
+  return ""; // TODO
 }
 
 } // namespace odr::internal::ooxml::presentation

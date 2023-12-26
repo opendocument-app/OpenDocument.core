@@ -6,13 +6,13 @@
 #include <odr/internal/zip/zip_exceptions.hpp>
 #include <odr/internal/zip/zip_util.hpp>
 
-#include <miniz/miniz.h>
-#include <miniz/miniz_zip.h>
-
 #include <chrono>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <miniz/miniz.h>
+#include <miniz/miniz_zip.h>
 
 namespace odr::internal::zip {
 

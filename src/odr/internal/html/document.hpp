@@ -5,7 +5,6 @@
 
 namespace odr {
 class Document;
-class DocumentCursor;
 
 struct HtmlConfig;
 class Html;

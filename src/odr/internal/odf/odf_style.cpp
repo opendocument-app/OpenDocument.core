@@ -1,14 +1,12 @@
 #include <odr/internal/odf/odf_style.hpp>
 
-#include <odr/quantity.hpp>
-#include <odr/style.hpp>
-
-#include <odr/internal/common/style.hpp>
+#include <odr/internal/odf/odf_parser.hpp>
 
 #include <cstring>
-#include <pugixml.hpp>
 #include <unordered_map>
 #include <utility>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 
@@ -447,45 +445,12 @@ void Style::resolve_graphic_style_(pugi::xml_node node, GraphicStyle &result) {
 
 StyleRegistry::StyleRegistry() = default;
 
-StyleRegistry::StyleRegistry(const pugi::xml_node content_root,
+StyleRegistry::StyleRegistry(Document &document,
+                             const pugi::xml_node content_root,
                              const pugi::xml_node styles_root) {
   generate_indices_(content_root, styles_root);
   generate_styles_();
-}
-
-Style *StyleRegistry::style(const char *name) const {
-  if (auto style_it = m_styles.find(name); style_it != std::end(m_styles)) {
-    return style_it->second.get();
-  }
-  return {};
-}
-
-PageLayout StyleRegistry::page_layout(const std::string &name) const {
-  if (auto page_layout_it = m_index_page_layout.find(name);
-      page_layout_it != std::end(m_index_page_layout)) {
-    return read_page_layout(page_layout_it->second);
-  }
-  return {};
-}
-
-pugi::xml_node StyleRegistry::master_page_node(const std::string &name) const {
-  if (auto master_page_it = m_index_master_page.find(name);
-      master_page_it != std::end(m_index_master_page)) {
-    return master_page_it->second;
-  }
-  return {};
-}
-
-pugi::xml_node StyleRegistry::font_face_node(const std::string &name) const {
-  if (auto font_face_it = m_index_font_face.find(name);
-      font_face_it != std::end(m_index_font_face)) {
-    return font_face_it->second;
-  }
-  return {};
-}
-
-std::optional<std::string> StyleRegistry::first_master_page() const {
-  return m_first_master_page;
+  generate_master_pages_(document);
 }
 
 void StyleRegistry::generate_indices_(const pugi::xml_node content_root,
@@ -568,6 +533,52 @@ Style *StyleRegistry::generate_style_(const std::string &name,
 
   style = std::make_unique<Style>(this, name, node, parent, family);
   return style.get();
+}
+
+void StyleRegistry::generate_master_pages_(Document &document) {
+  for (auto &&e : m_index_master_page) {
+    m_master_page_elements[e.first] =
+        dynamic_cast<MasterPage *>(parse_tree(document, e.second));
+  }
+
+  if (m_first_master_page) {
+    m_first_master_page_element = m_master_page_elements[*m_first_master_page];
+  }
+}
+
+Style *StyleRegistry::style(const char *name) const {
+  if (auto style_it = m_styles.find(name); style_it != std::end(m_styles)) {
+    return style_it->second.get();
+  }
+  return {};
+}
+
+PageLayout StyleRegistry::page_layout(const std::string &name) const {
+  if (auto page_layout_it = m_index_page_layout.find(name);
+      page_layout_it != std::end(m_index_page_layout)) {
+    return read_page_layout(page_layout_it->second);
+  }
+  return {};
+}
+
+pugi::xml_node StyleRegistry::font_face_node(const std::string &name) const {
+  if (auto font_face_it = m_index_font_face.find(name);
+      font_face_it != std::end(m_index_font_face)) {
+    return font_face_it->second;
+  }
+  return {};
+}
+
+MasterPage *StyleRegistry::master_page(const std::string &name) const {
+  if (auto master_page_elements_it = m_master_page_elements.find(name);
+      master_page_elements_it != std::end(m_master_page_elements)) {
+    return master_page_elements_it->second;
+  }
+  return {};
+}
+
+MasterPage *StyleRegistry::first_master_page() const {
+  return m_first_master_page_element;
 }
 
 } // namespace odr::internal::odf

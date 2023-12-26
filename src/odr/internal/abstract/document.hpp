@@ -1,7 +1,7 @@
 #ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 #define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
 
-#include <odr/document.hpp>
+#include <odr/document_element.hpp>
 
 #include <memory>
 
@@ -17,7 +17,6 @@ class Path;
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
-class DocumentCursor;
 class Element;
 
 class Document {
@@ -25,11 +24,11 @@ public:
   virtual ~Document() = default;
 
   /// \return `true` if the document is editable in any way.
-  [[nodiscard]] virtual bool editable() const noexcept = 0;
+  [[nodiscard]] virtual bool is_editable() const noexcept = 0;
 
   /// \param encrypted to ask for encrypted saves.
-  /// \return `true` if the document is savable.
-  [[nodiscard]] virtual bool savable(bool encrypted) const noexcept = 0;
+  /// \return `true` if the document is is_savable.
+  [[nodiscard]] virtual bool is_savable(bool encrypted) const noexcept = 0;
 
   /// \param path the destination path.
   virtual void save(const common::Path &path) const = 0;
@@ -44,12 +43,12 @@ public:
   /// \return the type of the document.
   [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;
 
+  /// \return the underlying filesystem of the document.
   [[nodiscard]] virtual std::shared_ptr<ReadableFilesystem>
   files() const noexcept = 0;
 
   /// \return cursor to the root element of the document.
-  [[nodiscard]] virtual std::unique_ptr<DocumentCursor>
-  root_element() const = 0;
+  [[nodiscard]] virtual Element *root_element() const = 0;
 };
 
 } // namespace odr::internal::abstract

@@ -1,7 +1,8 @@
-#include <gtest/gtest.h>
+#include <odr/exceptions.hpp>
+
 #include <test_util.hpp>
 
-#include <odr/exceptions.hpp>
+#include <gtest/gtest.h>
 
 using namespace odr;
 using namespace odr::test;

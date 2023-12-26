@@ -6,9 +6,9 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 
-#include <pugixml.hpp>
-
 #include <utility>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::util {
 

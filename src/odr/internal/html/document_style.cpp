@@ -304,11 +304,11 @@ std::string html::translate_frame_properties(const Frame &frame) {
     if (auto y = frame.y()) {
       result += "margin-top:" + *y + ";";
     }
-    result.append("margin-right:calc(100% - ")
-        .append(frame.x().value_or("0in"))
-        .append(" - ")
-        .append(*frame.width())
-        .append(");");
+    result += "margin-right:calc(100% - ";
+    result += frame.x().value_or("0in");
+    result += " - ";
+    result += *frame.width();
+    result += ");";
   } else if (text_wrap == TextWrap::after) {
     result += "display:block;";
     result += "float:left;clear:both;";
@@ -386,13 +386,6 @@ html::translate_custom_shape_properties(const CustomShape &custom_shape) {
   result += "width:" + custom_shape.width() + ";";
   result += "height:" + custom_shape.height() + ";";
   return result;
-}
-
-std::string html::optional_style_attribute(const std::string &style) {
-  if (style.empty()) {
-    return "";
-  }
-  return " style=\"" + style + "\"";
 }
 
 } // namespace odr::internal

@@ -1,8 +1,9 @@
-#include <gtest/gtest.h>
-#include <test_util.hpp>
-
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+
+#include <test_util.hpp>
+
+#include <gtest/gtest.h>
 
 #include <odr/internal/csv/csv_file.hpp>
 

@@ -1,10 +1,11 @@
-#include <gtest/gtest.h>
-#include <test_util.hpp>
-
 #include <odr/document.hpp>
-#include <odr/document_cursor.hpp>
 #include <odr/document_element.hpp>
 #include <odr/html.hpp>
+#include <odr/quantity.hpp>
+
+#include <test_util.hpp>
+
+#include <gtest/gtest.h>
 
 using namespace odr;
 using namespace odr::test;
@@ -19,9 +20,7 @@ TEST(Document, odt) {
 
   EXPECT_EQ(document.document_type(), DocumentType::text);
 
-  auto cursor = document.root_element();
-
-  auto page_layout = cursor.element().text_root().page_layout();
+  auto page_layout = document.root_element().text_root().page_layout();
   EXPECT_TRUE(page_layout.width);
   EXPECT_EQ(Measure("8.2673in"), page_layout.width);
   EXPECT_TRUE(page_layout.height);
@@ -40,34 +39,31 @@ TEST(Document, odg) {
 
   EXPECT_EQ(document.document_type(), DocumentType::drawing);
 
-  auto cursor = document.root_element();
-
-  cursor.for_each_child([](DocumentCursor &cursor, const std::uint32_t) {
-    auto page_layout = cursor.element().page().page_layout();
+  for (auto child : document.root_element().children()) {
+    auto page_layout = child.page().page_layout();
     EXPECT_TRUE(page_layout.width);
     EXPECT_EQ(Measure("21cm"), page_layout.width);
     EXPECT_TRUE(page_layout.height);
     EXPECT_EQ(Measure("29.7cm"), page_layout.height);
     EXPECT_TRUE(page_layout.margin.top);
     EXPECT_EQ(Measure("1cm"), page_layout.margin.top);
-  });
+  }
 }
 
 TEST(Document, edit_odt) {
   DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"));
   Document document = document_file.document();
-  auto cursor = document.root_element();
 
-  DocumentCursor::ChildVisitor edit = [&](DocumentCursor &cursor,
-                                          const std::uint32_t) {
-    cursor.for_each_child(edit);
-
-    if (auto text = cursor.element().text()) {
+  std::function<void(Element)> edit = [&](Element element) {
+    for (Element child : element.children()) {
+      edit(child);
+    }
+    if (auto text = element.text()) {
       text.set_content("hello world!");
     }
   };
-  edit(cursor, 0);
+  edit(document.root_element());
 
   document.save("about_edit.odt");
   DocumentFile("about_edit.odt");
@@ -77,17 +73,16 @@ TEST(Document, edit_docx) {
   DocumentFile document_file(
       TestData::test_file_path("odr-public/docx/style-various-1.docx"));
   Document document = document_file.document();
-  auto cursor = document.root_element();
 
-  DocumentCursor::ChildVisitor edit = [&](DocumentCursor &cursor,
-                                          const std::uint32_t) {
-    cursor.for_each_child(edit);
-
-    if (auto text = cursor.element().text()) {
+  std::function<void(Element)> edit = [&](Element element) {
+    for (Element child : element.children()) {
+      edit(child);
+    }
+    if (auto text = element.text()) {
       text.set_content("hello world!");
     }
   };
-  edit(cursor, 0);
+  edit(document.root_element());
 
   document.save("style-various-1_edit.docx");
   DocumentFile("style-various-1_edit.docx");

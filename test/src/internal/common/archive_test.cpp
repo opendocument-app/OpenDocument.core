@@ -1,9 +1,10 @@
-#include <gtest/gtest.h>
-#include <test_util.hpp>
-
 #include <odr/internal/cfb/cfb_archive.hpp>
 #include <odr/internal/common/archive.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
+
+#include <test_util.hpp>
+
+#include <gtest/gtest.h>
 
 #include <memory>
 

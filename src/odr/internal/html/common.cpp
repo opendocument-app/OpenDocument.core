@@ -3,49 +3,11 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <odr/html.hpp>
-#include <odr/style.hpp>
 
 #include <iomanip>
 #include <sstream>
 
 namespace odr::internal {
-
-const char *html::doctype() noexcept {
-  // clang-format off
-  return R"V0G0N(<!DOCTYPE html>
-)V0G0N";
-  // clang-format on
-}
-
-const char *html::default_headers() noexcept {
-  // clang-format off
-  return R"V0G0N(<meta charset="UTF-8"/>
-<base target="_blank"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes"/>
-<title>odr</title>)V0G0N";
-  // clang-format on
-}
-
-std::string html::body_attributes(const HtmlConfig &config) noexcept {
-  std::string result;
-
-  result += "class=\"";
-  switch (config.spreadsheet_gridlines) {
-  case HtmlTableGridlines::soft:
-    result += "odr-gridlines-soft";
-    break;
-  case HtmlTableGridlines::hard:
-    result += "odr-gridlines-hard";
-    break;
-  case HtmlTableGridlines::none:
-  default:
-    result += "odr-gridlines-none";
-    break;
-  }
-  result += "\"";
-
-  return result;
-}
 
 std::string html::escape_text(std::string text) noexcept {
   if (text.empty()) {

@@ -1,7 +1,8 @@
-#include <gtest/gtest.h>
+#include <miniz/miniz.h>
+
 #include <test_util.hpp>
 
-#include <miniz/miniz.h>
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <fstream>

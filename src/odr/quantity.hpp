@@ -1,6 +1,9 @@
 #ifndef ODR_QUANTITY_H
 #define ODR_QUANTITY_H
 
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 #include <string>
 
 namespace odr {
@@ -15,6 +18,7 @@ public:
 
   [[nodiscard]] const std::string &name() const;
 
+  void to_stream(std::ostream &) const;
   std::string to_string() const;
 
 private:
@@ -50,8 +54,14 @@ public:
   Magnitude magnitude() const { return m_magnitude; }
   Unit unit() const { return m_unit; }
 
+  void to_stream(std::ostream &out) const {
+    out << m_magnitude << m_unit.to_string();
+  }
+
   std::string to_string() const {
-    return std::to_string(m_magnitude) + m_unit.to_string();
+    std::ostringstream ss;
+    ss << std::setprecision(4) << m_magnitude << m_unit.to_string();
+    return ss.str();
   }
 
 private:
@@ -60,5 +70,14 @@ private:
 };
 
 } // namespace odr
+
+std::ostream &operator<<(std::ostream &, const odr::DynamicUnit &);
+
+template <typename Magnitude, typename Unit>
+std::ostream &operator<<(std::ostream &out,
+                         const odr::Quantity<Magnitude, Unit> &quantity) {
+  quantity.to_stream(out);
+  return out;
+}
 
 #endif // ODR_QUANTITY_H
