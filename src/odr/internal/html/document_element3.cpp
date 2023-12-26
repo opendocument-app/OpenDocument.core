@@ -58,7 +58,7 @@ void html::translate_sheet(Element element, HtmlWriter &out,
       out.write_element_begin(
           "td", {.inline_element = true,
                  .style = "text-align:center;vertical-align:middle;"});
-      out.out() << common::TablePosition::to_column_string(column_index);
+      out.write_raw(common::TablePosition::to_column_string(column_index));
       out.write_element_end("td");
     }
 
@@ -77,13 +77,13 @@ void html::translate_sheet(Element element, HtmlWriter &out,
     out.write_element_begin(
         "td", {.inline_element = true, .style = [&]() {
                  std::string style = "text-align:center;vertical-align:middle;";
-                 if (auto height = table_row_style.height) {
+                 if (std::optional<Measure> height = table_row_style.height) {
                    style += "height:" + height->to_string() + ";";
                    style += "max-height:" + height->to_string() + ";";
                  }
                  return style;
                }()});
-    out.out() << common::TablePosition::to_row_string(row_index);
+    out.write_raw(common::TablePosition::to_row_string(row_index));
     out.write_element_end("td");
 
     for (std::uint32_t column_index = cursor.column();
