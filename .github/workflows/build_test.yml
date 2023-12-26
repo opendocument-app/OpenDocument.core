@@ -13,7 +13,7 @@ concurrency:
 env:
   CCACHE_DIR: ${{ github.workspace }}/ccache
   CCACHE_MAXSIZE: 500M
-  CCACHE_KEY_SUFFIX: r19
+  CCACHE_KEY_SUFFIX: r20
 
 jobs:
   build:

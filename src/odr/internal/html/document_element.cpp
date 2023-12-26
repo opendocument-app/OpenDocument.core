@@ -32,7 +32,7 @@ void html::translate_element(Element element, HtmlWriter &out,
   } else if (element.type() == ElementType::link) {
     translate_link(element, out, config);
   } else if (element.type() == ElementType::bookmark) {
-    translate_bookmark(element, out);
+    translate_bookmark(element, out, config);
   } else if (element.type() == ElementType::list) {
     translate_list(element, out, config);
   } else if (element.type() == ElementType::list_item) {
@@ -46,7 +46,7 @@ void html::translate_element(Element element, HtmlWriter &out,
   } else if (element.type() == ElementType::rect) {
     translate_rect(element, out, config);
   } else if (element.type() == ElementType::line) {
-    translate_line(element, out);
+    translate_line(element, out, config);
   } else if (element.type() == ElementType::circle) {
     translate_circle(element, out, config);
   } else if (element.type() == ElementType::custom_shape) {
@@ -300,7 +300,8 @@ void html::translate_link(Element element, HtmlWriter &out,
   out.write_element_end("a");
 }
 
-void html::translate_bookmark(Element element, HtmlWriter &out) {
+void html::translate_bookmark(Element element, HtmlWriter &out,
+                              const HtmlConfig & /*config*/) {
   auto bookmark = element.bookmark();
 
   out.write_element_begin(
@@ -428,7 +429,8 @@ void html::translate_rect(Element element, HtmlWriter &out,
   out.write_element_end("div");
 }
 
-void html::translate_line(Element element, HtmlWriter &out) {
+void html::translate_line(Element element, HtmlWriter &out,
+                          const HtmlConfig & /*config*/) {
   auto line = element.line();
   auto style = line.style();
 
