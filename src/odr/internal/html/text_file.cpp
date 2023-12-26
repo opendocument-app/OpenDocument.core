@@ -41,15 +41,15 @@ Html html::translate_text_file(const TextFile &text_file,
   out.write_body_begin();
   out.write_element_begin(
       "table",
-      {.attributes = HtmlAttributesVector{
-           {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}}});
+      HtmlElementOptions().set_attributes(HtmlAttributesVector{
+          {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}}));
 
   for (std::uint32_t line = 1;; ++line) {
     out.write_element_begin("tr");
 
     out.write_element_begin("td",
-                            {.inline_element = true,
-                             .style = "text-align:right;user-select:none;"});
+                            HtmlElementOptions().set_inline(true).set_style(
+                                "text-align:right;user-select:none;"));
     out.out() << line;
     out.write_element_end("td");
 
