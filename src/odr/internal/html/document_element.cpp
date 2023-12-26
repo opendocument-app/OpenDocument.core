@@ -64,8 +64,8 @@ void html::translate_sheet(Element element, HtmlWriter &out,
 
   out.write_element_begin(
       "table",
-      {.attributes = HtmlAttributesVector{
-           {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}}});
+      HtmlElementOptions().set_attributes(HtmlAttributesVector{
+          {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}}));
 
   TableDimensions dimensions = sheet.dimensions();
   std::uint32_t end_column = dimensions.columns;
@@ -82,29 +82,32 @@ void html::translate_sheet(Element element, HtmlWriter &out,
   end_column = std::max(1u, end_column);
   end_row = std::max(1u, end_row);
 
-  out.write_element_begin("col", {.close_type = HtmlCloseType::none});
+  out.write_element_begin(
+      "col", HtmlElementOptions().set_close_type(HtmlCloseType::none));
 
   for (std::uint32_t column_index = 0; column_index < end_column;
        ++column_index) {
     SheetColumn table_column = sheet.column(column_index);
     TableColumnStyle table_column_style = table_column.style();
 
-    out.write_element_begin(
-        "col", {.close_type = HtmlCloseType::none,
-                .style = translate_table_column_style(table_column_style)});
+    out.write_element_begin("col", HtmlElementOptions()
+                                       .set_close_type(HtmlCloseType::none)
+                                       .set_style(translate_table_column_style(
+                                           table_column_style)));
   }
 
   {
     out.write_element_begin("tr");
 
-    out.write_element_begin("td", {.close_type = HtmlCloseType::trailing,
-                                   .style = "width:30px;height:20px;"});
+    out.write_element_begin("td", HtmlElementOptions()
+                                      .set_close_type(HtmlCloseType::trailing)
+                                      .set_style("width:30px;height:20px;"));
 
     for (std::uint32_t column_index = 0; column_index < end_column;
          ++column_index) {
-      out.write_element_begin(
-          "td", {.inline_element = true,
-                 .style = "text-align:center;vertical-align:middle;"});
+      out.write_element_begin("td",
+                              HtmlElementOptions().set_inline(true).set_style(
+                                  "text-align:center;vertical-align:middle;"));
       out.write_raw(common::TablePosition::to_column_string(column_index));
       out.write_element_end("td");
     }
@@ -118,18 +121,19 @@ void html::translate_sheet(Element element, HtmlWriter &out,
     SheetRow table_row = sheet.row(row_index);
     TableRowStyle table_row_style = table_row.style();
 
-    out.write_element_begin(
-        "tr", {.style = translate_table_row_style(table_row_style)});
+    out.write_element_begin("tr",
+                            HtmlElementOptions().set_style(
+                                translate_table_row_style(table_row_style)));
 
     out.write_element_begin(
-        "td", {.inline_element = true, .style = [&]() {
-                 std::string style = "text-align:center;vertical-align:middle;";
-                 if (std::optional<Measure> height = table_row_style.height) {
-                   style += "height:" + height->to_string() + ";";
-                   style += "max-height:" + height->to_string() + ";";
-                 }
-                 return style;
-               }()});
+        "td", HtmlElementOptions().set_inline(true).set_style([&]() {
+          std::string style = "text-align:center;vertical-align:middle;";
+          if (std::optional<Measure> height = table_row_style.height) {
+            style += "height:" + height->to_string() + ";";
+            style += "max-height:" + height->to_string() + ";";
+          }
+          return style;
+        }()));
     out.write_raw(common::TablePosition::to_row_string(row_index));
     out.write_element_end("td");
 
@@ -148,22 +152,23 @@ void html::translate_sheet(Element element, HtmlWriter &out,
       ValueType cell_value_type = cell.value_type();
 
       out.write_element_begin(
-          "td", {.attributes =
-                     [&](const HtmlAttributeWriterCallback &clb) {
-                       if (cell_span.columns > 1) {
-                         clb("colspan", std::to_string(cell_span.columns));
-                       }
-                       if (cell_span.rows > 1) {
-                         clb("rowspan", std::to_string(cell_span.rows));
-                       }
-                     },
-                 .style = translate_table_cell_style(cell_style),
-                 .clazz = [&]() -> std::optional<HtmlWritable> {
-                   if (cell_value_type == ValueType::float_number) {
-                     return "odr-value-type-float";
-                   }
-                   return std::nullopt;
-                 }()});
+          "td",
+          HtmlElementOptions()
+              .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+                if (cell_span.columns > 1) {
+                  clb("colspan", std::to_string(cell_span.columns));
+                }
+                if (cell_span.rows > 1) {
+                  clb("rowspan", std::to_string(cell_span.rows));
+                }
+              })
+              .set_style(translate_table_cell_style(cell_style))
+              .set_class([&]() -> std::optional<HtmlWritable> {
+                if (cell_value_type == ValueType::float_number) {
+                  return "odr-value-type-float";
+                }
+                return std::nullopt;
+              }()));
       if ((column_index == 0) && (row_index == 0)) {
         for (Element shape : sheet.shapes()) {
           translate_element(shape, out, config);
@@ -187,10 +192,12 @@ void html::translate_slide(Element element, HtmlWriter &out,
                            const HtmlConfig &config) {
   Slide slide = element.slide();
 
-  out.write_element_begin(
-      "div", {.style = translate_outer_page_style(slide.page_layout())});
-  out.write_element_begin(
-      "div", {.style = translate_inner_page_style(slide.page_layout())});
+  out.write_element_begin("div",
+                          HtmlElementOptions().set_style(
+                              translate_outer_page_style(slide.page_layout())));
+  out.write_element_begin("div",
+                          HtmlElementOptions().set_style(
+                              translate_inner_page_style(slide.page_layout())));
 
   translate_master_page(slide.master_page(), out, config);
   translate_children(slide.children(), out, config);
@@ -203,10 +210,12 @@ void html::translate_page(Element element, HtmlWriter &out,
                           const HtmlConfig &config) {
   Page page = element.page();
 
-  out.write_element_begin(
-      "div", {.style = translate_outer_page_style(page.page_layout())});
-  out.write_element_begin(
-      "div", {.style = translate_inner_page_style(page.page_layout())});
+  out.write_element_begin("div",
+                          HtmlElementOptions().set_style(
+                              translate_outer_page_style(page.page_layout())));
+  out.write_element_begin("div",
+                          HtmlElementOptions().set_style(
+                              translate_inner_page_style(page.page_layout())));
   translate_master_page(page.master_page(), out, config);
   translate_children(page.children(), out, config);
   out.write_element_end("div");
@@ -226,16 +235,16 @@ void html::translate_text(const Element element, HtmlWriter &out,
   Text text = element.text();
 
   out.write_element_begin(
-      "x-s", {.inline_element = true,
-              .attributes =
-                  [&](const HtmlAttributeWriterCallback &clb) {
-                    if (config.editable && element.is_editable()) {
-                      clb("contenteditable", "true");
-                      clb("data-odr-path",
-                          DocumentPath::extract(element).to_string());
-                    }
-                  },
-              .style = translate_text_style(text.style())});
+      "x-s", HtmlElementOptions()
+                 .set_inline(true)
+                 .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+                   if (config.editable && element.is_editable()) {
+                     clb("contenteditable", "true");
+                     clb("data-odr-path",
+                         DocumentPath::extract(element).to_string());
+                   }
+                 })
+                 .set_style(translate_text_style(text.style())));
   out.out() << internal::html::escape_text(text.content());
   out.write_element_end("x-s");
 }
@@ -244,10 +253,11 @@ void html::translate_line_break(Element element, HtmlWriter &out,
                                 const HtmlConfig &) {
   LineBreak line_break = element.line_break();
 
-  out.write_element_begin("br", {.close_type = HtmlCloseType::none});
+  out.write_element_begin(
+      "br", HtmlElementOptions().set_close_type(HtmlCloseType::none));
   out.write_element_begin("x-s",
-                          {.inline_element = true,
-                           .style = translate_text_style(line_break.style())});
+                          HtmlElementOptions().set_inline(true).set_style(
+                              translate_text_style(line_break.style())));
   out.write_element_end("x-s");
 }
 
@@ -256,9 +266,9 @@ void html::translate_paragraph(Element element, HtmlWriter &out,
   Paragraph paragraph = element.paragraph();
 
   out.write_element_begin(
-      "x-p", {.inline_element = true,
-              .style = "display:block;" +
-                       translate_paragraph_style(paragraph.style())});
+      "x-p",
+      HtmlElementOptions().set_inline(true).set_style(
+          "display:block;" + translate_paragraph_style(paragraph.style())));
   translate_children(paragraph.children(), out, config);
   if (paragraph.first_child()) {
     // TODO if element is content (e.g. bookmark does not count)

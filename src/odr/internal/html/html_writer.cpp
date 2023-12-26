@@ -83,6 +83,41 @@ void write_element_options(std::ostream &out,
 
 } // namespace
 
+HtmlElementOptions &HtmlElementOptions::set_inline(bool _inline_element) {
+  inline_element = _inline_element;
+  return *this;
+}
+
+HtmlElementOptions &
+HtmlElementOptions::set_close_type(HtmlCloseType _close_type) {
+  close_type = _close_type;
+  return *this;
+}
+
+HtmlElementOptions &
+HtmlElementOptions::set_attributes(std::optional<HtmlAttributes> _attributes) {
+  attributes = std::move(_attributes);
+  return *this;
+}
+
+HtmlElementOptions &
+HtmlElementOptions::set_style(std::optional<HtmlWritable> _style) {
+  style = std::move(_style);
+  return *this;
+}
+
+HtmlElementOptions &
+HtmlElementOptions::set_class(std::optional<HtmlWritable> _class) {
+  clazz = std::move(_class);
+  return *this;
+}
+
+HtmlElementOptions &
+HtmlElementOptions::set_extra(std::optional<HtmlWritable> _extra) {
+  extra = std::move(_extra);
+  return *this;
+}
+
 HtmlWriter::HtmlWriter(std::ostream &out, bool format, std::uint8_t indent)
     : m_out{out}, m_format{format}, m_indent(indent, ' ') {}
 

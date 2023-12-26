@@ -17,12 +17,14 @@
 
 #include <fstream>
 
-namespace odr::internal {
-
 namespace {
 
-void front(const Document &document, const std::string &path,
-           internal::html::HtmlWriter &out, const HtmlConfig &config) {
+using namespace odr;
+using namespace odr::internal;
+using namespace odr::internal::html;
+
+void front(const Document &document, const std::string &path, HtmlWriter &out,
+           const HtmlConfig &config) {
   out.write_begin();
   out.write_header_begin();
   out.write_header_charset("UTF-8");
@@ -84,7 +86,7 @@ void front(const Document &document, const std::string &path,
     break;
   }
 
-  out.write_body_begin({.clazz = body_clazz});
+  out.write_body_begin(HtmlElementOptions().set_class(body_clazz));
 }
 
 void back(const Document &, const std::string &path,
@@ -125,6 +127,8 @@ std::ofstream output(const std::string &path) {
 }
 
 } // namespace
+
+namespace odr::internal {
 
 Html html::translate_document(const Document &document, const std::string &path,
                               const HtmlConfig &config) {
