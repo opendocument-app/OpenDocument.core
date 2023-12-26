@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/zip/zip_exceptions.hpp>
 #include <odr/internal/zip/zip_util.hpp>
 
 #include <chrono>
@@ -211,7 +212,7 @@ void ZipArchive::save(std::ostream &out) const {
   };
   state = mz_zip_writer_init(&archive, 0);
   if (!state) {
-    throw ZipSaveError();
+    throw MinizSaveError(archive);
   }
 
   for (auto &&entry : *this) {
@@ -225,13 +226,13 @@ void ZipArchive::save(std::ostream &out) const {
       state = util::append_file(archive, path.string(), *istream, size, time,
                                 "", entry.compression_level());
       if (!state) {
-        throw ZipSaveError();
+        throw MinizSaveError(archive);
       }
     } else if (entry.is_directory()) {
       state = mz_zip_writer_add_mem(&archive, (path.string() + "/").c_str(),
                                     nullptr, 0, 0);
       if (!state) {
-        throw ZipSaveError();
+        throw MinizSaveError(archive);
       }
     } else {
       throw ZipSaveError();
@@ -240,11 +241,11 @@ void ZipArchive::save(std::ostream &out) const {
 
   state = mz_zip_writer_finalize_archive(&archive);
   if (!state) {
-    throw ZipSaveError();
+    throw MinizSaveError(archive);
   }
   state = mz_zip_writer_end(&archive);
   if (!state) {
-    throw ZipSaveError();
+    throw MinizSaveError(archive);
   }
 }
 

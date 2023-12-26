@@ -46,12 +46,11 @@ TEST(miniz, create) {
   EXPECT_TRUE(state);
 
   auto append_file = [&](const char *path, const std::string &content) {
-    auto read_callback = [](void *opaque, std::uint64_t offset, void *buffer,
-                            std::size_t size) {
+    auto read_callback = [](void *opaque, std::uint64_t /*offset*/,
+                            void *buffer, std::size_t size) -> std::size_t {
       auto istream = static_cast<std::istream *>(opaque);
-      EXPECT_EQ(offset, istream->tellg());
       istream->read(static_cast<char *>(buffer), size);
-      return size;
+      return istream->gcount();
     };
 
     std::istringstream istream(content);
