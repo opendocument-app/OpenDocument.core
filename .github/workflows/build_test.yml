@@ -63,14 +63,21 @@ jobs:
         uses: actions/checkout@v2
 
       - name: cmake
+        if: !startsWith(matrix.config.os, 'windows')
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-      - if: startsWith(matrix.config.os, 'windows')
-        run: cmake -B build -S . -DCMAKE_CXX_FLAGS=/GL-
+      - name: cmake
+        if: startsWith(matrix.config.os, 'windows')
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
+
       - name: build
-        run: cmake --build build --config Release # `config Release` somehow necessary for windows
+        if: !startsWith(matrix.config.os, 'windows')
+        run: cmake --build build
+      - name: build
+        if: startsWith(matrix.config.os, 'windows')
+        run: cmake --build build --config Debug
 
       - name: upload binaries
         uses: actions/upload-artifact@v2
