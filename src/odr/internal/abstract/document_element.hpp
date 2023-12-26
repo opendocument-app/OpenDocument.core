@@ -7,6 +7,8 @@
 #include <optional>
 #include <string>
 
+#pragma warning(disable : 4250)
+
 namespace odr {
 class File;
 
