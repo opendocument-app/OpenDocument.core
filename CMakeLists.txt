@@ -27,13 +27,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 endif ()
 
-# use ccache if available
-find_program(CCACHE_FOUND ccache)
-if (CCACHE_FOUND)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_FOUND}")
-    message(STATUS "using ccache ${CCACHE_FOUND}")
-endif (CCACHE_FOUND)
-
 if (NOT DEFINED CONAN_EXPORTED)
     include("cmake/conan.cmake")
     conan_cmake_configure(GENERATORS cmake)

@@ -25,7 +25,7 @@ jobs:
           - { os: ubuntu-22.04, compiler: clang, cc: clang-15, cxx: clang++-15 }
           - { os: ubuntu-22.04, compiler: gcc, cc: gcc-13, cxx: g++-13 }
           - { os: macos-12, compiler: clang, cc: clang, cxx: clang++ }
-          - { os: windows-2022, compiler: msvc }
+          - { os: windows-2019, compiler: msvc }
 
     steps:
       - name: ubuntu install ccache
@@ -62,22 +62,13 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: cmake unix
-        if: ${{ !startsWith(matrix.config.os, 'windows') }}
+      - name: cmake
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-      - name: cmake windows
-        if: startsWith(matrix.config.os, 'windows')
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
-
-      - name: build unix
-        if: ${{ !startsWith(matrix.config.os, 'windows') }}
-        run: cmake --build build
-      - name: build windows
-        if: startsWith(matrix.config.os, 'windows')
-        run: cmake --build build --config Debug
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: build
+        run: cmake --build build --config Release # `config Release` somehow necessary for windows
 
       - name: upload binaries
         uses: actions/upload-artifact@v2
