@@ -3,6 +3,8 @@
 
 namespace odr {
 class Element;
+class ElementRange;
+class MasterPage;
 
 struct HtmlConfig;
 } // namespace odr

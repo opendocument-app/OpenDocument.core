@@ -1,11 +1,11 @@
-#include <odr/document_element.hpp>
+#include <odr/internal/html/document_element.hpp>
 
+#include <odr/document_element.hpp>
 #include <odr/document_path.hpp>
 #include <odr/html.hpp>
 
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/html/common.hpp>
-#include <odr/internal/html/document_element.hpp>
 #include <odr/internal/html/document_style.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
