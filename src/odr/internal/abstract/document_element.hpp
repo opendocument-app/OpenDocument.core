@@ -7,7 +7,9 @@
 #include <optional>
 #include <string>
 
+#ifdef _MSC_VER
 #pragma warning(disable : 4250)
+#endif
 
 namespace odr {
 class File;
