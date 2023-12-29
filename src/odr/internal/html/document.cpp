@@ -57,7 +57,7 @@ void front(const Document &document, const std::string &output_path,
     if (config.relative_resource_paths) {
       odr_css_path = common::Path(odr_css_path).rebase(output_path);
     }
-    out.write_header_style(odr_css_path.string().c_str());
+    out.write_header_style(odr_css_path.string());
     if (document.document_type() == DocumentType::spreadsheet) {
       auto odr_spreadsheet_css_path =
           common::Path(config.external_resource_path)
@@ -66,7 +66,7 @@ void front(const Document &document, const std::string &output_path,
         odr_spreadsheet_css_path =
             common::Path(odr_spreadsheet_css_path).rebase(output_path);
       }
-      out.write_header_style(odr_spreadsheet_css_path.string().c_str());
+      out.write_header_style(odr_spreadsheet_css_path.string());
     }
   }
 
@@ -103,7 +103,7 @@ void back(const Document &, const std::string &output_path,
     if (config.relative_resource_paths) {
       odr_js_path = common::Path(odr_js_path).rebase(output_path);
     }
-    out.write_script(odr_js_path.string().c_str());
+    out.write_script(odr_js_path.string());
   }
 
   out.write_body_end();
