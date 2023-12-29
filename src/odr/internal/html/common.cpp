@@ -1,15 +1,19 @@
 #include <odr/internal/html/common.hpp>
 
+#include <odr/internal/abstract/file.hpp>
+#include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <odr/html.hpp>
 
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 
 namespace odr::internal {
 
-std::string html::escape_text(std::string text) noexcept {
+std::string html::escape_text(std::string text) {
   if (text.empty()) {
     return text;
   }
@@ -32,11 +36,25 @@ std::string html::escape_text(std::string text) noexcept {
   return text;
 }
 
-std::string html::color(const Color &color) noexcept {
+std::string html::color(const Color &color) {
   std::stringstream ss;
   ss << "#";
   ss << std::setw(6) << std::setfill('0') << std::hex << color.rgb();
   return ss.str();
+}
+
+std::string html::file_to_url(const std::string &file,
+                              const std::string &mimeType) {
+  return "data:" + mimeType + ";base64," + crypto::util::base64_encode(file);
+}
+
+std::string html::file_to_url(std::istream &file, const std::string &mimeType) {
+  return file_to_url(util::stream::read(file), mimeType);
+}
+
+std::string html::file_to_url(const abstract::File &file,
+                              const std::string &mimeType) {
+  return file_to_url(*file.stream(), mimeType);
 }
 
 } // namespace odr::internal

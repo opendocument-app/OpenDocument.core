@@ -6,6 +6,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_writer.hpp>
 
 #include <fstream>
@@ -55,9 +56,18 @@ Html html::translate_filesystem(FileType file_type,
     out.write_element_end("span");
 
     if (is_file) {
+      File file = filesystem.open(file_path);
+
       out.write_element_begin("span");
-      out.write_raw(std::to_string(filesystem.open(file_path).size()));
+      out.write_raw(std::to_string(file.size()));
       out.write_element_end("span");
+
+      out.write_element_begin(
+          "a", HtmlElementOptions().set_attributes(HtmlAttributesVector{
+                   {"href",
+                    file_to_url(*file.stream(), "application/octet-stream")}}));
+      out.write_raw("download");
+      out.write_element_end("a");
     }
 
     out.write_element_end("p");

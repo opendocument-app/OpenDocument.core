@@ -5,11 +5,10 @@
 #include <odr/html.hpp>
 
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/svm/svm_to_svg.hpp>
-#include <odr/internal/util/stream_util.hpp>
 
 #include <fstream>
 #include <sstream>
@@ -21,22 +20,16 @@ void html::translate_image_src(const File &file, std::ostream &out,
   try {
     translate_image_src(DecodedFile(file).image_file(), out, config);
   } catch (...) {
-    // TODO use stream
-    std::string image_data = util::stream::read(*file.stream());
     // TODO hacky - `image/jpg` works for all common image types in chrome
-    out << "data:image/jpg;base64, ";
-    // TODO stream
-    out << crypto::util::base64_encode(image_data);
+    // TODO use stream
+    out << file_to_url(*file.stream(), "image/jpg");
   }
 }
 
 void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
                                const HtmlConfig & /*config*/) {
-  // TODO use stream
-  std::string image_data;
-
+  // try svm
   try {
-    // try svm
     // TODO `image_file` is already an `SvmFile`
     // TODO `impl()` might be a bit dirty
     auto image_file_impl = image_file.file().impl();
@@ -46,17 +39,14 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
         std::make_shared<common::MemoryFile>(*image_file_impl));
     std::ostringstream svg_out;
     svm::Translator::svg(svm_file, svg_out);
-    image_data = svg_out.str();
-    out << "data:image/svg+xml;base64, ";
+    // TODO use stream
+    out << file_to_url(svg_out.str(), "image/svg+xml");
   } catch (...) {
     // else we guess that it is a usual image
-    image_data = util::stream::read(*image_file.stream());
     // TODO hacky - `image/jpg` works for all common image types in chrome
-    out << "data:image/jpg;base64, ";
+    // TODO use stream
+    out << file_to_url(*image_file.stream(), "image/jpg");
   }
-
-  // TODO stream
-  out << crypto::util::base64_encode(image_data);
 }
 
 Html html::translate_image_file(const ImageFile &image_file,
