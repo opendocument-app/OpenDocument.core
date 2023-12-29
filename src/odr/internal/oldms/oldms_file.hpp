@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_OLDMS_FILE_H
-#define ODR_INTERNAL_OLDMS_FILE_H
+#ifndef ODR_INTERNAL_OLDMS_FILE_HPP
+#define ODR_INTERNAL_OLDMS_FILE_HPP
 
 #include <odr/file.hpp>
 
@@ -41,4 +41,4 @@ private:
 
 } // namespace odr::internal::oldms
 
-#endif // ODR_INTERNAL_OLDMS_FILE_H
+#endif // ODR_INTERNAL_OLDMS_FILE_HPP

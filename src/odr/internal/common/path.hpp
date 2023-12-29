@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_COMMON_PATH_H
-#define ODR_INTERNAL_COMMON_PATH_H
+#ifndef ODR_INTERNAL_COMMON_PATH_HPP
+#define ODR_INTERNAL_COMMON_PATH_HPP
 
 #include <cstdint>
 #include <filesystem>
@@ -100,4 +100,4 @@ template <> struct hash<::odr::internal::common::Path> {
 };
 } // namespace std
 
-#endif // ODR_INTERNAL_COMMON_PATH_H
+#endif // ODR_INTERNAL_COMMON_PATH_HPP

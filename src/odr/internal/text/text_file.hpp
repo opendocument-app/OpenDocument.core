@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_TEXT_FILE_H
-#define ODR_INTERNAL_TEXT_FILE_H
+#ifndef ODR_INTERNAL_TEXT_FILE_HPP
+#define ODR_INTERNAL_TEXT_FILE_HPP
 
 #include <odr/file.hpp>
 
@@ -26,4 +26,4 @@ private:
 
 } // namespace odr::internal::text
 
-#endif // ODR_INTERNAL_TEXT_FILE_H
+#endif // ODR_INTERNAL_TEXT_FILE_HPP

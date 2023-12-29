@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_HTML_FILESYSTEM_H
-#define ODR_INTERNAL_HTML_FILESYSTEM_H
+#ifndef ODR_INTERNAL_HTML_FILESYSTEM_HPP
+#define ODR_INTERNAL_HTML_FILESYSTEM_HPP
 
 #include <string>
 
@@ -18,4 +18,4 @@ Html translate_filesystem(FileType file_type, const Filesystem &filesystem,
 
 }
 
-#endif // ODR_INTERNAL_HTML_FILESYSTEM_H
+#endif // ODR_INTERNAL_HTML_FILESYSTEM_HPP

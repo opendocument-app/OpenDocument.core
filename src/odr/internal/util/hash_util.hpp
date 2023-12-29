@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_HASH_UTIL_H
-#define ODR_INTERNAL_HASH_UTIL_H
+#ifndef ODR_INTERNAL_HASH_UTIL_HPP
+#define ODR_INTERNAL_HASH_UTIL_HPP
 
 #include <cstdint>
 #include <functional>
@@ -17,4 +17,4 @@ void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
 
 } // namespace odr::internal::util::hash
 
-#endif // ODR_INTERNAL_HASH_UTIL_H
+#endif // ODR_INTERNAL_HASH_UTIL_HPP

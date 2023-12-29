@@ -1,5 +1,5 @@
-#ifndef ODR_MAGIC_H
-#define ODR_MAGIC_H
+#ifndef ODR_MAGIC_HPP
+#define ODR_MAGIC_HPP
 
 #include <string>
 
@@ -16,4 +16,4 @@ FileType file_type(const std::string &magic);
 FileType file_type(const internal::abstract::File &file);
 } // namespace odr::internal::magic
 
-#endif // ODR_MAGIC_H
+#endif // ODR_MAGIC_HPP

@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_OOXML_UTIL_H
-#define ODR_INTERNAL_OOXML_UTIL_H
+#ifndef ODR_INTERNAL_OOXML_UTIL_HPP
+#define ODR_INTERNAL_OOXML_UTIL_HPP
 
 #include <odr/style.hpp>
 
@@ -58,4 +58,4 @@ parse_relationships(const abstract::ReadableFilesystem &filesystem,
 
 } // namespace odr::internal::ooxml
 
-#endif // ODR_INTERNAL_OOXML_UTIL_H
+#endif // ODR_INTERNAL_OOXML_UTIL_HPP

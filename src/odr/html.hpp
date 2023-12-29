@@ -1,5 +1,5 @@
-#ifndef ODR_HTML_H
-#define ODR_HTML_H
+#ifndef ODR_HTML_HPP
+#define ODR_HTML_HPP
 
 #include <odr/document.hpp>
 #include <odr/file.hpp>
@@ -106,4 +106,4 @@ void edit(const Document &document, const char *diff);
 
 } // namespace odr
 
-#endif // ODR_HTML_H
+#endif // ODR_HTML_HPP

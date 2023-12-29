@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_HTML_DOCUMENT_H
-#define ODR_INTERNAL_HTML_DOCUMENT_H
+#ifndef ODR_INTERNAL_HTML_DOCUMENT_HPP
+#define ODR_INTERNAL_HTML_DOCUMENT_HPP
 
 #include <string>
 
@@ -30,4 +30,4 @@ Html translate_drawing(const Document &document, const std::string &output_path,
 
 } // namespace odr::internal::html
 
-#endif // ODR_INTERNAL_HTML_DOCUMENT_H
+#endif // ODR_INTERNAL_HTML_DOCUMENT_HPP

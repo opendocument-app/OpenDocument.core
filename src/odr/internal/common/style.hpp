@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_COMMON_STYLE_H
-#define ODR_INTERNAL_COMMON_STYLE_H
+#ifndef ODR_INTERNAL_COMMON_STYLE_HPP
+#define ODR_INTERNAL_COMMON_STYLE_HPP
 
 #include <odr/style.hpp>
 
@@ -21,4 +21,4 @@ struct ResolvedStyle final {
 
 } // namespace odr::internal::common
 
-#endif // ODR_INTERNAL_COMMON_STYLE_H
+#endif // ODR_INTERNAL_COMMON_STYLE_HPP

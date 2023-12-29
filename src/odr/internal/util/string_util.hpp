@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_STRING_UTIL_H
-#define ODR_INTERNAL_STRING_UTIL_H
+#ifndef ODR_INTERNAL_STRING_UTIL_HPP
+#define ODR_INTERNAL_STRING_UTIL_HPP
 
 #include <cstdint>
 #include <functional>
@@ -23,4 +23,4 @@ std::u16string string_to_u16string(const std::string &string);
 std::string c16str_to_string(const char16_t *c16str, std::size_t length);
 } // namespace odr::internal::util::string
 
-#endif // ODR_INTERNAL_STRING_UTIL_H
+#endif // ODR_INTERNAL_STRING_UTIL_HPP

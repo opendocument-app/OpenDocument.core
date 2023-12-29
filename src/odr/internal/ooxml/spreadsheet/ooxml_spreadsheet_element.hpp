@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_OOXML_SPREADSHEET_ELEMENT_H
-#define ODR_INTERNAL_OOXML_SPREADSHEET_ELEMENT_H
+#ifndef ODR_INTERNAL_OOXML_SPREADSHEET_ELEMENT_HPP
+#define ODR_INTERNAL_OOXML_SPREADSHEET_ELEMENT_HPP
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/document_element.hpp>
@@ -233,4 +233,4 @@ public:
 
 } // namespace odr::internal::ooxml::spreadsheet
 
-#endif // ODR_INTERNAL_OOXML_SPREADSHEET_ELEMENT_H
+#endif // ODR_INTERNAL_OOXML_SPREADSHEET_ELEMENT_HPP

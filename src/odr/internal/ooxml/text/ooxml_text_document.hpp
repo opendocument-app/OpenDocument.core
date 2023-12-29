@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_OOXML_TEXT_DOCUMENT_H
-#define ODR_INTERNAL_OOXML_TEXT_DOCUMENT_H
+#ifndef ODR_INTERNAL_OOXML_TEXT_DOCUMENT_HPP
+#define ODR_INTERNAL_OOXML_TEXT_DOCUMENT_HPP
 
 #include <odr/file.hpp>
 
@@ -39,4 +39,4 @@ private:
 
 } // namespace odr::internal::ooxml::text
 
-#endif // ODR_INTERNAL_OOXML_TEXT_DOCUMENT_H
+#endif // ODR_INTERNAL_OOXML_TEXT_DOCUMENT_HPP

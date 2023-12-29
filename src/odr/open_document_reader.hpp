@@ -1,5 +1,5 @@
-#ifndef ODR_OPEN_DOCUMENT_READER_H
-#define ODR_OPEN_DOCUMENT_READER_H
+#ifndef ODR_OPEN_DOCUMENT_READER_HPP
+#define ODR_OPEN_DOCUMENT_READER_HPP
 
 #include <string>
 #include <vector>
@@ -48,4 +48,4 @@ private:
 
 } // namespace odr
 
-#endif // ODR_OPEN_DOCUMENT_READER_H
+#endif // ODR_OPEN_DOCUMENT_READER_HPP

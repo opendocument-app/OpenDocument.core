@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_HTML_COMMON_H
-#define ODR_INTERNAL_HTML_COMMON_H
+#ifndef ODR_INTERNAL_HTML_COMMON_HPP
+#define ODR_INTERNAL_HTML_COMMON_HPP
 
 #include <iosfwd>
 #include <string>
@@ -26,4 +26,4 @@ std::string file_to_url(const abstract::File &file,
 
 } // namespace odr::internal::html
 
-#endif // ODR_INTERNAL_HTML_COMMON_H
+#endif // ODR_INTERNAL_HTML_COMMON_HPP

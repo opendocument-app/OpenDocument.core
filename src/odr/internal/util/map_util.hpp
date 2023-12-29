@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_UTIL_MAP_H
-#define ODR_INTERNAL_UTIL_MAP_H
+#ifndef ODR_INTERNAL_UTIL_MAP_HPP
+#define ODR_INTERNAL_UTIL_MAP_HPP
 
 #include <iterator>
 
@@ -51,4 +51,4 @@ typename Map::const_iterator lookup_greater_or_equals(const Map &map,
 
 } // namespace odr::internal::util::map
 
-#endif // ODR_INTERNAL_UTIL_MAP_H
+#endif // ODR_INTERNAL_UTIL_MAP_HPP

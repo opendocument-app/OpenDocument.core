@@ -1,5 +1,5 @@
-#ifndef ODR_DOCUMENT_PATH_H
-#define ODR_DOCUMENT_PATH_H
+#ifndef ODR_DOCUMENT_PATH_HPP
+#define ODR_DOCUMENT_PATH_HPP
 
 #include <cstdint>
 #include <string>
@@ -80,4 +80,4 @@ private:
 
 } // namespace odr
 
-#endif // ODR_INTERNAL_COMMON_DOCUMENT_PATH_H
+#endif // ODR_INTERNAL_COMMON_DOCUMENT_PATH_HPP

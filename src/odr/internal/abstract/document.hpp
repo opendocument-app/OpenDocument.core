@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_H
-#define ODR_INTERNAL_ABSTRACT_DOCUMENT_H
+#ifndef ODR_INTERNAL_ABSTRACT_DOCUMENT_HPP
+#define ODR_INTERNAL_ABSTRACT_DOCUMENT_HPP
 
 #include <odr/document_element.hpp>
 
@@ -53,4 +53,4 @@ public:
 
 } // namespace odr::internal::abstract
 
-#endif // ODR_INTERNAL_ABSTRACT_DOCUMENT_H
+#endif // ODR_INTERNAL_ABSTRACT_DOCUMENT_HPP

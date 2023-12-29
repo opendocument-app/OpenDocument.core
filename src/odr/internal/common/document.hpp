@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_COMMON_DOCUMENT_H
-#define ODR_INTERNAL_COMMON_DOCUMENT_H
+#ifndef ODR_INTERNAL_COMMON_DOCUMENT_HPP
+#define ODR_INTERNAL_COMMON_DOCUMENT_HPP
 
 #include <odr/internal/abstract/document.hpp>
 
@@ -53,4 +53,4 @@ protected:
 
 } // namespace odr::internal::common
 
-#endif // ODR_INTERNAL_COMMON_DOCUMENT_H
+#endif // ODR_INTERNAL_COMMON_DOCUMENT_HPP

@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_SVM_FORMAT_H
-#define ODR_INTERNAL_SVM_FORMAT_H
+#ifndef ODR_INTERNAL_SVM_FORMAT_HPP
+#define ODR_INTERNAL_SVM_FORMAT_HPP
 
 #include <cstdint>
 #include <iostream>
@@ -246,4 +246,4 @@ TextLineAction read_text_line_action(std::istream &in, const VersionLength &vl);
 
 } // namespace odr::internal::svm
 
-#endif // ODR_INTERNAL_SVM_FORMAT_H
+#endif // ODR_INTERNAL_SVM_FORMAT_HPP

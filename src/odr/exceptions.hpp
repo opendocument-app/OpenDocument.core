@@ -1,5 +1,5 @@
-#ifndef ODR_EXCEPTIONS_H
-#define ODR_EXCEPTIONS_H
+#ifndef ODR_EXCEPTIONS_HPP
+#define ODR_EXCEPTIONS_HPP
 
 #include <stdexcept>
 
@@ -114,4 +114,4 @@ struct UnknownDocumentType final : public std::runtime_error {
 
 } // namespace odr
 
-#endif // ODR_EXCEPTIONS_H
+#endif // ODR_EXCEPTIONS_HPP

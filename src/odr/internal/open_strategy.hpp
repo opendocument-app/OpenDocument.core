@@ -1,5 +1,5 @@
-#ifndef ODR_OPEN_STRATEGY_H
-#define ODR_OPEN_STRATEGY_H
+#ifndef ODR_OPEN_STRATEGY_HPP
+#define ODR_OPEN_STRATEGY_HPP
 
 #include <memory>
 #include <vector>
@@ -30,4 +30,4 @@ std::unique_ptr<internal::abstract::DocumentFile>
 open_document_file(std::shared_ptr<internal::abstract::File> file);
 } // namespace odr::internal::open_strategy
 
-#endif // ODR_OPEN_STRATEGY_H
+#endif // ODR_OPEN_STRATEGY_HPP

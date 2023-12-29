@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_COMMON_TABLE_CURSOR_H
-#define ODR_INTERNAL_COMMON_TABLE_CURSOR_H
+#ifndef ODR_INTERNAL_COMMON_TABLE_CURSOR_HPP
+#define ODR_INTERNAL_COMMON_TABLE_CURSOR_HPP
 
 #include <odr/internal/common/table_position.hpp>
 
@@ -36,4 +36,4 @@ private:
 
 } // namespace odr::internal::common
 
-#endif // ODR_INTERNAL_COMMON_TABLE_CURSOR_H
+#endif // ODR_INTERNAL_COMMON_TABLE_CURSOR_HPP
