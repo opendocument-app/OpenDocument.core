@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_CFB_IMPL_H
-#define ODR_INTERNAL_CFB_IMPL_H
+#ifndef ODR_INTERNAL_CFB_IMPL_HPP
+#define ODR_INTERNAL_CFB_IMPL_HPP
 
 #include <cstdint>
 #include <functional>
@@ -182,4 +182,4 @@ private:
 
 } // namespace odr::internal::cfb::impl
 
-#endif // ODR_INTERNAL_CFB_IMPL_H
+#endif // ODR_INTERNAL_CFB_IMPL_HPP

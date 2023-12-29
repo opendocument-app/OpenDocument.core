@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_COMMON_TABLE_RANGE_H
-#define ODR_INTERNAL_COMMON_TABLE_RANGE_H
+#ifndef ODR_INTERNAL_COMMON_TABLE_RANGE_HPP
+#define ODR_INTERNAL_COMMON_TABLE_RANGE_HPP
 
 #include <odr/internal/common/table_position.hpp>
 
@@ -29,4 +29,4 @@ private:
 
 } // namespace odr::internal::common
 
-#endif // ODR_INTERNAL_COMMON_TABLE_RANGE_H
+#endif // ODR_INTERNAL_COMMON_TABLE_RANGE_HPP

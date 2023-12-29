@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_ODF_DOCUMENT_H
-#define ODR_INTERNAL_ODF_DOCUMENT_H
+#ifndef ODR_INTERNAL_ODF_DOCUMENT_HPP
+#define ODR_INTERNAL_ODF_DOCUMENT_HPP
 
 #include <odr/file.hpp>
 
@@ -41,4 +41,4 @@ protected:
 
 } // namespace odr::internal::odf
 
-#endif // ODR_INTERNAL_ODF_DOCUMENT_H
+#endif // ODR_INTERNAL_ODF_DOCUMENT_HPP

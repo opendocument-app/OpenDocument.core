@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_ABSTRACT_FILESYSTEM_H
-#define ODR_INTERNAL_ABSTRACT_FILESYSTEM_H
+#ifndef ODR_INTERNAL_ABSTRACT_FILESYSTEM_HPP
+#define ODR_INTERNAL_ABSTRACT_FILESYSTEM_HPP
 
 #include <cstdint>
 #include <memory>
@@ -66,4 +66,4 @@ class Filesystem : public ReadableFilesystem, public WriteableFilesystem {};
 
 } // namespace odr::internal::abstract
 
-#endif // ODR_INTERNAL_ABSTRACT_FILESYSTEM_H
+#endif // ODR_INTERNAL_ABSTRACT_FILESYSTEM_HPP

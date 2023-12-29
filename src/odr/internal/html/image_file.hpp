@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_HTML_IMAGE_FILE_H
-#define ODR_INTERNAL_HTML_IMAGE_FILE_H
+#ifndef ODR_INTERNAL_HTML_IMAGE_FILE_HPP
+#define ODR_INTERNAL_HTML_IMAGE_FILE_HPP
 
 #include <string>
 
@@ -24,4 +24,4 @@ Html translate_image_file(const ImageFile &image_file,
 
 } // namespace odr::internal::html
 
-#endif // ODR_INTERNAL_HTML_IMAGE_FILE_H
+#endif // ODR_INTERNAL_HTML_IMAGE_FILE_HPP

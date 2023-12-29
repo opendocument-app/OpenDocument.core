@@ -1,5 +1,5 @@
-#ifndef ODR_DOCUMENT_ELEMENT_H
-#define ODR_DOCUMENT_ELEMENT_H
+#ifndef ODR_DOCUMENT_ELEMENT_HPP
+#define ODR_DOCUMENT_ELEMENT_HPP
 
 #include <cstdint>
 #include <memory>
@@ -504,4 +504,4 @@ public:
 
 } // namespace odr
 
-#endif // ODR_DOCUMENT_ELEMENT_H
+#endif // ODR_DOCUMENT_ELEMENT_HPP

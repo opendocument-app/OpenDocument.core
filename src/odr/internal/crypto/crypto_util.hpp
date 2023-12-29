@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_CRYPTO_UTIL_H
-#define ODR_INTERNAL_CRYPTO_UTIL_H
+#ifndef ODR_INTERNAL_CRYPTO_UTIL_HPP
+#define ODR_INTERNAL_CRYPTO_UTIL_HPP
 
 #include <string>
 
@@ -21,4 +21,4 @@ std::string inflate(const std::string &input);
 std::size_t padding(const std::string &input);
 } // namespace odr::internal::crypto::util
 
-#endif // ODR_INTERNAL_CRYPTO_UTIL_H
+#endif // ODR_INTERNAL_CRYPTO_UTIL_HPP

@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_CFB_ARCHIVE_H
-#define ODR_INTERNAL_CFB_ARCHIVE_H
+#ifndef ODR_INTERNAL_CFB_ARCHIVE_HPP
+#define ODR_INTERNAL_CFB_ARCHIVE_HPP
 
 #include <odr/internal/cfb/cfb_impl.hpp>
 #include <odr/internal/common/file.hpp>
@@ -109,4 +109,4 @@ private:
 
 } // namespace odr::internal::cfb
 
-#endif // ODR_INTERNAL_CFB_ARCHIVE_H
+#endif // ODR_INTERNAL_CFB_ARCHIVE_HPP

@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_ZIP_UTIL_H
-#define ODR_INTERNAL_ZIP_UTIL_H
+#ifndef ODR_INTERNAL_ZIP_UTIL_HPP
+#define ODR_INTERNAL_ZIP_UTIL_HPP
 
 #include <odr/file.hpp>
 
@@ -69,4 +69,4 @@ bool append_file(mz_zip_archive &archive, const std::string &path,
 
 } // namespace odr::internal::zip::util
 
-#endif // ODR_INTERNAL_ZIP_UTIL_H
+#endif // ODR_INTERNAL_ZIP_UTIL_HPP

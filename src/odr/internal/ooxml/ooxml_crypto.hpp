@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_OOXML_CRYPTO_H
-#define ODR_INTERNAL_OOXML_CRYPTO_H
+#ifndef ODR_INTERNAL_OOXML_CRYPTO_HPP
+#define ODR_INTERNAL_OOXML_CRYPTO_HPP
 
 #include <cstdint>
 #include <memory>
@@ -96,4 +96,4 @@ private:
 
 } // namespace odr::internal::ooxml::crypto
 
-#endif // ODR_INTERNAL_OOXML_CRYPTO_H
+#endif // ODR_INTERNAL_OOXML_CRYPTO_HPP

@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_TEXT_UTIL_H
-#define ODR_INTERNAL_TEXT_UTIL_H
+#ifndef ODR_INTERNAL_TEXT_UTIL_HPP
+#define ODR_INTERNAL_TEXT_UTIL_HPP
 
 #include <iosfwd>
 #include <string>
@@ -11,4 +11,4 @@ std::string guess_charset(std::istream &in);
 
 } // namespace odr::internal::text
 
-#endif // ODR_INTERNAL_TEXT_UTIL_H
+#endif // ODR_INTERNAL_TEXT_UTIL_HPP

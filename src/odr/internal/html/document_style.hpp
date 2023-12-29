@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_HTML_DOCUMENT_STYLE_H
-#define ODR_INTERNAL_HTML_DOCUMENT_STYLE_H
+#ifndef ODR_INTERNAL_HTML_DOCUMENT_STYLE_HPP
+#define ODR_INTERNAL_HTML_DOCUMENT_STYLE_HPP
 
 #include <optional>
 #include <string>
@@ -52,4 +52,4 @@ std::string translate_custom_shape_properties(const CustomShape &custom_shape);
 
 } // namespace odr::internal::html
 
-#endif // ODR_INTERNAL_HTML_DOCUMENT_STYLE_H
+#endif // ODR_INTERNAL_HTML_DOCUMENT_STYLE_HPP

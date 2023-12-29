@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_COMMON_ARCHIVE_H
-#define ODR_INTERNAL_COMMON_ARCHIVE_H
+#ifndef ODR_INTERNAL_COMMON_ARCHIVE_HPP
+#define ODR_INTERNAL_COMMON_ARCHIVE_HPP
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
@@ -70,4 +70,4 @@ private:
 
 } // namespace odr::internal::common
 
-#endif // ODR_INTERNAL_COMMON_ARCHIVE_H
+#endif // ODR_INTERNAL_COMMON_ARCHIVE_HPP

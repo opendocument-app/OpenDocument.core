@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_OOXML_TEXT_STYLE_H
-#define ODR_INTERNAL_OOXML_TEXT_STYLE_H
+#ifndef ODR_INTERNAL_OOXML_TEXT_STYLE_HPP
+#define ODR_INTERNAL_OOXML_TEXT_STYLE_HPP
 
 #include <odr/document.hpp>
 
@@ -59,4 +59,4 @@ private:
 
 } // namespace odr::internal::ooxml::text
 
-#endif // ODR_INTERNAL_OOXML_TEXT_STYLE_H
+#endif // ODR_INTERNAL_OOXML_TEXT_STYLE_HPP

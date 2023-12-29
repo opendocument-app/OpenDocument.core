@@ -1,5 +1,5 @@
-#ifndef ODR_FILESYSTEM_H
-#define ODR_FILESYSTEM_H
+#ifndef ODR_FILESYSTEM_HPP
+#define ODR_FILESYSTEM_HPP
 
 #include <cstdint>
 #include <memory>
@@ -59,4 +59,4 @@ private:
 
 } // namespace odr
 
-#endif // ODR_FILESYSTEM_H
+#endif // ODR_FILESYSTEM_HPP

@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_ZIP_ZIP_EXCEPTIONS_H
-#define ODR_INTERNAL_ZIP_ZIP_EXCEPTIONS_H
+#ifndef ODR_INTERNAL_ZIP_ZIP_EXCEPTIONS_HPP
+#define ODR_INTERNAL_ZIP_ZIP_EXCEPTIONS_HPP
 
 #include <odr/exceptions.hpp>
 
@@ -19,4 +19,4 @@ struct MinizSaveError : public ZipSaveError {
 
 } // namespace odr::internal::zip
 
-#endif // ODR_INTERNAL_ZIP_ZIP_EXCEPTIONS_H
+#endif // ODR_INTERNAL_ZIP_ZIP_EXCEPTIONS_HPP

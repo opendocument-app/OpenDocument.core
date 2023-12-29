@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_ODF_PARSER_H
-#define ODR_INTERNAL_ODF_PARSER_H
+#ifndef ODR_INTERNAL_ODF_PARSER_HPP
+#define ODR_INTERNAL_ODF_PARSER_HPP
 
 #include <odr/internal/odf/odf_document.hpp>
 
@@ -60,4 +60,4 @@ void parse_element_children(Document &document, DrawingRoot *element,
 
 } // namespace odr::internal::odf
 
-#endif // ODR_INTERNAL_ODF_PARSER_H
+#endif // ODR_INTERNAL_ODF_PARSER_HPP

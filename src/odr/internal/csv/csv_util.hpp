@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_CSV_UTIL_H
-#define ODR_INTERNAL_CSV_UTIL_H
+#ifndef ODR_INTERNAL_CSV_UTIL_HPP
+#define ODR_INTERNAL_CSV_UTIL_HPP
 
 #include <iosfwd>
 
@@ -9,4 +9,4 @@ void check_csv_file(std::istream &in);
 
 }
 
-#endif // ODR_INTERNAL_CSV_UTIL_H
+#endif // ODR_INTERNAL_CSV_UTIL_HPP

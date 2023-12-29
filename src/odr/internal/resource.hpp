@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_RESOURCE_H
-#define ODR_INTERNAL_RESOURCE_H
+#ifndef ODR_INTERNAL_RESOURCE_HPP
+#define ODR_INTERNAL_RESOURCE_HPP
 
 #include <odr/internal/abstract/filesystem.hpp>
 
@@ -30,4 +30,4 @@ private:
 
 } // namespace odr::internal
 
-#endif // ODR_INTERNAL_RESOURCE_H
+#endif // ODR_INTERNAL_RESOURCE_HPP

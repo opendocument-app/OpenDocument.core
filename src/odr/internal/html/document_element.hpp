@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_HTML_DOCUMENT_ELEMENT_H
-#define ODR_INTERNAL_HTML_DOCUMENT_ELEMENT_H
+#ifndef ODR_INTERNAL_HTML_DOCUMENT_ELEMENT_HPP
+#define ODR_INTERNAL_HTML_DOCUMENT_ELEMENT_HPP
 
 namespace odr {
 class Element;
@@ -53,4 +53,4 @@ void translate_custom_shape(Element element, HtmlWriter &out,
 
 } // namespace odr::internal::html
 
-#endif // ODR_INTERNAL_HTML_DOCUMENT_ELEMENT_H
+#endif // ODR_INTERNAL_HTML_DOCUMENT_ELEMENT_HPP

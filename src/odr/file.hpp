@@ -1,5 +1,5 @@
-#ifndef ODR_FILE_H
-#define ODR_FILE_H
+#ifndef ODR_FILE_HPP
+#define ODR_FILE_HPP
 
 #include <cstdint>
 #include <memory>
@@ -231,4 +231,4 @@ private:
 
 } // namespace odr
 
-#endif // ODR_FILE_H
+#endif // ODR_FILE_HPP

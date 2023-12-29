@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_SVM_TO_SVG_H
-#define ODR_INTERNAL_SVM_TO_SVG_H
+#ifndef ODR_INTERNAL_SVM_TO_SVG_HPP
+#define ODR_INTERNAL_SVM_TO_SVG_HPP
 
 #include <iostream>
 #include <memory>
@@ -12,4 +12,4 @@ void svg(const SvmFile &file, std::ostream &out);
 }
 } // namespace odr::internal::svm
 
-#endif // ODR_INTERNAL_SVM_TO_SVG_H
+#endif // ODR_INTERNAL_SVM_TO_SVG_HPP

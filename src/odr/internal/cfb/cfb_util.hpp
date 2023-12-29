@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_CFB_UTIL_H
-#define ODR_INTERNAL_CFB_UTIL_H
+#ifndef ODR_INTERNAL_CFB_UTIL_HPP
+#define ODR_INTERNAL_CFB_UTIL_HPP
 
 #include <odr/file.hpp>
 
@@ -54,4 +54,4 @@ private:
 
 } // namespace odr::internal::cfb::util
 
-#endif // ODR_INTERNAL_CFB_UTIL_H
+#endif // ODR_INTERNAL_CFB_UTIL_HPP

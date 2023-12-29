@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_RESOURCE_DATA_H
-#define ODR_INTERNAL_RESOURCE_DATA_H
+#ifndef ODR_INTERNAL_RESOURCE_DATA_HPP
+#define ODR_INTERNAL_RESOURCE_DATA_HPP
 
 #include <cstdint>
 
@@ -25,4 +25,4 @@ extern const std::uint32_t files_count;
 
 } // namespace odr::internal::resources
 
-#endif // ODR_INTERNAL_RESOURCE_DATA_H
+#endif // ODR_INTERNAL_RESOURCE_DATA_HPP

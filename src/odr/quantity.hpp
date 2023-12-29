@@ -1,5 +1,5 @@
-#ifndef ODR_QUANTITY_H
-#define ODR_QUANTITY_H
+#ifndef ODR_QUANTITY_HPP
+#define ODR_QUANTITY_HPP
 
 #include <iomanip>
 #include <iostream>
@@ -80,4 +80,4 @@ std::ostream &operator<<(std::ostream &out,
   return out;
 }
 
-#endif // ODR_QUANTITY_H
+#endif // ODR_QUANTITY_HPP

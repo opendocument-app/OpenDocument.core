@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_COMMON_FILE_H
-#define ODR_INTERNAL_COMMON_FILE_H
+#ifndef ODR_INTERNAL_COMMON_FILE_HPP
+#define ODR_INTERNAL_COMMON_FILE_HPP
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/path.hpp>
@@ -53,4 +53,4 @@ private:
 
 } // namespace odr::internal::common
 
-#endif // ODR_INTERNAL_COMMON_FILE_H
+#endif // ODR_INTERNAL_COMMON_FILE_HPP
