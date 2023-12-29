@@ -160,8 +160,9 @@ add_library(odr
         "src/odr/internal/util/string_util.cpp"
         "src/odr/internal/util/xml_util.cpp"
 
-        "src/odr/internal/zip/zip_util.cpp"
         "src/odr/internal/zip/zip_archive.cpp"
+        "src/odr/internal/zip/zip_exceptions.cpp"
+        "src/odr/internal/zip/zip_util.cpp"
 )
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
