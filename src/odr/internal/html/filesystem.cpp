@@ -24,7 +24,7 @@ Html html::translate_filesystem(FileType file_type,
   }
   HtmlWriter out(ostream, config.format_html, config.html_indent);
 
-  auto file_walker = filesystem.file_walker("/");
+  auto file_walker = filesystem.file_walker("");
 
   out.write_begin();
 
@@ -52,20 +52,33 @@ Html html::translate_filesystem(FileType file_type,
     out.write_element_end("span");
 
     out.write_element_begin("span");
+    out.write_raw(" ");
+    out.write_element_end("span");
+
+    out.write_element_begin("span");
     out.write_raw(file_walker.is_file() ? "file" : "directory");
     out.write_element_end("span");
 
     if (is_file) {
+      out.write_element_begin("span");
+      out.write_raw(" ");
+      out.write_element_end("span");
+
       File file = filesystem.open(file_path);
 
       out.write_element_begin("span");
       out.write_raw(std::to_string(file.size()));
       out.write_element_end("span");
 
+      out.write_element_begin("span");
+      out.write_raw(" ");
+      out.write_element_end("span");
+
       out.write_element_begin(
-          "a", HtmlElementOptions().set_attributes(HtmlAttributesVector{
-                   {"href",
-                    file_to_url(*file.stream(), "application/octet-stream")}}));
+          "a",
+          HtmlElementOptions().set_attributes(HtmlAttributesVector{
+              {"href", file_to_url(*file.stream(), "application/octet-stream")},
+              {"download", file_path.basename()}}));
       out.write_raw("download");
       out.write_element_end("a");
     }

@@ -64,6 +64,10 @@ struct NoImageFile final : public std::runtime_error {
   NoImageFile();
 };
 
+struct NoArchiveFile final : public std::runtime_error {
+  NoArchiveFile();
+};
+
 struct NoDocumentFile final : public std::runtime_error {
   NoDocumentFile();
 };

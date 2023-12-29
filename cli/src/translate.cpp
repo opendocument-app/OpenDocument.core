@@ -1,3 +1,4 @@
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
@@ -7,34 +8,33 @@
 using namespace odr;
 
 int main(int argc, char **argv) {
-  const std::string input{argv[1]};
-  const std::string output{argv[2]};
+  std::string input{argv[1]};
+  std::string output{argv[2]};
 
   std::optional<std::string> password;
   if (argc >= 4) {
     password = argv[3];
   }
 
-  DocumentFile document_file{input};
-
-  if (document_file.password_encrypted()) {
-    if (password) {
-      if (!document_file.decrypt(*password)) {
-        std::cerr << "wrong password" << std::endl;
-        return 1;
-      }
-    } else {
-      std::cerr << "document encrypted but no password given" << std::endl;
-      return 2;
-    }
-  }
-
-  auto document = document_file.document();
+  File file{input};
 
   HtmlConfig config;
   config.editable = true;
 
-  html::translate(document, output, config);
+  PasswordCallback password_callback = [&]() {
+    if (!password) {
+      std::cerr << "document encrypted but no password given" << std::endl;
+      std::exit(2);
+    }
+    return *password;
+  };
+
+  try {
+    html::translate(file, output, config, password_callback);
+  } catch (const WrongPassword &e) {
+    std::cerr << "wrong password" << std::endl;
+    return 1;
+  }
 
   return 0;
 }

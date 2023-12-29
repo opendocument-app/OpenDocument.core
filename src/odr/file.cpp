@@ -106,7 +106,7 @@ TextFile DecodedFile::text_file() const {
           std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl)) {
     return TextFile(text_file);
   }
-  throw NoImageFile();
+  throw NoTextFile();
 }
 
 ImageFile DecodedFile::image_file() const {
@@ -115,6 +115,14 @@ ImageFile DecodedFile::image_file() const {
     return ImageFile(image_file);
   }
   throw NoImageFile();
+}
+
+ArchiveFile DecodedFile::archive_file() const {
+  if (auto archive_file =
+          std::dynamic_pointer_cast<internal::abstract::ArchiveFile>(m_impl)) {
+    return ArchiveFile(archive_file);
+  }
+  throw NoArchiveFile();
 }
 
 DocumentFile DecodedFile::document_file() const {

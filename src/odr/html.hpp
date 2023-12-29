@@ -5,13 +5,13 @@
 #include <odr/file.hpp>
 #include <odr/style.hpp>
 
+#include <functional>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace odr {
-class TextFile;
-class ImageFile;
-class Document;
+class Archive;
 struct HtmlPage;
 
 enum class HtmlTableGridlines {
@@ -87,10 +87,17 @@ struct HtmlPage final {
   HtmlPage(std::string name, std::string path);
 };
 
+using PasswordCallback = std::function<std::string()>;
+
 namespace html {
+Html translate(const File &file, const std::string &output_path,
+               const HtmlConfig &config,
+               const PasswordCallback &password_callback);
 Html translate(const TextFile &text_file, const std::string &output_path,
                const HtmlConfig &config);
 Html translate(const ImageFile &image_file, const std::string &output_path,
+               const HtmlConfig &config);
+Html translate(const Archive &archive, const std::string &output_path,
                const HtmlConfig &config);
 Html translate(const Document &document, const std::string &output_path,
                const HtmlConfig &config);

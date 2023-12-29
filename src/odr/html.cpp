@@ -1,10 +1,13 @@
 #include <odr/html.hpp>
 
-#include <odr/document.hpp>
+#include <odr/archive.hpp>
 #include <odr/document_element.hpp>
 #include <odr/document_path.hpp>
+#include <odr/exceptions.hpp>
+#include <odr/filesystem.hpp>
 
 #include <odr/internal/html/document.hpp>
+#include <odr/internal/html/filesystem.hpp>
 #include <odr/internal/html/image_file.hpp>
 #include <odr/internal/html/text_file.hpp>
 
@@ -45,6 +48,31 @@ void Html::save(const std::string &path) const {
 HtmlPage::HtmlPage(std::string name, std::string path)
     : name{std::move(name)}, path{std::move(path)} {}
 
+Html html::translate(const File &file, const std::string &output_path,
+                     const HtmlConfig &config,
+                     const PasswordCallback &password_callback) {
+  auto decoded_file = DecodedFile(file);
+
+  if (decoded_file.file_category() == FileCategory::text) {
+    return translate(decoded_file.text_file(), output_path, config);
+  } else if (decoded_file.file_category() == FileCategory::image) {
+    return translate(decoded_file.image_file(), output_path, config);
+  } else if (decoded_file.file_category() == FileCategory::archive) {
+    return translate(decoded_file.archive_file().archive(), output_path,
+                     config);
+  } else if (decoded_file.file_category() == FileCategory::document) {
+    DocumentFile document_file = decoded_file.document_file();
+    if (document_file.password_encrypted()) {
+      if (!document_file.decrypt(password_callback())) {
+        throw WrongPassword();
+      }
+    }
+    return translate(document_file.document(), output_path, config);
+  }
+
+  throw UnsupportedFileType(decoded_file.file_type());
+}
+
 Html html::translate(const TextFile &text_file, const std::string &output_path,
                      const HtmlConfig &config) {
   fs::create_directories(output_path);
@@ -55,6 +83,13 @@ Html html::translate(const ImageFile &image_file,
                      const std::string &output_path, const HtmlConfig &config) {
   fs::create_directories(output_path);
   return internal::html::translate_image_file(image_file, output_path, config);
+}
+
+Html html::translate(const Archive &archive, const std::string &output_path,
+                     const HtmlConfig &config) {
+  fs::create_directories(output_path);
+  return internal::html::translate_filesystem(
+      FileType::unknown, archive.filesystem(), output_path, config);
 }
 
 Html html::translate(const Document &document, const std::string &output_path,

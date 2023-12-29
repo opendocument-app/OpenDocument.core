@@ -19,6 +19,7 @@ class DocumentFile;
 namespace odr {
 class TextFile;
 class ImageFile;
+class ArchiveFile;
 class DocumentFile;
 
 class Archive;
@@ -167,6 +168,7 @@ public:
 
   [[nodiscard]] TextFile text_file() const;
   [[nodiscard]] ImageFile image_file() const;
+  [[nodiscard]] ArchiveFile archive_file() const;
   [[nodiscard]] DocumentFile document_file() const;
 
 protected:
