@@ -34,6 +34,8 @@ UnknownCharset::UnknownCharset() : std::runtime_error("unknown charset") {}
 
 NoImageFile::NoImageFile() : std::runtime_error("not an image file") {}
 
+NoArchiveFile::NoArchiveFile() : std::runtime_error("not an archive file") {}
+
 NoDocumentFile::NoDocumentFile() : std::runtime_error("not a document file") {}
 
 NoOpenDocumentFile::NoOpenDocumentFile()

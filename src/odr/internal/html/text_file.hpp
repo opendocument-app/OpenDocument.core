@@ -12,7 +12,8 @@ class Html;
 
 namespace odr::internal::html {
 
-Html translate_text_file(const TextFile &text_file, const std::string &path,
+Html translate_text_file(const TextFile &text_file,
+                         const std::string &output_path,
                          const HtmlConfig &config);
 
 }

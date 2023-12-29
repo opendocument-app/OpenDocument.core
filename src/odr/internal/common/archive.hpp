@@ -30,7 +30,7 @@ private:
   std::shared_ptr<VirtualFilesystem> m_filesystem;
 
   void fill_(const Impl &impl) {
-    for (auto &&e : impl) {
+    for (const auto &e : impl) {
       if (e.is_directory()) {
         m_filesystem->create_directory(e.path());
       } else if (e.is_file()) {

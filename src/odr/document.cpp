@@ -2,6 +2,8 @@
 
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
+#include <odr/filesystem.hpp>
+
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/path.hpp>
 
@@ -10,36 +12,36 @@
 
 namespace odr {
 
-Document::Document(std::shared_ptr<internal::abstract::Document> document)
-    : m_document{std::move(document)} {
-  if (!m_document) {
+Document::Document(std::shared_ptr<internal::abstract::Document> impl)
+    : m_impl{std::move(impl)} {
+  if (!m_impl) {
     throw std::runtime_error("document is null");
   }
 }
 
-bool Document::editable() const noexcept { return m_document->is_editable(); }
+bool Document::editable() const noexcept { return m_impl->is_editable(); }
 
 bool Document::savable(const bool encrypted) const noexcept {
-  return m_document->is_savable(encrypted);
+  return m_impl->is_savable(encrypted);
 }
 
-void Document::save(const std::string &path) const { m_document->save(path); }
+void Document::save(const std::string &path) const { m_impl->save(path); }
 
 void Document::save(const std::string &path,
                     const std::string &password) const {
-  m_document->save(path, password.c_str());
+  m_impl->save(path, password.c_str());
 }
 
-FileType Document::file_type() const noexcept {
-  return m_document->file_type();
-}
+FileType Document::file_type() const noexcept { return m_impl->file_type(); }
 
 DocumentType Document::document_type() const noexcept {
-  return m_document->document_type();
+  return m_impl->document_type();
 }
 
 Element Document::root_element() const {
-  return {m_document.get(), m_document->root_element()};
+  return {m_impl.get(), m_impl->root_element()};
 }
+
+Filesystem Document::files() const { return Filesystem(m_impl->files()); }
 
 } // namespace odr

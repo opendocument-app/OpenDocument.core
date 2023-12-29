@@ -68,40 +68,40 @@ Path SystemFilesystem::to_system_path_(const Path &path) const {
   return m_root.join(path.rebase("/"));
 }
 
-bool SystemFilesystem::exists(Path path) const {
+bool SystemFilesystem::exists(const Path &path) const {
   return std::filesystem::exists(to_system_path_(path));
 }
 
-bool SystemFilesystem::is_file(Path path) const {
+bool SystemFilesystem::is_file(const Path &path) const {
   return std::filesystem::is_regular_file(to_system_path_(path));
 }
 
-bool SystemFilesystem::is_directory(Path path) const {
+bool SystemFilesystem::is_directory(const Path &path) const {
   return std::filesystem::is_directory(to_system_path_(path));
 }
 
 std::unique_ptr<abstract::FileWalker>
-SystemFilesystem::file_walker(Path path) const {
+SystemFilesystem::file_walker(const Path &path) const {
   return std::make_unique<SystemFileWalker>(m_root, to_system_path_(path));
 }
 
-std::shared_ptr<abstract::File> SystemFilesystem::open(Path path) const {
+std::shared_ptr<abstract::File> SystemFilesystem::open(const Path &path) const {
   return std::make_unique<DiskFile>(to_system_path_(path));
 }
 
-std::unique_ptr<std::ostream> SystemFilesystem::create_file(Path path) {
+std::unique_ptr<std::ostream> SystemFilesystem::create_file(const Path &path) {
   return std::make_unique<std::ofstream>(to_system_path_(path).string());
 }
 
-bool SystemFilesystem::create_directory(Path path) {
+bool SystemFilesystem::create_directory(const Path &path) {
   return std::filesystem::create_directory(to_system_path_(path));
 }
 
-bool SystemFilesystem::remove(Path path) {
+bool SystemFilesystem::remove(const Path &path) {
   return std::filesystem::remove(to_system_path_(path));
 }
 
-bool SystemFilesystem::copy(Path from, Path to) {
+bool SystemFilesystem::copy(const Path &from, const Path &to) {
   std::error_code error_code;
   std::filesystem::copy(to_system_path_(from), to_system_path_(to), error_code);
   if (error_code) {
@@ -111,7 +111,7 @@ bool SystemFilesystem::copy(Path from, Path to) {
 }
 
 std::shared_ptr<abstract::File>
-SystemFilesystem::copy(const abstract::File &from, Path to) {
+SystemFilesystem::copy(const abstract::File &from, const Path &to) {
   auto istream = from.stream();
   auto ostream = create_file(to_system_path_(to));
 
@@ -121,11 +121,11 @@ SystemFilesystem::copy(const abstract::File &from, Path to) {
 }
 
 std::shared_ptr<abstract::File>
-SystemFilesystem::copy(std::shared_ptr<abstract::File> from, Path to) {
+SystemFilesystem::copy(std::shared_ptr<abstract::File> from, const Path &to) {
   return copy(*from, to_system_path_(to));
 }
 
-bool SystemFilesystem::move(Path from, Path to) {
+bool SystemFilesystem::move(const Path &from, const Path &to) {
   std::error_code error_code;
   std::filesystem::rename(to_system_path_(from), to_system_path_(to),
                           error_code);
@@ -193,11 +193,11 @@ private:
 };
 } // namespace
 
-bool VirtualFilesystem::exists(Path path) const {
+bool VirtualFilesystem::exists(const Path &path) const {
   return m_files.find(path) != std::end(m_files);
 }
 
-bool VirtualFilesystem::is_file(Path path) const {
+bool VirtualFilesystem::is_file(const Path &path) const {
   auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return false;
@@ -205,7 +205,7 @@ bool VirtualFilesystem::is_file(Path path) const {
   return (bool)file_it->second;
 }
 
-bool VirtualFilesystem::is_directory(Path path) const {
+bool VirtualFilesystem::is_directory(const Path &path) const {
   auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return false;
@@ -214,11 +214,12 @@ bool VirtualFilesystem::is_directory(Path path) const {
 }
 
 std::unique_ptr<abstract::FileWalker>
-VirtualFilesystem::file_walker(Path path) const {
+VirtualFilesystem::file_walker(const Path &path) const {
   return std::make_unique<VirtualFileWalker>(std::move(path), m_files);
 }
 
-std::shared_ptr<abstract::File> VirtualFilesystem::open(Path path) const {
+std::shared_ptr<abstract::File>
+VirtualFilesystem::open(const Path &path) const {
   auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return {};
@@ -226,11 +227,12 @@ std::shared_ptr<abstract::File> VirtualFilesystem::open(Path path) const {
   return file_it->second;
 }
 
-std::unique_ptr<std::ostream> VirtualFilesystem::create_file(Path /*path*/) {
+std::unique_ptr<std::ostream>
+VirtualFilesystem::create_file(const Path & /*path*/) {
   throw UnsupportedOperation();
 }
 
-bool VirtualFilesystem::create_directory(Path path) {
+bool VirtualFilesystem::create_directory(const Path &path) {
   if (exists(path)) {
     return false;
   }
@@ -238,7 +240,7 @@ bool VirtualFilesystem::create_directory(Path path) {
   return true;
 }
 
-bool VirtualFilesystem::remove(Path path) {
+bool VirtualFilesystem::remove(const Path &path) {
   auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return false;
@@ -247,7 +249,7 @@ bool VirtualFilesystem::remove(Path path) {
   return true;
 }
 
-bool VirtualFilesystem::copy(Path from, Path to) {
+bool VirtualFilesystem::copy(const Path &from, const Path &to) {
   // TODO what about directories?
 
   auto from_it = m_files.find(from);
@@ -262,12 +264,12 @@ bool VirtualFilesystem::copy(Path from, Path to) {
 }
 
 std::shared_ptr<abstract::File>
-VirtualFilesystem::copy(const abstract::File & /*from*/, Path /*to*/) {
+VirtualFilesystem::copy(const abstract::File & /*from*/, const Path & /*to*/) {
   throw UnsupportedOperation();
 }
 
 std::shared_ptr<abstract::File>
-VirtualFilesystem::copy(std::shared_ptr<abstract::File> from, Path to) {
+VirtualFilesystem::copy(std::shared_ptr<abstract::File> from, const Path &to) {
   if (exists(to)) {
     return {};
   }
@@ -275,7 +277,7 @@ VirtualFilesystem::copy(std::shared_ptr<abstract::File> from, Path to) {
   return from;
 }
 
-bool VirtualFilesystem::move(Path from, Path to) {
+bool VirtualFilesystem::move(const Path &from, const Path &to) {
   if (!copy(from, to)) {
     return false;
   }

@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <miniz/miniz.h>
-#include <miniz/miniz_zip.h>
 
 namespace odr::internal::zip {
 

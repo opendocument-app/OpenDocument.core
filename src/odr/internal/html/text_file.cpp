@@ -14,10 +14,10 @@
 namespace odr::internal {
 
 Html html::translate_text_file(const TextFile &text_file,
-                               const std::string &path,
+                               const std::string &output_path,
                                const HtmlConfig &config) {
-  auto output_path = path + "/text.html";
-  std::ofstream ostream(output_path);
+  auto output_file_path = output_path + "/text.html";
+  std::ofstream ostream(output_file_path);
   if (!ostream.is_open()) {
     throw FileWriteError();
   }
@@ -33,8 +33,8 @@ Html html::translate_text_file(const TextFile &text_file,
   out.write_header_viewport(
       "width=device-width,initial-scale=1.0,user-scalable=yes");
   out.write_header_style_begin();
-  out.out() << "*{font-family:monospace;}";
-  out.out() << "td{padding-left:10px;padding-right:10px;}";
+  out.write_raw("*{font-family:monospace;}");
+  out.write_raw("td{padding-left:10px;padding-right:10px;}");
   out.write_header_style_end();
   out.write_header_end();
 
@@ -72,7 +72,7 @@ Html html::translate_text_file(const TextFile &text_file,
 
   out.write_end();
 
-  return {text_file.file_type(), config, {{"text", output_path}}};
+  return {text_file.file_type(), config, {{"text", output_file_path}}};
 }
 
 } // namespace odr::internal

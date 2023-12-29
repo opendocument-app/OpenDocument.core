@@ -65,11 +65,13 @@ else ()
 endif ()
 
 add_library(odr
+        "src/odr/archive.cpp"
         "src/odr/document.cpp"
         "src/odr/document_element.cpp"
         "src/odr/document_path.cpp"
         "src/odr/exceptions.cpp"
         "src/odr/file.cpp"
+        "src/odr/filesystem.cpp"
         "src/odr/html.cpp"
         "src/odr/open_document_reader.cpp"
         "src/odr/quantity.cpp"
@@ -108,6 +110,7 @@ add_library(odr
         "src/odr/internal/html/document.cpp"
         "src/odr/internal/html/document_style.cpp"
         "src/odr/internal/html/document_element.cpp"
+        "src/odr/internal/html/filesystem.cpp"
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
         "src/odr/internal/html/text_file.cpp"

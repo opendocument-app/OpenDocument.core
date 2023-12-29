@@ -12,16 +12,20 @@ class Html;
 
 namespace odr::internal::html {
 
-Html translate_document(const Document &document, const std::string &path,
+Html translate_document(const Document &document,
+                        const std::string &output_path,
                         const HtmlConfig &config);
 
-Html translate_text_document(const Document &document, const std::string &path,
+Html translate_text_document(const Document &document,
+                             const std::string &output_path,
                              const HtmlConfig &config);
-Html translate_presentation(const Document &document, const std::string &path,
+Html translate_presentation(const Document &document,
+                            const std::string &output_path,
                             const HtmlConfig &config);
-Html translate_spreadsheet(const Document &document, const std::string &path,
+Html translate_spreadsheet(const Document &document,
+                           const std::string &output_path,
                            const HtmlConfig &config);
-Html translate_drawing(const Document &document, const std::string &path,
+Html translate_drawing(const Document &document, const std::string &output_path,
                        const HtmlConfig &config);
 
 } // namespace odr::internal::html
