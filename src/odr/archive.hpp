@@ -2,6 +2,7 @@
 #define ODR_ARCHIVE_H
 
 #include <memory>
+#include <string>
 
 namespace odr::internal::abstract {
 class Archive;

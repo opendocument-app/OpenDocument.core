@@ -18,8 +18,11 @@ public:
   FileWalker();
   explicit FileWalker(std::unique_ptr<internal::abstract::FileWalker>);
   FileWalker(const FileWalker &);
+  FileWalker(FileWalker &&);
+  ~FileWalker();
 
   FileWalker &operator=(const FileWalker &);
+  FileWalker &operator=(FileWalker &&);
   [[nodiscard]] explicit operator bool() const;
 
   [[nodiscard]] bool end() const;

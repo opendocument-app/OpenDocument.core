@@ -1,10 +1,10 @@
 #include <odr/internal/html/filesystem.hpp>
 
 #include <odr/exceptions.hpp>
+#include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 
 #include <odr/internal/abstract/file.hpp>
-#include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/html_writer.hpp>
 
@@ -13,7 +13,7 @@
 namespace odr::internal {
 
 Html html::translate_filesystem(FileType file_type,
-                                const abstract::ReadableFilesystem &filesystem,
+                                const Filesystem &filesystem,
                                 const std::string &output_path,
                                 const HtmlConfig &config) {
   std::string output_file_path = output_path + "/files.html";
@@ -40,9 +40,9 @@ Html html::translate_filesystem(FileType file_type,
 
   out.write_body_begin();
 
-  for (; !file_walker->end(); file_walker->next()) {
-    common::Path file_path = file_walker->path();
-    bool is_file = file_walker->is_file();
+  for (; !file_walker.end(); file_walker.next()) {
+    common::Path file_path = file_walker.path();
+    bool is_file = file_walker.is_file();
 
     out.write_element_begin("p");
 
@@ -51,12 +51,12 @@ Html html::translate_filesystem(FileType file_type,
     out.write_element_end("span");
 
     out.write_element_begin("span");
-    out.write_raw(file_walker->is_file() ? "file" : "directory");
+    out.write_raw(file_walker.is_file() ? "file" : "directory");
     out.write_element_end("span");
 
     if (is_file) {
       out.write_element_begin("span");
-      out.write_raw(std::to_string(filesystem.open(file_path)->size()));
+      out.write_raw(std::to_string(filesystem.open(file_path).size()));
       out.write_element_end("span");
     }
 
