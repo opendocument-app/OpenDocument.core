@@ -12,6 +12,7 @@ class File;
 class DecodedFile;
 class TextFile;
 class ImageFile;
+class ArchiveFile;
 class DocumentFile;
 } // namespace odr::internal::abstract
 
@@ -20,6 +21,7 @@ class TextFile;
 class ImageFile;
 class DocumentFile;
 
+class Archive;
 class Document;
 
 enum class FileType {
@@ -122,8 +124,11 @@ struct FileMeta final {
 
 class File final {
 public:
-  explicit File(std::shared_ptr<internal::abstract::File> impl);
+  File();
+  explicit File(std::shared_ptr<internal::abstract::File>);
   explicit File(const std::string &path);
+
+  [[nodiscard]] explicit operator bool() const;
 
   [[nodiscard]] FileLocation location() const noexcept;
   [[nodiscard]] std::size_t size() const;
@@ -146,11 +151,13 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
+  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile>);
   explicit DecodedFile(const File &file);
   DecodedFile(const File &file, FileType as);
   explicit DecodedFile(const std::string &path);
   DecodedFile(const std::string &path, FileType as);
+
+  [[nodiscard]] explicit operator bool() const;
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] FileCategory file_category() const noexcept;
@@ -168,7 +175,7 @@ protected:
 
 class TextFile final : public DecodedFile {
 public:
-  explicit TextFile(std::shared_ptr<internal::abstract::TextFile> impl);
+  explicit TextFile(std::shared_ptr<internal::abstract::TextFile>);
 
   [[nodiscard]] std::optional<std::string> charset() const;
 
@@ -181,7 +188,7 @@ private:
 
 class ImageFile final : public DecodedFile {
 public:
-  explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile> impl);
+  explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile>);
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
 
@@ -189,12 +196,22 @@ private:
   std::shared_ptr<internal::abstract::ImageFile> m_impl;
 };
 
+class ArchiveFile final : public DecodedFile {
+public:
+  explicit ArchiveFile(std::shared_ptr<internal::abstract::ArchiveFile>);
+
+  [[nodiscard]] Archive archive() const;
+
+private:
+  std::shared_ptr<internal::abstract::ArchiveFile> m_impl;
+};
+
 class DocumentFile final : public DecodedFile {
 public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile> impl);
+  explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
   explicit DocumentFile(const std::string &path);
 
   [[nodiscard]] bool password_encrypted() const;

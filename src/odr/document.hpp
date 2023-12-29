@@ -13,10 +13,11 @@ enum class FileType;
 enum class DocumentType;
 class DocumentFile;
 class Element;
+class Filesystem;
 
 class Document final {
 public:
-  explicit Document(std::shared_ptr<internal::abstract::Document> document);
+  explicit Document(std::shared_ptr<internal::abstract::Document>);
 
   [[nodiscard]] bool editable() const noexcept;
   [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
@@ -29,8 +30,10 @@ public:
 
   [[nodiscard]] Element root_element() const;
 
+  [[nodiscard]] Filesystem files() const;
+
 private:
-  std::shared_ptr<internal::abstract::Document> m_document;
+  std::shared_ptr<internal::abstract::Document> m_impl;
 
   friend DocumentFile;
 };

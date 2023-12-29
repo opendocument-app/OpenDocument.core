@@ -1,5 +1,6 @@
 #include <odr/file.hpp>
 
+#include <odr/archive.hpp>
 #include <odr/document.hpp>
 #include <odr/exceptions.hpp>
 
@@ -25,11 +26,15 @@ FileMeta::FileMeta(const FileType type, const bool password_encrypted,
     : type{type}, password_encrypted{password_encrypted},
       document_meta{std::move(document_meta)} {}
 
+File::File() = default;
+
 File::File(std::shared_ptr<internal::abstract::File> impl)
     : m_impl{std::move(impl)} {}
 
 File::File(const std::string &path)
     : m_impl{std::make_shared<internal::common::DiskFile>(path)} {}
+
+File::operator bool() const { return m_impl.operator bool(); }
 
 FileLocation File::location() const noexcept { return m_impl->location(); }
 
@@ -81,6 +86,8 @@ DecodedFile::DecodedFile(const std::string &path)
 DecodedFile::DecodedFile(const std::string &path, FileType as)
     : DecodedFile(internal::open_strategy::open_file(
           std::make_shared<internal::common::DiskFile>(path), as)) {}
+
+DecodedFile::operator bool() const { return m_impl.operator bool(); }
 
 FileType DecodedFile::file_type() const noexcept {
   return m_impl->file_meta().type;
@@ -139,6 +146,11 @@ ImageFile::ImageFile(std::shared_ptr<internal::abstract::ImageFile> impl)
 std::unique_ptr<std::istream> ImageFile::stream() const {
   return m_impl->file()->stream();
 }
+
+ArchiveFile::ArchiveFile(std::shared_ptr<internal::abstract::ArchiveFile> impl)
+    : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+Archive ArchiveFile::archive() const { return Archive(m_impl->archive()); }
 
 FileType DocumentFile::type(const std::string &path) {
   return DocumentFile(path).file_type();
