@@ -47,9 +47,8 @@ std::string util::sha256(const std::string &in) {
                      CryptoPP::SHA256::DIGESTSIZE);
 }
 
-std::string util::pbkdf2(const std::size_t key_size,
-                         const std::string &start_key, const std::string &salt,
-                         const std::size_t iteration_count) {
+std::string util::pbkdf2(std::size_t key_size, const std::string &start_key,
+                         const std::string &salt, std::size_t iteration_count) {
   std::string result(key_size, '\0');
   CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
   pbkdf2.DeriveKey(reinterpret_cast<byte *>(result.data()), result.size(),
@@ -116,9 +115,8 @@ namespace {
 /// discard non deflated content caused by padding
 class MyInflator final : public CryptoPP::Inflator {
 public:
-  MyInflator(BufferedTransformation *attachment = nullptr,
-             const bool repeat = false, const int auto_signal_propagation = -1)
-      : Inflator(attachment, repeat, auto_signal_propagation) {}
+  MyInflator(BufferedTransformation *attachment = nullptr)
+      : Inflator(attachment, false, -1) {}
 
   std::uint32_t GetPadding() const { return m_padding; }
 
