@@ -32,6 +32,8 @@ add_executable(odr_test
 
         "src/internal/ooxml/ooxml_crypto_test.cpp"
 
+        "src/internal/pdf/naive_pdf_parsing.cpp"
+
         "src/internal/svm/svm_test.cpp"
 
         "src/internal/text/text_file_test.cpp"
