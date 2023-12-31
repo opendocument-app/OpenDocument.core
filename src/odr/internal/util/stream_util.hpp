@@ -10,7 +10,11 @@ std::string read(std::istream &in);
 
 void pipe(std::istream &in, std::ostream &out);
 
-std::istream &getline(std::istream &in, std::ostream &out);
+std::istream &pipe_line(std::istream &in, std::ostream &out);
+std::string read_line(std::istream &in);
+
+std::istream &pipe_until(std::istream &in, std::ostream &out, char until_c);
+std::string read_until(std::istream &in, char until_c);
 
 } // namespace odr::internal::util::stream
 
