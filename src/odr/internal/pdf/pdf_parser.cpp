@@ -4,8 +4,6 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <cmath>
-#include <cstring>
-#include <iostream>
 #include <sstream>
 
 namespace odr::internal::pdf {
@@ -32,208 +30,111 @@ char_type two_hex_to_char(char_type first, char_type second) {
 
 } // namespace
 
-void parser::read_header(std::istream &in) {
-  std::string header1 = util::stream::read_until(in, '\n');
-  std::string header2 = util::stream::read_until(in, '\n');
+PdfObjectParser::PdfObjectParser(std::istream &in)
+    : m_in{&in}, m_se(in, true), m_sb{in.rdbuf()} {}
 
-  std::cout << header1 << std::endl;
-  std::cout << header2 << std::endl;
-}
+std::istream &PdfObjectParser::in() const { return *m_in; }
 
-void parser::read_entry(std::istream &in) {
-  skip_whitespace(in);
-  std::string entry_header = util::stream::read_until(in, '\n');
+std::streambuf &PdfObjectParser::sb() const { return *m_sb; }
 
-  std::cout << entry_header << std::endl;
-
-  if (util::string::ends_with(entry_header, "obj")) {
-    std::cout << ">> this is an object" << std::endl;
-    read_indirect_object(in, std::move(entry_header));
-    return;
-  }
-
-  if (entry_header == "xref") {
-    std::cout << ">> this is an xref" << std::endl;
-    read_xref(in, std::move(entry_header));
-    return;
-  }
-
-  if (entry_header == "trailer") {
-    std::cout << ">> this is a trailer" << std::endl;
-    return;
-  }
-
-  if (entry_header == "startxref") {
-    std::cout << ">> this is a startxref" << std::endl;
-    read_startxref(in, std::move(entry_header));
-    return;
-  }
-
-  if (entry_header == "%%EOF") {
-    std::cout << ">> this is the end" << std::endl;
-    return;
-  }
-
-  std::cout << ">> this is unknown" << std::endl;
-}
-
-void parser::read_indirect_object(std::istream &in,
-                                  std::optional<std::string> head) {
-  if (!head) {
-    head = util::stream::read_until(in, '\n');
-  }
-
-  Object object = read_object(in);
-  util::stream::read_until(in, '\n');
-  if (util::stream::read_until(in, '\n') != "endobj") {
-    throw std::runtime_error("expected endobj");
-  }
-}
-
-void parser::read_xref(std::istream &in, std::optional<std::string> head) {
-  if (!head) {
-    head = util::stream::read_until(in, '\n');
-  }
-
+void PdfObjectParser::skip_whitespace() const {
   while (true) {
-    if (in.eof()) {
-      throw std::runtime_error("input exhausted");
-    }
-    if (!peek_number(in)) {
-      return;
-    }
-    std::uint32_t subsection_id = read_integer(in);
-    skip_whitespace(in);
-    std::uint32_t subsection_size = read_integer(in);
-    util::stream::read_until(in, '\n');
-    for (std::uint32_t i = 0; i < subsection_size; ++i) {
-      std::string subsection_entry = util::stream::read_until(in, '\n');
-    }
-  }
-}
-
-void parser::read_startxref(std::istream &in, std::optional<std::string> head) {
-  if (!head) {
-    head = util::stream::read_until(in, '\n');
-  }
-
-  std::uint32_t startxref = peek_number(in);
-  util::stream::read_until(in, '\n');
-}
-
-void parser::skip_whitespace(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  while (true) {
-    int_type c = sb->sgetc();
+    int_type c = sb().sgetc();
     switch (c) {
     case ' ':
     case '\n':
-      sb->sbumpc();
+      sb().sbumpc();
       break;
     case eof:
-      in.setstate(std::ios::eofbit);
+      in().setstate(std::ios::eofbit);
     default:
       return;
     }
   }
 }
 
-bool parser::peek_number(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
+void PdfObjectParser::skip_line() const { read_line(); }
 
-  int_type c = sb->sgetc();
+std::string PdfObjectParser::read_line() const {
+  return util::stream::read_until(in(), '\n', false);
+}
+
+bool PdfObjectParser::peek_number() const {
+  int_type c = sb().sgetc();
   return c != eof && (c == '+' || c == '-' || c == '.' || std::isdigit(c));
 }
 
-UnsignedInteger parser::read_unsigned_integer(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
+UnsignedInteger PdfObjectParser::read_unsigned_integer() const {
   UnsignedInteger result = 0;
 
   while (true) {
-    int_type c = sb->sgetc();
+    int_type c = sb().sgetc();
     if (c == eof) {
-      in.setstate(std::ios::eofbit);
+      in().setstate(std::ios::eofbit);
       return result;
     }
     if (!std::isdigit(c)) {
       return result;
     }
     result = result * 10 + (c - '0');
-    sb->sbumpc();
+    sb().sbumpc();
   }
 }
 
-Integer parser::read_integer(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
+Integer PdfObjectParser::read_integer() const {
   std::int8_t sign = 1;
 
-  if (sb->sgetc() == '+') {
+  if (sb().sgetc() == '+') {
     sign = +1;
-    sb->sbumpc();
+    sb().sbumpc();
   }
-  if (sb->sgetc() == '-') {
+  if (sb().sgetc() == '-') {
     sign = -1;
-    sb->sbumpc();
+    sb().sbumpc();
   }
 
-  return sign * read_unsigned_integer(in);
+  return sign * read_unsigned_integer();
 }
 
-Real parser::read_number(std::istream &in) {
-  return std::visit([](auto v) -> Real { return v; }, read_integer_or_real(in));
+Real PdfObjectParser::read_number() const {
+  return std::visit([](auto v) -> Real { return v; }, read_integer_or_real());
 }
 
-IntegerOrReal parser::read_integer_or_real(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
+IntegerOrReal PdfObjectParser::read_integer_or_real() const {
   Integer i = 0;
 
-  int_type c = sb->sgetc();
+  int_type c = sb().sgetc();
   if (c != '.') {
-    i = read_integer(in);
-    c = sb->sgetc();
+    i = read_integer();
+    c = sb().sgetc();
     if (c != '.') {
       return i;
     }
   }
-  sb->sbumpc();
+  sb().sbumpc();
 
-  std::streamsize begin = in.gcount();
-  UnsignedInteger i2 = read_unsigned_integer(in);
-  std::streamsize end = in.gcount();
+  std::streamsize begin = in().gcount();
+  UnsignedInteger i2 = read_unsigned_integer();
+  std::streamsize end = in().gcount();
 
   return i + i2 * std::pow(10.0, begin - end);
 }
 
-bool parser::peek_name(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  int_type c = sb->sgetc();
+bool PdfObjectParser::peek_name() const {
+  int_type c = sb().sgetc();
   return c != eof && c == '/';
 }
 
-void parser::read_name(std::istream &in, std::ostream &out) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  if (int_type c = sb->sbumpc(); c != '/') {
+void PdfObjectParser::read_name(std::ostream &out) const {
+  if (int_type c = sb().sbumpc(); c != '/') {
     throw std::runtime_error("not a name");
   }
 
   while (true) {
-    int_type c = sb->sgetc();
+    int_type c = sb().sgetc();
 
     if (c == eof) {
-      in.setstate(std::ios::eofbit);
+      in().setstate(std::ios::eofbit);
       return;
     }
     if (c < 0x21 || c > 0x7e || c == '/' || c == '%' || c == '(' || c == ')' ||
@@ -242,9 +143,9 @@ void parser::read_name(std::istream &in, std::ostream &out) {
     }
 
     if (c == '#') {
-      sb->sbumpc();
+      sb().sbumpc();
       char hex[2];
-      if (sb->sgetn(hex, 2) != 2) {
+      if (sb().sgetn(hex, 2) != 2) {
         throw std::runtime_error("unexpected stream exhaust");
       }
       out.put(two_hex_to_char(hex[0], hex[1]));
@@ -252,52 +153,40 @@ void parser::read_name(std::istream &in, std::ostream &out) {
     }
 
     out.put(c);
-    sb->sbumpc();
+    sb().sbumpc();
   }
 }
 
-Name parser::read_name(std::istream &in) {
+Name PdfObjectParser::read_name() const {
   std::stringstream ss;
-  read_name(in, ss);
+  read_name(ss);
   return ss.str();
 }
 
-bool parser::peek_null(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  int_type c = sb->sgetc();
+bool PdfObjectParser::peek_null() const {
+  int_type c = sb().sgetc();
   return c != eof && (c == 'n' || c == 'N');
 }
 
-void parser::read_null(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
+void PdfObjectParser::read_null() const {
   char tmp[4];
-  if (sb->sgetn(tmp, 4) != 4) {
+  if (sb().sgetn(tmp, 4) != 4) {
     throw std::runtime_error("unexpected stream exhaust");
   }
   // TODO check ignorecase
 }
 
-bool parser::peek_boolean(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  int_type c = sb->sgetc();
+bool PdfObjectParser::peek_boolean() const {
+  int_type c = sb().sgetc();
   return c != eof && (c == 't' || c == 'T' || c == 'f' || c == 'F');
 }
 
-Boolean parser::read_boolean(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  int_type c = sb->sgetc();
+Boolean PdfObjectParser::read_boolean() const {
+  int_type c = sb().sgetc();
 
   if (c == 't' || c == 'T') {
     char tmp[4];
-    if (sb->sgetn(tmp, 4) != 4) {
+    if (sb().sgetn(tmp, 4) != 4) {
       throw std::runtime_error("unexpected stream exhaust");
     }
     // TODO check ignore case
@@ -307,7 +196,7 @@ Boolean parser::read_boolean(std::istream &in) {
 
   if (c == 'f' || c == 'F') {
     char tmp[5];
-    if (sb->sgetn(tmp, 5) != 5) {
+    if (sb().sgetn(tmp, 5) != 5) {
       throw std::runtime_error("unexpected stream exhaust");
     }
     // TODO check ignore case
@@ -318,11 +207,8 @@ Boolean parser::read_boolean(std::istream &in) {
   throw std::runtime_error("unexpected starting character");
 }
 
-bool parser::peek_string(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  int_type c = sb->sgetc();
+bool PdfObjectParser::peek_string() const {
+  int_type c = sb().sgetc();
   if (c == eof) {
     return false;
   }
@@ -330,9 +216,9 @@ bool parser::peek_string(std::istream &in) {
     return true;
   }
   if (c == '<') {
-    sb->sbumpc();
-    c = sb->sgetc();
-    if (sb->sungetc() == eof) {
+    sb().sbumpc();
+    c = sb().sgetc();
+    if (sb().sungetc() == eof) {
       throw std::runtime_error("unexpected stream exhaust");
     }
     return c != '<';
@@ -340,18 +226,15 @@ bool parser::peek_string(std::istream &in) {
   return false;
 }
 
-void parser::read_string(std::istream &in, std::ostream &out) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  int_type c = sb->sbumpc();
+void PdfObjectParser::read_string(std::ostream &out) const {
+  int_type c = sb().sbumpc();
 
   if (c == '(') {
     while (true) {
-      c = sb->sbumpc();
+      c = sb().sbumpc();
 
       if (c == eof) {
-        in.setstate(std::ios::eofbit);
+        in().setstate(std::ios::eofbit);
         throw std::runtime_error("unexpected stream exhaust");
       }
       if (c == ')') {
@@ -364,20 +247,20 @@ void parser::read_string(std::istream &in, std::ostream &out) {
 
   if (c == '<') {
     while (true) {
-      c = sb->sbumpc();
+      c = sb().sbumpc();
 
       if (c == eof) {
-        in.setstate(std::ios::eofbit);
+        in().setstate(std::ios::eofbit);
         throw std::runtime_error("unexpected stream exhaust");
       }
       if (c == '>') {
         return;
       }
 
-      int_type c2 = sb->sbumpc();
+      int_type c2 = sb().sbumpc();
 
       if (c2 == eof) {
-        in.setstate(std::ios::eofbit);
+        in().setstate(std::ios::eofbit);
         throw std::runtime_error("unexpected stream exhaust");
       }
 
@@ -388,53 +271,57 @@ void parser::read_string(std::istream &in, std::ostream &out) {
   throw std::runtime_error("unexpected starting character");
 }
 
-String parser::read_string(std::istream &in) {
+String PdfObjectParser::read_string() const {
   std::stringstream ss;
-  read_string(in, ss);
+  read_string(ss);
   return ss.str();
 }
 
-bool parser::peek_array(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  int_type c = sb->sgetc();
+bool PdfObjectParser::peek_array() const {
+  int_type c = sb().sgetc();
   return c != eof && c == '[';
 }
 
-Array parser::read_array(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  if (sb->sbumpc() != '[') {
-    throw std::runtime_error("unexpected character");
-  }
-
+Array PdfObjectParser::read_array() const {
   Array result;
 
+  if (sb().sbumpc() != '[') {
+    throw std::runtime_error("unexpected character");
+  }
+  skip_whitespace();
+
   while (true) {
-    skip_whitespace(in);
-    if (sb->sgetc() == ']') {
-      sb->sbumpc();
+    if (int_type c = sb().sgetc(); c == ']') {
+      sb().sbumpc();
       return result;
     }
-    Object value = read_object(in);
+    Object value = read_object();
+    skip_whitespace();
+
     result.emplace_back(std::move(value));
+
+    if (int_type c = sb().sgetc(); c == 'R') {
+      sb().sbumpc();
+      skip_whitespace();
+
+      auto gen = std::any_cast<Integer>(result.back());
+      result.pop_back();
+      auto id = std::any_cast<Integer>(result.back());
+      result.pop_back();
+      result.emplace_back(ObjectReference{id, gen});
+    }
   }
 }
 
-bool parser::peek_dictionary(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  int_type c = sb->sgetc();
+bool PdfObjectParser::peek_dictionary() const {
+  int_type c = sb().sgetc();
   if (c == eof) {
     return false;
   }
   if (c == '<') {
-    sb->sbumpc();
-    c = sb->sgetc();
-    if (sb->sungetc() == eof) {
+    sb().sbumpc();
+    c = sb().sgetc();
+    if (sb().sungetc() == eof) {
       throw std::runtime_error("unexpected stream exhaust");
     }
     return c == '<';
@@ -442,40 +329,38 @@ bool parser::peek_dictionary(std::istream &in) {
   return false;
 }
 
-Dictionary parser::read_dictionary(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  if (sb->sbumpc() != '<') {
-    throw std::runtime_error("unexpected character");
-  }
-  if (sb->sbumpc() != '<') {
-    throw std::runtime_error("unexpected character");
-  }
-
+Dictionary PdfObjectParser::read_dictionary() const {
   Dictionary result;
 
+  if (sb().sbumpc() != '<') {
+    throw std::runtime_error("unexpected character");
+  }
+  if (sb().sbumpc() != '<') {
+    throw std::runtime_error("unexpected character");
+  }
+  skip_whitespace();
+
   while (true) {
-    skip_whitespace(in);
-    if (sb->sgetc() == '>') {
-      sb->sbumpc();
-      sb->sbumpc();
+    if (int_type c = sb().sgetc(); c == '>') {
+      sb().sbumpc();
+      sb().sbumpc();
       return result;
     }
-    Name name = read_name(in);
-    skip_whitespace(in);
-    Object value = read_object(in);
-    skip_whitespace(in);
+
+    Name name = read_name();
+    skip_whitespace();
+    Object value = read_object();
+    skip_whitespace();
 
     // Handle indirect objects
     // TODO this seems hacky
-    if (!peek_name(in)) {
-      UnsignedInteger gen = read_unsigned_integer(in);
-      skip_whitespace(in);
-
-      if (sb->sbumpc() != 'R') {
+    if (int_type c = sb().sgetc(); c != '>' && !peek_name()) {
+      UnsignedInteger gen = read_unsigned_integer();
+      skip_whitespace();
+      if (int_type c2 = sb().sbumpc(); c2 != 'R') {
         throw std::runtime_error("unexpected character");
       }
+      skip_whitespace();
 
       value = ObjectReference{std::any_cast<Integer>(value), gen};
     }
@@ -484,54 +369,188 @@ Dictionary parser::read_dictionary(std::istream &in) {
   }
 }
 
-Object parser::read_object(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
-
-  int_type c = sb->sgetc();
+Object PdfObjectParser::read_object() const {
+  int_type c = sb().sgetc();
 
   if (c == eof) {
-    in.setstate(std::ios::eofbit);
+    in().setstate(std::ios::eofbit);
     throw std::runtime_error("unexpected stream exhaust");
   }
 
-  if (peek_null(in)) {
+  if (peek_null()) {
+    read_null();
     return {};
   }
-  if (peek_boolean(in)) {
-    return read_boolean(in);
+  if (peek_boolean()) {
+    return read_boolean();
   }
-  if (peek_number(in)) {
+  if (peek_number()) {
     return std::visit([](auto v) -> Object { return v; },
-                      read_integer_or_real(in));
+                      read_integer_or_real());
   }
-  if (peek_string(in)) {
-    return read_string(in);
+  if (peek_name()) {
+    return read_name();
   }
-  if (peek_array(in)) {
-    return read_array(in);
+  if (peek_string()) {
+    return read_string();
   }
-  if (peek_dictionary(in)) {
-    return read_dictionary(in);
+  if (peek_array()) {
+    return read_array();
+  }
+  if (peek_dictionary()) {
+    return read_dictionary();
   }
 
   throw std::runtime_error("unknown object");
 }
 
-ObjectReference parser::read_object_reference(std::istream &in) {
-  std::istream::sentry se(in, true);
-  std::streambuf *sb = in.rdbuf();
+ObjectReference PdfObjectParser::read_object_reference() const {
+  UnsignedInteger id = read_unsigned_integer();
+  skip_whitespace();
+  UnsignedInteger gen = read_unsigned_integer();
+  skip_whitespace();
 
-  UnsignedInteger id = read_unsigned_integer(in);
-  skip_whitespace(in);
-  UnsignedInteger gen = read_unsigned_integer(in);
-  skip_whitespace(in);
-
-  if (sb->sbumpc() != 'R') {
+  if (sb().sbumpc() != 'R') {
     throw std::runtime_error("unexpected character");
   }
 
   return {id, gen};
+}
+
+PdfFileParser::PdfFileParser(std::istream &in) : m_parser(in) {}
+
+IndirectObject
+PdfFileParser::read_indirect_object(std::optional<std::string> head) const {
+  if (!head) {
+    head = m_parser.read_line();
+  }
+
+  IndirectObject result;
+
+  {
+    std::istringstream ss(*head);
+    PdfObjectParser head_parser(ss);
+    result.reference.first = head_parser.read_unsigned_integer();
+    head_parser.skip_whitespace();
+    result.reference.second = head_parser.read_unsigned_integer();
+  }
+
+  result.object = m_parser.read_object();
+  m_parser.skip_line();
+
+  auto next = m_parser.read_line();
+
+  if (next == "endobj") {
+    return result;
+  }
+  if (next == "stream") {
+    result.has_stream = true;
+    std::string stream;
+
+    // TODO improve poor solution
+    while (true) {
+      std::string line = util::stream::read_until(m_parser.in(), '\n', true);
+      if (line == "endstream\n") {
+        stream.pop_back();
+        break;
+      }
+      stream += line;
+    }
+
+    result.stream = std::move(stream);
+
+    if (std::string line = m_parser.read_line(); line != "endobj") {
+      throw std::runtime_error("expected endobj");
+    }
+
+    return result;
+  }
+
+  throw std::runtime_error("expected stream");
+}
+
+Trailer PdfFileParser::read_trailer(std::optional<std::string> head) const {
+  if (!head) {
+    m_parser.skip_line();
+  }
+
+  Trailer result;
+
+  result.trailer = m_parser.read_dictionary();
+  m_parser.skip_line();
+
+  return result;
+}
+
+Xref PdfFileParser::read_xref(std::optional<std::string> head) const {
+  if (!head) {
+    m_parser.skip_line();
+  }
+
+  Xref result;
+
+  while (true) {
+    if (!m_parser.peek_number()) {
+      return result;
+    }
+
+    std::uint32_t subsection_id = m_parser.read_integer();
+    m_parser.skip_whitespace();
+    std::uint32_t subsection_size = m_parser.read_integer();
+    m_parser.skip_line();
+
+    std::vector<std::string> subsection;
+    for (std::uint32_t i = 0; i < subsection_size; ++i) {
+      std::string subsection_entry = m_parser.read_line();
+      subsection.emplace_back(std::move(subsection_entry));
+    }
+    result.table.emplace(subsection_id, std::move(subsection));
+  }
+}
+
+StartXref PdfFileParser::read_startxref(std::optional<std::string> head) const {
+  if (!head) {
+    m_parser.skip_line();
+  }
+
+  StartXref result;
+
+  result.start = m_parser.peek_number();
+  m_parser.skip_line();
+
+  return result;
+}
+
+void PdfFileParser::read_header() const {
+  std::string header1 = m_parser.read_line();
+  std::string header2 = m_parser.read_line();
+
+  if (!util::string::starts_with(header1, "%PDF-")) {
+    throw std::runtime_error("illegal header");
+  }
+}
+
+Entry PdfFileParser::read_entry() const {
+  m_parser.skip_whitespace();
+  std::string entry_header = m_parser.read_line();
+
+  if (util::string::ends_with(entry_header, "obj")) {
+    return read_indirect_object(std::move(entry_header));
+  }
+  if (entry_header == "xref") {
+    return read_xref(std::move(entry_header));
+  }
+  if (entry_header == "trailer") {
+    return read_trailer(std::move(entry_header));
+  }
+  if (entry_header == "startxref") {
+    return read_startxref(std::move(entry_header));
+  }
+  if (entry_header == "%%EOF") {
+    return Eof{};
+  }
+
+  return {};
 }
 
 } // namespace odr::internal::pdf

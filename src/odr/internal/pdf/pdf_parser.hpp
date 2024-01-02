@@ -2,7 +2,7 @@
 #define ODR_INTERNAL_PDF_PARSER_HPP
 
 #include <any>
-#include <iosfwd>
+#include <iostream>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -23,50 +23,86 @@ using Object = std::any;
 using Array = std::vector<Object>;
 using Dictionary = std::unordered_map<Name, Object>;
 
-namespace parser {
+struct IndirectObject {
+  ObjectReference reference;
+  Object object;
+  bool has_stream{false};
+  std::optional<std::string> stream;
+};
+struct Trailer {
+  Dictionary trailer;
+};
+struct Xref {
+  std::unordered_map<std::uint32_t, std::vector<std::string>> table;
+};
+struct StartXref {
+  std::uint32_t start{};
+};
+struct Eof {};
+using Entry = std::any;
 
-void read_header(std::istream &);
+class PdfObjectParser {
+public:
+  explicit PdfObjectParser(std::istream &);
 
-void read_entry(std::istream &);
+  std::istream &in() const;
+  std::streambuf &sb() const;
 
-void read_indirect_object(std::istream &, std::optional<std::string> head);
+  void skip_whitespace() const;
+  void skip_line() const;
+  std::string read_line() const;
 
-void read_xref(std::istream &, std::optional<std::string> head);
-void read_startxref(std::istream &, std::optional<std::string> head);
+  bool peek_number() const;
+  UnsignedInteger read_unsigned_integer() const;
+  Integer read_integer() const;
+  Real read_number() const;
+  IntegerOrReal read_integer_or_real() const;
 
-void skip_whitespace(std::istream &);
+  bool peek_name() const;
+  void read_name(std::ostream &) const;
+  Name read_name() const;
 
-bool peek_number(std::istream &);
-UnsignedInteger read_unsigned_integer(std::istream &);
-Integer read_integer(std::istream &);
-Real read_number(std::istream &);
-IntegerOrReal read_integer_or_real(std::istream &);
+  bool peek_null() const;
+  void read_null() const;
 
-bool peek_name(std::istream &);
-void read_name(std::istream &, std::ostream &);
-Name read_name(std::istream &);
+  bool peek_boolean() const;
+  Boolean read_boolean() const;
 
-bool peek_null(std::istream &);
-void read_null(std::istream &);
+  bool peek_string() const;
+  void read_string(std::ostream &) const;
+  String read_string() const;
 
-bool peek_boolean(std::istream &);
-Boolean read_boolean(std::istream &);
+  bool peek_array() const;
+  Array read_array() const;
 
-bool peek_string(std::istream &);
-void read_string(std::istream &, std::ostream &);
-String read_string(std::istream &);
+  bool peek_dictionary() const;
+  Dictionary read_dictionary() const;
 
-bool peek_array(std::istream &);
-Array read_array(std::istream &);
+  Object read_object() const;
 
-bool peek_dictionary(std::istream &);
-Dictionary read_dictionary(std::istream &);
+  ObjectReference read_object_reference() const;
 
-Object read_object(std::istream &);
+private:
+  std::istream *m_in;
+  std::istream::sentry m_se;
+  std::streambuf *m_sb;
+};
 
-ObjectReference read_object_reference(std::istream &);
+class PdfFileParser {
+public:
+  explicit PdfFileParser(std::istream &);
 
-} // namespace parser
+  IndirectObject read_indirect_object(std::optional<std::string> head) const;
+  Trailer read_trailer(std::optional<std::string> head) const;
+  Xref read_xref(std::optional<std::string> head) const;
+  StartXref read_startxref(std::optional<std::string> head) const;
+
+  void read_header() const;
+  Entry read_entry() const;
+
+private:
+  PdfObjectParser m_parser;
+};
 
 } // namespace odr::internal::pdf
 

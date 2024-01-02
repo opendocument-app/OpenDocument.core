@@ -11,7 +11,7 @@ using int_type = std::streambuf::int_type;
 static constexpr int_type eof = std::streambuf::traits_type::eof();
 
 std::string stream::read(std::istream &in) {
-  return std::string{std::istreambuf_iterator<char>(in), {}};
+  return std::string(std::istreambuf_iterator<char>(in), {});
 }
 
 void stream::pipe(std::istream &in, std::ostream &out) {
@@ -66,7 +66,7 @@ std::string stream::read_line(std::istream &in) {
 }
 
 std::istream &stream::pipe_until(std::istream &in, std::ostream &out,
-                                 char until_c) {
+                                 char until_char, bool inclusive) {
   std::istream::sentry se(in, true);
   std::streambuf *sb = in.rdbuf();
 
@@ -76,16 +76,22 @@ std::istream &stream::pipe_until(std::istream &in, std::ostream &out,
       in.setstate(std::ios::eofbit);
       return in;
     }
-    if (c == until_c) {
+    if (inclusive) {
+      out.put(c);
+    }
+    if (c == until_char) {
       return in;
     }
-    out.put((char_type)c);
+    if (!inclusive) {
+      out.put(c);
+    }
   }
 }
 
-std::string stream::read_until(std::istream &in, char until_c) {
+std::string stream::read_until(std::istream &in, char until_char,
+                               bool inclusive) {
   std::stringstream ss;
-  pipe_until(in, ss, until_c);
+  pipe_until(in, ss, until_char, inclusive);
   return ss.str();
 }
 
