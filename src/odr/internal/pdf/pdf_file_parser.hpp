@@ -20,6 +20,10 @@ struct IndirectObject {
 };
 
 struct Trailer {
+  std::uint32_t size;
+  ObjectReference root_reference;
+  ObjectReference info_reference;
+
   Dictionary dictionary;
 };
 
@@ -86,9 +90,9 @@ private:
   template <typename T> T as() const { return std::any_cast<T>(m_holder); }
 };
 
-class PdfObjectParser {
+class ObjectParser {
 public:
-  explicit PdfObjectParser(std::istream &);
+  explicit ObjectParser(std::istream &);
 
   std::istream &in() const;
   std::streambuf &sb() const;
@@ -133,26 +137,26 @@ private:
   std::streambuf *m_sb;
 };
 
-class PdfFileParser {
+class FileParser {
 public:
-  explicit PdfFileParser(std::istream &);
+  explicit FileParser(std::istream &);
 
   std::istream &in() const;
   std::streambuf &sb() const;
-  const PdfObjectParser &parser() const;
+  const ObjectParser &parser() const;
 
   IndirectObject read_indirect_object() const;
   Trailer read_trailer() const;
   Xref read_xref() const;
-  StartXref read_startxref() const;
+  StartXref read_start_xref() const;
 
   void read_header() const;
   Entry read_entry() const;
 
-  void seek_startxref(std::uint32_t margin = 64) const;
+  void seek_start_xref(std::uint32_t margin = 64) const;
 
 private:
-  PdfObjectParser m_parser;
+  ObjectParser m_parser;
 };
 
 } // namespace odr::internal::pdf

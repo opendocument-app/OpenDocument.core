@@ -146,6 +146,9 @@ add_library(odr
         "src/odr/internal/ooxml/ooxml_meta.cpp"
         "src/odr/internal/ooxml/ooxml_util.cpp"
 
+        "src/odr/internal/pdf/pdf_document.cpp"
+        "src/odr/internal/pdf/pdf_document_element.cpp"
+        "src/odr/internal/pdf/pdf_document_parser.cpp"
         "src/odr/internal/pdf/pdf_file_object.cpp"
         "src/odr/internal/pdf/pdf_file_parser.cpp"
 

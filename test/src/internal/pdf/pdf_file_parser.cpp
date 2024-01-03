@@ -12,12 +12,12 @@ using namespace odr::internal;
 using namespace odr::internal::pdf;
 using namespace odr::test;
 
-TEST(PdfFileParser, foo) {
+TEST(FileParser, foo) {
   auto file = std::make_shared<common::DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
   auto in = file->stream();
-  PdfFileParser parser(*in);
+  FileParser parser(*in);
 
   parser.read_header();
   while (true) {
@@ -74,16 +74,16 @@ TEST(PdfFileParser, foo) {
   }
 }
 
-TEST(PdfFileParser, bar) {
+TEST(FileParser, bar) {
   auto file = std::make_shared<common::DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
   auto in = file->stream();
-  PdfFileParser parser(*in);
+  FileParser parser(*in);
 
   parser.read_header();
-  parser.seek_startxref();
-  StartXref startxref = parser.read_startxref();
+  parser.seek_start_xref();
+  StartXref startxref = parser.read_start_xref();
   parser.in().seekg(startxref.start);
 
   Dictionary trailer;
