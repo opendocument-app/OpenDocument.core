@@ -1,4 +1,4 @@
-#include <odr/internal/pdf/pdf_parser.hpp>
+#include <odr/internal/pdf/pdf_file_parser.hpp>
 
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
@@ -283,7 +283,7 @@ bool PdfObjectParser::peek_array() const {
 }
 
 Array PdfObjectParser::read_array() const {
-  Array result;
+  Array::Holder result;
 
   if (sb().sbumpc() != '[') {
     throw std::runtime_error("unexpected character");
@@ -293,7 +293,7 @@ Array PdfObjectParser::read_array() const {
   while (true) {
     if (int_type c = sb().sgetc(); c == ']') {
       sb().sbumpc();
-      return result;
+      return Array(std::move(result));
     }
     Object value = read_object();
     skip_whitespace();
@@ -304,9 +304,9 @@ Array PdfObjectParser::read_array() const {
       sb().sbumpc();
       skip_whitespace();
 
-      auto gen = std::any_cast<Integer>(result.back());
+      auto gen = result.back().as_integer();
       result.pop_back();
-      auto id = std::any_cast<Integer>(result.back());
+      auto id = result.back().as_integer();
       result.pop_back();
       result.emplace_back(ObjectReference{id, gen});
     }
@@ -330,7 +330,7 @@ bool PdfObjectParser::peek_dictionary() const {
 }
 
 Dictionary PdfObjectParser::read_dictionary() const {
-  Dictionary result;
+  Dictionary::Holder result;
 
   if (sb().sbumpc() != '<') {
     throw std::runtime_error("unexpected character");
@@ -344,7 +344,7 @@ Dictionary PdfObjectParser::read_dictionary() const {
     if (int_type c = sb().sgetc(); c == '>') {
       sb().sbumpc();
       sb().sbumpc();
-      return result;
+      return Dictionary(std::move(result));
     }
 
     Name name = read_name();
@@ -362,7 +362,7 @@ Dictionary PdfObjectParser::read_dictionary() const {
       }
       skip_whitespace();
 
-      value = ObjectReference{std::any_cast<Integer>(value), gen};
+      value = ObjectReference{value.as_integer(), gen};
     }
 
     result.emplace(std::move(name), std::move(value));
@@ -419,20 +419,21 @@ ObjectReference PdfObjectParser::read_object_reference() const {
 
 PdfFileParser::PdfFileParser(std::istream &in) : m_parser(in) {}
 
-IndirectObject
-PdfFileParser::read_indirect_object(std::optional<std::string> head) const {
-  if (!head) {
-    head = m_parser.read_line();
-  }
+std::istream &PdfFileParser::in() const { return m_parser.in(); }
 
+std::streambuf &PdfFileParser::sb() const { return m_parser.sb(); }
+
+const PdfObjectParser &PdfFileParser::parser() const { return m_parser; }
+
+IndirectObject PdfFileParser::read_indirect_object() const {
   IndirectObject result;
 
-  {
-    std::istringstream ss(*head);
-    PdfObjectParser head_parser(ss);
-    result.reference.first = head_parser.read_unsigned_integer();
-    head_parser.skip_whitespace();
-    result.reference.second = head_parser.read_unsigned_integer();
+  result.reference.first = m_parser.read_unsigned_integer();
+  m_parser.skip_whitespace();
+  result.reference.second = m_parser.read_unsigned_integer();
+  m_parser.skip_whitespace();
+  if (std::string line = m_parser.read_line(); line != "obj") {
+    throw std::runtime_error("expected obj");
   }
 
   result.object = m_parser.read_object();
@@ -445,11 +446,12 @@ PdfFileParser::read_indirect_object(std::optional<std::string> head) const {
   }
   if (next == "stream") {
     result.has_stream = true;
+    result.stream_position = in().tellg();
     std::string stream;
 
     // TODO improve poor solution
     while (true) {
-      std::string line = util::stream::read_until(m_parser.in(), '\n', true);
+      std::string line = util::stream::read_until(in(), '\n', true);
       if (line == "endstream\n") {
         stream.pop_back();
         break;
@@ -469,22 +471,22 @@ PdfFileParser::read_indirect_object(std::optional<std::string> head) const {
   throw std::runtime_error("expected stream");
 }
 
-Trailer PdfFileParser::read_trailer(std::optional<std::string> head) const {
-  if (!head) {
-    m_parser.skip_line();
+Trailer PdfFileParser::read_trailer() const {
+  if (std::string line = m_parser.read_line(); line != "trailer") {
+    throw std::runtime_error("expected trailer");
   }
 
   Trailer result;
 
-  result.trailer = m_parser.read_dictionary();
+  result.dictionary = m_parser.read_dictionary();
   m_parser.skip_line();
 
   return result;
 }
 
-Xref PdfFileParser::read_xref(std::optional<std::string> head) const {
-  if (!head) {
-    m_parser.skip_line();
+Xref PdfFileParser::read_xref() const {
+  if (std::string line = m_parser.read_line(); line != "xref") {
+    throw std::runtime_error("expected xref");
   }
 
   Xref result;
@@ -494,28 +496,33 @@ Xref PdfFileParser::read_xref(std::optional<std::string> head) const {
       return result;
     }
 
-    std::uint32_t subsection_id = m_parser.read_integer();
+    std::uint32_t first_id = m_parser.read_integer();
     m_parser.skip_whitespace();
-    std::uint32_t subsection_size = m_parser.read_integer();
+    std::uint32_t entry_count = m_parser.read_integer();
     m_parser.skip_line();
 
-    std::vector<std::string> subsection;
-    for (std::uint32_t i = 0; i < subsection_size; ++i) {
-      std::string subsection_entry = m_parser.read_line();
-      subsection.emplace_back(std::move(subsection_entry));
+    for (std::uint32_t i = 0; i < entry_count; ++i) {
+      Xref::Entry entry;
+
+      entry.position = m_parser.read_unsigned_integer();
+      m_parser.skip_whitespace();
+      entry.generation = m_parser.read_unsigned_integer();
+      m_parser.skip_whitespace();
+      entry.in_use = m_parser.read_line().at(0) == 'n';
+
+      result.table.emplace(first_id + i, std::move(entry));
     }
-    result.table.emplace(subsection_id, std::move(subsection));
   }
 }
 
-StartXref PdfFileParser::read_startxref(std::optional<std::string> head) const {
-  if (!head) {
-    m_parser.skip_line();
+StartXref PdfFileParser::read_startxref() const {
+  if (std::string line = m_parser.read_line(); line != "startxref") {
+    throw std::runtime_error("expected startxref");
   }
 
   StartXref result;
 
-  result.start = m_parser.peek_number();
+  result.start = m_parser.read_unsigned_integer();
   m_parser.skip_line();
 
   return result;
@@ -532,25 +539,48 @@ void PdfFileParser::read_header() const {
 
 Entry PdfFileParser::read_entry() const {
   m_parser.skip_whitespace();
+  std::uint32_t position = in().tellg();
   std::string entry_header = m_parser.read_line();
+  in().seekg(position);
 
   if (util::string::ends_with(entry_header, "obj")) {
-    return read_indirect_object(std::move(entry_header));
+    return {read_indirect_object(), position};
   }
   if (entry_header == "xref") {
-    return read_xref(std::move(entry_header));
+    return {read_xref(), position};
   }
   if (entry_header == "trailer") {
-    return read_trailer(std::move(entry_header));
+    return {read_trailer(), position};
   }
   if (entry_header == "startxref") {
-    return read_startxref(std::move(entry_header));
+    return {read_startxref(), position};
+  }
+  if (entry_header == "%PDF-") {
+    read_header();
+    return {Header{}, position};
   }
   if (entry_header == "%%EOF") {
-    return Eof{};
+    return {Eof{}, position};
   }
 
-  return {};
+  throw std::runtime_error("unknown entry");
+}
+
+void PdfFileParser::seek_startxref(std::uint32_t margin) const {
+  in().seekg(0, std::ios::end);
+  std::int64_t size = in().tellg();
+  in().seekg(std::min(0l, size - margin), std::ios::beg);
+
+  while (!m_parser.in().eof()) {
+    std::uint32_t position = m_parser.in().tellg();
+    std::string line = m_parser.read_line();
+    if (line == "startxref") {
+      m_parser.in().seekg(position);
+      return;
+    }
+  }
+
+  throw std::runtime_error("unexpected stream exhaust");
 }
 
 } // namespace odr::internal::pdf

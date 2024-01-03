@@ -29,6 +29,8 @@ std::string decrypt_Blowfish(const std::string &key, const std::string &iv,
 std::string inflate(const std::string &input);
 std::size_t padding(const std::string &input);
 
+std::string zlib_inflate(const std::string &input);
+
 } // namespace util
 
 } // namespace odr::internal::crypto
