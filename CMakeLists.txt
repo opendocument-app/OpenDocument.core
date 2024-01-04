@@ -149,8 +149,11 @@ add_library(odr
         "src/odr/internal/pdf/pdf_document.cpp"
         "src/odr/internal/pdf/pdf_document_element.cpp"
         "src/odr/internal/pdf/pdf_document_parser.cpp"
-        "src/odr/internal/pdf/pdf_file_object.cpp"
+        "src/odr/internal/pdf/pdf_object.cpp"
         "src/odr/internal/pdf/pdf_file_parser.cpp"
+        "src/odr/internal/pdf/pdf_graphics_parser.cpp"
+        "src/odr/internal/pdf/pdf_object.cpp"
+        "src/odr/internal/pdf/pdf_object_parser.cpp"
 
         "src/odr/internal/svm/svm_file.cpp"
         "src/odr/internal/svm/svm_format.cpp"

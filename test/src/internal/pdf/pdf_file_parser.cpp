@@ -1,5 +1,6 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/pdf/pdf_file_object.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 
 #include <test_util.hpp>

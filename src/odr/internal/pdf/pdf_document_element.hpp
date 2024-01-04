@@ -1,7 +1,7 @@
 #ifndef ODR_INTERNAL_PDF_DOCUMENT_ELEMENT_HPP
 #define ODR_INTERNAL_PDF_DOCUMENT_ELEMENT_HPP
 
-#include <odr/internal/pdf/pdf_file_object.hpp>
+#include <odr/internal/pdf/pdf_object.hpp>
 
 #include <vector>
 

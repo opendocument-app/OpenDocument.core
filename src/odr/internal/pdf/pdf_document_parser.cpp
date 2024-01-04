@@ -90,6 +90,14 @@ pdf::Element *parse_element(DocumentParser &parser,
 
 } // namespace
 
+DocumentParser::DocumentParser(FileParser &parser) : m_parser{&parser} {}
+
+std::istream &DocumentParser::in() { return m_parser->in(); }
+
+FileParser &DocumentParser::parser() { return *m_parser; }
+
+const Xref &DocumentParser::xref() const { return m_xref; }
+
 IndirectObject DocumentParser::read_object(const ObjectReference &reference) {
   std::uint32_t position = m_xref.table[reference.first].position;
   in().seekg(position);

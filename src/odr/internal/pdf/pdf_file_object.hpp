@@ -1,116 +1,92 @@
 #ifndef ODR_INTERNAL_PDF_FILE_OBJECT_HPP
 #define ODR_INTERNAL_PDF_FILE_OBJECT_HPP
 
-#include <any>
-#include <cstdint>
+#include <odr/internal/pdf/pdf_object.hpp>
+
 #include <map>
-#include <string>
-#include <variant>
-#include <vector>
+#include <optional>
 
 namespace odr::internal::pdf {
 
-using UnsignedInteger = std::uint64_t;
-using Integer = std::int64_t;
-using Real = double;
-using IntegerOrReal = std::variant<Integer, Real>;
-using String = std::string;
-using Name = std::string;
-using Boolean = bool;
-using ObjectReference = std::pair<UnsignedInteger, UnsignedInteger>;
+struct Header {};
 
-class Array;
-class Dictionary;
+struct IndirectObject {
+  ObjectReference reference;
+  Object object;
+  bool has_stream{false};
+  std::optional<std::uint32_t> stream_position;
+  std::optional<std::string> stream;
+};
 
-class Object {
+struct Trailer {
+  std::uint32_t size;
+  ObjectReference root_reference;
+  ObjectReference info_reference;
+
+  Dictionary dictionary;
+};
+
+struct Xref {
+  struct Entry {
+    std::uint32_t position{};
+    std::uint32_t generation{};
+    bool in_use{};
+  };
+  using Table = std::map<std::uint32_t, Entry>;
+
+  Table table;
+};
+
+struct StartXref {
+  std::uint32_t start{};
+};
+
+struct Eof {};
+
+class Entry {
 public:
   using Holder = std::any;
 
-  Object() = default;
-  Object(Boolean boolean) : m_holder{boolean} {}
-  Object(Integer integer) : m_holder{integer} {}
-  Object(Real real) : m_holder{real} {}
-  Object(std::string string) : m_holder{std::move(string)} {}
-  Object(Array);
-  Object(Dictionary);
-  Object(ObjectReference reference) : m_holder{std::move(reference)} {}
+  Entry(Header header, std::uint32_t position)
+      : m_holder{std::move(header)}, m_position{position} {}
+  Entry(IndirectObject object, std::uint32_t position)
+      : m_holder{std::move(object)}, m_position{position} {}
+  Entry(Trailer trailer, std::uint32_t position)
+      : m_holder{std::move(trailer)}, m_position{position} {}
+  Entry(Xref xref, std::uint32_t position)
+      : m_holder{std::move(xref)}, m_position{position} {}
+  Entry(StartXref start_xref, std::uint32_t position)
+      : m_holder{std::move(start_xref)}, m_position{position} {}
+  Entry(Eof eof, std::uint32_t position)
+      : m_holder{std::move(eof)}, m_position{position} {}
 
   Holder &holder() { return m_holder; }
   const Holder &holder() const { return m_holder; }
 
-  bool is_null() const { return !m_holder.has_value(); }
-  bool is_bool() const { return is<Boolean>(); }
-  bool is_integer() const { return is<Integer>(); }
-  bool is_real() const { return is<Real>(); }
-  bool is_string() const { return is<std::string>(); }
-  bool is_array() const { return is<Array>(); }
-  bool is_dictionary() const { return is<Dictionary>(); }
-  bool is_reference() const { return is<ObjectReference>(); }
+  std::uint32_t position() const { return m_position; }
 
-  Boolean as_bool() const { return as<Boolean>(); }
-  Integer as_integer() const { return as<Integer>(); }
-  Real as_real() const { return as<Real>(); }
-  const std::string &as_string() const { return as<const std::string &>(); }
-  const Array &as_array() const { return as<const Array &>(); }
-  const Dictionary &as_dictionary() const { return as<const Dictionary &>(); }
-  const ObjectReference &as_reference() const {
-    return as<const ObjectReference &>();
+  bool is_header() const { return is<Header>(); }
+  bool is_object() const { return is<IndirectObject>(); }
+  bool is_trailer() const { return is<Trailer>(); }
+  bool is_xref() const { return is<Xref>(); }
+  bool is_start_xref() const { return is<StartXref>(); }
+  bool is_eof() const { return is<Eof>(); }
+
+  const Header &as_header() const { return as<const Header &>(); }
+  const IndirectObject &as_object() const {
+    return as<const IndirectObject &>();
   }
+  const Trailer &as_trailer() const { return as<const Trailer &>(); }
+  const Xref &as_xref() const { return as<const Xref &>(); }
+  const StartXref &as_start_xref() const { return as<const StartXref &>(); }
+  const Eof &as_eof() const { return as<const Eof &>(); }
 
 private:
   Holder m_holder;
+  std::uint32_t m_position{};
 
   template <typename T> bool is() const { return m_holder.type() == typeid(T); }
   template <typename T> T as() const { return std::any_cast<T>(m_holder); }
-};
-
-class Array {
-public:
-  using Holder = std::vector<Object>;
-
-  Array() = default;
-  explicit Array(Holder holder) : m_holder{std::move(holder)} {}
-  Array(const Array &) = default;
-  Array(Array &&) = default;
-
-  Array &operator=(const Array &) = default;
-  Array &operator=(Array &&) = default;
-
-  Holder &holder() { return m_holder; }
-  const Holder &holder() const { return m_holder; }
-
-  std::size_t size() const { return m_holder.size(); }
-  Holder::const_iterator begin() const { return std::begin(m_holder); }
-  Holder::const_iterator end() const { return std::end(m_holder); }
-
-  const Object &operator[](std::size_t i) const { return m_holder.at(i); }
-
-private:
-  Holder m_holder;
-};
-
-class Dictionary {
-public:
-  using Holder = std::map<Name, Object>;
-
-  Dictionary() = default;
-  explicit Dictionary(Holder holder) : m_holder{std::move(holder)} {}
-
-  Holder &holder() { return m_holder; }
-  const Holder &holder() const { return m_holder; }
-
-  std::size_t size() const { return m_holder.size(); }
-  Holder::const_iterator begin() const { return std::begin(m_holder); }
-  Holder::const_iterator end() const { return std::end(m_holder); }
-
-  const Object &operator[](const Name &name) const { return m_holder.at(name); }
-
-  bool has_key(const Name &name) const {
-    return m_holder.find(name) != std::end(m_holder);
-  }
-
-private:
-  Holder m_holder;
 };
 
 } // namespace odr::internal::pdf
