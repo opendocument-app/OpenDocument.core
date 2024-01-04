@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 
 #include <odr/internal/pdf/pdf_file_object.hpp>
+#include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <iostream>
@@ -33,29 +34,14 @@ IndirectObject FileParser::read_indirect_object() const {
   auto next = m_parser.read_line();
 
   if (next == "endobj") {
+    m_parser.skip_whitespace();
     return result;
   }
   if (next == "stream") {
     result.has_stream = true;
     result.stream_position = in().tellg();
-    std::string stream;
 
-    // TODO improve poor solution
-    while (true) {
-      std::string line = m_parser.read_line(true);
-      if (line == "endstream\n") {
-        stream.pop_back();
-        break;
-      }
-      stream += line;
-    }
-
-    result.stream = std::move(stream);
-
-    if (std::string line = m_parser.read_line(); line != "endobj") {
-      throw std::runtime_error("expected endobj");
-    }
-
+    m_parser.skip_whitespace();
     return result;
   }
 
@@ -75,6 +61,7 @@ Trailer FileParser::read_trailer() const {
   result.info_reference = result.dictionary["Info"].as_reference();
 
   m_parser.skip_line();
+  m_parser.skip_whitespace();
 
   return result;
 }
@@ -88,6 +75,7 @@ Xref FileParser::read_xref() const {
 
   while (true) {
     if (!m_parser.peek_number()) {
+      m_parser.skip_whitespace();
       return result;
     }
 
@@ -119,6 +107,37 @@ StartXref FileParser::read_start_xref() const {
 
   result.start = m_parser.read_unsigned_integer();
   m_parser.skip_line();
+  m_parser.skip_whitespace();
+
+  return result;
+}
+
+std::string FileParser::read_stream(std::int32_t size) const {
+  std::string result;
+
+  if (size >= 0) {
+    result = util::stream::read(in(), size);
+
+    m_parser.skip_line();
+
+    if (std::string line = m_parser.read_line(); line != "endstream") {
+      throw std::runtime_error("expected endstream");
+    }
+  } else {
+    // TODO improve poor solution
+    while (true) {
+      std::string line = m_parser.read_line(true);
+      if (line == "endstream\n") {
+        result.pop_back();
+        break;
+      }
+      result += line;
+    }
+  }
+
+  if (std::string line = m_parser.read_line(); line != "endobj") {
+    throw std::runtime_error("expected endobj");
+  }
 
   return result;
 }
@@ -130,10 +149,11 @@ void FileParser::read_header() const {
   if (!util::string::starts_with(header1, "%PDF-")) {
     throw std::runtime_error("illegal header");
   }
+
+  m_parser.skip_whitespace();
 }
 
 Entry FileParser::read_entry() const {
-  m_parser.skip_whitespace();
   std::uint32_t position = in().tellg();
   std::string entry_header = m_parser.read_line();
   in().seekg(position);

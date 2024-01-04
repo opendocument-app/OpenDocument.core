@@ -15,7 +15,6 @@ struct IndirectObject {
   Object object;
   bool has_stream{false};
   std::optional<std::uint32_t> stream_position;
-  std::optional<std::string> stream;
 };
 
 struct Trailer {

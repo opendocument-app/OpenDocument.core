@@ -7,6 +7,7 @@
 namespace odr::internal::util::stream {
 
 std::string read(std::istream &in);
+std::string read(std::istream &in, std::size_t size);
 
 void pipe(std::istream &in, std::ostream &out);
 

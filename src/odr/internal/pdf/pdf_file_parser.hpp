@@ -27,6 +27,8 @@ public:
   Xref read_xref() const;
   StartXref read_start_xref() const;
 
+  std::string read_stream(std::int32_t size) const;
+
   void read_header() const;
   Entry read_entry() const;
 

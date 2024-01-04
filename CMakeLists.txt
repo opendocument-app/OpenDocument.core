@@ -151,7 +151,8 @@ add_library(odr
         "src/odr/internal/pdf/pdf_document_parser.cpp"
         "src/odr/internal/pdf/pdf_object.cpp"
         "src/odr/internal/pdf/pdf_file_parser.cpp"
-        "src/odr/internal/pdf/pdf_graphics_parser.cpp"
+        "src/odr/internal/pdf/pdf_graphics_operator.cpp"
+        "src/odr/internal/pdf/pdf_graphics_operator_parser.cpp"
         "src/odr/internal/pdf/pdf_object.cpp"
         "src/odr/internal/pdf/pdf_object_parser.cpp"
 

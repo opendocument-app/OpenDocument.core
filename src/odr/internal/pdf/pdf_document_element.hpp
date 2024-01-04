@@ -9,12 +9,18 @@ namespace odr::internal::pdf {
 
 struct Pages;
 struct Page;
+struct Annotation;
+struct Resources;
+struct Font;
 
 enum class Type {
   unknown,
   catalog,
   pages,
   page,
+  annotation,
+  resources,
+  font,
 };
 
 struct Element {
@@ -22,6 +28,7 @@ struct Element {
 
   Type type{Type::unknown};
   ObjectReference object_reference;
+  Object object;
 };
 
 struct Catalog : Element {
@@ -36,9 +43,20 @@ struct Pages : Element {
 struct Page : Element {
   Pages *parent{nullptr};
 
+  Resources *resources;
+  std::vector<Annotation *> annotations;
+
   // TODO remove
   ObjectReference contents_reference;
 };
+
+struct Annotation : Element {};
+
+struct Resources : Element {
+  Font *font;
+};
+
+struct Font : Element {};
 
 } // namespace odr::internal::pdf
 

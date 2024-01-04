@@ -3,7 +3,8 @@
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
-#include <odr/internal/pdf/pdf_file_parser.hpp>
+#include <odr/internal/pdf/pdf_graphics_operator.hpp>
+#include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
 
 #include <test_util.hpp>
 
@@ -21,8 +22,7 @@ TEST(DocumentParser, foo) {
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
   auto in = file->stream();
-  FileParser file_parser(*in);
-  DocumentParser parser(file_parser);
+  DocumentParser parser(*in);
 
   std::unique_ptr<Document> document = parser.parse_document();
 
@@ -46,13 +46,23 @@ TEST(DocumentParser, foo) {
 
   for (Page *page : ordered_pages) {
     std::cout << "page content " << page->contents_reference.first << std::endl;
+    std::cout << "page annotations " << page->annotations.size() << std::endl;
+    std::cout << "page resources " << page->resources << std::endl;
   }
 
   IndirectObject first_page_contents_object =
       parser.read_object(ordered_pages.front()->contents_reference);
-  std::cout << "first page contents size "
-            << first_page_contents_object.stream.value().size() << std::endl;
-  std::cout << crypto::util::zlib_inflate(
-                   first_page_contents_object.stream.value())
+  std::string stream = parser.read_object_stream(first_page_contents_object);
+  std::cout << "first page contents size " << stream.size() << std::endl;
+  std::string first_page_content = crypto::util::zlib_inflate(stream);
+  std::cout << "first page contents inflate size " << first_page_content.size()
             << std::endl;
+  std::cout << first_page_content << std::endl;
+
+  std::istringstream in2(first_page_content);
+  GraphicsOperatorParser parser2(in2);
+  while (!in2.eof()) {
+    GraphicsOperator op = parser2.read_operator();
+    std::cout << op.name << " " << op.arguments.size() << " args" << std::endl;
+  }
 }

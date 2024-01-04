@@ -14,6 +14,13 @@ std::string stream::read(std::istream &in) {
   return std::string(std::istreambuf_iterator<char>(in), {});
 }
 
+std::string stream::read(std::istream &in, std::size_t size) {
+  std::string result(size, '\0');
+  in.read(result.data(), size);
+  result.resize(in.gcount());
+  return result;
+}
+
 void stream::pipe(std::istream &in, std::ostream &out) {
   static constexpr auto BUFFER_SIZE = 4096;
 

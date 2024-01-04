@@ -2,28 +2,31 @@
 #define ODR_INTERNAL_PDF_DOCUMENT_PARSER_HPP
 
 #include <odr/internal/pdf/pdf_file_object.hpp>
+#include <odr/internal/pdf/pdf_file_parser.hpp>
 
+#include <iosfwd>
 #include <memory>
 
 namespace odr::internal::pdf {
 
 struct Document;
-class FileParser;
 
 class DocumentParser {
 public:
-  DocumentParser(FileParser &parser);
+  DocumentParser(std::istream &);
 
-  std::istream &in();
-  FileParser &parser();
+  std::istream &in() const;
+  const FileParser &parser() const;
   const Xref &xref() const;
 
   IndirectObject read_object(const ObjectReference &reference);
+  std::string read_object_stream(const ObjectReference &reference);
+  std::string read_object_stream(const IndirectObject &object);
 
   std::unique_ptr<Document> parse_document();
 
 private:
-  FileParser *m_parser;
+  FileParser m_parser;
   Xref m_xref;
 };
 

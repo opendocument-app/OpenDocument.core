@@ -57,7 +57,7 @@ TEST(FileParser, foo) {
 
       if (object.has_stream) {
         const Dictionary &dictionary = object.object.as_dictionary();
-        const std::string &stream = *object.stream;
+        std::string stream = parser.read_stream(-1);
         std::cout << stream.size() << std::endl;
 
         if (dictionary.has_key("Filter")) {
