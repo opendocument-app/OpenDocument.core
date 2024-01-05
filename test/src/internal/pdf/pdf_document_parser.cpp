@@ -5,6 +5,7 @@
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
+#include <odr/internal/pdf/pdf_graphics_state.hpp>
 
 #include <test_util.hpp>
 
@@ -26,7 +27,7 @@ TEST(DocumentParser, foo) {
 
   std::unique_ptr<Document> document = parser.parse_document();
 
-  std::cout << "elements " << document->element.size() << std::endl;
+  std::cout << "elements " << document->elements.size() << std::endl;
   std::cout << "pages count " << document->catalog->pages->count << std::endl;
 
   std::vector<Page *> ordered_pages;
@@ -53,16 +54,15 @@ TEST(DocumentParser, foo) {
   IndirectObject first_page_contents_object =
       parser.read_object(ordered_pages.front()->contents_reference);
   std::string stream = parser.read_object_stream(first_page_contents_object);
-  std::cout << "first page contents size " << stream.size() << std::endl;
   std::string first_page_content = crypto::util::zlib_inflate(stream);
-  std::cout << "first page contents inflate size " << first_page_content.size()
-            << std::endl;
+
   std::cout << first_page_content << std::endl;
 
   std::istringstream in2(first_page_content);
   GraphicsOperatorParser parser2(in2);
+  GraphicsState state;
   while (!in2.eof()) {
     GraphicsOperator op = parser2.read_operator();
-    std::cout << op.name << " " << op.arguments.size() << " args" << std::endl;
+    state.execute(op);
   }
 }

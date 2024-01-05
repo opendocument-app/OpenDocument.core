@@ -41,7 +41,7 @@ public:
   bool is_null() const { return !m_holder.has_value(); }
   bool is_bool() const { return is<Boolean>(); }
   bool is_integer() const { return is<Integer>(); }
-  bool is_real() const { return is<Real>(); }
+  bool is_real() const { return is<Real>() || is_integer(); }
   bool is_string() const { return is<std::string>(); }
   bool is_array() const { return is<Array>(); }
   bool is_dictionary() const { return is<Dictionary>(); }
@@ -49,7 +49,7 @@ public:
 
   Boolean as_bool() const { return as<Boolean>(); }
   Integer as_integer() const { return as<Integer>(); }
-  Real as_real() const { return as<Real>(); }
+  Real as_real() const { return is<Real>() ? as<Real>() : as_integer(); }
   const std::string &as_string() const { return as<const std::string &>(); }
   const Array &as_array() const { return as<const Array &>(); }
   const Dictionary &as_dictionary() const { return as<const Dictionary &>(); }

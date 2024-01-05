@@ -13,8 +13,7 @@ pdf::Element *parse_page_or_pages(DocumentParser &parser,
 
 pdf::Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
                       Document &document) {
-  auto font_unique = std::make_unique<Font>();
-  Font *font = font_unique.get();
+  Font *font = document.create_element<Font>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -23,15 +22,13 @@ pdf::Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   font->object_reference = reference;
   font->object = dictionary;
 
-  document.element.push_back(std::move(font_unique));
   return font;
 }
 
 pdf::Resources *parse_resources(DocumentParser &parser,
                                 const ObjectReference &reference,
                                 Document &document) {
-  auto resources_unique = std::make_unique<Resources>();
-  Resources *resources = resources_unique.get();
+  Resources *resources = document.create_element<Resources>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -42,15 +39,13 @@ pdf::Resources *parse_resources(DocumentParser &parser,
   resources->font =
       parse_font(parser, dictionary["Font"].as_reference(), document);
 
-  document.element.push_back(std::move(resources_unique));
   return resources;
 }
 
 pdf::Annotation *parse_annotation(DocumentParser &parser,
                                   const ObjectReference &reference,
                                   Document &document) {
-  auto annotation_unique = std::make_unique<Annotation>();
-  Annotation *annotation = annotation_unique.get();
+  Annotation *annotation = document.create_element<Annotation>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -59,14 +54,12 @@ pdf::Annotation *parse_annotation(DocumentParser &parser,
   annotation->object_reference = reference;
   annotation->object = dictionary;
 
-  document.element.push_back(std::move(annotation_unique));
   return annotation;
 }
 
 pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
                       Document &document, Element *parent) {
-  auto page_unique = std::make_unique<Page>();
-  Page *page = page_unique.get();
+  Page *page = document.create_element<Page>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -84,14 +77,12 @@ pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
         parse_annotation(parser, annotation.as_reference(), document));
   }
 
-  document.element.push_back(std::move(page_unique));
   return page;
 }
 
 pdf::Pages *parse_pages(DocumentParser &parser,
                         const ObjectReference &reference, Document &document) {
-  auto pages_unique = std::make_unique<Pages>();
-  Pages *pages = pages_unique.get();
+  Pages *pages = document.create_element<Pages>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -106,7 +97,6 @@ pdf::Pages *parse_pages(DocumentParser &parser,
         parse_page_or_pages(parser, kid.as_reference(), document, pages));
   }
 
-  document.element.push_back(std::move(pages_unique));
   return pages;
 }
 
@@ -131,8 +121,7 @@ pdf::Element *parse_page_or_pages(DocumentParser &parser,
 pdf::Catalog *parse_catalog(DocumentParser &parser,
                             const ObjectReference &reference,
                             Document &document) {
-  auto catalog_unique = std::make_unique<Catalog>();
-  Catalog *catalog = catalog_unique.get();
+  Catalog *catalog = document.create_element<Catalog>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -143,7 +132,6 @@ pdf::Catalog *parse_catalog(DocumentParser &parser,
   catalog->object = dictionary;
   catalog->pages = parse_pages(parser, pages_reference, document);
 
-  document.element.push_back(std::move(catalog_unique));
   return catalog;
 }
 

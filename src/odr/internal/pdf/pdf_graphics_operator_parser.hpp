@@ -10,6 +10,7 @@ namespace odr::internal::pdf {
 class SimpleArray;
 class SimpleArrayElement;
 class GraphicsArgument;
+enum class GraphicsOperatorType;
 struct GraphicsOperator;
 
 class GraphicsOperatorParser {
