@@ -17,3 +17,4 @@
 - Related projects
   - https://github.com/qpdf/qpdf
   - https://github.com/caradoc-org/caradoc
+- Nasty test files https://github.com/angea/PDF101

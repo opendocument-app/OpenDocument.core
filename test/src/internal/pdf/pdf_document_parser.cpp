@@ -51,8 +51,28 @@ TEST(DocumentParser, foo) {
     std::cout << "page resources " << page->resources << std::endl;
   }
 
+  Page *first_page = ordered_pages.front();
+  for (const auto &[key, value] : first_page->resources->font) {
+    std::cout << "font " << key << std::endl;
+    for (const auto &[prop_key, prop_val] : value->object.as_dictionary()) {
+      std::cout << "prop key " << prop_key << std::endl;
+    }
+    auto to_unicode_ref =
+        value->object.as_dictionary()["ToUnicode"].as_reference();
+    std::cout << "to unicode " << to_unicode_ref.first << std::endl;
+    auto to_unicode_obj = parser.read_object(to_unicode_ref);
+    std::cout << "to unicode " << to_unicode_obj.object.as_dictionary().size()
+              << std::endl;
+    for (const auto &[prop_key, prop_val] :
+         to_unicode_obj.object.as_dictionary()) {
+      std::cout << "prop key " << prop_key << std::endl;
+    }
+    std::string stream = parser.read_object_stream(to_unicode_obj);
+    std::cout << crypto::util::zlib_inflate(stream) << std::endl;
+  }
+
   IndirectObject first_page_contents_object =
-      parser.read_object(ordered_pages.front()->contents_reference);
+      parser.read_object(first_page->contents_reference);
   std::string stream = parser.read_object_stream(first_page_contents_object);
   std::string first_page_content = crypto::util::zlib_inflate(stream);
 

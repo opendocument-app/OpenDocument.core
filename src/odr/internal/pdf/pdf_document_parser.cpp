@@ -36,8 +36,16 @@ pdf::Resources *parse_resources(DocumentParser &parser,
   resources->type = Type::resources;
   resources->object_reference = reference;
   resources->object = dictionary;
-  resources->font =
-      parse_font(parser, dictionary["Font"].as_reference(), document);
+
+  if (dictionary["Font"].is_reference()) {
+    Dictionary table = parser.read_object(dictionary["Font"].as_reference())
+                           .object.as_dictionary();
+    for (const auto &[key, value] : table) {
+      resources->font[key] = parse_font(parser, value.as_reference(), document);
+    }
+  } else {
+    throw std::runtime_error("problem");
+  }
 
   return resources;
 }

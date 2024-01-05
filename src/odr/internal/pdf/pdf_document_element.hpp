@@ -3,6 +3,7 @@
 
 #include <odr/internal/pdf/pdf_object.hpp>
 
+#include <unordered_map>
 #include <vector>
 
 namespace odr::internal::pdf {
@@ -53,7 +54,7 @@ struct Page : Element {
 struct Annotation : Element {};
 
 struct Resources : Element {
-  Font *font;
+  std::unordered_map<std::string, Font *> font;
 };
 
 struct Font : Element {};
