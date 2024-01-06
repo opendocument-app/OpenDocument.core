@@ -3,6 +3,7 @@
 
 #include <odr/internal/pdf/pdf_object.hpp>
 
+#include <iosfwd>
 #include <string>
 #include <variant>
 #include <vector>
@@ -27,6 +28,10 @@ public:
   Integer as_integer() const { return as<Integer>(); }
   Real as_real() const { return is<Real>() ? as<Real>() : as_integer(); }
   const std::string &as_string() const { return as<std::string>(); }
+
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const SimpleArrayElement &);
 
 private:
   Holder m_holder;
@@ -55,6 +60,10 @@ public:
     return m_holder.at(i);
   }
 
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const SimpleArray &);
+
 private:
   Holder m_holder;
 };
@@ -80,6 +89,10 @@ public:
   Real as_real() const { return is<Real>() ? as<Real>() : as_integer(); }
   const std::string &as_string() const { return as<std::string>(); }
   const SimpleArray &as_array() const { return as<SimpleArray>(); }
+
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const GraphicsArgument &);
 
 private:
   Holder m_holder;
