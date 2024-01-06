@@ -184,7 +184,7 @@ Entry FileParser::read_entry() const {
 void FileParser::seek_start_xref(std::uint32_t margin) const {
   in().seekg(0, std::ios::end);
   std::int64_t size = in().tellg();
-  in().seekg(std::min(0l, size - margin), std::ios::beg);
+  in().seekg(std::max((std::int64_t)0, size - margin), std::ios::beg);
 
   while (!m_parser.in().eof()) {
     std::uint32_t position = m_parser.in().tellg();
