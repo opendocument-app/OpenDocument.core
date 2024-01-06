@@ -3,6 +3,7 @@
 
 #include <any>
 #include <cstdint>
+#include <iosfwd>
 #include <map>
 #include <string>
 #include <variant>
@@ -57,6 +58,10 @@ public:
     return as<const ObjectReference &>();
   }
 
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const Object &);
+
 private:
   Holder m_holder;
 
@@ -85,6 +90,10 @@ public:
 
   const Object &operator[](std::size_t i) const { return m_holder.at(i); }
 
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const Array &);
+
 private:
   Holder m_holder;
 };
@@ -108,6 +117,10 @@ public:
   bool has_key(const Name &name) const {
     return m_holder.find(name) != std::end(m_holder);
   }
+
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const Dictionary &);
 
 private:
   Holder m_holder;
