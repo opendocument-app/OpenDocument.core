@@ -46,6 +46,7 @@ Apart from that PDF can also modify the spacing between the characters for examp
   - General https://gendignoux.com/blog/2017/01/05/pdf-graphics.html
   - Text https://www.syncfusion.com/succinctly-free-ebooks/pdf/text-operators
   - Drawing https://www.syncfusion.com/succinctly-free-ebooks/pdf/graphics-operators
+- CMap https://blog.idrsolutions.com/how-are-embedded-cmap-tables-in-pdf-file/
 - Related projects
   - https://github.com/qpdf/qpdf
   - https://github.com/caradoc-org/caradoc

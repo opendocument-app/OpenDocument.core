@@ -139,6 +139,8 @@ std::string FileParser::read_stream(std::int32_t size) const {
     throw std::runtime_error("expected endobj");
   }
 
+  m_parser.skip_whitespace();
+
   return result;
 }
 
