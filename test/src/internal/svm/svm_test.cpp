@@ -6,9 +6,10 @@
 
 #include <test_util.hpp>
 
-#include <gtest/gtest.h>
-
+#include <fstream>
 #include <memory>
+
+#include <gtest/gtest.h>
 
 using namespace odr::internal;
 using namespace odr::test;
@@ -30,6 +31,6 @@ TEST(SvmToSvg, string) {
 
   EXPECT_LT(0, out_string.size());
 
-  // std::ofstream test("/home/andreas/test.svg");
-  // test << out_string;
+  std::ofstream test("test.svg");
+  test << out_string;
 }

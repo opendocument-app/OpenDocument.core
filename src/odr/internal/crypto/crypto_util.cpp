@@ -11,6 +11,7 @@
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/sha.h>
 #include <cryptopp/zinflate.h>
+#include <cryptopp/zlib.h>
 
 namespace odr::internal::crypto {
 
@@ -144,6 +145,14 @@ std::size_t util::padding(const std::string &input) {
   inflator.Put(reinterpret_cast<const byte *>(input.data()), input.size());
   inflator.MessageEnd();
   return inflator.GetPadding();
+}
+
+std::string util::zlib_inflate(const std::string &input) {
+  std::string result;
+  CryptoPP::ZlibDecompressor inflator(new CryptoPP::StringSink(result));
+  inflator.Put(reinterpret_cast<const byte *>(input.data()), input.size());
+  inflator.MessageEnd();
+  return result;
 }
 
 } // namespace odr::internal::crypto

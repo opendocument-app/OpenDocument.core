@@ -146,6 +146,17 @@ add_library(odr
         "src/odr/internal/ooxml/ooxml_meta.cpp"
         "src/odr/internal/ooxml/ooxml_util.cpp"
 
+        "src/odr/internal/pdf/pdf_document.cpp"
+        "src/odr/internal/pdf/pdf_document_element.cpp"
+        "src/odr/internal/pdf/pdf_document_parser.cpp"
+        "src/odr/internal/pdf/pdf_object.cpp"
+        "src/odr/internal/pdf/pdf_file_parser.cpp"
+        "src/odr/internal/pdf/pdf_graphics_operator.cpp"
+        "src/odr/internal/pdf/pdf_graphics_operator_parser.cpp"
+        "src/odr/internal/pdf/pdf_graphics_state.cpp"
+        "src/odr/internal/pdf/pdf_object.cpp"
+        "src/odr/internal/pdf/pdf_object_parser.cpp"
+
         "src/odr/internal/svm/svm_file.cpp"
         "src/odr/internal/svm/svm_format.cpp"
         "src/odr/internal/svm/svm_to_svg.cpp"
