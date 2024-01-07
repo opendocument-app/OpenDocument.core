@@ -1,5 +1,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/pdf/pdf_cmap.hpp>
+#include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
@@ -53,22 +55,14 @@ TEST(DocumentParser, foo) {
 
   Page *first_page = ordered_pages.front();
   for (const auto &[key, value] : first_page->resources->font) {
-    std::cout << "font " << key << std::endl;
-    for (const auto &[prop_key, prop_val] : value->object.as_dictionary()) {
-      std::cout << "prop key " << prop_key << std::endl;
-    }
     auto to_unicode_ref =
         value->object.as_dictionary()["ToUnicode"].as_reference();
-    std::cout << "to unicode " << to_unicode_ref.id << std::endl;
     auto to_unicode_obj = parser.read_object(to_unicode_ref);
-    std::cout << "to unicode " << to_unicode_obj.object.as_dictionary().size()
-              << std::endl;
-    for (const auto &[prop_key, prop_val] :
-         to_unicode_obj.object.as_dictionary()) {
-      std::cout << "prop key " << prop_key << std::endl;
-    }
     std::string stream = parser.read_object_stream(to_unicode_obj);
-    std::cout << crypto::util::zlib_inflate(stream) << std::endl;
+    std::string inflate = crypto::util::zlib_inflate(stream);
+    std::istringstream ss(inflate);
+    CMapParser cmap_parser(ss);
+    cmap_parser.parse_cmap();
   }
 
   IndirectObject first_page_contents_object =
@@ -76,12 +70,10 @@ TEST(DocumentParser, foo) {
   std::string stream = parser.read_object_stream(first_page_contents_object);
   std::string first_page_content = crypto::util::zlib_inflate(stream);
 
-  std::cout << first_page_content << std::endl;
-
-  std::istringstream in2(first_page_content);
-  GraphicsOperatorParser parser2(in2);
+  std::istringstream ss(first_page_content);
+  GraphicsOperatorParser parser2(ss);
   GraphicsState state;
-  while (!in2.eof()) {
+  while (!ss.eof()) {
     GraphicsOperator op = parser2.read_operator();
     state.execute(op);
   }

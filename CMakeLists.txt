@@ -47,6 +47,7 @@ find_package(cryptopp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
+find_package(utf8cpp REQUIRED)
 
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
 
@@ -146,6 +147,8 @@ add_library(odr
         "src/odr/internal/ooxml/ooxml_meta.cpp"
         "src/odr/internal/ooxml/ooxml_util.cpp"
 
+        "src/odr/internal/pdf/pdf_cmap.cpp"
+        "src/odr/internal/pdf/pdf_cmap_parser.cpp"
         "src/odr/internal/pdf/pdf_document.cpp"
         "src/odr/internal/pdf/pdf_document_element.cpp"
         "src/odr/internal/pdf/pdf_document_parser.cpp"
@@ -164,6 +167,7 @@ add_library(odr
         "src/odr/internal/text/text_file.cpp"
         "src/odr/internal/text/text_util.cpp"
 
+        "src/odr/internal/util/byte_util.cpp"
         "src/odr/internal/util/file_util.cpp"
         "src/odr/internal/util/hash_util.cpp"
         "src/odr/internal/util/odr_meta_util.cpp"
@@ -191,6 +195,7 @@ target_link_libraries(odr
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
+        utf8cpp::utf8cpp
 )
 
 add_subdirectory("cli")
