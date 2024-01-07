@@ -35,10 +35,11 @@ void Object::to_stream(std::ostream &out) const {
   } else if (is_real()) {
     out << std::setprecision(4) << as_real();
   } else if (is_standard_string()) {
+    // TODO escape
     out << "(" << as_standard_string() << ")";
   } else if (is_hex_string()) {
     // TODO hex
-    out << "<" << as_standard_string() << ">";
+    out << "<" << as_hex_string() << ">";
   } else if (is_name()) {
     out << "/" << as_name();
   } else if (is_array()) {
