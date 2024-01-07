@@ -12,22 +12,34 @@ namespace odr::internal::pdf {
 
 class SimpleArrayElement {
 public:
-  using Holder = std::variant<Integer, Real, std::string>;
+  using Holder = std::variant<Integer, Real, StandardString, HexString, Name>;
 
   SimpleArrayElement(Integer integer) : m_holder{integer} {}
   SimpleArrayElement(Real real) : m_holder{real} {}
-  SimpleArrayElement(std::string string) : m_holder{std::move(string)} {}
+  SimpleArrayElement(StandardString string) : m_holder{std::move(string)} {}
+  SimpleArrayElement(HexString string) : m_holder{std::move(string)} {}
+  SimpleArrayElement(Name name) : m_holder{std::move(name)} {}
 
   Holder &holder() { return m_holder; }
   const Holder &holder() const { return m_holder; }
 
   bool is_integer() const { return is<Integer>(); }
   bool is_real() const { return is<Real>() || is_integer(); }
-  bool is_string() const { return is<std::string>(); }
+  bool is_standard_string() const { return is<StandardString>(); }
+  bool is_hex_string() const { return is<HexString>(); }
+  bool is_name() const { return is<Name>(); }
+  bool is_string() const {
+    return is_standard_string() || is_hex_string() || is_name();
+  }
 
   Integer as_integer() const { return as<Integer>(); }
   Real as_real() const { return is<Real>() ? as<Real>() : as_integer(); }
-  const std::string &as_string() const { return as<std::string>(); }
+  const std::string &as_standard_string() const {
+    return as<StandardString>().string;
+  }
+  const std::string &as_hex_string() const { return as<HexString>().string; }
+  const std::string &as_name() const { return as<Name>().string; }
+  const std::string &as_string() const;
 
   void to_stream(std::ostream &) const;
   std::string to_string() const;
@@ -70,11 +82,14 @@ private:
 
 class GraphicsArgument {
 public:
-  using Holder = std::variant<Integer, Real, std::string, SimpleArray>;
+  using Holder =
+      std::variant<Integer, Real, StandardString, HexString, Name, SimpleArray>;
 
   GraphicsArgument(Integer integer) : m_holder{integer} {}
   GraphicsArgument(Real real) : m_holder{real} {}
-  GraphicsArgument(std::string string) : m_holder{std::move(string)} {}
+  GraphicsArgument(StandardString string) : m_holder{std::move(string)} {}
+  GraphicsArgument(HexString string) : m_holder{std::move(string)} {}
+  GraphicsArgument(Name name) : m_holder{std::move(name)} {}
   GraphicsArgument(SimpleArray array) : m_holder(std::move(array)) {}
 
   Holder &holder() { return m_holder; }
@@ -82,12 +97,22 @@ public:
 
   bool is_integer() const { return is<Integer>(); }
   bool is_real() const { return is<Real>() || is_integer(); }
-  bool is_string() const { return is<std::string>(); }
+  bool is_standard_string() const { return is<StandardString>(); }
+  bool is_hex_string() const { return is<HexString>(); }
+  bool is_name() const { return is<Name>(); }
+  bool is_string() const {
+    return is_standard_string() || is_hex_string() || is_name();
+  }
   bool is_array() const { return is<SimpleArray>(); }
 
   Integer as_integer() const { return as<Integer>(); }
   Real as_real() const { return is<Real>() ? as<Real>() : as_integer(); }
-  const std::string &as_string() const { return as<std::string>(); }
+  const std::string &as_standard_string() const {
+    return as<StandardString>().string;
+  }
+  const std::string &as_hex_string() const { return as<HexString>().string; }
+  const std::string &as_name() const { return as<Name>().string; }
+  const std::string &as_string() const;
   const SimpleArray &as_array() const { return as<SimpleArray>(); }
 
   void to_stream(std::ostream &) const;

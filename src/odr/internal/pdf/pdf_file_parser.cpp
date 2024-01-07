@@ -20,9 +20,9 @@ const ObjectParser &FileParser::parser() const { return m_parser; }
 IndirectObject FileParser::read_indirect_object() const {
   IndirectObject result;
 
-  result.reference.first = m_parser.read_unsigned_integer();
+  result.reference.id = m_parser.read_unsigned_integer();
   m_parser.skip_whitespace();
-  result.reference.second = m_parser.read_unsigned_integer();
+  result.reference.gen = m_parser.read_unsigned_integer();
   m_parser.skip_whitespace();
   if (std::string line = m_parser.read_line(); line != "obj") {
     throw std::runtime_error("expected obj");

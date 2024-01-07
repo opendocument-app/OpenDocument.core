@@ -6,6 +6,16 @@
 
 namespace odr::internal::pdf {
 
+const std::string &SimpleArrayElement::as_string() const {
+  if (is_standard_string()) {
+    return as_standard_string();
+  }
+  if (is_hex_string()) {
+    return as_hex_string();
+  }
+  return as_name();
+}
+
 void SimpleArrayElement::to_stream(std::ostream &out) const {
   if (is_integer()) {
     out << as_integer();
@@ -40,6 +50,16 @@ std::string SimpleArray::to_string() const {
   std::ostringstream ss;
   to_stream(ss);
   return ss.str();
+}
+
+const std::string &GraphicsArgument::as_string() const {
+  if (is_standard_string()) {
+    return as_standard_string();
+  }
+  if (is_hex_string()) {
+    return as_hex_string();
+  }
+  return as_name();
 }
 
 void GraphicsArgument::to_stream(std::ostream &out) const {

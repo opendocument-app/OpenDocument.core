@@ -13,8 +13,6 @@ class Element;
 class TextRoot;
 class Slide;
 class Sheet;
-class SheetColumn;
-class SheetRow;
 class SheetCell;
 class Page;
 class MasterPage;

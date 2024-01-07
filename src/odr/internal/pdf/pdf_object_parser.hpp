@@ -4,6 +4,7 @@
 #include <odr/internal/pdf/pdf_object.hpp>
 
 #include <istream>
+#include <variant>
 
 namespace odr::internal::pdf {
 
@@ -22,7 +23,7 @@ public:
   UnsignedInteger read_unsigned_integer() const;
   Integer read_integer() const;
   Real read_number() const;
-  IntegerOrReal read_integer_or_real() const;
+  std::variant<Integer, Real> read_integer_or_real() const;
 
   bool peek_name() const;
   void read_name(std::ostream &) const;
@@ -35,8 +36,7 @@ public:
   Boolean read_boolean() const;
 
   bool peek_string() const;
-  void read_string(std::ostream &) const;
-  String read_string() const;
+  std::variant<StandardString, HexString> read_string() const;
 
   bool peek_array() const;
   Array read_array() const;

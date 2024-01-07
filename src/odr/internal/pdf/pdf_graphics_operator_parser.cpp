@@ -147,7 +147,8 @@ SimpleArrayElement GraphicsOperatorParser::read_array_element() const {
     return m_parser.read_name();
   }
   if (m_parser.peek_string()) {
-    return m_parser.read_string();
+    return std::visit([](auto s) { return SimpleArrayElement(std::move(s)); },
+                      m_parser.read_string());
   }
 
   throw std::runtime_error("unknown element");
@@ -183,7 +184,8 @@ GraphicsOperator GraphicsOperatorParser::read_operator() const {
     } else if (m_parser.peek_name()) {
       result.arguments.push_back(m_parser.read_name());
     } else if (m_parser.peek_string()) {
-      result.arguments.push_back(m_parser.read_string());
+      std::visit([&](auto s) { result.arguments.push_back(std::move(s)); },
+                 m_parser.read_string());
     } else if (m_parser.peek_array()) {
       result.arguments.push_back(read_array());
     } else {
