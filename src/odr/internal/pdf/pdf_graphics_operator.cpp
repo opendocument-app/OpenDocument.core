@@ -21,9 +21,13 @@ void SimpleArrayElement::to_stream(std::ostream &out) const {
     out << as_integer();
   } else if (is_real()) {
     out << std::setprecision(4) << as_real();
-  } else if (is_string()) {
-    // TODO restore original format
-    out << as_string();
+  } else if (is_standard_string()) {
+    out << "(" << as_standard_string() << ")";
+  } else if (is_hex_string()) {
+    // TODO hex
+    out << "<" << as_standard_string() << ">";
+  } else if (is_name()) {
+    out << "/" << as_name();
   } else {
     throw std::runtime_error("unhandled type");
   }
@@ -67,9 +71,13 @@ void GraphicsArgument::to_stream(std::ostream &out) const {
     out << as_integer();
   } else if (is_real()) {
     out << std::setprecision(4) << as_real();
-  } else if (is_string()) {
-    // TODO restore original format
-    out << as_string();
+  } else if (is_standard_string()) {
+    out << "(" << as_standard_string() << ")";
+  } else if (is_hex_string()) {
+    // TODO hex
+    out << "<" << as_standard_string() << ">";
+  } else if (is_name()) {
+    out << "/" << as_name();
   } else if (is_array()) {
     as_array().to_stream(out);
   } else {
