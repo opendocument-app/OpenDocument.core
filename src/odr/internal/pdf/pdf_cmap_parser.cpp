@@ -73,7 +73,7 @@ void CMapParser::read_bfchar(std::uint32_t n, CMap &cmap) const {
     m_parser.skip_whitespace();
 
     util::reverse_bytes(reinterpret_cast<char16_t *>(unicode.data()),
-                        unicode.size() / 2);
+                        (std::size_t)unicode.size() / 2);
     std::u16string_view unicode16(
         reinterpret_cast<const char16_t *>(unicode.data()), unicode.size() / 2);
 
