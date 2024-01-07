@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-#include <utf8cpp/utf8.h>
+#include <utf8cpp/utf8/cpp17.h>
 
 namespace odr::internal::pdf {
 
