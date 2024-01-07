@@ -41,8 +41,12 @@ void ObjectParser::skip_whitespace() const {
   while (true) {
     int_type c = sb().sgetc();
     switch (c) {
-    case ' ':
+    case '\0':
+    case '\t':
     case '\n':
+    case '\f':
+    case '\r':
+    case ' ':
       sb().sbumpc();
       break;
     case eof:
@@ -56,7 +60,7 @@ void ObjectParser::skip_whitespace() const {
 void ObjectParser::skip_line() const { read_line(); }
 
 std::string ObjectParser::read_line(bool inclusive) const {
-  return util::stream::read_until(in(), '\n', inclusive);
+  return util::stream::read_line(in(), inclusive);
 }
 
 bool ObjectParser::peek_number() const {
@@ -100,7 +104,7 @@ Real ObjectParser::read_number() const {
   return std::visit([](auto v) -> Real { return v; }, read_integer_or_real());
 }
 
-IntegerOrReal ObjectParser::read_integer_or_real() const {
+std::variant<Integer, Real> ObjectParser::read_integer_or_real() const {
   Integer i = 0;
 
   int_type c = sb().sgetc();
@@ -173,7 +177,7 @@ void ObjectParser::read_null() const {
   if (sb().sgetn(tmp, 4) != 4) {
     throw std::runtime_error("unexpected stream exhaust");
   }
-  // TODO check ignorecase
+  // TODO check ignore case
 }
 
 bool ObjectParser::peek_boolean() const {
@@ -226,7 +230,9 @@ bool ObjectParser::peek_string() const {
   return false;
 }
 
-void ObjectParser::read_string(std::ostream &out) const {
+std::variant<StandardString, HexString> ObjectParser::read_string() const {
+  std::string string;
+
   int_type c = sb().sbumpc();
 
   if (c == '(') {
@@ -238,10 +244,12 @@ void ObjectParser::read_string(std::ostream &out) const {
         throw std::runtime_error("unexpected stream exhaust");
       }
       if (c == ')') {
-        return;
+        return StandardString(std::move(string));
       }
 
-      out.put(c);
+      // TODO handle '/' correctly
+
+      string += (char_type)c;
     }
   }
 
@@ -254,7 +262,7 @@ void ObjectParser::read_string(std::ostream &out) const {
         throw std::runtime_error("unexpected stream exhaust");
       }
       if (c == '>') {
-        return;
+        return HexString(std::move(string));
       }
 
       int_type c2 = sb().sbumpc();
@@ -264,17 +272,11 @@ void ObjectParser::read_string(std::ostream &out) const {
         throw std::runtime_error("unexpected stream exhaust");
       }
 
-      out.put(two_hex_to_char(c, c2));
+      string += two_hex_to_char(c, c2);
     }
   }
 
   throw std::runtime_error("unexpected starting character");
-}
-
-String ObjectParser::read_string() const {
-  std::stringstream ss;
-  read_string(ss);
-  return ss.str();
 }
 
 bool ObjectParser::peek_array() const {
@@ -304,9 +306,9 @@ Array ObjectParser::read_array() const {
       sb().sbumpc();
       skip_whitespace();
 
-      auto gen = result.back().as_integer();
+      UnsignedInteger gen = result.back().as_integer();
       result.pop_back();
-      auto id = result.back().as_integer();
+      UnsignedInteger id = result.back().as_integer();
       result.pop_back();
       result.emplace_back(ObjectReference{id, gen});
     }
@@ -362,10 +364,11 @@ Dictionary ObjectParser::read_dictionary() const {
       }
       skip_whitespace();
 
-      value = ObjectReference{value.as_integer(), gen};
+      UnsignedInteger id = value.as_integer();
+      value = ObjectReference{id, gen};
     }
 
-    result.emplace(std::move(name), std::move(value));
+    result.emplace(std::move(name.string), std::move(value));
   }
 }
 
@@ -392,7 +395,7 @@ Object ObjectParser::read_object() const {
     return read_name();
   }
   if (peek_string()) {
-    return read_string();
+    return std::visit([](auto v) -> Object { return v; }, read_string());
   }
   if (peek_array()) {
     return read_array();

@@ -11,6 +11,16 @@ Object::Object(Array array) : m_holder{std::move(array)} {}
 
 Object::Object(Dictionary dictionary) : m_holder{std::move(dictionary)} {}
 
+const std::string &Object::as_string() const {
+  if (is_standard_string()) {
+    return as_standard_string();
+  }
+  if (is_hex_string()) {
+    return as_hex_string();
+  }
+  return as_name();
+}
+
 void Object::to_stream(std::ostream &out) const {
   if (is_null()) {
     out << "null";
@@ -24,15 +34,20 @@ void Object::to_stream(std::ostream &out) const {
     out << as_integer();
   } else if (is_real()) {
     out << std::setprecision(4) << as_real();
-  } else if (is_string()) {
-    // TODO restore original format
-    out << as_string();
+  } else if (is_standard_string()) {
+    // TODO escape
+    out << "(" << as_standard_string() << ")";
+  } else if (is_hex_string()) {
+    // TODO hex
+    out << "<" << as_hex_string() << ">";
+  } else if (is_name()) {
+    out << "/" << as_name();
   } else if (is_array()) {
     as_array().to_stream(out);
   } else if (is_dictionary()) {
     as_dictionary().to_stream(out);
   } else if (is_reference()) {
-    out << as_reference().first << " " << as_reference().second << " R";
+    out << as_reference().id << " " << as_reference().gen << " R";
   } else {
     throw std::runtime_error("unhandled type");
   }

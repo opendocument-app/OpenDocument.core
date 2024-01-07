@@ -37,7 +37,8 @@ void stream::pipe(std::istream &in, std::ostream &out) {
 }
 
 // from https://stackoverflow.com/a/6089413
-std::istream &stream::pipe_line(std::istream &in, std::ostream &out) {
+std::istream &stream::pipe_line(std::istream &in, std::ostream &out,
+                                bool inclusive) {
   // The characters in the stream are read one-by-one using a std::streambuf.
   // That is faster than reading them one-by-one using the std::istream.
   // Code that uses streambuf this way must be guarded by a sentry object.
@@ -51,10 +52,19 @@ std::istream &stream::pipe_line(std::istream &in, std::ostream &out) {
     int_type c = sb->sbumpc();
     switch (c) {
     case '\n':
+      if (inclusive) {
+        out.put((char_type)c);
+      }
       return in;
     case '\r':
+      if (inclusive) {
+        out.put((char_type)c);
+      }
       if (sb->sgetc() == '\n') {
-        sb->sbumpc();
+        c = sb->sbumpc();
+        if (inclusive) {
+          out.put((char_type)c);
+        }
       }
       return in;
     case eof:
@@ -66,9 +76,9 @@ std::istream &stream::pipe_line(std::istream &in, std::ostream &out) {
   }
 }
 
-std::string stream::read_line(std::istream &in) {
+std::string stream::read_line(std::istream &in, bool inclusive) {
   std::stringstream ss;
-  pipe_line(in, ss);
+  pipe_line(in, ss, inclusive);
   return ss.str();
 }
 

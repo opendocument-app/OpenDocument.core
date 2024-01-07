@@ -14,11 +14,33 @@ namespace odr::internal::pdf {
 using UnsignedInteger = std::uint64_t;
 using Integer = std::int64_t;
 using Real = double;
-using IntegerOrReal = std::variant<Integer, Real>;
-using String = std::string;
-using Name = std::string;
 using Boolean = bool;
-using ObjectReference = std::pair<UnsignedInteger, UnsignedInteger>;
+
+struct StandardString {
+  std::string string;
+
+  StandardString(std::string _string) : string{std::move(_string)} {}
+};
+
+struct HexString {
+  std::string string;
+
+  HexString(std::string _string) : string{std::move(_string)} {}
+};
+
+struct Name {
+  std::string string;
+
+  Name(std::string _string) : string{std::move(_string)} {}
+};
+
+struct ObjectReference {
+  std::uint64_t id{};
+  std::uint64_t gen{};
+
+  ObjectReference() = default;
+  ObjectReference(std::uint64_t _id, std::uint64_t _gen) : id{_id}, gen{_gen} {}
+};
 
 class Array;
 class Dictionary;
@@ -31,7 +53,9 @@ public:
   Object(Boolean boolean) : m_holder{boolean} {}
   Object(Integer integer) : m_holder{integer} {}
   Object(Real real) : m_holder{real} {}
-  Object(std::string string) : m_holder{std::move(string)} {}
+  Object(StandardString string) : m_holder{std::move(string)} {}
+  Object(HexString string) : m_holder{std::move(string)} {}
+  Object(Name name) : m_holder{std::move(name)} {}
   Object(Array);
   Object(Dictionary);
   Object(ObjectReference reference) : m_holder{std::move(reference)} {}
@@ -43,7 +67,12 @@ public:
   bool is_bool() const { return is<Boolean>(); }
   bool is_integer() const { return is<Integer>(); }
   bool is_real() const { return is<Real>() || is_integer(); }
-  bool is_string() const { return is<std::string>(); }
+  bool is_standard_string() const { return is<StandardString>(); }
+  bool is_hex_string() const { return is<HexString>(); }
+  bool is_name() const { return is<Name>(); }
+  bool is_string() const {
+    return is_standard_string() || is_hex_string() || is_name();
+  }
   bool is_array() const { return is<Array>(); }
   bool is_dictionary() const { return is<Dictionary>(); }
   bool is_reference() const { return is<ObjectReference>(); }
@@ -51,7 +80,14 @@ public:
   Boolean as_bool() const { return as<Boolean>(); }
   Integer as_integer() const { return as<Integer>(); }
   Real as_real() const { return is<Real>() ? as<Real>() : as_integer(); }
-  const std::string &as_string() const { return as<const std::string &>(); }
+  const std::string &as_standard_string() const {
+    return as<const StandardString &>().string;
+  }
+  const std::string &as_hex_string() const {
+    return as<const HexString &>().string;
+  }
+  const std::string &as_name() const { return as<const Name &>().string; }
+  const std::string &as_string() const;
   const Array &as_array() const { return as<const Array &>(); }
   const Dictionary &as_dictionary() const { return as<const Dictionary &>(); }
   const ObjectReference &as_reference() const {
@@ -100,7 +136,7 @@ private:
 
 class Dictionary {
 public:
-  using Holder = std::map<Name, Object>;
+  using Holder = std::map<std::string, Object>;
 
   Dictionary() = default;
   explicit Dictionary(Holder holder) : m_holder{std::move(holder)} {}
@@ -112,9 +148,11 @@ public:
   Holder::const_iterator begin() const { return std::begin(m_holder); }
   Holder::const_iterator end() const { return std::end(m_holder); }
 
-  const Object &operator[](const Name &name) const { return m_holder.at(name); }
+  const Object &operator[](const std::string &name) const {
+    return m_holder.at(name);
+  }
 
-  bool has_key(const Name &name) const {
+  bool has_key(const std::string &name) const {
     return m_holder.find(name) != std::end(m_holder);
   }
 

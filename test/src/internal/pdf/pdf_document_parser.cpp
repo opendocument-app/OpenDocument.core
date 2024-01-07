@@ -46,7 +46,7 @@ TEST(DocumentParser, foo) {
   recurse_pages(document->catalog->pages);
 
   for (Page *page : ordered_pages) {
-    std::cout << "page content " << page->contents_reference.first << std::endl;
+    std::cout << "page content " << page->contents_reference.id << std::endl;
     std::cout << "page annotations " << page->annotations.size() << std::endl;
     std::cout << "page resources " << page->resources << std::endl;
   }
@@ -59,7 +59,7 @@ TEST(DocumentParser, foo) {
     }
     auto to_unicode_ref =
         value->object.as_dictionary()["ToUnicode"].as_reference();
-    std::cout << "to unicode " << to_unicode_ref.first << std::endl;
+    std::cout << "to unicode " << to_unicode_ref.id << std::endl;
     auto to_unicode_obj = parser.read_object(to_unicode_ref);
     std::cout << "to unicode " << to_unicode_obj.object.as_dictionary().size()
               << std::endl;

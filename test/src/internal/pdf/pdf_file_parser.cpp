@@ -37,8 +37,8 @@ TEST(FileParser, foo) {
     if (entry.is_object()) {
       const IndirectObject &object = entry.as_object();
 
-      std::cout << "object " << object.reference.first << " "
-                << object.reference.second << std::endl;
+      std::cout << "object " << object.reference.id << " "
+                << object.reference.gen << std::endl;
 
       if (object.object.is_integer()) {
         std::cout << "integer " << object.object.as_integer() << std::endl;
@@ -117,12 +117,11 @@ TEST(FileParser, bar) {
   }
 
   ObjectReference root_ref = trailer["Root"].as_reference();
-  std::uint32_t root_pos = xref.table.at(root_ref.first).position;
+  std::uint32_t root_pos = xref.table.at(root_ref.id).position;
   parser.in().seekg(root_pos);
   IndirectObject root = parser.read_indirect_object();
   std::cout << "root" << std::endl;
   ObjectReference root_pages_ref =
       root.object.as_dictionary()["Pages"].as_reference();
-  std::cout << root_pages_ref.first << " " << root_pages_ref.second
-            << std::endl;
+  std::cout << root_pages_ref.id << " " << root_pages_ref.gen << std::endl;
 }

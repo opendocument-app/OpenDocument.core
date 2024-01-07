@@ -56,7 +56,7 @@ Html html::translate_text_file(const TextFile &text_file,
     out.write_element_begin("td");
 
     std::ostringstream ss_out;
-    util::stream::pipe_line(*in, ss_out);
+    util::stream::pipe_line(*in, ss_out, false);
     out.out() << escape_text(ss_out.str());
 
     out.write_element_end("td");
