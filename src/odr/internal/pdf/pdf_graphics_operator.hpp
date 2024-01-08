@@ -189,9 +189,9 @@ enum class GraphicsOperatorType {
   text_next_line,
 
   show_text,
-  next_line_show_text,
-  set_spacing_next_line_show_text,
   show_text_manual_spacing,
+  show_text_next_line,
+  show_text_next_line_set_spacing,
 
   set_stroke_color_space,
   set_stroke_color,

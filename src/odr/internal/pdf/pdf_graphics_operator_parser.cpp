@@ -69,9 +69,9 @@ GraphicsOperatorType operator_name_to_type(const std::string &name) {
       {"T*", GraphicsOperatorType::text_next_line},
 
       {"Tj", GraphicsOperatorType::show_text},
-      {"'", GraphicsOperatorType::next_line_show_text},
-      {"\"", GraphicsOperatorType::set_spacing_next_line_show_text},
       {"TJ", GraphicsOperatorType::show_text_manual_spacing},
+      {"'", GraphicsOperatorType::show_text_next_line},
+      {"\"", GraphicsOperatorType::show_text_next_line_set_spacing},
 
       {"CS", GraphicsOperatorType::set_stroke_color_space},
       {"SC", GraphicsOperatorType::set_stroke_color},

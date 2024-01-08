@@ -1,7 +1,5 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
-#include <odr/internal/pdf/pdf_cmap.hpp>
-#include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
@@ -66,14 +64,33 @@ TEST(DocumentParser, foo) {
     GraphicsOperator op = parser2.read_operator();
     state.execute(op);
 
+    const std::string &font = state.current().text.font;
+    double size = state.current().text.size;
+
     if (op.type == GraphicsOperatorType::show_text) {
-      const std::string &font = state.current().text.font;
-      double size = state.current().text.size;
       const std::string &glyphs = op.arguments[0].as_string();
       std::string unicode =
           first_page->resources->font.at(font)->cmap.translate_string(glyphs);
       std::cout << "show text: font=" << font << ", size=" << size
                 << ", text=" << unicode << std::endl;
+    } else if (op.type == GraphicsOperatorType::show_text_manual_spacing) {
+      for (const auto &element : op.arguments[0].as_array()) {
+        if (element.is_real()) {
+          std::cout << "spacing: " << element.as_real() << std::endl;
+        } else if (element.is_string()) {
+          const std::string &glyphs = element.as_string();
+          std::string unicode =
+              first_page->resources->font.at(font)->cmap.translate_string(
+                  glyphs);
+          std::cout << "show text manual spacing: font=" << font
+                    << ", size=" << size << ", text=" << unicode << std::endl;
+        }
+      }
+    } else if (op.type == GraphicsOperatorType::show_text_next_line) {
+      std::cout << "TODO show_text_next_line" << std::endl;
+    } else if (op.type ==
+               GraphicsOperatorType::show_text_next_line_set_spacing) {
+      std::cout << "TODO show_text_next_line_set_spacing" << std::endl;
     }
   }
 }
