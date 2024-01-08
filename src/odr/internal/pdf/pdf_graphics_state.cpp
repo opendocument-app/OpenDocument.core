@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_graphics_state.hpp>
 
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
+#include <odr/internal/util/map_util.hpp>
 
 #include <iostream>
 #include <unordered_map>
@@ -16,11 +17,7 @@ ColorSpace color_space_name_to_enum(const std::string &name) {
       {"cmyk", ColorSpace::device_cmyk},
   };
 
-  if (auto it = mapping.find(name); it != std::end(mapping)) {
-    return it->second;
-  }
-
-  return ColorSpace::unknown;
+  return util::map::lookup_default(mapping, name, ColorSpace::unknown);
 }
 
 } // namespace

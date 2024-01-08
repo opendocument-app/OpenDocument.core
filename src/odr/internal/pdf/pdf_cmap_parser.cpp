@@ -5,8 +5,6 @@
 
 #include <iostream>
 
-#include <utf8cpp/utf8/cpp17.h>
-
 namespace odr::internal::pdf {
 
 using char_type = std::streambuf::char_type;
@@ -77,10 +75,14 @@ void CMapParser::read_bfchar(std::uint32_t n, CMap &cmap) const {
     std::u16string_view unicode16(
         reinterpret_cast<const char16_t *>(unicode.data()), unicode.size() / 2);
 
-    std::cout << glyph << " -> " << utf8::utf16to8(unicode16).c_str()
-              << std::endl;
+    if (glyph.length() != 1) {
+      throw std::runtime_error("unexpected glyph length");
+    }
+    if (unicode16.length() != 1) {
+      throw std::runtime_error("unexpected unicode length");
+    }
 
-    cmap.bfchar[glyph[0]] = unicode16[0];
+    cmap.map_bfchar(glyph[0], unicode16[0]);
   }
 }
 

@@ -54,17 +54,6 @@ TEST(DocumentParser, foo) {
   }
 
   Page *first_page = ordered_pages.front();
-  for (const auto &[key, value] : first_page->resources->font) {
-    auto to_unicode_ref =
-        value->object.as_dictionary()["ToUnicode"].as_reference();
-    auto to_unicode_obj = parser.read_object(to_unicode_ref);
-    std::string stream = parser.read_object_stream(to_unicode_obj);
-    std::string inflate = crypto::util::zlib_inflate(stream);
-    std::istringstream ss(inflate);
-    CMapParser cmap_parser(ss);
-    cmap_parser.parse_cmap();
-  }
-
   IndirectObject first_page_contents_object =
       parser.read_object(first_page->contents_reference);
   std::string stream = parser.read_object_stream(first_page_contents_object);
@@ -76,5 +65,15 @@ TEST(DocumentParser, foo) {
   while (!ss.eof()) {
     GraphicsOperator op = parser2.read_operator();
     state.execute(op);
+
+    if (op.type == GraphicsOperatorType::show_text) {
+      const std::string &font = state.current().text.font;
+      double size = state.current().text.size;
+      const std::string &glyphs = op.arguments[0].as_string();
+      std::string unicode =
+          first_page->resources->font.at(font)->cmap.translate_string(glyphs);
+      std::cout << "show text: font=" << font << ", size=" << size
+                << ", text=" << unicode << std::endl;
+    }
   }
 }

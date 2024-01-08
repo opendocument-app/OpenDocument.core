@@ -9,7 +9,7 @@
 
 namespace odr::internal::pdf {
 
-struct CMap;
+class CMap;
 
 class CMapParser {
 public:
