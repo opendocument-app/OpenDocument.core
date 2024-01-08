@@ -1,8 +1,12 @@
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 
+#include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
+
+#include <sstream>
 
 namespace odr::internal::pdf {
 namespace {
@@ -21,6 +25,16 @@ pdf::Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   font->type = Type::font;
   font->object_reference = reference;
   font->object = dictionary;
+
+  if (dictionary.has_key("ToUnicode")) {
+    auto to_unicode_obj =
+        parser.read_object(dictionary["ToUnicode"].as_reference());
+    std::string stream = parser.read_object_stream(to_unicode_obj);
+    std::string inflate = crypto::util::zlib_inflate(stream);
+    std::istringstream ss(inflate);
+    CMapParser cmap_parser(ss);
+    font->cmap = cmap_parser.parse_cmap();
+  }
 
   return font;
 }

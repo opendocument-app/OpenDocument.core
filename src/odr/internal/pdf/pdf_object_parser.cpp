@@ -37,23 +37,27 @@ std::istream &ObjectParser::in() const { return *m_in; }
 
 std::streambuf &ObjectParser::sb() const { return *m_sb; }
 
+bool ObjectParser::is_whitespace(char c) {
+  return c == '\0' || c == '\t' || c == '\n' || c == '\f' || c == '\r' ||
+         c == ' ';
+}
+
+bool ObjectParser::peek_whitespace() const {
+  int_type c = sb().sgetc();
+  return c != eof && is_whitespace(c);
+}
+
 void ObjectParser::skip_whitespace() const {
   while (true) {
     int_type c = sb().sgetc();
-    switch (c) {
-    case '\0':
-    case '\t':
-    case '\n':
-    case '\f':
-    case '\r':
-    case ' ':
-      sb().sbumpc();
-      break;
-    case eof:
+    if (c == eof) {
       in().setstate(std::ios::eofbit);
-    default:
       return;
     }
+    if (!is_whitespace(c)) {
+      return;
+    }
+    sb().sbumpc();
   }
 }
 

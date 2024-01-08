@@ -15,6 +15,8 @@ public:
   std::istream &in() const;
   std::streambuf &sb() const;
 
+  static bool is_whitespace(char c);
+  bool peek_whitespace() const;
   void skip_whitespace() const;
   void skip_line() const;
   std::string read_line(bool inclusive = false) const;

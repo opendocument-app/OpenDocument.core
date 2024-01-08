@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_PDF_DOCUMENT_ELEMENT_HPP
 #define ODR_INTERNAL_PDF_DOCUMENT_ELEMENT_HPP
 
+#include <odr/internal/pdf/pdf_cmap.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
 
 #include <unordered_map>
@@ -57,7 +58,9 @@ struct Resources : Element {
   std::unordered_map<std::string, Font *> font;
 };
 
-struct Font : Element {};
+struct Font : Element {
+  CMap cmap;
+};
 
 } // namespace odr::internal::pdf
 

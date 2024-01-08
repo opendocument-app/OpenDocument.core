@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
 
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
+#include <odr/internal/util/map_util.hpp>
 
 #include <unordered_map>
 
@@ -67,10 +68,10 @@ GraphicsOperatorType operator_name_to_type(const std::string &name) {
       {"Tm", GraphicsOperatorType::set_text_matrix},
       {"T*", GraphicsOperatorType::text_next_line},
 
-      {"Tj", GraphicsOperatorType::show_string},
-      {"'", GraphicsOperatorType::next_line_show_string},
-      {"\"", GraphicsOperatorType::set_spacing_next_line_show},
-      {"TJ", GraphicsOperatorType::show_string_manual_spacing},
+      {"Tj", GraphicsOperatorType::show_text},
+      {"TJ", GraphicsOperatorType::show_text_manual_spacing},
+      {"'", GraphicsOperatorType::show_text_next_line},
+      {"\"", GraphicsOperatorType::show_text_next_line_set_spacing},
 
       {"CS", GraphicsOperatorType::set_stroke_color_space},
       {"SC", GraphicsOperatorType::set_stroke_color},
@@ -99,11 +100,8 @@ GraphicsOperatorType operator_name_to_type(const std::string &name) {
       {"EX", GraphicsOperatorType::end_compat_sec},
   };
 
-  if (auto it = mapping.find(name); it != std::end(mapping)) {
-    return it->second;
-  }
-
-  return GraphicsOperatorType::unknown;
+  return util::map::lookup_default(mapping, name,
+                                   GraphicsOperatorType::unknown);
 }
 
 } // namespace
