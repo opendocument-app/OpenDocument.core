@@ -132,6 +132,11 @@ private:
 enum class GraphicsOperatorType {
   unknown,
 
+  save_state,
+  restore_state,
+
+  set_matrix,
+
   set_line_width,
   set_cap_style,
   set_join_style,
@@ -140,10 +145,6 @@ enum class GraphicsOperatorType {
   set_color_rendering_intent,
   set_flatness_tolerance,
   set_graphics_state_parameters,
-
-  save_state,
-  restore_state,
-  set_matrix,
 
   draw_object,
   begin_inline_image,
@@ -184,7 +185,7 @@ enum class GraphicsOperatorType {
   set_text_rise,
 
   text_next_line_relative,
-  text_next_line_text_leading,
+  text_next_line_relative_leading,
   set_text_matrix,
   text_next_line,
 

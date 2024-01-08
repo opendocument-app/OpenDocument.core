@@ -11,6 +11,11 @@ namespace {
 
 GraphicsOperatorType operator_name_to_type(const std::string &name) {
   static std::unordered_map<std::string, GraphicsOperatorType> mapping = {
+      {"q", GraphicsOperatorType::save_state},
+      {"Q", GraphicsOperatorType::restore_state},
+
+      {"cm", GraphicsOperatorType::set_matrix},
+
       {"w", GraphicsOperatorType::set_line_width},
       {"J", GraphicsOperatorType::set_cap_style},
       {"j", GraphicsOperatorType::set_join_style},
@@ -19,10 +24,6 @@ GraphicsOperatorType operator_name_to_type(const std::string &name) {
       {"ri", GraphicsOperatorType::set_color_rendering_intent},
       {"i", GraphicsOperatorType::set_flatness_tolerance},
       {"gm", GraphicsOperatorType::set_graphics_state_parameters},
-
-      {"q", GraphicsOperatorType::save_state},
-      {"Q", GraphicsOperatorType::restore_state},
-      {"cm", GraphicsOperatorType::set_matrix},
 
       {"Do", GraphicsOperatorType::draw_object},
       {"BI", GraphicsOperatorType::begin_inline_image},
@@ -64,7 +65,7 @@ GraphicsOperatorType operator_name_to_type(const std::string &name) {
       {"Ts", GraphicsOperatorType::set_text_rise},
 
       {"Td", GraphicsOperatorType::text_next_line_relative},
-      {"TD", GraphicsOperatorType::text_next_line_text_leading},
+      {"TD", GraphicsOperatorType::text_next_line_relative_leading},
       {"Tm", GraphicsOperatorType::set_text_matrix},
       {"T*", GraphicsOperatorType::text_next_line},
 

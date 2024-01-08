@@ -9,11 +9,12 @@
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/filesystem.hpp>
 #include <odr/internal/html/image_file.hpp>
+#include <odr/internal/html/pdf_file.hpp>
 #include <odr/internal/html/text_file.hpp>
 
-#include <nlohmann/json.hpp>
-
 #include <filesystem>
+
+#include <nlohmann/json.hpp>
 
 using namespace odr::internal;
 namespace fs = std::filesystem;
@@ -53,21 +54,32 @@ Html html::translate(const File &file, const std::string &output_path,
                      const PasswordCallback &password_callback) {
   auto decoded_file = DecodedFile(file);
 
-  if (decoded_file.file_category() == FileCategory::text) {
-    return translate(decoded_file.text_file(), output_path, config);
-  } else if (decoded_file.file_category() == FileCategory::image) {
-    return translate(decoded_file.image_file(), output_path, config);
-  } else if (decoded_file.file_category() == FileCategory::archive) {
-    return translate(decoded_file.archive_file().archive(), output_path,
-                     config);
-  } else if (decoded_file.file_category() == FileCategory::document) {
+  if (decoded_file.is_document_file()) {
     DocumentFile document_file = decoded_file.document_file();
     if (document_file.password_encrypted()) {
       if (!document_file.decrypt(password_callback())) {
         throw WrongPassword();
       }
     }
-    return translate(document_file.document(), output_path, config);
+  }
+
+  return translate(decoded_file, output_path, config);
+}
+
+Html html::translate(const DecodedFile &decoded_file,
+                     const std::string &output_path, const HtmlConfig &config) {
+  if (decoded_file.is_text_file()) {
+    return translate(decoded_file.text_file(), output_path, config);
+  } else if (decoded_file.is_image_file()) {
+    return translate(decoded_file.image_file(), output_path, config);
+  } else if (decoded_file.is_archive_file()) {
+    return translate(decoded_file.archive_file().archive(), output_path,
+                     config);
+  } else if (decoded_file.is_document_file()) {
+    return translate(decoded_file.document_file().document(), output_path,
+                     config);
+  } else if (decoded_file.is_pdf_file()) {
+    return translate(decoded_file.pdf_file(), output_path, config);
   }
 
   throw UnsupportedFileType(decoded_file.file_type());
@@ -96,6 +108,12 @@ Html html::translate(const Document &document, const std::string &output_path,
                      const HtmlConfig &config) {
   fs::create_directories(output_path);
   return internal::html::translate_document(document, output_path, config);
+}
+
+Html html::translate(const PdfFile &pdf_file, const std::string &output_path,
+                     const HtmlConfig &config) {
+  fs::create_directories(output_path);
+  return internal::html::translate_pdf_file(pdf_file, output_path, config);
 }
 
 void html::edit(const Document &document, const char *diff) {

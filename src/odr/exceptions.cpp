@@ -44,6 +44,8 @@ NoOpenDocumentFile::NoOpenDocumentFile()
 NoOfficeOpenXmlFile::NoOfficeOpenXmlFile()
     : std::runtime_error("not an office open xml file") {}
 
+NoPdfFile::NoPdfFile() : std::runtime_error("not a pdf file") {}
+
 NoXml::NoXml() : std::runtime_error("not xml") {}
 
 UnsupportedCryptoAlgorithm::UnsupportedCryptoAlgorithm()

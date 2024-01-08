@@ -16,11 +16,16 @@ class ArchiveFile;
 class DocumentFile;
 } // namespace odr::internal::abstract
 
+namespace odr::internal::pdf {
+class PdfFile;
+}
+
 namespace odr {
 class TextFile;
 class ImageFile;
 class ArchiveFile;
 class DocumentFile;
+class PdfFile;
 
 class Archive;
 class Document;
@@ -166,10 +171,17 @@ public:
 
   [[nodiscard]] File file() const;
 
+  [[nodiscard]] bool is_text_file() const;
+  [[nodiscard]] bool is_image_file() const;
+  [[nodiscard]] bool is_archive_file() const;
+  [[nodiscard]] bool is_document_file() const;
+  [[nodiscard]] bool is_pdf_file() const;
+
   [[nodiscard]] TextFile text_file() const;
   [[nodiscard]] ImageFile image_file() const;
   [[nodiscard]] ArchiveFile archive_file() const;
   [[nodiscard]] DocumentFile document_file() const;
+  [[nodiscard]] PdfFile pdf_file() const;
 
 protected:
   std::shared_ptr<internal::abstract::DecodedFile> m_impl;
@@ -227,6 +239,14 @@ public:
 
 private:
   std::shared_ptr<internal::abstract::DocumentFile> m_impl;
+};
+
+class PdfFile final : public DecodedFile {
+public:
+  explicit PdfFile(std::shared_ptr<internal::pdf::PdfFile>);
+
+private:
+  std::shared_ptr<internal::pdf::PdfFile> m_impl;
 };
 
 } // namespace odr

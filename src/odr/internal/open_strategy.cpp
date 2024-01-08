@@ -13,6 +13,7 @@
 #include <odr/internal/odf/odf_file.hpp>
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
+#include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
@@ -133,6 +134,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
     }
 
     return cfb;
+  } else if (file_type == FileType::portable_document_format) {
+    return std::make_unique<pdf::PdfFile>(file);
   } else if (file_type == FileType::portable_network_graphics ||
              file_type == FileType::graphics_interchange_format ||
              file_type == FileType::jpeg ||
