@@ -62,11 +62,21 @@ Html html::translate_pdf_file(const PdfFile &pdf_file,
   out.write_body_begin();
 
   for (pdf::Page *page : ordered_pages) {
+    pdf::Array page_box = page->object.as_dictionary()["MediaBox"].as_array();
+
+    out.write_element_begin(
+        "div", HtmlElementOptions().set_style([&](std::ostream &o) {
+          o << "position:relative;";
+          o << "width:" << page_box[2].as_real() / 72.0 << "in;";
+          o << "height:" << page_box[3].as_real() / 72.0 << "in;";
+        }));
+
     pdf::IndirectObject page_contents_object =
         parser.read_object(page->contents_reference);
     std::string stream = parser.read_object_stream(page_contents_object);
     std::string page_content = crypto::util::zlib_inflate(stream);
 
+    std::cout << page_content << std::endl;
     std::istringstream ss(page_content);
     pdf::GraphicsOperatorParser parser2(ss);
     pdf::GraphicsState state;
@@ -74,24 +84,49 @@ Html html::translate_pdf_file(const PdfFile &pdf_file,
       pdf::GraphicsOperator op = parser2.read_operator();
       state.execute(op);
 
-      const std::string &font = state.current().text.font;
-      double size = state.current().text.size;
+      if (op.type == pdf::GraphicsOperatorType::text_next_line) {
+        double leading = state.current().text.leading;
+        double size = state.current().text.size;
 
-      if (op.type == pdf::GraphicsOperatorType::show_text) {
+        state.current().text.offset[1] -= size + leading;
+      } else if (op.type == pdf::GraphicsOperatorType::show_text) {
+        const std::string &font_ref = state.current().text.font;
+        double size = state.current().text.size;
+
+        std::array<double, 2> offset = state.current().text.offset;
+
+        pdf::Font *font = page->resources->font.at(font_ref);
+
         const std::string &glyphs = op.arguments[0].as_string();
-        std::string unicode =
-            page->resources->font.at(font)->cmap.translate_string(glyphs);
-        std::cout << "show text: font=" << font << ", size=" << size
-                  << ", text=" << unicode << std::endl;
+        std::string unicode = font->cmap.translate_string(glyphs);
+
+        if (unicode.find("Colored Line") != std::string::npos) {
+          std::cout << "hi" << std::endl;
+        }
+
+        out.write_element_begin(
+            "span", HtmlElementOptions().set_style([&](std::ostream &o) {
+              o << "position:absolute;";
+              o << "left:" << offset[0] / 72.0 << "in;";
+              o << "bottom:" << offset[1] / 72.0 << "in;";
+              o << "font-size:" << size << "pt;";
+            }));
+        out.write_raw(unicode);
+        out.write_element_end("span");
       } else if (op.type ==
                  pdf::GraphicsOperatorType::show_text_manual_spacing) {
+        const std::string &font_ref = state.current().text.font;
+        pdf::Font *font = page->resources->font.at(font_ref);
+        double size = state.current().text.size;
+
+        std::cout << font->object << std::endl;
+
         for (const auto &element : op.arguments[0].as_array()) {
           if (element.is_real()) {
             std::cout << "spacing: " << element.as_real() << std::endl;
           } else if (element.is_string()) {
             const std::string &glyphs = element.as_string();
-            std::string unicode =
-                page->resources->font.at(font)->cmap.translate_string(glyphs);
+            std::string unicode = font->cmap.translate_string(glyphs);
             std::cout << "show text manual spacing: font=" << font
                       << ", size=" << size << ", text=" << unicode << std::endl;
           }
@@ -103,6 +138,8 @@ Html html::translate_pdf_file(const PdfFile &pdf_file,
         std::cout << "TODO show_text_next_line_set_spacing" << std::endl;
       }
     }
+
+    out.write_element_end("div");
   }
 
   out.write_body_end();

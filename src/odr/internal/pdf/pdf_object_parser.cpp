@@ -11,6 +11,7 @@ namespace odr::internal::pdf {
 using char_type = std::streambuf::char_type;
 using int_type = std::streambuf::int_type;
 static constexpr int_type eof = std::streambuf::traits_type::eof();
+using pos_type = std::streambuf::pos_type;
 
 namespace {
 
@@ -121,9 +122,9 @@ std::variant<Integer, Real> ObjectParser::read_integer_or_real() const {
   }
   sb().sbumpc();
 
-  std::streamsize begin = in().gcount();
+  pos_type begin = in().tellg();
   UnsignedInteger i2 = read_unsigned_integer();
-  std::streamsize end = in().gcount();
+  pos_type end = in().tellg();
 
   return i + i2 * std::pow(10.0, begin - end);
 }

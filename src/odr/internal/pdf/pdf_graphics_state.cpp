@@ -39,6 +39,12 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     stack.pop_back();
     break;
 
+  case GraphicsOperatorType::set_matrix:
+    for (int i = 0; i < 6; ++i) {
+      current().general.transform_matrix.at(i) = op.arguments.at(i).as_real();
+    }
+    break;
+
   case GraphicsOperatorType::set_line_width:
     current().general.line_width = op.arguments.at(0).as_real();
     break;
@@ -63,11 +69,6 @@ void GraphicsState::execute(const GraphicsOperator &op) {
   case GraphicsOperatorType::set_graphics_state_parameters:
     current().general.graphics_state_parameters =
         op.arguments.at(0).as_string();
-    break;
-  case GraphicsOperatorType::set_matrix:
-    for (int i = 0; i < 6; ++i) {
-      current().general.transform_matrix.at(i) = op.arguments.at(i).as_real();
-    }
     break;
 
   case GraphicsOperatorType::path_move_to:
@@ -106,22 +107,33 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     current().text.horizontal_scaling = op.arguments.at(0).as_real();
     break;
   case GraphicsOperatorType::set_text_leading:
-    current().text.text_leading = op.arguments.at(0).as_real();
+    current().text.leading = op.arguments.at(0).as_real();
     break;
   case GraphicsOperatorType::set_text_font_size:
     current().text.font = op.arguments.at(0).as_string();
     current().text.size = op.arguments.at(1).as_real();
     break;
   case GraphicsOperatorType::set_text_rendering_mode:
-    current().text.text_rendering_mode = op.arguments.at(0).as_integer();
+    current().text.rendering_mode = op.arguments.at(0).as_integer();
     break;
   case GraphicsOperatorType::set_text_rise:
-    current().text.text_rise = op.arguments.at(0).as_real();
+    current().text.rise = op.arguments.at(0).as_real();
     break;
 
+  case GraphicsOperatorType::text_next_line_relative:
+    for (int i = 0; i < 2; ++i) {
+      current().text.offset.at(i) += op.arguments.at(i).as_real();
+    }
+    break;
+  case GraphicsOperatorType::text_next_line_relative_leading:
+    current().text.leading = -op.arguments.at(1).as_real();
+    for (int i = 0; i < 2; ++i) {
+      current().text.offset.at(i) += op.arguments.at(i).as_real();
+    }
+    break;
   case GraphicsOperatorType::set_text_matrix:
     for (int i = 0; i < 6; ++i) {
-      current().general.transform_matrix.at(i) = op.arguments.at(i).as_real();
+      current().text.transform_matrix.at(i) = op.arguments.at(i).as_real();
     }
     break;
 

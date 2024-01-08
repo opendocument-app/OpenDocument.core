@@ -27,24 +27,25 @@ struct GraphicsState {
     double color_rendering_intent{};
     double flatness_tolerance{};
     std::string graphics_state_parameters;
-    std::array<double, 6> transform_matrix{};
+    std::array<double, 6> transform_matrix{1, 0, 0, 1, 0, 0};
   };
 
   struct Path {
-    std::array<double, 2> current_position{};
+    std::array<double, 2> current_position{0, 0};
     // TODO clipping
   };
 
   struct Text {
-    double char_spacing{};
-    double word_spacing{};
-    double horizontal_scaling{};
-    double text_leading{};
-    std::string font{};
+    double char_spacing{0};
+    double word_spacing{0};
+    double horizontal_scaling{1};
+    double leading{0};
+    std::string font;
     double size{};
-    int text_rendering_mode{};
-    double text_rise{};
-    std::array<double, 6> transform_matrix{};
+    int rendering_mode{0};
+    double rise{0};
+    std::array<double, 2> offset{0, 0};
+    std::array<double, 6> transform_matrix{1, 0, 0, 1, 0, 0};
     std::array<double, 2> glyph_width{};
     std::array<double, 4> glyph_bounding_box{};
   };
