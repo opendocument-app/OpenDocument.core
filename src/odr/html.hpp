@@ -90,6 +90,7 @@ struct HtmlPage final {
 using PasswordCallback = std::function<std::string()>;
 
 namespace html {
+
 Html translate(const File &file, const std::string &output_path,
                const HtmlConfig &config,
                const PasswordCallback &password_callback);
@@ -108,6 +109,7 @@ Html translate(const PdfFile &pdf_file, const std::string &output_path,
                const HtmlConfig &config);
 
 void edit(const Document &document, const char *diff);
+
 } // namespace html
 
 } // namespace odr

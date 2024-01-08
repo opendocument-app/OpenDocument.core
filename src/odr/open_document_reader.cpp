@@ -1,6 +1,5 @@
 #include <odr/open_document_reader.hpp>
 
-#include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
@@ -173,16 +172,18 @@ DecodedFile OpenDocumentReader::open(const std::string &path) {
   return DecodedFile(path);
 }
 
-Html OpenDocumentReader::html(const std::string &path, const char *password,
+Html OpenDocumentReader::html(const std::string &path,
+                              const PasswordCallback &password_callback,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  return html(File(path), password, output_path, config);
+  return html(File(path), password_callback, output_path, config);
 }
 
-Html OpenDocumentReader::html(const File &file, const char *password,
+Html OpenDocumentReader::html(const File &file,
+                              const PasswordCallback &password_callback,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  return html::translate(file, output_path, config, [&]() { return password; });
+  return html::translate(file, output_path, config, password_callback);
 }
 
 Html OpenDocumentReader::html(const DecodedFile &file,
@@ -219,6 +220,10 @@ Html OpenDocumentReader::html(const PdfFile &pdf_file,
                               const std::string &output_path,
                               const HtmlConfig &config) {
   return html::translate(pdf_file, output_path, config);
+}
+
+void OpenDocumentReader::edit(const Document &document, const char *diff) {
+  html::edit(document, diff);
 }
 
 void OpenDocumentReader::copy_resources(const std::string &to_path) {

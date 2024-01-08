@@ -1,6 +1,7 @@
 #ifndef ODR_OPEN_DOCUMENT_READER_HPP
 #define ODR_OPEN_DOCUMENT_READER_HPP
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,8 @@ class PdfFile;
 class Html;
 struct HtmlConfig;
 
+using PasswordCallback = std::function<std::string()>;
+
 class OpenDocumentReader final {
 public:
   [[nodiscard]] static std::string version() noexcept;
@@ -31,10 +34,11 @@ public:
   [[nodiscard]] static DecodedFile open(const std::string &path);
 
   [[nodiscard]] static Html html(const std::string &input_path,
-                                 const char *password,
+                                 const PasswordCallback &password_callback,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
-  [[nodiscard]] static Html html(const File &file, const char *password,
+  [[nodiscard]] static Html html(const File &file,
+                                 const PasswordCallback &password_callback,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
   [[nodiscard]] static Html html(const DecodedFile &file,
@@ -55,6 +59,8 @@ public:
   [[nodiscard]] static Html html(const PdfFile &pdf_file,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
+
+  void edit(const Document &document, const char *diff);
 
   static void copy_resources(const std::string &to_path);
 
