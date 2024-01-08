@@ -1,5 +1,7 @@
 #include <odr/internal/magic.hpp>
 
+#include <odr/file.hpp>
+
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -58,13 +60,21 @@ FileType magic::file_type(const std::string &head) {
   return FileType::unknown;
 }
 
-FileType magic::file_type(const internal::abstract::File &file) {
+FileType magic::file_type(std::istream &in) {
   static constexpr auto max_head_size = 12;
 
   char head[max_head_size];
-  file.stream()->read(head, sizeof(head));
+  in.read(head, sizeof(head));
 
   return file_type(std::string(head, max_head_size));
+}
+
+FileType magic::file_type(const internal::abstract::File &file) {
+  return file_type(*file.stream());
+}
+
+FileType magic::file_type(const File &file) {
+  return file_type(*file.stream());
 }
 
 } // namespace odr::internal

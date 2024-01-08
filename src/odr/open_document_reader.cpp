@@ -1,7 +1,6 @@
 #include <odr/open_document_reader.hpp>
 
 #include <odr/document.hpp>
-#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
@@ -177,25 +176,19 @@ DecodedFile OpenDocumentReader::open(const std::string &path) {
 Html OpenDocumentReader::html(const std::string &path, const char *password,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  return html(DecodedFile(path), password, output_path, config);
+  return html(File(path), password, output_path, config);
 }
 
-Html OpenDocumentReader::html(const DecodedFile &file, const char *password,
+Html OpenDocumentReader::html(const File &file, const char *password,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  if (file.file_type() == FileType::text_file) {
-    return html(file.text_file(), output_path, config);
-  } else if (file.file_category() == FileCategory::document) {
-    auto document_file = file.document_file();
-    if (document_file.password_encrypted()) {
-      if ((password == nullptr) || !document_file.decrypt(password)) {
-        throw WrongPassword();
-      }
-    }
-    return html(document_file.document(), output_path, config);
-  }
+  return html::translate(file, output_path, config, [&]() { return password; });
+}
 
-  throw UnknownFileType();
+Html OpenDocumentReader::html(const DecodedFile &file,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
+  return html::translate(file, output_path, config);
 }
 
 Html OpenDocumentReader::html(const TextFile &text_file,
@@ -204,10 +197,28 @@ Html OpenDocumentReader::html(const TextFile &text_file,
   return html::translate(text_file, output_path, config);
 }
 
+Html OpenDocumentReader::html(const ImageFile &image_file,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
+  return html::translate(image_file, output_path, config);
+}
+
+Html OpenDocumentReader::html(const Archive &archive,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
+  return html::translate(archive, output_path, config);
+}
+
 Html OpenDocumentReader::html(const Document &document,
                               const std::string &output_path,
                               const HtmlConfig &config) {
   return html::translate(document, output_path, config);
+}
+
+Html OpenDocumentReader::html(const PdfFile &pdf_file,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
+  return html::translate(pdf_file, output_path, config);
 }
 
 void OpenDocumentReader::copy_resources(const std::string &to_path) {

@@ -7,9 +7,13 @@
 namespace odr {
 enum class FileType;
 enum class FileCategory;
+class File;
 class DecodedFile;
 class TextFile;
+class ImageFile;
+class Archive;
 class Document;
+class PdfFile;
 class Html;
 struct HtmlConfig;
 
@@ -30,13 +34,25 @@ public:
                                  const char *password,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
-  [[nodiscard]] static Html html(const DecodedFile &file, const char *password,
+  [[nodiscard]] static Html html(const File &file, const char *password,
+                                 const std::string &output_path,
+                                 const HtmlConfig &config);
+  [[nodiscard]] static Html html(const DecodedFile &file,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
   [[nodiscard]] static Html html(const TextFile &text_file,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
+  [[nodiscard]] static Html html(const ImageFile &image_file,
+                                 const std::string &output_path,
+                                 const HtmlConfig &config);
+  [[nodiscard]] static Html html(const Archive &archive,
+                                 const std::string &output_path,
+                                 const HtmlConfig &config);
   [[nodiscard]] static Html html(const Document &document,
+                                 const std::string &output_path,
+                                 const HtmlConfig &config);
+  [[nodiscard]] static Html html(const PdfFile &pdf_file,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
 

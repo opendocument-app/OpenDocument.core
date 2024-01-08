@@ -7,6 +7,7 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/open_strategy.hpp>
+#include <odr/internal/pdf/pdf_file.hpp>
 
 #include <optional>
 #include <utility>
@@ -89,9 +90,7 @@ DecodedFile::DecodedFile(const std::string &path, FileType as)
 
 DecodedFile::operator bool() const { return m_impl.operator bool(); }
 
-FileType DecodedFile::file_type() const noexcept {
-  return m_impl->file_meta().type;
-}
+FileType DecodedFile::file_type() const noexcept { return m_impl->file_type(); }
 
 FileCategory DecodedFile::file_category() const noexcept {
   return m_impl->file_category();
@@ -100,6 +99,30 @@ FileCategory DecodedFile::file_category() const noexcept {
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
 
 File DecodedFile::file() const { return File(m_impl->file()); }
+
+bool DecodedFile::is_text_file() const {
+  return std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl) !=
+         nullptr;
+}
+
+bool DecodedFile::is_image_file() const {
+  return std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl) !=
+         nullptr;
+}
+
+bool DecodedFile::is_archive_file() const {
+  return std::dynamic_pointer_cast<internal::abstract::ArchiveFile>(m_impl) !=
+         nullptr;
+}
+
+bool DecodedFile::is_document_file() const {
+  return std::dynamic_pointer_cast<internal::abstract::DocumentFile>(m_impl) !=
+         nullptr;
+}
+
+bool DecodedFile::is_pdf_file() const {
+  return std::dynamic_pointer_cast<internal::pdf::PdfFile>(m_impl) != nullptr;
+}
 
 TextFile DecodedFile::text_file() const {
   if (auto text_file =
@@ -131,6 +154,14 @@ DocumentFile DecodedFile::document_file() const {
     return DocumentFile(document_file);
   }
   throw NoDocumentFile();
+}
+
+PdfFile DecodedFile::pdf_file() const {
+  if (auto pdf_file =
+          std::dynamic_pointer_cast<internal::pdf::PdfFile>(m_impl)) {
+    return PdfFile(pdf_file);
+  }
+  throw NoPdfFile();
 }
 
 TextFile::TextFile(std::shared_ptr<internal::abstract::TextFile> impl)
@@ -197,5 +228,8 @@ DocumentMeta DocumentFile::document_meta() const {
 }
 
 Document DocumentFile::document() const { return Document(m_impl->document()); }
+
+PdfFile::PdfFile(std::shared_ptr<internal::pdf::PdfFile> impl)
+    : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 } // namespace odr

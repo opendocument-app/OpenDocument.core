@@ -80,6 +80,10 @@ struct NoOfficeOpenXmlFile final : public std::runtime_error {
   NoOfficeOpenXmlFile();
 };
 
+struct NoPdfFile final : public std::runtime_error {
+  NoPdfFile();
+};
+
 struct NoXml final : public std::runtime_error {
   NoXml();
 };

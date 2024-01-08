@@ -94,9 +94,11 @@ pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   page->resources =
       parse_resources(parser, dictionary["Resources"].as_reference(), document);
 
-  for (Object annotation : dictionary["Annots"].as_array()) {
-    page->annotations.push_back(
-        parse_annotation(parser, annotation.as_reference(), document));
+  if (dictionary.has_key("Annots")) {
+    for (Object annotation : dictionary["Annots"].as_array()) {
+      page->annotations.push_back(
+          parse_annotation(parser, annotation.as_reference(), document));
+    }
   }
 
   return page;

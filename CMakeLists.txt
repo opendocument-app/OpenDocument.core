@@ -114,6 +114,7 @@ add_library(odr
         "src/odr/internal/html/filesystem.cpp"
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
+        "src/odr/internal/html/pdf_file.cpp"
         "src/odr/internal/html/text_file.cpp"
 
         "src/odr/internal/json/json_file.cpp"
@@ -152,7 +153,7 @@ add_library(odr
         "src/odr/internal/pdf/pdf_document.cpp"
         "src/odr/internal/pdf/pdf_document_element.cpp"
         "src/odr/internal/pdf/pdf_document_parser.cpp"
-        "src/odr/internal/pdf/pdf_object.cpp"
+        "src/odr/internal/pdf/pdf_file.cpp"
         "src/odr/internal/pdf/pdf_file_parser.cpp"
         "src/odr/internal/pdf/pdf_graphics_operator.cpp"
         "src/odr/internal/pdf/pdf_graphics_operator_parser.cpp"
