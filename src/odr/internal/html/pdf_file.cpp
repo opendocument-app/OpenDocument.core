@@ -76,7 +76,6 @@ Html html::translate_pdf_file(const PdfFile &pdf_file,
     std::string stream = parser.read_object_stream(page_contents_object);
     std::string page_content = crypto::util::zlib_inflate(stream);
 
-    std::cout << page_content << std::endl;
     std::istringstream ss(page_content);
     pdf::GraphicsOperatorParser parser2(ss);
     pdf::GraphicsState state;
