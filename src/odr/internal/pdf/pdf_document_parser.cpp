@@ -170,7 +170,7 @@ const FileParser &DocumentParser::parser() const { return m_parser; }
 const Xref &DocumentParser::xref() const { return m_xref; }
 
 IndirectObject DocumentParser::read_object(const ObjectReference &reference) {
-  std::uint32_t position = m_xref.table[reference.id].position;
+  std::uint32_t position = m_xref.table.at(reference.id).position;
   in().seekg(position);
   return parser().read_indirect_object();
 }
