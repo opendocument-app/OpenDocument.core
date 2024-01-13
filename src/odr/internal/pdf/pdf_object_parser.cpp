@@ -3,6 +3,7 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cmath>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 
@@ -14,6 +15,8 @@ static constexpr int_type eof = std::streambuf::traits_type::eof();
 using pos_type = std::streambuf::pos_type;
 
 namespace {
+
+int_type octet_char_to_int(char_type c) { return c - '0'; }
 
 int_type hex_char_to_int(char_type c) {
   if (c >= 'a') {
@@ -27,6 +30,12 @@ int_type hex_char_to_int(char_type c) {
 
 char_type two_hex_to_char(char_type first, char_type second) {
   return hex_char_to_int(first) * 16 + hex_char_to_int(second);
+}
+
+char_type three_octet_to_char(char_type first, char_type second,
+                              char_type third) {
+  return octet_char_to_int(first) * 64 + octet_char_to_int(second) * 8 +
+         octet_char_to_int(third);
 }
 
 } // namespace
@@ -248,11 +257,27 @@ std::variant<StandardString, HexString> ObjectParser::read_string() const {
         in().setstate(std::ios::eofbit);
         throw std::runtime_error("unexpected stream exhaust");
       }
+      if (c == '\\') {
+        c = sb().sgetc();
+        if (c == eof) {
+          in().setstate(std::ios::eofbit);
+          throw std::runtime_error("unexpected stream exhaust");
+        }
+        if (std::isdigit(c)) {
+          char octet[3];
+          if (sb().sgetn(octet, 3) != 3) {
+            throw std::runtime_error("unexpected stream exhaust");
+          }
+          string += three_octet_to_char(octet[0], octet[1], octet[2]);
+        } else {
+          sb().sbumpc();
+          string += (char_type)c;
+        }
+        continue;
+      }
       if (c == ')') {
         return StandardString(std::move(string));
       }
-
-      // TODO handle '/' correctly
 
       string += (char_type)c;
     }

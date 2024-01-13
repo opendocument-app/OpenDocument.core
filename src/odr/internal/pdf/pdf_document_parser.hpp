@@ -5,6 +5,7 @@
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 
 #include <iosfwd>
+#include <map>
 #include <memory>
 
 namespace odr::internal::pdf {
@@ -19,15 +20,22 @@ public:
   const FileParser &parser() const;
   const Xref &xref() const;
 
-  IndirectObject read_object(const ObjectReference &reference);
+  const IndirectObject &read_object(const ObjectReference &reference);
   std::string read_object_stream(const ObjectReference &reference);
   std::string read_object_stream(const IndirectObject &object);
+
+  void resolve_object(Object &object);
+  void deep_resolve_object(Object &object);
+
+  Object resolve_object(const Object &object);
+  Object deep_resolve_object(const Object &object);
 
   std::unique_ptr<Document> parse_document();
 
 private:
   FileParser m_parser;
   Xref m_xref;
+  std::map<ObjectReference, IndirectObject> m_objects;
 };
 
 } // namespace odr::internal::pdf

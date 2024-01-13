@@ -137,42 +137,6 @@ std::string GraphicsOperatorParser::read_operator_name() const {
   }
 }
 
-SimpleArrayElement GraphicsOperatorParser::read_array_element() const {
-  if (m_parser.peek_number()) {
-    return std::visit([&](auto v) { return SimpleArrayElement(v); },
-                      m_parser.read_integer_or_real());
-  }
-  if (m_parser.peek_name()) {
-    return m_parser.read_name();
-  }
-  if (m_parser.peek_string()) {
-    return std::visit([](auto s) { return SimpleArrayElement(std::move(s)); },
-                      m_parser.read_string());
-  }
-
-  throw std::runtime_error("unknown element");
-}
-
-SimpleArray GraphicsOperatorParser::read_array() const {
-  SimpleArray::Holder result;
-
-  if (sb().sbumpc() != '[') {
-    throw std::runtime_error("unexpected character");
-  }
-  m_parser.skip_whitespace();
-
-  while (true) {
-    if (int_type c = sb().sgetc(); c == ']') {
-      sb().sbumpc();
-      return SimpleArray(std::move(result));
-    }
-    SimpleArrayElement value = read_array_element();
-    m_parser.skip_whitespace();
-
-    result.emplace_back(std::move(value));
-  }
-}
-
 GraphicsOperator GraphicsOperatorParser::read_operator() const {
   GraphicsOperator result;
 
@@ -186,7 +150,9 @@ GraphicsOperator GraphicsOperatorParser::read_operator() const {
       std::visit([&](auto s) { result.arguments.push_back(std::move(s)); },
                  m_parser.read_string());
     } else if (m_parser.peek_array()) {
-      result.arguments.push_back(read_array());
+      result.arguments.push_back(m_parser.read_array());
+    } else if (m_parser.peek_dictionary()) {
+      result.arguments.push_back(m_parser.read_dictionary());
     } else {
       m_parser.skip_whitespace();
       break;
@@ -194,9 +160,10 @@ GraphicsOperator GraphicsOperatorParser::read_operator() const {
     m_parser.skip_whitespace();
   }
 
-  result.type = operator_name_to_type(read_operator_name());
+  std::string operator_name = read_operator_name();
+  result.type = operator_name_to_type(operator_name);
   if (result.type == GraphicsOperatorType::unknown) {
-    throw std::runtime_error("unknown type");
+    std::cerr << "unknown operator: " << operator_name << std::endl;
   }
 
   m_parser.skip_whitespace();

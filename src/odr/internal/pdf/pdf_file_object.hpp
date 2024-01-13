@@ -28,10 +28,9 @@ struct Trailer {
 struct Xref {
   struct Entry {
     std::uint32_t position{};
-    std::uint32_t generation{};
     bool in_use{};
   };
-  using Table = std::map<std::uint32_t, Entry>;
+  using Table = std::map<ObjectReference, Entry>;
 
   Table table;
 

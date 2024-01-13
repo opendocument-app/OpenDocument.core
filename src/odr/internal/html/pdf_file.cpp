@@ -75,11 +75,13 @@ Html html::translate_pdf_file(const PdfFile &pdf_file,
     for (const auto &content_reference : page->contents_reference) {
       pdf::IndirectObject page_contents_object =
           parser.read_object(content_reference);
-      stream += parser.read_object_stream(page_contents_object);
+      std::string page_content =
+          parser.read_object_stream(page_contents_object);
+      page_content = crypto::util::zlib_inflate(page_content);
+      stream += page_content;
     }
-    std::string page_content = crypto::util::zlib_inflate(stream);
 
-    std::istringstream ss(page_content);
+    std::istringstream ss(stream);
     pdf::GraphicsOperatorParser parser2(ss);
     pdf::GraphicsState state;
     while (!ss.eof()) {

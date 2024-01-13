@@ -6,6 +6,8 @@
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 
+#include <functional>
+#include <iostream>
 #include <sstream>
 
 namespace odr::internal::pdf {
@@ -27,7 +29,7 @@ pdf::Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   font->object = dictionary;
 
   if (dictionary.has_key("ToUnicode")) {
-    auto to_unicode_obj =
+    IndirectObject to_unicode_obj =
         parser.read_object(dictionary["ToUnicode"].as_reference());
     std::string stream = parser.read_object_stream(to_unicode_obj);
     std::string inflate = crypto::util::zlib_inflate(stream);
@@ -100,13 +102,15 @@ pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   if (dictionary["Contents"].is_reference()) {
     page->contents_reference = {dictionary["Contents"].as_reference()};
   } else {
-    for (const auto &e : dictionary["Contents"].as_array()) {
+    for (const Object &e : dictionary["Contents"].as_array()) {
       page->contents_reference.push_back(e.as_reference());
     }
   }
 
   if (dictionary.has_key("Annots")) {
-    for (Object annotation : dictionary["Annots"].as_array()) {
+    // TODO why rvalue not working?
+    Array annotations = parser.resolve_object(dictionary["Annots"]).as_array();
+    for (const Object &annotation : annotations) {
       page->annotations.push_back(
           parse_annotation(parser, annotation.as_reference(), document));
     }
@@ -127,7 +131,7 @@ pdf::Pages *parse_pages(DocumentParser &parser,
   pages->object = dictionary;
   pages->count = dictionary["Count"].as_integer();
 
-  for (const auto &kid : dictionary["Kids"].as_array()) {
+  for (const Object &kid : dictionary["Kids"].as_array()) {
     pages->kids.push_back(
         parse_page_or_pages(parser, kid.as_reference(), document, pages));
   }
@@ -180,10 +184,17 @@ const FileParser &DocumentParser::parser() const { return m_parser; }
 
 const Xref &DocumentParser::xref() const { return m_xref; }
 
-IndirectObject DocumentParser::read_object(const ObjectReference &reference) {
-  std::uint32_t position = m_xref.table.at(reference.id).position;
+const IndirectObject &
+DocumentParser::read_object(const ObjectReference &reference) {
+  if (auto it = m_objects.find(reference); it != std::end(m_objects)) {
+    return it->second;
+  }
+
+  std::uint32_t position = m_xref.table.at(reference).position;
   in().seekg(position);
-  return parser().read_indirect_object();
+  IndirectObject object = parser().read_indirect_object();
+
+  return m_objects.emplace(reference, std::move(object)).first->second;
 }
 
 std::string
@@ -235,6 +246,38 @@ std::unique_ptr<Document> DocumentParser::parse_document() {
   document->catalog =
       parse_catalog(*this, trailer->root_reference(), *document);
   return document;
+}
+
+void DocumentParser::resolve_object(Object &object) {
+  if (object.is_reference()) {
+    object = read_object(object.as_reference()).object;
+  }
+}
+
+void DocumentParser::deep_resolve_object(Object &object) {
+  if (object.is_reference()) {
+    object = read_object(object.as_reference()).object;
+  } else if (object.is_array()) {
+    for (Object &e : object.as_array()) {
+      deep_resolve_object(e);
+    }
+  } else if (object.is_dictionary()) {
+    for (auto &[k, v] : object.as_dictionary()) {
+      deep_resolve_object(v);
+    }
+  }
+}
+
+Object DocumentParser::resolve_object(const Object &object) {
+  Object result = object;
+  resolve_object(result);
+  return result;
+}
+
+Object DocumentParser::deep_resolve_object(const Object &object) {
+  Object result = object;
+  deep_resolve_object(result);
+  return result;
 }
 
 } // namespace odr::internal::pdf
