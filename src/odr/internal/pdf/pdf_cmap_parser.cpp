@@ -37,15 +37,14 @@ std::variant<Object, std::string> CMapParser::read_token() const {
 
   std::string token;
   while (true) {
-    int_type c = sb().sgetc();
+    int_type c = m_parser.geti();
     if (c == eof) {
-      in().setstate(std::ios::eofbit);
       return token;
     }
     if (ObjectParser::is_whitespace(c)) {
       return token;
     }
-    sb().sbumpc();
+    m_parser.bumpc();
     token += (char_type)c;
   }
 }

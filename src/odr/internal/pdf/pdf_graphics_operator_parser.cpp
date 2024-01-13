@@ -122,17 +122,16 @@ std::string GraphicsOperatorParser::read_operator_name() const {
   std::string result;
 
   while (true) {
-    int_type c = sb().sgetc();
+    int_type c = m_parser.geti();
 
     if (c == eof) {
-      in().setstate(std::ios::eofbit);
       return result;
     }
     if (c == ' ' || c == '\n' || c == '/' || c == '<' || c == '[') {
       return result;
     }
 
-    sb().sbumpc();
+    m_parser.bumpc();
     result += (char_type)c;
   }
 }
