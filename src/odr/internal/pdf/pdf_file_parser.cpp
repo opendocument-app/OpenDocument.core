@@ -29,7 +29,7 @@ IndirectObject FileParser::read_indirect_object() const {
   }
 
   result.object = m_parser.read_object();
-  m_parser.skip_line();
+  m_parser.skip_whitespace();
 
   auto next = m_parser.read_line();
 
@@ -57,8 +57,6 @@ Trailer FileParser::read_trailer() const {
 
   result.dictionary = m_parser.read_dictionary();
   result.size = result.dictionary["Size"].as_integer();
-  result.root_reference = result.dictionary["Root"].as_reference();
-  result.info_reference = result.dictionary["Info"].as_reference();
 
   m_parser.skip_line();
   m_parser.skip_whitespace();
@@ -89,11 +87,12 @@ Xref FileParser::read_xref() const {
 
       entry.position = m_parser.read_unsigned_integer();
       m_parser.skip_whitespace();
-      entry.generation = m_parser.read_unsigned_integer();
+      std::uint64_t generation = m_parser.read_unsigned_integer();
       m_parser.skip_whitespace();
       entry.in_use = m_parser.read_line().at(0) == 'n';
 
-      result.table.emplace(first_id + i, std::move(entry));
+      result.table.emplace(ObjectReference(first_id + i, generation),
+                           std::move(entry));
     }
   }
 }

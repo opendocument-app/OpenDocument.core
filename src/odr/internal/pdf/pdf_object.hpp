@@ -20,18 +20,30 @@ struct StandardString {
   std::string string;
 
   StandardString(std::string _string) : string{std::move(_string)} {}
+
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const StandardString &);
 };
 
 struct HexString {
   std::string string;
 
   HexString(std::string _string) : string{std::move(_string)} {}
+
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const HexString &);
 };
 
 struct Name {
   std::string string;
 
   Name(std::string _string) : string{std::move(_string)} {}
+
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const Name &);
 };
 
 struct ObjectReference {
@@ -40,6 +52,14 @@ struct ObjectReference {
 
   ObjectReference() = default;
   ObjectReference(std::uint64_t _id, std::uint64_t _gen) : id{_id}, gen{_gen} {}
+
+  [[nodiscard]] bool operator<(const ObjectReference &rhs) const;
+
+  [[nodiscard]] std::size_t hash() const noexcept;
+
+  void to_stream(std::ostream &) const;
+  std::string to_string() const;
+  friend std::ostream &operator<<(std::ostream &, const ObjectReference &);
 };
 
 class Array;
@@ -88,10 +108,18 @@ public:
   }
   const std::string &as_name() const { return as<const Name &>().string; }
   const std::string &as_string() const;
-  const Array &as_array() const { return as<const Array &>(); }
-  const Dictionary &as_dictionary() const { return as<const Dictionary &>(); }
+  const Array &as_array() const & { return as<const Array &>(); }
+  const Dictionary &as_dictionary() const & { return as<const Dictionary &>(); }
   const ObjectReference &as_reference() const {
     return as<const ObjectReference &>();
+  }
+
+  Array &as_array() & { return as<Array &>(); }
+  Dictionary &as_dictionary() & { return as<Dictionary &>(); }
+
+  Array &&as_array() && { return std::move(*this).as<Array &&>(); }
+  Dictionary &&as_dictionary() && {
+    return std::move(*this).as<Dictionary &&>();
   }
 
   void to_stream(std::ostream &) const;
@@ -102,7 +130,11 @@ private:
   Holder m_holder;
 
   template <typename T> bool is() const { return m_holder.type() == typeid(T); }
-  template <typename T> T as() const { return std::any_cast<T>(m_holder); }
+  template <typename T> T as() const & { return std::any_cast<T>(m_holder); }
+  template <typename T> T as() & { return std::any_cast<T>(m_holder); }
+  template <typename T> T as() && {
+    return std::any_cast<T>(std::move(m_holder));
+  }
 };
 
 class Array {
@@ -121,9 +153,12 @@ public:
   const Holder &holder() const { return m_holder; }
 
   std::size_t size() const { return m_holder.size(); }
-  Holder::const_iterator begin() const { return std::begin(m_holder); }
-  Holder::const_iterator end() const { return std::end(m_holder); }
+  Holder::iterator begin() { return m_holder.begin(); }
+  Holder::iterator end() { return m_holder.end(); }
+  Holder::const_iterator begin() const { return m_holder.cbegin(); }
+  Holder::const_iterator end() const { return m_holder.cend(); }
 
+  Object &operator[](std::size_t i) { return m_holder.at(i); }
   const Object &operator[](std::size_t i) const { return m_holder.at(i); }
 
   void to_stream(std::ostream &) const;
@@ -145,9 +180,12 @@ public:
   const Holder &holder() const { return m_holder; }
 
   std::size_t size() const { return m_holder.size(); }
-  Holder::const_iterator begin() const { return std::begin(m_holder); }
-  Holder::const_iterator end() const { return std::end(m_holder); }
+  Holder::iterator begin() { return m_holder.begin(); }
+  Holder::iterator end() { return m_holder.end(); }
+  Holder::const_iterator begin() const { return m_holder.cbegin(); }
+  Holder::const_iterator end() const { return m_holder.cend(); }
 
+  Object &operator[](const std::string &name) { return m_holder[name]; }
   const Object &operator[](const std::string &name) const {
     return m_holder.at(name);
   }
@@ -165,5 +203,9 @@ private:
 };
 
 } // namespace odr::internal::pdf
+
+template <> struct std::hash<odr::internal::pdf::ObjectReference> {
+  std::size_t operator()(const odr::internal::pdf::ObjectReference &k) const;
+};
 
 #endif // ODR_INTERNAL_PDF_OBJECT_HPP
