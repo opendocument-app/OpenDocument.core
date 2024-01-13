@@ -27,8 +27,8 @@ public:
   void resolve_object(Object &object);
   void deep_resolve_object(Object &object);
 
-  Object resolve_object(const Object &object);
-  Object deep_resolve_object(const Object &object);
+  Object resolve_object_copy(const Object &object);
+  Object deep_resolve_object_copy(const Object &object);
 
   std::unique_ptr<Document> parse_document();
 

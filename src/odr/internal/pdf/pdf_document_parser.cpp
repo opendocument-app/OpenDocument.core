@@ -45,25 +45,13 @@ pdf::Resources *parse_resources(DocumentParser &parser, const Object &object,
                                 Document &document) {
   Resources *resources = document.create_element<Resources>();
 
+  Dictionary dictionary = parser.resolve_object_copy(object).as_dictionary();
+
   resources->type = Type::resources;
-
-  Dictionary dictionary;
-  if (object.is_reference()) {
-    IndirectObject ind_object = parser.read_object(object.as_reference());
-    resources->object_reference = object.as_reference();
-  } else {
-    dictionary = object.as_dictionary();
-  }
-
   resources->object = dictionary;
 
-  Dictionary font_table;
-  if (dictionary["Font"].is_reference()) {
-    font_table = parser.read_object(dictionary["Font"].as_reference())
-                     .object.as_dictionary();
-  } else {
-    font_table = dictionary["Font"].as_dictionary();
-  }
+  Dictionary font_table =
+      parser.resolve_object_copy(dictionary["Font"]).as_dictionary();
   for (const auto &[key, value] : font_table) {
     resources->font[key] = parse_font(parser, value.as_reference(), document);
   }
@@ -109,7 +97,8 @@ pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
 
   if (dictionary.has_key("Annots")) {
     // TODO why rvalue not working?
-    Array annotations = parser.resolve_object(dictionary["Annots"]).as_array();
+    Array annotations =
+        parser.resolve_object_copy(dictionary["Annots"]).as_array();
     for (const Object &annotation : annotations) {
       page->annotations.push_back(
           parse_annotation(parser, annotation.as_reference(), document));
@@ -268,13 +257,13 @@ void DocumentParser::deep_resolve_object(Object &object) {
   }
 }
 
-Object DocumentParser::resolve_object(const Object &object) {
+Object DocumentParser::resolve_object_copy(const Object &object) {
   Object result = object;
   resolve_object(result);
   return result;
 }
 
-Object DocumentParser::deep_resolve_object(const Object &object) {
+Object DocumentParser::deep_resolve_object_copy(const Object &object) {
   Object result = object;
   deep_resolve_object(result);
   return result;
