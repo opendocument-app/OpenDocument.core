@@ -19,10 +19,10 @@ struct IndirectObject {
 
 struct Trailer {
   std::uint32_t size;
-  ObjectReference root_reference;
-  ObjectReference info_reference;
 
   Dictionary dictionary;
+
+  const ObjectReference &root_reference() const;
 };
 
 struct Xref {
@@ -34,6 +34,8 @@ struct Xref {
   using Table = std::map<std::uint32_t, Entry>;
 
   Table table;
+
+  void append(const Xref &xref);
 };
 
 struct StartXref {

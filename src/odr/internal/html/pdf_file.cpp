@@ -71,9 +71,12 @@ Html html::translate_pdf_file(const PdfFile &pdf_file,
           o << "height:" << page_box[3].as_real() / 72.0 << "in;";
         }));
 
-    pdf::IndirectObject page_contents_object =
-        parser.read_object(page->contents_reference);
-    std::string stream = parser.read_object_stream(page_contents_object);
+    std::string stream;
+    for (const auto &content_reference : page->contents_reference) {
+      pdf::IndirectObject page_contents_object =
+          parser.read_object(content_reference);
+      stream += parser.read_object_stream(page_contents_object);
+    }
     std::string page_content = crypto::util::zlib_inflate(stream);
 
     std::istringstream ss(page_content);

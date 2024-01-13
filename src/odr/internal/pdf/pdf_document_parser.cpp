@@ -39,26 +39,31 @@ pdf::Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   return font;
 }
 
-pdf::Resources *parse_resources(DocumentParser &parser,
-                                const ObjectReference &reference,
+pdf::Resources *parse_resources(DocumentParser &parser, const Object &object,
                                 Document &document) {
   Resources *resources = document.create_element<Resources>();
 
-  IndirectObject object = parser.read_object(reference);
-  const Dictionary &dictionary = object.object.as_dictionary();
-
   resources->type = Type::resources;
-  resources->object_reference = reference;
+
+  Dictionary dictionary;
+  if (object.is_reference()) {
+    IndirectObject ind_object = parser.read_object(object.as_reference());
+    resources->object_reference = object.as_reference();
+  } else {
+    dictionary = object.as_dictionary();
+  }
+
   resources->object = dictionary;
 
+  Dictionary font_table;
   if (dictionary["Font"].is_reference()) {
-    Dictionary table = parser.read_object(dictionary["Font"].as_reference())
-                           .object.as_dictionary();
-    for (const auto &[key, value] : table) {
-      resources->font[key] = parse_font(parser, value.as_reference(), document);
-    }
+    font_table = parser.read_object(dictionary["Font"].as_reference())
+                     .object.as_dictionary();
   } else {
-    throw std::runtime_error("problem");
+    font_table = dictionary["Font"].as_dictionary();
+  }
+  for (const auto &[key, value] : font_table) {
+    resources->font[key] = parse_font(parser, value.as_reference(), document);
   }
 
   return resources;
@@ -90,9 +95,15 @@ pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   page->object_reference = reference;
   page->object = dictionary;
   page->parent = dynamic_cast<Pages *>(parent);
-  page->contents_reference = dictionary["Contents"].as_reference();
-  page->resources =
-      parse_resources(parser, dictionary["Resources"].as_reference(), document);
+  page->resources = parse_resources(parser, dictionary["Resources"], document);
+
+  if (dictionary["Contents"].is_reference()) {
+    page->contents_reference = {dictionary["Contents"].as_reference()};
+  } else {
+    for (const auto &e : dictionary["Contents"].as_array()) {
+      page->contents_reference.push_back(e.as_reference());
+    }
+  }
 
   if (dictionary.has_key("Annots")) {
     for (Object annotation : dictionary["Annots"].as_array()) {
@@ -198,14 +209,31 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
 std::unique_ptr<Document> DocumentParser::parse_document() {
   parser().seek_start_xref();
   StartXref start_xref = parser().read_start_xref();
-  in().seekg(start_xref.start);
 
-  m_xref = parser().read_xref();
-  parser().parser().skip_whitespace();
-  Trailer trailer = parser().read_trailer();
+  std::uint32_t xref_position = start_xref.start;
+  std::optional<Trailer> trailer;
+
+  while (true) {
+    in().seekg(xref_position);
+
+    m_xref.append(parser().read_xref());
+    parser().parser().skip_whitespace();
+    Trailer new_trailer = parser().read_trailer();
+    if (!trailer) {
+      trailer = new_trailer;
+    }
+
+    if (new_trailer.dictionary.has_key("Prev")) {
+      xref_position = new_trailer.dictionary["Prev"].as_integer();
+      continue;
+    }
+
+    break;
+  }
 
   auto document = std::make_unique<Document>();
-  document->catalog = parse_catalog(*this, trailer.root_reference, *document);
+  document->catalog =
+      parse_catalog(*this, trailer->root_reference(), *document);
   return document;
 }
 

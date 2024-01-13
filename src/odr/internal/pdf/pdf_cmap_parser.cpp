@@ -76,10 +76,10 @@ void CMapParser::read_bfchar(std::uint32_t n, CMap &cmap) const {
         reinterpret_cast<const char16_t *>(unicode.data()), unicode.size() / 2);
 
     if (glyph.length() != 1) {
-      throw std::runtime_error("unexpected glyph length");
+      std::cerr << "unexpected glyph length" << std::endl;
     }
     if (unicode16.length() != 1) {
-      throw std::runtime_error("unexpected unicode length");
+      std::cerr << "unexpected unicode length" << std::endl;
     }
 
     cmap.map_bfchar(glyph[0], unicode16[0]);
