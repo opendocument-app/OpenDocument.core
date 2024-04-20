@@ -185,7 +185,7 @@ jobs:
           CXX: ${{ matrix.config.cxx }}
         run: cmake -B test/downstream/build -S test/downstream -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: build
-        run: cmake --build build --config Release # `config Release` somehow necessary for windows
+        run: cmake --build test/downstream/build --config Release # `config Release` somehow necessary for windows
 
       - name: run
         run: test/downstream/build/odr-test-downstream
