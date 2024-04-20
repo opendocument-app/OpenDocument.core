@@ -188,5 +188,8 @@ jobs:
         run: cmake --build test/downstream/build --config Release # `config Release` somehow necessary for windows
 
       - name: run
+        if: !startsWith(matrix.config.os, 'windows')
         run: test/downstream/build/odr-test-downstream
-        shell: bash
+      - name: run
+        if: startsWith(matrix.config.os, 'windows')
+        run: test/downstream/build/Release/odr-test-downstream.exe
