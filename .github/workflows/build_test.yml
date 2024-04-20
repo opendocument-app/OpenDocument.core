@@ -129,3 +129,67 @@ jobs:
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-private/output
       - name: compare private test outputs
         run: python3 -u test/scripts/compare_output.py --driver firefox --max-workers 1 test/data/reference-output/odr-private/output build/test/output/odr-private/output
+
+  build-test-downstream:
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { os: ubuntu-22.04, compiler: clang, cc: clang-15, cxx: clang++-15 }
+          - { os: ubuntu-22.04, compiler: gcc, cc: gcc-13, cxx: g++-13 }
+          - { os: macos-12, compiler: clang, cc: clang, cxx: clang++ }
+          - { os: windows-2022, compiler: msvc }
+
+    steps:
+      - name: ubuntu install ccache
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt install ccache
+          ccache -V
+      - name: macos install ccache
+        if: runner.os == 'macOS'
+        run: |
+          brew install ccache
+          ccache -V
+
+      - name: set up python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: install python dependencies
+        run: pip install --upgrade pip conan==1.*
+
+      - name: cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.ccache
+            /Users/runner/Library/Caches/ccache
+            ~/.conan/data
+            C:/.conan
+            C:/Users/runneradmin/.conan/data
+          key: ${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ env.CCACHE_KEY_SUFFIX }}
+          restore-keys: |
+            ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: conan
+        run: conan export . odrcore/0.0.0@
+
+      - name: cmake
+        env:
+          CC: ${{ matrix.config.cc }}
+          CXX: ${{ matrix.config.cxx }}
+        run: cmake -B test/downstream/build -S test/downstream -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: build
+        run: cmake --build test/downstream/build --config Release # `config Release` somehow necessary for windows
+
+      - name: run
+        if: runner.os != 'Windows'
+        run: test/downstream/build/odr-test-downstream
+      - name: run
+        if: runner.os == 'Windows'
+        run: test/downstream/build/Release/odr-test-downstream.exe
