@@ -188,4 +188,5 @@ jobs:
         run: cmake --build test/downstream/build --config Release # `config Release` somehow necessary for windows
 
       - name: run
-        run: ${{ github.workspace }}/test/downstream/build/odr-test-downstream
+        run: test/downstream/build/odr-test-downstream
+        shell: bash
