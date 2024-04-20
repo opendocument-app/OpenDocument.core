@@ -190,6 +190,6 @@ jobs:
       - name: run
         if: !startsWith(matrix.config.os, 'windows')
         run: test/downstream/build/odr-test-downstream
-      - name: run
+      - name: run windows
         if: startsWith(matrix.config.os, 'windows')
         run: test/downstream/build/Release/odr-test-downstream.exe
