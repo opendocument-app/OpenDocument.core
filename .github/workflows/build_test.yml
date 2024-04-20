@@ -143,12 +143,12 @@ jobs:
 
     steps:
       - name: ubuntu install ccache
-        if: startsWith(matrix.config.os, 'ubuntu')
+        if: runner.os == 'Linux'
         run: |
           sudo apt install ccache
           ccache -V
       - name: macos install ccache
-        if: startsWith(matrix.config.os, 'macos')
+        if: runner.os == 'macOS'
         run: |
           brew install ccache
           ccache -V
@@ -188,8 +188,8 @@ jobs:
         run: cmake --build test/downstream/build --config Release # `config Release` somehow necessary for windows
 
       - name: run
-        if: !startsWith(matrix.config.os, 'windows')
+        if: runner.os != 'Windows'
         run: test/downstream/build/odr-test-downstream
-      - name: run windows
-        if: startsWith(matrix.config.os, 'windows')
+      - name: run
+        if: runner.os == 'Windows'
         run: test/downstream/build/Release/odr-test-downstream.exe
