@@ -190,12 +190,16 @@ jobs:
       - name: conan
         run: conan export . --name odrcore --version 0.0.0
 
-      - name: cmake
+      - name: conan detect profile
+        run: conan profile detect
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
+
+      - name: cmake
         run: |
           cmake -S test/downstream -B test/downstream/build \
+            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: build
