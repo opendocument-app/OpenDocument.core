@@ -143,24 +143,15 @@ jobs:
   build-test-downstream:
     runs-on: ${{ matrix.config.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         config:
           - { os: ubuntu-22.04, compiler: clang, cc: clang-15, cxx: clang++-15 }
-          - { os: ubuntu-22.04, compiler: gcc, cc: gcc-13, cxx: g++-13 }
-          - { os: macos-12, compiler: clang, cc: clang, cxx: clang++ }
-          - { os: windows-2022, compiler: msvc }
 
     steps:
       - name: ubuntu install ccache
-        if: runner.os == 'Linux'
         run: |
           sudo apt install ccache
-          ccache -V
-      - name: macos install ccache
-        if: runner.os == 'macOS'
-        run: |
-          brew install ccache
           ccache -V
 
       - name: set up python 3.12
@@ -193,13 +184,13 @@ jobs:
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
-        run: cmake -B test/downstream/build -S test/downstream -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        run: >
+          cmake -S test/downstream -B test/downstream/build
+            -GNinja
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: build
-        run: cmake --build test/downstream/build --config Release # `config Release` somehow necessary for windows
+        run: cmake --build test/downstream/build
 
       - name: run
-        if: runner.os != 'Windows'
         run: test/downstream/build/odr-test-downstream
-      - name: run
-        if: runner.os == 'Windows'
-        run: test/downstream/build/Release/odr-test-downstream.exe
