@@ -69,11 +69,11 @@ jobs:
           CXX: ${{ matrix.config.cxx }}
 
       - name: cmake
-        run: >
-          cmake -S . -B build
-            -GNinja
-            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake
-            -DCMAKE_BUILD_TYPE=Release
+        run: |
+          cmake -S . -B build \
+            -GNinja \
+            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake \
+            -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: build
         run: >
