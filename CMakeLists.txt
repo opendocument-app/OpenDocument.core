@@ -28,7 +28,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif ()
 
 if (NOT DEFINED CONAN_EXPORTED)
-    include("cmake/conan.cmake")
+    include("cmake/conan_provider.cmake")
     conan_cmake_configure(GENERATORS cmake)
     conan_cmake_autodetect(settings)
     conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_CURRENT_LIST_DIR}
