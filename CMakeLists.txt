@@ -31,7 +31,7 @@ if (NOT DEFINED CONAN_EXPORTED)
     include("cmake/conan.cmake")
     conan_cmake_configure(GENERATORS cmake)
     conan_cmake_autodetect(settings)
-    conan_cmake_install(PATH_OR_REFERENCE ".."
+    conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_CURRENT_LIST_DIR}
             BUILD missing
             SETTINGS ${settings}
             ENV CC=${CMAKE_C_COMPILER}
