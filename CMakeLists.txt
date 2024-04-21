@@ -27,20 +27,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 endif ()
 
-if (NOT DEFINED CONAN_EXPORTED)
-    include("cmake/conan_provider.cmake")
-    conan_cmake_configure(GENERATORS cmake)
-    conan_cmake_autodetect(settings)
-    conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_CURRENT_LIST_DIR}
-            BUILD missing
-            SETTINGS ${settings}
-            ENV CC=${CMAKE_C_COMPILER}
-            ENV CXX=${CMAKE_CXX_COMPILER})
-    #include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-    #conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
-    include("${CMAKE_BINARY_DIR}/conan_paths.cmake")
-endif ()
-
 find_package(pugixml REQUIRED)
 find_package(miniz REQUIRED)
 find_package(cryptopp REQUIRED)

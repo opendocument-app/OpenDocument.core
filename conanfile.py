@@ -24,16 +24,18 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": True,
     }
 
+    generators = "CMakeToolchain", "CMakeDeps"
+
     exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
 
-    def build_requirements(self):
-        self.build_requires("pugixml/1.14")
-        self.build_requires("cryptopp/8.8.0")
-        self.build_requires("miniz/3.0.2")
-        self.build_requires("nlohmann_json/3.11.3")
-        self.build_requires("vincentlaucsb-csv-parser/2.1.3")
-        self.build_requires("uchardet/0.0.7")
-        self.build_requires("utfcpp/4.0.4")
+    def requirements(self):
+        self.requires("pugixml/1.14")
+        self.requires("cryptopp/8.8.0")
+        self.requires("miniz/3.0.2")
+        self.requires("nlohmann_json/3.11.3")
+        self.requires("vincentlaucsb-csv-parser/2.1.3")
+        self.requires("uchardet/0.0.7")
+        self.requires("utfcpp/4.0.4")
 
         self.test_requires("gtest/1.14.0")
 
@@ -43,15 +45,6 @@ class OpenDocumentCoreConan(ConanFile):
 
     def layout(self):
         cmake_layout(self)
-
-    def generate(self):
-        # This generates "conan_toolchain.cmake" in self.generators_folder
-        tc = CMakeToolchain(self)
-        tc.generate()
-
-        # This generates "*-config.cmake" in self.generators_folder
-        deps = CMakeDeps(self)
-        deps.generate()
 
     def export(self):
         git = Git(self, self.recipe_folder)
