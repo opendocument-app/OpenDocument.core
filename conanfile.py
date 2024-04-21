@@ -1,4 +1,9 @@
-from conans import ConanFile, CMake
+from conan import ConanFile
+from conan.tools import check_min_cppstd
+from conan.tools.files import copy
+from conan.tools.scm import Git
+from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake, cmake_layout
+from conan.tools.files import update_conandata
 
 
 class OpenDocumentCoreConan(ConanFile):
@@ -21,10 +26,46 @@ class OpenDocumentCoreConan(ConanFile):
 
     exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
 
-    requires = ["pugixml/1.14", "cryptopp/8.8.0", "miniz/3.0.2", "nlohmann_json/3.11.3",
-                "vincentlaucsb-csv-parser/2.1.3", "uchardet/0.0.7", "utfcpp/4.0.4",
-                "gtest/1.14.0"]
-    generators = "cmake_paths", "cmake_find_package"
+    def build_requirements(self):
+        self.build_requires("pugixml/1.14")
+        self.build_requires("cryptopp/8.8.0")
+        self.build_requires("miniz/3.0.2")
+        self.build_requires("nlohmann_json/3.11.3")
+        self.build_requires("vincentlaucsb-csv-parser/2.1.3")
+        self.build_requires("uchardet/0.0.7")
+        self.build_requires("utfcpp/4.0.4")
+
+        self.test_requires("gtest/1.14.0")
+
+    def validate(self):
+        if self.settings.get_safe("compiler.cppstd"):
+            check_min_cppstd(self, 17)
+
+    def layout(self):
+        cmake_layout(self)
+
+    def generate(self):
+        # This generates "conan_toolchain.cmake" in self.generators_folder
+        tc = CMakeToolchain(self)
+        tc.generate()
+
+        # This generates "*-config.cmake" in self.generators_folder
+        deps = CMakeDeps(self)
+        deps.generate()
+
+    def export(self):
+        git = Git(self, self.recipe_folder)
+        scm_url, scm_commit = git.get_url_and_commit()
+        update_conandata(self, {"sources": {"commit": scm_commit, "url": scm_url}})
+
+    def source(self):
+        git = Git(self)
+        sources = self.conan_data["sources"]
+        git.clone(url=sources["url"], target=".")
+        git.checkout(commit=sources["commit"])
+
+    def configure(self):
+        pass
 
     _cmake = None
 
@@ -43,7 +84,7 @@ class OpenDocumentCoreConan(ConanFile):
         cmake.build()
 
     def package(self):
-        self.copy("*.hpp", src="src", dst="include")
+        copy(self, "*.hpp", src=self.recipe_folder / "src", dst=self.export_sources_folder / "include")
 
         cmake = self._configure_cmake()
         cmake.install()

@@ -44,7 +44,7 @@ jobs:
         with:
           python-version: 3.8
       - name: install python dependencies
-        run: pip install --upgrade pip conan==1.*
+        run: pip install --upgrade pip conan
 
       - name: cache
         uses: actions/cache@v2
@@ -158,7 +158,7 @@ jobs:
         with:
           python-version: 3.8
       - name: install python dependencies
-        run: pip install --upgrade pip conan==1.*
+        run: pip install --upgrade pip conan
 
       - name: cache
         uses: actions/cache@v2
