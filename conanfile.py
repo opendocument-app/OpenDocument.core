@@ -60,26 +60,24 @@ class OpenDocumentCoreConan(ConanFile):
     def configure(self):
         pass
 
-    _cmake = None
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.definitions["CMAKE_PROJECT_VERSION"] = self.version
+        tc.definitions["BUILD_SHARED_LIBS"] = self.options.shared
+        tc.definitions["ODR_TEST"] = False
+        tc.generate()
 
-    def _configure_cmake(self):
-        if self._cmake:
-            return self._cmake
-        self._cmake = CMake(self)
-        self._cmake.definitions["CMAKE_PROJECT_VERSION"] = self.version
-        self._cmake.definitions["BUILD_SHARED_LIBS"] = self.options.shared
-        self._cmake.definitions["ODR_TEST"] = False
-        self._cmake.configure()
-        return self._cmake
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
-        cmake = self._configure_cmake()
+        cmake = CMake(self)
         cmake.build()
 
     def package(self):
         copy(self, "*.hpp", src=self.recipe_folder / "src", dst=self.export_sources_folder / "include")
 
-        cmake = self._configure_cmake()
+        cmake = CMake(self)
         cmake.install()
 
     def package_info(self):

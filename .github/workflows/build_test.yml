@@ -62,13 +62,22 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
+      - name: conan
+        run: conan install . --build missing
+
       - name: cmake
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        run: >
+          cmake -B build -S .
+            -DCMAKE_TOOLCHAIN_FILE=generators/conan_toolchain.cmake
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: build
-        run: cmake --build build --config Release # `config Release` somehow necessary for windows
+        run: >
+          # `config Release` somehow necessary for windows
+          cmake --build build --config Release
 
       - name: upload binaries
         uses: actions/upload-artifact@v2
