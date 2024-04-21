@@ -182,7 +182,7 @@ target_link_libraries(odr
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
-        utf8cpp::utf8cpp
+        utf8::cpp
 )
 
 add_subdirectory("cli")

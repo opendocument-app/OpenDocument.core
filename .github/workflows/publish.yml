@@ -9,15 +9,15 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
+      - name: set up python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: install python dependencies
         run: pip install --upgrade pip conan
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 

@@ -39,15 +39,15 @@ jobs:
           brew install ccache
           ccache -V
 
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
+      - name: setup python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: install python dependencies
         run: pip install --upgrade pip conan
 
       - name: cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.ccache
@@ -60,20 +60,19 @@ jobs:
             ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: conan detect profile
         run: conan profile detect
-      - name: conan install
-        run: conan install . --build missing
-
-      - name: cmake
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
+
+      - name: cmake
         run: >
-          cmake -B build -S .
-            -DCMAKE_TOOLCHAIN_FILE=generators/conan_toolchain.cmake
+          cmake -S . -B build
+            -GNinja
+            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: build
@@ -82,7 +81,7 @@ jobs:
           cmake --build build --config Release
 
       - name: upload binaries
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
           path: |
@@ -106,13 +105,13 @@ jobs:
         if: startsWith(matrix.config.os, 'macos')
         run: brew install tidy-html5
 
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
+      - name: set up python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_ANDIWAND }}
           submodules: true
@@ -120,7 +119,7 @@ jobs:
       - run: pip install -r test/scripts/requirements.txt
 
       - name: download binaries
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.config.bin }}
           path: build/test
@@ -164,15 +163,15 @@ jobs:
           brew install ccache
           ccache -V
 
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
+      - name: set up python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: install python dependencies
         run: pip install --upgrade pip conan
 
       - name: cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.ccache
@@ -185,7 +184,7 @@ jobs:
             ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: conan
         run: conan export . odrcore/0.0.0@

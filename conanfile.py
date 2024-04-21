@@ -24,8 +24,6 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": True,
     }
 
-    generators = "CMakeToolchain", "CMakeDeps"
-
     exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
 
     def requirements(self):
@@ -62,9 +60,9 @@ class OpenDocumentCoreConan(ConanFile):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.definitions["CMAKE_PROJECT_VERSION"] = self.version
-        tc.definitions["BUILD_SHARED_LIBS"] = self.options.shared
-        tc.definitions["ODR_TEST"] = False
+        tc.variables["CMAKE_PROJECT_VERSION"] = self.version
+        tc.variables["BUILD_SHARED_LIBS"] = self.options.shared
+        tc.variables["ODR_TEST"] = False
         tc.generate()
 
         deps = CMakeDeps(self)

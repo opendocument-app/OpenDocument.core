@@ -17,18 +17,26 @@ jobs:
     steps:
       - run: clang-tidy --version
 
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
+      - name: setup python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: install python dependencies
         run: pip install --upgrade pip conan
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: conan detect profile
+        run: conan profile detect
 
       - name: cmake
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DODR_CLANG_TIDY=ON
+        run: >
+          cmake -S . -B build
+            -GNinja
+            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake
+            -DCMAKE_BUILD_TYPE=Release
+            -DODR_CLANG_TIDY=ON
 
       - name: clang-tidy
         run: cmake --build build
