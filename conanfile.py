@@ -1,5 +1,5 @@
 from conan import ConanFile
-from conan.tools import check_min_cppstd
+from conan.tools.build import check_min_cppstd
 from conan.tools.files import copy
 from conan.tools.scm import Git
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake, cmake_layout
