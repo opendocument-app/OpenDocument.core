@@ -199,7 +199,7 @@ jobs:
       - name: cmake
         run: |
           cmake -S test/downstream -B test/downstream/build \
-            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake \
+            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=../../cmake/conan_provider.cmake \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: build
