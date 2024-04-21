@@ -62,7 +62,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: conan
+      - name: conan detect profile
+        run: conan profile detect
+      - name: conan install
         run: conan install . --build missing
 
       - name: cmake
