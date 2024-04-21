@@ -14,7 +14,7 @@ class OpenDocumentCoreConan(ConanFile):
     topics = "open document", "openoffice xml", "open document reader"
     license = "GPL 3.0"
 
-    settings = "os", "arch", "compiler", "compiler.cppstd", "build_type"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -39,7 +39,7 @@ class OpenDocumentCoreConan(ConanFile):
 
         self.test_requires("gtest/1.14.0")
 
-    def validate(self):
+    def validate_build(self):
         if self.settings.get_safe("compiler.cppstd"):
             check_min_cppstd(self, 17)
 
