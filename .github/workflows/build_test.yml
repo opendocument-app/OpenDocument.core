@@ -71,12 +71,11 @@ jobs:
       - name: cmake
         run: |
           cmake -S . -B build \
-            -GNinja \
             -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: build
-        run: >
+        run: |
           # `config Release` somehow necessary for windows
           cmake --build build --config Release
 
@@ -184,10 +183,9 @@ jobs:
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
-        run: >
-          cmake -S test/downstream -B test/downstream/build
-            -GNinja
-            -DCMAKE_BUILD_TYPE=Release
+        run: |
+          cmake -S test/downstream -B test/downstream/build \
+            -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: build
         run: cmake --build test/downstream/build

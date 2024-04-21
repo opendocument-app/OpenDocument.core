@@ -31,11 +31,10 @@ jobs:
         run: conan profile detect
 
       - name: cmake
-        run: >
-          cmake -S . -B build
-            -GNinja
-            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake
-            -DCMAKE_BUILD_TYPE=Release
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake \
+            -DCMAKE_BUILD_TYPE=Release \
             -DODR_CLANG_TIDY=ON
 
       - name: clang-tidy
