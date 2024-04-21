@@ -14,7 +14,7 @@ class OpenDocumentCoreConan(ConanFile):
     topics = "open document", "openoffice xml", "open document reader"
     license = "GPL 3.0"
 
-    settings = "os", "compiler", "cppstd", "build_type", "arch"
+    settings = "os", "arch", "compiler", "compiler.cppstd", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
