@@ -51,7 +51,7 @@ jobs:
       - name: conan repo
         run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan login
-        run: conan --remote odr --password ${{ secrets.ARTIFACTORY }} admin
+        run: conan user --remote odr --password ${{ secrets.ARTIFACTORY }} admin
 
       - name: cache
         uses: actions/cache@v2
