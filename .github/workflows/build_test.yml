@@ -78,7 +78,7 @@ jobs:
         run: cmake --build build --config Release # `config Release` somehow necessary for windows
 
       - name: upload binaries to conan repo
-        run: conan upload "*" --confirm
+        run: conan upload "*" --confirm --remote odr
 
       - name: upload binaries to github
         uses: actions/upload-artifact@v2
