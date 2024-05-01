@@ -33,4 +33,4 @@ jobs:
         run: conan create conanfile.py odrcore/${VERSION}@ -s compiler.libcxx=libstdc++11 --build missing
 
       - name: upload to conan repo
-        run: conan upload "*" --remote odr --confirm --all --no-overwrite recipe
+        run: conan upload "*" --remote odr --confirm --all --no-overwrite all
