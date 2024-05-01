@@ -48,8 +48,11 @@ jobs:
 
       - name: conan config
         run: conan config set general.revisions_enabled=1
-      - name: conan repo
-        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan remote
+        run: |
+          conan remote clean
+          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+          conan remote add conancenter https://center.conan.io
       - name: conan login
         run: conan user --remote odr --password ${{ secrets.ARTIFACTORY }} admin
 
@@ -78,7 +81,7 @@ jobs:
         run: cmake --build build --config Release # `config Release` somehow necessary for windows
 
       - name: upload binaries to conan repo
-        run: conan upload "*" --confirm --remote odr
+        run: conan upload "*" --remote odr --confirm --all --no-overwrite all
 
       - name: upload binaries to github
         uses: actions/upload-artifact@v2
