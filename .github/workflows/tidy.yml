@@ -24,6 +24,11 @@ jobs:
       - name: install python dependencies
         run: pip install --upgrade pip conan==1.*
 
+      - name: conan config
+        run: conan config set general.revisions_enabled=1
+      - name: conan repo
+        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+
       - name: checkout
         uses: actions/checkout@v2
 

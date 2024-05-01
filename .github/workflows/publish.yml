@@ -16,9 +16,21 @@ jobs:
       - name: install python dependencies
         run: pip install --upgrade pip conan==1.*
 
+      - name: conan config
+        run: conan config set general.revisions_enabled=1
+      - name: conan repo
+        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan login
+        run: conan user --remote odr --password ${{ secrets.ARTIFACTORY }} admin
+
       - name: checkout
         uses: actions/checkout@v2
 
-      - run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+      - name: get version
+        run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
-      - run: conan create conanfile.py odrcore/${VERSION}@ -s compiler.libcxx=libstdc++11 --build missing
+      - name: create conan package
+        run: conan create conanfile.py odrcore/${VERSION}@ -s compiler.libcxx=libstdc++11 --build missing
+
+      - name: upload to conan repo
+        run: conan upload "*" --confirm --remote odr
