@@ -46,6 +46,11 @@ jobs:
       - name: install python dependencies
         run: pip install --upgrade pip conan==1.*
 
+      - name: conan config
+        run: conan config set general.revisions_enabled=1
+      - name: conan repo
+        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+
       - name: cache
         uses: actions/cache@v2
         with:
@@ -70,7 +75,10 @@ jobs:
       - name: build
         run: cmake --build build --config Release # `config Release` somehow necessary for windows
 
-      - name: upload binaries
+      - name: upload binaries to conan repo
+        run: conan upload "*" --confirm
+
+      - name: upload binaries to github
         uses: actions/upload-artifact@v2
         with:
           name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
