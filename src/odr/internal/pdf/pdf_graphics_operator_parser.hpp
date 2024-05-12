@@ -21,8 +21,6 @@ public:
   std::streambuf &sb() const;
 
   std::string read_operator_name() const;
-  SimpleArrayElement read_array_element() const;
-  SimpleArray read_array() const;
 
   GraphicsOperator read_operator() const;
 

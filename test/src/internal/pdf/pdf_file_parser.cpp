@@ -107,8 +107,7 @@ TEST(FileParser, bar) {
   std::cout << "xref" << std::endl;
   for (const auto &entry : xref.table) {
     std::cout << entry.first << " " << entry.second.position << " "
-              << entry.second.generation << " " << entry.second.in_use
-              << std::endl;
+              << entry.second.in_use << std::endl;
   }
 
   std::cout << "trailer" << std::endl;
@@ -117,7 +116,7 @@ TEST(FileParser, bar) {
   }
 
   ObjectReference root_ref = trailer["Root"].as_reference();
-  std::uint32_t root_pos = xref.table.at(root_ref.id).position;
+  std::uint32_t root_pos = xref.table.at(root_ref).position;
   parser.in().seekg(root_pos);
   IndirectObject root = parser.read_indirect_object();
   std::cout << "root" << std::endl;
