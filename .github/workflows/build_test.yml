@@ -187,6 +187,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
+      - name: conan
+        run: conan export . odrcore/0.0.0@
+
       - name: cmake
         env:
           CC: ${{ matrix.config.cc }}
