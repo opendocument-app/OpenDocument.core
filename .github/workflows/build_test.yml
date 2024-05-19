@@ -76,9 +76,15 @@ jobs:
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        run: |
+          cmake -B build -S . \
+           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+           -DCMAKE_BUILD_TYPE=Release \
+           -DCMAKE_INSTALL_PREFIX=install
       - name: build
         run: cmake --build build --config Release # `config Release` somehow necessary for windows
+      - name: install
+        run: cmake --build build --target install
 
       - name: upload binaries to conan repo
         run: conan upload "*" --remote odr --confirm --all --no-overwrite all
@@ -88,7 +94,23 @@ jobs:
         with:
           name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
           path: |
-            build/test/odr_test
+            install
+
+  docker:
+    needs: build
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        config:
+          - { os: ubuntu-22.04, bin: bin-ubuntu-22.04-clang }
+
+    steps:
+      - name: download binaries
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.config.bin }}
+          path: install
 
   test:
     needs: build
@@ -125,12 +147,12 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: ${{ matrix.config.bin }}
-          path: build/test
+          path: install/test
       - name: fix artifact permissions
-        run:  chmod +x build/test/odr_test
+        run:  chmod +x install/test/odr_test
 
       - name: test
-        working-directory: build/test
+        working-directory: install/test
         run: ./odr_test
 
       - name: tidy public test outputs
