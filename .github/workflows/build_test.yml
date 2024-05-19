@@ -13,7 +13,7 @@ concurrency:
 env:
   CCACHE_DIR: ${{ github.workspace }}/ccache
   CCACHE_MAXSIZE: 500M
-  CCACHE_KEY_SUFFIX: r20
+  CCACHE_KEY_SUFFIX: r21
 
 jobs:
   build:
@@ -22,10 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-22.04, compiler: clang, cc: clang-15, cxx: clang++-15 }
-          - { os: ubuntu-22.04, compiler: gcc, cc: gcc-13, cxx: g++-13 }
-          - { os: macos-12, compiler: clang, cc: clang, cxx: clang++ }
-          - { os: windows-2022, compiler: msvc }
+          - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
+          - { os: ubuntu-22.04, compiler: gcc-12, cc: gcc-12, cxx: g++-12 }
+          - { os: macos-12, compiler: clang-14, cc: clang, cxx: clang++ }
+          - { os: windows-2022, compiler: msvc-1939 }
 
     steps:
       - name: ubuntu install ccache
@@ -78,9 +78,9 @@ jobs:
           CXX: ${{ matrix.config.cxx }}
         run: >
           cmake -B build -S .
-           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-           -DCMAKE_BUILD_TYPE=Release
-           -DCMAKE_INSTALL_PREFIX=install
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_PREFIX=install
       - name: build
         run: cmake --build build --config Release # `config Release` somehow necessary for windows
       - name: install
@@ -119,8 +119,8 @@ jobs:
       fail-fast: true
       matrix:
         config:
-          - { os: ubuntu-22.04, bin: bin-ubuntu-22.04-clang }
-          - { os: macos-12, bin: bin-macos-12-clang }
+          - { os: ubuntu-22.04, bin: bin-ubuntu-22.04-clang-15 }
+          - { os: macos-12, bin: bin-macos-12-clang-14 }
 
     steps:
       - name: ubuntu install tidy
@@ -171,10 +171,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-22.04, compiler: clang, cc: clang-15, cxx: clang++-15 }
-          - { os: ubuntu-22.04, compiler: gcc, cc: gcc-13, cxx: g++-13 }
-          - { os: macos-12, compiler: clang, cc: clang, cxx: clang++ }
-          - { os: windows-2022, compiler: msvc }
+          - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
+          - { os: ubuntu-22.04, compiler: gcc-12, cc: gcc-12, cxx: g++-12 }
+          - { os: macos-12, compiler: clang-14, cc: clang, cxx: clang++ }
+          - { os: windows-2022, compiler: msvc-1939 }
 
     steps:
       - name: ubuntu install ccache
@@ -195,18 +195,13 @@ jobs:
       - name: install python dependencies
         run: pip install --upgrade pip conan==1.*
 
-      - name: cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.ccache
-            /Users/runner/Library/Caches/ccache
-            ~/.conan/data
-            C:/.conan
-            C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ env.CCACHE_KEY_SUFFIX }}
-          restore-keys: |
-            ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
+      - name: conan config
+        run: conan config set general.revisions_enabled=1
+      - name: conan remote
+        run: |
+          conan remote clean
+          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+          conan remote add conancenter https://center.conan.io
 
       - name: checkout
         uses: actions/checkout@v2
@@ -218,7 +213,9 @@ jobs:
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
-        run: cmake -B test/downstream/build -S test/downstream -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        run: >
+          cmake -B test/downstream/build -S test/downstream
+          -DCMAKE_BUILD_TYPE=Release
       - name: build
         run: cmake --build test/downstream/build --config Release # `config Release` somehow necessary for windows
 
