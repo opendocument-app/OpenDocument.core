@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-RUN mkdir -p /install/cli
-ADD install/cli /install/cli
+RUN mkdir -p /install/bin
+ADD install/bin /install/bin
 
-ENTRYPOINT /install/cli/translate
+ENTRYPOINT /install/bin/translate
