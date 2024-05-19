@@ -13,12 +13,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
       - run: clang-tidy --version
 
       - name: set up python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
       - name: install python dependencies
@@ -33,7 +32,7 @@ jobs:
           conan remote add conancenter https://center.conan.io
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: cmake
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DODR_CLANG_TIDY=ON
