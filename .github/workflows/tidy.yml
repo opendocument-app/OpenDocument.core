@@ -29,8 +29,8 @@ jobs:
       - name: conan remote
         run: |
           conan remote clean
-          conan remote add conancenter https://center.conan.io
           conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+          conan remote add conancenter https://center.conan.io
 
       - name: checkout
         uses: actions/checkout@v2
