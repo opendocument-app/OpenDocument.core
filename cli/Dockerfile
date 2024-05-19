@@ -1,5 +1,5 @@
 FROM ubuntu:22.04
 
-ADD install /install
+ADD install/cli /install/cli
 
 ENTRYPOINT /install/cli/translate
