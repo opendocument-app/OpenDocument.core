@@ -97,8 +97,8 @@ jobs:
       fail-fast: true
       matrix:
         config:
-          - { os: ubuntu-22.04, bin: bin-ubuntu-22.04-clang-15 }
-          - { os: macos-12, bin: bin-macos-12-clang-14 }
+          - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
+          - { os: macos-12, compiler: clang-14, cc: clang, cxx: clang++ }
 
     steps:
       - name: ubuntu install tidy
@@ -124,7 +124,7 @@ jobs:
       - name: download binaries
         uses: actions/download-artifact@v2
         with:
-          name: ${{ matrix.config.bin }}
+          name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
           path: build/test
       - name: fix artifact permissions
         run:  chmod +x build/test/odr_test
