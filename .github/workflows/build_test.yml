@@ -26,7 +26,6 @@ jobs:
           - { os: ubuntu-22.04, compiler: gcc-12, cc: gcc-12, cxx: g++-12 }
           - { os: macos-12, compiler: clang-14, cc: clang, cxx: clang++ }
           - { os: windows-2022, compiler: msvc-1939 }
-
     steps:
       - name: ubuntu install ccache
         if: startsWith(matrix.config.os, 'ubuntu')
@@ -40,7 +39,7 @@ jobs:
           ccache -V
 
       - name: set up python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
       - name: install python dependencies
@@ -57,7 +56,7 @@ jobs:
         run: conan user --remote odr --password ${{ secrets.ARTIFACTORY }} admin
 
       - name: cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.ccache
@@ -70,7 +69,7 @@ jobs:
             ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: cmake
         env:
@@ -92,7 +91,7 @@ jobs:
         run: conan upload "*" --remote odr --confirm --all
 
       - name: upload binaries to github
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
           path: |
@@ -107,12 +106,11 @@ jobs:
       matrix:
         config:
           - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
-
     steps:
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v2
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -137,10 +135,10 @@ jobs:
             type=sha
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: download binaries
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
           path: cli
@@ -168,7 +166,6 @@ jobs:
         config:
           - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
           - { os: macos-12, compiler: clang-14, cc: clang, cxx: clang++ }
-
     steps:
       - name: ubuntu install tidy
         if: startsWith(matrix.config.os, 'ubuntu')
@@ -178,12 +175,12 @@ jobs:
         run: brew install tidy-html5
 
       - name: set up python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_ANDIWAND }}
           submodules: true
@@ -191,7 +188,7 @@ jobs:
       - run: pip install -r test/scripts/requirements.txt
 
       - name: download binaries
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
           path: .
@@ -222,7 +219,6 @@ jobs:
           - { os: ubuntu-22.04, compiler: gcc-12, cc: gcc-12, cxx: g++-12 }
           - { os: macos-12, compiler: clang-14, cc: clang, cxx: clang++ }
           - { os: windows-2022, compiler: msvc-1939 }
-
     steps:
       - name: ubuntu install ccache
         if: runner.os == 'Linux'
@@ -236,7 +232,7 @@ jobs:
           ccache -V
 
       - name: set up python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
       - name: install python dependencies
@@ -251,7 +247,7 @@ jobs:
           conan remote add conancenter https://center.conan.io
 
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: conan
         run: conan export . odrcore/0.0.0@
