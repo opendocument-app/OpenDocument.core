@@ -22,10 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-22.04, compiler: clang, cc: clang-15, cxx: clang++-15 }
-          - { os: ubuntu-22.04, compiler: gcc, cc: gcc-13, cxx: g++-13 }
-          - { os: macos-12, compiler: clang, cc: clang, cxx: clang++ }
-          - { os: windows-2022, compiler: msvc }
+          - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
+          - { os: ubuntu-22.04, compiler: gcc-12, cc: gcc-12, cxx: g++-12 }
+          - { os: macos-12, compiler: clang-14, cc: clang, cxx: clang++ }
+          - { os: windows-2022, compiler: msvc-1939 }
 
     steps:
       - name: ubuntu install ccache
