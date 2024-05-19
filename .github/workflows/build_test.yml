@@ -115,6 +115,8 @@ jobs:
           name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
           path: cli
 
+      - run: ls -la cli
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -140,10 +142,12 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha     
+            type=sha
 
       - name: checkout
         uses: actions/checkout@v2
+
+      - run: ls -la cli
 
       - name: Build and push
         uses: docker/build-push-action@v5
