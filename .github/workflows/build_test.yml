@@ -76,7 +76,10 @@ jobs:
         env:
           CC: ${{ matrix.config.cc }}
           CXX: ${{ matrix.config.cxx }}
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        run: >
+          cmake -B build -S .
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_BUILD_TYPE=Release
       - name: build
         run: cmake --build build --config Release # `config Release` somehow necessary for windows
 
@@ -190,8 +193,7 @@ jobs:
           CXX: ${{ matrix.config.cxx }}
         run: >
           cmake -B test/downstream/build -S test/downstream
-           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-           -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=Release
       - name: build
         run: cmake --build test/downstream/build --config Release # `config Release` somehow necessary for windows
 
