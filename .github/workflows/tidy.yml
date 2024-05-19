@@ -26,8 +26,11 @@ jobs:
 
       - name: conan config
         run: conan config set general.revisions_enabled=1
-      - name: conan repo
-        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan remote
+        run: |
+          conan remote clean
+          conan remote add conancenter https://center.conan.io
+          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
 
       - name: checkout
         uses: actions/checkout@v2
