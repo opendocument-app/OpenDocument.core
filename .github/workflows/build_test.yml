@@ -39,11 +39,6 @@ jobs:
           brew install ccache
           ccache -V
 
-      - run: which gcc
-      - run: ls -la /usr/bin
-      - run: which ${{ matrix.config.cc }}
-      - run: which ${{ matrix.config.cxx }}
-
       - name: set up python 3.8
         uses: actions/setup-python@v2
         with:
