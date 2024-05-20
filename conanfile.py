@@ -35,6 +35,7 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("uchardet/0.0.7")
         self.requires("utfcpp/4.0.4")
 
+    def build_requirements(self):
         self.test_requires("gtest/1.14.0")
 
     def validate_build(self):
