@@ -9,7 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
       - run: clang-format-15 --version
 

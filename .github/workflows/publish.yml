@@ -7,7 +7,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
       - name: set up python 3.12
         uses: actions/setup-python@v5
@@ -16,9 +15,19 @@ jobs:
       - name: install python dependencies
         run: pip install --upgrade pip conan
 
+      - name: conan remote
+        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan login
+        run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
+
       - name: checkout
         uses: actions/checkout@v4
 
-      - run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+      - name: get version
+        run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
-      - run: conan create conanfile.py odrcore/${VERSION}@ -s compiler.libcxx=libstdc++11 --build missing
+      - name: create conan package
+        run: conan create conanfile.py odrcore/${VERSION}@ -s compiler.libcxx=libstdc++11 --build missing
+
+      - name: upload to conan repo
+        run: conan upload "*" --remote odr --confirm --all --no-overwrite all
