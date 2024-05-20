@@ -14,6 +14,9 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
       - run: clang-tidy --version
 
       - name: setup python 3.12
@@ -27,16 +30,15 @@ jobs:
         run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan detect profile
         run: conan profile detect
-
-      - name: checkout
-        uses: actions/checkout@v4
+      - name: conan install
+        run: conan install . --output-folder=build --build=missing
 
       - name: cmake
-        run: |
-          cmake -S . -B build \
-            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DODR_CLANG_TIDY=ON
+        run: >
+          cmake -S . -B build
+          -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake
+          -DCMAKE_BUILD_TYPE=Release
+          -DODR_CLANG_TIDY=ON
 
       - name: clang-tidy
         run: cmake --build build

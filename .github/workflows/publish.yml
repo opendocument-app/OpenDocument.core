@@ -8,6 +8,9 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
       - name: set up python 3.12
         uses: actions/setup-python@v5
         with:
@@ -19,9 +22,6 @@ jobs:
         run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan login
         run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
-
-      - name: checkout
-        uses: actions/checkout@v4
 
       - name: get version
         run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV

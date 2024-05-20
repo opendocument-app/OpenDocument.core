@@ -10,10 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - run: clang-format-15 --version
-
       - name: checkout
         uses: actions/checkout@v4
+
+      - run: clang-format-15 --version
 
       - name: apply clang-format
         run: |
