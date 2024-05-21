@@ -52,7 +52,7 @@ jobs:
         run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan login
         run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
-      - name: conan profile
+      - name: conan config
         run: conan config install .github/config/${{ matrix.config.os }}-${{ matrix.config.compiler }}/conan
       - name: conan install
         run: conan install . --build=missing
@@ -245,11 +245,8 @@ jobs:
 
       - name: conan remote
         run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
-      - name: conan detect profile
-        run: conan profile detect
-        env:
-          CC: ${{ matrix.config.cc }}
-          CXX: ${{ matrix.config.cxx }}
+      - name: conan config
+        run: conan config install .github/config/${{ matrix.config.os }}-${{ matrix.config.compiler }}/conan
 
       - name: conan odrcore
         run: conan export . --name odrcore --version 0.0.0
