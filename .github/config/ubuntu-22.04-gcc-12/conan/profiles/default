@@ -8,4 +8,4 @@ compiler.version=15
 os=Linux
 
 [conf]
-build:compiler_executables={'c': 'clang-15', 'cpp': 'clang++-15'}
+tools.build:compiler_executables={'c': 'clang-15', 'cpp': 'clang++-15'}

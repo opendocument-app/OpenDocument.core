@@ -8,4 +8,4 @@ compiler.version=12
 os=Linux
 
 [conf]
-build:compiler_executables={'c': 'gcc-12', 'cpp': 'g++-12'}
+tools.build:compiler_executables={'c': 'gcc-12', 'cpp': 'g++-12'}
