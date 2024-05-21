@@ -31,7 +31,7 @@ jobs:
       - name: conan detect profile
         run: conan profile detect
       - name: conan install
-        run: conan install . --build=missing --settings:all compiler.cppstd=17
+        run: conan install . --build=missing
 
       - name: cmake
         run: >

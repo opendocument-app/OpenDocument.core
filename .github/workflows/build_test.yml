@@ -53,9 +53,9 @@ jobs:
       - name: conan login
         run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
       - name: conan profile
-        run: conan config install .github/conan/profiles/${{ matrix.config.os }}-${{ matrix.config.compiler }}
+        run: conan config install .github/config/${{ matrix.config.os }}-${{ matrix.config.compiler }}/conan
       - name: conan install
-        run: conan install . --build=missing --settings:all compiler.cppstd=17
+        run: conan install . --build=missing
 
       - name: cache
         uses: actions/cache@v4
@@ -255,7 +255,7 @@ jobs:
         run: conan export . --name odrcore --version 0.0.0
 
       - name: conan downstream
-        run: conan install test/downstream --build=missing --settings:all compiler.cppstd=17
+        run: conan install test/downstream --build=missing
 
       - name: cmake
         run: >
