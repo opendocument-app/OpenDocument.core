@@ -31,12 +31,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: ubuntu install ccache
-        if: startsWith(matrix.config.os, 'ubuntu')
+        if: runner.os == 'Linux'
         run: |
           sudo apt install ccache
           ccache -V
       - name: macos install ccache
-        if: startsWith(matrix.config.os, 'macos')
+        if: runner.os == 'macOS'
         run: |
           brew install ccache
           ccache -V
@@ -68,7 +68,12 @@ jobs:
             ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
 
       - name: debug
+        if: runner.os != 'Windows'
         run: find . -name conan_toolchain.cmake
+      - name: debug
+        if: runner.os == 'Windows'
+        run: >
+          dir c: /s | findstr /i conan_toolchain.cmake
       - name: cmake
         run: >
           cmake -B build -S .
@@ -168,10 +173,10 @@ jobs:
           submodules: true
 
       - name: ubuntu install tidy
-        if: startsWith(matrix.config.os, 'ubuntu')
+        if: runner.os == 'Linux'
         run: sudo apt install tidy
       - name: macos install tidy
-        if: startsWith(matrix.config.os, 'macos')
+        if: runner.os == 'macOS'
         run: brew install tidy-html5
 
       - name: set up python 3.12
