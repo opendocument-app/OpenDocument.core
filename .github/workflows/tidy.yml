@@ -12,7 +12,12 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        config:
+          - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
