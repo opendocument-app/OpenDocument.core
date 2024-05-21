@@ -55,7 +55,7 @@ jobs:
       - name: conan config
         run: conan config install .github/config/${{ matrix.config.os }}-${{ matrix.config.compiler }}/conan
       - name: conan install
-        run: conan install . --build=missing
+        run: conan install . --output-folder=build --build=missing
 
       - name: cache
         uses: actions/cache@v4
@@ -70,7 +70,7 @@ jobs:
       - name: cmake
         run: >
           cmake -B build -S .
-          -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake
+          -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_PREFIX=install
@@ -96,7 +96,7 @@ jobs:
     needs: build
     runs-on: ${{ matrix.config.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         config:
           - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
@@ -153,7 +153,7 @@ jobs:
     needs: build
     runs-on: ${{ matrix.config.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         config:
           - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
@@ -214,7 +214,7 @@ jobs:
   build-test-downstream:
     runs-on: ${{ matrix.config.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         config:
           - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
