@@ -50,6 +50,8 @@ jobs:
 
       - name: conan remote
         run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan login
+        run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
       - name: conan detect profile
         run: conan profile detect
         env:
