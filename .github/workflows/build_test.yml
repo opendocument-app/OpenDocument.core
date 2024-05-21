@@ -86,7 +86,7 @@ jobs:
         run: cmake --build build --target install --config Release
 
       - name: upload binaries to conan repo
-        run: conan upload "*" --remote odr --confirm --all
+        run: conan upload "*" --remote odr --confirm
 
       - name: upload binaries to github
         uses: actions/upload-artifact@v4
