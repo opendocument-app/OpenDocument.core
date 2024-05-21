@@ -1,3 +1,4 @@
+import os
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.files import copy
@@ -59,7 +60,12 @@ class OpenDocumentCoreConan(ConanFile):
         cmake.build()
 
     def package(self):
-        copy(self, "*.hpp", src=self.recipe_folder / "src", dst=self.export_sources_folder / "include")
+        copy(
+            self,
+            "*.hpp",
+            src=os.path.join(self.recipe_folder, "src"),
+            dst=os.path.join(self.export_sources_folder, "include"),
+        )
 
         cmake = CMake(self)
         cmake.install()
