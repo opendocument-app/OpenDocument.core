@@ -67,10 +67,12 @@ jobs:
           restore-keys: |
             ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
 
+      - name: debug
+        run: find . -name conan_toolchain.cmake
       - name: cmake
         run: >
           cmake -B build -S .
-          -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake
+          -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_PREFIX=install
