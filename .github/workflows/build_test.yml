@@ -13,7 +13,7 @@ concurrency:
 env:
   CCACHE_DIR: ${{ github.workspace }}/ccache
   CCACHE_MAXSIZE: 500M
-  CCACHE_KEY_SUFFIX: r21
+  CCACHE_KEY_SUFFIX: r22
 
 jobs:
   build:
@@ -66,9 +66,6 @@ jobs:
           path: |
             ~/.ccache
             /Users/runner/Library/Caches/ccache
-            ~/.conan/data
-            C:/.conan
-            C:/Users/runneradmin/.conan/data
           key: ${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ env.CCACHE_KEY_SUFFIX }}
           restore-keys: |
             ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
