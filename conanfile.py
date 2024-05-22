@@ -2,7 +2,7 @@ import os
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.files import copy
-from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake, cmake_layout
+from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 
 
 class OpenDocumentCoreConan(ConanFile):
@@ -40,9 +40,6 @@ class OpenDocumentCoreConan(ConanFile):
     def validate_build(self):
         if self.settings.get_safe("compiler.cppstd"):
             check_min_cppstd(self, 17)
-
-    def layout(self):
-        cmake_layout(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -77,7 +77,7 @@ jobs:
       - name: cmake
         run: >
           cmake -B build -S .
-          -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake
+          -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_PREFIX=install
@@ -259,12 +259,12 @@ jobs:
         run: conan export . --name odrcore --version 0.0.0
 
       - name: conan downstream
-        run: conan install test/downstream --build=missing
+        run: conan install test/downstream --output-folder=test/downstream/build --build=missing
 
       - name: cmake
         run: >
           cmake -S test/downstream -B test/downstream/build
-          -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake
+          -DCMAKE_TOOLCHAIN_FILE=test/downstream/build/conan_toolchain.cmake
           -DCMAKE_BUILD_TYPE=Release
       - name: build
         # `config Release` somehow necessary for windows
