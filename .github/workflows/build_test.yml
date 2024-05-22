@@ -73,7 +73,7 @@ jobs:
       - name: debug
         if: runner.os == 'Windows'
         run: >
-          dir c: d: /s | findstr /i conan_toolchain.cmake
+          Get-ChildItem . -Filter conan_toolchain.cmake -Recurse
       - name: cmake
         run: >
           cmake -B build -S .
