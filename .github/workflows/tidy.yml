@@ -41,7 +41,7 @@ jobs:
       - name: cmake
         run: >
           cmake -S . -B build
-          -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake
+          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_BUILD_TYPE=Release
           -DODR_CLANG_TIDY=ON
 

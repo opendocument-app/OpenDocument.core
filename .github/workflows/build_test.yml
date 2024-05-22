@@ -78,7 +78,7 @@ jobs:
       - name: cmake
         run: >
           cmake -B build -S .
-          -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake
+          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_PREFIX=install
@@ -265,7 +265,7 @@ jobs:
       - name: cmake
         run: >
           cmake -S test/downstream -B test/downstream/build
-          -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake
+          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_BUILD_TYPE=Release
       - name: build
         # `config Release` somehow necessary for windows
