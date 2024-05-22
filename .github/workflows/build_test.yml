@@ -254,6 +254,9 @@ jobs:
       - name: conan downstream
         run: conan install test/downstream --output-folder=test/downstream/build --build=missing
 
+      - name: debug
+        run: find . -name conan_toolchain.cmake
+
       - name: cmake
         run: >
           cmake -S test/downstream -B test/downstream/build
