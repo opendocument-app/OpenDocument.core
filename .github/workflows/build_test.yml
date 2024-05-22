@@ -57,6 +57,14 @@ jobs:
       - name: conan install
         run: conan install . --output-folder=build --build=missing
 
+      - name: debug
+        if: runner.os != 'Windows'
+        run: find . -name conan_toolchain.cmake
+      - name: debug
+        if: runner.os == 'Windows'
+        run: >
+          Get-ChildItem . -Filter conan_toolchain.cmake -Recurse
+
       - name: cache
         uses: actions/cache@v4
         with:

@@ -69,3 +69,7 @@ class OpenDocumentCoreConan(ConanFile):
 
     def package_info(self):
         self.cpp_info.libs = ["odr"]
+
+        self.cpp_info.names["cmake_find_package"] = "odr"
+        self.cpp_info.names["cmake_find_package_multi"] = "odr"
+        self.cpp_info.names["pkgconfig"] = "libodr"
