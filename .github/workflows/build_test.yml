@@ -67,13 +67,6 @@ jobs:
           restore-keys: |
             ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
 
-      - name: debug
-        if: runner.os != 'Windows'
-        run: find . -name conan_toolchain.cmake
-      - name: debug
-        if: runner.os == 'Windows'
-        run: >
-          Get-ChildItem . -Filter conan_toolchain.cmake -Recurse
       - name: cmake
         run: >
           cmake -B build -S .
