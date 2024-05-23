@@ -12,30 +12,38 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { os: ubuntu-22.04, compiler: clang-15, cc: clang-15, cxx: clang++-15 }
     steps:
-      - run: clang-tidy --version
-
-      - name: set up python 3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.8
-      - name: install python dependencies
-        run: pip install --upgrade pip conan==1.*
-
-      - name: conan config
-        run: conan config set general.revisions_enabled=1
-      - name: conan remote
-        run: |
-          conan remote clean
-          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
-          conan remote add conancenter https://center.conan.io
-
       - name: checkout
         uses: actions/checkout@v4
 
+      - run: clang-tidy --version
+
+      - name: setup python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: install python dependencies
+        run: pip install --upgrade pip conan
+
+      - name: conan remote
+        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan config
+        run: conan config install .github/config/${{ matrix.config.os }}-${{ matrix.config.compiler }}/conan
+      - name: conan install
+        run: conan install . --output-folder=build --build=missing
+
       - name: cmake
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DODR_CLANG_TIDY=ON
+        run: >
+          cmake -S . -B build
+          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
+          -DCMAKE_BUILD_TYPE=Release
+          -DODR_CLANG_TIDY=ON
 
       - name: clang-tidy
         run: cmake --build build

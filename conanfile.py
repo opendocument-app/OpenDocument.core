@@ -1,15 +1,20 @@
-from conans import ConanFile, CMake
+import os
+from conan import ConanFile
+from conan.tools.build import check_min_cppstd
+from conan.tools.files import copy
+from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 
 
 class OpenDocumentCoreConan(ConanFile):
     name = "odrcore"
+    version = ""
     url = ""
     homepage = "https://github.com/opendocument-app/OpenDocument.core"
     description = "C++ library that translates office documents to HTML"
     topics = "open document", "openoffice xml", "open document reader"
     license = "GPL 3.0"
 
-    settings = "os", "compiler", "cppstd", "build_type", "arch"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -21,36 +26,47 @@ class OpenDocumentCoreConan(ConanFile):
 
     exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
 
-    requires = ["pugixml/1.14", "cryptopp/8.8.0", "miniz/3.0.2", "nlohmann_json/3.11.3",
-                "vincentlaucsb-csv-parser/2.1.3", "uchardet/0.0.7", "utfcpp/4.0.4",
-                "gtest/1.14.0"]
-    generators = "cmake_paths", "cmake_find_package"
+    def requirements(self):
+        self.requires("pugixml/1.14")
+        self.requires("cryptopp/8.8.0")
+        self.requires("miniz/3.0.2")
+        self.requires("nlohmann_json/3.11.3")
+        self.requires("vincentlaucsb-csv-parser/2.1.3")
+        self.requires("uchardet/0.0.7")
+        self.requires("utfcpp/4.0.4")
 
-    _cmake = None
+    def build_requirements(self):
+        self.test_requires("gtest/1.14.0")
 
-    def _configure_cmake(self):
-        if self._cmake:
-            return self._cmake
-        self._cmake = CMake(self)
-        self._cmake.definitions["CMAKE_PROJECT_VERSION"] = self.version
-        self._cmake.definitions["BUILD_SHARED_LIBS"] = self.options.shared
-        self._cmake.definitions["ODR_TEST"] = False
-        self._cmake.configure()
-        return self._cmake
+    def validate_build(self):
+        if self.settings.get_safe("compiler.cppstd"):
+            check_min_cppstd(self, 17)
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.variables["CMAKE_PROJECT_VERSION"] = self.version
+        tc.variables["BUILD_SHARED_LIBS"] = self.options.shared
+        tc.variables["ODR_TEST"] = False
+        tc.generate()
+
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
-        cmake = self._configure_cmake()
+        cmake = CMake(self)
+        cmake.configure()
         cmake.build()
 
     def package(self):
-        self.copy("*.hpp", src="src", dst="include")
+        copy(
+            self,
+            "*.hpp",
+            src=os.path.join(self.recipe_folder, "src"),
+            dst=os.path.join(self.export_sources_folder, "include"),
+        )
 
-        cmake = self._configure_cmake()
+        cmake = CMake(self)
         cmake.install()
 
     def package_info(self):
         self.cpp_info.libs = ["odr"]
-
-        self.cpp_info.names["cmake_find_package"] = "odr"
-        self.cpp_info.names["cmake_find_package_multi"] = "odr"
-        self.cpp_info.names["pkgconfig"] = "libodr"

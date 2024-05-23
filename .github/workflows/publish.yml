@@ -8,25 +8,20 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: set up python 3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.8
-      - name: install python dependencies
-        run: pip install --upgrade pip conan==1.*
-
-      - name: conan config
-        run: conan config set general.revisions_enabled=1
-      - name: conan remote
-        run: |
-          conan remote clean
-          conan remote add conancenter https://center.conan.io
-          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
-      - name: conan login
-        run: conan user --remote odr --password ${{ secrets.ARTIFACTORY }} admin
-
       - name: checkout
         uses: actions/checkout@v4
+
+      - name: set up python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: install python dependencies
+        run: pip install --upgrade pip conan
+
+      - name: conan remote
+        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan login
+        run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
 
       - name: get version
         run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
