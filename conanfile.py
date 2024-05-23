@@ -7,6 +7,7 @@ from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 
 class OpenDocumentCoreConan(ConanFile):
     name = "odrcore"
+    version = ""
     url = ""
     homepage = "https://github.com/opendocument-app/OpenDocument.core"
     description = "C++ library that translates office documents to HTML"
