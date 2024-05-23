@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(ODR_TEST "enable tests" ON)
+option(ODR_TEST "enable tests" OFF)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 
 # TODO defining global compiler flags seems to be bad practice with conan

@@ -57,14 +57,6 @@ jobs:
       - name: conan install
         run: conan install . --output-folder=build --build=missing
 
-      - name: debug
-        if: runner.os != 'Windows'
-        run: find . -name conan_toolchain.cmake
-      - name: debug
-        if: runner.os == 'Windows'
-        run: >
-          Get-ChildItem . -Filter conan_toolchain.cmake -Recurse
-
       - name: cache
         uses: actions/cache@v4
         with:
@@ -82,6 +74,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_PREFIX=install
+          -DODR_TEST=ON
       - name: build
         # `config Release` somehow necessary for windows
         run: cmake --build build --config Release
