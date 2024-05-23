@@ -294,8 +294,8 @@ set(ODR_PRIVATE_HEADER
 )
 
 add_library(odr ${ODR_SOURCE_FILES})
-set_target_properties(odr PROPERTIES PUBLIC_HEADER ${ODR_PUBLIC_HEADER})
-set_target_properties(odr PROPERTIES PRIVATE_HEADER ${ODR_PRIVATE_HEADER})
+set_target_properties(odr PROPERTIES PUBLIC_HEADER "${ODR_PUBLIC_HEADER}")
+set_target_properties(odr PROPERTIES PRIVATE_HEADER "${ODR_PRIVATE_HEADER}")
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
 target_include_directories(odr
         PUBLIC
