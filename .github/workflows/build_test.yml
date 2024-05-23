@@ -82,6 +82,11 @@ jobs:
         # `config Release` somehow necessary for windows
         run: cmake --build build --target install --config Release
 
+      - name: debug
+        run: ls -la build/src/odr/internal
+      - name: debug
+        run: cat build/src/odr/internal/*
+
       - name: upload binaries to conan repo
         run: conan upload "*" --remote odr --confirm
 
