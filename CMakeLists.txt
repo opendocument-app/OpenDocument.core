@@ -51,7 +51,7 @@ else ()
     configure_file("${PRE_CONFIGURE_FILE}" "${POST_CONFIGURE_FILE}" @ONLY)
 endif ()
 
-add_library(odr
+set(ODR_SOURCE_FILES
         "src/odr/archive.cpp"
         "src/odr/document.cpp"
         "src/odr/document_element.cpp"
@@ -166,7 +166,7 @@ add_library(odr
         "src/odr/internal/zip/zip_exceptions.cpp"
         "src/odr/internal/zip/zip_util.cpp"
 )
-set_target_properties(odr PROPERTIES PUBLIC_HEADER
+set(ODR_PUBLIC_HEADER
         "src/odr/html.hpp"
         "src/odr/exceptions.hpp"
         "src/odr/open_document_reader.hpp"
@@ -179,7 +179,7 @@ set_target_properties(odr PROPERTIES PUBLIC_HEADER
         "src/odr/filesystem.hpp"
         "src/odr/file.hpp"
 )
-set_target_properties(odr PROPERTIES PRIVATE_HEADER
+set(ODR_PRIVATE_HEADER
         "src/odr/internal/git_info.hpp"
         "src/odr/internal/resource_data.hpp"
         "src/odr/internal/open_strategy.hpp"
@@ -292,10 +292,11 @@ set_target_properties(odr PROPERTIES PRIVATE_HEADER
         "src/odr/internal/cfb/cfb_impl.hpp"
         "src/odr/internal/cfb/cfb_archive.hpp"
 )
+
+add_library(odr ${ODR_SOURCE_FILES})
+set_target_properties(odr PROPERTIES PUBLIC_HEADER ${ODR_PUBLIC_HEADER})
+set_target_properties(odr PROPERTIES PRIVATE_HEADER ${ODR_PRIVATE_HEADER})
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
-if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
-    add_dependencies(odr check_git)
-endif ()
 target_include_directories(odr
         PUBLIC
         src
@@ -310,6 +311,10 @@ target_link_libraries(odr
         uchardet::uchardet
         utf8::cpp
 )
+
+if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
+    add_dependencies(odr check_git)
+endif ()
 
 add_subdirectory("cli")
 
