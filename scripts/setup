@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
 
-#setup git hooks
+# setup git hooks
 scripts/git_hooks/git-hooks --install
+
+# setup conan
+scripts/conan
