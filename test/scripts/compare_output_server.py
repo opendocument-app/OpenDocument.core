@@ -266,6 +266,7 @@ def main():
                         default='firefox')
     parser.add_argument('--max-workers', type=int, default=1)
     parser.add_argument('--compare', action='store_true')
+    parser.add_argument('--port', type=int, default=5000)
     args = parser.parse_args()
 
     Config.path_a = args.a
@@ -279,7 +280,7 @@ def main():
         Config.observer = Observer()
         Config.observer.start()
 
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', port=args.port)
 
     if args.compare:
         Config.observer.stop()
