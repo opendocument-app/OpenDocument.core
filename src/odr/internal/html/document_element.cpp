@@ -367,26 +367,28 @@ void html::translate_table(Element element, HtmlWriter &out,
     for (Element cell : table_row.children()) {
       TableCell table_cell = cell.table_cell();
 
-      if (!table_cell.is_covered()) {
-        TableDimensions cell_span = table_cell.span();
-
-        out.write_element_begin(
-            "td",
-            HtmlElementOptions()
-                .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-                  if (cell_span.columns > 1) {
-                    clb("colspan", std::to_string(cell_span.columns));
-                  }
-                  if (cell_span.rows > 1) {
-                    clb("rowspan", std::to_string(cell_span.rows));
-                  }
-                })
-                .set_style(translate_table_cell_style(table_cell.style())));
-
-        translate_children(cell.children(), out, config);
-
-        out.write_element_end("td");
+      if (table_cell.is_covered()) {
+        continue;
       }
+
+      TableDimensions cell_span = table_cell.span();
+
+      out.write_element_begin(
+          "td",
+          HtmlElementOptions()
+              .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+                if (cell_span.columns > 1) {
+                  clb("colspan", std::to_string(cell_span.columns));
+                }
+                if (cell_span.rows > 1) {
+                  clb("rowspan", std::to_string(cell_span.rows));
+                }
+              })
+              .set_style(translate_table_cell_style(table_cell.style())));
+
+      translate_children(cell.children(), out, config);
+
+      out.write_element_end("td");
     }
 
     out.write_element_end("tr");

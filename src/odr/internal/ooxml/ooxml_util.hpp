@@ -33,6 +33,7 @@ std::optional<Measure> read_half_point_attribute(pugi::xml_attribute);
 std::optional<Measure> read_hundredth_point_attribute(pugi::xml_attribute);
 std::optional<Measure> read_emus_attribute(pugi::xml_attribute);
 std::optional<Measure> read_twips_attribute(pugi::xml_attribute);
+std::optional<Measure> read_pct_attribute(pugi::xml_attribute);
 std::optional<Measure> read_width_attribute(pugi::xml_node);
 bool read_line_attribute(pugi::xml_attribute);
 bool read_line_attribute(pugi::xml_node);

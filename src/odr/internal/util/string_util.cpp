@@ -1,5 +1,7 @@
 #include <odr/internal/util/string_util.hpp>
 
+#include <algorithm>
+#include <cctype>
 #include <codecvt>
 #include <iomanip>
 #include <locale>
@@ -15,6 +17,24 @@ bool string::ends_with(const std::string &string, const std::string &with) {
   return (string.length() >= with.length()) &&
          (string.compare(string.length() - with.length(), with.length(),
                          with) == 0);
+}
+
+void string::ltrim(std::string &s) {
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+          }));
+}
+
+void string::rtrim(std::string &s) {
+  s.erase(std::find_if(s.rbegin(), s.rend(),
+                       [](unsigned char ch) { return !std::isspace(ch); })
+              .base(),
+          s.end());
+}
+
+void string::trim(std::string &s) {
+  rtrim(s);
+  ltrim(s);
 }
 
 void string::replace_all(std::string &string, const std::string &search,
