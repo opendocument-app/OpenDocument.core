@@ -3,8 +3,8 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
-#include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/util/string_util.hpp>
+#include <odr/internal/util/xml_util.hpp>
 
 #include <cstring>
 
