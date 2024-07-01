@@ -3,6 +3,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/util/string_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
 #include <cstring>
@@ -50,7 +51,7 @@ ooxml::read_half_point_attribute(pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  return Measure(attribute.as_float() * 0.5f, DynamicUnit("pt"));
+  return Measure(attribute.as_double() * 0.5, DynamicUnit("pt"));
 }
 
 std::optional<Measure>
@@ -58,7 +59,7 @@ ooxml::read_hundredth_point_attribute(pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  return Measure(attribute.as_float() * 0.01f, DynamicUnit("pt"));
+  return Measure(attribute.as_double() * 0.01, DynamicUnit("pt"));
 }
 
 std::optional<Measure>
@@ -66,7 +67,7 @@ ooxml::read_emus_attribute(pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  return Measure(attribute.as_float() / 914400.0f, DynamicUnit("in"));
+  return Measure(attribute.as_double() / 914400.0, DynamicUnit("in"));
 }
 
 std::optional<Measure>
@@ -74,7 +75,28 @@ ooxml::read_twips_attribute(pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  return Measure(attribute.as_float() / 1440.0f, DynamicUnit("in"));
+  return Measure(attribute.as_double() / 1440.0, DynamicUnit("in"));
+}
+
+std::optional<Measure>
+ooxml::read_pct_attribute(pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+
+  // handle percentage which is not always a percentage for tables
+  // http://officeopenxml.com/WPtableWidth.php
+  // potentially this should be moved to a table parser
+
+  std::string val = attribute.value();
+  util::string::trim(val);
+
+  if (val.find('%') != std::string::npos) {
+    util::string::replace_all(val, "%", "");
+    return Measure(std::stod(val), DynamicUnit("%"));
+  }
+
+  return Measure(attribute.as_double() / 50.0, DynamicUnit("%"));
 }
 
 std::optional<Measure> ooxml::read_width_attribute(pugi::xml_node node) {
@@ -92,7 +114,7 @@ std::optional<Measure> ooxml::read_width_attribute(pugi::xml_node node) {
     return Measure(0, DynamicUnit(""));
   }
   if (std::strcmp("pct", type) == 0) {
-    return Measure(node.attribute("w:w").as_float(), DynamicUnit("%"));
+    return read_pct_attribute(node.attribute("w:w"));
   }
   return {};
 }
