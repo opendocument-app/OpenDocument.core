@@ -27,7 +27,7 @@ jobs:
         run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: create conan package
-        run: conan create conanfile.py --name odrcore --verion ${VERSION} -s compiler.libcxx=libstdc++11 --build missing
+        run: conan create conanfile.py --name odrcore --version ${VERSION} -s compiler.libcxx=libstdc++11 --build missing
 
       - name: upload to conan repo
         run: conan upload "*" --remote odr --confirm
