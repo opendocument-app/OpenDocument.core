@@ -10,18 +10,22 @@
 
 namespace odr {
 
+/// @brief Represents a quantity: a magnitude and a unit of measure.
 using Measure = Quantity<double>;
 
+/// @brief Collection of font weights.
 enum class FontWeight {
   normal,
   bold,
 };
 
+/// @brief Collection of font styles.
 enum class FontStyle {
   normal,
   italic,
 };
 
+/// @brief Collection of text alignments.
 enum class TextAlign {
   left,
   right,
@@ -29,23 +33,27 @@ enum class TextAlign {
   justify,
 };
 
+/// @brief Collection of horizontal alignments.
 enum class HorizontalAlign {
   left,
   center,
   right,
 };
 
+/// @brief Collection of vertical alignments.
 enum class VerticalAlign {
   top,
   middle,
   bottom,
 };
 
+/// @brief Collection of print orientations.
 enum class PrintOrientation {
   portrait,
   landscape,
 };
 
+/// @brief Collection of text wrapping options.
 enum class TextWrap {
   none,
   before,
@@ -53,6 +61,7 @@ enum class TextWrap {
   run_through,
 };
 
+/// @brief Represents a color.
 struct Color final {
   std::uint8_t red{0};
   std::uint8_t green{0};
@@ -70,6 +79,7 @@ struct Color final {
   [[nodiscard]] std::uint32_t argb() const;
 };
 
+/// @brief Represents a directional style.
 template <typename T> struct DirectionalStyle final {
   std::optional<T> right;
   std::optional<T> top;
@@ -111,6 +121,7 @@ template <typename T> struct DirectionalStyle final {
   }
 };
 
+/// @brief Represents a style for text.
 struct TextStyle final {
   const char *font_name{nullptr};
   std::optional<Measure> font_size;
@@ -125,6 +136,7 @@ struct TextStyle final {
   void override(const TextStyle &other);
 };
 
+/// @brief Represents a style for paragraphs.
 struct ParagraphStyle final {
   std::optional<TextAlign> text_align;
   DirectionalStyle<Measure> margin;
@@ -133,24 +145,28 @@ struct ParagraphStyle final {
   void override(const ParagraphStyle &other);
 };
 
+/// @brief Represents a style for tables.
 struct TableStyle final {
   std::optional<Measure> width;
 
   void override(const TableStyle &other);
 };
 
+/// @brief Represents a style for table columns.
 struct TableColumnStyle final {
   std::optional<Measure> width;
 
   void override(const TableColumnStyle &other);
 };
 
+/// @brief Represents a style for table rows.
 struct TableRowStyle final {
   std::optional<Measure> height;
 
   void override(const TableRowStyle &other);
 };
 
+/// @brief Represents a style for table cells.
 struct TableCellStyle final {
   std::optional<HorizontalAlign> horizontal_align;
   std::optional<VerticalAlign> vertical_align;
@@ -162,6 +178,7 @@ struct TableCellStyle final {
   void override(const TableCellStyle &other);
 };
 
+/// @brief Represents a style for graphics.
 struct GraphicStyle final {
   std::optional<Measure> stroke_width;
   std::optional<Color> stroke_color;
@@ -172,6 +189,7 @@ struct GraphicStyle final {
   void override(const GraphicStyle &other);
 };
 
+/// @brief Represents a layout for a page.
 struct PageLayout final {
   std::optional<Measure> width;
   std::optional<Measure> height;
@@ -179,6 +197,7 @@ struct PageLayout final {
   DirectionalStyle<Measure> margin;
 };
 
+/// @brief Represents the dimensions of a table.
 struct TableDimensions {
   std::uint32_t rows{0};
   std::uint32_t columns{0};
