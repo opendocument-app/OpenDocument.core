@@ -2,4 +2,9 @@
 
 CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
 
-find . -type f \( -iname \*.h -o -iname \*.cpp \) -exec ${CLANG_FORMAT} --style=file -i {} \;
+echo "Running clang-format on all .hpp and .cpp files in the project"
+echo "Using clang-format: ${CLANG_FORMAT}"
+
+${CLANG_FORMAT} --version
+
+find . -type f \( -iname \*.hpp -o -iname \*.cpp \) -exec ${CLANG_FORMAT} --style=file -i {} \;

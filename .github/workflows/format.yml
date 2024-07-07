@@ -13,9 +13,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - run: clang-format-18 --version
-
       - name: apply clang-format
-        run: ./scripts/format
+        run: CLANG_FORMAT=clang-format-18 ./scripts/format
 
       - run: git diff --exit-code --name-only
