@@ -100,7 +100,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
+        include:
           - { os: ubuntu-24.04, compiler: clang-16 }
     steps:
       - name: checkout
@@ -157,7 +157,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
+        include:
           - { os: ubuntu-24.04, compiler: clang-16 }
           - { os: macos-14, compiler: clang-14 }
     steps:
