@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
+
+find . -type f \( -iname \*.h -o -iname \*.cpp \) -exec ${CLANG_FORMAT} --style=file -i {} \;

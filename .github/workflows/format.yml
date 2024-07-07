@@ -13,11 +13,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - run: clang-format-16 --version
+      - run: clang-format-18 --version
 
       - name: apply clang-format
-        run: |
-          FILES=$( find . -type f \( -iname \*.h -o -iname \*.cpp \) )
-          clang-format-16 --style=file -i $FILES
+        run: ./scripts/format
 
       - run: git diff --exit-code --name-only

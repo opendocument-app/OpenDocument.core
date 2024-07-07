@@ -67,8 +67,8 @@ int ReaderBuffer::underflow() {
 
 FileInZipIstream::FileInZipIstream(std::shared_ptr<Archive> archive,
                                    std::unique_ptr<ReaderBuffer> sbuf)
-    : std::istream(sbuf.get()), m_archive{std::move(archive)}, m_sbuf{std::move(
-                                                                   sbuf)} {}
+    : std::istream(sbuf.get()), m_archive{std::move(archive)},
+      m_sbuf{std::move(sbuf)} {}
 
 FileInZipIstream::FileInZipIstream(std::shared_ptr<Archive> archive,
                                    mz_zip_reader_extract_iter_state *iter)

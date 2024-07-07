@@ -42,8 +42,8 @@ TemporaryDiskFileFactory::default_random_file_name_generator() {
 
 TemporaryDiskFileFactory::TemporaryDiskFileFactory(
     common::Path directory, RandomFileNameGenerator random_file_name_generator)
-    : m_directory{std::move(directory)}, m_random_file_name_generator{
-                                             random_file_name_generator} {}
+    : m_directory{std::move(directory)},
+      m_random_file_name_generator{random_file_name_generator} {}
 
 TemporaryDiskFile
 TemporaryDiskFileFactory::copy(const abstract::File &file) const {
