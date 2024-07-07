@@ -12,11 +12,11 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        config:
+        include:
           - { os: ubuntu-24.04, compiler: clang-16 }
     steps:
       - name: checkout
@@ -34,7 +34,7 @@ jobs:
       - name: conan remote
         run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan config
-        run: conan config install .github/config/${{ matrix.config.os }}-${{ matrix.config.compiler }}/conan
+        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
         run: conan install . --output-folder=build --build=missing
 

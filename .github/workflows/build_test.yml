@@ -17,11 +17,11 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        config:
+        include:
           - { os: ubuntu-24.04, compiler: clang-16 }
           - { os: ubuntu-24.04, compiler: gcc-12 }
           - { os: macos-13, compiler: clang-14 }
@@ -54,7 +54,7 @@ jobs:
       - name: conan login
         run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
       - name: conan config
-        run: conan config install .github/config/${{ matrix.config.os }}-${{ matrix.config.compiler }}/conan
+        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
         run: conan install . --output-folder=build --build=missing
 
@@ -64,9 +64,9 @@ jobs:
           path: |
             ~/.ccache
             /Users/runner/Library/Caches/ccache
-          key: ${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ env.CCACHE_KEY_SUFFIX }}
+          key: ${{ matrix.os }}-${{ matrix.compiler }}-${{ env.CCACHE_KEY_SUFFIX }}
           restore-keys: |
-            ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
+            ${{ matrix.os }}-${{ matrix.compiler }}-
 
       - name: cmake
         run: >
@@ -89,14 +89,14 @@ jobs:
       - name: upload binaries to github
         uses: actions/upload-artifact@v4
         with:
-          name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
+          name: bin-${{ matrix.os }}-${{ matrix.compiler }}
           path: |
             install
             build/test/odr_test
 
   docker:
     needs: build
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -136,7 +136,7 @@ jobs:
       - name: download binaries
         uses: actions/download-artifact@v4
         with:
-          name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
+          name: bin-${{ matrix.os }}-${{ matrix.compiler }}
           path: cli
 
       - name: Build and push
@@ -153,7 +153,7 @@ jobs:
 
   test:
     needs: build
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -184,7 +184,7 @@ jobs:
       - name: download binaries
         uses: actions/download-artifact@v4
         with:
-          name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
+          name: bin-${{ matrix.os }}-${{ matrix.compiler }}
           path: .
       - name: fix artifact permissions
         run:  chmod +x build/test/odr_test
@@ -214,11 +214,11 @@ jobs:
             build/test/output/odr-private/output
 
   build-test-downstream:
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        config:
+        include:
           - { os: ubuntu-24.04, compiler: clang-16 }
           - { os: ubuntu-24.04, compiler: gcc-12 }
           - { os: macos-13, compiler: clang-14 }
@@ -249,7 +249,7 @@ jobs:
       - name: conan remote
         run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan config
-        run: conan config install .github/config/${{ matrix.config.os }}-${{ matrix.config.compiler }}/conan
+        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
 
       - name: conan odrcore
         run: conan export . --name odrcore --version 0.0.0

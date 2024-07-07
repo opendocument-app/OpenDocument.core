@@ -6,11 +6,11 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        config:
+        include:
           - { os: ubuntu-24.04, compiler: clang-15 }
     steps:
       - name: checkout
@@ -28,7 +28,7 @@ jobs:
       - name: conan login
         run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
       - name: conan config
-        run: conan config install .github/config/${{ matrix.config.os }}-${{ matrix.config.compiler }}/conan
+        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
 
       - name: get version
         run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
