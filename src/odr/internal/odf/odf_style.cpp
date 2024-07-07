@@ -170,7 +170,8 @@ PageLayout read_page_layout(pugi::xml_node node) {
       read_measure(page_layout_properties.attribute("fo:page-height"));
   result.print_orientation = read_print_orientation(
       page_layout_properties.attribute("style:print-orientation"));
-  result.margin = read_measure(page_layout_properties.attribute("fo:margin"));
+  result.margin = DirectionalStyle(
+      read_measure(page_layout_properties.attribute("fo:margin")));
   if (auto margin_right = page_layout_properties.attribute("fo:margin-right")) {
     result.margin.right = read_measure(margin_right);
   }
@@ -211,7 +212,8 @@ Style::Style(const StyleRegistry *registry, std::string name,
              pugi::xml_node node, Style *parent, Style *family)
     : m_registry{registry}, m_name{std::move(name)}, m_node{node},
       m_parent{parent}, m_family{family} {
-  if (Style *copy_from = m_parent ? m_parent : m_family) {
+  if (Style *copy_from = m_parent != nullptr ? m_parent : m_family;
+      copy_from != nullptr) {
     m_resolved = copy_from->m_resolved;
   }
 
@@ -297,7 +299,7 @@ void Style::resolve_paragraph_style_(pugi::xml_node node,
   if (auto margin = read_measure(paragraph_properties.attribute("fo:margin"))) {
     // TODO
     if (margin->unit().name() != "%") {
-      result.margin = margin;
+      result.margin = DirectionalStyle(margin);
     }
   }
   if (auto margin_right =
@@ -379,7 +381,7 @@ void Style::resolve_table_cell_style_(pugi::xml_node node,
   }
   if (auto padding =
           read_measure(table_cell_properties.attribute("fo:padding"))) {
-    result.padding = padding;
+    result.padding = DirectionalStyle(padding);
   }
   if (auto padding_right =
           read_measure(table_cell_properties.attribute("fo:padding-right"))) {
@@ -398,7 +400,7 @@ void Style::resolve_table_cell_style_(pugi::xml_node node,
     result.padding.bottom = padding_bottom;
   }
   if (auto border = read_border(table_cell_properties.attribute("fo:border"))) {
-    result.border = border;
+    result.border = DirectionalStyle(border);
   }
   if (auto border_right =
           read_border(table_cell_properties.attribute("fo:border-right"))) {
@@ -514,7 +516,7 @@ Style *StyleRegistry::generate_default_style_(const std::string &family,
 Style *StyleRegistry::generate_style_(const std::string &name,
                                       const pugi::xml_node node) {
   auto &&style = m_styles[name];
-  if (style) {
+  if (style != nullptr) {
     return style.get();
   }
 

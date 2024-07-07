@@ -60,7 +60,7 @@ struct Color final {
   std::uint8_t alpha{255};
 
   Color();
-  explicit Color(std::uint32_t rgb);
+  Color(std::uint32_t rgb);
   Color(std::uint32_t argb, bool dummy);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue,
