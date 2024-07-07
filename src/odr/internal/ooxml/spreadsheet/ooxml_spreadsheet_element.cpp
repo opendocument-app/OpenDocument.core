@@ -66,8 +66,8 @@ Element::document_relations_(const abstract::Document *document) const {
 Root::Root(pugi::xml_node node, common::Path document_path,
            const Relations &document_relations)
     : DefaultElement(node, document_path, document_relations),
-      m_document_path{std::move(document_path)}, m_document_relations{
-                                                     document_relations} {}
+      m_document_path{std::move(document_path)},
+      m_document_relations{document_relations} {}
 
 const common::Path &Root::document_path_(const abstract::Document *) const {
   return m_document_path;
@@ -122,8 +122,8 @@ pugi::xml_node SheetIndex::cell(std::uint32_t column, std::uint32_t row) const {
 Sheet::Sheet(pugi::xml_node node, common::Path document_path,
              const Relations &document_relations)
     : Element(node, document_path, document_relations),
-      m_document_path{std::move(document_path)}, m_document_relations{
-                                                     document_relations} {}
+      m_document_path{std::move(document_path)},
+      m_document_relations{document_relations} {}
 
 const common::Path &Sheet::document_path_(const abstract::Document *) const {
   return m_document_path;
@@ -300,8 +300,8 @@ std::string Text::text_(const pugi::xml_node node) {
 Frame::Frame(pugi::xml_node node, common::Path document_path,
              const Relations &document_relations)
     : Element(node, document_path, document_relations),
-      m_document_path{std::move(document_path)}, m_document_relations{
-                                                     document_relations} {}
+      m_document_path{std::move(document_path)},
+      m_document_relations{document_relations} {}
 
 const common::Path &Frame::document_path_(const abstract::Document *) const {
   return m_document_path;

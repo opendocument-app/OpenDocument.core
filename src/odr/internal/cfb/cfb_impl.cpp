@@ -26,10 +26,10 @@ bool CompoundFileEntry::is_stream() const { return type == 2; }
 
 CompoundFileReader::CompoundFileReader(const void *buffer,
                                        const std::size_t len)
-    : m_buffer{static_cast<const std::uint8_t *>(buffer)},
-      m_buffer_len{len}, m_hdr{static_cast<const CompoundFileHeader *>(buffer)},
-      m_sector_size{512}, m_mini_sector_size{64}, m_mini_stream_start_sector{
-                                                      0} {
+    : m_buffer{static_cast<const std::uint8_t *>(buffer)}, m_buffer_len{len},
+      m_hdr{static_cast<const CompoundFileHeader *>(buffer)},
+      m_sector_size{512}, m_mini_sector_size{64},
+      m_mini_stream_start_sector{0} {
   if (buffer == nullptr || len == 0) {
     throw std::invalid_argument("");
   }

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
+
+echo "Running clang-format on all .hpp and .cpp files in the project"
+echo "Using clang-format: ${CLANG_FORMAT}"
+
+${CLANG_FORMAT} --version
+
+function format_file() {
+    echo "Formatting $1"
+    ${CLANG_FORMAT} --style=file -i $1
+}
+function format_folder() {
+  export -f format_file
+  export CLANG_FORMAT
+  find $1 -type f \( -iname \*.hpp -o -iname \*.cpp \) -exec bash -c 'format_file "${1}"' -- {} \;
+}
+
+format_folder src
+format_folder cli
+format_folder test/src

@@ -41,8 +41,8 @@ private:
 
 FileInCfbIstream::FileInCfbIstream(std::shared_ptr<Archive> archive,
                                    std::unique_ptr<util::ReaderBuffer> sbuf)
-    : std::istream(sbuf.get()), m_archive{std::move(archive)}, m_sbuf{std::move(
-                                                                   sbuf)} {}
+    : std::istream(sbuf.get()), m_archive{std::move(archive)},
+      m_sbuf{std::move(sbuf)} {}
 
 FileInCfbIstream::FileInCfbIstream(std::shared_ptr<Archive> archive,
                                    const impl::CompoundFileReader &reader,
