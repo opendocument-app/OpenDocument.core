@@ -8,6 +8,7 @@
 
 namespace odr {
 
+/// @brief Represents a runtime unit of measure.
 class DynamicUnit {
 public:
   DynamicUnit();
@@ -19,7 +20,7 @@ public:
   [[nodiscard]] const std::string &name() const;
 
   void to_stream(std::ostream &) const;
-  std::string to_string() const;
+  [[nodiscard]] std::string to_string() const;
 
 private:
   struct Unit;
@@ -28,6 +29,7 @@ private:
   const Unit *m_unit{nullptr};
 };
 
+/// @brief Represents a quantity with a magnitude and a unit of measure.
 template <typename Magnitude, typename Unit = DynamicUnit> class Quantity {
 public:
   Quantity(Magnitude magnitude, Unit unit)
@@ -58,7 +60,7 @@ public:
     out << m_magnitude << m_unit.to_string();
   }
 
-  std::string to_string() const {
+  [[nodiscard]] std::string to_string() const {
     std::ostringstream ss;
     ss << std::setprecision(4) << m_magnitude << m_unit.to_string();
     return ss.str();

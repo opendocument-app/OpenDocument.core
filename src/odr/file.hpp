@@ -30,6 +30,7 @@ class PdfFile;
 class Archive;
 class Document;
 
+/// @brief Collection of file types.
 enum class FileType {
   unknown,
 
@@ -81,6 +82,7 @@ enum class FileType {
   starview_metafile,
 };
 
+/// @brief Collection of file categories.
 enum class FileCategory {
   unknown,
   text,
@@ -89,11 +91,13 @@ enum class FileCategory {
   document,
 };
 
+/// @brief Collection of file locations.
 enum class FileLocation {
   memory,
   disk,
 };
 
+/// @brief Collection of encryption states.
 enum class EncryptionState {
   unknown,
   not_encrypted,
@@ -101,6 +105,7 @@ enum class EncryptionState {
   decrypted,
 };
 
+/// @brief Collection of document types.
 enum class DocumentType {
   unknown,
   text,
@@ -109,6 +114,7 @@ enum class DocumentType {
   drawing,
 };
 
+/// @brief Meta information about a document.
 struct DocumentMeta final {
   DocumentMeta();
   DocumentMeta(DocumentType document_type,
@@ -118,6 +124,7 @@ struct DocumentMeta final {
   std::optional<std::uint32_t> entry_count;
 };
 
+/// @brief Meta information about a file.
 struct FileMeta final {
   FileMeta();
   FileMeta(FileType type, bool password_encrypted,
@@ -128,6 +135,7 @@ struct FileMeta final {
   std::optional<DocumentMeta> document_meta;
 };
 
+/// @brief Represents a file.
 class File final {
 public:
   File();
@@ -151,6 +159,7 @@ protected:
   std::shared_ptr<internal::abstract::File> m_impl;
 };
 
+/// @brief Represents a decoded file.
 class DecodedFile {
 public:
   static std::vector<FileType> types(const std::string &path);
@@ -187,6 +196,7 @@ protected:
   std::shared_ptr<internal::abstract::DecodedFile> m_impl;
 };
 
+/// @brief Represents a text file.
 class TextFile final : public DecodedFile {
 public:
   explicit TextFile(std::shared_ptr<internal::abstract::TextFile>);
@@ -200,6 +210,7 @@ private:
   std::shared_ptr<internal::abstract::TextFile> m_impl;
 };
 
+/// @brief Represents an image file.
 class ImageFile final : public DecodedFile {
 public:
   explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile>);
@@ -210,6 +221,7 @@ private:
   std::shared_ptr<internal::abstract::ImageFile> m_impl;
 };
 
+/// @brief Represents an archive file.
 class ArchiveFile final : public DecodedFile {
 public:
   explicit ArchiveFile(std::shared_ptr<internal::abstract::ArchiveFile>);
@@ -220,6 +232,7 @@ private:
   std::shared_ptr<internal::abstract::ArchiveFile> m_impl;
 };
 
+/// @brief Represents a document file.
 class DocumentFile final : public DecodedFile {
 public:
   static FileType type(const std::string &path);
@@ -241,6 +254,7 @@ private:
   std::shared_ptr<internal::abstract::DocumentFile> m_impl;
 };
 
+/// @brief Represents a PDF file.
 class PdfFile final : public DecodedFile {
 public:
   explicit PdfFile(std::shared_ptr<internal::pdf::PdfFile>);

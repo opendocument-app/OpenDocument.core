@@ -13,16 +13,17 @@ class ReadableFilesystem;
 namespace odr {
 class File;
 
+/// @brief FileWalker class
 class FileWalker {
 public:
   FileWalker();
   explicit FileWalker(std::unique_ptr<internal::abstract::FileWalker>);
   FileWalker(const FileWalker &);
-  FileWalker(FileWalker &&);
+  FileWalker(FileWalker &&) noexcept;
   ~FileWalker();
 
   FileWalker &operator=(const FileWalker &);
-  FileWalker &operator=(FileWalker &&);
+  FileWalker &operator=(FileWalker &&) noexcept;
   [[nodiscard]] explicit operator bool() const;
 
   [[nodiscard]] bool end() const;
@@ -39,6 +40,7 @@ private:
   std::unique_ptr<internal::abstract::FileWalker> m_impl;
 };
 
+/// @brief Filesystem class
 class Filesystem {
 public:
   explicit Filesystem(std::shared_ptr<internal::abstract::ReadableFilesystem>);

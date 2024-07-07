@@ -10,6 +10,7 @@ namespace odr {
 class Document;
 class Element;
 
+/// @brief A path to a specific element in a document.
 class DocumentPath final {
 public:
   template <typename Derived> struct ComponentTemplate {
@@ -17,7 +18,7 @@ public:
 
     std::uint32_t number{0};
 
-    ComponentTemplate(const std::uint32_t number);
+    explicit ComponentTemplate(std::uint32_t number);
 
     bool operator==(const ComponentTemplate &other) const noexcept;
     bool operator!=(const ComponentTemplate &other) const noexcept;
@@ -53,15 +54,13 @@ public:
   static Element find(Element root, const DocumentPath &path);
 
   DocumentPath() noexcept;
-  DocumentPath(const Container &components);
-  DocumentPath(Container &&components);
-  DocumentPath(const char *c_string);
-  DocumentPath(const std::string &string);
+  explicit DocumentPath(const Container &components);
+  explicit DocumentPath(Container &&components);
+  explicit DocumentPath(const char *c_string);
+  explicit DocumentPath(const std::string &string);
 
   bool operator==(const DocumentPath &other) const noexcept;
   bool operator!=(const DocumentPath &other) const noexcept;
-
-  operator std::string() const noexcept;
 
   [[nodiscard]] std::string to_string() const noexcept;
 
@@ -80,4 +79,4 @@ private:
 
 } // namespace odr
 
-#endif // ODR_INTERNAL_COMMON_DOCUMENT_PATH_HPP
+#endif // ODR_DOCUMENT_PATH_HPP

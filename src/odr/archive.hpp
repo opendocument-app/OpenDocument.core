@@ -11,6 +11,7 @@ class Archive;
 namespace odr {
 class Filesystem;
 
+/// @brief Represents an archive file.
 class Archive {
 public:
   explicit Archive(std::shared_ptr<internal::abstract::Archive>);
