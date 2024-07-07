@@ -13,11 +13,11 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - run: clang-format-15 --version
+      - run: clang-format-16 --version
 
       - name: apply clang-format
         run: |
           FILES=$( find . -type f \( -iname \*.h -o -iname \*.cpp \) )
-          clang-format-15 --style=file -i $FILES
+          clang-format-16 --style=file -i $FILES
 
       - run: git diff --exit-code --name-only
