@@ -60,7 +60,7 @@ struct Color final {
   std::uint8_t alpha{255};
 
   Color();
-  Color(std::uint32_t rgb);
+  explicit Color(std::uint32_t rgb);
   Color(std::uint32_t argb, bool dummy);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue,
@@ -77,7 +77,7 @@ template <typename T> struct DirectionalStyle final {
   std::optional<T> bottom;
 
   DirectionalStyle() = default;
-  DirectionalStyle(std::optional<T> all)
+  explicit DirectionalStyle(std::optional<T> all)
       : right{all}, top{all}, left{all}, bottom{all} {}
 
   void override(const DirectionalStyle &other) {

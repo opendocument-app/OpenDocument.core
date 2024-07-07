@@ -77,6 +77,7 @@ class Circle;
 class CustomShape;
 class Image;
 
+/// @brief Collection of element types.
 enum class ElementType {
   none,
 
@@ -113,6 +114,7 @@ enum class ElementType {
   group,
 };
 
+/// @brief Collection of anchor types.
 enum class AnchorType {
   as_char,
   at_char,
@@ -121,12 +123,14 @@ enum class AnchorType {
   at_paragraph,
 };
 
+/// @brief Collection of value types.
 enum class ValueType {
   unknown,
   string,
   float_number,
 };
 
+/// @brief Represents an element in a document.
 class Element {
 public:
   Element();
@@ -175,9 +179,10 @@ protected:
   const internal::abstract::Document *m_document{nullptr};
   internal::abstract::Element *m_element{nullptr};
 
-  bool exists_() const;
+  [[nodiscard]] bool exists_() const;
 };
 
+/// @brief Represents an iterator for elements in a document.
 class ElementIterator {
 public:
   using value_type = Element;
@@ -202,9 +207,10 @@ private:
   const internal::abstract::Document *m_document{nullptr};
   internal::abstract::Element *m_element{nullptr};
 
-  bool exists_() const;
+  [[nodiscard]] bool exists_() const;
 };
 
+/// @brief Represents a range of elements in a document.
 class ElementRange {
 public:
   ElementRange();
@@ -219,6 +225,7 @@ private:
   ElementIterator m_end;
 };
 
+/// @brief Represents a typed element in a document.
 template <typename T> class TypedElement : public Element {
 public:
   TypedElement() = default;
@@ -238,9 +245,10 @@ public:
 protected:
   T *m_element;
 
-  bool exists_() const { return m_element != nullptr; }
+  [[nodiscard]] bool exists_() const { return m_element != nullptr; }
 };
 
+/// @brief Represents a root element in a document.
 class TextRoot final : public TypedElement<internal::abstract::TextRoot> {
 public:
   using TypedElement::TypedElement;
@@ -250,6 +258,7 @@ public:
   [[nodiscard]] MasterPage first_master_page() const;
 };
 
+/// @brief Represents a slide element in a document.
 class Slide final : public TypedElement<internal::abstract::Slide> {
 public:
   using TypedElement::TypedElement;
@@ -261,6 +270,7 @@ public:
   [[nodiscard]] MasterPage master_page() const;
 };
 
+/// @brief Represents a sheet element in a document.
 class Sheet final : public TypedElement<internal::abstract::Sheet> {
 public:
   using TypedElement::TypedElement;
@@ -278,6 +288,7 @@ public:
   [[nodiscard]] ElementRange shapes() const;
 };
 
+/// @brief Represents a sheet column element in a document.
 class SheetColumn final : public TypedElement<internal::abstract::Sheet> {
 public:
   SheetColumn() = default;
@@ -290,6 +301,7 @@ private:
   std::uint32_t m_column{};
 };
 
+/// @brief Represents a sheet row element in a document.
 class SheetRow final : public TypedElement<internal::abstract::Sheet> {
 public:
   SheetRow() = default;
@@ -302,6 +314,7 @@ private:
   std::uint32_t m_row{};
 };
 
+/// @brief Represents a sheet cell element in a document.
 class SheetCell final : public TypedElement<internal::abstract::SheetCell> {
 public:
   SheetCell() = default;
@@ -316,11 +329,12 @@ public:
   [[nodiscard]] TableCellStyle style() const;
 
 private:
-  internal::abstract::Sheet *m_sheet;
+  internal::abstract::Sheet *m_sheet{};
   std::uint32_t m_column{};
   std::uint32_t m_row{};
 };
 
+/// @brief Represents a page element in a document.
 class Page final : public TypedElement<internal::abstract::Page> {
 public:
   using TypedElement::TypedElement;
@@ -332,6 +346,7 @@ public:
   [[nodiscard]] MasterPage master_page() const;
 };
 
+/// @brief Represents a master page element in a document.
 class MasterPage final : public TypedElement<internal::abstract::MasterPage> {
 public:
   using TypedElement::TypedElement;
@@ -339,6 +354,7 @@ public:
   [[nodiscard]] PageLayout page_layout() const;
 };
 
+/// @brief Represents a line break element in a document.
 class LineBreak final : public TypedElement<internal::abstract::LineBreak> {
 public:
   using TypedElement::TypedElement;
@@ -346,6 +362,7 @@ public:
   [[nodiscard]] TextStyle style() const;
 };
 
+/// @brief Represents a paragraph element in a document.
 class Paragraph final : public TypedElement<internal::abstract::Paragraph> {
 public:
   using TypedElement::TypedElement;
@@ -354,6 +371,7 @@ public:
   [[nodiscard]] TextStyle text_style() const;
 };
 
+/// @brief Represents a span element in a document.
 class Span final : public TypedElement<internal::abstract::Span> {
 public:
   using TypedElement::TypedElement;
@@ -361,6 +379,7 @@ public:
   [[nodiscard]] TextStyle style() const;
 };
 
+/// @brief Represents a text element in a document.
 class Text final : public TypedElement<internal::abstract::Text> {
 public:
   using TypedElement::TypedElement;
@@ -371,6 +390,7 @@ public:
   [[nodiscard]] TextStyle style() const;
 };
 
+/// @brief Represents a link element in a document.
 class Link final : public TypedElement<internal::abstract::Link> {
 public:
   using TypedElement::TypedElement;
@@ -378,6 +398,7 @@ public:
   [[nodiscard]] std::string href() const;
 };
 
+/// @brief Represents a bookmark element in a document.
 class Bookmark final : public TypedElement<internal::abstract::Bookmark> {
 public:
   using TypedElement::TypedElement;
@@ -385,6 +406,7 @@ public:
   [[nodiscard]] std::string name() const;
 };
 
+/// @brief Represents a list item element in a document.
 class ListItem final : public TypedElement<internal::abstract::ListItem> {
 public:
   using TypedElement::TypedElement;
@@ -392,6 +414,7 @@ public:
   [[nodiscard]] TextStyle style() const;
 };
 
+/// @brief Represents a table element in a document.
 class Table final : public TypedElement<internal::abstract::Table> {
 public:
   using TypedElement::TypedElement;
@@ -404,6 +427,7 @@ public:
   [[nodiscard]] TableStyle style() const;
 };
 
+/// @brief Represents a table column element in a document.
 class TableColumn final : public TypedElement<internal::abstract::TableColumn> {
 public:
   using TypedElement::TypedElement;
@@ -411,6 +435,7 @@ public:
   [[nodiscard]] TableColumnStyle style() const;
 };
 
+/// @brief Represents a table row element in a document.
 class TableRow final : public TypedElement<internal::abstract::TableRow> {
 public:
   using TypedElement::TypedElement;
@@ -418,6 +443,7 @@ public:
   [[nodiscard]] TableRowStyle style() const;
 };
 
+/// @brief Represents a table cell element in a document.
 class TableCell final : public TypedElement<internal::abstract::TableCell> {
 public:
   using TypedElement::TypedElement;
@@ -429,6 +455,7 @@ public:
   [[nodiscard]] TableCellStyle style() const;
 };
 
+/// @brief Represents a frame element in a document.
 class Frame final : public TypedElement<internal::abstract::Frame> {
 public:
   using TypedElement::TypedElement;
@@ -443,6 +470,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
+/// @brief Represents a rectangle element in a document.
 class Rect final : public TypedElement<internal::abstract::Rect> {
 public:
   using TypedElement::TypedElement;
@@ -455,6 +483,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
+/// @brief Represents a line element in a document.
 class Line final : public TypedElement<internal::abstract::Line> {
 public:
   using TypedElement::TypedElement;
@@ -467,6 +496,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
+/// @brief Represents a circle element in a document.
 class Circle final : public TypedElement<internal::abstract::Circle> {
 public:
   using TypedElement::TypedElement;
@@ -479,6 +509,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
+/// @brief Represents a custom shape element in a document.
 class CustomShape final : public TypedElement<internal::abstract::CustomShape> {
 public:
   using TypedElement::TypedElement;
@@ -491,6 +522,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
+/// @brief Represents an image element in a document.
 class Image final : public TypedElement<internal::abstract::Image> {
 public:
   using TypedElement::TypedElement;

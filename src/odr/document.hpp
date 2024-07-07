@@ -15,6 +15,7 @@ class DocumentFile;
 class Element;
 class Filesystem;
 
+/// @brief Represents a document.
 class Document final {
 public:
   explicit Document(std::shared_ptr<internal::abstract::Document>);

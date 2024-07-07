@@ -50,7 +50,7 @@ DocumentPath::ComponentTemplate<Derived>::to_string() const noexcept {
 
 DocumentPath::Component
 DocumentPath::component_from_string(const std::string &string) {
-  auto colon = string.find(":");
+  auto colon = string.find(':');
   if (colon == std::string::npos) {
     throw std::invalid_argument("string");
   }
@@ -88,11 +88,11 @@ DocumentPath DocumentPath::extract(Element element, Element root) {
     }
 
     if (current.table_column() || current.table_cell()) {
-      reverse.push_back(Column(distance));
+      reverse.emplace_back(Column(distance));
     } else if (current.table_row()) {
-      reverse.push_back(Row(distance));
+      reverse.emplace_back(Row(distance));
     } else {
-      reverse.push_back(Child(distance));
+      reverse.emplace_back(Child(distance));
     }
 
     current = parent;
@@ -144,8 +144,6 @@ bool DocumentPath::operator==(const DocumentPath &other) const noexcept {
 bool DocumentPath::operator!=(const DocumentPath &other) const noexcept {
   return m_components != other.m_components;
 }
-
-DocumentPath::operator std::string() const noexcept { return to_string(); }
 
 std::string DocumentPath::to_string() const noexcept {
   std::string result;
