@@ -72,11 +72,11 @@ std::string string::to_string(const double d, const int precision) {
   return stream.str();
 }
 
-std::string string::u16string_to_string(const std::u16string &string) {
+std::string string::u16string_to_string(std::u16string_view string) {
   return utf8::utf16to8(string);
 }
 
-std::u16string string::string_to_u16string(const std::string &string) {
+std::u16string string::string_to_u16string(std::string_view string) {
   return utf8::utf8to16(string);
 }
 
