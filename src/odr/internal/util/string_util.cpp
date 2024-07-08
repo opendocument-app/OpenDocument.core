@@ -2,10 +2,11 @@
 
 #include <algorithm>
 #include <cctype>
-#include <codecvt>
 #include <iomanip>
 #include <locale>
 #include <sstream>
+
+#include <utf8cpp/utf8.h>
 
 namespace odr::internal::util {
 
@@ -72,15 +73,11 @@ std::string string::to_string(const double d, const int precision) {
 }
 
 std::string string::u16string_to_string(const std::u16string &string) {
-  static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>
-      convert;
-  return convert.to_bytes(string);
+  return utf8::utf16to8(string);
 }
 
 std::u16string string::string_to_u16string(const std::string &string) {
-  static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>
-      convert;
-  return convert.from_bytes(string);
+  return utf8::utf8to16(string);
 }
 
 std::string string::c16str_to_string(const char16_t *c16str,
