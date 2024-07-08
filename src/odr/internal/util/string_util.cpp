@@ -72,12 +72,16 @@ std::string string::to_string(const double d, const int precision) {
   return stream.str();
 }
 
-std::string string::u16string_to_string(std::u16string_view string) {
-  return utf8::utf16to8(string);
+std::string string::u16string_to_string(const std::u16string &string) {
+  std::string result;
+  utf8::utf16to8(string.begin(), string.end(), std::back_inserter(result));
+  return result;
 }
 
-std::u16string string::string_to_u16string(std::string_view string) {
-  return utf8::utf8to16(string);
+std::u16string string::string_to_u16string(const std::string &string) {
+  std::u16string result;
+  utf8::utf8to16(string.begin(), string.end(), std::back_inserter(result));
+  return result;
 }
 
 std::string string::c16str_to_string(const char16_t *c16str,
