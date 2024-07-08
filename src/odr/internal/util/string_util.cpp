@@ -6,7 +6,7 @@
 #include <locale>
 #include <sstream>
 
-#include <utf8cpp/utf8.h>
+#include <utf8cpp/utf8/cpp17.h>
 
 namespace odr::internal::util {
 
@@ -73,15 +73,11 @@ std::string string::to_string(const double d, const int precision) {
 }
 
 std::string string::u16string_to_string(const std::u16string &string) {
-  std::string result;
-  utf8::utf16to8(string.begin(), string.end(), std::back_inserter(result));
-  return result;
+  return utf8::utf16to8(string);
 }
 
 std::u16string string::string_to_u16string(const std::string &string) {
-  std::u16string result;
-  utf8::utf8to16(string.begin(), string.end(), std::back_inserter(result));
-  return result;
+  return utf8::utf8to16(string);
 }
 
 std::string string::c16str_to_string(const char16_t *c16str,
