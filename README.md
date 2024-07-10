@@ -27,9 +27,13 @@ Potential test files: https://file-examples.com/
 
 ## [Documentation](docs/README.md)
 
-## Local build
+## Build
 
-To consume this library on other platforms (e.g. Android or iOS), run: `conan export . odrcore/VERSION@`
+This project comes with CMake as a build system and Conan as package manager. In principle they should be independent and one can build without Conan.
+
+Using Conan one can use our Artifactory as a Conan remote for convenience: https://artifactory.opendocument.app/
+
+As an alternative to the Conan remote you can also export the package locally via Conan i.e. `conan export . --name odrcore --version VERSION` (fill `VERSION` with something appropriate).
 
 ## Version
 
