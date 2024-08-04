@@ -42,6 +42,14 @@ ObjectParser::char_type ObjectParser::bumpc() const {
   return c;
 }
 
+std::string ObjectParser::bumpnc(std::size_t n) const {
+  std::string result(n, '\0');
+  if (sb().sgetn(result.data(), result.size()) != result.size()) {
+    throw std::runtime_error("unexpected stream exhaust");
+  }
+  return result;
+}
+
 void ObjectParser::ungetc() const {
   if (sb().sungetc() == eof) {
     throw std::runtime_error("unexpected stream exhaust");
@@ -101,6 +109,15 @@ void ObjectParser::skip_line() const { read_line(); }
 
 std::string ObjectParser::read_line(bool inclusive) const {
   return util::stream::read_line(in(), inclusive);
+}
+
+void ObjectParser::expect_characters(const std::string &string) const {
+  auto observed = bumpnc(string.size());
+  if (observed != string) {
+    throw std::runtime_error("unexpected characters"
+                             " (expected: " +
+                             string + ", observed: " + observed + ")");
+  }
 }
 
 bool ObjectParser::peek_number() const {

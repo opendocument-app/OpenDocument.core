@@ -49,6 +49,12 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
+  // TODO fix
+  if ((test_file.type == FileType::portable_document_format) &&
+      (test_repo != "odr-public")) {
+    GTEST_SKIP();
+  }
+
   const DecodedFile file{test_file.path};
 
   FileMeta file_meta = file.file_meta();

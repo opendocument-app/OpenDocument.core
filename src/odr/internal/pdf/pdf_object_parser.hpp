@@ -32,6 +32,7 @@ public:
     }
     return result;
   }
+  std::string bumpnc(std::size_t n) const;
   void ungetc() const;
 
   static int_type octet_char_to_int(char_type c);
@@ -45,6 +46,7 @@ public:
   void skip_whitespace() const;
   void skip_line() const;
   std::string read_line(bool inclusive = false) const;
+  void expect_characters(const std::string &string) const;
 
   bool peek_number() const;
   UnsignedInteger read_unsigned_integer() const;

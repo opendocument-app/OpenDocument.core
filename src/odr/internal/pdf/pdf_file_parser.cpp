@@ -49,9 +49,8 @@ IndirectObject FileParser::read_indirect_object() const {
 }
 
 Trailer FileParser::read_trailer() const {
-  if (std::string line = m_parser.read_line(); line != "trailer") {
-    throw std::runtime_error("expected trailer");
-  }
+  m_parser.expect_characters("trailer");
+  m_parser.skip_whitespace();
 
   Trailer result;
 
@@ -91,8 +90,7 @@ Xref FileParser::read_xref() const {
       m_parser.skip_whitespace();
       entry.in_use = m_parser.read_line().at(0) == 'n';
 
-      result.table.emplace(ObjectReference(first_id + i, generation),
-                           std::move(entry));
+      result.table.emplace(ObjectReference(first_id + i, generation), entry);
     }
   }
 }

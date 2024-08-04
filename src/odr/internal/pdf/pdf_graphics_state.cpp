@@ -58,7 +58,7 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     current().general.miter_limit = op.arguments.at(0).as_real();
     break;
   case GraphicsOperatorType::set_dash_pattern:
-    current().general.dash_pattern = op.arguments.at(0).as_integer();
+    std::cout << "dash pattern not implemented" << std::endl;
     break;
   case GraphicsOperatorType::set_color_rendering_intent:
     current().general.color_rendering_intent = op.arguments.at(0).as_real();

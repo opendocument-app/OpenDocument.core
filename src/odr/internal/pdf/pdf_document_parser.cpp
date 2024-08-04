@@ -50,10 +50,12 @@ pdf::Resources *parse_resources(DocumentParser &parser, const Object &object,
   resources->type = Type::resources;
   resources->object = dictionary;
 
-  Dictionary font_table =
-      parser.resolve_object_copy(dictionary["Font"]).as_dictionary();
-  for (const auto &[key, value] : font_table) {
-    resources->font[key] = parse_font(parser, value.as_reference(), document);
+  if (!dictionary["Font"].is_null()) {
+    Dictionary font_table =
+        parser.resolve_object_copy(dictionary["Font"]).as_dictionary();
+    for (const auto &[key, value] : font_table) {
+      resources->font[key] = parse_font(parser, value.as_reference(), document);
+    }
   }
 
   return resources;
