@@ -27,7 +27,7 @@ enum class Method {
   DEFLATED,
 };
 
-class Archive final {
+class Archive final : public std::enable_shared_from_this<Archive> {
 public:
   explicit Archive(const std::shared_ptr<common::MemoryFile> &file);
   explicit Archive(const std::shared_ptr<common::DiskFile> &file);
@@ -56,8 +56,7 @@ public:
     [[nodiscard]] bool is_directory() const;
     [[nodiscard]] common::Path path() const;
     [[nodiscard]] Method method() const;
-    [[nodiscard]] std::shared_ptr<abstract::File>
-    file(std::shared_ptr<Archive> archive) const;
+    [[nodiscard]] std::shared_ptr<abstract::File> file() const;
 
   private:
     const Archive &m_parent;

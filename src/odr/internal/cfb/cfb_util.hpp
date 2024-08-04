@@ -22,7 +22,7 @@ struct CompoundFileEntry;
 
 namespace odr::internal::cfb::util {
 
-class Archive final {
+class Archive final : public std::enable_shared_from_this<Archive> {
 public:
   explicit Archive(const std::shared_ptr<common::MemoryFile> &file);
 
@@ -49,8 +49,7 @@ public:
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
     [[nodiscard]] common::Path path() const;
-    [[nodiscard]] std::unique_ptr<abstract::File>
-    file(std::shared_ptr<Archive> archive) const;
+    [[nodiscard]] std::unique_ptr<abstract::File> file() const;
 
     [[nodiscard]] std::string name() const;
     [[nodiscard]] std::optional<Entry> left() const;
@@ -98,8 +97,8 @@ public:
   };
 
 private:
-  impl::CompoundFileReader m_cfb;
   std::shared_ptr<abstract::File> m_file;
+  impl::CompoundFileReader m_cfb;
 };
 
 } // namespace odr::internal::cfb::util

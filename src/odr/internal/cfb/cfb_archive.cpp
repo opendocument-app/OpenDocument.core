@@ -25,7 +25,7 @@ std::shared_ptr<abstract::Filesystem> CfbArchive::filesystem() const {
     if (e.is_directory()) {
       filesystem->create_directory(e.path());
     } else if (e.is_file()) {
-      filesystem->copy(e.file(m_cfb), e.path());
+      filesystem->copy(e.file(), e.path());
     }
   }
 

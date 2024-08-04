@@ -47,24 +47,24 @@ private:
 
 class FileInCfbIstream final : public std::istream {
 public:
-  FileInCfbIstream(std::shared_ptr<Archive> archive,
+  FileInCfbIstream(std::shared_ptr<const Archive> archive,
                    std::unique_ptr<util::ReaderBuffer> sbuf)
       : std::istream(sbuf.get()), m_archive{std::move(archive)},
         m_sbuf{std::move(sbuf)} {}
-  FileInCfbIstream(std::shared_ptr<Archive> archive,
+  FileInCfbIstream(std::shared_ptr<const Archive> archive,
                    const impl::CompoundFileReader &reader,
                    const impl::CompoundFileEntry &entry)
       : FileInCfbIstream(std::move(archive),
                          std::make_unique<util::ReaderBuffer>(reader, entry)) {}
 
 private:
-  std::shared_ptr<Archive> m_archive;
+  std::shared_ptr<const Archive> m_archive;
   std::unique_ptr<util::ReaderBuffer> m_sbuf;
 };
 
 class FileInCfb final : public abstract::File {
 public:
-  FileInCfb(std::shared_ptr<Archive> archive,
+  FileInCfb(std::shared_ptr<const Archive> archive,
             const impl::CompoundFileEntry &entry)
       : m_archive{std::move(archive)}, m_entry{entry} {}
 
@@ -84,7 +84,7 @@ public:
   }
 
 private:
-  std::shared_ptr<Archive> m_archive;
+  std::shared_ptr<const Archive> m_archive;
   const impl::CompoundFileEntry &m_entry;
 };
 
@@ -113,12 +113,11 @@ bool Archive::Entry::is_directory() const { return !m_entry->is_stream(); }
 
 common::Path Archive::Entry::path() const { return m_path; }
 
-std::unique_ptr<abstract::File>
-Archive::Entry::file(std::shared_ptr<Archive> archive) const {
+std::unique_ptr<abstract::File> Archive::Entry::file() const {
   if (!is_file()) {
     return {};
   }
-  return std::make_unique<FileInCfb>(std::move(archive), *m_entry);
+  return std::make_unique<FileInCfb>(m_parent->shared_from_this(), *m_entry);
 }
 
 std::string Archive::Entry::name() const {
@@ -252,7 +251,7 @@ Archive::Iterator Archive::Iterator::operator++(int) {
 }
 
 Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)
-    : m_cfb{file->content().data(), file->content().size()}, m_file{file} {}
+    : m_file{file}, m_cfb{file->content().data(), file->content().size()} {}
 
 const impl::CompoundFileReader &Archive::cfb() const { return m_cfb; }
 
@@ -265,13 +264,9 @@ Archive::Iterator Archive::begin() const {
 Archive::Iterator Archive::end() const { return {}; }
 
 Archive::Iterator Archive::find(const common::Path &path) const {
-  for (auto it = begin(); it != end(); ++it) {
-    if (it->path() == path) {
-      return it;
-    }
-  }
-
-  return end();
+  return std::find_if(begin(), end(), [&path](const Entry &entry) {
+    return entry.path() == path;
+  });
 }
 
 } // namespace odr::internal::cfb::util

@@ -89,11 +89,11 @@ TEST(ZipArchive, create) {
     EXPECT_TRUE(zip->find("notempty/four.txt")->is_file());
     EXPECT_TRUE(zip->find("./notempty/four.txt")->is_file());
 
-    EXPECT_EQ(23, zip->find("one.txt")->file(zip)->size());
-    EXPECT_EQ(29, zip->find("two.txt")->file(zip)->size());
-    EXPECT_EQ(4, zip->find("notempty/three.txt")->file(zip)->size());
-    EXPECT_EQ(4, zip->find("notempty/four.txt")->file(zip)->size());
-    EXPECT_EQ(4, zip->find("./notempty/four.txt")->file(zip)->size());
+    EXPECT_EQ(23, zip->find("one.txt")->file()->size());
+    EXPECT_EQ(29, zip->find("two.txt")->file()->size());
+    EXPECT_EQ(4, zip->find("notempty/three.txt")->file()->size());
+    EXPECT_EQ(4, zip->find("notempty/four.txt")->file()->size());
+    EXPECT_EQ(4, zip->find("./notempty/four.txt")->file()->size());
   }
 }
 

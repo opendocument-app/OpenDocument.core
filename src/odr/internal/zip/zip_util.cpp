@@ -73,7 +73,7 @@ private:
 
 class FileInZipIstream final : public std::istream {
 public:
-  FileInZipIstream(std::shared_ptr<Archive> archive,
+  FileInZipIstream(std::shared_ptr<const Archive> archive,
                    std::unique_ptr<ReaderBuffer> sbuf)
       : std::istream(sbuf.get()), m_archive{std::move(archive)},
         m_sbuf{std::move(sbuf)} {
@@ -84,19 +84,19 @@ public:
       throw std::invalid_argument("FileInZipIstream: sbuf is nullptr");
     }
   }
-  FileInZipIstream(std::shared_ptr<Archive> archive,
+  FileInZipIstream(std::shared_ptr<const Archive> archive,
                    mz_zip_reader_extract_iter_state *iter)
       : FileInZipIstream(std::move(archive),
                          std::make_unique<ReaderBuffer>(iter)) {}
 
 private:
-  std::shared_ptr<Archive> m_archive;
+  std::shared_ptr<const Archive> m_archive;
   std::unique_ptr<ReaderBuffer> m_sbuf;
 };
 
 class FileInZip final : public abstract::File {
 public:
-  FileInZip(std::shared_ptr<Archive> archive, std::uint32_t index)
+  FileInZip(std::shared_ptr<const Archive> archive, std::uint32_t index)
       : m_archive{std::move(archive)}, m_index{index} {
     if (m_archive == nullptr) {
       throw std::invalid_argument("FileInZip: archive is nullptr");
@@ -136,7 +136,7 @@ public:
   }
 
 private:
-  std::shared_ptr<Archive> m_archive;
+  std::shared_ptr<const Archive> m_archive;
   std::uint32_t m_index;
 };
 
@@ -176,12 +176,11 @@ Method Archive::Entry::method() const {
   return Method::UNSUPPORTED;
 }
 
-std::shared_ptr<abstract::File>
-Archive::Entry::file(std::shared_ptr<Archive> archive) const {
+std::shared_ptr<abstract::File> Archive::Entry::file() const {
   if (!is_file()) {
     return nullptr;
   }
-  return std::make_shared<FileInZip>(std::move(archive), m_index);
+  return std::make_shared<FileInZip>(m_parent.shared_from_this(), m_index);
 }
 
 Archive::Iterator::Iterator(const Archive &zip, const std::uint32_t index)
@@ -261,13 +260,9 @@ Archive::Iterator Archive::end() const {
 }
 
 Archive::Iterator Archive::find(const common::Path &path) const {
-  for (auto it = begin(); it != end(); ++it) {
-    if (it->path() == path) {
-      return it;
-    }
-  }
-
-  return end();
+  return std::find_if(begin(), end(), [&path](const Entry &entry) {
+    return entry.path() == path;
+  });
 }
 
 } // namespace odr::internal::zip::util

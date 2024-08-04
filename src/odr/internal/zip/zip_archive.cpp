@@ -48,7 +48,7 @@ ZipArchive::ZipArchive(const std::shared_ptr<util::Archive> &archive) {
       if (entry.method() == util::Method::STORED) {
         compression_level = 0;
       }
-      insert_file(end(), entry.path(), entry.file(archive), compression_level);
+      insert_file(end(), entry.path(), entry.file(), compression_level);
     } else if (entry.is_directory()) {
       insert_directory(end(), entry.path());
     }
