@@ -50,7 +50,20 @@ public:
 
   class Entry {
   public:
-    Entry(const Archive &parent, std::uint32_t index);
+    Entry(const Entry &) = default;
+    Entry(Entry &&) noexcept = default;
+    Entry(const Archive &parent, std::uint32_t index)
+        : m_parent{&parent}, m_index{index} {}
+    ~Entry() = default;
+    Entry &operator=(const Entry &) = default;
+    Entry &operator=(Entry &&) noexcept = default;
+
+    [[nodiscard]] bool operator==(const Entry &other) const {
+      return m_index == other.m_index;
+    }
+    [[nodiscard]] bool operator!=(const Entry &other) const {
+      return m_index != other.m_index;
+    }
 
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
@@ -59,7 +72,7 @@ public:
     [[nodiscard]] std::shared_ptr<abstract::File> file() const;
 
   private:
-    const Archive &m_parent;
+    const Archive *m_parent;
     std::uint32_t m_index;
 
     friend Iterator;
@@ -73,16 +86,32 @@ public:
     using pointer = const Entry *;
     using reference = const Entry &;
 
-    Iterator(const Archive &zip, std::uint32_t index);
+    Iterator(const Iterator &) = default;
+    Iterator(Iterator &&) noexcept = default;
+    Iterator(const Archive &zip, std::uint32_t index) : m_entry{zip, index} {}
+    ~Iterator() = default;
+    Iterator &operator=(const Iterator &) = default;
+    Iterator &operator=(Iterator &&) noexcept = default;
 
-    reference operator*() const;
-    pointer operator->() const;
+    [[nodiscard]] reference operator*() const { return m_entry; }
+    [[nodiscard]] pointer operator->() const { return &m_entry; }
 
-    bool operator==(const Iterator &other) const;
-    bool operator!=(const Iterator &other) const;
+    [[nodiscard]] bool operator==(const Iterator &other) const {
+      return m_entry == other.m_entry;
+    }
+    [[nodiscard]] bool operator!=(const Iterator &other) const {
+      return m_entry != other.m_entry;
+    }
 
-    Iterator &operator++();
-    Iterator operator++(int);
+    Iterator &operator++() {
+      m_entry.m_index++;
+      return *this;
+    }
+    Iterator operator++(int) {
+      Iterator tmp = *this;
+      ++(*this);
+      return tmp;
+    }
 
   private:
     Entry m_entry;

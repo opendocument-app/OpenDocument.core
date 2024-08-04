@@ -142,22 +142,19 @@ private:
 
 } // namespace
 
-Archive::Entry::Entry(const Archive &parent, std::uint32_t index)
-    : m_parent{parent}, m_index{index} {}
-
 bool Archive::Entry::is_file() const {
   return !mz_zip_reader_is_file_a_directory(
-      const_cast<mz_zip_archive *>(m_parent.zip()), m_index);
+      const_cast<mz_zip_archive *>(m_parent->zip()), m_index);
 }
 
 bool Archive::Entry::is_directory() const {
   return mz_zip_reader_is_file_a_directory(
-      const_cast<mz_zip_archive *>(m_parent.zip()), m_index);
+      const_cast<mz_zip_archive *>(m_parent->zip()), m_index);
 }
 
 common::Path Archive::Entry::path() const {
   char filename[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
-  mz_zip_reader_get_filename(const_cast<mz_zip_archive *>(m_parent.zip()),
+  mz_zip_reader_get_filename(const_cast<mz_zip_archive *>(m_parent->zip()),
                              m_index, filename,
                              MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE);
   return {filename};
@@ -165,8 +162,8 @@ common::Path Archive::Entry::path() const {
 
 Method Archive::Entry::method() const {
   mz_zip_archive_file_stat stat{};
-  mz_zip_reader_file_stat(const_cast<mz_zip_archive *>(m_parent.zip()), m_index,
-                          &stat);
+  mz_zip_reader_file_stat(const_cast<mz_zip_archive *>(m_parent->zip()),
+                          m_index, &stat);
   switch (stat.m_method) {
   case 0:
     return Method::STORED;
@@ -180,37 +177,7 @@ std::shared_ptr<abstract::File> Archive::Entry::file() const {
   if (!is_file()) {
     return nullptr;
   }
-  return std::make_shared<FileInZip>(m_parent.shared_from_this(), m_index);
-}
-
-Archive::Iterator::Iterator(const Archive &zip, const std::uint32_t index)
-    : m_entry{zip, index} {}
-
-Archive::Iterator::reference Archive::Iterator::operator*() const {
-  return m_entry;
-}
-
-Archive::Iterator::pointer Archive::Iterator::operator->() const {
-  return &m_entry;
-}
-
-bool Archive::Iterator::operator==(const Iterator &other) const {
-  return m_entry.m_index == other.m_entry.m_index;
-}
-
-bool Archive::Iterator::operator!=(const Iterator &other) const {
-  return m_entry.m_index != other.m_entry.m_index;
-}
-
-Archive::Iterator &Archive::Iterator::operator++() {
-  m_entry.m_index++;
-  return *this;
-}
-
-Archive::Iterator Archive::Iterator::operator++(int) {
-  Iterator tmp = *this;
-  ++(*this);
-  return tmp;
+  return std::make_shared<FileInZip>(m_parent->shared_from_this(), m_index);
 }
 
 Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)

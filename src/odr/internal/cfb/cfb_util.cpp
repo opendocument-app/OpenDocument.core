@@ -90,23 +90,6 @@ private:
 
 } // namespace
 
-Archive::Entry::Entry(const Archive &parent,
-                      const impl::CompoundFileEntry &entry)
-    : m_parent{&parent}, m_entry{&entry}, m_path{"/"} {}
-
-Archive::Entry::Entry(const Archive &parent,
-                      const impl::CompoundFileEntry &entry,
-                      const common::Path &parent_path)
-    : m_parent{&parent}, m_entry{&entry}, m_path{parent_path.join(name())} {}
-
-bool Archive::Entry::operator==(const Entry &other) const {
-  return m_entry == other.m_entry;
-}
-
-bool Archive::Entry::operator!=(const Entry &other) const {
-  return m_entry != other.m_entry;
-}
-
 bool Archive::Entry::is_file() const { return m_entry->is_stream(); }
 
 bool Archive::Entry::is_directory() const { return !m_entry->is_stream(); }
@@ -147,21 +130,6 @@ std::optional<Archive::Entry> Archive::Entry::child() const {
     return {};
   }
   return Entry(*m_parent, *child, m_path);
-}
-
-Archive::Iterator::Iterator() = default;
-
-Archive::Iterator::Iterator(const Archive &parent,
-                            const impl::CompoundFileEntry &entry)
-    : m_entry{Entry(parent, entry)} {
-  dig_left_();
-}
-
-Archive::Iterator::Iterator(const Archive &parent,
-                            const impl::CompoundFileEntry &entry,
-                            const common::Path &parent_path)
-    : m_entry{Entry(parent, entry, parent_path)} {
-  dig_left_();
 }
 
 void Archive::Iterator::dig_left_() {
@@ -221,33 +189,6 @@ void Archive::Iterator::next_flat_() {
   }
 
   m_entry = {};
-}
-
-Archive::Iterator::reference Archive::Iterator::operator*() const {
-  return *m_entry;
-}
-
-Archive::Iterator::pointer Archive::Iterator::operator->() const {
-  return &*m_entry;
-}
-
-bool Archive::Iterator::operator==(const Iterator &other) const {
-  return m_entry == other.m_entry;
-}
-
-bool Archive::Iterator::operator!=(const Iterator &other) const {
-  return m_entry != other.m_entry;
-}
-
-Archive::Iterator &Archive::Iterator::operator++() {
-  next_();
-  return *this;
-}
-
-Archive::Iterator Archive::Iterator::operator++(int) {
-  Iterator tmp = *this;
-  ++(*this);
-  return tmp;
 }
 
 Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)

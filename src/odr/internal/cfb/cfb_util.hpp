@@ -39,12 +39,24 @@ public:
 
   class Entry {
   public:
-    Entry(const Archive &parent, const impl::CompoundFileEntry &entry);
+    Entry(const Entry &) = default;
+    Entry(Entry &&) noexcept = default;
+    Entry(const Archive &parent, const impl::CompoundFileEntry &entry)
+        : m_parent{&parent}, m_entry{&entry}, m_path{"/"} {}
     Entry(const Archive &parent, const impl::CompoundFileEntry &entry,
-          const common::Path &parent_path);
+          const common::Path &parent_path)
+        : m_parent{&parent}, m_entry{&entry}, m_path{parent_path.join(name())} {
+    }
+    ~Entry() = default;
+    Entry &operator=(const Entry &) = default;
+    Entry &operator=(Entry &&) noexcept = default;
 
-    bool operator==(const Entry &other) const;
-    bool operator!=(const Entry &other) const;
+    bool operator==(const Entry &other) const {
+      return m_entry == other.m_entry;
+    }
+    bool operator!=(const Entry &other) const {
+      return m_entry != other.m_entry;
+    }
 
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
@@ -72,19 +84,41 @@ public:
     using pointer = const Entry *;
     using reference = const Entry &;
 
-    Iterator();
-    Iterator(const Archive &parent, const impl::CompoundFileEntry &entry);
+    Iterator() = default;
+    Iterator(const Iterator &) = default;
+    Iterator(Iterator &&) noexcept = default;
+    Iterator(const Archive &parent, const impl::CompoundFileEntry &entry)
+        : m_entry{Entry(parent, entry)} {
+      dig_left_();
+    }
     Iterator(const Archive &parent, const impl::CompoundFileEntry &entry,
-             const common::Path &parent_path);
+             const common::Path &parent_path)
+        : m_entry{Entry(parent, entry, parent_path)} {
+      dig_left_();
+    }
+    ~Iterator() = default;
+    Iterator &operator=(const Iterator &) = default;
+    Iterator &operator=(Iterator &&) noexcept = default;
 
-    reference operator*() const;
-    pointer operator->() const;
+    [[nodiscard]] reference operator*() const { return *m_entry; }
+    [[nodiscard]] pointer operator->() const { return &*m_entry; }
 
-    bool operator==(const Iterator &other) const;
-    bool operator!=(const Iterator &other) const;
+    [[nodiscard]] bool operator==(const Iterator &other) const {
+      return m_entry == other.m_entry;
+    }
+    [[nodiscard]] bool operator!=(const Iterator &other) const {
+      return m_entry != other.m_entry;
+    }
 
-    Iterator &operator++();
-    Iterator operator++(int);
+    Iterator &operator++() {
+      next_();
+      return *this;
+    }
+    Iterator operator++(int) {
+      Iterator tmp = *this;
+      ++(*this);
+      return tmp;
+    }
 
   private:
     std::optional<Entry> m_entry;
