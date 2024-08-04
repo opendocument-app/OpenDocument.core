@@ -21,6 +21,12 @@ class DiskFile;
 
 namespace odr::internal::zip::util {
 
+enum class Method {
+  UNSUPPORTED,
+  STORED,
+  DEFLATED,
+};
+
 class Archive final {
 public:
   explicit Archive(const std::shared_ptr<common::MemoryFile> &file);
@@ -31,36 +37,66 @@ public:
   Archive &operator=(const Archive &);
   Archive &operator=(Archive &&) noexcept;
 
-  [[nodiscard]] mz_zip_archive *zip() const;
+  [[nodiscard]] const mz_zip_archive *zip() const;
 
-  [[nodiscard]] std::shared_ptr<abstract::File> file() const;
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept;
+
+  class Iterator;
+
+  [[nodiscard]] Iterator begin() const;
+  [[nodiscard]] Iterator end() const;
+
+  [[nodiscard]] Iterator find(const common::Path &path) const;
+
+  class Entry {
+  public:
+    Entry(const Archive &parent, std::uint32_t index);
+
+    [[nodiscard]] bool is_file() const;
+    [[nodiscard]] bool is_directory() const;
+    [[nodiscard]] common::Path path() const;
+    [[nodiscard]] Method method() const;
+    [[nodiscard]] std::shared_ptr<abstract::File>
+    file(std::shared_ptr<Archive> archive) const;
+
+  private:
+    const Archive &m_parent;
+    std::uint32_t m_index;
+
+    friend Iterator;
+  };
+
+  class Iterator {
+  public:
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = std::ptrdiff_t;
+    using value_type = Entry;
+    using pointer = const Entry *;
+    using reference = const Entry &;
+
+    Iterator(const Archive &zip, std::uint32_t index);
+
+    reference operator*() const;
+    pointer operator->() const;
+
+    bool operator==(const Iterator &other) const;
+    bool operator!=(const Iterator &other) const;
+
+    Iterator &operator++();
+    Iterator operator++(int);
+
+  private:
+    Entry m_entry;
+  };
 
 private:
-  mutable mz_zip_archive m_zip{};
   std::shared_ptr<abstract::File> m_file;
-  std::unique_ptr<std::istream> m_data;
+  mz_zip_archive m_zip{};
 
   explicit Archive(std::shared_ptr<abstract::File> file);
-
-  void init_();
 };
 
-class FileInZip final : public abstract::File {
-public:
-  FileInZip(std::shared_ptr<Archive> archive, std::uint32_t index);
-
-  [[nodiscard]] FileLocation location() const noexcept final;
-  [[nodiscard]] std::size_t size() const final;
-
-  [[nodiscard]] std::optional<common::Path> disk_path() const final;
-  [[nodiscard]] const char *memory_data() const final;
-
-  [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
-
-private:
-  std::shared_ptr<Archive> m_archive;
-  std::uint32_t m_index;
-};
+void read_from_file(mz_zip_archive &archive, const abstract::File &file);
 
 bool append_file(mz_zip_archive &archive, const std::string &path,
                  std::istream &istream, std::size_t size,

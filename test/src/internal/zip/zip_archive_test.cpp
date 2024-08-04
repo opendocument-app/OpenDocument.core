@@ -2,6 +2,8 @@
 
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
+#include <odr/internal/zip/zip_file.hpp>
+#include <odr/internal/zip/zip_util.hpp>
 
 #include <test_util.hpp>
 
@@ -17,28 +19,26 @@ using namespace odr::internal::zip;
 using namespace odr::internal::common;
 using namespace odr::test;
 
-TEST(ReadonlyZipArchive, open_directory) {
-  EXPECT_ANY_THROW(ReadonlyZipArchive(std::make_shared<DiskFile>("/")));
+TEST(ZipArchive, open_directory) {
+  EXPECT_ANY_THROW(ZipFile(std::make_shared<DiskFile>("/")));
 }
 
-TEST(ReadonlyZipArchive, open_encrypted_docx) {
-  EXPECT_THROW(ReadonlyZipArchive(std::make_shared<DiskFile>(
+TEST(ZipArchive, open_encrypted_docx) {
+  EXPECT_THROW(ZipFile(std::make_shared<DiskFile>(
                    TestData::test_file_path("odr-public/docx/encrypted.docx"))),
                NoZipFile);
 }
 
-TEST(ReadonlyZipArchive, open_odt) {
-  ReadonlyZipArchive(std::make_shared<DiskFile>(
+TEST(ZipArchive, open_odt) {
+  ZipFile(std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/odt/style-various-1.odt")));
 }
 
-TEST(ReadonlyZipArchive, open) {
-  ReadonlyZipArchive zip(std::make_shared<DiskFile>(
+TEST(ZipArchive, open) {
+  util::Archive zip(std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/odt/style-various-1.odt")));
 
-  EXPECT_EQ(
-      19, std::vector<ReadonlyZipArchive::Entry>(std::begin(zip), std::end(zip))
-              .size());
+  EXPECT_EQ(19, std::vector(zip.begin(), zip.end()).size());
 }
 
 TEST(ZipArchive, create_and_save) {
@@ -78,21 +78,22 @@ TEST(ZipArchive, create) {
   }
 
   {
-    ReadonlyZipArchive zip(std::make_shared<DiskFile>(path));
+    auto zip =
+        std::make_shared<util::Archive>(std::make_shared<DiskFile>(path));
 
-    EXPECT_TRUE(zip.find("one.txt")->is_file());
-    EXPECT_TRUE(zip.find("two.txt")->is_file());
-    EXPECT_TRUE(zip.find("empty")->is_directory());
-    EXPECT_TRUE(zip.find("notempty")->is_directory());
-    EXPECT_TRUE(zip.find("notempty/three.txt")->is_file());
-    EXPECT_TRUE(zip.find("notempty/four.txt")->is_file());
-    EXPECT_TRUE(zip.find("./notempty/four.txt")->is_file());
+    EXPECT_TRUE(zip->find("one.txt")->is_file());
+    EXPECT_TRUE(zip->find("two.txt")->is_file());
+    EXPECT_TRUE(zip->find("empty")->is_directory());
+    EXPECT_TRUE(zip->find("notempty")->is_directory());
+    EXPECT_TRUE(zip->find("notempty/three.txt")->is_file());
+    EXPECT_TRUE(zip->find("notempty/four.txt")->is_file());
+    EXPECT_TRUE(zip->find("./notempty/four.txt")->is_file());
 
-    EXPECT_EQ(23, zip.find("one.txt")->file()->size());
-    EXPECT_EQ(29, zip.find("two.txt")->file()->size());
-    EXPECT_EQ(4, zip.find("notempty/three.txt")->file()->size());
-    EXPECT_EQ(4, zip.find("notempty/four.txt")->file()->size());
-    EXPECT_EQ(4, zip.find("./notempty/four.txt")->file()->size());
+    EXPECT_EQ(23, zip->find("one.txt")->file(zip)->size());
+    EXPECT_EQ(29, zip->find("two.txt")->file(zip)->size());
+    EXPECT_EQ(4, zip->find("notempty/three.txt")->file(zip)->size());
+    EXPECT_EQ(4, zip->find("notempty/four.txt")->file(zip)->size());
+    EXPECT_EQ(4, zip->find("./notempty/four.txt")->file(zip)->size());
   }
 }
 
@@ -112,7 +113,7 @@ TEST(ZipArchive, create_order) {
   }
 
   {
-    ReadonlyZipArchive zip(std::make_shared<DiskFile>(path));
+    util::Archive zip(std::make_shared<DiskFile>(path));
 
     auto it = entries.begin();
     for (auto &&e : zip) {

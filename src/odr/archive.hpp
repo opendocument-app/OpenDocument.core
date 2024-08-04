@@ -20,7 +20,7 @@ public:
 
   [[nodiscard]] Filesystem filesystem() const;
 
-  void save(const std::string &path) const;
+  void save(std::ostream &out) const;
 
 private:
   std::shared_ptr<internal::abstract::Archive> m_impl;

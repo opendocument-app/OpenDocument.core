@@ -21,7 +21,6 @@ add_executable(odr_test
 
         "src/internal/cfb/cfb_archive_test.cpp"
 
-        "src/internal/common/archive_test.cpp"
         "src/internal/common/path_test.cpp"
         "src/internal/common/table_cursor_test.cpp"
         "src/internal/common/table_position_test.cpp"

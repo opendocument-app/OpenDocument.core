@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_ZIP_ARCHIVE_HPP
 #define ODR_INTERNAL_ZIP_ARCHIVE_HPP
 
+#include <odr/internal/abstract/archive.hpp>
 #include <odr/internal/common/path.hpp>
 
 #include <cstdint>
@@ -10,11 +11,6 @@
 #include <vector>
 
 #include <miniz/miniz.h>
-
-namespace odr {
-enum class FileType;
-struct FileMeta;
-} // namespace odr
 
 namespace odr::internal::abstract {
 class File;
@@ -30,82 +26,14 @@ namespace util {
 class Archive;
 }
 
-enum class Method {
-  UNSUPPORTED,
-  STORED,
-  DEFLATED,
-};
-
-class ReadonlyZipArchive final {
-public:
-  explicit ReadonlyZipArchive(const std::shared_ptr<common::MemoryFile> &file);
-  explicit ReadonlyZipArchive(const std::shared_ptr<common::DiskFile> &file);
-
-  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept;
-  [[nodiscard]] FileType file_type() const noexcept;
-  [[nodiscard]] FileMeta file_meta() const noexcept;
-
-  class Iterator;
-
-  [[nodiscard]] Iterator begin() const;
-  [[nodiscard]] Iterator end() const;
-
-  [[nodiscard]] Iterator find(const common::Path &path) const;
-
-  class Entry {
-  public:
-    Entry(const ReadonlyZipArchive &parent, std::uint32_t index);
-
-    [[nodiscard]] bool is_file() const;
-    [[nodiscard]] bool is_directory() const;
-    [[nodiscard]] common::Path path() const;
-    [[nodiscard]] Method method() const;
-    [[nodiscard]] std::unique_ptr<abstract::File> file() const;
-
-  private:
-    const ReadonlyZipArchive &m_parent;
-    std::uint32_t m_index;
-
-    friend Iterator;
-  };
-
-  class Iterator {
-  public:
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::ptrdiff_t;
-    using value_type = Entry;
-    using pointer = const Entry *;
-    using reference = const Entry &;
-
-    Iterator(const ReadonlyZipArchive &zip, std::uint32_t index);
-
-    reference operator*() const;
-    pointer operator->() const;
-
-    bool operator==(const Iterator &other) const;
-    bool operator!=(const Iterator &other) const;
-
-    Iterator &operator++();
-    Iterator operator++(int);
-
-  private:
-    Entry m_entry;
-  };
-
-private:
-  std::shared_ptr<util::Archive> m_zip;
-};
-
-class ZipArchive final {
+class ZipArchive final : public abstract::Archive {
 public:
   ZipArchive();
-  explicit ZipArchive(const std::shared_ptr<common::MemoryFile> &file);
-  explicit ZipArchive(const std::shared_ptr<common::DiskFile> &file);
-  explicit ZipArchive(const ReadonlyZipArchive &archive);
+  explicit ZipArchive(const std::shared_ptr<util::Archive> &archive);
 
-  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept;
-  [[nodiscard]] FileType file_type() const noexcept;
-  [[nodiscard]] FileMeta file_meta() const noexcept;
+  [[nodiscard]] std::shared_ptr<abstract::Filesystem> filesystem() const final;
+
+  void save(std::ostream &out) const final;
 
   class Entry;
 
@@ -120,12 +48,6 @@ public:
                        std::shared_ptr<abstract::File> file,
                        std::uint32_t compression_level = 6);
   Iterator insert_directory(Iterator at, common::Path path);
-
-  bool move(const common::Path &from, const common::Path &to);
-
-  bool remove(const common::Path &path);
-
-  void save(std::ostream &out) const;
 
   class Entry {
   public:
