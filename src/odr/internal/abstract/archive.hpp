@@ -16,7 +16,7 @@ public:
 
   [[nodiscard]] virtual std::shared_ptr<Filesystem> filesystem() const = 0;
 
-  virtual void save(const common::Path &path) const = 0;
+  virtual void save(std::ostream &out) const = 0;
 };
 
 } // namespace odr::internal::abstract

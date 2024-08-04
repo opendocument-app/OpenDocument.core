@@ -72,6 +72,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/resource_data.cpp"
 
         "src/odr/internal/cfb/cfb_archive.cpp"
+        "src/odr/internal/cfb/cfb_file.cpp"
         "src/odr/internal/cfb/cfb_impl.cpp"
         "src/odr/internal/cfb/cfb_util.cpp"
 
@@ -164,6 +165,7 @@ set(ODR_SOURCE_FILES
 
         "src/odr/internal/zip/zip_archive.cpp"
         "src/odr/internal/zip/zip_exceptions.cpp"
+        "src/odr/internal/zip/zip_file.cpp"
         "src/odr/internal/zip/zip_util.cpp"
 )
 
