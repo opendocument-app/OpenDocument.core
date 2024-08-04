@@ -70,17 +70,20 @@ Html html::translate_filesystem(FileType file_type,
       out.write_raw(std::to_string(file.size()));
       out.write_element_end("span");
 
-      out.write_element_begin("span");
-      out.write_raw(" ");
-      out.write_element_end("span");
+      std::unique_ptr<std::istream> stream = file.stream();
 
-      out.write_element_begin(
-          "a",
-          HtmlElementOptions().set_attributes(HtmlAttributesVector{
-              {"href", file_to_url(*file.stream(), "application/octet-stream")},
-              {"download", file_path.basename()}}));
-      out.write_raw("download");
-      out.write_element_end("a");
+      if (stream != nullptr) {
+        out.write_element_begin("span");
+        out.write_raw(" ");
+        out.write_element_end("span");
+
+        out.write_element_begin(
+            "a", HtmlElementOptions().set_attributes(HtmlAttributesVector{
+                     {"href", file_to_url(*stream, "application/octet-stream")},
+                     {"download", file_path.basename()}}));
+        out.write_raw("download");
+        out.write_element_end("a");
+      }
     }
 
     out.write_element_end("p");

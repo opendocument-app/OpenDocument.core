@@ -13,11 +13,36 @@ namespace {
 
 class ReaderBuffer final : public std::streambuf {
 public:
-  explicit ReaderBuffer(mz_zip_reader_extract_iter_state *iter);
-  ReaderBuffer(mz_zip_reader_extract_iter_state *iter, std::size_t buffer_size);
-  ~ReaderBuffer() final;
+  explicit ReaderBuffer(mz_zip_reader_extract_iter_state *iter)
+      : ReaderBuffer(iter, 4098) {}
+  ReaderBuffer(mz_zip_reader_extract_iter_state *iter,
+               std::size_t buffer_size) {
+    if (iter == nullptr) {
+      throw std::invalid_argument("ReaderBuffer: iter is nullptr");
+    }
+    m_iter = iter;
+    m_remaining = iter->file_stat.m_uncomp_size;
+    m_buffer_size = buffer_size;
+    m_buffer = new char[m_buffer_size];
+  }
+  ~ReaderBuffer() final {
+    mz_zip_reader_extract_iter_free(m_iter);
+    delete[] m_buffer;
+  }
 
-  int underflow() final;
+  int underflow() final {
+    if (m_remaining <= 0) {
+      return std::char_traits<char>::eof();
+    }
+
+    const std::uint64_t amount = std::min(m_remaining, m_buffer_size);
+    const std::uint32_t result =
+        mz_zip_reader_extract_iter_read(m_iter, m_buffer, amount);
+    m_remaining -= result;
+    setg(m_buffer, m_buffer, m_buffer + result);
+
+    return std::char_traits<char>::to_int_type(*gptr());
+  }
 
 private:
   mz_zip_reader_extract_iter_state *m_iter{};
@@ -29,51 +54,25 @@ private:
 class FileInZipIstream final : public std::istream {
 public:
   FileInZipIstream(std::shared_ptr<Archive> archive,
-                   std::unique_ptr<ReaderBuffer> sbuf);
+                   std::unique_ptr<ReaderBuffer> sbuf)
+      : std::istream(sbuf.get()), m_archive{std::move(archive)},
+        m_sbuf{std::move(sbuf)} {
+    if (m_archive == nullptr) {
+      throw std::invalid_argument("FileInZipIstream: archive is nullptr");
+    }
+    if (m_sbuf == nullptr) {
+      throw std::invalid_argument("FileInZipIstream: sbuf is nullptr");
+    }
+  }
   FileInZipIstream(std::shared_ptr<Archive> archive,
-                   mz_zip_reader_extract_iter_state *iter);
+                   mz_zip_reader_extract_iter_state *iter)
+      : FileInZipIstream(std::move(archive),
+                         std::make_unique<ReaderBuffer>(iter)) {}
 
 private:
   std::shared_ptr<Archive> m_archive;
   std::unique_ptr<ReaderBuffer> m_sbuf;
 };
-
-ReaderBuffer::ReaderBuffer(mz_zip_reader_extract_iter_state *iter)
-    : ReaderBuffer(iter, 4098) {}
-
-ReaderBuffer::ReaderBuffer(mz_zip_reader_extract_iter_state *iter,
-                           const std::size_t buffer_size)
-    : m_iter{iter}, m_remaining{iter->file_stat.m_uncomp_size},
-      m_buffer_size{buffer_size}, m_buffer{new char[m_buffer_size]} {}
-
-ReaderBuffer::~ReaderBuffer() {
-  mz_zip_reader_extract_iter_free(m_iter);
-  delete[] m_buffer;
-}
-
-int ReaderBuffer::underflow() {
-  if (m_remaining <= 0) {
-    return std::char_traits<char>::eof();
-  }
-
-  const std::uint64_t amount = std::min(m_remaining, m_buffer_size);
-  const std::uint32_t result =
-      mz_zip_reader_extract_iter_read(m_iter, m_buffer, amount);
-  m_remaining -= result;
-  setg(m_buffer, m_buffer, m_buffer + result);
-
-  return std::char_traits<char>::to_int_type(*gptr());
-}
-
-FileInZipIstream::FileInZipIstream(std::shared_ptr<Archive> archive,
-                                   std::unique_ptr<ReaderBuffer> sbuf)
-    : std::istream(sbuf.get()), m_archive{std::move(archive)},
-      m_sbuf{std::move(sbuf)} {}
-
-FileInZipIstream::FileInZipIstream(std::shared_ptr<Archive> archive,
-                                   mz_zip_reader_extract_iter_state *iter)
-    : FileInZipIstream(std::move(archive),
-                       std::make_unique<ReaderBuffer>(iter)) {}
 
 } // namespace
 
@@ -85,6 +84,9 @@ Archive::Archive(const std::shared_ptr<common::DiskFile> &file)
 
 Archive::Archive(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)}, m_data{m_file->stream()} {
+  if (m_file == nullptr) {
+    throw std::invalid_argument("Archive: file is nullptr");
+  }
   init_();
 }
 
@@ -128,7 +130,11 @@ std::shared_ptr<abstract::File> Archive::file() const { return m_file; }
 
 FileInZip::FileInZip(std::shared_ptr<Archive> archive,
                      const std::uint32_t index)
-    : m_archive{std::move(archive)}, m_index{index} {}
+    : m_archive{std::move(archive)}, m_index{index} {
+  if (m_archive == nullptr) {
+    throw std::invalid_argument("FileInZip: archive is nullptr");
+  }
+}
 
 FileLocation FileInZip::location() const noexcept {
   return m_archive->file()->location();
@@ -140,12 +146,23 @@ std::size_t FileInZip::size() const {
   return stat.m_uncomp_size;
 }
 
-std::optional<common::Path> FileInZip::disk_path() const { return {}; }
+std::optional<common::Path> FileInZip::disk_path() const {
+  return std::nullopt;
+}
 
 const char *FileInZip::memory_data() const { return nullptr; }
 
 std::unique_ptr<std::istream> FileInZip::stream() const {
+  if (mz_zip_reader_is_file_encrypted(m_archive->zip(), m_index)) {
+    return nullptr;
+  }
+  if (!mz_zip_reader_is_file_supported(m_archive->zip(), m_index)) {
+    return nullptr;
+  }
   auto iter = mz_zip_reader_extract_iter_new(m_archive->zip(), m_index, 0);
+  if (iter == nullptr) {
+    return nullptr;
+  }
   return std::make_unique<FileInZipIstream>(m_archive, iter);
 }
 

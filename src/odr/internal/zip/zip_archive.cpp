@@ -6,10 +6,8 @@
 #include <odr/internal/zip/zip_exceptions.hpp>
 #include <odr/internal/zip/zip_util.hpp>
 
-#include <chrono>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <miniz/miniz.h>
 
@@ -48,7 +46,7 @@ Method ReadonlyZipArchive::Entry::method() const {
 
 std::unique_ptr<abstract::File> ReadonlyZipArchive::Entry::file() const {
   if (!is_file()) {
-    return {};
+    return nullptr;
   }
   return std::make_unique<util::FileInZip>(m_parent.m_zip, m_index);
 }
@@ -88,11 +86,19 @@ ReadonlyZipArchive::Iterator ReadonlyZipArchive::Iterator::operator++(int) {
 
 ReadonlyZipArchive::ReadonlyZipArchive(
     const std::shared_ptr<common::MemoryFile> &file)
-    : m_zip{std::make_shared<util::Archive>(file)} {}
+    : m_zip{std::make_shared<util::Archive>(file)} {
+  if (m_zip == nullptr) {
+    throw std::invalid_argument("ReadonlyZipArchive: file is nullptr");
+  }
+}
 
 ReadonlyZipArchive::ReadonlyZipArchive(
     const std::shared_ptr<common::DiskFile> &file)
-    : m_zip{std::make_shared<util::Archive>(file)} {}
+    : m_zip{std::make_shared<util::Archive>(file)} {
+  if (m_zip == nullptr) {
+    throw std::invalid_argument("ReadonlyZipArchive: file is nullptr");
+  }
+}
 
 ReadonlyZipArchive::Iterator ReadonlyZipArchive::begin() const {
   return {*this, 0};
@@ -117,7 +123,11 @@ ZipArchive::Entry::Entry(common::Path path,
                          std::shared_ptr<abstract::File> file,
                          std::uint32_t compression_level)
     : m_path{std::move(path)}, m_file{std::move(file)},
-      m_compression_level{compression_level} {}
+      m_compression_level{compression_level} {
+  if (m_file == nullptr) {
+    throw std::invalid_argument("ZipArchive::Entry: file is nullptr");
+  }
+}
 
 bool ZipArchive::Entry::is_file() const { return m_file.operator bool(); }
 
@@ -149,6 +159,10 @@ ZipArchive::ZipArchive(ReadonlyZipArchive archive)
     : ZipArchive(std::make_shared<ReadonlyZipArchive>(std::move(archive))) {}
 
 ZipArchive::ZipArchive(const std::shared_ptr<ReadonlyZipArchive> &archive) {
+  if (archive == nullptr) {
+    throw std::invalid_argument("ZipArchive: archive is nullptr");
+  }
+
   for (auto &&entry : *archive) {
     if (entry.is_file()) {
       std::uint8_t compression_level = 6;
