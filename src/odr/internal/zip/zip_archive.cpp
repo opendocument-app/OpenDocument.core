@@ -67,11 +67,11 @@ ReadonlyZipArchive::Iterator::operator->() const {
 
 bool ReadonlyZipArchive::Iterator::operator==(const Iterator &other) const {
   return m_entry.m_index == other.m_entry.m_index;
-};
+}
 
 bool ReadonlyZipArchive::Iterator::operator!=(const Iterator &other) const {
   return m_entry.m_index != other.m_entry.m_index;
-};
+}
 
 ReadonlyZipArchive::Iterator &ReadonlyZipArchive::Iterator::operator++() {
   m_entry.m_index++;
@@ -98,6 +98,20 @@ ReadonlyZipArchive::ReadonlyZipArchive(
   if (m_zip == nullptr) {
     throw std::invalid_argument("ReadonlyZipArchive: file is nullptr");
   }
+}
+
+std::shared_ptr<abstract::File> ReadonlyZipArchive::file() const noexcept {
+  return m_zip->file();
+}
+
+FileType ReadonlyZipArchive::file_type() const noexcept {
+  return FileType::zip;
+}
+
+FileMeta ReadonlyZipArchive::file_meta() const noexcept {
+  FileMeta meta;
+  meta.type = file_type();
+  return meta;
 }
 
 ReadonlyZipArchive::Iterator ReadonlyZipArchive::begin() const {
@@ -151,15 +165,8 @@ ZipArchive::ZipArchive(const std::shared_ptr<common::MemoryFile> &file)
 ZipArchive::ZipArchive(const std::shared_ptr<common::DiskFile> &file)
     : ZipArchive(ReadonlyZipArchive(file)) {}
 
-ZipArchive::ZipArchive(ReadonlyZipArchive archive)
-    : ZipArchive(std::make_shared<ReadonlyZipArchive>(std::move(archive))) {}
-
-ZipArchive::ZipArchive(const std::shared_ptr<ReadonlyZipArchive> &archive) {
-  if (archive == nullptr) {
-    throw std::invalid_argument("ZipArchive: archive is nullptr");
-  }
-
-  for (auto &&entry : *archive) {
+ZipArchive::ZipArchive(const ReadonlyZipArchive &archive) {
+  for (auto &&entry : archive) {
     if (entry.is_file()) {
       std::uint8_t compression_level = 6;
       if (entry.method() == Method::STORED) {
@@ -170,6 +177,18 @@ ZipArchive::ZipArchive(const std::shared_ptr<ReadonlyZipArchive> &archive) {
       insert_directory(end(), entry.path());
     }
   }
+}
+
+std::shared_ptr<abstract::File> ZipArchive::file() const noexcept {
+  return nullptr;
+}
+
+FileType ZipArchive::file_type() const noexcept { return FileType::zip; }
+
+FileMeta ZipArchive::file_meta() const noexcept {
+  FileMeta meta;
+  meta.type = file_type();
+  return meta;
 }
 
 ZipArchive::Iterator ZipArchive::begin() const {
@@ -202,9 +221,11 @@ ZipArchive::Iterator ZipArchive::insert_directory(Iterator at,
   return m_entries.insert(at, ZipArchive::Entry(std::move(path), nullptr, 0));
 }
 
-bool ZipArchive::move(common::Path, common::Path) { return false; }
+bool ZipArchive::move(const common::Path &, const common::Path &) {
+  return false;
+}
 
-bool ZipArchive::remove(common::Path) { return false; }
+bool ZipArchive::remove(const common::Path &) { return false; }
 
 void ZipArchive::save(std::ostream &out) const {
   bool state;

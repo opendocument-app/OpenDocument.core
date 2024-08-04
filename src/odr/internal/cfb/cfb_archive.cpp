@@ -184,6 +184,20 @@ ReadonlyCfbArchive::ReadonlyCfbArchive(
     const std::shared_ptr<common::MemoryFile> &file)
     : m_cfb{std::make_shared<util::Archive>(file)} {}
 
+std::shared_ptr<abstract::File> ReadonlyCfbArchive::file() const noexcept {
+  return m_cfb->file();
+}
+
+FileType ReadonlyCfbArchive::file_type() const noexcept {
+  return FileType::compound_file_binary_format;
+}
+
+FileMeta ReadonlyCfbArchive::file_meta() const noexcept {
+  FileMeta meta;
+  meta.type = file_type();
+  return meta;
+}
+
 ReadonlyCfbArchive::Iterator ReadonlyCfbArchive::begin() const {
   return {*this, *m_cfb->cfb().get_root_entry()};
 }

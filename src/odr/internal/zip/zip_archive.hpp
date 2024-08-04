@@ -11,6 +11,11 @@
 
 #include <miniz/miniz.h>
 
+namespace odr {
+enum class FileType;
+struct FileMeta;
+} // namespace odr
+
 namespace odr::internal::abstract {
 class File;
 }
@@ -35,6 +40,10 @@ class ReadonlyZipArchive final {
 public:
   explicit ReadonlyZipArchive(const std::shared_ptr<common::MemoryFile> &file);
   explicit ReadonlyZipArchive(const std::shared_ptr<common::DiskFile> &file);
+
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept;
+  [[nodiscard]] FileType file_type() const noexcept;
+  [[nodiscard]] FileMeta file_meta() const noexcept;
 
   class Iterator;
 
@@ -92,8 +101,11 @@ public:
   ZipArchive();
   explicit ZipArchive(const std::shared_ptr<common::MemoryFile> &file);
   explicit ZipArchive(const std::shared_ptr<common::DiskFile> &file);
-  explicit ZipArchive(ReadonlyZipArchive archive);
-  explicit ZipArchive(const std::shared_ptr<ReadonlyZipArchive> &archive);
+  explicit ZipArchive(const ReadonlyZipArchive &archive);
+
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept;
+  [[nodiscard]] FileType file_type() const noexcept;
+  [[nodiscard]] FileMeta file_meta() const noexcept;
 
   class Entry;
 
@@ -109,9 +121,9 @@ public:
                        std::uint32_t compression_level = 6);
   Iterator insert_directory(Iterator at, common::Path path);
 
-  bool move(common::Path from, common::Path to);
+  bool move(const common::Path &from, const common::Path &to);
 
-  bool remove(common::Path path);
+  bool remove(const common::Path &path);
 
   void save(std::ostream &out) const;
 

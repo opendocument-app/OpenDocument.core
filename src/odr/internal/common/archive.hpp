@@ -44,20 +44,18 @@ private:
 // TODO `ArchiveFile` should use readonly interfaces
 template <typename Impl> class ArchiveFile : public abstract::ArchiveFile {
 public:
-  template <typename... Args>
-  ArchiveFile(Args &&...args) : m_impl{std::forward<Args>(args)...} {}
   explicit ArchiveFile(Impl impl) : m_impl{std::move(impl)} {}
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final {
-    return {}; // TODO
+    return m_impl.file();
   }
 
   [[nodiscard]] FileType file_type() const noexcept final {
-    return FileType::unknown; // TODO
+    return m_impl.file_type();
   }
 
   [[nodiscard]] FileMeta file_meta() const noexcept final {
-    return {}; // TODO
+    return m_impl.file_meta();
   }
 
   [[nodiscard]] std::shared_ptr<abstract::Archive> archive() const final {

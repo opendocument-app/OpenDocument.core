@@ -11,6 +11,11 @@
 #include <string>
 #include <vector>
 
+namespace odr {
+enum class FileType;
+struct FileMeta;
+} // namespace odr
+
 namespace odr::internal::abstract {
 class File;
 } // namespace odr::internal::abstract
@@ -32,6 +37,10 @@ namespace odr::internal::cfb {
 class ReadonlyCfbArchive final {
 public:
   explicit ReadonlyCfbArchive(const std::shared_ptr<common::MemoryFile> &file);
+
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept;
+  [[nodiscard]] FileType file_type() const noexcept;
+  [[nodiscard]] FileMeta file_meta() const noexcept;
 
   class Iterator;
 
