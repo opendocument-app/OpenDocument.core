@@ -46,15 +46,19 @@ TEST(DocumentParser, foo) {
   recurse_pages(document->catalog->pages);
 
   for (Page *page : ordered_pages) {
-    std::cout << "page content " << page->contents_reference.id << std::endl;
+    std::cout << "page content " << page->contents_reference.front().id
+              << std::endl;
     std::cout << "page annotations " << page->annotations.size() << std::endl;
     std::cout << "page resources " << page->resources << std::endl;
   }
 
   Page *first_page = ordered_pages.front();
-  IndirectObject first_page_contents_object =
-      parser.read_object(first_page->contents_reference);
-  std::string stream = parser.read_object_stream(first_page_contents_object);
+  std::string stream;
+  for (const auto &content_reference : first_page->contents_reference) {
+    pdf::IndirectObject page_contents_object =
+        parser.read_object(content_reference);
+    stream += parser.read_object_stream(page_contents_object);
+  }
   std::string first_page_content = crypto::util::zlib_inflate(stream);
 
   std::istringstream ss(first_page_content);

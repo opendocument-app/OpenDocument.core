@@ -49,7 +49,7 @@ struct Page : Element {
   std::vector<Annotation *> annotations;
 
   // TODO remove
-  ObjectReference contents_reference;
+  std::vector<ObjectReference> contents_reference;
 };
 
 struct Annotation : Element {};

@@ -37,15 +37,14 @@ std::variant<Object, std::string> CMapParser::read_token() const {
 
   std::string token;
   while (true) {
-    int_type c = sb().sgetc();
+    int_type c = m_parser.geti();
     if (c == eof) {
-      in().setstate(std::ios::eofbit);
       return token;
     }
     if (ObjectParser::is_whitespace(c)) {
       return token;
     }
-    sb().sbumpc();
+    m_parser.bumpc();
     token += (char_type)c;
   }
 }
@@ -76,10 +75,10 @@ void CMapParser::read_bfchar(std::uint32_t n, CMap &cmap) const {
         reinterpret_cast<const char16_t *>(unicode.data()), unicode.size() / 2);
 
     if (glyph.length() != 1) {
-      throw std::runtime_error("unexpected glyph length");
+      std::cerr << "unexpected glyph length" << std::endl;
     }
     if (unicode16.length() != 1) {
-      throw std::runtime_error("unexpected unicode length");
+      std::cerr << "unexpected unicode length" << std::endl;
     }
 
     cmap.map_bfchar(glyph[0], unicode16[0]);

@@ -3,19 +3,64 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cmath>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 
 namespace odr::internal::pdf {
 
-using char_type = std::streambuf::char_type;
-using int_type = std::streambuf::int_type;
-static constexpr int_type eof = std::streambuf::traits_type::eof();
-using pos_type = std::streambuf::pos_type;
+ObjectParser::ObjectParser(std::istream &in)
+    : m_in{&in}, m_se(in, true), m_sb{in.rdbuf()} {}
 
-namespace {
+std::istream &ObjectParser::in() const { return *m_in; }
 
-int_type hex_char_to_int(char_type c) {
+std::streambuf &ObjectParser::sb() const { return *m_sb; }
+
+ObjectParser::int_type ObjectParser::geti() const {
+  int_type c = sb().sgetc();
+  if (c == eof) {
+    in().setstate(std::ios::eofbit);
+  }
+  return c;
+}
+
+ObjectParser::char_type ObjectParser::getc() const {
+  int_type c = sb().sgetc();
+  if (c == eof) {
+    in().setstate(std::ios::eofbit);
+    throw std::runtime_error("unexpected stream exhaust");
+  }
+  return c;
+}
+
+ObjectParser::char_type ObjectParser::bumpc() const {
+  int_type c = sb().sbumpc();
+  if (c == eof) {
+    in().setstate(std::ios::eofbit);
+    throw std::runtime_error("unexpected stream exhaust");
+  }
+  return c;
+}
+
+std::string ObjectParser::bumpnc(std::size_t n) const {
+  std::string result(n, '\0');
+  if (sb().sgetn(result.data(), result.size()) != result.size()) {
+    throw std::runtime_error("unexpected stream exhaust");
+  }
+  return result;
+}
+
+void ObjectParser::ungetc() const {
+  if (sb().sungetc() == eof) {
+    throw std::runtime_error("unexpected stream exhaust");
+  }
+}
+
+ObjectParser::int_type ObjectParser::octet_char_to_int(char_type c) {
+  return c - '0';
+}
+
+ObjectParser::int_type ObjectParser::hex_char_to_int(char_type c) {
   if (c >= 'a') {
     return 10 + (c - 'a');
   }
@@ -25,18 +70,17 @@ int_type hex_char_to_int(char_type c) {
   return c - '0';
 }
 
-char_type two_hex_to_char(char_type first, char_type second) {
+ObjectParser::char_type ObjectParser::two_hex_to_char(char_type first,
+                                                      char_type second) {
   return hex_char_to_int(first) * 16 + hex_char_to_int(second);
 }
 
-} // namespace
-
-ObjectParser::ObjectParser(std::istream &in)
-    : m_in{&in}, m_se(in, true), m_sb{in.rdbuf()} {}
-
-std::istream &ObjectParser::in() const { return *m_in; }
-
-std::streambuf &ObjectParser::sb() const { return *m_sb; }
+ObjectParser::char_type ObjectParser::three_octet_to_char(char_type first,
+                                                          char_type second,
+                                                          char_type third) {
+  return octet_char_to_int(first) * 64 + octet_char_to_int(second) * 8 +
+         octet_char_to_int(third);
+}
 
 bool ObjectParser::is_whitespace(char c) {
   return c == '\0' || c == '\t' || c == '\n' || c == '\f' || c == '\r' ||
@@ -44,21 +88,20 @@ bool ObjectParser::is_whitespace(char c) {
 }
 
 bool ObjectParser::peek_whitespace() const {
-  int_type c = sb().sgetc();
+  int_type c = geti();
   return c != eof && is_whitespace(c);
 }
 
 void ObjectParser::skip_whitespace() const {
   while (true) {
-    int_type c = sb().sgetc();
+    int_type c = geti();
     if (c == eof) {
-      in().setstate(std::ios::eofbit);
       return;
     }
     if (!is_whitespace(c)) {
       return;
     }
-    sb().sbumpc();
+    bumpc();
   }
 }
 
@@ -68,8 +111,17 @@ std::string ObjectParser::read_line(bool inclusive) const {
   return util::stream::read_line(in(), inclusive);
 }
 
+void ObjectParser::expect_characters(const std::string &string) const {
+  auto observed = bumpnc(string.size());
+  if (observed != string) {
+    throw std::runtime_error("unexpected characters"
+                             " (expected: " +
+                             string + ", observed: " + observed + ")");
+  }
+}
+
 bool ObjectParser::peek_number() const {
-  int_type c = sb().sgetc();
+  int_type c = geti();
   return c != eof && (c == '+' || c == '-' || c == '.' || std::isdigit(c));
 }
 
@@ -77,29 +129,29 @@ UnsignedInteger ObjectParser::read_unsigned_integer() const {
   UnsignedInteger result = 0;
 
   while (true) {
-    int_type c = sb().sgetc();
+    int_type c = geti();
     if (c == eof) {
-      in().setstate(std::ios::eofbit);
       return result;
     }
     if (!std::isdigit(c)) {
       return result;
     }
     result = result * 10 + (c - '0');
-    sb().sbumpc();
+    bumpc();
   }
 }
 
 Integer ObjectParser::read_integer() const {
   std::int8_t sign = 1;
 
-  if (sb().sgetc() == '+') {
+  char_type c = getc();
+  if (c == '+') {
     sign = +1;
-    sb().sbumpc();
+    bumpc();
   }
-  if (sb().sgetc() == '-') {
+  if (c == '-') {
     sign = -1;
-    sb().sbumpc();
+    bumpc();
   }
 
   return sign * read_unsigned_integer();
@@ -112,15 +164,15 @@ Real ObjectParser::read_number() const {
 std::variant<Integer, Real> ObjectParser::read_integer_or_real() const {
   Integer i = 0;
 
-  int_type c = sb().sgetc();
+  char_type c = getc();
   if (c != '.') {
     i = read_integer();
-    c = sb().sgetc();
+    c = getc();
     if (c != '.') {
       return i;
     }
   }
-  sb().sbumpc();
+  bumpc();
 
   pos_type begin = in().tellg();
   UnsignedInteger i2 = read_unsigned_integer();
@@ -130,20 +182,19 @@ std::variant<Integer, Real> ObjectParser::read_integer_or_real() const {
 }
 
 bool ObjectParser::peek_name() const {
-  int_type c = sb().sgetc();
+  int_type c = geti();
   return c != eof && c == '/';
 }
 
 void ObjectParser::read_name(std::ostream &out) const {
-  if (int_type c = sb().sbumpc(); c != '/') {
+  if (char_type c = bumpc(); c != '/') {
     throw std::runtime_error("not a name");
   }
 
   while (true) {
-    int_type c = sb().sgetc();
+    int_type c = geti();
 
     if (c == eof) {
-      in().setstate(std::ios::eofbit);
       return;
     }
     if (c < 0x21 || c > 0x7e || c == '/' || c == '%' || c == '(' || c == ')' ||
@@ -152,17 +203,14 @@ void ObjectParser::read_name(std::ostream &out) const {
     }
 
     if (c == '#') {
-      sb().sbumpc();
-      char hex[2];
-      if (sb().sgetn(hex, 2) != 2) {
-        throw std::runtime_error("unexpected stream exhaust");
-      }
+      bumpc();
+      auto hex = bumpnc<2>();
       out.put(two_hex_to_char(hex[0], hex[1]));
       continue;
     }
 
     out.put(c);
-    sb().sbumpc();
+    bumpc();
   }
 }
 
@@ -173,41 +221,32 @@ Name ObjectParser::read_name() const {
 }
 
 bool ObjectParser::peek_null() const {
-  int_type c = sb().sgetc();
+  int_type c = geti();
   return c != eof && (c == 'n' || c == 'N');
 }
 
 void ObjectParser::read_null() const {
-  char tmp[4];
-  if (sb().sgetn(tmp, 4) != 4) {
-    throw std::runtime_error("unexpected stream exhaust");
-  }
+  auto tmp = bumpnc<4>();
   // TODO check ignore case
 }
 
 bool ObjectParser::peek_boolean() const {
-  int_type c = sb().sgetc();
+  int_type c = geti();
   return c != eof && (c == 't' || c == 'T' || c == 'f' || c == 'F');
 }
 
 Boolean ObjectParser::read_boolean() const {
-  int_type c = sb().sgetc();
+  int_type c = geti();
 
   if (c == 't' || c == 'T') {
-    char tmp[4];
-    if (sb().sgetn(tmp, 4) != 4) {
-      throw std::runtime_error("unexpected stream exhaust");
-    }
+    auto tmp = bumpnc<4>();
     // TODO check ignore case
 
     return true;
   }
 
   if (c == 'f' || c == 'F') {
-    char tmp[5];
-    if (sb().sgetn(tmp, 5) != 5) {
-      throw std::runtime_error("unexpected stream exhaust");
-    }
+    auto tmp = bumpnc<5>();
     // TODO check ignore case
 
     return false;
@@ -217,7 +256,7 @@ Boolean ObjectParser::read_boolean() const {
 }
 
 bool ObjectParser::peek_string() const {
-  int_type c = sb().sgetc();
+  int_type c = geti();
   if (c == eof) {
     return false;
   }
@@ -225,11 +264,9 @@ bool ObjectParser::peek_string() const {
     return true;
   }
   if (c == '<') {
-    sb().sbumpc();
-    c = sb().sgetc();
-    if (sb().sungetc() == eof) {
-      throw std::runtime_error("unexpected stream exhaust");
-    }
+    bumpc();
+    c = geti();
+    ungetc();
     return c != '<';
   }
   return false;
@@ -238,45 +275,40 @@ bool ObjectParser::peek_string() const {
 std::variant<StandardString, HexString> ObjectParser::read_string() const {
   std::string string;
 
-  int_type c = sb().sbumpc();
+  char_type c = bumpc();
 
   if (c == '(') {
     while (true) {
-      c = sb().sbumpc();
+      c = bumpc();
 
-      if (c == eof) {
-        in().setstate(std::ios::eofbit);
-        throw std::runtime_error("unexpected stream exhaust");
+      if (c == '\\') {
+        c = getc();
+        if (std::isdigit(c)) {
+          auto octet = bumpnc<3>();
+          string += three_octet_to_char(octet[0], octet[1], octet[2]);
+        } else {
+          bumpc();
+          string += c;
+        }
+        continue;
       }
       if (c == ')') {
         return StandardString(std::move(string));
       }
 
-      // TODO handle '/' correctly
-
-      string += (char_type)c;
+      string += c;
     }
   }
 
   if (c == '<') {
     while (true) {
-      c = sb().sbumpc();
+      c = bumpc();
 
-      if (c == eof) {
-        in().setstate(std::ios::eofbit);
-        throw std::runtime_error("unexpected stream exhaust");
-      }
       if (c == '>') {
         return HexString(std::move(string));
       }
 
-      int_type c2 = sb().sbumpc();
-
-      if (c2 == eof) {
-        in().setstate(std::ios::eofbit);
-        throw std::runtime_error("unexpected stream exhaust");
-      }
-
+      char_type c2 = bumpc();
       string += two_hex_to_char(c, c2);
     }
   }
@@ -285,21 +317,21 @@ std::variant<StandardString, HexString> ObjectParser::read_string() const {
 }
 
 bool ObjectParser::peek_array() const {
-  int_type c = sb().sgetc();
+  int_type c = geti();
   return c != eof && c == '[';
 }
 
 Array ObjectParser::read_array() const {
   Array::Holder result;
 
-  if (sb().sbumpc() != '[') {
+  if (bumpc() != '[') {
     throw std::runtime_error("unexpected character");
   }
   skip_whitespace();
 
   while (true) {
-    if (int_type c = sb().sgetc(); c == ']') {
-      sb().sbumpc();
+    if (char_type c = getc(); c == ']') {
+      bumpc();
       return Array(std::move(result));
     }
     Object value = read_object();
@@ -307,30 +339,28 @@ Array ObjectParser::read_array() const {
 
     result.emplace_back(std::move(value));
 
-    if (int_type c = sb().sgetc(); c == 'R') {
-      sb().sbumpc();
+    if (char_type c = getc(); c == 'R') {
+      bumpc();
       skip_whitespace();
 
       UnsignedInteger gen = result.back().as_integer();
       result.pop_back();
       UnsignedInteger id = result.back().as_integer();
       result.pop_back();
-      result.emplace_back(ObjectReference{id, gen});
+      result.emplace_back(ObjectReference(id, gen));
     }
   }
 }
 
 bool ObjectParser::peek_dictionary() const {
-  int_type c = sb().sgetc();
+  int_type c = geti();
   if (c == eof) {
     return false;
   }
   if (c == '<') {
-    sb().sbumpc();
-    c = sb().sgetc();
-    if (sb().sungetc() == eof) {
-      throw std::runtime_error("unexpected stream exhaust");
-    }
+    bumpc();
+    c = getc();
+    ungetc();
     return c == '<';
   }
   return false;
@@ -339,18 +369,18 @@ bool ObjectParser::peek_dictionary() const {
 Dictionary ObjectParser::read_dictionary() const {
   Dictionary::Holder result;
 
-  if (sb().sbumpc() != '<') {
+  if (bumpc() != '<') {
     throw std::runtime_error("unexpected character");
   }
-  if (sb().sbumpc() != '<') {
+  if (bumpc() != '<') {
     throw std::runtime_error("unexpected character");
   }
   skip_whitespace();
 
   while (true) {
-    if (int_type c = sb().sgetc(); c == '>') {
-      sb().sbumpc();
-      sb().sbumpc();
+    if (char_type c = getc(); c == '>') {
+      bumpc();
+      bumpc();
       return Dictionary(std::move(result));
     }
 
@@ -361,10 +391,10 @@ Dictionary ObjectParser::read_dictionary() const {
 
     // Handle indirect objects
     // TODO this seems hacky
-    if (int_type c = sb().sgetc(); c != '>' && !peek_name()) {
+    if (char_type c = getc(); c != '>' && !peek_name()) {
       UnsignedInteger gen = read_unsigned_integer();
       skip_whitespace();
-      if (int_type c2 = sb().sbumpc(); c2 != 'R') {
+      if (char_type c2 = bumpc(); c2 != 'R') {
         throw std::runtime_error("unexpected character");
       }
       skip_whitespace();
@@ -378,12 +408,7 @@ Dictionary ObjectParser::read_dictionary() const {
 }
 
 Object ObjectParser::read_object() const {
-  int_type c = sb().sgetc();
-
-  if (c == eof) {
-    in().setstate(std::ios::eofbit);
-    throw std::runtime_error("unexpected stream exhaust");
-  }
+  getc();
 
   if (peek_null()) {
     read_null();
@@ -418,7 +443,7 @@ ObjectReference ObjectParser::read_object_reference() const {
   UnsignedInteger gen = read_unsigned_integer();
   skip_whitespace();
 
-  if (sb().sbumpc() != 'R') {
+  if (bumpc() != 'R') {
     throw std::runtime_error("unexpected character");
   }
 
