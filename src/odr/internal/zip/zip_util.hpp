@@ -91,12 +91,14 @@ public:
 
 private:
   std::shared_ptr<abstract::File> m_file;
+  std::unique_ptr<std::istream> m_stream;
   mz_zip_archive m_zip{};
 
   explicit Archive(std::shared_ptr<abstract::File> file);
 };
 
-void read_from_file(mz_zip_archive &archive, const abstract::File &file);
+void open_from_file(mz_zip_archive &archive, const abstract::File &file,
+                    std::istream &stream);
 
 bool append_file(mz_zip_archive &archive, const std::string &path,
                  std::istream &istream, std::size_t size,

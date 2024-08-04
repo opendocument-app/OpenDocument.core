@@ -225,7 +225,8 @@ Archive::Archive(std::shared_ptr<abstract::File> file)
   if (m_file == nullptr) {
     throw std::invalid_argument("Archive: file is nullptr");
   }
-  read_from_file(m_zip, *m_file);
+  m_stream = m_file->stream();
+  open_from_file(m_zip, *m_file, *m_stream);
 }
 
 Archive::Archive(const Archive &other) : Archive(other.m_file) {}
@@ -273,10 +274,9 @@ Archive::Iterator Archive::find(const common::Path &path) const {
 
 namespace odr::internal::zip {
 
-void util::read_from_file(mz_zip_archive &archive, const abstract::File &file) {
-  auto in = file.stream();
-
-  archive.m_pIO_opaque = in.get();
+void util::open_from_file(mz_zip_archive &archive, const abstract::File &file,
+                          std::istream &stream) {
+  archive.m_pIO_opaque = &stream;
   archive.m_pRead = [](void *opaque, std::uint64_t offset, void *buffer,
                        std::size_t size) {
     auto in = static_cast<std::istream *>(opaque);
