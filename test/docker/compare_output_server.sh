@@ -9,6 +9,6 @@ DRIVER="firefox"
 
 docker run -ti \
   -v $(pwd):/repo \
-  -p 5000:5000 \
-  ghcr.io/opendocument-app/odr_core_test:sha-34851f1 \
-  python3 /repo/test/scripts/compare_output_server.py /repo/$REF /repo/$OBS --compare --driver $DRIVER
+  -p 8000:8000 \
+  ghcr.io/opendocument-app/odr_core_test \
+  python3 /repo/test/scripts/compare_output_server.py /repo/$REF /repo/$OBS --compare --driver $DRIVER --port 8000

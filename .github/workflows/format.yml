@@ -8,17 +8,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-24.04
     steps:
-      - run: clang-format-15 --version
-
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: apply clang-format
-        run: |
-          FILES=$( find . -type f \( -iname \*.h -o -iname \*.cpp \) )
-          clang-format-15 --style=file -i $FILES
+        run: CLANG_FORMAT=clang-format-18 ./scripts/format
 
       - run: git diff --exit-code --name-only

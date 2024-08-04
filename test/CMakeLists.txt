@@ -21,7 +21,6 @@ add_executable(odr_test
 
         "src/internal/cfb/cfb_archive_test.cpp"
 
-        "src/internal/common/archive_test.cpp"
         "src/internal/common/path_test.cpp"
         "src/internal/common/table_cursor_test.cpp"
         "src/internal/common/table_position_test.cpp"
@@ -44,12 +43,12 @@ add_executable(odr_test
 
         "src/internal/zip/miniz_test.cpp"
         "src/internal/zip/zip_archive_test.cpp"
-        )
+)
 target_include_directories(odr_test
         PRIVATE
         "src"
         "../src"
-        )
+)
 target_link_libraries(odr_test
         PRIVATE
         pugixml::pugixml
@@ -62,5 +61,5 @@ target_link_libraries(odr_test
         GTest::gtest_main
 
         odr
-        )
+)
 gtest_add_tests(TARGET odr_test)

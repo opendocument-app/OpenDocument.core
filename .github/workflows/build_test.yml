@@ -13,106 +13,179 @@ concurrency:
 env:
   CCACHE_DIR: ${{ github.workspace }}/ccache
   CCACHE_MAXSIZE: 500M
-  CCACHE_KEY_SUFFIX: r20
+  CCACHE_KEY_SUFFIX: r22
 
 jobs:
   build:
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - { os: ubuntu-22.04, compiler: clang, cc: clang-15, cxx: clang++-15 }
-          - { os: ubuntu-22.04, compiler: gcc, cc: gcc-13, cxx: g++-13 }
-          - { os: macos-12, compiler: clang, cc: clang, cxx: clang++ }
-          - { os: windows-2022, compiler: msvc }
-
+        include:
+          - { os: ubuntu-24.04, compiler: clang-16 }
+          - { os: ubuntu-24.04, compiler: gcc-12 }
+          - { os: macos-13, compiler: clang-14 }
+          - { os: macos-14, compiler: clang-14 }
+          - { os: windows-2022, compiler: msvc-1939 }
     steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
       - name: ubuntu install ccache
-        if: startsWith(matrix.config.os, 'ubuntu')
+        if: runner.os == 'Linux'
         run: |
           sudo apt install ccache
           ccache -V
       - name: macos install ccache
-        if: startsWith(matrix.config.os, 'macos')
+        if: runner.os == 'macOS'
         run: |
           brew install ccache
           ccache -V
 
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
+      - name: setup python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: install python dependencies
-        run: pip install --upgrade pip conan==1.*
+        run: pip install conan
+
+      - name: conan remote
+        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan login
+        run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
+      - name: conan config
+        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
+      - name: conan install
+        run: conan install . --output-folder=build --build=missing
 
       - name: cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.ccache
             /Users/runner/Library/Caches/ccache
-            ~/.conan/data
-            C:/.conan
-            C:/Users/runneradmin/.conan/data
-          key: ${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ env.CCACHE_KEY_SUFFIX }}
+          key: ${{ matrix.os }}-${{ matrix.compiler }}-${{ env.CCACHE_KEY_SUFFIX }}
           restore-keys: |
-            ${{ matrix.config.os }}-${{ matrix.config.compiler }}-
-
-      - name: checkout
-        uses: actions/checkout@v2
+            ${{ matrix.os }}-${{ matrix.compiler }}-
 
       - name: cmake
-        env:
-          CC: ${{ matrix.config.cc }}
-          CXX: ${{ matrix.config.cxx }}
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        run: >
+          cmake -B build -S .
+          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_PREFIX=install
+          -DODR_TEST=ON
       - name: build
-        run: cmake --build build --config Release # `config Release` somehow necessary for windows
+        # `config Release` somehow necessary for windows
+        run: cmake --build build --config Release
+      - name: install
+        # `config Release` somehow necessary for windows
+        run: cmake --build build --target install --config Release
 
-      - name: upload binaries
-        uses: actions/upload-artifact@v2
+      - name: upload binaries to conan repo
+        run: conan upload "*" --remote odr --confirm
+
+      - name: upload binaries to github
+        uses: actions/upload-artifact@v4
         with:
-          name: bin-${{ matrix.config.os }}-${{ matrix.config.compiler }}
+          name: bin-${{ matrix.os }}-${{ matrix.compiler }}
           path: |
+            install
             build/test/odr_test
+
+  docker:
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, compiler: clang-16 }
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            ghcr.io/${{ github.repository_owner }}/odr_core_cli
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+
+      - name: download binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: bin-${{ matrix.os }}-${{ matrix.compiler }}
+          path: cli
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: cli
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/odr_core_cli:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/odr_core_cli:buildcache,mode=max
+
+      # TODO try to run it
 
   test:
     needs: build
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
-        config:
-          - { os: ubuntu-22.04, bin: bin-ubuntu-22.04-clang }
-          - { os: macos-12, bin: bin-macos-12-clang }
-
+        include:
+          - { os: ubuntu-24.04, compiler: clang-16 }
+          - { os: macos-14, compiler: clang-14 }
     steps:
-      - name: ubuntu install tidy
-        if: startsWith(matrix.config.os, 'ubuntu')
-        run: sudo apt install tidy
-      - name: macos install tidy
-        if: startsWith(matrix.config.os, 'macos')
-        run: brew install tidy-html5
-
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_ANDIWAND }}
           submodules: true
 
-      - run: pip install -r test/scripts/requirements.txt
+      - name: ubuntu install tidy
+        if: runner.os == 'Linux'
+        run: sudo apt install tidy
+      - name: macos install tidy
+        if: runner.os == 'macOS'
+        run: brew install tidy-html5
+
+      - name: set up python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: install python dependencies
+        run: pip install -r test/scripts/requirements.txt
 
       - name: download binaries
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.config.bin }}
-          path: build/test
+          name: bin-${{ matrix.os }}-${{ matrix.compiler }}
+          path: .
       - name: fix artifact permissions
         run:  chmod +x build/test/odr_test
 
@@ -123,9 +196,79 @@ jobs:
       - name: tidy public test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-public/output
       - name: compare public test outputs
-        run: python3 -u test/scripts/compare_output.py --driver firefox --max-workers 1 test/data/reference-output/odr-public/output build/test/output/odr-public/output
+        run: |
+          python3 -u test/scripts/compare_output.py \
+            --driver firefox \
+            --max-workers 1 \
+            test/data/reference-output/odr-public/output \
+            build/test/output/odr-public/output
 
       - name: tidy private test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-private/output
       - name: compare private test outputs
-        run: python3 -u test/scripts/compare_output.py --driver firefox --max-workers 1 test/data/reference-output/odr-private/output build/test/output/odr-private/output
+        run: |
+          python3 -u test/scripts/compare_output.py \
+            --driver firefox \
+            --max-workers 1 \
+            test/data/reference-output/odr-private/output \
+            build/test/output/odr-private/output
+
+  build-test-downstream:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, compiler: clang-16 }
+          - { os: ubuntu-24.04, compiler: gcc-12 }
+          - { os: macos-13, compiler: clang-14 }
+          - { os: macos-14, compiler: clang-14 }
+          - { os: windows-2022, compiler: msvc-1939 }
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: ubuntu install ccache
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt install ccache
+          ccache -V
+      - name: macos install ccache
+        if: runner.os == 'macOS'
+        run: |
+          brew install ccache
+          ccache -V
+
+      - name: set up python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: install python dependencies
+        run: pip install conan
+
+      - name: conan remote
+        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan config
+        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
+
+      - name: conan odrcore
+        run: conan export . --name odrcore --version 0.0.0
+
+      - name: conan downstream
+        run: conan install test/downstream --output-folder=test/downstream/build --build=missing
+
+      - name: cmake
+        run: >
+          cmake -S test/downstream -B test/downstream/build
+          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
+          -DCMAKE_BUILD_TYPE=Release
+      - name: build
+        # `config Release` somehow necessary for windows
+        run: cmake --build test/downstream/build --config Release
+
+      - name: run
+        if: runner.os != 'Windows'
+        run: test/downstream/build/odr-test-downstream
+      - name: run
+        if: runner.os == 'Windows'
+        run: test/downstream/build/Release/odr-test-downstream.exe

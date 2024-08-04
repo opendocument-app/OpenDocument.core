@@ -1,8 +1,7 @@
 #include <odr/internal/pdf/pdf_cmap.hpp>
 
 #include <odr/internal/util/map_util.hpp>
-
-#include <utf8cpp/utf8/cpp17.h>
+#include <odr/internal/util/string_util.hpp>
 
 namespace odr::internal::pdf {
 
@@ -23,7 +22,7 @@ std::string CMap::translate_string(const std::string &glyphs) const {
     result += translate_glyph(glyph);
   }
 
-  return utf8::utf16to8(result);
+  return util::string::u16string_to_string(result);
 }
 
 } // namespace odr::internal::pdf

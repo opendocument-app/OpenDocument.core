@@ -1,0 +1,40 @@
+name: conan
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, compiler: clang-15 }
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: set up python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: install python dependencies
+        run: pip install --upgrade pip conan
+
+      - name: conan remote
+        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan login
+        run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
+      - name: conan config
+        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
+
+      - name: get version
+        run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+
+      - name: create conan package
+        run: conan create conanfile.py --name odrcore --version ${VERSION} -s compiler.libcxx=libstdc++11 --build missing
+
+      - name: upload to conan repo
+        run: conan upload "*" --remote odr --confirm

@@ -22,8 +22,8 @@ namespace fs = std::filesystem;
 namespace odr {
 
 Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages)
-    : m_file_type{file_type}, m_config{std::move(config)}, m_pages{std::move(
-                                                               pages)} {}
+    : m_file_type{file_type}, m_config{std::move(config)},
+      m_pages{std::move(pages)} {}
 
 Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages,
            Document document)

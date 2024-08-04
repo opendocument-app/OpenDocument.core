@@ -4,8 +4,8 @@
 #include <odr/file.hpp>
 
 #include <odr/internal/abstract/archive.hpp>
-#include <odr/internal/cfb/cfb_archive.hpp>
-#include <odr/internal/common/archive.hpp>
+#include <odr/internal/cfb/cfb_file.hpp>
+#include <odr/internal/common/file.hpp>
 #include <odr/internal/common/image_file.hpp>
 #include <odr/internal/csv/csv_file.hpp>
 #include <odr/internal/json/json_file.hpp>
@@ -15,7 +15,7 @@
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/svm/svm_file.hpp>
-#include <odr/internal/zip/zip_archive.hpp>
+#include <odr/internal/zip/zip_file.hpp>
 
 #include <utility>
 
@@ -31,10 +31,10 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
   auto memory_file = std::make_shared<common::MemoryFile>(*file);
 
   if (file_type == FileType::zip) {
-    auto zip = common::ArchiveFile(zip::ReadonlyZipArchive(memory_file));
+    zip::ZipFile zip_file(memory_file);
     result.push_back(FileType::zip);
 
-    auto filesystem = zip.archive()->filesystem();
+    auto filesystem = zip_file.archive()->filesystem();
 
     try {
       result.push_back(odf::OpenDocumentFile(filesystem).file_type());
@@ -46,10 +46,10 @@ open_strategy::types(std::shared_ptr<abstract::File> file) {
     } catch (...) {
     }
   } else if (file_type == FileType::compound_file_binary_format) {
-    auto cfb = common::ArchiveFile(cfb::ReadonlyCfbArchive(memory_file));
+    cfb::CfbFile cfb_file(memory_file);
     result.push_back(FileType::compound_file_binary_format);
 
-    auto filesystem = cfb.archive()->filesystem();
+    auto filesystem = cfb_file.archive()->filesystem();
 
     try {
       result.push_back(oldms::LegacyMicrosoftFile(filesystem).file_type());
@@ -101,10 +101,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
   auto memory_file = std::make_shared<common::MemoryFile>(*file);
 
   if (file_type == FileType::zip) {
-    auto zip = std::make_unique<common::ArchiveFile<zip::ReadonlyZipArchive>>(
-        zip::ReadonlyZipArchive(memory_file));
+    auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
 
-    auto filesystem = zip->archive()->filesystem();
+    auto filesystem = zip_file->archive()->filesystem();
 
     try {
       return std::make_unique<odf::OpenDocumentFile>(filesystem);
@@ -116,12 +115,11 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
     } catch (...) {
     }
 
-    return zip;
+    return zip_file;
   } else if (file_type == FileType::compound_file_binary_format) {
-    auto cfb = std::make_unique<common::ArchiveFile<cfb::ReadonlyCfbArchive>>(
-        cfb::ReadonlyCfbArchive(std::move(memory_file)));
+    auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
 
-    auto filesystem = cfb->archive()->filesystem();
+    auto filesystem = cfb_file->archive()->filesystem();
 
     try {
       return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
@@ -133,7 +131,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
     } catch (...) {
     }
 
-    return cfb;
+    return cfb_file;
   } else if (file_type == FileType::portable_document_format) {
     return std::make_unique<pdf::PdfFile>(file);
   } else if (file_type == FileType::portable_network_graphics ||
@@ -183,10 +181,9 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
     // TODO if `file` is in memory we would copy it unnecessarily
     auto memory_file = std::make_shared<common::MemoryFile>(*file);
 
-    auto zip = std::make_unique<common::ArchiveFile<zip::ReadonlyZipArchive>>(
-        zip::ReadonlyZipArchive(memory_file));
+    auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
 
-    auto filesystem = zip->archive()->filesystem();
+    auto filesystem = zip_file->archive()->filesystem();
 
     try {
       return std::make_unique<odf::OpenDocumentFile>(filesystem);
@@ -201,10 +198,9 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
     // TODO if `file` is in memory we would copy it unnecessarily
     auto memory_file = std::make_unique<common::MemoryFile>(*file);
 
-    auto cfb = std::make_unique<common::ArchiveFile<cfb::ReadonlyCfbArchive>>(
-        cfb::ReadonlyCfbArchive(std::move(memory_file)));
+    auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
 
-    auto filesystem = cfb->archive()->filesystem();
+    auto filesystem = cfb_file->archive()->filesystem();
 
     try {
       return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);

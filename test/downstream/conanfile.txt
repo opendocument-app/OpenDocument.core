@@ -1,0 +1,6 @@
+[requires]
+odrcore/0.0.0@
+
+[generators]
+CMakeDeps
+CMakeToolchain

@@ -1,9 +1,12 @@
 #include <odr/internal/util/string_util.hpp>
 
-#include <codecvt>
+#include <algorithm>
+#include <cctype>
 #include <iomanip>
 #include <locale>
 #include <sstream>
+
+#include <utf8cpp/utf8/cpp17.h>
 
 namespace odr::internal::util {
 
@@ -17,6 +20,24 @@ bool string::ends_with(const std::string &string, const std::string &with) {
                          with) == 0);
 }
 
+void string::ltrim(std::string &s) {
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+          }));
+}
+
+void string::rtrim(std::string &s) {
+  s.erase(std::find_if(s.rbegin(), s.rend(),
+                       [](unsigned char ch) { return !std::isspace(ch); })
+              .base(),
+          s.end());
+}
+
+void string::trim(std::string &s) {
+  rtrim(s);
+  ltrim(s);
+}
+
 void string::replace_all(std::string &string, const std::string &search,
                          const std::string &replace) {
   std::size_t pos = string.find(search);
@@ -27,7 +48,7 @@ void string::replace_all(std::string &string, const std::string &search,
 }
 
 void string::split(const std::string &string, const std::string &delimiter,
-                   std::function<void(const std::string &)> callback) {
+                   const std::function<void(const std::string &)> &callback) {
   std::size_t pos = 0;
   std::size_t last = 0;
   while ((pos = string.find(delimiter, pos)) != std::string::npos) {
@@ -45,22 +66,18 @@ std::vector<std::string> string::split(const std::string &string,
   return result;
 }
 
-std::string string::to_string(const double d, const std::uint32_t precision) {
+std::string string::to_string(const double d, const int precision) {
   std::stringstream stream;
   stream << std::fixed << std::setprecision(precision) << d;
   return stream.str();
 }
 
 std::string string::u16string_to_string(const std::u16string &string) {
-  static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>
-      convert;
-  return convert.to_bytes(string);
+  return utf8::utf16to8(string);
 }
 
 std::u16string string::string_to_u16string(const std::string &string) {
-  static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>
-      convert;
-  return convert.from_bytes(string);
+  return utf8::utf8to16(string);
 }
 
 std::string string::c16str_to_string(const char16_t *c16str,

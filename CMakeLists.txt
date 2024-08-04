@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.12.4)
+cmake_minimum_required(VERSION 3.15)
 
 project(odr LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(ODR_TEST "enable tests" ON)
+option(ODR_TEST "enable tests" OFF)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 
 # TODO defining global compiler flags seems to be bad practice with conan
@@ -25,20 +25,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     # using Visual Studio C++
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
-endif ()
-
-if (NOT DEFINED CONAN_EXPORTED)
-    include("cmake/conan.cmake")
-    conan_cmake_configure(GENERATORS cmake)
-    conan_cmake_autodetect(settings)
-    conan_cmake_install(PATH_OR_REFERENCE ".."
-            BUILD missing
-            SETTINGS ${settings}
-            ENV CC=${CMAKE_C_COMPILER}
-            ENV CXX=${CMAKE_CXX_COMPILER})
-    #include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-    #conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
-    include("${CMAKE_BINARY_DIR}/conan_paths.cmake")
 endif ()
 
 find_package(pugixml REQUIRED)
@@ -65,7 +51,7 @@ else ()
     configure_file("${PRE_CONFIGURE_FILE}" "${POST_CONFIGURE_FILE}" @ONLY)
 endif ()
 
-add_library(odr
+set(ODR_SOURCE_FILES
         "src/odr/archive.cpp"
         "src/odr/document.cpp"
         "src/odr/document_element.cpp"
@@ -86,6 +72,7 @@ add_library(odr
         "src/odr/internal/resource_data.cpp"
 
         "src/odr/internal/cfb/cfb_archive.cpp"
+        "src/odr/internal/cfb/cfb_file.cpp"
         "src/odr/internal/cfb/cfb_impl.cpp"
         "src/odr/internal/cfb/cfb_util.cpp"
 
@@ -179,12 +166,12 @@ add_library(odr
 
         "src/odr/internal/zip/zip_archive.cpp"
         "src/odr/internal/zip/zip_exceptions.cpp"
+        "src/odr/internal/zip/zip_file.cpp"
         "src/odr/internal/zip/zip_util.cpp"
 )
+
+add_library(odr ${ODR_SOURCE_FILES})
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
-if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
-    add_dependencies(odr check_git)
-endif ()
 target_include_directories(odr
         PUBLIC
         src
@@ -197,8 +184,12 @@ target_link_libraries(odr
         nlohmann_json::nlohmann_json
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
-        utf8cpp::utf8cpp
+        utf8::cpp
 )
+
+if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
+    add_dependencies(odr check_git)
+endif ()
 
 add_subdirectory("cli")
 
@@ -211,12 +202,14 @@ if (ODR_CLANG_TIDY)
 endif ()
 
 install(
-        TARGETS
-        odr
-        meta
-        translate
-        back_translate
-        RUNTIME DESTINATION "bin"
-        BUNDLE DESTINATION "bin"
-        LIBRARY DESTINATION "lib"
+        DIRECTORY src/
+        DESTINATION include/
+        FILES_MATCHING PATTERN "*.hpp"
+)
+install(
+        TARGETS odr meta translate back_translate
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )

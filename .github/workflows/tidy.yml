@@ -12,23 +12,38 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, compiler: clang-16 }
     steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
       - run: clang-tidy --version
 
-      - name: set up python 3.8
-        uses: actions/setup-python@v2
+      - name: setup python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: install python dependencies
-        run: pip install --upgrade pip conan==1.*
+        run: pip install --upgrade pip conan
 
-      - name: checkout
-        uses: actions/checkout@v2
+      - name: conan remote
+        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: conan config
+        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
+      - name: conan install
+        run: conan install . --output-folder=build --build=missing
 
       - name: cmake
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DODR_CLANG_TIDY=ON
+        run: >
+          cmake -S . -B build
+          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
+          -DCMAKE_BUILD_TYPE=Release
+          -DODR_CLANG_TIDY=ON
 
       - name: clang-tidy
         run: cmake --build build

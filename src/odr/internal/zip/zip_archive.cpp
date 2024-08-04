@@ -3,115 +3,17 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/filesystem.hpp>
 #include <odr/internal/zip/zip_exceptions.hpp>
 #include <odr/internal/zip/zip_util.hpp>
 
-#include <chrono>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <miniz/miniz.h>
 
 namespace odr::internal::zip {
-
-ReadonlyZipArchive::Entry::Entry(const ReadonlyZipArchive &parent,
-                                 std::uint32_t index)
-    : m_parent{parent}, m_index{index} {}
-
-bool ReadonlyZipArchive::Entry::is_file() const {
-  return !mz_zip_reader_is_file_a_directory(m_parent.m_zip->zip(), m_index);
-}
-
-bool ReadonlyZipArchive::Entry::is_directory() const {
-  return mz_zip_reader_is_file_a_directory(m_parent.m_zip->zip(), m_index);
-}
-
-common::Path ReadonlyZipArchive::Entry::path() const {
-  char filename[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
-  mz_zip_reader_get_filename(m_parent.m_zip->zip(), m_index, filename,
-                             MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE);
-  return {filename};
-}
-
-Method ReadonlyZipArchive::Entry::method() const {
-  mz_zip_archive_file_stat stat{};
-  mz_zip_reader_file_stat(m_parent.m_zip->zip(), m_index, &stat);
-  switch (stat.m_method) {
-  case 0:
-    return Method::STORED;
-  case MZ_DEFLATED:
-    return Method::DEFLATED;
-  }
-  return Method::UNSUPPORTED;
-}
-
-std::unique_ptr<abstract::File> ReadonlyZipArchive::Entry::file() const {
-  if (!is_file()) {
-    return {};
-  }
-  return std::make_unique<util::FileInZip>(m_parent.m_zip, m_index);
-}
-
-ReadonlyZipArchive::Iterator::Iterator(const ReadonlyZipArchive &zip,
-                                       const std::uint32_t index)
-    : m_entry{zip, index} {}
-
-ReadonlyZipArchive::Iterator::reference
-ReadonlyZipArchive::Iterator::operator*() const {
-  return m_entry;
-}
-
-ReadonlyZipArchive::Iterator::pointer
-ReadonlyZipArchive::Iterator::operator->() const {
-  return &m_entry;
-}
-
-bool ReadonlyZipArchive::Iterator::operator==(const Iterator &other) const {
-  return m_entry.m_index == other.m_entry.m_index;
-};
-
-bool ReadonlyZipArchive::Iterator::operator!=(const Iterator &other) const {
-  return m_entry.m_index != other.m_entry.m_index;
-};
-
-ReadonlyZipArchive::Iterator &ReadonlyZipArchive::Iterator::operator++() {
-  m_entry.m_index++;
-  return *this;
-}
-
-ReadonlyZipArchive::Iterator ReadonlyZipArchive::Iterator::operator++(int) {
-  Iterator tmp = *this;
-  ++(*this);
-  return tmp;
-}
-
-ReadonlyZipArchive::ReadonlyZipArchive(
-    const std::shared_ptr<common::MemoryFile> &file)
-    : m_zip{std::make_shared<util::Archive>(file)} {}
-
-ReadonlyZipArchive::ReadonlyZipArchive(
-    const std::shared_ptr<common::DiskFile> &file)
-    : m_zip{std::make_shared<util::Archive>(file)} {}
-
-ReadonlyZipArchive::Iterator ReadonlyZipArchive::begin() const {
-  return {*this, 0};
-}
-
-ReadonlyZipArchive::Iterator ReadonlyZipArchive::end() const {
-  return {*this, mz_zip_reader_get_num_files(m_zip->zip())};
-}
-
-ReadonlyZipArchive::Iterator
-ReadonlyZipArchive::find(const common::Path &path) const {
-  for (auto it = begin(); it != end(); ++it) {
-    if (it->path() == path) {
-      return it;
-    }
-  }
-
-  return end();
-}
 
 ZipArchive::Entry::Entry(common::Path path,
                          std::shared_ptr<abstract::File> file,
@@ -139,20 +41,11 @@ void ZipArchive::Entry::file(std::shared_ptr<abstract::File> file) {
 
 ZipArchive::ZipArchive() = default;
 
-ZipArchive::ZipArchive(const std::shared_ptr<common::MemoryFile> &file)
-    : ZipArchive(ReadonlyZipArchive(file)) {}
-
-ZipArchive::ZipArchive(const std::shared_ptr<common::DiskFile> &file)
-    : ZipArchive(ReadonlyZipArchive(file)) {}
-
-ZipArchive::ZipArchive(ReadonlyZipArchive archive)
-    : ZipArchive(std::make_shared<ReadonlyZipArchive>(std::move(archive))) {}
-
-ZipArchive::ZipArchive(const std::shared_ptr<ReadonlyZipArchive> &archive) {
+ZipArchive::ZipArchive(const std::shared_ptr<util::Archive> &archive) {
   for (auto &&entry : *archive) {
     if (entry.is_file()) {
       std::uint8_t compression_level = 6;
-      if (entry.method() == Method::STORED) {
+      if (entry.method() == util::Method::STORED) {
         compression_level = 0;
       }
       insert_file(end(), entry.path(), entry.file(), compression_level);
@@ -162,39 +55,20 @@ ZipArchive::ZipArchive(const std::shared_ptr<ReadonlyZipArchive> &archive) {
   }
 }
 
-ZipArchive::Iterator ZipArchive::begin() const {
-  return std::cbegin(m_entries);
-}
+std::shared_ptr<abstract::Filesystem> ZipArchive::filesystem() const {
+  // TODO return an actual filesystem view
+  auto filesystem = std::make_shared<common::VirtualFilesystem>();
 
-ZipArchive::Iterator ZipArchive::end() const { return std::cend(m_entries); }
-
-ZipArchive::Iterator ZipArchive::find(const common::Path &path) const {
-  for (auto it = begin(); it != end(); ++it) {
-    if (it->path() == path) {
-      return it;
+  for (const auto &e : *this) {
+    if (e.is_directory()) {
+      filesystem->create_directory(e.path());
+    } else if (e.is_file()) {
+      filesystem->copy(e.file(), e.path());
     }
   }
 
-  return end();
+  return filesystem;
 }
-
-ZipArchive::Iterator
-ZipArchive::insert_file(Iterator at, common::Path path,
-                        std::shared_ptr<abstract::File> file,
-                        std::uint32_t compression_level) {
-  return m_entries.insert(
-      at,
-      ZipArchive::Entry(std::move(path), std::move(file), compression_level));
-}
-
-ZipArchive::Iterator ZipArchive::insert_directory(Iterator at,
-                                                  common::Path path) {
-  return m_entries.insert(at, ZipArchive::Entry(std::move(path), {}, 0));
-}
-
-bool ZipArchive::move(common::Path, common::Path) { return false; }
-
-bool ZipArchive::remove(common::Path) { return false; }
 
 void ZipArchive::save(std::ostream &out) const {
   bool state;
@@ -246,6 +120,36 @@ void ZipArchive::save(std::ostream &out) const {
   if (!state) {
     throw MinizSaveError(archive);
   }
+}
+
+ZipArchive::Iterator ZipArchive::begin() const {
+  return std::cbegin(m_entries);
+}
+
+ZipArchive::Iterator ZipArchive::end() const { return std::cend(m_entries); }
+
+ZipArchive::Iterator ZipArchive::find(const common::Path &path) const {
+  for (auto it = begin(); it != end(); ++it) {
+    if (it->path() == path) {
+      return it;
+    }
+  }
+
+  return end();
+}
+
+ZipArchive::Iterator
+ZipArchive::insert_file(Iterator at, common::Path path,
+                        std::shared_ptr<abstract::File> file,
+                        std::uint32_t compression_level) {
+  return m_entries.insert(
+      at,
+      ZipArchive::Entry(std::move(path), std::move(file), compression_level));
+}
+
+ZipArchive::Iterator ZipArchive::insert_directory(Iterator at,
+                                                  common::Path path) {
+  return m_entries.insert(at, ZipArchive::Entry(std::move(path), nullptr, 0));
 }
 
 } // namespace odr::internal::zip

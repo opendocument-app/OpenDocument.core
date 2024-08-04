@@ -19,6 +19,6 @@ Filesystem Archive::filesystem() const {
           m_impl->filesystem()));
 }
 
-void Archive::save(const std::string &path) const { m_impl->save(path); }
+void Archive::save(std::ostream &out) const { m_impl->save(out); }
 
 } // namespace odr

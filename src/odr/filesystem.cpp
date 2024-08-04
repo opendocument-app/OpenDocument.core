@@ -15,7 +15,7 @@ FileWalker::FileWalker(std::unique_ptr<internal::abstract::FileWalker> impl)
 FileWalker::FileWalker(const FileWalker &other)
     : m_impl{other.m_impl->clone()} {}
 
-FileWalker::FileWalker(FileWalker &&other) = default;
+FileWalker::FileWalker(FileWalker &&other) noexcept = default;
 
 FileWalker::~FileWalker() = default;
 
@@ -24,7 +24,7 @@ FileWalker &FileWalker::operator=(const odr::FileWalker &other) {
   return *this;
 }
 
-FileWalker &FileWalker::operator=(odr::FileWalker &&) = default;
+FileWalker &FileWalker::operator=(odr::FileWalker &&) noexcept = default;
 
 FileWalker::operator bool() const { return m_impl.operator bool(); }
 

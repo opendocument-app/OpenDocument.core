@@ -57,8 +57,8 @@ class SheetCell final : public Element, public abstract::SheetCell {
 public:
   SheetCell(pugi::xml_node node, std::uint32_t column, std::uint32_t row,
             bool is_repeated)
-      : Element(node), m_column{column}, m_row{row}, m_is_repeated{
-                                                         is_repeated} {}
+      : Element(node), m_column{column}, m_row{row},
+        m_is_repeated{is_repeated} {}
 
   [[nodiscard]] bool is_covered(const abstract::Document *) const final {
     return std::strcmp(m_node.name(), "table:covered-table-cell") == 0;

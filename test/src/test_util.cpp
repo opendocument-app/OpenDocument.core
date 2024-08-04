@@ -106,8 +106,8 @@ std::unordered_map<std::string, TestFile> get_test_files() {
 
 TestFile::TestFile(std::string path, const FileType type,
                    const bool password_encrypted, std::string password)
-    : path{std::move(path)}, type{type},
-      password_encrypted{password_encrypted}, password{std::move(password)} {}
+    : path{std::move(path)}, type{type}, password_encrypted{password_encrypted},
+      password{std::move(password)} {}
 
 std::string TestData::data_input_directory() {
   return common::Path(TestData::data_directory()).join("input").string();
