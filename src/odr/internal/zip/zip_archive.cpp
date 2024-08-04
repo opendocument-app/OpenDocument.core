@@ -123,11 +123,7 @@ ZipArchive::Entry::Entry(common::Path path,
                          std::shared_ptr<abstract::File> file,
                          std::uint32_t compression_level)
     : m_path{std::move(path)}, m_file{std::move(file)},
-      m_compression_level{compression_level} {
-  if (m_file == nullptr) {
-    throw std::invalid_argument("ZipArchive::Entry: file is nullptr");
-  }
-}
+      m_compression_level{compression_level} {}
 
 bool ZipArchive::Entry::is_file() const { return m_file.operator bool(); }
 
@@ -203,7 +199,7 @@ ZipArchive::insert_file(Iterator at, common::Path path,
 
 ZipArchive::Iterator ZipArchive::insert_directory(Iterator at,
                                                   common::Path path) {
-  return m_entries.insert(at, ZipArchive::Entry(std::move(path), {}, 0));
+  return m_entries.insert(at, ZipArchive::Entry(std::move(path), nullptr, 0));
 }
 
 bool ZipArchive::move(common::Path, common::Path) { return false; }
