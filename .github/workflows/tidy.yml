@@ -32,7 +32,7 @@ jobs:
         run: pip install --upgrade pip conan
 
       - name: conan remote
-        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
