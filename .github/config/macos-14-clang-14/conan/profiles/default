@@ -1,7 +1,7 @@
 include(pdf2htmlEX-config)
 
 [settings]
-arch=x86_64
+arch=armv8
 build_type=Release
 compiler=apple-clang
 compiler.version=14
