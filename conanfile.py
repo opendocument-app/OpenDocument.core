@@ -34,6 +34,7 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("vincentlaucsb-csv-parser/2.1.3")
         self.requires("uchardet/0.0.7")
         self.requires("utfcpp/4.0.4")
+        self.requires("pdf2htmlex/0.18.8.rc1-20240805-git")
 
     def build_requirements(self):
         self.test_requires("gtest/1.14.0")
