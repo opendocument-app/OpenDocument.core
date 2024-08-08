@@ -18,10 +18,12 @@ class OpenDocumentCoreConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "with_pdf2htmlEX": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
+        "with_pdf2htmlEX": True,
     }
 
     exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
@@ -29,6 +31,7 @@ class OpenDocumentCoreConan(ConanFile):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
+            self.default_options['with_pdf2htmlEX'] = False
 
     def configure(self):
         if self.options.shared:
@@ -42,7 +45,7 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("vincentlaucsb-csv-parser/2.1.3")
         self.requires("uchardet/0.0.7")
         self.requires("utfcpp/4.0.4")
-        if self.settings.os != "Windows":
+        if self.options.get_safe("with_pdf2htmlEX"):
             self.requires("pdf2htmlex/0.18.8.rc1-20240805-git")
 
     def build_requirements(self):
