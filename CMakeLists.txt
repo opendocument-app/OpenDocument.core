@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 option(ODR_TEST "enable tests" OFF)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 

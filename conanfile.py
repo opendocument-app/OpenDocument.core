@@ -26,6 +26,14 @@ class OpenDocumentCoreConan(ConanFile):
 
     exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
 
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
     def requirements(self):
         self.requires("pugixml/1.14")
         self.requires("cryptopp/8.8.0")
@@ -47,7 +55,6 @@ class OpenDocumentCoreConan(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_PROJECT_VERSION"] = self.version
-        tc.variables["BUILD_SHARED_LIBS"] = self.options.shared
         tc.variables["ODR_TEST"] = False
         tc.generate()
 
