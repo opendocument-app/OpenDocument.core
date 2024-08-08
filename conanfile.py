@@ -18,13 +18,26 @@ class OpenDocumentCoreConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "with_pdf2htmlEX": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
+        "with_pdf2htmlEX": True,
     }
 
     exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+            # @TODO: ideally Windows should just default_options['with_pdf2htmlEX'] = False
+            # But by the time config_options() is executed, default_options is already done parsed.
+            del self.options.with_pdf2htmlEX
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
 
     def requirements(self):
         self.requires("pugixml/1.14")
@@ -34,19 +47,21 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("vincentlaucsb-csv-parser/2.1.3")
         self.requires("uchardet/0.0.7")
         self.requires("utfcpp/4.0.4")
+        if self.options.get_safe("with_pdf2htmlEX"):
+            self.requires("pdf2htmlex/0.18.8.rc1-20240805-git")
 
     def build_requirements(self):
         self.test_requires("gtest/1.14.0")
 
     def validate_build(self):
         if self.settings.get_safe("compiler.cppstd"):
-            check_min_cppstd(self, 17)
+            check_min_cppstd(self, 20)
 
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_PROJECT_VERSION"] = self.version
-        tc.variables["BUILD_SHARED_LIBS"] = self.options.shared
         tc.variables["ODR_TEST"] = False
+        tc.variables["WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX", False)
         tc.generate()
 
         deps = CMakeDeps(self)

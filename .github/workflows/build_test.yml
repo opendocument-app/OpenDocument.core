@@ -27,6 +27,7 @@ jobs:
           - { os: macos-13, compiler: clang-14 }
           - { os: macos-14, compiler: clang-14 }
           - { os: windows-2022, compiler: msvc-1939 }
+          - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -50,7 +51,7 @@ jobs:
         run: pip install conan
 
       - name: conan remote
-        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan login
         run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
       - name: conan config
@@ -224,6 +225,7 @@ jobs:
           - { os: macos-13, compiler: clang-14 }
           - { os: macos-14, compiler: clang-14 }
           - { os: windows-2022, compiler: msvc-1939 }
+          - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -247,7 +249,7 @@ jobs:
         run: pip install conan
 
       - name: conan remote
-        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
 
