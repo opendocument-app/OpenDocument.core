@@ -42,7 +42,7 @@ class OpenDocumentCoreConan(ConanFile):
 
     def validate_build(self):
         if self.settings.get_safe("compiler.cppstd"):
-            check_min_cppstd(self, 17)
+            check_min_cppstd(self, 20)
 
     def generate(self):
         tc = CMakeToolchain(self)
