@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 option(ODR_TEST "enable tests" OFF)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
+option(WITH_PDF2HTMLEX "Build with pdf2htmlEX" ON)
 
 # TODO defining global compiler flags seems to be bad practice with conan
 # TODO consider using conan profiles
@@ -187,6 +188,11 @@ target_link_libraries(odr
         uchardet::uchardet
         utf8::cpp
 )
+
+if(WITH_PDF2HTMLEX)
+    find_package(pdf2htmlEX REQUIRED)
+    target_link_libraries(odr PRIVATE pdf2htmlex::pdf2htmlex)
+endif(WITH_PDF2HTMLEX)
 
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
     add_dependencies(odr check_git)
