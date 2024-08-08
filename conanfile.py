@@ -61,7 +61,7 @@ class OpenDocumentCoreConan(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_PROJECT_VERSION"] = self.version
         tc.variables["ODR_TEST"] = False
-        tc.variables["WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX")
+        tc.variables["WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX", False)
         tc.generate()
 
         deps = CMakeDeps(self)
