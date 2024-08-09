@@ -25,8 +25,7 @@ jobs:
 
       - name: conan remote
         run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
-      - name: conan login
-        run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
+
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
 
@@ -35,6 +34,9 @@ jobs:
 
       - name: create conan package
         run: conan create conanfile.py --name odrcore --version ${VERSION} -s compiler.libcxx=libstdc++11 --build missing
+
+      - name: conan login
+        run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
 
       - name: upload to conan repo
         run: conan upload "*" --remote odr --confirm
