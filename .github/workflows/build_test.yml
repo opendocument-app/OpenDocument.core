@@ -26,7 +26,7 @@ jobs:
           - { os: ubuntu-24.04, compiler: gcc-12 }
           - { os: macos-13, compiler: clang-14 }
           - { os: macos-14, compiler: clang-14 }
-          - { os: windows-2022, compiler: msvc-1939 }
+          - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -223,7 +223,7 @@ jobs:
           - { os: ubuntu-24.04, compiler: gcc-12 }
           - { os: macos-13, compiler: clang-14 }
           - { os: macos-14, compiler: clang-14 }
-          - { os: windows-2022, compiler: msvc-1939 }
+          - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
