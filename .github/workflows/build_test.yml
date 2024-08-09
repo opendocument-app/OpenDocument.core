@@ -50,7 +50,7 @@ jobs:
         run: pip install conan
 
       - name: conan remote
-        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan login
         run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
       - name: conan config
@@ -247,7 +247,7 @@ jobs:
         run: pip install conan
 
       - name: conan remote
-        run: conan remote add --index 0 odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
 
