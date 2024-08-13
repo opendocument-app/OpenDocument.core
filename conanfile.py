@@ -8,6 +8,7 @@ from conan.tools.files import copy
 
 class OpenDocumentCoreConan(ConanFile):
     name = "odrcore"
+    version = ""
     url = "https://github.com/opendocument-app/OpenDocument.core"
     homepage = "https://opendocument.app/"
     description = "C++ library that translates office documents to HTML"
