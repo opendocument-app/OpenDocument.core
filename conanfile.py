@@ -2,11 +2,10 @@ import os
 
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
-from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake, cmake_layout
+from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 from conan.tools.files import (
-    apply_conandata_patches, export_conandata_patches, get, copy
+    copy
 )
-from conan.tools.scm import Version
 
 
 class OpenDocumentCoreConan(ConanFile):
@@ -43,7 +42,7 @@ class OpenDocumentCoreConan(ConanFile):
         if self.settings.get_safe("compiler.cppstd"):
             check_min_cppstd(self, 20)
 
-    export_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
+    exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
 
     def config_options(self):
         if self.settings.os == "Windows":
