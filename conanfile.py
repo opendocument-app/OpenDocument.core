@@ -27,16 +27,6 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": True,
     }
 
-    export_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
-
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
-
     def requirements(self):
         self.requires("pugixml/1.14")
         self.requires("cryptopp/8.8.0")
@@ -52,6 +42,16 @@ class OpenDocumentCoreConan(ConanFile):
     def validate_build(self):
         if self.settings.get_safe("compiler.cppstd"):
             check_min_cppstd(self, 20)
+
+    export_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
 
     def generate(self):
         tc = CMakeToolchain(self)
