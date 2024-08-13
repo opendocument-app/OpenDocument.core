@@ -1,15 +1,15 @@
 import os
+
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
-from conan.tools.files import copy
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
+from conan.tools.files import copy
 
 
 class OpenDocumentCoreConan(ConanFile):
     name = "odrcore"
-    version = ""
-    url = ""
-    homepage = "https://github.com/opendocument-app/OpenDocument.core"
+    url = "https://github.com/opendocument-app/OpenDocument.core"
+    homepage = "https://opendocument.app/"
     description = "C++ library that translates office documents to HTML"
     topics = "open document", "openoffice xml", "open document reader"
     license = "GPL 3.0"
@@ -25,19 +25,6 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": True,
         "with_pdf2htmlEX": True,
     }
-
-    exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
-
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-            # @TODO: ideally Windows should just default_options['with_pdf2htmlEX'] = False
-            # But by the time config_options() is executed, default_options is already done parsed.
-            del self.options.with_pdf2htmlEX
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
     def requirements(self):
         self.requires("pugixml/1.14")
@@ -56,6 +43,19 @@ class OpenDocumentCoreConan(ConanFile):
     def validate_build(self):
         if self.settings.get_safe("compiler.cppstd"):
             check_min_cppstd(self, 20)
+
+    exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+            # @TODO: ideally Windows should just default_options['with_pdf2htmlEX'] = False
+            # But by the time config_options() is executed, default_options is already done parsed.
+            del self.options.with_pdf2htmlEX
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
 
     def generate(self):
         tc = CMakeToolchain(self)
