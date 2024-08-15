@@ -6,7 +6,6 @@
 
 #include <odr/internal/common/file.hpp>
 
-
 #include <fstream>
 
 #include <pdf2htmlEX.h>
@@ -29,11 +28,11 @@ Html html::pdf2htmlEX_wrapper(const PdfFile &pdf_file,
 
   try {
     pdf2htmlEX.convert();
-  } catch (const pdf2htmlEX::EncryptionPasswordException & e) {
+  } catch (const pdf2htmlEX::EncryptionPasswordException &e) {
     throw WrongPassword();
-  } catch (const pdf2htmlEX::DocumentCopyProtectedException & e) {
+  } catch (const pdf2htmlEX::DocumentCopyProtectedException &e) {
     throw std::runtime_error("document is copy protected");
-  } catch (const pdf2htmlEX::ConversionFailedException & e) {
+  } catch (const pdf2htmlEX::ConversionFailedException &e) {
     throw std::runtime_error(std::string("conversion error ") + e.what());
   }
 
