@@ -6,8 +6,6 @@
 
 #include <odr/internal/common/file.hpp>
 
-#include <fstream>
-
 #include <pdf2htmlEX.h>
 
 namespace odr::internal {
@@ -25,6 +23,15 @@ Html html::pdf2htmlEX_wrapper(const PdfFile &pdf_file,
   pdf2htmlEX.setDestinationDir(output_path);
   auto output_file_name = "document.html";
   pdf2htmlEX.setOutputFilename(output_file_name);
+
+  pdf2htmlEX.setDRM(false);
+  pdf2htmlEX.setProcessOutline(false);
+  pdf2htmlEX.setProcessAnnotation(true);
+
+  // @TODO:
+//  if (options.password != null) {
+//    pdf2htmlEX.setOwnerPassword(options.password).setUserPassword(options.password);
+//  }
 
   try {
     pdf2htmlEX.convert();
