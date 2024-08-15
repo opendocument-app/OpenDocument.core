@@ -29,9 +29,9 @@ Html html::pdf2htmlEX_wrapper(const PdfFile &pdf_file,
   pdf2htmlEX.setProcessAnnotation(true);
 
   // @TODO:
-//  if (options.password != null) {
-//    pdf2htmlEX.setOwnerPassword(options.password).setUserPassword(options.password);
-//  }
+  //  if (options.password != null) {
+  //    pdf2htmlEX.setOwnerPassword(options.password).setUserPassword(options.password);
+  //  }
 
   try {
     pdf2htmlEX.convert();
