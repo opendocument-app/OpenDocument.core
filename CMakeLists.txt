@@ -103,6 +103,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/filesystem.cpp"
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
+        "src/odr/internal/html/pdf_file.cpp"
         "src/odr/internal/html/text_file.cpp"
 
         "src/odr/internal/json/json_file.cpp"
@@ -136,7 +137,19 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/ooxml/ooxml_meta.cpp"
         "src/odr/internal/ooxml/ooxml_util.cpp"
 
+        "src/odr/internal/pdf/pdf_cmap.cpp"
+        "src/odr/internal/pdf/pdf_cmap_parser.cpp"
+        "src/odr/internal/pdf/pdf_document.cpp"
+        "src/odr/internal/pdf/pdf_document_element.cpp"
+        "src/odr/internal/pdf/pdf_document_parser.cpp"
         "src/odr/internal/pdf/pdf_file.cpp"
+        "src/odr/internal/pdf/pdf_file_object.cpp"
+        "src/odr/internal/pdf/pdf_file_parser.cpp"
+        "src/odr/internal/pdf/pdf_graphics_operator.cpp"
+        "src/odr/internal/pdf/pdf_graphics_operator_parser.cpp"
+        "src/odr/internal/pdf/pdf_graphics_state.cpp"
+        "src/odr/internal/pdf/pdf_object.cpp"
+        "src/odr/internal/pdf/pdf_object_parser.cpp"
 
         "src/odr/internal/svm/svm_file.cpp"
         "src/odr/internal/svm/svm_format.cpp"
@@ -161,23 +174,6 @@ set(ODR_SOURCE_FILES
 if(WITH_PDF2HTMLEX)
         LIST(APPEND ODR_SOURCE_FILES
             "src/odr/internal/html/pdf2htmlEX_wrapper.cpp"
-    )
-else()
-        LIST(APPEND ODR_SOURCE_FILES
-                "src/odr/internal/html/pdf_file.cpp"
-
-                "src/odr/internal/pdf/pdf_cmap.cpp"
-                "src/odr/internal/pdf/pdf_cmap_parser.cpp"
-                "src/odr/internal/pdf/pdf_document.cpp"
-                "src/odr/internal/pdf/pdf_document_element.cpp"
-                "src/odr/internal/pdf/pdf_document_parser.cpp"
-                "src/odr/internal/pdf/pdf_file_object.cpp"
-                "src/odr/internal/pdf/pdf_file_parser.cpp"
-                "src/odr/internal/pdf/pdf_graphics_operator.cpp"
-                "src/odr/internal/pdf/pdf_graphics_operator_parser.cpp"
-                "src/odr/internal/pdf/pdf_graphics_state.cpp"
-                "src/odr/internal/pdf/pdf_object.cpp"
-                "src/odr/internal/pdf/pdf_object_parser.cpp"
     )
 endif(WITH_PDF2HTMLEX)
 
