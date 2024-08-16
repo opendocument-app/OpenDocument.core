@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 
-conan install . --output-folder=cmake-build-debug --build=missing -s build_type=Release -s "&:build_type=Debug"
-conan install . --output-folder=cmake-build-release --build=missing -s build_type=Release -s "&:build_type=Release"
+conan install . --output-folder=cmake-build-relwithdebinfo --build=missing -s build_type=RelWithDebInfo -s "&:build_type=RelWithDebInfo"
+conan install . --output-folder=cmake-build-debug --build=missing -s build_type=RelWithDebInfo -s "&:build_type=Debug"
+conan install . --output-folder=cmake-build-release --build=missing -s build_type=RelWithDebInfo -s "&:build_type=Release"
