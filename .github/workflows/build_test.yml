@@ -200,14 +200,18 @@ jobs:
         with:
           name: bin-${{ matrix.os }}-${{ matrix.compiler }}
           path: .
-      - name: fix artifact permissions
-        run:  chmod +x build/test/odr_test*
 
+      - name: fix artifact permissions
+        if: runner.os != 'Windows'
+        run:  chmod +x build/test/odr_test
       - name: test
         if: runner.os != 'Windows'
         working-directory: build/test
         run: ./odr_test
 
+      - name: fix artifact permissions
+        if: runner.os == 'Windows'
+        run:  chmod +x build/test/Release/odr_test.exe
       - name: test
         if: runner.os == 'Windows'
         working-directory: build/test
