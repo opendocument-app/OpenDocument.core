@@ -1,10 +1,6 @@
 name: tidy
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
+on: push
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
