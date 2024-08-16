@@ -248,8 +248,12 @@ jobs:
       - name: conan odrcore
         run: conan export . --name odrcore --version 0.0.0
 
+      - name: conan install
+        run: conan install . --output-folder=build --build=never
+
+      # odrcore/0.0.0 will be missing, can't build=never
       - name: conan downstream
-        run: conan install test/downstream --output-folder=test/downstream/build --build=never
+        run: conan install test/downstream --output-folder=test/downstream/build --build=missing
 
       - name: cmake
         run: >
