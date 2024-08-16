@@ -1,5 +1,3 @@
-include(pdf2htmlEX-config)
-
 [settings]
 arch=armv8
 build_type=RelWithDebInfo
