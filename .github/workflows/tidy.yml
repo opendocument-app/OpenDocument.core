@@ -42,7 +42,7 @@ jobs:
         run: >
           cmake -S . -B build
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DODR_CLANG_TIDY=ON
 
       - name: clang-tidy

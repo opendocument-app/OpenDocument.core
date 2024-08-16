@@ -67,15 +67,15 @@ jobs:
           cmake -B build -S .
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
       - name: build
-        # `config Release` somehow necessary for windows
-        run: cmake --build build --config Release
+        # `config RelWithDebInfo` somehow necessary for windows
+        run: cmake --build build --config RelWithDebInfo
       - name: install
-        # `config Release` somehow necessary for windows
-        run: cmake --build build --target install --config Release
+        # `config RelWithDebInfo` somehow necessary for windows
+        run: cmake --build build --target install --config RelWithDebInfo
 
       - name: upload binaries to github
         uses: actions/upload-artifact@v4
@@ -255,14 +255,14 @@ jobs:
         run: >
           cmake -S test/downstream -B test/downstream/build
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: build
-        # `config Release` somehow necessary for windows
-        run: cmake --build test/downstream/build --config Release
+        # `config RelWithDebInfo` somehow necessary for windows
+        run: cmake --build test/downstream/build --config RelWithDebInfo
 
       - name: run
         if: runner.os != 'Windows'
         run: test/downstream/build/odr-test-downstream
       - name: run
         if: runner.os == 'Windows'
-        run: test/downstream/build/Release/odr-test-downstream.exe
+        run: test/downstream/build/RelWithDebInfo/odr-test-downstream.exe
