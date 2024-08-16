@@ -200,11 +200,12 @@ jobs:
           name: bin-${{ matrix.os }}-${{ matrix.compiler }}
           path: .
       - name: fix artifact permissions
-        run:  chmod +x build/test/odr_test
+        run:  chmod +x build/test/odr_test*
 
       - name: test
         working-directory: build/test
-        run: ./odr_test
+        # wildcard to match .exe on Windows
+        run: ./odr_test*
 
       - name: tidy public test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-public/output
