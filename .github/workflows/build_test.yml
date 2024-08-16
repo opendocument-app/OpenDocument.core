@@ -102,7 +102,8 @@ jobs:
           name: bin-${{ matrix.os }}-${{ matrix.compiler }}
           path: |
             install
-            build/test/odr_test*
+            build/test/odr_test
+            build/test/Release/odr_test.exe
 
   docker:
     needs: build
@@ -203,9 +204,14 @@ jobs:
         run:  chmod +x build/test/odr_test*
 
       - name: test
+        if: runner.os != 'Windows'
         working-directory: build/test
-        # wildcard to match .exe on Windows
-        run: ./odr_test*
+        run: ./odr_test
+
+      - name: test
+        if: runner.os == 'Windows'
+        working-directory: build/test
+        run: ./Release/odr_test.exe
 
       - name: tidy public test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-public/output
