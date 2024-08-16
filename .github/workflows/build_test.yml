@@ -102,7 +102,7 @@ jobs:
           name: bin-${{ matrix.os }}-${{ matrix.compiler }}
           path: |
             install
-            build/test/odr_test
+            build/test/odr_test*
 
   docker:
     needs: build
