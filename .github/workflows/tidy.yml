@@ -1,10 +1,6 @@
 name: tidy
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
+on: push
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -17,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-16 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -36,13 +32,13 @@ jobs:
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
-        run: conan install . --output-folder=build --build=missing
+        run: conan install . --output-folder=build --build=never
 
       - name: cmake
         run: >
           cmake -S . -B build
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DODR_CLANG_TIDY=ON
 
       - name: clang-tidy

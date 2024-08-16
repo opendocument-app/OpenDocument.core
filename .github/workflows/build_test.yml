@@ -18,10 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-16 }
-          - { os: ubuntu-24.04, compiler: gcc-12 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, compiler: gcc-14 }
           - { os: macos-13, compiler: clang-14 }
-          - { os: macos-14, compiler: clang-14 }
+          - { os: macos-14, compiler: armv8-clang-14 }
           - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
@@ -50,7 +50,7 @@ jobs:
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
-        run: conan install . --output-folder=build --build=missing
+        run: conan install . --output-folder=build --build=never
 
       - name: cache
         uses: actions/cache@v4
@@ -67,15 +67,15 @@ jobs:
           cmake -B build -S .
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
       - name: build
-        # `config Release` somehow necessary for windows
-        run: cmake --build build --config Release
+        # `config RelWithDebInfo` somehow necessary for windows
+        run: cmake --build build --config RelWithDebInfo
       - name: install
-        # `config Release` somehow necessary for windows
-        run: cmake --build build --target install --config Release
+        # `config RelWithDebInfo` somehow necessary for windows
+        run: cmake --build build --target install --config RelWithDebInfo
 
       - name: upload binaries to github
         uses: actions/upload-artifact@v4
@@ -92,7 +92,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-16 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -149,8 +149,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-16 }
-          - { os: macos-14, compiler: clang-14 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, compiler: gcc-14 }
+          - { os: macos-13, compiler: clang-14 }
+          - { os: macos-14, compiler: armv8-clang-14 }
+          - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -210,10 +213,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-16 }
-          - { os: ubuntu-24.04, compiler: gcc-12 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, compiler: gcc-14 }
           - { os: macos-13, compiler: clang-14 }
-          - { os: macos-14, compiler: clang-14 }
+          - { os: macos-14, compiler: armv8-clang-14 }
           - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
@@ -246,20 +249,20 @@ jobs:
         run: conan export . --name odrcore --version 0.0.0
 
       - name: conan downstream
-        run: conan install test/downstream --output-folder=test/downstream/build --build=missing
+        run: conan install test/downstream --output-folder=test/downstream/build --build=never
 
       - name: cmake
         run: >
           cmake -S test/downstream -B test/downstream/build
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: build
-        # `config Release` somehow necessary for windows
-        run: cmake --build test/downstream/build --config Release
+        # `config RelWithDebInfo` somehow necessary for windows
+        run: cmake --build test/downstream/build --config RelWithDebInfo
 
       - name: run
         if: runner.os != 'Windows'
         run: test/downstream/build/odr-test-downstream
       - name: run
         if: runner.os == 'Windows'
-        run: test/downstream/build/Release/odr-test-downstream.exe
+        run: test/downstream/build/RelWithDebInfo/odr-test-downstream.exe
