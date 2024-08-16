@@ -63,6 +63,7 @@ jobs:
             ${{ matrix.os }}-${{ matrix.compiler }}-
 
       - name: cmake
+        if: runner.os != 'Windows'
         run: >
           cmake -B build -S .
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
@@ -71,11 +72,29 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
       - name: build
-        # `config RelWithDebInfo` somehow necessary for windows
-        run: cmake --build build --config RelWithDebInfo
+        if: runner.os != 'Windows'
+        run: cmake --build build
       - name: install
-        # `config RelWithDebInfo` somehow necessary for windows
-        run: cmake --build build --target install --config RelWithDebInfo
+        if: runner.os != 'Windows'
+        run: cmake --build build --target install
+
+      - name: cmake
+        if: runner.os == 'Windows'
+        run: >
+          cmake -B build -S .
+          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_PREFIX=install
+          -DODR_TEST=ON
+      - name: build
+        if: runner.os == 'Windows'
+        # `config Release` somehow necessary for windows
+        run: cmake --build build --config Release
+      - name: install
+        if: runner.os == 'Windows'
+        # `config Release` somehow necessary for windows
+        run: cmake --build build --target install --config Release
 
       - name: upload binaries to github
         uses: actions/upload-artifact@v4
@@ -256,13 +275,25 @@ jobs:
         run: conan install test/downstream --output-folder=test/downstream/build --build=missing
 
       - name: cmake
+        if: runner.os != 'Windows'
         run: >
           cmake -S test/downstream -B test/downstream/build
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: build
-        # `config RelWithDebInfo` somehow necessary for windows
-        run: cmake --build test/downstream/build --config RelWithDebInfo
+        if: runner.os != 'Windows'
+        run: cmake --build test/downstream/build
+
+      - name: cmake
+        if: runner.os == 'Windows'
+        run: >
+          cmake -S test/downstream -B test/downstream/build
+          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
+          -DCMAKE_BUILD_TYPE=Release
+      - name: build
+        if: runner.os == 'Windows'
+        # `config Release` somehow necessary for windows
+        run: cmake --build test/downstream/build --config Release
 
       - name: run
         if: runner.os != 'Windows'
