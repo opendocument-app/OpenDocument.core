@@ -300,4 +300,4 @@ jobs:
         run: test/downstream/build/odr-test-downstream
       - name: run
         if: runner.os == 'Windows'
-        run: test/downstream/build/RelWithDebInfo/odr-test-downstream.exe
+        run: test/downstream/build/Release/odr-test-downstream.exe
