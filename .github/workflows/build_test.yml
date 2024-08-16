@@ -18,10 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-16 }
-          - { os: ubuntu-24.04, compiler: gcc-12 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, compiler: gcc-14 }
           - { os: macos-13, compiler: clang-14 }
-          - { os: macos-14, compiler: clang-14 }
+          - { os: macos-14, compiler: armv8-clang-14 }
           - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
@@ -92,7 +92,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-16 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -149,8 +149,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-16 }
-          - { os: macos-14, compiler: clang-14 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, compiler: gcc-14 }
+          - { os: macos-13, compiler: clang-14 }
+          - { os: macos-14, compiler: armv8-clang-14 }
+          - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -210,10 +213,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-16 }
-          - { os: ubuntu-24.04, compiler: gcc-12 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, compiler: gcc-14 }
           - { os: macos-13, compiler: clang-14 }
-          - { os: macos-14, compiler: clang-14 }
+          - { os: macos-14, compiler: armv8-clang-14 }
           - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
