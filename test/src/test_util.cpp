@@ -44,7 +44,7 @@ std::vector<TestFile> get_test_files(const std::string &input) {
 
   const std::string index = input + "/index.csv";
   if (fs::is_regular_file(index)) {
-    for (auto &&row : csv::CSVReader(index)) {
+    for (const auto &row : csv::CSVReader(index)) {
       const std::string path = input + "/" + row["path"].get<>();
       const FileType type =
           OpenDocumentReader::type_by_extension(row["type"].get<>());
