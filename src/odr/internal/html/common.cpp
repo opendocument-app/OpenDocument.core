@@ -1,12 +1,14 @@
 #include <odr/internal/html/common.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/common/path.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <odr/html.hpp>
 
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -55,6 +57,38 @@ std::string html::file_to_url(std::istream &file, const std::string &mimeType) {
 std::string html::file_to_url(const abstract::File &file,
                               const std::string &mimeType) {
   return file_to_url(*file.stream(), mimeType);
+}
+
+HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
+                                                 const HtmlConfig &config) {
+  return [&](HtmlResourceType type, const std::string &name,
+             const std::string &path, const File &resource,
+             bool is_core_resource) -> HtmlResourceLocation {
+    (void)type;
+    (void)name;
+
+    // TODO remove `!is_core_resource` check after supporting external resources
+    if (config.embed_resources || !is_core_resource) {
+      return std::nullopt;
+    }
+
+    if (is_core_resource && !config.external_resource_path.empty()) {
+      auto resource_path =
+          common::Path(config.external_resource_path).join(path);
+      if (config.relative_resource_paths) {
+        resource_path = resource_path.rebase(output_path);
+      }
+      return resource_path.string();
+    }
+
+    // TODO relocate file if necessary
+
+    auto resource_path = common::Path(output_path).join(path);
+    std::filesystem::create_directories(resource_path.parent().path());
+    std::ofstream os(resource_path.path());
+    util::stream::pipe(*resource.stream(), os);
+    return path;
+  };
 }
 
 } // namespace odr::internal

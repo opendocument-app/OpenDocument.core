@@ -61,6 +61,7 @@ set(ODR_SOURCE_FILES
         "src/odr/file.cpp"
         "src/odr/filesystem.cpp"
         "src/odr/html.cpp"
+        "src/odr/html_service.cpp"
         "src/odr/open_document_reader.cpp"
         "src/odr/quantity.cpp"
         "src/odr/style.cpp"

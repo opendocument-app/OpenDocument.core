@@ -13,55 +13,56 @@
 namespace odr::internal {
 
 void html::translate_children(ElementRange range, HtmlWriter &out,
-                              const HtmlConfig &config) {
+                              const HtmlConfig &config,
+                              const HtmlResourceLocator &resourceLocator) {
   for (Element child : range) {
-    translate_element(child, out, config);
+    translate_element(child, out, config, resourceLocator);
   }
 }
 
 void html::translate_element(Element element, HtmlWriter &out,
-                             const HtmlConfig &config) {
+                             const HtmlConfig &config,
+                             const HtmlResourceLocator &resourceLocator) {
   if (element.type() == ElementType::text) {
-    translate_text(element, out, config);
+    translate_text(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::line_break) {
-    translate_line_break(element, out, config);
+    translate_line_break(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::paragraph) {
-    translate_paragraph(element, out, config);
+    translate_paragraph(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::span) {
-    translate_span(element, out, config);
+    translate_span(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::link) {
-    translate_link(element, out, config);
+    translate_link(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::bookmark) {
-    translate_bookmark(element, out, config);
+    translate_bookmark(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::list) {
-    translate_list(element, out, config);
+    translate_list(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::list_item) {
-    translate_list_item(element, out, config);
+    translate_list_item(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::table) {
-    translate_table(element, out, config);
+    translate_table(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::frame) {
-    translate_frame(element, out, config);
+    translate_frame(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::image) {
-    translate_image(element, out, config);
+    translate_image(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::rect) {
-    translate_rect(element, out, config);
+    translate_rect(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::line) {
-    translate_line(element, out, config);
+    translate_line(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::circle) {
-    translate_circle(element, out, config);
+    translate_circle(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::custom_shape) {
-    translate_custom_shape(element, out, config);
+    translate_custom_shape(element, out, config, resourceLocator);
   } else if (element.type() == ElementType::group) {
-    translate_children(element.children(), out, config);
+    translate_children(element.children(), out, config, resourceLocator);
   } else {
     // TODO log
   }
 }
 
-void html::translate_sheet(Element element, HtmlWriter &out,
-                           const HtmlConfig &config) {
-  Sheet sheet = element.sheet();
-
+void html::translate_sheet(Sheet sheet, HtmlWriter &out,
+                           const HtmlConfig &config,
+                           const HtmlResourceLocator &resourceLocator) {
   out.write_element_begin(
       "table",
       HtmlElementOptions().set_attributes(HtmlAttributesVector{
@@ -171,10 +172,10 @@ void html::translate_sheet(Element element, HtmlWriter &out,
               }()));
       if ((column_index == 0) && (row_index == 0)) {
         for (Element shape : sheet.shapes()) {
-          translate_element(shape, out, config);
+          translate_element(shape, out, config, resourceLocator);
         }
       }
-      translate_children(cell.children(), out, config);
+      translate_children(cell.children(), out, config, resourceLocator);
       out.write_element_end("td");
 
       cursor.add_cell(cell_span.columns, cell_span.rows);
@@ -188,10 +189,9 @@ void html::translate_sheet(Element element, HtmlWriter &out,
   out.write_element_end("table");
 }
 
-void html::translate_slide(Element element, HtmlWriter &out,
-                           const HtmlConfig &config) {
-  Slide slide = element.slide();
-
+void html::translate_slide(Slide slide, HtmlWriter &out,
+                           const HtmlConfig &config,
+                           const HtmlResourceLocator &resourceLocator) {
   out.write_element_begin("div",
                           HtmlElementOptions().set_style(
                               translate_outer_page_style(slide.page_layout())));
@@ -199,39 +199,39 @@ void html::translate_slide(Element element, HtmlWriter &out,
                           HtmlElementOptions().set_style(
                               translate_inner_page_style(slide.page_layout())));
 
-  translate_master_page(slide.master_page(), out, config);
-  translate_children(slide.children(), out, config);
+  translate_master_page(slide.master_page(), out, config, resourceLocator);
+  translate_children(slide.children(), out, config, resourceLocator);
 
   out.write_element_end("div");
   out.write_element_end("div");
 }
 
-void html::translate_page(Element element, HtmlWriter &out,
-                          const HtmlConfig &config) {
-  Page page = element.page();
-
+void html::translate_page(Page page, HtmlWriter &out, const HtmlConfig &config,
+                          const HtmlResourceLocator &resourceLocator) {
   out.write_element_begin("div",
                           HtmlElementOptions().set_style(
                               translate_outer_page_style(page.page_layout())));
   out.write_element_begin("div",
                           HtmlElementOptions().set_style(
                               translate_inner_page_style(page.page_layout())));
-  translate_master_page(page.master_page(), out, config);
-  translate_children(page.children(), out, config);
+  translate_master_page(page.master_page(), out, config, resourceLocator);
+  translate_children(page.children(), out, config, resourceLocator);
   out.write_element_end("div");
   out.write_element_end("div");
 }
 
-void html::translate_master_page(MasterPage element, HtmlWriter &out,
-                                 const HtmlConfig &config) {
-  for (Element child : element.children()) {
+void html::translate_master_page(MasterPage masterPage, HtmlWriter &out,
+                                 const HtmlConfig &config,
+                                 const HtmlResourceLocator &resourceLocator) {
+  for (Element child : masterPage.children()) {
     // TODO filter placeholders
-    translate_element(child, out, config);
+    translate_element(child, out, config, resourceLocator);
   }
 }
 
 void html::translate_text(const Element element, HtmlWriter &out,
-                          const HtmlConfig &config) {
+                          const HtmlConfig &config,
+                          const HtmlResourceLocator &resourceLocator) {
   Text text = element.text();
 
   out.write_element_begin(
@@ -250,7 +250,10 @@ void html::translate_text(const Element element, HtmlWriter &out,
 }
 
 void html::translate_line_break(Element element, HtmlWriter &out,
-                                const HtmlConfig &) {
+                                const HtmlConfig &config,
+                                const HtmlResourceLocator &resourceLocator) {
+  (void)config;
+
   LineBreak line_break = element.line_break();
 
   out.write_element_begin(
@@ -262,14 +265,15 @@ void html::translate_line_break(Element element, HtmlWriter &out,
 }
 
 void html::translate_paragraph(Element element, HtmlWriter &out,
-                               const HtmlConfig &config) {
+                               const HtmlConfig &config,
+                               const HtmlResourceLocator &resourceLocator) {
   Paragraph paragraph = element.paragraph();
 
   out.write_element_begin(
       "x-p",
       HtmlElementOptions().set_inline(true).set_style(
           "display:block;" + translate_paragraph_style(paragraph.style())));
-  translate_children(paragraph.children(), out, config);
+  translate_children(paragraph.children(), out, config, resourceLocator);
   if (paragraph.first_child()) {
     // TODO if element is content (e.g. bookmark does not count)
 
@@ -289,29 +293,32 @@ void html::translate_paragraph(Element element, HtmlWriter &out,
 }
 
 void html::translate_span(Element element, HtmlWriter &out,
-                          const HtmlConfig &config) {
+                          const HtmlConfig &config,
+                          const HtmlResourceLocator &resourceLocator) {
   Span span = element.span();
 
   out.write_element_begin("x-s",
                           HtmlElementOptions().set_inline(true).set_style(
                               translate_text_style(span.style())));
-  translate_children(span.children(), out, config);
+  translate_children(span.children(), out, config, resourceLocator);
   out.write_element_end("x-s");
 }
 
 void html::translate_link(Element element, HtmlWriter &out,
-                          const HtmlConfig &config) {
+                          const HtmlConfig &config,
+                          const HtmlResourceLocator &resourceLocator) {
   Link link = element.link();
 
   out.write_element_begin("a",
                           HtmlElementOptions().set_inline(true).set_attributes(
                               HtmlAttributesVector{{"href", link.href()}}));
-  translate_children(link.children(), out, config);
+  translate_children(link.children(), out, config, resourceLocator);
   out.write_element_end("a");
 }
 
 void html::translate_bookmark(Element element, HtmlWriter &out,
-                              const HtmlConfig & /*config*/) {
+                              const HtmlConfig &config,
+                              const HtmlResourceLocator &resourceLocator) {
   Bookmark bookmark = element.bookmark();
 
   out.write_element_begin("a",
@@ -321,24 +328,27 @@ void html::translate_bookmark(Element element, HtmlWriter &out,
 }
 
 void html::translate_list(Element element, HtmlWriter &out,
-                          const HtmlConfig &config) {
+                          const HtmlConfig &config,
+                          const HtmlResourceLocator &resourceLocator) {
   out.write_element_begin("ul");
-  translate_children(element.children(), out, config);
+  translate_children(element.children(), out, config, resourceLocator);
   out.write_element_end("ul");
 }
 
 void html::translate_list_item(Element element, HtmlWriter &out,
-                               const HtmlConfig &config) {
+                               const HtmlConfig &config,
+                               const HtmlResourceLocator &resourceLocator) {
   ListItem list_item = element.list_item();
 
   out.write_element_begin("li", HtmlElementOptions().set_style(
                                     translate_text_style(list_item.style())));
-  translate_children(list_item.children(), out, config);
+  translate_children(list_item.children(), out, config, resourceLocator);
   out.write_element_end("li");
 }
 
 void html::translate_table(Element element, HtmlWriter &out,
-                           const HtmlConfig &config) {
+                           const HtmlConfig &config,
+                           const HtmlResourceLocator &resourceLocator) {
   Table table = element.table();
 
   out.write_element_begin(
@@ -386,7 +396,7 @@ void html::translate_table(Element element, HtmlWriter &out,
               })
               .set_style(translate_table_cell_style(table_cell.style())));
 
-      translate_children(cell.children(), out, config);
+      translate_children(cell.children(), out, config, resourceLocator);
 
       out.write_element_end("td");
     }
@@ -398,8 +408,17 @@ void html::translate_table(Element element, HtmlWriter &out,
 }
 
 void html::translate_image(Element element, HtmlWriter &out,
-                           const HtmlConfig &config) {
+                           const HtmlConfig &config,
+                           const HtmlResourceLocator &resourceLocator) {
   Image image = element.image();
+
+  HtmlResourceLocation resourceLocation;
+  if (image.is_internal()) {
+    resourceLocation = resourceLocator(HtmlResourceType::image, "image",
+                                       "image", image.file().value(), false);
+  } else {
+    resourceLocation = image.href();
+  }
 
   out.write_element_begin(
       "img",
@@ -407,38 +426,40 @@ void html::translate_image(Element element, HtmlWriter &out,
           .set_close_type(HtmlCloseType::trailing)
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
             clb("alt", "Error: image not found or unsupported");
-            if (image.is_internal()) {
+            if (resourceLocation.has_value()) {
+              clb("src", resourceLocation.value());
+            } else {
               clb("src", [&](std::ostream &o) {
                 translate_image_src(image.file().value(), o, config);
               });
-            } else {
-              clb("src", image.href());
             }
           })
           .set_style("position:absolute;left:0;top:0;width:100%;height:100%"));
 }
 
 void html::translate_frame(Element element, HtmlWriter &out,
-                           const HtmlConfig &config) {
+                           const HtmlConfig &config,
+                           const HtmlResourceLocator &resourceLocator) {
   Frame frame = element.frame();
   GraphicStyle style = frame.style();
 
   out.write_element_begin(
       "div", HtmlElementOptions().set_style(translate_frame_properties(frame) +
                                             translate_drawing_style(style)));
-  translate_children(frame.children(), out, config);
+  translate_children(frame.children(), out, config, resourceLocator);
   out.write_element_end("div");
 }
 
 void html::translate_rect(Element element, HtmlWriter &out,
-                          const HtmlConfig &config) {
+                          const HtmlConfig &config,
+                          const HtmlResourceLocator &resourceLocator) {
   Rect rect = element.rect();
   GraphicStyle style = rect.style();
 
   out.write_element_begin(
       "div", HtmlElementOptions().set_style(translate_rect_properties(rect) +
                                             translate_drawing_style(style)));
-  translate_children(rect.children(), out, config);
+  translate_children(rect.children(), out, config, resourceLocator);
   out.write_new_line();
   out.write_raw(
       R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)");
@@ -446,7 +467,11 @@ void html::translate_rect(Element element, HtmlWriter &out,
 }
 
 void html::translate_line(Element element, HtmlWriter &out,
-                          const HtmlConfig & /*config*/) {
+                          const HtmlConfig &config,
+                          const HtmlResourceLocator &resourceLocator) {
+  (void)config;
+  (void)resourceLocator;
+
   Line line = element.line();
   GraphicStyle style = line.style();
 
@@ -471,7 +496,8 @@ void html::translate_line(Element element, HtmlWriter &out,
 }
 
 void html::translate_circle(Element element, HtmlWriter &out,
-                            const HtmlConfig &config) {
+                            const HtmlConfig &config,
+                            const HtmlResourceLocator &resourceLocator) {
   Circle circle = element.circle();
   GraphicStyle style = circle.style();
 
@@ -479,14 +505,15 @@ void html::translate_circle(Element element, HtmlWriter &out,
                                      translate_circle_properties(circle) +
                                      translate_drawing_style(style)));
   out.write_new_line();
-  translate_children(circle.children(), out, config);
+  translate_children(circle.children(), out, config, resourceLocator);
   out.write_raw(
       R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)");
   out.write_element_end("div");
 }
 
 void html::translate_custom_shape(Element element, HtmlWriter &out,
-                                  const HtmlConfig &config) {
+                                  const HtmlConfig &config,
+                                  const HtmlResourceLocator &resourceLocator) {
   CustomShape custom_shape = element.custom_shape();
   GraphicStyle style = custom_shape.style();
 
@@ -494,7 +521,7 @@ void html::translate_custom_shape(Element element, HtmlWriter &out,
                           HtmlElementOptions().set_style(
                               translate_custom_shape_properties(custom_shape) +
                               translate_drawing_style(style)));
-  translate_children(custom_shape.children(), out, config);
+  translate_children(custom_shape.children(), out, config, resourceLocator);
   // TODO draw shape in svg
   out.write_element_end("div");
 }
