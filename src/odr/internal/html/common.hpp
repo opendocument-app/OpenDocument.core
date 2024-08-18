@@ -31,21 +31,6 @@ std::string file_to_url(const abstract::File &file,
 HtmlResourceLocator local_resource_locator(const std::string &output_path,
                                            const HtmlConfig &config);
 
-class StaticHtmlService : public abstract::HtmlService {
-public:
-  explicit StaticHtmlService(
-      std::vector<std::shared_ptr<abstract::HtmlFragment>> fragments)
-      : m_fragments(std::move(fragments)) {}
-
-  [[nodiscard]] const std::vector<std::shared_ptr<abstract::HtmlFragment>> &
-  fragments() const override {
-    return m_fragments;
-  }
-
-private:
-  const std::vector<std::shared_ptr<abstract::HtmlFragment>> m_fragments;
-};
-
 } // namespace odr::internal::html
 
 #endif // ODR_INTERNAL_HTML_COMMON_HPP

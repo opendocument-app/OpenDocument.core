@@ -4,6 +4,9 @@
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/internal/resource_data.hpp>
 
+#include <odr/file.hpp>
+#include <odr/filesystem.hpp>
+
 namespace odr::internal {
 
 const Resources &Resources::instance() {
@@ -29,12 +32,17 @@ Resources::Resources() {
   m_filesystem = std::move(filesystem);
 }
 
-const std::vector<Resource> &Resources::resources() const {
-  return m_resources;
+const std::vector<Resource> &Resources::resources() {
+  return instance().m_resources;
 }
 
-std::shared_ptr<const abstract::Filesystem> Resources::filesystem() const {
-  return m_filesystem;
+Filesystem Resources::filesystem() {
+  return Filesystem(std::dynamic_pointer_cast<abstract::ReadableFilesystem>(
+      instance().m_filesystem));
+}
+
+File Resources::open(const common::Path &path) {
+  return filesystem().open(path);
 }
 
 } // namespace odr::internal

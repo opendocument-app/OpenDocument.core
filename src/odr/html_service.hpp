@@ -37,6 +37,9 @@ public:
 
   [[nodiscard]] std::vector<HtmlFragment> fragments() const;
 
+  void write_html_document(std::ostream &os, const HtmlConfig &config,
+                           const HtmlResourceLocator &resourceLocator) const;
+
 private:
   std::shared_ptr<internal::abstract::HtmlService> m_impl;
 };
@@ -48,6 +51,9 @@ public:
   [[nodiscard]] std::string name() const;
 
   void write_html_fragment(std::ostream &os, const HtmlConfig &config,
+                           const HtmlResourceLocator &resourceLocator) const;
+
+  void write_html_document(std::ostream &os, const HtmlConfig &config,
                            const HtmlResourceLocator &resourceLocator) const;
 
 private:

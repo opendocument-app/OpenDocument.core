@@ -18,6 +18,14 @@ std::vector<HtmlFragment> HtmlService::fragments() const {
   return result;
 }
 
+void HtmlService::write_html_document(
+    std::ostream &os, const odr::HtmlConfig &config,
+    const odr::HtmlResourceLocator &resourceLocator) const {
+  internal::html::HtmlWriter out(os, config);
+
+  m_impl->write_html_document(out, config, resourceLocator);
+}
+
 HtmlFragment::HtmlFragment(
     std::shared_ptr<internal::abstract::HtmlFragment> impl)
     : m_impl{std::move(impl)} {}
@@ -30,6 +38,14 @@ void HtmlFragment::write_html_fragment(
   internal::html::HtmlWriter out(os, config);
 
   m_impl->write_html_fragment(out, config, resourceLocator);
+}
+
+void HtmlFragment::write_html_document(
+    std::ostream &os, const odr::HtmlConfig &config,
+    const odr::HtmlResourceLocator &resourceLocator) const {
+  internal::html::HtmlWriter out(os, config);
+
+  m_impl->write_html_document(out, config, resourceLocator);
 }
 
 } // namespace odr

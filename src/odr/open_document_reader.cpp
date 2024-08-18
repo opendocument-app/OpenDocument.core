@@ -250,14 +250,12 @@ void OpenDocumentReader::edit(const Document &document, const char *diff) {
 }
 
 void OpenDocumentReader::copy_resources(const std::string &to_path) {
-  auto resources = internal::Resources::instance();
-
-  for (auto resource : resources.resources()) {
+  for (auto resource : internal::Resources::resources()) {
     auto resource_output_path =
         internal::common::Path(to_path).join(resource.path);
     std::filesystem::create_directories(resource_output_path.parent());
     std::ofstream out(resource_output_path.string(), std::ios::binary);
-    out.write(resource.data, resource.size);
+    out.write(resource.data, static_cast<std::streamsize>(resource.size));
   }
 }
 
