@@ -39,12 +39,13 @@ ObjectParser::char_type ObjectParser::bumpc() const {
     in().setstate(std::ios::eofbit);
     throw std::runtime_error("unexpected stream exhaust");
   }
-  return c;
+  return static_cast<char_type>(c);
 }
 
 std::string ObjectParser::bumpnc(std::size_t n) const {
   std::string result(n, '\0');
-  if (sb().sgetn(result.data(), result.size()) != result.size()) {
+  auto m = static_cast<std::streamsize>(n);
+  if (sb().sgetn(result.data(), m) != m) {
     throw std::runtime_error("unexpected stream exhaust");
   }
   return result;
@@ -72,14 +73,16 @@ ObjectParser::int_type ObjectParser::hex_char_to_int(char_type c) {
 
 ObjectParser::char_type ObjectParser::two_hex_to_char(char_type first,
                                                       char_type second) {
-  return hex_char_to_int(first) * 16 + hex_char_to_int(second);
+  return static_cast<char_type>(hex_char_to_int(first) * 16 +
+                                hex_char_to_int(second));
 }
 
 ObjectParser::char_type ObjectParser::three_octet_to_char(char_type first,
                                                           char_type second,
                                                           char_type third) {
-  return octet_char_to_int(first) * 64 + octet_char_to_int(second) * 8 +
-         octet_char_to_int(third);
+  return static_cast<char_type>(octet_char_to_int(first) * 64 +
+                                octet_char_to_int(second) * 8 +
+                                octet_char_to_int(third));
 }
 
 bool ObjectParser::is_whitespace(char c) {
@@ -89,7 +92,7 @@ bool ObjectParser::is_whitespace(char c) {
 
 bool ObjectParser::peek_whitespace() const {
   int_type c = geti();
-  return c != eof && is_whitespace(c);
+  return c != eof && is_whitespace(static_cast<char_type>(c));
 }
 
 void ObjectParser::skip_whitespace() const {
@@ -98,7 +101,7 @@ void ObjectParser::skip_whitespace() const {
     if (c == eof) {
       return;
     }
-    if (!is_whitespace(c)) {
+    if (!is_whitespace(static_cast<char_type>(c))) {
       return;
     }
     bumpc();
@@ -142,7 +145,7 @@ UnsignedInteger ObjectParser::read_unsigned_integer() const {
 }
 
 Integer ObjectParser::read_integer() const {
-  std::int8_t sign = 1;
+  Integer sign = 1;
 
   char_type c = getc();
   if (c == '+') {
@@ -154,7 +157,7 @@ Integer ObjectParser::read_integer() const {
     bumpc();
   }
 
-  return sign * read_unsigned_integer();
+  return sign * static_cast<Integer>(read_unsigned_integer());
 }
 
 Real ObjectParser::read_number() const {
@@ -178,12 +181,13 @@ std::variant<Integer, Real> ObjectParser::read_integer_or_real() const {
   UnsignedInteger i2 = read_unsigned_integer();
   pos_type end = in().tellg();
 
-  return i + i2 * std::pow(10.0, begin - end);
+  return static_cast<Real>(i) +
+         static_cast<Real>(i2) * std::pow(10.0, begin - end);
 }
 
 bool ObjectParser::peek_name() const {
   int_type c = geti();
-  return c != eof && c == '/';
+  return c == '/';
 }
 
 void ObjectParser::read_name(std::ostream &out) const {
@@ -192,11 +196,12 @@ void ObjectParser::read_name(std::ostream &out) const {
   }
 
   while (true) {
-    int_type c = geti();
+    int_type i = geti();
 
-    if (c == eof) {
+    if (i == eof) {
       return;
     }
+    auto c = static_cast<char_type>(i);
     if (c < 0x21 || c > 0x7e || c == '/' || c == '%' || c == '(' || c == ')' ||
         c == '<' || c == '>' || c == '[' || c == ']' || c == '{' || c == '}') {
       return;
@@ -318,7 +323,7 @@ std::variant<StandardString, HexString> ObjectParser::read_string() const {
 
 bool ObjectParser::peek_array() const {
   int_type c = geti();
-  return c != eof && c == '[';
+  return c == '[';
 }
 
 Array ObjectParser::read_array() const {
@@ -353,10 +358,11 @@ Array ObjectParser::read_array() const {
 }
 
 bool ObjectParser::peek_dictionary() const {
-  int_type c = geti();
-  if (c == eof) {
+  int_type i = geti();
+  if (i == eof) {
     return false;
   }
+  auto c = static_cast<char_type>(i);
   if (c == '<') {
     bumpc();
     c = getc();
