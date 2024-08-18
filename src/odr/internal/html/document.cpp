@@ -18,105 +18,13 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <fstream>
+#include <utility>
 
 namespace odr::internal::html {
 namespace {
 
-class TextHtmlFragment final : public abstract::HtmlFragment {
-public:
-  explicit TextHtmlFragment(Document document)
-      : m_document{std::move(document)} {}
-
-  [[nodiscard]] std::string name() const final { return "document"; }
-
-  void
-  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
-                      const HtmlResourceLocator &resourceLocator) const final {
-    auto root = m_document.root_element();
-    auto element = root.text_root();
-
-    if (config.text_document_margin) {
-      auto page_layout = element.page_layout();
-      page_layout.height = {};
-
-      out.write_element_begin("div",
-                              HtmlElementOptions().set_style(
-                                  translate_outer_page_style(page_layout)));
-      out.write_element_begin("div",
-                              HtmlElementOptions().set_style(
-                                  translate_inner_page_style(page_layout)));
-
-      translate_children(element.children(), out, config, resourceLocator);
-
-      out.write_element_end("div");
-      out.write_element_end("div");
-    } else {
-      out.write_element_begin("div");
-      translate_children(element.children(), out, config, resourceLocator);
-      out.write_element_end("div");
-    }
-  }
-
-private:
-  Document m_document;
-};
-
-class SlideHtmlFragment final : public abstract::HtmlFragment {
-public:
-  explicit SlideHtmlFragment(Document document, Slide slide)
-      : m_document{std::move(document)}, m_slide{slide} {}
-
-  [[nodiscard]] std::string name() const final { return m_slide.name(); }
-
-  void
-  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
-                      const HtmlResourceLocator &resourceLocator) const final {
-    internal::html::translate_slide(m_slide, out, config, resourceLocator);
-  }
-
-private:
-  Document m_document;
-  Slide m_slide;
-};
-
-class SheetHtmlFragment final : public abstract::HtmlFragment {
-public:
-  explicit SheetHtmlFragment(Document document, Sheet sheet)
-      : m_document{std::move(document)}, m_sheet{sheet} {}
-
-  [[nodiscard]] std::string name() const final { return m_sheet.name(); }
-
-  void
-  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
-                      const HtmlResourceLocator &resourceLocator) const final {
-    translate_sheet(m_sheet, out, config, resourceLocator);
-  }
-
-private:
-  Document m_document;
-  Sheet m_sheet;
-};
-
-class PageHtmlFragment final : public abstract::HtmlFragment {
-public:
-  explicit PageHtmlFragment(Document document, Page page)
-      : m_document{std::move(document)}, m_page{page} {}
-
-  [[nodiscard]] std::string name() const final { return m_page.name(); }
-
-  void
-  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
-                      const HtmlResourceLocator &resourceLocator) const final {
-    internal::html::translate_page(m_page, out, config, resourceLocator);
-  }
-
-private:
-  Document m_document;
-  Page m_page;
-};
-
-void front(const Document &document, const std::string &output_path,
-           HtmlWriter &out, const HtmlConfig &config) {
+void front(const Document &document, HtmlWriter &out, const HtmlConfig &config,
+           const HtmlResourceLocator &resourceLocator) {
   out.write_begin();
   out.write_header_begin();
   out.write_header_charset("UTF-8");
@@ -130,35 +38,27 @@ void front(const Document &document, const std::string &output_path,
         "width=device-width,initial-scale=1.0,user-scalable=yes");
   }
 
-  if (config.embed_resources) {
-    out.write_header_style_begin();
-    util::stream::pipe(
-        *Resources::instance().filesystem()->open("odr.css")->stream(),
-        out.out());
-    if (document.document_type() == DocumentType::spreadsheet) {
-      util::stream::pipe(*Resources::instance()
-                              .filesystem()
-                              ->open("odr_spreadsheet.css")
-                              ->stream(),
-                         out.out());
-    }
-    out.write_header_style_end();
+  auto odr_css_file = File(Resources::instance().filesystem()->open("odr.css"));
+  HtmlResourceLocation odr_css_location = resourceLocator(
+      HtmlResourceType::css, "odr.css", "odr.css", odr_css_file, true);
+  if (odr_css_location.has_value()) {
+    out.write_header_style(odr_css_location.value());
   } else {
-    auto odr_css_path =
-        common::Path(config.external_resource_path).join("odr.css");
-    if (config.relative_resource_paths) {
-      odr_css_path = odr_css_path.rebase(output_path);
-    }
-    out.write_header_style(odr_css_path.string());
-    if (document.document_type() == DocumentType::spreadsheet) {
-      auto odr_spreadsheet_css_path =
-          common::Path(config.external_resource_path)
-              .join("odr_spreadsheet.css");
-      if (config.relative_resource_paths) {
-        odr_spreadsheet_css_path =
-            common::Path(odr_spreadsheet_css_path).rebase(output_path);
-      }
-      out.write_header_style(odr_spreadsheet_css_path.string());
+    out.write_header_style_begin();
+    util::stream::pipe(*odr_css_file.stream(), out.out());
+    out.write_header_style_end();
+  }
+
+  if (document.document_type() == DocumentType::spreadsheet) {
+    auto odr_spreadsheet_css_file =
+        File(Resources::instance().filesystem()->open("odr_spreadsheet.css"));
+    HtmlResourceLocation odr_spreadsheet_css_location =
+        resourceLocator(HtmlResourceType::css, "odr_spreadsheet.css",
+                        "odr_spreadsheet.css", odr_spreadsheet_css_file, true);
+    if (odr_spreadsheet_css_location.has_value()) {
+      out.write_header_style(odr_spreadsheet_css_location.value());
+    } else {
+      util::stream::pipe(*odr_spreadsheet_css_file.stream(), out.out());
     }
   }
 
@@ -181,21 +81,21 @@ void front(const Document &document, const std::string &output_path,
   out.write_body_begin(HtmlElementOptions().set_class(body_clazz));
 }
 
-void back(const Document &, const std::string &output_path,
-          internal::html::HtmlWriter &out, const HtmlConfig &config) {
-  if (config.embed_resources) {
-    out.write_script_begin();
-    util::stream::pipe(
-        *Resources::instance().filesystem()->open("odr.js")->stream(),
-        out.out());
-    out.write_script_end();
+void back(const Document &document, internal::html::HtmlWriter &out,
+          const HtmlConfig &config,
+          const HtmlResourceLocator &resourceLocator) {
+  (void)document;
+  (void)config;
+
+  auto odr_js_file = File(Resources::instance().filesystem()->open("odr.js"));
+  HtmlResourceLocation odr_js_location = resourceLocator(
+      HtmlResourceType::js, "odr.js", "odr.js", odr_js_file, true);
+  if (odr_js_location.has_value()) {
+    out.write_script(odr_js_location.value());
   } else {
-    auto odr_js_path =
-        common::Path(config.external_resource_path).join("odr.js");
-    if (config.relative_resource_paths) {
-      odr_js_path = odr_js_path.rebase(output_path);
-    }
-    out.write_script(odr_js_path.string());
+    out.write_script_begin();
+    util::stream::pipe(*odr_js_file.stream(), out.out());
+    out.write_script_end();
   }
 
   out.write_body_end();
@@ -230,6 +130,137 @@ std::string get_output_path(const Document &document, std::uint32_t index,
   }
 }
 
+class StaticHtmlService : public abstract::HtmlService {
+public:
+  StaticHtmlService(
+      Document document,
+      std::vector<std::shared_ptr<abstract::HtmlFragment>> fragments)
+      : m_document{std::move(document)}, m_fragments{std::move(fragments)} {}
+
+  [[nodiscard]] const std::vector<std::shared_ptr<abstract::HtmlFragment>> &
+  fragments() const override {
+    return m_fragments;
+  }
+
+  void write_html_document(
+      HtmlWriter &out, const HtmlConfig &config,
+      const HtmlResourceLocator &resourceLocator) const override {
+    front(m_document, out, config, resourceLocator);
+    for (const auto &fragment : m_fragments) {
+      fragment->write_html_fragment(out, config, resourceLocator);
+    }
+    back(m_document, out, config, resourceLocator);
+  }
+
+private:
+  Document m_document;
+  const std::vector<std::shared_ptr<abstract::HtmlFragment>> m_fragments;
+};
+
+class HtmlFragmentBase : public abstract::HtmlFragment {
+public:
+  explicit HtmlFragmentBase(Document document)
+      : m_document{std::move(document)} {}
+
+  void
+  write_html_document(HtmlWriter &out, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {
+    front(m_document, out, config, resourceLocator);
+    write_html_fragment(out, config, resourceLocator);
+    back(m_document, out, config, resourceLocator);
+  }
+
+protected:
+  Document m_document;
+};
+
+class TextHtmlFragment final : public HtmlFragmentBase {
+public:
+  explicit TextHtmlFragment(Document document)
+      : HtmlFragmentBase(std::move(document)) {}
+
+  [[nodiscard]] std::string name() const final { return "document"; }
+
+  void
+  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {
+    auto root = m_document.root_element();
+    auto element = root.text_root();
+
+    if (config.text_document_margin) {
+      auto page_layout = element.page_layout();
+      page_layout.height = {};
+
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_style(
+                                  translate_outer_page_style(page_layout)));
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_style(
+                                  translate_inner_page_style(page_layout)));
+
+      translate_children(element.children(), out, config, resourceLocator);
+
+      out.write_element_end("div");
+      out.write_element_end("div");
+    } else {
+      out.write_element_begin("div");
+      translate_children(element.children(), out, config, resourceLocator);
+      out.write_element_end("div");
+    }
+  }
+};
+
+class SlideHtmlFragment final : public HtmlFragmentBase {
+public:
+  explicit SlideHtmlFragment(Document document, Slide slide)
+      : HtmlFragmentBase(std::move(document)), m_slide{slide} {}
+
+  [[nodiscard]] std::string name() const final { return m_slide.name(); }
+
+  void
+  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {
+    internal::html::translate_slide(m_slide, out, config, resourceLocator);
+  }
+
+private:
+  Slide m_slide;
+};
+
+class SheetHtmlFragment final : public HtmlFragmentBase {
+public:
+  explicit SheetHtmlFragment(Document document, Sheet sheet)
+      : HtmlFragmentBase(std::move(document)), m_sheet{sheet} {}
+
+  [[nodiscard]] std::string name() const final { return m_sheet.name(); }
+
+  void
+  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {
+    translate_sheet(m_sheet, out, config, resourceLocator);
+  }
+
+private:
+  Sheet m_sheet;
+};
+
+class PageHtmlFragment final : public HtmlFragmentBase {
+public:
+  explicit PageHtmlFragment(Document document, Page page)
+      : HtmlFragmentBase(std::move(document)), m_page{page} {}
+
+  [[nodiscard]] std::string name() const final { return m_page.name(); }
+
+  void
+  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {
+    internal::html::translate_page(m_page, out, config, resourceLocator);
+  }
+
+private:
+  Page m_page;
+};
+
 } // namespace
 } // namespace odr::internal::html
 
@@ -259,7 +290,7 @@ HtmlService html::translate_document(const Document &document) {
     throw UnknownDocumentType();
   }
 
-  return HtmlService(std::make_unique<StaticHtmlService>(fragments));
+  return HtmlService(std::make_unique<StaticHtmlService>(document, fragments));
 }
 
 Html html::translate_document(const odr::Document &document,
@@ -281,9 +312,7 @@ Html html::translate_document(const odr::Document &document,
     internal::html::HtmlWriter out(ostream, config.format_html,
                                    config.html_indent);
 
-    front(document, output_path, out, config);
-    fragment.write_html_fragment(out.out(), config, resourceLocator);
-    back(document, output_path, out, config);
+    fragment.write_html_document(out.out(), config, resourceLocator);
 
     pages.emplace_back(fragment.name(), filled_path);
 
