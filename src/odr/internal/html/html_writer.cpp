@@ -2,9 +2,9 @@
 
 #include <odr/internal/html/common.hpp>
 
+#include <algorithm>
 #include <cstring>
 #include <iostream>
-#include <ranges>
 #include <stdexcept>
 
 namespace odr::internal::html {
@@ -273,7 +273,7 @@ void HtmlWriter::write_element_end(const std::string &name) {
 }
 
 bool HtmlWriter::is_inline_mode() const {
-  return std::ranges::all_of(m_stack, [](const StackElement &element) {
+  return std::ranges::any_of(m_stack, [](const StackElement &element) {
     return element.inline_element;
   });
 }
