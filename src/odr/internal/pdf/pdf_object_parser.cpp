@@ -233,6 +233,7 @@ bool ObjectParser::peek_null() const {
 void ObjectParser::read_null() const {
   auto tmp = bumpnc<4>();
   // TODO check ignore case
+  (void)tmp;
 }
 
 bool ObjectParser::peek_boolean() const {
@@ -246,6 +247,7 @@ Boolean ObjectParser::read_boolean() const {
   if (c == 't' || c == 'T') {
     auto tmp = bumpnc<4>();
     // TODO check ignore case
+    (void)tmp;
 
     return true;
   }
@@ -253,6 +255,7 @@ Boolean ObjectParser::read_boolean() const {
   if (c == 'f' || c == 'F') {
     auto tmp = bumpnc<5>();
     // TODO check ignore case
+    (void)tmp;
 
     return false;
   }
