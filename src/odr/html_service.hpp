@@ -2,6 +2,10 @@
 #define ODR_HTML_SERVICE_HPP
 
 #include <functional>
+#include <iosfwd>
+#include <memory>
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace odr::internal::abstract {

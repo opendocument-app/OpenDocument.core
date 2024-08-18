@@ -2,6 +2,8 @@
 
 #include <odr/internal/abstract/html_service.hpp>
 
+#include <iostream>
+
 namespace odr {
 
 HtmlService::HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl)
