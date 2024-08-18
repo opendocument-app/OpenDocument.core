@@ -232,6 +232,8 @@ void html::translate_master_page(MasterPage masterPage, HtmlWriter &out,
 void html::translate_text(const Element element, HtmlWriter &out,
                           const HtmlConfig &config,
                           const HtmlResourceLocator &resourceLocator) {
+  (void)resourceLocator;
+
   Text text = element.text();
 
   out.write_element_begin(
@@ -253,6 +255,7 @@ void html::translate_line_break(Element element, HtmlWriter &out,
                                 const HtmlConfig &config,
                                 const HtmlResourceLocator &resourceLocator) {
   (void)config;
+  (void)resourceLocator;
 
   LineBreak line_break = element.line_break();
 
@@ -319,6 +322,9 @@ void html::translate_link(Element element, HtmlWriter &out,
 void html::translate_bookmark(Element element, HtmlWriter &out,
                               const HtmlConfig &config,
                               const HtmlResourceLocator &resourceLocator) {
+  (void)config;
+  (void)resourceLocator;
+
   Bookmark bookmark = element.bookmark();
 
   out.write_element_begin("a",
