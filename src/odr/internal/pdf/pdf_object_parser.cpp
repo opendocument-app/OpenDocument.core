@@ -30,7 +30,7 @@ ObjectParser::char_type ObjectParser::getc() const {
     in().setstate(std::ios::eofbit);
     throw std::runtime_error("unexpected stream exhaust");
   }
-  return c;
+  return static_cast<char_type>(c);
 }
 
 ObjectParser::char_type ObjectParser::bumpc() const {
