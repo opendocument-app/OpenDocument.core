@@ -427,7 +427,7 @@ void html::translate_image(Element element, HtmlWriter &out,
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
             clb("alt", "Error: image not found or unsupported");
             if (resourceLocation.has_value()) {
-              clb("src", image.href());
+              clb("src", resourceLocation.value());
             } else {
               clb("src", [&](std::ostream &o) {
                 translate_image_src(image.file().value(), o, config);
