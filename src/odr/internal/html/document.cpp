@@ -46,13 +46,13 @@ public:
                               HtmlElementOptions().set_style(
                                   translate_inner_page_style(page_layout)));
 
-      translate_children(element.children(), out, config);
+      translate_children(element.children(), out, config, resourceLocator);
 
       out.write_element_end("div");
       out.write_element_end("div");
     } else {
       out.write_element_begin("div");
-      translate_children(element.children(), out, config);
+      translate_children(element.children(), out, config, resourceLocator);
       out.write_element_end("div");
     }
   }
@@ -71,7 +71,7 @@ public:
   void
   write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const final {
-    internal::html::translate_slide(m_slide, out, config);
+    internal::html::translate_slide(m_slide, out, config, resourceLocator);
   }
 
 private:
@@ -89,7 +89,7 @@ public:
   void
   write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const final {
-    translate_sheet(m_sheet, out, config);
+    translate_sheet(m_sheet, out, config, resourceLocator);
   }
 
 private:
@@ -107,7 +107,7 @@ public:
   void
   write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const final {
-    internal::html::translate_page(m_page, out, config);
+    internal::html::translate_page(m_page, out, config, resourceLocator);
   }
 
 private:
