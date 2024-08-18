@@ -67,7 +67,8 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
     (void)type;
     (void)name;
 
-    if (config.embed_resources) {
+    // TODO remove `!is_core_resource` check after supporting external resources
+    if (config.embed_resources || !is_core_resource) {
       return std::nullopt;
     }
 
