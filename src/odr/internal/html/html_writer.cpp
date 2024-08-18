@@ -4,6 +4,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <ranges>
 #include <stdexcept>
 
 namespace odr::internal::html {

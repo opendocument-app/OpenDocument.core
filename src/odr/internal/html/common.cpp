@@ -64,6 +64,9 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
   return [&](HtmlResourceType type, const std::string &name,
              const std::string &path, const File &resource,
              bool is_core_resource) -> HtmlResourceLocation {
+    (void)type;
+    (void)name;
+
     if (config.embed_resources) {
       return std::nullopt;
     }
