@@ -6,7 +6,8 @@ namespace odr::internal {
 
 void json::check_json_file(std::istream &in) {
   // TODO limit check size
-  (void)nlohmann::json::parse(in);
+  auto json = nlohmann::json::parse(in);
+  (void)json;
   // TODO check if that even works
 }
 

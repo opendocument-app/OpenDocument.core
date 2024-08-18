@@ -1,5 +1,6 @@
 #include <odr/open_document_reader.hpp>
 
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
@@ -176,14 +177,36 @@ Html OpenDocumentReader::html(const std::string &path,
                               const PasswordCallback &password_callback,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  return html(File(path), password_callback, output_path, config);
+  auto decoded_file = DecodedFile(path);
+
+  if (decoded_file.is_document_file()) {
+    DocumentFile document_file = decoded_file.document_file();
+    if (document_file.password_encrypted()) {
+      if (!document_file.decrypt(password_callback())) {
+        throw WrongPassword();
+      }
+    }
+  }
+
+  return html(decoded_file, output_path, config);
 }
 
 Html OpenDocumentReader::html(const File &file,
                               const PasswordCallback &password_callback,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  return html::translate(file, output_path, config, password_callback);
+  auto decoded_file = DecodedFile(file);
+
+  if (decoded_file.is_document_file()) {
+    DocumentFile document_file = decoded_file.document_file();
+    if (document_file.password_encrypted()) {
+      if (!document_file.decrypt(password_callback())) {
+        throw WrongPassword();
+      }
+    }
+  }
+
+  return html(decoded_file, output_path, config);
 }
 
 Html OpenDocumentReader::html(const DecodedFile &file,

@@ -141,17 +141,17 @@ GraphicsOperator GraphicsOperatorParser::read_operator() const {
 
   while (true) {
     if (m_parser.peek_number()) {
-      std::visit([&](auto v) { result.arguments.push_back(v); },
+      std::visit([&](auto v) { result.arguments.emplace_back(v); },
                  m_parser.read_integer_or_real());
     } else if (m_parser.peek_name()) {
-      result.arguments.push_back(m_parser.read_name());
+      result.arguments.emplace_back(m_parser.read_name());
     } else if (m_parser.peek_string()) {
-      std::visit([&](auto s) { result.arguments.push_back(std::move(s)); },
+      std::visit([&](auto s) { result.arguments.emplace_back(std::move(s)); },
                  m_parser.read_string());
     } else if (m_parser.peek_array()) {
-      result.arguments.push_back(m_parser.read_array());
+      result.arguments.emplace_back(m_parser.read_array());
     } else if (m_parser.peek_dictionary()) {
-      result.arguments.push_back(m_parser.read_dictionary());
+      result.arguments.emplace_back(m_parser.read_dictionary());
     } else {
       m_parser.skip_whitespace();
       break;
