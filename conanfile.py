@@ -27,11 +27,11 @@ class OpenDocumentCoreConan(ConanFile):
 
     def requirements(self):
         self.requires("pugixml/1.14")
-        self.requires("cryptopp/8.8.0")
+        self.requires("cryptopp/8.9.0")
         self.requires("miniz/3.0.2")
         self.requires("nlohmann_json/3.11.3")
-        self.requires("vincentlaucsb-csv-parser/2.1.3")
-        self.requires("uchardet/0.0.7")
+        self.requires("vincentlaucsb-csv-parser/2.3.0")
+        self.requires("uchardet/0.0.8")
         self.requires("utfcpp/4.0.4")
 
     def build_requirements(self):
