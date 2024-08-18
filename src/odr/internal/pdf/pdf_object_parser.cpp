@@ -222,7 +222,7 @@ void ObjectParser::read_name(std::ostream &out) const {
 Name ObjectParser::read_name() const {
   std::stringstream ss;
   read_name(ss);
-  return ss.str();
+  return Name(ss.str());
 }
 
 bool ObjectParser::peek_null() const {
@@ -409,7 +409,7 @@ Dictionary ObjectParser::read_dictionary() const {
       skip_whitespace();
 
       UnsignedInteger id = value.as_integer();
-      value = ObjectReference{id, gen};
+      value = Object(ObjectReference{id, gen});
     }
 
     result.emplace(std::move(name.string), std::move(value));
@@ -424,23 +424,24 @@ Object ObjectParser::read_object() const {
     return {};
   }
   if (peek_boolean()) {
-    return read_boolean();
+    return Object(read_boolean());
   }
   if (peek_number()) {
-    return std::visit([](auto v) -> Object { return v; },
+    return std::visit([](auto v) -> Object { return Object(v); },
                       read_integer_or_real());
   }
   if (peek_name()) {
-    return read_name();
+    return Object(read_name());
   }
   if (peek_string()) {
-    return std::visit([](auto v) -> Object { return v; }, read_string());
+    return std::visit([](auto v) -> Object { return Object(v); },
+                      read_string());
   }
   if (peek_array()) {
-    return read_array();
+    return Object(read_array());
   }
   if (peek_dictionary()) {
-    return read_dictionary();
+    return Object(read_dictionary());
   }
 
   throw std::runtime_error("unknown object");

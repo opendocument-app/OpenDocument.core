@@ -19,31 +19,28 @@ using Boolean = bool;
 struct StandardString {
   std::string string;
 
-  StandardString(std::string _string) : string{std::move(_string)} {}
+  explicit StandardString(std::string _string) : string{std::move(_string)} {}
 
   void to_stream(std::ostream &) const;
-  std::string to_string() const;
-  friend std::ostream &operator<<(std::ostream &, const StandardString &);
+  [[nodiscard]] std::string to_string() const;
 };
 
 struct HexString {
   std::string string;
 
-  HexString(std::string _string) : string{std::move(_string)} {}
+  explicit HexString(std::string _string) : string{std::move(_string)} {}
 
   void to_stream(std::ostream &) const;
-  std::string to_string() const;
-  friend std::ostream &operator<<(std::ostream &, const HexString &);
+  [[nodiscard]] std::string to_string() const;
 };
 
 struct Name {
   std::string string;
 
-  Name(std::string _string) : string{std::move(_string)} {}
+  explicit Name(std::string _string) : string{std::move(_string)} {}
 
   void to_stream(std::ostream &) const;
-  std::string to_string() const;
-  friend std::ostream &operator<<(std::ostream &, const Name &);
+  [[nodiscard]] std::string to_string() const;
 };
 
 struct ObjectReference {
@@ -58,8 +55,7 @@ struct ObjectReference {
   [[nodiscard]] std::size_t hash() const noexcept;
 
   void to_stream(std::ostream &) const;
-  std::string to_string() const;
-  friend std::ostream &operator<<(std::ostream &, const ObjectReference &);
+  [[nodiscard]] std::string to_string() const;
 };
 
 class Array;
@@ -70,47 +66,53 @@ public:
   using Holder = std::any;
 
   Object() = default;
-  Object(Boolean boolean) : m_holder{boolean} {}
-  Object(Integer integer) : m_holder{integer} {}
-  Object(Real real) : m_holder{real} {}
-  Object(StandardString string) : m_holder{std::move(string)} {}
-  Object(HexString string) : m_holder{std::move(string)} {}
-  Object(Name name) : m_holder{std::move(name)} {}
-  Object(Array);
-  Object(Dictionary);
-  Object(ObjectReference reference) : m_holder{std::move(reference)} {}
+  explicit Object(Boolean boolean) : m_holder{boolean} {}
+  explicit Object(Integer integer) : m_holder{integer} {}
+  explicit Object(Real real) : m_holder{real} {}
+  explicit Object(StandardString string) : m_holder{std::move(string)} {}
+  explicit Object(HexString string) : m_holder{std::move(string)} {}
+  explicit Object(Name name) : m_holder{std::move(name)} {}
+  explicit Object(Array);
+  explicit Object(Dictionary);
+  explicit Object(ObjectReference reference) : m_holder{reference} {}
 
-  Holder &holder() { return m_holder; }
-  const Holder &holder() const { return m_holder; }
+  [[nodiscard]] Holder &holder() { return m_holder; }
+  [[nodiscard]] const Holder &holder() const { return m_holder; }
 
-  bool is_null() const { return !m_holder.has_value(); }
-  bool is_bool() const { return is<Boolean>(); }
-  bool is_integer() const { return is<Integer>(); }
-  bool is_real() const { return is<Real>() || is_integer(); }
-  bool is_standard_string() const { return is<StandardString>(); }
-  bool is_hex_string() const { return is<HexString>(); }
-  bool is_name() const { return is<Name>(); }
-  bool is_string() const {
+  [[nodiscard]] bool is_null() const { return !m_holder.has_value(); }
+  [[nodiscard]] bool is_bool() const { return is<Boolean>(); }
+  [[nodiscard]] bool is_integer() const { return is<Integer>(); }
+  [[nodiscard]] bool is_real() const { return is<Real>() || is_integer(); }
+  [[nodiscard]] bool is_standard_string() const { return is<StandardString>(); }
+  [[nodiscard]] bool is_hex_string() const { return is<HexString>(); }
+  [[nodiscard]] bool is_name() const { return is<Name>(); }
+  [[nodiscard]] bool is_string() const {
     return is_standard_string() || is_hex_string() || is_name();
   }
-  bool is_array() const { return is<Array>(); }
-  bool is_dictionary() const { return is<Dictionary>(); }
-  bool is_reference() const { return is<ObjectReference>(); }
+  [[nodiscard]] bool is_array() const { return is<Array>(); }
+  [[nodiscard]] bool is_dictionary() const { return is<Dictionary>(); }
+  [[nodiscard]] bool is_reference() const { return is<ObjectReference>(); }
 
-  Boolean as_bool() const { return as<Boolean>(); }
-  Integer as_integer() const { return as<Integer>(); }
-  Real as_real() const { return is<Real>() ? as<Real>() : as_integer(); }
-  const std::string &as_standard_string() const {
+  [[nodiscard]] Boolean as_bool() const { return as<Boolean>(); }
+  [[nodiscard]] Integer as_integer() const { return as<Integer>(); }
+  [[nodiscard]] Real as_real() const {
+    return is<Real>() ? as<Real>() : as_integer();
+  }
+  [[nodiscard]] const std::string &as_standard_string() const {
     return as<const StandardString &>().string;
   }
-  const std::string &as_hex_string() const {
+  [[nodiscard]] const std::string &as_hex_string() const {
     return as<const HexString &>().string;
   }
-  const std::string &as_name() const { return as<const Name &>().string; }
-  const std::string &as_string() const;
-  const Array &as_array() const & { return as<const Array &>(); }
-  const Dictionary &as_dictionary() const & { return as<const Dictionary &>(); }
-  const ObjectReference &as_reference() const {
+  [[nodiscard]] const std::string &as_name() const {
+    return as<const Name &>().string;
+  }
+  [[nodiscard]] const std::string &as_string() const;
+  [[nodiscard]] const Array &as_array() const & { return as<const Array &>(); }
+  [[nodiscard]] const Dictionary &as_dictionary() const & {
+    return as<const Dictionary &>();
+  }
+  [[nodiscard]] const ObjectReference &as_reference() const {
     return as<const ObjectReference &>();
   }
 
@@ -123,8 +125,7 @@ public:
   }
 
   void to_stream(std::ostream &) const;
-  std::string to_string() const;
-  friend std::ostream &operator<<(std::ostream &, const Object &);
+  [[nodiscard]] std::string to_string() const;
 
 private:
   Holder m_holder;
@@ -149,21 +150,22 @@ public:
   Array &operator=(const Array &) = default;
   Array &operator=(Array &&) = default;
 
-  Holder &holder() { return m_holder; }
-  const Holder &holder() const { return m_holder; }
+  [[nodiscard]] Holder &holder() { return m_holder; }
+  [[nodiscard]] const Holder &holder() const { return m_holder; }
 
-  std::size_t size() const { return m_holder.size(); }
-  Holder::iterator begin() { return m_holder.begin(); }
-  Holder::iterator end() { return m_holder.end(); }
-  Holder::const_iterator begin() const { return m_holder.cbegin(); }
-  Holder::const_iterator end() const { return m_holder.cend(); }
+  [[nodiscard]] std::size_t size() const { return m_holder.size(); }
+  [[nodiscard]] Holder::iterator begin() { return m_holder.begin(); }
+  [[nodiscard]] Holder::iterator end() { return m_holder.end(); }
+  [[nodiscard]] Holder::const_iterator begin() const {
+    return m_holder.cbegin();
+  }
+  [[nodiscard]] Holder::const_iterator end() const { return m_holder.cend(); }
 
   Object &operator[](std::size_t i) { return m_holder.at(i); }
   const Object &operator[](std::size_t i) const { return m_holder.at(i); }
 
   void to_stream(std::ostream &) const;
-  std::string to_string() const;
-  friend std::ostream &operator<<(std::ostream &, const Array &);
+  [[nodiscard]] std::string to_string() const;
 
 private:
   Holder m_holder;
@@ -177,30 +179,39 @@ public:
   explicit Dictionary(Holder holder) : m_holder{std::move(holder)} {}
 
   Holder &holder() { return m_holder; }
-  const Holder &holder() const { return m_holder; }
+  [[nodiscard]] const Holder &holder() const { return m_holder; }
 
-  std::size_t size() const { return m_holder.size(); }
-  Holder::iterator begin() { return m_holder.begin(); }
-  Holder::iterator end() { return m_holder.end(); }
-  Holder::const_iterator begin() const { return m_holder.cbegin(); }
-  Holder::const_iterator end() const { return m_holder.cend(); }
+  [[nodiscard]] std::size_t size() const { return m_holder.size(); }
+  [[nodiscard]] Holder::iterator begin() { return m_holder.begin(); }
+  [[nodiscard]] Holder::iterator end() { return m_holder.end(); }
+  [[nodiscard]] Holder::const_iterator begin() const {
+    return m_holder.cbegin();
+  }
+  [[nodiscard]] Holder::const_iterator end() const { return m_holder.cend(); }
 
   Object &operator[](const std::string &name) { return m_holder[name]; }
   const Object &operator[](const std::string &name) const {
     return m_holder.at(name);
   }
 
-  bool has_key(const std::string &name) const {
+  [[nodiscard]] bool has_key(const std::string &name) const {
     return m_holder.find(name) != std::end(m_holder);
   }
 
   void to_stream(std::ostream &) const;
-  std::string to_string() const;
-  friend std::ostream &operator<<(std::ostream &, const Dictionary &);
+  [[nodiscard]] std::string to_string() const;
 
 private:
   Holder m_holder;
 };
+
+std::ostream &operator<<(std::ostream &, const StandardString &);
+std::ostream &operator<<(std::ostream &, const HexString &);
+std::ostream &operator<<(std::ostream &, const Name &);
+std::ostream &operator<<(std::ostream &, const ObjectReference &);
+std::ostream &operator<<(std::ostream &, const Object &);
+std::ostream &operator<<(std::ostream &, const Array &);
+std::ostream &operator<<(std::ostream &, const Dictionary &);
 
 } // namespace odr::internal::pdf
 

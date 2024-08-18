@@ -29,10 +29,10 @@ std::variant<Object, std::string> CMapParser::read_token() const {
                       m_parser.read_string());
   }
   if (m_parser.peek_name()) {
-    return m_parser.read_name();
+    return Object(m_parser.read_name());
   }
   if (m_parser.peek_dictionary()) {
-    return m_parser.read_dictionary();
+    return Object(m_parser.read_dictionary());
   }
 
   std::string token;
