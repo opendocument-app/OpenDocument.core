@@ -58,10 +58,8 @@ void html::translate_element(Element element, HtmlWriter &out,
   }
 }
 
-void html::translate_sheet(Element element, HtmlWriter &out,
+void html::translate_sheet(Sheet sheet, HtmlWriter &out,
                            const HtmlConfig &config) {
-  Sheet sheet = element.sheet();
-
   out.write_element_begin(
       "table",
       HtmlElementOptions().set_attributes(HtmlAttributesVector{
@@ -188,10 +186,8 @@ void html::translate_sheet(Element element, HtmlWriter &out,
   out.write_element_end("table");
 }
 
-void html::translate_slide(Element element, HtmlWriter &out,
+void html::translate_slide(Slide slide, HtmlWriter &out,
                            const HtmlConfig &config) {
-  Slide slide = element.slide();
-
   out.write_element_begin("div",
                           HtmlElementOptions().set_style(
                               translate_outer_page_style(slide.page_layout())));
@@ -206,10 +202,8 @@ void html::translate_slide(Element element, HtmlWriter &out,
   out.write_element_end("div");
 }
 
-void html::translate_page(Element element, HtmlWriter &out,
+void html::translate_page(Page page, HtmlWriter &out,
                           const HtmlConfig &config) {
-  Page page = element.page();
-
   out.write_element_begin("div",
                           HtmlElementOptions().set_style(
                               translate_outer_page_style(page.page_layout())));
@@ -222,9 +216,9 @@ void html::translate_page(Element element, HtmlWriter &out,
   out.write_element_end("div");
 }
 
-void html::translate_master_page(MasterPage element, HtmlWriter &out,
+void html::translate_master_page(MasterPage masterPage, HtmlWriter &out,
                                  const HtmlConfig &config) {
-  for (Element child : element.children()) {
+  for (Element child : masterPage.children()) {
     // TODO filter placeholders
     translate_element(child, out, config);
   }

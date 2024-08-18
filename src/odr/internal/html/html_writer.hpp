@@ -48,7 +48,8 @@ struct HtmlElementOptions {
 
 class HtmlWriter {
 public:
-  explicit HtmlWriter(std::ostream &out, bool format, std::uint8_t indent);
+  HtmlWriter(std::ostream &out, bool format, std::uint8_t indent);
+  HtmlWriter(std::ostream &out, const HtmlConfig &config);
 
   void write_begin();
   void write_end();

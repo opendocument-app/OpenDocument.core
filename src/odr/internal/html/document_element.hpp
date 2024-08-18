@@ -5,6 +5,9 @@ namespace odr {
 class Element;
 class ElementRange;
 class MasterPage;
+class Slide;
+class Sheet;
+class Page;
 
 struct HtmlConfig;
 } // namespace odr
@@ -17,17 +20,14 @@ void translate_children(ElementRange range, HtmlWriter &out,
 void translate_element(Element element, HtmlWriter &out,
                        const HtmlConfig &config);
 
-void translate_slide(Element element, HtmlWriter &out,
-                     const HtmlConfig &config);
-void translate_sheet(Element element, HtmlWriter &out,
-                     const HtmlConfig &config);
-void translate_page(Element element, HtmlWriter &out, const HtmlConfig &config);
+void translate_slide(Slide slide, HtmlWriter &out, const HtmlConfig &config);
+void translate_sheet(Sheet sheet, HtmlWriter &out, const HtmlConfig &config);
+void translate_page(Page page, HtmlWriter &out, const HtmlConfig &config);
 
-void translate_master_page(MasterPage element, HtmlWriter &out,
+void translate_master_page(MasterPage masterPage, HtmlWriter &out,
                            const HtmlConfig &config);
 
-void translate_text(const Element element, HtmlWriter &out,
-                    const HtmlConfig &config);
+void translate_text(Element element, HtmlWriter &out, const HtmlConfig &config);
 void translate_line_break(Element element, HtmlWriter &out, const HtmlConfig &);
 void translate_paragraph(Element element, HtmlWriter &out,
                          const HtmlConfig &config);

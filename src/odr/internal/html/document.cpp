@@ -7,7 +7,9 @@
 #include <odr/html.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_element.hpp>
 #include <odr/internal/html/document_style.hpp>
 #include <odr/internal/html/html_writer.hpp>
@@ -17,11 +19,109 @@
 
 #include <fstream>
 
+namespace odr::internal::html {
 namespace {
 
-using namespace odr;
-using namespace odr::internal;
-using namespace odr::internal::html;
+class TextHtmlFragment final : public abstract::HtmlFragment {
+public:
+  explicit TextHtmlFragment(Document document)
+      : m_document{std::move(document)} {}
+
+  [[nodiscard]] std::string name() const final { return "document"; }
+
+  void
+  write_html_fragment(std::ostream &os, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {
+    HtmlWriter out(os, config);
+
+    auto root = m_document.root_element();
+    auto element = root.text_root();
+
+    if (config.text_document_margin) {
+      auto page_layout = element.page_layout();
+      page_layout.height = {};
+
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_style(
+                                  translate_outer_page_style(page_layout)));
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_style(
+                                  translate_inner_page_style(page_layout)));
+
+      translate_children(element.children(), out, config);
+
+      out.write_element_end("div");
+      out.write_element_end("div");
+    } else {
+      out.write_element_begin("div");
+      translate_children(element.children(), out, config);
+      out.write_element_end("div");
+    }
+  }
+
+private:
+  Document m_document;
+};
+
+class SlideHtmlFragment final : public abstract::HtmlFragment {
+public:
+  explicit SlideHtmlFragment(Document document, Slide slide)
+      : m_document{std::move(document)}, m_slide{slide} {}
+
+  [[nodiscard]] std::string name() const final { return m_slide.name(); }
+
+  void
+  write_html_fragment(std::ostream &os, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {
+    HtmlWriter out(os, config);
+
+    internal::html::translate_slide(m_slide, out, config);
+  }
+
+private:
+  Document m_document;
+  Slide m_slide;
+};
+
+class SheetHtmlFragment final : public abstract::HtmlFragment {
+public:
+  explicit SheetHtmlFragment(Document document, Sheet sheet)
+      : m_document{std::move(document)}, m_sheet{sheet} {}
+
+  [[nodiscard]] std::string name() const final { return m_sheet.name(); }
+
+  void
+  write_html_fragment(std::ostream &os, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {
+    HtmlWriter out(os, config);
+
+    translate_sheet(m_sheet, out, config);
+  }
+
+private:
+  Document m_document;
+  Sheet m_sheet;
+};
+
+class PageHtmlFragment final : public abstract::HtmlFragment {
+public:
+  explicit PageHtmlFragment(Document document, Page page)
+      : m_document{std::move(document)}, m_page{page} {}
+
+  [[nodiscard]] std::string name() const final { return m_page.name(); }
+
+  void
+  write_html_fragment(std::ostream &os, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {
+    HtmlWriter out(os, config);
+
+    internal::html::translate_page(m_page, out, config);
+  }
+
+private:
+  Document m_document;
+  Page m_page;
+};
 
 void front(const Document &document, const std::string &output_path,
            HtmlWriter &out, const HtmlConfig &config) {
@@ -55,7 +155,7 @@ void front(const Document &document, const std::string &output_path,
     auto odr_css_path =
         common::Path(config.external_resource_path).join("odr.css");
     if (config.relative_resource_paths) {
-      odr_css_path = common::Path(odr_css_path).rebase(output_path);
+      odr_css_path = odr_css_path.rebase(output_path);
     }
     out.write_header_style(odr_css_path.string());
     if (document.document_type() == DocumentType::spreadsheet) {
@@ -101,7 +201,7 @@ void back(const Document &, const std::string &output_path,
     auto odr_js_path =
         common::Path(config.external_resource_path).join("odr.js");
     if (config.relative_resource_paths) {
-      odr_js_path = common::Path(odr_js_path).rebase(output_path);
+      odr_js_path = odr_js_path.rebase(output_path);
     }
     out.write_script(odr_js_path.string());
   }
@@ -118,141 +218,82 @@ std::string fill_path_variables(const std::string &path,
   return result;
 }
 
-std::ofstream output(const std::string &path) {
-  std::ofstream out(path);
-  if (!out.is_open()) {
-    throw FileWriteError();
-  }
-  return out;
-}
-
-} // namespace
-
-namespace odr::internal {
-
-Html html::translate_document(const Document &document,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
+std::string get_output_path(const Document &document, std::uint32_t index,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
   if (document.document_type() == DocumentType::text) {
-    return internal::html::translate_text_document(document, output_path,
-                                                   config);
+    return fill_path_variables(output_path + "/" +
+                               config.text_document_output_file_name);
   } else if (document.document_type() == DocumentType::presentation) {
-    return internal::html::translate_presentation(document, output_path,
-                                                  config);
+    return fill_path_variables(
+        output_path + "/" + config.slide_output_file_name, index);
   } else if (document.document_type() == DocumentType::spreadsheet) {
-    return internal::html::translate_spreadsheet(document, output_path, config);
+    return fill_path_variables(
+        output_path + "/" + config.sheet_output_file_name, index);
   } else if (document.document_type() == DocumentType::drawing) {
-    return internal::html::translate_drawing(document, output_path, config);
+    return fill_path_variables(output_path + "/" + config.page_output_file_name,
+                               index);
   } else {
     throw UnknownDocumentType();
   }
 }
 
-Html html::translate_text_document(const Document &document,
-                                   const std::string &output_path,
-                                   const HtmlConfig &config) {
-  auto filled_path = fill_path_variables(output_path + "/" +
-                                         config.text_document_output_file_name);
-  auto ostream = output(filled_path);
-  internal::html::HtmlWriter out(ostream, config.format_html,
-                                 config.html_indent);
+} // namespace
+} // namespace odr::internal::html
 
-  auto root = document.root_element();
-  auto element = root.text_root();
+namespace odr::internal {
 
-  front(document, output_path, out, config);
-  if (config.text_document_margin) {
-    out.write_element_begin("div");
-    auto page_layout = element.page_layout();
-    page_layout.height = {};
+HtmlService html::translate_document(const Document &document) {
+  std::vector<std::shared_ptr<abstract::HtmlFragment>> fragments;
 
-    out.write_element_begin("div",
-                            HtmlElementOptions().set_style(
-                                translate_outer_page_style(page_layout)));
-    out.write_element_begin("div",
-                            HtmlElementOptions().set_style(
-                                translate_inner_page_style(page_layout)));
-
-    translate_children(element.children(), out, config);
-
-    out.write_element_end("div");
-    out.write_element_end("div");
+  if (document.document_type() == DocumentType::text) {
+    fragments.push_back(std::make_unique<TextHtmlFragment>(document));
+  } else if (document.document_type() == DocumentType::presentation) {
+    for (auto child : document.root_element().children()) {
+      fragments.push_back(
+          std::make_unique<SlideHtmlFragment>(document, child.slide()));
+    }
+  } else if (document.document_type() == DocumentType::spreadsheet) {
+    for (auto child : document.root_element().children()) {
+      fragments.push_back(
+          std::make_unique<SheetHtmlFragment>(document, child.sheet()));
+    }
+  } else if (document.document_type() == DocumentType::drawing) {
+    for (auto child : document.root_element().children()) {
+      fragments.push_back(
+          std::make_unique<PageHtmlFragment>(document, child.page()));
+    }
   } else {
-    translate_children(element.children(), out, config);
+    throw UnknownDocumentType();
   }
-  back(document, output_path, out, config);
 
-  return {document.file_type(), config, {{"document", filled_path}}, document};
+  return HtmlService(std::make_unique<StaticHtmlService>(fragments));
 }
 
-Html html::translate_presentation(const Document &document,
-                                  const std::string &output_path,
-                                  const HtmlConfig &config) {
+Html html::translate_document(const odr::Document &document,
+                              const std::string &output_path,
+                              const odr::HtmlConfig &config) {
+  HtmlService service = translate_document(document);
+  HtmlResourceLocator resourceLocator =
+      local_resource_locator(output_path, config);
+
   std::vector<HtmlPage> pages;
 
   std::uint32_t i = 0;
-  for (auto child : document.root_element().children()) {
-    auto filled_path = fill_path_variables(
-        output_path + "/" + config.slide_output_file_name, i);
-    auto ostream = output(filled_path);
+  for (const auto &fragment : service.fragments()) {
+    std::string filled_path = get_output_path(document, i, output_path, config);
+    std::ofstream ostream(filled_path);
+    if (!ostream.is_open()) {
+      throw FileWriteError();
+    }
     internal::html::HtmlWriter out(ostream, config.format_html,
                                    config.html_indent);
 
     front(document, output_path, out, config);
-    internal::html::translate_slide(child, out, config);
+    fragment.write_html_fragment(out.out(), config, resourceLocator);
     back(document, output_path, out, config);
 
-    pages.emplace_back(child.slide().name(), filled_path);
-
-    ++i;
-  }
-
-  return {document.file_type(), config, std::move(pages), document};
-}
-
-Html html::translate_spreadsheet(const Document &document,
-                                 const std::string &output_path,
-                                 const HtmlConfig &config) {
-  std::vector<HtmlPage> pages;
-
-  std::uint32_t i = 0;
-  for (auto child : document.root_element().children()) {
-    auto filled_path = fill_path_variables(
-        output_path + "/" + config.sheet_output_file_name, i);
-    auto ostream = output(filled_path);
-    internal::html::HtmlWriter out(ostream, config.format_html,
-                                   config.html_indent);
-
-    front(document, output_path, out, config);
-    translate_sheet(child, out, config);
-    back(document, output_path, out, config);
-
-    pages.emplace_back(child.sheet().name(), filled_path);
-
-    ++i;
-  }
-
-  return {document.file_type(), config, std::move(pages), document};
-}
-
-Html html::translate_drawing(const Document &document,
-                             const std::string &output_path,
-                             const HtmlConfig &config) {
-  std::vector<HtmlPage> pages;
-
-  std::uint32_t i = 0;
-  for (auto child : document.root_element().children()) {
-    auto filled_path = fill_path_variables(
-        output_path + "/" + config.page_output_file_name, i);
-    auto ostream = output(filled_path);
-    internal::html::HtmlWriter out(ostream, config.format_html,
-                                   config.html_indent);
-
-    front(document, output_path, out, config);
-    internal::html::translate_page(child, out, config);
-    back(document, output_path, out, config);
-
-    pages.emplace_back(child.page().name(), filled_path);
+    pages.emplace_back(fragment.name(), filled_path);
 
     ++i;
   }

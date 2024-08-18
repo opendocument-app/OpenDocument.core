@@ -121,6 +121,9 @@ HtmlElementOptions::set_extra(std::optional<HtmlWritable> _extra) {
 HtmlWriter::HtmlWriter(std::ostream &out, bool format, std::uint8_t indent)
     : m_out{out}, m_format{format}, m_indent(indent, ' ') {}
 
+HtmlWriter::HtmlWriter(std::ostream &out, const HtmlConfig &config)
+    : HtmlWriter{out, config.format_html, config.html_indent} {}
+
 void HtmlWriter::write_begin() {
   m_out << "<!DOCTYPE html>\n";
   m_out << "<html>";
