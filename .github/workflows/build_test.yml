@@ -68,7 +68,7 @@ jobs:
           cmake -B build -S .
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
       - name: build
@@ -293,7 +293,7 @@ jobs:
         run: >
           cmake -S test/downstream -B test/downstream/build
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_BUILD_TYPE=Release
       - name: build
         if: runner.os != 'Windows'
         run: cmake --build test/downstream/build
