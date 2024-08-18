@@ -50,7 +50,7 @@ jobs:
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
-        run: conan install . --output-folder=build --build=never
+        run: conan install . --output-folder=build --build=missing
 
       - name: cache
         uses: actions/cache@v4
@@ -283,7 +283,7 @@ jobs:
         run: conan export . --name odrcore --version 0.0.0
 
       - name: conan install
-        run: conan install . --output-folder=build --build=never
+        run: conan install . --output-folder=build --build=missing
 
       # odrcore/0.0.0 will be missing, can't build=never
       - name: conan downstream
