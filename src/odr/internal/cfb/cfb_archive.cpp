@@ -32,6 +32,10 @@ std::shared_ptr<abstract::Filesystem> CfbArchive::filesystem() const {
   return filesystem;
 }
 
-void CfbArchive::save(std::ostream &out) const { throw UnsupportedOperation(); }
+void CfbArchive::save(std::ostream &out) const {
+  (void)out;
+
+  throw UnsupportedOperation();
+}
 
 } // namespace odr::internal::cfb
