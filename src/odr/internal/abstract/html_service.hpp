@@ -6,6 +6,10 @@
 #include <iosfwd>
 #include <memory>
 
+namespace odr::internal::html {
+class HtmlWriter;
+}
+
 namespace odr::internal::abstract {
 class File;
 class HtmlFragment;
@@ -25,7 +29,7 @@ public:
   [[nodiscard]] virtual std::string name() const = 0;
 
   virtual void
-  write_html_fragment(std::ostream &os, const HtmlConfig &config,
+  write_html_fragment(html::HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const = 0;
 };
 

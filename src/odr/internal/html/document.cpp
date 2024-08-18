@@ -30,10 +30,8 @@ public:
   [[nodiscard]] std::string name() const final { return "document"; }
 
   void
-  write_html_fragment(std::ostream &os, const HtmlConfig &config,
+  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const final {
-    HtmlWriter out(os, config);
-
     auto root = m_document.root_element();
     auto element = root.text_root();
 
@@ -71,10 +69,8 @@ public:
   [[nodiscard]] std::string name() const final { return m_slide.name(); }
 
   void
-  write_html_fragment(std::ostream &os, const HtmlConfig &config,
+  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const final {
-    HtmlWriter out(os, config);
-
     internal::html::translate_slide(m_slide, out, config);
   }
 
@@ -91,10 +87,8 @@ public:
   [[nodiscard]] std::string name() const final { return m_sheet.name(); }
 
   void
-  write_html_fragment(std::ostream &os, const HtmlConfig &config,
+  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const final {
-    HtmlWriter out(os, config);
-
     translate_sheet(m_sheet, out, config);
   }
 
@@ -111,10 +105,8 @@ public:
   [[nodiscard]] std::string name() const final { return m_page.name(); }
 
   void
-  write_html_fragment(std::ostream &os, const HtmlConfig &config,
+  write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const final {
-    HtmlWriter out(os, config);
-
     internal::html::translate_page(m_page, out, config);
   }
 

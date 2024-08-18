@@ -48,7 +48,8 @@ struct HtmlElementOptions {
 
 class HtmlWriter {
 public:
-  HtmlWriter(std::ostream &out, bool format, std::uint8_t indent);
+  HtmlWriter(std::ostream &out, bool format, std::uint8_t indent,
+             std::uint32_t current_indent = 0);
   HtmlWriter(std::ostream &out, const HtmlConfig &config);
 
   void write_begin();
@@ -68,14 +69,14 @@ public:
   void write_script_begin();
   void write_script_end();
 
-  void write_body_begin(HtmlElementOptions options = {});
+  void write_body_begin(const HtmlElementOptions &options = {});
   void write_body_end();
 
   void write_element_begin(const std::string &name,
-                           HtmlElementOptions options = {});
+                           const HtmlElementOptions &options = {});
   void write_element_end(const std::string &name);
 
-  bool is_inline_mode() const;
+  [[nodiscard]] bool is_inline_mode() const;
   void write_new_line();
   void write_raw(const HtmlWritable &writable, bool new_line = true);
 

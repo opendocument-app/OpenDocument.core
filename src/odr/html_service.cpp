@@ -1,6 +1,7 @@
 #include <odr/html_service.hpp>
 
 #include <odr/internal/abstract/html_service.hpp>
+#include <odr/internal/html/html_writer.hpp>
 
 #include <iostream>
 
@@ -26,7 +27,9 @@ std::string HtmlFragment::name() const { return m_impl->name(); }
 void HtmlFragment::write_html_fragment(
     std::ostream &os, const odr::HtmlConfig &config,
     const odr::HtmlResourceLocator &resourceLocator) const {
-  m_impl->write_html_fragment(os, config, resourceLocator);
+  internal::html::HtmlWriter out(os, config);
+
+  m_impl->write_html_fragment(out, config, resourceLocator);
 }
 
 } // namespace odr
