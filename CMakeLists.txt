@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ODR_TEST "enable tests" OFF)
+option(ODR_CLI "enable command line interface" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 
 # TODO defining global compiler flags seems to be bad practice with conan
@@ -191,7 +192,9 @@ if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
     add_dependencies(odr check_git)
 endif ()
 
-add_subdirectory("cli")
+if (ODR_CLI)
+    add_subdirectory("cli")
+endif ()
 
 if (ODR_TEST)
     add_subdirectory("test")
