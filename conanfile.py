@@ -47,6 +47,7 @@ class OpenDocumentCoreConan(ConanFile):
             self.requires("pdf2htmlex/0.18.8.rc1-odr-pr1")
         if self.options.get_safe("with_wvWare", False):
             self.requires("wvware/1.2.9-odr")
+        self.requires("cpp-httplib/0.16.3")
 
     def build_requirements(self):
         self.test_requires("gtest/1.14.0")

@@ -38,6 +38,7 @@ find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
+find_package(httplib REQUIRED)
 
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
 
