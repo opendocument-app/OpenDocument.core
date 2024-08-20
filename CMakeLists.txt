@@ -63,6 +63,7 @@ set(ODR_SOURCE_FILES
         "src/odr/filesystem.cpp"
         "src/odr/html.cpp"
         "src/odr/html_service.cpp"
+        "src/odr/http_server.cpp"
         "src/odr/open_document_reader.cpp"
         "src/odr/quantity.cpp"
         "src/odr/style.cpp"
@@ -188,6 +189,7 @@ target_link_libraries(odr
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
         utf8::cpp
+        httplib::httplib
 )
 
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
