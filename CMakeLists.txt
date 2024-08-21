@@ -40,6 +40,7 @@ find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
 
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
+configure_file("src/odr/internal/project_info.hpp.in" "src/odr/internal/project_info.hpp")
 
 set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp")
@@ -186,6 +187,7 @@ if(WITH_WVWARE)
 endif(WITH_WVWARE)
 
 add_library(odr ${ODR_SOURCE_FILES})
+target_include_directories(odr PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/src)
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
 target_include_directories(odr
         PUBLIC
@@ -203,12 +205,10 @@ target_link_libraries(odr
 )
 
 if(WITH_PDF2HTMLEX)
-    target_compile_definitions(odr PRIVATE "WITH_PDF2HTMLEX=1")
     find_package(pdf2htmlEX REQUIRED)
     target_link_libraries(odr PRIVATE pdf2htmlex::pdf2htmlex)
 endif(WITH_PDF2HTMLEX)
 if(WITH_WVWARE)
-    target_compile_definitions(odr PRIVATE "WITH_WVWARE=1")
     find_package(wvware REQUIRED)
     target_link_libraries(odr PRIVATE wvware::wvware)
 endif(WITH_WVWARE)
