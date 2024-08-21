@@ -10,6 +10,7 @@ option(ODR_TEST "enable tests" OFF)
 option(ODR_CLI "enable command line interface" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 option(WITH_PDF2HTMLEX "Build with pdf2htmlEX" ON)
+option(WITH_WVWARE "Build with wvWare" ON)
 
 # TODO defining global compiler flags seems to be bad practice with conan
 # TODO consider using conan profiles
@@ -178,6 +179,11 @@ if(WITH_PDF2HTMLEX)
             "src/odr/internal/html/pdf2htmlEX_wrapper.cpp"
     )
 endif(WITH_PDF2HTMLEX)
+if(WITH_WVWARE)
+        LIST(APPEND ODR_SOURCE_FILES
+            "src/wvWare.c"
+    )
+endif(WITH_WVWARE)
 
 add_library(odr ${ODR_SOURCE_FILES})
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
@@ -201,6 +207,11 @@ if(WITH_PDF2HTMLEX)
     find_package(pdf2htmlEX REQUIRED)
     target_link_libraries(odr PRIVATE pdf2htmlex::pdf2htmlex)
 endif(WITH_PDF2HTMLEX)
+if(WITH_WVWARE)
+    target_compile_definitions(odr PRIVATE "WITH_WVWARE=1")
+    find_package(wvware REQUIRED)
+    target_link_libraries(odr PRIVATE wvware::wvware)
+endif(WITH_WVWARE)
 
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
     add_dependencies(odr check_git)
