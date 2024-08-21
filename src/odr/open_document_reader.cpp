@@ -14,6 +14,10 @@
 #if defined(WITH_PDF2HTMLEX)
 #include <odr/internal/html/pdf2htmlEX_wrapper.hpp>
 #endif
+#if defined(WITH_WVWARE)
+#include <odr/internal/html/wvWare_wrapper.hpp>
+#endif
+
 namespace odr {
 
 std::string OpenDocumentReader::version() noexcept {
@@ -252,6 +256,14 @@ Html OpenDocumentReader::pdf2htmlEX(const PdfFile &pdf_file,
                               const std::string &output_path,
                               const HtmlConfig &config) {
   return internal::html::pdf2htmlEX_wrapper(pdf_file, output_path, config);
+}
+#endif
+
+#if defined(WITH_WVWARE)
+Html OpenDocumentReader::wvHtml(const File &file,
+                                const std::string &output_path,
+                                const HtmlConfig &config) {
+  return internal::html::wvWare_wrapper(file, output_path, config);
 }
 #endif
 

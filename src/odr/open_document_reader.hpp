@@ -152,6 +152,18 @@ public:
                                        const HtmlConfig &config);
 #endif
 
+#if defined(WITH_WVWARE)
+  /// @brief Translates a file to HTML.
+  ///
+  /// @param file File to translate.
+  /// @param output_path Path to save the HTML output.
+  /// @param config Configuration for the HTML output.
+  /// @return HTML output.
+  [[nodiscard]] static Html wvHtml(const File &file,
+                                   const std::string &output_path,
+                                   const HtmlConfig &config);
+#endif
+
   /// @brief Edit a document.
   /// @param document The document.
   /// @param diff The diff.

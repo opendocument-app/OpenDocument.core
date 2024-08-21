@@ -182,6 +182,7 @@ if(WITH_PDF2HTMLEX)
 endif(WITH_PDF2HTMLEX)
 if(WITH_WVWARE)
         LIST(APPEND ODR_SOURCE_FILES
+            "src/odr/internal/html/wvWare_wrapper.cpp"
             "src/wvWare.c"
     )
 endif(WITH_WVWARE)
