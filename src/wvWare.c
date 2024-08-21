@@ -28,7 +28,27 @@
 #include <unistd.h>
 #include <wv/wv.h>
 #include "getopt.h"
-#include "errorPrinter.h"
+
+#ifdef __ANDROID_API__
+#include <android/log.h>
+#define ParenthesesStripper(...) __VA_ARGS__
+
+#ifdef wvError
+#undef wvError
+#endif
+#define wvError( args ) __android_log_print(ANDROID_LOG_ERROR, "wv", ParenthesesStripper args);
+
+#ifdef wvWarning
+#undef wvWarning
+#endif
+#define wvWarning( args ) __android_log_print(ANDROID_LOG_WARN, "wv", args);
+
+#ifdef wvTrace
+#undef wvTrace
+#endif
+//#define wvTrace( args ) __android_log_print(ANDROID_LOG_VERBOSE, "wv", ParenthesesStripper args);
+#define wvTrace( args )
+#endif
 
 /* strdup isn't declared in <string.h> for `gcc -ansi'; declare it here */
 extern char *strdup (const char *);
