@@ -32,7 +32,7 @@ jobs:
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
-        run: conan install . --output-folder=build --build=missing
+        run: conan install . --output-folder=build --build=never
 
       - name: cmake
         run: >
