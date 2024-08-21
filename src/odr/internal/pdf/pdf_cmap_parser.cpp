@@ -29,18 +29,19 @@ std::variant<Object, std::string> CMapParser::read_token() const {
                       m_parser.read_string());
   }
   if (m_parser.peek_name()) {
-    return m_parser.read_name();
+    return Object(m_parser.read_name());
   }
   if (m_parser.peek_dictionary()) {
-    return m_parser.read_dictionary();
+    return Object(m_parser.read_dictionary());
   }
 
   std::string token;
   while (true) {
-    int_type c = m_parser.geti();
-    if (c == eof) {
+    int_type i = m_parser.geti();
+    if (i == eof) {
       return token;
     }
+    auto c = static_cast<char_type>(i);
     if (ObjectParser::is_whitespace(c)) {
       return token;
     }
@@ -50,6 +51,8 @@ std::variant<Object, std::string> CMapParser::read_token() const {
 }
 
 void CMapParser::read_codespacerange(std::uint32_t n, CMap &cmap) const {
+  (void)cmap;
+
   m_parser.skip_whitespace();
   for (std::uint32_t i = 0; i < n; ++i) {
     auto from_glyph = m_parser.read_object();
@@ -86,6 +89,8 @@ void CMapParser::read_bfchar(std::uint32_t n, CMap &cmap) const {
 }
 
 void CMapParser::read_bfrange(std::uint32_t n, CMap &cmap) const {
+  (void)cmap;
+
   m_parser.skip_whitespace();
   for (std::uint32_t i = 0; i < n; ++i) {
     auto from_glyph = m_parser.read_object();

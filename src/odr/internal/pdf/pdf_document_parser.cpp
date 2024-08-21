@@ -26,7 +26,7 @@ pdf::Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
 
   font->type = Type::font;
   font->object_reference = reference;
-  font->object = dictionary;
+  font->object = Object(dictionary);
 
   if (dictionary.has_key("ToUnicode")) {
     IndirectObject to_unicode_obj =
@@ -43,12 +43,12 @@ pdf::Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
 
 pdf::Resources *parse_resources(DocumentParser &parser, const Object &object,
                                 Document &document) {
-  Resources *resources = document.create_element<Resources>();
+  auto *resources = document.create_element<Resources>();
 
   Dictionary dictionary = parser.resolve_object_copy(object).as_dictionary();
 
   resources->type = Type::resources;
-  resources->object = dictionary;
+  resources->object = Object(dictionary);
 
   if (!dictionary["Font"].is_null()) {
     Dictionary font_table =
@@ -64,14 +64,14 @@ pdf::Resources *parse_resources(DocumentParser &parser, const Object &object,
 pdf::Annotation *parse_annotation(DocumentParser &parser,
                                   const ObjectReference &reference,
                                   Document &document) {
-  Annotation *annotation = document.create_element<Annotation>();
+  auto *annotation = document.create_element<Annotation>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
 
   annotation->type = Type::annotation;
   annotation->object_reference = reference;
-  annotation->object = dictionary;
+  annotation->object = Object(dictionary);
 
   return annotation;
 }
@@ -85,7 +85,7 @@ pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
 
   page->type = Type::page;
   page->object_reference = reference;
-  page->object = dictionary;
+  page->object = Object(dictionary);
   page->parent = dynamic_cast<Pages *>(parent);
   page->resources = parse_resources(parser, dictionary["Resources"], document);
 
@@ -112,14 +112,14 @@ pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
 
 pdf::Pages *parse_pages(DocumentParser &parser,
                         const ObjectReference &reference, Document &document) {
-  Pages *pages = document.create_element<Pages>();
+  auto *pages = document.create_element<Pages>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
 
   pages->type = Type::pages;
   pages->object_reference = reference;
-  pages->object = dictionary;
+  pages->object = Object(dictionary);
   pages->count = dictionary["Count"].as_integer();
 
   for (const Object &kid : dictionary["Kids"].as_array()) {
@@ -151,7 +151,7 @@ pdf::Element *parse_page_or_pages(DocumentParser &parser,
 pdf::Catalog *parse_catalog(DocumentParser &parser,
                             const ObjectReference &reference,
                             Document &document) {
-  Catalog *catalog = document.create_element<Catalog>();
+  auto *catalog = document.create_element<Catalog>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -159,7 +159,7 @@ pdf::Catalog *parse_catalog(DocumentParser &parser,
 
   catalog->type = Type::catalog;
   catalog->object_reference = reference;
-  catalog->object = dictionary;
+  catalog->object = Object(dictionary);
   catalog->pages = parse_pages(parser, pages_reference, document);
 
   return catalog;

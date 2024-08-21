@@ -1,5 +1,6 @@
 #include <odr/open_document_reader.hpp>
 
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
@@ -176,14 +177,36 @@ Html OpenDocumentReader::html(const std::string &path,
                               const PasswordCallback &password_callback,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  return html(File(path), password_callback, output_path, config);
+  auto decoded_file = DecodedFile(path);
+
+  if (decoded_file.is_document_file()) {
+    DocumentFile document_file = decoded_file.document_file();
+    if (document_file.password_encrypted()) {
+      if (!document_file.decrypt(password_callback())) {
+        throw WrongPassword();
+      }
+    }
+  }
+
+  return html(decoded_file, output_path, config);
 }
 
 Html OpenDocumentReader::html(const File &file,
                               const PasswordCallback &password_callback,
                               const std::string &output_path,
                               const HtmlConfig &config) {
-  return html::translate(file, output_path, config, password_callback);
+  auto decoded_file = DecodedFile(file);
+
+  if (decoded_file.is_document_file()) {
+    DocumentFile document_file = decoded_file.document_file();
+    if (document_file.password_encrypted()) {
+      if (!document_file.decrypt(password_callback())) {
+        throw WrongPassword();
+      }
+    }
+  }
+
+  return html(decoded_file, output_path, config);
 }
 
 Html OpenDocumentReader::html(const DecodedFile &file,
@@ -227,14 +250,12 @@ void OpenDocumentReader::edit(const Document &document, const char *diff) {
 }
 
 void OpenDocumentReader::copy_resources(const std::string &to_path) {
-  auto resources = internal::Resources::instance();
-
-  for (auto resource : resources.resources()) {
+  for (auto resource : internal::Resources::resources()) {
     auto resource_output_path =
         internal::common::Path(to_path).join(resource.path);
     std::filesystem::create_directories(resource_output_path.parent());
     std::ofstream out(resource_output_path.string(), std::ios::binary);
-    out.write(resource.data, resource.size);
+    out.write(resource.data, static_cast<std::streamsize>(resource.size));
   }
 }
 

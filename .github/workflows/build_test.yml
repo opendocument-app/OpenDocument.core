@@ -50,7 +50,7 @@ jobs:
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
-        run: conan install . --output-folder=build --build=never
+        run: conan install . --output-folder=build --build=missing
 
       - name: cache
         uses: actions/cache@v4
@@ -69,6 +69,7 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_FLAGS="-Werror"
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
       - name: build
@@ -282,7 +283,7 @@ jobs:
         run: conan export . --name odrcore --version 0.0.0
 
       - name: conan install
-        run: conan install . --output-folder=build --build=never
+        run: conan install . --output-folder=build --build=missing
 
       # odrcore/0.0.0 will be missing, can't build=never
       - name: conan downstream

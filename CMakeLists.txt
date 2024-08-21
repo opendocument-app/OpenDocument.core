@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 option(ODR_TEST "enable tests" OFF)
+option(ODR_CLI "enable command line interface" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 option(WITH_PDF2HTMLEX "Build with pdf2htmlEX" ON)
 
@@ -62,6 +63,7 @@ set(ODR_SOURCE_FILES
         "src/odr/file.cpp"
         "src/odr/filesystem.cpp"
         "src/odr/html.cpp"
+        "src/odr/html_service.cpp"
         "src/odr/open_document_reader.cpp"
         "src/odr/quantity.cpp"
         "src/odr/style.cpp"
@@ -204,7 +206,9 @@ if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
     add_dependencies(odr check_git)
 endif ()
 
-add_subdirectory("cli")
+if (ODR_CLI)
+    add_subdirectory("cli")
+endif ()
 
 if (ODR_TEST)
     add_subdirectory("test")

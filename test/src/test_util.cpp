@@ -32,20 +32,20 @@ TestFile get_test_file(std::string input) {
   return {std::move(input), type, encrypted, std::move(password)};
 }
 
-std::vector<TestFile> get_test_files(const std::string &input) {
-  if (fs::is_regular_file(input)) {
-    return {get_test_file(input)};
+std::vector<TestFile> get_test_files(const std::string &input_path) {
+  if (fs::is_regular_file(input_path)) {
+    return {get_test_file(input_path)};
   }
-  if (!fs::is_directory(input)) {
+  if (!fs::is_directory(input_path)) {
     return {};
   }
 
   std::vector<TestFile> result;
 
-  const std::string index = input + "/index.csv";
-  if (fs::is_regular_file(index)) {
-    for (auto &&row : csv::CSVReader(index)) {
-      const std::string path = input + "/" + row["path"].get<>();
+  const std::string index_path = input_path + "/index.csv";
+  if (fs::is_regular_file(index_path)) {
+    for (const auto &row : csv::CSVReader(index_path)) {
+      const std::string path = input_path + "/" + row["path"].get<>();
       const FileType type =
           OpenDocumentReader::type_by_extension(row["type"].get<>());
       std::string password = row["password"].get<>();
@@ -60,12 +60,12 @@ std::vector<TestFile> get_test_files(const std::string &input) {
   }
 
   // TODO this will also recurse `.git`
-  for (auto &&p : fs::recursive_directory_iterator(input)) {
+  for (auto &&p : fs::recursive_directory_iterator(input_path)) {
     if (!p.is_regular_file()) {
       continue;
     }
     const std::string path = p.path().string();
-    if (path == index) {
+    if (path == index_path) {
       continue;
     }
 
