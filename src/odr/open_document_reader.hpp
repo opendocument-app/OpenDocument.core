@@ -2,9 +2,9 @@
 #define ODR_OPEN_DOCUMENT_READER_HPP
 
 #include <functional>
+#include <odr/internal/project_info.hpp>
 #include <string>
 #include <vector>
-#include <odr/internal/project_info.hpp>
 
 namespace odr {
 enum class FileType;

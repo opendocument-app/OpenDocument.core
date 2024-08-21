@@ -9,8 +9,8 @@
 #include <wv/wv.h>
 
 extern "C" {
-  int convert(char *inputFile, char *outputDir, const char *password);
-  int no_graphics;
+int convert(char *inputFile, char *outputDir, const char *password);
+int no_graphics;
 }
 
 namespace odr::internal {
@@ -50,9 +50,8 @@ Html wvWare_wrapper(const File &file, const std::string &output_path,
     }
   }
 
-  return {FileType::legacy_word_document,
-          config,
-          {{"document", output_file_path}}};
+  return {
+      FileType::legacy_word_document, config, {{"document", output_file_path}}};
 }
 
 } // namespace odr::internal

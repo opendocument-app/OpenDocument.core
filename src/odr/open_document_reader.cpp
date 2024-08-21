@@ -253,8 +253,8 @@ Html OpenDocumentReader::html(const PdfFile &pdf_file,
 
 #if defined(WITH_PDF2HTMLEX)
 Html OpenDocumentReader::pdf2htmlEX(const PdfFile &pdf_file,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
+                                    const std::string &output_path,
+                                    const HtmlConfig &config) {
   return internal::html::pdf2htmlEX_wrapper(pdf_file, output_path, config);
 }
 #endif
