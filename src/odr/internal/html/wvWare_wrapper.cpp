@@ -1,12 +1,10 @@
-#include <odr/internal/html/wvWare_wrapper.hpp>
-
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
-
 #include <odr/internal/common/file.hpp>
-
+#include <odr/internal/html/wvWare_wrapper.hpp>
 #include <wv/wv.h>
+#include <unistd.h>
 
 extern "C" {
 int convert(char *inputFile, char *outputDir, const char *password);
