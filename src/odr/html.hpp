@@ -113,10 +113,9 @@ namespace html {
 /// @param config Configuration for the HTML output.
 /// @param password_callback Callback to get the password for encrypted files.
 /// @return HTML output.
-[[deprecated]]
-Html translate(const File &file, const std::string &output_path,
-               const HtmlConfig &config,
-               const PasswordCallback &password_callback);
+[[deprecated]] Html translate(const File &file, const std::string &output_path,
+                              const HtmlConfig &config,
+                              const PasswordCallback &password_callback);
 /// @brief Translates a decoded file to HTML.
 ///
 /// @param file Decoded file to translate.
