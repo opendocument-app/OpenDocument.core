@@ -7,11 +7,13 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/open_strategy.hpp>
-#include <odr/internal/project_info.hpp>
 #include <odr/internal/resource.hpp>
 
 #include <fstream>
 
+#if defined(WITH_PDF2HTMLEX)
+#include <odr/internal/html/pdf2htmlEX_wrapper.hpp>
+#endif
 namespace odr {
 
 std::string OpenDocumentReader::version() noexcept {
@@ -244,6 +246,14 @@ Html OpenDocumentReader::html(const PdfFile &pdf_file,
                               const HtmlConfig &config) {
   return html::translate(pdf_file, output_path, config);
 }
+
+#if defined(WITH_PDF2HTMLEX)
+Html OpenDocumentReader::pdf2htmlEX(const PdfFile &pdf_file,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
+  return internal::html::pdf2htmlEX_wrapper(pdf_file, output_path, config);
+}
+#endif
 
 void OpenDocumentReader::edit(const Document &document, const char *diff) {
   html::edit(document, diff);

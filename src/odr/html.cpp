@@ -9,11 +9,7 @@
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/filesystem.hpp>
 #include <odr/internal/html/image_file.hpp>
-#if defined(WITH_PDF2HTMLEX)
-#include <odr/internal/html/pdf2htmlEX_wrapper.hpp>
-#else
 #include <odr/internal/html/pdf_file.hpp>
-#endif
 #include <odr/internal/html/text_file.hpp>
 
 #include <filesystem>
@@ -117,11 +113,7 @@ Html html::translate(const Document &document, const std::string &output_path,
 Html html::translate(const PdfFile &pdf_file, const std::string &output_path,
                      const HtmlConfig &config) {
   fs::create_directories(output_path);
-#if defined(WITH_PDF2HTMLEX)
-  return internal::html::pdf2htmlEX_wrapper(pdf_file, output_path, config);
-#else
   return internal::html::translate_pdf_file(pdf_file, output_path, config);
-#endif
 }
 
 void html::edit(const Document &document, const char *diff) {

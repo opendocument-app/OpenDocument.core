@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <odr/internal/project_info.hpp>
 
 namespace odr {
 enum class FileType;
@@ -138,6 +139,18 @@ public:
   [[nodiscard]] static Html html(const PdfFile &pdf_file,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
+
+#if defined(WITH_PDF2HTMLEX)
+  /// @brief Translates a PDF file to HTML using pdf2htmlEX.
+  ///
+  /// @param pdf_file PDF file to translate.
+  /// @param output_path Path to save the HTML output.
+  /// @param config Configuration for the HTML output.
+  /// @return HTML output.
+  [[nodiscard]] static Html pdf2htmlEX(const PdfFile &pdf_file,
+                                       const std::string &output_path,
+                                       const HtmlConfig &config);
+#endif
 
   /// @brief Edit a document.
   /// @param document The document.
