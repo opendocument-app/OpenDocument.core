@@ -25,8 +25,8 @@ Html wvWare_wrapper(const File &file, const std::string &output_path,
   }
 
   // @TODO: getenv()
-//  s_WVDATADIR = NULL;
-//  s_HTMLCONFIG = NULL;
+  //  s_WVDATADIR = NULL;
+  //  s_HTMLCONFIG = NULL;
 
   auto output_file_path = output_path + "/document.html";
 
