@@ -8,14 +8,13 @@
 
 extern "C" {
 int convert(char *inputFile, char *outputDir, const char *password);
-int no_graphics = 1;
-int documentId = 0;
-
-char *s_WVDATADIR = NULL;
-char *s_HTMLCONFIG = NULL;
+extern int no_graphics;
+extern int documentId;
+extern char *s_WVDATADIR;
+extern char *s_HTMLCONFIG;
 }
 
-namespace odr::internal {
+namespace odr::internal::html {
 
 Html wvWare_wrapper(const File &file, const std::string &output_path,
                     const HtmlConfig &config) {
@@ -61,4 +60,4 @@ Html wvWare_wrapper(const File &file, const std::string &output_path,
       FileType::legacy_word_document, config, {{"document", output_file_path}}};
 }
 
-} // namespace odr::internal
+} // namespace odr::internal::html

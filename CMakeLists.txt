@@ -211,8 +211,7 @@ if(WITH_PDF2HTMLEX)
 endif(WITH_PDF2HTMLEX)
 if(WITH_WVWARE)
     find_package(wvware REQUIRED)
-    # target "meta" errors out if wvware is linked privately
-    target_link_libraries(odr PUBLIC wvware::wvware)
+    target_link_libraries(odr PRIVATE wvware::wvware)
 endif(WITH_WVWARE)
 
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")

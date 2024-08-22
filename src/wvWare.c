@@ -48,9 +48,10 @@
 #define wvTrace( args )
 #endif
 
-extern char *s_WVDATADIR;
-extern char *s_HTMLCONFIG;
-extern int documentId;
+char *s_WVDATADIR = NULL;
+char *s_HTMLCONFIG = NULL;
+int documentId = 0;
+
 #define static_reinit( variable, defaultValue ) { \
   static int staticVarValue = 0; \
   if (staticVarValue != documentId) { \
