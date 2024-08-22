@@ -8,7 +8,11 @@
 
 extern "C" {
 int convert(char *inputFile, char *outputDir, const char *password);
-int no_graphics;
+int no_graphics = 1;
+int documentId = 0;
+
+char *s_WVDATADIR = NULL;
+char *s_HTMLCONFIG = NULL;
 }
 
 namespace odr::internal {
@@ -20,15 +24,20 @@ Html wvWare_wrapper(const File &file, const std::string &output_path,
     throw FileNotFound();
   }
 
+  // @TODO: getenv()
+//  s_WVDATADIR = NULL;
+//  s_HTMLCONFIG = NULL;
+
   auto output_file_path = output_path + "/document.html";
 
   char *input_file_path = strdup(disk_path->c_str());
   char *output_dir = strdup(output_path.c_str());
 
-  no_graphics = 1;
-
   g_htmlOutputFileHandle = fopen(output_file_path.c_str(), "w");
 
+  documentId++;
+
+  // @TODO: password
   std::string password;
   int retVal = convert(input_file_path, output_dir, password.c_str());
   free(output_dir);

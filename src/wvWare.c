@@ -17,9 +17,7 @@
  * 02111-1307, USA.
  */
 
-//#ifdef HAVE_CONFIG_H
 #include <wv/config.h>
-//#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,12 +48,6 @@
 #define wvTrace( args )
 #endif
 
-/* strdup isn't declared in <string.h> for `gcc -ansi'; declare it here */
-extern char *strdup (const char *);
-
-extern char *str_copy(char *d, size_t n, char *s);
-extern char *str_append(char *d, size_t n, char *s);
-
 extern char *s_WVDATADIR;
 extern char *s_HTMLCONFIG;
 extern int documentId;
@@ -67,7 +59,18 @@ extern int documentId;
   } \
 }
 
-extern char * strdup_and_append_twice(const char * a, const char * b, const char * c);
+char *strdup_and_append_twice(const char *a, const char *b, const char *c) {
+  const size_t szA = strlen(a);
+  const size_t szB = strlen(b);
+  const size_t szC = strlen(c);
+
+  char *buf = malloc(szA + szB + szC + 1);
+  strcpy(buf, a);
+  strcpy(buf + szA, b);
+  strcpy(buf + szA + szB, c);
+  buf[szA + szB + szC] = '\0';
+  return buf;
+}
 
 /*
 Released under GPL, written by Caolan.McNamara@ul.ie.
