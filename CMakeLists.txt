@@ -231,7 +231,7 @@ if (ODR_CLANG_TIDY)
 endif ()
 
 install(
-        DIRECTORY src/
+        DIRECTORY src/ ${CMAKE_CURRENT_BINARY_DIR}/src/
         DESTINATION include/
         FILES_MATCHING PATTERN "*.hpp"
 )
