@@ -10,8 +10,6 @@ extern "C" {
 int convert(char *inputFile, char *outputDir, const char *password);
 extern int no_graphics;
 extern int documentId;
-extern char *s_WVDATADIR;
-extern char *s_HTMLCONFIG;
 }
 
 namespace odr::internal::html {

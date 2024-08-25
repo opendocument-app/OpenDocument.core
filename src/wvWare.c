@@ -27,8 +27,6 @@
 #include <wv/wv.h>
 #include "getopt.h"
 
-#include <wvWare.h>
-
 #ifdef __ANDROID_API__
 #include <android/log.h>
 #define ParenthesesStripper(...) __VA_ARGS__
@@ -1748,15 +1746,6 @@ myCharProc (wvParseStruct * ps, U16 eachchar, U8 chartype, U16 lid)
     return (0);
 }
 
-const char *get_data_dir()
-{
-  const char *data_dir = getenv("WVDATADIR");
-  if (NULL == data_dir) {
-    data_dir = WVDATADIR;
-  }
-  return data_dir;
-}
-
 int
 wvOpenConfig (state_data *myhandle,char *config)
 {
@@ -1770,21 +1759,30 @@ wvOpenConfig (state_data *myhandle,char *config)
 
     if(tmp == NULL)
     {
+        const char *wv_data_dir = getenv("WVDATADIR");
+        if (NULL == wv_data_dir) {
+          wvError (("Env var WVDATADIR unset!"));
+          return 0;
+        }
         static char * buf = NULL;
         if (NULL != buf) {
           free(buf);
         }
-	      buf = strdup_and_append_twice(get_data_dir(), "/", config);
+        buf = strdup_and_append_twice(wv_data_dir, "/", config);
 	config = buf;
 	tmp = fopen(config, "rb");
     }
 
     if (tmp == NULL)
       {
-          char * html_config = strdup_and_append_twice(get_data_dir(), "/", "wvHtml.xml");
+          const char *wv_data_dir = getenv("WVDATADIR");
+          if (NULL == wv_data_dir) {
+            wvError (("Env var WVDATADIR unset!"));
+            return 0;
+          }
+          char * html_config = strdup_and_append_twice(wv_data_dir, "/", "wvHtml.xml");
 	  if (i)
-	      wvError (
-		       ("Attempt to open %s failed, using %s\n", config, html_config));
+	      wvError (("Attempt to open %s failed, using %s\n", config, html_config));
 	  config = html_config;
 	  tmp = fopen (config, "rb");
       }
