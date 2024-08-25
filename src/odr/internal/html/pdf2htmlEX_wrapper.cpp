@@ -12,7 +12,8 @@ namespace odr::internal {
 
 Html html::pdf2htmlEX_wrapper(const std::string &input_path,
                               const std::string &output_path,
-                              const HtmlConfig &config) {
+                              const HtmlConfig &config,
+                              std::optional<std::string> &password) {
   pdf2htmlEX::pdf2htmlEX pdf2htmlEX;
 
   pdf2htmlEX.setInputFilename(input_path);
@@ -24,10 +25,10 @@ Html html::pdf2htmlEX_wrapper(const std::string &input_path,
   pdf2htmlEX.setProcessOutline(false);
   pdf2htmlEX.setProcessAnnotation(true);
 
-  // @TODO:
-  //  if (options.password != null) {
-  //    pdf2htmlEX.setOwnerPassword(options.password).setUserPassword(options.password);
-  //  }
+  if (password.has_value()) {
+    pdf2htmlEX.setOwnerPassword(password.value());
+    pdf2htmlEX.setUserPassword(password.value());
+  }
 
   try {
     pdf2htmlEX.convert();

@@ -17,7 +17,8 @@ extern char *s_HTMLCONFIG;
 namespace odr::internal::html {
 
 Html wvWare_wrapper(const std::string &input_path,
-                    const std::string &output_path, const HtmlConfig &config) {
+                    const std::string &output_path, const HtmlConfig &config,
+                    std::optional<std::string> &password) {
   auto output_file_path = output_path + "/document.html";
 
   char *input_file_path = strdup(input_path.c_str());
@@ -27,9 +28,11 @@ Html wvWare_wrapper(const std::string &input_path,
 
   documentId++;
 
-  // @TODO: password
-  std::string password;
-  int retVal = convert(input_file_path, output_dir, password.c_str());
+  std::string password_value;
+  if (password.has_value()) {
+    password_value = password.value();
+  }
+  int retVal = convert(input_file_path, output_dir, password_value.c_str());
   free(output_dir);
   free(input_file_path);
   fclose(g_htmlOutputFileHandle);

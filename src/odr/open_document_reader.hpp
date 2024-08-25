@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <odr/internal/project_info.hpp>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -149,7 +150,8 @@ public:
   /// @return HTML output.
   [[nodiscard]] static Html pdf2htmlEX(const std::string &input_path,
                                        const std::string &output_path,
-                                       const HtmlConfig &config);
+                                       const HtmlConfig &config,
+                                       std::optional<std::string> &password);
 #endif
 
 #if defined(WITH_WVWARE)
@@ -161,7 +163,8 @@ public:
   /// @return HTML output.
   [[nodiscard]] static Html wvHtml(const std::string &input_path,
                                    const std::string &output_path,
-                                   const HtmlConfig &config);
+                                   const HtmlConfig &config,
+                                   std::optional<std::string> &password);
 #endif
 
   /// @brief Edit a document.
