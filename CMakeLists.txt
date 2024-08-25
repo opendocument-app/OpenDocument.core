@@ -190,11 +190,11 @@ if(WITH_WVWARE)
 endif(WITH_WVWARE)
 
 add_library(odr ${ODR_SOURCE_FILES})
-target_include_directories(odr PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/src)
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
 target_include_directories(odr
         PUBLIC
         src
+        ${CMAKE_CURRENT_BINARY_DIR}/src
 )
 target_link_libraries(odr
         PRIVATE
@@ -234,8 +234,8 @@ endif ()
 
 install(
         DIRECTORY src/ ${CMAKE_CURRENT_BINARY_DIR}/src/
-        DESTINATION include/
-        FILES_MATCHING PATTERN "*.hpp"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/
+        FILES_MATCHING REGEX ".*\\.(h|hpp)$"
 )
 install(
         TARGETS odr meta translate back_translate
