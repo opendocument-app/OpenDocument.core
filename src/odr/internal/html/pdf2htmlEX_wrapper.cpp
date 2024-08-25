@@ -10,16 +10,12 @@
 
 namespace odr::internal {
 
-Html html::pdf2htmlEX_wrapper(const PdfFile &pdf_file,
+Html html::pdf2htmlEX_wrapper(const std::string &input_path,
                               const std::string &output_path,
                               const HtmlConfig &config) {
   pdf2htmlEX::pdf2htmlEX pdf2htmlEX;
 
-  auto disk_path = pdf_file.file().disk_path();
-  if (!disk_path.has_value()) {
-    throw FileNotFound();
-  }
-  pdf2htmlEX.setInputFilename(disk_path.value());
+  pdf2htmlEX.setInputFilename(input_path);
   pdf2htmlEX.setDestinationDir(output_path);
   auto output_file_name = "document.html";
   pdf2htmlEX.setOutputFilename(output_file_name);

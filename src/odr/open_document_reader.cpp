@@ -252,18 +252,18 @@ Html OpenDocumentReader::html(const PdfFile &pdf_file,
 }
 
 #if defined(WITH_PDF2HTMLEX)
-Html OpenDocumentReader::pdf2htmlEX(const PdfFile &pdf_file,
+Html OpenDocumentReader::pdf2htmlEX(const std::string &input_path,
                                     const std::string &output_path,
                                     const HtmlConfig &config) {
-  return internal::html::pdf2htmlEX_wrapper(pdf_file, output_path, config);
+  return internal::html::pdf2htmlEX_wrapper(input_path, output_path, config);
 }
 #endif
 
 #if defined(WITH_WVWARE)
-Html OpenDocumentReader::wvHtml(const File &file,
+Html OpenDocumentReader::wvHtml(const std::string &input_path,
                                 const std::string &output_path,
                                 const HtmlConfig &config) {
-  return internal::html::wvWare_wrapper(file, output_path, config);
+  return internal::html::wvWare_wrapper(input_path, output_path, config);
 }
 #endif
 

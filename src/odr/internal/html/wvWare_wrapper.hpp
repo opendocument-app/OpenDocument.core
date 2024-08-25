@@ -12,7 +12,7 @@ class Html;
 
 namespace odr::internal::html {
 
-Html wvWare_wrapper(const File &file, const std::string &output_path,
+Html wvWare_wrapper(const std::string &input_path, const std::string &output_path,
                     const HtmlConfig &config);
 
 }

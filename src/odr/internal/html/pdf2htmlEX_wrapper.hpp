@@ -12,7 +12,7 @@ class Html;
 
 namespace odr::internal::html {
 
-Html pdf2htmlEX_wrapper(const PdfFile &pdf_file, const std::string &output_path,
+Html pdf2htmlEX_wrapper(const std::string &input_path, const std::string &output_path,
                         const HtmlConfig &config);
 
 }

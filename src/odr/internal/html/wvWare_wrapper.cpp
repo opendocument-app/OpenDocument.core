@@ -16,20 +16,11 @@ extern char *s_HTMLCONFIG;
 
 namespace odr::internal::html {
 
-Html wvWare_wrapper(const File &file, const std::string &output_path,
+Html wvWare_wrapper(const std::string &input_path, const std::string &output_path,
                     const HtmlConfig &config) {
-  auto disk_path = file.disk_path();
-  if (!disk_path.has_value()) {
-    throw FileNotFound();
-  }
-
-  // @TODO: getenv()
-  //  s_WVDATADIR = NULL;
-  //  s_HTMLCONFIG = NULL;
-
   auto output_file_path = output_path + "/document.html";
 
-  char *input_file_path = strdup(disk_path->c_str());
+  char *input_file_path = strdup(input_path.c_str());
   char *output_dir = strdup(output_path.c_str());
 
   g_htmlOutputFileHandle = fopen(output_file_path.c_str(), "w");

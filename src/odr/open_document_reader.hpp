@@ -143,23 +143,23 @@ public:
 #if defined(WITH_PDF2HTMLEX)
   /// @brief Translates a PDF file to HTML using pdf2htmlEX.
   ///
-  /// @param pdf_file PDF file to translate.
+  /// @param input_path Path to the file to translate.
   /// @param output_path Path to save the HTML output.
   /// @param config Configuration for the HTML output.
   /// @return HTML output.
-  [[nodiscard]] static Html pdf2htmlEX(const PdfFile &pdf_file,
+  [[nodiscard]] static Html pdf2htmlEX(const std::string &input_path,
                                        const std::string &output_path,
                                        const HtmlConfig &config);
 #endif
 
 #if defined(WITH_WVWARE)
-  /// @brief Translates a file to HTML.
+  /// @brief Translates a doc file to HTML using wvWare.
   ///
-  /// @param file File to translate.
+  /// @param input_path Path to the file to translate.
   /// @param output_path Path to save the HTML output.
   /// @param config Configuration for the HTML output.
   /// @return HTML output.
-  [[nodiscard]] static Html wvHtml(const File &file,
+  [[nodiscard]] static Html wvHtml(const std::string &input_path,
                                    const std::string &output_path,
                                    const HtmlConfig &config);
 #endif
