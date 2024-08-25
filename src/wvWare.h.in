@@ -1,0 +1,7 @@
+#ifndef WVWARE_H
+#define WVWARE_H
+
+#cmakedefine WITH_WVWARE 1
+#cmakedefine WVDATADIR "@WVDATADIR@"
+
+#endif //WVWARE_H

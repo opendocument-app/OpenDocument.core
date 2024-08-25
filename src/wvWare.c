@@ -27,6 +27,8 @@
 #include <wv/wv.h>
 #include "getopt.h"
 
+#include <wvWare.h>
+
 #ifdef __ANDROID_API__
 #include <android/log.h>
 #define ParenthesesStripper(...) __VA_ARGS__
@@ -48,8 +50,6 @@
 #define wvTrace( args )
 #endif
 
-char *s_WVDATADIR = NULL;
-char *s_HTMLCONFIG = NULL;
 int documentId = 0;
 
 #define static_reinit( variable, defaultValue ) { \
@@ -1748,6 +1748,15 @@ myCharProc (wvParseStruct * ps, U16 eachchar, U8 chartype, U16 lid)
     return (0);
 }
 
+const char *get_data_dir()
+{
+  const char *data_dir = getenv("WVDATADIR");
+  if (NULL == data_dir) {
+    data_dir = WVDATADIR;
+  }
+  return data_dir;
+}
+
 int
 wvOpenConfig (state_data *myhandle,char *config)
 {
@@ -1765,18 +1774,18 @@ wvOpenConfig (state_data *myhandle,char *config)
         if (NULL != buf) {
           free(buf);
         }
-	      buf = strdup_and_append_twice(s_WVDATADIR, "/", config);
+	      buf = strdup_and_append_twice(get_data_dir(), "/", config);
 	config = buf;
 	tmp = fopen(config, "rb");
     }
 
     if (tmp == NULL)
       {
+          char * html_config = strdup_and_append_twice(get_data_dir(), "/", "wvHtml.xml");
 	  if (i)
 	      wvError (
-		       ("Attempt to open %s failed, using %s\n", config,
-			s_HTMLCONFIG));
-	  config = s_HTMLCONFIG;
+		       ("Attempt to open %s failed, using %s\n", config, html_config));
+	  config = html_config;
 	  tmp = fopen (config, "rb");
       }
     myhandle->path = config;

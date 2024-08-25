@@ -6,6 +6,6 @@ const char *version() noexcept;
 } // namespace odr::internal::project_info
 
 #cmakedefine WITH_PDF2HTMLEX 1
-#cmakedefine WITH_WVWARE 1
+#include <wvWare.h>
 
 #endif // ODR_INTERNAL_PROJECT_INFO_HPP

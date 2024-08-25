@@ -42,6 +42,8 @@ find_package(utf8cpp REQUIRED)
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
 configure_file("src/odr/internal/project_info.hpp.in" "src/odr/internal/project_info.hpp")
 
+configure_file("src/wvWare.h.in" "src/wvWare.h")
+
 set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp")
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
