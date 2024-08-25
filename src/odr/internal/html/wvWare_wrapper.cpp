@@ -16,8 +16,8 @@ extern char *s_HTMLCONFIG;
 
 namespace odr::internal::html {
 
-Html wvWare_wrapper(const std::string &input_path, const std::string &output_path,
-                    const HtmlConfig &config) {
+Html wvWare_wrapper(const std::string &input_path,
+                    const std::string &output_path, const HtmlConfig &config) {
   auto output_file_path = output_path + "/document.html";
 
   char *input_file_path = strdup(input_path.c_str());
