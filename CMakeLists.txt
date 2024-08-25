@@ -232,8 +232,8 @@ endif ()
 
 install(
         DIRECTORY src/ ${CMAKE_CURRENT_BINARY_DIR}/src/
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/
-        FILES_MATCHING PATTERN ".hpp"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.hpp"
 )
 install(
         TARGETS odr meta translate back_translate
