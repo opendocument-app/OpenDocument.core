@@ -25,8 +25,6 @@ class OpenDocumentCoreConan(ConanFile):
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_pdf2htmlEX": True,
-        "with_wvWare": True,
     }
 
     def requirements(self):
@@ -54,10 +52,11 @@ class OpenDocumentCoreConan(ConanFile):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-            # @TODO: ideally Windows should just default_options['with_pdf2htmlEX'] = False
-            # But by the time config_options() is executed, default_options is already done parsed.
-            del self.options.with_pdf2htmlEX
-            del self.options.with_wvWare
+            self.options.with_pdf2htmlEX = False
+            self.options.with_wvWare = False
+        else:
+            self.options.with_pdf2htmlEX = True
+            self.options.with_wvWare = True
 
     def configure(self):
         if self.options.shared:
