@@ -24,13 +24,11 @@ Html wvWare_wrapper(const std::string &input_path,
 
   g_htmlOutputFileHandle = fopen(output_file_path.c_str(), "w");
 
-  documentId++;
-
   std::string password_value;
   if (password.has_value()) {
     password_value = password.value();
   }
-  int retVal = convert(input_file_path, output_dir, password_value.c_str());
+  int retVal = wvHtml_convert(input_file_path, output_dir, password_value.c_str());
   free(output_dir);
   free(input_file_path);
   fclose(g_htmlOutputFileHandle);
