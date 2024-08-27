@@ -6,12 +6,6 @@
 #include <unistd.h>
 #include <wv/wv.h>
 
-extern "C" {
-int convert(char *inputFile, char *outputDir, const char *password);
-extern int no_graphics;
-extern int documentId;
-}
-
 namespace odr::internal::html {
 
 Html wvWare_wrapper(const std::string &input_path,
