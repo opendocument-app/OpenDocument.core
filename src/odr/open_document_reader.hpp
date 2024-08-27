@@ -2,8 +2,6 @@
 #define ODR_OPEN_DOCUMENT_READER_HPP
 
 #include <functional>
-#include <odr/internal/project_info.hpp>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -140,32 +138,6 @@ public:
   [[nodiscard]] static Html html(const PdfFile &pdf_file,
                                  const std::string &output_path,
                                  const HtmlConfig &config);
-
-#if defined(WITH_PDF2HTMLEX)
-  /// @brief Translates a PDF file to HTML using pdf2htmlEX.
-  ///
-  /// @param input_path Path to the file to translate.
-  /// @param output_path Path to save the HTML output.
-  /// @param config Configuration for the HTML output.
-  /// @return HTML output.
-  [[nodiscard]] static Html pdf2htmlEX(const std::string &input_path,
-                                       const std::string &output_path,
-                                       const HtmlConfig &config,
-                                       std::optional<std::string> &password);
-#endif
-
-#if defined(WITH_WVWARE)
-  /// @brief Translates a doc file to HTML using wvWare.
-  ///
-  /// @param input_path Path to the file to translate.
-  /// @param output_path Path to save the HTML output.
-  /// @param config Configuration for the HTML output.
-  /// @return HTML output.
-  [[nodiscard]] static Html wvHtml(const std::string &input_path,
-                                   const std::string &output_path,
-                                   const HtmlConfig &config,
-                                   std::optional<std::string> &password);
-#endif
 
   /// @brief Edit a document.
   /// @param document The document.

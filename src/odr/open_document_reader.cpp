@@ -7,16 +7,10 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/open_strategy.hpp>
+#include <odr/internal/project_info.hpp>
 #include <odr/internal/resource.hpp>
 
 #include <fstream>
-
-#if defined(WITH_PDF2HTMLEX)
-#include <odr/internal/html/pdf2htmlEX_wrapper.hpp>
-#endif
-#if defined(WITH_WVWARE)
-#include <odr/internal/html/wvWare_wrapper.hpp>
-#endif
 
 namespace odr {
 
@@ -250,26 +244,6 @@ Html OpenDocumentReader::html(const PdfFile &pdf_file,
                               const HtmlConfig &config) {
   return html::translate(pdf_file, output_path, config);
 }
-
-#if defined(WITH_PDF2HTMLEX)
-Html OpenDocumentReader::pdf2htmlEX(const std::string &input_path,
-                                    const std::string &output_path,
-                                    const HtmlConfig &config,
-                                    std::optional<std::string> &password) {
-  return internal::html::pdf2htmlEX_wrapper(input_path, output_path, config,
-                                            password);
-}
-#endif
-
-#if defined(WITH_WVWARE)
-Html OpenDocumentReader::wvHtml(const std::string &input_path,
-                                const std::string &output_path,
-                                const HtmlConfig &config,
-                                std::optional<std::string> &password) {
-  return internal::html::wvWare_wrapper(input_path, output_path, config,
-                                        password);
-}
-#endif
 
 void OpenDocumentReader::edit(const Document &document, const char *diff) {
   html::edit(document, diff);
