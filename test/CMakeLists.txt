@@ -12,6 +12,11 @@ if(WITH_PDF2HTMLEX)
             "src/pdf2htmlEX_wrapper_test.cpp"
     )
 endif(WITH_PDF2HTMLEX)
+if(WITH_WVWARE)
+    LIST(APPEND ODR_TEST_SOURCE_FILES
+            "src/wvWare_wrapper_test.cpp"
+    )
+endif(WITH_WVWARE)
 add_executable(odr_test
         "src/test_util.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/src/test_constants.cpp"
@@ -74,4 +79,8 @@ target_link_libraries(odr_test
 if(WITH_PDF2HTMLEX)
     target_link_libraries(odr_test PRIVATE pdf2htmlex::pdf2htmlex)
 endif(WITH_PDF2HTMLEX)
+if(WITH_WVWARE)
+    target_link_libraries(odr_test PRIVATE wvware::wvware)
+endif(WITH_WVWARE)
+
 gtest_add_tests(TARGET odr_test)
