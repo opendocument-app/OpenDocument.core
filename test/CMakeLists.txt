@@ -6,6 +6,12 @@ set(ODR_TEST_DATA_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/data")
 configure_file("src/test_constants.cpp.in" "src/test_constants.cpp")
 
 enable_testing()
+
+if(WITH_PDF2HTMLEX)
+    LIST(APPEND ODR_TEST_SOURCE_FILES
+            "src/pdf2htmlEX_wrapper_test.cpp"
+    )
+endif(WITH_PDF2HTMLEX)
 add_executable(odr_test
         "src/test_util.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/src/test_constants.cpp"
@@ -43,6 +49,8 @@ add_executable(odr_test
 
         "src/internal/zip/miniz_test.cpp"
         "src/internal/zip/zip_archive_test.cpp"
+
+        ${ODR_TEST_SOURCE_FILES}
 )
 target_include_directories(odr_test
         PRIVATE
@@ -62,4 +70,8 @@ target_link_libraries(odr_test
 
         odr
 )
+
+if(WITH_PDF2HTMLEX)
+    target_link_libraries(odr_test PRIVATE pdf2htmlex::pdf2htmlex)
+endif(WITH_PDF2HTMLEX)
 gtest_add_tests(TARGET odr_test)
