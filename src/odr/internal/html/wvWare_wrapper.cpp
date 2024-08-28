@@ -3,14 +3,25 @@
 #include <odr/html.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/html/wvWare_wrapper.hpp>
+#include <odr/internal/project_info.hpp>
 #include <unistd.h>
 #include <wv/wv.h>
 
 namespace odr::internal::html {
 
+static void ensure_env_vars() {
+  static const char *wvdatadir = getenv("WVDATADIR");
+  if (nullptr == wvdatadir) {
+    wvdatadir = WVDATADIR;
+    setenv("WVDATADIR", wvdatadir, 0);
+  }
+}
+
 Html wvWare_wrapper(const std::string &input_path,
                     const std::string &output_path, const HtmlConfig &config,
                     std::optional<std::string> &password) {
+  ensure_env_vars();
+
   auto output_file_path = output_path + "/document.html";
 
   char *input_file_path = strdup(input_path.c_str());
@@ -18,12 +29,11 @@ Html wvWare_wrapper(const std::string &input_path,
 
   g_htmlOutputFileHandle = fopen(output_file_path.c_str(), "w");
 
-  std::string password_value;
+  std::string pw;
   if (password.has_value()) {
-    password_value = password.value();
+    pw = password.value();
   }
-  int retVal =
-      wvHtml_convert(input_file_path, output_dir, password_value.c_str());
+  int retVal = wvHtml_convert(input_file_path, output_dir, pw.c_str());
   free(output_dir);
   free(input_file_path);
   fclose(g_htmlOutputFileHandle);

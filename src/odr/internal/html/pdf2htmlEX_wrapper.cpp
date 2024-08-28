@@ -8,12 +8,36 @@
 
 #include <pdf2htmlEX.h>
 
+#include <odr/internal/project_info.hpp>
+
 namespace odr::internal {
+
+static void ensure_env_vars() {
+  static const char *pdf2htmlEX_data_dir = getenv("PDF2HTMLEX_DATA_DIR");
+  if (nullptr == pdf2htmlEX_data_dir) {
+    pdf2htmlEX_data_dir = PDF2HTMLEX_DATA_DIR;
+    setenv("PDF2HTMLEX_DATA_DIR", pdf2htmlEX_data_dir, 0);
+  }
+
+  static const char *poppler_data_dir = getenv("POPPLER_DATA_DIR");
+  if (nullptr == poppler_data_dir) {
+    poppler_data_dir = POPPLER_DATA_DIR;
+    setenv("POPPLER_DATA_DIR", poppler_data_dir, 0);
+  }
+
+  static const char *fontconfig_path = getenv("FONTCONFIG_PATH");
+  if (nullptr == fontconfig_path) {
+    fontconfig_path = FONTCONFIG_PATH;
+    setenv("FONTCONFIG_PATH", fontconfig_path, 0);
+  }
+}
 
 Html html::pdf2htmlEX_wrapper(const std::string &input_path,
                               const std::string &output_path,
                               const HtmlConfig &config,
                               std::optional<std::string> &password) {
+  ensure_env_vars();
+
   pdf2htmlEX::pdf2htmlEX pdf2htmlEX;
 
   pdf2htmlEX.setInputFilename(input_path);

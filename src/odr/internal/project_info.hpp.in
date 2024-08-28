@@ -6,6 +6,10 @@ const char *version() noexcept;
 } // namespace odr::internal::project_info
 
 #cmakedefine WITH_PDF2HTMLEX 1
+#cmakedefine PDF2HTMLEX_DATA_DIR "@PDF2HTMLEX_DATA_DIR@"
+#cmakedefine POPPLER_DATA_DIR "@POPPLER_DATA_DIR@"
+#cmakedefine FONTCONFIG_PATH "@FONTCONFIG_PATH@"
 #cmakedefine WITH_WVWARE 1
+#cmakedefine WVDATADIR "@WVDATADIR@"
 
 #endif // ODR_INTERNAL_PROJECT_INFO_HPP

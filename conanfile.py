@@ -3,6 +3,8 @@ import os
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
+from conan.tools.env import Environment
+from conan.tools.env.environment import EnvVars
 from conan.tools.files import copy
 
 
@@ -68,6 +70,18 @@ class OpenDocumentCoreConan(ConanFile):
         tc.variables["ODR_TEST"] = False
         tc.variables["WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX", False)
         tc.variables["WITH_WVWARE"] = self.options.get_safe("with_wvWare", False)
+
+        # Get runenv info, exported by package_info() of dependencies
+        # We need to obtain PDF2HTMLEX_DATA_DIR, POPPLER_DATA_DIR, FONTCONFIG_PATH and WVDATADIR
+        runenv_info = Environment()
+        deps = self.dependencies.host.topological_sort
+        deps = [dep for dep in reversed(deps.values())]
+        for dep in deps:
+            runenv_info.compose_env(dep.runenv_info)
+        envvars = runenv_info.vars(self)
+        for v in ["PDF2HTMLEX_DATA_DIR", "POPPLER_DATA_DIR", "FONTCONFIG_PATH", "WVDATADIR"]:
+            tc.variables[v] = envvars.get(v)
+
         tc.generate()
 
         deps = CMakeDeps(self)
