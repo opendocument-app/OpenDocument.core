@@ -44,8 +44,8 @@ TEST_P(wvWareWrapperTests, html) {
   fs::create_directories(output_path);
   HtmlConfig config;
   std::optional<std::string> password;
-  Html html = odr::internal::html::wvWare_wrapper(
-      test_file.path, output_path, config, password);
+  Html html = odr::internal::html::wvWare_wrapper(test_file.path, output_path,
+                                                  config, password);
 
   for (const HtmlPage &html_page : html.pages()) {
     EXPECT_TRUE(fs::is_regular_file(html_page.path));
