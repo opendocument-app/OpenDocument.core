@@ -56,7 +56,7 @@ class OpenDocumentCoreConan(ConanFile):
             del self.options.fPIC
 
         self.options.with_pdf2htmlEX = self.settings.os not in ["Windows", "Macos"]
-        self.options.with_wvWare = self.settings.os != "Windows"
+        self.options.with_wvWare = self.settings.os not in ["Windows", "Macos"]
 
     def configure(self):
         if self.options.shared:
