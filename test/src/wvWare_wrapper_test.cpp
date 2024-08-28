@@ -41,6 +41,11 @@ TEST_P(wvWareWrapperTests, html) {
     GTEST_SKIP();
   }
 
+  // Password protected files are problematic on wvWare
+  if (test_file.password_encrypted) {
+    GTEST_SKIP();
+  }
+
   fs::create_directories(output_path);
   HtmlConfig config;
   std::optional<std::string> password;
