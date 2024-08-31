@@ -48,6 +48,10 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
   if (test_file.password_encrypted) {
     password = test_file.password;
   }
+  // @TODO: why does test_file.password_encrypted == false for this file??
+  else if (test_file.path.ends_with("encrypted_fontfile3_opentype.pdf")) {
+    password = "sample-user-password";
+  }
 
   Html html = odr::internal::html::pdf2htmlEX_wrapper(
       test_file.path, output_path, config, password);
