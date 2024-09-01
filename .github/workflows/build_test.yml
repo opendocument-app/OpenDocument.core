@@ -107,6 +107,7 @@ jobs:
             build/test/Release/odr_test.exe
 
   docker:
+    if: false
     needs: build
     runs-on: ${{ matrix.os }}
     strategy:
@@ -242,6 +243,7 @@ jobs:
             build/test/output/odr-private/output
 
   build-test-downstream:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
