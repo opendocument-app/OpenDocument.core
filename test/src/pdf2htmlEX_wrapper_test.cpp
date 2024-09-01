@@ -37,11 +37,6 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
 
   std::cout << test_file.path << " to " << output_path << std::endl;
 
-  if (!util::string::ends_with(test_file.path, ".pdf") &&
-      test_file.type != FileType::portable_document_format) {
-    GTEST_SKIP();
-  }
-
   fs::create_directories(output_path);
   HtmlConfig config;
   std::optional<std::string> password;
@@ -83,8 +78,9 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
   std::cerr << "End of test" << std::endl << std::flush;
 }
 
-INSTANTIATE_TEST_SUITE_P(all_test_files, pdf2htmlEXWrapperTests,
-                         testing::ValuesIn(TestData::test_file_paths()),
+INSTANTIATE_TEST_SUITE_P(pdf2htmlEX_test_files, pdf2htmlEXWrapperTests,
+                         testing::ValuesIn(TestData::test_file_paths(
+                             FileType::portable_document_format)),
                          [](const ::testing::TestParamInfo<std::string> &info) {
                            std::string path = info.param;
                            internal::util::string::replace_all(path, "/", "_");

@@ -122,6 +122,10 @@ std::vector<std::string> TestData::test_file_paths() {
   return instance_().test_file_paths_();
 }
 
+std::vector<std::string> TestData::test_file_paths(FileType fileType) {
+  return instance_().test_file_paths_(fileType);
+}
+
 TestFile TestData::test_file(const std::string &path) {
   return instance_().test_file_(path);
 }
@@ -136,6 +140,17 @@ std::vector<std::string> TestData::test_file_paths_() const {
   std::vector<std::string> result;
   for (auto &&file : m_test_files) {
     result.push_back(file.first);
+  }
+  std::sort(std::begin(result), std::end(result));
+  return result;
+}
+
+std::vector<std::string> TestData::test_file_paths_(FileType fileType) const {
+  std::vector<std::string> result;
+  for (auto &&file : m_test_files) {
+    if (file.second.type == fileType) {
+      result.push_back(file.first);
+    }
   }
   std::sort(std::begin(result), std::end(result));
   return result;

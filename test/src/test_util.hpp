@@ -26,6 +26,7 @@ public:
   static std::string data_input_directory();
 
   static std::vector<std::string> test_file_paths();
+  static std::vector<std::string> test_file_paths(FileType);
   static TestFile test_file(const std::string &path);
   static std::string test_file_path(const std::string &path);
 
@@ -39,6 +40,7 @@ private:
 
   static TestData &instance_();
   std::vector<std::string> test_file_paths_() const;
+  std::vector<std::string> test_file_paths_(FileType) const;
   TestFile test_file_(const std::string &path) const;
 
   std::unordered_map<std::string, TestFile> m_test_files;
