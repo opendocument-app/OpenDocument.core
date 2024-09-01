@@ -83,6 +83,7 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
 
     throw e;
   }
+  std::cerr << "End of test" << std::endl << std::flush;
 }
 
 INSTANTIATE_TEST_SUITE_P(all_test_files, pdf2htmlEXWrapperTests,
