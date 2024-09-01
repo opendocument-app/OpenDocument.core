@@ -64,13 +64,15 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
       EXPECT_TRUE(fs::is_regular_file(html_page.path));
       EXPECT_LT(0, fs::file_size(html_page.path));
     }
-  } catch (const std::exception & e) {
-    std::cerr << test_file.path << std::endl << e.what() << std::endl << std::flush;
+  } catch (const std::exception &e) {
+    std::cerr << test_file.path << std::endl
+              << e.what() << std::endl
+              << std::flush;
 
 #ifdef __GNUC__
     void *array[10];
     int size = backtrace(array, 10);
-    char ** symbols = backtrace_symbols(array, size);
+    char **symbols = backtrace_symbols(array, size);
     for (int i = 0; i < size; i++) {
       std::cerr << symbols[i] << std::endl;
     }
