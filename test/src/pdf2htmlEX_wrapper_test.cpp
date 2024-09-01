@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <execinfo.h>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -62,7 +63,7 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
       EXPECT_LT(0, fs::file_size(html_page.path));
     }
   } catch (const std::exception & e) {
-    std::cerr << e.what() << std::endl << std::flush;
+    std::cerr << test_file.path << std::endl << e.what() << std::endl << std::flush;
 
     void *array[10];
     int size = backtrace(array, 10);
