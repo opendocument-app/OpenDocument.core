@@ -36,11 +36,6 @@ TEST_P(wvWareWrapperTests, html) {
 
   std::cout << test_file.path << " to " << output_path << std::endl;
 
-  if (!util::string::ends_with(test_file.path, ".doc") &&
-      test_file.type != FileType::legacy_word_document) {
-    GTEST_SKIP();
-  }
-
   // Password protected files are problematic on wvWare
   if (test_file.password_encrypted) {
     GTEST_SKIP();
@@ -58,8 +53,9 @@ TEST_P(wvWareWrapperTests, html) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(all_test_files, wvWareWrapperTests,
-                         testing::ValuesIn(TestData::test_file_paths()),
+INSTANTIATE_TEST_SUITE_P(wvWare_test_files, wvWareWrapperTests,
+                         testing::ValuesIn(TestData::test_file_paths(
+                             FileType::legacy_word_document)),
                          [](const ::testing::TestParamInfo<std::string> &info) {
                            std::string path = info.param;
                            internal::util::string::replace_all(path, "/", "_");
