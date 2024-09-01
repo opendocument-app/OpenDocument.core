@@ -20,9 +20,9 @@ jobs:
         include:
           - { os: ubuntu-24.04, compiler: clang-18 }
           - { os: ubuntu-24.04, compiler: gcc-14 }
-#          - { os: macos-13, compiler: clang-14 }
-#          - { os: macos-14, compiler: armv8-clang-14 }
-#          - { os: windows-2022, compiler: msvc-1940 }
+          - { os: macos-13, compiler: clang-14 }
+          - { os: macos-14, compiler: armv8-clang-14 }
+          - { os: windows-2022, compiler: msvc-1940 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -107,7 +107,6 @@ jobs:
             build/test/Release/odr_test.exe
 
   docker:
-    if: false
     needs: build
     runs-on: ${{ matrix.os }}
     strategy:
@@ -243,7 +242,6 @@ jobs:
             build/test/output/odr-private/output
 
   build-test-downstream:
-    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
