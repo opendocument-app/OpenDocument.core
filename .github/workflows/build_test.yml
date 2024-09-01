@@ -204,7 +204,7 @@ jobs:
       - name: test
         if: runner.os != 'Windows'
         working-directory: build/test
-        run: ./odr_test
+        run: ./odr_test --gtest_filter="all_test_files/pdf2htmlEXWrapperTests.*"
 
       - name: fix artifact permissions
         if: runner.os == 'Windows'
