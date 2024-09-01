@@ -1,9 +1,7 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
-#ifdef __GNUC__
 #include <execinfo.h>
-#endif
 #include <string>
 
 #include <gtest/gtest.h>
@@ -69,7 +67,6 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
               << e.what() << std::endl
               << std::flush;
 
-#ifdef __GNUC__
     void *array[10];
     int size = backtrace(array, 10);
     char **symbols = backtrace_symbols(array, size);
@@ -79,7 +76,6 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
     free(symbols);
     std::cerr << std::flush;
     sleep(2);
-#endif
 
     throw e;
   }
