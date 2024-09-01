@@ -17,21 +17,24 @@ static void ensure_env_vars() {
   if (nullptr == pdf2htmlEX_data_dir) {
     pdf2htmlEX_data_dir = PDF2HTMLEX_DATA_DIR;
     setenv("PDF2HTMLEX_DATA_DIR", pdf2htmlEX_data_dir, 0);
-    std::cout << "PDF2HTMLEX_DATA_DIR set to " << getenv("PDF2HTMLEX_DATA_DIR") << std::endl;
+    std::cout << "PDF2HTMLEX_DATA_DIR set to " << getenv("PDF2HTMLEX_DATA_DIR")
+              << std::endl;
   }
 
   static const char *poppler_data_dir = getenv("POPPLER_DATA_DIR");
   if (nullptr == poppler_data_dir) {
     poppler_data_dir = POPPLER_DATA_DIR;
     setenv("POPPLER_DATA_DIR", poppler_data_dir, 0);
-    std::cout << "POPPLER_DATA_DIR set to " << getenv("POPPLER_DATA_DIR") << std::endl;
+    std::cout << "POPPLER_DATA_DIR set to " << getenv("POPPLER_DATA_DIR")
+              << std::endl;
   }
 
   static const char *fontconfig_path = getenv("FONTCONFIG_PATH");
   if (nullptr == fontconfig_path) {
     fontconfig_path = FONTCONFIG_PATH;
     setenv("FONTCONFIG_PATH", fontconfig_path, 0);
-    std::cout << "FONTCONFIG_PATH set to " << getenv("FONTCONFIG_PATH") << std::endl;
+    std::cout << "FONTCONFIG_PATH set to " << getenv("FONTCONFIG_PATH")
+              << std::endl;
   }
 }
 
