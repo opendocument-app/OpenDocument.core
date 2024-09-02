@@ -75,6 +75,12 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
               << std::flush;
     print_backtrace();
     throw e;
+  } catch (const std::string &e) {
+    std::cerr << "Exception in pdf2htmlEX_wrapper: " << std::endl
+              << e << std::endl
+              << std::flush;
+    print_backtrace();
+    throw e;
   } catch (...) {
     std::cerr << "Exception in pdf2htmlEX_wrapper!" << std::endl << std::flush;
     print_backtrace();
