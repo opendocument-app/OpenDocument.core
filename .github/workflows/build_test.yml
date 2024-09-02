@@ -97,6 +97,7 @@ jobs:
             install
             build/test/odr_test
             build/test/Release/odr_test.exe
+          compression-level: 0
 
       - name: Artifact .conan2/p dir
         uses: actions/upload-artifact@v4
@@ -104,22 +105,7 @@ jobs:
           name: conan2-${{ matrix.os }}-${{ matrix.compiler }}
           path: ~/.conan2/p
           if-no-files-found: error
-
-      - name: Artifact .conan2/p dir - comp 1
-        uses: actions/upload-artifact@v4
-        with:
-          name: conan2-1-${{ matrix.os }}-${{ matrix.compiler }}
-          path: ~/.conan2/p
-          if-no-files-found: error
-          compression-level: 1
-
-      - name: Artifact .conan2/p dir - comp 9
-        uses: actions/upload-artifact@v4
-        with:
-          name: conan2-9-${{ matrix.os }}-${{ matrix.compiler }}
-          path: ~/.conan2/p
-          if-no-files-found: error
-          compression-level: 9
+          compression-level: 0
 
   docker:
     needs: build
