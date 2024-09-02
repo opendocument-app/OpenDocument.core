@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-#          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
           - { os: ubuntu-24.04, compiler: gcc-14 }
 #          - { os: macos-13, compiler: clang-14 }
 #          - { os: macos-14, compiler: armv8-clang-14 }
@@ -50,7 +50,7 @@ jobs:
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
-        run: conan install . --output-folder=build --build=missing -s build_type=Debug
+        run: conan install . --output-folder=build --build=never
 
       - name: cache
         uses: actions/cache@v4
@@ -68,7 +68,7 @@ jobs:
           cmake -B build -S .
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_CXX_FLAGS="-Werror"
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
@@ -79,15 +79,15 @@ jobs:
           cmake -B build -S .
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
 
       - name: build
-        run: cmake --build build --config Debug
+        run: cmake --build build --config Release
 
       - name: install
-        run: cmake --build build --target install --config Debug
+        run: cmake --build build --target install --config Release
 
       - name: upload binaries to github
         uses: actions/upload-artifact@v4
@@ -96,7 +96,7 @@ jobs:
           path: |
             install
             build/test/odr_test
-            build/test/Debug/odr_test.exe
+            build/test/Release/odr_test.exe
 
   docker:
     if: false
@@ -163,7 +163,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-#          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, compiler: clang-18 }
           - { os: ubuntu-24.04, compiler: gcc-14 }
 #          - { os: macos-13, compiler: clang-14 }
 #          - { os: macos-14, compiler: armv8-clang-14 }
@@ -208,11 +208,11 @@ jobs:
 
       - name: fix artifact permissions
         if: runner.os == 'Windows'
-        run:  chmod +x build/test/Debug/odr_test.exe
+        run:  chmod +x build/test/Release/odr_test.exe
       - name: test
         if: runner.os == 'Windows'
         working-directory: build/test
-        run: ./Debug/odr_test.exe
+        run: ./Release/odr_test.exe
 
       - name: tidy public test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-public/output

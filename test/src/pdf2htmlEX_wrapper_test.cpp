@@ -1,7 +1,7 @@
-#include <execinfo.h>
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <stacktrace>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -19,17 +19,6 @@ using namespace odr::test;
 namespace fs = std::filesystem;
 
 using pdf2htmlEXWrapperTests = ::testing::TestWithParam<std::string>;
-
-static void print_backtrace() {
-  void *array[10];
-  int size = backtrace(array, 10);
-  char **symbols = backtrace_symbols(array, size);
-  for (int i = 0; i < size; i++) {
-    std::cerr << symbols[i] << std::endl;
-  }
-  free(symbols);
-  std::cerr << std::flush;
-}
 
 TEST_P(pdf2htmlEXWrapperTests, html) {
   const std::string test_file_path = GetParam();
@@ -62,6 +51,7 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
 
   std::cout << "Calling pdf2htmlEX_wrapper" << std::endl << std::flush;
   try {
+    std::this_thread::set_capture_stacktraces_at_throw(true);
     Html html = odr::internal::html::pdf2htmlEX_wrapper(
         test_file.path, output_path, config, password);
     std::cout << "Returned from pdf2htmlEX_wrapper" << std::endl << std::flush;
@@ -69,21 +59,11 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
       EXPECT_TRUE(fs::is_regular_file(html_page.path));
       EXPECT_LT(0, fs::file_size(html_page.path));
     }
-  } catch (const std::exception &e) {
-    std::cerr << "Exception in pdf2htmlEX_wrapper: " << std::endl
-              << e.what() << std::endl
-              << std::flush;
-    print_backtrace();
-    throw e;
-  } catch (const std::string &e) {
-    std::cerr << "Exception in pdf2htmlEX_wrapper: " << std::endl
-              << e << std::endl
-              << std::flush;
-    print_backtrace();
-    throw e;
   } catch (...) {
-    std::cerr << "Exception in pdf2htmlEX_wrapper!" << std::endl << std::flush;
-    print_backtrace();
+    std::stacktrace trace = std::stacktrace::from_current_exception();
+    std::cerr << "Exception in pdf2htmlEX_wrapper!" << std::endl;
+    std::cerr << trace << std::endl << std::flush;
+
     throw std::runtime_error("Unexpected error");
   }
   std::cerr << "End of test" << std::endl << std::flush;
