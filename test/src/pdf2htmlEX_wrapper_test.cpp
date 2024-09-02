@@ -1,4 +1,3 @@
-#include <execinfo.h>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -49,33 +48,13 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
     password = "sample-user-password";
   }
 
-  std::cout << "Calling pdf2htmlEX_wrapper" << std::endl << std::flush;
-  try {
-    Html html = odr::internal::html::pdf2htmlEX_wrapper(
-        test_file.path, output_path, config, password);
-    std::cout << "Returned from pdf2htmlEX_wrapper" << std::endl << std::flush;
-    for (const HtmlPage &html_page : html.pages()) {
-      EXPECT_TRUE(fs::is_regular_file(html_page.path));
-      EXPECT_LT(0, fs::file_size(html_page.path));
-    }
-  } catch (const std::exception &e) {
-    std::cerr << "Exception in pdf2htmlEX_wrapper: " << std::endl
-              << e.what() << std::endl
-              << std::flush;
-
-    void *array[10];
-    int size = backtrace(array, 10);
-    char **symbols = backtrace_symbols(array, size);
-    for (int i = 0; i < size; i++) {
-      std::cerr << symbols[i] << std::endl;
-    }
-    free(symbols);
-    std::cerr << std::flush;
-    sleep(2);
-
-    throw e;
+  Html html = odr::internal::html::pdf2htmlEX_wrapper(
+      test_file.path, output_path, config, password);
+  std::cout << "Returned from pdf2htmlEX_wrapper" << std::endl << std::flush;
+  for (const HtmlPage &html_page : html.pages()) {
+    EXPECT_TRUE(fs::is_regular_file(html_page.path));
+    EXPECT_LT(0, fs::file_size(html_page.path));
   }
-  std::cerr << "End of test" << std::endl << std::flush;
 }
 
 INSTANTIATE_TEST_SUITE_P(pdf2htmlEX_test_files, pdf2htmlEXWrapperTests,
