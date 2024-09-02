@@ -116,6 +116,8 @@ Html html::pdf2htmlEX_wrapper(const std::string &input_path,
 
   pdf2htmlEX::pdf2htmlEX pdf2htmlEX;
 
+  pdf2htmlEX.setDebug(true);
+
   pdf2htmlEX.setInputFilename(input_path);
   pdf2htmlEX.setDestinationDir(output_path);
   auto output_file_name = "document.html";
