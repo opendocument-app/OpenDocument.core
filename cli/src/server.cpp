@@ -1,5 +1,5 @@
 #include <odr/file.hpp>
-#include <odr/html.hpp>
+#include <odr/http_server.hpp>
 
 #include <iostream>
 #include <string>
@@ -8,11 +8,10 @@ using namespace odr;
 
 int main(int argc, char **argv) {
   std::string input{argv[1]};
-  std::string output{argv[2]};
 
   std::optional<std::string> password;
-  if (argc >= 4) {
-    password = argv[3];
+  if (argc >= 3) {
+    password = argv[2];
   }
 
   DecodedFile decoded_file{input};
@@ -30,10 +29,13 @@ int main(int argc, char **argv) {
     }
   }
 
-  HtmlConfig config;
-  config.editable = true;
+  HttpServer::Config config;
+  HttpServer server(config);
 
-  html::translate(decoded_file, output, config);
+  std::string id = server.host_file(File(input));
+  std::cout << "hosted file with id: " << id << std::endl;
+
+  server.listen("localhost", 8080);
 
   return 0;
 }
