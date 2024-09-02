@@ -97,7 +97,6 @@ jobs:
             install
             build/test/odr_test
             build/test/Release/odr_test.exe
-          compression-level: 0
 
       - name: Artifact .conan2/p dir
         uses: actions/upload-artifact@v4
