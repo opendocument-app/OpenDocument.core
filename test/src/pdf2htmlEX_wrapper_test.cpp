@@ -1,7 +1,7 @@
+#include <cpptrace/from_current.hpp>
 #include <filesystem>
 #include <iostream>
 #include <optional>
-#include <cpptrace/from_current.hpp>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -58,7 +58,8 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
       EXPECT_TRUE(fs::is_regular_file(html_page.path));
       EXPECT_LT(0, fs::file_size(html_page.path));
     }
-  } CPPTRACE_CATCH (...) {
+  }
+  CPPTRACE_CATCH(...) {
     std::cerr << "Exception in pdf2htmlEX_wrapper!" << std::endl;
     cpptrace::from_current_exception().print();
     std::cerr << std::flush;
