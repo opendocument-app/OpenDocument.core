@@ -20,6 +20,17 @@ namespace fs = std::filesystem;
 
 using pdf2htmlEXWrapperTests = ::testing::TestWithParam<std::string>;
 
+static void print_backtrace() {
+  void *array[10];
+  int size = backtrace(array, 10);
+  char **symbols = backtrace_symbols(array, size);
+  for (int i = 0; i < size; i++) {
+    std::cerr << symbols[i] << std::endl;
+  }
+  free(symbols);
+  std::cerr << std::flush;
+}
+
 TEST_P(pdf2htmlEXWrapperTests, html) {
   const std::string test_file_path = GetParam();
   const TestFile test_file = TestData::test_file(test_file_path);
@@ -62,18 +73,12 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
     std::cerr << "Exception in pdf2htmlEX_wrapper: " << std::endl
               << e.what() << std::endl
               << std::flush;
-
-    void *array[10];
-    int size = backtrace(array, 10);
-    char **symbols = backtrace_symbols(array, size);
-    for (int i = 0; i < size; i++) {
-      std::cerr << symbols[i] << std::endl;
-    }
-    free(symbols);
-    std::cerr << std::flush;
-    sleep(2);
-
+    print_backtrace();
     throw e;
+  } catch (...) {
+    std::cerr << "Exception in pdf2htmlEX_wrapper!" << std::endl << std::flush;
+    print_backtrace();
+    throw std::runtime_error("Unexpected error");
   }
   std::cerr << "End of test" << std::endl << std::flush;
 }
