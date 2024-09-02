@@ -52,6 +52,8 @@ jobs:
       - name: conan install
         run: conan install . --output-folder=build --build=missing -s build_type=Debug
 
+      - run: ls -lhR /home/runner/.conan2/p/pdf2*/p/share/pdf2htmlEX
+
       - name: cache
         uses: actions/cache@v4
         with:
