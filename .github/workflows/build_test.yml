@@ -55,8 +55,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: conan22-${{ matrix.os }}-${{ matrix.compiler }}
-          path: ~/.conan2/p
+          path: ~/.conan2
           if-no-files-found: error
+          include-hidden-files: true
 
       - name: conan install
         run: conan install . --output-folder=build --build=missing -s build_type=Debug
@@ -113,6 +114,7 @@ jobs:
           name: conan2-${{ matrix.os }}-${{ matrix.compiler }}
           path: ~/.conan2
           if-no-files-found: error
+          include-hidden-files: true
 
   docker:
     if: false
