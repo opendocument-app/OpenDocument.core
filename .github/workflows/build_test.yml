@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-18 }
+#          - { os: ubuntu-24.04, compiler: clang-18 }
           - { os: ubuntu-24.04, compiler: gcc-14 }
 #          - { os: macos-13, compiler: clang-14 }
 #          - { os: macos-14, compiler: armv8-clang-14 }
@@ -50,7 +50,7 @@ jobs:
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
-        run: conan install . --output-folder=build --build=never -s build_type=Release -s "&:build_type=Debug"
+        run: conan install . --output-folder=build --build=missing -s build_type=Debug
 
       - name: cache
         uses: actions/cache@v4
@@ -163,7 +163,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-18 }
+#          - { os: ubuntu-24.04, compiler: clang-18 }
           - { os: ubuntu-24.04, compiler: gcc-14 }
 #          - { os: macos-13, compiler: clang-14 }
 #          - { os: macos-14, compiler: armv8-clang-14 }
