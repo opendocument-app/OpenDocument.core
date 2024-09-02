@@ -40,6 +40,7 @@ class OpenDocumentCoreConan(ConanFile):
         if self.options.get_safe("with_pdf2htmlEX"):
             self.requires("pdf2htmlex/0.18.8.rc1-20240814-git")
             self.requires("fontconfig/2.15.0-odr")
+            self.requires("cpptrace/0.7.0")
         if self.options.get_safe("with_wvWare"):
             self.requires("wvware/1.2.9")
 

@@ -1,7 +1,7 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
-#include <stacktrace>
+#include <cpptrace/from_current.hpp>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -50,8 +50,7 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
   }
 
   std::cout << "Calling pdf2htmlEX_wrapper" << std::endl << std::flush;
-  try {
-    std::this_thread::set_capture_stacktraces_at_throw();
+  CPPTRACE_TRY {
     Html html = odr::internal::html::pdf2htmlEX_wrapper(
         test_file.path, output_path, config, password);
     std::cout << "Returned from pdf2htmlEX_wrapper" << std::endl << std::flush;
@@ -59,10 +58,11 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
       EXPECT_TRUE(fs::is_regular_file(html_page.path));
       EXPECT_LT(0, fs::file_size(html_page.path));
     }
-  } catch (...) {
+  } CPPTRACE_CATCH (...) {
     std::cerr << "Exception in pdf2htmlEX_wrapper!" << std::endl;
-    std::cerr << std::stacktrace::from_current_exception() << std::endl << std::flush;
-
+    cpptrace::from_current_exception().print();
+    std::cerr << std::flush;
+    std::cout << std::flush;
     throw std::runtime_error("Unexpected error");
   }
   std::cerr << "End of test" << std::endl << std::flush;

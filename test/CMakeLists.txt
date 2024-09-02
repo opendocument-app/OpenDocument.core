@@ -78,6 +78,8 @@ target_link_libraries(odr_test
 
 if(WITH_PDF2HTMLEX)
     target_link_libraries(odr_test PRIVATE pdf2htmlex::pdf2htmlex)
+    find_package(cpptrace REQUIRED)
+    target_link_libraries(odr_test PRIVATE cpptrace::cpptrace)
 endif(WITH_PDF2HTMLEX)
 if(WITH_WVWARE)
     target_link_libraries(odr_test PRIVATE wvware::wvware)
