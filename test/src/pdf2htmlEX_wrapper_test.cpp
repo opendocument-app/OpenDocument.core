@@ -51,7 +51,7 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
 
   std::cout << "Calling pdf2htmlEX_wrapper" << std::endl << std::flush;
   try {
-    std::this_thread::set_capture_stacktraces_at_throw(true);
+    std::this_thread::set_capture_stacktraces_at_throw();
     Html html = odr::internal::html::pdf2htmlEX_wrapper(
         test_file.path, output_path, config, password);
     std::cout << "Returned from pdf2htmlEX_wrapper" << std::endl << std::flush;
