@@ -60,9 +60,8 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
       EXPECT_LT(0, fs::file_size(html_page.path));
     }
   } catch (...) {
-    std::stacktrace trace = std::stacktrace::from_current_exception();
     std::cerr << "Exception in pdf2htmlEX_wrapper!" << std::endl;
-    std::cerr << trace << std::endl << std::flush;
+    std::cerr << std::stacktrace::from_current_exception() << std::endl << std::flush;
 
     throw std::runtime_error("Unexpected error");
   }
