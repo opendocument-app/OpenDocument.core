@@ -207,6 +207,8 @@ target_link_libraries(odr
 if(WITH_PDF2HTMLEX)
     find_package(pdf2htmlEX REQUIRED)
     target_link_libraries(odr PRIVATE pdf2htmlex::pdf2htmlex)
+    find_package(Fontconfig REQUIRED)
+    target_link_libraries(odr PRIVATE Fontconfig::Fontconfig)
 endif(WITH_PDF2HTMLEX)
 if(WITH_WVWARE)
     find_package(wvware REQUIRED)
