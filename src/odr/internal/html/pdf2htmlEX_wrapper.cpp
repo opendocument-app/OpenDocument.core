@@ -16,15 +16,15 @@ namespace odr::internal {
 
 // Sample fontconfig code taken from
 // https://gitlab.com/camconn/fontconfig-example/-/blob/master/fc-match.c?ref_type=heads
-static int fc_test(const char * query) {
-  FcConfig*       conf;
-  FcFontSet*      fs;
-  FcObjectSet*    os;
-  FcPattern*      pat;
-  FcResult        result;
+static int fc_test(const char *query) {
+  FcConfig *conf;
+  FcFontSet *fs;
+  FcObjectSet *os;
+  FcPattern *pat;
+  FcResult result;
 
   conf = FcInitLoadConfigAndFonts();
-  pat = FcNameParse((FcChar8*) query);
+  pat = FcNameParse((FcChar8 *)query);
 
   if (!pat)
     return 2;
@@ -33,19 +33,20 @@ static int fc_test(const char * query) {
   FcDefaultSubstitute(pat);
 
   fs = FcFontSetCreate();
-  os = FcObjectSetBuild(FC_FAMILY, FC_STYLE, FC_FILE, (char*)0);
+  os = FcObjectSetBuild(FC_FAMILY, FC_STYLE, FC_FILE, (char *)0);
 
   FcFontSet *font_patterns;
   font_patterns = FcFontSort(conf, pat, FcTrue, 0, &result);
 
   if (!font_patterns || font_patterns->nfont == 0) {
-    std::cerr << "Fontconfig could not find ANY fonts on the system?" << std::endl;
+    std::cerr << "Fontconfig could not find ANY fonts on the system?"
+              << std::endl;
     return 3;
   }
 
   FcPattern *font_pattern;
   font_pattern = FcFontRenderPrepare(conf, pat, font_patterns->fonts[0]);
-  if (font_pattern){
+  if (font_pattern) {
     FcFontSetAdd(fs, font_pattern);
   } else {
     std::cerr << "Could not prepare matched font for loading." << std::endl;
@@ -63,7 +64,7 @@ static int fc_test(const char * query) {
       font = FcPatternFilter(fs->fonts[0], os);
 
       FcPatternGet(font, FC_FILE, 0, &v);
-      const char* filepath = (char*)v.u.f;
+      const char *filepath = (char *)v.u.f;
       std::cout << query << " path: " << filepath << std::endl;
 
       FcPatternDestroy(font);
@@ -102,6 +103,7 @@ static void ensure_env_vars() {
     setenv("FONTCONFIG_PATH", fontconfig_path, 0);
     std::cout << "FONTCONFIG_PATH set to " << getenv("FONTCONFIG_PATH")
               << std::endl;
+
     fc_test("Helvetica");
   }
 }
