@@ -185,6 +185,18 @@ jobs:
           token: ${{ secrets.PAT_ANDIWAND }}
           submodules: true
 
+      # @TODO: Solve this somehow better
+      # pdf2htmlEX and wvWare is available only on Linux (and Android)
+      # This means that odr_test will not produce outputs pdf2htmlEX and wvWare outputs to match what's in
+      # reference-outputs directory. Remove these from reference outputs, for now.
+      - name: Remove pdf2htmlEX and wvWare from reference outputs
+        if: runner.os != 'Linux'
+        run: |
+          rm -r \
+            test/data/reference-output/odr-private/output/pdf2htmlEX \
+            test/data/reference-output/odr-public/output/pdf2htmlEX \
+            test/data/reference-output/odr-public/output/wvWare
+
       - name: ubuntu install tidy
         if: runner.os == 'Linux'
         run: sudo apt install tidy
