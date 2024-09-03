@@ -50,7 +50,6 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
 
   Html html = odr::internal::html::pdf2htmlEX_wrapper(
       test_file.path, output_path, config, password);
-  std::cout << "Returned from pdf2htmlEX_wrapper" << std::endl << std::flush;
   for (const HtmlPage &html_page : html.pages()) {
     EXPECT_TRUE(fs::is_regular_file(html_page.path));
     EXPECT_LT(0, fs::file_size(html_page.path));
