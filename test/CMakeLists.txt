@@ -6,7 +6,6 @@ set(ODR_TEST_DATA_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/data")
 configure_file("src/test_constants.cpp.in" "src/test_constants.cpp")
 
 enable_testing()
-
 add_executable(odr_test
         "src/test_util.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/src/test_constants.cpp"
