@@ -24,10 +24,8 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
   const TestFile test_file = TestData::test_file(test_file_path);
 
   const std::string test_repo = *common::Path(test_file_path).begin();
-  const std::string output_path_prefix = common::Path("output")
-                                             .join(test_repo)
-                                             .join("output-pdf2htmlEX")
-                                             .string();
+  const std::string output_path_prefix =
+      common::Path("output").join(test_repo).join("output-pdf2htmlEX").string();
   const std::string output_path =
       common::Path(output_path_prefix)
           .join(common::Path(test_file_path).rebase(test_repo))
