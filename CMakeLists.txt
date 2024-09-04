@@ -175,16 +175,6 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/zip/zip_file.cpp"
         "src/odr/internal/zip/zip_util.cpp"
 )
-if(WITH_PDF2HTMLEX)
-        LIST(APPEND ODR_SOURCE_FILES
-            "src/odr/internal/html/pdf2htmlEX_wrapper.cpp"
-    )
-endif(WITH_PDF2HTMLEX)
-if(WITH_WVWARE)
-        LIST(APPEND ODR_SOURCE_FILES
-            "src/odr/internal/html/wvWare_wrapper.cpp"
-    )
-endif(WITH_WVWARE)
 
 add_library(odr ${ODR_SOURCE_FILES})
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
@@ -205,10 +195,12 @@ target_link_libraries(odr
 )
 
 if(WITH_PDF2HTMLEX)
+    target_sources(odr PRIVATE "src/odr/internal/html/pdf2htmlEX_wrapper.cpp")
     find_package(pdf2htmlEX REQUIRED)
     target_link_libraries(odr PRIVATE pdf2htmlex::pdf2htmlex)
 endif(WITH_PDF2HTMLEX)
 if(WITH_WVWARE)
+    target_sources(odr PRIVATE "src/odr/internal/html/wvWare_wrapper.cpp")
     find_package(wvware REQUIRED)
     target_link_libraries(odr PRIVATE wvware::wvware)
 endif(WITH_WVWARE)

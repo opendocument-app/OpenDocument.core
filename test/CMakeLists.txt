@@ -7,16 +7,6 @@ configure_file("src/test_constants.cpp.in" "src/test_constants.cpp")
 
 enable_testing()
 
-if(WITH_PDF2HTMLEX)
-    LIST(APPEND ODR_TEST_SOURCE_FILES
-            "src/pdf2htmlEX_wrapper_test.cpp"
-    )
-endif(WITH_PDF2HTMLEX)
-if(WITH_WVWARE)
-    LIST(APPEND ODR_TEST_SOURCE_FILES
-            "src/wvWare_wrapper_test.cpp"
-    )
-endif(WITH_WVWARE)
 add_executable(odr_test
         "src/test_util.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/src/test_constants.cpp"
@@ -54,8 +44,6 @@ add_executable(odr_test
 
         "src/internal/zip/miniz_test.cpp"
         "src/internal/zip/zip_archive_test.cpp"
-
-        ${ODR_TEST_SOURCE_FILES}
 )
 target_include_directories(odr_test
         PRIVATE
@@ -77,9 +65,11 @@ target_link_libraries(odr_test
 )
 
 if(WITH_PDF2HTMLEX)
+    target_sources(odr_test PRIVATE "src/pdf2htmlEX_wrapper_test.cpp")
     target_link_libraries(odr_test PRIVATE pdf2htmlex::pdf2htmlex)
 endif(WITH_PDF2HTMLEX)
 if(WITH_WVWARE)
+    target_sources(odr_test PRIVATE "src/wvWare_wrapper_test.cpp")
     target_link_libraries(odr_test PRIVATE wvware::wvware)
 endif(WITH_WVWARE)
 
