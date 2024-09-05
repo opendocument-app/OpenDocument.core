@@ -9,18 +9,12 @@
 
 namespace odr::internal::html {
 
-static void ensure_env_vars() {
-  static const char *wvdatadir = getenv("WVDATADIR");
-  if (nullptr == wvdatadir) {
-    wvdatadir = WVDATADIR;
-    setenv("WVDATADIR", wvdatadir, 0);
-  }
-}
-
 Html wvWare_wrapper(const std::string &input_path,
                     const std::string &output_path, const HtmlConfig &config,
                     std::optional<std::string> &password) {
-  ensure_env_vars();
+  if (nullptr == g_wvDataDir) {
+    g_wvDataDir = WVDATADIR;
+  }
 
   auto output_file_path = output_path + "/document.html";
 
