@@ -19,4 +19,8 @@ FileType PdfFile::file_type() const noexcept {
 
 FileMeta PdfFile::file_meta() const noexcept { return {}; }
 
+DecoderEngine PdfFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 } // namespace odr::internal::pdf

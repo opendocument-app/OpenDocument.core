@@ -190,6 +190,7 @@ public:
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] FileCategory file_category() const noexcept;
   [[nodiscard]] FileMeta file_meta() const noexcept;
+  [[nodiscard]] DecoderEngine decoder_engine() const noexcept;
 
   [[nodiscard]] File file() const;
 

@@ -38,6 +38,7 @@ public:
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
   [[nodiscard]] virtual FileCategory file_category() const noexcept = 0;
   [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;
+  [[nodiscard]] virtual DecoderEngine decoder_engine() const noexcept = 0;
 };
 
 class TextFile : public DecodedFile {

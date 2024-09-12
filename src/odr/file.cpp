@@ -98,6 +98,10 @@ FileCategory DecodedFile::file_category() const noexcept {
 
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
 
+DecoderEngine DecodedFile::decoder_engine() const noexcept {
+  return m_impl->decoder_engine();
+}
+
 File DecodedFile::file() const { return File(m_impl->file()); }
 
 bool DecodedFile::is_text_file() const {

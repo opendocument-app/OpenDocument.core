@@ -27,6 +27,7 @@ public:
 
   [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] FileMeta file_meta() const noexcept final;
+  [[nodiscard]] DecoderEngine decoder_engine() const noexcept final;
 
   [[nodiscard]] std::shared_ptr<abstract::Archive> archive() const final;
 

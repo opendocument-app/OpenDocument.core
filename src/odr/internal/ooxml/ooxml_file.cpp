@@ -37,6 +37,10 @@ FileType OfficeOpenXmlFile::file_type() const noexcept {
 
 FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_file_meta; }
 
+DecoderEngine OfficeOpenXmlFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 DocumentType OfficeOpenXmlFile::document_type() const {
   return m_file_meta.document_meta->document_type;
 }

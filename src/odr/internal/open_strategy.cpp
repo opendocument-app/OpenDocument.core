@@ -22,7 +22,7 @@
 namespace odr::internal {
 
 std::vector<FileType>
-open_strategy::types(std::shared_ptr<abstract::File> file) {
+open_strategy::types(const std::shared_ptr<abstract::File> &file) {
   std::vector<FileType> result;
 
   auto file_type = magic::file_type(*file);

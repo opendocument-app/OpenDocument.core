@@ -22,6 +22,10 @@ FileMeta CfbFile::file_meta() const noexcept {
   return meta;
 }
 
+DecoderEngine CfbFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 std::shared_ptr<abstract::Archive> CfbFile::archive() const {
   return std::make_shared<CfbArchive>(m_cfb);
 }

@@ -31,6 +31,10 @@ FileMeta SvmFile::file_meta() const noexcept {
   return result;
 }
 
+DecoderEngine SvmFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 std::shared_ptr<abstract::Image> SvmFile::image() const { return {}; }
 
 } // namespace odr::internal::svm
