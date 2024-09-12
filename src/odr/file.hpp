@@ -97,6 +97,19 @@ enum class FileLocation {
   disk,
 };
 
+/// @brief Collection of decoder engines.
+enum class DecoderEngine {
+  odr,
+  pdf2html_ex,
+  wv_ware,
+};
+
+/// @brief Preference for decoding files.
+struct DecodePreference final {
+  std::vector<FileType> file_type_priority;
+  std::vector<DecoderEngine> engine_priority;
+};
+
 /// @brief Collection of encryption states.
 enum class EncryptionState {
   unknown,
