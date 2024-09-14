@@ -5,9 +5,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 option(ODR_TEST "enable tests" OFF)
 option(ODR_CLI "enable command line interface" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
+option(WITH_PDF2HTMLEX "Build with pdf2htmlEX" ON)
+option(WITH_WVWARE "Build with wvWare" ON)
 
 # TODO defining global compiler flags seems to be bad practice with conan
 # TODO consider using conan profiles
@@ -37,6 +40,7 @@ find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
 
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
+configure_file("src/odr/internal/project_info.hpp.in" "src/odr/internal/project_info.hpp")
 
 set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp")
@@ -177,6 +181,7 @@ set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
 target_include_directories(odr
         PUBLIC
         src
+        ${CMAKE_CURRENT_BINARY_DIR}/src
 )
 target_link_libraries(odr
         PRIVATE
@@ -188,6 +193,17 @@ target_link_libraries(odr
         uchardet::uchardet
         utf8::cpp
 )
+
+if(WITH_PDF2HTMLEX)
+    target_sources(odr PRIVATE "src/odr/internal/html/pdf2htmlEX_wrapper.cpp")
+    find_package(pdf2htmlEX REQUIRED)
+    target_link_libraries(odr PRIVATE pdf2htmlex::pdf2htmlex)
+endif(WITH_PDF2HTMLEX)
+if(WITH_WVWARE)
+    target_sources(odr PRIVATE "src/odr/internal/html/wvWare_wrapper.cpp")
+    find_package(wvware REQUIRED)
+    target_link_libraries(odr PRIVATE wvware::wvware)
+endif(WITH_WVWARE)
 
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
     add_dependencies(odr check_git)
@@ -206,8 +222,8 @@ if (ODR_CLANG_TIDY)
 endif ()
 
 install(
-        DIRECTORY src/
-        DESTINATION include/
+        DIRECTORY src/ ${CMAKE_CURRENT_BINARY_DIR}/src/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         FILES_MATCHING PATTERN "*.hpp"
 )
 install(

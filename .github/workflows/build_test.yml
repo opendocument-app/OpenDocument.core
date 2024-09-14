@@ -98,6 +98,14 @@ jobs:
             build/test/odr_test
             build/test/Release/odr_test.exe
 
+      - name: Artifact .conan2/p dir
+        uses: actions/upload-artifact@v4
+        with:
+          name: conan2-${{ matrix.os }}-${{ matrix.compiler }}
+          path: ~/.conan2/p
+          if-no-files-found: error
+          compression-level: 0
+
   docker:
     needs: build
     runs-on: ${{ matrix.os }}
@@ -197,6 +205,12 @@ jobs:
           name: bin-${{ matrix.os }}-${{ matrix.compiler }}
           path: .
 
+      - name: Download .conan2/p dir
+        uses: actions/download-artifact@v4
+        with:
+          name: conan2-${{ matrix.os }}-${{ matrix.compiler }}
+          path: ~/.conan2/p
+
       - name: fix artifact permissions
         if: runner.os != 'Windows'
         run:  chmod +x build/test/odr_test
@@ -232,6 +246,42 @@ jobs:
             --max-workers 1 \
             test/data/reference-output/odr-private/output \
             build/test/output/odr-private/output
+
+      - name: tidy pdf2htmlEX test outputs
+        if: runner.os == 'Linux'
+        run: |
+          python3 -u test/scripts/tidy_output.py build/test/output/odr-public/output-pdf2htmlEX
+          python3 -u test/scripts/tidy_output.py build/test/output/odr-private/output-pdf2htmlEX
+      - name: Compare pdf2htmlEX public test results
+        if: runner.os == 'Linux'
+        run: |
+          python3 -u test/scripts/compare_output.py \
+            --driver firefox \
+            --max-workers 1 \
+            test/data/reference-output/odr-public/output-pdf2htmlEX \
+            build/test/output/odr-public/output-pdf2htmlEX
+      - name: Compare pdf2htmlEX private test results
+        if: runner.os == 'Linux'
+        run: |
+          python3 -u test/scripts/compare_output.py \
+            --driver firefox \
+            --max-workers 1 \
+            test/data/reference-output/odr-public/output-pdf2htmlEX \
+            build/test/output/odr-public/output-pdf2htmlEX
+
+      # wvWare has no private test data
+      - name: tidy wvWare test outputs
+        if: runner.os == 'Linux'
+        run: |
+          python3 -u test/scripts/tidy_output.py build/test/output/odr-public/output-wvWare
+      - name: Compare wvWare public test results
+        if: runner.os == 'Linux'
+        run: |
+          python3 -u test/scripts/compare_output.py \
+            --driver firefox \
+            --max-workers 1 \
+            test/data/reference-output/odr-public/output-wvWare \
+            build/test/output/odr-public/output-wvWare
 
   build-test-downstream:
     runs-on: ${{ matrix.os }}

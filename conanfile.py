@@ -3,6 +3,8 @@ import os
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
+from conan.tools.env import Environment
+from conan.tools.env.environment import EnvVars
 from conan.tools.files import copy
 
 
@@ -19,6 +21,8 @@ class OpenDocumentCoreConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "with_pdf2htmlEX": [True, False],
+        "with_wvWare": [True, False],
     }
     default_options = {
         "shared": False,
@@ -33,6 +37,10 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("vincentlaucsb-csv-parser/2.3.0")
         self.requires("uchardet/0.0.8")
         self.requires("utfcpp/4.0.4")
+        if self.options.get_safe("with_pdf2htmlEX"):
+            self.requires("pdf2htmlex/0.18.8.rc1-20240905-git")
+        if self.options.get_safe("with_wvWare"):
+            self.requires("wvware/1.2.9")
 
     def build_requirements(self):
         self.test_requires("gtest/1.14.0")
@@ -47,6 +55,9 @@ class OpenDocumentCoreConan(ConanFile):
         if self.settings.os == "Windows":
             del self.options.fPIC
 
+        self.options.with_pdf2htmlEX = self.settings.os not in ["Windows", "Macos"]
+        self.options.with_wvWare = self.settings.os not in ["Windows", "Macos"]
+
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
@@ -55,6 +66,20 @@ class OpenDocumentCoreConan(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_PROJECT_VERSION"] = self.version
         tc.variables["ODR_TEST"] = False
+        tc.variables["WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX", False)
+        tc.variables["WITH_WVWARE"] = self.options.get_safe("with_wvWare", False)
+
+        # Get runenv info, exported by package_info() of dependencies
+        # We need to obtain PDF2HTMLEX_DATA_DIR, POPPLER_DATA_DIR, FONTCONFIG_PATH and WVDATADIR
+        runenv_info = Environment()
+        deps = self.dependencies.host.topological_sort
+        deps = [dep for dep in reversed(deps.values())]
+        for dep in deps:
+            runenv_info.compose_env(dep.runenv_info)
+        envvars = runenv_info.vars(self)
+        for v in ["PDF2HTMLEX_DATA_DIR", "POPPLER_DATA_DIR", "FONTCONFIG_PATH", "WVDATADIR"]:
+            tc.variables[v] = envvars.get(v)
+
         tc.generate()
 
         deps = CMakeDeps(self)
@@ -66,13 +91,6 @@ class OpenDocumentCoreConan(ConanFile):
         cmake.build()
 
     def package(self):
-        copy(
-            self,
-            "*.hpp",
-            src=os.path.join(self.recipe_folder, "src"),
-            dst=os.path.join(self.export_sources_folder, "include"),
-        )
-
         cmake = CMake(self)
         cmake.install()
 
