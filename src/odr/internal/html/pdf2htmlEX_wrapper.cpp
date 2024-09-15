@@ -5,11 +5,11 @@
 #include <odr/html.hpp>
 
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/project_info.hpp>
 
 #include <pdf2htmlEX.h>
 
 #include <cstring>
-#include <odr/internal/project_info.hpp>
 
 namespace odr::internal {
 
