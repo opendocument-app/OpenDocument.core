@@ -1,5 +1,5 @@
-#ifndef ODR_INTERNAL_PDF_FILE_HPP
-#define ODR_INTERNAL_PDF_FILE_HPP
+#ifndef ODR_INTERNAL_HTML_PDF_FILE_HPP
+#define ODR_INTERNAL_HTML_PDF_FILE_HPP
 
 #include <string>
 
@@ -17,4 +17,4 @@ Html translate_pdf_file(const PdfFile &pdf_file, const std::string &output_path,
 
 }
 
-#endif // ODR_INTERNAL_PDF_FILE_HPP
+#endif // ODR_INTERNAL_HTML_PDF_FILE_HPP

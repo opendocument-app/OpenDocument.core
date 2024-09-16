@@ -44,7 +44,7 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("uchardet/0.0.8")
         self.requires("utfcpp/4.0.4")
         if self.options.get_safe("with_pdf2htmlEX", False):
-            self.requires("pdf2htmlex/0.18.8.rc1-20240905-git")
+            self.requires("pdf2htmlex/0.18.8.rc1-20240905-git", transitive_headers=True, transitive_libs=True)
         if self.options.get_safe("with_wvWare", False):
             self.requires("wvware/1.2.9")
 

@@ -100,7 +100,7 @@ enum class FileLocation {
 /// @brief Collection of decoder engines.
 enum class DecoderEngine {
   odr,
-  pdf2html_ex,
+  poppler,
   wv_ware,
 };
 
