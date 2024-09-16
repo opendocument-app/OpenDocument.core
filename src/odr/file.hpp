@@ -14,11 +14,8 @@ class TextFile;
 class ImageFile;
 class ArchiveFile;
 class DocumentFile;
-} // namespace odr::internal::abstract
-
-namespace odr::internal::pdf {
 class PdfFile;
-}
+} // namespace odr::internal::abstract
 
 namespace odr {
 class TextFile;
@@ -179,7 +176,7 @@ public:
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile>);
+  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
   explicit DecodedFile(const File &file);
   DecodedFile(const File &file, FileType as);
   explicit DecodedFile(const std::string &path);
@@ -271,10 +268,12 @@ private:
 /// @brief Represents a PDF file.
 class PdfFile final : public DecodedFile {
 public:
-  explicit PdfFile(std::shared_ptr<internal::pdf::PdfFile>);
+  explicit PdfFile(std::shared_ptr<internal::abstract::PdfFile>);
+
+  [[nodiscard]] std::shared_ptr<internal::abstract::PdfFile> impl() const;
 
 private:
-  std::shared_ptr<internal::pdf::PdfFile> m_impl;
+  std::shared_ptr<internal::abstract::PdfFile> m_impl;
 };
 
 } // namespace odr

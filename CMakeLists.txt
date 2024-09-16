@@ -108,7 +108,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
         "src/odr/internal/html/pdf_file.cpp"
-        "src/odr/internal/html/pdf_poppler_file.hpp"
+        "src/odr/internal/html/pdf2htmlEX_wrapper.hpp"
         "src/odr/internal/html/text_file.cpp"
 
         "src/odr/internal/json/json_file.cpp"
@@ -201,7 +201,6 @@ if (WITH_PDF2HTMLEX)
     target_sources(odr
             PRIVATE
             "src/odr/internal/html/pdf2htmlEX_wrapper.cpp"
-            "src/odr/internal/html/pdf_poppler_file.cpp"
             "src/odr/internal/pdf_poppler/poppler_pdf_file.cpp"
     )
     target_link_libraries(odr

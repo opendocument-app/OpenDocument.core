@@ -1,23 +1,38 @@
-#ifndef ODR_INTERNAL_PDF2HTMLEX_WRAPPER_HPP
-#define ODR_INTERNAL_PDF2HTMLEX_WRAPPER_HPP
+#ifndef ODR_INTERNAL_HTML_PDF2HTMLEX_WRAPPER_HPP
+#define ODR_INTERNAL_HTML_PDF2HTMLEX_WRAPPER_HPP
 
-#include <optional>
 #include <string>
 
 namespace odr {
-class PdfFile;
-
 struct HtmlConfig;
 class Html;
 } // namespace odr
 
+namespace odr::internal {
+class PopplerPdfFile;
+} // namespace odr::internal
+
 namespace odr::internal::html {
 
-Html pdf2htmlEX_wrapper(const std::string &input_path,
-                        const std::string &output_path,
-                        const HtmlConfig &config,
-                        std::optional<std::string> &password);
+Html translate_pdf_poppler_file(const PopplerPdfFile &pdf_file,
+                                const std::string &output_path,
+                                const HtmlConfig &config);
 
-}
+class ConversionFailedException : public std::runtime_error {
+public:
+  using std::runtime_error::runtime_error;
+};
 
-#endif // ODR_INTERNAL_PDF2HTMLEX_WRAPPER_HPP
+class DocumentCopyProtectedException : public ConversionFailedException {
+public:
+  using ConversionFailedException::ConversionFailedException;
+};
+
+class EncryptionPasswordException : public ConversionFailedException {
+public:
+  using ConversionFailedException::ConversionFailedException;
+};
+
+} // namespace odr::internal::html
+
+#endif // ODR_INTERNAL_HTML_PDF2HTMLEX_WRAPPER_HPP

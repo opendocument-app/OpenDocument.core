@@ -1,6 +1,6 @@
 #include <odr/internal/pdf/pdf_file.hpp>
 
-namespace odr::internal::pdf {
+namespace odr::internal {
 
 PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {}
@@ -23,4 +23,4 @@ DecoderEngine PdfFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal

@@ -4,61 +4,139 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/common/file.hpp>
+#include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 #include <odr/internal/project_info.hpp>
 
-#include <pdf2htmlEX.h>
+#include <pdf2htmlEX/HTMLRenderer/HTMLRenderer.h>
+#include <pdf2htmlEX/Param.h>
+
+#include <poppler/GlobalParams.h>
+#include <poppler/PDFDoc.h>
 
 #include <cstring>
 
 namespace odr::internal {
 
-Html html::pdf2htmlEX_wrapper(const std::string &input_path,
-                              const std::string &output_path,
-                              const HtmlConfig &config,
-                              std::optional<std::string> &password) {
-  static const char *fontconfig_path = getenv("FONTCONFIG_PATH");
-  if (nullptr == fontconfig_path) {
+Html html::translate_pdf_poppler_file(const PopplerPdfFile &pdf_file,
+                                      const std::string &output_path,
+                                      const HtmlConfig &config) {
+  PDFDoc &pdf_doc = pdf_file.pdf_doc();
+
+  if (!pdf_doc.isOk()) {
+    int errCode = pdf_doc.getErrorCode();
+    if (errCode == errEncrypted) {
+      throw EncryptionPasswordException(std::to_string(errCode));
+    } else {
+      throw ConversionFailedException(std::to_string(errCode));
+    }
+  }
+
+  const char *fontconfig_path = std::getenv("FONTCONFIG_PATH");
+  if (fontconfig_path == nullptr) {
     // Storage is allocated and after successful putenv, it will never be freed.
     // This is the way of putenv.
     char *storage = strdup("FONTCONFIG_PATH=" FONTCONFIG_PATH);
     if (0 != putenv(storage)) {
       free(storage);
     }
-    fontconfig_path = getenv("FONTCONFIG_PATH");
+    fontconfig_path = std::getenv("FONTCONFIG_PATH");
   }
 
-  pdf2htmlEX::pdf2htmlEX pdf2htmlEX;
-  pdf2htmlEX.setDataDir(PDF2HTMLEX_DATA_DIR);
-  pdf2htmlEX.setPopplerDataDir(POPPLER_DATA_DIR);
+  pdf2htmlEX::Param param;
 
-  pdf2htmlEX.setInputFilename(input_path);
-  pdf2htmlEX.setDestinationDir(output_path);
-  auto output_file_name = "document.html";
-  pdf2htmlEX.setOutputFilename(output_file_name);
+  // pages
+  param.first_page = 1;
+  param.last_page = pdf_doc.getNumPages();
 
-  pdf2htmlEX.setDRM(false);
-  pdf2htmlEX.setProcessOutline(false);
-  pdf2htmlEX.setProcessAnnotation(true);
+  // dimension
+  param.zoom = 0;
+  param.fit_width = 0;
+  param.fit_height = 0;
+  param.use_cropbox = 1;
+  param.desired_dpi = 144.0;
 
-  if (password.has_value()) {
-    pdf2htmlEX.setOwnerPassword(password.value());
-    pdf2htmlEX.setUserPassword(password.value());
+  // output
+  param.embed_css = 1;
+  param.embed_font = 1;
+  param.embed_image = 1;
+  param.embed_javascript = 1;
+  param.embed_outline = 1;
+  param.split_pages = 0;
+  param.dest_dir = output_path;
+  param.css_filename = "";
+  param.page_filename = "";
+  param.outline_filename = "";
+  param.process_nontext = 1;
+  param.process_outline = 1;
+  param.process_annotation = 0;
+  param.process_form = 0;
+  param.printing = 1;
+  param.fallback = 0;
+  param.tmp_file_size_limit = -1;
+
+  // font
+  param.embed_external_font = 0; // TODO 1
+  param.font_format = "woff";
+  param.decompose_ligature = 0;
+  param.turn_off_ligatures = 0;
+  param.auto_hint = 0;
+  param.external_hint_tool = "";
+  param.stretch_narrow_glyph = 0;
+  param.squeeze_wide_glyph = 1;
+  param.override_fstype = 0;
+  param.process_type3 = 0;
+
+  // text
+  param.h_eps = 1.0;
+  param.v_eps = 1.0;
+  param.space_threshold = 1.0 / 8;
+  param.font_size_multiplier = 4.0;
+  param.space_as_offset = 0;
+  param.tounicode = 0;
+  param.optimize_text = 0;
+  param.correct_text_visibility = 1;
+  param.text_dpi = 300;
+
+  // background
+  param.bg_format = "png";
+  param.svg_node_count_limit = -1;
+  param.svg_embed_bitmap = 1;
+
+  // encryption
+  param.owner_password = "";
+  param.user_password = "";
+  param.no_drm = 0;
+
+  // misc
+  param.clean_tmp = 1;
+  param.tmp_dir = "/tmp";
+  param.data_dir = PDF2HTMLEX_DATA_DIR;
+  param.poppler_data_dir = POPPLER_DATA_DIR;
+  param.debug = 0;
+  param.proof = 0;
+  param.quiet = 1;
+
+  // input, output
+  param.input_filename = "";
+  param.output_filename = "document.html";
+
+  if (!pdf_doc.okToCopy()) {
+    if (param.no_drm == 0) {
+      throw DocumentCopyProtectedException("");
+    }
   }
 
-  try {
-    pdf2htmlEX.convert();
-  } catch (const pdf2htmlEX::EncryptionPasswordException &e) {
-    throw WrongPassword();
-  } catch (const pdf2htmlEX::DocumentCopyProtectedException &e) {
-    throw std::runtime_error("document is copy protected");
-  } catch (const pdf2htmlEX::ConversionFailedException &e) {
-    throw std::runtime_error(std::string("conversion error ") + e.what());
-  }
+  globalParams = std::make_unique<GlobalParams>(
+      !param.poppler_data_dir.empty() ? param.poppler_data_dir.c_str()
+                                      : nullptr);
+
+  pdf2htmlEX::HTMLRenderer(nullptr, param).process(&pdf_doc);
+
+  globalParams.reset();
 
   return {FileType::portable_document_format,
           config,
-          {{"document", output_path + "/" + output_file_name}}};
+          {{"document", output_path + "/document.html"}}};
 }
 
 } // namespace odr::internal

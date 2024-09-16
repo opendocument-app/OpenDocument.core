@@ -82,6 +82,20 @@ public:
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };
 
+class PdfFile : public DecodedFile {
+public:
+  [[nodiscard]] FileType file_type() const noexcept final {
+    return FileType::portable_document_format;
+  }
+  [[nodiscard]] FileCategory file_category() const noexcept final {
+    return FileCategory::document;
+  }
+
+  [[nodiscard]] virtual bool password_encrypted() const noexcept = 0;
+  [[nodiscard]] virtual EncryptionState encryption_state() const noexcept = 0;
+  [[nodiscard]] virtual bool decrypt(const std::string &password) = 0;
+};
+
 } // namespace odr::internal::abstract
 
 #endif // ODR_INTERNAL_ABSTRACT_FILE_HPP

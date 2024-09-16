@@ -9,6 +9,7 @@
 #include <odr/html.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/pdf2htmlEX_wrapper.hpp>
+#include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 using namespace odr;
@@ -35,18 +36,17 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
 
   fs::create_directories(output_path);
   HtmlConfig config;
-  std::optional<std::string> password;
 
+  PopplerPdfFile pdf_file(std::make_shared<common::DiskFile>(test_file.path));
+
+  EXPECT_EQ(test_file.password_encrypted, pdf_file.password_encrypted());
   if (test_file.password_encrypted) {
-    password = test_file.password;
-  }
-  // @TODO: why does test_file.password_encrypted == false for this file??
-  else if (test_file.path.ends_with("encrypted_fontfile3_opentype.pdf")) {
-    password = "sample-user-password";
+    EXPECT_TRUE(pdf_file.decrypt(test_file.password));
+    EXPECT_EQ(EncryptionState::decrypted, pdf_file.encryption_state());
   }
 
-  Html html = odr::internal::html::pdf2htmlEX_wrapper(
-      test_file.path, output_path, config, password);
+  Html html = odr::internal::html::translate_pdf_poppler_file(
+      pdf_file, output_path, config);
   for (const HtmlPage &html_page : html.pages()) {
     EXPECT_TRUE(fs::is_regular_file(html_page.path));
     EXPECT_LT(0, fs::file_size(html_page.path));

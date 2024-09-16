@@ -3,7 +3,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 
-namespace odr::internal::pdf {
+namespace odr::internal {
 
 class PdfFile : public abstract::DecodedFile {
 public:
@@ -20,6 +20,6 @@ private:
   std::shared_ptr<abstract::File> m_file;
 };
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal
 
 #endif // ODR_INTERNAL_PDF_FILE_HPP
