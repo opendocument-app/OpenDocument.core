@@ -9,8 +9,10 @@
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/filesystem.hpp>
 #include <odr/internal/html/image_file.hpp>
+#include <odr/internal/html/pdf2htmlEX_wrapper.hpp>
 #include <odr/internal/html/pdf_file.hpp>
 #include <odr/internal/html/text_file.hpp>
+#include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 
 #include <filesystem>
 
@@ -112,7 +114,15 @@ Html html::translate(const Document &document, const std::string &output_path,
 
 Html html::translate(const PdfFile &pdf_file, const std::string &output_path,
                      const HtmlConfig &config) {
-  fs::create_directories(output_path);
+  auto pdf_file_impl = pdf_file.impl();
+
+  if (auto poppler_pdf_file =
+          std::dynamic_pointer_cast<internal::PopplerPdfFile>(pdf_file_impl)) {
+    fs::create_directories(output_path);
+    return internal::html::translate_poppler_pdf_file(*poppler_pdf_file,
+                                                      output_path, config);
+  }
+
   return internal::html::translate_pdf_file(pdf_file, output_path, config);
 }
 

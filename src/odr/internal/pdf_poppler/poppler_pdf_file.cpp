@@ -1,6 +1,7 @@
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 
 #include <poppler/PDFDocFactory.h>
+#include <poppler/Stream.h>
 #include <poppler/goo/GooString.h>
 
 namespace odr::internal {
@@ -10,15 +11,31 @@ PopplerPdfFile::PopplerPdfFile(std::shared_ptr<common::DiskFile> file)
   open(std::nullopt);
 }
 
+PopplerPdfFile::PopplerPdfFile(std::shared_ptr<common::MemoryFile> file)
+    : m_file{std::move(file)} {
+  open(std::nullopt);
+}
+
 void PopplerPdfFile::open(const std::optional<std::string> &password) {
-  GooString file_path_goo(m_file->disk_path()->string());
   std::optional<GooString> password_goo;
   if (password.has_value()) {
     password_goo = GooString(password.value().c_str());
   }
 
-  m_pdf_doc = std::shared_ptr<PDFDoc>(
-      PDFDocFactory().createPDFDoc(file_path_goo, password_goo, password_goo));
+  if (auto disk_file = std::dynamic_pointer_cast<common::DiskFile>(m_file)) {
+    auto file_path_goo =
+        std::make_unique<GooString>(disk_file->disk_path()->string().c_str());
+    m_pdf_doc = std::make_shared<PDFDoc>(std::move(file_path_goo), password_goo,
+                                         password_goo);
+  } else if (auto memory_file =
+                 std::dynamic_pointer_cast<common::MemoryFile>(m_file)) {
+    // `stream` is freed by `m_pdf_doc`
+    auto stream = new MemStream(memory_file->memory_data(), 0,
+                                memory_file->size(), Object(objNull));
+    m_pdf_doc = std::make_shared<PDFDoc>(stream, password_goo, password_goo);
+  } else {
+    throw std::runtime_error("Unsupported file type");
+  }
 
   if (!m_pdf_doc->isOk()) {
     if (m_pdf_doc->getErrorCode() == errEncrypted) {

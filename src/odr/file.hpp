@@ -103,6 +103,9 @@ enum class DecoderEngine {
 
 /// @brief Preference for decoding files.
 struct DecodePreference final {
+  std::optional<FileType> as_file_type;
+  std::optional<DecoderEngine> with_engine;
+
   std::vector<FileType> file_type_priority;
   std::vector<DecoderEngine> engine_priority;
 };

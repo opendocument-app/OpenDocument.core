@@ -17,7 +17,7 @@
 
 namespace odr::internal {
 
-Html html::translate_pdf_poppler_file(const PopplerPdfFile &pdf_file,
+Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
                                       const std::string &output_path,
                                       const HtmlConfig &config) {
   PDFDoc &pdf_doc = pdf_file.pdf_doc();

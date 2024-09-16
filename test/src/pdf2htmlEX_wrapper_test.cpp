@@ -45,7 +45,7 @@ TEST_P(pdf2htmlEXWrapperTests, html) {
     EXPECT_EQ(EncryptionState::decrypted, pdf_file.encryption_state());
   }
 
-  Html html = odr::internal::html::translate_pdf_poppler_file(
+  Html html = odr::internal::html::translate_poppler_pdf_file(
       pdf_file, output_path, config);
   for (const HtmlPage &html_page : html.pages()) {
     EXPECT_TRUE(fs::is_regular_file(html_page.path));
