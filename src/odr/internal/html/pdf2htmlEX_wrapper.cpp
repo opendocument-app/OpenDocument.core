@@ -22,15 +22,6 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
                                       const HtmlConfig &config) {
   PDFDoc &pdf_doc = pdf_file.pdf_doc();
 
-  if (!pdf_doc.isOk()) {
-    int errCode = pdf_doc.getErrorCode();
-    if (errCode == errEncrypted) {
-      throw EncryptionPasswordException(std::to_string(errCode));
-    } else {
-      throw ConversionFailedException(std::to_string(errCode));
-    }
-  }
-
   const char *fontconfig_path = std::getenv("FONTCONFIG_PATH");
   if (fontconfig_path == nullptr) {
     // Storage is allocated and after successful putenv, it will never be freed.

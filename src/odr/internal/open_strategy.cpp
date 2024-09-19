@@ -221,6 +221,13 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       try {
         auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
+        auto filesystem = zip_file->archive()->filesystem();
+        return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      } catch (...) {
+      }
+      try {
+        auto memory_file = std::make_shared<common::MemoryFile>(*file);
         auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
         auto filesystem = cfb_file->archive()->filesystem();
         return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
@@ -232,6 +239,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
   }
 
   if (as == FileType::legacy_word_document ||
+      as == FileType::legacy_powerpoint_presentation ||
       as == FileType::legacy_excel_worksheets) {
     if (with == DecoderEngine::odr) {
       try {

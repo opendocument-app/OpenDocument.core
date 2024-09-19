@@ -214,6 +214,7 @@ if (WITH_WVWARE)
     target_sources(odr
             PRIVATE
             "src/odr/internal/html/wvWare_wrapper.cpp"
+            "src/odr/internal/oldms_wvware/wvware_oldms_file.cpp"
     )
     target_link_libraries(odr
             PRIVATE

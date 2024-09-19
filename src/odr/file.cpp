@@ -58,6 +58,12 @@ std::vector<FileType> DecodedFile::types(const std::string &path) {
       std::make_shared<internal::common::DiskFile>(path));
 }
 
+std::vector<DecoderEngine> DecodedFile::engines(const std::string &path,
+                                                FileType as) {
+  return internal::open_strategy::engines(
+      std::make_shared<internal::common::DiskFile>(path), as);
+}
+
 FileType DecodedFile::type(const std::string &path) {
   return DecodedFile(path).file_type();
 }
@@ -86,6 +92,11 @@ DecodedFile::DecodedFile(const std::string &path)
 DecodedFile::DecodedFile(const std::string &path, FileType as)
     : DecodedFile(internal::open_strategy::open_file(
           std::make_shared<internal::common::DiskFile>(path), as)) {}
+
+DecodedFile::DecodedFile(const std::string &path,
+                         const DecodePreference &preference)
+    : DecodedFile(internal::open_strategy::open_file(
+          std::make_shared<internal::common::DiskFile>(path), preference)) {}
 
 DecodedFile::operator bool() const { return m_impl.operator bool(); }
 
@@ -235,6 +246,18 @@ Document DocumentFile::document() const { return Document(m_impl->document()); }
 
 PdfFile::PdfFile(std::shared_ptr<internal::abstract::PdfFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+bool PdfFile::password_encrypted() const {
+  return m_impl->password_encrypted();
+}
+
+EncryptionState PdfFile::encryption_state() const {
+  return m_impl->encryption_state();
+}
+
+bool PdfFile::decrypt(const std::string &password) {
+  return m_impl->decrypt(password);
+}
 
 std::shared_ptr<internal::abstract::PdfFile> PdfFile::impl() const {
   return m_impl;

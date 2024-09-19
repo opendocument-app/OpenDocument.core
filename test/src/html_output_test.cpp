@@ -21,26 +21,33 @@ using namespace odr::internal;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
-using HtmlOutputTests = ::testing::TestWithParam<std::string>;
+struct TestParams {
+  TestFile test_file;
+  std::string path;
+  DecoderEngine engine{DecoderEngine::odr};
+  std::string test_repo;
+  std::string output_path;
+  std::string output_path_prefix;
+};
+
+using HtmlOutputTests = ::testing::TestWithParam<TestParams>;
 
 TEST_P(HtmlOutputTests, html_meta) {
-  const std::string test_file_path = GetParam();
-  const TestFile test_file = TestData::test_file(test_file_path);
+  const TestParams &params = GetParam();
+  const TestFile &test_file = params.test_file;
+  const std::string &test_file_path = params.path;
+  const DecoderEngine engine = params.engine;
+  const std::string &test_repo = params.test_repo;
+  const std::string &output_path = params.output_path;
+  const std::string &output_path_prefix =
+      common::Path(output_path).parent().string();
 
-  const std::string test_repo = *common::Path(test_file_path).begin();
-  const std::string output_path_prefix =
-      common::Path("output").join(test_repo).join("output").string();
-  const std::string output_path =
-      common::Path(output_path_prefix)
-          .join(common::Path(test_file_path).rebase(test_repo))
-          .string();
-
-  std::cout << test_file.path << " to " << output_path << std::endl;
+  std::cout << test_file.short_path << " to " << output_path << std::endl;
 
   // TODO compare guessed file type VS actual file type
 
   // these files cannot be opened
-  if (util::string::ends_with(test_file.path, ".sxw") ||
+  if (util::string::ends_with(test_file.short_path, ".sxw") ||
       (test_file.type == FileType::legacy_word_document) ||
       (test_file.type == FileType::legacy_powerpoint_presentation) ||
       (test_file.type == FileType::legacy_excel_worksheets) ||
@@ -50,12 +57,17 @@ TEST_P(HtmlOutputTests, html_meta) {
   }
 
   // TODO fix
-  if ((test_file.type == FileType::portable_document_format) &&
+  if ((engine == DecoderEngine::odr) &&
+      (test_file.type == FileType::portable_document_format) &&
       (test_repo != "odr-public")) {
     GTEST_SKIP();
   }
 
-  const DecodedFile file{test_file.path};
+  DecodePreference decode_preference;
+  decode_preference.as_file_type = test_file.type;
+  decode_preference.with_engine = engine;
+  DecodedFile file =
+      OpenDocumentReader::open(test_file.absolute_path, decode_preference);
 
   FileMeta file_meta = file.file_meta();
 
@@ -74,11 +86,21 @@ TEST_P(HtmlOutputTests, html_meta) {
   if (file.is_document_file()) {
     DocumentFile document_file = file.document_file();
 
-    EXPECT_EQ(test_file.password_encrypted, document_file.password_encrypted());
-    if (document_file.password_encrypted()) {
-      EXPECT_TRUE(document_file.decrypt(test_file.password));
+    EXPECT_EQ(test_file.password.has_value(),
+              document_file.password_encrypted());
+    if (test_file.password.has_value()) {
+      EXPECT_TRUE(document_file.decrypt(test_file.password.value()));
     }
     EXPECT_EQ(test_file.type, document_file.file_type());
+  }
+
+  if (file.is_pdf_file()) {
+    PdfFile pdf_file = file.pdf_file();
+
+    EXPECT_EQ(test_file.password.has_value(), pdf_file.password_encrypted());
+    if (test_file.password.has_value()) {
+      EXPECT_TRUE(pdf_file.decrypt(test_file.password.value()));
+    }
   }
 
   fs::create_directories(output_path);
@@ -115,15 +137,68 @@ TEST_P(HtmlOutputTests, html_meta) {
   }
 }
 
+namespace {
+
+std::string engine_suffix(const DecoderEngine engine) {
+  return engine == DecoderEngine::odr
+             ? ""
+             : "-" + OpenDocumentReader::engine_to_string(engine);
+}
+
+std::string test_params_to_name(const TestParams &params) {
+  std::string path = params.path + engine_suffix(params.engine);
+  internal::util::string::replace_all(path, "/", "_");
+  internal::util::string::replace_all(path, "-", "_");
+  internal::util::string::replace_all(path, "+", "_");
+  internal::util::string::replace_all(path, ".", "_");
+  internal::util::string::replace_all(path, " ", "_");
+  internal::util::string::replace_all(path, "$", "");
+  return path;
+}
+
+TestParams create_test_params(const TestFile &test_file,
+                              const DecoderEngine engine) {
+  const std::string test_file_path = test_file.short_path;
+
+  const std::string test_repo = *common::Path(test_file_path).begin();
+  const std::string output_path_prefix =
+      common::Path("output").join(test_repo).join("output").string();
+  const std::string output_path_suffix = engine_suffix(engine);
+  const std::string output_path =
+      common::Path(output_path_prefix)
+          .join(common::Path(test_file_path).rebase(test_repo))
+          .string() +
+      output_path_suffix;
+
+  return {
+      .test_file = test_file,
+      .path = test_file_path,
+      .engine = engine,
+      .test_repo = test_repo,
+      .output_path = output_path,
+      .output_path_prefix = output_path_prefix,
+  };
+}
+
+std::vector<TestParams> list_test_params() {
+  std::vector<TestParams> params;
+  for (const TestFile &test_file : TestData::test_files()) {
+    std::vector<DecoderEngine> engines = {DecoderEngine::odr};
+    if (test_file.type == FileType::portable_document_format) {
+      engines.push_back(DecoderEngine::poppler);
+    }
+
+    for (const DecoderEngine engine : engines) {
+      params.push_back(create_test_params(test_file, engine));
+    }
+  }
+  return params;
+}
+
+} // namespace
+
 INSTANTIATE_TEST_SUITE_P(all_test_files, HtmlOutputTests,
-                         testing::ValuesIn(TestData::test_file_paths()),
-                         [](const ::testing::TestParamInfo<std::string> &info) {
-                           std::string path = info.param;
-                           internal::util::string::replace_all(path, "/", "_");
-                           internal::util::string::replace_all(path, "-", "_");
-                           internal::util::string::replace_all(path, "+", "_");
-                           internal::util::string::replace_all(path, ".", "_");
-                           internal::util::string::replace_all(path, " ", "_");
-                           internal::util::string::replace_all(path, "$", "");
-                           return path;
+                         testing::ValuesIn(list_test_params()),
+                         [](const ::testing::TestParamInfo<TestParams> &info) {
+                           return test_params_to_name(info.param);
                          });

@@ -28,6 +28,11 @@ struct UnsupportedFileType final : public std::runtime_error {
   explicit UnsupportedFileType(FileType file_type);
 };
 
+/// @brief Unknown decoder engine exception
+struct UnknownDecoderEngine final : public std::runtime_error {
+  UnknownDecoderEngine();
+};
+
 /// @brief File read error
 struct FileReadError final : public std::runtime_error {
   FileReadError();

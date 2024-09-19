@@ -18,23 +18,29 @@ namespace fs = std::filesystem;
 namespace odr::test {
 
 namespace {
-TestFile get_test_file(std::string input) {
-  const FileType type =
-      OpenDocumentReader::type_by_extension(common::Path(input).extension());
-  const std::string file_name = fs::path(input).filename().string();
-  std::string password;
-  if (const auto left = file_name.find('$'), right = file_name.rfind('$');
-      (left != std::string::npos) && (left != right)) {
-    password = file_name.substr(left, right);
-  }
-  const bool encrypted = !password.empty();
 
-  return {std::move(input), type, encrypted, std::move(password)};
+TestFile get_test_file(const std::string &root_path,
+                       std::string absolute_path) {
+  const FileType type = OpenDocumentReader::type_by_extension(
+      common::Path(absolute_path).extension());
+
+  std::string short_path = absolute_path.substr(root_path.size() + 1);
+
+  std::optional<std::string> password;
+  const std::string filename = fs::path(absolute_path).filename().string();
+  if (const auto left = filename.find('$'), right = filename.rfind('$');
+      (left != std::string::npos) && (left != right)) {
+    password = filename.substr(left, right);
+  }
+
+  return {std::move(absolute_path), std::move(short_path), type,
+          std::move(password)};
 }
 
-std::vector<TestFile> get_test_files(const std::string &input_path) {
+std::vector<TestFile> get_test_files(const std::string &root_path,
+                                     const std::string &input_path) {
   if (fs::is_regular_file(input_path)) {
-    return {get_test_file(input_path)};
+    return {get_test_file(root_path, input_path)};
   }
   if (!fs::is_directory(input_path)) {
     return {};
@@ -45,21 +51,22 @@ std::vector<TestFile> get_test_files(const std::string &input_path) {
   const std::string index_path = input_path + "/index.csv";
   if (fs::is_regular_file(index_path)) {
     for (const auto &row : csv::CSVReader(index_path)) {
-      const std::string path = input_path + "/" + row["path"].get<>();
-      const FileType type =
+      std::string absolute_path = input_path + "/" + row["path"].get<>();
+      std::string short_path = absolute_path.substr(root_path.size() + 1);
+      FileType type =
           OpenDocumentReader::type_by_extension(row["type"].get<>());
-      std::string password = row["password"].get<>();
-      const bool encrypted = !password.empty();
-      const std::string file_name = fs::path(path).filename().string();
+      std::optional<std::string> password = row["encrypted"].get<>() == "yes"
+                                                ? row["password"].get<>()
+                                                : std::optional<std::string>();
 
       if (type == FileType::unknown) {
         continue;
       }
-      result.emplace_back(path, type, encrypted, std::move(password));
+      result.emplace_back(std::move(absolute_path), std::move(short_path), type,
+                          std::move(password));
     }
   }
 
-  // TODO this will also recurse `.git`
   for (auto &&p : fs::recursive_directory_iterator(input_path)) {
     if (!p.is_regular_file()) {
       continue;
@@ -68,15 +75,17 @@ std::vector<TestFile> get_test_files(const std::string &input_path) {
     if (path == index_path) {
       continue;
     }
-
-    if (const auto it =
-            std::find_if(std::begin(result), std::end(result),
-                         [&](auto &&file) { return file.path == path; });
+    if (p.path().filename().string().starts_with(".")) {
+      continue;
+    }
+    if (const auto it = std::find_if(
+            std::begin(result), std::end(result),
+            [&](auto &&file) { return file.absolute_path == path; });
         it != std::end(result)) {
       continue;
     }
 
-    const auto file = get_test_file(path);
+    const auto file = get_test_file(root_path, path);
 
     if (file.type == FileType::unknown) {
       continue;
@@ -87,26 +96,30 @@ std::vector<TestFile> get_test_files(const std::string &input_path) {
   return result;
 }
 
-std::unordered_map<std::string, TestFile> get_test_files() {
-  std::unordered_map<std::string, TestFile> result;
+std::vector<TestFile> get_test_files() {
+  std::vector<TestFile> result;
 
-  for (const auto &e :
-       fs::directory_iterator(test::TestData::data_input_directory())) {
-    const auto files = get_test_files(e.path().string());
-    for (auto &&file : files) {
-      std::string testPath =
-          file.path.substr(TestData::data_input_directory().length() + 1);
-      result[testPath] = file;
-    }
+  std::string root = TestData::data_input_directory();
+
+  for (const auto &e : fs::directory_iterator(root)) {
+    const auto files = get_test_files(root, e.path().string());
+    result.insert(std::end(result), std::begin(files), std::end(files));
   }
+
+  std::sort(std::begin(result), std::end(result),
+            [](const auto &lhs, const auto &rhs) {
+              return lhs.short_path < rhs.short_path;
+            });
 
   return result;
 }
+
 } // namespace
 
-TestFile::TestFile(std::string path, const FileType type,
-                   const bool password_encrypted, std::string password)
-    : path{std::move(path)}, type{type}, password_encrypted{password_encrypted},
+TestFile::TestFile(std::string absolute_path, std::string short_path,
+                   const FileType type, std::optional<std::string> password)
+    : absolute_path{std::move(absolute_path)},
+      short_path{std::move(short_path)}, type{type},
       password{std::move(password)} {}
 
 std::string TestData::data_input_directory() {
@@ -118,46 +131,41 @@ TestData &TestData::instance_() {
   return instance;
 }
 
-std::vector<std::string> TestData::test_file_paths() {
-  return instance_().test_file_paths_();
+std::vector<TestFile> TestData::test_files() {
+  return instance_().m_test_files;
 }
 
-std::vector<std::string> TestData::test_file_paths(FileType fileType) {
-  return instance_().test_file_paths_(fileType);
+std::vector<TestFile> TestData::test_files(FileType fileType) {
+  return instance_().test_files_(fileType);
 }
 
-TestFile TestData::test_file(const std::string &path) {
-  return instance_().test_file_(path);
+TestFile TestData::test_file(const std::string &short_path) {
+  const auto &files = instance_().m_test_files;
+  const auto it =
+      std::find_if(std::begin(files), std::end(files), [&](const auto &file) {
+        return file.short_path == short_path;
+      });
+  if (it == std::end(files)) {
+    throw std::runtime_error("Test file not found: " + short_path);
+  }
+  return *it;
 }
 
-std::string TestData::test_file_path(const std::string &path) {
-  return test_file(path).path;
+std::string TestData::test_file_path(const std::string &short_path) {
+  return test_file(short_path).absolute_path;
 }
 
 TestData::TestData() : m_test_files{get_test_files()} {}
 
-std::vector<std::string> TestData::test_file_paths_() const {
-  std::vector<std::string> result;
+std::vector<TestFile> TestData::test_files_(const FileType fileType) const {
+  std::vector<TestFile> result;
+  result.reserve(m_test_files.size());
   for (auto &&file : m_test_files) {
-    result.push_back(file.first);
-  }
-  std::sort(std::begin(result), std::end(result));
-  return result;
-}
-
-std::vector<std::string> TestData::test_file_paths_(FileType fileType) const {
-  std::vector<std::string> result;
-  for (auto &&file : m_test_files) {
-    if (file.second.type == fileType) {
-      result.push_back(file.first);
+    if (file.type == fileType) {
+      result.push_back(file);
     }
   }
-  std::sort(std::begin(result), std::end(result));
   return result;
-}
-
-TestFile TestData::test_file_(const std::string &path) const {
-  return m_test_files.at(path);
 }
 
 } // namespace odr::test

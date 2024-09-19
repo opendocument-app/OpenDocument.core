@@ -8,11 +8,6 @@
 #include <unordered_map>
 #include <utility>
 
-namespace odr::internal::abstract {
-class Document;
-class File;
-} // namespace odr::internal::abstract
-
 namespace odr::internal::oldms {
 
 namespace {

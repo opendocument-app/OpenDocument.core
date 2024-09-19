@@ -18,19 +18,9 @@ Html translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
                                 const std::string &output_path,
                                 const HtmlConfig &config);
 
-class ConversionFailedException : public std::runtime_error {
+class DocumentCopyProtectedException : public std::runtime_error {
 public:
   using std::runtime_error::runtime_error;
-};
-
-class DocumentCopyProtectedException : public ConversionFailedException {
-public:
-  using ConversionFailedException::ConversionFailedException;
-};
-
-class EncryptionPasswordException : public ConversionFailedException {
-public:
-  using ConversionFailedException::ConversionFailedException;
 };
 
 } // namespace odr::internal::html

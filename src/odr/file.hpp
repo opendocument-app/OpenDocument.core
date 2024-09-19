@@ -176,6 +176,8 @@ protected:
 class DecodedFile {
 public:
   static std::vector<FileType> types(const std::string &path);
+  static std::vector<DecoderEngine> engines(const std::string &path,
+                                            FileType as);
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
@@ -184,6 +186,7 @@ public:
   DecodedFile(const File &file, FileType as);
   explicit DecodedFile(const std::string &path);
   DecodedFile(const std::string &path, FileType as);
+  DecodedFile(const std::string &path, const DecodePreference &preference);
 
   [[nodiscard]] explicit operator bool() const;
 
@@ -272,6 +275,10 @@ private:
 class PdfFile final : public DecodedFile {
 public:
   explicit PdfFile(std::shared_ptr<internal::abstract::PdfFile>);
+
+  [[nodiscard]] bool password_encrypted() const;
+  [[nodiscard]] EncryptionState encryption_state() const;
+  bool decrypt(const std::string &password);
 
   [[nodiscard]] std::shared_ptr<internal::abstract::PdfFile> impl() const;
 
