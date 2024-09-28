@@ -169,8 +169,8 @@ std::string OpenDocumentReader::engine_to_string(const DecoderEngine engine) {
     return "odr";
   } else if (engine == DecoderEngine::poppler) {
     return "poppler";
-  } else if (engine == DecoderEngine::wv_ware) {
-    return "wv_ware";
+  } else if (engine == DecoderEngine::wvware) {
+    return "wvware";
   }
   throw UnknownDecoderEngine();
 }
@@ -180,8 +180,8 @@ DecoderEngine OpenDocumentReader::engine_by_name(const std::string &name) {
     return DecoderEngine::odr;
   } else if (name == "poppler") {
     return DecoderEngine::poppler;
-  } else if (name == "wv_ware") {
-    return DecoderEngine::wv_ware;
+  } else if (name == "wvware") {
+    return DecoderEngine::wvware;
   }
   throw UnknownDecoderEngine();
 }

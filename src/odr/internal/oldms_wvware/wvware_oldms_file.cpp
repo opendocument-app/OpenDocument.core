@@ -6,6 +6,8 @@
 #include <memory>
 #include <utility>
 
+#include <gsf/gsf-input-memory.h>
+#include <gsf/gsf-input-stdio.h>
 #include <wv/wv.h>
 
 namespace odr::internal {
@@ -13,9 +15,34 @@ namespace odr::internal {
 WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
     std::shared_ptr<common::DiskFile> file)
     : m_file{std::move(file)} {
+  GError *error = nullptr;
+
+  m_gsf_input =
+      gsf_input_stdio_new(m_file->disk_path()->string().c_str(), &error);
+
+  if (m_gsf_input == nullptr) {
+    throw std::runtime_error("gsf_input_stdio_new failed");
+  }
+
+  open();
+}
+
+WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
+    std::shared_ptr<common::MemoryFile> file)
+    : m_file{std::move(file)} {
+  m_gsf_input = gsf_input_memory_new(
+      reinterpret_cast<const guint8 *>(m_file->memory_data()),
+      static_cast<gsf_off_t>(m_file->size()), false);
+
+  open();
+}
+
+WvWareLegacyMicrosoftFile::~WvWareLegacyMicrosoftFile() { wvOLEFree(&m_ps); }
+
+void WvWareLegacyMicrosoftFile::open() {
   wvInit();
-  char *path = const_cast<char *>(m_file->disk_path()->string().c_str());
-  int ret = wvInitParser(&m_ps, path);
+
+  int ret = wvInitParser_gsf(&m_ps, m_gsf_input);
 
   // check if password is required
   if ((ret & 0x8000) != 0) {
@@ -27,7 +54,7 @@ WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
       ret = 0;
     }
   } else {
-    m_encryption_state = EncryptionState::decrypted;
+    m_encryption_state = EncryptionState::not_encrypted;
   }
 
   if (ret != 0) {
@@ -36,32 +63,28 @@ WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
   }
 }
 
-WvWareLegacyMicrosoftFile::~WvWareLegacyMicrosoftFile() { wvOLEFree(&m_ps); }
-
 std::shared_ptr<abstract::File>
 WvWareLegacyMicrosoftFile::file() const noexcept {
   return m_file;
 }
 
 FileType WvWareLegacyMicrosoftFile::file_type() const noexcept {
-  return {}; // TODO
+  return FileType::legacy_word_document;
 }
 
 FileMeta WvWareLegacyMicrosoftFile::file_meta() const noexcept {
-  return {}; // TODO
+  return {file_type(), password_encrypted(), document_meta()};
 }
 
 DecoderEngine WvWareLegacyMicrosoftFile::decoder_engine() const noexcept {
-  return DecoderEngine::wv_ware;
+  return DecoderEngine::wvware;
 }
 
 DocumentType WvWareLegacyMicrosoftFile::document_type() const {
-  return {}; // TODO
+  return DocumentType::text;
 }
 
-DocumentMeta WvWareLegacyMicrosoftFile::document_meta() const {
-  return {}; // TODO
-}
+DocumentMeta WvWareLegacyMicrosoftFile::document_meta() const { return {}; }
 
 bool WvWareLegacyMicrosoftFile::password_encrypted() const noexcept {
   return m_encryption_state == EncryptionState::encrypted ||

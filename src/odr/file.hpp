@@ -98,7 +98,7 @@ enum class FileLocation {
 enum class DecoderEngine {
   odr,
   poppler,
-  wv_ware,
+  wvware,
 };
 
 /// @brief Preference for decoding files.
@@ -266,6 +266,8 @@ public:
   [[nodiscard]] DocumentMeta document_meta() const;
 
   [[nodiscard]] Document document() const;
+
+  [[nodiscard]] std::shared_ptr<internal::abstract::DocumentFile> impl() const;
 
 private:
   std::shared_ptr<internal::abstract::DocumentFile> m_impl;

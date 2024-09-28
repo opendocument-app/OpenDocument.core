@@ -244,6 +244,10 @@ DocumentMeta DocumentFile::document_meta() const {
 
 Document DocumentFile::document() const { return Document(m_impl->document()); }
 
+std::shared_ptr<internal::abstract::DocumentFile> DocumentFile::impl() const {
+  return m_impl;
+}
+
 PdfFile::PdfFile(std::shared_ptr<internal::abstract::PdfFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 

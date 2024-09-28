@@ -13,6 +13,7 @@
 
 namespace odr::internal::common {
 class DiskFile;
+class MemoryFile;
 } // namespace odr::internal::common
 
 namespace odr::internal {
@@ -20,6 +21,7 @@ namespace odr::internal {
 class WvWareLegacyMicrosoftFile final : public abstract::DocumentFile {
 public:
   explicit WvWareLegacyMicrosoftFile(std::shared_ptr<common::DiskFile> file);
+  explicit WvWareLegacyMicrosoftFile(std::shared_ptr<common::MemoryFile> file);
   ~WvWareLegacyMicrosoftFile() final;
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
@@ -40,12 +42,15 @@ public:
   [[nodiscard]] wvParseStruct &parse_struct() const;
 
 private:
-  std::shared_ptr<common::DiskFile> m_file;
+  std::shared_ptr<abstract::File> m_file;
+  GsfInput *m_gsf_input{};
 
   EncryptionState m_encryption_state{EncryptionState::unknown};
 
   wvParseStruct m_ps{};
   int m_encryption_flag{};
+
+  void open();
 };
 
 } // namespace odr::internal

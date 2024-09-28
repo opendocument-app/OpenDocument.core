@@ -12,6 +12,7 @@
 #include <odr/internal/magic.hpp>
 #include <odr/internal/odf/odf_file.hpp>
 #include <odr/internal/oldms/oldms_file.hpp>
+#include <odr/internal/oldms_wvware/wvware_oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
@@ -101,10 +102,8 @@ open_strategy::engines(const std::shared_ptr<abstract::File> &file,
 
   result.push_back(DecoderEngine::odr);
 
-  if (as == FileType::legacy_word_document ||
-      as == FileType::legacy_powerpoint_presentation ||
-      as == FileType::legacy_excel_worksheets) {
-    result.push_back(DecoderEngine::wv_ware);
+  if (as == FileType::legacy_word_document) {
+    result.push_back(DecoderEngine::wvware);
   }
 
   if (as == FileType::portable_document_format) {
@@ -251,6 +250,15 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       return nullptr;
     }
+    if (with == DecoderEngine::wvware) {
+      try {
+        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        return std::make_unique<odr::internal::WvWareLegacyMicrosoftFile>(
+            std::move(memory_file));
+      } catch (...) {
+      }
+      return nullptr;
+    }
     return nullptr;
   }
 
@@ -363,11 +371,10 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
 std::unique_ptr<abstract::DecodedFile>
 open_strategy::open_file(std::shared_ptr<abstract::File> file,
                          const DecodePreference &preference) {
-  std::vector<FileType> probe_types =
-      preference.as_file_type.has_value()
-          ? std::vector{*preference.as_file_type}
-          : preference.file_type_priority;
-  {
+  std::vector<FileType> probe_types;
+  if (preference.as_file_type.has_value()) {
+    probe_types.push_back(*preference.as_file_type);
+  } else {
     std::vector<FileType> detected_types = types(file);
     probe_types.insert(probe_types.end(), detected_types.begin(),
                        detected_types.end());
@@ -376,11 +383,10 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
   }
 
   for (FileType as : probe_types) {
-    std::vector<DecoderEngine> probe_engines =
-        preference.with_engine.has_value()
-            ? std::vector{*preference.with_engine}
-            : preference.engine_priority;
-    {
+    std::vector<DecoderEngine> probe_engines;
+    if (preference.with_engine.has_value()) {
+      probe_engines.push_back(*preference.with_engine);
+    } else {
       std::vector<DecoderEngine> detected_engines = engines(file, as);
       probe_engines.insert(probe_engines.end(), detected_engines.begin(),
                            detected_engines.end());

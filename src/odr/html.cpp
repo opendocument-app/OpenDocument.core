@@ -12,6 +12,8 @@
 #include <odr/internal/html/pdf2htmlEX_wrapper.hpp>
 #include <odr/internal/html/pdf_file.hpp>
 #include <odr/internal/html/text_file.hpp>
+#include <odr/internal/html/wvWare_wrapper.hpp>
+#include <odr/internal/oldms_wvware/wvware_oldms_file.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 
 #include <filesystem>
@@ -75,11 +77,9 @@ Html html::translate(const DecodedFile &decoded_file,
   } else if (decoded_file.is_image_file()) {
     return translate(decoded_file.image_file(), output_path, config);
   } else if (decoded_file.is_archive_file()) {
-    return translate(decoded_file.archive_file().archive(), output_path,
-                     config);
+    return translate(decoded_file.archive_file(), output_path, config);
   } else if (decoded_file.is_document_file()) {
-    return translate(decoded_file.document_file().document(), output_path,
-                     config);
+    return translate(decoded_file.document_file(), output_path, config);
   } else if (decoded_file.is_pdf_file()) {
     return translate(decoded_file.pdf_file(), output_path, config);
   }
@@ -99,17 +99,24 @@ Html html::translate(const ImageFile &image_file,
   return internal::html::translate_image_file(image_file, output_path, config);
 }
 
-Html html::translate(const Archive &archive, const std::string &output_path,
-                     const HtmlConfig &config) {
-  fs::create_directories(output_path);
-  return internal::html::translate_filesystem(
-      FileType::unknown, archive.filesystem(), output_path, config);
+Html html::translate(const ArchiveFile &archive_file,
+                     const std::string &output_path, const HtmlConfig &config) {
+  return translate(archive_file.archive(), output_path, config);
 }
 
-Html html::translate(const Document &document, const std::string &output_path,
-                     const HtmlConfig &config) {
-  fs::create_directories(output_path);
-  return internal::html::translate_document(document, output_path, config);
+Html html::translate(const DocumentFile &document_file,
+                     const std::string &output_path, const HtmlConfig &config) {
+  auto document_file_impl = document_file.impl();
+
+  if (auto wv_document_file =
+          std::dynamic_pointer_cast<internal::WvWareLegacyMicrosoftFile>(
+              document_file_impl)) {
+    fs::create_directories(output_path);
+    return internal::html::translate_wvware_oldms_file(*wv_document_file,
+                                                       output_path, config);
+  }
+
+  return translate(document_file.document(), output_path, config);
 }
 
 Html html::translate(const PdfFile &pdf_file, const std::string &output_path,
@@ -124,6 +131,19 @@ Html html::translate(const PdfFile &pdf_file, const std::string &output_path,
   }
 
   return internal::html::translate_pdf_file(pdf_file, output_path, config);
+}
+
+Html html::translate(const Archive &archive, const std::string &output_path,
+                     const HtmlConfig &config) {
+  fs::create_directories(output_path);
+  return internal::html::translate_filesystem(
+      FileType::unknown, archive.filesystem(), output_path, config);
+}
+
+Html html::translate(const Document &document, const std::string &output_path,
+                     const HtmlConfig &config) {
+  fs::create_directories(output_path);
+  return internal::html::translate_document(document, output_path, config);
 }
 
 void html::edit(const Document &document, const char *diff) {

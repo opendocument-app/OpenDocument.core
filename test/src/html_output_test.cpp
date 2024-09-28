@@ -35,7 +35,6 @@ using HtmlOutputTests = ::testing::TestWithParam<TestParams>;
 TEST_P(HtmlOutputTests, html_meta) {
   const TestParams &params = GetParam();
   const TestFile &test_file = params.test_file;
-  const std::string &test_file_path = params.path;
   const DecoderEngine engine = params.engine;
   const std::string &test_repo = params.test_repo;
   const std::string &output_path = params.output_path;
@@ -48,7 +47,6 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   // these files cannot be opened
   if (util::string::ends_with(test_file.short_path, ".sxw") ||
-      (test_file.type == FileType::legacy_word_document) ||
       (test_file.type == FileType::legacy_powerpoint_presentation) ||
       (test_file.type == FileType::legacy_excel_worksheets) ||
       (test_file.type == FileType::word_perfect) ||
@@ -186,6 +184,10 @@ std::vector<TestParams> list_test_params() {
     std::vector<DecoderEngine> engines = {DecoderEngine::odr};
     if (test_file.type == FileType::portable_document_format) {
       engines.push_back(DecoderEngine::poppler);
+    }
+    if (test_file.type == FileType::legacy_word_document) {
+      engines.clear();
+      engines.push_back(DecoderEngine::wvware);
     }
 
     for (const DecoderEngine engine : engines) {
