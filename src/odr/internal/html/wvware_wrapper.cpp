@@ -1,4 +1,4 @@
-#include <odr/internal/html/wvWare_wrapper.hpp>
+#include <odr/internal/html/wvware_wrapper.hpp>
 
 #include <odr/file.hpp>
 #include <odr/html.hpp>
@@ -8,6 +8,7 @@
 
 #include <wv/wv.h>
 
+#include <fstream>
 #include <iostream>
 
 namespace odr::internal {
@@ -36,6 +37,8 @@ struct TranslationState : public expand_data {
   int i = 0;
   char *charset = nullptr;
   PAP *ppap = nullptr;
+
+  std::unique_ptr<std::ostream> output_stream;
 };
 
 /// Originally from `wvWare.c` `wvStrangeNoGraphicData`
@@ -476,8 +479,6 @@ Html html::translate_wvware_oldms_file(
     const HtmlConfig &config) {
   auto output_file_path = output_path + "/document.html";
 
-  char *wv_config = nullptr; // TODO
-
   wvParseStruct &ps = oldms_file.parse_struct();
 
   wvSetElementHandler(&ps, element_handler);
@@ -487,15 +488,26 @@ Html html::translate_wvware_oldms_file(
 
   state_data handle;
   TranslationState translation_state;
+  translation_state.output_stream =
+      std::make_unique<std::ofstream>(output_file_path, std::ios::out);
 
   wvInitStateData(&handle);
 
   translation_state.sd = &handle;
   ps.userData = &translation_state;
 
+  *translation_state.output_stream << "<!DOCTYPE html>\n<html>\n<head>\n"
+                                   << "<meta charset=\"UTF-8\">\n"
+                                   << "<title>Document</title>\n"
+                                   << "</head>\n<body>\n";
+
   if (wvHtml(&ps) != 0) {
     throw std::runtime_error("wvHtml failed");
   }
+
+  *translation_state.output_stream << "</body>\n</html>\n";
+
+  translation_state.output_stream->flush();
 
   return {
       FileType::legacy_word_document, config, {{"document", output_file_path}}};

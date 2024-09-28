@@ -9,10 +9,10 @@
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/filesystem.hpp>
 #include <odr/internal/html/image_file.hpp>
-#include <odr/internal/html/pdf2htmlEX_wrapper.hpp>
+#include <odr/internal/html/pdf2htmlex_wrapper.hpp>
 #include <odr/internal/html/pdf_file.hpp>
 #include <odr/internal/html/text_file.hpp>
-#include <odr/internal/html/wvWare_wrapper.hpp>
+#include <odr/internal/html/wvware_wrapper.hpp>
 #include <odr/internal/oldms_wvware/wvware_oldms_file.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 

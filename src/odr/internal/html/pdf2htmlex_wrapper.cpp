@@ -1,4 +1,4 @@
-#include <odr/internal/html/pdf2htmlEX_wrapper.hpp>
+#include <odr/internal/html/pdf2htmlex_wrapper.hpp>
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>

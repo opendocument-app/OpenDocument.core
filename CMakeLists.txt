@@ -108,7 +108,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
         "src/odr/internal/html/pdf_file.cpp"
-        "src/odr/internal/html/pdf2htmlEX_wrapper.hpp"
+        "src/odr/internal/html/pdf2htmlex_wrapper.hpp"
         "src/odr/internal/html/text_file.cpp"
 
         "src/odr/internal/json/json_file.cpp"
@@ -200,7 +200,7 @@ if (WITH_PDF2HTMLEX)
     find_package(poppler REQUIRED)
     target_sources(odr
             PRIVATE
-            "src/odr/internal/html/pdf2htmlEX_wrapper.cpp"
+            "src/odr/internal/html/pdf2htmlex_wrapper.cpp"
             "src/odr/internal/pdf_poppler/poppler_pdf_file.cpp"
     )
     target_link_libraries(odr
@@ -213,7 +213,7 @@ if (WITH_WVWARE)
     find_package(wvware REQUIRED)
     target_sources(odr
             PRIVATE
-            "src/odr/internal/html/wvWare_wrapper.cpp"
+            "src/odr/internal/html/wvware_wrapper.cpp"
             "src/odr/internal/oldms_wvware/wvware_oldms_file.cpp"
     )
     target_link_libraries(odr
