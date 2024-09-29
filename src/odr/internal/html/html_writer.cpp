@@ -121,123 +121,123 @@ HtmlElementOptions::set_extra(std::optional<HtmlWritable> _extra) {
 
 HtmlWriter::HtmlWriter(std::ostream &out, bool format, std::uint8_t indent,
                        std::uint32_t current_indent)
-    : m_out{out}, m_format{format}, m_indent(indent, ' '),
+    : m_out{&out}, m_format{format}, m_indent(indent, ' '),
       m_current_indent{current_indent} {}
 
 HtmlWriter::HtmlWriter(std::ostream &out, const HtmlConfig &config)
     : HtmlWriter{out, config.format_html, config.html_indent} {}
 
 void HtmlWriter::write_begin() {
-  m_out << "<!DOCTYPE html>\n";
-  m_out << "<html>";
+  out() << "<!DOCTYPE html>\n";
+  out() << "<html>";
 }
 
 void HtmlWriter::write_end() {
   write_new_line();
 
-  m_out << "</html>";
+  out() << "</html>";
 }
 
 void HtmlWriter::write_header_begin() {
   write_new_line();
   ++m_current_indent;
 
-  m_out << "<head>";
+  out() << "<head>";
 }
 
 void HtmlWriter::write_header_end() {
   --m_current_indent;
   write_new_line();
 
-  m_out << "</head>";
+  out() << "</head>";
 }
 
 void HtmlWriter::write_header_title(const std::string &title) {
   write_new_line();
 
-  m_out << "<title>" << title << "</title>";
+  out() << "<title>" << title << "</title>";
 }
 
 void HtmlWriter::write_header_viewport(const std::string &viewport) {
   write_new_line();
 
-  m_out << R"(<meta name="viewport" content=")";
-  m_out << viewport;
-  m_out << "\"/>";
+  out() << R"(<meta name="viewport" content=")";
+  out() << viewport;
+  out() << "\"/>";
 }
 
 void HtmlWriter::write_header_target(const std::string &target) {
   write_new_line();
 
-  m_out << "<base target=\"";
-  m_out << target;
-  m_out << "\"/>";
+  out() << "<base target=\"";
+  out() << target;
+  out() << "\"/>";
 }
 
 void HtmlWriter::write_header_charset(const std::string &charset) {
   write_new_line();
 
-  m_out << "<meta charset=\"";
-  m_out << charset;
-  m_out << "\"/>";
+  out() << "<meta charset=\"";
+  out() << charset;
+  out() << "\"/>";
 }
 
 void HtmlWriter::write_header_style(const std::string &href) {
   write_new_line();
 
-  m_out << R"(<link rel="stylesheet" href=")";
-  m_out << href;
-  m_out << "\"/>";
+  out() << R"(<link rel="stylesheet" href=")";
+  out() << href;
+  out() << "\"/>";
 }
 
 void HtmlWriter::write_header_style_begin() {
   write_new_line();
   ++m_current_indent;
 
-  m_out << "<style>";
+  out() << "<style>";
 }
 
 void HtmlWriter::write_header_style_end() {
   --m_current_indent;
   write_new_line();
 
-  m_out << "</style>";
+  out() << "</style>";
 }
 
 void HtmlWriter::write_script(const std::string &src) {
   write_new_line();
 
-  m_out << R"(<script type="text/javascript" src=")" << src << "\"></script>";
+  out() << R"(<script type="text/javascript" src=")" << src << "\"></script>";
 }
 
 void HtmlWriter::write_script_begin() {
   write_new_line();
   ++m_current_indent;
 
-  m_out << "<script>";
+  out() << "<script>";
 }
 
 void HtmlWriter::write_script_end() {
   --m_current_indent;
   write_new_line();
 
-  m_out << "</script>";
+  out() << "</script>";
 }
 
 void HtmlWriter::write_body_begin(const HtmlElementOptions &options) {
   write_new_line();
   ++m_current_indent;
 
-  m_out << "<body";
-  write_element_options(m_out, options);
-  m_out << ">";
+  out() << "<body";
+  write_element_options(out(), options);
+  out() << ">";
 }
 
 void HtmlWriter::write_body_end() {
   --m_current_indent;
   write_new_line();
 
-  m_out << "</body>";
+  out() << "</body>";
 }
 
 void HtmlWriter::write_element_begin(const std::string &name,
@@ -248,12 +248,12 @@ void HtmlWriter::write_element_begin(const std::string &name,
     m_stack.push_back({name, options.inline_element});
   }
 
-  m_out << "<" << name;
-  write_element_options(m_out, options);
+  out() << "<" << name;
+  write_element_options(out(), options);
   if (options.close_type == HtmlCloseType::trailing) {
-    m_out << "/>";
+    out() << "/>";
   } else {
-    m_out << ">";
+    out() << ">";
   }
 }
 
@@ -269,7 +269,7 @@ void HtmlWriter::write_element_end(const std::string &name) {
   }
   m_stack.pop_back();
 
-  m_out << "</" << name << ">";
+  out() << "</" << name << ">";
 }
 
 bool HtmlWriter::is_inline_mode() const {
@@ -286,9 +286,9 @@ void HtmlWriter::write_new_line() {
     return;
   }
 
-  m_out << '\n';
+  out() << '\n';
   for (std::uint32_t i = 0; i < m_current_indent; ++i) {
-    m_out << m_indent;
+    out() << m_indent;
   }
 }
 
@@ -297,9 +297,9 @@ void HtmlWriter::write_raw(const HtmlWritable &writable, bool new_line) {
     write_new_line();
   }
 
-  write_writable(m_out, writable);
+  write_writable(out(), writable);
 }
 
-std::ostream &HtmlWriter::out() { return m_out; }
+std::ostream &HtmlWriter::out() { return *m_out; }
 
 } // namespace odr::internal::html
