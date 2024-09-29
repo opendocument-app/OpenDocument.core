@@ -3,22 +3,25 @@
 
 #include <odr/internal/abstract/file.hpp>
 
-namespace odr::internal::pdf {
+namespace odr::internal {
 
-class PdfFile : public abstract::DecodedFile {
+class PdfFile final : public abstract::PdfFile {
 public:
   explicit PdfFile(std::shared_ptr<abstract::File> file);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 
-  [[nodiscard]] FileType file_type() const noexcept final;
-  [[nodiscard]] FileCategory file_category() const noexcept final;
   [[nodiscard]] FileMeta file_meta() const noexcept final;
+  [[nodiscard]] DecoderEngine decoder_engine() const noexcept final;
+
+  [[nodiscard]] bool password_encrypted() const noexcept final;
+  [[nodiscard]] EncryptionState encryption_state() const noexcept final;
+  [[nodiscard]] bool decrypt(const std::string &password) final;
 
 private:
   std::shared_ptr<abstract::File> m_file;
 };
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal
 
 #endif // ODR_INTERNAL_PDF_FILE_HPP

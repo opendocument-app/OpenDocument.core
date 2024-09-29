@@ -24,4 +24,8 @@ FileMeta CsvFile::file_meta() const noexcept {
   return {FileType::comma_separated_values, false, {}};
 }
 
+DecoderEngine CsvFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 } // namespace odr::internal::csv

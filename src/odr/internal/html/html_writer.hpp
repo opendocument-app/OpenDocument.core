@@ -88,7 +88,7 @@ private:
     bool inline_element{false};
   };
 
-  std::ostream &m_out;
+  std::ostream *m_out{nullptr};
   bool m_format{false};
   std::string m_indent;
   std::uint32_t m_current_indent{0};

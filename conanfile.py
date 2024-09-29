@@ -1,11 +1,7 @@
-import os
-
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 from conan.tools.env import Environment
-from conan.tools.env.environment import EnvVars
-from conan.tools.files import copy
 
 
 class OpenDocumentCoreConan(ConanFile):
@@ -27,7 +23,17 @@ class OpenDocumentCoreConan(ConanFile):
     default_options = {
         "shared": False,
         "fPIC": True,
+        "with_pdf2htmlEX": True,
+        "with_wvWare": True,
     }
+
+    exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+            del self.options.with_pdf2htmlEX
+            del self.options.with_wvWare
 
     def requirements(self):
         self.requires("pugixml/1.14")
@@ -37,9 +43,9 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("vincentlaucsb-csv-parser/2.3.0")
         self.requires("uchardet/0.0.8")
         self.requires("utfcpp/4.0.4")
-        if self.options.get_safe("with_pdf2htmlEX"):
+        if self.options.get_safe("with_pdf2htmlEX", False):
             self.requires("pdf2htmlex/0.18.8.rc1-20240905-git")
-        if self.options.get_safe("with_wvWare"):
+        if self.options.get_safe("with_wvWare", False):
             self.requires("wvware/1.2.9")
 
     def build_requirements(self):
@@ -48,15 +54,6 @@ class OpenDocumentCoreConan(ConanFile):
     def validate_build(self):
         if self.settings.get_safe("compiler.cppstd"):
             check_min_cppstd(self, 20)
-
-    exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
-
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
-        self.options.with_pdf2htmlEX = self.settings.os not in ["Windows", "Macos"]
-        self.options.with_wvWare = self.settings.os not in ["Windows", "Macos"]
 
     def configure(self):
         if self.options.shared:

@@ -8,11 +8,6 @@
 #include <unordered_map>
 #include <utility>
 
-namespace odr::internal::abstract {
-class Document;
-class File;
-} // namespace odr::internal::abstract
-
 namespace odr::internal::oldms {
 
 namespace {
@@ -61,6 +56,10 @@ FileType LegacyMicrosoftFile::file_type() const noexcept {
 }
 
 FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_file_meta; }
+
+DecoderEngine LegacyMicrosoftFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
 
 DocumentType LegacyMicrosoftFile::document_type() const {
   return m_file_meta.document_meta->document_type;

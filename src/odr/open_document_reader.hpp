@@ -8,6 +8,8 @@
 namespace odr {
 enum class FileType;
 enum class FileCategory;
+enum class DecoderEngine;
+struct DecodePreference;
 class File;
 class DecodedFile;
 class TextFile;
@@ -45,14 +47,41 @@ public:
   /// @return The file type as a string.
   [[nodiscard]] static std::string type_to_string(FileType type) noexcept;
 
+  /// @brief Get the decoder engine as a string.
+  /// @param engine The decoder engine.
+  /// @return The decoder engine as a string.
+  [[nodiscard]] static std::string engine_to_string(DecoderEngine engine);
+  /// @brief Get the decoder engine by the name.
+  /// @param engine The name of the decoder engine.
+  /// @return The decoder engine.
+  [[nodiscard]] static DecoderEngine engine_by_name(const std::string &engine);
+
   /// @brief Get the file types by the file path.
   /// @param path The file path.
   /// @return The file types.
   [[nodiscard]] static std::vector<FileType> types(const std::string &path);
+  /// @brief Get the decoder engines for a file path and file type.
+  /// @param path The file path.
+  /// @param as The file type.
+  /// @return The decoder engines.
+  [[nodiscard]] static std::vector<DecoderEngine>
+  engines(const std::string &path, FileType as);
+
   /// @brief Open a file.
   /// @param path The file path.
   /// @return The decoded file.
   [[nodiscard]] static DecodedFile open(const std::string &path);
+  /// @brief Open a file.
+  /// @param path The file path.
+  /// @param as The file type.
+  /// @return The decoded file.
+  [[nodiscard]] static DecodedFile open(const std::string &path, FileType as);
+  /// @brief Open a file.
+  /// @param path The file path.
+  /// @param preference The decode preference.
+  /// @return The decoded file.
+  [[nodiscard]] static DecodedFile open(const std::string &path,
+                                        const DecodePreference &preference);
 
   /// @brief Translates a file to HTML.
   ///

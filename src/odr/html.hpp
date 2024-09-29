@@ -144,6 +144,31 @@ Html translate(const ImageFile &image_file, const std::string &output_path,
                const HtmlConfig &config);
 /// @brief Translates an archive to HTML.
 ///
+/// @param archive Archive file to translate.
+/// @param output_path Path to save the HTML output.
+/// @param config Configuration for the HTML output.
+/// @return HTML output.
+Html translate(const ArchiveFile &archive_file, const std::string &output_path,
+               const HtmlConfig &config);
+/// @brief Translates a document to HTML.
+///
+/// @param document_file Document file to translate.
+/// @param output_path Path to save the HTML output.
+/// @param config Configuration for the HTML output.
+/// @return HTML output.
+Html translate(const DocumentFile &document_file,
+               const std::string &output_path, const HtmlConfig &config);
+/// @brief Translates a PDF file to HTML.
+///
+/// @param pdf_file PDF file to translate.
+/// @param output_path Path to save the HTML output.
+/// @param config Configuration for the HTML output.
+/// @return HTML output.
+Html translate(const PdfFile &pdf_file, const std::string &output_path,
+               const HtmlConfig &config);
+
+/// @brief Translates an archive to HTML.
+///
 /// @param archive Archive to translate.
 /// @param output_path Path to save the HTML output.
 /// @param config Configuration for the HTML output.
@@ -157,14 +182,6 @@ Html translate(const Archive &archive, const std::string &output_path,
 /// @param config Configuration for the HTML output.
 /// @return HTML output.
 Html translate(const Document &document, const std::string &output_path,
-               const HtmlConfig &config);
-/// @brief Translates a PDF file to HTML.
-///
-/// @param pdf_file PDF file to translate.
-/// @param output_path Path to save the HTML output.
-/// @param config Configuration for the HTML output.
-/// @return HTML output.
-Html translate(const PdfFile &pdf_file, const std::string &output_path,
                const HtmlConfig &config);
 
 /// @brief Edits a document with a diff.

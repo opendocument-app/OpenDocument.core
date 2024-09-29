@@ -80,7 +80,7 @@ void front(const Document &document, HtmlWriter &out, const HtmlConfig &config,
   out.write_body_begin(HtmlElementOptions().set_class(body_clazz));
 }
 
-void back(const Document &document, internal::html::HtmlWriter &out,
+void back(const Document &document, html::HtmlWriter &out,
           const HtmlConfig &config,
           const HtmlResourceLocator &resourceLocator) {
   (void)document;
@@ -104,8 +104,8 @@ void back(const Document &document, internal::html::HtmlWriter &out,
 std::string fill_path_variables(const std::string &path,
                                 std::optional<std::uint32_t> index = {}) {
   std::string result = path;
-  internal::util::string::replace_all(result, "{index}",
-                                      index ? std::to_string(*index) : "");
+  util::string::replace_all(result, "{index}",
+                            index ? std::to_string(*index) : "");
   return result;
 }
 
@@ -219,7 +219,7 @@ public:
   void
   write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const final {
-    internal::html::translate_slide(m_slide, out, config, resourceLocator);
+    html::translate_slide(m_slide, out, config, resourceLocator);
   }
 
 private:
@@ -253,7 +253,7 @@ public:
   void
   write_html_fragment(HtmlWriter &out, const HtmlConfig &config,
                       const HtmlResourceLocator &resourceLocator) const final {
-    internal::html::translate_page(m_page, out, config, resourceLocator);
+    html::translate_page(m_page, out, config, resourceLocator);
   }
 
 private:
@@ -304,12 +304,11 @@ Html html::translate_document(const odr::Document &document,
   std::uint32_t i = 0;
   for (const auto &fragment : service.fragments()) {
     std::string filled_path = get_output_path(document, i, output_path, config);
-    std::ofstream ostream(filled_path);
+    std::ofstream ostream(filled_path, std::ios::out);
     if (!ostream.is_open()) {
       throw FileWriteError();
     }
-    internal::html::HtmlWriter out(ostream, config.format_html,
-                                   config.html_indent);
+    html::HtmlWriter out(ostream, config.format_html, config.html_indent);
 
     fragment.write_html_document(out.out(), config, resourceLocator);
 

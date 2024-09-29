@@ -22,4 +22,8 @@ FileMeta TextFile::file_meta() const noexcept {
   return {FileType::text_file, false, {}};
 }
 
+DecoderEngine TextFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 } // namespace odr::internal::text

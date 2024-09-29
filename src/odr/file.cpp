@@ -7,7 +7,6 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/open_strategy.hpp>
-#include <odr/internal/pdf/pdf_file.hpp>
 
 #include <optional>
 #include <utility>
@@ -59,6 +58,12 @@ std::vector<FileType> DecodedFile::types(const std::string &path) {
       std::make_shared<internal::common::DiskFile>(path));
 }
 
+std::vector<DecoderEngine> DecodedFile::engines(const std::string &path,
+                                                FileType as) {
+  return internal::open_strategy::engines(
+      std::make_shared<internal::common::DiskFile>(path), as);
+}
+
 FileType DecodedFile::type(const std::string &path) {
   return DecodedFile(path).file_type();
 }
@@ -69,7 +74,7 @@ FileMeta DecodedFile::meta(const std::string &path) {
 
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
     : m_impl{std::move(impl)} {
-  if (!m_impl) {
+  if (m_impl == nullptr) {
     throw UnknownFileType();
   }
 }
@@ -88,6 +93,11 @@ DecodedFile::DecodedFile(const std::string &path, FileType as)
     : DecodedFile(internal::open_strategy::open_file(
           std::make_shared<internal::common::DiskFile>(path), as)) {}
 
+DecodedFile::DecodedFile(const std::string &path,
+                         const DecodePreference &preference)
+    : DecodedFile(internal::open_strategy::open_file(
+          std::make_shared<internal::common::DiskFile>(path), preference)) {}
+
 DecodedFile::operator bool() const { return m_impl.operator bool(); }
 
 FileType DecodedFile::file_type() const noexcept { return m_impl->file_type(); }
@@ -97,6 +107,10 @@ FileCategory DecodedFile::file_category() const noexcept {
 }
 
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
+
+DecoderEngine DecodedFile::decoder_engine() const noexcept {
+  return m_impl->decoder_engine();
+}
 
 File DecodedFile::file() const { return File(m_impl->file()); }
 
@@ -121,7 +135,8 @@ bool DecodedFile::is_document_file() const {
 }
 
 bool DecodedFile::is_pdf_file() const {
-  return std::dynamic_pointer_cast<internal::pdf::PdfFile>(m_impl) != nullptr;
+  return std::dynamic_pointer_cast<internal::abstract::PdfFile>(m_impl) !=
+         nullptr;
 }
 
 TextFile DecodedFile::text_file() const {
@@ -158,7 +173,7 @@ DocumentFile DecodedFile::document_file() const {
 
 PdfFile DecodedFile::pdf_file() const {
   if (auto pdf_file =
-          std::dynamic_pointer_cast<internal::pdf::PdfFile>(m_impl)) {
+          std::dynamic_pointer_cast<internal::abstract::PdfFile>(m_impl)) {
     return PdfFile(pdf_file);
   }
   throw NoPdfFile();
@@ -229,7 +244,27 @@ DocumentMeta DocumentFile::document_meta() const {
 
 Document DocumentFile::document() const { return Document(m_impl->document()); }
 
-PdfFile::PdfFile(std::shared_ptr<internal::pdf::PdfFile> impl)
+std::shared_ptr<internal::abstract::DocumentFile> DocumentFile::impl() const {
+  return m_impl;
+}
+
+PdfFile::PdfFile(std::shared_ptr<internal::abstract::PdfFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+bool PdfFile::password_encrypted() const {
+  return m_impl->password_encrypted();
+}
+
+EncryptionState PdfFile::encryption_state() const {
+  return m_impl->encryption_state();
+}
+
+bool PdfFile::decrypt(const std::string &password) {
+  return m_impl->decrypt(password);
+}
+
+std::shared_ptr<internal::abstract::PdfFile> PdfFile::impl() const {
+  return m_impl;
+}
 
 } // namespace odr

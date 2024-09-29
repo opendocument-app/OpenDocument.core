@@ -107,7 +107,7 @@ TEST(Document, edit_ods_diff) {
   DocumentFile document_file(
       TestData::test_file_path("odr-public/ods/pages.ods"));
   document_file.decrypt(
-      TestData::test_file("odr-public/ods/pages.ods").password);
+      TestData::test_file("odr-public/ods/pages.ods").password.value());
   Document document = document_file.document();
 
   html::edit(document, diff);

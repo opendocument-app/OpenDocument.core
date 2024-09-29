@@ -4,20 +4,19 @@
 #include <odr/file.hpp>
 
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace odr::test {
 
 struct TestFile {
-  std::string path;
+  std::string absolute_path;
+  std::string short_path;
   FileType type{FileType::unknown};
-  bool password_encrypted{false};
-  std::string password;
+  std::optional<std::string> password;
 
   TestFile() = default;
-  TestFile(std::string path, FileType type, bool password_encrypted,
-           std::string password);
+  TestFile(std::string absolute_path, std::string short_path, FileType type,
+           std::optional<std::string> password);
 };
 
 class TestData {
@@ -25,10 +24,11 @@ public:
   static std::string data_directory();
   static std::string data_input_directory();
 
-  static std::vector<std::string> test_file_paths();
-  static std::vector<std::string> test_file_paths(FileType);
-  static TestFile test_file(const std::string &path);
-  static std::string test_file_path(const std::string &path);
+  static std::vector<TestFile> test_files();
+  static std::vector<TestFile> test_files(FileType);
+
+  static TestFile test_file(const std::string &short_path);
+  static std::string test_file_path(const std::string &short_path);
 
   TestData(const TestData &) = delete;
   TestData &operator=(const TestData &) = delete;
@@ -39,11 +39,9 @@ private:
   TestData();
 
   static TestData &instance_();
-  std::vector<std::string> test_file_paths_() const;
-  std::vector<std::string> test_file_paths_(FileType) const;
-  TestFile test_file_(const std::string &path) const;
+  [[nodiscard]] std::vector<TestFile> test_files_(FileType) const;
 
-  std::unordered_map<std::string, TestFile> m_test_files;
+  std::vector<TestFile> m_test_files;
 };
 
 } // namespace odr::test

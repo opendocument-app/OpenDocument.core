@@ -14,11 +14,8 @@ class TextFile;
 class ImageFile;
 class ArchiveFile;
 class DocumentFile;
-} // namespace odr::internal::abstract
-
-namespace odr::internal::pdf {
 class PdfFile;
-}
+} // namespace odr::internal::abstract
 
 namespace odr {
 class TextFile;
@@ -97,6 +94,22 @@ enum class FileLocation {
   disk,
 };
 
+/// @brief Collection of decoder engines.
+enum class DecoderEngine {
+  odr,
+  poppler,
+  wvware,
+};
+
+/// @brief Preference for decoding files.
+struct DecodePreference final {
+  std::optional<FileType> as_file_type;
+  std::optional<DecoderEngine> with_engine;
+
+  std::vector<FileType> file_type_priority;
+  std::vector<DecoderEngine> engine_priority;
+};
+
 /// @brief Collection of encryption states.
 enum class EncryptionState {
   unknown,
@@ -163,20 +176,24 @@ protected:
 class DecodedFile {
 public:
   static std::vector<FileType> types(const std::string &path);
+  static std::vector<DecoderEngine> engines(const std::string &path,
+                                            FileType as);
   static FileType type(const std::string &path);
   static FileMeta meta(const std::string &path);
 
-  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile>);
+  explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
   explicit DecodedFile(const File &file);
   DecodedFile(const File &file, FileType as);
   explicit DecodedFile(const std::string &path);
   DecodedFile(const std::string &path, FileType as);
+  DecodedFile(const std::string &path, const DecodePreference &preference);
 
   [[nodiscard]] explicit operator bool() const;
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] FileCategory file_category() const noexcept;
   [[nodiscard]] FileMeta file_meta() const noexcept;
+  [[nodiscard]] DecoderEngine decoder_engine() const noexcept;
 
   [[nodiscard]] File file() const;
 
@@ -250,6 +267,8 @@ public:
 
   [[nodiscard]] Document document() const;
 
+  [[nodiscard]] std::shared_ptr<internal::abstract::DocumentFile> impl() const;
+
 private:
   std::shared_ptr<internal::abstract::DocumentFile> m_impl;
 };
@@ -257,10 +276,16 @@ private:
 /// @brief Represents a PDF file.
 class PdfFile final : public DecodedFile {
 public:
-  explicit PdfFile(std::shared_ptr<internal::pdf::PdfFile>);
+  explicit PdfFile(std::shared_ptr<internal::abstract::PdfFile>);
+
+  [[nodiscard]] bool password_encrypted() const;
+  [[nodiscard]] EncryptionState encryption_state() const;
+  bool decrypt(const std::string &password);
+
+  [[nodiscard]] std::shared_ptr<internal::abstract::PdfFile> impl() const;
 
 private:
-  std::shared_ptr<internal::pdf::PdfFile> m_impl;
+  std::shared_ptr<internal::abstract::PdfFile> m_impl;
 };
 
 } // namespace odr

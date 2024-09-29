@@ -164,13 +164,49 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
   }
 }
 
+std::string OpenDocumentReader::engine_to_string(const DecoderEngine engine) {
+  if (engine == DecoderEngine::odr) {
+    return "odr";
+  } else if (engine == DecoderEngine::poppler) {
+    return "poppler";
+  } else if (engine == DecoderEngine::wvware) {
+    return "wvware";
+  }
+  throw UnknownDecoderEngine();
+}
+
+DecoderEngine OpenDocumentReader::engine_by_name(const std::string &name) {
+  if (name == "odr") {
+    return DecoderEngine::odr;
+  } else if (name == "poppler") {
+    return DecoderEngine::poppler;
+  } else if (name == "wvware") {
+    return DecoderEngine::wvware;
+  }
+  throw UnknownDecoderEngine();
+}
+
 std::vector<FileType> OpenDocumentReader::types(const std::string &path) {
-  File file(path);
-  return internal::open_strategy::types(file.impl());
+  return DecodedFile::types(path);
+}
+
+std::vector<DecoderEngine> OpenDocumentReader::engines(const std::string &path,
+                                                       const FileType as) {
+  return DecodedFile::engines(path, as);
 }
 
 DecodedFile OpenDocumentReader::open(const std::string &path) {
   return DecodedFile(path);
+}
+
+DecodedFile OpenDocumentReader::open(const std::string &path,
+                                     const FileType as) {
+  return DecodedFile(path, as);
+}
+
+DecodedFile OpenDocumentReader::open(const std::string &path,
+                                     const DecodePreference &preference) {
+  return DecodedFile(path, preference);
 }
 
 Html OpenDocumentReader::html(const std::string &path,

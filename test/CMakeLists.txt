@@ -63,13 +63,4 @@ target_link_libraries(odr_test
         odr
 )
 
-if(WITH_PDF2HTMLEX)
-    target_sources(odr_test PRIVATE "src/pdf2htmlEX_wrapper_test.cpp")
-    target_link_libraries(odr_test PRIVATE pdf2htmlex::pdf2htmlex)
-endif(WITH_PDF2HTMLEX)
-if(WITH_WVWARE)
-    target_sources(odr_test PRIVATE "src/wvWare_wrapper_test.cpp")
-    target_link_libraries(odr_test PRIVATE wvware::wvware)
-endif(WITH_WVWARE)
-
 gtest_add_tests(TARGET odr_test)

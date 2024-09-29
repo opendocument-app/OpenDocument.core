@@ -14,6 +14,9 @@ UnknownFileType::UnknownFileType() : std::runtime_error("unknown file type") {}
 UnsupportedFileType::UnsupportedFileType(const FileType file_type)
     : std::runtime_error("unknown file type"), file_type{file_type} {}
 
+UnknownDecoderEngine::UnknownDecoderEngine()
+    : std::runtime_error("unknown decoder engine") {}
+
 FileReadError::FileReadError() : std::runtime_error("file read error") {}
 
 FileWriteError::FileWriteError() : std::runtime_error("file write error") {}

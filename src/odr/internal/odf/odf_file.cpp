@@ -43,6 +43,10 @@ FileType OpenDocumentFile::file_type() const noexcept {
 
 FileMeta OpenDocumentFile::file_meta() const noexcept { return m_file_meta; }
 
+DecoderEngine OpenDocumentFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 DocumentType OpenDocumentFile::document_type() const {
   return m_file_meta.document_meta->document_type;
 }
