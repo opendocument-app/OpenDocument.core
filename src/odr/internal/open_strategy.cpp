@@ -250,6 +250,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       return nullptr;
     }
+#ifdef ODR_WITH_WVWARE
     if (with == DecoderEngine::wvware) {
       try {
         auto memory_file = std::make_shared<common::MemoryFile>(*file);
@@ -259,6 +260,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       return nullptr;
     }
+#endif
     return nullptr;
   }
 
@@ -270,6 +272,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       return nullptr;
     }
+#ifdef ODR_WITH_PDF2HTMLEX
     if (with == DecoderEngine::poppler) {
       try {
         auto memory_file = std::make_shared<common::MemoryFile>(*file);
@@ -278,6 +281,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       return nullptr;
     }
+#endif
     return nullptr;
   }
 
