@@ -1,7 +1,6 @@
 #include <odr/internal/oldms_wvware/wvware_oldms_file.hpp>
 
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/common/path.hpp>
 
 #include <gsf/gsf-input-memory.h>
 #include <gsf/gsf-input-stdio.h>
@@ -9,15 +8,24 @@
 
 namespace odr::internal {
 
+struct WvWareLegacyMicrosoftFile::ParserState {
+  GsfInput *gsf_input{};
+
+  wvParseStruct ps{};
+  int encryption_flag{};
+};
+
 WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
     std::shared_ptr<common::DiskFile> file)
     : m_file{std::move(file)} {
   GError *error = nullptr;
 
-  m_gsf_input =
+  m_parser_state = std::make_shared<ParserState>();
+
+  m_parser_state->gsf_input =
       gsf_input_stdio_new(m_file->disk_path()->string().c_str(), &error);
 
-  if (m_gsf_input == nullptr) {
+  if (m_parser_state->gsf_input == nullptr) {
     throw std::runtime_error("gsf_input_stdio_new failed");
   }
 
@@ -27,27 +35,32 @@ WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
 WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
     std::shared_ptr<common::MemoryFile> file)
     : m_file{std::move(file)} {
-  m_gsf_input = gsf_input_memory_new(
+  m_parser_state = std::make_shared<ParserState>();
+
+  m_parser_state->gsf_input = gsf_input_memory_new(
       reinterpret_cast<const guint8 *>(m_file->memory_data()),
       static_cast<gsf_off_t>(m_file->size()), false);
 
   open();
 }
 
-WvWareLegacyMicrosoftFile::~WvWareLegacyMicrosoftFile() { wvOLEFree(&m_ps); }
+WvWareLegacyMicrosoftFile::~WvWareLegacyMicrosoftFile() {
+  wvOLEFree(&m_parser_state->ps);
+}
 
 void WvWareLegacyMicrosoftFile::open() {
   wvInit();
 
-  int ret = wvInitParser_gsf(&m_ps, m_gsf_input);
+  int ret = wvInitParser_gsf(&m_parser_state->ps, m_parser_state->gsf_input);
 
   // check if password is required
   if ((ret & 0x8000) != 0) {
     m_encryption_state = EncryptionState::encrypted;
-    m_encryption_flag = ret & 0x7fff;
+    m_parser_state->encryption_flag = ret & 0x7fff;
 
-    if ((m_encryption_flag == WORD8) || (m_encryption_flag == WORD7) ||
-        (m_encryption_flag == WORD6)) {
+    if ((m_parser_state->encryption_flag == WORD8) ||
+        (m_parser_state->encryption_flag == WORD7) ||
+        (m_parser_state->encryption_flag == WORD6)) {
       ret = 0;
     }
   } else {
@@ -55,7 +68,7 @@ void WvWareLegacyMicrosoftFile::open() {
   }
 
   if (ret != 0) {
-    wvOLEFree(&m_ps);
+    wvOLEFree(&m_parser_state->ps);
     throw std::runtime_error("wvInitParser failed");
   }
 }
@@ -97,14 +110,15 @@ bool WvWareLegacyMicrosoftFile::decrypt(const std::string &password) {
     return false;
   }
 
-  wvSetPassword(password.c_str(), &m_ps);
+  wvSetPassword(password.c_str(), &m_parser_state->ps);
 
   bool success = false;
 
-  if (m_encryption_flag == WORD8) {
-    success = wvDecrypt97(&m_ps);
-  } else if (m_encryption_flag == WORD7 || m_encryption_flag == WORD6) {
-    success = wvDecrypt95(&m_ps);
+  if (m_parser_state->encryption_flag == WORD8) {
+    success = wvDecrypt97(&m_parser_state->ps);
+  } else if (m_parser_state->encryption_flag == WORD7 ||
+             m_parser_state->encryption_flag == WORD6) {
+    success = wvDecrypt95(&m_parser_state->ps);
   }
 
   if (!success) {
@@ -121,7 +135,7 @@ WvWareLegacyMicrosoftFile::document() const {
 }
 
 wvParseStruct &WvWareLegacyMicrosoftFile::parse_struct() const {
-  return const_cast<wvParseStruct &>(m_ps);
+  return const_cast<wvParseStruct &>(m_parser_state->ps);
 }
 
 } // namespace odr::internal

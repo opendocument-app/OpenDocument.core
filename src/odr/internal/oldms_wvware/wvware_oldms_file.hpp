@@ -8,7 +8,8 @@
 
 #include <memory>
 
-#include <wv/wv.h>
+struct _wvParseStruct;
+using wvParseStruct = struct _wvParseStruct;
 
 namespace odr::internal::common {
 class DiskFile;
@@ -41,13 +42,12 @@ public:
   [[nodiscard]] wvParseStruct &parse_struct() const;
 
 private:
+  struct ParserState;
+
   std::shared_ptr<abstract::File> m_file;
-  GsfInput *m_gsf_input{};
+  std::shared_ptr<ParserState> m_parser_state;
 
   EncryptionState m_encryption_state{EncryptionState::unknown};
-
-  wvParseStruct m_ps{};
-  int m_encryption_flag{};
 
   void open();
 };
