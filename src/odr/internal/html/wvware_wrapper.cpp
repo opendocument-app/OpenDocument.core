@@ -401,7 +401,7 @@ char *html_graphic(wvParseStruct *ps, Blip *blip) {
   char test[3];
 
   // TODO handle figure name
-  name = "figure";
+  name = nullptr;
   if (name == nullptr) {
     return nullptr;
   }
@@ -424,8 +424,9 @@ char *html_graphic(wvParseStruct *ps, Blip *blip) {
     wvStream_rewind(fd);
     if (!(strcmp(test, "BM"))) {
       wvAppendStr(&name, ".bmp");
-      if (0 != handle_bitmap(ps, name, &blip->blip.bitmap))
+      if (0 != handle_bitmap(ps, name, &blip->blip.bitmap)) {
         return nullptr;
+      }
       return name;
     }
   default:
@@ -435,33 +436,39 @@ char *html_graphic(wvParseStruct *ps, Blip *blip) {
   switch (blip->type) {
   case msoblipWMF:
     wvAppendStr(&name, ".wmf");
-    if (0 != handle_metafile(ps, name, &blip->blip.metafile))
+    if (0 != handle_metafile(ps, name, &blip->blip.metafile)) {
       return nullptr;
+    }
     break;
   case msoblipEMF:
     wvAppendStr(&name, ".emf");
-    if (0 != handle_metafile(ps, name, &blip->blip.metafile))
+    if (0 != handle_metafile(ps, name, &blip->blip.metafile)) {
       return nullptr;
+    }
     break;
   case msoblipPICT:
     wvAppendStr(&name, ".pict");
-    if (0 != handle_metafile(ps, name, &blip->blip.metafile))
+    if (0 != handle_metafile(ps, name, &blip->blip.metafile)) {
       return nullptr;
+    }
     break;
   case msoblipJPEG:
     wvAppendStr(&name, ".jpg");
-    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap))
+    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap)) {
       return nullptr;
+    }
     break;
   case msoblipDIB:
     wvAppendStr(&name, ".dib");
-    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap))
+    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap)) {
       return nullptr;
+    }
     break;
   case msoblipPNG:
     wvAppendStr(&name, ".png");
-    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap))
+    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap)) {
       return nullptr;
+    }
     break;
   }
   return name;
@@ -704,8 +711,7 @@ int special_char_handler(wvParseStruct *ps, U16 eachchar, CHP *achp) {
     wvGetPICF(wvQuerySupported(&ps->fib, nullptr), &picf, ps->data);
     f = picf.rgb;
     if (wv0x01(&blip, f, picf.lcb - picf.cbHeader) != 0) {
-      // TODO port
-      // name = wvHtmlGraphic(ps, &blip);
+      name = html_graphic(ps, &blip);
       print_graphics(ps, 0x01, (int)wvTwipsToHPixels(picf.dxaGoal),
                      (int)wvTwipsToVPixels(picf.dyaGoal), name);
       wvFree(name);
@@ -731,16 +737,16 @@ int special_char_handler(wvParseStruct *ps, U16 eachchar, CHP *achp) {
 
         data->props = fspa;
         if (wv0x08(&blip, (int)fspa->spid, ps) != 0) {
-          // TODO port
-          // name = wvHtmlGraphic(ps, &blip);
+          name = html_graphic(ps, &blip);
           print_graphics(
               ps, 0x08,
               (int)wvTwipsToHPixels((short)(fspa->xaRight - fspa->xaLeft)),
               (int)wvTwipsToVPixels((short)(fspa->yaBottom - fspa->yaTop)),
               name);
           wvFree(name);
-        } else
+        } else {
           strange_no_graphic_data(ps, 0x08);
+        }
       } else {
         std::cerr << "nooffspa was <=0!  Ignoring.\n";
       }
