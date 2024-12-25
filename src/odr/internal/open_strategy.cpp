@@ -19,7 +19,7 @@
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/zip/zip_file.hpp>
 
-#include <utility>
+#include <algorithm>
 
 namespace odr::internal {
 
@@ -96,7 +96,7 @@ open_strategy::types(const std::shared_ptr<abstract::File> &file) {
 }
 
 std::vector<DecoderEngine>
-open_strategy::engines(const std::shared_ptr<abstract::File> &file,
+open_strategy::engines(const std::shared_ptr<abstract::File> & /*file*/,
                        FileType as) {
   std::vector<DecoderEngine> result;
 
