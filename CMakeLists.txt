@@ -208,6 +208,10 @@ if (WITH_PDF2HTMLEX)
             pdf2htmlex::pdf2htmlex
             poppler::poppler
     )
+    target_compile_definitions(odr
+            PRIVATE
+            ODR_WITH_PDF2HTMLEX
+    )
 endif ()
 if (WITH_WVWARE)
     find_package(wvware REQUIRED)
@@ -219,6 +223,10 @@ if (WITH_WVWARE)
     target_link_libraries(odr
             PRIVATE
             wvware::wvware
+    )
+    target_compile_definitions(odr
+            PRIVATE
+            ODR_WITH_WVWARE
     )
 endif ()
 

@@ -108,6 +108,7 @@ Html html::translate(const DocumentFile &document_file,
                      const std::string &output_path, const HtmlConfig &config) {
   auto document_file_impl = document_file.impl();
 
+#ifdef ODR_WITH_WVWARE
   if (auto wv_document_file =
           std::dynamic_pointer_cast<internal::WvWareLegacyMicrosoftFile>(
               document_file_impl)) {
@@ -115,6 +116,7 @@ Html html::translate(const DocumentFile &document_file,
     return internal::html::translate_wvware_oldms_file(*wv_document_file,
                                                        output_path, config);
   }
+#endif
 
   return translate(document_file.document(), output_path, config);
 }
@@ -123,12 +125,14 @@ Html html::translate(const PdfFile &pdf_file, const std::string &output_path,
                      const HtmlConfig &config) {
   auto pdf_file_impl = pdf_file.impl();
 
+#ifdef ODR_WITH_PDF2HTMLEX
   if (auto poppler_pdf_file =
           std::dynamic_pointer_cast<internal::PopplerPdfFile>(pdf_file_impl)) {
     fs::create_directories(output_path);
     return internal::html::translate_poppler_pdf_file(*poppler_pdf_file,
                                                       output_path, config);
   }
+#endif
 
   return internal::html::translate_pdf_file(pdf_file, output_path, config);
 }
