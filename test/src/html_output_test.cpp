@@ -38,7 +38,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   const DecoderEngine engine = params.engine;
   const std::string &test_repo = params.test_repo;
   const std::string &output_path = params.output_path;
-  const std::string &output_path_prefix =
+  const std::string output_path_prefix =
       common::Path(output_path).parent().string();
 
   std::cout << test_file.short_path << " to " << output_path << std::endl;
