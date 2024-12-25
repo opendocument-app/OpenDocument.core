@@ -53,7 +53,7 @@ struct TranslationState : public expand_data {
 
 /// Originally from `text.c` `wvConvertUnicodeToHtml`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/text.c#L1999-L2154
-int convert_unicode_to_html(wvParseStruct *ps, U16 char16) {
+int convert_unicode_to_html(wvParseStruct *ps, std::uint16_t char16) {
   auto *data = (TranslationState *)ps->userData;
   auto &out = data->out;
 
@@ -213,7 +213,8 @@ thing and just put ... instead of this
 
 /// Originally from `text.c` `wvOutputFromUnicode`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/text.c#L757-L840
-void output_from_unicode(wvParseStruct *ps, U16 eachchar, char *outputtype) {
+void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
+                         char *outputtype) {
   auto *data = (TranslationState *)ps->userData;
   auto &out = data->out;
 
@@ -222,8 +223,8 @@ void output_from_unicode(wvParseStruct *ps, U16 eachchar, char *outputtype) {
   static GIConv g_iconv_handle = (GIConv)-1; /* Cached iconv descriptor */
   static int need_swapping;
   gchar *ibuf, *obuf;
-  size_t ibuflen, obuflen, len, count, i;
-  U8 buffer[2], buffer2[5];
+  std::size_t ibuflen, obuflen, len, count, i;
+  std::uint8_t buffer[2], buffer2[5];
 
   if (convert_unicode_to_html(ps, eachchar) != 0) {
     return;
@@ -257,7 +258,7 @@ void output_from_unicode(wvParseStruct *ps, U16 eachchar, char *outputtype) {
     obuflen = 5;
 
     count = g_iconv(g_iconv_handle, &ibuf, &ibuflen, &obuf, &obuflen);
-    if (count >= 0) {
+    if (count != (std::size_t)-1) {
       need_swapping = buffer2[0] != 0x20;
     }
   }
@@ -277,7 +278,7 @@ void output_from_unicode(wvParseStruct *ps, U16 eachchar, char *outputtype) {
   len = obuflen = 5;
 
   count = g_iconv(g_iconv_handle, &ibuf, &ibuflen, &obuf, &obuflen);
-  if (count == (size_t)-1) {
+  if (count == (std::size_t)-1) {
     std::cerr << "iconv failed, errno: " << errno << ", char: 0x" << std::hex
               << eachchar << ", UCS-2 -> " << outputtype << "\n";
 
@@ -331,7 +332,7 @@ void print_graphics(wvParseStruct *ps, int graphicstype, int width, int height,
 int handle_bitmap(wvParseStruct * /*ps*/, char *name, BitmapBlip *bitmap) {
   wvStream *pwv = bitmap->m_pvBits;
   FILE *fd = nullptr;
-  size_t size = 0, i;
+  std::size_t size = 0, i;
 
   fd = fopen(name, "wb");
   if (fd == nullptr) {
@@ -352,8 +353,8 @@ int handle_bitmap(wvParseStruct * /*ps*/, char *name, BitmapBlip *bitmap) {
 int handle_metafile(wvParseStruct * /*ps*/, char *name, MetaFileBlip *bitmap) {
   wvStream *pwv = bitmap->m_pvBits;
   FILE *fd = nullptr;
-  size_t size = 0, i;
-  U8 decompressf = 0;
+  std::size_t size = 0, i;
+  std::uint8_t decompressf = 0;
 
   fd = fopen(name, "wb");
   if (fd == nullptr) {
@@ -612,7 +613,8 @@ int document_handler(wvParseStruct *ps, wvTag tag) {
 
 /// Originally from `wvWare.c` `myCharProc`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L1556-L1605
-int char_handler(wvParseStruct *ps, U16 eachchar, U8 chartype, U16 lid) {
+int char_handler(wvParseStruct *ps, std::uint16_t eachchar,
+                 std::uint8_t chartype, std::uint16_t lid) {
   auto *data = (TranslationState *)ps->userData;
 
   switch (eachchar) {
@@ -656,7 +658,7 @@ int char_handler(wvParseStruct *ps, U16 eachchar, U8 chartype, U16 lid) {
 
 /// Originally from `wvWare.c` `mySpecCharProc`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L1289-L1553
-int special_char_handler(wvParseStruct *ps, U16 eachchar, CHP *achp) {
+int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
   auto *data = (TranslationState *)ps->userData;
   auto &state = data->special_char_handler_state;
   auto &out = data->out;
@@ -764,9 +766,9 @@ int special_char_handler(wvParseStruct *ps, U16 eachchar, CHP *achp) {
     return 0;
   }
   case 0x28: {
-    U16 symbol[6] = {'S', 'y', 'm', 'b', 'o', 'l'};
-    U16 wingdings[9] = {'W', 'i', 'n', 'g', 'd', 'i', 'n', 'g', 's'};
-    U16 mtextra[8] = {'M', 'T', ' ', 'E', 'x', 't', 'r', 'a'};
+    std::uint16_t symbol[6] = {'S', 'y', 'm', 'b', 'o', 'l'};
+    std::uint16_t wingdings[9] = {'W', 'i', 'n', 'g', 'd', 'i', 'n', 'g', 's'};
+    std::uint16_t mtextra[8] = {'M', 'T', ' ', 'E', 'x', 't', 'r', 'a'};
 
     if (0 == memcmp(symbol, ps->fonts.ffn[achp->ftcSym].xszFfn, 12)) {
       if ((state.message == 0) && (strcasecmp("UTF-8", data->charset) != 0)) {
