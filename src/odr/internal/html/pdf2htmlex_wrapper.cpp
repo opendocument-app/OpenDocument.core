@@ -13,8 +13,6 @@
 #include <poppler/GlobalParams.h>
 #include <poppler/PDFDoc.h>
 
-#include <cstring>
-
 namespace odr::internal {
 
 Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,

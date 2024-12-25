@@ -564,7 +564,8 @@ int special_char_handler(wvParseStruct *ps, U16 eachchar, CHP *achp) {
     wvGetPICF(wvQuerySupported(&ps->fib, nullptr), &picf, ps->data);
     f = picf.rgb;
     if (wv0x01(&blip, f, picf.lcb - picf.cbHeader) != 0) {
-      name = wvHtmlGraphic(ps, &blip);
+      // TODO port
+      // name = wvHtmlGraphic(ps, &blip);
       print_graphics(ps, 0x01, (int)wvTwipsToHPixels(picf.dxaGoal),
                      (int)wvTwipsToVPixels(picf.dyaGoal), name);
       wvFree(name);
@@ -590,7 +591,8 @@ int special_char_handler(wvParseStruct *ps, U16 eachchar, CHP *achp) {
 
         data->props = fspa;
         if (wv0x08(&blip, (int)fspa->spid, ps) != 0) {
-          name = wvHtmlGraphic(ps, &blip);
+          // TODO port
+          // name = wvHtmlGraphic(ps, &blip);
           print_graphics(
               ps, 0x08,
               (int)wvTwipsToHPixels((short)(fspa->xaRight - fspa->xaLeft)),

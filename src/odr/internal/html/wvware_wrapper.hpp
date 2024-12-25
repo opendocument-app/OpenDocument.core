@@ -1,7 +1,6 @@
 #ifndef ODR_INTERNAL_WVWARE_WRAPPER_HPP
 #define ODR_INTERNAL_WVWARE_WRAPPER_HPP
 
-#include <optional>
 #include <string>
 
 namespace odr {

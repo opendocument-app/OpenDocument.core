@@ -3,9 +3,6 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
 
-#include <memory>
-#include <utility>
-
 #include <gsf/gsf-input-memory.h>
 #include <gsf/gsf-input-stdio.h>
 #include <wv/wv.h>
