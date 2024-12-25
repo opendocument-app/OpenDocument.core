@@ -1,6 +1,7 @@
 #ifndef ODR_INTERNAL_HTML_PDF2HTMLEX_WRAPPER_HPP
 #define ODR_INTERNAL_HTML_PDF2HTMLEX_WRAPPER_HPP
 
+#include <stdexcept>
 #include <string>
 
 namespace odr {

@@ -13,6 +13,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 namespace odr::internal {
 
@@ -325,6 +326,145 @@ void print_graphics(wvParseStruct *ps, int graphicstype, int width, int height,
   out.out() << R"(<img width=")" << width << R"(" height=")" << height
             << R"(" alt=")" << std::hex << graphicstype << R"( graphic" src=")"
             << source << R"("/><br/>)";
+}
+
+int handle_bitmap(wvParseStruct *ps, char *name, BitmapBlip *bitmap) {
+  wvStream *pwv = bitmap->m_pvBits;
+  FILE *fd = nullptr;
+  size_t size = 0, i;
+
+  fd = fopen(name, "wb");
+  if (fd == nullptr) {
+    fprintf(stderr, "\nCannot open %s for writing\n", name);
+    exit(1);
+  }
+  size = wvStream_size(pwv);
+  wvStream_rewind(pwv);
+
+  for (i = 0; i < size; i++) {
+    fputc(read_8ubit(pwv), fd);
+  }
+  fclose(fd);
+  wvTrace(("Name is %s\n", name));
+  return 0;
+}
+
+int handle_metafile(wvParseStruct *ps, char *name, MetaFileBlip *bitmap) {
+  wvStream *pwv = bitmap->m_pvBits;
+  FILE *fd = nullptr;
+  size_t size = 0, i;
+  U8 decompressf = 0;
+
+  fd = fopen(name, "wb");
+  if (fd == nullptr) {
+    fprintf(stderr, "\nCannot open %s for writing\n", name);
+    exit(1);
+  }
+  size = wvStream_size(pwv);
+  wvStream_rewind(pwv);
+
+  if (bitmap->m_fCompression == msocompressionDeflate)
+    decompressf = setdecom();
+
+  if (!decompressf) {
+    for (i = 0; i < size; i++)
+      fputc(read_8ubit(pwv), fd);
+  } else /* decompress here */
+  {
+    FILE *tmp = tmpfile();
+    FILE *out = tmpfile();
+
+    for (i = 0; i < size; i++) {
+      fputc(read_8ubit(pwv), tmp);
+    }
+
+    rewind(tmp);
+    decompress(tmp, out, bitmap->m_cbSave, bitmap->m_cb);
+    fclose(tmp);
+
+    rewind(out);
+
+    for (i = 0; i < bitmap->m_cb; i++)
+      fputc(fgetc(out), fd);
+
+    fclose(out);
+  }
+
+  fclose(fd);
+  wvTrace(("Name is %s\n", name));
+  return 0;
+}
+
+char *html_graphic(wvParseStruct *ps, Blip *blip) {
+  char *name;
+  wvStream *fd;
+  char test[3];
+
+  // TODO handle figure name
+  name = "figure";
+  if (name == nullptr) {
+    return nullptr;
+  }
+
+  /*
+     temp hack to test older included bmps in word 6 and 7,
+     should be wrapped in a modern escher strucure before getting
+     to here, and then handled as normal
+   */
+  wvTrace(("type is %d\n", blip->type));
+  switch (blip->type) {
+  case msoblipJPEG:
+  case msoblipDIB:
+  case msoblipPNG:
+    fd = (blip->blip.bitmap.m_pvBits);
+    test[2] = '\0';
+    test[0] = read_8ubit(fd);
+
+    test[1] = read_8ubit(fd);
+    wvStream_rewind(fd);
+    if (!(strcmp(test, "BM"))) {
+      wvAppendStr(&name, ".bmp");
+      if (0 != handle_bitmap(ps, name, &blip->blip.bitmap))
+        return nullptr;
+      return name;
+    }
+  default:
+    break;
+  }
+
+  switch (blip->type) {
+  case msoblipWMF:
+    wvAppendStr(&name, ".wmf");
+    if (0 != handle_metafile(ps, name, &blip->blip.metafile))
+      return nullptr;
+    break;
+  case msoblipEMF:
+    wvAppendStr(&name, ".emf");
+    if (0 != handle_metafile(ps, name, &blip->blip.metafile))
+      return nullptr;
+    break;
+  case msoblipPICT:
+    wvAppendStr(&name, ".pict");
+    if (0 != handle_metafile(ps, name, &blip->blip.metafile))
+      return nullptr;
+    break;
+  case msoblipJPEG:
+    wvAppendStr(&name, ".jpg");
+    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap))
+      return nullptr;
+    break;
+  case msoblipDIB:
+    wvAppendStr(&name, ".dib");
+    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap))
+      return nullptr;
+    break;
+  case msoblipPNG:
+    wvAppendStr(&name, ".png");
+    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap))
+      return nullptr;
+    break;
+  }
+  return name;
 }
 
 /// Originally from `wvWare.c` `myelehandler`
