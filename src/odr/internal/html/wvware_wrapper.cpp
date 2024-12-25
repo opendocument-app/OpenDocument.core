@@ -328,7 +328,7 @@ void print_graphics(wvParseStruct *ps, int graphicstype, int width, int height,
             << source << R"("/><br/>)";
 }
 
-int handle_bitmap(wvParseStruct *ps, char *name, BitmapBlip *bitmap) {
+int handle_bitmap(wvParseStruct * /*ps*/, char *name, BitmapBlip *bitmap) {
   wvStream *pwv = bitmap->m_pvBits;
   FILE *fd = nullptr;
   size_t size = 0, i;
@@ -349,7 +349,7 @@ int handle_bitmap(wvParseStruct *ps, char *name, BitmapBlip *bitmap) {
   return 0;
 }
 
-int handle_metafile(wvParseStruct *ps, char *name, MetaFileBlip *bitmap) {
+int handle_metafile(wvParseStruct * /*ps*/, char *name, MetaFileBlip *bitmap) {
   wvStream *pwv = bitmap->m_pvBits;
   FILE *fd = nullptr;
   size_t size = 0, i;
