@@ -119,7 +119,7 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
       !param.poppler_data_dir.empty() ? param.poppler_data_dir.c_str()
                                       : nullptr);
 
-  pdf2htmlEX::HTMLRenderer(nullptr, param).process(&pdf_doc);
+  pdf2htmlEX::HTMLRenderer(fontconfig_path, param).process(&pdf_doc);
 
   globalParams.reset();
 
