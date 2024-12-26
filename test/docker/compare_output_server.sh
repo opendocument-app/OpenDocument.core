@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 REF="test/data/reference-output/"
-OBS="cmake-build-debug/test/output/"
+OBS="cmake-build-relwithdebinfo/test/output/"
 DRIVER="firefox"
 
 # manually build the image
