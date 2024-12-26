@@ -25,6 +25,8 @@ public:
 
   [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] FileMeta file_meta() const noexcept final;
+  [[nodiscard]] DecoderEngine decoder_engine() const noexcept final;
+
   [[nodiscard]] DocumentType document_type() const final;
   [[nodiscard]] DocumentMeta document_meta() const final;
 

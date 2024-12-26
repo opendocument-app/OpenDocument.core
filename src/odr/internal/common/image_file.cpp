@@ -14,6 +14,10 @@ FileType ImageFile::file_type() const noexcept { return m_file_type; }
 
 FileMeta ImageFile::file_meta() const noexcept { return {}; }
 
+DecoderEngine ImageFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 std::shared_ptr<abstract::Image> ImageFile::image() const { return {}; }
 
 } // namespace odr::internal::common

@@ -24,4 +24,8 @@ FileMeta JsonFile::file_meta() const noexcept {
   return {FileType::javascript_object_notation, false, {}};
 }
 
+DecoderEngine JsonFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 } // namespace odr::internal::json

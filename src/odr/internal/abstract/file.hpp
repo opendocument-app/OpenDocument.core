@@ -38,6 +38,7 @@ public:
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
   [[nodiscard]] virtual FileCategory file_category() const noexcept = 0;
   [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;
+  [[nodiscard]] virtual DecoderEngine decoder_engine() const noexcept = 0;
 };
 
 class TextFile : public DecodedFile {
@@ -79,6 +80,20 @@ public:
   [[nodiscard]] virtual DocumentMeta document_meta() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
+};
+
+class PdfFile : public DecodedFile {
+public:
+  [[nodiscard]] FileType file_type() const noexcept final {
+    return FileType::portable_document_format;
+  }
+  [[nodiscard]] FileCategory file_category() const noexcept final {
+    return FileCategory::document;
+  }
+
+  [[nodiscard]] virtual bool password_encrypted() const noexcept = 0;
+  [[nodiscard]] virtual EncryptionState encryption_state() const noexcept = 0;
+  [[nodiscard]] virtual bool decrypt(const std::string &password) = 0;
 };
 
 } // namespace odr::internal::abstract

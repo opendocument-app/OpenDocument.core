@@ -18,6 +18,7 @@ public:
 
   [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] FileMeta file_meta() const noexcept final;
+  [[nodiscard]] DecoderEngine decoder_engine() const noexcept final;
 
 private:
   std::shared_ptr<abstract::File> m_file;

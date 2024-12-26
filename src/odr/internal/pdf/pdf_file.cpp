@@ -1,22 +1,26 @@
 #include <odr/internal/pdf/pdf_file.hpp>
 
-namespace odr::internal::pdf {
+namespace odr::internal {
 
 PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {}
-
-FileCategory PdfFile::file_category() const noexcept {
-  return FileCategory::document;
-}
 
 std::shared_ptr<abstract::File> PdfFile::file() const noexcept {
   return m_file;
 }
 
-FileType PdfFile::file_type() const noexcept {
-  return FileType::portable_document_format;
-}
-
 FileMeta PdfFile::file_meta() const noexcept { return {}; }
 
-} // namespace odr::internal::pdf
+DecoderEngine PdfFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
+bool PdfFile::password_encrypted() const noexcept { return false; }
+
+EncryptionState PdfFile::encryption_state() const noexcept {
+  return EncryptionState::not_encrypted;
+}
+
+bool PdfFile::decrypt(const std::string &) { return false; }
+
+} // namespace odr::internal

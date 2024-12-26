@@ -23,6 +23,10 @@ FileMeta ZipFile::file_meta() const noexcept {
   return meta;
 }
 
+DecoderEngine ZipFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 std::shared_ptr<abstract::Archive> ZipFile::archive() const {
   return std::make_shared<ZipArchive>(m_zip);
 }
