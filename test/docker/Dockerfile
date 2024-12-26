@@ -1,7 +1,6 @@
 FROM --platform=linux/amd64 ubuntu:24.04
 
 ENV FIREFOX_VERSION="133.0"
-ENV CHROME_VERSION="131.0.6778.241"
 ENV PHANTOMJS_VERSION="2.1.1"
 ENV GECKODRIVER_VERSION="0.35.0"
 
@@ -32,7 +31,7 @@ RUN wget https://github.com/mozilla/geckodriver/releases/download/v${GECKODRIVER
 RUN geckodriver --version
 
 # chrome setup
-RUN wget https://dl.google.com/linux/direct/google-chrome-stable_${CHROME_VERSION}_amd64.deb && \
+RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
     $INSTALL ./google-chrome-stable_current_amd64.deb && \
     rm google-chrome-stable_current_amd64.deb
 
@@ -56,6 +55,6 @@ RUN phantomjs --version
 # install python dependencies
 ADD requirements.txt .
 RUN $INSTALL python3 python3-pip && \
-    pip install --upgrade pip && \
+    pip config set global.break-system-packages true && \
     pip install -r requirements.txt && \
     rm requirements.txt \
