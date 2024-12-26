@@ -120,8 +120,11 @@ TEST_P(HtmlOutputTests, html_meta) {
     EXPECT_LT(0, fs::file_size(meta_output));
   }
 
-  const std::string resource_path =
-      common::Path(output_path_prefix).parent().join("resources").string();
+  const std::string resource_path = common::Path(output_path_prefix)
+                                        .parent()
+                                        .parent()
+                                        .join("resources")
+                                        .string();
   OpenDocumentReader::copy_resources(resource_path);
 
   HtmlConfig config;
