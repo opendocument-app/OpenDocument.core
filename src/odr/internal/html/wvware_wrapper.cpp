@@ -48,6 +48,8 @@ struct TranslationState : public expand_data {
     int message = 0;
   } special_char_handler_state = {};
 
+  std::size_t figure_number = 0;
+
   html::HtmlWriter out;
 };
 
@@ -168,7 +170,6 @@ thing and just put ... instead of this
     return 1;
 
     /* Mac specials (MV): */
-
   case 0xf020:
     out.out() << " ";
     return 1;
@@ -218,10 +219,8 @@ void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
   auto *data = (TranslationState *)ps->userData;
   auto &out = data->out;
 
-  // TODO static
-  static char cached_outputtype[33]; /* Last outputtype                  */
-  static GIConv g_iconv_handle = (GIConv)-1; /* Cached iconv descriptor */
-  static int need_swapping;
+  GIConv g_iconv_handle = (GIConv)-1;
+  int need_swapping;
   gchar *ibuf, *obuf;
   std::size_t ibuflen, obuflen, len, count, i;
   std::uint8_t buffer[2], buffer2[5];
@@ -230,12 +229,7 @@ void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
     return;
   }
 
-  if ((g_iconv_handle == (GIConv)-1) ||
-      strcmp(cached_outputtype, outputtype) != 0) {
-    if ((g_iconv_handle != (GIConv)-1)) {
-      g_iconv_close(g_iconv_handle);
-    }
-
+  {
     g_iconv_handle = g_iconv_open(outputtype, "UCS-2");
     if (g_iconv_handle == (GIConv)-1) {
       std::cerr << "g_iconv_open fail: " << errno
@@ -243,9 +237,6 @@ void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
       out.out() << "?";
       return;
     }
-
-    /* safe to cache the output type here */
-    strcpy(cached_outputtype, outputtype);
 
     /* Determining if unicode biteorder is swapped (glibc < 2.2) */
     need_swapping = 1;
@@ -295,6 +286,9 @@ void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
       out.out() << buffer2[i];
     }
   }
+
+  // TODO iconv could be cached
+  { g_iconv_close(g_iconv_handle); }
 }
 
 /// Originally from `wvWare.c` `wvStrangeNoGraphicData`
@@ -315,7 +309,7 @@ void strange_no_graphic_data(wvParseStruct *ps, int graphicstype) {
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L1239-L1287
 /// simplified to HTML output
 void print_graphics(wvParseStruct *ps, int graphicstype, int width, int height,
-                    char *source) {
+                    const std::string &source) {
   // upstream converts to PNG, we just use the original format as the browser
   // should support them
 
@@ -329,15 +323,15 @@ void print_graphics(wvParseStruct *ps, int graphicstype, int width, int height,
             << source << R"("/><br/>)";
 }
 
-int handle_bitmap(wvParseStruct * /*ps*/, char *name, BitmapBlip *bitmap) {
+void handle_bitmap(wvParseStruct * /*ps*/, const std::string &name,
+                   BitmapBlip *bitmap) {
   wvStream *pwv = bitmap->m_pvBits;
   FILE *fd = nullptr;
   std::size_t size = 0, i;
 
-  fd = fopen(name, "wb");
+  fd = fopen(name.c_str(), "wb");
   if (fd == nullptr) {
-    fprintf(stderr, "\nCannot open %s for writing\n", name);
-    exit(1);
+    throw std::runtime_error("Cannot open " + name + " file for writing");
   }
   size = wvStream_size(pwv);
   wvStream_rewind(pwv);
@@ -346,11 +340,10 @@ int handle_bitmap(wvParseStruct * /*ps*/, char *name, BitmapBlip *bitmap) {
     fputc(read_8ubit(pwv), fd);
   }
   fclose(fd);
-  wvTrace(("Name is %s\n", name));
-  return 0;
 }
 
-int handle_metafile(wvParseStruct * /*ps*/, char *name, MetaFileBlip *bitmap) {
+int handle_metafile(wvParseStruct * /*ps*/, const char *name,
+                    MetaFileBlip *bitmap) {
   wvStream *pwv = bitmap->m_pvBits;
   FILE *fd = nullptr;
   std::size_t size = 0, i;
@@ -364,12 +357,14 @@ int handle_metafile(wvParseStruct * /*ps*/, char *name, MetaFileBlip *bitmap) {
   size = wvStream_size(pwv);
   wvStream_rewind(pwv);
 
-  if (bitmap->m_fCompression == msocompressionDeflate)
+  if (bitmap->m_fCompression == msocompressionDeflate) {
     decompressf = setdecom();
+  }
 
   if (!decompressf) {
-    for (i = 0; i < size; i++)
+    for (i = 0; i < size; i++) {
       fputc(read_8ubit(pwv), fd);
+    }
   } else /* decompress here */
   {
     FILE *tmp = tmpfile();
@@ -385,49 +380,51 @@ int handle_metafile(wvParseStruct * /*ps*/, char *name, MetaFileBlip *bitmap) {
 
     rewind(out);
 
-    for (i = 0; i < bitmap->m_cb; i++)
+    for (i = 0; i < bitmap->m_cb; i++) {
       fputc(fgetc(out), fd);
+    }
 
     fclose(out);
   }
 
   fclose(fd);
-  wvTrace(("Name is %s\n", name));
   return 0;
 }
 
-char *html_graphic(wvParseStruct *ps, Blip *blip) {
-  char *name;
+std::string figure_name(wvParseStruct *ps) {
+  auto *data = (TranslationState *)ps->userData;
+
+  std::size_t number = data->figure_number++;
+  std::string name = "figure" + std::to_string(number);
+
+  return name;
+}
+
+std::string html_graphic(wvParseStruct *ps, Blip *blip) {
+  std::string name;
   wvStream *fd;
   char test[3];
 
-  // TODO handle figure name
-  name = nullptr;
-  if (name == nullptr) {
-    return nullptr;
-  }
+  name = figure_name(ps);
 
   /*
      temp hack to test older included bmps in word 6 and 7,
      should be wrapped in a modern escher strucure before getting
      to here, and then handled as normal
    */
-  wvTrace(("type is %d\n", blip->type));
   switch (blip->type) {
   case msoblipJPEG:
   case msoblipDIB:
   case msoblipPNG:
     fd = (blip->blip.bitmap.m_pvBits);
     test[2] = '\0';
-    test[0] = read_8ubit(fd);
+    test[0] = (char)read_8ubit(fd);
 
-    test[1] = read_8ubit(fd);
+    test[1] = (char)read_8ubit(fd);
     wvStream_rewind(fd);
     if (!(strcmp(test, "BM"))) {
-      wvAppendStr(&name, ".bmp");
-      if (0 != handle_bitmap(ps, name, &blip->blip.bitmap)) {
-        return nullptr;
-      }
+      name += ".bmp";
+      handle_bitmap(ps, name, &blip->blip.bitmap);
       return name;
     }
   default:
@@ -436,40 +433,28 @@ char *html_graphic(wvParseStruct *ps, Blip *blip) {
 
   switch (blip->type) {
   case msoblipWMF:
-    wvAppendStr(&name, ".wmf");
-    if (0 != handle_metafile(ps, name, &blip->blip.metafile)) {
-      return nullptr;
-    }
+    name += ".wmf";
+    handle_metafile(ps, name.c_str(), &blip->blip.metafile);
     break;
   case msoblipEMF:
-    wvAppendStr(&name, ".emf");
-    if (0 != handle_metafile(ps, name, &blip->blip.metafile)) {
-      return nullptr;
-    }
+    name += ".emf";
+    handle_metafile(ps, name.c_str(), &blip->blip.metafile);
     break;
   case msoblipPICT:
-    wvAppendStr(&name, ".pict");
-    if (0 != handle_metafile(ps, name, &blip->blip.metafile)) {
-      return nullptr;
-    }
+    name += ".pict";
+    handle_metafile(ps, name.c_str(), &blip->blip.metafile);
     break;
   case msoblipJPEG:
-    wvAppendStr(&name, ".jpg");
-    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap)) {
-      return nullptr;
-    }
+    name += ".jpg";
+    handle_bitmap(ps, name.c_str(), &blip->blip.bitmap);
     break;
   case msoblipDIB:
-    wvAppendStr(&name, ".dib");
-    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap)) {
-      return nullptr;
-    }
+    name += ".dib";
+    handle_bitmap(ps, name.c_str(), &blip->blip.bitmap);
     break;
   case msoblipPNG:
-    wvAppendStr(&name, ".png");
-    if (0 != handle_bitmap(ps, name, &blip->blip.bitmap)) {
-      return nullptr;
-    }
+    name += ".png";
+    handle_bitmap(ps, name.c_str(), &blip->blip.bitmap);
     break;
   }
   return name;
@@ -702,7 +687,6 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
   case 0x01: {
     wvStream *f;
     Blip blip;
-    char *name;
     long p = wvStream_tell(ps->data);
 
     if (achp->fOle2 != 0) {
@@ -713,10 +697,9 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
     wvGetPICF(wvQuerySupported(&ps->fib, nullptr), &picf, ps->data);
     f = picf.rgb;
     if (wv0x01(&blip, f, picf.lcb - picf.cbHeader) != 0) {
-      name = html_graphic(ps, &blip);
+      std::string name = html_graphic(ps, &blip);
       print_graphics(ps, 0x01, (int)wvTwipsToHPixels(picf.dxaGoal),
                      (int)wvTwipsToVPixels(picf.dyaGoal), name);
-      wvFree(name);
     } else {
       strange_no_graphic_data(ps, 0x01);
     }
@@ -726,7 +709,6 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
   }
   case 0x08: {
     Blip blip;
-    char *name;
     if (wvQuerySupported(&ps->fib, nullptr) == WORD8) {
       if (ps->nooffspa > 0) {
         fspa =
@@ -739,13 +721,12 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
 
         data->props = fspa;
         if (wv0x08(&blip, (int)fspa->spid, ps) != 0) {
-          name = html_graphic(ps, &blip);
+          std::string name = html_graphic(ps, &blip);
           print_graphics(
               ps, 0x08,
               (int)wvTwipsToHPixels((short)(fspa->xaRight - fspa->xaLeft)),
               (int)wvTwipsToVPixels((short)(fspa->yaBottom - fspa->yaTop)),
               name);
-          wvFree(name);
         } else {
           strange_no_graphic_data(ps, 0x08);
         }
@@ -753,9 +734,8 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
         std::cerr << "nooffspa was <=0!  Ignoring.\n";
       }
     } else {
-      FDOA *fdoa;
       std::cerr << "pre word8 0x08 graphic, unsupported at the moment\n";
-      fdoa =
+      FDOA *fdoa =
           wvGetFDOAFromCP(ps->currentcp, ps->fdoa, ps->fdoapos, ps->nooffdoa);
       data->props = fdoa;
     }
@@ -823,7 +803,7 @@ Html html::translate_wvware_oldms_file(
   HtmlResourceLocator resourceLocator =
       local_resource_locator(output_path, config);
 
-  auto output_file_path = output_path + "/document.html";
+  std::string output_file_path = output_path + "/document.html";
 
   std::ofstream ostream(output_file_path, std::ios::out);
   if (!ostream.is_open()) {
