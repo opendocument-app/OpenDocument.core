@@ -115,10 +115,10 @@ bool WvWareLegacyMicrosoftFile::decrypt(const std::string &password) {
   bool success = false;
 
   if (m_parser_state->encryption_flag == WORD8) {
-    success = wvDecrypt97(&m_parser_state->ps);
+    success = wvDecrypt97(&m_parser_state->ps) == 0;
   } else if (m_parser_state->encryption_flag == WORD7 ||
              m_parser_state->encryption_flag == WORD6) {
-    success = wvDecrypt95(&m_parser_state->ps);
+    success = wvDecrypt95(&m_parser_state->ps) == 0;
   }
 
   if (!success) {
@@ -135,7 +135,7 @@ WvWareLegacyMicrosoftFile::document() const {
 }
 
 wvParseStruct &WvWareLegacyMicrosoftFile::parse_struct() const {
-  return const_cast<wvParseStruct &>(m_parser_state->ps);
+  return m_parser_state->ps;
 }
 
 } // namespace odr::internal
