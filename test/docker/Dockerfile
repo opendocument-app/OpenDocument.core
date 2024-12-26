@@ -1,7 +1,14 @@
+<<<<<<< Updated upstream
 FROM ubuntu:24.04
 
 ENV FIREFOX_VERSION="133.0"
 ENV CHROME_VERSION="131.0.6778.241"
+=======
+FROM --platform=linux/amd64 ubuntu:24.04
+
+ENV FIREFOX_VERSION="133.0"
+ENV CHROME_VERSION="131.0.6778.205"
+>>>>>>> Stashed changes
 ENV PHANTOMJS_VERSION="2.1.1"
 ENV GECKODRIVER_VERSION="0.35.0"
 
@@ -13,7 +20,7 @@ RUN apt-get update
 RUN $INSTALL wget ca-certificates bzip2 unzip
 
 # firefox setup
-RUN $INSTALL libgtk-3-0 libasound2 libx11-xcb1
+RUN $INSTALL libgtk-3-0t64 libasound2t64 libx11-xcb1
 
 RUN wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.tar.bz2 && \
     tar -xf firefox-${FIREFOX_VERSION}.tar.bz2 && \
@@ -32,9 +39,9 @@ RUN wget https://github.com/mozilla/geckodriver/releases/download/v${GECKODRIVER
 RUN geckodriver --version
 
 # chrome setup
-RUN wget https://dl.google.com/linux/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}_amd64.deb && \
-    $INSTALL ./google-chrome-stable_${CHROME_VERSION}_amd64.deb && \
-    rm google-chrome-stable_${CHROME_VERSION}_amd64.deb
+RUN wget https://dl.google.com/linux/direct/google-chrome-stable_${CHROME_VERSION}_amd64.deb && \
+    $INSTALL ./google-chrome-stable_current_amd64.deb && \
+    rm google-chrome-stable_current_amd64.deb
 
 RUN google-chrome --version
 
@@ -58,4 +65,4 @@ ADD requirements.txt .
 RUN $INSTALL python3 python3-pip && \
     pip install --upgrade pip && \
     pip install -r requirements.txt && \
-    rm requirements.txt
+    rm requirements.txt \
