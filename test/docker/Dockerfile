@@ -1,10 +1,9 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
-ENV FIREFOX_VERSION="120.0"
-ENV CHROME_VERSION="119.0.6045.159-1"
+ENV FIREFOX_VERSION="133.0"
+ENV CHROME_VERSION="131.0.6778.241"
 ENV PHANTOMJS_VERSION="2.1.1"
-ENV GECKODRIVER_VERSION="0.33.0"
-ENV CHROMEDRIVER_VERSION="119.0.6045.105"
+ENV GECKODRIVER_VERSION="0.35.0"
 
 ENV INSTALL="apt-get install -y --no-install-recommends"
 
@@ -38,15 +37,6 @@ RUN wget https://dl.google.com/linux/deb/pool/main/g/google-chrome-stable/google
     rm google-chrome-stable_${CHROME_VERSION}_amd64.deb
 
 RUN google-chrome --version
-
-# chromedirver setup
-RUN wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/${CHROMEDRIVER_VERSION}/linux64/chromedriver-linux64.zip && \
-    unzip chromedriver-linux64.zip && \
-    mv chromedriver-linux64/chromedriver /usr/local/bin && \
-    rm -rf chromedriver-linux64 && \
-    rm chromedriver-linux64.zip
-
-RUN geckodriver --version
 
 # phantomjs setup
 RUN $INSTALL build-essential chrpath libssl-dev libxft-dev \
