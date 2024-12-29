@@ -5,7 +5,6 @@
 #include <odr/html.hpp>
 
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
-#include <odr/internal/project_info.hpp>
 
 #include <pdf2htmlEX/HTMLRenderer/HTMLRenderer.h>
 #include <pdf2htmlEX/Param.h>
@@ -19,17 +18,6 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
                                       const std::string &output_path,
                                       const HtmlConfig &config) {
   PDFDoc &pdf_doc = pdf_file.pdf_doc();
-
-  const char *fontconfig_path = std::getenv("FONTCONFIG_PATH");
-  if (fontconfig_path == nullptr) {
-    // Storage is allocated and after successful putenv, it will never be freed.
-    // This is the way of putenv.
-    char *storage = strdup("FONTCONFIG_PATH=" FONTCONFIG_PATH);
-    if (0 != putenv(storage)) {
-      free(storage);
-    }
-    fontconfig_path = std::getenv("FONTCONFIG_PATH");
-  }
 
   pdf2htmlEX::Param param;
 
@@ -99,8 +87,8 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
   // misc
   param.clean_tmp = 1;
   param.tmp_dir = "/tmp";
-  param.data_dir = PDF2HTMLEX_DATA_DIR;
-  param.poppler_data_dir = POPPLER_DATA_DIR;
+  param.data_dir = config.pdf2htmlex_data_path;
+  param.poppler_data_dir = config.poppler_data_path;
   param.debug = 0;
   param.proof = 0;
   param.quiet = 1;
@@ -121,7 +109,8 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
 
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
   // TODO potentially just a cache dir?
-  pdf2htmlEX::HTMLRenderer(fontconfig_path, param).process(&pdf_doc);
+  pdf2htmlEX::HTMLRenderer(config.fontforge_data_path.c_str(), param)
+      .process(&pdf_doc);
 
   globalParams.reset();
 

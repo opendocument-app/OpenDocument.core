@@ -4,4 +4,40 @@ namespace odr::internal {
 
 const char *project_info::version() noexcept { return "${CMAKE_PROJECT_VERSION}"; }
 
+bool project_info::is_debug() noexcept {
+#ifdef NDEBUG
+    return false;
+#else
+    return true;
+#endif
+}
+
+bool project_info::with_wvware() noexcept {
+#ifdef ODR_WITH_WVWARE
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool project_info::with_pdf2htmlex() noexcept{
+#ifdef ODR_WITH_PDF2HTMLEX
+    return true;
+#else
+    return false;
+#endif
+}
+
+const char *project_info::fontconfig_data_path() noexcept {
+  return "${FONTCONFIG_PATH}";
+}
+
+const char *project_info::poppler_data_path() noexcept {
+        return "${POPPLER_DATA_DIR}";
+}
+
+const char *project_info::pdf2htmlex_data_path() noexcept{
+        return "${PDF2HTMLEX_DATA_DIR}";
+}
+
 } // namespace odr::internal
