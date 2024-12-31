@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ABSTRACT_SHEET_ELEMENT_HPP
-#define ODR_INTERNAL_ABSTRACT_SHEET_ELEMENT_HPP
+#pragma once
 
 #include <odr/internal/abstract/document_element.hpp>
 
@@ -47,5 +46,3 @@ public:
 };
 
 } // namespace odr::internal::abstract
-
-#endif // ODR_INTERNAL_ABSTRACT_SHEET_ELEMENT_HPP

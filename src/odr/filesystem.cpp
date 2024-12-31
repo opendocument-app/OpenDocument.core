@@ -67,23 +67,24 @@ Filesystem::Filesystem(
 Filesystem::operator bool() const { return m_impl.operator bool(); }
 
 bool Filesystem::exists(const std::string &path) const {
-  return m_impl ? m_impl->exists(path) : false;
+  return m_impl ? m_impl->exists(internal::common::Path(path)) : false;
 }
 
 bool Filesystem::is_file(const std::string &path) const {
-  return m_impl ? m_impl->is_file(path) : false;
+  return m_impl ? m_impl->is_file(internal::common::Path(path)) : false;
 }
 
 bool Filesystem::is_directory(const std::string &path) const {
-  return m_impl ? m_impl->is_directory(path) : false;
+  return m_impl ? m_impl->is_directory(internal::common::Path(path)) : false;
 }
 
 FileWalker Filesystem::file_walker(const std::string &path) const {
-  return m_impl ? FileWalker(m_impl->file_walker(path)) : FileWalker();
+  return m_impl ? FileWalker(m_impl->file_walker(internal::common::Path(path)))
+                : FileWalker();
 }
 
 File Filesystem::open(const std::string &path) const {
-  return m_impl ? File(m_impl->open(path)) : File();
+  return m_impl ? File(m_impl->open(internal::common::Path(path))) : File();
 }
 
 } // namespace odr

@@ -1,5 +1,4 @@
-#ifndef ODR_FILE_HPP
-#define ODR_FILE_HPP
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -289,5 +288,3 @@ private:
 };
 
 } // namespace odr
-
-#endif // ODR_FILE_HPP

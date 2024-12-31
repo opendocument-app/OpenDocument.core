@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_COMMON_TEMPORARY_FILE_HPP
-#define ODR_INTERNAL_COMMON_TEMPORARY_FILE_HPP
+#pragma once
 
 #include <odr/internal/common/file.hpp>
 
@@ -7,11 +6,13 @@
 
 namespace odr::internal::common {
 
+class Path;
+
 class TemporaryDiskFile final : public DiskFile {
 public:
   explicit TemporaryDiskFile(const char *path);
-  explicit TemporaryDiskFile(std::string path);
-  explicit TemporaryDiskFile(common::Path path);
+  explicit TemporaryDiskFile(const std::string &path);
+  explicit TemporaryDiskFile(const Path &path);
   TemporaryDiskFile(const TemporaryDiskFile &);
   TemporaryDiskFile(TemporaryDiskFile &&) noexcept;
   ~TemporaryDiskFile() override;
@@ -31,8 +32,8 @@ public:
       RandomFileNameGenerator random_file_name_generator =
           default_random_file_name_generator());
 
-  TemporaryDiskFile copy(const abstract::File &file) const;
-  TemporaryDiskFile copy(std::istream &in) const;
+  [[nodiscard]] TemporaryDiskFile copy(const abstract::File &file) const;
+  [[nodiscard]] TemporaryDiskFile copy(std::istream &in) const;
 
 private:
   common::Path m_directory;
@@ -40,5 +41,3 @@ private:
 };
 
 } // namespace odr::internal::common
-
-#endif // ODR_INTERNAL_COMMON_TEMPORARY_FILE_HPP

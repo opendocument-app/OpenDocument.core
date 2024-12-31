@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_PDF_OBJECT_HPP
-#define ODR_INTERNAL_PDF_OBJECT_HPP
+#pragma once
 
 #include <any>
 #include <cstdint>
@@ -218,5 +217,3 @@ std::ostream &operator<<(std::ostream &, const Dictionary &);
 template <> struct std::hash<odr::internal::pdf::ObjectReference> {
   std::size_t operator()(const odr::internal::pdf::ObjectReference &k) const;
 };
-
-#endif // ODR_INTERNAL_PDF_OBJECT_HPP

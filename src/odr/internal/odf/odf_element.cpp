@@ -441,7 +441,7 @@ bool Image::is_internal(const abstract::Document *document) const {
     return false;
   }
   try {
-    return doc->files()->is_file(href(document));
+    return doc->files()->is_file(common::Path(href(document)));
   } catch (...) {
   }
   return false;
@@ -452,7 +452,7 @@ std::optional<odr::File> Image::file(const abstract::Document *document) const {
   if (!doc || !is_internal(document)) {
     return {};
   }
-  return File(doc->files()->open(href(document)));
+  return File(doc->files()->open(common::Path(href(document))));
 }
 
 std::string Image::href(const abstract::Document *) const {

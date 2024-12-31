@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_WVWARE_WRAPPER_HPP
-#define ODR_INTERNAL_WVWARE_WRAPPER_HPP
+#pragma once
 
 #include <string>
 
@@ -19,5 +18,3 @@ Html translate_wvware_oldms_file(const WvWareLegacyMicrosoftFile &oldms_file,
                                  const HtmlConfig &config);
 
 }
-
-#endif // ODR_INTERNAL_WVWARE_WRAPPER_HPP

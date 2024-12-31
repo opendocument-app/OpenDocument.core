@@ -18,7 +18,6 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <fstream>
-#include <utility>
 
 namespace odr::internal::html {
 namespace {
@@ -38,7 +37,7 @@ void front(const Document &document, HtmlWriter &out, const HtmlConfig &config,
         "width=device-width,initial-scale=1.0,user-scalable=yes");
   }
 
-  auto odr_css_file = Resources::open("odr.css");
+  auto odr_css_file = Resources::open(common::Path("odr.css"));
   HtmlResourceLocation odr_css_location = resourceLocator(
       HtmlResourceType::css, "odr.css", "odr.css", odr_css_file, true);
   if (odr_css_location.has_value()) {
@@ -50,7 +49,8 @@ void front(const Document &document, HtmlWriter &out, const HtmlConfig &config,
   }
 
   if (document.document_type() == DocumentType::spreadsheet) {
-    auto odr_spreadsheet_css_file = Resources::open("odr_spreadsheet.css");
+    auto odr_spreadsheet_css_file =
+        Resources::open(common::Path("odr_spreadsheet.css"));
     HtmlResourceLocation odr_spreadsheet_css_location =
         resourceLocator(HtmlResourceType::css, "odr_spreadsheet.css",
                         "odr_spreadsheet.css", odr_spreadsheet_css_file, true);
@@ -86,7 +86,7 @@ void back(const Document &document, html::HtmlWriter &out,
   (void)document;
   (void)config;
 
-  auto odr_js_file = Resources::open("odr.js");
+  auto odr_js_file = Resources::open(common::Path("odr.js"));
   HtmlResourceLocation odr_js_location = resourceLocator(
       HtmlResourceType::js, "odr.js", "odr.js", odr_js_file, true);
   if (odr_js_location.has_value()) {

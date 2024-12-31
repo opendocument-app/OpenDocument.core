@@ -8,7 +8,6 @@
 #include <odr/internal/common/path.hpp>
 
 #include <stdexcept>
-#include <utility>
 
 namespace odr {
 
@@ -25,11 +24,13 @@ bool Document::savable(const bool encrypted) const noexcept {
   return m_impl->is_savable(encrypted);
 }
 
-void Document::save(const std::string &path) const { m_impl->save(path); }
+void Document::save(const std::string &path) const {
+  m_impl->save(internal::common::Path(path));
+}
 
 void Document::save(const std::string &path,
                     const std::string &password) const {
-  m_impl->save(path, password.c_str());
+  m_impl->save(internal::common::Path(path), password.c_str());
 }
 
 FileType Document::file_type() const noexcept { return m_impl->file_type(); }

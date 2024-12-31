@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_UTIL_XML_HPP
-#define ODR_INTERNAL_UTIL_XML_HPP
+#pragma once
 
 #include <iosfwd>
 #include <string>
@@ -39,5 +38,3 @@ struct StringToken {
 
 std::vector<StringToken> tokenize_text(const std::string &text);
 } // namespace odr::internal::util::xml
-
-#endif // ODR_INTERNAL_XML_UTIL_HPP

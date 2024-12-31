@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_PDF_GRAPHICS_STATE_HPP
-#define ODR_INTERNAL_PDF_GRAPHICS_STATE_HPP
+#pragma once
 
 #include <array>
 #include <cstdint>
@@ -77,5 +76,3 @@ struct GraphicsState {
 };
 
 } // namespace odr::internal::pdf
-
-#endif // ODR_INTERNAL_PDF_GRAPHICS_STATE_HPP

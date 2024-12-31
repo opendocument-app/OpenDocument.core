@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_PDF_GRAPHICS_OPERATOR_PARSER_HPP
-#define ODR_INTERNAL_PDF_GRAPHICS_OPERATOR_PARSER_HPP
+#pragma once
 
 #include <odr/internal/pdf/pdf_object_parser.hpp>
 
@@ -29,5 +28,3 @@ private:
 };
 
 } // namespace odr::internal::pdf
-
-#endif // ODR_INTERNAL_PDF_GRAPHICS_OPERATOR_PARSER_HPP

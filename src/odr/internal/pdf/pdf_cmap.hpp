@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_PDF_CMAP_HPP
-#define ODR_INTERNAL_PDF_CMAP_HPP
+#pragma once
 
 #include <string>
 #include <unordered_map>
@@ -20,5 +19,3 @@ private:
 };
 
 } // namespace odr::internal::pdf
-
-#endif // ODR_INTERNAL_PDF_CMAP_HPP

@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ODF_MANIFEST_HPP
-#define ODR_INTERNAL_ODF_MANIFEST_HPP
+#pragma once
 
 #include <odr/internal/common/path.hpp>
 
@@ -45,5 +44,3 @@ struct Manifest {
 Manifest parse_manifest(const pugi::xml_document &manifest);
 
 } // namespace odr::internal::odf
-
-#endif // ODR_INTERNAL_ODF_MANIFEST_HPP

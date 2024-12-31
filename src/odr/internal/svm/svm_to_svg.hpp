@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_SVM_TO_SVG_HPP
-#define ODR_INTERNAL_SVM_TO_SVG_HPP
+#pragma once
 
 #include <iostream>
 #include <memory>
@@ -11,5 +10,3 @@ namespace Translator {
 void svg(const SvmFile &file, std::ostream &out);
 }
 } // namespace odr::internal::svm
-
-#endif // ODR_INTERNAL_SVM_TO_SVG_HPP

@@ -1,5 +1,4 @@
-#ifndef ODR_DOCUMENT_ELEMENT_HPP
-#define ODR_DOCUMENT_ELEMENT_HPP
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -533,5 +532,3 @@ public:
 };
 
 } // namespace odr
-
-#endif // ODR_DOCUMENT_ELEMENT_HPP

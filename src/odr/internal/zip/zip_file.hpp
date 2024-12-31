@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ZIP_FILE_HPP
-#define ODR_INTERNAL_ZIP_FILE_HPP
+#pragma once
 
 #include <odr/internal/abstract/file.hpp>
 
@@ -36,5 +35,3 @@ private:
 };
 
 } // namespace odr::internal::zip
-
-#endif // ODR_INTERNAL_ZIP_FILE_HPP

@@ -1,5 +1,4 @@
-#ifndef ODR_MAGIC_HPP
-#define ODR_MAGIC_HPP
+#pragma once
 
 #include <iosfwd>
 #include <string>
@@ -19,5 +18,3 @@ FileType file_type(std::istream &in);
 FileType file_type(const internal::abstract::File &file);
 FileType file_type(const File &file);
 } // namespace odr::internal::magic
-
-#endif // ODR_MAGIC_HPP

@@ -14,12 +14,14 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : common::TemplateDocument<Element>(FileType::office_open_xml_presentation,
                                         DocumentType::presentation,
                                         std::move(filesystem)) {
-  m_document_xml = util::xml::parse(*m_filesystem, "ppt/presentation.xml");
+  m_document_xml =
+      util::xml::parse(*m_filesystem, common::Path("ppt/presentation.xml"));
 
-  for (auto relationships :
-       parse_relationships(*m_filesystem, "ppt/presentation.xml")) {
+  for (const auto &relationships : parse_relationships(
+           *m_filesystem, common::Path("ppt/presentation.xml"))) {
     m_slides_xml[relationships.first] = util::xml::parse(
-        *m_filesystem, common::Path("ppt").join(relationships.second));
+        *m_filesystem,
+        common::Path("ppt").join(common::Path(relationships.second)));
   }
 
   m_root_element = parse_tree(*this, m_document_xml.document_element());

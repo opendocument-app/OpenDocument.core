@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_HTML_DOCUMENT_STYLE_HPP
-#define ODR_INTERNAL_HTML_DOCUMENT_STYLE_HPP
+#pragma once
 
 #include <optional>
 #include <string>
@@ -51,5 +50,3 @@ std::string translate_circle_properties(const Circle &circle);
 std::string translate_custom_shape_properties(const CustomShape &custom_shape);
 
 } // namespace odr::internal::html
-
-#endif // ODR_INTERNAL_HTML_DOCUMENT_STYLE_HPP

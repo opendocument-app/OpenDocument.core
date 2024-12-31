@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_COMMON_PATH_HPP
-#define ODR_INTERNAL_COMMON_PATH_HPP
+#pragma once
 
 #include <cstdint>
 #include <filesystem>
@@ -12,9 +11,10 @@ namespace odr::internal::common {
 class Path final {
 public:
   Path() noexcept;
-  Path(const char *c_string);
-  Path(const std::string &string);
-  Path(const std::filesystem::path &path);
+  explicit Path(const char *c_string);
+  explicit Path(const std::string &string);
+  explicit Path(std::string_view string_view);
+  explicit Path(const std::filesystem::path &path);
 
   bool operator==(const Path &other) const noexcept;
   bool operator!=(const Path &other) const noexcept;
@@ -99,5 +99,3 @@ template <> struct hash<::odr::internal::common::Path> {
   std::size_t operator()(const ::odr::internal::common::Path &p) const;
 };
 } // namespace std
-
-#endif // ODR_INTERNAL_COMMON_PATH_HPP

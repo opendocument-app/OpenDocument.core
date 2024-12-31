@@ -5,7 +5,6 @@
 #include <odr/internal/common/file.hpp>
 
 #include <algorithm>
-#include <utility>
 
 namespace odr::internal::zip::util {
 
@@ -157,7 +156,7 @@ common::Path Archive::Entry::path() const {
   mz_zip_reader_get_filename(const_cast<mz_zip_archive *>(m_parent->zip()),
                              m_index, filename,
                              MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE);
-  return {filename};
+  return common::Path(filename);
 }
 
 Method Archive::Entry::method() const {

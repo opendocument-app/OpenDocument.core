@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ODF_META_HPP
-#define ODR_INTERNAL_ODF_META_HPP
+#pragma once
 
 #include <odr/internal/common/path.hpp>
 
@@ -27,5 +26,3 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
                          const pugi::xml_document *manifest, bool decrypted);
 
 } // namespace odr::internal::odf
-
-#endif // ODR_INTERNAL_ODF_META_HPP

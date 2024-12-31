@@ -7,12 +7,14 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <string>
 #include <test_util.hpp>
 #include <unordered_map>
 #include <utility>
 
 using namespace odr;
 using namespace odr::internal;
+using namespace odr::internal::common;
 namespace fs = std::filesystem;
 
 namespace odr::test {
@@ -123,7 +125,7 @@ TestFile::TestFile(std::string absolute_path, std::string short_path,
       password{std::move(password)} {}
 
 std::string TestData::data_input_directory() {
-  return common::Path(TestData::data_directory()).join("input").string();
+  return common::Path(TestData::data_directory()).join(Path("input")).string();
 }
 
 TestData &TestData::instance_() {

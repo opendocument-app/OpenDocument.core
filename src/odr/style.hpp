@@ -1,5 +1,4 @@
-#ifndef ODR_STYLE_HPP
-#define ODR_STYLE_HPP
+#pragma once
 
 #include <odr/quantity.hpp>
 
@@ -207,5 +206,3 @@ struct TableDimensions {
 };
 
 } // namespace odr
-
-#endif // ODR_STYLE_HPP

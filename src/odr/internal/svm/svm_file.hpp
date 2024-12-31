@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_SVM_FILE_HPP
-#define ODR_INTERNAL_SVM_FILE_HPP
+#pragma once
 
 #include <odr/file.hpp>
 #include <odr/internal/abstract/file.hpp>
@@ -29,5 +28,3 @@ private:
 };
 
 } // namespace odr::internal::svm
-
-#endif // ODR_INTERNAL_SVM_FILE_HPP

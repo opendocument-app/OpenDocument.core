@@ -42,7 +42,7 @@ Html html::translate_filesystem(FileType file_type,
   out.write_body_begin();
 
   for (; !file_walker.end(); file_walker.next()) {
-    common::Path file_path = file_walker.path();
+    common::Path file_path = common::Path(file_walker.path());
     bool is_file = file_walker.is_file();
 
     out.write_element_begin("p");

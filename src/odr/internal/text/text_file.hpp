@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_TEXT_FILE_HPP
-#define ODR_INTERNAL_TEXT_FILE_HPP
+#pragma once
 
 #include <odr/file.hpp>
 
@@ -26,5 +25,3 @@ private:
 };
 
 } // namespace odr::internal::text
-
-#endif // ODR_INTERNAL_TEXT_FILE_HPP

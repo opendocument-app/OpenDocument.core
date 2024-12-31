@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_HTML_IMAGE_FILE_HPP
-#define ODR_INTERNAL_HTML_IMAGE_FILE_HPP
+#pragma once
 
 #include <string>
 
@@ -23,5 +22,3 @@ Html translate_image_file(const ImageFile &image_file,
                           const HtmlConfig &config);
 
 } // namespace odr::internal::html
-
-#endif // ODR_INTERNAL_HTML_IMAGE_FILE_HPP

@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_CFB_ARCHIVE_HPP
-#define ODR_INTERNAL_CFB_ARCHIVE_HPP
+#pragma once
 
 #include <odr/internal/abstract/archive.hpp>
 #include <odr/internal/common/file.hpp>
@@ -43,5 +42,3 @@ private:
 };
 
 } // namespace odr::internal::cfb
-
-#endif // ODR_INTERNAL_CFB_ARCHIVE_HPP

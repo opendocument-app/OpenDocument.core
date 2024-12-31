@@ -1,19 +1,20 @@
 #include <odr/internal/common/temporary_file.hpp>
 
+#include <odr/internal/common/path.hpp>
 #include <odr/internal/common/random.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <fstream>
+#include <utility>
 
 namespace odr::internal::common {
 
 TemporaryDiskFile::TemporaryDiskFile(const char *path) : DiskFile{path} {}
 
-TemporaryDiskFile::TemporaryDiskFile(std::string path)
-    : DiskFile{std::move(path)} {}
+TemporaryDiskFile::TemporaryDiskFile(const std::string &path)
+    : DiskFile{path} {}
 
-TemporaryDiskFile::TemporaryDiskFile(common::Path path)
-    : DiskFile{std::move(path)} {}
+TemporaryDiskFile::TemporaryDiskFile(const Path &path) : DiskFile{path} {}
 
 TemporaryDiskFile::TemporaryDiskFile(const TemporaryDiskFile &) = default;
 
@@ -31,7 +32,8 @@ TemporaryDiskFile::operator=(TemporaryDiskFile &&) noexcept = default;
 
 const TemporaryDiskFileFactory &TemporaryDiskFileFactory::system_default() {
   static TemporaryDiskFileFactory instance(
-      std::filesystem::temp_directory_path());
+      Path(std::filesystem::temp_directory_path()),
+      default_random_file_name_generator());
   return instance;
 }
 
@@ -41,9 +43,9 @@ TemporaryDiskFileFactory::default_random_file_name_generator() {
 }
 
 TemporaryDiskFileFactory::TemporaryDiskFileFactory(
-    common::Path directory, RandomFileNameGenerator random_file_name_generator)
+    Path directory, RandomFileNameGenerator random_file_name_generator)
     : m_directory{std::move(directory)},
-      m_random_file_name_generator{random_file_name_generator} {}
+      m_random_file_name_generator{std::move(random_file_name_generator)} {}
 
 TemporaryDiskFile
 TemporaryDiskFileFactory::copy(const abstract::File &file) const {
@@ -56,7 +58,7 @@ TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
 
   while (true) {
     std::string file_name = m_random_file_name_generator();
-    file_path = m_directory.join(file_name);
+    file_path = m_directory.join(Path(file_name));
 
     file.open(file_path.string(), std::ios_base::in | std::ios_base::out);
 

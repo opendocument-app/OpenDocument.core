@@ -13,8 +13,6 @@
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/zip/zip_file.hpp>
 
-#include <utility>
-
 namespace odr::internal::abstract {
 class Document;
 } // namespace odr::internal::abstract
@@ -60,16 +58,16 @@ EncryptionState OfficeOpenXmlFile::encryption_state() const noexcept {
 bool OfficeOpenXmlFile::decrypt(const std::string &password) {
   // TODO throw if not encrypted
   // TODO throw if decrypted
-  std::string encryption_info =
-      util::stream::read(*m_filesystem->open("/EncryptionInfo")->stream());
+  std::string encryption_info = util::stream::read(
+      *m_filesystem->open(common::Path("/EncryptionInfo"))->stream());
   // TODO cache Crypto::Util
   crypto::Util util(encryption_info);
   std::string key = util.derive_key(password);
   if (!util.verify(key)) {
     return false;
   }
-  std::string encrypted_package =
-      util::stream::read(*m_filesystem->open("/EncryptedPackage")->stream());
+  std::string encrypted_package = util::stream::read(
+      *m_filesystem->open(common::Path("/EncryptedPackage"))->stream());
   std::string decrypted_package = util.decrypt(encrypted_package, key);
   auto memory_file =
       std::make_shared<common::MemoryFile>(std::move(decrypted_package));

@@ -26,7 +26,7 @@ Resources::Resources() {
 
     filesystem->copy(std::make_shared<common::MemoryFile>(
                          std::string(resource.data, resource.size)),
-                     resource.path);
+                     common::Path(resource.path));
   }
 
   m_filesystem = std::move(filesystem);

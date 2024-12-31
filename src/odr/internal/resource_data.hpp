@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_RESOURCE_DATA_HPP
-#define ODR_INTERNAL_RESOURCE_DATA_HPP
+#pragma once
 
 #include <cstdint>
 
@@ -24,5 +23,3 @@ extern const std::uint32_t files_count;
 // clang-format on
 
 } // namespace odr::internal::resources
-
-#endif // ODR_INTERNAL_RESOURCE_DATA_HPP

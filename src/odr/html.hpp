@@ -1,5 +1,4 @@
-#ifndef ODR_HTML_HPP
-#define ODR_HTML_HPP
+#pragma once
 
 #include <odr/document.hpp>
 #include <odr/file.hpp>
@@ -202,5 +201,3 @@ void edit(const Document &document, const char *diff);
 } // namespace html
 
 } // namespace odr
-
-#endif // ODR_HTML_HPP

@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_OOXML_SPREADSHEET_STYLE_HPP
-#define ODR_INTERNAL_OOXML_SPREADSHEET_STYLE_HPP
+#pragma once
 
 #include <odr/internal/common/style.hpp>
 
@@ -33,5 +32,3 @@ private:
 };
 
 } // namespace odr::internal::ooxml::spreadsheet
-
-#endif // ODR_INTERNAL_OOXML_SPREADSHEET_STYLE_HPP

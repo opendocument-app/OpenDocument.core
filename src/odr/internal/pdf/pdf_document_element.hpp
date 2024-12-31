@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_PDF_DOCUMENT_ELEMENT_HPP
-#define ODR_INTERNAL_PDF_DOCUMENT_ELEMENT_HPP
+#pragma once
 
 #include <odr/internal/pdf/pdf_cmap.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
@@ -63,5 +62,3 @@ struct Font : Element {
 };
 
 } // namespace odr::internal::pdf
-
-#endif // ODR_INTERNAL_PDF_DOCUMENT_ELEMENT_HPP

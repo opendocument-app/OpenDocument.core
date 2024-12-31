@@ -18,6 +18,7 @@
 
 using namespace odr;
 using namespace odr::internal;
+using namespace odr::internal::common;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
@@ -123,7 +124,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   const std::string resource_path = common::Path(output_path_prefix)
                                         .parent()
                                         .parent()
-                                        .join("resources")
+                                        .join(Path("resources"))
                                         .string();
   OpenDocumentReader::copy_resources(resource_path);
 
@@ -168,12 +169,14 @@ TestParams create_test_params(const TestFile &test_file,
   const std::string test_file_path = test_file.short_path;
 
   const std::string test_repo = *common::Path(test_file_path).begin();
-  const std::string output_path_prefix =
-      common::Path("output").join(test_repo).join("output").string();
+  const std::string output_path_prefix = common::Path("output")
+                                             .join(Path(test_repo))
+                                             .join(Path("output"))
+                                             .string();
   const std::string output_path_suffix = engine_suffix(engine);
   const std::string output_path =
       common::Path(output_path_prefix)
-          .join(common::Path(test_file_path).rebase(test_repo))
+          .join(common::Path(test_file_path).rebase(Path(test_repo)))
           .string() +
       output_path_suffix;
 

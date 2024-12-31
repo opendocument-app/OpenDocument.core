@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_HTML_HTML_WRITER_HPP
-#define ODR_INTERNAL_HTML_HTML_WRITER_HPP
+#pragma once
 
 #include <odr/html.hpp>
 
@@ -96,5 +95,3 @@ private:
 };
 
 } // namespace odr::internal::html
-
-#endif // ODR_INTERNAL_HTML_HTML_WRITER_HPP

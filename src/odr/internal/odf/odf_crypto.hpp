@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ODF_CRYPTO_HPP
-#define ODR_INTERNAL_ODF_CRYPTO_HPP
+#pragma once
 
 #include <odr/internal/odf/odf_manifest.hpp>
 #include <odr/internal/odf/odf_meta.hpp>
@@ -34,5 +33,3 @@ bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &, const Manifest &,
              const std::string &password);
 
 } // namespace odr::internal::odf
-
-#endif // ODR_INTERNAL_ODF_CRYPTO_HPP

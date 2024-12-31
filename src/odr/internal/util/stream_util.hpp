@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_UTIL_STREAM_HPP
-#define ODR_INTERNAL_UTIL_STREAM_HPP
+#pragma once
 
 #include <iosfwd>
 #include <string>
@@ -19,5 +18,3 @@ std::istream &pipe_until(std::istream &in, std::ostream &out, char until_char,
 std::string read_until(std::istream &in, char until_char, bool inclusive);
 
 } // namespace odr::internal::util::stream
-
-#endif // ODR_INTERNAL_UTIL_STREAM_HPP

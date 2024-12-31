@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_HTML_DOCUMENT_ELEMENT_HPP
-#define ODR_INTERNAL_HTML_DOCUMENT_ELEMENT_HPP
+#pragma once
 
 #include <odr/html_service.hpp>
 
@@ -71,5 +70,3 @@ void translate_custom_shape(Element element, HtmlWriter &out,
                             const HtmlResourceLocator &resourceLocator);
 
 } // namespace odr::internal::html
-
-#endif // ODR_INTERNAL_HTML_DOCUMENT_ELEMENT_HPP

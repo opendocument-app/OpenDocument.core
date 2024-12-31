@@ -11,7 +11,6 @@
 
 #include <fstream>
 #include <sstream>
-#include <utility>
 
 namespace odr::internal::ooxml::text {
 
@@ -19,11 +18,13 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : common::TemplateDocument<Element>(FileType::office_open_xml_document,
                                         DocumentType::text,
                                         std::move(filesystem)) {
-  m_document_xml = util::xml::parse(*m_filesystem, "word/document.xml");
-  m_styles_xml = util::xml::parse(*m_filesystem, "word/styles.xml");
+  m_document_xml =
+      util::xml::parse(*m_filesystem, common::Path("word/document.xml"));
+  m_styles_xml =
+      util::xml::parse(*m_filesystem, common::Path("word/styles.xml"));
 
   m_document_relations =
-      parse_relationships(*m_filesystem, "word/document.xml");
+      parse_relationships(*m_filesystem, common::Path("word/document.xml"));
 
   m_root_element =
       parse_tree(*this, m_document_xml.document_element().child("w:body"));
@@ -41,14 +42,14 @@ void Document::save(const common::Path &path) const {
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 
-  for (auto walker = m_filesystem->file_walker(""); !walker->end();
-       walker->next()) {
+  for (auto walker = m_filesystem->file_walker(common::Path(""));
+       !walker->end(); walker->next()) {
     auto p = walker->path();
     if (m_filesystem->is_directory(p)) {
       archive.insert_directory(std::end(archive), p);
       continue;
     }
-    if (p == "word/document.xml") {
+    if (p == common::Path("word/document.xml")) {
       // TODO stream
       std::stringstream out;
       m_document_xml.print(out, "", pugi::format_raw);

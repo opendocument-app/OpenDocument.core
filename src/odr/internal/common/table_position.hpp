@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_COMMON_TABLE_POSITION_HPP
-#define ODR_INTERNAL_COMMON_TABLE_POSITION_HPP
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -37,5 +36,3 @@ private:
 template <> struct std::hash<odr::internal::common::TablePosition> {
   std::size_t operator()(const odr::internal::common::TablePosition &k) const;
 };
-
-#endif // ODR_INTERNAL_COMMON_TABLE_POSITION_HPP

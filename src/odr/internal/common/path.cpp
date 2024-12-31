@@ -11,24 +11,26 @@ namespace odr::internal::common {
 
 Path::Path() noexcept : Path("") {}
 
-Path::Path(const char *path) : Path(std::string(path)) {}
+Path::Path(const char *c_string) : Path(std::string(c_string)) {}
 
-Path::Path(const std::string &path) {
+Path::Path(const std::string &string) {
   // TODO throw on illegal chars
   // TODO remove forward slash
-  if (path.rfind("/..", 0) == 0) {
+  if (string.rfind("/..", 0) == 0) {
     throw std::invalid_argument("path");
   }
 
-  m_absolute = !path.empty() && (path[0] == '/');
+  m_absolute = !string.empty() && (string[0] == '/');
   m_path = m_absolute ? "/" : "";
   m_upwards = 0;
   m_downwards = 0;
 
-  for (auto it = Iterator(path, m_absolute ? 1 : 0); it != end(); ++it) {
+  for (auto it = Iterator(string, m_absolute ? 1 : 0); it != end(); ++it) {
     join_(*it);
   }
 }
+
+Path::Path(std::string_view string_view) : Path(std::string(string_view)) {}
 
 Path::Path(const std::filesystem::path &path) : Path(path.string()) {}
 
@@ -184,7 +186,7 @@ Path Path::join(const Path &b) const {
 }
 
 Path Path::rebase(const Path &b) const {
-  Path result = m_absolute ? "/" : "";
+  Path result = Path(m_absolute ? "/" : "");
   auto common_root = this->common_root(b);
 
   Path sub_a;
@@ -231,7 +233,7 @@ Path Path::common_root(const Path &b) const {
     throw std::invalid_argument("parent directories unknown");
   }
 
-  Path result = m_absolute ? "/" : "";
+  Path result = Path(m_absolute ? "/" : "");
 
   auto it_a = begin();
   auto it_b = b.begin();

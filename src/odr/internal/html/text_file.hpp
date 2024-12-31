@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_HTML_TEXT_FILE_HPP
-#define ODR_INTERNAL_HTML_TEXT_FILE_HPP
+#pragma once
 
 #include <string>
 
@@ -17,5 +16,3 @@ Html translate_text_file(const TextFile &text_file,
                          const HtmlConfig &config);
 
 }
-
-#endif // ODR_INTERNAL_HTML_TEXT_FILE_HPP

@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_COMMON_FILESYSTEM_HPP
-#define ODR_INTERNAL_COMMON_FILESYSTEM_HPP
+#pragma once
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
@@ -74,5 +73,3 @@ private:
 };
 
 } // namespace odr::internal::common
-
-#endif // ODR_INTERNAL_COMMON_FILESYSTEM_HPP

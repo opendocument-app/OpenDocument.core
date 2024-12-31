@@ -7,8 +7,6 @@
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
-#include <utility>
-
 namespace odr::internal::abstract {
 class Document;
 class File;
@@ -19,8 +17,9 @@ namespace odr::internal::odf {
 OpenDocumentFile::OpenDocumentFile(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
-  if (m_filesystem->exists("META-INF/manifest.xml")) {
-    auto manifest = util::xml::parse(*m_filesystem, "META-INF/manifest.xml");
+  if (m_filesystem->exists(common::Path("META-INF/manifest.xml"))) {
+    auto manifest =
+        util::xml::parse(*m_filesystem, common::Path("META-INF/manifest.xml"));
 
     m_file_meta = parse_file_meta(*m_filesystem, &manifest, false);
     m_manifest = parse_manifest(manifest);

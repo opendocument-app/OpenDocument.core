@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_HPP
-#define ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_HPP
+#pragma once
 
 #include <odr/internal/abstract/document_element.hpp>
 
@@ -59,5 +58,3 @@ public:
 };
 
 } // namespace odr::internal::common
-
-#endif // ODR_INTERNAL_COMMON_DOCUMENT_ELEMENT_HPP
