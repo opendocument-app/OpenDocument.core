@@ -1,5 +1,4 @@
-#ifndef ODR_QUANTITY_HPP
-#define ODR_QUANTITY_HPP
+#pragma once
 
 #include <iomanip>
 #include <iostream>
@@ -81,5 +80,3 @@ std::ostream &operator<<(std::ostream &out,
   quantity.to_stream(out);
   return out;
 }
-
-#endif // ODR_QUANTITY_HPP

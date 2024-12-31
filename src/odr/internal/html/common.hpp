@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_HTML_COMMON_HPP
-#define ODR_INTERNAL_HTML_COMMON_HPP
+#pragma once
 
 #include <iosfwd>
 #include <string>
@@ -32,5 +31,3 @@ HtmlResourceLocator local_resource_locator(const std::string &output_path,
                                            const HtmlConfig &config);
 
 } // namespace odr::internal::html
-
-#endif // ODR_INTERNAL_HTML_COMMON_HPP

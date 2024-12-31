@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ABSTRACT_ARCHIVE_HPP
-#define ODR_INTERNAL_ABSTRACT_ARCHIVE_HPP
+#pragma once
 
 #include <memory>
 
@@ -20,5 +19,3 @@ public:
 };
 
 } // namespace odr::internal::abstract
-
-#endif // ODR_INTERNAL_ABSTRACT_ARCHIVE_HPP

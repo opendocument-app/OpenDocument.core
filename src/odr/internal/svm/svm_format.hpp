@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_SVM_FORMAT_HPP
-#define ODR_INTERNAL_SVM_FORMAT_HPP
+#pragma once
 
 #include <cstdint>
 #include <iostream>
@@ -245,5 +244,3 @@ TextRectangleAction read_text_rectangle_action(std::istream &in,
 TextLineAction read_text_line_action(std::istream &in, const VersionLength &vl);
 
 } // namespace odr::internal::svm
-
-#endif // ODR_INTERNAL_SVM_FORMAT_HPP

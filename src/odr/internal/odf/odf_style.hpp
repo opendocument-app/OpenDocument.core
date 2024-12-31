@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ODF_STYLE_HPP
-#define ODR_INTERNAL_ODF_STYLE_HPP
+#pragma once
 
 #include <odr/document.hpp>
 
@@ -110,5 +109,3 @@ private:
 };
 
 } // namespace odr::internal::odf
-
-#endif // ODR_INTERNAL_ODF_STYLE_HPP

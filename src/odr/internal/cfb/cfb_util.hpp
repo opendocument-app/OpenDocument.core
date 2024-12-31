@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_CFB_UTIL_HPP
-#define ODR_INTERNAL_CFB_UTIL_HPP
+#pragma once
 
 #include <odr/file.hpp>
 
@@ -45,8 +44,8 @@ public:
         : m_parent{&parent}, m_entry{&entry}, m_path{"/"} {}
     Entry(const Archive &parent, const impl::CompoundFileEntry &entry,
           const common::Path &parent_path)
-        : m_parent{&parent}, m_entry{&entry}, m_path{parent_path.join(name())} {
-    }
+        : m_parent{&parent}, m_entry{&entry},
+          m_path{parent_path.join(common::Path(name()))} {}
     ~Entry() = default;
     Entry &operator=(const Entry &) = default;
     Entry &operator=(Entry &&) noexcept = default;
@@ -136,5 +135,3 @@ private:
 };
 
 } // namespace odr::internal::cfb::util
-
-#endif // ODR_INTERNAL_CFB_UTIL_HPP

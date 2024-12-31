@@ -1,5 +1,4 @@
-#ifndef ODR_HTML_SERVICE_HPP
-#define ODR_HTML_SERVICE_HPP
+#pragma once
 
 #include <functional>
 #include <iosfwd>
@@ -61,5 +60,3 @@ private:
 };
 
 } // namespace odr
-
-#endif // ODR_HTML_SERVICE_HPP

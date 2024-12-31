@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_JSON_FILE_HPP
-#define ODR_INTERNAL_JSON_FILE_HPP
+#pragma once
 
 #include <odr/file.hpp>
 
@@ -25,5 +24,3 @@ private:
 };
 
 } // namespace odr::internal::json
-
-#endif // ODR_INTERNAL_JSON_FILE_HPP

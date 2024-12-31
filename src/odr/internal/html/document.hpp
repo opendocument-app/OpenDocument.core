@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_HTML_DOCUMENT_HPP
-#define ODR_INTERNAL_HTML_DOCUMENT_HPP
+#pragma once
 
 #include <string>
 
@@ -19,5 +18,3 @@ Html translate_document(const Document &document,
                         const HtmlConfig &config);
 
 } // namespace odr::internal::html
-
-#endif // ODR_INTERNAL_HTML_DOCUMENT_HPP

@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_OOXML_META_HPP
-#define ODR_INTERNAL_OOXML_META_HPP
+#pragma once
 
 #include <memory>
 #include <stdexcept>
@@ -17,5 +16,3 @@ namespace odr::internal::ooxml {
 FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem);
 
 } // namespace odr::internal::ooxml
-
-#endif // ODR_INTERNAL_OOXML_META_HPP

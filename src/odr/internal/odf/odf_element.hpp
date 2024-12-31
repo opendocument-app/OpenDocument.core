@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ODF_ELEMENT_HPP
-#define ODR_INTERNAL_ODF_ELEMENT_HPP
+#pragma once
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/document_element.hpp>
@@ -284,5 +283,3 @@ public:
 };
 
 } // namespace odr::internal::odf
-
-#endif // ODR_INTERNAL_ODF_ELEMENT_HPP

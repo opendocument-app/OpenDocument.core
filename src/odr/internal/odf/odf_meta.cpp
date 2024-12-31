@@ -10,7 +10,6 @@
 #include <odr/internal/util/xml_util.hpp>
 
 #include <unordered_map>
-#include <utility>
 
 #include <pugixml.hpp>
 
@@ -64,20 +63,20 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
                          const bool decrypted) {
   FileMeta result;
 
-  if (!filesystem.is_file("content.xml")) {
+  if (!filesystem.is_file(common::Path("content.xml"))) {
     throw NoOpenDocumentFile();
   }
 
-  if (filesystem.is_file("mimetype")) {
-    const auto mimeType =
-        util::stream::read(*filesystem.open("mimetype")->stream());
+  if (filesystem.is_file(common::Path("mimetype"))) {
+    const auto mimeType = util::stream::read(
+        *filesystem.open(common::Path("mimetype"))->stream());
     lookup_file_type(mimeType, result.type);
   }
 
   if (manifest != nullptr) {
     for (auto &&e : manifest->select_nodes("//manifest:file-entry")) {
       const common::Path path =
-          e.node().attribute("manifest:full-path").as_string();
+          common::Path(e.node().attribute("manifest:full-path").as_string());
       if (path.root() && e.node().attribute("manifest:media-type")) {
         const std::string mimeType =
             e.node().attribute("manifest:media-type").as_string();
@@ -92,8 +91,9 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
   DocumentMeta document_meta;
 
   if ((result.password_encrypted == decrypted) &&
-      filesystem.is_file("meta.xml")) {
-    const auto meta_xml = util::xml::parse(filesystem, "meta.xml");
+      filesystem.is_file(common::Path("meta.xml"))) {
+    const auto meta_xml =
+        util::xml::parse(filesystem, common::Path("meta.xml"));
 
     const pugi::xml_node statistics = meta_xml.child("office:document-meta")
                                           .child("office:meta")
@@ -118,7 +118,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
     }
   }
 
-  result.document_meta = std::move(document_meta);
+  result.document_meta = document_meta;
 
   return result;
 }

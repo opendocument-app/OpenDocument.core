@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_PDF_GRAPHICS_OPERATOR_HPP
-#define ODR_INTERNAL_PDF_GRAPHICS_OPERATOR_HPP
+#pragma once
 
 #include <odr/internal/pdf/pdf_object.hpp>
 
@@ -112,5 +111,3 @@ struct GraphicsOperator {
 };
 
 } // namespace odr::internal::pdf
-
-#endif // ODR_INTERNAL_PDF_GRAPHICS_OPERATOR_HPP

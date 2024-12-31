@@ -1,5 +1,4 @@
-#ifndef ODR_TEST_META_HPP
-#define ODR_TEST_META_HPP
+#pragma once
 
 #include <odr/file.hpp>
 
@@ -45,5 +44,3 @@ private:
 };
 
 } // namespace odr::test
-
-#endif // ODR_TEST_META_HPP

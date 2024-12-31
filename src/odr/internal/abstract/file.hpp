@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ABSTRACT_FILE_HPP
-#define ODR_INTERNAL_ABSTRACT_FILE_HPP
+#pragma once
 
 #include <odr/file.hpp>
 
@@ -97,5 +96,3 @@ public:
 };
 
 } // namespace odr::internal::abstract
-
-#endif // ODR_INTERNAL_ABSTRACT_FILE_HPP

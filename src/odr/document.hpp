@@ -1,5 +1,4 @@
-#ifndef ODR_DOCUMENT_HPP
-#define ODR_DOCUMENT_HPP
+#pragma once
 
 #include <memory>
 #include <string>
@@ -40,5 +39,3 @@ private:
 };
 
 } // namespace odr
-
-#endif // ODR_DOCUMENT_HPP

@@ -1,13 +1,10 @@
-#ifndef ODR_INTERNAL_CRYPTO_UTIL_HPP
-#define ODR_INTERNAL_CRYPTO_UTIL_HPP
+#pragma once
 
 #include <iosfwd>
 #include <memory>
 #include <string>
 
-namespace odr::internal::crypto {
-
-namespace util {
+namespace odr::internal::crypto::util {
 
 std::string base64_encode(const std::string &);
 std::string base64_decode(const std::string &);
@@ -31,8 +28,4 @@ std::size_t padding(const std::string &input);
 
 std::string zlib_inflate(const std::string &input);
 
-} // namespace util
-
-} // namespace odr::internal::crypto
-
-#endif // ODR_INTERNAL_CRYPTO_UTIL_HPP
+} // namespace odr::internal::crypto::util

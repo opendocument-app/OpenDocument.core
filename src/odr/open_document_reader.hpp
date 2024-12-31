@@ -1,5 +1,4 @@
-#ifndef ODR_OPEN_DOCUMENT_READER_HPP
-#define ODR_OPEN_DOCUMENT_READER_HPP
+#pragma once
 
 #include <functional>
 #include <string>
@@ -182,5 +181,3 @@ private:
 };
 
 } // namespace odr
-
-#endif // ODR_OPEN_DOCUMENT_READER_HPP

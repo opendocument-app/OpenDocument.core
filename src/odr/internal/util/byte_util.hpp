@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_BYTE_UTIL_HPP
-#define ODR_INTERNAL_BYTE_UTIL_HPP
+#pragma once
 
 #include <memory>
 #include <string>
@@ -20,5 +19,3 @@ void reverse_bytes(std::u16string &string);
 void reverse_bytes(std::u32string &string);
 
 } // namespace odr::internal::util
-
-#endif // ODR_INTERNAL_BYTE_UTIL_HPP

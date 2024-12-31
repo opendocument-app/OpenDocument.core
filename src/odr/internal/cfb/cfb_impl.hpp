@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_CFB_IMPL_HPP
-#define ODR_INTERNAL_CFB_IMPL_HPP
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -181,5 +180,3 @@ private:
 };
 
 } // namespace odr::internal::cfb::impl
-
-#endif // ODR_INTERNAL_CFB_IMPL_HPP

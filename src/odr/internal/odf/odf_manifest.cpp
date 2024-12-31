@@ -67,7 +67,8 @@ Manifest parse_manifest(const pugi::xml_document &manifest) {
   std::optional<std::uint64_t> smallest_file_size;
 
   for (auto &&e : manifest.child("manifest:manifest").children()) {
-    const common::Path path = e.attribute("manifest:full-path").as_string();
+    const common::Path path =
+        common::Path(e.attribute("manifest:full-path").as_string());
     const pugi::xml_node crypto = e.child("manifest:encryption-data");
     if (!crypto) {
       continue;

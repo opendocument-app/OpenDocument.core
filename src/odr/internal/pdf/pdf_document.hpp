@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_PDF_DOCUMENT_HPP
-#define ODR_INTERNAL_PDF_DOCUMENT_HPP
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -22,5 +21,3 @@ struct Document {
 };
 
 } // namespace odr::internal::pdf
-
-#endif // ODR_INTERNAL_PDF_DOCUMENT_HPP

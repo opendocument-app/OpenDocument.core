@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_WVWARE_OLDMS_FILE_HPP
-#define ODR_INTERNAL_WVWARE_OLDMS_FILE_HPP
+#pragma once
 
 #include <odr/file.hpp>
 
@@ -53,5 +52,3 @@ private:
 };
 
 } // namespace odr::internal
-
-#endif // ODR_INTERNAL_WVWARE_OLDMS_FILE_HPP

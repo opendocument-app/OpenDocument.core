@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_OOXML_TEXT_DOCUMENT_HPP
-#define ODR_INTERNAL_OOXML_TEXT_DOCUMENT_HPP
+#pragma once
 
 #include <odr/file.hpp>
 
@@ -38,5 +37,3 @@ private:
 };
 
 } // namespace odr::internal::ooxml::text
-
-#endif // ODR_INTERNAL_OOXML_TEXT_DOCUMENT_HPP

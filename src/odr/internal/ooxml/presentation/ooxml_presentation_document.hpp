@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_OOXML_PRESENTATION_HPP
-#define ODR_INTERNAL_OOXML_PRESENTATION_HPP
+#pragma once
 
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
@@ -31,5 +30,3 @@ private:
 };
 
 } // namespace odr::internal::ooxml::presentation
-
-#endif // ODR_INTERNAL_OOXML_PRESENTATION_HPP

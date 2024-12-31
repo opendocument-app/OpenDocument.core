@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_HTML_PDF2HTMLEX_WRAPPER_HPP
-#define ODR_INTERNAL_HTML_PDF2HTMLEX_WRAPPER_HPP
+#pragma once
 
 #include <stdexcept>
 #include <string>
@@ -7,6 +6,7 @@
 namespace odr {
 struct HtmlConfig;
 class Html;
+class HtmlService;
 } // namespace odr
 
 namespace odr::internal {
@@ -14,6 +14,8 @@ class PopplerPdfFile;
 } // namespace odr::internal
 
 namespace odr::internal::html {
+
+HtmlService translate_document(const PopplerPdfFile &pdf_file);
 
 Html translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
                                 const std::string &output_path,
@@ -25,5 +27,3 @@ public:
 };
 
 } // namespace odr::internal::html
-
-#endif // ODR_INTERNAL_HTML_PDF2HTMLEX_WRAPPER_HPP

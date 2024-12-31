@@ -1,5 +1,4 @@
-#ifndef ODR_INTERNAL_ABSTRACT_HTML_SERVICE_HPP
-#define ODR_INTERNAL_ABSTRACT_HTML_SERVICE_HPP
+#pragma once
 
 #include <odr/html_service.hpp>
 
@@ -42,5 +41,3 @@ public:
 };
 
 } // namespace odr::internal::abstract
-
-#endif // ODR_INTERNAL_ABSTRACT_HTML_SERVICE_HPP

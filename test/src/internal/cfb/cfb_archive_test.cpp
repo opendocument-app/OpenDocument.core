@@ -12,6 +12,7 @@
 
 using namespace odr;
 using namespace odr::internal;
+using namespace odr::internal::common;
 using namespace odr::internal::cfb;
 using namespace odr::test;
 
@@ -31,6 +32,6 @@ TEST(CfbArchive, open_encrypted_docx) {
   util::Archive cfb(std::make_shared<common::MemoryFile>(common::DiskFile(
       TestData::test_file_path("odr-public/docx/encrypted.docx"))));
 
-  EXPECT_TRUE(cfb.find("EncryptionInfo") == std::end(cfb));
-  EXPECT_TRUE(cfb.find("/EncryptionInfo") != std::end(cfb));
+  EXPECT_TRUE(cfb.find(Path("EncryptionInfo")) == std::end(cfb));
+  EXPECT_TRUE(cfb.find(Path("/EncryptionInfo")) != std::end(cfb));
 }

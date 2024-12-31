@@ -10,7 +10,6 @@
 #include <fstream>
 #include <map>
 #include <system_error>
-#include <utility>
 
 namespace odr::internal::common {
 
@@ -65,7 +64,7 @@ private:
 SystemFilesystem::SystemFilesystem(Path root) : m_root{std::move(root)} {}
 
 Path SystemFilesystem::to_system_path_(const Path &path) const {
-  return m_root.join(path.rebase("/"));
+  return m_root.join(path.rebase(Path("/")));
 }
 
 bool SystemFilesystem::exists(const Path &path) const {

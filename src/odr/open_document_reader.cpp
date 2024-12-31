@@ -287,8 +287,8 @@ void OpenDocumentReader::edit(const Document &document, const char *diff) {
 
 void OpenDocumentReader::copy_resources(const std::string &to_path) {
   for (auto resource : internal::Resources::resources()) {
-    auto resource_output_path =
-        internal::common::Path(to_path).join(resource.path);
+    auto resource_output_path = internal::common::Path(to_path).join(
+        internal::common::Path(resource.path));
     std::filesystem::create_directories(resource_output_path.parent());
     std::ofstream out(resource_output_path.string(), std::ios::binary);
     out.write(resource.data, static_cast<std::streamsize>(resource.size));

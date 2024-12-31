@@ -10,7 +10,6 @@
 
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 
 namespace odr::internal {
@@ -74,16 +73,16 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
 
     if (is_core_resource && !config.external_resource_path.empty()) {
       auto resource_path =
-          common::Path(config.external_resource_path).join(path);
+          common::Path(config.external_resource_path).join(common::Path(path));
       if (config.relative_resource_paths) {
-        resource_path = resource_path.rebase(output_path);
+        resource_path = resource_path.rebase(common::Path(output_path));
       }
       return resource_path.string();
     }
 
     // TODO relocate file if necessary
 
-    auto resource_path = common::Path(output_path).join(path);
+    auto resource_path = common::Path(output_path).join(common::Path(path));
     std::filesystem::create_directories(resource_path.parent().path());
     std::ofstream os(resource_path.path());
     util::stream::pipe(*resource.stream(), os);
