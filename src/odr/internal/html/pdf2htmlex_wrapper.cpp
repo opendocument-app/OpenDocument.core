@@ -4,6 +4,8 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
+#include <odr/internal/abstract/html_service.hpp>
+#include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 
 #include <pdf2htmlEX/HTMLRenderer/HTMLRenderer.h>
@@ -12,13 +14,12 @@
 #include <poppler/GlobalParams.h>
 #include <poppler/PDFDoc.h>
 
-namespace odr::internal {
+namespace odr::internal::html {
 
-Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
-                                      const std::string &output_path,
-                                      const HtmlConfig &config) {
-  PDFDoc &pdf_doc = pdf_file.pdf_doc();
+namespace {
 
+pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
+                                const std::string &output_path) {
   pdf2htmlEX::Param param;
 
   // pages
@@ -30,7 +31,7 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
   param.fit_width = 0;
   param.fit_height = 0;
   param.use_cropbox = 1;
-  param.desired_dpi = 144.0;
+  param.desired_dpi = 144;
 
   // output
   param.embed_css = 1;
@@ -38,12 +39,12 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
   param.embed_image = 1;
   param.embed_javascript = 1;
   param.embed_outline = 1;
-  param.split_pages = 0;
+  param.split_pages = 1;
   param.dest_dir = output_path;
   param.css_filename = "";
-  param.page_filename = "";
+  param.page_filename = "page%i.html";
   param.outline_filename = "";
-  param.process_nontext = 1;
+  param.process_nontext = 0;
   param.process_outline = 1;
   param.process_annotation = 0;
   param.process_form = 0;
@@ -96,6 +97,57 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
   // input, output
   param.input_filename = "";
   param.output_filename = "document.html";
+
+  return param;
+}
+
+} // namespace
+
+class StaticHtmlService : public abstract::HtmlService {
+public:
+  StaticHtmlService(
+      PopplerPdfFile pdf_file,
+      std::vector<std::shared_ptr<abstract::HtmlFragment>> fragments)
+      : m_pdf_file{std::move(pdf_file)}, m_fragments{std::move(fragments)} {}
+
+  [[nodiscard]] const std::vector<std::shared_ptr<abstract::HtmlFragment>> &
+  fragments() const override {
+    return m_fragments;
+  }
+
+  void write_html_document(
+      HtmlWriter &out, const HtmlConfig &config,
+      const HtmlResourceLocator &resourceLocator) const override {}
+
+private:
+  PopplerPdfFile m_pdf_file;
+  const std::vector<std::shared_ptr<abstract::HtmlFragment>> m_fragments;
+};
+
+class PdfHtmlFragment : public abstract::HtmlFragment {
+public:
+  PdfHtmlFragment(PopplerPdfFile pdf_file, std::size_t page)
+      : m_pdf_file{std::move(pdf_file)}, m_page{page} {}
+
+  void
+  write_html_document(HtmlWriter &out, const HtmlConfig &config,
+                      const HtmlResourceLocator &resourceLocator) const final {}
+
+protected:
+  PopplerPdfFile m_pdf_file;
+  std::size_t m_page;
+};
+
+} // namespace odr::internal::html
+
+namespace odr::internal {
+
+Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
+                                      const std::string &output_path,
+                                      const HtmlConfig &config) {
+  PDFDoc &pdf_doc = pdf_file.pdf_doc();
+
+  pdf2htmlEX::Param param = create_params(pdf_doc, config, output_path);
 
   if (!pdf_doc.okToCopy()) {
     if (param.no_drm == 0) {
