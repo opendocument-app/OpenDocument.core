@@ -11,9 +11,9 @@ class HtmlService;
 
 namespace odr::internal::html {
 
-HtmlService create_document_service(const Document &document,
-                                    const std::string &output_path,
-                                    const HtmlConfig &config);
+odr::HtmlService create_document_service(const Document &document,
+                                         const std::string &output_path,
+                                         const HtmlConfig &config);
 
 Html translate_document(const Document &document,
                         const std::string &output_path,

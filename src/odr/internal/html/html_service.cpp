@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-namespace odr::internal::common {
+namespace odr::internal::html {
 
 HtmlService::HtmlService(
     HtmlConfig config, HtmlResourceLocator resource_locator,
@@ -66,4 +66,4 @@ void HtmlResource::write_resource(std::ostream &os) const {
   util::stream::pipe(*m_file.stream(), os);
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal::html

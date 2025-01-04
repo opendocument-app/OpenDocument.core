@@ -5,7 +5,7 @@
 
 #include "odr/internal/abstract/html_service.hpp"
 
-namespace odr::internal::common {
+namespace odr::internal::html {
 
 class HtmlService : public abstract::HtmlService {
 public:
@@ -70,4 +70,4 @@ private:
   bool m_is_relocatable;
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal::html
