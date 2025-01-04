@@ -68,7 +68,7 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
     }
 
     if (!resource.is_relocatable() ||
-        resource.is_shipped() && !config.external_resource_path.empty()) {
+        (resource.is_shipped() && !config.external_resource_path.empty())) {
       auto resource_path = common::Path(config.external_resource_path)
                                .join(common::Path(resource.path()));
       if (config.relative_resource_paths) {
