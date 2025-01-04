@@ -60,20 +60,17 @@ std::string html::file_to_url(const abstract::File &file,
 
 HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
                                                  const HtmlConfig &config) {
-  return [&](HtmlResourceType type, const std::string &name,
-             const std::string &path, const File &resource,
-             bool is_core_resource) -> HtmlResourceLocation {
-    (void)type;
-    (void)name;
-
-    // TODO remove `!is_core_resource` check after supporting external resources
-    if (config.embed_resources || !is_core_resource) {
+  return [&](const odr::HtmlResource &resource) -> HtmlResourceLocation {
+    // TODO remove `!is_shipped_resource` check after supporting external
+    // resources
+    if (config.embed_resources || !resource.is_shipped()) {
       return std::nullopt;
     }
 
-    if (is_core_resource && !config.external_resource_path.empty()) {
-      auto resource_path =
-          common::Path(config.external_resource_path).join(common::Path(path));
+    if (!resource.is_relocatable() ||
+        resource.is_shipped() && !config.external_resource_path.empty()) {
+      auto resource_path = common::Path(config.external_resource_path)
+                               .join(common::Path(resource.path()));
       if (config.relative_resource_paths) {
         resource_path = resource_path.rebase(common::Path(output_path));
       }
@@ -82,11 +79,12 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
 
     // TODO relocate file if necessary
 
-    auto resource_path = common::Path(output_path).join(common::Path(path));
+    auto resource_path =
+        common::Path(output_path).join(common::Path(resource.path()));
     std::filesystem::create_directories(resource_path.parent().path());
     std::ofstream os(resource_path.path());
-    util::stream::pipe(*resource.stream(), os);
-    return path;
+    resource.write_resource(os);
+    return resource.path();
   };
 }
 

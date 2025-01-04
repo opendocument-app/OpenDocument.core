@@ -104,6 +104,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/document_style.cpp"
         "src/odr/internal/html/document_element.cpp"
         "src/odr/internal/html/filesystem.cpp"
+        "src/odr/internal/html/html_service.cpp"
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
         "src/odr/internal/html/pdf_file.cpp"
