@@ -41,7 +41,7 @@ void front(const Document &document, HtmlWriter &out, const HtmlConfig &config,
   }
 
   auto odr_css_file = Resources::open(common::Path("odr.css"));
-  HtmlResource odr_css_resource = common::StaticHtmlResource::create(
+  HtmlResource odr_css_resource = common::HtmlResource::create(
       HtmlResourceType::css, "odr.css", "odr.css", odr_css_file, true, true);
   HtmlResourceLocation odr_css_location = resource_locator(odr_css_resource);
   resources.emplace_back(std::move(odr_css_resource), odr_css_location);
@@ -56,10 +56,9 @@ void front(const Document &document, HtmlWriter &out, const HtmlConfig &config,
   if (document.document_type() == DocumentType::spreadsheet) {
     auto odr_spreadsheet_css_file =
         Resources::open(common::Path("odr_spreadsheet.css"));
-    HtmlResource odr_spreadsheet_css_resource =
-        common::StaticHtmlResource::create(
-            HtmlResourceType::css, "odr_spreadsheet.css", "odr_spreadsheet.css",
-            odr_spreadsheet_css_file, true, true);
+    HtmlResource odr_spreadsheet_css_resource = common::HtmlResource::create(
+        HtmlResourceType::css, "odr_spreadsheet.css", "odr_spreadsheet.css",
+        odr_spreadsheet_css_file, true, true);
     HtmlResourceLocation odr_spreadsheet_css_location =
         resource_locator(odr_spreadsheet_css_resource);
     resources.emplace_back(std::move(odr_spreadsheet_css_resource),
@@ -97,7 +96,7 @@ void back(const Document &document, html::HtmlWriter &out,
   (void)config;
 
   auto odr_js_file = Resources::open(common::Path("odr.js"));
-  HtmlResource odr_js_resource = common::StaticHtmlResource::create(
+  HtmlResource odr_js_resource = common::HtmlResource::create(
       HtmlResourceType::js, "odr.js", "odr.js", odr_js_file, true, true);
   HtmlResourceLocation odr_js_location = resource_locator(odr_js_resource);
   resources.emplace_back(std::move(odr_js_resource), odr_js_location);

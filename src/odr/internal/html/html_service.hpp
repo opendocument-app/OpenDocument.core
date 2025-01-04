@@ -1,12 +1,46 @@
 #pragma once
 
 #include "odr/file.hpp"
+#include "odr/html.hpp"
 
 #include "odr/internal/abstract/html_service.hpp"
 
 namespace odr::internal::common {
 
-class StaticHtmlResource : public abstract::HtmlResource {
+class HtmlService : public abstract::HtmlService {
+public:
+  HtmlService(HtmlConfig config, HtmlResourceLocator resource_locator,
+              std::vector<std::shared_ptr<abstract::HtmlFragment>> fragments);
+
+  [[nodiscard]] const HtmlConfig &config() const override;
+  [[nodiscard]] const HtmlResourceLocator &resource_locator() const override;
+
+  [[nodiscard]] const std::vector<std::shared_ptr<abstract::HtmlFragment>> &
+  fragments() const override;
+
+private:
+  HtmlConfig m_config;
+  HtmlResourceLocator m_resource_locator;
+  std::vector<std::shared_ptr<abstract::HtmlFragment>> m_fragments;
+};
+
+class HtmlFragment : public abstract::HtmlFragment {
+public:
+  HtmlFragment(std::string name, HtmlConfig config,
+               HtmlResourceLocator resource_locator);
+
+  [[nodiscard]] std::string name() const override;
+
+  [[nodiscard]] const HtmlConfig &config() const override;
+  [[nodiscard]] const HtmlResourceLocator &resource_locator() const override;
+
+private:
+  std::string m_name;
+  HtmlConfig m_config;
+  HtmlResourceLocator m_resource_locator;
+};
+
+class HtmlResource : public abstract::HtmlResource {
 public:
   static odr::HtmlResource create(HtmlResourceType type,
                                   const std::string &name,
@@ -14,9 +48,9 @@ public:
                                   const odr::File &file, bool is_shipped,
                                   bool is_relocatable);
 
-  StaticHtmlResource(HtmlResourceType type, const std::string &name,
-                     const std::string &path, const odr::File &file,
-                     bool is_shipped, bool is_relocatable);
+  HtmlResource(HtmlResourceType type, const std::string &name,
+               const std::string &path, const odr::File &file, bool is_shipped,
+               bool is_relocatable);
 
   [[nodiscard]] HtmlResourceType type() const override;
   [[nodiscard]] const std::string &name() const override;
