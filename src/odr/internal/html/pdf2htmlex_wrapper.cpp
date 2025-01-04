@@ -36,21 +36,22 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   // output
   param.embed_css = 1;
   param.embed_font = 1;
-  param.embed_image = 1;
+  param.embed_image = 0;
   param.embed_javascript = 1;
   param.embed_outline = 1;
-  param.split_pages = 1;
+  param.split_pages = 0;
   param.dest_dir = output_path;
-  param.css_filename = "";
+  param.css_filename = "style.css";
   param.page_filename = "page%i.html";
-  param.outline_filename = "";
-  param.process_nontext = 0;
+  param.outline_filename = "outline.html";
+  param.process_nontext = 1;
   param.process_outline = 1;
   param.process_annotation = 0;
   param.process_form = 0;
   param.printing = 1;
   param.fallback = 0;
   param.tmp_file_size_limit = -1;
+  param.delay_background = 1;
 
   // font
   param.embed_external_font = 0; // TODO 1
@@ -87,7 +88,7 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
 
   // misc
   param.clean_tmp = 1;
-  param.tmp_dir = "/tmp";
+  param.tmp_dir = output_path;
   param.data_dir = config.pdf2htmlex_data_path;
   param.poppler_data_dir = config.poppler_data_path;
   param.debug = 0;
@@ -124,23 +125,13 @@ private:
   const std::vector<std::shared_ptr<abstract::HtmlFragment>> m_fragments;
 };
 
-class PdfHtmlFragment : public abstract::HtmlFragment {
-public:
-  PdfHtmlFragment(PopplerPdfFile pdf_file, std::size_t page)
-      : m_pdf_file{std::move(pdf_file)}, m_page{page} {}
-
-  void
-  write_html_document(HtmlWriter &out, const HtmlConfig &config,
-                      const HtmlResourceLocator &resourceLocator) const final {}
-
-protected:
-  PopplerPdfFile m_pdf_file;
-  std::size_t m_page;
-};
-
 } // namespace odr::internal::html
 
 namespace odr::internal {
+
+HtmlService html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file) {
+  return HtmlService(nullptr);
+}
 
 Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
                                       const std::string &output_path,
@@ -161,8 +152,14 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
 
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
   // TODO potentially just a cache dir?
-  pdf2htmlEX::HTMLRenderer(config.fontforge_data_path.c_str(), param)
-      .process(&pdf_doc);
+  pdf2htmlEX::HTMLRenderer html_renderer(config.fontforge_data_path.c_str(),
+                                         param);
+  html_renderer.process(&pdf_doc);
+  if (param.delay_background != 0) {
+    for (int i = 1; i <= pdf_doc.getNumPages(); ++i) {
+      html_renderer.renderPage(&pdf_doc, i);
+    }
+  }
 
   globalParams.reset();
 
