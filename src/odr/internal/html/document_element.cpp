@@ -246,6 +246,7 @@ void html::translate_text(const Element element, HtmlWriter &out,
                           const HtmlResourceLocator &resource_locator,
                           HtmlResources &resources) {
   (void)resource_locator;
+  (void)resources;
 
   Text text = element.text();
 
@@ -270,6 +271,7 @@ void html::translate_line_break(Element element, HtmlWriter &out,
                                 HtmlResources &resources) {
   (void)config;
   (void)resource_locator;
+  (void)resources;
 
   LineBreak line_break = element.line_break();
 
@@ -343,6 +345,7 @@ void html::translate_bookmark(Element element, HtmlWriter &out,
                               HtmlResources &resources) {
   (void)config;
   (void)resource_locator;
+  (void)resources;
 
   Bookmark bookmark = element.bookmark();
 
@@ -513,6 +516,7 @@ void html::translate_line(Element element, HtmlWriter &out,
                           HtmlResources &resources) {
   (void)config;
   (void)resource_locator;
+  (void)resources;
 
   Line line = element.line();
   GraphicStyle style = line.style();
