@@ -197,6 +197,8 @@ public:
   HtmlResources write_fragment(HtmlWriter &out) const final {
     HtmlResources resources;
 
+    WritingState state(out, config(), resource_locator(), resources);
+
     auto root = m_document.root_element();
     auto element = root.text_root();
 
@@ -211,15 +213,13 @@ public:
                               HtmlElementOptions().set_style(
                                   translate_inner_page_style(page_layout)));
 
-      translate_children(element.children(), out, config(), resource_locator(),
-                         resources);
+      translate_children(element.children(), state);
 
       out.write_element_end("div");
       out.write_element_end("div");
     } else {
       out.write_element_begin("div");
-      translate_children(element.children(), out, config(), resource_locator(),
-                         resources);
+      translate_children(element.children(), state);
       out.write_element_end("div");
     }
 
@@ -238,8 +238,9 @@ public:
   HtmlResources write_fragment(HtmlWriter &out) const final {
     HtmlResources resources;
 
-    html::translate_slide(m_slide, out, config(), resource_locator(),
-                          resources);
+    WritingState state(out, config(), resource_locator(), resources);
+
+    html::translate_slide(m_slide, state);
 
     return resources;
   }
@@ -259,7 +260,9 @@ public:
   HtmlResources write_fragment(HtmlWriter &out) const final {
     HtmlResources resources;
 
-    translate_sheet(m_sheet, out, config(), resource_locator(), resources);
+    WritingState state(out, config(), resource_locator(), resources);
+
+    translate_sheet(m_sheet, state);
 
     return resources;
   }
@@ -279,7 +282,9 @@ public:
   HtmlResources write_fragment(HtmlWriter &out) const final {
     HtmlResources resources;
 
-    html::translate_page(m_page, out, config(), resource_locator(), resources);
+    WritingState state(out, config(), resource_locator(), resources);
+
+    html::translate_page(m_page, state);
 
     return resources;
   }
