@@ -38,7 +38,7 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   // output
   param.embed_css = 1;
   param.embed_font = 1;
-  param.embed_image = 0;
+  param.embed_image = 1;
   param.embed_javascript = 1;
   param.embed_outline = 1;
   param.split_pages = 0;
@@ -211,6 +211,7 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
 
   auto html_renderer_param = std::make_shared<pdf2htmlEX::Param>(
       create_params(pdf_doc, config, output_path));
+  html_renderer_param->embed_image = 0;
   html_renderer_param->delay_background = 1;
 
   if (!pdf_doc.okToCopy()) {
@@ -264,9 +265,8 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
 
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
   // TODO potentially just a cache dir?
-  pdf2htmlEX::HTMLRenderer html_renderer(config.fontforge_data_path.c_str(),
-                                         param);
-  html_renderer.process(&pdf_doc);
+  pdf2htmlEX::HTMLRenderer(config.fontforge_data_path.c_str(), param)
+      .process(&pdf_doc);
 
   globalParams.reset();
 
