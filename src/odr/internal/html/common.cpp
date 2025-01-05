@@ -45,17 +45,18 @@ std::string html::color(const Color &color) {
 }
 
 std::string html::file_to_url(const std::string &file,
-                              const std::string &mimeType) {
-  return "data:" + mimeType + ";base64," + crypto::util::base64_encode(file);
+                              const std::string &mime_type) {
+  return "data:" + mime_type + ";base64," + crypto::util::base64_encode(file);
 }
 
-std::string html::file_to_url(std::istream &file, const std::string &mimeType) {
-  return file_to_url(util::stream::read(file), mimeType);
+std::string html::file_to_url(std::istream &file,
+                              const std::string &mime_type) {
+  return file_to_url(util::stream::read(file), mime_type);
 }
 
 std::string html::file_to_url(const abstract::File &file,
-                              const std::string &mimeType) {
-  return file_to_url(*file.stream(), mimeType);
+                              const std::string &mime_type) {
+  return file_to_url(*file.stream(), mime_type);
 }
 
 HtmlResourceLocator html::local_resource_locator(const std::string &output_path,

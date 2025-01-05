@@ -24,33 +24,32 @@ namespace odr::internal::html {
 
 namespace {
 
-void front(const Document &document, HtmlWriter &out, const HtmlConfig &config,
-           const HtmlResourceLocator &resource_locator,
-           HtmlResources &resources) {
-  out.write_begin();
-  out.write_header_begin();
-  out.write_header_charset("UTF-8");
-  out.write_header_target("_blank");
-  out.write_header_title("odr");
+void front(const Document &document, const WritingState &state) {
+  state.out().write_begin();
+  state.out().write_header_begin();
+  state.out().write_header_charset("UTF-8");
+  state.out().write_header_target("_blank");
+  state.out().write_header_title("odr");
   if (document.document_type() == DocumentType::text &&
-      config.text_document_margin) {
-    out.write_header_viewport("width=device-width,user-scalable=yes");
+      state.config().text_document_margin) {
+    state.out().write_header_viewport("width=device-width,user-scalable=yes");
   } else {
-    out.write_header_viewport(
+    state.out().write_header_viewport(
         "width=device-width,initial-scale=1.0,user-scalable=yes");
   }
 
   auto odr_css_file = Resources::open(common::Path("odr.css"));
   odr::HtmlResource odr_css_resource = html::HtmlResource::create(
       HtmlResourceType::css, "odr.css", "odr.css", odr_css_file, true, true);
-  HtmlResourceLocation odr_css_location = resource_locator(odr_css_resource);
-  resources.emplace_back(std::move(odr_css_resource), odr_css_location);
+  HtmlResourceLocation odr_css_location =
+      state.resource_locator()(odr_css_resource);
+  state.resources().emplace_back(std::move(odr_css_resource), odr_css_location);
   if (odr_css_location.has_value()) {
-    out.write_header_style(odr_css_location.value());
+    state.out().write_header_style(odr_css_location.value());
   } else {
-    out.write_header_style_begin();
-    util::stream::pipe(*odr_css_file.stream(), out.out());
-    out.write_header_style_end();
+    state.out().write_header_style_begin();
+    util::stream::pipe(*odr_css_file.stream(), state.out().out());
+    state.out().write_header_style_end();
   }
 
   if (document.document_type() == DocumentType::spreadsheet) {
@@ -60,20 +59,20 @@ void front(const Document &document, HtmlWriter &out, const HtmlConfig &config,
         HtmlResourceType::css, "odr_spreadsheet.css", "odr_spreadsheet.css",
         odr_spreadsheet_css_file, true, true);
     HtmlResourceLocation odr_spreadsheet_css_location =
-        resource_locator(odr_spreadsheet_css_resource);
-    resources.emplace_back(std::move(odr_spreadsheet_css_resource),
-                           odr_spreadsheet_css_location);
+        state.resource_locator()(odr_spreadsheet_css_resource);
+    state.resources().emplace_back(std::move(odr_spreadsheet_css_resource),
+                                   odr_spreadsheet_css_location);
     if (odr_spreadsheet_css_location.has_value()) {
-      out.write_header_style(odr_spreadsheet_css_location.value());
+      state.out().write_header_style(odr_spreadsheet_css_location.value());
     } else {
-      util::stream::pipe(*odr_spreadsheet_css_file.stream(), out.out());
+      util::stream::pipe(*odr_spreadsheet_css_file.stream(), state.out().out());
     }
   }
 
-  out.write_header_end();
+  state.out().write_header_end();
 
   std::string body_clazz;
-  switch (config.spreadsheet_gridlines) {
+  switch (state.config().spreadsheet_gridlines) {
   case HtmlTableGridlines::soft:
     body_clazz = "odr-gridlines-soft";
     break;
@@ -86,30 +85,28 @@ void front(const Document &document, HtmlWriter &out, const HtmlConfig &config,
     break;
   }
 
-  out.write_body_begin(HtmlElementOptions().set_class(body_clazz));
+  state.out().write_body_begin(HtmlElementOptions().set_class(body_clazz));
 }
 
-void back(const Document &document, html::HtmlWriter &out,
-          const HtmlConfig &config, const HtmlResourceLocator &resource_locator,
-          HtmlResources &resources) {
+void back(const Document &document, const WritingState &state) {
   (void)document;
-  (void)config;
 
   auto odr_js_file = Resources::open(common::Path("odr.js"));
   odr::HtmlResource odr_js_resource = html::HtmlResource::create(
       HtmlResourceType::js, "odr.js", "odr.js", odr_js_file, true, true);
-  HtmlResourceLocation odr_js_location = resource_locator(odr_js_resource);
-  resources.emplace_back(std::move(odr_js_resource), odr_js_location);
+  HtmlResourceLocation odr_js_location =
+      state.resource_locator()(odr_js_resource);
+  state.resources().emplace_back(std::move(odr_js_resource), odr_js_location);
   if (odr_js_location.has_value()) {
-    out.write_script(odr_js_location.value());
+    state.out().write_script(odr_js_location.value());
   } else {
-    out.write_script_begin();
-    util::stream::pipe(*odr_js_file.stream(), out.out());
-    out.write_script_end();
+    state.out().write_script_begin();
+    util::stream::pipe(*odr_js_file.stream(), state.out().out());
+    state.out().write_script_end();
   }
 
-  out.write_body_end();
-  out.write_end();
+  state.out().write_body_end();
+  state.out().write_end();
 }
 
 std::string fill_path_variables(const std::string &path,
@@ -153,11 +150,13 @@ public:
   HtmlResources write_document(HtmlWriter &out) const override {
     HtmlResources resources;
 
-    front(m_document, out, config(), resource_locator(), resources);
+    WritingState state(out, config(), resource_locator(), resources);
+
+    front(m_document, state);
     for (const auto &fragment : fragments()) {
-      fragment->write_fragment(out);
+      fragment->write_fragment(out, resources);
     }
-    back(m_document, out, config(), resource_locator(), resources);
+    back(m_document, state);
 
     return resources;
   }
@@ -177,9 +176,11 @@ public:
   HtmlResources write_document(HtmlWriter &out) const final {
     HtmlResources resources;
 
-    front(m_document, out, config(), resource_locator(), resources);
-    write_fragment(out);
-    back(m_document, out, config(), resource_locator(), resources);
+    WritingState state(out, config(), resource_locator(), resources);
+
+    front(m_document, state);
+    write_fragment(out, resources);
+    back(m_document, state);
 
     return resources;
   }
@@ -195,8 +196,8 @@ public:
       : HtmlFragmentBase("document", std::move(document), std::move(config),
                          std::move(resource_locator)) {}
 
-  HtmlResources write_fragment(HtmlWriter &out) const final {
-    HtmlResources resources;
+  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
+    WritingState state(out, config(), resource_locator(), resources);
 
     auto root = m_document.root_element();
     auto element = root.text_root();
@@ -212,19 +213,15 @@ public:
                               HtmlElementOptions().set_style(
                                   translate_inner_page_style(page_layout)));
 
-      translate_children(element.children(), out, config(), resource_locator(),
-                         resources);
+      translate_children(element.children(), state);
 
       out.write_element_end("div");
       out.write_element_end("div");
     } else {
       out.write_element_begin("div");
-      translate_children(element.children(), out, config(), resource_locator(),
-                         resources);
+      translate_children(element.children(), state);
       out.write_element_end("div");
     }
-
-    return resources;
   }
 };
 
@@ -236,13 +233,10 @@ public:
                          std::move(resource_locator)),
         m_slide{slide} {}
 
-  HtmlResources write_fragment(HtmlWriter &out) const final {
-    HtmlResources resources;
+  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
+    WritingState state(out, config(), resource_locator(), resources);
 
-    html::translate_slide(m_slide, out, config(), resource_locator(),
-                          resources);
-
-    return resources;
+    html::translate_slide(m_slide, state);
   }
 
 private:
@@ -257,12 +251,10 @@ public:
                          std::move(resource_locator)),
         m_sheet{sheet} {}
 
-  HtmlResources write_fragment(HtmlWriter &out) const final {
-    HtmlResources resources;
+  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
+    WritingState state(out, config(), resource_locator(), resources);
 
-    translate_sheet(m_sheet, out, config(), resource_locator(), resources);
-
-    return resources;
+    translate_sheet(m_sheet, state);
   }
 
 private:
@@ -277,12 +269,10 @@ public:
                          std::move(resource_locator)),
         m_page{page} {}
 
-  HtmlResources write_fragment(HtmlWriter &out) const final {
-    HtmlResources resources;
+  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
+    WritingState state(out, config(), resource_locator(), resources);
 
-    html::translate_page(m_page, out, config(), resource_locator(), resources);
-
-    return resources;
+    html::translate_page(m_page, state);
   }
 
 private:

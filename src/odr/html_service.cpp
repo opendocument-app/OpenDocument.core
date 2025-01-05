@@ -48,16 +48,11 @@ const HtmlResourceLocator &HtmlFragment::resource_locator() const {
   return m_impl->resource_locator();
 }
 
-HtmlResources HtmlFragment::write_fragment(std::ostream &os) const {
+void HtmlFragment::write_fragment(std::ostream &os,
+                                  HtmlResources &resources) const {
   internal::html::HtmlWriter out(os, config());
 
-  auto internal_resources = m_impl->write_fragment(out);
-
-  HtmlResources resources;
-  for (const auto &[resource, location] : internal_resources) {
-    resources.emplace_back(HtmlResource(resource), location);
-  }
-  return resources;
+  m_impl->write_fragment(out, resources);
 }
 
 HtmlResources HtmlFragment::write_document(std::ostream &os) const {
