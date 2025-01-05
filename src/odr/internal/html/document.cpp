@@ -89,6 +89,8 @@ void front(const Document &document, const WritingState &state) {
 }
 
 void back(const Document &document, const WritingState &state) {
+  (void)document;
+
   auto odr_js_file = Resources::open(common::Path("odr.js"));
   odr::HtmlResource odr_js_resource = html::HtmlResource::create(
       HtmlResourceType::js, "odr.js", "odr.js", odr_js_file, true, true);
