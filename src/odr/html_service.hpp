@@ -57,7 +57,7 @@ public:
   [[nodiscard]] const HtmlConfig &config() const;
   [[nodiscard]] const HtmlResourceLocator &resource_locator() const;
 
-  HtmlResources write_fragment(std::ostream &os) const;
+  void write_fragment(std::ostream &os, HtmlResources &resources) const;
 
   HtmlResources write_document(std::ostream &os) const;
 

@@ -36,7 +36,8 @@ public:
   [[nodiscard]] virtual const HtmlConfig &config() const = 0;
   [[nodiscard]] virtual const HtmlResourceLocator &resource_locator() const = 0;
 
-  virtual HtmlResources write_fragment(html::HtmlWriter &out) const = 0;
+  virtual void write_fragment(html::HtmlWriter &out,
+                              HtmlResources &resources) const = 0;
 
   virtual HtmlResources write_document(html::HtmlWriter &out) const = 0;
 };

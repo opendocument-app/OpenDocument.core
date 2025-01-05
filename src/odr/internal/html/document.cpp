@@ -154,7 +154,7 @@ public:
 
     front(m_document, state);
     for (const auto &fragment : fragments()) {
-      fragment->write_fragment(out);
+      fragment->write_fragment(out, resources);
     }
     back(m_document, state);
 
@@ -179,7 +179,7 @@ public:
     WritingState state(out, config(), resource_locator(), resources);
 
     front(m_document, state);
-    write_fragment(out);
+    write_fragment(out, resources);
     back(m_document, state);
 
     return resources;
@@ -196,9 +196,7 @@ public:
       : HtmlFragmentBase("document", std::move(document), std::move(config),
                          std::move(resource_locator)) {}
 
-  HtmlResources write_fragment(HtmlWriter &out) const final {
-    HtmlResources resources;
-
+  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
     WritingState state(out, config(), resource_locator(), resources);
 
     auto root = m_document.root_element();
@@ -224,8 +222,6 @@ public:
       translate_children(element.children(), state);
       out.write_element_end("div");
     }
-
-    return resources;
   }
 };
 
@@ -237,14 +233,10 @@ public:
                          std::move(resource_locator)),
         m_slide{slide} {}
 
-  HtmlResources write_fragment(HtmlWriter &out) const final {
-    HtmlResources resources;
-
+  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
     WritingState state(out, config(), resource_locator(), resources);
 
     html::translate_slide(m_slide, state);
-
-    return resources;
   }
 
 private:
@@ -259,14 +251,10 @@ public:
                          std::move(resource_locator)),
         m_sheet{sheet} {}
 
-  HtmlResources write_fragment(HtmlWriter &out) const final {
-    HtmlResources resources;
-
+  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
     WritingState state(out, config(), resource_locator(), resources);
 
     translate_sheet(m_sheet, state);
-
-    return resources;
   }
 
 private:
@@ -281,14 +269,10 @@ public:
                          std::move(resource_locator)),
         m_page{page} {}
 
-  HtmlResources write_fragment(HtmlWriter &out) const final {
-    HtmlResources resources;
-
+  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
     WritingState state(out, config(), resource_locator(), resources);
 
     html::translate_page(m_page, state);
-
-    return resources;
   }
 
 private:
