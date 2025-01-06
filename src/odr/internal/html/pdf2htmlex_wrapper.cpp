@@ -4,7 +4,11 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
+#include <odr/internal/html/common.hpp>
+#include <odr/internal/html/html_service.hpp>
+#include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
 #include <pdf2htmlEX/HTMLRenderer/HTMLRenderer.h>
 #include <pdf2htmlEX/Param.h>
@@ -12,13 +16,12 @@
 #include <poppler/GlobalParams.h>
 #include <poppler/PDFDoc.h>
 
-namespace odr::internal {
+namespace odr::internal::html {
 
-Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
-                                      const std::string &output_path,
-                                      const HtmlConfig &config) {
-  PDFDoc &pdf_doc = pdf_file.pdf_doc();
+namespace {
 
+pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
+                                const std::string &output_path) {
   pdf2htmlEX::Param param;
 
   // pages
@@ -30,7 +33,7 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
   param.fit_width = 0;
   param.fit_height = 0;
   param.use_cropbox = 1;
-  param.desired_dpi = 144.0;
+  param.desired_dpi = 144;
 
   // output
   param.embed_css = 1;
@@ -40,9 +43,9 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
   param.embed_outline = 1;
   param.split_pages = 0;
   param.dest_dir = output_path;
-  param.css_filename = "";
-  param.page_filename = "";
-  param.outline_filename = "";
+  param.css_filename = "style.css";
+  param.page_filename = "page%i.html";
+  param.outline_filename = "outline.html";
   param.process_nontext = 1;
   param.process_outline = 1;
   param.process_annotation = 0;
@@ -50,6 +53,7 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
   param.printing = 1;
   param.fallback = 0;
   param.tmp_file_size_limit = -1;
+  param.delay_background = 0;
 
   // font
   param.embed_external_font = 0; // TODO 1
@@ -86,7 +90,7 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
 
   // misc
   param.clean_tmp = 1;
-  param.tmp_dir = "/tmp";
+  param.tmp_dir = output_path;
   param.data_dir = config.pdf2htmlex_data_path;
   param.poppler_data_dir = config.poppler_data_path;
   param.debug = 0;
@@ -96,6 +100,158 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
   // input, output
   param.input_filename = "";
   param.output_filename = "document.html";
+
+  return param;
+}
+
+} // namespace
+
+class BackgroundImageResource : public HtmlResource {
+public:
+  static std::string file_name(std::size_t page_number,
+                               const std::string &format) {
+    std::stringstream stream;
+    stream << "bg" << page_number;
+    stream << std::hex << page_number;
+    stream << "." << format;
+    return stream.str();
+  }
+
+  BackgroundImageResource(
+      PopplerPdfFile pdf_file, std::string output_path,
+      std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
+      std::shared_ptr<std::mutex> html_renderer_mutex, int page_number,
+      const std::string &format)
+      : HtmlResource(HtmlResourceType::image, file_name(page_number, format),
+                     output_path + "/" + file_name(page_number, format),
+                     odr::File(), false, false),
+        m_pdf_file{std::move(pdf_file)}, m_output_path{std::move(output_path)},
+        m_html_renderer{std::move(html_renderer)},
+        m_html_renderer_mutex{std::move(html_renderer_mutex)},
+        m_page_number{page_number} {}
+
+  void write_resource(std::ostream &os) const override {
+    PDFDoc &pdf_doc = m_pdf_file.pdf_doc();
+
+    std::lock_guard lock(m_mutex);
+
+    if (!std::filesystem::exists(path())) {
+      std::lock_guard renderer_lock(*m_html_renderer_mutex);
+
+      m_html_renderer->renderPage(&pdf_doc, m_page_number);
+    }
+
+    {
+      std::ifstream in(path());
+      util::stream::pipe(in, os);
+    }
+  }
+
+private:
+  PopplerPdfFile m_pdf_file;
+  std::string m_output_path;
+  std::shared_ptr<pdf2htmlEX::HTMLRenderer> m_html_renderer;
+  std::shared_ptr<std::mutex> m_html_renderer_mutex;
+  int m_page_number;
+  mutable std::mutex m_mutex;
+};
+
+class HtmlServiceImpl : public HtmlService {
+public:
+  HtmlServiceImpl(PopplerPdfFile pdf_file, std::string output_path,
+                  std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
+                  std::shared_ptr<std::mutex> html_renderer_mutex,
+                  std::shared_ptr<pdf2htmlEX::Param> html_renderer_param,
+                  HtmlConfig config, HtmlResourceLocator resource_locator)
+      : HtmlService(std::move(config), std::move(resource_locator), {}),
+        m_pdf_file{std::move(pdf_file)}, m_output_path{std::move(output_path)},
+        m_html_renderer{std::move(html_renderer)},
+        m_html_renderer_mutex{std::move(html_renderer_mutex)},
+        m_html_renderer_param{std::move(html_renderer_param)} {
+    for (int i = 1; i <= m_pdf_file.pdf_doc().getNumPages(); ++i) {
+      auto resource = std::make_shared<BackgroundImageResource>(
+          m_pdf_file, m_output_path, m_html_renderer, m_html_renderer_mutex, i,
+          m_html_renderer_param->bg_format);
+      std::string file_name = BackgroundImageResource::file_name(
+          i, m_html_renderer_param->bg_format);
+      m_resources.emplace_back(std::move(resource), std::move(file_name));
+    }
+  }
+
+  HtmlResources write_document(HtmlWriter &out) const override {
+    HtmlResources resources;
+
+    {
+      std::ifstream in(m_output_path + "/document.html");
+      util::stream::pipe(in, out.out());
+    }
+
+    return resources;
+  }
+
+private:
+  PopplerPdfFile m_pdf_file;
+  std::string m_output_path;
+  std::shared_ptr<pdf2htmlEX::HTMLRenderer> m_html_renderer;
+  std::shared_ptr<std::mutex> m_html_renderer_mutex;
+  std::shared_ptr<pdf2htmlEX::Param> m_html_renderer_param;
+
+  HtmlResources m_resources;
+};
+
+} // namespace odr::internal::html
+
+namespace odr::internal {
+
+odr::HtmlService
+html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
+                                 const std::string &output_path,
+                                 const HtmlConfig &config) {
+  PDFDoc &pdf_doc = pdf_file.pdf_doc();
+
+  auto html_renderer_param = std::make_shared<pdf2htmlEX::Param>(
+      create_params(pdf_doc, config, output_path));
+  html_renderer_param->embed_image = 0;
+  html_renderer_param->delay_background = 1;
+
+  if (!pdf_doc.okToCopy()) {
+    if (html_renderer_param->no_drm == 0) {
+      throw DocumentCopyProtectedException("");
+    }
+  }
+
+  globalParams = std::make_unique<GlobalParams>(
+      !html_renderer_param->poppler_data_dir.empty()
+          ? html_renderer_param->poppler_data_dir.c_str()
+          : nullptr);
+
+  // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
+  // TODO potentially just a cache dir?
+  auto html_renderer = std::make_shared<pdf2htmlEX::HTMLRenderer>(
+      config.fontforge_data_path.c_str(), *html_renderer_param);
+  html_renderer->process(&pdf_doc);
+
+  globalParams.reset();
+
+  HtmlResourceLocator resource_locator =
+      local_resource_locator(output_path, config);
+
+  // renderer is not thread safe
+  // TODO check if this can be achieved in pdf2htmlEX
+  auto html_renderer_mutex = std::make_shared<std::mutex>();
+
+  return odr::HtmlService(std::make_shared<HtmlServiceImpl>(
+      pdf_file, output_path, std::move(html_renderer),
+      std::move(html_renderer_mutex), std::move(html_renderer_param), config,
+      resource_locator));
+}
+
+Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
+                                      const std::string &output_path,
+                                      const HtmlConfig &config) {
+  PDFDoc &pdf_doc = pdf_file.pdf_doc();
+
+  pdf2htmlEX::Param param = create_params(pdf_doc, config, output_path);
 
   if (!pdf_doc.okToCopy()) {
     if (param.no_drm == 0) {

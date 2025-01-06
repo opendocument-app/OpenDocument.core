@@ -22,9 +22,11 @@ class HtmlFragment;
 class HtmlResource;
 
 enum class HtmlResourceType {
+  html_fragment,
   css,
   js,
   image,
+  font,
 };
 
 using HtmlResourceLocation = std::optional<std::string>;
