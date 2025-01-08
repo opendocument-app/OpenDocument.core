@@ -2,7 +2,9 @@
 
 #include <odr/internal/project_info.hpp>
 
+#ifdef ODR_WITH_PDF2HTMLEX
 #include <poppler/GlobalParams.h>
+#endif
 
 namespace odr {
 
