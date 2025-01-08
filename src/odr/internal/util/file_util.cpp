@@ -7,6 +7,14 @@
 
 namespace odr::internal::util {
 
+std::size_t file::size(const std::string &path) {
+  std::ifstream in(path, std::ios::binary | std::ios::ate);
+  if (!in.is_open() || in.fail()) {
+    throw FileNotFound();
+  }
+  return in.tellg();
+}
+
 std::string file::read(const std::string &path) {
   std::ifstream in(path);
   if (!in.is_open() || in.fail()) {
