@@ -1,6 +1,5 @@
 #include <odr/http_server.hpp>
 
-#include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
@@ -8,8 +7,6 @@
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/pdf2htmlex_wrapper.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
-#include <odr/internal/util/file_util.hpp>
-#include <odr/internal/util/stream_util.hpp>
 
 #include <random>
 
@@ -65,10 +62,8 @@ public:
     HtmlConfig config;
     config.embed_resources = false;
     std::string output_path = "/tmp/" + id;
-    std::string cache_path = output_path + "/cache";
 
     std::filesystem::create_directories(output_path);
-    std::filesystem::create_directories(cache_path);
 
     HtmlDocumentService html_service;
 
@@ -92,14 +87,8 @@ public:
       throw std::runtime_error("Unsupported file type");
     }
 
-    std::string document_html_path = cache_path + "/document.html";
-    HtmlResources resources;
-    {
-      std::ofstream ostream(document_html_path);
-      resources = html_service.write_document(ostream);
-    }
-    std::size_t document_html_size =
-        internal::util::file::size(document_html_path);
+    std::ofstream null;
+    HtmlResources resources = html_service.write_document(null);
 
     m_server.Get("/" + id,
                  [id](const httplib::Request &req, httplib::Response &res) {
@@ -108,25 +97,16 @@ public:
 
     m_server.Get("/" + id + "/document.html", [=](const httplib::Request &req,
                                                   httplib::Response &res) {
-      httplib::ContentProvider content_provider =
-          [document_html_path,
-           document_html_size](std::size_t offset, std::size_t length,
-                               httplib::DataSink &sink) -> bool {
+      httplib::ContentProviderWithoutLength content_provider =
+          [html_service](std::size_t offset, httplib::DataSink &sink) -> bool {
         if (offset != 0) {
           throw std::runtime_error("Invalid offset: " + std::to_string(offset) +
                                    ". Must be 0.");
         }
-        if (length != document_html_size) {
-          throw std::runtime_error("Invalid length: " + std::to_string(length) +
-                                   ". Must be " +
-                                   std::to_string(document_html_size) + ".");
-        }
-        std::ifstream in(document_html_path);
-        internal::util::stream::pipe(in, sink.os);
+        html_service.write_document(sink.os);
         return false;
       };
-      res.set_content_provider(document_html_size, "text/html",
-                               content_provider);
+      res.set_content_provider("text/html", content_provider);
     });
 
     for (const auto &[resource, location] : resources) {
