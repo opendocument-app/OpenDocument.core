@@ -63,6 +63,7 @@ set(ODR_SOURCE_FILES
         "src/odr/exceptions.cpp"
         "src/odr/file.cpp"
         "src/odr/filesystem.cpp"
+        "src/odr/global_params.cpp"
         "src/odr/html.cpp"
         "src/odr/html_service.cpp"
         "src/odr/open_document_reader.cpp"

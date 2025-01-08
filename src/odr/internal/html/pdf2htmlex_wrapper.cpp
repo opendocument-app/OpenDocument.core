@@ -2,6 +2,7 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/global_params.hpp>
 #include <odr/html.hpp>
 
 #include <odr/internal/html/common.hpp>
@@ -13,7 +14,6 @@
 #include <pdf2htmlEX/HTMLRenderer/HTMLRenderer.h>
 #include <pdf2htmlEX/Param.h>
 
-#include <poppler/GlobalParams.h>
 #include <poppler/PDFDoc.h>
 
 namespace odr::internal::html {
@@ -91,8 +91,8 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   // misc
   param.clean_tmp = 1;
   param.tmp_dir = output_path;
-  param.data_dir = config.pdf2htmlex_data_path;
-  param.poppler_data_dir = config.poppler_data_path;
+  param.data_dir = odr::GlobalParams::pdf2htmlex_data_path();
+  param.poppler_data_dir = odr::GlobalParams::poppler_data_path();
   param.debug = 0;
   param.proof = 0;
   param.quiet = 1;
@@ -220,18 +220,11 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
     }
   }
 
-  globalParams = std::make_unique<GlobalParams>(
-      !html_renderer_param->poppler_data_dir.empty()
-          ? html_renderer_param->poppler_data_dir.c_str()
-          : nullptr);
-
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
   // TODO potentially just a cache dir?
   auto html_renderer = std::make_shared<pdf2htmlEX::HTMLRenderer>(
-      config.fontforge_data_path.c_str(), *html_renderer_param);
+      odr::GlobalParams::fontforge_data_path().c_str(), *html_renderer_param);
   html_renderer->process(&pdf_doc);
-
-  globalParams.reset();
 
   HtmlResourceLocator resource_locator =
       local_resource_locator(output_path, config);
@@ -259,16 +252,11 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
     }
   }
 
-  globalParams = std::make_unique<GlobalParams>(
-      !param.poppler_data_dir.empty() ? param.poppler_data_dir.c_str()
-                                      : nullptr);
-
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
   // TODO potentially just a cache dir?
-  pdf2htmlEX::HTMLRenderer(config.fontforge_data_path.c_str(), param)
+  pdf2htmlEX::HTMLRenderer(odr::GlobalParams::fontforge_data_path().c_str(),
+                           param)
       .process(&pdf_doc);
-
-  globalParams.reset();
 
   return {FileType::portable_document_format,
           config,

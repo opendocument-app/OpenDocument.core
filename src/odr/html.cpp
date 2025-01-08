@@ -15,7 +15,6 @@
 #include <odr/internal/html/wvware_wrapper.hpp>
 #include <odr/internal/oldms_wvware/wvware_oldms_file.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
-#include <odr/internal/project_info.hpp>
 
 #include <filesystem>
 
@@ -25,12 +24,6 @@ using namespace odr::internal;
 namespace fs = std::filesystem;
 
 namespace odr {
-
-HtmlConfig::HtmlConfig() {
-  fontforge_data_path = internal::project_info::fontconfig_data_path();
-  poppler_data_path = internal::project_info::poppler_data_path();
-  pdf2htmlex_data_path = internal::project_info::pdf2htmlex_data_path();
-}
 
 Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages)
     : m_file_type{file_type}, m_config{std::move(config)},

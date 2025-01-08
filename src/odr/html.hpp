@@ -60,13 +60,6 @@ struct HtmlConfig {
   // formatting
   bool format_html{false};
   std::uint8_t html_indent{2};
-
-  // pdf2htmlex
-  std::string fontforge_data_path;
-  std::string poppler_data_path;
-  std::string pdf2htmlex_data_path;
-
-  HtmlConfig();
 };
 
 /// @brief HTML output.
