@@ -2,6 +2,8 @@
 
 #include <odr/internal/project_info.hpp>
 
+#include <poppler/GlobalParams.h>
+
 namespace odr {
 
 GlobalParams &GlobalParams::instance() {
@@ -35,6 +37,11 @@ void GlobalParams::set_fontforge_data_path(const std::string &path) {
 
 void GlobalParams::set_poppler_data_path(const std::string &path) {
   instance().m_poppler_data_path = path;
+
+#ifdef ODR_WITH_PDF2HTMLEX
+  globalParams =
+      std::make_unique<::GlobalParams>(path.empty() ? nullptr : path.c_str());
+#endif
 }
 
 void GlobalParams::set_pdf2htmlex_data_path(const std::string &path) {
