@@ -1,5 +1,4 @@
-#ifndef ODR_HTTP_SERVER_HPP
-#define ODR_HTTP_SERVER_HPP
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -31,5 +30,3 @@ private:
 };
 
 } // namespace odr
-
-#endif // ODR_HTTP_SERVER_HPP

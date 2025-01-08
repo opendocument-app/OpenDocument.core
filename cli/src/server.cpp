@@ -14,7 +14,11 @@ int main(int argc, char **argv) {
     password = argv[2];
   }
 
-  DecodedFile decoded_file{input};
+  DecodePreference decode_preference;
+  decode_preference.engine_priority = {
+      DecoderEngine::poppler, DecoderEngine::wvware, DecoderEngine::odr};
+
+  DecodedFile decoded_file{input, decode_preference};
 
   if (decoded_file.is_document_file()) {
     DocumentFile document_file = decoded_file.document_file();
@@ -32,8 +36,17 @@ int main(int argc, char **argv) {
   HttpServer::Config config;
   HttpServer server(config);
 
-  std::string id = server.host_file(File(input));
-  std::cout << "hosted file with id: " << id << std::endl;
+  {
+    std::string id = server.host_file(File(input));
+    std::cout << "hosted file with id: " << id << std::endl;
+    std::cout << "http://localhost:8080/" << id << std::endl;
+  }
+
+  {
+    std::string id = server.host_file(decoded_file);
+    std::cout << "hosted decoded file with id: " << id << std::endl;
+    std::cout << "http://localhost:8080/" << id << std::endl;
+  }
 
   server.listen("localhost", 8080);
 

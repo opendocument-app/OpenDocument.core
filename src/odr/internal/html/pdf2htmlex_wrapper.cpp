@@ -111,7 +111,7 @@ public:
   static std::string file_name(std::size_t page_number,
                                const std::string &format) {
     std::stringstream stream;
-    stream << "bg" << page_number;
+    stream << "bg";
     stream << std::hex << page_number;
     stream << "." << format;
     return stream.str();
@@ -120,14 +120,17 @@ public:
   BackgroundImageResource(
       PopplerPdfFile pdf_file, std::string output_path,
       std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
-      std::shared_ptr<std::mutex> html_renderer_mutex, int page_number,
+      std::shared_ptr<std::mutex> html_renderer_mutex,
+      std::shared_ptr<pdf2htmlEX::Param> html_renderer_param, int page_number,
       const std::string &format)
-      : HtmlResource(HtmlResourceType::image, file_name(page_number, format),
+      : HtmlResource(HtmlResourceType::image, "image/jpg",
+                     file_name(page_number, format),
                      output_path + "/" + file_name(page_number, format),
-                     odr::File(), false, false),
+                     odr::File(), false, false, false),
         m_pdf_file{std::move(pdf_file)}, m_output_path{std::move(output_path)},
         m_html_renderer{std::move(html_renderer)},
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
+        m_html_renderer_param{std::move(html_renderer_param)},
         m_page_number{page_number} {}
 
   void write_resource(std::ostream &os) const override {
@@ -152,41 +155,41 @@ private:
   std::string m_output_path;
   std::shared_ptr<pdf2htmlEX::HTMLRenderer> m_html_renderer;
   std::shared_ptr<std::mutex> m_html_renderer_mutex;
+  std::shared_ptr<pdf2htmlEX::Param> m_html_renderer_param;
   int m_page_number;
   mutable std::mutex m_mutex;
 };
 
-class HtmlServiceImpl : public HtmlService {
+class HtmlDocumentServiceImpl final : public HtmlDocumentService {
 public:
-  HtmlServiceImpl(PopplerPdfFile pdf_file, std::string output_path,
-                  std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
-                  std::shared_ptr<std::mutex> html_renderer_mutex,
-                  std::shared_ptr<pdf2htmlEX::Param> html_renderer_param,
-                  HtmlConfig config, HtmlResourceLocator resource_locator)
-      : HtmlService(std::move(config), std::move(resource_locator), {}),
+  HtmlDocumentServiceImpl(
+      PopplerPdfFile pdf_file, std::string output_path,
+      std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
+      std::shared_ptr<std::mutex> html_renderer_mutex,
+      std::shared_ptr<pdf2htmlEX::Param> html_renderer_param, HtmlConfig config,
+      HtmlResourceLocator resource_locator)
+      : HtmlDocumentService(std::move(config), std::move(resource_locator)),
         m_pdf_file{std::move(pdf_file)}, m_output_path{std::move(output_path)},
         m_html_renderer{std::move(html_renderer)},
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
         m_html_renderer_param{std::move(html_renderer_param)} {
     for (int i = 1; i <= m_pdf_file.pdf_doc().getNumPages(); ++i) {
       auto resource = std::make_shared<BackgroundImageResource>(
-          m_pdf_file, m_output_path, m_html_renderer, m_html_renderer_mutex, i,
-          m_html_renderer_param->bg_format);
+          m_pdf_file, m_output_path, m_html_renderer, m_html_renderer_mutex,
+          m_html_renderer_param, i, m_html_renderer_param->bg_format);
       std::string file_name = BackgroundImageResource::file_name(
           i, m_html_renderer_param->bg_format);
       m_resources.emplace_back(std::move(resource), std::move(file_name));
     }
   }
 
-  HtmlResources write_document(HtmlWriter &out) const override {
-    HtmlResources resources;
-
+  HtmlResources write_document(HtmlWriter &out) const final {
     {
       std::ifstream in(m_output_path + "/document.html");
       util::stream::pipe(in, out.out());
     }
 
-    return resources;
+    return m_resources;
   }
 
 private:
@@ -203,7 +206,7 @@ private:
 
 namespace odr::internal {
 
-odr::HtmlService
+odr::HtmlDocumentService
 html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
                                  const std::string &output_path,
                                  const HtmlConfig &config) {
@@ -233,7 +236,7 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
   // TODO check if this can be achieved in pdf2htmlEX
   auto html_renderer_mutex = std::make_shared<std::mutex>();
 
-  return odr::HtmlService(std::make_shared<HtmlServiceImpl>(
+  return odr::HtmlDocumentService(std::make_shared<HtmlDocumentServiceImpl>(
       pdf_file, output_path, std::move(html_renderer),
       std::move(html_renderer_mutex), std::move(html_renderer_param), config,
       resource_locator));

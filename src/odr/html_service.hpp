@@ -8,8 +8,8 @@
 #include <vector>
 
 namespace odr::internal::abstract {
-class HtmlService;
-class HtmlFragment;
+class HtmlDocumentService;
+class HtmlFragmentService;
 class HtmlResource;
 } // namespace odr::internal::abstract
 
@@ -18,7 +18,6 @@ enum class FileType;
 class File;
 struct HtmlConfig;
 
-class HtmlFragment;
 class HtmlResource;
 
 enum class HtmlResourceType {
@@ -35,36 +34,39 @@ using HtmlResourceLocator =
 using HtmlResources =
     std::vector<std::pair<HtmlResource, HtmlResourceLocation>>;
 
-class HtmlService final {
+class HtmlDocumentService final {
 public:
-  explicit HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl);
+  HtmlDocumentService();
+  explicit HtmlDocumentService(
+      std::shared_ptr<internal::abstract::HtmlDocumentService> impl);
 
   [[nodiscard]] const HtmlConfig &config() const;
   [[nodiscard]] const HtmlResourceLocator &resource_locator() const;
 
-  [[nodiscard]] std::vector<HtmlFragment> fragments() const;
-
   HtmlResources write_document(std::ostream &os) const;
 
+  [[nodiscard]] const std::shared_ptr<internal::abstract::HtmlDocumentService> &
+  impl() const;
+
 private:
-  std::shared_ptr<internal::abstract::HtmlService> m_impl;
+  std::shared_ptr<internal::abstract::HtmlDocumentService> m_impl;
 };
 
-class HtmlFragment final {
+class HtmlFragmentService final {
 public:
-  explicit HtmlFragment(std::shared_ptr<internal::abstract::HtmlFragment> impl);
-
-  [[nodiscard]] std::string name() const;
+  explicit HtmlFragmentService(
+      std::shared_ptr<internal::abstract::HtmlFragmentService> impl);
 
   [[nodiscard]] const HtmlConfig &config() const;
   [[nodiscard]] const HtmlResourceLocator &resource_locator() const;
 
   void write_fragment(std::ostream &os, HtmlResources &resources) const;
 
-  HtmlResources write_document(std::ostream &os) const;
+  [[nodiscard]] const std::shared_ptr<internal::abstract::HtmlFragmentService> &
+  impl() const;
 
 private:
-  std::shared_ptr<internal::abstract::HtmlFragment> m_impl;
+  std::shared_ptr<internal::abstract::HtmlFragmentService> m_impl;
 };
 
 class HtmlResource final {
@@ -73,11 +75,13 @@ public:
   explicit HtmlResource(std::shared_ptr<internal::abstract::HtmlResource> impl);
 
   [[nodiscard]] HtmlResourceType type() const;
+  [[nodiscard]] const std::string &mime_type() const;
   [[nodiscard]] const std::string &name() const;
   [[nodiscard]] const std::string &path() const;
   [[nodiscard]] const File &file() const;
   [[nodiscard]] bool is_shipped() const;
   [[nodiscard]] bool is_relocatable() const;
+  [[nodiscard]] bool is_external() const;
 
   void write_resource(std::ostream &os) const;
 
