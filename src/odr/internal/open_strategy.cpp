@@ -23,6 +23,30 @@
 
 namespace odr::internal {
 
+namespace {
+
+template <typename T> auto priority_comparator(const std::vector<T> &priority) {
+  return [&priority](const T &a, const T &b) {
+    auto a_it = std::find(std::begin(priority), std::end(priority), a);
+    auto b_it = std::find(std::begin(priority), std::end(priority), b);
+
+    if (a_it == std::end(priority) && b_it == std::end(priority)) {
+      return false;
+    }
+    if (a_it == std::end(priority)) {
+      return false;
+    }
+    if (b_it == std::end(priority)) {
+      return true;
+    }
+
+    return std::distance(std::begin(priority), a_it) <
+           std::distance(std::begin(priority), b_it);
+  };
+}
+
+} // namespace
+
 std::vector<FileType>
 open_strategy::types(const std::shared_ptr<abstract::File> &file) {
   std::vector<FileType> result;
@@ -386,6 +410,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
     probe_types.erase(probe_types_end, probe_types.end());
   }
 
+  std::ranges::sort(probe_types,
+                    priority_comparator(preference.file_type_priority));
+
   for (FileType as : probe_types) {
     std::vector<DecoderEngine> probe_engines;
     if (preference.with_engine.has_value()) {
@@ -398,6 +425,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
           std::unique(probe_engines.begin(), probe_engines.end());
       probe_engines.erase(probe_engines_end, probe_engines.end());
     }
+
+    std::ranges::sort(probe_engines,
+                      priority_comparator(preference.engine_priority));
 
     for (DecoderEngine with : probe_engines) {
       auto decoded_file = open_file(file, as, with);
