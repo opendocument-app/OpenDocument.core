@@ -51,10 +51,10 @@ void GlobalParams::set_pdf2htmlex_data_path(const std::string &path) {
 }
 
 GlobalParams::GlobalParams() {
-  m_odr_core_data_path = ""; // TODO
-  m_fontforge_data_path = internal::project_info::fontconfig_data_path();
-  m_poppler_data_path = internal::project_info::poppler_data_path();
-  m_pdf2htmlex_data_path = internal::project_info::pdf2htmlex_data_path();
+  set_odr_core_data_path(""); // TODO
+  set_fontforge_data_path(internal::project_info::fontconfig_data_path());
+  set_poppler_data_path(internal::project_info::poppler_data_path());
+  set_pdf2htmlex_data_path(internal::project_info::pdf2htmlex_data_path());
 }
 
 } // namespace odr
