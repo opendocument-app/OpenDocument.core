@@ -22,7 +22,7 @@ public:
     std::string id = get_id();
     m_server.Get(
         "/" + id,
-        [this, file = std::move(file)](const httplib::Request &req,
+        [this, file = std::move(file)](const httplib::Request & /*req*/,
                                        httplib::Response &res) -> void {
           struct State {
             State(std::unique_ptr<std::istream> stream_,
@@ -92,46 +92,48 @@ public:
     std::ofstream null;
     HtmlResources resources = html_service.write_document(null);
 
-    m_server.Get("/" + id,
-                 [id](const httplib::Request &req, httplib::Response &res) {
-                   res.set_redirect("/" + id + "/document.html");
-                 });
-
-    m_server.Get("/" + id + "/document.html", [=](const httplib::Request &req,
-                                                  httplib::Response &res) {
-      httplib::ContentProviderWithoutLength content_provider =
-          [html_service](std::size_t offset, httplib::DataSink &sink) -> bool {
-        if (offset != 0) {
-          throw std::runtime_error("Invalid offset: " + std::to_string(offset) +
-                                   ". Must be 0.");
-        }
-        html_service.write_document(sink.os);
-        return false;
-      };
-      res.set_content_provider("text/html", content_provider);
+    m_server.Get("/" + id, [id](const httplib::Request & /*req*/,
+                                httplib::Response &res) {
+      res.set_redirect("/" + id + "/document.html");
     });
+
+    m_server.Get("/" + id + "/document.html",
+                 [=](const httplib::Request & /*req*/, httplib::Response &res) {
+                   httplib::ContentProviderWithoutLength content_provider =
+                       [html_service](std::size_t offset,
+                                      httplib::DataSink &sink) -> bool {
+                     if (offset != 0) {
+                       throw std::runtime_error(
+                           "Invalid offset: " + std::to_string(offset) +
+                           ". Must be 0.");
+                     }
+                     html_service.write_document(sink.os);
+                     return false;
+                   };
+                   res.set_content_provider("text/html", content_provider);
+                 });
 
     for (const auto &[resource, location] : resources) {
       if (!location.has_value() || resource.is_external()) {
         continue;
       }
 
-      m_server.Get("/" + id + "/" + location.value(),
-                   [=](const httplib::Request &req, httplib::Response &res) {
-                     httplib::ContentProviderWithoutLength content_provider =
-                         [resource](std::size_t offset,
-                                    httplib::DataSink &sink) -> bool {
-                       if (offset != 0) {
-                         throw std::runtime_error(
-                             "Invalid offset: " + std::to_string(offset) +
-                             ". Must be 0.");
-                       }
-                       resource.write_resource(sink.os);
-                       return false;
-                     };
-                     res.set_content_provider(resource.mime_type(),
-                                              content_provider);
-                   });
+      m_server.Get(
+          "/" + id + "/" + location.value(),
+          [=](const httplib::Request & /*req*/, httplib::Response &res) {
+            httplib::ContentProviderWithoutLength content_provider =
+                [resource](std::size_t offset,
+                           httplib::DataSink &sink) -> bool {
+              if (offset != 0) {
+                throw std::runtime_error(
+                    "Invalid offset: " + std::to_string(offset) +
+                    ". Must be 0.");
+              }
+              resource.write_resource(sink.os);
+              return false;
+            };
+            res.set_content_provider(resource.mime_type(), content_provider);
+          });
     }
 
     return id;
@@ -141,7 +143,7 @@ public:
     std::string id = get_id();
     m_server.Get("/" + id,
                  [filesystem = std::move(filesystem)](
-                     const httplib::Request &req, httplib::Response &res) {
+                     const httplib::Request & /*req*/, httplib::Response &res) {
                    res.set_content("Hello World!", "text/plain");
                  });
     return id;
