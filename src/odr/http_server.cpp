@@ -75,6 +75,7 @@ public:
       auto document = document_file.document();
       html_service = internal::html::create_document_service(
           document, output_path, config);
+#ifdef ODR_WITH_PDF2HTMLEX
     } else if (file.is_pdf_file()) {
       PdfFile pdf_file = file.pdf_file();
       if (pdf_file.password_encrypted()) {
@@ -83,6 +84,7 @@ public:
       html_service = internal::html::create_poppler_pdf_service(
           dynamic_cast<const internal::PopplerPdfFile &>(*pdf_file.impl()),
           output_path, config);
+#endif
     } else {
       throw std::runtime_error("Unsupported file type");
     }
