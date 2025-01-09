@@ -22,6 +22,8 @@ namespace {
 
 pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
                                 const std::string &output_path) {
+  (void)config;
+
   pdf2htmlEX::Param param;
 
   // pages
