@@ -21,7 +21,6 @@
 #include <nlohmann/json.hpp>
 
 using namespace odr::internal;
-namespace fs = std::filesystem;
 
 namespace odr {
 
@@ -89,13 +88,13 @@ Html html::translate(const DecodedFile &decoded_file,
 
 Html html::translate(const TextFile &text_file, const std::string &output_path,
                      const HtmlConfig &config) {
-  fs::create_directories(output_path);
+  std::filesystem::create_directories(output_path);
   return internal::html::translate_text_file(text_file, output_path, config);
 }
 
 Html html::translate(const ImageFile &image_file,
                      const std::string &output_path, const HtmlConfig &config) {
-  fs::create_directories(output_path);
+  std::filesystem::create_directories(output_path);
   return internal::html::translate_image_file(image_file, output_path, config);
 }
 
@@ -112,7 +111,7 @@ Html html::translate(const DocumentFile &document_file,
   if (auto wv_document_file =
           std::dynamic_pointer_cast<internal::WvWareLegacyMicrosoftFile>(
               document_file_impl)) {
-    fs::create_directories(output_path);
+    std::filesystem::create_directories(output_path);
     return internal::html::translate_wvware_oldms_file(*wv_document_file,
                                                        output_path, config);
   }
@@ -128,7 +127,7 @@ Html html::translate(const PdfFile &pdf_file, const std::string &output_path,
 #ifdef ODR_WITH_PDF2HTMLEX
   if (auto poppler_pdf_file =
           std::dynamic_pointer_cast<internal::PopplerPdfFile>(pdf_file_impl)) {
-    fs::create_directories(output_path);
+    std::filesystem::create_directories(output_path);
     return internal::html::translate_poppler_pdf_file(*poppler_pdf_file,
                                                       output_path, config);
   }
@@ -139,14 +138,14 @@ Html html::translate(const PdfFile &pdf_file, const std::string &output_path,
 
 Html html::translate(const Archive &archive, const std::string &output_path,
                      const HtmlConfig &config) {
-  fs::create_directories(output_path);
+  std::filesystem::create_directories(output_path);
   return internal::html::translate_filesystem(
       FileType::unknown, archive.filesystem(), output_path, config);
 }
 
 Html html::translate(const Document &document, const std::string &output_path,
                      const HtmlConfig &config) {
-  fs::create_directories(output_path);
+  std::filesystem::create_directories(output_path);
   return internal::html::translate_document(document, output_path, config);
 }
 

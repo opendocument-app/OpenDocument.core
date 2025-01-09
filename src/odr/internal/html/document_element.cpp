@@ -390,12 +390,14 @@ void html::translate_image(Element element, const WritingState &state) {
   odr::HtmlResource resource;
   HtmlResourceLocation resource_location;
   if (image.is_internal()) {
-    resource = HtmlResource::create(HtmlResourceType::image, "image", "image",
-                                    image.file().value(), false, true);
+    resource = HtmlResource::create(HtmlResourceType::image, "image/jpg",
+                                    image.href(), image.href(),
+                                    image.file().value(), false, true, false);
     resource_location = state.resource_locator()(resource);
   } else {
-    resource = HtmlResource::create(HtmlResourceType::image, "image", "image",
-                                    odr::File(), false, false);
+    resource =
+        HtmlResource::create(HtmlResourceType::image, "image/jpg", "image",
+                             "image", odr::File(), false, false, true);
     resource_location = image.href();
   }
   state.resources().emplace_back(std::move(resource), resource_location);

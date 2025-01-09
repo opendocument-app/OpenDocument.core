@@ -39,8 +39,9 @@ void front(const Document &document, const WritingState &state) {
   }
 
   auto odr_css_file = Resources::open(common::Path("odr.css"));
-  odr::HtmlResource odr_css_resource = html::HtmlResource::create(
-      HtmlResourceType::css, "odr.css", "odr.css", odr_css_file, true, true);
+  odr::HtmlResource odr_css_resource =
+      html::HtmlResource::create(HtmlResourceType::css, "text/css", "odr.css",
+                                 "odr.css", odr_css_file, true, true, false);
   HtmlResourceLocation odr_css_location =
       state.resource_locator()(odr_css_resource);
   state.resources().emplace_back(std::move(odr_css_resource), odr_css_location);
@@ -56,8 +57,8 @@ void front(const Document &document, const WritingState &state) {
     auto odr_spreadsheet_css_file =
         Resources::open(common::Path("odr_spreadsheet.css"));
     odr::HtmlResource odr_spreadsheet_css_resource = html::HtmlResource::create(
-        HtmlResourceType::css, "odr_spreadsheet.css", "odr_spreadsheet.css",
-        odr_spreadsheet_css_file, true, true);
+        HtmlResourceType::css, "text/css", "odr_spreadsheet.css",
+        "odr_spreadsheet.css", odr_spreadsheet_css_file, true, true, false);
     HtmlResourceLocation odr_spreadsheet_css_location =
         state.resource_locator()(odr_spreadsheet_css_resource);
     state.resources().emplace_back(std::move(odr_spreadsheet_css_resource),
@@ -93,7 +94,8 @@ void back(const Document &document, const WritingState &state) {
 
   auto odr_js_file = Resources::open(common::Path("odr.js"));
   odr::HtmlResource odr_js_resource = html::HtmlResource::create(
-      HtmlResourceType::js, "odr.js", "odr.js", odr_js_file, true, true);
+      HtmlResourceType::js, "text/javascript", "odr.js", "odr.js", odr_js_file,
+      true, true, false);
   HtmlResourceLocation odr_js_location =
       state.resource_locator()(odr_js_resource);
   state.resources().emplace_back(std::move(odr_js_resource), odr_js_location);
@@ -137,56 +139,78 @@ std::string get_output_path(const Document &document, std::uint32_t index,
   }
 }
 
-class HtmlServiceImpl : public HtmlService {
-public:
-  HtmlServiceImpl(
-      Document document,
-      std::vector<std::shared_ptr<abstract::HtmlFragment>> fragments,
-      HtmlConfig config, HtmlResourceLocator resource_locator)
-      : HtmlService(std::move(config), std::move(resource_locator),
-                    std::move(fragments)),
-        m_document{std::move(document)} {}
-
-  HtmlResources write_document(HtmlWriter &out) const override {
-    HtmlResources resources;
-
-    WritingState state(out, config(), resource_locator(), resources);
-
-    front(m_document, state);
-    for (const auto &fragment : fragments()) {
-      fragment->write_fragment(out, resources);
-    }
-    back(m_document, state);
-
-    return resources;
-  }
-
-private:
-  Document m_document;
-};
-
-class HtmlFragmentBase : public HtmlFragment {
+class HtmlFragmentBase : public HtmlFragmentService {
 public:
   HtmlFragmentBase(std::string name, Document document, HtmlConfig config,
                    HtmlResourceLocator resource_locator)
-      : HtmlFragment(std::move(name), std::move(config),
-                     std::move(resource_locator)),
-        m_document{std::move(document)} {}
+      : HtmlFragmentService(std::move(config), std::move(resource_locator)),
+        m_name{std::move(name)}, m_document{std::move(document)} {}
+
+  const std::string &name() const { return m_name; }
+
+  Document document() const { return m_document; }
+
+protected:
+  std::string m_name;
+  Document m_document;
+};
+
+class HtmlDocumentServiceImpl final
+    : public internal::abstract::HtmlDocumentService {
+public:
+  explicit HtmlDocumentServiceImpl(std::shared_ptr<HtmlFragmentBase> fragment)
+      : m_fragment{std::move(fragment)} {}
+
+  [[nodiscard]] const std::shared_ptr<HtmlFragmentBase> &fragment() const {
+    return m_fragment;
+  }
+
+  [[nodiscard]] const HtmlConfig &config() const final {
+    return m_fragment->config();
+  }
+  [[nodiscard]] const HtmlResourceLocator &resource_locator() const final {
+    return m_fragment->resource_locator();
+  }
 
   HtmlResources write_document(HtmlWriter &out) const final {
     HtmlResources resources;
 
     WritingState state(out, config(), resource_locator(), resources);
 
-    front(m_document, state);
-    write_fragment(out, resources);
-    back(m_document, state);
+    front(m_fragment->document(), state);
+    m_fragment->write_fragment(out, resources);
+    back(m_fragment->document(), state);
 
     return resources;
   }
 
-protected:
-  Document m_document;
+private:
+  std::shared_ptr<HtmlFragmentBase> m_fragment;
+};
+
+class HtmlFragmentCollection : public HtmlFragmentBase {
+public:
+  HtmlFragmentCollection(
+      Document document,
+      std::vector<std::shared_ptr<HtmlFragmentBase>> fragments,
+      HtmlConfig config, HtmlResourceLocator resource_locator)
+      : HtmlFragmentBase("document", std::move(document), std::move(config),
+                         std::move(resource_locator)),
+        m_fragments{std::move(fragments)} {}
+
+  [[nodiscard]] const std::vector<std::shared_ptr<HtmlFragmentBase>> &
+  fragments() const {
+    return m_fragments;
+  }
+
+  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
+    for (const auto &fragment : m_fragments) {
+      fragment->write_fragment(out, resources);
+    }
+  }
+
+private:
+  std::vector<std::shared_ptr<HtmlFragmentBase>> m_fragments;
 };
 
 class TextHtmlFragment final : public HtmlFragmentBase {
@@ -285,13 +309,14 @@ private:
 
 namespace odr::internal {
 
-odr::HtmlService html::create_document_service(const Document &document,
-                                               const std::string &output_path,
-                                               const HtmlConfig &config) {
+odr::HtmlDocumentService
+html::create_document_service(const Document &document,
+                              const std::string &output_path,
+                              const HtmlConfig &config) {
   HtmlResourceLocator resource_locator =
       local_resource_locator(output_path, config);
 
-  std::vector<std::shared_ptr<abstract::HtmlFragment>> fragments;
+  std::vector<std::shared_ptr<HtmlFragmentBase>> fragments;
 
   if (document.document_type() == DocumentType::text) {
     fragments.push_back(
@@ -315,20 +340,27 @@ odr::HtmlService html::create_document_service(const Document &document,
     throw UnknownDocumentType();
   }
 
-  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
-      document, fragments, config, resource_locator));
+  return odr::HtmlDocumentService(std::make_unique<HtmlDocumentServiceImpl>(
+      std::make_unique<HtmlFragmentCollection>(document, fragments, config,
+                                               resource_locator)));
 }
 
 Html html::translate_document(const odr::Document &document,
                               const std::string &output_path,
                               const odr::HtmlConfig &config) {
-  odr::HtmlService service =
+  odr::HtmlDocumentService document_service =
       create_document_service(document, output_path, config);
+  auto document_service_impl =
+      std::dynamic_pointer_cast<HtmlDocumentServiceImpl>(
+          document_service.impl());
+  auto fragment_service_impl =
+      std::dynamic_pointer_cast<HtmlFragmentCollection>(
+          document_service_impl->fragment());
 
   std::vector<HtmlPage> pages;
 
   std::uint32_t i = 0;
-  for (const auto &fragment : service.fragments()) {
+  for (const auto &fragment : fragment_service_impl->fragments()) {
     std::string filled_path = get_output_path(document, i, output_path, config);
     std::ofstream ostream(filled_path, std::ios::out);
     if (!ostream.is_open()) {
@@ -336,9 +368,9 @@ Html html::translate_document(const odr::Document &document,
     }
     html::HtmlWriter out(ostream, config.format_html, config.html_indent);
 
-    fragment.write_document(out.out());
+    HtmlDocumentServiceImpl(fragment).write_document(out);
 
-    pages.emplace_back(fragment.name(), filled_path);
+    pages.emplace_back(fragment->name(), filled_path);
 
     ++i;
   }

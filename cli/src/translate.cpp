@@ -1,4 +1,3 @@
-#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 

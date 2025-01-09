@@ -39,7 +39,8 @@ struct HtmlConfig {
   std::string page_output_file_name{"page{index}.html"};
 
   // embedding
-  bool embed_resources{true};
+  bool embed_images{true};
+  bool embed_shipped_resources{true};
 
   // resources
   std::string external_resource_path;

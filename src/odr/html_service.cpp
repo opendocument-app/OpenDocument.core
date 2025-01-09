@@ -7,24 +7,21 @@
 
 namespace odr {
 
-HtmlService::HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl)
+HtmlDocumentService::HtmlDocumentService() = default;
+
+HtmlDocumentService::HtmlDocumentService(
+    std::shared_ptr<internal::abstract::HtmlDocumentService> impl)
     : m_impl{std::move(impl)} {}
 
-const HtmlConfig &HtmlService::config() const { return m_impl->config(); }
+const HtmlConfig &HtmlDocumentService::config() const {
+  return m_impl->config();
+}
 
-const HtmlResourceLocator &HtmlService::resource_locator() const {
+const HtmlResourceLocator &HtmlDocumentService::resource_locator() const {
   return m_impl->resource_locator();
 }
 
-std::vector<HtmlFragment> HtmlService::fragments() const {
-  std::vector<HtmlFragment> result;
-  for (const auto &fragment : m_impl->fragments()) {
-    result.emplace_back(fragment);
-  }
-  return result;
-}
-
-HtmlResources HtmlService::write_document(std::ostream &os) const {
+HtmlResources HtmlDocumentService::write_document(std::ostream &os) const {
   internal::html::HtmlWriter out(os, config());
 
   auto internal_resources = m_impl->write_document(out);
@@ -36,35 +33,33 @@ HtmlResources HtmlService::write_document(std::ostream &os) const {
   return resources;
 }
 
-HtmlFragment::HtmlFragment(
-    std::shared_ptr<internal::abstract::HtmlFragment> impl)
+const std::shared_ptr<internal::abstract::HtmlDocumentService> &
+HtmlDocumentService::impl() const {
+  return m_impl;
+}
+
+HtmlFragmentService::HtmlFragmentService(
+    std::shared_ptr<internal::abstract::HtmlFragmentService> impl)
     : m_impl{std::move(impl)} {}
 
-std::string HtmlFragment::name() const { return m_impl->name(); }
+const HtmlConfig &HtmlFragmentService::config() const {
+  return m_impl->config();
+}
 
-const HtmlConfig &HtmlFragment::config() const { return m_impl->config(); }
-
-const HtmlResourceLocator &HtmlFragment::resource_locator() const {
+const HtmlResourceLocator &HtmlFragmentService::resource_locator() const {
   return m_impl->resource_locator();
 }
 
-void HtmlFragment::write_fragment(std::ostream &os,
-                                  HtmlResources &resources) const {
+void HtmlFragmentService::write_fragment(std::ostream &os,
+                                         HtmlResources &resources) const {
   internal::html::HtmlWriter out(os, config());
 
   m_impl->write_fragment(out, resources);
 }
 
-HtmlResources HtmlFragment::write_document(std::ostream &os) const {
-  internal::html::HtmlWriter out(os, config());
-
-  auto internal_resources = m_impl->write_document(out);
-
-  HtmlResources resources;
-  for (const auto &[resource, location] : internal_resources) {
-    resources.emplace_back(HtmlResource(resource), location);
-  }
-  return resources;
+const std::shared_ptr<internal::abstract::HtmlFragmentService> &
+HtmlFragmentService::impl() const {
+  return m_impl;
 }
 
 HtmlResource::HtmlResource() = default;
@@ -75,6 +70,10 @@ HtmlResource::HtmlResource(
 
 HtmlResourceType HtmlResource::type() const { return m_impl->type(); }
 
+const std::string &HtmlResource::mime_type() const {
+  return m_impl->mime_type();
+}
+
 const std::string &HtmlResource::name() const { return m_impl->name(); }
 
 const std::string &HtmlResource::path() const { return m_impl->path(); }
@@ -84,6 +83,8 @@ const File &HtmlResource::file() const { return m_impl->file(); }
 bool HtmlResource::is_shipped() const { return m_impl->is_shipped(); }
 
 bool HtmlResource::is_relocatable() const { return m_impl->is_relocatable(); }
+
+bool HtmlResource::is_external() const { return m_impl->is_external(); }
 
 void HtmlResource::write_resource(std::ostream &os) const {
   m_impl->write_resource(os);
