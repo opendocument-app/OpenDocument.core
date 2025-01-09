@@ -23,6 +23,8 @@ public:
 
   void listen(const std::string &host, std::uint32_t port);
 
+  void stop();
+
 private:
   class Impl;
 

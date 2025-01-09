@@ -24,13 +24,7 @@ const HtmlResourceLocator &HtmlDocumentService::resource_locator() const {
 HtmlResources HtmlDocumentService::write_document(std::ostream &os) const {
   internal::html::HtmlWriter out(os, config());
 
-  auto internal_resources = m_impl->write_document(out);
-
-  HtmlResources resources;
-  for (const auto &[resource, location] : internal_resources) {
-    resources.emplace_back(HtmlResource(resource), location);
-  }
-  return resources;
+  return m_impl->write_document(out);
 }
 
 const std::shared_ptr<internal::abstract::HtmlDocumentService> &

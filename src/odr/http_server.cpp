@@ -155,6 +155,8 @@ public:
     m_server.listen(host, static_cast<int>(port));
   }
 
+  void stop() { m_server.stop(); }
+
 private:
   [[nodiscard]] static std::string get_id() {
     std::mt19937 rng(std::random_device{}());
@@ -191,5 +193,7 @@ std::string HttpServer::host_filesystem(Filesystem filesystem) {
 void HttpServer::listen(const std::string &host, std::uint32_t port) {
   m_impl->listen(host, port);
 }
+
+void HttpServer::stop() { m_impl->stop(); }
 
 } // namespace odr
