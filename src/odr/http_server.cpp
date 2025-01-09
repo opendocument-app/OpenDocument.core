@@ -4,6 +4,7 @@
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 #include <odr/html_service.hpp>
+#include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/pdf2htmlex_wrapper.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
@@ -90,7 +91,7 @@ public:
       throw std::runtime_error("Unsupported file type");
     }
 
-    std::ofstream null;
+    internal::common::NullStream null;
     HtmlResources resources = html_service.write_document(null);
 
     m_server.Get("/" + id, [id](const httplib::Request & /*req*/,
