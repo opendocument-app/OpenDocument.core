@@ -65,8 +65,8 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
     if (!resource.is_relocatable()) {
       return resource.path();
     }
-
-    if (config.embed_resources) {
+    if ((config.embed_shipped_resources && resource.is_shipped()) ||
+        (config.embed_images && resource.type() == HtmlResourceType::image)) {
       return std::nullopt;
     }
 

@@ -60,7 +60,8 @@ public:
 
     // TODO
     HtmlConfig config;
-    config.embed_resources = false;
+    config.embed_images = false;
+    config.embed_shipped_resources = false;
     std::string output_path = "/tmp/" + id;
 
     std::filesystem::create_directories(output_path);

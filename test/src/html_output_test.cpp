@@ -129,7 +129,8 @@ TEST_P(HtmlOutputTests, html_meta) {
   OpenDocumentReader::copy_resources(resource_path);
 
   HtmlConfig config;
-  config.embed_resources = false;
+  config.embed_images = true;
+  config.embed_shipped_resources = false;
   config.external_resource_path = resource_path;
   config.relative_resource_paths = true;
   config.editable = true;
