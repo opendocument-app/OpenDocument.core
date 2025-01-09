@@ -228,7 +228,7 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
   // TODO potentially just a cache dir?
   auto html_renderer = std::make_shared<pdf2htmlEX::HTMLRenderer>(
-      odr::GlobalParams::fontforge_data_path().c_str(), *html_renderer_param);
+      odr::GlobalParams::fontconfig_data_path().c_str(), *html_renderer_param);
   html_renderer->process(&pdf_doc);
 
   HtmlResourceLocator resource_locator =
@@ -259,7 +259,7 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
 
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
   // TODO potentially just a cache dir?
-  pdf2htmlEX::HTMLRenderer(odr::GlobalParams::fontforge_data_path().c_str(),
+  pdf2htmlEX::HTMLRenderer(odr::GlobalParams::fontconfig_data_path().c_str(),
                            param)
       .process(&pdf_doc);
 

@@ -9,16 +9,28 @@
 namespace odr {
 
 GlobalParams &GlobalParams::instance() {
-  static GlobalParams instance;
-  return instance;
+  struct HolderAndInitializer {
+    GlobalParams params;
+    HolderAndInitializer() {
+#ifdef ODR_WITH_PDF2HTMLEX
+      globalParams = std::make_unique<::GlobalParams>(
+          params.m_poppler_data_path.empty()
+              ? nullptr
+              : params.m_poppler_data_path.c_str());
+#endif
+    }
+  };
+  static HolderAndInitializer instance;
+
+  return instance.params;
 }
 
 const std::string &GlobalParams::odr_core_data_path() {
   return instance().m_odr_core_data_path;
 }
 
-const std::string &GlobalParams::fontforge_data_path() {
-  return instance().m_fontforge_data_path;
+const std::string &GlobalParams::fontconfig_data_path() {
+  return instance().m_fontconfig_data_path;
 }
 
 const std::string &GlobalParams::poppler_data_path() {
@@ -33,8 +45,8 @@ void GlobalParams::set_odr_core_data_path(const std::string &path) {
   instance().m_odr_core_data_path = path;
 }
 
-void GlobalParams::set_fontforge_data_path(const std::string &path) {
-  instance().m_fontforge_data_path = path;
+void GlobalParams::set_fontconfig_data_path(const std::string &path) {
+  instance().m_fontconfig_data_path = path;
 }
 
 void GlobalParams::set_poppler_data_path(const std::string &path) {
@@ -50,11 +62,10 @@ void GlobalParams::set_pdf2htmlex_data_path(const std::string &path) {
   instance().m_pdf2htmlex_data_path = path;
 }
 
-GlobalParams::GlobalParams() {
-  set_odr_core_data_path(""); // TODO
-  set_fontforge_data_path(internal::project_info::fontconfig_data_path());
-  set_poppler_data_path(internal::project_info::poppler_data_path());
-  set_pdf2htmlex_data_path(internal::project_info::pdf2htmlex_data_path());
-}
+GlobalParams::GlobalParams()
+    : m_odr_core_data_path{}, // TODO
+      m_fontconfig_data_path{internal::project_info::fontconfig_data_path()},
+      m_poppler_data_path{internal::project_info::poppler_data_path()},
+      m_pdf2htmlex_data_path{internal::project_info::pdf2htmlex_data_path()} {}
 
 } // namespace odr
