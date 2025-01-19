@@ -63,7 +63,7 @@ public:
     HtmlConfig config;
     config.embed_images = false;
     config.embed_shipped_resources = false;
-    std::string output_path = "/tmp/" + id;
+    std::string output_path = m_config.output_path + "/" + id;
 
     std::filesystem::create_directories(output_path);
 
