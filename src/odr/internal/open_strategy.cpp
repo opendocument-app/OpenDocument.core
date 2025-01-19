@@ -408,10 +408,12 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
                        detected_types.end());
     auto probe_types_end = std::unique(probe_types.begin(), probe_types.end());
     probe_types.erase(probe_types_end, probe_types.end());
+    // more specific file types are further down the list so we bring them up
+    std::ranges::reverse(probe_types);
   }
 
-  std::ranges::sort(probe_types,
-                    priority_comparator(preference.file_type_priority));
+  std::ranges::stable_sort(probe_types,
+                           priority_comparator(preference.file_type_priority));
 
   for (FileType as : probe_types) {
     std::vector<DecoderEngine> probe_engines;
@@ -426,8 +428,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
       probe_engines.erase(probe_engines_end, probe_engines.end());
     }
 
-    std::ranges::sort(probe_engines,
-                      priority_comparator(preference.engine_priority));
+    std::ranges::stable_sort(probe_engines,
+                             priority_comparator(preference.engine_priority));
 
     for (DecoderEngine with : probe_engines) {
       auto decoded_file = open_file(file, as, with);
