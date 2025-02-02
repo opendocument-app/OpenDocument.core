@@ -15,7 +15,8 @@ std::string sha256(const std::string &);
 std::string pbkdf2(std::size_t key_size, const std::string &start_key,
                    const std::string &salt, std::size_t iteration_count);
 std::string argon2id(std::size_t key_size, const std::string &start_key,
-                     const std::string &salt, std::size_t iteration_count);
+                     const std::string &salt, std::size_t iteration_count,
+                     std::size_t memory, std::size_t lanes);
 
 std::string decrypt_aes_ecb(const std::string &key, const std::string &input);
 std::string decrypt_aes_cbc(const std::string &key, const std::string &iv,

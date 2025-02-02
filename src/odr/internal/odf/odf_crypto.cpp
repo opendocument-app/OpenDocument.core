@@ -6,13 +6,16 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/open_strategy.hpp>
+#include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <iostream>
 #include <stdexcept>
 
-namespace odr::internal::odf {
+namespace odr::internal {
 
-bool can_decrypt(const Manifest::Entry &entry) noexcept {
+bool odf::can_decrypt(const Manifest::Entry &entry) noexcept {
   return (!entry.checksum.has_value() ||
           (entry.checksum->type != ChecksumType::UNKNOWN)) &&
          (entry.algorithm.type != AlgorithmType::UNKNOWN) &&
@@ -20,7 +23,8 @@ bool can_decrypt(const Manifest::Entry &entry) noexcept {
          (entry.start_key_generation.type != ChecksumType::UNKNOWN);
 }
 
-std::string hash(const std::string &input, const ChecksumType checksum_type) {
+std::string odf::hash(const std::string &input,
+                      const ChecksumType checksum_type) {
   switch (checksum_type) {
   case ChecksumType::SHA256:
     return crypto::util::sha256(input);
@@ -35,9 +39,10 @@ std::string hash(const std::string &input, const ChecksumType checksum_type) {
   }
 }
 
-std::string decrypt(const std::string &input, const std::string &derived_key,
-                    const std::string &initialisation_vector,
-                    const AlgorithmType algorithm) {
+std::string odf::decrypt(const std::string &input,
+                         const std::string &derived_key,
+                         const std::string &initialisation_vector,
+                         const AlgorithmType algorithm) {
   switch (algorithm) {
   case AlgorithmType::AES256_CBC:
     return crypto::util::decrypt_aes_cbc(derived_key, initialisation_vector,
@@ -56,8 +61,8 @@ std::string decrypt(const std::string &input, const std::string &derived_key,
   }
 }
 
-std::string start_key(const Manifest::Entry &entry,
-                      const std::string &password) {
+std::string odf::start_key(const Manifest::Entry &entry,
+                           const std::string &password) {
   const std::string result = hash(password, entry.start_key_generation.type);
   if (result.size() < entry.start_key_generation.size) {
     throw std::invalid_argument("hash too small");
@@ -65,43 +70,49 @@ std::string start_key(const Manifest::Entry &entry,
   return result.substr(0, entry.start_key_generation.size);
 }
 
-std::string derive_key_and_decrypt(const Manifest::Entry &entry,
-                                   const std::string &start_key,
-                                   const std::string &input) {
-  std::string derived_key;
+std::string odf::derive_key(const Manifest::Entry &entry,
+                            const std::string &start_key) {
   switch (entry.key_derivation.type) {
   case KeyDerivationType::PBKDF2:
-    derived_key = crypto::util::pbkdf2(entry.key_derivation.size, start_key,
-                                       entry.key_derivation.salt,
-                                       entry.key_derivation.iteration_count);
+    return crypto::util::pbkdf2(entry.key_derivation.size, start_key,
+                                entry.key_derivation.salt,
+                                entry.key_derivation.iteration_count);
   case KeyDerivationType::ARGON2ID:
-    derived_key = crypto::util::argon2id(entry.key_derivation.size, start_key,
-                                         entry.key_derivation.salt,
-                                         entry.key_derivation.iteration_count);
+    return crypto::util::argon2id(
+        entry.key_derivation.size, start_key, entry.key_derivation.salt,
+        entry.key_derivation.iteration_count,
+        entry.key_derivation.argon2_memory, entry.key_derivation.argon2_lanes);
   default:
     throw std::invalid_argument("key derivation type");
   }
+}
+
+std::string odf::derive_key_and_decrypt(const Manifest::Entry &entry,
+                                        const std::string &start_key,
+                                        const std::string &input) {
+  std::string derived_key = derive_key(entry, start_key);
   return decrypt(input, derived_key, entry.algorithm.initialisation_vector,
                  entry.algorithm.type);
 }
 
-bool validate_password(const Manifest::Entry &entry,
-                       std::string decrypted) noexcept {
+bool odf::validate_password(const Manifest::Entry &entry,
+                            std::string decrypted) noexcept {
+  if (!entry.checksum.has_value()) {
+    return false;
+  }
+
   try {
     const std::size_t padding = crypto::util::padding(decrypted);
     decrypted = decrypted.substr(0, decrypted.size() - padding);
-    if (entry.checksum.has_value()) {
-      const std::string checksum = hash(decrypted, entry.checksum->type);
-      return checksum == entry.checksum->value;
-    }
-    // TODO
-    return true;
+    const std::string checksum = hash(decrypted, entry.checksum->type);
+    return checksum == entry.checksum->value;
   } catch (...) {
     // TODO why catch all?
     return false;
   }
 }
 
+namespace odf {
 namespace {
 class DecryptedFilesystem final : public abstract::ReadableFilesystem {
 public:
@@ -150,12 +161,36 @@ private:
   const std::string m_start_key;
 };
 } // namespace
+} // namespace odf
 
-bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
-             const Manifest &manifest, const std::string &password) {
+bool odf::decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
+                  const Manifest &manifest, const std::string &password) {
   if (!manifest.encrypted) {
     return true;
   }
+
+  if (auto it = manifest.entries.find(common::Path("encrypted-package"));
+      it != std::end(manifest.entries)) {
+    const std::string start_key = odf::start_key(it->second, password);
+    const std::string input =
+        util::stream::read(*storage->open(it->first)->stream());
+    std::string decrypt = derive_key_and_decrypt(it->second, start_key, input);
+
+    crypto::util::inflate(decrypt);
+
+    auto memory_file = std::make_shared<common::MemoryFile>(std::move(decrypt));
+    auto types = open_strategy::types(memory_file);
+    std::cout << memory_file->size() << std::endl;
+    std::cout << memory_file->memory_data() << std::endl;
+    std::cout << types.size() << std::endl;
+    for (FileType type : types) {
+      std::cout << static_cast<int>(type) << std::endl;
+    }
+    util::file::write("testfile", *memory_file);
+
+    return false;
+  }
+
   auto &&smallest_file_path = manifest.smallest_file_path;
   auto &&smallest_file_entry = manifest.smallest_file_entry();
   if (!can_decrypt(smallest_file_entry)) {
@@ -175,4 +210,4 @@ bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
   return true;
 }
 
-} // namespace odr::internal::odf
+} // namespace odr::internal

@@ -14,6 +14,8 @@
 #include <cryptopp/zinflate.h>
 #include <cryptopp/zlib.h>
 
+#include <argon2.h>
+
 namespace odr::internal::crypto {
 
 using byte = std::uint8_t;
@@ -62,9 +64,15 @@ std::string util::pbkdf2(std::size_t key_size, const std::string &start_key,
 }
 
 std::string util::argon2id(std::size_t key_size, const std::string &start_key,
-                           const std::string &salt,
-                           std::size_t iteration_count) {
-  throw std::runtime_error("not implemented");
+                           const std::string &salt, std::size_t iteration_count,
+                           std::size_t memory, std::size_t lanes) {
+  std::string result(key_size, '\0');
+
+  argon2id_hash_raw(iteration_count, memory, lanes, start_key.data(),
+                    start_key.size(), salt.data(), salt.size(),
+                    reinterpret_cast<byte *>(result.data()), result.size());
+
+  return result;
 }
 
 std::string util::decrypt_aes_ecb(const std::string &key,
@@ -98,10 +106,9 @@ std::string util::decrypt_aes_gcm(const std::string &key, const std::string &iv,
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
                           key.size(), reinterpret_cast<const byte *>(iv.data()),
                           iv.size());
-  CryptoPP::AuthenticatedDecryptionFilter df(decryption,
-                                             new CryptoPP::StringSink(result));
-  df.Put(reinterpret_cast<const byte *>(input.data()), input.size());
-  df.MessageEnd();
+  decryption.ProcessData(reinterpret_cast<byte *>(result.data()),
+                         reinterpret_cast<const byte *>(input.data()),
+                         input.size());
   return result;
 }
 
