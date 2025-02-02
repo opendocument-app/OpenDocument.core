@@ -114,12 +114,12 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
 bool ECMA376Standard::verify(const std::string &key) const noexcept {
   // https://msdn.microsoft.com/en-us/library/dd926426(v=office.12).aspx
 
-  const std::string verifier = internal::crypto::util::decrypt_AES(
+  const std::string verifier = internal::crypto::util::decrypt_aes_ecb(
       key, std::string(m_encryption_verifier.encrypted_verifier,
                        sizeof(m_encryption_verifier.encrypted_verifier)));
   const std::string hash = internal::crypto::util::sha1(verifier);
   const std::string verifier_hash =
-      internal::crypto::util::decrypt_AES(key, m_encrypted_verifier_hash)
+      internal::crypto::util::decrypt_aes_ecb(key, m_encrypted_verifier_hash)
           .substr(0, hash.size());
 
   return hash == verifier_hash;
@@ -130,7 +130,7 @@ std::string ECMA376Standard::decrypt(const std::string &encrypted_package,
   const std::uint64_t total_size =
       *(reinterpret_cast<const std::uint64_t *>(encrypted_package.data()));
   std::string result =
-      internal::crypto::util::decrypt_AES(key, encrypted_package.substr(8))
+      internal::crypto::util::decrypt_aes_ecb(key, encrypted_package.substr(8))
           .substr(0, total_size);
 
   return result;

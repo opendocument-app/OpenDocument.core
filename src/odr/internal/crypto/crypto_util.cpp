@@ -7,6 +7,7 @@
 #include <cryptopp/blowfish.h>
 #include <cryptopp/des.h>
 #include <cryptopp/filters.h>
+#include <cryptopp/gcm.h>
 #include <cryptopp/modes.h>
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/sha.h>
@@ -60,8 +61,14 @@ std::string util::pbkdf2(std::size_t key_size, const std::string &start_key,
   return result;
 }
 
-std::string util::decrypt_AES(const std::string &key,
-                              const std::string &input) {
+std::string util::argon2id(std::size_t key_size, const std::string &start_key,
+                           const std::string &salt,
+                           std::size_t iteration_count) {
+  throw std::runtime_error("not implemented");
+}
+
+std::string util::decrypt_aes_ecb(const std::string &key,
+                                  const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption decryption;
   decryption.SetKey(reinterpret_cast<const byte *>(key.data()), key.size());
@@ -71,8 +78,8 @@ std::string util::decrypt_AES(const std::string &key,
   return result;
 }
 
-std::string util::decrypt_AES(const std::string &key, const std::string &iv,
-                              const std::string &input) {
+std::string util::decrypt_aes_cbc(const std::string &key, const std::string &iv,
+                                  const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
@@ -84,9 +91,23 @@ std::string util::decrypt_AES(const std::string &key, const std::string &iv,
   return result;
 }
 
-std::string util::decrypt_TripleDES(const std::string &key,
-                                    const std::string &iv,
-                                    const std::string &input) {
+std::string util::decrypt_aes_gcm(const std::string &key, const std::string &iv,
+                                  const std::string &input) {
+  std::string result(input.size(), '\0');
+  CryptoPP::GCM<CryptoPP::AES>::Decryption decryption;
+  decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
+                          key.size(), reinterpret_cast<const byte *>(iv.data()),
+                          iv.size());
+  CryptoPP::AuthenticatedDecryptionFilter df(decryption,
+                                             new CryptoPP::StringSink(result));
+  df.Put(reinterpret_cast<const byte *>(input.data()), input.size());
+  df.MessageEnd();
+  return result;
+}
+
+std::string util::decrypt_triple_des(const std::string &key,
+                                     const std::string &iv,
+                                     const std::string &input) {
   std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::DES_EDE3>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
@@ -98,7 +119,7 @@ std::string util::decrypt_TripleDES(const std::string &key,
   return result;
 }
 
-std::string util::decrypt_Blowfish(const std::string &key,
+std::string util::decrypt_blowfish(const std::string &key,
                                    const std::string &iv,
                                    const std::string &input) {
   std::string result(input.size(), '\0');

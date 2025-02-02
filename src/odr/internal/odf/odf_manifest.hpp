@@ -14,23 +14,46 @@ class xml_document;
 namespace odr::internal::odf {
 
 enum class ChecksumType { UNKNOWN, SHA256, SHA1, SHA256_1K, SHA1_1K };
-enum class AlgorithmType { UNKNOWN, AES256_CBC, TRIPLE_DES_CBC, BLOWFISH_CFB };
-enum class KeyDerivationType { UNKNOWN, PBKDF2 };
+enum class AlgorithmType {
+  UNKNOWN,
+  AES256_CBC,
+  TRIPLE_DES_CBC,
+  BLOWFISH_CFB,
+  AES256_GCM
+};
+enum class KeyDerivationType { UNKNOWN, PBKDF2, ARGON2ID };
 
 struct Manifest {
   struct Entry {
+    struct Checksum {
+      ChecksumType type{ChecksumType::UNKNOWN};
+      std::string value;
+    };
+    struct Algorithm {
+      AlgorithmType type{AlgorithmType::UNKNOWN};
+      std::string initialisation_vector;
+    };
+    struct KeyDerivation {
+      KeyDerivationType type{KeyDerivationType::UNKNOWN};
+      std::uint64_t size{0};
+      std::uint64_t iteration_count{0};
+      std::string salt;
+
+      // argon2 specific
+      std::uint64_t argon2_memory;
+      std::uint64_t argon2_lanes;
+    };
+    struct StartKeyGeneration {
+      ChecksumType type{ChecksumType::UNKNOWN};
+      std::uint64_t size{0};
+    };
+
     std::size_t size{0};
 
-    ChecksumType checksum_type{ChecksumType::UNKNOWN};
-    std::string checksum;
-    AlgorithmType algorithm{AlgorithmType::UNKNOWN};
-    std::string initialisation_vector;
-    KeyDerivationType key_derivation{KeyDerivationType::UNKNOWN};
-    std::uint64_t key_size{0};
-    std::uint64_t key_iteration_count{0};
-    std::string key_salt;
-    ChecksumType start_key_generation{ChecksumType::UNKNOWN};
-    std::uint64_t start_key_size{0};
+    std::optional<Checksum> checksum;
+    Algorithm algorithm;
+    KeyDerivation key_derivation;
+    StartKeyGeneration start_key_generation;
   };
 
   bool encrypted{false};
