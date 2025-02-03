@@ -88,7 +88,7 @@ Manifest parse_manifest(const pugi::xml_document &manifest) {
     // checksum
     if (crypto.attribute("manifest:checksum-type") &&
         crypto.attribute("manifest:checksum")) {
-      entry.checksum.emplace();
+      entry.checksum = Manifest::Entry::Checksum();
       const std::string checksum_type =
           crypto.attribute("manifest:checksum-type").as_string();
       lookup_checksum_type(checksum_type, entry.checksum->type);
