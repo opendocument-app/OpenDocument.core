@@ -47,6 +47,7 @@ this implementation relies on [ZIP](../zip/README.md) and [SVM](../svm/README.md
 - http://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part1.html
 - custom shapes
     - https://wiki.openoffice.org/wiki/Create_a_New_Custom_Shape_in_Source_in_File#Features_in_Detail
+- Recent encryption https://www.w3.org/TR/xmlenc-core1/#sec-AES-GCM
 
 ### Related work
 
