@@ -6,9 +6,9 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
-#include <odr/internal/open_strategy.hpp>
-#include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
+#include <odr/internal/zip/zip_file.hpp>
 
 #include <iostream>
 #include <stdexcept>
@@ -171,42 +171,44 @@ bool odf::decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
 
   if (auto it = manifest.entries.find(common::Path("encrypted-package"));
       it != std::end(manifest.entries)) {
-    const std::string start_key = odf::start_key(it->second, password);
-    const std::string input =
-        util::stream::read(*storage->open(it->first)->stream());
-    std::string decrypt = derive_key_and_decrypt(it->second, start_key, input);
+    try {
+      const std::string start_key = odf::start_key(it->second, password);
+      const std::string input =
+          util::stream::read(*storage->open(it->first)->stream());
+      std::string decrypt = crypto::util::inflate(
+          derive_key_and_decrypt(it->second, start_key, input));
 
-    crypto::util::inflate(decrypt);
-
-    auto memory_file = std::make_shared<common::MemoryFile>(std::move(decrypt));
-    auto types = open_strategy::types(memory_file);
-    std::cout << memory_file->size() << std::endl;
-    std::cout << memory_file->memory_data() << std::endl;
-    std::cout << types.size() << std::endl;
-    for (FileType type : types) {
-      std::cout << static_cast<int>(type) << std::endl;
+      auto memory_file =
+          std::make_shared<common::MemoryFile>(std::move(decrypt));
+      storage = zip::ZipFile(memory_file).archive()->filesystem();
+    } catch (...) {
+      return false;
     }
-    util::file::write("testfile", *memory_file);
 
+    return true;
+  }
+
+  try {
+    const auto &smallest_file_path = manifest.smallest_file_path;
+    const auto &smallest_file_entry = manifest.smallest_file_entry();
+    if (!can_decrypt(smallest_file_entry)) {
+      throw UnsupportedCryptoAlgorithm();
+    }
+    const std::string start_key = odf::start_key(smallest_file_entry, password);
+    // TODO stream decrypt
+    const std::string input =
+        util::stream::read(*storage->open(smallest_file_path)->stream());
+    const std::string decrypt =
+        derive_key_and_decrypt(smallest_file_entry, start_key, input);
+    if (!validate_password(smallest_file_entry, decrypt)) {
+      return false;
+    }
+    storage = std::make_shared<DecryptedFilesystem>(std::move(storage),
+                                                    manifest, start_key);
+  } catch (...) {
     return false;
   }
 
-  auto &&smallest_file_path = manifest.smallest_file_path;
-  auto &&smallest_file_entry = manifest.smallest_file_entry();
-  if (!can_decrypt(smallest_file_entry)) {
-    throw UnsupportedCryptoAlgorithm();
-  }
-  const std::string start_key = odf::start_key(smallest_file_entry, password);
-  // TODO stream decrypt
-  const std::string input =
-      util::stream::read(*storage->open(smallest_file_path)->stream());
-  const std::string decrypt =
-      derive_key_and_decrypt(smallest_file_entry, start_key, input);
-  if (!validate_password(smallest_file_entry, decrypt)) {
-    return false;
-  }
-  storage = std::make_shared<DecryptedFilesystem>(std::move(storage), manifest,
-                                                  start_key);
   return true;
 }
 

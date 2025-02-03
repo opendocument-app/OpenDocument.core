@@ -67,11 +67,9 @@ std::string util::argon2id(std::size_t key_size, const std::string &start_key,
                            const std::string &salt, std::size_t iteration_count,
                            std::size_t memory, std::size_t lanes) {
   std::string result(key_size, '\0');
-
   argon2id_hash_raw(iteration_count, memory, lanes, start_key.data(),
-                    start_key.size(), salt.data(), salt.size(),
-                    reinterpret_cast<byte *>(result.data()), result.size());
-
+                    start_key.size(), salt.data(), salt.size(), result.data(),
+                    result.size());
   return result;
 }
 
@@ -101,14 +99,32 @@ std::string util::decrypt_aes_cbc(const std::string &key, const std::string &iv,
 
 std::string util::decrypt_aes_gcm(const std::string &key, const std::string &iv,
                                   const std::string &input) {
+  if (std::strncmp(iv.data(), input.data(), iv.size()) != 0) {
+    throw std::runtime_error("IV mismatch");
+  }
+
   std::string result(input.size(), '\0');
+
+  std::size_t iv_size = iv.size();
+  std::size_t mac_size = 16;
+  std::size_t cipher_size = input.size() - iv_size - mac_size;
+  byte *message = reinterpret_cast<byte *>(result.data());
+  const byte *mac =
+      reinterpret_cast<const byte *>(input.data() + input.size() - mac_size);
+  const byte *iv_ = reinterpret_cast<const byte *>(input.data());
+  const byte *cipher = reinterpret_cast<const byte *>(input.data() + iv_size);
+
   CryptoPP::GCM<CryptoPP::AES>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
                           key.size(), reinterpret_cast<const byte *>(iv.data()),
                           iv.size());
-  decryption.ProcessData(reinterpret_cast<byte *>(result.data()),
-                         reinterpret_cast<const byte *>(input.data()),
-                         input.size());
+  bool check = decryption.DecryptAndVerify(message, mac, mac_size, iv_, iv_size,
+                                           nullptr, 0, cipher, cipher_size);
+
+  if (!check) {
+    throw std::runtime_error("GCM decryption failed");
+  }
+
   return result;
 }
 
@@ -144,7 +160,7 @@ namespace {
 /// discard non deflated content caused by padding
 class MyInflator final : public CryptoPP::Inflator {
 public:
-  MyInflator(BufferedTransformation *attachment = nullptr)
+  explicit MyInflator(BufferedTransformation *attachment = nullptr)
       : Inflator(attachment, false, -1) {}
 
   std::uint32_t GetPadding() const { return m_padding; }
