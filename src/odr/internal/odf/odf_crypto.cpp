@@ -7,20 +7,24 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
+#include <odr/internal/zip/zip_file.hpp>
 
+#include <iostream>
 #include <stdexcept>
-#include <utility>
 
-namespace odr::internal::odf {
+namespace odr::internal {
 
-bool can_decrypt(const Manifest::Entry &entry) noexcept {
-  return entry.checksum_type != ChecksumType::UNKNOWN &&
-         entry.algorithm != AlgorithmType::UNKNOWN &&
-         entry.key_derivation != KeyDerivationType::UNKNOWN &&
-         entry.start_key_generation != ChecksumType::UNKNOWN;
+bool odf::can_decrypt(const Manifest::Entry &entry) noexcept {
+  return (!entry.checksum.has_value() ||
+          (entry.checksum->type != ChecksumType::UNKNOWN)) &&
+         (entry.algorithm.type != AlgorithmType::UNKNOWN) &&
+         (entry.key_derivation.type != KeyDerivationType::UNKNOWN) &&
+         (entry.start_key_generation.type != ChecksumType::UNKNOWN);
 }
 
-std::string hash(const std::string &input, const ChecksumType checksum_type) {
+std::string odf::hash(const std::string &input,
+                      const ChecksumType checksum_type) {
   switch (checksum_type) {
   case ChecksumType::SHA256:
     return crypto::util::sha256(input);
@@ -35,53 +39,80 @@ std::string hash(const std::string &input, const ChecksumType checksum_type) {
   }
 }
 
-std::string decrypt(const std::string &input, const std::string &derived_key,
-                    const std::string &initialisation_vector,
-                    const AlgorithmType algorithm) {
+std::string odf::decrypt(const std::string &input,
+                         const std::string &derived_key,
+                         const std::string &initialisation_vector,
+                         const AlgorithmType algorithm) {
   switch (algorithm) {
   case AlgorithmType::AES256_CBC:
-    return crypto::util::decrypt_AES(derived_key, initialisation_vector, input);
+    return crypto::util::decrypt_aes_cbc(derived_key, initialisation_vector,
+                                         input);
   case AlgorithmType::TRIPLE_DES_CBC:
-    return crypto::util::decrypt_TripleDES(derived_key, initialisation_vector,
-                                           input);
+    return crypto::util::decrypt_triple_des(derived_key, initialisation_vector,
+                                            input);
   case AlgorithmType::BLOWFISH_CFB:
-    return crypto::util::decrypt_Blowfish(derived_key, initialisation_vector,
+    return crypto::util::decrypt_blowfish(derived_key, initialisation_vector,
                                           input);
+  case AlgorithmType::AES256_GCM:
+    return crypto::util::decrypt_aes_gcm(derived_key, initialisation_vector,
+                                         input);
   default:
     throw std::invalid_argument("algorithm");
   }
 }
 
-std::string start_key(const Manifest::Entry &entry,
-                      const std::string &password) {
-  const std::string result = hash(password, entry.start_key_generation);
-  if (result.size() < entry.start_key_size) {
+std::string odf::start_key(const Manifest::Entry &entry,
+                           const std::string &password) {
+  const std::string result = hash(password, entry.start_key_generation.type);
+  if (result.size() < entry.start_key_generation.size) {
     throw std::invalid_argument("hash too small");
   }
-  return result.substr(0, entry.start_key_size);
+  return result.substr(0, entry.start_key_generation.size);
 }
 
-std::string derive_key_and_decrypt(const Manifest::Entry &entry,
-                                   const std::string &start_key,
-                                   const std::string &input) {
-  const std::string derivedKey = crypto::util::pbkdf2(
-      entry.key_size, start_key, entry.key_salt, entry.key_iteration_count);
-  return decrypt(input, derivedKey, entry.initialisation_vector,
-                 entry.algorithm);
+std::string odf::derive_key(const Manifest::Entry &entry,
+                            const std::string &start_key) {
+  switch (entry.key_derivation.type) {
+  case KeyDerivationType::PBKDF2:
+    return crypto::util::pbkdf2(entry.key_derivation.size, start_key,
+                                entry.key_derivation.salt,
+                                entry.key_derivation.iteration_count);
+  case KeyDerivationType::ARGON2ID:
+    return crypto::util::argon2id(
+        entry.key_derivation.size, start_key, entry.key_derivation.salt,
+        entry.key_derivation.iteration_count,
+        entry.key_derivation.argon2_memory, entry.key_derivation.argon2_lanes);
+  default:
+    throw std::invalid_argument("key derivation type");
+  }
 }
 
-bool validate_password(const Manifest::Entry &entry,
-                       std::string decrypted) noexcept {
+std::string odf::derive_key_and_decrypt(const Manifest::Entry &entry,
+                                        const std::string &start_key,
+                                        const std::string &input) {
+  std::string derived_key = derive_key(entry, start_key);
+  return decrypt(input, derived_key, entry.algorithm.initialisation_vector,
+                 entry.algorithm.type);
+}
+
+bool odf::validate_password(const Manifest::Entry &entry,
+                            std::string decrypted) noexcept {
+  if (!entry.checksum.has_value()) {
+    return false;
+  }
+
   try {
     const std::size_t padding = crypto::util::padding(decrypted);
     decrypted = decrypted.substr(0, decrypted.size() - padding);
-    const std::string checksum = hash(decrypted, entry.checksum_type);
-    return checksum == entry.checksum;
+    const std::string checksum = hash(decrypted, entry.checksum->type);
+    return checksum == entry.checksum->value;
   } catch (...) {
+    // TODO why catch all?
     return false;
   }
 }
 
+namespace odf {
 namespace {
 class DecryptedFilesystem final : public abstract::ReadableFilesystem {
 public:
@@ -130,29 +161,55 @@ private:
   const std::string m_start_key;
 };
 } // namespace
+} // namespace odf
 
-bool decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
-             const Manifest &manifest, const std::string &password) {
+bool odf::decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
+                  const Manifest &manifest, const std::string &password) {
   if (!manifest.encrypted) {
     return true;
   }
-  auto &&smallest_file_path = manifest.smallest_file_path;
-  auto &&smallest_file_entry = manifest.smallest_file_entry();
-  if (!can_decrypt(smallest_file_entry)) {
-    throw UnsupportedCryptoAlgorithm();
+
+  if (auto it = manifest.entries.find(common::Path("encrypted-package"));
+      it != std::end(manifest.entries)) {
+    try {
+      const std::string start_key = odf::start_key(it->second, password);
+      const std::string input =
+          util::stream::read(*storage->open(it->first)->stream());
+      std::string decrypt = crypto::util::inflate(
+          derive_key_and_decrypt(it->second, start_key, input));
+
+      auto memory_file =
+          std::make_shared<common::MemoryFile>(std::move(decrypt));
+      storage = zip::ZipFile(memory_file).archive()->filesystem();
+    } catch (...) {
+      return false;
+    }
+
+    return true;
   }
-  const std::string start_key = odf::start_key(smallest_file_entry, password);
-  // TODO stream decrypt
-  const std::string input =
-      util::stream::read(*storage->open(smallest_file_path)->stream());
-  const std::string decrypt =
-      derive_key_and_decrypt(smallest_file_entry, start_key, input);
-  if (!validate_password(smallest_file_entry, decrypt)) {
+
+  try {
+    const auto &smallest_file_path = manifest.smallest_file_path;
+    const auto &smallest_file_entry = manifest.smallest_file_entry();
+    if (!can_decrypt(smallest_file_entry)) {
+      throw UnsupportedCryptoAlgorithm();
+    }
+    const std::string start_key = odf::start_key(smallest_file_entry, password);
+    // TODO stream decrypt
+    const std::string input =
+        util::stream::read(*storage->open(smallest_file_path)->stream());
+    const std::string decrypt =
+        derive_key_and_decrypt(smallest_file_entry, start_key, input);
+    if (!validate_password(smallest_file_entry, decrypt)) {
+      return false;
+    }
+    storage = std::make_shared<DecryptedFilesystem>(std::move(storage),
+                                                    manifest, start_key);
+  } catch (...) {
     return false;
   }
-  storage = std::make_shared<DecryptedFilesystem>(std::move(storage), manifest,
-                                                  start_key);
+
   return true;
 }
 
-} // namespace odr::internal::odf
+} // namespace odr::internal

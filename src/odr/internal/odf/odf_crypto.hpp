@@ -23,6 +23,8 @@ std::string decrypt(const std::string &input, const std::string &derived_key,
 
 std::string start_key(const Manifest::Entry &, const std::string &password);
 
+std::string derive_key(const Manifest::Entry &, const std::string &start_key);
+
 std::string derive_key_and_decrypt(const Manifest::Entry &,
                                    const std::string &start_key,
                                    const std::string &input);

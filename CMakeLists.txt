@@ -39,6 +39,7 @@ find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
 find_package(httplib REQUIRED)
+find_package(argon2 REQUIRED)
 
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
 
@@ -197,6 +198,7 @@ target_link_libraries(odr
         uchardet::uchardet
         utf8::cpp
         httplib::httplib
+        argon2::argon2
 )
 
 if (WITH_PDF2HTMLEX)

@@ -9,8 +9,6 @@
 #include <memory>
 #include <vector>
 
-#include <miniz/miniz.h>
-
 namespace odr::internal::abstract {
 class File;
 }

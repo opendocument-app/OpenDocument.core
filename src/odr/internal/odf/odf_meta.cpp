@@ -63,7 +63,8 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
                          const bool decrypted) {
   FileMeta result;
 
-  if (!filesystem.is_file(common::Path("content.xml"))) {
+  if (!filesystem.is_file(common::Path("content.xml")) && manifest == nullptr &&
+      !filesystem.is_file(common::Path("mimetype"))) {
     throw NoOpenDocumentFile();
   }
 

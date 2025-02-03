@@ -28,8 +28,11 @@ bool lookup_algorithm_types(const std::string &algorithm,
       {
           {"http://www.w3.org/2001/04/xmlenc#aes256-cbc",
            AlgorithmType::AES256_CBC},
-          {"", AlgorithmType::TRIPLE_DES_CBC},
+          {"http://www.w3.org/2001/04/xmlenc#tripledes-cbc",
+           AlgorithmType::TRIPLE_DES_CBC},
           {"Blowfish CFB", AlgorithmType::BLOWFISH_CFB},
+          {"http://www.w3.org/2009/xmlenc11#aes256-gcm",
+           AlgorithmType::AES256_GCM},
       };
   return util::map::lookup_default(ALGORITHM_TYPES, algorithm, algorithm_type,
                                    AlgorithmType::UNKNOWN);
@@ -40,6 +43,9 @@ bool lookup_key_derivation_types(const std::string &key_derivation,
   static const std::unordered_map<std::string, KeyDerivationType>
       KEY_DERIVATION_TYPES = {
           {"PBKDF2", KeyDerivationType::PBKDF2},
+          {"urn:org:documentfoundation:names:experimental:office:manifest:"
+           "argon2id",
+           KeyDerivationType::ARGON2ID},
       };
   return util::map::lookup_default(KEY_DERIVATION_TYPES, key_derivation,
                                    key_derivation_type,
@@ -51,6 +57,7 @@ bool lookup_start_key_types(const std::string &checksum,
   static const std::unordered_map<std::string, ChecksumType> STARTKEY_TYPES = {
       {"SHA1", ChecksumType::SHA1},
       {"http://www.w3.org/2000/09/xmldsig#sha256", ChecksumType::SHA256},
+      {"http://www.w3.org/2001/04/xmlenc#sha256", ChecksumType::SHA256},
   };
   return util::map::lookup_default(STARTKEY_TYPES, checksum, checksumType,
                                    ChecksumType::UNKNOWN);
@@ -78,31 +85,47 @@ Manifest parse_manifest(const pugi::xml_document &manifest) {
     Manifest::Entry entry;
     entry.size = e.attribute("manifest:size").as_uint();
 
-    { // checksum
+    // checksum
+    if (crypto.attribute("manifest:checksum-type") &&
+        crypto.attribute("manifest:checksum")) {
+      entry.checksum = Manifest::Entry::Checksum();
       const std::string checksum_type =
           crypto.attribute("manifest:checksum-type").as_string();
-      lookup_checksum_type(checksum_type, entry.checksum_type);
-      entry.checksum = crypto.attribute("manifest:checksum").as_string();
+      lookup_checksum_type(checksum_type, entry.checksum->type);
+      entry.checksum->value = crypto::util::base64_decode(
+          crypto.attribute("manifest:checksum").as_string());
     }
 
     { // encryption algorithm
       const pugi::xml_node algorithm = crypto.child("manifest:algorithm");
       const std::string algorithm_name =
           algorithm.attribute("manifest:algorithm-name").as_string();
-      lookup_algorithm_types(algorithm_name, entry.algorithm);
-      entry.initialisation_vector =
-          algorithm.attribute("manifest:initialisation-vector").as_string();
+      lookup_algorithm_types(algorithm_name, entry.algorithm.type);
+      entry.algorithm.initialisation_vector = crypto::util::base64_decode(
+          algorithm.attribute("manifest:initialisation-vector").as_string());
     }
 
     { // key derivation
       const pugi::xml_node key = crypto.child("manifest:key-derivation");
       const std::string key_derivation_name =
           key.attribute("manifest:key-derivation-name").as_string();
-      lookup_key_derivation_types(key_derivation_name, entry.key_derivation);
-      entry.key_size = key.attribute("manifest:key-size").as_uint(16);
-      entry.key_iteration_count =
+      lookup_key_derivation_types(key_derivation_name,
+                                  entry.key_derivation.type);
+      entry.key_derivation.size =
+          key.attribute("manifest:key-size").as_uint(16);
+      entry.key_derivation.iteration_count =
           key.attribute("manifest:iteration-count").as_uint();
-      entry.key_salt = key.attribute("manifest:salt").as_string();
+      entry.key_derivation.salt = crypto::util::base64_decode(
+          key.attribute("manifest:salt").as_string());
+
+      if (entry.key_derivation.type == KeyDerivationType::ARGON2ID) {
+        entry.key_derivation.iteration_count =
+            key.attribute("loext:argon2-iterations").as_uint();
+        entry.key_derivation.argon2_memory =
+            key.attribute("loext:argon2-memory").as_uint();
+        entry.key_derivation.argon2_lanes =
+            key.attribute("loext:argon2-lanes").as_uint();
+      }
     }
 
     { // start key generation
@@ -112,18 +135,14 @@ Manifest parse_manifest(const pugi::xml_document &manifest) {
         const std::string start_key_generation_name =
             start.attribute("manifest:start-key-generation-name").as_string();
         lookup_start_key_types(start_key_generation_name,
-                               entry.start_key_generation);
-        entry.start_key_size = start.attribute("manifest:key-size").as_uint();
+                               entry.start_key_generation.type);
+        entry.start_key_generation.size =
+            start.attribute("manifest:key-size").as_uint();
       } else {
-        entry.start_key_generation = ChecksumType::SHA1;
-        entry.start_key_size = 20;
+        entry.start_key_generation.type = ChecksumType::SHA1;
+        entry.start_key_generation.size = 20;
       }
     }
-
-    entry.checksum = crypto::util::base64_decode(entry.checksum);
-    entry.initialisation_vector =
-        crypto::util::base64_decode(entry.initialisation_vector);
-    entry.key_salt = crypto::util::base64_decode(entry.key_salt);
 
     if (!smallest_file_size || (entry.size < *smallest_file_size)) {
       smallest_file_size = entry.size;
