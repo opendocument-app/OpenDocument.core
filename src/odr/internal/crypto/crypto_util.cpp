@@ -99,6 +99,8 @@ std::string util::decrypt_aes_cbc(const std::string &key, const std::string &iv,
 
 std::string util::decrypt_aes_gcm(const std::string &key, const std::string &iv,
                                   const std::string &input) {
+  // follows https://www.w3.org/TR/xmlenc-core1/#sec-AES-GCM
+
   if (std::strncmp(iv.data(), input.data(), iv.size()) != 0) {
     throw std::runtime_error("IV mismatch");
   }
