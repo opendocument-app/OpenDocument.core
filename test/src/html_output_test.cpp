@@ -1,5 +1,5 @@
 #include <odr/html.hpp>
-#include <odr/open_document_reader.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/util/odr_meta_util.hpp>
@@ -65,8 +65,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   DecodePreference decode_preference;
   decode_preference.as_file_type = test_file.type;
   decode_preference.with_engine = engine;
-  DecodedFile file =
-      OpenDocumentReader::open(test_file.absolute_path, decode_preference);
+  DecodedFile file = odr::open(test_file.absolute_path, decode_preference);
 
   FileMeta file_meta = file.file_meta();
 
@@ -126,7 +125,7 @@ TEST_P(HtmlOutputTests, html_meta) {
                                         .parent()
                                         .join(Path("resources"))
                                         .string();
-  OpenDocumentReader::copy_resources(resource_path);
+  odr::copy_resources(resource_path);
 
   HtmlConfig config;
   config.embed_images = true;
@@ -138,7 +137,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   config.format_html = true;
   config.html_indent = 2;
 
-  Html html = OpenDocumentReader::html(file, output_path, config);
+  Html html = odr::html::translate(file, output_path, config);
 
   for (const HtmlPage &html_page : html.pages()) {
     EXPECT_TRUE(fs::is_regular_file(html_page.path));
@@ -149,9 +148,8 @@ TEST_P(HtmlOutputTests, html_meta) {
 namespace {
 
 std::string engine_suffix(const DecoderEngine engine) {
-  return engine == DecoderEngine::odr
-             ? ""
-             : "-" + OpenDocumentReader::engine_to_string(engine);
+  return engine == DecoderEngine::odr ? ""
+                                      : "-" + odr::engine_to_string(engine);
 }
 
 std::string test_params_to_name(const TestParams &params) {
