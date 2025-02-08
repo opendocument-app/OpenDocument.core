@@ -1,4 +1,4 @@
-#include <odr/open_document_reader.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
@@ -12,18 +12,13 @@
 
 #include <fstream>
 
-namespace odr {
-
-std::string OpenDocumentReader::version() noexcept {
+std::string odr::version() noexcept {
   return internal::project_info::version();
 }
 
-std::string OpenDocumentReader::commit() noexcept {
-  return internal::git_info::commit();
-}
+std::string odr::commit() noexcept { return internal::git_info::commit(); }
 
-FileType
-OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
+odr::FileType odr::type_by_extension(const std::string &extension) noexcept {
   if (extension == "zip") {
     return FileType::zip;
   } else if (extension == "cfb") {
@@ -76,8 +71,7 @@ OpenDocumentReader::type_by_extension(const std::string &extension) noexcept {
   return FileType::unknown;
 }
 
-FileCategory
-OpenDocumentReader::category_by_type(const FileType type) noexcept {
+odr::FileCategory odr::category_by_type(const FileType type) noexcept {
   switch (type) {
   case FileType::zip:
   case FileType::compound_file_binary_format:
@@ -111,7 +105,7 @@ OpenDocumentReader::category_by_type(const FileType type) noexcept {
   }
 }
 
-std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
+std::string odr::type_to_string(const FileType type) noexcept {
   switch (type) {
   case FileType::zip:
     return "zip";
@@ -164,7 +158,7 @@ std::string OpenDocumentReader::type_to_string(const FileType type) noexcept {
   }
 }
 
-std::string OpenDocumentReader::engine_to_string(const DecoderEngine engine) {
+std::string odr::engine_to_string(const DecoderEngine engine) {
   if (engine == DecoderEngine::odr) {
     return "odr";
   } else if (engine == DecoderEngine::poppler) {
@@ -175,7 +169,7 @@ std::string OpenDocumentReader::engine_to_string(const DecoderEngine engine) {
   throw UnknownDecoderEngine();
 }
 
-DecoderEngine OpenDocumentReader::engine_by_name(const std::string &name) {
+odr::DecoderEngine odr::engine_by_name(const std::string &name) {
   if (name == "odr") {
     return DecoderEngine::odr;
   } else if (name == "poppler") {
@@ -186,106 +180,29 @@ DecoderEngine OpenDocumentReader::engine_by_name(const std::string &name) {
   throw UnknownDecoderEngine();
 }
 
-std::vector<FileType> OpenDocumentReader::types(const std::string &path) {
+std::vector<odr::FileType> odr::types(const std::string &path) {
   return DecodedFile::types(path);
 }
 
-std::vector<DecoderEngine> OpenDocumentReader::engines(const std::string &path,
-                                                       const FileType as) {
+std::vector<odr::DecoderEngine> odr::engines(const std::string &path,
+                                             const FileType as) {
   return DecodedFile::engines(path, as);
 }
 
-DecodedFile OpenDocumentReader::open(const std::string &path) {
+odr::DecodedFile odr::open(const std::string &path) {
   return DecodedFile(path);
 }
 
-DecodedFile OpenDocumentReader::open(const std::string &path,
-                                     const FileType as) {
+odr::DecodedFile odr::open(const std::string &path, const FileType as) {
   return DecodedFile(path, as);
 }
 
-DecodedFile OpenDocumentReader::open(const std::string &path,
-                                     const DecodePreference &preference) {
+odr::DecodedFile odr::open(const std::string &path,
+                           const DecodePreference &preference) {
   return DecodedFile(path, preference);
 }
 
-Html OpenDocumentReader::html(const std::string &path,
-                              const PasswordCallback &password_callback,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
-  auto decoded_file = DecodedFile(path);
-
-  if (decoded_file.is_document_file()) {
-    DocumentFile document_file = decoded_file.document_file();
-    if (document_file.password_encrypted()) {
-      if (!document_file.decrypt(password_callback())) {
-        throw WrongPassword();
-      }
-    }
-  }
-
-  return html(decoded_file, output_path, config);
-}
-
-Html OpenDocumentReader::html(const File &file,
-                              const PasswordCallback &password_callback,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
-  auto decoded_file = DecodedFile(file);
-
-  if (decoded_file.is_document_file()) {
-    DocumentFile document_file = decoded_file.document_file();
-    if (document_file.password_encrypted()) {
-      if (!document_file.decrypt(password_callback())) {
-        throw WrongPassword();
-      }
-    }
-  }
-
-  return html(decoded_file, output_path, config);
-}
-
-Html OpenDocumentReader::html(const DecodedFile &file,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
-  return html::translate(file, output_path, config);
-}
-
-Html OpenDocumentReader::html(const TextFile &text_file,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
-  return html::translate(text_file, output_path, config);
-}
-
-Html OpenDocumentReader::html(const ImageFile &image_file,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
-  return html::translate(image_file, output_path, config);
-}
-
-Html OpenDocumentReader::html(const Archive &archive,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
-  return html::translate(archive, output_path, config);
-}
-
-Html OpenDocumentReader::html(const Document &document,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
-  return html::translate(document, output_path, config);
-}
-
-Html OpenDocumentReader::html(const PdfFile &pdf_file,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
-  return html::translate(pdf_file, output_path, config);
-}
-
-void OpenDocumentReader::edit(const Document &document, const char *diff) {
-  html::edit(document, diff);
-}
-
-void OpenDocumentReader::copy_resources(const std::string &to_path) {
+void odr::copy_resources(const std::string &to_path) {
   for (auto resource : internal::Resources::resources()) {
     auto resource_output_path = internal::common::Path(to_path).join(
         internal::common::Path(resource.path));
@@ -294,7 +211,3 @@ void OpenDocumentReader::copy_resources(const std::string &to_path) {
     out.write(resource.data, static_cast<std::streamsize>(resource.size));
   }
 }
-
-OpenDocumentReader::OpenDocumentReader() = default;
-
-} // namespace odr
