@@ -250,6 +250,8 @@ if (ODR_CLANG_TIDY)
     add_subdirectory("static_analysis/clang-tidy")
 endif ()
 
+include(GNUInstallDirs)
+
 install(
         DIRECTORY src/ ${CMAKE_CURRENT_BINARY_DIR}/src/
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
