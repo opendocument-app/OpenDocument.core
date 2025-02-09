@@ -253,7 +253,7 @@ endif ()
 include(GNUInstallDirs)
 
 install(
-        DIRECTORY src/ ${CMAKE_CURRENT_BINARY_DIR}/src/
+        DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/ ${CMAKE_CURRENT_BINARY_DIR}/src/
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
         FILES_MATCHING PATTERN "*.hpp"
 )
@@ -265,6 +265,6 @@ install(
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
 install(
-        DIRECTORY resources/dist/
+        DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/dist/
         DESTINATION "${CMAKE_INSTALL_DATADIR}"
 )
