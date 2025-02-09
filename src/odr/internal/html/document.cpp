@@ -14,7 +14,6 @@
 #include <odr/internal/html/document_style.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
-#include <odr/internal/resource.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -38,7 +37,8 @@ void front(const Document &document, const WritingState &state) {
         "width=device-width,initial-scale=1.0,user-scalable=yes");
   }
 
-  auto odr_css_file = Resources::open(common::Path("odr.css"));
+  auto odr_css_file = File(
+      common::Path(state.config().resource_path).join(common::Path("odr.css")));
   odr::HtmlResource odr_css_resource =
       html::HtmlResource::create(HtmlResourceType::css, "text/css", "odr.css",
                                  "odr.css", odr_css_file, true, true, false);
@@ -55,7 +55,8 @@ void front(const Document &document, const WritingState &state) {
 
   if (document.document_type() == DocumentType::spreadsheet) {
     auto odr_spreadsheet_css_file =
-        Resources::open(common::Path("odr_spreadsheet.css"));
+        File(common::Path(state.config().resource_path)
+                 .join(common::Path("odr_spreadsheet.css")));
     odr::HtmlResource odr_spreadsheet_css_resource = html::HtmlResource::create(
         HtmlResourceType::css, "text/css", "odr_spreadsheet.css",
         "odr_spreadsheet.css", odr_spreadsheet_css_file, true, true, false);
@@ -92,7 +93,8 @@ void front(const Document &document, const WritingState &state) {
 void back(const Document &document, const WritingState &state) {
   (void)document;
 
-  auto odr_js_file = Resources::open(common::Path("odr.js"));
+  auto odr_js_file = File(
+      common::Path(state.config().resource_path).join(common::Path("odr.js")));
   odr::HtmlResource odr_js_resource = html::HtmlResource::create(
       HtmlResourceType::js, "text/javascript", "odr.js", "odr.js", odr_js_file,
       true, true, false);

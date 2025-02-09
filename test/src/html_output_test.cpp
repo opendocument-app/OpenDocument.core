@@ -125,12 +125,16 @@ TEST_P(HtmlOutputTests, html_meta) {
                                         .parent()
                                         .join(Path("resources"))
                                         .string();
-  odr::copy_resources(resource_path);
+  std::filesystem::copy(TestData::resource_directory(), resource_path,
+                        fs::copy_options::recursive |
+                            fs::copy_options::overwrite_existing);
+  std::cout << TestData::resource_directory() << " to " << resource_path
+            << std::endl;
 
   HtmlConfig config;
   config.embed_images = true;
   config.embed_shipped_resources = false;
-  config.external_resource_path = resource_path;
+  config.resource_path = resource_path;
   config.relative_resource_paths = true;
   config.editable = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);

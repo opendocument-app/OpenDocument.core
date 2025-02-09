@@ -4,13 +4,9 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/project_info.hpp>
-#include <odr/internal/resource.hpp>
-
-#include <fstream>
 
 std::string odr::version() noexcept {
   return internal::project_info::version();
@@ -200,14 +196,4 @@ odr::DecodedFile odr::open(const std::string &path, const FileType as) {
 odr::DecodedFile odr::open(const std::string &path,
                            const DecodePreference &preference) {
   return DecodedFile(path, preference);
-}
-
-void odr::copy_resources(const std::string &to_path) {
-  for (auto resource : internal::Resources::resources()) {
-    auto resource_output_path = internal::common::Path(to_path).join(
-        internal::common::Path(resource.path));
-    std::filesystem::create_directories(resource_output_path.parent());
-    std::ofstream out(resource_output_path.string(), std::ios::binary);
-    out.write(resource.data, static_cast<std::streamsize>(resource.size));
-  }
 }

@@ -43,7 +43,7 @@ struct HtmlConfig {
   bool embed_shipped_resources{true};
 
   // resources
-  std::string external_resource_path;
+  std::string resource_path;
   bool relative_resource_paths{true};
 
   // create editable output
