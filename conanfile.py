@@ -27,7 +27,7 @@ class OpenDocumentCoreConan(ConanFile):
         "with_wvWare": True,
     }
 
-    exports_sources = ["cli/*", "cmake/*", "src/*", "CMakeLists.txt"]
+    exports_sources = ["cli/*", "cmake/*", "resources/dist/*", "src/*", "CMakeLists.txt"]
 
     def config_options(self):
         if self.settings.os == "Windows":
