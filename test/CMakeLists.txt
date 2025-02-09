@@ -2,6 +2,7 @@ find_package(GTest REQUIRED)
 
 include(GoogleTest REQUIRED)
 
+set(ODR_RESOURCE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../resources/dist")
 set(ODR_TEST_DATA_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/data")
 configure_file("src/test_constants.cpp.in" "src/test_constants.cpp")
 

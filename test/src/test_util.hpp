@@ -20,6 +20,7 @@ struct TestFile {
 
 class TestData {
 public:
+  static std::string resource_directory();
   static std::string data_directory();
   static std::string data_input_directory();
 

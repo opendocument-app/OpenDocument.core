@@ -77,8 +77,6 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/magic.cpp"
         "src/odr/internal/open_strategy.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/project_info.cpp"
-        "src/odr/internal/resource.cpp"
-        "src/odr/internal/resource_data.cpp"
 
         "src/odr/internal/cfb/cfb_archive.cpp"
         "src/odr/internal/cfb/cfb_file.cpp"
@@ -252,15 +250,21 @@ if (ODR_CLANG_TIDY)
     add_subdirectory("static_analysis/clang-tidy")
 endif ()
 
+include(GNUInstallDirs)
+
 install(
         DIRECTORY src/ ${CMAKE_CURRENT_BINARY_DIR}/src/
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
         FILES_MATCHING PATTERN "*.hpp"
 )
 install(
         TARGETS odr meta translate back_translate
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+)
+install(
+        DIRECTORY resources/dist/
+        DESTINATION "${CMAKE_INSTALL_DATADIR}"
 )

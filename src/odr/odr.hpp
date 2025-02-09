@@ -78,8 +78,4 @@ using PasswordCallback = std::function<std::string()>;
 [[nodiscard]] DecodedFile open(const std::string &path,
                                const DecodePreference &preference);
 
-/// @brief Copy the resources to the specified path.
-/// @param to_path The path to copy the resources to.
-void copy_resources(const std::string &to_path);
-
 } // namespace odr
