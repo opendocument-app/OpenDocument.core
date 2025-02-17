@@ -260,7 +260,7 @@ endif ()
 include(GNUInstallDirs)
 
 install(
-        DIRECTORY src/ ${CMAKE_CURRENT_BINARY_DIR}/src/
+        DIRECTORY src/ "${CMAKE_CURRENT_BINARY_DIR}/src/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
         FILES_MATCHING PATTERN "*.hpp"
 )
@@ -272,6 +272,6 @@ install(
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
 install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/_deps/odr.js-src/
+        DIRECTORY "${odr.js_SOURCE_DIR}/"
         DESTINATION "${CMAKE_INSTALL_DATADIR}"
 )
