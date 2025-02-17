@@ -238,6 +238,13 @@ if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
     add_dependencies(odr check_git)
 endif ()
 
+include(FetchContent)
+FetchContent_Declare(odr.js
+    URL "https://github.com/opendocument-app/OpenDocument.js/releases/download/v1.0.0/build.zip"
+    URL_HASH SHA256=a93a19caff1d2cf38d23c6dd172013c7d09188514304bc15664e3163cbcfda16
+)
+FetchContent_MakeAvailable(odr.js)
+
 if (ODR_CLI)
     add_subdirectory("cli")
 endif ()
@@ -265,6 +272,6 @@ install(
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
 install(
-        DIRECTORY resources/dist/
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/_deps/odr.js-src/
         DESTINATION "${CMAKE_INSTALL_DATADIR}"
 )
