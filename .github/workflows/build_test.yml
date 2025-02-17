@@ -101,6 +101,7 @@ jobs:
             install
             build/test/odr_test
             build/test/Release/odr_test.exe
+            build/_deps/odr.js-src
 
       - name: Artifact .conan2/p dir
         uses: actions/upload-artifact@v4
