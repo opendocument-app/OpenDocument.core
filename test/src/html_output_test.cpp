@@ -128,8 +128,6 @@ TEST_P(HtmlOutputTests, html_meta) {
   std::filesystem::copy(TestData::resource_directory(), resource_path,
                         fs::copy_options::recursive |
                             fs::copy_options::overwrite_existing);
-  std::cout << TestData::resource_directory() << " to " << resource_path
-            << std::endl;
 
   HtmlConfig config;
   config.embed_images = true;
