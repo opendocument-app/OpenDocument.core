@@ -175,8 +175,6 @@ public:
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
         m_html_renderer_param{std::move(html_renderer_param)} {}
 
-  [[nodiscard]] HtmlResources resources() const final { return m_resources; }
-
   void warmup() const final {
     if (m_warm) {
       return;
@@ -194,19 +192,23 @@ public:
     m_warm = true;
   }
 
-  void write_document(HtmlWriter &out) const {
+  HtmlResources write_document(HtmlWriter &out) const {
+    warmup();
+
     std::ifstream in(m_output_path + "/document.html");
     util::stream::pipe(in, out.out());
+
+    return m_resources;
   }
 
   void write(const std::string &path, std::ostream &out) const final {
+    warmup();
+
     if (path == "document.html") {
       HtmlWriter writer(out, config());
       write_document(writer);
       return;
     }
-
-    warmup();
 
     for (const auto &[resource, location] : m_resources) {
       if (location.has_value() && location.value() == path) {
@@ -218,12 +220,13 @@ public:
     throw std::runtime_error("Unknown path: " + path);
   }
 
-  void write_html(const std::string &path, html::HtmlWriter &out) const final {
+  HtmlResources write_html(const std::string &path,
+                           html::HtmlWriter &out) const final {
     if (path == "document.html") {
-      write_document(out);
-    } else {
-      throw std::runtime_error("Unknown path: " + path);
+      return write_document(out);
     }
+
+    throw std::runtime_error("Unknown path: " + path);
   }
 
 private:

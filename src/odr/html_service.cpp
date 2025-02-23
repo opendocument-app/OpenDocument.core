@@ -20,10 +20,14 @@ const HtmlResourceLocator &HtmlService::resource_locator() const {
 
 void HtmlService::warmup() const { m_impl->warmup(); }
 
-HtmlResources HtmlService::resources() const { return m_impl->resources(); }
-
 void HtmlService::write(const std::string &path, std::ostream &out) const {
   m_impl->write(path, out);
+}
+
+HtmlResources HtmlService::write_html(const std::string &path,
+                                      std::ostream &out) const {
+  internal::html::HtmlWriter writer(out, config());
+  return m_impl->write_html(path, writer);
 }
 
 const std::shared_ptr<internal::abstract::HtmlService> &

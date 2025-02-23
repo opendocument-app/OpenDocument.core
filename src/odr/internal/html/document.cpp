@@ -189,11 +189,6 @@ public:
     m_warm = true;
   }
 
-  [[nodiscard]] HtmlResources resources() const final {
-    warmup();
-    return m_resources;
-  }
-
   void write(const std::string &path, std::ostream &out) const final {
     if (path == "document.html") {
       HtmlWriter writer(out, config());
@@ -213,15 +208,16 @@ public:
     throw std::runtime_error("Unknown path: " + path);
   }
 
-  void write_html(const std::string &path, html::HtmlWriter &out) const final {
+  HtmlResources write_html(const std::string &path,
+                           html::HtmlWriter &out) const final {
     if (path == "document.html") {
-      write_document(out);
-    } else {
-      throw std::runtime_error("Unknown path: " + path);
+      return write_document(out);
     }
+
+    throw std::runtime_error("Unknown path: " + path);
   }
 
-  void write_document(HtmlWriter &out) const {
+  HtmlResources write_document(HtmlWriter &out) const {
     m_resources.clear();
 
     WritingState state(out, config(), resource_locator(), m_resources);
@@ -231,6 +227,8 @@ public:
       fragment->write_fragment(out, state);
     }
     back(document(), state);
+
+    return m_resources;
   }
 
 protected:

@@ -43,9 +43,8 @@ public:
 
   void warmup() const;
 
-  [[nodiscard]] HtmlResources resources() const;
-
   void write(const std::string &path, std::ostream &out) const;
+  HtmlResources write_html(const std::string &path, std::ostream &out) const;
 
   [[nodiscard]] const std::shared_ptr<internal::abstract::HtmlService> &
   impl() const;
