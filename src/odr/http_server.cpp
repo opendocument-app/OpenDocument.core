@@ -17,57 +17,68 @@ namespace odr {
 
 class HttpServer::Impl {
 public:
-  explicit Impl(const HttpServer::Config &config) : m_config{config} {}
+  explicit Impl(const HttpServer::Config &config) : m_config{config} {
+    m_server.Get("/",
+                 [](const httplib::Request & /*req*/, httplib::Response &res) {
+                   res.set_content("Hello World!", "text/plain");
+                 });
 
-  [[nodiscard]] std::string host_file(File file) {
-    std::string id = get_id();
-    m_server.Get(
-        "/" + id,
-        [this, file = std::move(file)](const httplib::Request & /*req*/,
-                                       httplib::Response &res) -> void {
-          struct State {
-            State(std::unique_ptr<std::istream> stream_,
-                  std::size_t buffer_size)
-                : stream{std::move(stream_)}, buffer(buffer_size, 0) {}
+    m_server.Get("/file/:id", [this](const httplib::Request &req,
+                                     httplib::Response &res) {
+      std::string id = req.path_params.at("id");
 
-            std::unique_ptr<std::istream> stream;
-            std::vector<char> buffer;
-          };
+      std::unique_lock lock{m_mutex};
+      auto it = m_content.find(id);
+      if (it == m_content.end()) {
+        res.status = 404;
+        return;
+      }
+      lock.unlock();
+      const Content &content = it->second;
 
-          auto state =
-              std::make_shared<State>(file.stream(), m_config.buffer_size);
-          httplib::ContentProvider content_provider =
-              [state = std::move(state)](std::size_t offset, std::size_t length,
-                                         httplib::DataSink &sink) -> bool {
-            std::istream &stream = *state->stream;
-
-            stream.seekg(static_cast<std::streamsize>(offset), std::ios::beg);
-            stream.read(state->buffer.data(),
-                        static_cast<std::streamsize>(length));
-            sink.write(state->buffer.data(),
-                       static_cast<std::size_t>(stream.gcount()));
-
-            return !stream.eof();
-          };
-
-          res.set_content_provider(file.size(), "application/octet-stream",
-                                   content_provider);
-        });
-    return id;
+      if (std::holds_alternative<File>(content.file)) {
+        serve_file(res, std::get<File>(content.file));
+      } else {
+        serve_file(std::get<DecodedFile>(content.file), id, content.config);
+      }
+    });
   }
 
-  [[nodiscard]] std::string host_file(DecodedFile file) {
-    std::string id = get_id();
+  void serve_file(httplib::Response &res, const File &file) {
+    struct State {
+      State(std::unique_ptr<std::istream> stream_, std::size_t buffer_size)
+          : stream{std::move(stream_)}, buffer(buffer_size, 0) {}
 
-    // TODO
-    HtmlConfig config;
-    config.embed_images = false;
-    config.embed_shipped_resources = false;
-    std::string output_path = m_config.output_path + "/" + id;
+      std::unique_ptr<std::istream> stream;
+      std::vector<char> buffer;
+    };
+
+    auto state = std::make_shared<State>(file.stream(), m_config.buffer_size);
+    httplib::ContentProvider content_provider =
+        [state = std::move(state)](std::size_t offset, std::size_t length,
+                                   httplib::DataSink &sink) -> bool {
+      std::istream &stream = *state->stream;
+
+      stream.seekg(static_cast<std::streamsize>(offset), std::ios::beg);
+      stream.read(state->buffer.data(), static_cast<std::streamsize>(length));
+      sink.write(state->buffer.data(),
+                 static_cast<std::size_t>(stream.gcount()));
+
+      return !stream.eof();
+    };
+
+    res.set_content_provider(file.size(), "application/octet-stream",
+                             content_provider);
+  }
+
+  void serve_file(const httplib::Request &req, httplib::Response &res,
+                  DecodedFile file, const std::string &prefix,
+                  const HtmlConfig &config) {
+    std::string output_path = m_config.output_path + "/" + prefix;
 
     std::filesystem::create_directories(output_path);
 
-    HtmlDocumentService html_service;
+    HtmlService html_service;
 
     if (file.is_document_file()) {
       DocumentFile document_file = file.document_file();
@@ -137,18 +148,6 @@ public:
             res.set_content_provider(resource.mime_type(), content_provider);
           });
     }
-
-    return id;
-  }
-
-  [[nodiscard]] std::string host_filesystem(Filesystem filesystem) {
-    std::string id = get_id();
-    m_server.Get("/" + id,
-                 [filesystem = std::move(filesystem)](
-                     const httplib::Request & /*req*/, httplib::Response &res) {
-                   res.set_content("Hello World!", "text/plain");
-                 });
-    return id;
   }
 
   void listen(const std::string &host, std::uint32_t port) {
@@ -158,36 +157,30 @@ public:
   void stop() { m_server.stop(); }
 
 private:
-  [[nodiscard]] static std::string get_id() {
-    std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> dist(0, 9);
-
-    std::string id(10, '0');
-    for (char &c : id) {
-      c = static_cast<char>('0' + dist(rng));
-    }
-
-    return id;
-  }
-
   HttpServer::Config m_config;
 
   httplib::Server m_server;
+
+  struct Content {
+    std::string id;
+    HtmlConfig config;
+    std::variant<File, DecodedFile> file;
+  };
+
+  std::mutex m_mutex;
+  std::unordered_map<std::string, Content> m_content;
 };
 
 HttpServer::HttpServer(const Config &config)
     : m_impl{std::make_unique<Impl>(config)} {}
 
-std::string HttpServer::host_file(File file) {
-  return m_impl->host_file(std::move(file));
+void HttpServer::host_file(File file, const std::string &prefix) {
+  m_impl->host_file(std::move(file), prefix);
 }
 
-std::string HttpServer::host_file(DecodedFile file) {
-  return m_impl->host_file(std::move(file));
-}
-
-std::string HttpServer::host_filesystem(Filesystem filesystem) {
-  return m_impl->host_filesystem(std::move(filesystem));
+void HttpServer::host_file(DecodedFile file, const std::string &prefix,
+                           const HtmlConfig &config) {
+  m_impl->host_file(std::move(file), prefix, config);
 }
 
 void HttpServer::listen(const std::string &host, std::uint32_t port) {

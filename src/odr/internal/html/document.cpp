@@ -8,6 +8,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/html_service.hpp>
+#include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_element.hpp>
@@ -141,94 +142,114 @@ std::string get_output_path(const Document &document, std::uint32_t index,
   }
 }
 
-class HtmlFragmentBase : public HtmlFragmentService {
+class HtmlFragmentBase {
 public:
-  HtmlFragmentBase(std::string name, Document document, HtmlConfig config,
-                   HtmlResourceLocator resource_locator)
-      : HtmlFragmentService(std::move(config), std::move(resource_locator)),
-        m_name{std::move(name)}, m_document{std::move(document)} {}
+  HtmlFragmentBase(std::string name, Document document)
+      : m_name{std::move(name)}, m_document{std::move(document)} {}
 
-  const std::string &name() const { return m_name; }
+  [[nodiscard]] const std::string &name() const { return m_name; }
 
-  Document document() const { return m_document; }
+  virtual void write_fragment(HtmlWriter &out, WritingState &state) const = 0;
+
+  void write_document(HtmlWriter &out, WritingState &state) const {
+    front(m_document, state);
+    write_fragment(out, state);
+    back(m_document, state);
+  }
 
 protected:
   std::string m_name;
   Document m_document;
 };
 
-class HtmlDocumentServiceImpl final
-    : public internal::abstract::HtmlDocumentService {
+class HtmlServiceImpl : public HtmlService {
 public:
-  explicit HtmlDocumentServiceImpl(std::shared_ptr<HtmlFragmentBase> fragment)
-      : m_fragment{std::move(fragment)} {}
+  HtmlServiceImpl(Document document,
+                  std::vector<std::shared_ptr<HtmlFragmentBase>> fragments,
+                  HtmlConfig config, HtmlResourceLocator resource_locator)
+      : HtmlService(std::move(config), std::move(resource_locator)),
+        m_document{std::move(document)}, m_fragments{std::move(fragments)} {}
 
-  [[nodiscard]] const std::shared_ptr<HtmlFragmentBase> &fragment() const {
-    return m_fragment;
-  }
+  [[nodiscard]] Document document() const { return m_document; }
 
-  [[nodiscard]] const HtmlConfig &config() const final {
-    return m_fragment->config();
-  }
-  [[nodiscard]] const HtmlResourceLocator &resource_locator() const final {
-    return m_fragment->resource_locator();
-  }
-
-  HtmlResources write_document(HtmlWriter &out) const final {
-    HtmlResources resources;
-
-    WritingState state(out, config(), resource_locator(), resources);
-
-    front(m_fragment->document(), state);
-    m_fragment->write_fragment(out, resources);
-    back(m_fragment->document(), state);
-
-    return resources;
-  }
-
-private:
-  std::shared_ptr<HtmlFragmentBase> m_fragment;
-};
-
-class HtmlFragmentCollection : public HtmlFragmentBase {
-public:
-  HtmlFragmentCollection(
-      Document document,
-      std::vector<std::shared_ptr<HtmlFragmentBase>> fragments,
-      HtmlConfig config, HtmlResourceLocator resource_locator)
-      : HtmlFragmentBase("document", std::move(document), std::move(config),
-                         std::move(resource_locator)),
-        m_fragments{std::move(fragments)} {}
-
-  [[nodiscard]] const std::vector<std::shared_ptr<HtmlFragmentBase>> &
+  [[nodiscard]] std::vector<std::shared_ptr<HtmlFragmentBase>>
   fragments() const {
     return m_fragments;
   }
 
-  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
-    for (const auto &fragment : m_fragments) {
-      fragment->write_fragment(out, resources);
+  void warmup() const final {
+    if (m_warm) {
+      return;
+    }
+
+    common::NullStream null;
+    HtmlWriter out(null, config());
+    write_document(out);
+
+    m_warm = true;
+  }
+
+  [[nodiscard]] HtmlResources resources() const final {
+    warmup();
+    return m_resources;
+  }
+
+  void write(const std::string &path, std::ostream &out) const final {
+    if (path == "document.html") {
+      HtmlWriter writer(out, config());
+      write_document(writer);
+      return;
+    }
+
+    warmup();
+
+    for (const auto &[resource, location] : m_resources) {
+      if (location.has_value() && location.value() == path) {
+        util::stream::pipe(*resource.file().stream(), out);
+        return;
+      }
+    }
+
+    throw std::runtime_error("Unknown path: " + path);
+  }
+
+  void write_html(const std::string &path, html::HtmlWriter &out) const final {
+    if (path == "document.html") {
+      write_document(out);
+    } else {
+      throw std::runtime_error("Unknown path: " + path);
     }
   }
 
-private:
+  void write_document(HtmlWriter &out) const {
+    m_resources.clear();
+
+    WritingState state(out, config(), resource_locator(), m_resources);
+
+    front(document(), state);
+    for (const auto &fragment : m_fragments) {
+      fragment->write_fragment(out, state);
+    }
+    back(document(), state);
+  }
+
+protected:
+  Document m_document;
   std::vector<std::shared_ptr<HtmlFragmentBase>> m_fragments;
+  mutable bool m_warm = false;
+  mutable HtmlResources m_resources;
 };
 
 class TextHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit TextHtmlFragment(Document document, HtmlConfig config,
-                            HtmlResourceLocator resource_locator)
-      : HtmlFragmentBase("document", std::move(document), std::move(config),
-                         std::move(resource_locator)) {}
+  explicit TextHtmlFragment(Document document)
+      : HtmlFragmentBase("document", std::move(document)) {}
 
-  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
-    WritingState state(out, config(), resource_locator(), resources);
-
+  void write_fragment(HtmlWriter &out, WritingState &state) const final {
     auto root = m_document.root_element();
     auto element = root.text_root();
 
-    if (config().text_document_margin) {
+    if (state.config().text_document_margin) {
       auto page_layout = element.page_layout();
       page_layout.height = {};
 
@@ -253,15 +274,10 @@ public:
 
 class SlideHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit SlideHtmlFragment(Document document, Slide slide, HtmlConfig config,
-                             HtmlResourceLocator resource_locator)
-      : HtmlFragmentBase(slide.name(), std::move(document), std::move(config),
-                         std::move(resource_locator)),
-        m_slide{slide} {}
+  explicit SlideHtmlFragment(Document document, Slide slide)
+      : HtmlFragmentBase(slide.name(), std::move(document)), m_slide{slide} {}
 
-  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
-    WritingState state(out, config(), resource_locator(), resources);
-
+  void write_fragment(HtmlWriter &out, WritingState &state) const final {
     html::translate_slide(m_slide, state);
   }
 
@@ -271,15 +287,10 @@ private:
 
 class SheetHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit SheetHtmlFragment(Document document, Sheet sheet, HtmlConfig config,
-                             HtmlResourceLocator resource_locator)
-      : HtmlFragmentBase(sheet.name(), std::move(document), std::move(config),
-                         std::move(resource_locator)),
-        m_sheet{sheet} {}
+  explicit SheetHtmlFragment(Document document, Sheet sheet)
+      : HtmlFragmentBase(sheet.name(), std::move(document)), m_sheet{sheet} {}
 
-  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
-    WritingState state(out, config(), resource_locator(), resources);
-
+  void write_fragment(HtmlWriter &out, WritingState &state) const final {
     translate_sheet(m_sheet, state);
   }
 
@@ -289,15 +300,10 @@ private:
 
 class PageHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit PageHtmlFragment(Document document, Page page, HtmlConfig config,
-                            HtmlResourceLocator resource_locator)
-      : HtmlFragmentBase(page.name(), std::move(document), std::move(config),
-                         std::move(resource_locator)),
-        m_page{page} {}
+  explicit PageHtmlFragment(Document document, Page page)
+      : HtmlFragmentBase(page.name(), std::move(document)), m_page{page} {}
 
-  void write_fragment(HtmlWriter &out, HtmlResources &resources) const final {
-    WritingState state(out, config(), resource_locator(), resources);
-
+  void write_fragment(HtmlWriter &out, WritingState &state) const final {
     html::translate_page(m_page, state);
   }
 
@@ -311,58 +317,52 @@ private:
 
 namespace odr::internal {
 
-odr::HtmlDocumentService
-html::create_document_service(const Document &document,
-                              const std::string &output_path,
-                              const HtmlConfig &config) {
+odr::HtmlService html::create_document_service(const Document &document,
+                                               const std::string &output_path,
+                                               const HtmlConfig &config) {
   HtmlResourceLocator resource_locator =
       local_resource_locator(output_path, config);
 
   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments;
 
   if (document.document_type() == DocumentType::text) {
-    fragments.push_back(
-        std::make_unique<TextHtmlFragment>(document, config, resource_locator));
+    fragments.push_back(std::make_unique<TextHtmlFragment>(document));
   } else if (document.document_type() == DocumentType::presentation) {
     for (auto child : document.root_element().children()) {
-      fragments.push_back(std::make_unique<SlideHtmlFragment>(
-          document, child.slide(), config, resource_locator));
+      fragments.push_back(
+          std::make_unique<SlideHtmlFragment>(document, child.slide()));
     }
   } else if (document.document_type() == DocumentType::spreadsheet) {
     for (auto child : document.root_element().children()) {
-      fragments.push_back(std::make_unique<SheetHtmlFragment>(
-          document, child.sheet(), config, resource_locator));
+      fragments.push_back(
+          std::make_unique<SheetHtmlFragment>(document, child.sheet()));
     }
   } else if (document.document_type() == DocumentType::drawing) {
     for (auto child : document.root_element().children()) {
-      fragments.push_back(std::make_unique<PageHtmlFragment>(
-          document, child.page(), config, resource_locator));
+      fragments.push_back(
+          std::make_unique<PageHtmlFragment>(document, child.page()));
     }
   } else {
     throw UnknownDocumentType();
   }
 
-  return odr::HtmlDocumentService(std::make_unique<HtmlDocumentServiceImpl>(
-      std::make_unique<HtmlFragmentCollection>(document, fragments, config,
-                                               resource_locator)));
+  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
+      document, fragments, config, resource_locator));
 }
 
 Html html::translate_document(const odr::Document &document,
                               const std::string &output_path,
                               const odr::HtmlConfig &config) {
-  odr::HtmlDocumentService document_service =
+  odr::HtmlService document_service =
       create_document_service(document, output_path, config);
   auto document_service_impl =
-      std::dynamic_pointer_cast<HtmlDocumentServiceImpl>(
-          document_service.impl());
-  auto fragment_service_impl =
-      std::dynamic_pointer_cast<HtmlFragmentCollection>(
-          document_service_impl->fragment());
+      std::dynamic_pointer_cast<HtmlServiceImpl>(document_service.impl());
 
+  HtmlResources resources;
   std::vector<HtmlPage> pages;
 
   std::uint32_t i = 0;
-  for (const auto &fragment : fragment_service_impl->fragments()) {
+  for (const auto &fragment : document_service_impl->fragments()) {
     std::string filled_path = get_output_path(document, i, output_path, config);
     std::ofstream ostream(filled_path, std::ios::out);
     if (!ostream.is_open()) {
@@ -370,7 +370,9 @@ Html html::translate_document(const odr::Document &document,
     }
     html::HtmlWriter out(ostream, config.format_html, config.html_indent);
 
-    HtmlDocumentServiceImpl(fragment).write_document(out);
+    html::WritingState state(
+        out, config, document_service_impl->resource_locator(), resources);
+    fragment->write_document(out, state);
 
     pages.emplace_back(fragment->name(), filled_path);
 

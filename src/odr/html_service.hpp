@@ -8,8 +8,7 @@
 #include <vector>
 
 namespace odr::internal::abstract {
-class HtmlDocumentService;
-class HtmlFragmentService;
+class HtmlService;
 class HtmlResource;
 } // namespace odr::internal::abstract
 
@@ -34,39 +33,25 @@ using HtmlResourceLocator =
 using HtmlResources =
     std::vector<std::pair<HtmlResource, HtmlResourceLocation>>;
 
-class HtmlDocumentService final {
+class HtmlService final {
 public:
-  HtmlDocumentService();
-  explicit HtmlDocumentService(
-      std::shared_ptr<internal::abstract::HtmlDocumentService> impl);
+  HtmlService();
+  explicit HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl);
 
   [[nodiscard]] const HtmlConfig &config() const;
   [[nodiscard]] const HtmlResourceLocator &resource_locator() const;
 
-  HtmlResources write_document(std::ostream &os) const;
+  void warmup() const;
 
-  [[nodiscard]] const std::shared_ptr<internal::abstract::HtmlDocumentService> &
+  [[nodiscard]] HtmlResources resources() const;
+
+  void write(const std::string &path, std::ostream &out) const;
+
+  [[nodiscard]] const std::shared_ptr<internal::abstract::HtmlService> &
   impl() const;
 
 private:
-  std::shared_ptr<internal::abstract::HtmlDocumentService> m_impl;
-};
-
-class HtmlFragmentService final {
-public:
-  explicit HtmlFragmentService(
-      std::shared_ptr<internal::abstract::HtmlFragmentService> impl);
-
-  [[nodiscard]] const HtmlConfig &config() const;
-  [[nodiscard]] const HtmlResourceLocator &resource_locator() const;
-
-  void write_fragment(std::ostream &os, HtmlResources &resources) const;
-
-  [[nodiscard]] const std::shared_ptr<internal::abstract::HtmlFragmentService> &
-  impl() const;
-
-private:
-  std::shared_ptr<internal::abstract::HtmlFragmentService> m_impl;
+  std::shared_ptr<internal::abstract::HtmlService> m_impl;
 };
 
 class HtmlResource final {

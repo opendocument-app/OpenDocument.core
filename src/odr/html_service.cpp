@@ -7,52 +7,27 @@
 
 namespace odr {
 
-HtmlDocumentService::HtmlDocumentService() = default;
+HtmlService::HtmlService() = default;
 
-HtmlDocumentService::HtmlDocumentService(
-    std::shared_ptr<internal::abstract::HtmlDocumentService> impl)
+HtmlService::HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl)
     : m_impl{std::move(impl)} {}
 
-const HtmlConfig &HtmlDocumentService::config() const {
-  return m_impl->config();
-}
+const HtmlConfig &HtmlService::config() const { return m_impl->config(); }
 
-const HtmlResourceLocator &HtmlDocumentService::resource_locator() const {
+const HtmlResourceLocator &HtmlService::resource_locator() const {
   return m_impl->resource_locator();
 }
 
-HtmlResources HtmlDocumentService::write_document(std::ostream &os) const {
-  internal::html::HtmlWriter out(os, config());
+void HtmlService::warmup() const { m_impl->warmup(); }
 
-  return m_impl->write_document(out);
+HtmlResources HtmlService::resources() const { return m_impl->resources(); }
+
+void HtmlService::write(const std::string &path, std::ostream &out) const {
+  m_impl->write(path, out);
 }
 
-const std::shared_ptr<internal::abstract::HtmlDocumentService> &
-HtmlDocumentService::impl() const {
-  return m_impl;
-}
-
-HtmlFragmentService::HtmlFragmentService(
-    std::shared_ptr<internal::abstract::HtmlFragmentService> impl)
-    : m_impl{std::move(impl)} {}
-
-const HtmlConfig &HtmlFragmentService::config() const {
-  return m_impl->config();
-}
-
-const HtmlResourceLocator &HtmlFragmentService::resource_locator() const {
-  return m_impl->resource_locator();
-}
-
-void HtmlFragmentService::write_fragment(std::ostream &os,
-                                         HtmlResources &resources) const {
-  internal::html::HtmlWriter out(os, config());
-
-  m_impl->write_fragment(out, resources);
-}
-
-const std::shared_ptr<internal::abstract::HtmlFragmentService> &
-HtmlFragmentService::impl() const {
+const std::shared_ptr<internal::abstract::HtmlService> &
+HtmlService::impl() const {
   return m_impl;
 }
 
