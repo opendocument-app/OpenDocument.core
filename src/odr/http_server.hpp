@@ -9,6 +9,7 @@ class File;
 class DecodedFile;
 class Filesystem;
 struct HtmlConfig;
+class HtmlService;
 
 class HttpServer {
 public:
@@ -19,9 +20,10 @@ public:
 
   explicit HttpServer(const Config &config);
 
-  void host_file(File file, const std::string &prefix);
-  void host_file(DecodedFile file, const std::string &prefix,
-                 const HtmlConfig &config);
+  void connect_service(HtmlService service, const std::string &prefix);
+
+  void serve_file(DecodedFile file, const std::string &prefix,
+                  const HtmlConfig &config);
 
   void listen(const std::string &host, std::uint32_t port);
 

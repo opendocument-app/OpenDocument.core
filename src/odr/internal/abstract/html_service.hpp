@@ -24,6 +24,8 @@ public:
 
   virtual void warmup() const = 0;
 
+  [[nodiscard]] virtual std::string mimetype(const std::string &path) const = 0;
+
   virtual void write(const std::string &path, std::ostream &out) const = 0;
   virtual HtmlResources write_html(const std::string &path,
                                    html::HtmlWriter &out) const = 0;

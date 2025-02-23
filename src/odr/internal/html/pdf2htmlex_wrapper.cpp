@@ -192,6 +192,20 @@ public:
     m_warm = true;
   }
 
+  std::string mimetype(const std::string &path) const final {
+    if (path == "document.html") {
+      return "text/html";
+    }
+
+    for (const auto &[resource, location] : m_resources) {
+      if (location.has_value() && location.value() == path) {
+        return resource.mime_type();
+      }
+    }
+
+    throw std::runtime_error("Unknown path: " + path);
+  }
+
   HtmlResources write_document(HtmlWriter &out) const {
     warmup();
 

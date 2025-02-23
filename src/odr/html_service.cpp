@@ -20,6 +20,10 @@ const HtmlResourceLocator &HtmlService::resource_locator() const {
 
 void HtmlService::warmup() const { m_impl->warmup(); }
 
+std::string HtmlService::mimetype(const std::string &path) const {
+  return m_impl->mimetype(path);
+}
+
 void HtmlService::write(const std::string &path, std::ostream &out) const {
   m_impl->write(path, out);
 }
