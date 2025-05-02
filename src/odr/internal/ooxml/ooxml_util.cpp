@@ -22,6 +22,8 @@ ooxml::read_string_attribute(pugi::xml_attribute attribute) {
 
 std::optional<Color>
 ooxml::read_color_attribute(pugi::xml_attribute attribute) {
+  // color codes from http://officeopenxml.com/WPtextShading.php
+  // rgb values suggested by chatgpt
   static const std::unordered_map<std::string, Color> color_map{
       {"black", {0, 0, 0}},       {"blue", {0, 112, 192}},
       {"cyan", {0, 176, 240}},    {"darkBlue", {0, 32, 96}},
