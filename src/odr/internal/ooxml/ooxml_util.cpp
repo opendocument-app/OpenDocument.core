@@ -22,17 +22,24 @@ ooxml::read_string_attribute(pugi::xml_attribute attribute) {
 
 std::optional<Color>
 ooxml::read_color_attribute(pugi::xml_attribute attribute) {
+  // color codes from http://officeopenxml.com/WPtextShading.php
+  // rgb values suggested by chatgpt
   static const std::unordered_map<std::string, Color> color_map{
-      {"red", {255, 0, 0}},
-      {"green", {0, 255, 0}},
-      {"blue", {0, 0, 255}},
+      {"black", {0, 0, 0}},       {"blue", {0, 112, 192}},
+      {"cyan", {0, 176, 240}},    {"darkBlue", {0, 32, 96}},
+      {"darkCyan", {0, 97, 133}}, {"darkGray", {64, 64, 64}},
+      {"darkGreen", {0, 128, 0}}, {"darkMagenta", {112, 48, 160}},
+      {"darkRed", {192, 0, 0}},   {"darkYellow", {128, 96, 0}},
+      {"green", {0, 176, 80}},    {"lightGray", {191, 191, 191}},
+      {"magenta", {255, 0, 255}}, {"red", {255, 0, 0}},
+      {"white", {255, 255, 255}}, {"yellow", {255, 255, 0}},
   };
 
   if (!attribute) {
     return {};
   }
   auto value = attribute.value();
-  if (std::strcmp("auto", attribute.value()) == 0) {
+  if (std::strcmp("auto", value) == 0 || std::strcmp("none", value) == 0) {
     return {};
   }
   if (auto color_map_it = color_map.find(value);
