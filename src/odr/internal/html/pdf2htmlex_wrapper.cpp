@@ -162,19 +162,24 @@ private:
   mutable std::mutex m_mutex;
 };
 
-class HtmlDocumentServiceImpl final : public HtmlDocumentService {
+class HtmlServiceImpl final : public HtmlService {
 public:
-  HtmlDocumentServiceImpl(
-      PopplerPdfFile pdf_file, std::string output_path,
-      std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
-      std::shared_ptr<std::mutex> html_renderer_mutex,
-      std::shared_ptr<pdf2htmlEX::Param> html_renderer_param, HtmlConfig config,
-      HtmlResourceLocator resource_locator)
-      : HtmlDocumentService(std::move(config), std::move(resource_locator)),
+  HtmlServiceImpl(PopplerPdfFile pdf_file, std::string output_path,
+                  std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
+                  std::shared_ptr<std::mutex> html_renderer_mutex,
+                  std::shared_ptr<pdf2htmlEX::Param> html_renderer_param,
+                  HtmlConfig config, HtmlResourceLocator resource_locator)
+      : HtmlService(std::move(config), std::move(resource_locator)),
         m_pdf_file{std::move(pdf_file)}, m_output_path{std::move(output_path)},
         m_html_renderer{std::move(html_renderer)},
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
-        m_html_renderer_param{std::move(html_renderer_param)} {
+        m_html_renderer_param{std::move(html_renderer_param)} {}
+
+  void warmup() const final {
+    if (m_warm) {
+      return;
+    }
+
     for (int i = 1; i <= m_pdf_file.pdf_doc().getNumPages(); ++i) {
       auto resource = std::make_shared<BackgroundImageResource>(
           m_pdf_file, m_output_path, m_html_renderer, m_html_renderer_mutex,
@@ -183,15 +188,59 @@ public:
           i, m_html_renderer_param->bg_format);
       m_resources.emplace_back(std::move(resource), std::move(file_name));
     }
+
+    m_warm = true;
   }
 
-  HtmlResources write_document(HtmlWriter &out) const final {
-    {
-      std::ifstream in(m_output_path + "/document.html");
-      util::stream::pipe(in, out.out());
+  std::string mimetype(const std::string &path) const final {
+    if (path == "document.html") {
+      return "text/html";
     }
 
+    for (const auto &[resource, location] : m_resources) {
+      if (location.has_value() && location.value() == path) {
+        return resource.mime_type();
+      }
+    }
+
+    throw std::runtime_error("Unknown path: " + path);
+  }
+
+  HtmlResources write_document(HtmlWriter &out) const {
+    warmup();
+
+    std::ifstream in(m_output_path + "/document.html");
+    util::stream::pipe(in, out.out());
+
     return m_resources;
+  }
+
+  void write(const std::string &path, std::ostream &out) const final {
+    warmup();
+
+    if (path == "document.html") {
+      HtmlWriter writer(out, config());
+      write_document(writer);
+      return;
+    }
+
+    for (const auto &[resource, location] : m_resources) {
+      if (location.has_value() && location.value() == path) {
+        util::stream::pipe(*resource.file().stream(), out);
+        return;
+      }
+    }
+
+    throw std::runtime_error("Unknown path: " + path);
+  }
+
+  HtmlResources write_html(const std::string &path,
+                           html::HtmlWriter &out) const final {
+    if (path == "document.html") {
+      return write_document(out);
+    }
+
+    throw std::runtime_error("Unknown path: " + path);
   }
 
 private:
@@ -201,14 +250,15 @@ private:
   std::shared_ptr<std::mutex> m_html_renderer_mutex;
   std::shared_ptr<pdf2htmlEX::Param> m_html_renderer_param;
 
-  HtmlResources m_resources;
+  mutable bool m_warm = false;
+  mutable HtmlResources m_resources;
 };
 
 } // namespace odr::internal::html
 
 namespace odr::internal {
 
-odr::HtmlDocumentService
+odr::HtmlService
 html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
                                  const std::string &output_path,
                                  const HtmlConfig &config) {
@@ -238,7 +288,7 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
   // TODO check if this can be achieved in pdf2htmlEX
   auto html_renderer_mutex = std::make_shared<std::mutex>();
 
-  return odr::HtmlDocumentService(std::make_shared<HtmlDocumentServiceImpl>(
+  return odr::HtmlService(std::make_shared<HtmlServiceImpl>(
       pdf_file, output_path, std::move(html_renderer),
       std::move(html_renderer_mutex), std::move(html_renderer_param), config,
       resource_locator));

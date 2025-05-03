@@ -7,25 +7,14 @@
 
 namespace odr::internal::html {
 
-HtmlDocumentService::HtmlDocumentService(HtmlConfig config,
-                                         HtmlResourceLocator resource_locator)
+HtmlService::HtmlService(HtmlConfig config,
+                         HtmlResourceLocator resource_locator)
     : m_config{std::move(config)},
       m_resource_locator{std::move(resource_locator)} {}
 
-const HtmlConfig &HtmlDocumentService::config() const { return m_config; }
+const HtmlConfig &HtmlService::config() const { return m_config; }
 
-const HtmlResourceLocator &HtmlDocumentService::resource_locator() const {
-  return m_resource_locator;
-}
-
-HtmlFragmentService::HtmlFragmentService(HtmlConfig config,
-                                         HtmlResourceLocator resource_locator)
-    : m_config{std::move(config)},
-      m_resource_locator{std::move(resource_locator)} {}
-
-const HtmlConfig &HtmlFragmentService::config() const { return m_config; }
-
-const HtmlResourceLocator &HtmlFragmentService::resource_locator() const {
+const HtmlResourceLocator &HtmlService::resource_locator() const {
   return m_resource_locator;
 }
 

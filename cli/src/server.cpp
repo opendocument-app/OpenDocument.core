@@ -1,4 +1,5 @@
 #include <odr/file.hpp>
+#include <odr/html.hpp>
 #include <odr/http_server.hpp>
 
 #include <iostream>
@@ -33,19 +34,16 @@ int main(int argc, char **argv) {
     }
   }
 
-  HttpServer::Config config;
-  HttpServer server(config);
+  HttpServer::Config server_config;
+  HttpServer server(server_config);
+
+  HtmlConfig html_config;
 
   {
-    std::string id = server.host_file(File(input));
-    std::cout << "hosted file with id: " << id << std::endl;
-    std::cout << "http://localhost:8080/" << id << std::endl;
-  }
-
-  {
-    std::string id = server.host_file(decoded_file);
-    std::cout << "hosted decoded file with id: " << id << std::endl;
-    std::cout << "http://localhost:8080/" << id << std::endl;
+    std::string prefix = "one_file";
+    server.serve_file(decoded_file, prefix, html_config);
+    std::cout << "hosted decoded file with id: " << prefix << std::endl;
+    std::cout << "http://localhost:8080/" << prefix << std::endl;
   }
 
   server.listen("localhost", 8080);

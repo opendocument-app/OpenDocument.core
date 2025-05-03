@@ -7,52 +7,35 @@
 
 namespace odr {
 
-HtmlDocumentService::HtmlDocumentService() = default;
+HtmlService::HtmlService() = default;
 
-HtmlDocumentService::HtmlDocumentService(
-    std::shared_ptr<internal::abstract::HtmlDocumentService> impl)
+HtmlService::HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl)
     : m_impl{std::move(impl)} {}
 
-const HtmlConfig &HtmlDocumentService::config() const {
-  return m_impl->config();
-}
+const HtmlConfig &HtmlService::config() const { return m_impl->config(); }
 
-const HtmlResourceLocator &HtmlDocumentService::resource_locator() const {
+const HtmlResourceLocator &HtmlService::resource_locator() const {
   return m_impl->resource_locator();
 }
 
-HtmlResources HtmlDocumentService::write_document(std::ostream &os) const {
-  internal::html::HtmlWriter out(os, config());
+void HtmlService::warmup() const { m_impl->warmup(); }
 
-  return m_impl->write_document(out);
+std::string HtmlService::mimetype(const std::string &path) const {
+  return m_impl->mimetype(path);
 }
 
-const std::shared_ptr<internal::abstract::HtmlDocumentService> &
-HtmlDocumentService::impl() const {
-  return m_impl;
+void HtmlService::write(const std::string &path, std::ostream &out) const {
+  m_impl->write(path, out);
 }
 
-HtmlFragmentService::HtmlFragmentService(
-    std::shared_ptr<internal::abstract::HtmlFragmentService> impl)
-    : m_impl{std::move(impl)} {}
-
-const HtmlConfig &HtmlFragmentService::config() const {
-  return m_impl->config();
+HtmlResources HtmlService::write_html(const std::string &path,
+                                      std::ostream &out) const {
+  internal::html::HtmlWriter writer(out, config());
+  return m_impl->write_html(path, writer);
 }
 
-const HtmlResourceLocator &HtmlFragmentService::resource_locator() const {
-  return m_impl->resource_locator();
-}
-
-void HtmlFragmentService::write_fragment(std::ostream &os,
-                                         HtmlResources &resources) const {
-  internal::html::HtmlWriter out(os, config());
-
-  m_impl->write_fragment(out, resources);
-}
-
-const std::shared_ptr<internal::abstract::HtmlFragmentService> &
-HtmlFragmentService::impl() const {
+const std::shared_ptr<internal::abstract::HtmlService> &
+HtmlService::impl() const {
   return m_impl;
 }
 
