@@ -21,11 +21,11 @@ public:
                    res.set_content("Hello World!", "text/plain");
                  });
 
-    m_server.Get("/file/" + prefix_pattern,
+    m_server.Get("/file/" + std::string(prefix_pattern),
                  [&](const httplib::Request &req, httplib::Response &res) {
                    serve_file(req, res);
                  });
-    m_server.Get("/file/" + prefix_pattern + "/(.*)",
+    m_server.Get("/file/" + std::string(prefix_pattern) + "/(.*)",
                  [&](const httplib::Request &req, httplib::Response &res) {
                    serve_file(req, res);
                  });
