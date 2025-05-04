@@ -65,12 +65,13 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
     if (!resource.is_relocatable()) {
       return resource.path();
     }
+
     if ((config.embed_shipped_resources && resource.is_shipped()) ||
         (config.embed_images && resource.type() == HtmlResourceType::image)) {
       return std::nullopt;
     }
 
-    if (!resource.is_relocatable() || resource.is_shipped()) {
+    if (resource.is_shipped()) {
       auto resource_path = common::Path(config.resource_path)
                                .join(common::Path(resource.path()));
       if (config.relative_resource_paths) {
@@ -78,8 +79,6 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
       }
       return resource_path.string();
     }
-
-    // TODO relocate file if necessary
 
     auto resource_path =
         common::Path(output_path).join(common::Path(resource.path()));

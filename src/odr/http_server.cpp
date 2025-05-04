@@ -56,7 +56,7 @@ public:
     }
 
     httplib::ContentProviderWithoutLength content_provider =
-        [&service, path](std::size_t offset, httplib::DataSink &sink) -> bool {
+        [service, path](std::size_t offset, httplib::DataSink &sink) -> bool {
       if (offset != 0) {
         throw std::runtime_error("Invalid offset: " + std::to_string(offset) +
                                  ". Must be 0.");

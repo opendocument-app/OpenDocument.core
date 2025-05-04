@@ -38,6 +38,8 @@ int main(int argc, char **argv) {
   HttpServer server(server_config);
 
   HtmlConfig html_config;
+  html_config.embed_images = false;
+  html_config.embed_shipped_resources = false;
 
   {
     std::string prefix = "one_file";
