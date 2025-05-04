@@ -4,7 +4,6 @@
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
-#include <odr/html_service.hpp>
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/pdf2htmlex_wrapper.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
@@ -99,8 +98,8 @@ void HttpServer::connect_service(HtmlService service,
   m_impl->connect_service(std::move(service), prefix);
 }
 
-void HttpServer::serve_file(DecodedFile file, const std::string &prefix,
-                            const HtmlConfig &config) {
+HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
+                                 const HtmlConfig &config) {
   static std::regex prefix_regex(prefix_pattern);
   if (!std::regex_match(prefix, prefix_regex)) {
     throw InvalidPrefix(prefix);
@@ -129,6 +128,8 @@ void HttpServer::serve_file(DecodedFile file, const std::string &prefix,
   }
 
   m_impl->connect_service(std::move(service), prefix);
+
+  return service.list_views();
 }
 
 void HttpServer::listen(const std::string &host, std::uint32_t port) {

@@ -19,6 +19,24 @@ private:
   HtmlResourceLocator m_resource_locator;
 };
 
+class HtmlView : public abstract::HtmlView {
+public:
+  HtmlView(const abstract::HtmlService &service, std::string name,
+           std::string path);
+
+  [[nodiscard]] const std::string &name() const override;
+  [[nodiscard]] const std::string &path() const override;
+  [[nodiscard]] const HtmlConfig &config() const override;
+  [[nodiscard]] const abstract::HtmlService &service() const;
+
+  HtmlResources write_html(html::HtmlWriter &out) const override;
+
+private:
+  const abstract::HtmlService *m_service;
+  std::string m_name;
+  std::string m_path;
+};
+
 class HtmlResource : public abstract::HtmlResource {
 public:
   static odr::HtmlResource create(HtmlResourceType type, std::string mime_type,

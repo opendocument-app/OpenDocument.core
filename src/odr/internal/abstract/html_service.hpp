@@ -21,16 +21,27 @@ public:
 
   [[nodiscard]] virtual const HtmlConfig &config() const = 0;
   [[nodiscard]] virtual const HtmlResourceLocator &resource_locator() const = 0;
+  [[nodiscard]] virtual const HtmlViews &list_views() const = 0;
 
   virtual void warmup() const = 0;
 
   [[nodiscard]] virtual bool exists(const std::string &path) const = 0;
-
   [[nodiscard]] virtual std::string mimetype(const std::string &path) const = 0;
 
   virtual void write(const std::string &path, std::ostream &out) const = 0;
   virtual HtmlResources write_html(const std::string &path,
                                    html::HtmlWriter &out) const = 0;
+};
+
+class HtmlView {
+public:
+  virtual ~HtmlView() = default;
+
+  [[nodiscard]] virtual const std::string &name() const = 0;
+  [[nodiscard]] virtual const std::string &path() const = 0;
+  [[nodiscard]] virtual const HtmlConfig &config() const = 0;
+
+  virtual HtmlResources write_html(html::HtmlWriter &out) const = 0;
 };
 
 class HtmlResource {

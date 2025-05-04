@@ -9,6 +9,7 @@
 
 namespace odr::internal::abstract {
 class HtmlService;
+class HtmlView;
 class HtmlResource;
 } // namespace odr::internal::abstract
 
@@ -17,6 +18,7 @@ enum class FileType;
 class File;
 struct HtmlConfig;
 
+class HtmlView;
 class HtmlResource;
 
 enum class HtmlResourceType {
@@ -27,6 +29,7 @@ enum class HtmlResourceType {
   font,
 };
 
+using HtmlViews = std::vector<HtmlView>;
 using HtmlResourceLocation = std::optional<std::string>;
 using HtmlResourceLocator =
     std::function<HtmlResourceLocation(const HtmlResource &resource)>;
@@ -40,11 +43,11 @@ public:
 
   [[nodiscard]] const HtmlConfig &config() const;
   [[nodiscard]] const HtmlResourceLocator &resource_locator() const;
+  [[nodiscard]] const HtmlViews &list_views() const;
 
   void warmup() const;
 
   [[nodiscard]] bool exists(const std::string &path) const;
-
   [[nodiscard]] std::string mimetype(const std::string &path) const;
 
   void write(const std::string &path, std::ostream &out) const;
@@ -55,6 +58,24 @@ public:
 
 private:
   std::shared_ptr<internal::abstract::HtmlService> m_impl;
+};
+
+class HtmlView final {
+public:
+  HtmlView();
+  explicit HtmlView(std::shared_ptr<internal::abstract::HtmlView> impl);
+
+  [[nodiscard]] const std::string &name() const;
+  [[nodiscard]] const std::string &path() const;
+  [[nodiscard]] const HtmlConfig &config() const;
+
+  HtmlResources write_html(std::ostream &out) const;
+
+  [[nodiscard]] const std::shared_ptr<internal::abstract::HtmlView> &
+  impl() const;
+
+private:
+  std::shared_ptr<internal::abstract::HtmlView> m_impl;
 };
 
 class HtmlResource final {

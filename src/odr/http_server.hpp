@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/html_service.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -23,8 +25,8 @@ public:
 
   void connect_service(HtmlService service, const std::string &prefix);
 
-  void serve_file(DecodedFile file, const std::string &prefix,
-                  const HtmlConfig &config);
+  HtmlViews serve_file(DecodedFile file, const std::string &prefix,
+                       const HtmlConfig &config);
 
   void listen(const std::string &host, std::uint32_t port);
 
