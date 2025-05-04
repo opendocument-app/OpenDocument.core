@@ -18,6 +18,7 @@
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <algorithm>
 #include <fstream>
 
 namespace odr::internal::html {
@@ -189,6 +190,21 @@ public:
     m_warm = true;
   }
 
+  bool exists(const std::string &path) const final {
+    if (path == "document.html") {
+      return true;
+    }
+
+    if (std::ranges::any_of(m_resources, [&path](const auto &pair) {
+          const auto &[resource, location] = pair;
+          return location.has_value() && location.value() == path;
+        })) {
+      return true;
+    }
+
+    return false;
+  }
+
   std::string mimetype(const std::string &path) const final {
     if (path == "document.html") {
       return "text/html";
@@ -200,7 +216,7 @@ public:
       }
     }
 
-    throw std::runtime_error("Unknown path: " + path);
+    throw FileNotFound("Unknown path: " + path);
   }
 
   void write(const std::string &path, std::ostream &out) const final {
@@ -219,7 +235,7 @@ public:
       }
     }
 
-    throw std::runtime_error("Unknown path: " + path);
+    throw FileNotFound("Unknown path: " + path);
   }
 
   HtmlResources write_html(const std::string &path,
@@ -228,7 +244,7 @@ public:
       return write_document(out);
     }
 
-    throw std::runtime_error("Unknown path: " + path);
+    throw FileNotFound("Unknown path: " + path);
   }
 
   HtmlResources write_document(HtmlWriter &out) const {

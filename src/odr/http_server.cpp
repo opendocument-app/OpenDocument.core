@@ -1,5 +1,6 @@
 #include <odr/http_server.hpp>
 
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
@@ -7,8 +8,6 @@
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/pdf2htmlex_wrapper.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
-
-#include <utility>
 
 #include <httplib/httplib.h>
 
@@ -22,7 +21,11 @@ public:
                    res.set_content("Hello World!", "text/plain");
                  });
 
-    m_server.Get("/file/:id/.*",
+    m_server.Get("/file/" + std::string(prefix_pattern),
+                 [&](const httplib::Request &req, httplib::Response &res) {
+                   serve_file(req, res);
+                 });
+    m_server.Get("/file/" + std::string(prefix_pattern) + "/(.*)",
                  [&](const httplib::Request &req, httplib::Response &res) {
                    serve_file(req, res);
                  });
@@ -31,8 +34,8 @@ public:
   const HttpServer::Config &config() const { return m_config; }
 
   void serve_file(const httplib::Request &req, httplib::Response &res) {
-    std::string id = req.path_params.at("id");
-    std::string path = req.matches[0].str();
+    std::string id = req.matches[1].str();
+    std::string path = req.matches.size() > 1 ? req.matches[2].str() : "";
 
     std::unique_lock lock{m_mutex};
     auto it = m_content.find(id);
@@ -47,8 +50,13 @@ public:
 
   void serve_file(httplib::Response &res, const HtmlService &service,
                   const std::string &path) {
+    if (!service.exists(path)) {
+      res.status = 404;
+      return;
+    }
+
     httplib::ContentProviderWithoutLength content_provider =
-        [&](std::size_t offset, httplib::DataSink &sink) -> bool {
+        [&service, path](std::size_t offset, httplib::DataSink &sink) -> bool {
       if (offset != 0) {
         throw std::runtime_error("Invalid offset: " + std::to_string(offset) +
                                  ". Must be 0.");
@@ -93,7 +101,13 @@ void HttpServer::connect_service(HtmlService service,
 
 void HttpServer::serve_file(DecodedFile file, const std::string &prefix,
                             const HtmlConfig &config) {
+  static std::regex prefix_regex(prefix_pattern);
+  if (!std::regex_match(prefix, prefix_regex)) {
+    throw InvalidPrefix(prefix);
+  }
+
   std::string output_path = m_impl->config().output_path + "/" + prefix;
+  std::filesystem::create_directories(output_path);
 
   HtmlService service;
 

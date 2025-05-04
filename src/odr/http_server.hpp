@@ -13,6 +13,8 @@ class HtmlService;
 
 class HttpServer {
 public:
+  constexpr static const char *prefix_pattern = R"(([a-zA-Z0-9_-]+))";
+
   struct Config {
     std::string output_path{"/tmp"};
   };

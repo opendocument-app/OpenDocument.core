@@ -192,6 +192,20 @@ public:
     m_warm = true;
   }
 
+  bool exists(const std::string &path) const final {
+    if (path == "document.html") {
+      return true;
+    }
+
+    for (const auto &[resource, location] : m_resources) {
+      if (location.has_value() && location.value() == path) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   std::string mimetype(const std::string &path) const final {
     if (path == "document.html") {
       return "text/html";
@@ -203,7 +217,7 @@ public:
       }
     }
 
-    throw std::runtime_error("Unknown path: " + path);
+    throw FileNotFound("Unknown path: " + path);
   }
 
   HtmlResources write_document(HtmlWriter &out) const {
@@ -231,7 +245,7 @@ public:
       }
     }
 
-    throw std::runtime_error("Unknown path: " + path);
+    throw FileNotFound("Unknown path: " + path);
   }
 
   HtmlResources write_html(const std::string &path,
@@ -240,7 +254,7 @@ public:
       return write_document(out);
     }
 
-    throw std::runtime_error("Unknown path: " + path);
+    throw FileNotFound("Unknown path: " + path);
   }
 
 private:

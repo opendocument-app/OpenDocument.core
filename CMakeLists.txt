@@ -46,6 +46,15 @@ find_package(utf8cpp REQUIRED)
 find_package(httplib REQUIRED)
 find_package(argon2 REQUIRED)
 
+include(FetchContent)
+FetchContent_Declare(odr.js
+        URL "https://github.com/opendocument-app/OpenDocument.js/releases/download/v1.0.0/build.zip"
+        URL_HASH SHA256=a93a19caff1d2cf38d23c6dd172013c7d09188514304bc15664e3163cbcfda16
+)
+FetchContent_MakeAvailable(odr.js)
+
+set(ODR_DATA_PATH "${odr.js_SOURCE_DIR}")
+
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
 
 set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
@@ -243,13 +252,6 @@ if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
     add_dependencies(odr check_git)
 endif ()
 
-include(FetchContent)
-FetchContent_Declare(odr.js
-    URL "https://github.com/opendocument-app/OpenDocument.js/releases/download/v1.0.0/build.zip"
-    URL_HASH SHA256=a93a19caff1d2cf38d23c6dd172013c7d09188514304bc15664e3163cbcfda16
-)
-FetchContent_MakeAvailable(odr.js)
-
 if (ODR_CLI)
     add_subdirectory("cli")
 endif ()
@@ -277,6 +279,6 @@ install(
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
 install(
-        DIRECTORY "${odr.js_SOURCE_DIR}/"
+        DIRECTORY "${ODR_DATA_PATH}/"
         DESTINATION "${CMAKE_INSTALL_DATADIR}"
 )
