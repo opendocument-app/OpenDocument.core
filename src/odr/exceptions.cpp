@@ -65,8 +65,6 @@ UnsupportedEndian::UnsupportedEndian()
 MsUnsupportedCryptoAlgorithm::MsUnsupportedCryptoAlgorithm()
     : std::runtime_error("unsupported crypto algorithm") {}
 
-WrongPassword::WrongPassword() : std::runtime_error("wrong password") {}
-
 UnknownDocumentType::UnknownDocumentType()
     : std::runtime_error("unknown document type") {}
 
