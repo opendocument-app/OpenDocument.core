@@ -18,6 +18,10 @@ const HtmlResourceLocator &HtmlService::resource_locator() const {
   return m_impl->resource_locator();
 }
 
+const HtmlViews &HtmlService::list_views() const {
+  return m_impl->list_views();
+}
+
 void HtmlService::warmup() const { m_impl->warmup(); }
 
 bool HtmlService::exists(const std::string &path) const {
@@ -40,6 +44,26 @@ HtmlResources HtmlService::write_html(const std::string &path,
 
 const std::shared_ptr<internal::abstract::HtmlService> &
 HtmlService::impl() const {
+  return m_impl;
+}
+
+HtmlView::HtmlView() = default;
+
+HtmlView::HtmlView(std::shared_ptr<internal::abstract::HtmlView> impl)
+    : m_impl{std::move(impl)} {}
+
+const std::string &HtmlView::name() const { return m_impl->name(); }
+
+const std::string &HtmlView::path() const { return m_impl->path(); }
+
+const HtmlConfig &HtmlView::config() const { return m_impl->config(); }
+
+HtmlResources HtmlView::write_html(std::ostream &out) const {
+  internal::html::HtmlWriter writer(out, config());
+  return m_impl->write_html(writer);
+}
+
+const std::shared_ptr<internal::abstract::HtmlView> &HtmlView::impl() const {
   return m_impl;
 }
 

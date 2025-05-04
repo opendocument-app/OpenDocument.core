@@ -163,13 +163,41 @@ protected:
   Document m_document;
 };
 
+class HtmlFragmentView final : public HtmlView {
+public:
+  HtmlFragmentView(const abstract::HtmlService &service, std::string name,
+                   std::string path, std::shared_ptr<HtmlFragmentBase> fragment)
+      : HtmlView(service, std::move(name), std::move(path)),
+        m_fragment{std::move(fragment)} {}
+
+  HtmlResources write_html(html::HtmlWriter &out) const final {
+    HtmlResources resources;
+    WritingState state(out, service().config(), service().resource_locator(),
+                       resources);
+    m_fragment->write_document(out, state);
+    return resources;
+  }
+
+private:
+  std::shared_ptr<HtmlFragmentBase> m_fragment;
+};
+
 class HtmlServiceImpl : public HtmlService {
 public:
   HtmlServiceImpl(Document document,
                   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments,
                   HtmlConfig config, HtmlResourceLocator resource_locator)
       : HtmlService(std::move(config), std::move(resource_locator)),
-        m_document{std::move(document)}, m_fragments{std::move(fragments)} {}
+        m_document{std::move(document)}, m_fragments{std::move(fragments)} {
+    m_views.emplace_back(
+        std::make_shared<HtmlView>(*this, "document", "document.html"));
+    for (const auto &fragment : m_fragments) {
+      m_views.emplace_back(std::make_shared<HtmlFragmentView>(
+          *this, fragment->name(), fragment->name() + ".html", fragment));
+    }
+  }
+
+  const HtmlViews &list_views() const final { return m_views; }
 
   [[nodiscard]] Document document() const { return m_document; }
 
@@ -191,7 +219,9 @@ public:
   }
 
   bool exists(const std::string &path) const final {
-    if (path == "document.html") {
+    if (std::ranges::any_of(m_views, [&path](const auto &view) {
+          return view.path() == path;
+        })) {
       return true;
     }
 
@@ -206,7 +236,9 @@ public:
   }
 
   std::string mimetype(const std::string &path) const final {
-    if (path == "document.html") {
+    if (std::ranges::any_of(m_views, [&path](const auto &view) {
+          return view.path() == path;
+        })) {
       return "text/html";
     }
 
@@ -220,10 +252,12 @@ public:
   }
 
   void write(const std::string &path, std::ostream &out) const final {
-    if (path == "document.html") {
-      HtmlWriter writer(out, config());
-      write_document(writer);
-      return;
+    for (const auto &view : m_views) {
+      if (view.path() == path) {
+        HtmlWriter writer(out, config());
+        write_html(path, writer);
+        return;
+      }
     }
 
     warmup();
@@ -242,6 +276,12 @@ public:
                            html::HtmlWriter &out) const final {
     if (path == "document.html") {
       return write_document(out);
+    }
+
+    for (const auto &view : m_views) {
+      if (view.path() == path) {
+        return view.impl()->write_html(out);
+      }
     }
 
     throw FileNotFound("Unknown path: " + path);
@@ -264,6 +304,9 @@ public:
 protected:
   Document m_document;
   std::vector<std::shared_ptr<HtmlFragmentBase>> m_fragments;
+
+  HtmlViews m_views;
+
   mutable bool m_warm = false;
   mutable HtmlResources m_resources;
 };

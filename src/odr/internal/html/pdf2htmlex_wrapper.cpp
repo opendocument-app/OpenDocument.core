@@ -16,6 +16,8 @@
 
 #include <poppler/PDFDoc.h>
 
+#include <algorithm>
+
 namespace odr::internal::html {
 
 namespace {
@@ -173,7 +175,12 @@ public:
         m_pdf_file{std::move(pdf_file)}, m_output_path{std::move(output_path)},
         m_html_renderer{std::move(html_renderer)},
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
-        m_html_renderer_param{std::move(html_renderer_param)} {}
+        m_html_renderer_param{std::move(html_renderer_param)} {
+    m_views.emplace_back(
+        std::make_shared<HtmlView>(*this, "document", "document.html"));
+  }
+
+  const HtmlViews &list_views() const final { return m_views; }
 
   void warmup() const final {
     if (m_warm) {
@@ -193,21 +200,26 @@ public:
   }
 
   bool exists(const std::string &path) const final {
-    if (path == "document.html") {
+    if (std::ranges::any_of(m_views, [&path](const auto &view) {
+          return view.path() == path;
+        })) {
       return true;
     }
 
-    for (const auto &[resource, location] : m_resources) {
-      if (location.has_value() && location.value() == path) {
-        return true;
-      }
+    if (std::ranges::any_of(m_resources, [&path](const auto &pair) {
+          const auto &[resource, location] = pair;
+          return location.has_value() && location.value() == path;
+        })) {
+      return true;
     }
 
     return false;
   }
 
   std::string mimetype(const std::string &path) const final {
-    if (path == "document.html") {
+    if (std::ranges::any_of(m_views, [&path](const auto &view) {
+          return view.path() == path;
+        })) {
       return "text/html";
     }
 
@@ -232,10 +244,12 @@ public:
   void write(const std::string &path, std::ostream &out) const final {
     warmup();
 
-    if (path == "document.html") {
-      HtmlWriter writer(out, config());
-      write_document(writer);
-      return;
+    for (const auto &view : m_views) {
+      if (view.path() == path) {
+        HtmlWriter writer(out, config());
+        write_html(path, writer);
+        return;
+      }
     }
 
     for (const auto &[resource, location] : m_resources) {
@@ -263,6 +277,8 @@ private:
   std::shared_ptr<pdf2htmlEX::HTMLRenderer> m_html_renderer;
   std::shared_ptr<std::mutex> m_html_renderer_mutex;
   std::shared_ptr<pdf2htmlEX::Param> m_html_renderer_param;
+
+  HtmlViews m_views;
 
   mutable bool m_warm = false;
   mutable HtmlResources m_resources;

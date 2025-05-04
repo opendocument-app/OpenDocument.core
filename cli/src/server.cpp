@@ -40,13 +40,16 @@ int main(int argc, char **argv) {
   HtmlConfig html_config;
   html_config.embed_images = false;
   html_config.embed_shipped_resources = false;
+  html_config.relative_resource_paths = false;
 
   {
     std::string prefix = "one_file";
-    server.serve_file(decoded_file, prefix, html_config);
+    HtmlViews views = server.serve_file(decoded_file, prefix, html_config);
     std::cout << "hosted decoded file with id: " << prefix << std::endl;
-    std::cout << "http://localhost:8080/file/" << prefix << "/document.html"
-              << std::endl;
+    for (const auto &view : views) {
+      std::cout << "http://localhost:8080/file/" << prefix << "/" << view.path()
+                << std::endl;
+    }
   }
 
   server.listen("localhost", 8080);

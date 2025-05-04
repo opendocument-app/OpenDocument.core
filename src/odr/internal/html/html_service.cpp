@@ -18,6 +18,22 @@ const HtmlResourceLocator &HtmlService::resource_locator() const {
   return m_resource_locator;
 }
 
+HtmlView::HtmlView(const abstract::HtmlService &service, std::string name,
+                   std::string path)
+    : m_service{&service}, m_name{std::move(name)}, m_path{std::move(path)} {}
+
+const std::string &HtmlView::name() const { return m_name; }
+
+const std::string &HtmlView::path() const { return m_path; }
+
+const HtmlConfig &HtmlView::config() const { return m_service->config(); }
+
+const abstract::HtmlService &HtmlView::service() const { return *m_service; }
+
+HtmlResources HtmlView::write_html(html::HtmlWriter &out) const {
+  return m_service->write_html(path(), out);
+}
+
 odr::HtmlResource HtmlResource::create(HtmlResourceType type,
                                        std::string mime_type, std::string name,
                                        std::string path, odr::File file,
