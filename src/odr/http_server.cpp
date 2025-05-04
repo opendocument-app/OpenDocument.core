@@ -127,7 +127,7 @@ HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
     throw std::runtime_error("Unsupported file type.");
   }
 
-  m_impl->connect_service(std::move(service), prefix);
+  m_impl->connect_service(service, prefix);
 
   return service.list_views();
 }
