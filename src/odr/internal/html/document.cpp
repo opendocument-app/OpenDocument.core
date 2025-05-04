@@ -194,10 +194,11 @@ public:
       return true;
     }
 
-    for (const auto &[resource, location] : m_resources) {
-      if (location.has_value() && location.value() == path) {
-        return true;
-      }
+    if (std::ranges::any_of(m_resources, [&path](const auto &pair) {
+          const auto &[resource, location] = pair;
+          return location.has_value() && location.value() == path;
+        })) {
+      return true;
     }
 
     return false;
