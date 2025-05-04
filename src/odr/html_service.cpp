@@ -63,9 +63,9 @@ const File &HtmlResource::file() const { return m_impl->file(); }
 
 bool HtmlResource::is_shipped() const { return m_impl->is_shipped(); }
 
-bool HtmlResource::is_relocatable() const { return m_impl->is_relocatable(); }
-
 bool HtmlResource::is_external() const { return m_impl->is_external(); }
+
+bool HtmlResource::is_accessible() const { return m_impl->is_accessible(); }
 
 void HtmlResource::write_resource(std::ostream &os) const {
   m_impl->write_resource(os);

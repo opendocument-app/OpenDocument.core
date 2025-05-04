@@ -62,7 +62,7 @@ std::string html::file_to_url(const abstract::File &file,
 HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
                                                  const HtmlConfig &config) {
   return [&](const odr::HtmlResource &resource) -> HtmlResourceLocation {
-    if (!resource.is_relocatable()) {
+    if (!resource.is_accessible()) {
       return resource.path();
     }
     if ((config.embed_shipped_resources && resource.is_shipped()) ||
@@ -70,7 +70,7 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
       return std::nullopt;
     }
 
-    if (!resource.is_relocatable() || resource.is_shipped()) {
+    if (resource.is_shipped()) {
       auto resource_path = common::Path(config.resource_path)
                                .join(common::Path(resource.path()));
       if (config.relative_resource_paths) {

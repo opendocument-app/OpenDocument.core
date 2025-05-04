@@ -68,8 +68,8 @@ public:
   [[nodiscard]] const std::string &path() const;
   [[nodiscard]] const File &file() const;
   [[nodiscard]] bool is_shipped() const;
-  [[nodiscard]] bool is_relocatable() const;
   [[nodiscard]] bool is_external() const;
+  [[nodiscard]] bool is_accessible() const;
 
   void write_resource(std::ostream &os) const;
 

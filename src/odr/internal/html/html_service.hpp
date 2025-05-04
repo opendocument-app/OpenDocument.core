@@ -24,11 +24,11 @@ public:
   static odr::HtmlResource create(HtmlResourceType type, std::string mime_type,
                                   std::string name, std::string path,
                                   odr::File file, bool is_shipped,
-                                  bool is_relocatable, bool is_external);
+                                  bool is_external, bool is_accessible);
 
   HtmlResource(HtmlResourceType type, std::string mime_type, std::string name,
                std::string path, odr::File file, bool is_shipped,
-               bool is_relocatable, bool is_external);
+               bool is_external, bool is_accessible);
 
   [[nodiscard]] HtmlResourceType type() const override;
   [[nodiscard]] const std::string &mime_type() const override;
@@ -36,8 +36,8 @@ public:
   [[nodiscard]] const std::string &path() const override;
   [[nodiscard]] const odr::File &file() const override;
   [[nodiscard]] bool is_shipped() const override;
-  [[nodiscard]] bool is_relocatable() const override;
   [[nodiscard]] bool is_external() const override;
+  [[nodiscard]] bool is_accessible() const override;
 
   void write_resource(std::ostream &os) const override;
 
@@ -48,8 +48,8 @@ private:
   std::string m_path;
   odr::File m_file;
   bool m_is_shipped{};
-  bool m_is_relocatable{};
   bool m_is_external{};
+  bool m_is_accessible{};
 };
 
 } // namespace odr::internal::html

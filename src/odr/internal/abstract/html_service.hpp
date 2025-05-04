@@ -43,8 +43,8 @@ public:
   [[nodiscard]] virtual const std::string &path() const = 0;
   [[nodiscard]] virtual const odr::File &file() const = 0;
   [[nodiscard]] virtual bool is_shipped() const = 0;
-  [[nodiscard]] virtual bool is_relocatable() const = 0;
   [[nodiscard]] virtual bool is_external() const = 0;
+  [[nodiscard]] virtual bool is_accessible() const = 0;
 
   virtual void write_resource(std::ostream &os) const = 0;
 };
