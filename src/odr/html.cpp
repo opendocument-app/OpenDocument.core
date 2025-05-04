@@ -55,23 +55,6 @@ void Html::save(const std::string &path) const {
 HtmlPage::HtmlPage(std::string name, std::string path)
     : name{std::move(name)}, path{std::move(path)} {}
 
-Html html::translate(const File &file, const std::string &output_path,
-                     const HtmlConfig &config,
-                     const PasswordCallback &password_callback) {
-  auto decoded_file = DecodedFile(file);
-
-  if (decoded_file.is_document_file()) {
-    DocumentFile document_file = decoded_file.document_file();
-    if (document_file.password_encrypted()) {
-      if (!document_file.decrypt(password_callback())) {
-        throw WrongPassword();
-      }
-    }
-  }
-
-  return translate(decoded_file, output_path, config);
-}
-
 Html html::translate(const DecodedFile &decoded_file,
                      const std::string &output_path, const HtmlConfig &config) {
   if (decoded_file.is_text_file()) {
