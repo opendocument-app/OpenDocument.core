@@ -5,6 +5,7 @@
 #include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/global_params.hpp>
 
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/filesystem.hpp>
@@ -23,6 +24,8 @@
 using namespace odr::internal;
 
 namespace odr {
+
+HtmlConfig::HtmlConfig() : resource_path{GlobalParams::odr_core_data_path()} {}
 
 Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages)
     : m_file_type{file_type}, m_config{std::move(config)},

@@ -14,7 +14,6 @@ class HtmlService;
 class HttpServer {
 public:
   struct Config {
-    std::size_t buffer_size{4096};
     std::string output_path{"/tmp"};
   };
 

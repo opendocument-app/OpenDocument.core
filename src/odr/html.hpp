@@ -61,6 +61,8 @@ struct HtmlConfig {
   // formatting
   bool format_html{false};
   std::uint8_t html_indent{2};
+
+  HtmlConfig();
 };
 
 /// @brief HTML output.
