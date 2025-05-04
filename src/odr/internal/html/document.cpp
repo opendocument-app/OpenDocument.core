@@ -18,8 +18,8 @@
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <algorithm>
 #include <fstream>
-#include <ranges>
 
 namespace odr::internal::html {
 
