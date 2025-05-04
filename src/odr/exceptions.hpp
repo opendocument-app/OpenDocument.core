@@ -137,11 +137,6 @@ struct MsUnsupportedCryptoAlgorithm final : public std::runtime_error {
   MsUnsupportedCryptoAlgorithm();
 };
 
-/// @brief Wrong password exception
-struct WrongPassword final : public std::runtime_error {
-  WrongPassword();
-};
-
 /// @brief Unknown document type exception
 struct UnknownDocumentType final : public std::runtime_error {
   UnknownDocumentType();

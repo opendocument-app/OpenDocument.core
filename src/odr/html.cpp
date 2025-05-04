@@ -5,6 +5,7 @@
 #include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/global_params.hpp>
 
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/filesystem.hpp>
@@ -23,6 +24,8 @@
 using namespace odr::internal;
 
 namespace odr {
+
+HtmlConfig::HtmlConfig() : resource_path{GlobalParams::odr_core_data_path()} {}
 
 Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages)
     : m_file_type{file_type}, m_config{std::move(config)},
@@ -51,23 +54,6 @@ void Html::save(const std::string &path) const {
 
 HtmlPage::HtmlPage(std::string name, std::string path)
     : name{std::move(name)}, path{std::move(path)} {}
-
-Html html::translate(const File &file, const std::string &output_path,
-                     const HtmlConfig &config,
-                     const PasswordCallback &password_callback) {
-  auto decoded_file = DecodedFile(file);
-
-  if (decoded_file.is_document_file()) {
-    DocumentFile document_file = decoded_file.document_file();
-    if (document_file.password_encrypted()) {
-      if (!document_file.decrypt(password_callback())) {
-        throw WrongPassword();
-      }
-    }
-  }
-
-  return translate(decoded_file, output_path, config);
-}
 
 Html html::translate(const DecodedFile &decoded_file,
                      const std::string &output_path, const HtmlConfig &config) {

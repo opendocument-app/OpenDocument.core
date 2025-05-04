@@ -19,9 +19,6 @@ class PdfFile;
 class Html;
 struct HtmlConfig;
 
-/// @brief Callback to get the password for encrypted files.
-using PasswordCallback = std::function<std::string()>;
-
 /// @brief Get the version of the Open Document Reader library.
 /// @return The version of the Open Document Reader library.
 [[nodiscard]] std::string version() noexcept;

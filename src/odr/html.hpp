@@ -61,6 +61,8 @@ struct HtmlConfig {
   // formatting
   bool format_html{false};
   std::uint8_t html_indent{2};
+
+  HtmlConfig();
 };
 
 /// @brief HTML output.
@@ -96,27 +98,8 @@ struct HtmlPage final {
   HtmlPage(std::string name, std::string path);
 };
 
-/// @brief Callback to get the password for encrypted files.
-using PasswordCallback = std::function<std::string()>;
-
 namespace html {
 
-/// @brief Translates a file to HTML.
-///
-/// @deprecated This function is deprecated because it hides API which can be
-/// useful to the user like inspecting if a file is encrypted and if the
-/// password was wrong. Use `translate(const DecodedFile &, const std::string &,
-/// const HtmlConfig &)` instead.
-///
-/// @param file File to translate.
-/// @param output_path Path to save the HTML output.
-/// @param config Configuration for the HTML output.
-/// @param password_callback Callback to get the password for encrypted files.
-/// @return HTML output.
-[[deprecated]]
-Html translate(const File &file, const std::string &output_path,
-               const HtmlConfig &config,
-               const PasswordCallback &password_callback);
 /// @brief Translates a decoded file to HTML.
 ///
 /// @param file Decoded file to translate.
