@@ -240,7 +240,7 @@ public:
 
     for (const auto &[resource, location] : m_resources) {
       if (location.has_value() && location.value() == path) {
-        util::stream::pipe(*resource.file().stream(), out);
+        resource.write_resource(out);
         return;
       }
     }
