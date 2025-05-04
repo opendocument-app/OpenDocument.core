@@ -19,6 +19,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <fstream>
+#include <ranges>
 
 namespace odr::internal::html {
 
