@@ -43,6 +43,8 @@ public:
 
   void warmup() const;
 
+  [[nodiscard]] bool exists(const std::string &path) const;
+
   [[nodiscard]] std::string mimetype(const std::string &path) const;
 
   void write(const std::string &path, std::ostream &out) const;

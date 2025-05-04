@@ -9,6 +9,9 @@ UnsupportedOperation::UnsupportedOperation()
 
 FileNotFound::FileNotFound() : std::runtime_error("file not found") {}
 
+FileNotFound::FileNotFound(const std::string &path)
+    : std::runtime_error("file not found: " + path) {}
+
 UnknownFileType::UnknownFileType() : std::runtime_error("unknown file type") {}
 
 UnsupportedFileType::UnsupportedFileType(const FileType file_type)
@@ -67,5 +70,10 @@ MsUnsupportedCryptoAlgorithm::MsUnsupportedCryptoAlgorithm()
 
 UnknownDocumentType::UnknownDocumentType()
     : std::runtime_error("unknown document type") {}
+
+InvalidPrefix::InvalidPrefix() : std::runtime_error("invalid prefix string") {}
+
+InvalidPrefix::InvalidPrefix(const std::string &prefix)
+    : std::runtime_error("invalid prefix string: " + prefix) {}
 
 } // namespace odr

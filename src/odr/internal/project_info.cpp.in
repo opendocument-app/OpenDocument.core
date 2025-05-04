@@ -28,6 +28,10 @@ bool project_info::with_pdf2htmlex() noexcept{
 #endif
 }
 
+const char *project_info::odr_data_path() noexcept {
+  return "${ODR_DATA_PATH}";
+}
+
 const char *project_info::fontconfig_data_path() noexcept {
   return "${FONTCONFIG_PATH}";
 }

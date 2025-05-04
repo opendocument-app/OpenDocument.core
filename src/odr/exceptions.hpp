@@ -13,6 +13,7 @@ struct UnsupportedOperation final : public std::runtime_error {
 /// @brief File not found exception
 struct FileNotFound final : public std::runtime_error {
   FileNotFound();
+  explicit FileNotFound(const std::string &path);
 };
 
 /// @brief Unknown file type exception
@@ -140,6 +141,12 @@ struct MsUnsupportedCryptoAlgorithm final : public std::runtime_error {
 /// @brief Unknown document type exception
 struct UnknownDocumentType final : public std::runtime_error {
   UnknownDocumentType();
+};
+
+/// @brief Invalid prefix string
+struct InvalidPrefix final : public std::runtime_error {
+  InvalidPrefix();
+  explicit InvalidPrefix(const std::string &prefix);
 };
 
 } // namespace odr
