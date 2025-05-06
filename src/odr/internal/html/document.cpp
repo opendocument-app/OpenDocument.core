@@ -144,8 +144,7 @@ std::string fill_path_variables(const std::string &path,
   return result;
 }
 
-std::string get_output_path(const Document &document,
-                            const std::string &output_path,
+std::string get_output_path(const Document &, const std::string &output_path,
                             const HtmlConfig &config) {
   return fill_path_variables(output_path + "/" +
                              config.document_output_file_name);
