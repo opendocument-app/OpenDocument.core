@@ -190,29 +190,33 @@ void html::translate_sheet(Sheet sheet, const WritingState &state) {
 
 void html::translate_slide(Slide slide, const WritingState &state) {
   state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(
-                 translate_outer_page_style(slide.page_layout())));
-  state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(
-                 translate_inner_page_style(slide.page_layout())));
+      "div", HtmlElementOptions()
+                 .set_class("odr-page-outer")
+                 .set_style(translate_outer_page_style(slide.page_layout())));
+  //  state.out().write_element_begin(
+  //      "div", HtmlElementOptions().set_class("odr-page-inner").set_style(
+  //                 translate_inner_page_style(slide.page_layout())));
 
   translate_master_page(slide.master_page(), state);
   translate_children(slide.children(), state);
 
-  state.out().write_element_end("div");
+  //  state.out().write_element_end("div");
   state.out().write_element_end("div");
 }
 
 void html::translate_page(Page page, const WritingState &state) {
   state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(
-                 translate_outer_page_style(page.page_layout())));
-  state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(
-                 translate_inner_page_style(page.page_layout())));
+      "div", HtmlElementOptions()
+                 .set_class("odr-page-outer")
+                 .set_style(translate_outer_page_style(page.page_layout())));
+  //  state.out().write_element_begin(
+  //      "div", HtmlElementOptions().set_class("odr-page-inner").set_style(
+  //                 translate_inner_page_style(page.page_layout())));
+
   translate_master_page(page.master_page(), state);
   translate_children(page.children(), state);
-  state.out().write_element_end("div");
+
+  //  state.out().write_element_end("div");
   state.out().write_element_end("div");
 }
 
