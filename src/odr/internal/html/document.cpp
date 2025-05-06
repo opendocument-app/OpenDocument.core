@@ -379,7 +379,7 @@ public:
   explicit SlideHtmlFragment(Document document, Slide slide)
       : HtmlFragmentBase(slide.name(), std::move(document)), m_slide{slide} {}
 
-  void write_fragment(HtmlWriter &out, WritingState &state) const final {
+  void write_fragment(HtmlWriter &, WritingState &state) const final {
     html::translate_slide(m_slide, state);
   }
 
@@ -405,7 +405,7 @@ public:
   explicit PageHtmlFragment(Document document, Page page)
       : HtmlFragmentBase(page.name(), std::move(document)), m_page{page} {}
 
-  void write_fragment(HtmlWriter &out, WritingState &state) const final {
+  void write_fragment(HtmlWriter &, WritingState &state) const final {
     html::translate_page(m_page, state);
   }
 
