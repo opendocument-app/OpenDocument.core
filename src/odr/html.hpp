@@ -28,10 +28,7 @@ struct HtmlConfig {
   bool compact_drawing{false};
 
   // document output file names
-  std::string text_document_output_file_name{"document.html"};
-  std::string presentation_output_file_name{"presentation.html"};
-  std::string spreadsheet_output_file_name{"spreadsheet.html"};
-  std::string drawing_output_file_name{"drawing.html"};
+  std::string document_output_file_name{"document.html"};
 
   // document element output file names
   std::string slide_output_file_name{"slide{index}.html"};
