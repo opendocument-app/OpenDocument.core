@@ -47,7 +47,7 @@ void front(const Document &document, const WritingState &state) {
       common::Path(state.config().resource_path).join(common::Path("odr.css")));
   odr::HtmlResource odr_css_resource =
       html::HtmlResource::create(HtmlResourceType::css, "text/css", "odr.css",
-                                 "odr.css", odr_css_file, true, true, false);
+                                 "odr.css", odr_css_file, true, false, true);
   HtmlResourceLocation odr_css_location =
       state.resource_locator()(odr_css_resource);
   state.resources().emplace_back(std::move(odr_css_resource), odr_css_location);
@@ -65,7 +65,7 @@ void front(const Document &document, const WritingState &state) {
                  .join(common::Path("odr_spreadsheet.css")));
     odr::HtmlResource odr_spreadsheet_css_resource = html::HtmlResource::create(
         HtmlResourceType::css, "text/css", "odr_spreadsheet.css",
-        "odr_spreadsheet.css", odr_spreadsheet_css_file, true, true, false);
+        "odr_spreadsheet.css", odr_spreadsheet_css_file, true, false, true);
     HtmlResourceLocation odr_spreadsheet_css_location =
         state.resource_locator()(odr_spreadsheet_css_resource);
     state.resources().emplace_back(std::move(odr_spreadsheet_css_resource),
@@ -120,7 +120,7 @@ void back(const Document &document, const WritingState &state) {
       common::Path(state.config().resource_path).join(common::Path("odr.js")));
   odr::HtmlResource odr_js_resource = html::HtmlResource::create(
       HtmlResourceType::js, "text/javascript", "odr.js", "odr.js", odr_js_file,
-      true, true, false);
+      true, false, true);
   HtmlResourceLocation odr_js_location =
       state.resource_locator()(odr_js_resource);
   state.resources().emplace_back(std::move(odr_js_resource), odr_js_location);
@@ -144,13 +144,17 @@ std::string fill_path_variables(const std::string &path,
   return result;
 }
 
+std::string get_output_path(const Document &document,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
+  return fill_path_variables(output_path + "/" +
+                             config.document_output_file_name);
+}
+
 std::string get_output_path(const Document &document, std::uint32_t index,
                             const std::string &output_path,
                             const HtmlConfig &config) {
-  if (document.document_type() == DocumentType::text) {
-    return fill_path_variables(output_path + "/" +
-                               config.text_document_output_file_name);
-  } else if (document.document_type() == DocumentType::presentation) {
+  if (document.document_type() == DocumentType::presentation) {
     return fill_path_variables(
         output_path + "/" + config.slide_output_file_name, index);
   } else if (document.document_type() == DocumentType::spreadsheet) {
@@ -463,8 +467,25 @@ Html html::translate_document(const odr::Document &document,
   HtmlResources resources;
   std::vector<HtmlPage> pages;
 
+  {
+    std::string filled_path = get_output_path(document, output_path, config);
+    std::ofstream ostream(filled_path, std::ios::out);
+    if (!ostream.is_open()) {
+      throw FileWriteError();
+    }
+    html::HtmlWriter out(ostream, config.format_html, config.html_indent);
+
+    document_service_impl->write_document(out);
+
+    pages.emplace_back("document", filled_path);
+  }
+
   std::uint32_t i = 0;
   for (const auto &fragment : document_service_impl->fragments()) {
+    if (fragment->name() == "document") {
+      continue;
+    }
+
     std::string filled_path = get_output_path(document, i, output_path, config);
     std::ofstream ostream(filled_path, std::ios::out);
     if (!ostream.is_open()) {

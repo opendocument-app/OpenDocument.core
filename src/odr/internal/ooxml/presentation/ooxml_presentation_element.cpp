@@ -117,7 +117,11 @@ pugi::xml_node Element::slide_(const abstract::Document *document,
 }
 
 PageLayout Slide::page_layout(const abstract::Document *) const {
-  return {}; // TODO
+  // TODO
+  return {
+      .width = Measure("11.02 in"),
+      .height = Measure("8.27 in"),
+  };
 }
 
 abstract::Element *Slide::master_page(const abstract::Document *) const {
