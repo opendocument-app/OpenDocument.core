@@ -121,6 +121,8 @@ PageLayout Slide::page_layout(const abstract::Document *) const {
   return {
       .width = Measure("11.02 in"),
       .height = Measure("8.27 in"),
+      .print_orientation = {},
+      .margin = {},
   };
 }
 
