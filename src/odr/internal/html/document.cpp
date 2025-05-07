@@ -73,7 +73,9 @@ void front(const Document &document, const WritingState &state) {
     if (odr_spreadsheet_css_location.has_value()) {
       state.out().write_header_style(odr_spreadsheet_css_location.value());
     } else {
+      state.out().write_header_style_begin();
       util::stream::pipe(*odr_spreadsheet_css_file.stream(), state.out().out());
+      state.out().write_header_style_end();
     }
   }
 
@@ -345,8 +347,8 @@ protected:
 
 class TextHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit TextHtmlFragment(Document document)
-      : HtmlFragmentBase("document", std::move(document)) {}
+  explicit TextHtmlFragment(std::string name, Document document)
+      : HtmlFragmentBase(std::move(name), std::move(document)) {}
 
   void write_fragment(HtmlWriter &out, WritingState &state) const final {
     auto root = m_document.root_element();
@@ -379,8 +381,9 @@ public:
 
 class SlideHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit SlideHtmlFragment(Document document, Slide slide)
-      : HtmlFragmentBase(slide.name(), std::move(document)), m_slide{slide} {}
+  explicit SlideHtmlFragment(std::string name, Document document, Slide slide)
+      : HtmlFragmentBase(std::move(name), std::move(document)), m_slide{slide} {
+  }
 
   void write_fragment(HtmlWriter &, WritingState &state) const final {
     html::translate_slide(m_slide, state);
@@ -392,8 +395,9 @@ private:
 
 class SheetHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit SheetHtmlFragment(Document document, Sheet sheet)
-      : HtmlFragmentBase(sheet.name(), std::move(document)), m_sheet{sheet} {}
+  explicit SheetHtmlFragment(std::string name, Document document, Sheet sheet)
+      : HtmlFragmentBase(std::move(name), std::move(document)), m_sheet{sheet} {
+  }
 
   void write_fragment(HtmlWriter &, WritingState &state) const final {
     translate_sheet(m_sheet, state);
@@ -405,8 +409,8 @@ private:
 
 class PageHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit PageHtmlFragment(Document document, Page page)
-      : HtmlFragmentBase(page.name(), std::move(document)), m_page{page} {}
+  explicit PageHtmlFragment(std::string name, Document document, Page page)
+      : HtmlFragmentBase(std::move(name), std::move(document)), m_page{page} {}
 
   void write_fragment(HtmlWriter &, WritingState &state) const final {
     html::translate_page(m_page, state);
@@ -431,21 +435,28 @@ odr::HtmlService html::create_document_service(const Document &document,
   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments;
 
   if (document.document_type() == DocumentType::text) {
-    fragments.push_back(std::make_unique<TextHtmlFragment>(document));
+    fragments.push_back(
+        std::make_unique<TextHtmlFragment>("document", document));
   } else if (document.document_type() == DocumentType::presentation) {
+    std::size_t i = 1;
     for (auto child : document.root_element().children()) {
-      fragments.push_back(
-          std::make_unique<SlideHtmlFragment>(document, child.slide()));
+      fragments.push_back(std::make_unique<SlideHtmlFragment>(
+          "slide" + std::to_string(i), document, child.slide()));
+      ++i;
     }
   } else if (document.document_type() == DocumentType::spreadsheet) {
+    std::size_t i = 1;
     for (auto child : document.root_element().children()) {
-      fragments.push_back(
-          std::make_unique<SheetHtmlFragment>(document, child.sheet()));
+      fragments.push_back(std::make_unique<SheetHtmlFragment>(
+          "sheet" + std::to_string(i), document, child.sheet()));
+      ++i;
     }
   } else if (document.document_type() == DocumentType::drawing) {
+    std::size_t i = 1;
     for (auto child : document.root_element().children()) {
-      fragments.push_back(
-          std::make_unique<PageHtmlFragment>(document, child.page()));
+      fragments.push_back(std::make_unique<PageHtmlFragment>(
+          "page" + std::to_string(i), document, child.page()));
+      ++i;
     }
   } else {
     throw UnknownDocumentType();
