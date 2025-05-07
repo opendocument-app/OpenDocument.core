@@ -11,11 +11,18 @@
 namespace odr::internal::ooxml {
 
 FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
-  static const std::unordered_map<common::Path, FileType> types = {
-      {common::Path("word/document.xml"), FileType::office_open_xml_document},
+  struct TypeInfo {
+    FileType file_type;
+    DocumentType document_type;
+  };
+
+  static const std::unordered_map<common::Path, TypeInfo> types = {
+      {common::Path("word/document.xml"),
+       {FileType::office_open_xml_document, DocumentType::text}},
       {common::Path("ppt/presentation.xml"),
-       FileType::office_open_xml_presentation},
-      {common::Path("xl/workbook.xml"), FileType::office_open_xml_workbook},
+       {FileType::office_open_xml_presentation, DocumentType::presentation}},
+      {common::Path("xl/workbook.xml"),
+       {FileType::office_open_xml_workbook, DocumentType::spreadsheet}},
   };
 
   FileMeta result;
@@ -27,9 +34,12 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
     return result;
   }
 
+  result.document_meta.emplace();
+
   for (auto &&t : types) {
     if (filesystem.is_file(t.first)) {
-      result.type = t.second;
+      result.type = t.second.file_type;
+      result.document_meta->document_type = t.second.document_type;
       break;
     }
   }
