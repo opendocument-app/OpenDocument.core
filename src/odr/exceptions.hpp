@@ -149,4 +149,14 @@ struct InvalidPrefix final : public std::runtime_error {
   explicit InvalidPrefix(const std::string &prefix);
 };
 
+/// @brief Document copy protected exception
+struct DocumentCopyProtectedException : public std::runtime_error {
+  DocumentCopyProtectedException();
+};
+
+struct ResourceNotAccessible : public std::runtime_error {
+  ResourceNotAccessible();
+  ResourceNotAccessible(const std::string &name, const std::string &path);
+};
+
 } // namespace odr

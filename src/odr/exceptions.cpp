@@ -76,4 +76,14 @@ InvalidPrefix::InvalidPrefix() : std::runtime_error("invalid prefix string") {}
 InvalidPrefix::InvalidPrefix(const std::string &prefix)
     : std::runtime_error("invalid prefix string: " + prefix) {}
 
+DocumentCopyProtectedException::DocumentCopyProtectedException()
+    : std::runtime_error("document copy protection") {}
+
+ResourceNotAccessible::ResourceNotAccessible()
+    : std::runtime_error("resource not accessible") {}
+
+ResourceNotAccessible::ResourceNotAccessible(const std::string &name,
+                                             const std::string &path)
+    : std::runtime_error("resource not accessible: " + name + " at " + path) {}
+
 } // namespace odr

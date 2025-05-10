@@ -12,6 +12,7 @@
 namespace odr {
 class Archive;
 struct HtmlPage;
+class HtmlService;
 
 /// @brief HTML table gridlines.
 enum class HtmlTableGridlines {
@@ -64,25 +65,17 @@ struct HtmlConfig {
 
 /// @brief HTML output.
 ///
-/// Represents the output of a translated file to HTML. Also allows for editing
-/// and saving the output.
+/// Represents the output of a translated file to HTML.
 class Html final {
 public:
-  Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages);
-  Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages,
-       Document document);
+  Html(HtmlConfig config, std::vector<HtmlPage> pages);
 
-  [[nodiscard]] FileType file_type() const;
+  [[nodiscard]] const HtmlConfig &config();
   [[nodiscard]] const std::vector<HtmlPage> &pages() const;
 
-  void edit(const char *diff);
-  void save(const std::string &path) const;
-
 private:
-  FileType m_file_type;
   HtmlConfig m_config;
   std::vector<HtmlPage> m_pages;
-  std::optional<Document> m_document;
 };
 
 /// @brief HTML page.
@@ -103,8 +96,8 @@ namespace html {
 /// @param output_path Path to save the HTML output.
 /// @param config Configuration for the HTML output.
 /// @return HTML output.
-Html translate(const DecodedFile &file, const std::string &output_path,
-               const HtmlConfig &config);
+HtmlService translate(const DecodedFile &file, const std::string &output_path,
+                      const HtmlConfig &config);
 
 /// @brief Translates a text file to HTML.
 ///
@@ -112,40 +105,40 @@ Html translate(const DecodedFile &file, const std::string &output_path,
 /// @param output_path Path to save the HTML output.
 /// @param config Configuration for the HTML output.
 /// @return HTML output.
-Html translate(const TextFile &text_file, const std::string &output_path,
-               const HtmlConfig &config);
+HtmlService translate(const TextFile &text_file, const std::string &output_path,
+                      const HtmlConfig &config);
 /// @brief Translates an image file to HTML.
 ///
 /// @param image_file Image file to translate.
 /// @param output_path Path to save the HTML output.
 /// @param config Configuration for the HTML output.
 /// @return HTML output.
-Html translate(const ImageFile &image_file, const std::string &output_path,
-               const HtmlConfig &config);
+HtmlService translate(const ImageFile &image_file,
+                      const std::string &output_path, const HtmlConfig &config);
 /// @brief Translates an archive to HTML.
 ///
 /// @param archive Archive file to translate.
 /// @param output_path Path to save the HTML output.
 /// @param config Configuration for the HTML output.
 /// @return HTML output.
-Html translate(const ArchiveFile &archive_file, const std::string &output_path,
-               const HtmlConfig &config);
+HtmlService translate(const ArchiveFile &archive_file,
+                      const std::string &output_path, const HtmlConfig &config);
 /// @brief Translates a document to HTML.
 ///
 /// @param document_file Document file to translate.
 /// @param output_path Path to save the HTML output.
 /// @param config Configuration for the HTML output.
 /// @return HTML output.
-Html translate(const DocumentFile &document_file,
-               const std::string &output_path, const HtmlConfig &config);
+HtmlService translate(const DocumentFile &document_file,
+                      const std::string &output_path, const HtmlConfig &config);
 /// @brief Translates a PDF file to HTML.
 ///
 /// @param pdf_file PDF file to translate.
 /// @param output_path Path to save the HTML output.
 /// @param config Configuration for the HTML output.
 /// @return HTML output.
-Html translate(const PdfFile &pdf_file, const std::string &output_path,
-               const HtmlConfig &config);
+HtmlService translate(const PdfFile &pdf_file, const std::string &output_path,
+                      const HtmlConfig &config);
 
 /// @brief Translates an archive to HTML.
 ///
@@ -153,16 +146,16 @@ Html translate(const PdfFile &pdf_file, const std::string &output_path,
 /// @param output_path Path to save the HTML output.
 /// @param config Configuration for the HTML output.
 /// @return HTML output.
-Html translate(const Archive &archive, const std::string &output_path,
-               const HtmlConfig &config);
+HtmlService translate(const Archive &archive, const std::string &output_path,
+                      const HtmlConfig &config);
 /// @brief Translates a document to HTML.
 ///
 /// @param document Document to translate.
 /// @param output_path Path to save the HTML output.
 /// @param config Configuration for the HTML output.
 /// @return HTML output.
-Html translate(const Document &document, const std::string &output_path,
-               const HtmlConfig &config);
+HtmlService translate(const Document &document, const std::string &output_path,
+                      const HtmlConfig &config);
 
 /// @brief Edits a document with a diff.
 ///

@@ -5,14 +5,14 @@
 namespace odr {
 enum class FileType;
 struct HtmlConfig;
-class Html;
+class HtmlService;
 class Filesystem;
 } // namespace odr
 
 namespace odr::internal::html {
 
-Html translate_filesystem(FileType file_type, const Filesystem &filesystem,
-                          const std::string &output_path,
-                          const HtmlConfig &config);
+odr::HtmlService create_filesystem_service(const Filesystem &filesystem,
+                                           const std::string &output_path,
+                                           const HtmlConfig &config);
 
 }

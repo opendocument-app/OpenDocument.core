@@ -7,93 +7,156 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 
-#include <fstream>
+namespace odr::internal::html {
+namespace {
 
-namespace odr::internal {
-
-Html html::translate_filesystem(FileType file_type,
-                                const Filesystem &filesystem,
-                                const std::string &output_path,
-                                const HtmlConfig &config) {
-  std::string output_file_path = output_path + "/files.html";
-  std::ofstream ostream(output_file_path);
-  if (!ostream.is_open()) {
-    throw FileWriteError();
+class HtmlServiceImpl : public HtmlService {
+public:
+  HtmlServiceImpl(Filesystem filesystem, HtmlConfig config,
+                  HtmlResourceLocator resource_locator)
+      : HtmlService(std::move(config), std::move(resource_locator)),
+        m_filesystem{std::move(filesystem)} {
+    m_views.emplace_back(
+        std::make_shared<HtmlView>(*this, "files", "files.html"));
   }
-  HtmlWriter out(ostream, config.format_html, config.html_indent);
 
-  auto file_walker = filesystem.file_walker("");
+  void warmup() const final {}
 
-  out.write_begin();
+  [[nodiscard]] const HtmlViews &list_views() const final { return m_views; }
 
-  out.write_header_begin();
-  out.write_header_charset("UTF-8");
-  out.write_header_target("_blank");
-  out.write_header_title("odr");
-  out.write_header_viewport(
-      "width=device-width,initial-scale=1.0,user-scalable=yes");
-  out.write_header_style_begin();
-  out.write_raw("*{font-family:monospace;}");
-  out.write_header_style_end();
-  out.write_header_end();
+  [[nodiscard]] bool exists(const std::string &path) const final {
+    if (path == "files.html") {
+      return true;
+    }
 
-  out.write_body_begin();
+    return false;
+  }
 
-  for (; !file_walker.end(); file_walker.next()) {
-    common::Path file_path = common::Path(file_walker.path());
-    bool is_file = file_walker.is_file();
+  [[nodiscard]] std::string mimetype(const std::string &path) const final {
+    if (path == "files.html") {
+      return "text/html";
+    }
 
-    out.write_element_begin("p");
+    throw FileNotFound("Unknown path: " + path);
+  }
 
-    out.write_element_begin("span");
-    out.write_raw(file_path.string());
-    out.write_element_end("span");
+  void write(const std::string &path, std::ostream &out) const final {
+    if (path == "files.html") {
+      HtmlWriter writer(out, config());
+      write_filesystem(writer);
+      return;
+    }
 
-    out.write_element_begin("span");
-    out.write_raw(" ");
-    out.write_element_end("span");
+    throw FileNotFound("Unknown path: " + path);
+  }
 
-    out.write_element_begin("span");
-    out.write_raw(file_walker.is_file() ? "file" : "directory");
-    out.write_element_end("span");
+  HtmlResources write_html(const std::string &path,
+                           html::HtmlWriter &out) const final {
+    if (path == "files.html") {
+      return write_filesystem(out);
+    }
 
-    if (is_file) {
+    throw FileNotFound("Unknown path: " + path);
+  }
+
+  HtmlResources write_filesystem(HtmlWriter &out) const {
+    HtmlResources resources;
+
+    auto file_walker = m_filesystem.file_walker("");
+
+    out.write_begin();
+
+    out.write_header_begin();
+    out.write_header_charset("UTF-8");
+    out.write_header_target("_blank");
+    out.write_header_title("odr");
+    out.write_header_viewport(
+        "width=device-width,initial-scale=1.0,user-scalable=yes");
+    out.write_header_style_begin();
+    out.write_raw("*{font-family:monospace;}");
+    out.write_header_style_end();
+    out.write_header_end();
+
+    out.write_body_begin();
+
+    for (; !file_walker.end(); file_walker.next()) {
+      common::Path file_path = common::Path(file_walker.path());
+      bool is_file = file_walker.is_file();
+
+      out.write_element_begin("p");
+
+      out.write_element_begin("span");
+      out.write_raw(file_path.string());
+      out.write_element_end("span");
+
       out.write_element_begin("span");
       out.write_raw(" ");
       out.write_element_end("span");
 
-      File file = filesystem.open(file_path);
-
       out.write_element_begin("span");
-      out.write_raw(std::to_string(file.size()));
+      out.write_raw(file_walker.is_file() ? "file" : "directory");
       out.write_element_end("span");
 
-      std::unique_ptr<std::istream> stream = file.stream();
-
-      if (stream != nullptr) {
+      if (is_file) {
         out.write_element_begin("span");
         out.write_raw(" ");
         out.write_element_end("span");
 
-        out.write_element_begin(
-            "a", HtmlElementOptions().set_attributes(HtmlAttributesVector{
-                     {"href", file_to_url(*stream, "application/octet-stream")},
-                     {"download", file_path.basename()}}));
-        out.write_raw("download");
-        out.write_element_end("a");
+        File file = m_filesystem.open(file_path);
+
+        out.write_element_begin("span");
+        out.write_raw(std::to_string(file.size()));
+        out.write_element_end("span");
+
+        std::unique_ptr<std::istream> stream = file.stream();
+
+        if (stream != nullptr) {
+          out.write_element_begin("span");
+          out.write_raw(" ");
+          out.write_element_end("span");
+
+          out.write_element_begin(
+              "a",
+              HtmlElementOptions().set_attributes(HtmlAttributesVector{
+                  {"href", file_to_url(*stream, "application/octet-stream")},
+                  {"download", file_path.basename()}}));
+          out.write_raw("download");
+          out.write_element_end("a");
+        }
       }
+
+      out.write_element_end("p");
     }
 
-    out.write_element_end("p");
+    out.write_body_end();
+
+    out.write_end();
+
+    return resources;
   }
 
-  out.write_body_end();
+protected:
+  Filesystem m_filesystem;
 
-  out.write_end();
+  HtmlViews m_views;
+};
 
-  return {file_type, config, {{"files", output_file_path}}};
+} // namespace
+} // namespace odr::internal::html
+
+namespace odr::internal {
+
+odr::HtmlService html::create_filesystem_service(const Filesystem &filesystem,
+                                                 const std::string &output_path,
+                                                 const HtmlConfig &config) {
+  HtmlResourceLocator resource_locator =
+      local_resource_locator(output_path, config);
+
+  return odr::HtmlService(
+      std::make_unique<HtmlServiceImpl>(filesystem, config, resource_locator));
 }
 
 } // namespace odr::internal

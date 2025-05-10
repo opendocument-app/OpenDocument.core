@@ -19,7 +19,6 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <fstream>
 
 namespace odr::internal::html {
 
@@ -146,35 +145,14 @@ std::string fill_path_variables(const std::string &path,
   return result;
 }
 
-std::string get_output_path(const Document &, const std::string &output_path,
-                            const HtmlConfig &config) {
-  return fill_path_variables(output_path + "/" +
-                             config.document_output_file_name);
-}
-
-std::string get_output_path(const Document &document, std::uint32_t index,
-                            const std::string &output_path,
-                            const HtmlConfig &config) {
-  if (document.document_type() == DocumentType::presentation) {
-    return fill_path_variables(
-        output_path + "/" + config.slide_output_file_name, index);
-  } else if (document.document_type() == DocumentType::spreadsheet) {
-    return fill_path_variables(
-        output_path + "/" + config.sheet_output_file_name, index);
-  } else if (document.document_type() == DocumentType::drawing) {
-    return fill_path_variables(output_path + "/" + config.page_output_file_name,
-                               index);
-  } else {
-    throw UnknownDocumentType();
-  }
-}
-
 class HtmlFragmentBase {
 public:
-  HtmlFragmentBase(std::string name, Document document)
-      : m_name{std::move(name)}, m_document{std::move(document)} {}
+  HtmlFragmentBase(std::string name, std::string path, Document document)
+      : m_name{std::move(name)}, m_path{std::move(path)},
+        m_document{std::move(document)} {}
 
   [[nodiscard]] const std::string &name() const { return m_name; }
+  [[nodiscard]] const std::string &path() const { return m_path; }
 
   virtual void write_fragment(HtmlWriter &out, WritingState &state) const = 0;
 
@@ -186,6 +164,7 @@ public:
 
 protected:
   std::string m_name;
+  std::string m_path;
   Document m_document;
 };
 
@@ -221,9 +200,8 @@ public:
       if (fragment->name() == "document") {
         continue;
       }
-
       m_views.emplace_back(std::make_shared<HtmlFragmentView>(
-          *this, fragment->name(), fragment->name() + ".html", fragment));
+          *this, fragment->name(), fragment->path(), fragment));
     }
   }
 
@@ -347,8 +325,10 @@ protected:
 
 class TextHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit TextHtmlFragment(std::string name, Document document)
-      : HtmlFragmentBase(std::move(name), std::move(document)) {}
+  explicit TextHtmlFragment(std::string name, std::string path,
+                            Document document)
+      : HtmlFragmentBase(std::move(name), std::move(path),
+                         std::move(document)) {}
 
   void write_fragment(HtmlWriter &out, WritingState &state) const final {
     auto root = m_document.root_element();
@@ -381,9 +361,10 @@ public:
 
 class SlideHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit SlideHtmlFragment(std::string name, Document document, Slide slide)
-      : HtmlFragmentBase(std::move(name), std::move(document)), m_slide{slide} {
-  }
+  explicit SlideHtmlFragment(std::string name, std::string path,
+                             Document document, Slide slide)
+      : HtmlFragmentBase(std::move(name), std::move(path), std::move(document)),
+        m_slide{slide} {}
 
   void write_fragment(HtmlWriter &, WritingState &state) const final {
     html::translate_slide(m_slide, state);
@@ -395,9 +376,10 @@ private:
 
 class SheetHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit SheetHtmlFragment(std::string name, Document document, Sheet sheet)
-      : HtmlFragmentBase(std::move(name), std::move(document)), m_sheet{sheet} {
-  }
+  explicit SheetHtmlFragment(std::string name, std::string path,
+                             Document document, Sheet sheet)
+      : HtmlFragmentBase(std::move(name), std::move(path), std::move(document)),
+        m_sheet{sheet} {}
 
   void write_fragment(HtmlWriter &, WritingState &state) const final {
     translate_sheet(m_sheet, state);
@@ -409,8 +391,10 @@ private:
 
 class PageHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit PageHtmlFragment(std::string name, Document document, Page page)
-      : HtmlFragmentBase(std::move(name), std::move(document)), m_page{page} {}
+  explicit PageHtmlFragment(std::string name, std::string path,
+                            Document document, Page page)
+      : HtmlFragmentBase(std::move(name), std::move(path), std::move(document)),
+        m_page{page} {}
 
   void write_fragment(HtmlWriter &, WritingState &state) const final {
     html::translate_page(m_page, state);
@@ -435,27 +419,33 @@ odr::HtmlService html::create_document_service(const Document &document,
   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments;
 
   if (document.document_type() == DocumentType::text) {
-    fragments.push_back(
-        std::make_unique<TextHtmlFragment>("document", document));
+    fragments.push_back(std::make_unique<TextHtmlFragment>(
+        "document", config.document_output_file_name, document));
   } else if (document.document_type() == DocumentType::presentation) {
-    std::size_t i = 1;
+    std::size_t i = 0;
     for (auto child : document.root_element().children()) {
       fragments.push_back(std::make_unique<SlideHtmlFragment>(
-          "slide" + std::to_string(i), document, child.slide()));
+          "slide" + std::to_string(i),
+          fill_path_variables(config.slide_output_file_name, i), document,
+          child.slide()));
       ++i;
     }
   } else if (document.document_type() == DocumentType::spreadsheet) {
-    std::size_t i = 1;
+    std::size_t i = 0;
     for (auto child : document.root_element().children()) {
       fragments.push_back(std::make_unique<SheetHtmlFragment>(
-          "sheet" + std::to_string(i), document, child.sheet()));
+          "sheet" + std::to_string(i),
+          fill_path_variables(config.sheet_output_file_name, i), document,
+          child.sheet()));
       ++i;
     }
   } else if (document.document_type() == DocumentType::drawing) {
-    std::size_t i = 1;
+    std::size_t i = 0;
     for (auto child : document.root_element().children()) {
       fragments.push_back(std::make_unique<PageHtmlFragment>(
-          "page" + std::to_string(i), document, child.page()));
+          "page" + std::to_string(i),
+          fill_path_variables(config.page_output_file_name, i), document,
+          child.page()));
       ++i;
     }
   } else {
@@ -464,55 +454,6 @@ odr::HtmlService html::create_document_service(const Document &document,
 
   return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
       document, fragments, config, resource_locator));
-}
-
-Html html::translate_document(const odr::Document &document,
-                              const std::string &output_path,
-                              const odr::HtmlConfig &config) {
-  odr::HtmlService document_service =
-      create_document_service(document, output_path, config);
-  auto document_service_impl =
-      std::dynamic_pointer_cast<HtmlServiceImpl>(document_service.impl());
-
-  HtmlResources resources;
-  std::vector<HtmlPage> pages;
-
-  {
-    std::string filled_path = get_output_path(document, output_path, config);
-    std::ofstream ostream(filled_path, std::ios::out);
-    if (!ostream.is_open()) {
-      throw FileWriteError();
-    }
-    html::HtmlWriter out(ostream, config.format_html, config.html_indent);
-
-    document_service_impl->write_document(out);
-
-    pages.emplace_back("document", filled_path);
-  }
-
-  std::uint32_t i = 0;
-  for (const auto &fragment : document_service_impl->fragments()) {
-    if (fragment->name() == "document") {
-      continue;
-    }
-
-    std::string filled_path = get_output_path(document, i, output_path, config);
-    std::ofstream ostream(filled_path, std::ios::out);
-    if (!ostream.is_open()) {
-      throw FileWriteError();
-    }
-    html::HtmlWriter out(ostream, config.format_html, config.html_indent);
-
-    html::WritingState state(
-        out, config, document_service_impl->resource_locator(), resources);
-    fragment->write_document(out, state);
-
-    pages.emplace_back(fragment->name(), filled_path);
-
-    ++i;
-  }
-
-  return {document.file_type(), config, std::move(pages), document};
 }
 
 } // namespace odr::internal

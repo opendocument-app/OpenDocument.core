@@ -2,8 +2,9 @@
 
 #include <odr/internal/util/stream_util.hpp>
 
+#include <odr/exceptions.hpp>
+
 #include <iostream>
-#include <utility>
 
 namespace odr::internal::html {
 
@@ -70,7 +71,11 @@ bool HtmlResource::is_external() const { return m_is_external; }
 bool HtmlResource::is_accessible() const { return m_is_accessible; }
 
 void HtmlResource::write_resource(std::ostream &os) const {
-  util::stream::pipe(*m_file.stream(), os);
+  if (!is_accessible()) {
+    throw ResourceNotAccessible(name(), path());
+  }
+
+  util::stream::pipe(*file().stream(), os);
 }
 
 } // namespace odr::internal::html
