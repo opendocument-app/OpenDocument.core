@@ -1,8 +1,12 @@
 #include <odr/html_service.hpp>
 
 #include <odr/internal/abstract/html_service.hpp>
+#include <odr/internal/common/path.hpp>
 #include <odr/internal/html/html_writer.hpp>
 
+#include <odr/exceptions.hpp>
+
+#include <fstream>
 #include <iostream>
 
 namespace odr {
@@ -42,6 +46,57 @@ HtmlResources HtmlService::write_html(const std::string &path,
   return m_impl->write_html(path, writer);
 }
 
+Html HtmlService::bring_offline(const std::string &output_path) const {
+  return bring_offline(output_path, list_views());
+}
+
+Html HtmlService::bring_offline(const std::string &output_path,
+                                const std::vector<HtmlView> &views) const {
+  std::vector<HtmlPage> pages;
+
+  HtmlResources resources;
+
+  for (const auto &view : views) {
+    std::filesystem::create_directories(
+        std::filesystem::path(view.path()).parent_path());
+    std::ofstream ostream(view.path(), std::ios::out);
+    if (!ostream.is_open()) {
+      throw FileWriteError();
+    }
+
+    HtmlResources view_resources = view.write_html(ostream);
+    resources.insert(resources.end(), view_resources.begin(),
+                     view_resources.end());
+
+    pages.emplace_back(view.name(), view.path());
+  }
+
+  {
+    auto it = std::unique(resources.begin(), resources.end(),
+                          [](const auto &lhs, const auto &rhs) {
+                            return lhs.first.path() == rhs.first.path();
+                          });
+    resources.erase(it, resources.end());
+  }
+
+  for (const auto &[resource, location] : resources) {
+    if (!location.has_value()) {
+      continue;
+    }
+    auto path = odr::internal::common::Path(output_path)
+                    .join(odr::internal::common::Path(*location));
+
+    std::filesystem::create_directories(path.parent().path());
+    std::ofstream ostream(path.path(), std::ios::out);
+    if (!ostream.is_open()) {
+      throw FileWriteError();
+    }
+    resource.write_resource(ostream);
+  }
+
+  return {config(), std::move(pages)};
+}
+
 const std::shared_ptr<internal::abstract::HtmlService> &
 HtmlService::impl() const {
   return m_impl;
@@ -61,6 +116,38 @@ const HtmlConfig &HtmlView::config() const { return m_impl->config(); }
 HtmlResources HtmlView::write_html(std::ostream &out) const {
   internal::html::HtmlWriter writer(out, config());
   return m_impl->write_html(writer);
+}
+
+Html HtmlView::bring_offline(const std::string &output_path) const {
+  HtmlResources resources;
+
+  {
+    std::filesystem::create_directories(
+        std::filesystem::path(path()).parent_path());
+    std::ofstream ostream(path(), std::ios::out);
+    if (!ostream.is_open()) {
+      throw FileWriteError();
+    }
+
+    resources = write_html(ostream);
+  }
+
+  for (const auto &[resource, location] : resources) {
+    if (!location.has_value()) {
+      continue;
+    }
+    auto path = odr::internal::common::Path(output_path)
+                    .join(odr::internal::common::Path(*location));
+
+    std::filesystem::create_directories(path.parent().path());
+    std::ofstream ostream(path.path(), std::ios::out);
+    if (!ostream.is_open()) {
+      throw FileWriteError();
+    }
+    resource.write_resource(ostream);
+  }
+
+  return {config(), {{name(), path()}}};
 }
 
 const std::shared_ptr<internal::abstract::HtmlView> &HtmlView::impl() const {

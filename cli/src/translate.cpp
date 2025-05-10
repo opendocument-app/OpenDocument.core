@@ -1,5 +1,6 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/html_service.hpp>
 
 #include <iostream>
 #include <string>
@@ -33,7 +34,8 @@ int main(int argc, char **argv) {
   HtmlConfig config;
   config.editable = true;
 
-  html::translate(decoded_file, output, config);
+  HtmlService service = html::translate(decoded_file, output, config);
+  Html html = service.bring_offline(output);
 
   return 0;
 }

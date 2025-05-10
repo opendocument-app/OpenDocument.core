@@ -6,6 +6,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/global_params.hpp>
+#include <odr/html_service.hpp>
 
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/filesystem.hpp>
@@ -27,36 +28,19 @@ namespace odr {
 
 HtmlConfig::HtmlConfig() : resource_path{GlobalParams::odr_core_data_path()} {}
 
-Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages)
-    : m_file_type{file_type}, m_config{std::move(config)},
-      m_pages{std::move(pages)} {}
+Html::Html(HtmlConfig config, std::vector<HtmlPage> pages)
+    : m_config{std::move(config)}, m_pages{std::move(pages)} {}
 
-Html::Html(FileType file_type, HtmlConfig config, std::vector<HtmlPage> pages,
-           Document document)
-    : m_file_type{file_type}, m_config{std::move(config)},
-      m_pages{std::move(pages)}, m_document{std::move(document)} {}
-
-FileType Html::file_type() const { return m_file_type; }
+const HtmlConfig &Html::config() { return m_config; }
 
 const std::vector<HtmlPage> &Html::pages() const { return m_pages; }
-
-void Html::edit(const char *diff) {
-  if (m_document) {
-    html::edit(*m_document, diff);
-  }
-}
-
-void Html::save(const std::string &path) const {
-  if (m_document) {
-    m_document->save(path);
-  }
-}
 
 HtmlPage::HtmlPage(std::string name, std::string path)
     : name{std::move(name)}, path{std::move(path)} {}
 
-Html html::translate(const DecodedFile &decoded_file,
-                     const std::string &output_path, const HtmlConfig &config) {
+HtmlService html::translate(const DecodedFile &decoded_file,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
   if (decoded_file.is_text_file()) {
     return translate(decoded_file.text_file(), output_path, config);
   } else if (decoded_file.is_image_file()) {
@@ -72,25 +56,29 @@ Html html::translate(const DecodedFile &decoded_file,
   throw UnsupportedFileType(decoded_file.file_type());
 }
 
-Html html::translate(const TextFile &text_file, const std::string &output_path,
-                     const HtmlConfig &config) {
+HtmlService html::translate(const TextFile &text_file,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
   std::filesystem::create_directories(output_path);
-  return internal::html::translate_text_file(text_file, output_path, config);
+  return internal::html::create_text_service(text_file, output_path, config);
 }
 
-Html html::translate(const ImageFile &image_file,
-                     const std::string &output_path, const HtmlConfig &config) {
+HtmlService html::translate(const ImageFile &image_file,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
   std::filesystem::create_directories(output_path);
-  return internal::html::translate_image_file(image_file, output_path, config);
+  return internal::html::create_image_service(image_file, output_path, config);
 }
 
-Html html::translate(const ArchiveFile &archive_file,
-                     const std::string &output_path, const HtmlConfig &config) {
+HtmlService html::translate(const ArchiveFile &archive_file,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
   return translate(archive_file.archive(), output_path, config);
 }
 
-Html html::translate(const DocumentFile &document_file,
-                     const std::string &output_path, const HtmlConfig &config) {
+HtmlService html::translate(const DocumentFile &document_file,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
   auto document_file_impl = document_file.impl();
 
 #ifdef ODR_WITH_WVWARE
@@ -98,7 +86,7 @@ Html html::translate(const DocumentFile &document_file,
           std::dynamic_pointer_cast<internal::WvWareLegacyMicrosoftFile>(
               document_file_impl)) {
     std::filesystem::create_directories(output_path);
-    return internal::html::translate_wvware_oldms_file(*wv_document_file,
+    return internal::html::create_wvware_oldms_service(*wv_document_file,
                                                        output_path, config);
   }
 #endif
@@ -106,33 +94,36 @@ Html html::translate(const DocumentFile &document_file,
   return translate(document_file.document(), output_path, config);
 }
 
-Html html::translate(const PdfFile &pdf_file, const std::string &output_path,
-                     const HtmlConfig &config) {
+HtmlService html::translate(const PdfFile &pdf_file,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
   auto pdf_file_impl = pdf_file.impl();
 
 #ifdef ODR_WITH_PDF2HTMLEX
   if (auto poppler_pdf_file =
           std::dynamic_pointer_cast<internal::PopplerPdfFile>(pdf_file_impl)) {
     std::filesystem::create_directories(output_path);
-    return internal::html::translate_poppler_pdf_file(*poppler_pdf_file,
+    return internal::html::create_poppler_pdf_service(*poppler_pdf_file,
                                                       output_path, config);
   }
 #endif
 
-  return internal::html::translate_pdf_file(pdf_file, output_path, config);
+  return internal::html::create_pdf_service(pdf_file, output_path, config);
 }
 
-Html html::translate(const Archive &archive, const std::string &output_path,
-                     const HtmlConfig &config) {
+HtmlService html::translate(const Archive &archive,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
   std::filesystem::create_directories(output_path);
-  return internal::html::translate_filesystem(
-      FileType::unknown, archive.filesystem(), output_path, config);
+  return internal::html::create_filesystem_service(archive.filesystem(),
+                                                   output_path, config);
 }
 
-Html html::translate(const Document &document, const std::string &output_path,
-                     const HtmlConfig &config) {
+HtmlService html::translate(const Document &document,
+                            const std::string &output_path,
+                            const HtmlConfig &config) {
   std::filesystem::create_directories(output_path);
-  return internal::html::translate_document(document, output_path, config);
+  return internal::html::create_document_service(document, output_path, config);
 }
 
 void html::edit(const Document &document, const char *diff) {

@@ -343,9 +343,7 @@ Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
                            param)
       .process(&pdf_doc);
 
-  return {FileType::portable_document_format,
-          config,
-          {{"document", output_path + "/document.html"}}};
+  return {config, {{"document", output_path + "/document.html"}}};
 }
 
 } // namespace odr::internal

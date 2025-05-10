@@ -1,4 +1,5 @@
 #include <odr/html.hpp>
+#include <odr/html_service.hpp>
 #include <odr/odr.hpp>
 
 #include <odr/internal/common/path.hpp>
@@ -139,7 +140,8 @@ TEST_P(HtmlOutputTests, html_meta) {
   config.format_html = true;
   config.html_indent = 2;
 
-  Html html = odr::html::translate(file, output_path, config);
+  HtmlService service = odr::html::translate(file, output_path, config);
+  Html html = service.bring_offline(output_path);
 
   for (const HtmlPage &html_page : html.pages()) {
     EXPECT_TRUE(fs::is_regular_file(html_page.path));

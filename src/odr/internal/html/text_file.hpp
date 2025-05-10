@@ -4,15 +4,14 @@
 
 namespace odr {
 class TextFile;
-
 struct HtmlConfig;
-class Html;
+class HtmlService;
 } // namespace odr
 
 namespace odr::internal::html {
 
-Html translate_text_file(const TextFile &text_file,
-                         const std::string &output_path,
-                         const HtmlConfig &config);
+HtmlService create_text_service(const TextFile &text_file,
+                                const std::string &output_path,
+                                const HtmlConfig &config);
 
 }

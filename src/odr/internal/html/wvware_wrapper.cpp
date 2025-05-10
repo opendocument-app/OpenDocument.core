@@ -6,6 +6,7 @@
 
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/oldms_wvware/wvware_oldms_file.hpp>
 
@@ -15,7 +16,7 @@
 #include <iostream>
 #include <stdexcept>
 
-namespace odr::internal {
+namespace odr::internal::html {
 
 /// A lot of this code is duplicated from wvWare, mostly from `wvWare.c` and
 /// `wvHtml.c`.
@@ -795,56 +796,113 @@ option to support correct symbol font conversion to a viewable format.\n";
   return 0;
 }
 
-} // namespace
+class HtmlServiceImpl : public HtmlService {
+public:
+  HtmlServiceImpl(WvWareLegacyMicrosoftFile oldms_file, HtmlConfig config,
+                  HtmlResourceLocator resource_locator)
+      : HtmlService(std::move(config), std::move(resource_locator)),
+        m_oldms_file{std::move(oldms_file)} {
+    m_views.emplace_back(
+        std::make_shared<HtmlView>(*this, "document", "document.html"));
+  }
 
-Html html::translate_wvware_oldms_file(
-    const WvWareLegacyMicrosoftFile &oldms_file, const std::string &output_path,
-    const HtmlConfig &config) {
-  HtmlResourceLocator resourceLocator =
+  void warmup() const final {}
+
+  [[nodiscard]] const HtmlViews &list_views() const final { return m_views; }
+
+  [[nodiscard]] bool exists(const std::string &path) const final {
+    if (path == "document.html") {
+      return true;
+    }
+
+    return false;
+  }
+
+  [[nodiscard]] std::string mimetype(const std::string &path) const final {
+    if (path == "document.html") {
+      return "text/html";
+    }
+
+    throw FileNotFound("Unknown path: " + path);
+  }
+
+  void write(const std::string &path, std::ostream &out) const final {
+    if (path == "document.html") {
+      HtmlWriter writer(out, config());
+      write_document(writer);
+      return;
+    }
+
+    throw FileNotFound("Unknown path: " + path);
+  }
+
+  HtmlResources write_html(const std::string &path,
+                           html::HtmlWriter &out) const final {
+    if (path == "document.html") {
+      return write_document(out);
+    }
+
+    throw FileNotFound("Unknown path: " + path);
+  }
+
+  HtmlResources write_document(HtmlWriter &out) const {
+    HtmlResources resources;
+
+    wvParseStruct &ps = m_oldms_file.parse_struct();
+
+    wvSetElementHandler(&ps, element_handler);
+    wvSetDocumentHandler(&ps, document_handler);
+    wvSetCharHandler(&ps, char_handler);
+    wvSetSpecialCharHandler(&ps, special_char_handler);
+
+    state_data handle;
+    TranslationState translation_state(out);
+
+    wvInitStateData(&handle);
+
+    translation_state.sd = &handle;
+    ps.userData = &translation_state;
+
+    out.write_begin();
+    out.write_header_begin();
+    out.write_header_charset("UTF-8");
+    out.write_header_target("_blank");
+    out.write_header_title("odr");
+    out.write_header_viewport(
+        "width=device-width,initial-scale=1.0,user-scalable=yes");
+    out.write_header_end();
+    out.write_body_begin();
+
+    if (wvHtml(&ps) != 0) {
+      throw std::runtime_error("wvHtml failed");
+    }
+
+    out.write_body_end();
+    out.write_end();
+
+    return resources;
+  }
+
+protected:
+  WvWareLegacyMicrosoftFile m_oldms_file;
+
+  HtmlViews m_views;
+};
+
+} // namespace
+} // namespace odr::internal::html
+
+namespace odr::internal {
+
+HtmlService
+html::create_wvware_oldms_service(const WvWareLegacyMicrosoftFile &oldms_file,
+                                  const std::string &output_path,
+                                  const HtmlConfig &config) {
+  HtmlResourceLocator resource_locator =
       local_resource_locator(output_path, config);
 
-  std::string output_file_path = output_path + "/document.html";
-
-  std::ofstream ostream(output_file_path, std::ios::out);
-  if (!ostream.is_open()) {
-    throw FileWriteError();
-  }
-  html::HtmlWriter out(ostream, config.format_html, config.html_indent);
-
-  wvParseStruct &ps = oldms_file.parse_struct();
-
-  wvSetElementHandler(&ps, element_handler);
-  wvSetDocumentHandler(&ps, document_handler);
-  wvSetCharHandler(&ps, char_handler);
-  wvSetSpecialCharHandler(&ps, special_char_handler);
-
-  state_data handle;
-  TranslationState translation_state(out);
-
-  wvInitStateData(&handle);
-
-  translation_state.sd = &handle;
-  ps.userData = &translation_state;
-
-  out.write_begin();
-  out.write_header_begin();
-  out.write_header_charset("UTF-8");
-  out.write_header_target("_blank");
-  out.write_header_title("odr");
-  out.write_header_viewport(
-      "width=device-width,initial-scale=1.0,user-scalable=yes");
-  out.write_header_end();
-  out.write_body_begin();
-
-  if (wvHtml(&ps) != 0) {
-    throw std::runtime_error("wvHtml failed");
-  }
-
-  out.write_body_end();
-  out.write_end();
-
-  return {
-      FileType::legacy_word_document, config, {{"document", output_file_path}}};
+  return odr::HtmlService(
+      std::make_unique<HtmlServiceImpl>(oldms_file, config, resource_locator));
 }
 
 } // namespace odr::internal
