@@ -76,4 +76,7 @@ InvalidPrefix::InvalidPrefix() : std::runtime_error("invalid prefix string") {}
 InvalidPrefix::InvalidPrefix(const std::string &prefix)
     : std::runtime_error("invalid prefix string: " + prefix) {}
 
+DocumentCopyProtectedException::DocumentCopyProtectedException()
+    : std::runtime_error("document copy protection") {}
+
 } // namespace odr

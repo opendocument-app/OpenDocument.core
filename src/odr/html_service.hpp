@@ -18,6 +18,7 @@ enum class FileType;
 class File;
 struct HtmlConfig;
 
+class Html;
 class HtmlView;
 class HtmlResource;
 
@@ -53,6 +54,10 @@ public:
   void write(const std::string &path, std::ostream &out) const;
   HtmlResources write_html(const std::string &path, std::ostream &out) const;
 
+  [[nodiscard]] Html bring_offline(const std::string &output_path) const;
+  [[nodiscard]] Html bring_offline(const std::string &output_path,
+                                   const std::vector<HtmlView> &views) const;
+
   [[nodiscard]] const std::shared_ptr<internal::abstract::HtmlService> &
   impl() const;
 
@@ -70,6 +75,8 @@ public:
   [[nodiscard]] const HtmlConfig &config() const;
 
   HtmlResources write_html(std::ostream &out) const;
+
+  [[nodiscard]] Html bring_offline(const std::string &output_path) const;
 
   [[nodiscard]] const std::shared_ptr<internal::abstract::HtmlView> &
   impl() const;

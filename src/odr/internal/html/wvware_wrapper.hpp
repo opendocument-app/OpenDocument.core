@@ -4,7 +4,7 @@
 
 namespace odr {
 struct HtmlConfig;
-class Html;
+class HtmlService;
 } // namespace odr
 
 namespace odr::internal {
@@ -13,8 +13,9 @@ class WvWareLegacyMicrosoftFile;
 
 namespace odr::internal::html {
 
-Html translate_wvware_oldms_file(const WvWareLegacyMicrosoftFile &oldms_file,
-                                 const std::string &output_path,
-                                 const HtmlConfig &config);
+odr::HtmlService
+create_wvware_oldms_service(const WvWareLegacyMicrosoftFile &oldms_file,
+                            const std::string &output_path,
+                            const HtmlConfig &config);
 
 }

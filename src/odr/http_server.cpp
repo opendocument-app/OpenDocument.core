@@ -6,6 +6,7 @@
 #include <odr/html.hpp>
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/pdf2htmlex_wrapper.hpp>
+#include <odr/internal/html/text_file.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 
 #include <httplib/httplib.h>
@@ -114,6 +115,9 @@ HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
   if (file.is_document_file()) {
     service = internal::html::create_document_service(
         file.document_file().document(), output_path, config);
+  } else if (file.is_text_file()) {
+    service = internal::html::create_text_service(file.text_file(), output_path,
+                                                  config);
 #ifdef ODR_WITH_PDF2HTMLEX
   } else if (file.is_pdf_file()) {
     PdfFile pdf_file = file.pdf_file();
