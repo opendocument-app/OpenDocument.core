@@ -141,9 +141,9 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
   }
 }
 
-HtmlService html::create_image_service(const ImageFile &image_file,
-                                       const std::string &output_path,
-                                       const HtmlConfig &config) {
+odr::HtmlService html::create_image_service(const ImageFile &image_file,
+                                            const std::string &output_path,
+                                            const HtmlConfig &config) {
   HtmlResourceLocator resource_locator =
       local_resource_locator(output_path, config);
 

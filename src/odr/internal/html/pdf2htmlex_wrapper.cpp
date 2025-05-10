@@ -301,7 +301,7 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
 
   if (!pdf_doc.okToCopy()) {
     if (html_renderer_param->no_drm == 0) {
-      throw DocumentCopyProtectedException("");
+      throw odr::DocumentCopyProtectedException();
     }
   }
 
@@ -322,28 +322,6 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
       pdf_file, output_path, std::move(html_renderer),
       std::move(html_renderer_mutex), std::move(html_renderer_param), config,
       resource_locator));
-}
-
-Html html::translate_poppler_pdf_file(const PopplerPdfFile &pdf_file,
-                                      const std::string &output_path,
-                                      const HtmlConfig &config) {
-  PDFDoc &pdf_doc = pdf_file.pdf_doc();
-
-  pdf2htmlEX::Param param = create_params(pdf_doc, config, output_path);
-
-  if (!pdf_doc.okToCopy()) {
-    if (param.no_drm == 0) {
-      throw DocumentCopyProtectedException("");
-    }
-  }
-
-  // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
-  // TODO potentially just a cache dir?
-  pdf2htmlEX::HTMLRenderer(odr::GlobalParams::fontconfig_data_path().c_str(),
-                           param)
-      .process(&pdf_doc);
-
-  return {config, {{"document", output_path + "/document.html"}}};
 }
 
 } // namespace odr::internal

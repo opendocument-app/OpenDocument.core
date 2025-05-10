@@ -209,9 +209,9 @@ protected:
 
 namespace odr::internal {
 
-HtmlService html::create_pdf_service(const odr::PdfFile &pdf_file,
-                                     const std::string &output_path,
-                                     const odr::HtmlConfig &config) {
+odr::HtmlService html::create_pdf_service(const odr::PdfFile &pdf_file,
+                                          const std::string &output_path,
+                                          const odr::HtmlConfig &config) {
   HtmlResourceLocator resource_locator =
       local_resource_locator(output_path, config);
 

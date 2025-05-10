@@ -130,9 +130,9 @@ protected:
 
 namespace odr::internal {
 
-HtmlService html::create_text_service(const TextFile &text_file,
-                                      const std::string &output_path,
-                                      const HtmlConfig &config) {
+odr::HtmlService html::create_text_service(const TextFile &text_file,
+                                           const std::string &output_path,
+                                           const HtmlConfig &config) {
   HtmlResourceLocator resource_locator =
       local_resource_locator(output_path, config);
 

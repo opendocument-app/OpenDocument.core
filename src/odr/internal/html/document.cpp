@@ -410,9 +410,9 @@ private:
 
 namespace odr::internal {
 
-HtmlService html::create_document_service(const Document &document,
-                                          const std::string &output_path,
-                                          const HtmlConfig &config) {
+odr::HtmlService html::create_document_service(const Document &document,
+                                               const std::string &output_path,
+                                               const HtmlConfig &config) {
   HtmlResourceLocator resource_locator =
       local_resource_locator(output_path, config);
 

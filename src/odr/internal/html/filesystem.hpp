@@ -11,8 +11,8 @@ class Filesystem;
 
 namespace odr::internal::html {
 
-HtmlService create_filesystem_service(const Filesystem &filesystem,
-                                      const std::string &output_path,
-                                      const HtmlConfig &config);
+odr::HtmlService create_filesystem_service(const Filesystem &filesystem,
+                                           const std::string &output_path,
+                                           const HtmlConfig &config);
 
 }

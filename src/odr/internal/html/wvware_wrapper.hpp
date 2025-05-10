@@ -13,7 +13,7 @@ class WvWareLegacyMicrosoftFile;
 
 namespace odr::internal::html {
 
-HtmlService
+odr::HtmlService
 create_wvware_oldms_service(const WvWareLegacyMicrosoftFile &oldms_file,
                             const std::string &output_path,
                             const HtmlConfig &config);
