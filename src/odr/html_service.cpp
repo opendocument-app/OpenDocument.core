@@ -20,7 +20,7 @@ void bring_offline(const HtmlResources &resources,
     if (!location.has_value()) {
       continue;
     }
-    if (!resource.file()) {
+    if (!resource.is_accessible()) {
       continue;
     }
     auto path = odr::internal::common::Path(output_path)

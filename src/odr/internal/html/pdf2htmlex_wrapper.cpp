@@ -122,7 +122,7 @@ public:
   }
 
   BackgroundImageResource(
-      PopplerPdfFile pdf_file, std::string output_path,
+      PopplerPdfFile pdf_file, const std::string &output_path,
       std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
       std::shared_ptr<std::mutex> html_renderer_mutex,
       std::shared_ptr<pdf2htmlEX::Param> html_renderer_param, int page_number,
@@ -130,14 +130,14 @@ public:
       : HtmlResource(HtmlResourceType::image, "image/jpg",
                      file_name(page_number, format),
                      output_path + "/" + file_name(page_number, format),
-                     odr::File(), false, false, false),
-        m_pdf_file{std::move(pdf_file)}, m_output_path{std::move(output_path)},
+                     odr::File(), false, false, true),
+        m_pdf_file{std::move(pdf_file)},
         m_html_renderer{std::move(html_renderer)},
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
         m_html_renderer_param{std::move(html_renderer_param)},
         m_page_number{page_number} {}
 
-  void write_resource(std::ostream &os) const override {
+  void warmup() const {
     PDFDoc &pdf_doc = m_pdf_file.pdf_doc();
 
     std::lock_guard lock(m_mutex);
@@ -147,16 +147,20 @@ public:
 
       m_html_renderer->renderPage(&pdf_doc, m_page_number);
     }
+  }
 
-    {
-      std::ifstream in(path());
-      util::stream::pipe(in, os);
+  void write_resource(std::ostream &os) const override {
+    warmup();
+
+    std::ifstream in(path());
+    if (!in.is_open()) {
+      throw FileWriteError();
     }
+    util::stream::pipe(in, os);
   }
 
 private:
   PopplerPdfFile m_pdf_file;
-  std::string m_output_path;
   std::shared_ptr<pdf2htmlEX::HTMLRenderer> m_html_renderer;
   std::shared_ptr<std::mutex> m_html_renderer_mutex;
   std::shared_ptr<pdf2htmlEX::Param> m_html_renderer_param;
