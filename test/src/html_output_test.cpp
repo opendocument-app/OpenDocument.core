@@ -140,8 +140,11 @@ TEST_P(HtmlOutputTests, html_meta) {
   config.format_html = true;
   config.html_indent = 2;
 
-  HtmlService service = odr::html::translate(file, output_path, config);
+  std::string output_path_tmp = output_path + "/tmp";
+  std::filesystem::create_directories(output_path_tmp);
+  HtmlService service = odr::html::translate(file, output_path_tmp, config);
   Html html = service.bring_offline(output_path);
+  std::filesystem::remove_all(output_path_tmp);
 
   for (const HtmlPage &html_page : html.pages()) {
     EXPECT_TRUE(fs::is_regular_file(html_page.path));
