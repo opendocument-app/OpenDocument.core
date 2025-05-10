@@ -5,7 +5,6 @@
 #include <odr/exceptions.hpp>
 
 #include <iostream>
-#include <utility>
 
 namespace odr::internal::html {
 

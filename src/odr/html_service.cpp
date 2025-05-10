@@ -20,6 +20,9 @@ void bring_offline(const HtmlResources &resources,
     if (!location.has_value()) {
       continue;
     }
+    if (resource.is_external()) {
+      continue;
+    }
     if (!resource.is_accessible()) {
       continue;
     }
