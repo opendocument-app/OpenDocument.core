@@ -422,7 +422,7 @@ odr::HtmlService html::create_document_service(const Document &document,
     fragments.push_back(std::make_unique<TextHtmlFragment>(
         "document", config.document_output_file_name, document));
   } else if (document.document_type() == DocumentType::presentation) {
-    std::size_t i = 1;
+    std::size_t i = 0;
     for (auto child : document.root_element().children()) {
       fragments.push_back(std::make_unique<SlideHtmlFragment>(
           "slide" + std::to_string(i),
@@ -431,7 +431,7 @@ odr::HtmlService html::create_document_service(const Document &document,
       ++i;
     }
   } else if (document.document_type() == DocumentType::spreadsheet) {
-    std::size_t i = 1;
+    std::size_t i = 0;
     for (auto child : document.root_element().children()) {
       fragments.push_back(std::make_unique<SheetHtmlFragment>(
           "sheet" + std::to_string(i),
@@ -440,7 +440,7 @@ odr::HtmlService html::create_document_service(const Document &document,
       ++i;
     }
   } else if (document.document_type() == DocumentType::drawing) {
-    std::size_t i = 1;
+    std::size_t i = 0;
     for (auto child : document.root_element().children()) {
       fragments.push_back(std::make_unique<PageHtmlFragment>(
           "page" + std::to_string(i),
