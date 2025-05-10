@@ -27,7 +27,7 @@ void bring_offline(const HtmlResources &resources,
                     .join(odr::internal::common::Path(*location));
 
     std::filesystem::create_directories(path.parent());
-    std::ofstream ostream(path, std::ios::out);
+    std::ofstream ostream(path.string(), std::ios::out);
     if (!ostream.is_open()) {
       throw FileWriteError();
     }
@@ -87,7 +87,7 @@ Html HtmlService::bring_offline(const std::string &output_path,
                     .join(odr::internal::common::Path(view.path()));
 
     std::filesystem::create_directories(path.parent());
-    std::ofstream ostream(path, std::ios::out);
+    std::ofstream ostream(path.string(), std::ios::out);
     if (!ostream.is_open()) {
       throw FileWriteError();
     }
@@ -141,7 +141,7 @@ Html HtmlView::bring_offline(const std::string &output_path) const {
 
   {
     std::filesystem::create_directories(path.parent());
-    std::ofstream ostream(path, std::ios::out);
+    std::ofstream ostream(path.string(), std::ios::out);
     if (!ostream.is_open()) {
       throw FileWriteError();
     }
