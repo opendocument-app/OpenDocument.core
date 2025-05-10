@@ -6,6 +6,7 @@
 
 #include <odr/exceptions.hpp>
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 
