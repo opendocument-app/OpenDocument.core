@@ -18,13 +18,8 @@ namespace {
 void bring_offline(const HtmlResources &resources,
                    const std::string &output_path) {
   for (const auto &[resource, location] : resources) {
-    if (!location.has_value()) {
-      continue;
-    }
-    if (resource.is_external()) {
-      continue;
-    }
-    if (!resource.is_accessible()) {
+    if (!location.has_value() || resource.is_shipped() ||
+        resource.is_external() || !resource.is_accessible()) {
       continue;
     }
     auto path = odr::internal::common::Path(output_path)
@@ -44,10 +39,6 @@ HtmlService::HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl)
     : m_impl{std::move(impl)} {}
 
 const HtmlConfig &HtmlService::config() const { return m_impl->config(); }
-
-const HtmlResourceLocator &HtmlService::resource_locator() const {
-  return m_impl->resource_locator();
-}
 
 const HtmlViews &HtmlService::list_views() const {
   return m_impl->list_views();

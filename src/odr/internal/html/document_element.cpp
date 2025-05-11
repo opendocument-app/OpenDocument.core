@@ -397,11 +397,12 @@ void html::translate_image(Element element, const WritingState &state) {
     resource = HtmlResource::create(HtmlResourceType::image, "image/jpg",
                                     image.href(), image.href(),
                                     image.file().value(), false, false, true);
-    resource_location = state.resource_locator()(resource);
+    resource_location =
+        state.config().resource_locator(resource, state.config());
   } else {
     resource =
         HtmlResource::create(HtmlResourceType::image, "image/jpg", "image",
-                             "image", odr::File(), false, false, false);
+                             "image", std::nullopt, false, false, false);
     resource_location = image.href();
   }
   state.resources().emplace_back(std::move(resource), resource_location);

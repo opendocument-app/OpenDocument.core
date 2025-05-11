@@ -26,7 +26,17 @@ using namespace odr::internal;
 
 namespace odr {
 
-HtmlConfig::HtmlConfig() : resource_path{GlobalParams::odr_core_data_path()} {}
+HtmlConfig::HtmlConfig() { init(); }
+
+HtmlConfig::HtmlConfig(std::string output_path_)
+    : output_path(std::move(output_path_)) {
+  init();
+}
+
+void HtmlConfig::init() {
+  resource_path = GlobalParams::odr_core_data_path();
+  resource_locator = html::standard_resource_locator();
+}
 
 Html::Html(HtmlConfig config, std::vector<HtmlPage> pages)
     : m_config{std::move(config)}, m_pages{std::move(pages)} {}
@@ -54,6 +64,31 @@ HtmlService html::translate(const DecodedFile &decoded_file,
   }
 
   throw UnsupportedFileType(decoded_file.file_type());
+}
+
+HtmlResourceLocator html::standard_resource_locator() {
+  return [](const odr::HtmlResource &resource,
+            const HtmlConfig &config) -> HtmlResourceLocation {
+    if (!resource.is_accessible()) {
+      return resource.path();
+    }
+
+    if ((config.embed_shipped_resources && resource.is_shipped()) ||
+        (config.embed_images && resource.type() == HtmlResourceType::image)) {
+      return std::nullopt;
+    }
+
+    if (resource.is_shipped()) {
+      auto resource_path = common::Path(config.resource_path)
+                               .join(common::Path(resource.path()));
+      if (config.relative_resource_paths && config.output_path.has_value()) {
+        resource_path = resource_path.rebase(common::Path(*config.output_path));
+      }
+      return resource_path.string();
+    }
+
+    return resource.path();
+  };
 }
 
 HtmlService html::translate(const TextFile &text_file,

@@ -18,7 +18,7 @@ public:
   constexpr static const char *prefix_pattern = R"(([a-zA-Z0-9_-]+))";
 
   struct Config {
-    std::string output_path{"/tmp"};
+    std::string cache_path{"/tmp/odr"};
   };
 
   explicit HttpServer(const Config &config);

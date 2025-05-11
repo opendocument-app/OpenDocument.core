@@ -10,7 +10,6 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 #include <odr/internal/util/file_util.hpp>
-#include <odr/internal/util/stream_util.hpp>
 
 #include <pdf2htmlEX/HTMLRenderer/HTMLRenderer.h>
 #include <pdf2htmlEX/Param.h>
@@ -24,7 +23,7 @@ namespace odr::internal::html {
 namespace {
 
 pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
-                                const std::string &output_path) {
+                                const std::string &cache_path) {
   (void)config;
 
   pdf2htmlEX::Param param;
@@ -47,7 +46,7 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   param.embed_javascript = 1;
   param.embed_outline = 1;
   param.split_pages = 0;
-  param.dest_dir = output_path;
+  param.dest_dir = cache_path;
   param.css_filename = "style.css";
   param.page_filename = "page%i.html";
   param.outline_filename = "outline.html";
@@ -95,7 +94,7 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
 
   // misc
   param.clean_tmp = 1;
-  param.tmp_dir = output_path;
+  param.tmp_dir = cache_path;
   param.data_dir = odr::GlobalParams::pdf2htmlex_data_path();
   param.poppler_data_dir = odr::GlobalParams::poppler_data_path();
   param.debug = 0;
@@ -113,7 +112,14 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
 
 class BackgroundImageResource : public HtmlResource {
 public:
-  static std::string file_name(std::size_t page_number,
+  static std::string file_name(std::size_t page_number) {
+    std::stringstream stream;
+    stream << "bg";
+    stream << std::hex << page_number;
+    return stream.str();
+  }
+
+  static std::string file_path(std::size_t page_number,
                                const std::string &format) {
     std::stringstream stream;
     stream << "bg";
@@ -123,25 +129,26 @@ public:
   }
 
   BackgroundImageResource(
-      PopplerPdfFile pdf_file, const std::string &output_path,
+      PopplerPdfFile pdf_file, std::string cache_path,
       std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
       std::shared_ptr<std::mutex> html_renderer_mutex,
       std::shared_ptr<pdf2htmlEX::Param> html_renderer_param, int page_number,
       const std::string &format)
       : HtmlResource(HtmlResourceType::image, "image/jpg",
-                     file_name(page_number, format),
-                     output_path + "/" + file_name(page_number, format),
-                     odr::File(), false, false, true),
-        m_pdf_file{std::move(pdf_file)},
+                     file_name(page_number), file_path(page_number, format),
+                     std::nullopt, false, false, true),
+        m_pdf_file{std::move(pdf_file)}, m_cache_path{std::move(cache_path)},
         m_html_renderer{std::move(html_renderer)},
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
         m_html_renderer_param{std::move(html_renderer_param)},
         m_page_number{page_number} {}
 
+  std::string disk_path() const { return m_cache_path + "/" + path(); }
+
   void warmup() const {
     std::lock_guard lock(m_mutex);
 
-    if (std::filesystem::exists(path())) {
+    if (std::filesystem::exists(disk_path())) {
       return;
     }
 
@@ -153,11 +160,12 @@ public:
   void write_resource(std::ostream &os) const override {
     warmup();
 
-    util::file::pipe(path(), os);
+    util::file::pipe(disk_path(), os);
   }
 
 private:
   PopplerPdfFile m_pdf_file;
+  std::string m_cache_path;
   std::shared_ptr<pdf2htmlEX::HTMLRenderer> m_html_renderer;
   std::shared_ptr<std::mutex> m_html_renderer_mutex;
   std::shared_ptr<pdf2htmlEX::Param> m_html_renderer_param;
@@ -167,13 +175,13 @@ private:
 
 class HtmlServiceImpl final : public HtmlService {
 public:
-  HtmlServiceImpl(PopplerPdfFile pdf_file, std::string output_path,
+  HtmlServiceImpl(PopplerPdfFile pdf_file, std::string cache_path,
                   std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
                   std::shared_ptr<std::mutex> html_renderer_mutex,
                   std::shared_ptr<pdf2htmlEX::Param> html_renderer_param,
-                  HtmlConfig config, HtmlResourceLocator resource_locator)
-      : HtmlService(std::move(config), std::move(resource_locator)),
-        m_pdf_file{std::move(pdf_file)}, m_output_path{std::move(output_path)},
+                  HtmlConfig config)
+      : HtmlService(std::move(config)), m_pdf_file{std::move(pdf_file)},
+        m_cache_path{std::move(cache_path)},
         m_html_renderer{std::move(html_renderer)},
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
         m_html_renderer_param{std::move(html_renderer_param)} {
@@ -189,12 +197,14 @@ public:
     }
 
     for (int i = 1; i <= m_pdf_file.pdf_doc().getNumPages(); ++i) {
-      auto resource = std::make_shared<BackgroundImageResource>(
-          m_pdf_file, m_output_path, m_html_renderer, m_html_renderer_mutex,
-          m_html_renderer_param, i, m_html_renderer_param->bg_format);
-      std::string file_name = BackgroundImageResource::file_name(
-          i, m_html_renderer_param->bg_format);
-      m_resources.emplace_back(std::move(resource), std::move(file_name));
+      auto resource =
+          odr::HtmlResource(std::make_shared<BackgroundImageResource>(
+              m_pdf_file, m_cache_path, m_html_renderer, m_html_renderer_mutex,
+              m_html_renderer_param, i, m_html_renderer_param->bg_format));
+      // not calling the resource locator since these cannot be relocated
+      HtmlResourceLocation location =
+          config().embed_images ? HtmlResourceLocation() : resource.path();
+      m_resources.emplace_back(std::move(resource), std::move(location));
     }
 
     m_warm = true;
@@ -236,7 +246,7 @@ public:
   HtmlResources write_document(HtmlWriter &out) const {
     warmup();
 
-    util::file::pipe(m_output_path + "/document.html", out.out());
+    util::file::pipe(m_cache_path + "/document.html", out.out());
 
     return m_resources;
   }
@@ -273,7 +283,7 @@ public:
 
 private:
   PopplerPdfFile m_pdf_file;
-  std::string m_output_path;
+  std::string m_cache_path;
   std::shared_ptr<pdf2htmlEX::HTMLRenderer> m_html_renderer;
   std::shared_ptr<std::mutex> m_html_renderer_mutex;
   std::shared_ptr<pdf2htmlEX::Param> m_html_renderer_param;
@@ -290,14 +300,19 @@ namespace odr::internal {
 
 odr::HtmlService
 html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
-                                 const std::string &output_path,
-                                 const HtmlConfig &config) {
+                                 const std::string &cache_path,
+                                 HtmlConfig config) {
   PDFDoc &pdf_doc = pdf_file.pdf_doc();
 
   auto html_renderer_param = std::make_shared<pdf2htmlEX::Param>(
-      create_params(pdf_doc, config, output_path));
-  html_renderer_param->embed_image = 0;
-  html_renderer_param->delay_background = 1;
+      create_params(pdf_doc, config, cache_path));
+  if (config.embed_images) {
+    html_renderer_param->embed_image = 1;
+    html_renderer_param->delay_background = 0;
+  } else {
+    html_renderer_param->embed_image = 0;
+    html_renderer_param->delay_background = 1;
+  }
 
   if (!pdf_doc.okToCopy()) {
     if (html_renderer_param->no_drm == 0) {
@@ -311,17 +326,14 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
       odr::GlobalParams::fontconfig_data_path().c_str(), *html_renderer_param);
   html_renderer->process(&pdf_doc);
 
-  HtmlResourceLocator resource_locator =
-      local_resource_locator(output_path, config);
-
   // renderer is not thread safe
   // TODO check if this can be achieved in pdf2htmlEX
   auto html_renderer_mutex = std::make_shared<std::mutex>();
 
   return odr::HtmlService(std::make_shared<HtmlServiceImpl>(
-      pdf_file, output_path, std::move(html_renderer),
-      std::move(html_renderer_mutex), std::move(html_renderer_param), config,
-      resource_locator));
+      pdf_file, cache_path, std::move(html_renderer),
+      std::move(html_renderer_mutex), std::move(html_renderer_param),
+      std::move(config)));
 }
 
 } // namespace odr::internal

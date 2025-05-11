@@ -29,6 +29,7 @@ private:
   std::shared_ptr<PDFDoc> m_pdf_doc;
 
   EncryptionState m_encryption_state{EncryptionState::unknown};
+  FileMeta m_file_meta;
 
   void open(const std::optional<std::string> &password);
 };

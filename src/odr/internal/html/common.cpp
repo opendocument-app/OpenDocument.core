@@ -61,35 +61,4 @@ std::string html::file_to_url(const abstract::File &file,
   return file_to_url(*file.stream(), mime_type);
 }
 
-HtmlResourceLocator html::local_resource_locator(std::string output_path,
-                                                 HtmlConfig config) {
-  return [output_path = std::move(output_path), config = std::move(config)](
-             const odr::HtmlResource &resource) -> HtmlResourceLocation {
-    if (!resource.is_accessible()) {
-      return resource.path();
-    }
-
-    if ((config.embed_shipped_resources && resource.is_shipped()) ||
-        (config.embed_images && resource.type() == HtmlResourceType::image)) {
-      return std::nullopt;
-    }
-
-    if (resource.is_shipped()) {
-      auto resource_path = common::Path(config.resource_path)
-                               .join(common::Path(resource.path()));
-      if (config.relative_resource_paths) {
-        resource_path = resource_path.rebase(common::Path(output_path));
-      }
-      return resource_path.string();
-    }
-
-    auto resource_path =
-        common::Path(output_path).join(common::Path(resource.path()));
-    std::filesystem::create_directories(resource_path.parent().path());
-    std::ofstream os = util::file::create(resource_path.string());
-    resource.write_resource(os);
-    return resource.path();
-  };
-}
-
 } // namespace odr::internal

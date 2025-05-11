@@ -18,10 +18,8 @@ namespace {
 
 class HtmlServiceImpl : public HtmlService {
 public:
-  HtmlServiceImpl(ImageFile image_file, HtmlConfig config,
-                  HtmlResourceLocator resource_locator)
-      : HtmlService(std::move(config), std::move(resource_locator)),
-        m_image_file{std::move(image_file)} {
+  HtmlServiceImpl(ImageFile image_file, HtmlConfig config)
+      : HtmlService(std::move(config)), m_image_file{std::move(image_file)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "image", "image.html"));
   }
@@ -142,13 +140,10 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
 }
 
 odr::HtmlService html::create_image_service(const ImageFile &image_file,
-                                            const std::string &output_path,
-                                            const HtmlConfig &config) {
-  HtmlResourceLocator resource_locator =
-      local_resource_locator(output_path, config);
-
+                                            const std::string &cache_path,
+                                            HtmlConfig config) {
   return odr::HtmlService(
-      std::make_unique<HtmlServiceImpl>(image_file, config, resource_locator));
+      std::make_unique<HtmlServiceImpl>(image_file, config));
 }
 
 } // namespace odr::internal

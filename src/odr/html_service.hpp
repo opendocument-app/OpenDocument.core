@@ -32,8 +32,8 @@ enum class HtmlResourceType {
 
 using HtmlViews = std::vector<HtmlView>;
 using HtmlResourceLocation = std::optional<std::string>;
-using HtmlResourceLocator =
-    std::function<HtmlResourceLocation(const HtmlResource &resource)>;
+using HtmlResourceLocator = std::function<HtmlResourceLocation(
+    const HtmlResource &resource, const HtmlConfig &config)>;
 using HtmlResources =
     std::vector<std::pair<HtmlResource, HtmlResourceLocation>>;
 
@@ -43,7 +43,6 @@ public:
   explicit HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl);
 
   [[nodiscard]] const HtmlConfig &config() const;
-  [[nodiscard]] const HtmlResourceLocator &resource_locator() const;
   [[nodiscard]] const HtmlViews &list_views() const;
 
   void warmup() const;

@@ -49,7 +49,7 @@ void front(const Document &document, const WritingState &state) {
       html::HtmlResource::create(HtmlResourceType::css, "text/css", "odr.css",
                                  "odr.css", odr_css_file, true, false, true);
   HtmlResourceLocation odr_css_location =
-      state.resource_locator()(odr_css_resource);
+      state.config().resource_locator(odr_css_resource, state.config());
   state.resources().emplace_back(std::move(odr_css_resource), odr_css_location);
   if (odr_css_location.has_value()) {
     state.out().write_header_style(odr_css_location.value());
@@ -67,7 +67,8 @@ void front(const Document &document, const WritingState &state) {
         HtmlResourceType::css, "text/css", "odr_spreadsheet.css",
         "odr_spreadsheet.css", odr_spreadsheet_css_file, true, false, true);
     HtmlResourceLocation odr_spreadsheet_css_location =
-        state.resource_locator()(odr_spreadsheet_css_resource);
+        state.config().resource_locator(odr_spreadsheet_css_resource,
+                                        state.config());
     state.resources().emplace_back(std::move(odr_spreadsheet_css_resource),
                                    odr_spreadsheet_css_location);
     if (odr_spreadsheet_css_location.has_value()) {
@@ -124,7 +125,7 @@ void back(const Document &document, const WritingState &state) {
       HtmlResourceType::js, "text/javascript", "odr.js", "odr.js", odr_js_file,
       true, false, true);
   HtmlResourceLocation odr_js_location =
-      state.resource_locator()(odr_js_resource);
+      state.config().resource_locator(odr_js_resource, state.config());
   state.resources().emplace_back(std::move(odr_js_resource), odr_js_location);
   if (odr_js_location.has_value()) {
     state.out().write_script(odr_js_location.value());
@@ -178,8 +179,7 @@ public:
 
   HtmlResources write_html(html::HtmlWriter &out) const final {
     HtmlResources resources;
-    WritingState state(out, service().config(), service().resource_locator(),
-                       resources);
+    WritingState state(out, service().config(), resources);
     m_fragment->write_document(out, state);
     return resources;
   }
@@ -192,9 +192,9 @@ class HtmlServiceImpl : public HtmlService {
 public:
   HtmlServiceImpl(Document document,
                   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments,
-                  HtmlConfig config, HtmlResourceLocator resource_locator)
-      : HtmlService(std::move(config), std::move(resource_locator)),
-        m_document{std::move(document)}, m_fragments{std::move(fragments)} {
+                  HtmlConfig config)
+      : HtmlService(std::move(config)), m_document{std::move(document)},
+        m_fragments{std::move(fragments)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "document", "document.html"));
     for (const auto &fragment : m_fragments) {
@@ -303,7 +303,7 @@ public:
   HtmlResources write_document(HtmlWriter &out) const {
     HtmlResources resources;
 
-    WritingState state(out, config(), resource_locator(), resources);
+    WritingState state(out, config(), resources);
 
     front(m_document, state);
     for (const auto &fragment : m_fragments) {
@@ -413,11 +413,8 @@ private:
 namespace odr::internal {
 
 odr::HtmlService html::create_document_service(const Document &document,
-                                               const std::string &output_path,
-                                               const HtmlConfig &config) {
-  HtmlResourceLocator resource_locator =
-      local_resource_locator(output_path, config);
-
+                                               const std::string &cache_path,
+                                               HtmlConfig config) {
   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments;
 
   if (document.document_type() == DocumentType::text) {
@@ -454,8 +451,8 @@ odr::HtmlService html::create_document_service(const Document &document,
     throw UnknownDocumentType();
   }
 
-  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
-      document, fragments, config, resource_locator));
+  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(document, fragments,
+                                                            std::move(config)));
 }
 
 } // namespace odr::internal

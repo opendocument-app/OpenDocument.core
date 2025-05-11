@@ -86,7 +86,7 @@ public:
     m_content.clear();
 
     for (const auto &entry :
-         std::filesystem::directory_iterator(m_config.output_path)) {
+         std::filesystem::directory_iterator(m_config.cache_path)) {
       std::filesystem::remove_all(entry.path());
     }
   }
@@ -139,10 +139,10 @@ HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
         "embed_shipped_resources must be enabled in server mode");
   }
 
-  std::string output_path = m_impl->config().output_path + "/" + prefix;
-  std::filesystem::create_directories(output_path);
+  std::string cache_path = m_impl->config().cache_path + "/" + prefix;
+  std::filesystem::create_directories(cache_path);
 
-  HtmlService service = html::translate(file, output_path, config);
+  HtmlService service = html::translate(file, cache_path, config);
 
   m_impl->connect_service(service, prefix);
 

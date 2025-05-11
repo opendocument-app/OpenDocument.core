@@ -40,6 +40,10 @@ CfbFileCorrupted::CfbFileCorrupted() : CfbError("cfb file corrupted") {}
 
 NoTextFile::NoTextFile() : std::runtime_error("not a text file") {}
 
+NoCsvFile::NoCsvFile() : std::runtime_error("not a csv file") {}
+
+NoJsonFile::NoJsonFile() : std::runtime_error("not a json file") {}
+
 UnknownCharset::UnknownCharset() : std::runtime_error("unknown charset") {}
 
 NoImageFile::NoImageFile() : std::runtime_error("not an image file") {}
@@ -56,7 +60,10 @@ NoOfficeOpenXmlFile::NoOfficeOpenXmlFile()
 
 NoPdfFile::NoPdfFile() : std::runtime_error("not a pdf file") {}
 
-NoXml::NoXml() : std::runtime_error("not xml") {}
+NoLegacyMicrosoftFile::NoLegacyMicrosoftFile()
+    : std::runtime_error("not a legacy microsoft office file") {}
+
+NoXmlFile::NoXmlFile() : std::runtime_error("not an xml file") {}
 
 UnsupportedCryptoAlgorithm::UnsupportedCryptoAlgorithm()
     : std::runtime_error("unsupported crypto algorithm") {}
@@ -97,5 +104,8 @@ PrefixInUse::PrefixInUse(const std::string &prefix)
 
 UnsupportedOption::UnsupportedOption(const std::string &message)
     : std::runtime_error("unsupported option: " + message) {}
+
+NullPointerError::NullPointerError(const std::string &variable)
+    : std::runtime_error("null pointer error: " + variable) {}
 
 } // namespace odr
