@@ -158,12 +158,19 @@ void HtmlWriter::write_header_title(const std::string &title) {
   out() << "<title>" << title << "</title>";
 }
 
-void HtmlWriter::write_header_viewport(const std::string &viewport) {
+void HtmlWriter::write_header_meta(const std::string &name,
+                                   const std::string &content) {
   write_new_line();
 
-  out() << R"(<meta name="viewport" content=")";
-  out() << viewport;
-  out() << "\"/>";
+  out() << R"(<meta name=")";
+  out() << name;
+  out() << R"(" content=")";
+  out() << content;
+  out() << R"("/>)";
+}
+
+void HtmlWriter::write_header_viewport(const std::string &viewport) {
+  write_header_meta("viewport", viewport);
 }
 
 void HtmlWriter::write_header_target(const std::string &target) {
