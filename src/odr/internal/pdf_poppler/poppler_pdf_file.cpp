@@ -1,5 +1,7 @@
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 
+#include <odr/exceptions.hpp>
+
 #include <poppler/PDFDocFactory.h>
 #include <poppler/Stream.h>
 #include <poppler/goo/GooString.h>
@@ -34,7 +36,7 @@ void PopplerPdfFile::open(const std::optional<std::string> &password) {
                                 memory_file->size(), Object(objNull));
     m_pdf_doc = std::make_shared<PDFDoc>(stream, password_goo, password_goo);
   } else {
-    throw std::runtime_error("Unsupported file type");
+    throw NoPdfFile();
   }
 
   if (!m_pdf_doc->isOk()) {
@@ -48,13 +50,21 @@ void PopplerPdfFile::open(const std::optional<std::string> &password) {
                              ? EncryptionState::decrypted
                              : EncryptionState::not_encrypted;
   }
+
+  m_file_meta.type = FileType::portable_document_format;
+  m_file_meta.password_encrypted = m_pdf_doc->isEncrypted();
+  m_file_meta.document_meta.emplace();
+  m_file_meta.document_meta->document_type = DocumentType::text;
+  if (m_encryption_state != EncryptionState::encrypted) {
+    m_file_meta.document_meta->entry_count = m_pdf_doc->getNumPages();
+  }
 }
 
 std::shared_ptr<abstract::File> PopplerPdfFile::file() const noexcept {
   return m_file;
 }
 
-FileMeta PopplerPdfFile::file_meta() const noexcept { return {}; }
+FileMeta PopplerPdfFile::file_meta() const noexcept { return m_file_meta; }
 
 DecoderEngine PopplerPdfFile::decoder_engine() const noexcept {
   return DecoderEngine::poppler;

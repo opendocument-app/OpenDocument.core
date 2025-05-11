@@ -11,7 +11,7 @@ class HtmlService;
 namespace odr::internal::html {
 
 odr::HtmlService create_document_service(const Document &document,
-                                         const std::string &output_path,
-                                         const HtmlConfig &config);
+                                         const std::string &cache_path,
+                                         HtmlConfig config);
 
 } // namespace odr::internal::html

@@ -40,8 +40,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   const DecoderEngine engine = params.engine;
   const std::string &test_repo = params.test_repo;
   const std::string &output_path = params.output_path;
-  const std::string output_path_prefix =
-      common::Path(output_path).parent().string();
+  const std::string &output_path_prefix = params.output_path_prefix;
 
   std::cout << test_file.short_path << " to " << output_path << std::endl;
 
@@ -123,14 +122,13 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   const std::string resource_path = common::Path(output_path_prefix)
                                         .parent()
-                                        .parent()
                                         .join(Path("resources"))
                                         .string();
   std::filesystem::copy(TestData::resource_directory(), resource_path,
                         fs::copy_options::recursive |
                             fs::copy_options::overwrite_existing);
 
-  HtmlConfig config;
+  HtmlConfig config(output_path);
   config.embed_images = true;
   config.embed_shipped_resources = false;
   config.resource_path = resource_path;

@@ -9,14 +9,12 @@ namespace odr::internal::html {
 
 class HtmlService : public abstract::HtmlService {
 public:
-  HtmlService(HtmlConfig config, HtmlResourceLocator resource_locator);
+  explicit HtmlService(HtmlConfig config);
 
   [[nodiscard]] const HtmlConfig &config() const override;
-  [[nodiscard]] const HtmlResourceLocator &resource_locator() const override;
 
 private:
   HtmlConfig m_config;
-  HtmlResourceLocator m_resource_locator;
 };
 
 class HtmlView : public abstract::HtmlView {

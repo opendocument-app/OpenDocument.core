@@ -23,10 +23,8 @@ namespace {
 
 class HtmlServiceImpl : public HtmlService {
 public:
-  HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config,
-                  HtmlResourceLocator resource_locator)
-      : HtmlService(std::move(config), std::move(resource_locator)),
-        m_pdf_file{std::move(pdf_file)} {
+  HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config)
+      : HtmlService(std::move(config)), m_pdf_file{std::move(pdf_file)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "document", "document.html"));
   }
@@ -209,14 +207,13 @@ protected:
 
 namespace odr::internal {
 
-odr::HtmlService html::create_pdf_service(const odr::PdfFile &pdf_file,
-                                          const std::string &output_path,
-                                          const odr::HtmlConfig &config) {
-  HtmlResourceLocator resource_locator =
-      local_resource_locator(output_path, config);
+odr::HtmlService html::create_pdf_service(const PdfFile &pdf_file,
+                                          const std::string &cache_path,
+                                          HtmlConfig config) {
+  (void)cache_path;
 
   return odr::HtmlService(
-      std::make_unique<HtmlServiceImpl>(pdf_file, config, resource_locator));
+      std::make_unique<HtmlServiceImpl>(pdf_file, std::move(config)));
 }
 
 } // namespace odr::internal

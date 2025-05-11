@@ -16,7 +16,7 @@ pugi::xml_document xml::parse(const std::string &in) {
   pugi::xml_document result;
   const auto success = result.load_string(in.c_str());
   if (!success) {
-    throw NoXml();
+    throw NoXmlFile();
   }
   return result;
 }
@@ -25,7 +25,7 @@ pugi::xml_document xml::parse(std::istream &in) {
   pugi::xml_document result;
   const auto success = result.load(in);
   if (!success) {
-    throw NoXml();
+    throw NoXmlFile();
   }
   return result;
 }
@@ -39,7 +39,7 @@ pugi::xml_document xml::parse(const abstract::ReadableFilesystem &filesystem,
   }
   const auto success = result.load(*file->stream());
   if (!success) {
-    throw NoXml();
+    throw NoXmlFile();
   }
   return result;
 }

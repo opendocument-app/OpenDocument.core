@@ -74,6 +74,16 @@ struct NoTextFile final : public std::runtime_error {
   NoTextFile();
 };
 
+/// @brief No csv file exception
+struct NoCsvFile final : public std::runtime_error {
+  NoCsvFile();
+};
+
+/// @brief No json file exception
+struct NoJsonFile final : public std::runtime_error {
+  NoJsonFile();
+};
+
 /// @brief Unknown charset exception
 struct UnknownCharset final : public std::runtime_error {
   UnknownCharset();
@@ -109,9 +119,14 @@ struct NoPdfFile final : public std::runtime_error {
   NoPdfFile();
 };
 
+/// @brief No legacy microsoft office file
+struct NoLegacyMicrosoftFile final : public std::runtime_error {
+  NoLegacyMicrosoftFile();
+};
+
 /// @brief No XML file exception
-struct NoXml final : public std::runtime_error {
-  NoXml();
+struct NoXmlFile final : public std::runtime_error {
+  NoXmlFile();
 };
 
 /// @brief Unsupported crypto algorithm exception
@@ -170,6 +185,11 @@ struct PrefixInUse : public std::runtime_error {
 /// @brief Unsupported option
 struct UnsupportedOption : public std::runtime_error {
   explicit UnsupportedOption(const std::string &message);
+};
+
+/// @brief Null pointer error
+struct NullPointerError : public std::runtime_error {
+  explicit NullPointerError(const std::string &variable);
 };
 
 } // namespace odr

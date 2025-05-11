@@ -8,16 +8,9 @@
 
 namespace odr::internal::html {
 
-HtmlService::HtmlService(HtmlConfig config,
-                         HtmlResourceLocator resource_locator)
-    : m_config{std::move(config)},
-      m_resource_locator{std::move(resource_locator)} {}
+HtmlService::HtmlService(HtmlConfig config) : m_config{std::move(config)} {}
 
 const HtmlConfig &HtmlService::config() const { return m_config; }
-
-const HtmlResourceLocator &HtmlService::resource_locator() const {
-  return m_resource_locator;
-}
 
 HtmlView::HtmlView(const abstract::HtmlService &service, std::string name,
                    std::string path)

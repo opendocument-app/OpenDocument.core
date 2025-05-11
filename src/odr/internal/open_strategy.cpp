@@ -112,6 +112,14 @@ open_strategy::types(const std::shared_ptr<abstract::File> &file) {
       }
     } catch (...) {
     }
+
+    // some pdf files are weird
+#ifdef ODR_WITH_PDF2HTMLEX
+    try {
+      result.push_back(PopplerPdfFile(memory_file).file_type());
+    } catch (...) {
+    }
+#endif
   } else {
     result.push_back(file_type);
   }
@@ -204,6 +212,14 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
     } catch (...) {
     }
 
+    // some pdf files are weird
+#ifdef ODR_WITH_PDF2HTMLEX
+    try {
+      return std::make_unique<PopplerPdfFile>(memory_file);
+    } catch (...) {
+    }
+#endif
+
     throw UnknownFileType();
   }
 
@@ -232,9 +248,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<odf::OpenDocumentFile>(filesystem);
       } catch (...) {
       }
-      return nullptr;
+      throw NoOpenDocumentFile();
     }
-    return nullptr;
+    throw NoOpenDocumentFile();
   }
 
   if (as == FileType::office_open_xml_document ||
@@ -256,9 +272,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
       } catch (...) {
       }
-      return nullptr;
+      throw NoOfficeOpenXmlFile();
     }
-    return nullptr;
+    throw NoOfficeOpenXmlFile();
   }
 
   if (as == FileType::legacy_word_document ||
@@ -272,7 +288,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
       } catch (...) {
       }
-      return nullptr;
+      throw NoLegacyMicrosoftFile();
     }
 #ifdef ODR_WITH_WVWARE
     if (with == DecoderEngine::wvware) {
@@ -282,10 +298,10 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
             std::move(memory_file));
       } catch (...) {
       }
-      return nullptr;
+      throw NoLegacyMicrosoftFile();
     }
 #endif
-    return nullptr;
+    throw NoLegacyMicrosoftFile();
   }
 
   if (as == FileType::portable_document_format) {
@@ -294,7 +310,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<PdfFile>(file);
       } catch (...) {
       }
-      return nullptr;
+      throw NoPdfFile();
     }
 #ifdef ODR_WITH_PDF2HTMLEX
     if (with == DecoderEngine::poppler) {
@@ -303,10 +319,10 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<PopplerPdfFile>(memory_file);
       } catch (...) {
       }
-      return nullptr;
+      throw NoPdfFile();
     }
 #endif
-    return nullptr;
+    throw NoPdfFile();
   }
 
   if (as == FileType::portable_network_graphics ||
@@ -317,9 +333,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<common::ImageFile>(file, as);
       } catch (...) {
       }
-      return nullptr;
+      throw NoImageFile();
     }
-    return nullptr;
+    throw NoImageFile();
   }
 
   if (as == FileType::starview_metafile) {
@@ -329,9 +345,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<svm::SvmFile>(memory_file);
       } catch (...) {
       }
-      return nullptr;
+      throw NoSvmFile();
     }
-    return nullptr;
+    throw NoSvmFile();
   }
 
   if (as == FileType::text_file) {
@@ -340,9 +356,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<text::TextFile>(file);
       } catch (...) {
       }
-      return nullptr;
+      throw NoTextFile();
     }
-    return nullptr;
+    throw NoTextFile();
   }
 
   if (as == FileType::comma_separated_values) {
@@ -352,9 +368,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<csv::CsvFile>(text);
       } catch (...) {
       }
-      return nullptr;
+      throw NoCsvFile();
     }
-    return nullptr;
+    throw NoCsvFile();
   }
 
   if (as == FileType::javascript_object_notation) {
@@ -364,9 +380,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<json::JsonFile>(text);
       } catch (...) {
       }
-      return nullptr;
+      throw NoJsonFile();
     }
-    return nullptr;
+    throw NoJsonFile();
   }
 
   if (as == FileType::zip) {
@@ -376,9 +392,9 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<zip::ZipFile>(memory_file);
       } catch (...) {
       }
-      return nullptr;
+      throw NoZipFile();
     }
-    return nullptr;
+    throw NoZipFile();
   }
 
   if (as == FileType::compound_file_binary_format) {
@@ -388,12 +404,12 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         return std::make_unique<cfb::CfbFile>(memory_file);
       } catch (...) {
       }
-      return nullptr;
+      throw NoCfbFile();
     }
-    return nullptr;
+    throw NoCfbFile();
   }
 
-  return nullptr;
+  throw UnsupportedFileType(as);
 }
 
 std::unique_ptr<abstract::DecodedFile>
@@ -408,7 +424,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
                        detected_types.end());
     auto probe_types_end = std::unique(probe_types.begin(), probe_types.end());
     probe_types.erase(probe_types_end, probe_types.end());
-    // more specific file types are further down the list so we bring them up
+    // more specific file types are further down the list, so we bring them up
     std::ranges::reverse(probe_types);
   }
 
@@ -439,7 +455,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
     }
   }
 
-  return nullptr;
+  throw UnknownFileType();
 }
 
 std::unique_ptr<abstract::DocumentFile>
