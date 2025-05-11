@@ -9,6 +9,7 @@
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
+#include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <pdf2htmlEX/HTMLRenderer/HTMLRenderer.h>
@@ -138,25 +139,21 @@ public:
         m_page_number{page_number} {}
 
   void warmup() const {
-    PDFDoc &pdf_doc = m_pdf_file.pdf_doc();
-
     std::lock_guard lock(m_mutex);
 
-    if (!std::filesystem::exists(path())) {
-      std::lock_guard renderer_lock(*m_html_renderer_mutex);
-
-      m_html_renderer->renderPage(&pdf_doc, m_page_number);
+    if (std::filesystem::exists(path())) {
+      return;
     }
+
+    std::lock_guard renderer_lock(*m_html_renderer_mutex);
+    PDFDoc &pdf_doc = m_pdf_file.pdf_doc();
+    m_html_renderer->renderPage(&pdf_doc, m_page_number);
   }
 
   void write_resource(std::ostream &os) const override {
     warmup();
 
-    std::ifstream in(path());
-    if (!in.is_open()) {
-      throw FileWriteError();
-    }
-    util::stream::pipe(in, os);
+    util::file::pipe(path(), os);
   }
 
 private:
@@ -239,8 +236,7 @@ public:
   HtmlResources write_document(HtmlWriter &out) const {
     warmup();
 
-    std::ifstream in(m_output_path + "/document.html");
-    util::stream::pipe(in, out.out());
+    util::file::pipe(m_output_path + "/document.html", out.out());
 
     return m_resources;
   }

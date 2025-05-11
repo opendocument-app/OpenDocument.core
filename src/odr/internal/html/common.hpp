@@ -48,7 +48,7 @@ std::string file_to_url(std::istream &file, const std::string &mime_type);
 std::string file_to_url(const abstract::File &file,
                         const std::string &mime_type);
 
-HtmlResourceLocator local_resource_locator(const std::string &output_path,
-                                           const HtmlConfig &config);
+HtmlResourceLocator local_resource_locator(std::string output_path,
+                                           HtmlConfig config);
 
 } // namespace odr::internal::html

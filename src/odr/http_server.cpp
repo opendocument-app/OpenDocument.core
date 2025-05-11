@@ -4,9 +4,6 @@
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
-#include <odr/internal/html/document.hpp>
-#include <odr/internal/html/pdf2htmlex_wrapper.hpp>
-#include <odr/internal/html/text_file.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 
 #include <httplib/httplib.h>
@@ -43,13 +40,14 @@ public:
       res.status = 404;
       return;
     }
-    const Content &content = it->second;
+    Content content = it->second;
+    lock.unlock();
 
     serve_file(res, content.service, path);
   }
 
-  void serve_file(httplib::Response &res, const HtmlService &service,
-                  const std::string &path) {
+  static void serve_file(httplib::Response &res, const HtmlService &service,
+                         const std::string &path) {
     if (!service.exists(path)) {
       res.status = 404;
       return;
@@ -69,6 +67,12 @@ public:
   }
 
   void connect_service(HtmlService service, const std::string &prefix) {
+    std::unique_lock lock{m_mutex};
+
+    if (m_content.contains(prefix)) {
+      throw PrefixInUse(prefix);
+    }
+
     m_content.emplace(prefix, Content{prefix, std::move(service)});
   }
 
@@ -76,7 +80,22 @@ public:
     m_server.listen(host, static_cast<int>(port));
   }
 
-  void stop() { m_server.stop(); }
+  void clear() {
+    std::unique_lock lock{m_mutex};
+
+    m_content.clear();
+
+    for (const auto &entry :
+         std::filesystem::directory_iterator(m_config.output_path)) {
+      std::filesystem::remove_all(entry.path());
+    }
+  }
+
+  void stop() {
+    clear();
+
+    m_server.stop();
+  }
 
 private:
   HttpServer::Config m_config;
@@ -95,6 +114,10 @@ private:
 HttpServer::HttpServer(const Config &config)
     : m_impl{std::make_unique<Impl>(config)} {}
 
+const HttpServer::Config &HttpServer::config() const {
+  return m_impl->config();
+}
+
 void HttpServer::connect_service(HtmlService service,
                                  const std::string &prefix) {
   m_impl->connect_service(std::move(service), prefix);
@@ -107,30 +130,19 @@ HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
     throw InvalidPrefix(prefix);
   }
 
+  if (config.relative_resource_paths) {
+    throw UnsupportedOption(
+        "relative_resource_paths cannot be enabled in server mode");
+  }
+  if (!config.embed_shipped_resources) {
+    throw UnsupportedOption(
+        "embed_shipped_resources must be enabled in server mode");
+  }
+
   std::string output_path = m_impl->config().output_path + "/" + prefix;
   std::filesystem::create_directories(output_path);
 
-  HtmlService service;
-
-  if (file.is_document_file()) {
-    service = internal::html::create_document_service(
-        file.document_file().document(), output_path, config);
-  } else if (file.is_text_file()) {
-    service = internal::html::create_text_service(file.text_file(), output_path,
-                                                  config);
-#ifdef ODR_WITH_PDF2HTMLEX
-  } else if (file.is_pdf_file()) {
-    PdfFile pdf_file = file.pdf_file();
-    if (pdf_file.password_encrypted()) {
-      throw std::runtime_error("Document is encrypted");
-    }
-    service = internal::html::create_poppler_pdf_service(
-        dynamic_cast<const internal::PopplerPdfFile &>(*pdf_file.impl()),
-        output_path, config);
-#endif
-  } else {
-    throw std::runtime_error("Unsupported file type.");
-  }
+  HtmlService service = html::translate(file, output_path, config);
 
   m_impl->connect_service(service, prefix);
 
@@ -140,6 +152,8 @@ HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
 void HttpServer::listen(const std::string &host, std::uint32_t port) {
   m_impl->listen(host, port);
 }
+
+void HttpServer::clear() { m_impl->clear(); }
 
 void HttpServer::stop() { m_impl->stop(); }
 

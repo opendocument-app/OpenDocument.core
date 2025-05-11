@@ -23,11 +23,6 @@ enum class HtmlTableGridlines {
 
 /// @brief HTML configuration.
 struct HtmlConfig {
-  // TODO implement
-  bool compact_presentation{false};
-  bool compact_spreadsheet{false};
-  bool compact_drawing{false};
-
   // document output file names
   std::string document_output_file_name{"document.html"};
 

@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
 
   HtmlConfig html_config;
   html_config.embed_images = false;
-  html_config.embed_shipped_resources = false;
+  html_config.embed_shipped_resources = true;
   html_config.relative_resource_paths = false;
   html_config.text_document_margin = true;
 

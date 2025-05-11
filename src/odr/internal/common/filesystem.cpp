@@ -4,6 +4,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <filesystem>
@@ -89,7 +90,8 @@ std::shared_ptr<abstract::File> SystemFilesystem::open(const Path &path) const {
 }
 
 std::unique_ptr<std::ostream> SystemFilesystem::create_file(const Path &path) {
-  return std::make_unique<std::ofstream>(to_system_path_(path).string());
+  return std::make_unique<std::ofstream>(
+      util::file::create(to_system_path_(path).string()));
 }
 
 bool SystemFilesystem::create_directory(const Path &path) {

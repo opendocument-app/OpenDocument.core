@@ -5,6 +5,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
+#include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
@@ -84,7 +85,7 @@ void Document::save(const common::Path &path) const {
     archive.insert_file(std::end(archive), p, m_filesystem->open(p));
   }
 
-  std::ofstream ostream(path.path());
+  std::ofstream ostream = util::file::create(path.string());
   archive.save(ostream);
 }
 

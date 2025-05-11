@@ -1,11 +1,12 @@
 #include <odr/internal/common/file.hpp>
 
+#include <odr/internal/util/file_util.hpp>
+
 #include <odr/exceptions.hpp>
 
 #include <filesystem>
 #include <fstream>
 #include <sstream>
-#include <utility>
 
 namespace odr::internal::common {
 
@@ -30,8 +31,7 @@ std::optional<common::Path> DiskFile::disk_path() const { return m_path; }
 const char *DiskFile::memory_data() const { return nullptr; }
 
 std::unique_ptr<std::istream> DiskFile::stream() const {
-  return std::make_unique<std::ifstream>(m_path.string(),
-                                         std::ifstream::binary);
+  return std::make_unique<std::ifstream>(util::file::open(m_path.string()));
 }
 
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}

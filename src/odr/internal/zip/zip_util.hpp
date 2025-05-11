@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <istream>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include <miniz/miniz.h>
@@ -30,13 +31,10 @@ class Archive final : public std::enable_shared_from_this<Archive> {
 public:
   explicit Archive(const std::shared_ptr<common::MemoryFile> &file);
   explicit Archive(const std::shared_ptr<common::DiskFile> &file);
-  Archive(const Archive &);
-  Archive(Archive &&) noexcept;
   ~Archive();
-  Archive &operator=(const Archive &);
-  Archive &operator=(Archive &&) noexcept;
 
-  [[nodiscard]] const mz_zip_archive *zip() const;
+  [[nodiscard]] std::mutex &mutex() const;
+  [[nodiscard]] mz_zip_archive *zip() const;
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept;
 
@@ -51,8 +49,8 @@ public:
   public:
     Entry(const Entry &) = default;
     Entry(Entry &&) noexcept = default;
-    Entry(const Archive &parent, std::uint32_t index)
-        : m_parent{&parent}, m_index{index} {}
+    Entry(const Archive &archive, std::uint32_t index)
+        : m_archive{&archive}, m_index{index} {}
     ~Entry() = default;
     Entry &operator=(const Entry &) = default;
     Entry &operator=(Entry &&) noexcept = default;
@@ -71,7 +69,7 @@ public:
     [[nodiscard]] std::shared_ptr<abstract::File> file() const;
 
   private:
-    const Archive *m_parent;
+    const Archive *m_archive;
     std::uint32_t m_index;
 
     friend Iterator;
@@ -119,7 +117,9 @@ public:
 private:
   std::shared_ptr<abstract::File> m_file;
   std::unique_ptr<std::istream> m_stream;
-  mz_zip_archive m_zip{};
+
+  mutable std::mutex m_mutex;
+  mutable mz_zip_archive m_zip{};
 
   explicit Archive(std::shared_ptr<abstract::File> file);
 };

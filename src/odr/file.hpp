@@ -163,6 +163,8 @@ public:
   [[nodiscard]] const char *memory_data() const;
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
+  void pipe(std::ostream &out) const;
+  void copy(const std::string &path) const;
 
   // TODO `impl()` might be a bit dirty
   [[nodiscard]] std::shared_ptr<internal::abstract::File> impl() const;

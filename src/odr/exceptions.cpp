@@ -7,6 +7,9 @@ namespace odr {
 UnsupportedOperation::UnsupportedOperation()
     : std::runtime_error("unsupported operation") {}
 
+UnsupportedOperation::UnsupportedOperation(const std::string &message)
+    : std::runtime_error("unsupported operation: " + message) {}
+
 FileNotFound::FileNotFound() : std::runtime_error("file not found") {}
 
 FileNotFound::FileNotFound(const std::string &path)
@@ -22,7 +25,8 @@ UnknownDecoderEngine::UnknownDecoderEngine()
 
 FileReadError::FileReadError() : std::runtime_error("file read error") {}
 
-FileWriteError::FileWriteError() : std::runtime_error("file write error") {}
+FileWriteError::FileWriteError(const std::string &path)
+    : std::runtime_error("file write error: " + path) {}
 
 NoZipFile::NoZipFile() : std::runtime_error("not a zip file") {}
 
@@ -85,5 +89,13 @@ ResourceNotAccessible::ResourceNotAccessible()
 ResourceNotAccessible::ResourceNotAccessible(const std::string &name,
                                              const std::string &path)
     : std::runtime_error("resource not accessible: " + name + " at " + path) {}
+
+PrefixInUse::PrefixInUse() : std::runtime_error("prefix in use") {}
+
+PrefixInUse::PrefixInUse(const std::string &prefix)
+    : std::runtime_error("prefix in use: " + prefix) {}
+
+UnsupportedOption::UnsupportedOption(const std::string &message)
+    : std::runtime_error("unsupported option: " + message) {}
 
 } // namespace odr

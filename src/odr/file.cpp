@@ -7,9 +7,10 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/open_strategy.hpp>
+#include <odr/internal/util/file_util.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
 #include <optional>
-#include <utility>
 
 namespace odr {
 
@@ -50,6 +51,14 @@ std::optional<std::string> File::disk_path() const {
 const char *File::memory_data() const { return m_impl->memory_data(); }
 
 std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
+
+void File::pipe(std::ostream &out) const {
+  internal::util::stream::pipe(*stream(), out);
+}
+
+void File::copy(const std::string &path) const {
+  internal::util::file::write(*stream(), path);
+}
 
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
