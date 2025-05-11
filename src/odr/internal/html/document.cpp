@@ -19,6 +19,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <mutex>
 
 namespace odr::internal::html {
 
