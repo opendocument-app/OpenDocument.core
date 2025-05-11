@@ -131,6 +131,8 @@ namespace odr::internal {
 odr::HtmlService html::create_text_service(const TextFile &text_file,
                                            const std::string &cache_path,
                                            HtmlConfig config) {
+  (void)cache_path;
+
   return odr::HtmlService(
       std::make_unique<HtmlServiceImpl>(text_file, std::move(config)));
 }

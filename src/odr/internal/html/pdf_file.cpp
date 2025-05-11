@@ -210,6 +210,8 @@ namespace odr::internal {
 odr::HtmlService html::create_pdf_service(const PdfFile &pdf_file,
                                           const std::string &cache_path,
                                           HtmlConfig config) {
+  (void)cache_path;
+
   return odr::HtmlService(
       std::make_unique<HtmlServiceImpl>(pdf_file, std::move(config)));
 }

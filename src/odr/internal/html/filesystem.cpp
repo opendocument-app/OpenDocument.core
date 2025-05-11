@@ -150,6 +150,8 @@ namespace odr::internal {
 odr::HtmlService html::create_filesystem_service(const Filesystem &filesystem,
                                                  const std::string &cache_path,
                                                  HtmlConfig config) {
+  (void)cache_path;
+
   return odr::HtmlService(
       std::make_unique<HtmlServiceImpl>(filesystem, std::move(config)));
 }
