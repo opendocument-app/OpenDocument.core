@@ -100,21 +100,19 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
                                           .child("office:meta")
                                           .child("meta:document-statistic");
 
-    if (statistics && (result.type == FileType::opendocument_text)) {
+    if (result.type == FileType::opendocument_text) {
       document_meta.document_type = DocumentType::text;
       if (auto page_count = statistics.attribute("meta:page-count")) {
         document_meta.entry_count = page_count.as_uint();
       }
-    } else if (statistics &&
-               (result.type == FileType::opendocument_presentation)) {
+    } else if (result.type == FileType::opendocument_presentation) {
       document_meta.document_type = DocumentType::presentation;
-    } else if (statistics &&
-               (result.type == FileType::opendocument_spreadsheet)) {
+    } else if (result.type == FileType::opendocument_spreadsheet) {
       document_meta.document_type = DocumentType::spreadsheet;
       if (auto table_count = statistics.attribute("meta:table-count")) {
         document_meta.entry_count = table_count.as_uint();
       }
-    } else if (statistics && (result.type == FileType::opendocument_graphics)) {
+    } else if (result.type == FileType::opendocument_graphics) {
       document_meta.document_type = DocumentType::drawing;
     }
   }

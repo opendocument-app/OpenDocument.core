@@ -207,14 +207,14 @@ public:
 
   const HtmlViews &list_views() const final { return m_views; }
 
-  [[nodiscard]] Document document() const { return m_document; }
-
   [[nodiscard]] std::vector<std::shared_ptr<HtmlFragmentBase>>
   fragments() const {
     return m_fragments;
   }
 
   void warmup() const final {
+    std::lock_guard lock(m_mutex);
+
     if (m_warm) {
       return;
     }
@@ -276,7 +276,7 @@ public:
 
     for (const auto &[resource, location] : m_resources) {
       if (location.has_value() && location.value() == path) {
-        util::stream::pipe(*resource.file().stream(), out);
+        resource.write_resource(out);
         return;
       }
     }
@@ -304,11 +304,11 @@ public:
 
     WritingState state(out, config(), resource_locator(), resources);
 
-    front(document(), state);
+    front(m_document, state);
     for (const auto &fragment : m_fragments) {
       fragment->write_fragment(out, state);
     }
-    back(document(), state);
+    back(m_document, state);
 
     return resources;
   }
@@ -319,6 +319,7 @@ protected:
 
   HtmlViews m_views;
 
+  mutable std::mutex m_mutex;
   mutable bool m_warm = false;
   mutable HtmlResources m_resources;
 };

@@ -23,12 +23,16 @@ public:
 
   explicit HttpServer(const Config &config);
 
+  const Config &config() const;
+
   void connect_service(HtmlService service, const std::string &prefix);
 
   HtmlViews serve_file(DecodedFile file, const std::string &prefix,
                        const HtmlConfig &config);
 
   void listen(const std::string &host, std::uint32_t port);
+
+  void clear();
 
   void stop();
 

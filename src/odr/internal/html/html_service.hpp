@@ -41,18 +41,18 @@ class HtmlResource : public abstract::HtmlResource {
 public:
   static odr::HtmlResource create(HtmlResourceType type, std::string mime_type,
                                   std::string name, std::string path,
-                                  odr::File file, bool is_shipped,
+                                  std::optional<File> file, bool is_shipped,
                                   bool is_external, bool is_accessible);
 
   HtmlResource(HtmlResourceType type, std::string mime_type, std::string name,
-               std::string path, odr::File file, bool is_shipped,
+               std::string path, std::optional<File> file, bool is_shipped,
                bool is_external, bool is_accessible);
 
   [[nodiscard]] HtmlResourceType type() const override;
   [[nodiscard]] const std::string &mime_type() const override;
   [[nodiscard]] const std::string &name() const override;
   [[nodiscard]] const std::string &path() const override;
-  [[nodiscard]] const odr::File &file() const override;
+  [[nodiscard]] const std::optional<File> &file() const override;
   [[nodiscard]] bool is_shipped() const override;
   [[nodiscard]] bool is_external() const override;
   [[nodiscard]] bool is_accessible() const override;
@@ -64,7 +64,7 @@ private:
   std::string m_mime_type;
   std::string m_name;
   std::string m_path;
-  odr::File m_file;
+  std::optional<File> m_file;
   bool m_is_shipped{};
   bool m_is_external{};
   bool m_is_accessible{};

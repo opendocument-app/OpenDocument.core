@@ -3,6 +3,7 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -11,6 +12,7 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <utility>
 
 namespace odr::internal {
 
@@ -59,9 +61,10 @@ std::string html::file_to_url(const abstract::File &file,
   return file_to_url(*file.stream(), mime_type);
 }
 
-HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
-                                                 const HtmlConfig &config) {
-  return [&](const odr::HtmlResource &resource) -> HtmlResourceLocation {
+HtmlResourceLocator html::local_resource_locator(std::string output_path,
+                                                 HtmlConfig config) {
+  return [output_path = std::move(output_path), config = std::move(config)](
+             const odr::HtmlResource &resource) -> HtmlResourceLocation {
     if (!resource.is_accessible()) {
       return resource.path();
     }
@@ -83,7 +86,7 @@ HtmlResourceLocator html::local_resource_locator(const std::string &output_path,
     auto resource_path =
         common::Path(output_path).join(common::Path(resource.path()));
     std::filesystem::create_directories(resource_path.parent().path());
-    std::ofstream os(resource_path.path());
+    std::ofstream os = util::file::create(resource_path.path());
     resource.write_resource(os);
     return resource.path();
   };

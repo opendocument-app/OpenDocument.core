@@ -3,6 +3,7 @@
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/util/file_util.hpp>
 
 #include <odr/exceptions.hpp>
 
@@ -30,10 +31,7 @@ void bring_offline(const HtmlResources &resources,
                     .join(odr::internal::common::Path(*location));
 
     std::filesystem::create_directories(path.parent());
-    std::ofstream ostream(path.string(), std::ios::out);
-    if (!ostream.is_open()) {
-      throw FileWriteError();
-    }
+    std::ofstream ostream = internal::util::file::create(path.string());
     resource.write_resource(ostream);
   }
 }
@@ -90,12 +88,9 @@ Html HtmlService::bring_offline(const std::string &output_path,
                     .join(odr::internal::common::Path(view.path()));
 
     std::filesystem::create_directories(path.parent());
-    std::ofstream ostream(path.string(), std::ios::out);
-    if (!ostream.is_open()) {
-      throw FileWriteError();
-    }
-
+    std::ofstream ostream = internal::util::file::create(path.string());
     HtmlResources view_resources = view.write_html(ostream);
+
     resources.insert(resources.end(), view_resources.begin(),
                      view_resources.end());
 
@@ -144,11 +139,7 @@ Html HtmlView::bring_offline(const std::string &output_path) const {
 
   {
     std::filesystem::create_directories(path.parent());
-    std::ofstream ostream(path.string(), std::ios::out);
-    if (!ostream.is_open()) {
-      throw FileWriteError();
-    }
-
+    std::ofstream ostream = internal::util::file::create(path.string());
     resources = write_html(ostream);
   }
 
@@ -177,7 +168,7 @@ const std::string &HtmlResource::name() const { return m_impl->name(); }
 
 const std::string &HtmlResource::path() const { return m_impl->path(); }
 
-const File &HtmlResource::file() const { return m_impl->file(); }
+const std::optional<File> &HtmlResource::file() const { return m_impl->file(); }
 
 bool HtmlResource::is_shipped() const { return m_impl->is_shipped(); }
 

@@ -12,10 +12,12 @@ namespace {
 
 class ReaderBuffer final : public std::streambuf {
 public:
-  explicit ReaderBuffer(mz_zip_reader_extract_iter_state *iter)
-      : ReaderBuffer(iter, 4098) {}
-  ReaderBuffer(mz_zip_reader_extract_iter_state *iter,
-               std::size_t buffer_size) {
+  ReaderBuffer(std::shared_ptr<const Archive> archive,
+               mz_zip_reader_extract_iter_state *iter, std::size_t buffer_size)
+      : m_archive{std::move(archive)} {
+    if (m_archive == nullptr) {
+      throw std::invalid_argument("ReaderBuffer: archive is nullptr");
+    }
     if (iter == nullptr) {
       throw std::invalid_argument("ReaderBuffer: iter is nullptr");
     }
@@ -54,6 +56,8 @@ public:
       return std::char_traits<char>::eof();
     }
 
+    std::lock_guard lock(m_archive->mutex());
+
     const std::uint64_t amount = std::min(m_remaining, m_buffer_size);
     const std::uint32_t result =
         mz_zip_reader_extract_iter_read(m_iter, m_buffer, amount);
@@ -64,6 +68,7 @@ public:
   }
 
 private:
+  std::shared_ptr<const Archive> m_archive;
   mz_zip_reader_extract_iter_state *m_iter{};
   std::uint64_t m_remaining{0};
   std::uint64_t m_buffer_size{4098};
@@ -72,24 +77,14 @@ private:
 
 class FileInZipIstream final : public std::istream {
 public:
-  FileInZipIstream(std::shared_ptr<const Archive> archive,
-                   std::unique_ptr<ReaderBuffer> sbuf)
-      : std::istream(sbuf.get()), m_archive{std::move(archive)},
-        m_sbuf{std::move(sbuf)} {
-    if (m_archive == nullptr) {
-      throw std::invalid_argument("FileInZipIstream: archive is nullptr");
-    }
+  explicit FileInZipIstream(std::unique_ptr<ReaderBuffer> sbuf)
+      : std::istream(sbuf.get()), m_sbuf{std::move(sbuf)} {
     if (m_sbuf == nullptr) {
       throw std::invalid_argument("FileInZipIstream: sbuf is nullptr");
     }
   }
-  FileInZipIstream(std::shared_ptr<const Archive> archive,
-                   mz_zip_reader_extract_iter_state *iter)
-      : FileInZipIstream(std::move(archive),
-                         std::make_unique<ReaderBuffer>(iter)) {}
 
 private:
-  std::shared_ptr<const Archive> m_archive;
   std::unique_ptr<ReaderBuffer> m_sbuf;
 };
 
@@ -106,9 +101,9 @@ public:
     return m_archive->file()->location();
   }
   [[nodiscard]] std::size_t size() const final {
+    std::lock_guard lock(m_archive->mutex());
     mz_zip_archive_file_stat stat{};
-    mz_zip_reader_file_stat(const_cast<mz_zip_archive *>(m_archive->zip()),
-                            m_index, &stat);
+    mz_zip_reader_file_stat(m_archive->zip(), m_index, &stat);
     return stat.m_uncomp_size;
   }
 
@@ -118,20 +113,19 @@ public:
   [[nodiscard]] const char *memory_data() const final { return nullptr; }
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final {
-    if (mz_zip_reader_is_file_encrypted(
-            const_cast<mz_zip_archive *>(m_archive->zip()), m_index)) {
-      return nullptr;
+    std::lock_guard lock(m_archive->mutex());
+    if (mz_zip_reader_is_file_encrypted(m_archive->zip(), m_index)) {
+      throw UnsupportedOperation("cannot read encrypted zip entry");
     }
-    if (!mz_zip_reader_is_file_supported(
-            const_cast<mz_zip_archive *>(m_archive->zip()), m_index)) {
-      return nullptr;
+    if (!mz_zip_reader_is_file_supported(m_archive->zip(), m_index)) {
+      throw UnsupportedOperation("zip entry not supported");
     }
-    auto iter = mz_zip_reader_extract_iter_new(
-        const_cast<mz_zip_archive *>(m_archive->zip()), m_index, 0);
+    auto iter = mz_zip_reader_extract_iter_new(m_archive->zip(), m_index, 0);
     if (iter == nullptr) {
-      return nullptr;
+      throw FileNotFound("zip entry not found " + std::to_string(m_index));
     }
-    return std::make_unique<FileInZipIstream>(m_archive, iter);
+    return std::make_unique<FileInZipIstream>(
+        std::make_unique<ReaderBuffer>(m_archive, iter, 4098));
   }
 
 private:
@@ -142,27 +136,27 @@ private:
 } // namespace
 
 bool Archive::Entry::is_file() const {
-  return !mz_zip_reader_is_file_a_directory(
-      const_cast<mz_zip_archive *>(m_parent->zip()), m_index);
+  std::lock_guard lock(m_archive->mutex());
+  return !mz_zip_reader_is_file_a_directory(m_archive->zip(), m_index);
 }
 
 bool Archive::Entry::is_directory() const {
-  return mz_zip_reader_is_file_a_directory(
-      const_cast<mz_zip_archive *>(m_parent->zip()), m_index);
+  std::lock_guard lock(m_archive->mutex());
+  return mz_zip_reader_is_file_a_directory(m_archive->zip(), m_index);
 }
 
 common::Path Archive::Entry::path() const {
+  std::lock_guard lock(m_archive->mutex());
   char filename[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
-  mz_zip_reader_get_filename(const_cast<mz_zip_archive *>(m_parent->zip()),
-                             m_index, filename,
+  mz_zip_reader_get_filename(m_archive->zip(), m_index, filename,
                              MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE);
   return common::Path(filename);
 }
 
 Method Archive::Entry::method() const {
+  std::lock_guard lock(m_archive->mutex());
   mz_zip_archive_file_stat stat{};
-  mz_zip_reader_file_stat(const_cast<mz_zip_archive *>(m_parent->zip()),
-                          m_index, &stat);
+  mz_zip_reader_file_stat(m_archive->zip(), m_index, &stat);
   switch (stat.m_method) {
   case 0:
     return Method::STORED;
@@ -176,7 +170,7 @@ std::shared_ptr<abstract::File> Archive::Entry::file() const {
   if (!is_file()) {
     return nullptr;
   }
-  return std::make_shared<FileInZip>(m_parent->shared_from_this(), m_index);
+  return std::make_shared<FileInZip>(m_archive->shared_from_this(), m_index);
 }
 
 Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)
@@ -194,35 +188,24 @@ Archive::Archive(std::shared_ptr<abstract::File> file)
   open_from_file(m_zip, *m_file, *m_stream);
 }
 
-Archive::Archive(const Archive &other) : Archive(other.m_file) {}
-
-Archive::Archive(Archive &&other) noexcept = default;
-
-Archive::~Archive() { mz_zip_end(&m_zip); }
-
-Archive &Archive::operator=(const Archive &other) {
-  if (&other != this) {
-    m_zip = other.m_zip;
-    m_file = other.m_file;
-  }
-  return *this;
+Archive::~Archive() {
+  std::lock_guard lock(m_mutex);
+  mz_zip_end(&m_zip);
 }
 
-Archive &Archive::operator=(Archive &&) noexcept = default;
+std::mutex &Archive::mutex() const { return m_mutex; }
 
-const mz_zip_archive *Archive::zip() const { return &m_zip; }
+mz_zip_archive *Archive::zip() const { return &m_zip; }
 
 std::shared_ptr<abstract::File> Archive::file() const noexcept {
   return m_file;
 }
 
-Archive::Iterator Archive::begin() const {
-  return {const_cast<Archive &>(*this), 0};
-}
+Archive::Iterator Archive::begin() const { return {*this, 0}; }
 
 Archive::Iterator Archive::end() const {
-  return {const_cast<Archive &>(*this),
-          mz_zip_reader_get_num_files(const_cast<mz_zip_archive *>(&m_zip))};
+  std::lock_guard lock(m_mutex);
+  return {*this, mz_zip_reader_get_num_files(&m_zip)};
 }
 
 Archive::Iterator Archive::find(const common::Path &path) const {

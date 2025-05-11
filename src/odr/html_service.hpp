@@ -94,7 +94,7 @@ public:
   [[nodiscard]] const std::string &mime_type() const;
   [[nodiscard]] const std::string &name() const;
   [[nodiscard]] const std::string &path() const;
-  [[nodiscard]] const File &file() const;
+  [[nodiscard]] const std::optional<File> &file() const;
   [[nodiscard]] bool is_shipped() const;
   [[nodiscard]] bool is_external() const;
   [[nodiscard]] bool is_accessible() const;

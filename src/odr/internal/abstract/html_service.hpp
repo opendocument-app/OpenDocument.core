@@ -4,6 +4,7 @@
 
 #include <iosfwd>
 #include <memory>
+#include <optional>
 
 namespace odr {
 class File;
@@ -52,7 +53,7 @@ public:
   [[nodiscard]] virtual const std::string &mime_type() const = 0;
   [[nodiscard]] virtual const std::string &name() const = 0;
   [[nodiscard]] virtual const std::string &path() const = 0;
-  [[nodiscard]] virtual const odr::File &file() const = 0;
+  [[nodiscard]] virtual const std::optional<odr::File> &file() const = 0;
   [[nodiscard]] virtual bool is_shipped() const = 0;
   [[nodiscard]] virtual bool is_external() const = 0;
   [[nodiscard]] virtual bool is_accessible() const = 0;

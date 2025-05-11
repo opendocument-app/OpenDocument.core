@@ -8,6 +8,7 @@ enum class FileType;
 /// @brief Unsupported operation exception
 struct UnsupportedOperation final : public std::runtime_error {
   UnsupportedOperation();
+  explicit UnsupportedOperation(const std::string &message);
 };
 
 /// @brief File not found exception
@@ -40,7 +41,7 @@ struct FileReadError final : public std::runtime_error {
 
 /// @brief File write error
 struct FileWriteError final : public std::runtime_error {
-  FileWriteError();
+  explicit FileWriteError(const std::string &path);
 };
 
 /// @brief No ZIP file exception base
@@ -154,9 +155,21 @@ struct DocumentCopyProtectedException : public std::runtime_error {
   DocumentCopyProtectedException();
 };
 
+/// @brief Resource is not accessible
 struct ResourceNotAccessible : public std::runtime_error {
   ResourceNotAccessible();
   ResourceNotAccessible(const std::string &name, const std::string &path);
+};
+
+/// @brief Prefix already in use
+struct PrefixInUse : public std::runtime_error {
+  PrefixInUse();
+  explicit PrefixInUse(const std::string &prefix);
+};
+
+/// @brief Unsupported option
+struct UnsupportedOption : public std::runtime_error {
+  explicit UnsupportedOption(const std::string &message);
 };
 
 } // namespace odr

@@ -10,19 +10,21 @@
 
 namespace odr::internal::util {
 
-std::size_t file::size(const std::string &path) {
-  std::ifstream in(path, std::ios::binary | std::ios::ate);
+std::ifstream file::open(const std::string &path) {
+  std::ifstream in(path, std::ifstream::binary);
   if (!in.is_open() || in.fail()) {
-    throw FileNotFound();
+    throw FileNotFound(path);
   }
+  return in;
+}
+
+std::size_t file::size(const std::string &path) {
+  std::ifstream in = open(path);
   return in.tellg();
 }
 
 std::string file::read(const std::string &path) {
-  std::ifstream in(path);
-  if (!in.is_open() || in.fail()) {
-    throw FileNotFound();
-  }
+  std::ifstream in = open(path);
 
   std::string result;
 
@@ -41,22 +43,27 @@ std::string file::read(const std::string &path) {
   return result;
 }
 
-void file::write(const std::string &path, const std::string &data) {
-  std::ofstream out(path);
-  if (!out.is_open() || out.fail()) {
-    throw FileNotFound();
-  }
+void file::pipe(const std::string &path, std::ostream &out) {
+  std::ifstream in = open(path);
+  stream::pipe(in, out);
+}
 
+std::ofstream file::create(const std::string &path) {
+  std::ofstream out(path, std::ifstream::binary);
+  if (!out.is_open() || out.fail()) {
+    throw FileWriteError(path);
+  }
+  return out;
+}
+
+void file::write(const std::string &data, const std::string &path) {
+  std::ofstream out = create(path);
   out << data;
 }
 
-void file::write(const std::string &path, const abstract::File &file) {
-  std::ofstream out(path);
-  if (!out.is_open() || out.fail()) {
-    throw FileNotFound();
-  }
-
-  stream::pipe(*file.stream(), out);
+void file::write(std::istream &in, const std::string &path) {
+  std::ofstream out = create(path);
+  stream::pipe(in, out);
 }
 
 } // namespace odr::internal::util
