@@ -60,8 +60,18 @@ NoOfficeOpenXmlFile::NoOfficeOpenXmlFile()
 
 NoPdfFile::NoPdfFile() : std::runtime_error("not a pdf file") {}
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 NoLegacyMicrosoftFile::NoLegacyMicrosoftFile()
     : std::runtime_error("not a legacy microsoft office file") {}
+=======
+NoLegacyMicrosoftFile::NoLegacyMicrosoftFile()
+    : std::runtime_error("not a legacy microsoft office file") {}
+>>>>>>> Stashed changes
+=======
+NoLegacyMicrosoftFile::NoLegacyMicrosoftFile()
+    : std::runtime_error("not a legacy microsoft office file") {}
+>>>>>>> Stashed changes
 
 NoXmlFile::NoXmlFile() : std::runtime_error("not an xml file") {}
 
