@@ -86,7 +86,7 @@ HtmlResourceLocator html::local_resource_locator(std::string output_path,
     auto resource_path =
         common::Path(output_path).join(common::Path(resource.path()));
     std::filesystem::create_directories(resource_path.parent().path());
-    std::ofstream os = util::file::create(resource_path.path());
+    std::ofstream os = util::file::create(resource_path.string());
     resource.write_resource(os);
     return resource.path();
   };

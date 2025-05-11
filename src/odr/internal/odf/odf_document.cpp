@@ -85,7 +85,7 @@ void Document::save(const common::Path &path) const {
     archive.insert_file(std::end(archive), p, m_filesystem->open(p));
   }
 
-  std::ofstream ostream = util::file::create(path.path());
+  std::ofstream ostream = util::file::create(path.string());
   archive.save(ostream);
 }
 
