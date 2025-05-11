@@ -22,24 +22,26 @@
 #include <mutex>
 
 namespace odr::internal::html {
-
 namespace {
 
 void front(const Document &document, const WritingState &state) {
+  HtmlWriter &out = state.out();
+
   bool paged_content = ((document.document_type() == DocumentType::text) &&
                         state.config().text_document_margin) ||
                        document.document_type() == DocumentType::presentation ||
                        document.document_type() == DocumentType::drawing;
 
-  state.out().write_begin();
-  state.out().write_header_begin();
-  state.out().write_header_charset("UTF-8");
-  state.out().write_header_target("_blank");
-  state.out().write_header_title("odr");
+  out.write_begin();
+  out.write_header_begin();
+  out.write_header_charset("UTF-8");
+  out.write_header_target("_blank");
+  out.write_header_title("odr");
+  out.write_header_meta("color-scheme", "light dark");
   if (paged_content) {
-    state.out().write_header_viewport("width=device-width,user-scalable=yes");
+    out.write_header_viewport("width=device-width,user-scalable=yes");
   } else {
-    state.out().write_header_viewport(
+    out.write_header_viewport(
         "width=device-width,initial-scale=1.0,user-scalable=yes");
   }
 
@@ -52,11 +54,11 @@ void front(const Document &document, const WritingState &state) {
       state.config().resource_locator(odr_css_resource, state.config());
   state.resources().emplace_back(std::move(odr_css_resource), odr_css_location);
   if (odr_css_location.has_value()) {
-    state.out().write_header_style(odr_css_location.value());
+    out.write_header_style(odr_css_location.value());
   } else {
-    state.out().write_header_style_begin();
-    util::stream::pipe(*odr_css_file.stream(), state.out().out());
-    state.out().write_header_style_end();
+    out.write_header_style_begin();
+    util::stream::pipe(*odr_css_file.stream(), out.out());
+    out.write_header_style_end();
   }
 
   if (document.document_type() == DocumentType::spreadsheet) {
@@ -72,15 +74,15 @@ void front(const Document &document, const WritingState &state) {
     state.resources().emplace_back(std::move(odr_spreadsheet_css_resource),
                                    odr_spreadsheet_css_location);
     if (odr_spreadsheet_css_location.has_value()) {
-      state.out().write_header_style(odr_spreadsheet_css_location.value());
+      out.write_header_style(odr_spreadsheet_css_location.value());
     } else {
-      state.out().write_header_style_begin();
-      util::stream::pipe(*odr_spreadsheet_css_file.stream(), state.out().out());
-      state.out().write_header_style_end();
+      out.write_header_style_begin();
+      util::stream::pipe(*odr_spreadsheet_css_file.stream(), out.out());
+      out.write_header_style_end();
     }
   }
 
-  state.out().write_header_end();
+  out.write_header_end();
 
   std::string body_clazz = "odr-body";
   if (paged_content) {
@@ -101,22 +103,23 @@ void front(const Document &document, const WritingState &state) {
     }
   }
 
-  state.out().write_body_begin(HtmlElementOptions().set_class(body_clazz));
+  out.write_body_begin(HtmlElementOptions().set_class(body_clazz));
 
   if (paged_content) {
-    state.out().write_element_begin(
-        "div", HtmlElementOptions().set_class("odr-pages"));
+    out.write_element_begin("div", HtmlElementOptions().set_class("odr-pages"));
   }
 }
 
 void back(const Document &document, const WritingState &state) {
+  HtmlWriter &out = state.out();
+
   bool paged_content = ((document.document_type() == DocumentType::text) &&
                         state.config().text_document_margin) ||
                        document.document_type() == DocumentType::presentation ||
                        document.document_type() == DocumentType::drawing;
 
   if (paged_content) {
-    state.out().write_element_end("div");
+    out.write_element_end("div");
   }
 
   auto odr_js_file = File(
@@ -128,15 +131,15 @@ void back(const Document &document, const WritingState &state) {
       state.config().resource_locator(odr_js_resource, state.config());
   state.resources().emplace_back(std::move(odr_js_resource), odr_js_location);
   if (odr_js_location.has_value()) {
-    state.out().write_script(odr_js_location.value());
+    out.write_script(odr_js_location.value());
   } else {
-    state.out().write_script_begin();
-    util::stream::pipe(*odr_js_file.stream(), state.out().out());
-    state.out().write_script_end();
+    out.write_script_begin();
+    util::stream::pipe(*odr_js_file.stream(), out.out());
+    out.write_script_end();
   }
 
-  state.out().write_body_end();
-  state.out().write_end();
+  out.write_body_end();
+  out.write_end();
 }
 
 std::string fill_path_variables(const std::string &path,
@@ -407,7 +410,6 @@ private:
 };
 
 } // namespace
-
 } // namespace odr::internal::html
 
 namespace odr::internal {

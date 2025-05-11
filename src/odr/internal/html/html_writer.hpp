@@ -57,6 +57,7 @@ public:
   void write_header_begin();
   void write_header_end();
   void write_header_title(const std::string &title);
+  void write_header_meta(const std::string &name, const std::string &content);
   void write_header_viewport(const std::string &viewport);
   void write_header_target(const std::string &target);
   void write_header_charset(const std::string &charset);
