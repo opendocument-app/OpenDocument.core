@@ -37,7 +37,6 @@ void front(const Document &document, const WritingState &state) {
   out.write_header_charset("UTF-8");
   out.write_header_target("_blank");
   out.write_header_title("odr");
-  out.write_header_meta("color-scheme", "light dark");
   if (paged_content) {
     out.write_header_viewport("width=device-width,user-scalable=yes");
   } else {

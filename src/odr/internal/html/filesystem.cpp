@@ -71,7 +71,6 @@ public:
     out.write_header_charset("UTF-8");
     out.write_header_target("_blank");
     out.write_header_title("odr");
-    out.write_header_meta("color-scheme", "light dark");
     out.write_header_viewport(
         "width=device-width,initial-scale=1.0,user-scalable=yes");
     out.write_header_style_begin();
