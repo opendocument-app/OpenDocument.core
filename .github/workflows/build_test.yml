@@ -49,6 +49,13 @@ jobs:
         run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
+      - run: |
+          rm conan.lock
+          conan lock create conanfile.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conan.lock
+          path: conan.lock
       - name: conan install
         run: conan install . --output-folder=build --build=missing
 
