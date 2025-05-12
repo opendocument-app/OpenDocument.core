@@ -46,7 +46,10 @@ jobs:
         run: pip install conan
 
       - name: conan remote
-        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+        run: |
+          conan remote remove "*"
+          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+          conan remote add conancenter https://center2.conan.io
       - name: conan config
         run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
       - name: conan install
