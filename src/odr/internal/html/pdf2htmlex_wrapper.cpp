@@ -90,7 +90,7 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   // encryption
   param.owner_password = "";
   param.user_password = "";
-  param.no_drm = 0;
+  param.no_drm = 1;
 
   // misc
   param.clean_tmp = 1;
@@ -314,10 +314,8 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
     html_renderer_param->delay_background = 1;
   }
 
-  if (!pdf_doc.okToCopy()) {
-    if (html_renderer_param->no_drm == 0) {
-      throw odr::DocumentCopyProtectedException();
-    }
+  if (!pdf_doc.okToCopy() && html_renderer_param->no_drm == 0) {
+    throw odr::DocumentCopyProtectedException();
   }
 
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
