@@ -21,7 +21,6 @@ class WvWareLegacyMicrosoftFile final : public abstract::DocumentFile {
 public:
   explicit WvWareLegacyMicrosoftFile(std::shared_ptr<common::DiskFile> file);
   explicit WvWareLegacyMicrosoftFile(std::shared_ptr<common::MemoryFile> file);
-  ~WvWareLegacyMicrosoftFile() final;
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 

@@ -81,12 +81,6 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  // TODO check wvware decryption
-  if ((test_file.type == FileType::legacy_word_document) &&
-      (engine == DecoderEngine::wvware)) {
-    GTEST_SKIP();
-  }
-
   if (file.is_document_file()) {
     DocumentFile document_file = file.document_file();
 
