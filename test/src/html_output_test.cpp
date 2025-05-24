@@ -81,20 +81,23 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  // TODO check wvware decryption
-  if ((test_file.type == FileType::legacy_word_document) &&
-      (engine == DecoderEngine::wvware)) {
-    GTEST_SKIP();
-  }
-
   if (file.is_document_file()) {
     DocumentFile document_file = file.document_file();
 
     EXPECT_EQ(test_file.password.has_value(),
               document_file.password_encrypted());
+
+    // TODO wvware decryption
+    if (test_file.password.has_value() &&
+        (test_file.type == FileType::legacy_word_document) &&
+        (engine == DecoderEngine::wvware)) {
+      GTEST_SKIP();
+    }
+
     if (test_file.password.has_value()) {
       EXPECT_TRUE(document_file.decrypt(test_file.password.value()));
     }
+
     EXPECT_EQ(test_file.type, document_file.file_type());
   }
 

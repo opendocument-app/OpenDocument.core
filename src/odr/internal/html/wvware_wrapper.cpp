@@ -39,8 +39,10 @@ namespace {
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wv.h#L2776-L2814
 /// to allow for more state variables.
 struct TranslationState : public expand_data {
-  explicit TranslationState(html::HtmlWriter _out)
-      : expand_data{}, out(std::move(_out)) {}
+  explicit TranslationState(html::HtmlWriter _out, const HtmlConfig &_config,
+                            std::string _cache_path)
+      : expand_data{}, out(std::move(_out)), config{&_config},
+        cache_path{std::move(_cache_path)} {}
 
   char *charset = nullptr;
   PAP *ppap = nullptr;
@@ -52,12 +54,14 @@ struct TranslationState : public expand_data {
   std::size_t figure_number = 0;
 
   html::HtmlWriter out;
+  const HtmlConfig *config;
+  std::string cache_path;
 };
 
 /// Originally from `text.c` `wvConvertUnicodeToHtml`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/text.c#L1999-L2154
 int convert_unicode_to_html(wvParseStruct *ps, std::uint16_t char16) {
-  auto *data = (TranslationState *)ps->userData;
+  auto *data = static_cast<TranslationState *>(ps->userData);
   auto &out = data->out;
 
   switch (char16) {
@@ -103,14 +107,6 @@ int convert_unicode_to_html(wvParseStruct *ps, std::uint16_t char16) {
     return 1;
     /* end german characters */
   case 0x2026:
-#if 0
-/*
-this just looks awful in netscape 4.5, so im going to do a very foolish
-thing and just put ... instead of this
-*/
-	  printf ("&#133;");
-/*is there a proper html name for ... &ellipse;? Yes, &hellip; -- MV */
-#endif
     out.out() << "&hellip;";
     return 1;
   case 0x2019:
@@ -208,8 +204,6 @@ thing and just put ... instead of this
   default:
     break;
   }
-  /* Debugging aid: */
-  /* if (char16 >= 0x100) printf("[%x]", char16); */
   return 0;
 }
 
@@ -217,10 +211,10 @@ thing and just put ... instead of this
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/text.c#L757-L840
 void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
                          char *outputtype) {
-  auto *data = (TranslationState *)ps->userData;
+  auto *data = static_cast<TranslationState *>(ps->userData);
   auto &out = data->out;
 
-  GIConv g_iconv_handle = (GIConv)-1;
+  GIConv g_iconv_handle;
   int need_swapping;
   gchar *ibuf, *obuf;
   std::size_t ibuflen, obuflen, len, count, i;
@@ -296,7 +290,7 @@ void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L661-L676
 /// simplified to HTML output
 void strange_no_graphic_data(wvParseStruct *ps, int graphicstype) {
-  auto *data = (TranslationState *)ps->userData;
+  auto *data = static_cast<TranslationState *>(ps->userData);
   auto &out = data->out;
 
   std::cerr << "Strange No Graphic Data in the 0x01/0x08 graphic\n";
@@ -310,18 +304,18 @@ void strange_no_graphic_data(wvParseStruct *ps, int graphicstype) {
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L1239-L1287
 /// simplified to HTML output
 void print_graphics(wvParseStruct *ps, int graphicstype, int width, int height,
-                    const std::string &source) {
+                    const std::string &path) {
   // upstream converts to PNG, we just use the original format as the browser
   // should support them
 
-  auto *data = (TranslationState *)ps->userData;
+  auto *data = static_cast<TranslationState *>(ps->userData);
   auto &out = data->out;
 
   // TODO export/embed image
 
   out.out() << R"(<img width=")" << width << R"(" height=")" << height
             << R"(" alt=")" << std::hex << graphicstype << R"( graphic" src=")"
-            << source << R"("/><br/>)";
+            << path << R"("/><br/>)";
 }
 
 void handle_bitmap(wvParseStruct * /*ps*/, const std::string &name,
@@ -343,17 +337,16 @@ void handle_bitmap(wvParseStruct * /*ps*/, const std::string &name,
   fclose(fd);
 }
 
-int handle_metafile(wvParseStruct * /*ps*/, const char *name,
+int handle_metafile(wvParseStruct * /*ps*/, const std::string &name,
                     MetaFileBlip *bitmap) {
   wvStream *pwv = bitmap->m_pvBits;
   FILE *fd = nullptr;
   std::size_t size = 0, i;
   std::uint8_t decompressf = 0;
 
-  fd = fopen(name, "wb");
+  fd = fopen(name.c_str(), "wb");
   if (fd == nullptr) {
-    fprintf(stderr, "\nCannot open %s for writing\n", name);
-    exit(1);
+    throw std::runtime_error("Cannot open " + name + " file for writing");
   }
   size = wvStream_size(pwv);
   wvStream_rewind(pwv);
@@ -393,7 +386,7 @@ int handle_metafile(wvParseStruct * /*ps*/, const char *name,
 }
 
 std::string figure_name(wvParseStruct *ps) {
-  auto *data = (TranslationState *)ps->userData;
+  auto *data = static_cast<TranslationState *>(ps->userData);
 
   std::size_t number = data->figure_number++;
   std::string name = "figure" + std::to_string(number);
@@ -401,12 +394,18 @@ std::string figure_name(wvParseStruct *ps) {
   return name;
 }
 
+std::string figure_path(wvParseStruct *ps) {
+  auto *data = static_cast<TranslationState *>(ps->userData);
+
+  return data->cache_path + "/" + figure_name(ps);
+}
+
 std::string html_graphic(wvParseStruct *ps, Blip *blip) {
-  std::string name;
+  std::string path;
   wvStream *fd;
   char test[3];
 
-  name = figure_name(ps);
+  path = figure_path(ps);
 
   /*
      temp hack to test older included bmps in word 6 and 7,
@@ -424,9 +423,9 @@ std::string html_graphic(wvParseStruct *ps, Blip *blip) {
     test[1] = (char)read_8ubit(fd);
     wvStream_rewind(fd);
     if (!(strcmp(test, "BM"))) {
-      name += ".bmp";
-      handle_bitmap(ps, name, &blip->blip.bitmap);
-      return name;
+      path += ".bmp";
+      handle_bitmap(ps, path, &blip->blip.bitmap);
+      return path;
     }
   default:
     break;
@@ -434,37 +433,37 @@ std::string html_graphic(wvParseStruct *ps, Blip *blip) {
 
   switch (blip->type) {
   case msoblipWMF:
-    name += ".wmf";
-    handle_metafile(ps, name.c_str(), &blip->blip.metafile);
+    path += ".wmf";
+    handle_metafile(ps, path, &blip->blip.metafile);
     break;
   case msoblipEMF:
-    name += ".emf";
-    handle_metafile(ps, name.c_str(), &blip->blip.metafile);
+    path += ".emf";
+    handle_metafile(ps, path, &blip->blip.metafile);
     break;
   case msoblipPICT:
-    name += ".pict";
-    handle_metafile(ps, name.c_str(), &blip->blip.metafile);
+    path += ".pict";
+    handle_metafile(ps, path, &blip->blip.metafile);
     break;
   case msoblipJPEG:
-    name += ".jpg";
-    handle_bitmap(ps, name.c_str(), &blip->blip.bitmap);
+    path += ".jpg";
+    handle_bitmap(ps, path, &blip->blip.bitmap);
     break;
   case msoblipDIB:
-    name += ".dib";
-    handle_bitmap(ps, name.c_str(), &blip->blip.bitmap);
+    path += ".dib";
+    handle_bitmap(ps, path, &blip->blip.bitmap);
     break;
   case msoblipPNG:
-    name += ".png";
-    handle_bitmap(ps, name.c_str(), &blip->blip.bitmap);
+    path += ".png";
+    handle_bitmap(ps, path, &blip->blip.bitmap);
     break;
   }
-  return name;
+  return path;
 }
 
 /// Originally from `wvWare.c` `myelehandler`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L503-L599
 int element_handler(wvParseStruct *ps, wvTag tag, void *props, int /*dirty*/) {
-  auto *data = (TranslationState *)ps->userData;
+  auto *data = static_cast<TranslationState *>(ps->userData);
   data->anSttbfAssoc = &ps->anSttbfAssoc;
   data->lfo = &ps->lfo;
   data->lfolvl = ps->lfolvl;
@@ -548,7 +547,7 @@ int element_handler(wvParseStruct *ps, wvTag tag, void *props, int /*dirty*/) {
 /// Originally from `wvWare.c` `mydochandler`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L601-L659
 int document_handler(wvParseStruct *ps, wvTag tag) {
-  auto *data = (TranslationState *)ps->userData;
+  auto *data = static_cast<TranslationState *>(ps->userData);
   data->anSttbfAssoc = &ps->anSttbfAssoc;
   data->lfo = &ps->lfo;
   data->lfolvl = ps->lfolvl;
@@ -601,7 +600,7 @@ int document_handler(wvParseStruct *ps, wvTag tag) {
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L1556-L1605
 int char_handler(wvParseStruct *ps, std::uint16_t eachchar,
                  std::uint8_t chartype, std::uint16_t lid) {
-  auto *data = (TranslationState *)ps->userData;
+  auto *data = static_cast<TranslationState *>(ps->userData);
 
   switch (eachchar) {
   case 19:
@@ -645,7 +644,7 @@ int char_handler(wvParseStruct *ps, std::uint16_t eachchar,
 /// Originally from `wvWare.c` `mySpecCharProc`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L1289-L1553
 int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
-  auto *data = (TranslationState *)ps->userData;
+  auto *data = static_cast<TranslationState *>(ps->userData);
   auto &state = data->special_char_handler_state;
   auto &out = data->out;
 
@@ -698,9 +697,9 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
     wvGetPICF(wvQuerySupported(&ps->fib, nullptr), &picf, ps->data);
     f = picf.rgb;
     if (wv0x01(&blip, f, picf.lcb - picf.cbHeader) != 0) {
-      std::string name = html_graphic(ps, &blip);
+      std::string path = html_graphic(ps, &blip);
       print_graphics(ps, 0x01, (int)wvTwipsToHPixels(picf.dxaGoal),
-                     (int)wvTwipsToVPixels(picf.dyaGoal), name);
+                     (int)wvTwipsToVPixels(picf.dyaGoal), path);
     } else {
       strange_no_graphic_data(ps, 0x01);
     }
@@ -722,17 +721,17 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
 
         data->props = fspa;
         if (wv0x08(&blip, (int)fspa->spid, ps) != 0) {
-          std::string name = html_graphic(ps, &blip);
+          std::string path = html_graphic(ps, &blip);
           print_graphics(
               ps, 0x08,
               (int)wvTwipsToHPixels((short)(fspa->xaRight - fspa->xaLeft)),
               (int)wvTwipsToVPixels((short)(fspa->yaBottom - fspa->yaTop)),
-              name);
+              path);
         } else {
           strange_no_graphic_data(ps, 0x08);
         }
       } else {
-        std::cerr << "nooffspa was <=0!  Ignoring.\n";
+        std::cerr << "nooffspa was <=0! Ignoring.\n";
       }
     } else {
       std::cerr << "pre word8 0x08 graphic, unsupported at the moment\n";
@@ -753,9 +752,9 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
 
     if (0 == memcmp(symbol, ps->fonts.ffn[achp->ftcSym].xszFfn, 12)) {
       if ((state.message == 0) && (strcasecmp("UTF-8", data->charset) != 0)) {
-        std::cerr
-            << "Symbol font detected (too late sorry!), rerun wvHtml with option --charset utf-8\n\
-option to support correct symbol font conversion to a viewable format.\n";
+        std::cerr << "Symbol font detected (too late sorry!), rerun wvHtml "
+                     "with option --charset utf-8\noption to support correct "
+                     "symbol font conversion to a viewable format.\n";
         state.message++;
       }
       output_from_unicode(ps, wvConvertSymbolToUnicode(achp->xchSym - 61440),
@@ -798,8 +797,10 @@ option to support correct symbol font conversion to a viewable format.\n";
 
 class HtmlServiceImpl : public HtmlService {
 public:
-  HtmlServiceImpl(WvWareLegacyMicrosoftFile oldms_file, HtmlConfig config)
-      : HtmlService(std::move(config)), m_oldms_file{std::move(oldms_file)} {
+  HtmlServiceImpl(WvWareLegacyMicrosoftFile oldms_file, HtmlConfig config,
+                  std::string cache_path)
+      : HtmlService(std::move(config)), m_oldms_file{std::move(oldms_file)},
+        m_cache_path{std::move(cache_path)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "document", "document.html"));
   }
@@ -854,7 +855,7 @@ public:
     wvSetSpecialCharHandler(&ps, special_char_handler);
 
     state_data handle;
-    TranslationState translation_state(out);
+    TranslationState translation_state(out, config(), m_cache_path);
 
     wvInitStateData(&handle);
 
@@ -885,6 +886,8 @@ protected:
   WvWareLegacyMicrosoftFile m_oldms_file;
 
   HtmlViews m_views;
+
+  std::string m_cache_path;
 };
 
 } // namespace
@@ -896,10 +899,8 @@ odr::HtmlService
 html::create_wvware_oldms_service(const WvWareLegacyMicrosoftFile &oldms_file,
                                   const std::string &cache_path,
                                   HtmlConfig config) {
-  (void)cache_path;
-
-  return odr::HtmlService(
-      std::make_unique<HtmlServiceImpl>(oldms_file, std::move(config)));
+  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
+      oldms_file, std::move(config), cache_path));
 }
 
 } // namespace odr::internal
