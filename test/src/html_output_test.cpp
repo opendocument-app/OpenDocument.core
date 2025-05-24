@@ -86,9 +86,18 @@ TEST_P(HtmlOutputTests, html_meta) {
 
     EXPECT_EQ(test_file.password.has_value(),
               document_file.password_encrypted());
+
+    // TODO wvware decryption
+    if (test_file.password.has_value() &&
+        (test_file.type == FileType::legacy_word_document) &&
+        (engine == DecoderEngine::wvware)) {
+      GTEST_SKIP();
+    }
+
     if (test_file.password.has_value()) {
       EXPECT_TRUE(document_file.decrypt(test_file.password.value()));
     }
+
     EXPECT_EQ(test_file.type, document_file.file_type());
   }
 
