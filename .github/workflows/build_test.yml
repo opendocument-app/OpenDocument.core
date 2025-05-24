@@ -238,7 +238,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: onefile
+          name: onefile-${{ matrix.os }}-${{ matrix.compiler }}
           path: build/test/output/odr-private/output/pdf/phd-agreement.pdf-poppler
 
       - name: tidy public test outputs
