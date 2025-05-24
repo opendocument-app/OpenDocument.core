@@ -235,12 +235,6 @@ jobs:
         working-directory: build/test
         run: ./Release/odr_test.exe
 
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: onefile-${{ matrix.os }}-${{ matrix.compiler }}
-          path: build/test/output/odr-private/output/pdf/phd-agreement.pdf-poppler
-
       - name: tidy public test outputs
         run: python3 -u test/scripts/tidy_output.py build/test/output/odr-public/output
       - name: compare public test outputs
@@ -258,8 +252,15 @@ jobs:
           python3 -u test/scripts/compare_output.py \
             --driver firefox \
             --max-workers 1 \
+            --diff-output output-diff-private \
             test/data/reference-output/odr-private/output \
             build/test/output/odr-private/output
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: output-diff-private-${{ matrix.os }}-${{ matrix.compiler }}
+          path: output-diff-private
 
   build-test-downstream:
     runs-on: ${{ matrix.os }}
