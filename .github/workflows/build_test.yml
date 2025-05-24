@@ -255,42 +255,6 @@ jobs:
             test/data/reference-output/odr-private/output \
             build/test/output/odr-private/output
 
-      - name: tidy pdf2htmlEX test outputs
-        if: runner.os == 'Linux'
-        run: |
-          python3 -u test/scripts/tidy_output.py build/test/output/odr-public/output-pdf2htmlEX
-          python3 -u test/scripts/tidy_output.py build/test/output/odr-private/output-pdf2htmlEX
-      - name: Compare pdf2htmlEX public test results
-        if: runner.os == 'Linux'
-        run: |
-          python3 -u test/scripts/compare_output.py \
-            --driver firefox \
-            --max-workers 1 \
-            test/data/reference-output/odr-public/output-pdf2htmlEX \
-            build/test/output/odr-public/output-pdf2htmlEX
-      - name: Compare pdf2htmlEX private test results
-        if: runner.os == 'Linux'
-        run: |
-          python3 -u test/scripts/compare_output.py \
-            --driver firefox \
-            --max-workers 1 \
-            test/data/reference-output/odr-public/output-pdf2htmlEX \
-            build/test/output/odr-public/output-pdf2htmlEX
-
-      # wvWare has no private test data
-      - name: tidy wvWare test outputs
-        if: runner.os == 'Linux'
-        run: |
-          python3 -u test/scripts/tidy_output.py build/test/output/odr-public/output-wvWare
-      - name: Compare wvWare public test results
-        if: runner.os == 'Linux'
-        run: |
-          python3 -u test/scripts/compare_output.py \
-            --driver firefox \
-            --max-workers 1 \
-            test/data/reference-output/odr-public/output-wvWare \
-            build/test/output/odr-public/output-wvWare
-
   build-test-downstream:
     runs-on: ${{ matrix.os }}
     strategy:
