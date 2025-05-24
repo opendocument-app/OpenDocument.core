@@ -235,7 +235,7 @@ jobs:
         working-directory: build/test
         run: ./Release/odr_test.exe
 
-      - use: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: onefile
