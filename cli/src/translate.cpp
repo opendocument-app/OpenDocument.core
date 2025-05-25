@@ -1,3 +1,4 @@
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/html_service.hpp>
@@ -24,12 +25,12 @@ int main(int argc, char **argv) {
     return 2;
   }
   if (decoded_file.password_encrypted()) {
-    auto decrypt_result = decoded_file.decrypt(*password);
-    if (!decrypt_result.has_value()) {
+    try {
+      decoded_file = decoded_file.decrypt(*password);
+    } catch (const WrongPasswordError &) {
       std::cerr << "wrong password" << std::endl;
       return 1;
     }
-    decoded_file = std::move(*decrypt_result);
   }
 
   HtmlConfig config;

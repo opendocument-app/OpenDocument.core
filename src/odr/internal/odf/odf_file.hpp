@@ -35,7 +35,7 @@ public:
   [[nodiscard]] bool password_encrypted() const noexcept final;
   [[nodiscard]] EncryptionState encryption_state() const noexcept final;
   [[nodiscard]] std::shared_ptr<abstract::DecodedFile>
-  decrypt(const std::string &password) const noexcept final;
+  decrypt(const std::string &password) const final;
 
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const final;
 

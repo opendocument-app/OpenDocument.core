@@ -80,20 +80,21 @@ EncryptionState PopplerPdfFile::encryption_state() const noexcept {
 }
 
 std::shared_ptr<abstract::DecodedFile>
-PopplerPdfFile::decrypt(const std::string &password) const noexcept {
+PopplerPdfFile::decrypt(const std::string &password) const {
   if (encryption_state() != EncryptionState::encrypted) {
-    return nullptr;
+    throw NotEncryptedError();
   }
 
   auto decrypted_file = std::make_shared<PopplerPdfFile>(*this);
   try {
     decrypted_file->open(password);
-    if (decrypted_file->encryption_state() == EncryptionState::decrypted) {
-      return decrypted_file;
-    }
   } catch (const std::exception &e) {
+    throw DecryptionFailed();
   }
-  return nullptr;
+  if (decrypted_file->encryption_state() != EncryptionState::decrypted) {
+    throw WrongPasswordError();
+  }
+  return decrypted_file;
 }
 
 PDFDoc &PopplerPdfFile::pdf_doc() const { return *m_pdf_doc; }

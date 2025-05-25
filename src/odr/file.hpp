@@ -196,7 +196,7 @@ public:
 
   [[nodiscard]] bool password_encrypted() const;
   [[nodiscard]] EncryptionState encryption_state() const;
-  [[nodiscard]] std::optional<DecodedFile> decrypt(const std::string &password);
+  [[nodiscard]] DecodedFile decrypt(const std::string &password) const;
 
   [[nodiscard]] bool is_text_file() const;
   [[nodiscard]] bool is_image_file() const;

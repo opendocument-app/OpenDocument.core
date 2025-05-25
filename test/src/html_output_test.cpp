@@ -91,9 +91,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   EXPECT_EQ(test_file.password.has_value(), file.password_encrypted());
 
   if (test_file.password.has_value()) {
-    auto decrypt_result = file.decrypt(test_file.password.value());
-    EXPECT_TRUE(decrypt_result.has_value());
-    file = std::move(*decrypt_result);
+    file = file.decrypt(test_file.password.value());
   }
 
   if (file.is_document_file()) {

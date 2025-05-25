@@ -60,9 +60,9 @@ EncryptionState OfficeOpenXmlFile::encryption_state() const noexcept {
 }
 
 std::shared_ptr<abstract::DecodedFile>
-OfficeOpenXmlFile::decrypt(const std::string &password) const noexcept {
+OfficeOpenXmlFile::decrypt(const std::string &password) const {
   if (m_encryption_state != EncryptionState::encrypted) {
-    return nullptr;
+    throw NotEncryptedError();
   }
 
   std::string encryption_info = util::stream::read(
@@ -71,7 +71,7 @@ OfficeOpenXmlFile::decrypt(const std::string &password) const noexcept {
   crypto::Util util(encryption_info);
   std::string key = util.derive_key(password);
   if (!util.verify(key)) {
-    return nullptr;
+    throw WrongPasswordError();
   }
 
   std::string encrypted_package = util::stream::read(
