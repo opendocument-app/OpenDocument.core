@@ -240,7 +240,7 @@ jobs:
       - name: compare public test outputs
         shell: bash
         run: |
-          html-compare \
+          compare-html \
             --driver firefox \
             --max-workers 1 \
             test/data/reference-output/odr-public/output \
@@ -251,7 +251,7 @@ jobs:
       - name: compare private test outputs
         shell: bash
         run: |
-          html-compare \
+          compare-html \
             --driver firefox \
             --max-workers 1 \
             test/data/reference-output/odr-private/output \
