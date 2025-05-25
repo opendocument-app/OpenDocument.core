@@ -1,4 +1,0 @@
-Pillow==10.1.0
-selenium==4.15.2
-flask==2.3.3
-watchdog==2.3.1
