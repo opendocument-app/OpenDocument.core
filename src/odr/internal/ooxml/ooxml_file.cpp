@@ -80,7 +80,7 @@ OfficeOpenXmlFile::decrypt(const std::string &password) const noexcept {
   decrypted->m_filesystem = zip::ZipFile(memory_file).archive()->filesystem();
   decrypted->m_file_meta = parse_file_meta(*decrypted->m_filesystem);
   decrypted->m_encryption_state = EncryptionState::decrypted;
-  return std::move(decrypted);
+  return decrypted;
 }
 
 std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {

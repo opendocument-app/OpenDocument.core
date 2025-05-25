@@ -89,7 +89,7 @@ PopplerPdfFile::decrypt(const std::string &password) const noexcept {
   try {
     decrypted_file->open(password);
     if (decrypted_file->encryption_state() == EncryptionState::decrypted) {
-      return std::move(decrypted_file);
+      return decrypted_file;
     }
   } catch (const std::exception &e) {
   }

@@ -78,7 +78,7 @@ OpenDocumentFile::decrypt(const std::string &password) const noexcept {
   decrypted_file->m_file_meta =
       parse_file_meta(*decrypted_file->m_filesystem, nullptr, true);
   decrypted_file->m_encryption_state = EncryptionState::decrypted;
-  return std::move(decrypted_file);
+  return decrypted_file;
 }
 
 std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
