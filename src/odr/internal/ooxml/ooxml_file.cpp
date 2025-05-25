@@ -20,9 +20,13 @@ class Document;
 namespace odr::internal::ooxml {
 
 OfficeOpenXmlFile::OfficeOpenXmlFile(
-    std::shared_ptr<abstract::ReadableFilesystem> filesystem) {
-  m_file_meta = parse_file_meta(*filesystem);
-  m_filesystem = std::move(filesystem);
+    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+    : m_filesystem(std::move(filesystem)) {
+  m_file_meta = parse_file_meta(*m_filesystem);
+
+  if (m_file_meta.password_encrypted) {
+    m_encryption_state = EncryptionState::encrypted;
+  }
 }
 
 std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
