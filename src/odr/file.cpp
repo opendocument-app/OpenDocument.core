@@ -247,6 +247,10 @@ DocumentMeta DocumentFile::document_meta() const {
   return m_impl->document_meta();
 }
 
+DocumentFile DocumentFile::decrypt(const std::string &password) const {
+  return DecodedFile::decrypt(password).document_file();
+}
+
 Document DocumentFile::document() const { return Document(m_impl->document()); }
 
 std::shared_ptr<internal::abstract::DocumentFile> DocumentFile::impl() const {
@@ -255,6 +259,10 @@ std::shared_ptr<internal::abstract::DocumentFile> DocumentFile::impl() const {
 
 PdfFile::PdfFile(std::shared_ptr<internal::abstract::PdfFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+PdfFile PdfFile::decrypt(const std::string &password) const {
+  return DecodedFile::decrypt(password).pdf_file();
+}
 
 std::shared_ptr<internal::abstract::PdfFile> PdfFile::impl() const {
   return m_impl;
