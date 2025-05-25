@@ -192,12 +192,6 @@ jobs:
         with:
           token: ${{ secrets.PAT_ANDIWAND }}
           submodules: true
-      - name: checkout
-        uses: actions/checkout@v4
-        with:
-          repository: opendocument-app/compare-html
-          ref: v1.0.0
-          path: compare-html
 
       - name: ubuntu install tidy
         if: runner.os == 'Linux'
@@ -211,7 +205,7 @@ jobs:
         with:
           python-version: 3.12
       - name: install python dependencies
-        run: pip install -r compare-html/requirements.txt
+        run: pip install htmlcmp==1.0.11
 
       - name: download binaries
         uses: actions/download-artifact@v4
@@ -233,29 +227,31 @@ jobs:
         working-directory: build/test
         run: ./odr_test
 
-      - name: fix artifact permissions
+      - name: windows fix artifact permissions
         if: runner.os == 'Windows'
         run:  chmod +x build/test/Release/odr_test.exe
-      - name: test
+      - name: windows test
         if: runner.os == 'Windows'
         working-directory: build/test
         run: ./Release/odr_test.exe
 
       - name: tidy public test outputs
-        run: python3 -u compare-html/tidy_output.py build/test/output/odr-public/output
+        run: html-tidy --html-tidy-config test/scripts/html-tidy-config build/test/output/odr-public/output
       - name: compare public test outputs
+        shell: bash
         run: |
-          python3 -u compare-html/compare_output.py \
+          compare-html \
             --driver firefox \
             --max-workers 1 \
             test/data/reference-output/odr-public/output \
             build/test/output/odr-public/output
 
       - name: tidy private test outputs
-        run: python3 -u compare-html/tidy_output.py build/test/output/odr-private/output
+        run: html-tidy --html-tidy-config test/scripts/html-tidy-config build/test/output/odr-private/output
       - name: compare private test outputs
+        shell: bash
         run: |
-          python3 -u compare-html/compare_output.py \
+          compare-html \
             --driver firefox \
             --max-workers 1 \
             test/data/reference-output/odr-private/output \

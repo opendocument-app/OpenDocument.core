@@ -18,4 +18,4 @@ docker run -ti \
   -p 8000:8000 \
   --platform linux/amd64 \
   ghcr.io/opendocument-app/odr_core_test \
-  python3 /repo/test/scripts/compare_output_server.py /repo/$REF /repo/$OBS --compare --driver $DRIVER --port 8000
+  compare-html-server /repo/$REF /repo/$OBS --compare --driver $DRIVER --port 8000
