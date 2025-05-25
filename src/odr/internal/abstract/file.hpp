@@ -47,6 +47,7 @@ public:
   }
   [[nodiscard]] virtual std::shared_ptr<DecodedFile>
   decrypt(const std::string &password) const noexcept {
+    (void)password;
     return nullptr;
   }
 };
