@@ -20,9 +20,13 @@ class Document;
 namespace odr::internal::ooxml {
 
 OfficeOpenXmlFile::OfficeOpenXmlFile(
-    std::shared_ptr<abstract::ReadableFilesystem> filesystem) {
-  m_file_meta = parse_file_meta(*filesystem);
-  m_filesystem = std::move(filesystem);
+    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+    : m_filesystem(std::move(filesystem)) {
+  m_file_meta = parse_file_meta(*m_filesystem);
+
+  if (m_file_meta.password_encrypted) {
+    m_encryption_state = EncryptionState::encrypted;
+  }
 }
 
 std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
@@ -55,26 +59,32 @@ EncryptionState OfficeOpenXmlFile::encryption_state() const noexcept {
   return m_encryption_state;
 }
 
-bool OfficeOpenXmlFile::decrypt(const std::string &password) {
-  // TODO throw if not encrypted
-  // TODO throw if decrypted
+std::shared_ptr<abstract::DecodedFile>
+OfficeOpenXmlFile::decrypt(const std::string &password) const noexcept {
+  if (m_encryption_state != EncryptionState::encrypted) {
+    return nullptr;
+  }
+
   std::string encryption_info = util::stream::read(
       *m_filesystem->open(common::Path("/EncryptionInfo"))->stream());
   // TODO cache Crypto::Util
   crypto::Util util(encryption_info);
   std::string key = util.derive_key(password);
   if (!util.verify(key)) {
-    return false;
+    return nullptr;
   }
+
   std::string encrypted_package = util::stream::read(
       *m_filesystem->open(common::Path("/EncryptedPackage"))->stream());
   std::string decrypted_package = util.decrypt(encrypted_package, key);
+
   auto memory_file =
       std::make_shared<common::MemoryFile>(std::move(decrypted_package));
-  m_filesystem = zip::ZipFile(memory_file).archive()->filesystem();
-  m_file_meta = parse_file_meta(*m_filesystem);
-  m_encryption_state = EncryptionState::decrypted;
-  return true;
+  auto decrypted = std::make_shared<OfficeOpenXmlFile>(*this);
+  decrypted->m_filesystem = zip::ZipFile(memory_file).archive()->filesystem();
+  decrypted->m_file_meta = parse_file_meta(*decrypted->m_filesystem);
+  decrypted->m_encryption_state = EncryptionState::decrypted;
+  return decrypted;
 }
 
 std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {

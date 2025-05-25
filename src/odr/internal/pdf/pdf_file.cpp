@@ -21,6 +21,10 @@ EncryptionState PdfFile::encryption_state() const noexcept {
   return EncryptionState::not_encrypted;
 }
 
-bool PdfFile::decrypt(const std::string &) { return false; }
+std::shared_ptr<abstract::DecodedFile>
+PdfFile::decrypt(const std::string &password) const noexcept {
+  (void)password;
+  return nullptr;
+}
 
 } // namespace odr::internal

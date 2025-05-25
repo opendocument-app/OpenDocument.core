@@ -154,8 +154,6 @@ public:
   explicit File(std::shared_ptr<internal::abstract::File>);
   explicit File(const std::string &path);
 
-  [[nodiscard]] explicit operator bool() const;
-
   [[nodiscard]] FileLocation location() const noexcept;
   [[nodiscard]] std::size_t size() const;
 
@@ -189,14 +187,16 @@ public:
   DecodedFile(const std::string &path, FileType as);
   DecodedFile(const std::string &path, const DecodePreference &preference);
 
-  [[nodiscard]] explicit operator bool() const;
+  [[nodiscard]] File file() const;
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] FileCategory file_category() const noexcept;
   [[nodiscard]] FileMeta file_meta() const noexcept;
   [[nodiscard]] DecoderEngine decoder_engine() const noexcept;
 
-  [[nodiscard]] File file() const;
+  [[nodiscard]] bool password_encrypted() const;
+  [[nodiscard]] EncryptionState encryption_state() const;
+  [[nodiscard]] std::optional<DecodedFile> decrypt(const std::string &password);
 
   [[nodiscard]] bool is_text_file() const;
   [[nodiscard]] bool is_image_file() const;
@@ -259,10 +259,6 @@ public:
   explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
   explicit DocumentFile(const std::string &path);
 
-  [[nodiscard]] bool password_encrypted() const;
-  [[nodiscard]] EncryptionState encryption_state() const;
-  bool decrypt(const std::string &password);
-
   [[nodiscard]] DocumentType document_type() const;
   [[nodiscard]] DocumentMeta document_meta() const;
 
@@ -278,10 +274,6 @@ private:
 class PdfFile final : public DecodedFile {
 public:
   explicit PdfFile(std::shared_ptr<internal::abstract::PdfFile>);
-
-  [[nodiscard]] bool password_encrypted() const;
-  [[nodiscard]] EncryptionState encryption_state() const;
-  bool decrypt(const std::string &password);
 
   [[nodiscard]] std::shared_ptr<internal::abstract::PdfFile> impl() const;
 

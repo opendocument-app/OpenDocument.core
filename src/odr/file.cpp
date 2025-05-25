@@ -35,8 +35,6 @@ File::File(std::shared_ptr<internal::abstract::File> impl)
 File::File(const std::string &path)
     : m_impl{std::make_shared<internal::common::DiskFile>(path)} {}
 
-File::operator bool() const { return m_impl.operator bool(); }
-
 FileLocation File::location() const noexcept { return m_impl->location(); }
 
 std::size_t File::size() const { return m_impl->size(); }
@@ -107,7 +105,7 @@ DecodedFile::DecodedFile(const std::string &path,
     : DecodedFile(internal::open_strategy::open_file(
           std::make_shared<internal::common::DiskFile>(path), preference)) {}
 
-DecodedFile::operator bool() const { return m_impl.operator bool(); }
+File DecodedFile::file() const { return File(m_impl->file()); }
 
 FileType DecodedFile::file_type() const noexcept { return m_impl->file_type(); }
 
@@ -121,7 +119,21 @@ DecoderEngine DecodedFile::decoder_engine() const noexcept {
   return m_impl->decoder_engine();
 }
 
-File DecodedFile::file() const { return File(m_impl->file()); }
+bool DecodedFile::password_encrypted() const {
+  return m_impl->password_encrypted();
+}
+
+EncryptionState DecodedFile::encryption_state() const {
+  return m_impl->encryption_state();
+}
+
+std::optional<DecodedFile> DecodedFile::decrypt(const std::string &password) {
+  auto decrypted = m_impl->decrypt(password);
+  if (decrypted == nullptr) {
+    return std::nullopt;
+  }
+  return DecodedFile(decrypted);
+}
 
 bool DecodedFile::is_text_file() const {
   return std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl) !=
@@ -231,18 +243,6 @@ DocumentFile::DocumentFile(const std::string &path)
     : DocumentFile(internal::open_strategy::open_document_file(
           std::make_shared<internal::common::DiskFile>(path))) {}
 
-bool DocumentFile::password_encrypted() const {
-  return m_impl->password_encrypted();
-}
-
-EncryptionState DocumentFile::encryption_state() const {
-  return m_impl->encryption_state();
-}
-
-bool DocumentFile::decrypt(const std::string &password) {
-  return m_impl->decrypt(password);
-}
-
 DocumentType DocumentFile::document_type() const {
   return m_impl->document_type();
 }
@@ -259,18 +259,6 @@ std::shared_ptr<internal::abstract::DocumentFile> DocumentFile::impl() const {
 
 PdfFile::PdfFile(std::shared_ptr<internal::abstract::PdfFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
-
-bool PdfFile::password_encrypted() const {
-  return m_impl->password_encrypted();
-}
-
-EncryptionState PdfFile::encryption_state() const {
-  return m_impl->encryption_state();
-}
-
-bool PdfFile::decrypt(const std::string &password) {
-  return m_impl->decrypt(password);
-}
 
 std::shared_ptr<internal::abstract::PdfFile> PdfFile::impl() const {
   return m_impl;

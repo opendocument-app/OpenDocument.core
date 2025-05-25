@@ -19,17 +19,17 @@ int main(int argc, char **argv) {
 
   DecodedFile decoded_file{input};
 
-  if (decoded_file.is_document_file()) {
-    DocumentFile document_file = decoded_file.document_file();
-    if (document_file.password_encrypted() && !password) {
-      std::cerr << "document encrypted but no password given" << std::endl;
-      return 2;
-    }
-    if (document_file.password_encrypted() &&
-        !document_file.decrypt(*password)) {
+  if (decoded_file.password_encrypted() && !password) {
+    std::cerr << "document encrypted but no password given" << std::endl;
+    return 2;
+  }
+  if (decoded_file.password_encrypted()) {
+    auto decrypt_result = decoded_file.decrypt(*password);
+    if (!decrypt_result.has_value()) {
       std::cerr << "wrong password" << std::endl;
       return 1;
     }
+    decoded_file = std::move(*decrypt_result);
   }
 
   HtmlConfig config;
