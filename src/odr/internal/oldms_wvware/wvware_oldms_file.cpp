@@ -13,6 +13,8 @@ struct WvWareLegacyMicrosoftFile::ParserState {
 
   wvParseStruct ps{};
   int encryption_flag{};
+
+  ~ParserState() { wvOLEFree(&ps); }
 };
 
 WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
@@ -44,10 +46,6 @@ WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
   open();
 }
 
-WvWareLegacyMicrosoftFile::~WvWareLegacyMicrosoftFile() {
-  wvOLEFree(&m_parser_state->ps);
-}
-
 void WvWareLegacyMicrosoftFile::open() {
   wvInit();
 
@@ -68,7 +66,6 @@ void WvWareLegacyMicrosoftFile::open() {
   }
 
   if (ret != 0) {
-    wvOLEFree(&m_parser_state->ps);
     throw std::runtime_error("wvInitParser failed");
   }
 }
