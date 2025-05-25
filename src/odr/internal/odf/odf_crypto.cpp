@@ -163,10 +163,11 @@ private:
 } // namespace
 } // namespace odf
 
-bool odf::decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
-                  const Manifest &manifest, const std::string &password) {
+std::shared_ptr<abstract::ReadableFilesystem>
+odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
+             const Manifest &manifest, const std::string &password) {
   if (!manifest.encrypted) {
-    return true;
+    return nullptr;
   }
 
   if (auto it = manifest.entries.find(common::Path("encrypted-package"));
@@ -174,18 +175,16 @@ bool odf::decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
     try {
       const std::string start_key = odf::start_key(it->second, password);
       const std::string input =
-          util::stream::read(*storage->open(it->first)->stream());
+          util::stream::read(*filesystem->open(it->first)->stream());
       std::string decrypt = crypto::util::inflate(
           derive_key_and_decrypt(it->second, start_key, input));
 
       auto memory_file =
           std::make_shared<common::MemoryFile>(std::move(decrypt));
-      storage = zip::ZipFile(memory_file).archive()->filesystem();
+      return zip::ZipFile(memory_file).archive()->filesystem();
     } catch (...) {
-      return false;
+      return nullptr;
     }
-
-    return true;
   }
 
   try {
@@ -197,19 +196,17 @@ bool odf::decrypt(std::shared_ptr<abstract::ReadableFilesystem> &storage,
     const std::string start_key = odf::start_key(smallest_file_entry, password);
     // TODO stream decrypt
     const std::string input =
-        util::stream::read(*storage->open(smallest_file_path)->stream());
+        util::stream::read(*filesystem->open(smallest_file_path)->stream());
     const std::string decrypt =
         derive_key_and_decrypt(smallest_file_entry, start_key, input);
     if (!validate_password(smallest_file_entry, decrypt)) {
-      return false;
+      return nullptr;
     }
-    storage = std::make_shared<DecryptedFilesystem>(std::move(storage),
-                                                    manifest, start_key);
+    return std::make_shared<DecryptedFilesystem>(filesystem, manifest,
+                                                 start_key);
   } catch (...) {
-    return false;
+    return nullptr;
   }
-
-  return true;
 }
 
 } // namespace odr::internal

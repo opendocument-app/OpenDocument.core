@@ -51,7 +51,7 @@ void WvWareLegacyMicrosoftFile::open() {
 
   int ret = wvInitParser_gsf(&m_parser_state->ps, m_parser_state->gsf_input);
 
-  // check if password is required
+  // check if encrypted
   if ((ret & 0x8000) != 0) {
     m_encryption_state = EncryptionState::encrypted;
     m_parser_state->encryption_flag = ret & 0x7fff;
@@ -102,9 +102,10 @@ EncryptionState WvWareLegacyMicrosoftFile::encryption_state() const noexcept {
   return m_encryption_state;
 }
 
-bool WvWareLegacyMicrosoftFile::decrypt(const std::string &password) {
+std::shared_ptr<abstract::DecodedFile>
+WvWareLegacyMicrosoftFile::decrypt(const std::string &password) const noexcept {
   if (m_encryption_state != EncryptionState::encrypted) {
-    return false;
+    return nullptr;
   }
 
   wvSetPassword(password.c_str(), &m_parser_state->ps);
@@ -119,11 +120,12 @@ bool WvWareLegacyMicrosoftFile::decrypt(const std::string &password) {
   }
 
   if (!success) {
-    return false;
+    return nullptr;
   }
 
-  m_encryption_state = EncryptionState::decrypted;
-  return true;
+  auto decrypted = std::make_shared<WvWareLegacyMicrosoftFile>(*this);
+  decrypted->m_encryption_state = EncryptionState::decrypted;
+  return std::move(decrypted);
 }
 
 std::shared_ptr<abstract::Document>

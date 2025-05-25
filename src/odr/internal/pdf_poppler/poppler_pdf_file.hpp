@@ -20,7 +20,8 @@ public:
 
   [[nodiscard]] bool password_encrypted() const noexcept final;
   [[nodiscard]] EncryptionState encryption_state() const noexcept final;
-  [[nodiscard]] bool decrypt(const std::string &password) final;
+  [[nodiscard]] std::shared_ptr<abstract::DecodedFile>
+  decrypt(const std::string &password) const noexcept final;
 
   [[nodiscard]] PDFDoc &pdf_doc() const;
 

@@ -81,33 +81,25 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
+  // TODO wvware decryption
+  if (test_file.password.has_value() &&
+      (test_file.type == FileType::legacy_word_document) &&
+      (engine == DecoderEngine::wvware)) {
+    GTEST_SKIP();
+  }
+
+  EXPECT_EQ(test_file.password.has_value(), file.password_encrypted());
+
+  if (test_file.password.has_value()) {
+    auto decrypt_result = file.decrypt(test_file.password.value());
+    EXPECT_TRUE(decrypt_result.has_value());
+    file = std::move(*decrypt_result);
+  }
+
   if (file.is_document_file()) {
     DocumentFile document_file = file.document_file();
 
-    EXPECT_EQ(test_file.password.has_value(),
-              document_file.password_encrypted());
-
-    // TODO wvware decryption
-    if (test_file.password.has_value() &&
-        (test_file.type == FileType::legacy_word_document) &&
-        (engine == DecoderEngine::wvware)) {
-      GTEST_SKIP();
-    }
-
-    if (test_file.password.has_value()) {
-      EXPECT_TRUE(document_file.decrypt(test_file.password.value()));
-    }
-
     EXPECT_EQ(test_file.type, document_file.file_type());
-  }
-
-  if (file.is_pdf_file()) {
-    PdfFile pdf_file = file.pdf_file();
-
-    EXPECT_EQ(test_file.password.has_value(), pdf_file.password_encrypted());
-    if (test_file.password.has_value()) {
-      EXPECT_TRUE(pdf_file.decrypt(test_file.password.value()));
-    }
   }
 
   fs::create_directories(output_path);

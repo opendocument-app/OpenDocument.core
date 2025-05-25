@@ -38,6 +38,17 @@ public:
   [[nodiscard]] virtual FileCategory file_category() const noexcept = 0;
   [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;
   [[nodiscard]] virtual DecoderEngine decoder_engine() const noexcept = 0;
+
+  [[nodiscard]] virtual bool password_encrypted() const noexcept {
+    return false;
+  }
+  [[nodiscard]] virtual EncryptionState encryption_state() const noexcept {
+    return EncryptionState::not_encrypted;
+  }
+  [[nodiscard]] virtual std::shared_ptr<DecodedFile>
+  decrypt(const std::string &password) const noexcept {
+    return nullptr;
+  }
 };
 
 class TextFile : public DecodedFile {
@@ -71,10 +82,6 @@ public:
     return FileCategory::document;
   }
 
-  [[nodiscard]] virtual bool password_encrypted() const noexcept = 0;
-  [[nodiscard]] virtual EncryptionState encryption_state() const noexcept = 0;
-  [[nodiscard]] virtual bool decrypt(const std::string &password) = 0;
-
   [[nodiscard]] virtual DocumentType document_type() const = 0;
   [[nodiscard]] virtual DocumentMeta document_meta() const = 0;
 
@@ -89,10 +96,6 @@ public:
   [[nodiscard]] FileCategory file_category() const noexcept final {
     return FileCategory::document;
   }
-
-  [[nodiscard]] virtual bool password_encrypted() const noexcept = 0;
-  [[nodiscard]] virtual EncryptionState encryption_state() const noexcept = 0;
-  [[nodiscard]] virtual bool decrypt(const std::string &password) = 0;
 };
 
 } // namespace odr::internal::abstract
