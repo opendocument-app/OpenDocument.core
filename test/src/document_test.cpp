@@ -110,7 +110,6 @@ TEST(Document, edit_ods_diff) {
       document_file
           .decrypt(
               TestData::test_file("odr-public/ods/pages.ods").password.value())
-          .value()
           .document_file();
   Document document = document_file.document();
 

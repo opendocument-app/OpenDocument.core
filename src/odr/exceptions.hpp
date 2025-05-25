@@ -192,4 +192,19 @@ struct NullPointerError : public std::runtime_error {
   explicit NullPointerError(const std::string &variable);
 };
 
+/// @brief Wrong password error
+struct WrongPasswordError : public std::runtime_error {
+  explicit WrongPasswordError();
+};
+
+/// @brief Decryption failed
+struct DecryptionFailed : public std::runtime_error {
+  explicit DecryptionFailed();
+};
+
+/// @brief Not encrypted error
+struct NotEncryptedError : public std::runtime_error {
+  explicit NotEncryptedError();
+};
+
 } // namespace odr

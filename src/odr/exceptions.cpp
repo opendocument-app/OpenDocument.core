@@ -108,4 +108,13 @@ UnsupportedOption::UnsupportedOption(const std::string &message)
 NullPointerError::NullPointerError(const std::string &variable)
     : std::runtime_error("null pointer error: " + variable) {}
 
+WrongPasswordError::WrongPasswordError()
+    : std::runtime_error("wrong password error") {}
+
+DecryptionFailed::DecryptionFailed()
+    : std::runtime_error("decryption failed") {}
+
+NotEncryptedError::NotEncryptedError()
+    : std::runtime_error("not encrypted error") {}
+
 } // namespace odr

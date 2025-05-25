@@ -127,12 +127,8 @@ EncryptionState DecodedFile::encryption_state() const {
   return m_impl->encryption_state();
 }
 
-std::optional<DecodedFile> DecodedFile::decrypt(const std::string &password) {
-  auto decrypted = m_impl->decrypt(password);
-  if (decrypted == nullptr) {
-    return std::nullopt;
-  }
-  return DecodedFile(decrypted);
+DecodedFile DecodedFile::decrypt(const std::string &password) const {
+  return DecodedFile(m_impl->decrypt(password));
 }
 
 bool DecodedFile::is_text_file() const {

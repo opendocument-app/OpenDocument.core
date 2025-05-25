@@ -167,7 +167,7 @@ std::shared_ptr<abstract::ReadableFilesystem>
 odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
              const Manifest &manifest, const std::string &password) {
   if (!manifest.encrypted) {
-    return nullptr;
+    throw NotEncryptedError();
   }
 
   if (auto it = manifest.entries.find(common::Path("encrypted-package"));
@@ -183,7 +183,7 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
           std::make_shared<common::MemoryFile>(std::move(decrypt));
       return zip::ZipFile(memory_file).archive()->filesystem();
     } catch (...) {
-      return nullptr;
+      throw WrongPasswordError();
     }
   }
 
@@ -200,12 +200,12 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
     const std::string decrypt =
         derive_key_and_decrypt(smallest_file_entry, start_key, input);
     if (!validate_password(smallest_file_entry, decrypt)) {
-      return nullptr;
+      throw WrongPasswordError();
     }
     return std::make_shared<DecryptedFilesystem>(filesystem, manifest,
                                                  start_key);
   } catch (...) {
-    return nullptr;
+    throw DecryptionFailed();
   }
 }
 

@@ -63,16 +63,12 @@ EncryptionState OpenDocumentFile::encryption_state() const noexcept {
 }
 
 std::shared_ptr<abstract::DecodedFile>
-OpenDocumentFile::decrypt(const std::string &password) const noexcept {
+OpenDocumentFile::decrypt(const std::string &password) const {
   if (m_encryption_state != EncryptionState::encrypted) {
-    return nullptr;
+    throw NotEncryptedError();
   }
 
   auto decrypted_filesystem = odf::decrypt(m_filesystem, m_manifest, password);
-  if (decrypted_filesystem == nullptr) {
-    return nullptr;
-  }
-
   auto decrypted_file = std::make_shared<OpenDocumentFile>(*this);
   decrypted_file->m_filesystem = std::move(decrypted_filesystem);
   decrypted_file->m_file_meta =

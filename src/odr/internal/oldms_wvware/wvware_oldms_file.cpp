@@ -2,6 +2,8 @@
 
 #include <odr/internal/common/file.hpp>
 
+#include <odr/exceptions.hpp>
+
 #include <gsf/gsf-input-memory.h>
 #include <gsf/gsf-input-stdio.h>
 #include <wv/wv.h>
@@ -103,9 +105,9 @@ EncryptionState WvWareLegacyMicrosoftFile::encryption_state() const noexcept {
 }
 
 std::shared_ptr<abstract::DecodedFile>
-WvWareLegacyMicrosoftFile::decrypt(const std::string &password) const noexcept {
+WvWareLegacyMicrosoftFile::decrypt(const std::string &password) const {
   if (m_encryption_state != EncryptionState::encrypted) {
-    return nullptr;
+    throw NotEncryptedError();
   }
 
   wvSetPassword(password.c_str(), &m_parser_state->ps);
@@ -120,7 +122,7 @@ WvWareLegacyMicrosoftFile::decrypt(const std::string &password) const noexcept {
   }
 
   if (!success) {
-    return nullptr;
+    throw WrongPasswordError();
   }
 
   auto decrypted = std::make_shared<WvWareLegacyMicrosoftFile>(*this);

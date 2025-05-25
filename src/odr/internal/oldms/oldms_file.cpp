@@ -78,7 +78,7 @@ EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {
 }
 
 std::shared_ptr<abstract::DecodedFile>
-LegacyMicrosoftFile::decrypt(const std::string &password) const noexcept {
+LegacyMicrosoftFile::decrypt(const std::string &password) const {
   (void)password;
   return {}; // TODO throw
 }
