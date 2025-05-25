@@ -2,6 +2,8 @@
 
 #include <odr/internal/util/odr_meta_util.hpp>
 
+#include <odr/exceptions.hpp>
+
 #include <iostream>
 #include <string>
 
@@ -19,7 +21,9 @@ int main(int argc, char **argv) {
   DocumentFile document_file{input};
 
   if (document_file.password_encrypted() && has_password) {
-    if (!document_file.decrypt(password)) {
+    try {
+      document_file = document_file.decrypt(password).document_file();
+    } catch (const WrongPasswordError &) {
       std::cerr << "wrong password" << std::endl;
       return 1;
     }
