@@ -27,7 +27,7 @@ fix-backslash: yes
 fix-bad-comments: yes
 fix-style-tags: yes
 fix-uri: false
-force-output: yes
+force-output: no
 gdoc: no
 gnu-emacs: no
 hide-comments: no
@@ -68,7 +68,7 @@ output-xml: no
 preserve-entities: yes
 priority-attributes:
 punctuation-wrap: no
-quiet: no
+quiet: yes
 quote-ampersand: yes
 quote-marks: no
 quote-nbsp: yes
