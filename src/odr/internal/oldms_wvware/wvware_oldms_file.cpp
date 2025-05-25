@@ -125,7 +125,7 @@ WvWareLegacyMicrosoftFile::decrypt(const std::string &password) const noexcept {
 
   auto decrypted = std::make_shared<WvWareLegacyMicrosoftFile>(*this);
   decrypted->m_encryption_state = EncryptionState::decrypted;
-  return std::move(decrypted);
+  return decrypted;
 }
 
 std::shared_ptr<abstract::Document>
