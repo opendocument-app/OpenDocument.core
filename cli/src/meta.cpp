@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
 
   if (document_file.password_encrypted() && has_password) {
     try {
-      document_file = document_file.decrypt(password).document_file();
+      document_file = document_file.decrypt(password);
     } catch (const WrongPasswordError &) {
       std::cerr << "wrong password" << std::endl;
       return 1;

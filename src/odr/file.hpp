@@ -262,6 +262,8 @@ public:
   [[nodiscard]] DocumentType document_type() const;
   [[nodiscard]] DocumentMeta document_meta() const;
 
+  [[nodiscard]] DocumentFile decrypt(const std::string &password) const;
+
   [[nodiscard]] Document document() const;
 
   [[nodiscard]] std::shared_ptr<internal::abstract::DocumentFile> impl() const;
@@ -274,6 +276,8 @@ private:
 class PdfFile final : public DecodedFile {
 public:
   explicit PdfFile(std::shared_ptr<internal::abstract::PdfFile>);
+
+  [[nodiscard]] PdfFile decrypt(const std::string &password) const;
 
   [[nodiscard]] std::shared_ptr<internal::abstract::PdfFile> impl() const;
 

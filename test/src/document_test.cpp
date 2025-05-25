@@ -106,11 +106,8 @@ TEST(Document, edit_ods_diff) {
       R"({"modifiedText":{"/child:0/row:0/child:0/child:0/child:0":"Page 1 hi","/child:1/row:0/child:0/child:0/child:0":"Page 2 hihi","/child:2/row:0/child:0/child:0/child:0":"Page 3 hihihi","/child:3/row:0/child:0/child:0/child:0":"Page 4 hihihihi","/child:4/row:0/child:0/child:0/child:0":"Page 5 hihihihihi"}})";
   DocumentFile document_file(
       TestData::test_file_path("odr-public/ods/pages.ods"));
-  document_file =
-      document_file
-          .decrypt(
-              TestData::test_file("odr-public/ods/pages.ods").password.value())
-          .document_file();
+  document_file = document_file.decrypt(
+      TestData::test_file("odr-public/ods/pages.ods").password.value());
   Document document = document_file.document();
 
   html::edit(document, diff);
