@@ -3,7 +3,7 @@
 #include <iosfwd>
 #include <string>
 
-#include <odr/html_service.hpp>
+#include <odr/html.hpp>
 #include <odr/internal/abstract/html_service.hpp>
 
 namespace odr {

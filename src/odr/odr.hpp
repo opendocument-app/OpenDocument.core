@@ -9,15 +9,7 @@ enum class FileType;
 enum class FileCategory;
 enum class DecoderEngine;
 struct DecodePreference;
-class File;
 class DecodedFile;
-class TextFile;
-class ImageFile;
-class Archive;
-class Document;
-class PdfFile;
-class Html;
-struct HtmlConfig;
 
 /// @brief Get the version of the Open Document Reader library.
 /// @return The version of the Open Document Reader library.
