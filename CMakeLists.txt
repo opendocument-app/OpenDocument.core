@@ -81,7 +81,6 @@ set(ODR_SOURCE_FILES
         "src/odr/filesystem.cpp"
         "src/odr/global_params.cpp"
         "src/odr/html.cpp"
-        "src/odr/html_service.cpp"
         "src/odr/http_server.cpp"
         "src/odr/odr.cpp"
         "src/odr/quantity.cpp"
