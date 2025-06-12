@@ -204,6 +204,10 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
     }
     return std::make_shared<DecryptedFilesystem>(filesystem, manifest,
                                                  start_key);
+  } catch (const UnsupportedCryptoAlgorithm &) {
+    throw;
+  } catch (const WrongPasswordError &) {
+    throw;
   } catch (...) {
     throw DecryptionFailed();
   }
