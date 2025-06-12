@@ -74,6 +74,14 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
     lookup_file_type(mimeType, result.type);
   }
 
+  pugi::xml_document manifest_xml;
+  if (manifest == nullptr &&
+      filesystem.is_file(common::Path("META-INF/manifest.xml"))) {
+    manifest_xml =
+        util::xml::parse(filesystem, common::Path("META-INF/manifest.xml"));
+    manifest = &manifest_xml;
+  }
+
   if (manifest != nullptr) {
     for (auto &&e : manifest->select_nodes("//manifest:file-entry")) {
       const common::Path path =
