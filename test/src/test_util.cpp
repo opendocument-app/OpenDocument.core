@@ -23,8 +23,8 @@ namespace {
 
 TestFile get_test_file(const std::string &root_path,
                        std::string absolute_path) {
-  const FileType type = odr::get_file_type_by_file_extension(
-      common::Path(absolute_path).extension());
+  const FileType type =
+      odr::file_type_by_file_extension(common::Path(absolute_path).extension());
 
   std::string short_path = absolute_path.substr(root_path.size() + 1);
 
@@ -55,7 +55,7 @@ std::vector<TestFile> get_test_files(const std::string &root_path,
     for (const auto &row : csv::CSVReader(index_path)) {
       std::string absolute_path = input_path + "/" + row["path"].get<>();
       std::string short_path = absolute_path.substr(root_path.size() + 1);
-      FileType type = odr::get_file_type_by_file_extension(row["type"].get<>());
+      FileType type = odr::file_type_by_file_extension(row["type"].get<>());
       std::optional<std::string> password = row["encrypted"].get<>() == "yes"
                                                 ? row["password"].get<>()
                                                 : std::optional<std::string>();

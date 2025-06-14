@@ -16,7 +16,7 @@ std::string odr::get_commit() noexcept {
 }
 
 odr::FileType
-odr::get_file_type_by_file_extension(const std::string &extension) noexcept {
+odr::file_type_by_file_extension(const std::string &extension) noexcept {
   if (extension == "zip") {
     return FileType::zip;
   } else if (extension == "cfb") {
@@ -70,7 +70,7 @@ odr::get_file_type_by_file_extension(const std::string &extension) noexcept {
 }
 
 odr::FileCategory
-odr::get_file_category_by_file_type(const FileType type) noexcept {
+odr::file_category_by_file_type(const FileType type) noexcept {
   switch (type) {
   case FileType::zip:
   case FileType::compound_file_binary_format:
@@ -204,7 +204,7 @@ std::string odr::decoder_engine_to_string(const DecoderEngine engine) {
   throw UnknownDecoderEngine();
 }
 
-odr::DecoderEngine odr::get_decoder_engine_by_name(const std::string &name) {
+odr::DecoderEngine odr::decoder_engine_by_name(const std::string &name) {
   if (name == "odr") {
     return DecoderEngine::odr;
   } else if (name == "poppler") {

@@ -23,12 +23,11 @@ enum class DocumentType;
 /// @param extension The file extension.
 /// @return The file type.
 [[nodiscard]] FileType
-get_file_type_by_file_extension(const std::string &extension) noexcept;
+file_type_by_file_extension(const std::string &extension) noexcept;
 /// @brief Get the file category by the file type.
 /// @param type The file type.
 /// @return The file category.
-[[nodiscard]] FileCategory
-get_file_category_by_file_type(FileType type) noexcept;
+[[nodiscard]] FileCategory file_category_by_file_type(FileType type) noexcept;
 /// @brief Get the file type as a string.
 /// @param type The file type.
 /// @return The file type as a string.
@@ -49,8 +48,7 @@ get_file_category_by_file_type(FileType type) noexcept;
 /// @brief Get the decoder engine by the name.
 /// @param engine The name of the decoder engine.
 /// @return The decoder engine.
-[[nodiscard]] DecoderEngine
-get_decoder_engine_by_name(const std::string &engine);
+[[nodiscard]] DecoderEngine decoder_engine_by_name(const std::string &engine);
 
 /// @brief Determine the file types by the file path.
 /// @param path The file path.

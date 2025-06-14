@@ -11,8 +11,8 @@ nlohmann::json meta_to_json(const FileMeta &meta) {
   nlohmann::json result;
 
   result["fileType"] = odr::file_type_to_string(meta.type);
-  result["fileCategory"] = odr::file_category_to_string(
-      odr::get_file_category_by_file_type(meta.type));
+  result["fileCategory"] =
+      odr::file_category_to_string(odr::file_category_by_file_type(meta.type));
   result["isEncrypted"] = meta.password_encrypted;
 
   if (meta.document_meta) {
