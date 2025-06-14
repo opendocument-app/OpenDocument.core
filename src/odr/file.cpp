@@ -61,22 +61,14 @@ void File::copy(const std::string &path) const {
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
 std::vector<FileType> DecodedFile::list_file_types(const std::string &path) {
-  return internal::open_strategy::types(
+  return internal::open_strategy::list_file_types(
       std::make_shared<internal::common::DiskFile>(path));
 }
 
 std::vector<DecoderEngine>
 DecodedFile::list_decoder_engines(const std::string &path, FileType as) {
-  return internal::open_strategy::engines(
+  return internal::open_strategy::list_decoder_engines(
       std::make_shared<internal::common::DiskFile>(path), as);
-}
-
-FileType DecodedFile::get_file_type(const std::string &path) {
-  return DecodedFile(path).file_type();
-}
-
-FileMeta DecodedFile::get_file_meta(const std::string &path) {
-  return DecodedFile(path).file_meta();
 }
 
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)

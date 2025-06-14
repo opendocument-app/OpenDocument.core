@@ -48,7 +48,7 @@ template <typename T> auto priority_comparator(const std::vector<T> &priority) {
 } // namespace
 
 std::vector<FileType>
-open_strategy::types(const std::shared_ptr<abstract::File> &file) {
+open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file) {
   std::vector<FileType> result;
 
   auto file_type = magic::file_type(*file);
@@ -127,9 +127,8 @@ open_strategy::types(const std::shared_ptr<abstract::File> &file) {
   return result;
 }
 
-std::vector<DecoderEngine>
-open_strategy::engines(const std::shared_ptr<abstract::File> & /*file*/,
-                       FileType as) {
+std::vector<DecoderEngine> open_strategy::list_decoder_engines(
+    const std::shared_ptr<abstract::File> & /*file*/, FileType as) {
   std::vector<DecoderEngine> result;
 
   result.push_back(DecoderEngine::odr);
@@ -419,7 +418,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
   if (preference.as_file_type.has_value()) {
     probe_types.push_back(*preference.as_file_type);
   } else {
-    std::vector<FileType> detected_types = types(file);
+    std::vector<FileType> detected_types = list_file_types(file);
     probe_types.insert(probe_types.end(), detected_types.begin(),
                        detected_types.end());
     auto probe_types_end = std::unique(probe_types.begin(), probe_types.end());
@@ -436,7 +435,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
     if (preference.with_engine.has_value()) {
       probe_engines.push_back(*preference.with_engine);
     } else {
-      std::vector<DecoderEngine> detected_engines = engines(file, as);
+      std::vector<DecoderEngine> detected_engines =
+          list_decoder_engines(file, as);
       probe_engines.insert(probe_engines.end(), detected_engines.begin(),
                            detected_engines.end());
       auto probe_engines_end =

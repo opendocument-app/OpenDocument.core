@@ -177,8 +177,6 @@ public:
   static std::vector<FileType> list_file_types(const std::string &path);
   static std::vector<DecoderEngine>
   list_decoder_engines(const std::string &path, FileType as);
-  static FileType get_file_type(const std::string &path);
-  static FileMeta get_file_meta(const std::string &path);
 
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
   explicit DecodedFile(const File &file);
