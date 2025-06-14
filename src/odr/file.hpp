@@ -174,11 +174,11 @@ protected:
 /// @brief Represents a decoded file.
 class DecodedFile {
 public:
-  static std::vector<FileType> types(const std::string &path);
-  static std::vector<DecoderEngine> engines(const std::string &path,
-                                            FileType as);
-  static FileType type(const std::string &path);
-  static FileMeta meta(const std::string &path);
+  static std::vector<FileType> list_file_types(const std::string &path);
+  static std::vector<DecoderEngine>
+  list_decoder_engines(const std::string &path, FileType as);
+  static FileType get_file_type(const std::string &path);
+  static FileMeta get_file_meta(const std::string &path);
 
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
   explicit DecodedFile(const File &file);
@@ -204,11 +204,11 @@ public:
   [[nodiscard]] bool is_document_file() const;
   [[nodiscard]] bool is_pdf_file() const;
 
-  [[nodiscard]] TextFile text_file() const;
-  [[nodiscard]] ImageFile image_file() const;
-  [[nodiscard]] ArchiveFile archive_file() const;
-  [[nodiscard]] DocumentFile document_file() const;
-  [[nodiscard]] PdfFile pdf_file() const;
+  [[nodiscard]] TextFile as_text_file() const;
+  [[nodiscard]] ImageFile as_image_file() const;
+  [[nodiscard]] ArchiveFile as_archive_file() const;
+  [[nodiscard]] DocumentFile as_document_file() const;
+  [[nodiscard]] PdfFile as_pdf_file() const;
 
 protected:
   std::shared_ptr<internal::abstract::DecodedFile> m_impl;

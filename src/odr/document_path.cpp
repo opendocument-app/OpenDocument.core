@@ -87,9 +87,9 @@ DocumentPath DocumentPath::extract(Element element, Element root) {
       ++distance;
     }
 
-    if (current.table_column() || current.table_cell()) {
+    if (current.as_table_column() || current.as_table_cell()) {
       reverse.emplace_back(Column(distance));
-    } else if (current.table_row()) {
+    } else if (current.as_table_row()) {
       reverse.emplace_back(Row(distance));
     } else {
       reverse.emplace_back(Child(distance));

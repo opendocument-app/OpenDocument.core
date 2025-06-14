@@ -5,16 +5,18 @@
 #include <odr/html.hpp>
 
 #include <odr/internal/git_info.hpp>
-#include <odr/internal/open_strategy.hpp>
 #include <odr/internal/project_info.hpp>
 
-std::string odr::version() noexcept {
-  return internal::project_info::version();
+std::string odr::get_version() noexcept {
+  return internal::project_info::get_version();
 }
 
-std::string odr::commit() noexcept { return internal::git_info::commit(); }
+std::string odr::get_commit() noexcept {
+  return internal::git_info::get_commit();
+}
 
-odr::FileType odr::type_by_extension(const std::string &extension) noexcept {
+odr::FileType
+odr::get_file_type_by_file_extension(const std::string &extension) noexcept {
   if (extension == "zip") {
     return FileType::zip;
   } else if (extension == "cfb") {
@@ -67,7 +69,8 @@ odr::FileType odr::type_by_extension(const std::string &extension) noexcept {
   return FileType::unknown;
 }
 
-odr::FileCategory odr::category_by_type(const FileType type) noexcept {
+odr::FileCategory
+odr::get_file_category_by_file_type(const FileType type) noexcept {
   switch (type) {
   case FileType::zip:
   case FileType::compound_file_binary_format:
@@ -101,8 +104,10 @@ odr::FileCategory odr::category_by_type(const FileType type) noexcept {
   }
 }
 
-std::string odr::type_to_string(const FileType type) noexcept {
+std::string odr::file_type_to_string(const FileType type) noexcept {
   switch (type) {
+  case FileType::unknown:
+    return "unknown";
   case FileType::zip:
     return "zip";
   case FileType::compound_file_binary_format:
@@ -154,7 +159,41 @@ std::string odr::type_to_string(const FileType type) noexcept {
   }
 }
 
-std::string odr::engine_to_string(const DecoderEngine engine) {
+std::string odr::file_category_to_string(FileCategory type) noexcept {
+  switch (type) {
+  case FileCategory::unknown:
+    return "unknown";
+  case FileCategory::archive:
+    return "archive";
+  case FileCategory::document:
+    return "document";
+  case FileCategory::image:
+    return "image";
+  case FileCategory::text:
+    return "text";
+  default:
+    return "unnamed";
+  }
+}
+
+std::string odr::document_type_to_string(const DocumentType type) noexcept {
+  switch (type) {
+  case DocumentType::unknown:
+    return "unknown";
+  case DocumentType::text:
+    return "text";
+  case DocumentType::presentation:
+    return "presentation";
+  case DocumentType::spreadsheet:
+    return "spreadsheet";
+  case DocumentType::drawing:
+    return "drawing";
+  default:
+    return "unnamed";
+  }
+}
+
+std::string odr::decoder_engine_to_string(const DecoderEngine engine) {
   if (engine == DecoderEngine::odr) {
     return "odr";
   } else if (engine == DecoderEngine::poppler) {
@@ -165,7 +204,7 @@ std::string odr::engine_to_string(const DecoderEngine engine) {
   throw UnknownDecoderEngine();
 }
 
-odr::DecoderEngine odr::engine_by_name(const std::string &name) {
+odr::DecoderEngine odr::get_decoder_engine_by_name(const std::string &name) {
   if (name == "odr") {
     return DecoderEngine::odr;
   } else if (name == "poppler") {
@@ -176,13 +215,13 @@ odr::DecoderEngine odr::engine_by_name(const std::string &name) {
   throw UnknownDecoderEngine();
 }
 
-std::vector<odr::FileType> odr::types(const std::string &path) {
-  return DecodedFile::types(path);
+std::vector<odr::FileType> odr::list_file_types(const std::string &path) {
+  return DecodedFile::list_file_types(path);
 }
 
-std::vector<odr::DecoderEngine> odr::engines(const std::string &path,
-                                             const FileType as) {
-  return DecodedFile::engines(path, as);
+std::vector<odr::DecoderEngine>
+odr::list_decoder_engines(const std::string &path, const FileType as) {
+  return DecodedFile::list_decoder_engines(path, as);
 }
 
 odr::DecodedFile odr::open(const std::string &path) {

@@ -10,46 +10,58 @@ enum class FileCategory;
 enum class DecoderEngine;
 struct DecodePreference;
 class DecodedFile;
+enum class DocumentType;
 
 /// @brief Get the version of the Open Document Reader library.
 /// @return The version of the Open Document Reader library.
-[[nodiscard]] std::string version() noexcept;
+[[nodiscard]] std::string get_version() noexcept;
 /// @brief Get the commit hash of the Open Document Reader library.
 /// @return The commit hash of the Open Document Reader library.
-[[nodiscard]] std::string commit() noexcept;
+[[nodiscard]] std::string get_commit() noexcept;
 
 /// @brief Get the file type by the file extension.
 /// @param extension The file extension.
 /// @return The file type.
-[[nodiscard]] FileType type_by_extension(const std::string &extension) noexcept;
+[[nodiscard]] FileType
+get_file_type_by_file_extension(const std::string &extension) noexcept;
 /// @brief Get the file category by the file type.
 /// @param type The file type.
 /// @return The file category.
-[[nodiscard]] FileCategory category_by_type(FileType type) noexcept;
+[[nodiscard]] FileCategory
+get_file_category_by_file_type(FileType type) noexcept;
 /// @brief Get the file type as a string.
 /// @param type The file type.
 /// @return The file type as a string.
-[[nodiscard]] std::string type_to_string(FileType type) noexcept;
+[[nodiscard]] std::string file_type_to_string(FileType type) noexcept;
+/// @brief Get the file category as a string.
+/// @param type The file type.
+/// @return The file type as a string.
+[[nodiscard]] std::string file_category_to_string(FileCategory type) noexcept;
+/// @brief Get the document type as a string.
+/// @param type The file type.
+/// @return The file type as a string.
+[[nodiscard]] std::string document_type_to_string(DocumentType type) noexcept;
 
 /// @brief Get the decoder engine as a string.
 /// @param engine The decoder engine.
 /// @return The decoder engine as a string.
-[[nodiscard]] std::string engine_to_string(DecoderEngine engine);
+[[nodiscard]] std::string decoder_engine_to_string(DecoderEngine engine);
 /// @brief Get the decoder engine by the name.
 /// @param engine The name of the decoder engine.
 /// @return The decoder engine.
-[[nodiscard]] DecoderEngine engine_by_name(const std::string &engine);
+[[nodiscard]] DecoderEngine
+get_decoder_engine_by_name(const std::string &engine);
 
-/// @brief Get the file types by the file path.
+/// @brief Determine the file types by the file path.
 /// @param path The file path.
 /// @return The file types.
-[[nodiscard]] std::vector<FileType> types(const std::string &path);
-/// @brief Get the decoder engines for a file path and file type.
+[[nodiscard]] std::vector<FileType> list_file_types(const std::string &path);
+/// @brief Determine the decoder engines for a file path and file type.
 /// @param path The file path.
 /// @param as The file type.
 /// @return The decoder engines.
-[[nodiscard]] std::vector<DecoderEngine> engines(const std::string &path,
-                                                 FileType as);
+[[nodiscard]] std::vector<DecoderEngine>
+list_decoder_engines(const std::string &path, FileType as);
 
 /// @brief Open a file.
 /// @param path The file path.

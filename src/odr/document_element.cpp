@@ -55,49 +55,49 @@ bool Element::is_editable() const {
   return exists_() ? m_element->is_editable(m_document) : false;
 }
 
-TextRoot Element::text_root() const { return {m_document, m_element}; }
+TextRoot Element::as_text_root() const { return {m_document, m_element}; }
 
-Slide Element::slide() const { return {m_document, m_element}; }
+Slide Element::as_slide() const { return {m_document, m_element}; }
 
-Sheet Element::sheet() const { return {m_document, m_element}; }
+Sheet Element::as_sheet() const { return {m_document, m_element}; }
 
-Page Element::page() const { return {m_document, m_element}; }
+Page Element::as_page() const { return {m_document, m_element}; }
 
-MasterPage Element::master_page() const { return {m_document, m_element}; }
+MasterPage Element::as_master_page() const { return {m_document, m_element}; }
 
-LineBreak Element::line_break() const { return {m_document, m_element}; }
+LineBreak Element::as_line_break() const { return {m_document, m_element}; }
 
-Paragraph Element::paragraph() const { return {m_document, m_element}; }
+Paragraph Element::as_paragraph() const { return {m_document, m_element}; }
 
-Span Element::span() const { return {m_document, m_element}; }
+Span Element::as_span() const { return {m_document, m_element}; }
 
-Text Element::text() const { return {m_document, m_element}; }
+Text Element::as_text() const { return {m_document, m_element}; }
 
-Link Element::link() const { return {m_document, m_element}; }
+Link Element::as_link() const { return {m_document, m_element}; }
 
-Bookmark Element::bookmark() const { return {m_document, m_element}; }
+Bookmark Element::as_bookmark() const { return {m_document, m_element}; }
 
-ListItem Element::list_item() const { return {m_document, m_element}; }
+ListItem Element::as_list_item() const { return {m_document, m_element}; }
 
-Table Element::table() const { return {m_document, m_element}; }
+Table Element::as_table() const { return {m_document, m_element}; }
 
-TableColumn Element::table_column() const { return {m_document, m_element}; }
+TableColumn Element::as_table_column() const { return {m_document, m_element}; }
 
-TableRow Element::table_row() const { return {m_document, m_element}; }
+TableRow Element::as_table_row() const { return {m_document, m_element}; }
 
-TableCell Element::table_cell() const { return {m_document, m_element}; }
+TableCell Element::as_table_cell() const { return {m_document, m_element}; }
 
-Frame Element::frame() const { return {m_document, m_element}; }
+Frame Element::as_frame() const { return {m_document, m_element}; }
 
-Rect Element::rect() const { return {m_document, m_element}; }
+Rect Element::as_rect() const { return {m_document, m_element}; }
 
-Line Element::line() const { return {m_document, m_element}; }
+Line Element::as_line() const { return {m_document, m_element}; }
 
-Circle Element::circle() const { return {m_document, m_element}; }
+Circle Element::as_circle() const { return {m_document, m_element}; }
 
-CustomShape Element::custom_shape() const { return {m_document, m_element}; }
+CustomShape Element::as_custom_shape() const { return {m_document, m_element}; }
 
-Image Element::image() const { return {m_document, m_element}; }
+Image Element::as_image() const { return {m_document, m_element}; }
 
 ElementRange Element::children() const {
   return {exists_()

@@ -18,9 +18,9 @@ Document::Document(std::shared_ptr<internal::abstract::Document> impl)
   }
 }
 
-bool Document::editable() const noexcept { return m_impl->is_editable(); }
+bool Document::is_editable() const noexcept { return m_impl->is_editable(); }
 
-bool Document::savable(const bool encrypted) const noexcept {
+bool Document::is_savable(const bool encrypted) const noexcept {
   return m_impl->is_savable(encrypted);
 }
 
@@ -43,6 +43,8 @@ Element Document::root_element() const {
   return {m_impl.get(), m_impl->root_element()};
 }
 
-Filesystem Document::files() const { return Filesystem(m_impl->files()); }
+Filesystem Document::as_filesystem() const {
+  return Filesystem(m_impl->files());
+}
 
 } // namespace odr

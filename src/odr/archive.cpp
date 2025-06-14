@@ -1,5 +1,6 @@
 #include <odr/archive.hpp>
 
+#include <odr/exceptions.hpp>
 #include <odr/filesystem.hpp>
 
 #include <odr/internal/abstract/archive.hpp>
@@ -9,11 +10,13 @@
 namespace odr {
 
 Archive::Archive(std::shared_ptr<internal::abstract::Archive> impl)
-    : m_impl{std::move(impl)} {}
+    : m_impl{std::move(impl)} {
+  if (m_impl == nullptr) {
+    throw NullPointerError("Archive implementation is null");
+  }
+}
 
-Archive::operator bool() const { return m_impl.operator bool(); }
-
-Filesystem Archive::filesystem() const {
+Filesystem Archive::as_filesystem() const {
   return Filesystem(
       std::dynamic_pointer_cast<internal::abstract::ReadableFilesystem>(
           m_impl->filesystem()));

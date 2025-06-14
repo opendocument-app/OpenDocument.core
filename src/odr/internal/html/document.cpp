@@ -336,7 +336,7 @@ public:
 
   void write_fragment(HtmlWriter &out, WritingState &state) const final {
     auto root = m_document.root_element();
-    auto element = root.text_root();
+    auto element = root.as_text_root();
 
     if (state.config().text_document_margin) {
       auto page_layout = element.page_layout();
@@ -429,7 +429,7 @@ odr::HtmlService html::create_document_service(const Document &document,
       fragments.push_back(std::make_unique<SlideHtmlFragment>(
           "slide" + std::to_string(i),
           fill_path_variables(config.slide_output_file_name, i), document,
-          child.slide()));
+          child.as_slide()));
       ++i;
     }
   } else if (document.document_type() == DocumentType::spreadsheet) {
@@ -438,7 +438,7 @@ odr::HtmlService html::create_document_service(const Document &document,
       fragments.push_back(std::make_unique<SheetHtmlFragment>(
           "sheet" + std::to_string(i),
           fill_path_variables(config.sheet_output_file_name, i), document,
-          child.sheet()));
+          child.as_sheet()));
       ++i;
     }
   } else if (document.document_type() == DocumentType::drawing) {
@@ -447,7 +447,7 @@ odr::HtmlService html::create_document_service(const Document &document,
       fragments.push_back(std::make_unique<PageHtmlFragment>(
           "page" + std::to_string(i),
           fill_path_variables(config.page_output_file_name, i), document,
-          child.page()));
+          child.as_page()));
       ++i;
     }
   } else {

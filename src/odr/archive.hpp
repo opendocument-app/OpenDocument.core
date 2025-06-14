@@ -15,9 +15,7 @@ class Archive {
 public:
   explicit Archive(std::shared_ptr<internal::abstract::Archive>);
 
-  [[nodiscard]] explicit operator bool() const;
-
-  [[nodiscard]] Filesystem filesystem() const;
+  [[nodiscard]] Filesystem as_filesystem() const;
 
   void save(std::ostream &out) const;
 
