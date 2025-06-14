@@ -18,7 +18,8 @@ DocumentType Document::document_type() const noexcept {
   return m_document_type;
 }
 
-std::shared_ptr<abstract::ReadableFilesystem> Document::files() const noexcept {
+std::shared_ptr<abstract::ReadableFilesystem>
+Document::as_filesystem() const noexcept {
   return m_filesystem;
 }
 

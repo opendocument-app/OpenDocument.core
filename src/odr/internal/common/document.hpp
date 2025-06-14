@@ -20,7 +20,7 @@ public:
   [[nodiscard]] DocumentType document_type() const noexcept final;
 
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
-  files() const noexcept final;
+  as_filesystem() const noexcept final;
 
 protected:
   FileType m_file_type;

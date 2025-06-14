@@ -21,9 +21,10 @@ class Path;
 
 namespace odr::internal::open_strategy {
 std::vector<FileType>
-types(const std::shared_ptr<internal::abstract::File> &file);
+list_file_types(const std::shared_ptr<internal::abstract::File> &file);
 std::vector<DecoderEngine>
-engines(const std::shared_ptr<internal::abstract::File> &file, FileType as);
+list_decoder_engines(const std::shared_ptr<internal::abstract::File> &file,
+                     FileType as);
 
 std::unique_ptr<internal::abstract::DecodedFile>
 open_file(std::shared_ptr<internal::abstract::File> file);

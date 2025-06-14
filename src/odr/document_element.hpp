@@ -151,28 +151,28 @@ public:
 
   [[nodiscard]] ElementRange children() const;
 
-  [[nodiscard]] TextRoot text_root() const;
-  [[nodiscard]] Slide slide() const;
-  [[nodiscard]] Sheet sheet() const;
-  [[nodiscard]] Page page() const;
-  [[nodiscard]] MasterPage master_page() const;
-  [[nodiscard]] LineBreak line_break() const;
-  [[nodiscard]] Paragraph paragraph() const;
-  [[nodiscard]] Span span() const;
-  [[nodiscard]] Text text() const;
-  [[nodiscard]] Link link() const;
-  [[nodiscard]] Bookmark bookmark() const;
-  [[nodiscard]] ListItem list_item() const;
-  [[nodiscard]] Table table() const;
-  [[nodiscard]] TableColumn table_column() const;
-  [[nodiscard]] TableRow table_row() const;
-  [[nodiscard]] TableCell table_cell() const;
-  [[nodiscard]] Frame frame() const;
-  [[nodiscard]] Rect rect() const;
-  [[nodiscard]] Line line() const;
-  [[nodiscard]] Circle circle() const;
-  [[nodiscard]] CustomShape custom_shape() const;
-  [[nodiscard]] Image image() const;
+  [[nodiscard]] TextRoot as_text_root() const;
+  [[nodiscard]] Slide as_slide() const;
+  [[nodiscard]] Sheet as_sheet() const;
+  [[nodiscard]] Page as_page() const;
+  [[nodiscard]] MasterPage as_master_page() const;
+  [[nodiscard]] LineBreak as_line_break() const;
+  [[nodiscard]] Paragraph as_paragraph() const;
+  [[nodiscard]] Span as_span() const;
+  [[nodiscard]] Text as_text() const;
+  [[nodiscard]] Link as_link() const;
+  [[nodiscard]] Bookmark as_bookmark() const;
+  [[nodiscard]] ListItem as_list_item() const;
+  [[nodiscard]] Table as_table() const;
+  [[nodiscard]] TableColumn as_table_column() const;
+  [[nodiscard]] TableRow as_table_row() const;
+  [[nodiscard]] TableCell as_table_cell() const;
+  [[nodiscard]] Frame as_frame() const;
+  [[nodiscard]] Rect as_rect() const;
+  [[nodiscard]] Line as_line() const;
+  [[nodiscard]] Circle as_circle() const;
+  [[nodiscard]] CustomShape as_custom_shape() const;
+  [[nodiscard]] Image as_image() const;
 
 protected:
   const internal::abstract::Document *m_document{nullptr};

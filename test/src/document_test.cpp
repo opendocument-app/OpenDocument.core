@@ -20,7 +20,7 @@ TEST(Document, odt) {
 
   EXPECT_EQ(document.document_type(), DocumentType::text);
 
-  auto page_layout = document.root_element().text_root().page_layout();
+  auto page_layout = document.root_element().as_text_root().page_layout();
   EXPECT_TRUE(page_layout.width);
   EXPECT_EQ(Measure("8.2673in"), page_layout.width);
   EXPECT_TRUE(page_layout.height);
@@ -40,7 +40,7 @@ TEST(Document, odg) {
   EXPECT_EQ(document.document_type(), DocumentType::drawing);
 
   for (auto child : document.root_element().children()) {
-    auto page_layout = child.page().page_layout();
+    auto page_layout = child.as_page().page_layout();
     EXPECT_TRUE(page_layout.width);
     EXPECT_EQ(Measure("21cm"), page_layout.width);
     EXPECT_TRUE(page_layout.height);
@@ -59,7 +59,7 @@ TEST(Document, edit_odt) {
     for (Element child : element.children()) {
       edit(child);
     }
-    if (auto text = element.text()) {
+    if (auto text = element.as_text()) {
       text.set_content("hello world!");
     }
   };
@@ -78,7 +78,7 @@ TEST(Document, edit_docx) {
     for (Element child : element.children()) {
       edit(child);
     }
-    if (auto text = element.text()) {
+    if (auto text = element.as_text()) {
       text.set_content("hello world!");
     }
   };

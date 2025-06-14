@@ -48,7 +48,7 @@ template <typename T> auto priority_comparator(const std::vector<T> &priority) {
 } // namespace
 
 std::vector<FileType>
-open_strategy::types(const std::shared_ptr<abstract::File> &file) {
+open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file) {
   std::vector<FileType> result;
 
   auto file_type = magic::file_type(*file);
@@ -60,7 +60,7 @@ open_strategy::types(const std::shared_ptr<abstract::File> &file) {
     zip::ZipFile zip_file(memory_file);
     result.push_back(FileType::zip);
 
-    auto filesystem = zip_file.archive()->filesystem();
+    auto filesystem = zip_file.archive()->as_filesystem();
 
     try {
       result.push_back(odf::OpenDocumentFile(filesystem).file_type());
@@ -75,7 +75,7 @@ open_strategy::types(const std::shared_ptr<abstract::File> &file) {
     cfb::CfbFile cfb_file(memory_file);
     result.push_back(FileType::compound_file_binary_format);
 
-    auto filesystem = cfb_file.archive()->filesystem();
+    auto filesystem = cfb_file.archive()->as_filesystem();
 
     try {
       result.push_back(oldms::LegacyMicrosoftFile(filesystem).file_type());
@@ -127,9 +127,8 @@ open_strategy::types(const std::shared_ptr<abstract::File> &file) {
   return result;
 }
 
-std::vector<DecoderEngine>
-open_strategy::engines(const std::shared_ptr<abstract::File> & /*file*/,
-                       FileType as) {
+std::vector<DecoderEngine> open_strategy::list_decoder_engines(
+    const std::shared_ptr<abstract::File> & /*file*/, FileType as) {
   std::vector<DecoderEngine> result;
 
   result.push_back(DecoderEngine::odr);
@@ -155,7 +154,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
   if (file_type == FileType::zip) {
     auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
 
-    auto filesystem = zip_file->archive()->filesystem();
+    auto filesystem = zip_file->archive()->as_filesystem();
 
     try {
       return std::make_unique<odf::OpenDocumentFile>(filesystem);
@@ -171,7 +170,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file) {
   } else if (file_type == FileType::compound_file_binary_format) {
     auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
 
-    auto filesystem = cfb_file->archive()->filesystem();
+    auto filesystem = cfb_file->archive()->as_filesystem();
 
     try {
       return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
@@ -244,7 +243,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       try {
         auto memory_file = std::make_shared<common::MemoryFile>(*file);
         auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
-        auto filesystem = zip_file->archive()->filesystem();
+        auto filesystem = zip_file->archive()->as_filesystem();
         return std::make_unique<odf::OpenDocumentFile>(filesystem);
       } catch (...) {
       }
@@ -261,14 +260,14 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       try {
         auto memory_file = std::make_shared<common::MemoryFile>(*file);
         auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
-        auto filesystem = zip_file->archive()->filesystem();
+        auto filesystem = zip_file->archive()->as_filesystem();
         return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
       } catch (...) {
       }
       try {
         auto memory_file = std::make_shared<common::MemoryFile>(*file);
         auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
-        auto filesystem = cfb_file->archive()->filesystem();
+        auto filesystem = cfb_file->archive()->as_filesystem();
         return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
       } catch (...) {
       }
@@ -284,7 +283,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       try {
         auto memory_file = std::make_shared<common::MemoryFile>(*file);
         auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
-        auto filesystem = cfb_file->archive()->filesystem();
+        auto filesystem = cfb_file->archive()->as_filesystem();
         return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
       } catch (...) {
       }
@@ -419,7 +418,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
   if (preference.as_file_type.has_value()) {
     probe_types.push_back(*preference.as_file_type);
   } else {
-    std::vector<FileType> detected_types = types(file);
+    std::vector<FileType> detected_types = list_file_types(file);
     probe_types.insert(probe_types.end(), detected_types.begin(),
                        detected_types.end());
     auto probe_types_end = std::unique(probe_types.begin(), probe_types.end());
@@ -436,7 +435,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
     if (preference.with_engine.has_value()) {
       probe_engines.push_back(*preference.with_engine);
     } else {
-      std::vector<DecoderEngine> detected_engines = engines(file, as);
+      std::vector<DecoderEngine> detected_engines =
+          list_decoder_engines(file, as);
       probe_engines.insert(probe_engines.end(), detected_engines.begin(),
                            detected_engines.end());
       auto probe_engines_end =
@@ -468,7 +468,7 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
 
     auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
 
-    auto filesystem = zip_file->archive()->filesystem();
+    auto filesystem = zip_file->archive()->as_filesystem();
 
     try {
       return std::make_unique<odf::OpenDocumentFile>(filesystem);
@@ -485,7 +485,7 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file) {
 
     auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
 
-    auto filesystem = cfb_file->archive()->filesystem();
+    auto filesystem = cfb_file->archive()->as_filesystem();
 
     try {
       return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);

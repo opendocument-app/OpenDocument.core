@@ -108,7 +108,7 @@ namespace odr::internal {
 void html::translate_image_src(const File &file, std::ostream &out,
                                const HtmlConfig &config) {
   try {
-    translate_image_src(DecodedFile(file).image_file(), out, config);
+    translate_image_src(DecodedFile(file).as_image_file(), out, config);
   } catch (...) {
     // TODO hacky - `image/jpg` works for all common image types in chrome
     // TODO use stream

@@ -44,7 +44,7 @@ public:
 
   /// \return the underlying filesystem of the document.
   [[nodiscard]] virtual std::shared_ptr<ReadableFilesystem>
-  files() const noexcept = 0;
+  as_filesystem() const noexcept = 0;
 
   /// \return cursor to the root element of the document.
   [[nodiscard]] virtual Element *root_element() const = 0;

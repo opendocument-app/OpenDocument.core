@@ -94,7 +94,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   }
 
   if (file.is_document_file()) {
-    DocumentFile document_file = file.document_file();
+    DocumentFile document_file = file.as_document_file();
 
     EXPECT_EQ(test_file.type, document_file.file_type());
   }
@@ -145,8 +145,9 @@ TEST_P(HtmlOutputTests, html_meta) {
 namespace {
 
 std::string engine_suffix(const DecoderEngine engine) {
-  return engine == DecoderEngine::odr ? ""
-                                      : "-" + odr::engine_to_string(engine);
+  return engine == DecoderEngine::odr
+             ? ""
+             : "-" + odr::decoder_engine_to_string(engine);
 }
 
 std::string test_params_to_name(const TestParams &params) {

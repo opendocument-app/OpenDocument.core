@@ -19,8 +19,8 @@ class Document final {
 public:
   explicit Document(std::shared_ptr<internal::abstract::Document>);
 
-  [[nodiscard]] bool editable() const noexcept;
-  [[nodiscard]] bool savable(bool encrypted = false) const noexcept;
+  [[nodiscard]] bool is_editable() const noexcept;
+  [[nodiscard]] bool is_savable(bool encrypted = false) const noexcept;
 
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
@@ -30,7 +30,7 @@ public:
 
   [[nodiscard]] Element root_element() const;
 
-  [[nodiscard]] Filesystem files() const;
+  [[nodiscard]] Filesystem as_filesystem() const;
 
 private:
   std::shared_ptr<internal::abstract::Document> m_impl;

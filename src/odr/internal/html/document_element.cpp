@@ -229,7 +229,7 @@ void html::translate_master_page(MasterPage masterPage,
 }
 
 void html::translate_text(const Element element, const WritingState &state) {
-  Text text = element.text();
+  Text text = element.as_text();
 
   state.out().write_element_begin(
       "x-s", HtmlElementOptions()
@@ -247,7 +247,7 @@ void html::translate_text(const Element element, const WritingState &state) {
 }
 
 void html::translate_line_break(Element element, const WritingState &state) {
-  LineBreak line_break = element.line_break();
+  LineBreak line_break = element.as_line_break();
 
   state.out().write_element_begin(
       "br", HtmlElementOptions().set_close_type(HtmlCloseType::none));
@@ -258,7 +258,7 @@ void html::translate_line_break(Element element, const WritingState &state) {
 }
 
 void html::translate_paragraph(Element element, const WritingState &state) {
-  Paragraph paragraph = element.paragraph();
+  Paragraph paragraph = element.as_paragraph();
 
   state.out().write_element_begin(
       "x-p",
@@ -284,7 +284,7 @@ void html::translate_paragraph(Element element, const WritingState &state) {
 }
 
 void html::translate_span(Element element, const WritingState &state) {
-  Span span = element.span();
+  Span span = element.as_span();
 
   state.out().write_element_begin(
       "x-s", HtmlElementOptions().set_inline(true).set_style(
@@ -294,7 +294,7 @@ void html::translate_span(Element element, const WritingState &state) {
 }
 
 void html::translate_link(Element element, const WritingState &state) {
-  Link link = element.link();
+  Link link = element.as_link();
 
   state.out().write_element_begin(
       "a", HtmlElementOptions().set_inline(true).set_attributes(
@@ -304,7 +304,7 @@ void html::translate_link(Element element, const WritingState &state) {
 }
 
 void html::translate_bookmark(Element element, const WritingState &state) {
-  Bookmark bookmark = element.bookmark();
+  Bookmark bookmark = element.as_bookmark();
 
   state.out().write_element_begin(
       "a", HtmlElementOptions().set_inline(true).set_attributes(
@@ -319,7 +319,7 @@ void html::translate_list(Element element, const WritingState &state) {
 }
 
 void html::translate_list_item(Element element, const WritingState &state) {
-  ListItem list_item = element.list_item();
+  ListItem list_item = element.as_list_item();
 
   state.out().write_element_begin(
       "li",
@@ -329,7 +329,7 @@ void html::translate_list_item(Element element, const WritingState &state) {
 }
 
 void html::translate_table(Element element, const WritingState &state) {
-  Table table = element.table();
+  Table table = element.as_table();
 
   state.out().write_element_begin(
       "table",
@@ -339,7 +339,7 @@ void html::translate_table(Element element, const WritingState &state) {
           .set_style(translate_table_style(table.style())));
 
   for (Element column : table.columns()) {
-    TableColumn table_column = column.table_column();
+    TableColumn table_column = column.as_table_column();
 
     state.out().write_element_begin(
         "col",
@@ -349,14 +349,14 @@ void html::translate_table(Element element, const WritingState &state) {
   }
 
   for (Element row : table.rows()) {
-    TableRow table_row = row.table_row();
+    TableRow table_row = row.as_table_row();
 
     state.out().write_element_begin(
         "tr", HtmlElementOptions().set_style(
                   translate_table_row_style(table_row.style())));
 
     for (Element cell : table_row.children()) {
-      TableCell table_cell = cell.table_cell();
+      TableCell table_cell = cell.as_table_cell();
 
       if (table_cell.is_covered()) {
         continue;
@@ -389,7 +389,7 @@ void html::translate_table(Element element, const WritingState &state) {
 }
 
 void html::translate_image(Element element, const WritingState &state) {
-  Image image = element.image();
+  Image image = element.as_image();
 
   odr::HtmlResource resource;
   HtmlResourceLocation resource_location;
@@ -425,7 +425,7 @@ void html::translate_image(Element element, const WritingState &state) {
 }
 
 void html::translate_frame(Element element, const WritingState &state) {
-  Frame frame = element.frame();
+  Frame frame = element.as_frame();
   GraphicStyle style = frame.style();
 
   state.out().write_element_begin(
@@ -436,7 +436,7 @@ void html::translate_frame(Element element, const WritingState &state) {
 }
 
 void html::translate_rect(Element element, const WritingState &state) {
-  Rect rect = element.rect();
+  Rect rect = element.as_rect();
   GraphicStyle style = rect.style();
 
   state.out().write_element_begin(
@@ -450,7 +450,7 @@ void html::translate_rect(Element element, const WritingState &state) {
 }
 
 void html::translate_line(Element element, const WritingState &state) {
-  Line line = element.line();
+  Line line = element.as_line();
   GraphicStyle style = line.style();
 
   state.out().write_element_begin(
@@ -474,7 +474,7 @@ void html::translate_line(Element element, const WritingState &state) {
 }
 
 void html::translate_circle(Element element, const WritingState &state) {
-  Circle circle = element.circle();
+  Circle circle = element.as_circle();
   GraphicStyle style = circle.style();
 
   state.out().write_element_begin(
@@ -489,7 +489,7 @@ void html::translate_circle(Element element, const WritingState &state) {
 }
 
 void html::translate_custom_shape(Element element, const WritingState &state) {
-  CustomShape custom_shape = element.custom_shape();
+  CustomShape custom_shape = element.as_custom_shape();
   GraphicStyle style = custom_shape.style();
 
   state.out().write_element_begin(

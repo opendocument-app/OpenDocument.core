@@ -81,7 +81,8 @@ OfficeOpenXmlFile::decrypt(const std::string &password) const {
   auto memory_file =
       std::make_shared<common::MemoryFile>(std::move(decrypted_package));
   auto decrypted = std::make_shared<OfficeOpenXmlFile>(*this);
-  decrypted->m_filesystem = zip::ZipFile(memory_file).archive()->filesystem();
+  decrypted->m_filesystem =
+      zip::ZipFile(memory_file).archive()->as_filesystem();
   decrypted->m_file_meta = parse_file_meta(*decrypted->m_filesystem);
   decrypted->m_encryption_state = EncryptionState::decrypted;
   return decrypted;

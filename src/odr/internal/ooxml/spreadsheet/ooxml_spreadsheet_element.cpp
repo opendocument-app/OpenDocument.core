@@ -368,11 +368,11 @@ GraphicStyle Frame::style(const abstract::Document *) const { return {}; }
 
 bool ImageElement::is_internal(const abstract::Document *document) const {
   const Document *doc = document_(document);
-  if (doc == nullptr || !doc->files()) {
+  if (doc == nullptr || !doc->as_filesystem()) {
     return false;
   }
   try {
-    return doc->files()->is_file(common::Path(href(document)));
+    return doc->as_filesystem()->is_file(common::Path(href(document)));
   } catch (...) {
   }
   return false;
@@ -384,7 +384,7 @@ ImageElement::file(const abstract::Document *document) const {
   if (doc == nullptr || !is_internal(document)) {
     return {};
   }
-  return File(doc->files()->open(common::Path(href(document))));
+  return File(doc->as_filesystem()->open(common::Path(href(document))));
 }
 
 std::string ImageElement::href(const abstract::Document *document) const {

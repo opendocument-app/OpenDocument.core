@@ -60,23 +60,15 @@ void File::copy(const std::string &path) const {
 
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
-std::vector<FileType> DecodedFile::types(const std::string &path) {
-  return internal::open_strategy::types(
+std::vector<FileType> DecodedFile::list_file_types(const std::string &path) {
+  return internal::open_strategy::list_file_types(
       std::make_shared<internal::common::DiskFile>(path));
 }
 
-std::vector<DecoderEngine> DecodedFile::engines(const std::string &path,
-                                                FileType as) {
-  return internal::open_strategy::engines(
+std::vector<DecoderEngine>
+DecodedFile::list_decoder_engines(const std::string &path, FileType as) {
+  return internal::open_strategy::list_decoder_engines(
       std::make_shared<internal::common::DiskFile>(path), as);
-}
-
-FileType DecodedFile::type(const std::string &path) {
-  return DecodedFile(path).file_type();
-}
-
-FileMeta DecodedFile::meta(const std::string &path) {
-  return DecodedFile(path).file_meta();
 }
 
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
@@ -156,7 +148,7 @@ bool DecodedFile::is_pdf_file() const {
          nullptr;
 }
 
-TextFile DecodedFile::text_file() const {
+TextFile DecodedFile::as_text_file() const {
   if (auto text_file =
           std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl)) {
     return TextFile(text_file);
@@ -164,7 +156,7 @@ TextFile DecodedFile::text_file() const {
   throw NoTextFile();
 }
 
-ImageFile DecodedFile::image_file() const {
+ImageFile DecodedFile::as_image_file() const {
   if (auto image_file =
           std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl)) {
     return ImageFile(image_file);
@@ -172,7 +164,7 @@ ImageFile DecodedFile::image_file() const {
   throw NoImageFile();
 }
 
-ArchiveFile DecodedFile::archive_file() const {
+ArchiveFile DecodedFile::as_archive_file() const {
   if (auto archive_file =
           std::dynamic_pointer_cast<internal::abstract::ArchiveFile>(m_impl)) {
     return ArchiveFile(archive_file);
@@ -180,7 +172,7 @@ ArchiveFile DecodedFile::archive_file() const {
   throw NoArchiveFile();
 }
 
-DocumentFile DecodedFile::document_file() const {
+DocumentFile DecodedFile::as_document_file() const {
   if (auto document_file =
           std::dynamic_pointer_cast<internal::abstract::DocumentFile>(m_impl)) {
     return DocumentFile(document_file);
@@ -188,7 +180,7 @@ DocumentFile DecodedFile::document_file() const {
   throw NoDocumentFile();
 }
 
-PdfFile DecodedFile::pdf_file() const {
+PdfFile DecodedFile::as_pdf_file() const {
   if (auto pdf_file =
           std::dynamic_pointer_cast<internal::abstract::PdfFile>(m_impl)) {
     return PdfFile(pdf_file);
@@ -248,7 +240,7 @@ DocumentMeta DocumentFile::document_meta() const {
 }
 
 DocumentFile DocumentFile::decrypt(const std::string &password) const {
-  return DecodedFile::decrypt(password).document_file();
+  return DecodedFile::decrypt(password).as_document_file();
 }
 
 Document DocumentFile::document() const { return Document(m_impl->document()); }
@@ -261,7 +253,7 @@ PdfFile::PdfFile(std::shared_ptr<internal::abstract::PdfFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 PdfFile PdfFile::decrypt(const std::string &password) const {
-  return DecodedFile::decrypt(password).pdf_file();
+  return DecodedFile::decrypt(password).as_pdf_file();
 }
 
 std::shared_ptr<internal::abstract::PdfFile> PdfFile::impl() const {

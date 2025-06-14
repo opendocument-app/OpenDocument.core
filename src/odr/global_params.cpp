@@ -63,9 +63,11 @@ void GlobalParams::set_pdf2htmlex_data_path(const std::string &path) {
 }
 
 GlobalParams::GlobalParams()
-    : m_odr_core_data_path{internal::project_info::odr_data_path()},
-      m_fontconfig_data_path{internal::project_info::fontconfig_data_path()},
-      m_poppler_data_path{internal::project_info::poppler_data_path()},
-      m_pdf2htmlex_data_path{internal::project_info::pdf2htmlex_data_path()} {}
+    : m_odr_core_data_path{internal::project_info::get_odr_data_path()},
+      m_fontconfig_data_path{
+          internal::project_info::get_fontconfig_data_path()},
+      m_poppler_data_path{internal::project_info::get_poppler_data_path()},
+      m_pdf2htmlex_data_path{
+          internal::project_info::get_pdf2htmlex_data_path()} {}
 
 } // namespace odr

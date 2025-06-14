@@ -1,6 +1,7 @@
 #include <odr/document.hpp>
 
 #include <odr/document_element.hpp>
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 
@@ -14,13 +15,13 @@ namespace odr {
 Document::Document(std::shared_ptr<internal::abstract::Document> impl)
     : m_impl{std::move(impl)} {
   if (!m_impl) {
-    throw std::runtime_error("document is null");
+    throw NullPointerError("document is null");
   }
 }
 
-bool Document::editable() const noexcept { return m_impl->is_editable(); }
+bool Document::is_editable() const noexcept { return m_impl->is_editable(); }
 
-bool Document::savable(const bool encrypted) const noexcept {
+bool Document::is_savable(const bool encrypted) const noexcept {
   return m_impl->is_savable(encrypted);
 }
 
@@ -43,6 +44,8 @@ Element Document::root_element() const {
   return {m_impl.get(), m_impl->root_element()};
 }
 
-Filesystem Document::files() const { return Filesystem(m_impl->files()); }
+Filesystem Document::as_filesystem() const {
+  return Filesystem(m_impl->as_filesystem());
+}
 
 } // namespace odr

@@ -270,11 +270,11 @@ pugi::xml_node Frame::inner_node_(const abstract::Document *) const {
 
 bool Image::is_internal(const abstract::Document *document) const {
   auto doc = document_(document);
-  if (!doc || !doc->files()) {
+  if (!doc || !doc->as_filesystem()) {
     return false;
   }
   try {
-    return doc->files()->is_file(common::Path(href(document)));
+    return doc->as_filesystem()->is_file(common::Path(href(document)));
   } catch (...) {
   }
   return false;
@@ -285,7 +285,7 @@ std::optional<odr::File> Image::file(const abstract::Document *document) const {
   if (!doc || !is_internal(document)) {
     return {};
   }
-  return File(doc->files()->open(common::Path(href(document))));
+  return File(doc->as_filesystem()->open(common::Path(href(document))));
 }
 
 std::string Image::href(const abstract::Document *document) const {

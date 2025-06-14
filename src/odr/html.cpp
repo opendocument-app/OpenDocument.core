@@ -216,15 +216,15 @@ HtmlService html::translate(const DecodedFile &decoded_file,
                             const std::string &output_path,
                             const HtmlConfig &config) {
   if (decoded_file.is_text_file()) {
-    return translate(decoded_file.text_file(), output_path, config);
+    return translate(decoded_file.as_text_file(), output_path, config);
   } else if (decoded_file.is_image_file()) {
-    return translate(decoded_file.image_file(), output_path, config);
+    return translate(decoded_file.as_image_file(), output_path, config);
   } else if (decoded_file.is_archive_file()) {
-    return translate(decoded_file.archive_file(), output_path, config);
+    return translate(decoded_file.as_archive_file(), output_path, config);
   } else if (decoded_file.is_document_file()) {
-    return translate(decoded_file.document_file(), output_path, config);
+    return translate(decoded_file.as_document_file(), output_path, config);
   } else if (decoded_file.is_pdf_file()) {
-    return translate(decoded_file.pdf_file(), output_path, config);
+    return translate(decoded_file.as_pdf_file(), output_path, config);
   }
 
   throw UnsupportedFileType(decoded_file.file_type());
@@ -314,7 +314,7 @@ HtmlService html::translate(const Archive &archive,
                             const std::string &output_path,
                             const HtmlConfig &config) {
   std::filesystem::create_directories(output_path);
-  return internal::html::create_filesystem_service(archive.filesystem(),
+  return internal::html::create_filesystem_service(archive.as_filesystem(),
                                                    output_path, config);
 }
 
@@ -330,7 +330,7 @@ void html::edit(const Document &document, const char *diff) {
   for (const auto &[key, value] : json["modifiedText"].items()) {
     auto element =
         DocumentPath::find(document.root_element(), DocumentPath(key));
-    element.text().set_content(value);
+    element.as_text().set_content(value);
   }
 }
 

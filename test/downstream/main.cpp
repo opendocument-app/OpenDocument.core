@@ -3,6 +3,6 @@
 #include <iostream>
 
 int main(void) {
-  std::cout << "odr version=\"" << odr::version() << "\' "
-            << "commit=\'" << odr::commit() << "\"" << std::endl;
+  std::cout << "odr version=\"" << odr::get_version() << "\' "
+            << "commit=\'" << odr::get_commit() << "\"" << std::endl;
 }
