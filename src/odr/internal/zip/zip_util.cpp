@@ -16,10 +16,10 @@ public:
                mz_zip_reader_extract_iter_state *iter, std::size_t buffer_size)
       : m_archive{std::move(archive)} {
     if (m_archive == nullptr) {
-      throw std::invalid_argument("ReaderBuffer: archive is nullptr");
+      throw NullPointerError("ReaderBuffer: archive is nullptr");
     }
     if (iter == nullptr) {
-      throw std::invalid_argument("ReaderBuffer: iter is nullptr");
+      throw NullPointerError("ReaderBuffer: iter is nullptr");
     }
     m_iter = iter;
     m_remaining = iter->file_stat.m_uncomp_size;
@@ -80,7 +80,7 @@ public:
   explicit FileInZipIstream(std::unique_ptr<ReaderBuffer> sbuf)
       : std::istream(sbuf.get()), m_sbuf{std::move(sbuf)} {
     if (m_sbuf == nullptr) {
-      throw std::invalid_argument("FileInZipIstream: sbuf is nullptr");
+      throw NullPointerError("FileInZipIstream: sbuf is nullptr");
     }
   }
 
@@ -93,7 +93,7 @@ public:
   FileInZip(std::shared_ptr<const Archive> archive, std::uint32_t index)
       : m_archive{std::move(archive)}, m_index{index} {
     if (m_archive == nullptr) {
-      throw std::invalid_argument("FileInZip: archive is nullptr");
+      throw NullPointerError("FileInZip: archive is nullptr");
     }
   }
 
@@ -182,7 +182,7 @@ Archive::Archive(const std::shared_ptr<common::DiskFile> &file)
 Archive::Archive(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {
   if (m_file == nullptr) {
-    throw std::invalid_argument("Archive: file is nullptr");
+    throw NullPointerError("Archive: file is nullptr");
   }
   m_stream = m_file->stream();
   open_from_file(m_zip, *m_file, *m_stream);
