@@ -13,7 +13,7 @@ class Archive {
 public:
   virtual ~Archive() = default;
 
-  [[nodiscard]] virtual std::shared_ptr<Filesystem> filesystem() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Filesystem> as_filesystem() const = 0;
 
   virtual void save(std::ostream &out) const = 0;
 };

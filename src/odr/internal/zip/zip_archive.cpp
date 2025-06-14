@@ -55,7 +55,7 @@ ZipArchive::ZipArchive(const std::shared_ptr<util::Archive> &archive) {
   }
 }
 
-std::shared_ptr<abstract::Filesystem> ZipArchive::filesystem() const {
+std::shared_ptr<abstract::Filesystem> ZipArchive::as_filesystem() const {
   // TODO return an actual filesystem view
   auto filesystem = std::make_shared<common::VirtualFilesystem>();
 

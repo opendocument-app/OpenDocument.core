@@ -28,7 +28,8 @@ public:
   ZipArchive();
   explicit ZipArchive(const std::shared_ptr<util::Archive> &archive);
 
-  [[nodiscard]] std::shared_ptr<abstract::Filesystem> filesystem() const final;
+  [[nodiscard]] std::shared_ptr<abstract::Filesystem>
+  as_filesystem() const final;
 
   void save(std::ostream &out) const final;
 

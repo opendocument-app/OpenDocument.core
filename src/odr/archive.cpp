@@ -19,7 +19,7 @@ Archive::Archive(std::shared_ptr<internal::abstract::Archive> impl)
 Filesystem Archive::as_filesystem() const {
   return Filesystem(
       std::dynamic_pointer_cast<internal::abstract::ReadableFilesystem>(
-          m_impl->filesystem()));
+          m_impl->as_filesystem()));
 }
 
 void Archive::save(std::ostream &out) const { m_impl->save(out); }

@@ -1,6 +1,7 @@
 #include <odr/document.hpp>
 
 #include <odr/document_element.hpp>
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 
@@ -14,7 +15,7 @@ namespace odr {
 Document::Document(std::shared_ptr<internal::abstract::Document> impl)
     : m_impl{std::move(impl)} {
   if (!m_impl) {
-    throw std::runtime_error("document is null");
+    throw NullPointerError("document is null");
   }
 }
 
@@ -44,7 +45,7 @@ Element Document::root_element() const {
 }
 
 Filesystem Document::as_filesystem() const {
-  return Filesystem(m_impl->files());
+  return Filesystem(m_impl->as_filesystem());
 }
 
 } // namespace odr

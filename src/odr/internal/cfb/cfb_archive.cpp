@@ -18,7 +18,7 @@ namespace odr::internal::cfb {
 CfbArchive::CfbArchive(std::shared_ptr<util::Archive> archive)
     : m_cfb{std::move(archive)} {}
 
-std::shared_ptr<abstract::Filesystem> CfbArchive::filesystem() const {
+std::shared_ptr<abstract::Filesystem> CfbArchive::as_filesystem() const {
   auto filesystem = std::make_shared<common::VirtualFilesystem>();
 
   for (const auto &e : *m_cfb) {

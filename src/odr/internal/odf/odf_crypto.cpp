@@ -181,7 +181,7 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
 
       auto memory_file =
           std::make_shared<common::MemoryFile>(std::move(decrypt));
-      return zip::ZipFile(memory_file).archive()->filesystem();
+      return zip::ZipFile(memory_file).archive()->as_filesystem();
     } catch (...) {
       throw WrongPasswordError();
     }
