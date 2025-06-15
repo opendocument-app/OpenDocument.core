@@ -2,7 +2,7 @@
 
 namespace odr::internal {
 
-const char *git_info::get_commit() noexcept { return "@GIT_HEAD_SHA1@"; }
+const char *git_info::commit_hash() noexcept { return "@GIT_HEAD_SHA1@"; }
 
 bool git_info::is_dirty() noexcept { return @GIT_IS_DIRTY@; }
 

@@ -2,7 +2,7 @@
 
 namespace odr::internal::git_info {
 
-const char *get_commit() noexcept;
+const char *commit_hash() noexcept;
 bool is_dirty() noexcept;
 
 } // namespace odr::internal::git_info

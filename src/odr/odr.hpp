@@ -12,12 +12,21 @@ struct DecodePreference;
 class DecodedFile;
 enum class DocumentType;
 
-/// @brief Get the version of the Open Document Reader library.
-/// @return The version of the Open Document Reader library.
-[[nodiscard]] std::string get_version() noexcept;
-/// @brief Get the commit hash of the Open Document Reader library.
-/// @return The commit hash of the Open Document Reader library.
-[[nodiscard]] std::string get_commit() noexcept;
+/// @brief Get the version of the library.
+/// @return The version of the library.
+[[nodiscard]] std::string version() noexcept;
+/// @brief Get the commit hash of the library.
+/// @return The commit hash of the library.
+[[nodiscard]] std::string commit_hash() noexcept;
+/// @brief Check if the library is dirty (i.e., has uncommitted changes).
+/// @return True if the library is dirty, false otherwise.
+[[nodiscard]] bool is_dirty() noexcept;
+/// @brief Check if the library is built in debug mode.
+/// @return True if the library is built in debug mode, false otherwise.
+[[nodiscard]] bool is_debug() noexcept;
+/// @brief Get the identification string of the library.
+/// @return The identification string of the library.
+[[nodiscard]] std::string identify() noexcept;
 
 /// @brief Get the file type by the file extension.
 /// @param extension The file extension.

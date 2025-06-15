@@ -2,7 +2,7 @@
 
 namespace odr::internal {
 
-const char *project_info::get_version() noexcept { return "${CMAKE_PROJECT_VERSION}"; }
+const char *project_info::version() noexcept { return "${CMAKE_PROJECT_VERSION}"; }
 
 bool project_info::is_debug() noexcept {
 #ifdef NDEBUG
@@ -28,19 +28,19 @@ bool project_info::has_pdf2htmlex() noexcept{
 #endif
 }
 
-const char *project_info::get_odr_data_path() noexcept {
+const char *project_info::odr_data_path() noexcept {
   return "${ODR_DATA_PATH}";
 }
 
-const char *project_info::get_fontconfig_data_path() noexcept {
+const char *project_info::fontconfig_data_path() noexcept {
   return "${FONTCONFIG_PATH}";
 }
 
-const char *project_info::get_poppler_data_path() noexcept {
+const char *project_info::poppler_data_path() noexcept {
         return "${POPPLER_DATA_DIR}";
 }
 
-const char *project_info::get_pdf2htmlex_data_path() noexcept{
+const char *project_info::pdf2htmlex_data_path() noexcept{
         return "${PDF2HTMLEX_DATA_DIR}";
 }
 

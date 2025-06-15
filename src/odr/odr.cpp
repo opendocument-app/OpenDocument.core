@@ -7,12 +7,22 @@
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/project_info.hpp>
 
-std::string odr::get_version() noexcept {
-  return internal::project_info::get_version();
+std::string odr::version() noexcept {
+  return internal::project_info::version();
 }
 
-std::string odr::get_commit() noexcept {
-  return internal::git_info::get_commit();
+std::string odr::commit_hash() noexcept {
+  return internal::git_info::commit_hash();
+}
+
+bool odr::is_dirty() noexcept { return internal::git_info::is_dirty(); }
+
+bool odr::is_debug() noexcept { return internal::project_info::is_debug(); }
+
+std::string odr::identify() noexcept {
+  return (version().empty() ? "unknown version" : version()) +
+         (commit_hash().empty() ? "" : " (" + commit_hash() + ")") +
+         (is_dirty() ? " [dirty]" : "") + (is_debug() ? " [debug]" : "");
 }
 
 odr::FileType

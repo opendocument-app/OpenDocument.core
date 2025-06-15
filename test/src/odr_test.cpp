@@ -8,9 +8,9 @@ using namespace odr;
 using namespace odr::internal;
 using namespace odr::test;
 
-TEST(odr, version) { EXPECT_TRUE(odr::get_version().empty()); }
+TEST(odr, version) { EXPECT_TRUE(odr::version().empty()); }
 
-TEST(odr, commit) { EXPECT_FALSE(odr::get_commit().empty()); }
+TEST(odr, commit) { EXPECT_FALSE(odr::commit_hash().empty()); }
 
 TEST(odr, types_odt) {
   auto path = TestData::test_file_path("odr-public/odt/about.odt");
