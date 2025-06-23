@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <ranges>
@@ -11,17 +12,21 @@ namespace odr {
 
 namespace {
 
-class NullLogger : public Logger {
+class NullLogger final : public Logger {
 public:
-  [[nodiscard]] bool will_log(LogLevel) const override { return false; }
+  [[nodiscard]] bool will_log(LogLevel) const final { return false; }
 
   void log_impl(LogLevel, const std::string &,
-                const std::source_location &) override {
+                const std::source_location &) final {
+    // Do nothing
+  }
+
+  void flush() final {
     // Do nothing
   }
 };
 
-class StdioLogger : public Logger {
+class StdioLogger final : public Logger {
 public:
   StdioLogger(std::string name, LogLevel level, LogFormat format,
               std::unique_ptr<std::ostream> output)
@@ -32,14 +37,18 @@ public:
     }
   }
 
-  [[nodiscard]] bool will_log(LogLevel level) const override {
+  ~StdioLogger() final { flush(); }
+
+  [[nodiscard]] bool will_log(LogLevel level) const final {
     return level >= m_level;
   }
 
   void log_impl(LogLevel level, const std::string &message,
-                const std::source_location &location) override {
-    *m_output << format(level, message, location, m_format) << std::endl;
+                const std::source_location &location) final {
+    *m_output << format(m_name, level, message, location, m_format) << "\n";
   }
+
+  void flush() final { m_output->flush(); }
 
 private:
   std::string m_name;
@@ -48,7 +57,7 @@ private:
   std::unique_ptr<std::ostream> m_output;
 };
 
-class TeeLogger : public Logger {
+class TeeLogger final : public Logger {
 public:
   explicit TeeLogger(const std::vector<std::shared_ptr<Logger>> &loggers)
       : m_loggers(loggers) {
@@ -57,16 +66,27 @@ public:
     }
   }
 
-  [[nodiscard]] bool will_log(LogLevel level) const override {
+  ~TeeLogger() final { flush(); }
+
+  [[nodiscard]] bool will_log(LogLevel level) const final {
     return std::ranges::any_of(m_loggers, [level](const auto &logger) {
       return logger->will_log(level);
     });
   }
 
   void log_impl(LogLevel level, const std::string &message,
-                const std::source_location &location) override {
+                const std::source_location &location) final {
     for (const auto &logger : m_loggers) {
+      if (!logger->will_log(level)) {
+        continue;
+      }
       logger->log(level, message, location);
+    }
+  }
+
+  void flush() final {
+    for (const auto &logger : m_loggers) {
+      logger->flush();
     }
   }
 
@@ -112,7 +132,8 @@ Logger::create_tee(const std::vector<std::shared_ptr<Logger>> &loggers) {
   return std::make_unique<TeeLogger>(loggers);
 }
 
-std::string Logger::format(LogLevel level, const std::string &message,
+std::string Logger::format(const std::string &name, LogLevel level,
+                           const std::string &message,
                            const std::source_location &location,
                            const LogFormat &format) {
   std::stringstream ss;
@@ -131,21 +152,21 @@ std::string Logger::format(LogLevel level, const std::string &message,
     level_ss << std::string(
         std::max<std::size_t>(0, format.level_width - level_ss.str().size()),
         ' ');
-    ss << level_ss.str();
+    ss << level_ss.str() << " ";
   }
 
   if (format.name_width > 0) {
-    std::string name = location.function_name();
     std::stringstream name_ss;
     name_ss << name.substr(0, format.name_width);
     name_ss << std::string(
         std::max<std::size_t>(0, format.name_width - name_ss.str().size()),
         ' ');
-    ss << name_ss.str();
+    ss << name_ss.str() << " ";
   }
 
   if (format.location_width > 0) {
-    std::string file_name = location.file_name();
+    std::string file_name =
+        std::filesystem::path(location.file_name()).filename().string();
     std::string line_number = std::to_string(location.line());
     std::stringstream location_ss;
     if (file_name.size() + 1 + line_number.size() > format.location_width) {
@@ -163,7 +184,7 @@ std::string Logger::format(LogLevel level, const std::string &message,
         std::max<std::size_t>(0,
                               format.location_width - location_ss.str().size()),
         ' ');
-    ss << location_ss.str();
+    ss << location_ss.str() << " ";
   }
 
   ss << message;
