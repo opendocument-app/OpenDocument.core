@@ -4,6 +4,7 @@
 #include <source_location>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace odr {
 
