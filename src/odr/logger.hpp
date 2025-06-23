@@ -40,6 +40,7 @@ struct LogFormat {
 
 class Logger {
 public:
+  static Logger &null();
   static std::unique_ptr<Logger>
   create_stdio(const std::string &name, LogLevel level,
                const LogFormat &format = LogFormat(),

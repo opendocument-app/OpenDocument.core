@@ -10,6 +10,16 @@ namespace odr {
 
 namespace {
 
+class NullLogger : public Logger {
+public:
+  [[nodiscard]] bool will_log(LogLevel) const override { return false; }
+
+  void log_impl(LogLevel, const std::string &,
+                const std::source_location &) override {
+    // Do nothing
+  }
+};
+
 class StdioLogger : public Logger {
 public:
   StdioLogger(std::string name, LogLevel level, LogFormat format,
@@ -83,6 +93,11 @@ std::string_view level_to_string(LogLevel level) {
 }
 
 } // namespace
+
+Logger &Logger::null() {
+  static NullLogger null_logger;
+  return null_logger;
+}
 
 std::unique_ptr<Logger>
 Logger::create_stdio(const std::string &name, LogLevel level,
