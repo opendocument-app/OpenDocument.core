@@ -8,24 +8,6 @@
 
 namespace odr {
 
-#define ODR_LOG(level, message)                                                \
-  do {                                                                         \
-    if (logger().will_log(level)) {                                            \
-      std::stringstream ss;                                                    \
-      ss << message;                                                           \
-      logger().log(level, ss.str());                                           \
-    }                                                                          \
-  } while (0)
-#define ODR_VERBOSE(message) ODR_LOG(LogLevel::verbose, message)
-#define ODR_DEBUG(message) ODR_LOG(LogLevel::debug, message)
-#define ODR_INFO(message) ODR_LOG(LogLevel::info, message)
-#define ODR_WARNING(message) ODR_LOG(LogLevel::warning, message)
-#define ODR_ERROR(message) ODR_LOG(LogLevel::error, message)
-#define ODR_FATAL(message) ODR_LOG(LogLevel::fatal, message)
-
-#define ODR_LOCAL_LOGGER(_logger)                                              \
-  const auto logger = [l = _logger]() -> odr::Logger & { return *l; }
-
 enum class LogLevel {
   verbose = 0,
   debug,
@@ -77,3 +59,19 @@ protected:
 };
 
 } // namespace odr
+
+#define ODR_LOG(logger, level, message)                                        \
+  do {                                                                         \
+    odr::Logger *_l = &(*logger);                                              \
+    if (_l->will_log(level)) {                                                 \
+      std::stringstream ss;                                                    \
+      ss << message;                                                           \
+      _l->log(level, ss.str());                                                \
+    }                                                                          \
+  } while (0)
+#define ODR_VERBOSE(logger, message) ODR_LOG(logger, LogLevel::verbose, message)
+#define ODR_DEBUG(logger, message) ODR_LOG(logger, LogLevel::debug, message)
+#define ODR_INFO(logger, message) ODR_LOG(logger, LogLevel::info, message)
+#define ODR_WARNING(logger, message) ODR_LOG(logger, LogLevel::warning, message)
+#define ODR_ERROR(logger, message) ODR_LOG(logger, LogLevel::error, message)
+#define ODR_FATAL(logger, message) ODR_LOG(logger, LogLevel::fatal, message)

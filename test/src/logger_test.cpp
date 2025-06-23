@@ -5,7 +5,9 @@
 using namespace odr;
 
 TEST(Logger, stdout) {
-  ODR_LOCAL_LOGGER(Logger::create_stdio("test", LogLevel::verbose));
+  auto logger = Logger::create_stdio("test", LogLevel::verbose);
 
-  ODR_VERBOSE("Test message with verbose level");
+  logger->log(LogLevel::verbose, "Test message with log function");
+
+  ODR_VERBOSE(logger, "Test message with verbose log macro");
 }
