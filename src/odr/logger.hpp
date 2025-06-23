@@ -34,10 +34,9 @@ public:
   static std::unique_ptr<Logger>
   create_tee(const std::vector<std::shared_ptr<Logger>> &loggers);
 
-  static std::string format(const std::string &name, LogLevel level,
-                            const std::string &message,
-                            const std::source_location &location,
-                            const LogFormat &format);
+  static void print_head(std::ostream &out, const std::string &name,
+                         LogLevel level, const std::source_location &location,
+                         const LogFormat &format);
 
   virtual ~Logger() = default;
 

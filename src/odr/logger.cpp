@@ -45,7 +45,8 @@ public:
 
   void log_impl(LogLevel level, const std::string &message,
                 const std::source_location &location) final {
-    *m_output << format(m_name, level, message, location, m_format) << "\n";
+    print_head(*m_output, m_name, level, location, m_format);
+    *m_output << message << "\n";
   }
 
   void flush() final { m_output->flush(); }
@@ -132,17 +133,14 @@ Logger::create_tee(const std::vector<std::shared_ptr<Logger>> &loggers) {
   return std::make_unique<TeeLogger>(loggers);
 }
 
-std::string Logger::format(const std::string &name, LogLevel level,
-                           const std::string &message,
-                           const std::source_location &location,
-                           const LogFormat &format) {
-  std::stringstream ss;
-
+void Logger::print_head(std::ostream &out, const std::string &name,
+                        LogLevel level, const std::source_location &location,
+                        const LogFormat &format) {
   if (!format.time_format.empty()) {
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
-    ss << std::put_time(std::localtime(&time), format.time_format.c_str())
-       << " ";
+    out << std::put_time(std::localtime(&time), format.time_format.c_str())
+        << " ";
   }
 
   if (format.level_width > 0) {
@@ -152,7 +150,7 @@ std::string Logger::format(const std::string &name, LogLevel level,
     level_ss << std::string(
         std::max<std::size_t>(0, format.level_width - level_ss.str().size()),
         ' ');
-    ss << level_ss.str() << " ";
+    out << level_ss.str() << " ";
   }
 
   if (format.name_width > 0) {
@@ -161,7 +159,7 @@ std::string Logger::format(const std::string &name, LogLevel level,
     name_ss << std::string(
         std::max<std::size_t>(0, format.name_width - name_ss.str().size()),
         ' ');
-    ss << name_ss.str() << " ";
+    out << name_ss.str() << " ";
   }
 
   if (format.location_width > 0) {
@@ -184,12 +182,8 @@ std::string Logger::format(const std::string &name, LogLevel level,
         std::max<std::size_t>(0,
                               format.location_width - location_ss.str().size()),
         ' ');
-    ss << location_ss.str() << " ";
+    out << location_ss.str() << " ";
   }
-
-  ss << message;
-
-  return ss.str();
 }
 
 } // namespace odr
