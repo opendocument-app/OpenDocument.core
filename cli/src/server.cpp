@@ -9,6 +9,8 @@
 using namespace odr;
 
 int main(int argc, char **argv) {
+  auto logger = Logger::create_stdio("odr-server", LogLevel::verbose);
+
   std::string input{argv[1]};
 
   std::optional<std::string> password;
@@ -20,17 +22,17 @@ int main(int argc, char **argv) {
   decode_preference.engine_priority = {
       DecoderEngine::poppler, DecoderEngine::wvware, DecoderEngine::odr};
 
-  DecodedFile decoded_file{input, decode_preference};
+  DecodedFile decoded_file{input, decode_preference, *logger};
 
   if (decoded_file.password_encrypted() && !password) {
-    std::cerr << "document encrypted but no password given" << std::endl;
+    ODR_FATAL(*logger, "document encrypted but no password given");
     return 2;
   }
   if (decoded_file.password_encrypted()) {
     try {
       decoded_file = decoded_file.decrypt(*password);
     } catch (const WrongPasswordError &) {
-      std::cerr << "wrong password" << std::endl;
+      ODR_FATAL(*logger, "wrong password");
       return 1;
     }
   }
@@ -47,10 +49,10 @@ int main(int argc, char **argv) {
   {
     std::string prefix = "one_file";
     HtmlViews views = server.serve_file(decoded_file, prefix, html_config);
-    std::cout << "hosted decoded file with id: " << prefix << std::endl;
+    ODR_INFO(*logger, "hosted decoded file with id: " << prefix);
     for (const auto &view : views) {
-      std::cout << "http://localhost:8080/file/" << prefix << "/" << view.path()
-                << std::endl;
+      ODR_INFO(*logger,
+               "http://localhost:8080/file/" << prefix << "/" << view.path());
     }
   }
 
