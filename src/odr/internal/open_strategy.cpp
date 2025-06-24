@@ -2,6 +2,7 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/logger.hpp>
 #include <odr/odr.hpp>
 
 #include <odr/internal/abstract/archive.hpp>
@@ -150,8 +151,8 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
   return result;
 }
 
-std::vector<DecoderEngine> open_strategy::list_decoder_engines(
-    const std::shared_ptr<abstract::File> & /*file*/, FileType as) {
+std::vector<DecoderEngine>
+open_strategy::list_decoder_engines(const FileType as) {
   std::vector<DecoderEngine> result;
 
   result.push_back(DecoderEngine::odr);
@@ -271,11 +272,11 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, Logger &logger) {
     }
 #endif
 
-    ODR_VERBOSE(logger, "unknown file type");
+    ODR_ERROR(logger, "unknown file type");
     throw UnknownFileType();
   }
 
-  ODR_VERBOSE(logger, "unsupported file type");
+  ODR_ERROR(logger, "unsupported file type");
   throw UnsupportedFileType(file_type);
 }
 
@@ -307,8 +308,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       throw NoOpenDocumentFile();
     }
-    ODR_VERBOSE(logger, "unsupported decoder engine for odf "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for odf "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -337,8 +338,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       throw NoOfficeOpenXmlFile();
     }
-    ODR_VERBOSE(logger, "unsupported decoder engine for ooxml "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for ooxml "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -371,8 +372,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       throw NoLegacyMicrosoftFile();
     }
 #endif
-    ODR_VERBOSE(logger, "unsupported decoder engine for legacy ms "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for legacy ms "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -399,8 +400,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       throw NoPdfFile();
     }
 #endif
-    ODR_VERBOSE(logger, "unsupported decoder engine for pdf "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for pdf "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -417,8 +418,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       throw NoImageFile();
     }
-    ODR_VERBOSE(logger, "unsupported decoder engine for image "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for image "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -434,8 +435,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       throw NoSvmFile();
     }
-    ODR_VERBOSE(logger, "unsupported decoder engine for svm "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for svm "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -450,8 +451,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       throw NoTextFile();
     }
-    ODR_VERBOSE(logger, "unsupported decoder engine for text file "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for text file "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -467,8 +468,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       throw NoCsvFile();
     }
-    ODR_VERBOSE(logger, "unsupported decoder engine for csv "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for csv "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -484,8 +485,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       throw NoJsonFile();
     }
-    ODR_VERBOSE(logger, "unsupported decoder engine for json "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for json "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -501,8 +502,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       throw NoZipFile();
     }
-    ODR_VERBOSE(logger, "unsupported decoder engine for zip "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for zip "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
@@ -518,14 +519,14 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       }
       throw NoCfbFile();
     }
-    ODR_VERBOSE(logger, "unsupported decoder engine for cfb "
-                            << decoder_engine_to_string(with));
+    ODR_ERROR(logger, "unsupported decoder engine for cfb "
+                          << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }
 
-  ODR_VERBOSE(logger, "unsupported file type "
-                          << file_type_to_string(as) << " with decoder engine "
-                          << decoder_engine_to_string(with));
+  ODR_ERROR(logger, "unsupported file type " << file_type_to_string(as)
+                                             << " with decoder engine "
+                                             << decoder_engine_to_string(with));
   throw UnsupportedFileType(as);
 }
 
@@ -539,7 +540,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
     probe_types.push_back(*preference.as_file_type);
   } else {
     ODR_VERBOSE(logger, "probe file types");
-    std::vector<FileType> detected_types = list_file_types(file);
+    std::vector<FileType> detected_types = list_file_types(file, logger);
     probe_types.insert(probe_types.end(), detected_types.begin(),
                        detected_types.end());
     auto probe_types_end = std::unique(probe_types.begin(), probe_types.end());
@@ -562,7 +563,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
     } else {
       ODR_VERBOSE(logger, "probe decoder engines");
       std::vector<DecoderEngine> detected_engines =
-          list_decoder_engines(file, as);
+          open_strategy::list_decoder_engines(as);
       probe_engines.insert(probe_engines.end(), detected_engines.begin(),
                            detected_engines.end());
       auto probe_engines_end =
@@ -587,7 +588,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
     }
   }
 
-  ODR_VERBOSE(logger, "no suitable file type found");
+  ODR_ERROR(logger, "no suitable file type found");
   throw UnknownFileType();
 }
 
@@ -646,8 +647,8 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file,
     }
   }
 
-  ODR_VERBOSE(logger, "unsupported file type for document file "
-                          << file_type_to_string(file_type));
+  ODR_ERROR(logger, "unsupported file type for document file "
+                        << file_type_to_string(file_type));
   throw NoDocumentFile();
 }
 

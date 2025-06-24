@@ -229,20 +229,20 @@ std::vector<odr::FileType> odr::list_file_types(const std::string &path) {
   return DecodedFile::list_file_types(path);
 }
 
-std::vector<odr::DecoderEngine>
-odr::list_decoder_engines(const std::string &path, const FileType as) {
-  return DecodedFile::list_decoder_engines(path, as);
+std::vector<odr::DecoderEngine> odr::list_decoder_engines(const FileType as) {
+  return DecodedFile::list_decoder_engines(as);
 }
 
-odr::DecodedFile odr::open(const std::string &path) {
-  return DecodedFile(path);
+odr::DecodedFile odr::open(const std::string &path, Logger &logger) {
+  return DecodedFile(path, logger);
 }
 
-odr::DecodedFile odr::open(const std::string &path, const FileType as) {
-  return DecodedFile(path, as);
+odr::DecodedFile odr::open(const std::string &path, const FileType as,
+                           Logger &logger) {
+  return DecodedFile(path, as, logger);
 }
 
 odr::DecodedFile odr::open(const std::string &path,
-                           const DecodePreference &preference) {
-  return DecodedFile(path, preference);
+                           const DecodePreference &preference, Logger &logger) {
+  return DecodedFile(path, preference, logger);
 }

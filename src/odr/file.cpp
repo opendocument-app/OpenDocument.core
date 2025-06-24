@@ -60,15 +60,14 @@ void File::copy(const std::string &path) const {
 
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
-std::vector<FileType> DecodedFile::list_file_types(const std::string &path) {
+std::vector<FileType> DecodedFile::list_file_types(const std::string &path,
+                                                   Logger &logger) {
   return internal::open_strategy::list_file_types(
-      std::make_shared<internal::common::DiskFile>(path));
+      std::make_shared<internal::common::DiskFile>(path), logger);
 }
 
-std::vector<DecoderEngine>
-DecodedFile::list_decoder_engines(const std::string &path, FileType as) {
-  return internal::open_strategy::list_decoder_engines(
-      std::make_shared<internal::common::DiskFile>(path), as);
+std::vector<DecoderEngine> DecodedFile::list_decoder_engines(FileType as) {
+  return internal::open_strategy::list_decoder_engines(as);
 }
 
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
@@ -78,24 +77,26 @@ DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
   }
 }
 
-DecodedFile::DecodedFile(const File &file)
-    : DecodedFile(internal::open_strategy::open_file(file.impl())) {}
+DecodedFile::DecodedFile(const File &file, Logger &logger)
+    : DecodedFile(internal::open_strategy::open_file(file.impl(), logger)) {}
 
-DecodedFile::DecodedFile(const File &file, FileType as)
-    : DecodedFile(internal::open_strategy::open_file(file.impl(), as)) {}
+DecodedFile::DecodedFile(const File &file, FileType as, Logger &logger)
+    : DecodedFile(internal::open_strategy::open_file(file.impl(), as, logger)) {
+}
 
-DecodedFile::DecodedFile(const std::string &path)
+DecodedFile::DecodedFile(const std::string &path, Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(
-          std::make_shared<internal::common::DiskFile>(path))) {}
+          std::make_shared<internal::common::DiskFile>(path), logger)) {}
 
-DecodedFile::DecodedFile(const std::string &path, FileType as)
+DecodedFile::DecodedFile(const std::string &path, FileType as, Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(
-          std::make_shared<internal::common::DiskFile>(path), as)) {}
+          std::make_shared<internal::common::DiskFile>(path), as, logger)) {}
 
 DecodedFile::DecodedFile(const std::string &path,
-                         const DecodePreference &preference)
+                         const DecodePreference &preference, Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(
-          std::make_shared<internal::common::DiskFile>(path), preference)) {}
+          std::make_shared<internal::common::DiskFile>(path), preference,
+          logger)) {}
 
 File DecodedFile::file() const { return File(m_impl->file()); }
 
@@ -227,9 +228,9 @@ DocumentFile::DocumentFile(
     std::shared_ptr<internal::abstract::DocumentFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
-DocumentFile::DocumentFile(const std::string &path)
+DocumentFile::DocumentFile(const std::string &path, Logger &logger)
     : DocumentFile(internal::open_strategy::open_document_file(
-          std::make_shared<internal::common::DiskFile>(path))) {}
+          std::make_shared<internal::common::DiskFile>(path), logger)) {}
 
 DocumentType DocumentFile::document_type() const {
   return m_impl->document_type();

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/logger.hpp>
+
 #include <functional>
 #include <string>
 #include <vector>
@@ -64,26 +66,27 @@ file_type_by_file_extension(const std::string &extension) noexcept;
 /// @return The file types.
 [[nodiscard]] std::vector<FileType> list_file_types(const std::string &path);
 /// @brief Determine the decoder engines for a file path and file type.
-/// @param path The file path.
 /// @param as The file type.
 /// @return The decoder engines.
-[[nodiscard]] std::vector<DecoderEngine>
-list_decoder_engines(const std::string &path, FileType as);
+[[nodiscard]] std::vector<DecoderEngine> list_decoder_engines(FileType as);
 
 /// @brief Open a file.
 /// @param path The file path.
 /// @return The decoded file.
-[[nodiscard]] DecodedFile open(const std::string &path);
+[[nodiscard]] DecodedFile open(const std::string &path,
+                               Logger &logger = Logger::null());
 /// @brief Open a file.
 /// @param path The file path.
 /// @param as The file type.
 /// @return The decoded file.
-[[nodiscard]] DecodedFile open(const std::string &path, FileType as);
+[[nodiscard]] DecodedFile open(const std::string &path, FileType as,
+                               Logger &logger = Logger::null());
 /// @brief Open a file.
 /// @param path The file path.
 /// @param preference The decode preference.
 /// @return The decoded file.
 [[nodiscard]] DecodedFile open(const std::string &path,
-                               const DecodePreference &preference);
+                               const DecodePreference &preference,
+                               Logger &logger = Logger::null());
 
 } // namespace odr
