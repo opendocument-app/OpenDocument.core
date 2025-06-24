@@ -4,7 +4,7 @@
 
 using namespace odr;
 
-TEST(Logger, stdout) {
+TEST(Logger, stdio) {
   auto logger = Logger::create_stdio("test", LogLevel::verbose);
 
   logger->log(LogLevel::verbose, "Test message with log function");

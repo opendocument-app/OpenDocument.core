@@ -1,7 +1,6 @@
 #include <odr/logger.hpp>
 
 #include <algorithm>
-#include <chrono>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
@@ -16,7 +15,7 @@ class NullLogger final : public Logger {
 public:
   [[nodiscard]] bool will_log(LogLevel) const final { return false; }
 
-  void log_impl(LogLevel, const std::string &,
+  void log_impl(Time, LogLevel, const std::string &,
                 const std::source_location &) final {
     // Do nothing
   }
@@ -43,9 +42,9 @@ public:
     return level >= m_level;
   }
 
-  void log_impl(LogLevel level, const std::string &message,
+  void log_impl(Time time, LogLevel level, const std::string &message,
                 const std::source_location &location) final {
-    print_head(*m_output, m_name, level, location, m_format);
+    print_head(*m_output, time, level, m_name, location, m_format);
     *m_output << message << "\n";
   }
 
@@ -75,13 +74,13 @@ public:
     });
   }
 
-  void log_impl(LogLevel level, const std::string &message,
+  void log_impl(Time time, LogLevel level, const std::string &message,
                 const std::source_location &location) final {
     for (const auto &logger : m_loggers) {
       if (!logger->will_log(level)) {
         continue;
       }
-      logger->log(level, message, location);
+      logger->log(level, message, time, location);
     }
   }
 
@@ -133,14 +132,13 @@ Logger::create_tee(const std::vector<std::shared_ptr<Logger>> &loggers) {
   return std::make_unique<TeeLogger>(loggers);
 }
 
-void Logger::print_head(std::ostream &out, const std::string &name,
-                        LogLevel level, const std::source_location &location,
+void Logger::print_head(std::ostream &out, Time time, LogLevel level,
+                        const std::string &name,
+                        const std::source_location &location,
                         const LogFormat &format) {
   if (!format.time_format.empty()) {
-    auto now = std::chrono::system_clock::now();
-    auto time = std::chrono::system_clock::to_time_t(now);
-    out << std::put_time(std::localtime(&time), format.time_format.c_str())
-        << " ";
+    auto t = Clock::to_time_t(time);
+    out << std::put_time(std::localtime(&t), format.time_format.c_str()) << " ";
   }
 
   if (format.level_width > 0) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <source_location>
 #include <sstream>
@@ -26,6 +27,9 @@ struct LogFormat {
 
 class Logger {
 public:
+  using Clock = std::chrono::system_clock;
+  using Time = Clock::time_point;
+
   static Logger &null();
   static std::unique_ptr<Logger>
   create_stdio(const std::string &name, LogLevel level,
@@ -34,8 +38,9 @@ public:
   static std::unique_ptr<Logger>
   create_tee(const std::vector<std::shared_ptr<Logger>> &loggers);
 
-  static void print_head(std::ostream &out, const std::string &name,
-                         LogLevel level, const std::source_location &location,
+  static void print_head(std::ostream &out, Time time, LogLevel level,
+                         const std::string &name,
+                         const std::source_location &location,
                          const LogFormat &format);
 
   virtual ~Logger() = default;
@@ -43,17 +48,17 @@ public:
   [[nodiscard]] virtual bool will_log(LogLevel level) const = 0;
 
   inline void
-  log(LogLevel level, const std::string &message,
+  log(LogLevel level, const std::string &message, Time time = Clock::now(),
       const std::source_location &location = std::source_location::current()) {
     if (will_log(level)) {
-      log_impl(level, message, location);
+      log_impl(time, level, message, location);
     }
   }
 
   virtual void flush() = 0;
 
 protected:
-  virtual void log_impl(LogLevel level, const std::string &message,
+  virtual void log_impl(Time time, LogLevel level, const std::string &message,
                         const std::source_location &location) = 0;
 };
 
