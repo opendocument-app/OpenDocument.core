@@ -31,6 +31,7 @@ public:
   using Time = Clock::time_point;
 
   static Logger &null();
+  static std::unique_ptr<Logger> create_null();
   static std::unique_ptr<Logger>
   create_stdio(const std::string &name, LogLevel level,
                const LogFormat &format = LogFormat(),

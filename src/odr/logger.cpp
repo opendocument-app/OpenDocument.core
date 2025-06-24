@@ -120,6 +120,10 @@ Logger &Logger::null() {
   return null_logger;
 }
 
+std::unique_ptr<Logger> Logger::create_null() {
+  return std::make_unique<NullLogger>();
+}
+
 std::unique_ptr<Logger>
 Logger::create_stdio(const std::string &name, LogLevel level,
                      const LogFormat &format,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 namespace odr {
@@ -7,12 +8,14 @@ enum class FileType;
 struct HtmlConfig;
 class HtmlService;
 class Filesystem;
+class Logger;
 } // namespace odr
 
 namespace odr::internal::html {
 
 odr::HtmlService create_filesystem_service(const Filesystem &filesystem,
                                            const std::string &cache_path,
-                                           HtmlConfig config);
+                                           HtmlConfig config,
+                                           std::shared_ptr<Logger> logger);
 
 }

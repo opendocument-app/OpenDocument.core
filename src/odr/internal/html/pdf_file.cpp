@@ -19,12 +19,15 @@
 #include <fstream>
 
 namespace odr::internal::html {
+
 namespace {
 
 class HtmlServiceImpl : public HtmlService {
 public:
-  HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config)
-      : HtmlService(std::move(config)), m_pdf_file{std::move(pdf_file)} {
+  HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config,
+                  std::shared_ptr<Logger> logger)
+      : HtmlService(std::move(config), std::move(logger)),
+        m_pdf_file{std::move(pdf_file)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "document", "document.html"));
   }
@@ -203,17 +206,17 @@ protected:
 };
 
 } // namespace
+
 } // namespace odr::internal::html
 
 namespace odr::internal {
 
 odr::HtmlService html::create_pdf_service(const PdfFile &pdf_file,
-                                          const std::string &cache_path,
-                                          HtmlConfig config) {
-  (void)cache_path;
-
-  return odr::HtmlService(
-      std::make_unique<HtmlServiceImpl>(pdf_file, std::move(config)));
+                                          const std::string & /*cache_path*/,
+                                          HtmlConfig config,
+                                          std::shared_ptr<Logger> logger) {
+  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
+      pdf_file, std::move(config), std::move(logger)));
 }
 
 } // namespace odr::internal

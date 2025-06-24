@@ -194,9 +194,9 @@ class HtmlServiceImpl : public HtmlService {
 public:
   HtmlServiceImpl(Document document,
                   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments,
-                  HtmlConfig config)
-      : HtmlService(std::move(config)), m_document{std::move(document)},
-        m_fragments{std::move(fragments)} {
+                  HtmlConfig config, std::shared_ptr<Logger> logger)
+      : HtmlService(std::move(config), std::move(logger)),
+        m_document{std::move(document)}, m_fragments{std::move(fragments)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "document", "document.html"));
     for (const auto &fragment : m_fragments) {
@@ -413,11 +413,9 @@ private:
 
 namespace odr::internal {
 
-odr::HtmlService html::create_document_service(const Document &document,
-                                               const std::string &cache_path,
-                                               HtmlConfig config) {
-  (void)cache_path;
-
+odr::HtmlService html::create_document_service(
+    const Document &document, const std::string & /*cache_path*/,
+    HtmlConfig config, std::shared_ptr<Logger> logger) {
   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments;
 
   if (document.document_type() == DocumentType::text) {
@@ -454,8 +452,8 @@ odr::HtmlService html::create_document_service(const Document &document,
     throw UnknownDocumentType();
   }
 
-  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(document, fragments,
-                                                            std::move(config)));
+  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
+      document, fragments, std::move(config), std::move(logger)));
 }
 
 } // namespace odr::internal
