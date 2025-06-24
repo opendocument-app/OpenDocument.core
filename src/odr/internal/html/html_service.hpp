@@ -13,11 +13,11 @@ public:
 
   [[nodiscard]] const HtmlConfig &config() const override;
 
-protected:
-  std::shared_ptr<Logger> m_logger;
-
 private:
   HtmlConfig m_config;
+
+protected:
+  std::shared_ptr<Logger> m_logger;
 };
 
 class HtmlView : public abstract::HtmlView {
