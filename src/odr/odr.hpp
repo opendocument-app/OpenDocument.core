@@ -64,7 +64,8 @@ file_type_by_file_extension(const std::string &extension) noexcept;
 /// @brief Determine the file types by the file path.
 /// @param path The file path.
 /// @return The file types.
-[[nodiscard]] std::vector<FileType> list_file_types(const std::string &path);
+[[nodiscard]] std::vector<FileType>
+list_file_types(const std::string &path, Logger &logger = Logger::null());
 /// @brief Determine the decoder engines for a file path and file type.
 /// @param as The file type.
 /// @return The decoder engines.

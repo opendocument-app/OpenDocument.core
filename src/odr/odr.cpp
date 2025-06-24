@@ -225,8 +225,9 @@ odr::DecoderEngine odr::decoder_engine_by_name(const std::string &name) {
   throw UnknownDecoderEngine();
 }
 
-std::vector<odr::FileType> odr::list_file_types(const std::string &path) {
-  return DecodedFile::list_file_types(path);
+std::vector<odr::FileType> odr::list_file_types(const std::string &path,
+                                                Logger &logger) {
+  return DecodedFile::list_file_types(path, logger);
 }
 
 std::vector<odr::DecoderEngine> odr::list_decoder_engines(const FileType as) {
