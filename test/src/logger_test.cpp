@@ -9,5 +9,5 @@ TEST(Logger, stdio) {
 
   logger->log(LogLevel::verbose, "Test message with log function");
 
-  ODR_VERBOSE(logger, "Test message with verbose log macro");
+  ODR_VERBOSE(*logger, "Test message with verbose log macro");
 }

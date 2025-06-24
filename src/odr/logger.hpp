@@ -66,11 +66,10 @@ protected:
 
 #define ODR_LOG(logger, level, message)                                        \
   do {                                                                         \
-    odr::Logger *_l = &(*logger);                                              \
-    if (_l->will_log(level)) {                                                 \
+    if ((logger).will_log(level)) {                                            \
       std::stringstream ss;                                                    \
       ss << message;                                                           \
-      _l->log(level, ss.str());                                                \
+      (logger).log(level, ss.str());                                           \
     }                                                                          \
   } while (0)
 #define ODR_VERBOSE(logger, message) ODR_LOG(logger, LogLevel::verbose, message)
