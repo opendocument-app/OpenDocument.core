@@ -798,8 +798,9 @@ option to support correct symbol font conversion to a viewable format.\n";
 class HtmlServiceImpl : public HtmlService {
 public:
   HtmlServiceImpl(WvWareLegacyMicrosoftFile oldms_file, HtmlConfig config,
-                  std::string cache_path)
-      : HtmlService(std::move(config)), m_oldms_file{std::move(oldms_file)},
+                  std::string cache_path, std::shared_ptr<Logger> logger)
+      : HtmlService(std::move(config), std::move(logger)),
+        m_oldms_file{std::move(oldms_file)},
         m_cache_path{std::move(cache_path)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "document", "document.html"));
@@ -895,12 +896,11 @@ protected:
 
 namespace odr::internal {
 
-odr::HtmlService
-html::create_wvware_oldms_service(const WvWareLegacyMicrosoftFile &oldms_file,
-                                  const std::string &cache_path,
-                                  HtmlConfig config) {
+odr::HtmlService html::create_wvware_oldms_service(
+    const WvWareLegacyMicrosoftFile &oldms_file, const std::string &cache_path,
+    HtmlConfig config, std::shared_ptr<Logger> logger) {
   return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
-      oldms_file, std::move(config), cache_path));
+      oldms_file, std::move(config), cache_path, std::move(logger)));
 }
 
 } // namespace odr::internal

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/logger.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -174,16 +176,19 @@ protected:
 /// @brief Represents a decoded file.
 class DecodedFile {
 public:
-  static std::vector<FileType> list_file_types(const std::string &path);
-  static std::vector<DecoderEngine>
-  list_decoder_engines(const std::string &path, FileType as);
+  static std::vector<FileType> list_file_types(const std::string &path,
+                                               Logger &logger = Logger::null());
+  static std::vector<DecoderEngine> list_decoder_engines(FileType as);
 
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
-  explicit DecodedFile(const File &file);
-  DecodedFile(const File &file, FileType as);
-  explicit DecodedFile(const std::string &path);
-  DecodedFile(const std::string &path, FileType as);
-  DecodedFile(const std::string &path, const DecodePreference &preference);
+  explicit DecodedFile(const File &file, Logger &logger = Logger::null());
+  DecodedFile(const File &file, FileType as, Logger &logger = Logger::null());
+  explicit DecodedFile(const std::string &path,
+                       Logger &logger = Logger::null());
+  DecodedFile(const std::string &path, FileType as,
+              Logger &logger = Logger::null());
+  DecodedFile(const std::string &path, const DecodePreference &preference,
+              Logger &logger = Logger::null());
 
   [[nodiscard]] File file() const;
 
@@ -255,7 +260,8 @@ public:
   static FileMeta meta(const std::string &path);
 
   explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
-  explicit DocumentFile(const std::string &path);
+  explicit DocumentFile(const std::string &path,
+                        Logger &logger = Logger::null());
 
   [[nodiscard]] DocumentType document_type() const;
   [[nodiscard]] DocumentMeta document_meta() const;

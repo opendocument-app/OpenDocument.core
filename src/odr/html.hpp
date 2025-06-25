@@ -2,9 +2,11 @@
 
 #include <odr/document.hpp>
 #include <odr/file.hpp>
+#include <odr/logger.hpp>
 #include <odr/style.hpp>
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -189,67 +191,83 @@ HtmlResourceLocator standard_resource_locator();
 /// @param file Decoded file to translate.
 /// @param cache_path Directory path for temporary output.
 /// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
 /// @return HTML output.
 HtmlService translate(const DecodedFile &file, const std::string &cache_path,
-                      const HtmlConfig &config);
+                      const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 
 /// @brief Translates a text file to HTML.
 ///
 /// @param text_file Text file to translate.
 /// @param cache_path Directory path for temporary output.
 /// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
 /// @return HTML output.
 HtmlService translate(const TextFile &text_file, const std::string &cache_path,
-                      const HtmlConfig &config);
+                      const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 /// @brief Translates an image file to HTML.
 ///
 /// @param image_file Image file to translate.
 /// @param cache_path Directory path for temporary output.
 /// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
 /// @return HTML output.
 HtmlService translate(const ImageFile &image_file,
-                      const std::string &cache_path, const HtmlConfig &config);
+                      const std::string &cache_path, const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 /// @brief Translates an archive to HTML.
 ///
 /// @param archive Archive file to translate.
 /// @param cache_path Directory path for temporary output.
 /// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
 /// @return HTML output.
 HtmlService translate(const ArchiveFile &archive_file,
-                      const std::string &cache_path, const HtmlConfig &config);
+                      const std::string &cache_path, const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 /// @brief Translates a document to HTML.
 ///
 /// @param document_file Document file to translate.
 /// @param cache_path Directory path for temporary output.
 /// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
 /// @return HTML output.
 HtmlService translate(const DocumentFile &document_file,
-                      const std::string &cache_path, const HtmlConfig &config);
+                      const std::string &cache_path, const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 /// @brief Translates a PDF file to HTML.
 ///
 /// @param pdf_file PDF file to translate.
 /// @param cache_path Directory path for temporary output.
 /// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
 /// @return HTML output.
 HtmlService translate(const PdfFile &pdf_file, const std::string &cache_path,
-                      const HtmlConfig &config);
+                      const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 
 /// @brief Translates an archive to HTML.
 ///
 /// @param archive Archive to translate.
 /// @param cache_path Directory path for temporary output.
 /// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
 /// @return HTML output.
 HtmlService translate(const Archive &archive, const std::string &cache_path,
-                      const HtmlConfig &config);
+                      const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 /// @brief Translates a document to HTML.
 ///
 /// @param document Document to translate.
 /// @param cache_path Directory path for temporary output.
 /// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
 /// @return HTML output.
 HtmlService translate(const Document &document, const std::string &cache_path,
-                      const HtmlConfig &config);
+                      const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 
 /// @brief Edits a document with a diff.
 ///
@@ -257,7 +275,9 @@ HtmlService translate(const Document &document, const std::string &cache_path,
 ///
 /// @param document Document to edit.
 /// @param diff Diff to apply.
-void edit(const Document &document, const char *diff);
+/// @param logger Logger to use for logging.
+void edit(const Document &document, const char *diff,
+          Logger &logger = Logger::null());
 
 } // namespace html
 

@@ -7,6 +7,7 @@ namespace odr {
 enum class FileType;
 enum class DecoderEngine;
 struct DecodePreference;
+class Logger;
 } // namespace odr
 
 namespace odr::internal::abstract {
@@ -21,23 +22,24 @@ class Path;
 
 namespace odr::internal::open_strategy {
 std::vector<FileType>
-list_file_types(const std::shared_ptr<internal::abstract::File> &file);
-std::vector<DecoderEngine>
-list_decoder_engines(const std::shared_ptr<internal::abstract::File> &file,
-                     FileType as);
+list_file_types(const std::shared_ptr<internal::abstract::File> &file,
+                Logger &logger);
+std::vector<DecoderEngine> list_decoder_engines(FileType as);
 
 std::unique_ptr<internal::abstract::DecodedFile>
-open_file(std::shared_ptr<internal::abstract::File> file);
+open_file(std::shared_ptr<internal::abstract::File> file, Logger &logger);
 std::unique_ptr<internal::abstract::DecodedFile>
-open_file(std::shared_ptr<internal::abstract::File> file, FileType as);
+open_file(std::shared_ptr<internal::abstract::File> file, FileType as,
+          Logger &logger);
 
 std::unique_ptr<internal::abstract::DecodedFile>
 open_file(std::shared_ptr<internal::abstract::File> file, FileType as,
-          DecoderEngine with);
+          DecoderEngine with, Logger &logger);
 std::unique_ptr<internal::abstract::DecodedFile>
 open_file(std::shared_ptr<internal::abstract::File> file,
-          const DecodePreference &preference);
+          const DecodePreference &preference, Logger &logger);
 
 std::unique_ptr<internal::abstract::DocumentFile>
-open_document_file(std::shared_ptr<internal::abstract::File> file);
+open_document_file(std::shared_ptr<internal::abstract::File> file,
+                   Logger &logger);
 } // namespace odr::internal::open_strategy

@@ -1,6 +1,7 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/file.hpp>
+#include <odr/odr.hpp>
 
 namespace odr {
 
@@ -18,10 +19,18 @@ FileNotFound::FileNotFound(const std::string &path)
 UnknownFileType::UnknownFileType() : std::runtime_error("unknown file type") {}
 
 UnsupportedFileType::UnsupportedFileType(const FileType file_type)
-    : std::runtime_error("unknown file type"), file_type{file_type} {}
+    : std::runtime_error("unknown file type: " +
+                         file_type_to_string(file_type)),
+      file_type{file_type} {}
 
 UnknownDecoderEngine::UnknownDecoderEngine()
     : std::runtime_error("unknown decoder engine") {}
+
+UnsupportedDecoderEngine::UnsupportedDecoderEngine(
+    const DecoderEngine decoder_engine)
+    : std::runtime_error("unsupported decoder engine: " +
+                         decoder_engine_to_string(decoder_engine)),
+      decoder_engine{decoder_engine} {}
 
 FileReadError::FileReadError() : std::runtime_error("file read error") {}
 

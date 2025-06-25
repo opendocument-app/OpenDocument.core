@@ -179,9 +179,9 @@ public:
                   std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
                   std::shared_ptr<std::mutex> html_renderer_mutex,
                   std::shared_ptr<pdf2htmlEX::Param> html_renderer_param,
-                  HtmlConfig config)
-      : HtmlService(std::move(config)), m_pdf_file{std::move(pdf_file)},
-        m_cache_path{std::move(cache_path)},
+                  HtmlConfig config, std::shared_ptr<Logger> logger)
+      : HtmlService(std::move(config), std::move(logger)),
+        m_pdf_file{std::move(pdf_file)}, m_cache_path{std::move(cache_path)},
         m_html_renderer{std::move(html_renderer)},
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
         m_html_renderer_param{std::move(html_renderer_param)} {
@@ -298,10 +298,9 @@ private:
 
 namespace odr::internal {
 
-odr::HtmlService
-html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
-                                 const std::string &cache_path,
-                                 HtmlConfig config) {
+odr::HtmlService html::create_poppler_pdf_service(
+    const PopplerPdfFile &pdf_file, const std::string &cache_path,
+    HtmlConfig config, std::shared_ptr<Logger> logger) {
   PDFDoc &pdf_doc = pdf_file.pdf_doc();
 
   auto html_renderer_param = std::make_shared<pdf2htmlEX::Param>(
@@ -331,7 +330,7 @@ html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
   return odr::HtmlService(std::make_shared<HtmlServiceImpl>(
       pdf_file, cache_path, std::move(html_renderer),
       std::move(html_renderer_mutex), std::move(html_renderer_param),
-      std::move(config)));
+      std::move(config), std::move(logger)));
 }
 
 } // namespace odr::internal

@@ -14,8 +14,9 @@ add_executable(odr_test
         "src/document_path_test.cpp"
         "src/document_test.cpp"
         "src/file_test.cpp"
-        "src/odr_test.cpp"
         "src/html_output_test.cpp"
+        "src/logger_test.cpp"
+        "src/odr_test.cpp"
         "src/quantity_test.cpp"
 
         "src/internal/magic_test.cpp"

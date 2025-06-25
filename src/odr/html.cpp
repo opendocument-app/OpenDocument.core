@@ -214,17 +214,23 @@ void HtmlResource::write_resource(std::ostream &os) const {
 
 HtmlService html::translate(const DecodedFile &decoded_file,
                             const std::string &output_path,
-                            const HtmlConfig &config) {
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
   if (decoded_file.is_text_file()) {
-    return translate(decoded_file.as_text_file(), output_path, config);
+    return translate(decoded_file.as_text_file(), output_path, config,
+                     std::move(logger));
   } else if (decoded_file.is_image_file()) {
-    return translate(decoded_file.as_image_file(), output_path, config);
+    return translate(decoded_file.as_image_file(), output_path, config,
+                     std::move(logger));
   } else if (decoded_file.is_archive_file()) {
-    return translate(decoded_file.as_archive_file(), output_path, config);
+    return translate(decoded_file.as_archive_file(), output_path, config,
+                     std::move(logger));
   } else if (decoded_file.is_document_file()) {
-    return translate(decoded_file.as_document_file(), output_path, config);
+    return translate(decoded_file.as_document_file(), output_path, config,
+                     std::move(logger));
   } else if (decoded_file.is_pdf_file()) {
-    return translate(decoded_file.as_pdf_file(), output_path, config);
+    return translate(decoded_file.as_pdf_file(), output_path, config,
+                     std::move(logger));
   }
 
   throw UnsupportedFileType(decoded_file.file_type());
@@ -257,27 +263,34 @@ HtmlResourceLocator html::standard_resource_locator() {
 
 HtmlService html::translate(const TextFile &text_file,
                             const std::string &output_path,
-                            const HtmlConfig &config) {
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
   std::filesystem::create_directories(output_path);
-  return internal::html::create_text_service(text_file, output_path, config);
+  return internal::html::create_text_service(text_file, output_path, config,
+                                             std::move(logger));
 }
 
 HtmlService html::translate(const ImageFile &image_file,
                             const std::string &output_path,
-                            const HtmlConfig &config) {
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
   std::filesystem::create_directories(output_path);
-  return internal::html::create_image_service(image_file, output_path, config);
+  return internal::html::create_image_service(image_file, output_path, config,
+                                              std::move(logger));
 }
 
 HtmlService html::translate(const ArchiveFile &archive_file,
                             const std::string &output_path,
-                            const HtmlConfig &config) {
-  return translate(archive_file.archive(), output_path, config);
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
+  return translate(archive_file.archive(), output_path, config,
+                   std::move(logger));
 }
 
 HtmlService html::translate(const DocumentFile &document_file,
                             const std::string &output_path,
-                            const HtmlConfig &config) {
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
   auto document_file_impl = document_file.impl();
 
 #ifdef ODR_WITH_WVWARE
@@ -285,47 +298,54 @@ HtmlService html::translate(const DocumentFile &document_file,
           std::dynamic_pointer_cast<internal::WvWareLegacyMicrosoftFile>(
               document_file_impl)) {
     std::filesystem::create_directories(output_path);
-    return internal::html::create_wvware_oldms_service(*wv_document_file,
-                                                       output_path, config);
+    return internal::html::create_wvware_oldms_service(
+        *wv_document_file, output_path, config, std::move(logger));
   }
 #endif
 
-  return translate(document_file.document(), output_path, config);
+  return translate(document_file.document(), output_path, config,
+                   std::move(logger));
 }
 
 HtmlService html::translate(const PdfFile &pdf_file,
                             const std::string &output_path,
-                            const HtmlConfig &config) {
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
   auto pdf_file_impl = pdf_file.impl();
 
 #ifdef ODR_WITH_PDF2HTMLEX
   if (auto poppler_pdf_file =
           std::dynamic_pointer_cast<internal::PopplerPdfFile>(pdf_file_impl)) {
     std::filesystem::create_directories(output_path);
-    return internal::html::create_poppler_pdf_service(*poppler_pdf_file,
-                                                      output_path, config);
+    return internal::html::create_poppler_pdf_service(
+        *poppler_pdf_file, output_path, config, std::move(logger));
   }
 #endif
 
-  return internal::html::create_pdf_service(pdf_file, output_path, config);
+  return internal::html::create_pdf_service(pdf_file, output_path, config,
+                                            std::move(logger));
 }
 
 HtmlService html::translate(const Archive &archive,
                             const std::string &output_path,
-                            const HtmlConfig &config) {
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
   std::filesystem::create_directories(output_path);
-  return internal::html::create_filesystem_service(archive.as_filesystem(),
-                                                   output_path, config);
+  return internal::html::create_filesystem_service(
+      archive.as_filesystem(), output_path, config, std::move(logger));
 }
 
 HtmlService html::translate(const Document &document,
                             const std::string &output_path,
-                            const HtmlConfig &config) {
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
   std::filesystem::create_directories(output_path);
-  return internal::html::create_document_service(document, output_path, config);
+  return internal::html::create_document_service(document, output_path, config,
+                                                 std::move(logger));
 }
 
-void html::edit(const Document &document, const char *diff) {
+void html::edit(const Document &document, const char *diff,
+                Logger & /*logger*/) {
   auto json = nlohmann::json::parse(diff);
   for (const auto &[key, value] : json["modifiedText"].items()) {
     auto element =

@@ -4,6 +4,7 @@
 
 namespace odr {
 enum class FileType;
+enum class DecoderEngine;
 
 /// @brief Unsupported operation exception
 struct UnsupportedOperation final : public std::runtime_error {
@@ -32,6 +33,13 @@ struct UnsupportedFileType final : public std::runtime_error {
 /// @brief Unknown decoder engine exception
 struct UnknownDecoderEngine final : public std::runtime_error {
   UnknownDecoderEngine();
+};
+
+/// @brief Unsupported decoder engine exception
+struct UnsupportedDecoderEngine final : public std::runtime_error {
+  DecoderEngine decoder_engine;
+
+  explicit UnsupportedDecoderEngine(DecoderEngine decoder_engine);
 };
 
 /// @brief File read error

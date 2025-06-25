@@ -34,6 +34,8 @@ struct TestParams {
 using HtmlOutputTests = ::testing::TestWithParam<TestParams>;
 
 TEST_P(HtmlOutputTests, html_meta) {
+  auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
   const TestParams &params = GetParam();
   const TestFile &test_file = params.test_file;
   const DecoderEngine engine = params.engine;
@@ -64,7 +66,8 @@ TEST_P(HtmlOutputTests, html_meta) {
   DecodePreference decode_preference;
   decode_preference.as_file_type = test_file.type;
   decode_preference.with_engine = engine;
-  DecodedFile file = odr::open(test_file.absolute_path, decode_preference);
+  DecodedFile file =
+      odr::open(test_file.absolute_path, decode_preference, *logger);
 
   FileMeta file_meta = file.file_meta();
 
