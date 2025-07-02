@@ -63,6 +63,8 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
                          const bool decrypted) {
   FileMeta result;
 
+  result.password_encrypted = decrypted;
+
   if (!filesystem.is_file(common::Path("content.xml")) && manifest == nullptr &&
       !filesystem.is_file(common::Path("mimetype"))) {
     throw NoOpenDocumentFile();
@@ -99,6 +101,16 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
 
   DocumentMeta document_meta;
 
+  if (result.type == FileType::opendocument_text) {
+    document_meta.document_type = DocumentType::text;
+  } else if (result.type == FileType::opendocument_presentation) {
+    document_meta.document_type = DocumentType::presentation;
+  } else if (result.type == FileType::opendocument_spreadsheet) {
+    document_meta.document_type = DocumentType::spreadsheet;
+  } else if (result.type == FileType::opendocument_graphics) {
+    document_meta.document_type = DocumentType::drawing;
+  }
+
   if ((result.password_encrypted == decrypted) &&
       filesystem.is_file(common::Path("meta.xml"))) {
     const auto meta_xml =
@@ -109,19 +121,13 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
                                           .child("meta:document-statistic");
 
     if (result.type == FileType::opendocument_text) {
-      document_meta.document_type = DocumentType::text;
       if (auto page_count = statistics.attribute("meta:page-count")) {
         document_meta.entry_count = page_count.as_uint();
       }
-    } else if (result.type == FileType::opendocument_presentation) {
-      document_meta.document_type = DocumentType::presentation;
     } else if (result.type == FileType::opendocument_spreadsheet) {
-      document_meta.document_type = DocumentType::spreadsheet;
       if (auto table_count = statistics.attribute("meta:table-count")) {
         document_meta.entry_count = table_count.as_uint();
       }
-    } else if (result.type == FileType::opendocument_graphics) {
-      document_meta.document_type = DocumentType::drawing;
     }
   }
 
