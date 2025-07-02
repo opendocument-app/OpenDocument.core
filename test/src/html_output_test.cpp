@@ -56,7 +56,7 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  // TODO fix
+  // TODO fix pdf implementation
   if ((engine == DecoderEngine::odr) &&
       (test_file.type == FileType::portable_document_format) &&
       (test_repo != "odr-public")) {
@@ -70,6 +70,18 @@ TEST_P(HtmlOutputTests, html_meta) {
       odr::open(test_file.absolute_path, decode_preference, *logger);
 
   FileMeta file_meta = file.file_meta();
+
+  fs::create_directories(output_path);
+
+  {
+    const std::string meta_output = output_path + "/meta.json";
+    const nlohmann::json json =
+        odr::internal::util::meta::meta_to_json(file_meta);
+    std::ofstream o(meta_output);
+    o << std::setw(4) << json << std::endl;
+    EXPECT_TRUE(fs::is_regular_file(meta_output));
+    EXPECT_LT(0, fs::file_size(meta_output));
+  }
 
   // encrypted ooxml type cannot be inspected
   if ((file.file_type() != FileType::office_open_xml_encrypted)) {
@@ -94,25 +106,25 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   if (test_file.password.has_value()) {
     file = file.decrypt(test_file.password.value());
+
+    // After decryption, the file meta may change
+    file_meta = file.file_meta();
+
+    {
+      const std::string meta_output = output_path + "/meta-decrypted.json";
+      const nlohmann::json json =
+          odr::internal::util::meta::meta_to_json(file_meta);
+      std::ofstream o(meta_output);
+      o << std::setw(4) << json << std::endl;
+      EXPECT_TRUE(fs::is_regular_file(meta_output));
+      EXPECT_LT(0, fs::file_size(meta_output));
+    }
   }
 
   if (file.is_document_file()) {
     DocumentFile document_file = file.as_document_file();
 
     EXPECT_EQ(test_file.type, document_file.file_type());
-  }
-
-  fs::create_directories(output_path);
-  file_meta = file.file_meta();
-
-  {
-    const std::string meta_output = output_path + "/meta.json";
-    const nlohmann::json json =
-        odr::internal::util::meta::meta_to_json(file_meta);
-    std::ofstream o(meta_output);
-    o << std::setw(4) << json << std::endl;
-    EXPECT_TRUE(fs::is_regular_file(meta_output));
-    EXPECT_LT(0, fs::file_size(meta_output));
   }
 
   const std::string resource_path = common::Path(output_path_prefix)
