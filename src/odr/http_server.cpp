@@ -12,7 +12,8 @@ namespace odr {
 
 class HttpServer::Impl {
 public:
-  explicit Impl(HttpServer::Config config) : m_config{std::move(config)} {
+  Impl(HttpServer::Config config, std::shared_ptr<Logger> logger)
+      : m_config{std::move(config)}, m_logger{std::move(logger)} {
     m_server.Get("/",
                  [](const httplib::Request & /*req*/, httplib::Response &res) {
                    res.set_content("Hello World!", "text/plain");
@@ -30,6 +31,8 @@ public:
 
   const HttpServer::Config &config() const { return m_config; }
 
+  const std::shared_ptr<Logger> &logger() const { return m_logger; }
+
   void serve_file(const httplib::Request &req, httplib::Response &res) {
     std::string id = req.matches[1].str();
     std::string path = req.matches.size() > 1 ? req.matches[2].str() : "";
@@ -37,6 +40,7 @@ public:
     std::unique_lock lock{m_mutex};
     auto it = m_content.find(id);
     if (it == m_content.end()) {
+      ODR_ERROR(*m_logger, "Content not found for ID: " << id);
       res.status = 404;
       return;
     }
@@ -46,12 +50,15 @@ public:
     serve_file(res, content.service, path);
   }
 
-  static void serve_file(httplib::Response &res, const HtmlService &service,
-                         const std::string &path) {
+  void serve_file(httplib::Response &res, const HtmlService &service,
+                  const std::string &path) {
     if (!service.exists(path)) {
+      ODR_ERROR(*m_logger, "File not found: " << path);
       res.status = 404;
       return;
     }
+
+    ODR_VERBOSE(*m_logger, "Serving file: " << path);
 
     httplib::ContentProviderWithoutLength content_provider =
         [service = service, path = path](std::size_t offset,
@@ -67,6 +74,8 @@ public:
   }
 
   void connect_service(HtmlService service, const std::string &prefix) {
+    ODR_VERBOSE(*m_logger, "Connecting service with prefix: " << prefix);
+
     std::unique_lock lock{m_mutex};
 
     if (m_content.contains(prefix)) {
@@ -77,10 +86,14 @@ public:
   }
 
   void listen(const std::string &host, std::uint32_t port) {
+    ODR_VERBOSE(*m_logger, "Listening on " << host << ":" << port);
+
     m_server.listen(host, static_cast<int>(port));
   }
 
   void clear() {
+    ODR_VERBOSE(*m_logger, "Clearing HTTP server cache...");
+
     std::unique_lock lock{m_mutex};
 
     m_content.clear();
@@ -92,6 +105,8 @@ public:
   }
 
   void stop() {
+    ODR_VERBOSE(*m_logger, "Stopping HTTP server...");
+
     clear();
 
     m_server.stop();
@@ -99,6 +114,8 @@ public:
 
 private:
   HttpServer::Config m_config;
+
+  std::shared_ptr<Logger> m_logger;
 
   httplib::Server m_server;
 
@@ -111,8 +128,8 @@ private:
   std::unordered_map<std::string, Content> m_content;
 };
 
-HttpServer::HttpServer(const Config &config)
-    : m_impl{std::make_unique<Impl>(config)} {}
+HttpServer::HttpServer(const Config &config, std::shared_ptr<Logger> logger)
+    : m_impl{std::make_unique<Impl>(config, std::move(logger))} {}
 
 const HttpServer::Config &HttpServer::config() const {
   return m_impl->config();
@@ -120,31 +137,32 @@ const HttpServer::Config &HttpServer::config() const {
 
 void HttpServer::connect_service(HtmlService service,
                                  const std::string &prefix) {
-  m_impl->connect_service(std::move(service), prefix);
-}
-
-HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
-                                 const HtmlConfig &config) {
   static std::regex prefix_regex(prefix_pattern);
   if (!std::regex_match(prefix, prefix_regex)) {
     throw InvalidPrefix(prefix);
   }
 
-  if (config.relative_resource_paths) {
+  if (service.config().relative_resource_paths) {
     throw UnsupportedOption(
         "relative_resource_paths cannot be enabled in server mode");
   }
-  if (!config.embed_shipped_resources) {
+  if (!service.config().embed_shipped_resources) {
     throw UnsupportedOption(
         "embed_shipped_resources must be enabled in server mode");
   }
 
+  m_impl->connect_service(std::move(service), prefix);
+}
+
+HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
+                                 const HtmlConfig &config) {
   std::string cache_path = m_impl->config().cache_path + "/" + prefix;
   std::filesystem::create_directories(cache_path);
 
-  HtmlService service = html::translate(file, cache_path, config);
+  HtmlService service =
+      html::translate(file, cache_path, config, m_impl->logger());
 
-  m_impl->connect_service(service, prefix);
+  connect_service(service, prefix);
 
   return service.list_views();
 }
