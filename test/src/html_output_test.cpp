@@ -56,7 +56,7 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  // TODO fix
+  // TODO fix pdf implementation
   if ((engine == DecoderEngine::odr) &&
       (test_file.type == FileType::portable_document_format) &&
       (test_repo != "odr-public")) {
@@ -70,6 +70,8 @@ TEST_P(HtmlOutputTests, html_meta) {
       odr::open(test_file.absolute_path, decode_preference, *logger);
 
   FileMeta file_meta = file.file_meta();
+
+  fs::create_directories(output_path);
 
   {
     const std::string meta_output = output_path + "/meta.json";
@@ -124,8 +126,6 @@ TEST_P(HtmlOutputTests, html_meta) {
 
     EXPECT_EQ(test_file.type, document_file.file_type());
   }
-
-  fs::create_directories(output_path);
 
   const std::string resource_path = common::Path(output_path_prefix)
                                         .parent()
