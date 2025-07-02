@@ -22,6 +22,22 @@ using namespace odr::internal::common;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
+FileType expected_file_type_pre_decryption(const TestFile &test_file) {
+  if (test_file.password.has_value()) {
+    if (test_file.type == FileType::office_open_xml_document ||
+        test_file.type == FileType::office_open_xml_presentation ||
+        test_file.type == FileType::office_open_xml_workbook) {
+      return FileType::office_open_xml_encrypted;
+    }
+  }
+
+  return test_file.type;
+}
+
+FileType expected_file_type_post_decryption(const TestFile &test_file) {
+  return test_file.type;
+}
+
 struct TestParams {
   TestFile test_file;
   std::string path;
@@ -43,9 +59,11 @@ TEST_P(HtmlOutputTests, html_meta) {
   const std::string &output_path = params.output_path;
   const std::string &output_path_prefix = params.output_path_prefix;
 
-  std::cout << test_file.short_path << " to " << output_path << std::endl;
+  const FileCategory file_category = file_category_by_file_type(test_file.type);
 
-  // TODO compare guessed file type VS actual file type
+  ODR_INFO(*logger, "Testing file: " << test_file.short_path << " with engine: "
+                                     << odr::decoder_engine_to_string(engine)
+                                     << " output to: " << output_path);
 
   // these files cannot be opened
   if (util::string::ends_with(test_file.short_path, ".sxw") ||
@@ -70,6 +88,14 @@ TEST_P(HtmlOutputTests, html_meta) {
       odr::open(test_file.absolute_path, decode_preference, *logger);
 
   FileMeta file_meta = file.file_meta();
+
+  EXPECT_EQ(file_meta.type, expected_file_type_pre_decryption(test_file));
+  if (file_category == FileCategory::document) {
+    EXPECT_TRUE(file_meta.document_meta.has_value());
+    EXPECT_EQ(file_meta.document_meta->document_type,
+              document_type_by_file_type(
+                  expected_file_type_pre_decryption(test_file)));
+  }
 
   fs::create_directories(output_path);
 
@@ -109,6 +135,14 @@ TEST_P(HtmlOutputTests, html_meta) {
 
     // After decryption, the file meta may change
     file_meta = file.file_meta();
+
+    EXPECT_EQ(file_meta.type, expected_file_type_post_decryption(test_file));
+    if (file_category == FileCategory::document) {
+      EXPECT_TRUE(file_meta.document_meta.has_value());
+      EXPECT_EQ(file_meta.document_meta->document_type,
+                document_type_by_file_type(
+                    expected_file_type_post_decryption(test_file)));
+    }
 
     {
       const std::string meta_output = output_path + "/meta-decrypted.json";

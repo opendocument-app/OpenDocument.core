@@ -39,6 +39,10 @@ file_type_by_file_extension(const std::string &extension) noexcept;
 /// @param type The file type.
 /// @return The file category.
 [[nodiscard]] FileCategory file_category_by_file_type(FileType type) noexcept;
+/// @brief Get the document type by the file type.
+/// @param type The file type.
+/// @return The document type.
+[[nodiscard]] DocumentType document_type_by_file_type(FileType type) noexcept;
 /// @brief Get the file type as a string.
 /// @param type The file type.
 /// @return The file type as a string.

@@ -3,13 +3,15 @@
 namespace odr::internal {
 
 PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
-    : m_file{std::move(file)} {}
+    : m_file{std::move(file)} {
+  m_file_meta.type = FileType::portable_document_format;
+}
 
 std::shared_ptr<abstract::File> PdfFile::file() const noexcept {
   return m_file;
 }
 
-FileMeta PdfFile::file_meta() const noexcept { return {}; }
+FileMeta PdfFile::file_meta() const noexcept { return m_file_meta; }
 
 DecoderEngine PdfFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;

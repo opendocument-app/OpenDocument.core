@@ -44,11 +44,11 @@ DecoderEngine OfficeOpenXmlFile::decoder_engine() const noexcept {
 }
 
 DocumentType OfficeOpenXmlFile::document_type() const {
-  return m_file_meta.document_meta->document_type;
+  return m_file_meta.document_meta.value().document_type;
 }
 
 DocumentMeta OfficeOpenXmlFile::document_meta() const {
-  return *m_file_meta.document_meta;
+  return m_file_meta.document_meta.value();
 }
 
 bool OfficeOpenXmlFile::password_encrypted() const noexcept {

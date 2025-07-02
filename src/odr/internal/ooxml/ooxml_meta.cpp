@@ -26,6 +26,7 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
   };
 
   FileMeta result;
+  result.document_meta = DocumentMeta();
 
   if (filesystem.is_file(common::Path("/EncryptionInfo")) &&
       filesystem.is_file(common::Path("/EncryptedPackage"))) {
@@ -33,8 +34,6 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
     result.password_encrypted = true;
     return result;
   }
-
-  result.document_meta.emplace();
 
   for (auto &&t : types) {
     if (filesystem.is_file(t.first)) {

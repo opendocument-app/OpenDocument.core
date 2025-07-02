@@ -114,6 +114,34 @@ odr::file_category_by_file_type(const FileType type) noexcept {
   }
 }
 
+odr::DocumentType
+odr::document_type_by_file_type(const FileType type) noexcept {
+  switch (type) {
+  case FileType::opendocument_text:
+    return DocumentType::text;
+  case FileType::opendocument_presentation:
+    return DocumentType::presentation;
+  case FileType::opendocument_spreadsheet:
+    return DocumentType::spreadsheet;
+  case FileType::opendocument_graphics:
+    return DocumentType::drawing;
+  case FileType::office_open_xml_document:
+    return DocumentType::text;
+  case FileType::office_open_xml_presentation:
+    return DocumentType::presentation;
+  case FileType::office_open_xml_workbook:
+    return DocumentType::spreadsheet;
+  case FileType::legacy_word_document:
+    return DocumentType::text;
+  case FileType::legacy_powerpoint_presentation:
+    return DocumentType::presentation;
+  case FileType::legacy_excel_worksheets:
+    return DocumentType::spreadsheet;
+  default:
+    return DocumentType::unknown;
+  }
+}
+
 std::string odr::file_type_to_string(const FileType type) noexcept {
   switch (type) {
   case FileType::unknown:
