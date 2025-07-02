@@ -53,8 +53,13 @@ void WvWareLegacyMicrosoftFile::open() {
 
   int ret = wvInitParser_gsf(&m_parser_state->ps, m_parser_state->gsf_input);
 
+  m_file_meta.type = FileType::legacy_word_document;
+  m_file_meta.document_meta = DocumentMeta();
+  m_file_meta.document_meta->document_type = DocumentType::text;
+
   // check if encrypted
   if ((ret & 0x8000) != 0) {
+    m_file_meta.password_encrypted = true;
     m_encryption_state = EncryptionState::encrypted;
     m_parser_state->encryption_flag = ret & 0x7fff;
 
@@ -82,7 +87,7 @@ FileType WvWareLegacyMicrosoftFile::file_type() const noexcept {
 }
 
 FileMeta WvWareLegacyMicrosoftFile::file_meta() const noexcept {
-  return {file_type(), password_encrypted(), document_meta()};
+  return m_file_meta;
 }
 
 DecoderEngine WvWareLegacyMicrosoftFile::decoder_engine() const noexcept {
@@ -93,11 +98,12 @@ DocumentType WvWareLegacyMicrosoftFile::document_type() const {
   return DocumentType::text;
 }
 
-DocumentMeta WvWareLegacyMicrosoftFile::document_meta() const { return {}; }
+DocumentMeta WvWareLegacyMicrosoftFile::document_meta() const {
+  return m_file_meta.document_meta.value();
+}
 
 bool WvWareLegacyMicrosoftFile::password_encrypted() const noexcept {
-  return m_encryption_state == EncryptionState::encrypted ||
-         m_encryption_state == EncryptionState::decrypted;
+  return m_file_meta.password_encrypted;
 }
 
 EncryptionState WvWareLegacyMicrosoftFile::encryption_state() const noexcept {

@@ -46,6 +46,7 @@ private:
   std::shared_ptr<abstract::File> m_file;
   std::shared_ptr<ParserState> m_parser_state;
 
+  FileMeta m_file_meta;
   EncryptionState m_encryption_state{EncryptionState::unknown};
 
   void open();

@@ -62,11 +62,11 @@ DecoderEngine LegacyMicrosoftFile::decoder_engine() const noexcept {
 }
 
 DocumentType LegacyMicrosoftFile::document_type() const {
-  return m_file_meta.document_meta->document_type;
+  return m_file_meta.document_meta.value().document_type;
 }
 
 DocumentMeta LegacyMicrosoftFile::document_meta() const {
-  return *m_file_meta.document_meta;
+  return m_file_meta.document_meta.value();
 }
 
 bool LegacyMicrosoftFile::password_encrypted() const noexcept {

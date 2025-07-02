@@ -20,6 +20,7 @@ public:
 
 private:
   std::shared_ptr<abstract::File> m_file;
+  FileMeta m_file_meta;
 };
 
 } // namespace odr::internal
