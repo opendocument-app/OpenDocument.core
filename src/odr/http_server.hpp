@@ -1,6 +1,7 @@
 #pragma once
 
 #include <odr/html.hpp>
+#include <odr/logger.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -21,9 +22,10 @@ public:
     std::string cache_path{"/tmp/odr"};
   };
 
-  explicit HttpServer(const Config &config);
+  explicit HttpServer(const Config &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 
-  const Config &config() const;
+  [[nodiscard]] const Config &config() const;
 
   void connect_service(HtmlService service, const std::string &prefix);
 
