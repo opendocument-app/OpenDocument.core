@@ -88,14 +88,13 @@ public:
   void init_dimensions_(TableDimensions dimensions);
   void append_shape_(Element *shape);
 
-  common::ResolvedStyle cell_style_(const abstract::Document *,
-                                    std::uint32_t column,
-                                    std::uint32_t row) const;
+  ResolvedStyle cell_style_(const abstract::Document *, std::uint32_t column,
+                            std::uint32_t row) const;
 
 private:
   SheetIndex m_index;
 
-  std::unordered_map<common::TablePosition, SheetCell *> m_cells;
+  std::unordered_map<TablePosition, SheetCell *> m_cells;
   Element *m_first_shape{nullptr};
   Element *m_last_shape{nullptr};
 };

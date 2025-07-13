@@ -9,12 +9,10 @@
 #include <filesystem>
 #include <string>
 #include <test_util.hpp>
-#include <unordered_map>
 #include <utility>
 
 using namespace odr;
 using namespace odr::internal;
-using namespace odr::internal::common;
 namespace fs = std::filesystem;
 
 namespace odr::test {
@@ -24,7 +22,7 @@ namespace {
 TestFile get_test_file(const std::string &root_path,
                        std::string absolute_path) {
   const FileType type =
-      odr::file_type_by_file_extension(common::Path(absolute_path).extension());
+      odr::file_type_by_file_extension(Path(absolute_path).extension());
 
   std::string short_path = absolute_path.substr(root_path.size() + 1);
 
@@ -124,7 +122,7 @@ TestFile::TestFile(std::string absolute_path, std::string short_path,
       password{std::move(password)} {}
 
 std::string TestData::data_input_directory() {
-  return common::Path(TestData::data_directory()).join(Path("input")).string();
+  return Path(TestData::data_directory()).join(Path("input")).string();
 }
 
 TestData &TestData::instance_() {

@@ -4,7 +4,7 @@
 
 #include <memory>
 
-using namespace odr::internal::common;
+using namespace odr::internal;
 
 TEST(TableCursor, test) {
   TableCursor cursor;

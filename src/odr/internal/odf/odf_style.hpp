@@ -38,7 +38,7 @@ public:
 
   [[nodiscard]] std::string name() const;
 
-  [[nodiscard]] const common::ResolvedStyle &resolved() const;
+  [[nodiscard]] const ResolvedStyle &resolved() const;
 
 private:
   const StyleRegistry *m_registry{nullptr};
@@ -48,7 +48,7 @@ private:
   Style *m_parent{nullptr};
   Style *m_family{nullptr};
 
-  common::ResolvedStyle m_resolved;
+  ResolvedStyle m_resolved;
 
   void resolve_style_();
 

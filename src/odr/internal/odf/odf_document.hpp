@@ -18,7 +18,7 @@ class ReadableFilesystem;
 
 namespace odr::internal::odf {
 
-class Document : public common::TemplateDocument<Element> {
+class Document : public TemplateDocument<Element> {
 public:
   Document(FileType file_type, DocumentType document_type,
            std::shared_ptr<abstract::ReadableFilesystem> files);
@@ -26,8 +26,8 @@ public:
   [[nodiscard]] bool is_editable() const noexcept final;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept final;
 
-  void save(const common::Path &path) const final;
-  void save(const common::Path &path, const char *password) const final;
+  void save(const Path &path) const final;
+  void save(const Path &path, const char *password) const final;
 
 protected:
   pugi::xml_document m_content_xml;

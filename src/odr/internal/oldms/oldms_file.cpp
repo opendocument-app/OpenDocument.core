@@ -11,17 +11,16 @@ namespace odr::internal::oldms {
 
 namespace {
 FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
-  static const std::unordered_map<common::Path, FileType> types = {
+  static const std::unordered_map<Path, FileType> types = {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
-      {common::Path("/WordDocument"), FileType::legacy_word_document},
+      {Path("/WordDocument"), FileType::legacy_word_document},
       // MS-PPT: The "PowerPoint Document" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd911009(v=office.12).aspx
-      {common::Path("/PowerPoint Document"),
-       FileType::legacy_powerpoint_presentation},
+      {Path("/PowerPoint Document"), FileType::legacy_powerpoint_presentation},
       // MS-XLS: The "Workbook" stream MUST be present in the file.
       // https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt/1fc22d56-28f9-4818-bd45-67c2bf721ccf
-      {common::Path("/Workbook"), FileType::legacy_excel_worksheets},
+      {Path("/Workbook"), FileType::legacy_excel_worksheets},
   };
 
   FileMeta result;

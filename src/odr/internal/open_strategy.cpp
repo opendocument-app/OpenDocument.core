@@ -59,7 +59,7 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
               "magic determined file type " << file_type_to_string(file_type));
 
   // TODO if `file` is in memory we would copy it unnecessarily
-  auto memory_file = std::make_shared<common::MemoryFile>(*file);
+  auto memory_file = std::make_shared<MemoryFile>(*file);
 
   if (file_type == FileType::zip) {
     ODR_VERBOSE(logger, "open as zip");
@@ -185,7 +185,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, Logger &logger) {
               "magic determined file type " << file_type_to_string(file_type));
 
   // TODO if `file` is in memory we would copy it unnecessarily
-  auto memory_file = std::make_shared<common::MemoryFile>(*file);
+  auto memory_file = std::make_shared<MemoryFile>(*file);
 
   if (file_type == FileType::zip) {
     ODR_VERBOSE(logger, "open as zip");
@@ -239,7 +239,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, Logger &logger) {
              file_type == FileType::jpeg ||
              file_type == FileType::bitmap_image_file) {
     ODR_VERBOSE(logger, "open as image");
-    return std::make_unique<common::ImageFile>(file, file_type);
+    return std::make_unique<ImageFile>(file, file_type);
   } else if (file_type == FileType::starview_metafile) {
     ODR_VERBOSE(logger, "open as svm");
     return std::make_unique<svm::SvmFile>(memory_file);
@@ -309,7 +309,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto memory_file = std::make_shared<MemoryFile>(*file);
         auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
         auto filesystem = zip_file->archive()->as_filesystem();
         return std::make_unique<odf::OpenDocumentFile>(filesystem);
@@ -331,7 +331,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto memory_file = std::make_shared<MemoryFile>(*file);
         auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
         auto filesystem = zip_file->archive()->as_filesystem();
         return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
@@ -339,7 +339,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
         ODR_VERBOSE(logger, "failed to open as ooxml zip with odr engine");
       }
       try {
-        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto memory_file = std::make_shared<MemoryFile>(*file);
         auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
         auto filesystem = cfb_file->archive()->as_filesystem();
         return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
@@ -360,7 +360,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto memory_file = std::make_shared<MemoryFile>(*file);
         auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
         auto filesystem = cfb_file->archive()->as_filesystem();
         return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
@@ -373,7 +373,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::wvware) {
       ODR_VERBOSE(logger, "using wvware engine");
       try {
-        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto memory_file = std::make_shared<MemoryFile>(*file);
         return std::make_unique<WvWareLegacyMicrosoftFile>(
             std::move(memory_file));
       } catch (...) {
@@ -402,7 +402,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::poppler) {
       ODR_VERBOSE(logger, "using poppler engine");
       try {
-        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto memory_file = std::make_shared<MemoryFile>(*file);
         return std::make_unique<PopplerPdfFile>(memory_file);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as pdf with poppler engine");
@@ -422,7 +422,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        return std::make_unique<common::ImageFile>(file, as);
+        return std::make_unique<ImageFile>(file, as);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as image with odr engine");
       }
@@ -438,7 +438,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto memory_file = std::make_shared<MemoryFile>(*file);
         return std::make_unique<svm::SvmFile>(memory_file);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as svm with odr engine");
@@ -505,7 +505,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto memory_file = std::make_shared<MemoryFile>(*file);
         return std::make_unique<zip::ZipFile>(memory_file);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as zip with odr engine");
@@ -522,7 +522,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<common::MemoryFile>(*file);
+        auto memory_file = std::make_shared<MemoryFile>(*file);
         return std::make_unique<cfb::CfbFile>(memory_file);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as cfb with odr engine");
@@ -613,7 +613,7 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file,
     ODR_VERBOSE(logger, "open as zip");
 
     // TODO if `file` is in memory we would copy it unnecessarily
-    auto memory_file = std::make_shared<common::MemoryFile>(*file);
+    auto memory_file = std::make_shared<MemoryFile>(*file);
 
     auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
 
@@ -636,7 +636,7 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file,
     ODR_VERBOSE(logger, "open as cbf");
 
     // TODO if `file` is in memory we would copy it unnecessarily
-    auto memory_file = std::make_unique<common::MemoryFile>(*file);
+    auto memory_file = std::make_unique<MemoryFile>(*file);
 
     auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
 

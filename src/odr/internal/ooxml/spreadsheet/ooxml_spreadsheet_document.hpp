@@ -16,29 +16,27 @@
 
 namespace odr::internal::ooxml::spreadsheet {
 
-class Document final : public common::TemplateDocument<Element> {
+class Document final : public TemplateDocument<Element> {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
   [[nodiscard]] bool is_editable() const noexcept final;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept final;
 
-  void save(const common::Path &path) const final;
-  void save(const common::Path &path, const char *password) const final;
+  void save(const Path &path) const final;
+  void save(const Path &path, const char *password) const final;
 
   std::pair<const pugi::xml_document &, const Relations &>
-  get_xml(const common::Path &) const;
+  get_xml(const Path &) const;
   pugi::xml_node get_shared_string(std::size_t index) const;
 
 private:
-  std::unordered_map<common::Path, std::pair<pugi::xml_document, Relations>>
-      m_xml;
+  std::unordered_map<Path, std::pair<pugi::xml_document, Relations>> m_xml;
 
   StyleRegistry m_style_registry;
   std::vector<pugi::xml_node> m_shared_strings;
 
-  std::pair<pugi::xml_document &, Relations &>
-  parse_xml_(const common::Path &path);
+  std::pair<pugi::xml_document &, Relations &> parse_xml_(const Path &path);
 
   friend class Element;
 };

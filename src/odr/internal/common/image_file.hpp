@@ -2,7 +2,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class ImageFile : public abstract::ImageFile {
 public:
@@ -21,4 +21,4 @@ private:
   FileType m_file_type;
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

@@ -14,10 +14,10 @@
 #include <miniz/miniz.h>
 #include <miniz/miniz_zip.h>
 
-namespace odr::internal::common {
+namespace odr::internal {
 class MemoryFile;
 class DiskFile;
-} // namespace odr::internal::common
+} // namespace odr::internal
 
 namespace odr::internal::zip::util {
 
@@ -29,8 +29,8 @@ enum class Method {
 
 class Archive final : public std::enable_shared_from_this<Archive> {
 public:
-  explicit Archive(const std::shared_ptr<common::MemoryFile> &file);
-  explicit Archive(const std::shared_ptr<common::DiskFile> &file);
+  explicit Archive(const std::shared_ptr<MemoryFile> &file);
+  explicit Archive(const std::shared_ptr<DiskFile> &file);
   ~Archive();
 
   [[nodiscard]] std::mutex &mutex() const;
@@ -43,7 +43,7 @@ public:
   [[nodiscard]] Iterator begin() const;
   [[nodiscard]] Iterator end() const;
 
-  [[nodiscard]] Iterator find(const common::Path &path) const;
+  [[nodiscard]] Iterator find(const Path &path) const;
 
   class Entry {
   public:
@@ -64,7 +64,7 @@ public:
 
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
-    [[nodiscard]] common::Path path() const;
+    [[nodiscard]] Path path() const;
     [[nodiscard]] Method method() const;
     [[nodiscard]] std::shared_ptr<abstract::File> file() const;
 

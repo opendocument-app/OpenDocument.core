@@ -10,8 +10,8 @@ namespace odr::internal {
 
 class PopplerPdfFile final : public abstract::PdfFile {
 public:
-  explicit PopplerPdfFile(std::shared_ptr<common::DiskFile> file);
-  explicit PopplerPdfFile(std::shared_ptr<common::MemoryFile> file);
+  explicit PopplerPdfFile(std::shared_ptr<DiskFile> file);
+  explicit PopplerPdfFile(std::shared_ptr<MemoryFile> file);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
 

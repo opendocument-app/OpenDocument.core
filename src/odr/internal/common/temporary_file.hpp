@@ -4,7 +4,7 @@
 
 #include <functional>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class Path;
 
@@ -28,16 +28,15 @@ public:
   static RandomFileNameGenerator default_random_file_name_generator();
 
   explicit TemporaryDiskFileFactory(
-      common::Path directory,
-      RandomFileNameGenerator random_file_name_generator =
-          default_random_file_name_generator());
+      Path directory, RandomFileNameGenerator random_file_name_generator =
+                          default_random_file_name_generator());
 
   [[nodiscard]] TemporaryDiskFile copy(const abstract::File &file) const;
   [[nodiscard]] TemporaryDiskFile copy(std::istream &in) const;
 
 private:
-  common::Path m_directory;
+  Path m_directory;
   RandomFileNameGenerator m_random_file_name_generator;
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

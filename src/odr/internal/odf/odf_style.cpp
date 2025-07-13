@@ -222,7 +222,7 @@ Style::Style(const StyleRegistry *registry, std::string name,
 
 std::string Style::name() const { return m_name; }
 
-const common::ResolvedStyle &Style::resolved() const { return m_resolved; }
+const ResolvedStyle &Style::resolved() const { return m_resolved; }
 
 void Style::resolve_style_() {
   // TODO use override?

@@ -16,20 +16,20 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
     DocumentType document_type;
   };
 
-  static const std::unordered_map<common::Path, TypeInfo> types = {
-      {common::Path("/word/document.xml"),
+  static const std::unordered_map<Path, TypeInfo> types = {
+      {Path("/word/document.xml"),
        {FileType::office_open_xml_document, DocumentType::text}},
-      {common::Path("/ppt/presentation.xml"),
+      {Path("/ppt/presentation.xml"),
        {FileType::office_open_xml_presentation, DocumentType::presentation}},
-      {common::Path("/xl/workbook.xml"),
+      {Path("/xl/workbook.xml"),
        {FileType::office_open_xml_workbook, DocumentType::spreadsheet}},
   };
 
   FileMeta result;
   result.document_meta = DocumentMeta();
 
-  if (filesystem.is_file(common::Path("/EncryptionInfo")) &&
-      filesystem.is_file(common::Path("/EncryptedPackage"))) {
+  if (filesystem.is_file(Path("/EncryptionInfo")) &&
+      filesystem.is_file(Path("/EncryptedPackage"))) {
     result.type = FileType::office_open_xml_encrypted;
     result.password_encrypted = true;
     return result;

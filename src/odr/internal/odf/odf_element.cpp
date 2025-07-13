@@ -36,8 +36,7 @@ Element::Element(pugi::xml_node node) : m_node{node} {
   }
 }
 
-common::ResolvedStyle
-Element::partial_style(const abstract::Document *document) const {
+ResolvedStyle Element::partial_style(const abstract::Document *document) const {
   if (auto style_name = style_name_(document)) {
     if (auto style = style_(document)->style(style_name)) {
       return style->resolved();
@@ -46,13 +45,13 @@ Element::partial_style(const abstract::Document *document) const {
   return {};
 }
 
-common::ResolvedStyle
+ResolvedStyle
 Element::intermediate_style(const abstract::Document *document) const {
   abstract::Element *parent = this->parent(document);
   if (parent == nullptr) {
     return partial_style(document);
   }
-  common::ResolvedStyle base =
+  ResolvedStyle base =
       dynamic_cast<Element *>(parent)->intermediate_style(document);
   base.override(partial_style(document));
   return base;
@@ -248,7 +247,7 @@ TableStyle Table::style(const abstract::Document *document) const {
 
 TableDimensions Table::dimensions(const abstract::Document *) const {
   TableDimensions result;
-  common::TableCursor cursor;
+  TableCursor cursor;
 
   for (auto column : m_node.children("table:table-column")) {
     const auto columns_repeated =
@@ -441,9 +440,9 @@ bool Image::is_internal(const abstract::Document *document) const {
     return false;
   }
   try {
-    common::Path path(href(document));
+    Path path(href(document));
     if (path.relative()) {
-      path = common::Path("/").join(path);
+      path = Path("/").join(path);
     }
     return doc->as_filesystem()->is_file(path);
   } catch (...) {
@@ -456,9 +455,9 @@ std::optional<odr::File> Image::file(const abstract::Document *document) const {
   if (!doc || !is_internal(document)) {
     return {};
   }
-  common::Path path(href(document));
+  Path path(href(document));
   if (path.relative()) {
-    path = common::Path("/").join(path);
+    path = Path("/").join(path);
   }
   return File(doc->as_filesystem()->open(path));
 }

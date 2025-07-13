@@ -20,7 +20,7 @@ struct WvWareLegacyMicrosoftFile::ParserState {
 };
 
 WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
-    std::shared_ptr<common::DiskFile> file)
+    std::shared_ptr<DiskFile> file)
     : m_file{std::move(file)} {
   GError *error = nullptr;
 
@@ -37,7 +37,7 @@ WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
 }
 
 WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
-    std::shared_ptr<common::MemoryFile> file)
+    std::shared_ptr<MemoryFile> file)
     : m_file{std::move(file)} {
   m_parser_state = std::make_shared<ParserState>();
 

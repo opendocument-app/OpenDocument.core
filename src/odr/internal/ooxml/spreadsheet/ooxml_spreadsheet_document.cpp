@@ -11,30 +11,29 @@
 namespace odr::internal::ooxml::spreadsheet {
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : common::TemplateDocument<Element>(FileType::office_open_xml_workbook,
-                                        DocumentType::spreadsheet,
-                                        std::move(filesystem)) {
-  auto workbook_path = common::Path("/xl/workbook.xml");
+    : TemplateDocument<Element>(FileType::office_open_xml_workbook,
+                                DocumentType::spreadsheet,
+                                std::move(filesystem)) {
+  auto workbook_path = Path("/xl/workbook.xml");
   auto [workbook_xml, workbook_relations] = parse_xml_(workbook_path);
-  auto [styles_xml, _] = parse_xml_(common::Path("/xl/styles.xml"));
+  auto [styles_xml, _] = parse_xml_(Path("/xl/styles.xml"));
 
   for (pugi::xml_node sheet_node :
        workbook_xml.document_element().child("sheets").children("sheet")) {
     const char *id = sheet_node.attribute("r:id").value();
-    common::Path sheet_path =
-        workbook_path.parent().join(common::Path(workbook_relations.at(id)));
+    Path sheet_path =
+        workbook_path.parent().join(Path(workbook_relations.at(id)));
     auto [sheet_xml, sheet_relationships] = parse_xml_(sheet_path);
 
     if (auto drawing = sheet_xml.document_element().child("drawing")) {
-      auto drawing_path = sheet_path.parent().join(common::Path(
-          sheet_relationships.at(drawing.attribute("r:id").value())));
+      auto drawing_path = sheet_path.parent().join(
+          Path(sheet_relationships.at(drawing.attribute("r:id").value())));
       parse_xml_(drawing_path);
     }
   }
 
-  if (m_filesystem->exists(common::Path("/xl/sharedStrings.xml"))) {
-    auto [shared_strings_xml, _] =
-        parse_xml_(common::Path("/xl/sharedStrings.xml"));
+  if (m_filesystem->exists(Path("/xl/sharedStrings.xml"))) {
+    auto [shared_strings_xml, _] = parse_xml_(Path("/xl/sharedStrings.xml"));
 
     for (auto shared_string : shared_strings_xml.document_element()) {
       m_shared_strings.push_back(shared_string);
@@ -48,7 +47,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
 }
 
 std::pair<pugi::xml_document &, Relations &>
-Document::parse_xml_(const common::Path &path) {
+Document::parse_xml_(const Path &path) {
   pugi::xml_document document = util::xml::parse(*m_filesystem, path);
   Relations relations = parse_relationships(*m_filesystem, path);
 
@@ -63,17 +62,16 @@ bool Document::is_savable(const bool /*encrypted*/) const noexcept {
   return false;
 }
 
-void Document::save(const common::Path & /*path*/) const {
+void Document::save(const Path & /*path*/) const {
   throw UnsupportedOperation();
 }
 
-void Document::save(const common::Path & /*path*/,
-                    const char * /*password*/) const {
+void Document::save(const Path & /*path*/, const char * /*password*/) const {
   throw UnsupportedOperation();
 }
 
 std::pair<const pugi::xml_document &, const Relations &>
-Document::get_xml(const common::Path &path) const {
+Document::get_xml(const Path &path) const {
   return m_xml.at(path);
 }
 

@@ -5,7 +5,7 @@
 
 #include <utility>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 Document::Document(FileType file_type, DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
@@ -23,4 +23,4 @@ Document::as_filesystem() const noexcept {
   return m_filesystem;
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

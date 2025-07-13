@@ -8,12 +8,12 @@
 
 namespace odr::internal {
 
-PopplerPdfFile::PopplerPdfFile(std::shared_ptr<common::DiskFile> file)
+PopplerPdfFile::PopplerPdfFile(std::shared_ptr<DiskFile> file)
     : m_file{std::move(file)} {
   open(std::nullopt);
 }
 
-PopplerPdfFile::PopplerPdfFile(std::shared_ptr<common::MemoryFile> file)
+PopplerPdfFile::PopplerPdfFile(std::shared_ptr<MemoryFile> file)
     : m_file{std::move(file)} {
   open(std::nullopt);
 }
@@ -24,13 +24,12 @@ void PopplerPdfFile::open(const std::optional<std::string> &password) {
     password_goo = GooString(password.value().c_str());
   }
 
-  if (auto disk_file = std::dynamic_pointer_cast<common::DiskFile>(m_file)) {
+  if (auto disk_file = std::dynamic_pointer_cast<DiskFile>(m_file)) {
     auto file_path_goo =
         std::make_unique<GooString>(disk_file->disk_path()->string().c_str());
     m_pdf_doc = std::make_shared<PDFDoc>(std::move(file_path_goo), password_goo,
                                          password_goo);
-  } else if (auto memory_file =
-                 std::dynamic_pointer_cast<common::MemoryFile>(m_file)) {
+  } else if (auto memory_file = std::dynamic_pointer_cast<MemoryFile>(m_file)) {
     // `stream` is freed by `m_pdf_doc`
     auto stream = new MemStream(memory_file->memory_data(), 0,
                                 memory_file->size(), Object(objNull));

@@ -19,7 +19,7 @@ CfbArchive::CfbArchive(std::shared_ptr<util::Archive> archive)
     : m_cfb{std::move(archive)} {}
 
 std::shared_ptr<abstract::Filesystem> CfbArchive::as_filesystem() const {
-  auto filesystem = std::make_shared<common::VirtualFilesystem>();
+  auto filesystem = std::make_shared<VirtualFilesystem>();
 
   for (const auto &e : *m_cfb) {
     if (e.is_directory()) {

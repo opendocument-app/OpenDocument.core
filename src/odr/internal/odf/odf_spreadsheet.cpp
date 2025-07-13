@@ -77,13 +77,12 @@ public:
     return ValueType::string;
   }
 
-  common::ResolvedStyle
-  partial_style(const abstract::Document *document) const final {
+  ResolvedStyle partial_style(const abstract::Document *document) const final {
     auto sheet = dynamic_cast<const Sheet *>(parent(document));
     return sheet->cell_style_(document, m_column, m_row);
   }
 
-  common::ResolvedStyle
+  ResolvedStyle
   intermediate_style(const abstract::Document *document) const final {
     return partial_style(document);
   }
@@ -116,7 +115,7 @@ Sheet::content(const abstract::Document *,
                const std::optional<TableDimensions> range) const {
   TableDimensions result;
 
-  common::TableCursor cursor;
+  TableCursor cursor;
   for (auto row : m_node.children("table:table-row")) {
     const auto rows_repeated =
         row.attribute("table:number-rows-repeated").as_uint(1);
@@ -144,9 +143,9 @@ Sheet::content(const abstract::Document *,
   return result;
 }
 
-common::ResolvedStyle Sheet::cell_style_(const abstract::Document *document,
-                                         std::uint32_t column,
-                                         std::uint32_t row) const {
+ResolvedStyle Sheet::cell_style_(const abstract::Document *document,
+                                 std::uint32_t column,
+                                 std::uint32_t row) const {
   const char *style_name = nullptr;
 
   auto cell_node = m_index.cell(column, row);
@@ -174,7 +173,7 @@ common::ResolvedStyle Sheet::cell_style_(const abstract::Document *document,
     }
   }
 
-  return common::ResolvedStyle();
+  return ResolvedStyle();
 }
 
 abstract::SheetCell *Sheet::cell(const abstract::Document *,
@@ -280,7 +279,7 @@ odf::parse_element_tree<odf::Sheet>(Document &document, pugi::xml_node node) {
   document.register_element_(std::move(sheet_unique));
 
   TableDimensions dimensions;
-  common::TableCursor cursor;
+  TableCursor cursor;
 
   for (auto column_node : node.children("table:table-column")) {
     const auto columns_repeated =

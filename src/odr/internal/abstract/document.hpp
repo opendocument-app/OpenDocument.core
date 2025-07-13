@@ -10,9 +10,9 @@ enum class FileType;
 enum class DocumentType;
 } // namespace odr
 
-namespace odr::internal::common {
+namespace odr::internal {
 class Path;
-} // namespace odr::internal::common
+} // namespace odr::internal
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -30,11 +30,11 @@ public:
   [[nodiscard]] virtual bool is_savable(bool encrypted) const noexcept = 0;
 
   /// \param path the destination path.
-  virtual void save(const common::Path &path) const = 0;
+  virtual void save(const Path &path) const = 0;
 
   /// \param path the destination path.
   /// \param password the encryption password.
-  virtual void save(const common::Path &path, const char *password) const = 0;
+  virtual void save(const Path &path, const char *password) const = 0;
 
   /// \return the type of the document.
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;

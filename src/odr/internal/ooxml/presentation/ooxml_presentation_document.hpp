@@ -10,15 +10,15 @@
 
 namespace odr::internal::ooxml::presentation {
 
-class Document final : public common::TemplateDocument<Element> {
+class Document final : public TemplateDocument<Element> {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
   [[nodiscard]] bool is_editable() const noexcept final;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept final;
 
-  void save(const common::Path &path) const final;
-  void save(const common::Path &path, const char *password) const final;
+  void save(const Path &path) const final;
+  void save(const Path &path, const char *password) const final;
 
   pugi::xml_node get_slide_root(const std::string &ref) const;
 

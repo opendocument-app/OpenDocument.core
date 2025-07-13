@@ -16,12 +16,12 @@ namespace odr::internal::odf {
 
 Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : common::TemplateDocument<Element>(file_type, document_type,
-                                        std::move(filesystem)) {
-  m_content_xml = util::xml::parse(*m_filesystem, common::Path("/content.xml"));
+    : TemplateDocument<Element>(file_type, document_type,
+                                std::move(filesystem)) {
+  m_content_xml = util::xml::parse(*m_filesystem, Path("/content.xml"));
 
-  if (m_filesystem->exists(common::Path("/styles.xml"))) {
-    m_styles_xml = util::xml::parse(*m_filesystem, common::Path("/styles.xml"));
+  if (m_filesystem->exists(Path("/styles.xml"))) {
+    m_styles_xml = util::xml::parse(*m_filesystem, Path("/styles.xml"));
   }
 
   m_root_element = parse_tree(
@@ -38,38 +38,38 @@ bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;
 }
 
-void Document::save(const common::Path &path) const {
+void Document::save(const Path &path) const {
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 
   // `mimetype` has to be the first file and uncompressed
-  if (m_filesystem->is_file(common::Path("/mimetype"))) {
-    archive.insert_file(std::end(archive), common::Path("/mimetype"),
-                        m_filesystem->open(common::Path("/mimetype")), 0);
+  if (m_filesystem->is_file(Path("/mimetype"))) {
+    archive.insert_file(std::end(archive), Path("/mimetype"),
+                        m_filesystem->open(Path("/mimetype")), 0);
   }
 
-  for (auto walker = m_filesystem->file_walker(common::Path("/"));
-       !walker->end(); walker->next()) {
+  for (auto walker = m_filesystem->file_walker(Path("/")); !walker->end();
+       walker->next()) {
     auto p = walker->path();
-    if (p == common::Path("/mimetype")) {
+    if (p == Path("/mimetype")) {
       continue;
     }
     if (m_filesystem->is_directory(p)) {
       archive.insert_directory(std::end(archive), p);
       continue;
     }
-    if (p == common::Path("/content.xml")) {
+    if (p == Path("/content.xml")) {
       // TODO stream
       std::stringstream out;
       m_content_xml.print(out, "", pugi::format_raw);
-      auto tmp = std::make_shared<common::MemoryFile>(out.str());
+      auto tmp = std::make_shared<MemoryFile>(out.str());
       archive.insert_file(std::end(archive), p, tmp);
       continue;
     }
-    if (p == common::Path("/META-INF/manifest.xml")) {
+    if (p == Path("/META-INF/manifest.xml")) {
       // TODO
-      auto manifest = util::xml::parse(*m_filesystem,
-                                       common::Path("/META-INF/manifest.xml"));
+      auto manifest =
+          util::xml::parse(*m_filesystem, Path("/META-INF/manifest.xml"));
 
       for (auto &&node : manifest.select_nodes("//manifest:encryption-data")) {
         node.node().parent().remove_child(node.node());
@@ -77,7 +77,7 @@ void Document::save(const common::Path &path) const {
 
       std::stringstream out;
       manifest.print(out, "", pugi::format_raw);
-      auto tmp = std::make_shared<common::MemoryFile>(out.str());
+      auto tmp = std::make_shared<MemoryFile>(out.str());
       archive.insert_file(std::end(archive), p, tmp);
 
       continue;
@@ -89,8 +89,7 @@ void Document::save(const common::Path &path) const {
   archive.save(ostream);
 }
 
-void Document::save(const common::Path & /*path*/,
-                    const char * /*password*/) const {
+void Document::save(const Path & /*path*/, const char * /*password*/) const {
   // TODO throw if not savable
   throw UnsupportedOperation();
 }

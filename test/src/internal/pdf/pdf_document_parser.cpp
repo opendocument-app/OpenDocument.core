@@ -9,7 +9,6 @@
 
 #include <test_util.hpp>
 
-#include <functional>
 #include <memory>
 
 #include <gtest/gtest.h>
@@ -19,7 +18,7 @@ using namespace odr::internal::pdf;
 using namespace odr::test;
 
 TEST(DocumentParser, foo) {
-  auto file = std::make_shared<common::DiskFile>(
+  auto file = std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
   auto in = file->stream();

@@ -18,7 +18,6 @@
 
 using namespace odr;
 using namespace odr::internal;
-using namespace odr::internal::common;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
@@ -161,10 +160,8 @@ TEST_P(HtmlOutputTests, html_meta) {
     EXPECT_EQ(test_file.type, document_file.file_type());
   }
 
-  const std::string resource_path = common::Path(output_path_prefix)
-                                        .parent()
-                                        .join(Path("resources"))
-                                        .string();
+  const std::string resource_path =
+      Path(output_path_prefix).parent().join(Path("resources")).string();
   std::filesystem::copy(TestData::resource_directory(), resource_path,
                         fs::copy_options::recursive |
                             fs::copy_options::overwrite_existing);
@@ -214,15 +211,13 @@ TestParams create_test_params(const TestFile &test_file,
                               const DecoderEngine engine) {
   const std::string test_file_path = test_file.short_path;
 
-  const std::string test_repo = *common::Path(test_file_path).begin();
-  const std::string output_path_prefix = common::Path("output")
-                                             .join(Path(test_repo))
-                                             .join(Path("output"))
-                                             .string();
+  const std::string test_repo = *Path(test_file_path).begin();
+  const std::string output_path_prefix =
+      Path("output").join(Path(test_repo)).join(Path("output")).string();
   const std::string output_path_suffix = engine_suffix(engine);
   const std::string output_path =
-      common::Path(output_path_prefix)
-          .join(common::Path(test_file_path).rebase(Path(test_repo)))
+      Path(output_path_prefix)
+          .join(Path(test_file_path).rebase(Path(test_repo)))
           .string() +
       output_path_suffix;
 

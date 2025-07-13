@@ -2,7 +2,7 @@
 
 #include <list>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 TableCursor::TableCursor() noexcept { m_sparse.emplace_back(); }
 
@@ -58,4 +58,4 @@ void TableCursor::handle_rowspan_() noexcept {
   s.erase(std::begin(s), it);
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

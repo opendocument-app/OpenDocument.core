@@ -8,7 +8,7 @@ namespace odr::internal::abstract {
 class ReadableFilesystem;
 } // namespace odr::internal::abstract
 
-namespace odr::internal::common {
+namespace odr::internal {
 class Element;
 
 class Document : public abstract::Document {
@@ -50,4 +50,4 @@ protected:
   element_t *m_root_element{};
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

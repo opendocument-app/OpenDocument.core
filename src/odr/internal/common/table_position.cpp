@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 std::uint32_t TablePosition::to_column_num(const std::string &string) {
   if (string.empty()) {
@@ -84,9 +84,9 @@ std::size_t TablePosition::hash() const noexcept {
   return result;
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal
 
-std::size_t std::hash<odr::internal::common::TablePosition>::operator()(
-    const odr::internal::common::TablePosition &k) const {
+std::size_t std::hash<odr::internal::TablePosition>::operator()(
+    const odr::internal::TablePosition &k) const {
   return k.hash();
 }

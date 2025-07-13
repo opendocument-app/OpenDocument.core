@@ -26,12 +26,12 @@ bool Document::is_savable(const bool encrypted) const noexcept {
 }
 
 void Document::save(const std::string &path) const {
-  m_impl->save(internal::common::Path(path));
+  m_impl->save(internal::Path(path));
 }
 
 void Document::save(const std::string &path,
                     const std::string &password) const {
-  m_impl->save(internal::common::Path(path), password.c_str());
+  m_impl->save(internal::Path(path), password.c_str());
 }
 
 FileType Document::file_type() const noexcept { return m_impl->file_type(); }

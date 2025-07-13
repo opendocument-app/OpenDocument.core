@@ -6,7 +6,7 @@
 #include <string>
 #include <typeindex>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class Path final {
 public:
@@ -92,10 +92,10 @@ private:
   void join_(const std::string &);
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal
 
 namespace std {
-template <> struct hash<::odr::internal::common::Path> {
-  std::size_t operator()(const ::odr::internal::common::Path &p) const;
+template <> struct hash<::odr::internal::Path> {
+  std::size_t operator()(const ::odr::internal::Path &p) const;
 };
 } // namespace std

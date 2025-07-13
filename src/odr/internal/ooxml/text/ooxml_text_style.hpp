@@ -18,14 +18,14 @@ public:
   [[nodiscard]] std::string name() const;
   [[nodiscard]] const Style *parent() const;
 
-  [[nodiscard]] const common::ResolvedStyle &resolved() const;
+  [[nodiscard]] const ResolvedStyle &resolved() const;
 
 private:
   std::string m_name;
   pugi::xml_node m_node;
   const Style *m_parent{nullptr};
 
-  common::ResolvedStyle m_resolved;
+  ResolvedStyle m_resolved;
 
   void resolve_style_();
   void resolve_default_style_();
@@ -39,11 +39,11 @@ public:
   [[nodiscard]] Style *default_style() const;
   [[nodiscard]] Style *style(const std::string &name) const;
 
-  common::ResolvedStyle partial_text_style(pugi::xml_node node) const;
-  common::ResolvedStyle partial_paragraph_style(pugi::xml_node node) const;
-  common::ResolvedStyle partial_table_style(pugi::xml_node node) const;
-  common::ResolvedStyle partial_table_row_style(pugi::xml_node node) const;
-  common::ResolvedStyle partial_table_cell_style(pugi::xml_node node) const;
+  ResolvedStyle partial_text_style(pugi::xml_node node) const;
+  ResolvedStyle partial_paragraph_style(pugi::xml_node node) const;
+  ResolvedStyle partial_table_style(pugi::xml_node node) const;
+  ResolvedStyle partial_table_row_style(pugi::xml_node node) const;
+  ResolvedStyle partial_table_cell_style(pugi::xml_node node) const;
 
 private:
   std::unordered_map<std::string, pugi::xml_node> m_index;

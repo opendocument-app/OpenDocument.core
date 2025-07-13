@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 TableRange::TableRange() noexcept = default;
 
@@ -37,4 +37,4 @@ bool TableRange::contains(const TablePosition &position) const noexcept {
          (m_from.row() <= position.row()) && (m_to.row() > position.row());
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

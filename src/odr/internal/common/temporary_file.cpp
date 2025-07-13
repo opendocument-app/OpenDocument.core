@@ -7,7 +7,7 @@
 #include <fstream>
 #include <utility>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 TemporaryDiskFile::TemporaryDiskFile(const char *path) : DiskFile{path} {}
 
@@ -77,4 +77,4 @@ TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
   return TemporaryDiskFile(file_path);
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

@@ -107,15 +107,14 @@ void html::translate_sheet(Sheet sheet, const WritingState &state) {
       state.out().write_element_begin(
           "td", HtmlElementOptions().set_inline(true).set_style(
                     "text-align:center;vertical-align:middle;"));
-      state.out().write_raw(
-          common::TablePosition::to_column_string(column_index));
+      state.out().write_raw(TablePosition::to_column_string(column_index));
       state.out().write_element_end("td");
     }
 
     state.out().write_element_end("tr");
   }
 
-  common::TableCursor cursor;
+  TableCursor cursor;
   for (std::uint32_t row_index = cursor.row(); row_index < end_row;
        row_index = cursor.row()) {
     SheetRow table_row = sheet.row(row_index);
@@ -134,7 +133,7 @@ void html::translate_sheet(Sheet sheet, const WritingState &state) {
           }
           return style;
         }()));
-    state.out().write_raw(common::TablePosition::to_row_string(row_index));
+    state.out().write_raw(TablePosition::to_row_string(row_index));
     state.out().write_element_end("td");
 
     for (std::uint32_t column_index = cursor.column();

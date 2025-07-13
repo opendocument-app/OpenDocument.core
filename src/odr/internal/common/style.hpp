@@ -4,7 +4,7 @@
 
 #include <optional>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 struct ResolvedStyle final {
   TextStyle text_style;
@@ -18,4 +18,4 @@ struct ResolvedStyle final {
   void override(const ResolvedStyle &other);
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

@@ -139,7 +139,7 @@ std::string Style::name() const { return m_name; }
 
 const Style *Style::parent() const { return m_parent; }
 
-const common::ResolvedStyle &Style::resolved() const { return m_resolved; }
+const ResolvedStyle &Style::resolved() const { return m_resolved; }
 
 void Style::resolve_style_() {
   resolve_text_style_(m_node, m_resolved.text_style);
@@ -177,9 +177,9 @@ Style *StyleRegistry::style(const std::string &name) const {
   return nullptr;
 }
 
-common::ResolvedStyle
+ResolvedStyle
 StyleRegistry::partial_text_style(const pugi::xml_node node) const {
-  common::ResolvedStyle result;
+  ResolvedStyle result;
   // TODO consider w:default="1"
   if (auto style_name =
           node.child("w:rPr").child("w:rStyle").attribute("w:val")) {
@@ -191,9 +191,9 @@ StyleRegistry::partial_text_style(const pugi::xml_node node) const {
   return result;
 }
 
-common::ResolvedStyle
+ResolvedStyle
 StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
-  common::ResolvedStyle result;
+  ResolvedStyle result;
   // TODO consider w:default="1"
   if (auto style_name =
           node.child("w:pPr").child("w:pStyle").attribute("w:val")) {
@@ -206,21 +206,21 @@ StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
   return result;
 }
 
-common::ResolvedStyle
+ResolvedStyle
 StyleRegistry::partial_table_style(const pugi::xml_node node) const {
-  common::ResolvedStyle result;
+  ResolvedStyle result;
   resolve_table_style_(node, result.table_style);
   return result;
 }
 
-common::ResolvedStyle
+ResolvedStyle
 StyleRegistry::partial_table_row_style(const pugi::xml_node) const {
   return {};
 }
 
-common::ResolvedStyle
+ResolvedStyle
 StyleRegistry::partial_table_cell_style(const pugi::xml_node node) const {
-  common::ResolvedStyle result;
+  ResolvedStyle result;
   resolve_table_cell_style_(node, result.table_cell_style);
   return result;
 }

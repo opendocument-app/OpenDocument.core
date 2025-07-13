@@ -14,13 +14,12 @@ class Document;
 class StyleRegistry;
 class Style;
 
-class Element : public virtual common::Element {
+class Element : public virtual internal::Element {
 public:
   explicit Element(pugi::xml_node);
 
-  virtual common::ResolvedStyle partial_style(const abstract::Document *) const;
-  virtual common::ResolvedStyle
-  intermediate_style(const abstract::Document *) const;
+  virtual ResolvedStyle partial_style(const abstract::Document *) const;
+  virtual ResolvedStyle intermediate_style(const abstract::Document *) const;
 
   bool is_editable(const abstract::Document *) const override;
 
@@ -58,7 +57,7 @@ class Paragraph : public Element, public abstract::Paragraph {
 public:
   using Element::Element;
 
-  common::ResolvedStyle partial_style(const abstract::Document *) const final;
+  ResolvedStyle partial_style(const abstract::Document *) const final;
 
   [[nodiscard]] ParagraphStyle style(const abstract::Document *) const final;
 
@@ -69,7 +68,7 @@ class Span final : public Element, public abstract::Span {
 public:
   using Element::Element;
 
-  common::ResolvedStyle partial_style(const abstract::Document *) const final;
+  ResolvedStyle partial_style(const abstract::Document *) const final;
 
   [[nodiscard]] TextStyle style(const abstract::Document *) const final;
 };
@@ -122,7 +121,7 @@ public:
   [[nodiscard]] TextStyle style(const abstract::Document *) const final;
 };
 
-class Table final : public Element, public common::Table {
+class Table final : public Element, public internal::Table {
 public:
   using Element::Element;
 

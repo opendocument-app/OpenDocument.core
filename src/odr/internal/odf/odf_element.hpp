@@ -13,13 +13,12 @@ namespace odr::internal::odf {
 class Document;
 class StyleRegistry;
 
-class Element : public virtual common::Element {
+class Element : public virtual internal::Element {
 public:
   explicit Element(pugi::xml_node);
 
-  virtual common::ResolvedStyle partial_style(const abstract::Document *) const;
-  virtual common::ResolvedStyle
-  intermediate_style(const abstract::Document *) const;
+  virtual ResolvedStyle partial_style(const abstract::Document *) const;
+  virtual ResolvedStyle intermediate_style(const abstract::Document *) const;
 
   bool is_editable(const abstract::Document *document) const override;
 
@@ -162,7 +161,7 @@ public:
   [[nodiscard]] TextStyle style(const abstract::Document *) const final;
 };
 
-class Table : public Element, public common::Table {
+class Table : public Element, public internal::Table {
 public:
   using Element::Element;
 
