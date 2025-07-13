@@ -45,6 +45,10 @@ TEST(Path, rebase) {
             Path("./ppt/media/image8.png").rebase(Path("ppt/media")).string());
 }
 
+TEST(Path, rebase_to_relative) {
+  EXPECT_EQ("mimetype", Path("/mimetype").rebase(Path("/")).string());
+}
+
 TEST(Path, rebase_separate_tree) {
   EXPECT_EQ("../../other/directory",
             Path("ppt/media/other/directory")
@@ -55,6 +59,10 @@ TEST(Path, rebase_separate_tree) {
 TEST(Path, rebase_relative) {
   EXPECT_EQ("other/directory",
             Path("../../other/directory").rebase(Path("../..")).string());
+}
+
+TEST(Path, common_root_simple) {
+  EXPECT_EQ("/", Path("/").common_root(Path("/mimetype")).string());
 }
 
 TEST(Path, common_root) {

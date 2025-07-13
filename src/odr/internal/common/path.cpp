@@ -186,7 +186,11 @@ Path Path::join(const Path &b) const {
 }
 
 Path Path::rebase(const Path &b) const {
-  Path result = Path(m_absolute ? "/" : "");
+  if (m_absolute != b.m_absolute) {
+    throw std::invalid_argument("cannot rebase absolute and relative path");
+  }
+
+  Path result = Path("");
   auto common_root = this->common_root(b);
 
   Path sub_a;
@@ -217,7 +221,7 @@ Path Path::rebase(const Path &b) const {
     result.join_("..");
   }
 
-  for (auto part : sub_a) {
+  for (const auto &part : sub_a) {
     result.join_(part);
   }
 
@@ -251,7 +255,7 @@ Path Path::common_root(const Path &b) const {
 
 Path::Iterator Path::begin() const { return Iterator(*this); }
 
-Path::Iterator Path::end() const { return Iterator(); }
+Path::Iterator Path::end() const { return {}; }
 
 Path::Iterator::Iterator() : m_path{nullptr}, m_begin{std::string::npos} {}
 

@@ -170,7 +170,7 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
     throw NotEncryptedError();
   }
 
-  if (auto it = manifest.entries.find(common::Path("encrypted-package"));
+  if (auto it = manifest.entries.find(common::Path("/encrypted-package"));
       it != std::end(manifest.entries)) {
     try {
       const std::string start_key = odf::start_key(it->second, password);

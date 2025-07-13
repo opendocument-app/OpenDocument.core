@@ -95,6 +95,9 @@ void ZipArchive::save(std::ostream &out) const {
 
   for (auto &&entry : *this) {
     auto path = entry.path();
+    if (path.absolute()) {
+      path = path.rebase(common::Path("/"));
+    }
 
     if (entry.is_file()) {
       auto file = entry.file();
