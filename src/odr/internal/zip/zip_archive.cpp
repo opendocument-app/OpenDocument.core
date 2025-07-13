@@ -60,10 +60,15 @@ std::shared_ptr<abstract::Filesystem> ZipArchive::as_filesystem() const {
   auto filesystem = std::make_shared<common::VirtualFilesystem>();
 
   for (const auto &e : *this) {
+    common::Path path = e.path();
+    if (path.relative()) {
+      path = common::Path("/").join(path);
+    }
+
     if (e.is_directory()) {
-      filesystem->create_directory(e.path());
+      filesystem->create_directory(path);
     } else if (e.is_file()) {
-      filesystem->copy(e.file(), e.path());
+      filesystem->copy(e.file(), path);
     }
   }
 
@@ -90,6 +95,9 @@ void ZipArchive::save(std::ostream &out) const {
 
   for (auto &&entry : *this) {
     auto path = entry.path();
+    if (path.absolute()) {
+      path = path.rebase(common::Path("/"));
+    }
 
     if (entry.is_file()) {
       auto file = entry.file();

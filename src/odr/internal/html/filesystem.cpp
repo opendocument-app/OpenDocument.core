@@ -65,7 +65,7 @@ public:
   HtmlResources write_filesystem(HtmlWriter &out) const {
     HtmlResources resources;
 
-    auto file_walker = m_filesystem.file_walker("");
+    auto file_walker = m_filesystem.file_walker("/");
 
     out.write_begin();
 

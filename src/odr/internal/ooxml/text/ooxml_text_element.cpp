@@ -8,7 +8,6 @@
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
-#include <functional>
 #include <optional>
 
 #include <pugixml.hpp>
@@ -285,7 +284,11 @@ std::optional<odr::File> Image::file(const abstract::Document *document) const {
   if (!doc || !is_internal(document)) {
     return {};
   }
-  return File(doc->as_filesystem()->open(common::Path(href(document))));
+  common::Path path(href(document));
+  if (path.relative()) {
+    path = common::Path("/").join(path);
+  }
+  return File(doc->as_filesystem()->open(path));
 }
 
 std::string Image::href(const abstract::Document *document) const {
@@ -295,7 +298,7 @@ std::string Image::href(const abstract::Document *document) const {
                      .attribute("r:embed")) {
     auto relations = document_relations_(document);
     if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
-      return common::Path("word").join(common::Path(rel->second)).string();
+      return common::Path("/word").join(common::Path(rel->second)).string();
     }
   }
   return ""; // TODO

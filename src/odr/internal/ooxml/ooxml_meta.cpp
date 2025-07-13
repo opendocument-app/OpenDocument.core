@@ -17,11 +17,11 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
   };
 
   static const std::unordered_map<common::Path, TypeInfo> types = {
-      {common::Path("word/document.xml"),
+      {common::Path("/word/document.xml"),
        {FileType::office_open_xml_document, DocumentType::text}},
-      {common::Path("ppt/presentation.xml"),
+      {common::Path("/ppt/presentation.xml"),
        {FileType::office_open_xml_presentation, DocumentType::presentation}},
-      {common::Path("xl/workbook.xml"),
+      {common::Path("/xl/workbook.xml"),
        {FileType::office_open_xml_workbook, DocumentType::spreadsheet}},
   };
 

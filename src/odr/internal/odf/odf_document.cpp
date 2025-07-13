@@ -18,10 +18,10 @@ Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : common::TemplateDocument<Element>(file_type, document_type,
                                         std::move(filesystem)) {
-  m_content_xml = util::xml::parse(*m_filesystem, common::Path("content.xml"));
+  m_content_xml = util::xml::parse(*m_filesystem, common::Path("/content.xml"));
 
-  if (m_filesystem->exists(common::Path("styles.xml"))) {
-    m_styles_xml = util::xml::parse(*m_filesystem, common::Path("styles.xml"));
+  if (m_filesystem->exists(common::Path("/styles.xml"))) {
+    m_styles_xml = util::xml::parse(*m_filesystem, common::Path("/styles.xml"));
   }
 
   m_root_element = parse_tree(
@@ -43,22 +43,22 @@ void Document::save(const common::Path &path) const {
   zip::ZipArchive archive;
 
   // `mimetype` has to be the first file and uncompressed
-  if (m_filesystem->is_file(common::Path("mimetype"))) {
-    archive.insert_file(std::end(archive), common::Path("mimetype"),
-                        m_filesystem->open(common::Path("mimetype")), 0);
+  if (m_filesystem->is_file(common::Path("/mimetype"))) {
+    archive.insert_file(std::end(archive), common::Path("/mimetype"),
+                        m_filesystem->open(common::Path("/mimetype")), 0);
   }
 
-  for (auto walker = m_filesystem->file_walker(common::Path(""));
+  for (auto walker = m_filesystem->file_walker(common::Path("/"));
        !walker->end(); walker->next()) {
     auto p = walker->path();
-    if (p == common::Path("mimetype")) {
+    if (p == common::Path("/mimetype")) {
       continue;
     }
     if (m_filesystem->is_directory(p)) {
       archive.insert_directory(std::end(archive), p);
       continue;
     }
-    if (p == common::Path("content.xml")) {
+    if (p == common::Path("/content.xml")) {
       // TODO stream
       std::stringstream out;
       m_content_xml.print(out, "", pugi::format_raw);
@@ -66,10 +66,10 @@ void Document::save(const common::Path &path) const {
       archive.insert_file(std::end(archive), p, tmp);
       continue;
     }
-    if (p == common::Path("META-INF/manifest.xml")) {
+    if (p == common::Path("/META-INF/manifest.xml")) {
       // TODO
       auto manifest = util::xml::parse(*m_filesystem,
-                                       common::Path("META-INF/manifest.xml"));
+                                       common::Path("/META-INF/manifest.xml"));
 
       for (auto &&node : manifest.select_nodes("//manifest:encryption-data")) {
         node.node().parent().remove_child(node.node());

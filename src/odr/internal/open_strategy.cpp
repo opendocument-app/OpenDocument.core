@@ -143,6 +143,16 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
       ODR_VERBOSE(logger, "failed to open as pdf with poppler");
     }
 #endif
+
+    // just to be sure we don't miss any legacy ms files
+#ifdef ODR_WITH_WVWARE
+    try {
+      ODR_VERBOSE(logger, "try open as legacy ms with wvware");
+      result.push_back(WvWareLegacyMicrosoftFile(memory_file).file_type());
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as legacy ms with wvware");
+    }
+#endif
   } else {
     ODR_VERBOSE(logger, "anything else");
     result.push_back(file_type);
@@ -364,7 +374,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
       ODR_VERBOSE(logger, "using wvware engine");
       try {
         auto memory_file = std::make_shared<common::MemoryFile>(*file);
-        return std::make_unique<odr::internal::WvWareLegacyMicrosoftFile>(
+        return std::make_unique<WvWareLegacyMicrosoftFile>(
             std::move(memory_file));
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as legacy ms with wvware engine");

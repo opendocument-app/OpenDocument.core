@@ -215,4 +215,9 @@ struct NotEncryptedError : public std::runtime_error {
   explicit NotEncryptedError();
 };
 
+/// @brief Invalid path
+struct InvalidPath : public std::runtime_error {
+  explicit InvalidPath(const std::string &message);
+};
+
 } // namespace odr
