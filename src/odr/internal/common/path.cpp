@@ -411,10 +411,6 @@ RelPath RelPath::common_root(const RelPath &other) const {
 
 } // namespace odr::internal
 
-std::ostream &odr::internal::operator<<(std::ostream &os, const Path &p) {
-  return os << p.m_path;
-}
-
 std::size_t std::hash<::odr::internal::Path>::operator()(
     const ::odr::internal::Path &p) const {
   return p.hash();

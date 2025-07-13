@@ -92,7 +92,9 @@ private:
   std::uint32_t m_downwards;
   bool m_absolute;
 
-  friend std::ostream &operator<<(std::ostream &, const Path &);
+  friend std::ostream &operator<<(std::ostream &os, const Path &p) {
+    return os << p.m_path;
+  }
 
   void parent_();
   void join_(const std::string &);
