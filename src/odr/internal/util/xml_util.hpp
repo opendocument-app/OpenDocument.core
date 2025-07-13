@@ -17,6 +17,7 @@ class Path;
 }
 
 namespace odr::internal::util::xml {
+
 pugi::xml_document parse(const std::string &);
 pugi::xml_document parse(std::istream &);
 pugi::xml_document parse(const abstract::ReadableFilesystem &, const Path &);
@@ -36,4 +37,5 @@ struct StringToken {
 };
 
 std::vector<StringToken> tokenize_text(const std::string &text);
+
 } // namespace odr::internal::util::xml
