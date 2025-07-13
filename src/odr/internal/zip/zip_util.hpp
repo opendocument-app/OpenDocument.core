@@ -15,6 +15,7 @@
 #include <miniz/miniz_zip.h>
 
 namespace odr::internal {
+class Path;
 class MemoryFile;
 class DiskFile;
 } // namespace odr::internal

@@ -9,7 +9,6 @@
 #include <odr/internal/zip/zip_util.hpp>
 
 #include <string>
-#include <utility>
 
 #include <miniz/miniz.h>
 
@@ -59,10 +58,7 @@ std::shared_ptr<abstract::Filesystem> ZipArchive::as_filesystem() const {
   auto filesystem = std::make_shared<VirtualFilesystem>();
 
   for (const auto &e : *this) {
-    Path path = e.path();
-    if (path.relative()) {
-      path = Path("/").join(path);
-    }
+    AbsPath path = e.path().make_absolute();
 
     if (e.is_directory()) {
       filesystem->create_directory(path);
@@ -93,10 +89,7 @@ void ZipArchive::save(std::ostream &out) const {
   }
 
   for (auto &&entry : *this) {
-    auto path = entry.path();
-    if (path.absolute()) {
-      path = path.rebase(Path("/"));
-    }
+    auto path = entry.path().make_absolute();
 
     if (entry.is_file()) {
       auto file = entry.file();

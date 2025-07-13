@@ -73,7 +73,7 @@ public:
   }
   [[nodiscard]] std::size_t size() const final { return m_entry.size; }
 
-  [[nodiscard]] std::optional<Path> disk_path() const final {
+  [[nodiscard]] std::optional<AbsPath> disk_path() const final {
     return std::nullopt;
   }
   [[nodiscard]] const char *memory_data() const final { return nullptr; }
@@ -94,7 +94,7 @@ bool Archive::Entry::is_file() const { return m_entry->is_stream(); }
 
 bool Archive::Entry::is_directory() const { return !m_entry->is_stream(); }
 
-Path Archive::Entry::path() const { return m_path; }
+AbsPath Archive::Entry::path() const { return m_path; }
 
 std::unique_ptr<abstract::File> Archive::Entry::file() const {
   if (!is_file()) {
@@ -204,7 +204,7 @@ Archive::Iterator Archive::begin() const {
 
 Archive::Iterator Archive::end() const { return {}; }
 
-Archive::Iterator Archive::find(const Path &path) const {
+Archive::Iterator Archive::find(const AbsPath &path) const {
   return std::find_if(begin(), end(), [&path](const Entry &entry) {
     return entry.path() == path;
   });

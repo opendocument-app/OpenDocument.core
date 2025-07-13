@@ -18,10 +18,10 @@ Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : TemplateDocument<Element>(file_type, document_type,
                                 std::move(filesystem)) {
-  m_content_xml = util::xml::parse(*m_filesystem, Path("/content.xml"));
+  m_content_xml = util::xml::parse(*m_filesystem, AbsPath("/content.xml"));
 
-  if (m_filesystem->exists(Path("/styles.xml"))) {
-    m_styles_xml = util::xml::parse(*m_filesystem, Path("/styles.xml"));
+  if (m_filesystem->exists(AbsPath("/styles.xml"))) {
+    m_styles_xml = util::xml::parse(*m_filesystem, AbsPath("/styles.xml"));
   }
 
   m_root_element = parse_tree(
@@ -43,12 +43,12 @@ void Document::save(const Path &path) const {
   zip::ZipArchive archive;
 
   // `mimetype` has to be the first file and uncompressed
-  if (m_filesystem->is_file(Path("/mimetype"))) {
-    archive.insert_file(std::end(archive), Path("/mimetype"),
-                        m_filesystem->open(Path("/mimetype")), 0);
+  if (m_filesystem->is_file(AbsPath("/mimetype"))) {
+    archive.insert_file(std::end(archive), AbsPath("/mimetype"),
+                        m_filesystem->open(AbsPath("/mimetype")), 0);
   }
 
-  for (auto walker = m_filesystem->file_walker(Path("/")); !walker->end();
+  for (auto walker = m_filesystem->file_walker(AbsPath("/")); !walker->end();
        walker->next()) {
     auto p = walker->path();
     if (p == Path("/mimetype")) {
@@ -69,7 +69,7 @@ void Document::save(const Path &path) const {
     if (p == Path("/META-INF/manifest.xml")) {
       // TODO
       auto manifest =
-          util::xml::parse(*m_filesystem, Path("/META-INF/manifest.xml"));
+          util::xml::parse(*m_filesystem, AbsPath("/META-INF/manifest.xml"));
 
       for (auto &&node : manifest.select_nodes("//manifest:encryption-data")) {
         node.node().parent().remove_child(node.node());

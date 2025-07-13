@@ -57,11 +57,11 @@ struct Manifest {
   };
 
   bool encrypted{false};
-  std::unordered_map<Path, Entry> entries;
+  std::unordered_map<AbsPath, Entry> entries;
 
-  Path smallest_file_path;
+  AbsPath smallest_file_path;
 
-  const Entry &smallest_file_entry() const;
+  [[nodiscard]] const Entry &smallest_file_entry() const;
 };
 
 Manifest parse_manifest(const pugi::xml_document &manifest);

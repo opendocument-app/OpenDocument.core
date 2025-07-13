@@ -18,11 +18,12 @@ namespace odr::internal::ooxml::text {
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : TemplateDocument<Element>(FileType::office_open_xml_document,
                                 DocumentType::text, std::move(filesystem)) {
-  m_document_xml = util::xml::parse(*m_filesystem, Path("/word/document.xml"));
-  m_styles_xml = util::xml::parse(*m_filesystem, Path("/word/styles.xml"));
+  m_document_xml =
+      util::xml::parse(*m_filesystem, AbsPath("/word/document.xml"));
+  m_styles_xml = util::xml::parse(*m_filesystem, AbsPath("/word/styles.xml"));
 
   m_document_relations =
-      parse_relationships(*m_filesystem, Path("/word/document.xml"));
+      parse_relationships(*m_filesystem, AbsPath("/word/document.xml"));
 
   m_root_element =
       parse_tree(*this, m_document_xml.document_element().child("w:body"));
@@ -40,7 +41,7 @@ void Document::save(const Path &path) const {
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 
-  for (auto walker = m_filesystem->file_walker(Path("/")); !walker->end();
+  for (auto walker = m_filesystem->file_walker(AbsPath("/")); !walker->end();
        walker->next()) {
     auto p = walker->path();
     if (m_filesystem->is_directory(p)) {

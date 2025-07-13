@@ -7,7 +7,7 @@
 #include <string>
 
 namespace odr::internal {
-class Path;
+class AbsPath;
 }
 
 namespace odr::internal::abstract {
@@ -22,7 +22,7 @@ public:
   [[nodiscard]] virtual FileLocation location() const noexcept = 0;
   [[nodiscard]] virtual std::size_t size() const = 0;
 
-  [[nodiscard]] virtual std::optional<Path> disk_path() const = 0;
+  [[nodiscard]] virtual std::optional<AbsPath> disk_path() const = 0;
   [[nodiscard]] virtual const char *memory_data() const = 0;
 
   [[nodiscard]] virtual std::unique_ptr<std::istream> stream() const = 0;

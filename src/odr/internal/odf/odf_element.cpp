@@ -440,10 +440,7 @@ bool Image::is_internal(const abstract::Document *document) const {
     return false;
   }
   try {
-    Path path(href(document));
-    if (path.relative()) {
-      path = Path("/").join(path);
-    }
+    AbsPath path = Path(href(document)).make_absolute();
     return doc->as_filesystem()->is_file(path);
   } catch (...) {
   }
@@ -455,10 +452,7 @@ std::optional<odr::File> Image::file(const abstract::Document *document) const {
   if (!doc || !is_internal(document)) {
     return {};
   }
-  Path path(href(document));
-  if (path.relative()) {
-    path = Path("/").join(path);
-  }
+  AbsPath path = Path(href(document)).make_absolute();
   return File(doc->as_filesystem()->open(path));
 }
 

@@ -44,8 +44,8 @@ void front(const Document &document, const WritingState &state) {
         "width=device-width,initial-scale=1.0,user-scalable=yes");
   }
 
-  auto odr_css_file =
-      File(Path(state.config().resource_path).join(Path("odr.css")));
+  auto odr_css_file = File(
+      Path(state.config().resource_path).join(RelPath("odr.css")).string());
   odr::HtmlResource odr_css_resource =
       html::HtmlResource::create(HtmlResourceType::css, "text/css", "odr.css",
                                  "odr.css", odr_css_file, true, false, true);
@@ -61,8 +61,10 @@ void front(const Document &document, const WritingState &state) {
   }
 
   if (document.document_type() == DocumentType::spreadsheet) {
-    auto odr_spreadsheet_css_file = File(
-        Path(state.config().resource_path).join(Path("odr_spreadsheet.css")));
+    auto odr_spreadsheet_css_file =
+        File(Path(state.config().resource_path)
+                 .join(RelPath("odr_spreadsheet.css"))
+                 .string());
     odr::HtmlResource odr_spreadsheet_css_resource = html::HtmlResource::create(
         HtmlResourceType::css, "text/css", "odr_spreadsheet.css",
         "odr_spreadsheet.css", odr_spreadsheet_css_file, true, false, true);
@@ -121,7 +123,7 @@ void back(const Document &document, const WritingState &state) {
   }
 
   auto odr_js_file =
-      File(Path(state.config().resource_path).join(Path("odr.js")));
+      File(Path(state.config().resource_path).join(RelPath("odr.js")).string());
   odr::HtmlResource odr_js_resource = html::HtmlResource::create(
       HtmlResourceType::js, "text/javascript", "odr.js", "odr.js", odr_js_file,
       true, false, true);

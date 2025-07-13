@@ -14,26 +14,26 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : TemplateDocument<Element>(FileType::office_open_xml_workbook,
                                 DocumentType::spreadsheet,
                                 std::move(filesystem)) {
-  auto workbook_path = Path("/xl/workbook.xml");
+  AbsPath workbook_path("/xl/workbook.xml");
   auto [workbook_xml, workbook_relations] = parse_xml_(workbook_path);
-  auto [styles_xml, _] = parse_xml_(Path("/xl/styles.xml"));
+  auto [styles_xml, _] = parse_xml_(AbsPath("/xl/styles.xml"));
 
   for (pugi::xml_node sheet_node :
        workbook_xml.document_element().child("sheets").children("sheet")) {
     const char *id = sheet_node.attribute("r:id").value();
-    Path sheet_path =
-        workbook_path.parent().join(Path(workbook_relations.at(id)));
+    AbsPath sheet_path =
+        workbook_path.parent().join(RelPath(workbook_relations.at(id)));
     auto [sheet_xml, sheet_relationships] = parse_xml_(sheet_path);
 
     if (auto drawing = sheet_xml.document_element().child("drawing")) {
-      auto drawing_path = sheet_path.parent().join(
-          Path(sheet_relationships.at(drawing.attribute("r:id").value())));
+      AbsPath drawing_path = sheet_path.parent().join(
+          RelPath(sheet_relationships.at(drawing.attribute("r:id").value())));
       parse_xml_(drawing_path);
     }
   }
 
-  if (m_filesystem->exists(Path("/xl/sharedStrings.xml"))) {
-    auto [shared_strings_xml, _] = parse_xml_(Path("/xl/sharedStrings.xml"));
+  if (m_filesystem->exists(AbsPath("/xl/sharedStrings.xml"))) {
+    auto [shared_strings_xml, _] = parse_xml_(AbsPath("/xl/sharedStrings.xml"));
 
     for (auto shared_string : shared_strings_xml.document_element()) {
       m_shared_strings.push_back(shared_string);
@@ -47,7 +47,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
 }
 
 std::pair<pugi::xml_document &, Relations &>
-Document::parse_xml_(const Path &path) {
+Document::parse_xml_(const AbsPath &path) {
   pugi::xml_document document = util::xml::parse(*m_filesystem, path);
   Relations relations = parse_relationships(*m_filesystem, path);
 

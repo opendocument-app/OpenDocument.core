@@ -1,7 +1,6 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 #include <odr/internal/util/map_util.hpp>
 
@@ -370,7 +369,7 @@ bool ImageElement::is_internal(const abstract::Document *document) const {
     return false;
   }
   try {
-    return doc->as_filesystem()->is_file(Path(href(document)));
+    return doc->as_filesystem()->is_file(AbsPath(href(document)));
   } catch (...) {
   }
   return false;
@@ -382,14 +381,17 @@ ImageElement::file(const abstract::Document *document) const {
   if (doc == nullptr || !is_internal(document)) {
     return {};
   }
-  return File(doc->as_filesystem()->open(Path(href(document))));
+  return File(doc->as_filesystem()->open(AbsPath(href(document))));
 }
 
 std::string ImageElement::href(const abstract::Document *document) const {
   if (pugi::xml_attribute ref = m_node.attribute("r:embed")) {
     auto relations = document_relations_(document);
     if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
-      return document_path_(document).parent().join(Path(rel->second)).string();
+      return document_path_(document)
+          .parent()
+          .join(RelPath(rel->second))
+          .string();
     }
   }
   return ""; // TODO

@@ -22,13 +22,13 @@ public:
   [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
 
-  [[nodiscard]] std::optional<Path> disk_path() const final;
+  [[nodiscard]] std::optional<AbsPath> disk_path() const final;
   [[nodiscard]] const char *memory_data() const final;
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
 private:
-  Path m_path;
+  AbsPath m_path;
 };
 
 class MemoryFile final : public abstract::File {
@@ -39,7 +39,7 @@ public:
   [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
 
-  [[nodiscard]] std::optional<Path> disk_path() const final;
+  [[nodiscard]] std::optional<AbsPath> disk_path() const final;
   [[nodiscard]] const char *memory_data() const final;
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;

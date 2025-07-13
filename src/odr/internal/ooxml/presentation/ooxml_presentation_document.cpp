@@ -15,12 +15,12 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
                                 DocumentType::presentation,
                                 std::move(filesystem)) {
   m_document_xml =
-      util::xml::parse(*m_filesystem, Path("/ppt/presentation.xml"));
+      util::xml::parse(*m_filesystem, AbsPath("/ppt/presentation.xml"));
 
   for (const auto &relationships :
-       parse_relationships(*m_filesystem, Path("/ppt/presentation.xml"))) {
+       parse_relationships(*m_filesystem, AbsPath("/ppt/presentation.xml"))) {
     m_slides_xml[relationships.first] = util::xml::parse(
-        *m_filesystem, Path("/ppt").join(Path(relationships.second)));
+        *m_filesystem, AbsPath("/ppt").join(RelPath(relationships.second)));
   }
 
   m_root_element = parse_tree(*this, m_document_xml.document_element());

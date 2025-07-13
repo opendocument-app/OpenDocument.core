@@ -46,7 +46,7 @@ void parse_element_children(Document &document, Root *element,
   for (pugi::xml_node child_node : node.child("sheets").children("sheet")) {
     const char *id = child_node.attribute("r:id").value();
     Path sheet_path =
-        document_path.parent().join(Path(document_relations.at(id)));
+        document_path.parent().join(RelPath(document_relations.at(id)));
     auto [sheet_xml, sheet_relations] = document.get_xml(sheet_path);
     auto [sheet, _] = parse_element_tree<Sheet>(
         document, sheet_xml.document_element(), sheet_path, sheet_relations);
@@ -152,7 +152,7 @@ parse_element_tree(Document &document, pugi::xml_node node,
   if (pugi::xml_node drawing_node = node.child("drawing")) {
     const char *id = drawing_node.attribute("r:id").value();
     Path drawing_path =
-        document_path.parent().join(Path(document_relations.at(id)));
+        document_path.parent().join(RelPath(document_relations.at(id)));
     auto [drawing_xml, drawing_relations] = document.get_xml(drawing_path);
 
     for (pugi::xml_node shape_node :

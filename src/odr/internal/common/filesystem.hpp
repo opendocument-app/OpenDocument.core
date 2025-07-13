@@ -15,61 +15,61 @@ namespace odr::internal {
 
 class SystemFilesystem final : public abstract::Filesystem {
 public:
-  explicit SystemFilesystem(Path root);
+  explicit SystemFilesystem(AbsPath root);
 
-  [[nodiscard]] bool exists(const Path &path) const final;
-  [[nodiscard]] bool is_file(const Path &path) const final;
-  [[nodiscard]] bool is_directory(const Path &path) const final;
+  [[nodiscard]] bool exists(const AbsPath &path) const final;
+  [[nodiscard]] bool is_file(const AbsPath &path) const final;
+  [[nodiscard]] bool is_directory(const AbsPath &path) const final;
 
   [[nodiscard]] std::unique_ptr<abstract::FileWalker>
-  file_walker(const Path &path) const final;
+  file_walker(const AbsPath &path) const final;
 
   [[nodiscard]] std::shared_ptr<abstract::File>
-  open(const Path &path) const final;
+  open(const AbsPath &path) const final;
 
-  std::unique_ptr<std::ostream> create_file(const Path &path) final;
-  bool create_directory(const Path &path) final;
+  std::unique_ptr<std::ostream> create_file(const AbsPath &path) final;
+  bool create_directory(const AbsPath &path) final;
 
-  bool remove(const Path &path) final;
-  bool copy(const Path &from, const Path &to) final;
+  bool remove(const AbsPath &path) final;
+  bool copy(const AbsPath &from, const AbsPath &to) final;
   std::shared_ptr<abstract::File> copy(const abstract::File &from,
-                                       const Path &to) final;
+                                       const AbsPath &to) final;
   std::shared_ptr<abstract::File> copy(std::shared_ptr<abstract::File> from,
-                                       const Path &to) final;
-  bool move(const Path &from, const Path &to) final;
+                                       const AbsPath &to) final;
+  bool move(const AbsPath &from, const AbsPath &to) final;
 
 private:
-  Path m_root;
+  AbsPath m_root;
 
-  [[nodiscard]] Path to_system_path_(const Path &path) const;
+  [[nodiscard]] AbsPath to_system_path_(const AbsPath &path) const;
 };
 
 class VirtualFilesystem final : public abstract::Filesystem {
 public:
-  [[nodiscard]] bool exists(const Path &path) const final;
-  [[nodiscard]] bool is_file(const Path &path) const final;
-  [[nodiscard]] bool is_directory(const Path &path) const final;
+  [[nodiscard]] bool exists(const AbsPath &path) const final;
+  [[nodiscard]] bool is_file(const AbsPath &path) const final;
+  [[nodiscard]] bool is_directory(const AbsPath &path) const final;
 
   [[nodiscard]] std::unique_ptr<abstract::FileWalker>
-  file_walker(const Path &path) const final;
+  file_walker(const AbsPath &path) const final;
 
   [[nodiscard]] std::shared_ptr<abstract::File>
-  open(const Path &path) const final;
+  open(const AbsPath &path) const final;
 
-  std::unique_ptr<std::ostream> create_file(const Path &path) final;
-  bool create_directory(const Path &path) final;
+  std::unique_ptr<std::ostream> create_file(const AbsPath &path) final;
+  bool create_directory(const AbsPath &path) final;
 
-  bool remove(const Path &path) final;
-  bool copy(const Path &from, const Path &to) final;
+  bool remove(const AbsPath &path) final;
+  bool copy(const AbsPath &from, const AbsPath &to) final;
   std::shared_ptr<abstract::File> copy(const abstract::File &from,
-                                       const Path &to) final;
+                                       const AbsPath &to) final;
   std::shared_ptr<abstract::File> copy(std::shared_ptr<abstract::File> from,
-                                       const Path &to) final;
-  bool move(const Path &from, const Path &to) final;
+                                       const AbsPath &to) final;
+  bool move(const AbsPath &from, const AbsPath &to) final;
 
 private:
   // TODO consider `const abstract::File`
-  std::map<Path, std::shared_ptr<abstract::File>> m_files;
+  std::map<AbsPath, std::shared_ptr<abstract::File>> m_files;
 };
 
 } // namespace odr::internal

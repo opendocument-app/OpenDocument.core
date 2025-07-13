@@ -107,7 +107,7 @@ public:
     return stat.m_uncomp_size;
   }
 
-  [[nodiscard]] std::optional<Path> disk_path() const final {
+  [[nodiscard]] std::optional<AbsPath> disk_path() const final {
     return std::nullopt;
   }
   [[nodiscard]] const char *memory_data() const final { return nullptr; }
@@ -150,7 +150,7 @@ Path Archive::Entry::path() const {
   char filename[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
   mz_zip_reader_get_filename(m_archive->zip(), m_index, filename,
                              MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE);
-  return Path(filename);
+  return Path(filename).make_absolute();
 }
 
 Method Archive::Entry::method() const {

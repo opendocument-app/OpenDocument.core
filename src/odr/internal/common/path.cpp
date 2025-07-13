@@ -2,11 +2,6 @@
 
 #include <stdexcept>
 
-std::size_t std::hash<::odr::internal::Path>::operator()(
-    const ::odr::internal::Path &p) const {
-  return p.hash();
-}
-
 namespace odr::internal {
 
 Path::Path() noexcept : Path("") {}
@@ -105,12 +100,6 @@ bool Path::operator>(const Path &b) const noexcept {
   return m_path > b.m_path;
 }
 
-Path::operator std::string() const noexcept { return m_path; }
-
-Path::operator std::filesystem::path() const noexcept { return m_path; }
-
-Path::operator const std::string &() const noexcept { return m_path; }
-
 const std::string &Path::string() const noexcept { return m_path; }
 
 std::filesystem::path Path::path() const noexcept { return m_path; }
@@ -151,6 +140,24 @@ bool Path::descendant_of(const Path &b) const {
   return (m_downwards < b.m_downwards) && (b.m_path.rfind(m_path, 0) == 0);
 }
 
+AbsPath Path::as_absolute() const & { return AbsPath(*this); }
+
+AbsPath Path::as_absolute() && { return AbsPath(std::move(*this)); }
+
+RelPath Path::as_relative() const & { return RelPath(*this); }
+
+RelPath Path::as_relative() && { return RelPath(std::move(*this)); }
+
+AbsPath Path::make_absolute() const {
+  if (m_absolute) {
+    return AbsPath(*this);
+  }
+  if (m_upwards > 0) {
+    throw std::invalid_argument("cannot make relative path absolute");
+  }
+  return AbsPath("/" + m_path);
+}
+
 std::string Path::basename() const noexcept {
   const auto find = m_path.rfind('/');
   if (find == std::string::npos) {
@@ -174,10 +181,7 @@ Path Path::parent() const {
   return result;
 }
 
-Path Path::join(const Path &b) const {
-  if (b.m_absolute) {
-    throw std::invalid_argument("cannot join an absolute path");
-  }
+Path Path::join(const RelPath &b) const {
   if (root()) {
     return Path("/" + b.m_path);
   }
@@ -313,8 +317,115 @@ Path::Iterator Path::Iterator::operator++(int) {
   return old;
 }
 
-std::ostream &operator<<(std::ostream &os, const Path &p) {
-  return os << p.m_path;
+AbsPath::AbsPath() noexcept : Path("/") {}
+
+AbsPath::AbsPath(const char *c_string) : Path(c_string) {
+  if (!absolute()) {
+    throw std::invalid_argument("not an absolute path");
+  }
+}
+
+AbsPath::AbsPath(const std::string &string) : Path(string) {
+  if (!absolute()) {
+    throw std::invalid_argument("not an absolute path");
+  }
+}
+
+AbsPath::AbsPath(std::string_view string_view) : Path(string_view) {
+  if (!absolute()) {
+    throw std::invalid_argument("not an absolute path");
+  }
+}
+
+AbsPath::AbsPath(const std::filesystem::path &path) : Path(path) {
+  if (!absolute()) {
+    throw std::invalid_argument("not an absolute path");
+  }
+}
+
+AbsPath::AbsPath(Path path) : Path(std::move(path)) {
+  if (!absolute()) {
+    throw std::invalid_argument("not an absolute path");
+  }
+}
+
+AbsPath AbsPath::parent() const { return Path::parent().as_absolute(); }
+
+AbsPath AbsPath::join(const RelPath &other) const {
+  return Path::join(other).as_absolute();
+}
+
+RelPath AbsPath::rebase(const AbsPath &on) const {
+  return Path::rebase(on).as_relative();
+}
+
+AbsPath AbsPath::common_root(const AbsPath &other) const {
+  return Path::common_root(other).as_absolute();
+}
+
+RelPath::RelPath() noexcept : Path("") {}
+
+RelPath::RelPath(const char *c_string) : Path(c_string) {
+  if (!relative()) {
+    throw std::invalid_argument("not a relative path");
+  }
+}
+
+RelPath::RelPath(const std::string &string) : Path(string) {
+  if (!relative()) {
+    throw std::invalid_argument("not a relative path");
+  }
+}
+
+RelPath::RelPath(std::string_view string_view) : Path(string_view) {
+  if (!relative()) {
+    throw std::invalid_argument("not a relative path");
+  }
+}
+
+RelPath::RelPath(const std::filesystem::path &path) : Path(path) {
+  if (!relative()) {
+    throw std::invalid_argument("not a relative path");
+  }
+}
+
+RelPath::RelPath(Path path) : Path(std::move(path)) {
+  if (!relative()) {
+    throw std::invalid_argument("not a relative path");
+  }
+}
+
+RelPath RelPath::parent() const { return Path::parent().as_relative(); }
+
+RelPath RelPath::join(const RelPath &other) const {
+  return Path::join(other).as_relative();
+}
+
+RelPath RelPath::rebase(const RelPath &on) const {
+  return Path::rebase(on).as_relative();
+}
+
+RelPath RelPath::common_root(const RelPath &other) const {
+  return Path::common_root(other).as_relative();
 }
 
 } // namespace odr::internal
+
+std::ostream &odr::internal::operator<<(std::ostream &os, const Path &p) {
+  return os << p.m_path;
+}
+
+std::size_t std::hash<::odr::internal::Path>::operator()(
+    const ::odr::internal::Path &p) const {
+  return p.hash();
+}
+
+std::size_t std::hash<::odr::internal::AbsPath>::operator()(
+    const ::odr::internal::AbsPath &p) const {
+  return p.hash();
+}
+
+std::size_t std::hash<::odr::internal::RelPath>::operator()(
+    const ::odr::internal::RelPath &p) const {
+  return p.hash();
+}

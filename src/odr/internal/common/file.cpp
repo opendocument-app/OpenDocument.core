@@ -14,10 +14,11 @@ DiskFile::DiskFile(const char *path) : DiskFile{Path(path)} {}
 
 DiskFile::DiskFile(const std::string &path) : DiskFile{Path(path)} {}
 
-DiskFile::DiskFile(Path path) : m_path{std::move(path)} {
-  if (!std::filesystem::is_regular_file(m_path)) {
+DiskFile::DiskFile(Path path) {
+  if (!std::filesystem::is_regular_file(path.path())) {
     throw FileNotFound();
   }
+  m_path = AbsPath(std::filesystem::absolute(path.path()));
 }
 
 FileLocation DiskFile::location() const noexcept { return FileLocation::disk; }
@@ -26,7 +27,7 @@ std::size_t DiskFile::size() const {
   return std::filesystem::file_size(m_path.string());
 }
 
-std::optional<Path> DiskFile::disk_path() const { return m_path; }
+std::optional<AbsPath> DiskFile::disk_path() const { return m_path; }
 
 const char *DiskFile::memory_data() const { return nullptr; }
 
@@ -51,7 +52,7 @@ FileLocation MemoryFile::location() const noexcept {
 
 std::size_t MemoryFile::size() const { return m_data.size(); }
 
-std::optional<Path> MemoryFile::disk_path() const { return {}; }
+std::optional<AbsPath> MemoryFile::disk_path() const { return std::nullopt; }
 
 const char *MemoryFile::memory_data() const { return m_data.data(); }
 

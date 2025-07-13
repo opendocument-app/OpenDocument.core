@@ -24,16 +24,16 @@ TEST(Path, normalization) {
 
 TEST(Path, join) {
   EXPECT_EQ("/home/media/image8.png",
-            Path("/home").join(Path("media/image8.png")).string());
+            Path("/home").join(RelPath("media/image8.png")).string());
 }
 
 TEST(Path, join_relative) {
   EXPECT_EQ("ppt/media/image8.png",
-            Path("ppt/slides").join(Path("../media/image8.png")).string());
+            Path("ppt/slides").join(RelPath("../media/image8.png")).string());
 }
 
 TEST(Path, join_root) {
-  EXPECT_EQ("/tmp", Path("/").join(Path("tmp")).string());
+  EXPECT_EQ("/tmp", Path("/").join(RelPath("tmp")).string());
 }
 
 TEST(Path, root_parent) { EXPECT_ANY_THROW(auto tmp = Path("/").parent()); }

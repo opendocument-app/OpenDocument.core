@@ -13,14 +13,14 @@ class ReadableFilesystem;
 }
 
 namespace odr::internal {
-class Path;
+class AbsPath;
 }
 
 namespace odr::internal::util::xml {
 
 pugi::xml_document parse(const std::string &);
 pugi::xml_document parse(std::istream &);
-pugi::xml_document parse(const abstract::ReadableFilesystem &, const Path &);
+pugi::xml_document parse(const abstract::ReadableFilesystem &, const AbsPath &);
 
 struct StringToken {
   enum class Type {

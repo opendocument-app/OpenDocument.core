@@ -34,7 +34,7 @@ public:
   [[nodiscard]] Iterator begin() const;
   [[nodiscard]] Iterator end() const;
 
-  [[nodiscard]] Iterator find(const Path &path) const;
+  [[nodiscard]] Iterator find(const AbsPath &path) const;
 
   class Entry {
   public:
@@ -43,9 +43,9 @@ public:
     Entry(const Archive &parent, const impl::CompoundFileEntry &entry)
         : m_parent{&parent}, m_entry{&entry}, m_path{"/"} {}
     Entry(const Archive &parent, const impl::CompoundFileEntry &entry,
-          const Path &parent_path)
+          const AbsPath &parent_path)
         : m_parent{&parent}, m_entry{&entry},
-          m_path{parent_path.join(Path(name()))} {}
+          m_path{parent_path.join(RelPath(name()))} {}
     ~Entry() = default;
     Entry &operator=(const Entry &) = default;
     Entry &operator=(Entry &&) noexcept = default;
@@ -59,7 +59,7 @@ public:
 
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
-    [[nodiscard]] Path path() const;
+    [[nodiscard]] AbsPath path() const;
     [[nodiscard]] std::unique_ptr<abstract::File> file() const;
 
     [[nodiscard]] std::string name() const;
@@ -70,7 +70,7 @@ public:
   private:
     const Archive *m_parent;
     const impl::CompoundFileEntry *m_entry;
-    Path m_path;
+    AbsPath m_path;
 
     friend Iterator;
   };
@@ -91,7 +91,7 @@ public:
       dig_left_();
     }
     Iterator(const Archive &parent, const impl::CompoundFileEntry &entry,
-             const Path &parent_path)
+             const AbsPath &parent_path)
         : m_entry{Entry(parent, entry, parent_path)} {
       dig_left_();
     }
