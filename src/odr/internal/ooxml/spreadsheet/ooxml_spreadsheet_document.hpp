@@ -36,7 +36,7 @@ private:
   StyleRegistry m_style_registry;
   std::vector<pugi::xml_node> m_shared_strings;
 
-  std::pair<pugi::xml_document &, Relations &> parse_xml_(const Path &path);
+  std::pair<pugi::xml_document &, Relations &> parse_xml_(const AbsPath &path);
 
   friend class Element;
 };

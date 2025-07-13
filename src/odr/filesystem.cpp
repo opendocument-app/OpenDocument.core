@@ -74,25 +74,26 @@ Filesystem::Filesystem(
 Filesystem::operator bool() const { return m_impl != nullptr; }
 
 bool Filesystem::exists(const std::string &path) const {
-  return m_impl != nullptr && m_impl->exists(internal::Path(path));
+  return m_impl != nullptr && m_impl->exists(internal::AbsPath(path));
 }
 
 bool Filesystem::is_file(const std::string &path) const {
-  return m_impl != nullptr && m_impl->is_file(internal::Path(path));
+  return m_impl != nullptr && m_impl->is_file(internal::AbsPath(path));
 }
 
 bool Filesystem::is_directory(const std::string &path) const {
-  return m_impl != nullptr && m_impl->is_directory(internal::Path(path));
+  return m_impl != nullptr && m_impl->is_directory(internal::AbsPath(path));
 }
 
 FileWalker Filesystem::file_walker(const std::string &path) const {
   return m_impl != nullptr
-             ? FileWalker(m_impl->file_walker(internal::Path(path)))
+             ? FileWalker(m_impl->file_walker(internal::AbsPath(path)))
              : FileWalker();
 }
 
 File Filesystem::open(const std::string &path) const {
-  return m_impl != nullptr ? File(m_impl->open(internal::Path(path))) : File();
+  return m_impl != nullptr ? File(m_impl->open(internal::AbsPath(path)))
+                           : File();
 }
 
 } // namespace odr

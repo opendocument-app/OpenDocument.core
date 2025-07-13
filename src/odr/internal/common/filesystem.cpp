@@ -17,12 +17,9 @@ namespace odr::internal {
 namespace {
 class SystemFileWalker final : public abstract::FileWalker {
 public:
-  SystemFileWalker(Path root, const Path &path)
+  SystemFileWalker(AbsPath root, const Path &path)
       : m_root{std::move(root)},
-        m_iterator{std::filesystem::recursive_directory_iterator(path)} {
-    if (path.relative()) {
-      throw InvalidPath("SystemFileWalker: path must be absolute");
-    }
+        m_iterator{std::filesystem::recursive_directory_iterator(path.path())} {
   }
 
   [[nodiscard]] std::unique_ptr<FileWalker> clone() const final {
@@ -39,8 +36,8 @@ public:
 
   [[nodiscard]] std::uint32_t depth() const final { return m_iterator.depth(); }
 
-  [[nodiscard]] Path path() const final {
-    return Path("/").join(Path(m_iterator->path()).rebase(m_root));
+  [[nodiscard]] AbsPath path() const final {
+    return AbsPath("/").join(AbsPath(m_iterator->path()).rebase(m_root));
   }
 
   [[nodiscard]] bool is_file() const final {
@@ -61,91 +58,57 @@ public:
   }
 
 private:
-  Path m_root;
+  AbsPath m_root;
   std::filesystem::recursive_directory_iterator m_iterator;
 };
 } // namespace
 
-SystemFilesystem::SystemFilesystem(Path root) : m_root{std::move(root)} {}
+SystemFilesystem::SystemFilesystem(AbsPath root) : m_root{std::move(root)} {}
 
-Path SystemFilesystem::to_system_path_(const Path &path) const {
-  return m_root.join(path.rebase(Path("/")));
+AbsPath SystemFilesystem::to_system_path_(const AbsPath &path) const {
+  return m_root.join(path.rebase(AbsPath("/")));
 }
 
-bool SystemFilesystem::exists(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("SystemFilesystem::exists: path must be absolute");
-  }
-
-  return std::filesystem::exists(to_system_path_(path));
+bool SystemFilesystem::exists(const AbsPath &path) const {
+  return std::filesystem::exists(to_system_path_(path).path());
 }
 
-bool SystemFilesystem::is_file(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("SystemFilesystem::is_file: path must be absolute");
-  }
-
-  return std::filesystem::is_regular_file(to_system_path_(path));
+bool SystemFilesystem::is_file(const AbsPath &path) const {
+  return std::filesystem::is_regular_file(to_system_path_(path).path());
 }
 
-bool SystemFilesystem::is_directory(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("SystemFilesystem::is_directory: path must be absolute");
-  }
-
-  return std::filesystem::is_directory(to_system_path_(path));
+bool SystemFilesystem::is_directory(const AbsPath &path) const {
+  return std::filesystem::is_directory(to_system_path_(path).path());
 }
 
 std::unique_ptr<abstract::FileWalker>
-SystemFilesystem::file_walker(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("SystemFilesystem::file_walker: path must be absolute");
-  }
-
+SystemFilesystem::file_walker(const AbsPath &path) const {
   return std::make_unique<SystemFileWalker>(m_root, to_system_path_(path));
 }
 
-std::shared_ptr<abstract::File> SystemFilesystem::open(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("SystemFilesystem::open: path must be absolute");
-  }
-
+std::shared_ptr<abstract::File>
+SystemFilesystem::open(const AbsPath &path) const {
   return std::make_unique<DiskFile>(to_system_path_(path));
 }
 
-std::unique_ptr<std::ostream> SystemFilesystem::create_file(const Path &path) {
-  if (path.relative()) {
-    throw InvalidPath("SystemFilesystem::create_file: path must be absolute");
-  }
-
+std::unique_ptr<std::ostream>
+SystemFilesystem::create_file(const AbsPath &path) {
   return std::make_unique<std::ofstream>(
       util::file::create(to_system_path_(path).string()));
 }
 
-bool SystemFilesystem::create_directory(const Path &path) {
-  if (path.relative()) {
-    throw InvalidPath(
-        "SystemFilesystem::create_directory: path must be absolute");
-  }
-
-  return std::filesystem::create_directory(to_system_path_(path));
+bool SystemFilesystem::create_directory(const AbsPath &path) {
+  return std::filesystem::create_directory(to_system_path_(path).path());
 }
 
-bool SystemFilesystem::remove(const Path &path) {
-  if (path.relative()) {
-    throw InvalidPath("SystemFilesystem::remove: path must be absolute");
-  }
-
-  return std::filesystem::remove(to_system_path_(path));
+bool SystemFilesystem::remove(const AbsPath &path) {
+  return std::filesystem::remove(to_system_path_(path).path());
 }
 
-bool SystemFilesystem::copy(const Path &from, const Path &to) {
-  if (from.relative() || to.relative()) {
-    throw InvalidPath("SystemFilesystem::copy: paths must be absolute");
-  }
-
+bool SystemFilesystem::copy(const AbsPath &from, const AbsPath &to) {
   std::error_code error_code;
-  std::filesystem::copy(to_system_path_(from), to_system_path_(to), error_code);
+  std::filesystem::copy(to_system_path_(from).path(),
+                        to_system_path_(to).path(), error_code);
   if (error_code) {
     return false;
   }
@@ -153,11 +116,7 @@ bool SystemFilesystem::copy(const Path &from, const Path &to) {
 }
 
 std::shared_ptr<abstract::File>
-SystemFilesystem::copy(const abstract::File &from, const Path &to) {
-  if (to.relative()) {
-    throw InvalidPath("SystemFilesystem::copy: path must be absolute");
-  }
-
+SystemFilesystem::copy(const abstract::File &from, const AbsPath &to) {
   auto istream = from.stream();
   auto ostream = create_file(to_system_path_(to));
 
@@ -167,22 +126,15 @@ SystemFilesystem::copy(const abstract::File &from, const Path &to) {
 }
 
 std::shared_ptr<abstract::File>
-SystemFilesystem::copy(std::shared_ptr<abstract::File> from, const Path &to) {
-  if (to.relative()) {
-    throw InvalidPath("SystemFilesystem::copy: path must be absolute");
-  }
-
+SystemFilesystem::copy(std::shared_ptr<abstract::File> from,
+                       const AbsPath &to) {
   return copy(*from, to_system_path_(to));
 }
 
-bool SystemFilesystem::move(const Path &from, const Path &to) {
-  if (from.relative() || to.relative()) {
-    throw InvalidPath("SystemFilesystem::move: paths must be absolute");
-  }
-
+bool SystemFilesystem::move(const AbsPath &from, const AbsPath &to) {
   std::error_code error_code;
-  std::filesystem::rename(to_system_path_(from), to_system_path_(to),
-                          error_code);
+  std::filesystem::rename(to_system_path_(from).path(),
+                          to_system_path_(to).path(), error_code);
   if (error_code) {
     return false;
   }
@@ -192,13 +144,9 @@ bool SystemFilesystem::move(const Path &from, const Path &to) {
 namespace {
 class VirtualFileWalker final : public abstract::FileWalker {
 public:
-  VirtualFileWalker(
-      const Path &root,
-      const std::map<Path, std::shared_ptr<abstract::File>> &files) {
-    if (root.relative()) {
-      throw InvalidPath("VirtualFileWalker: path must be absolute");
-    }
+  using Files = std::map<AbsPath, std::shared_ptr<abstract::File>>;
 
+  VirtualFileWalker(const AbsPath &root, const Files &files) {
     for (auto &&f : files) {
       if (f.first.ancestor_of(root)) {
         m_files[f.first] = f.second;
@@ -225,7 +173,7 @@ public:
     return 0; // TODO
   }
 
-  [[nodiscard]] Path path() const final { return m_iterator->first; }
+  [[nodiscard]] AbsPath path() const final { return m_iterator->first; }
 
   [[nodiscard]] bool is_file() const final {
     return m_iterator->second.operator bool();
@@ -244,26 +192,16 @@ public:
   }
 
 private:
-  using Files = std::map<Path, std::shared_ptr<abstract::File>>;
-
   Files m_files;
   Files::iterator m_iterator;
 };
 } // namespace
 
-bool VirtualFilesystem::exists(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("VirtualFilesystem::exists: path must be absolute");
-  }
-
+bool VirtualFilesystem::exists(const AbsPath &path) const {
   return m_files.find(path) != std::end(m_files);
 }
 
-bool VirtualFilesystem::is_file(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("VirtualFilesystem::is_file: path must be absolute");
-  }
-
+bool VirtualFilesystem::is_file(const AbsPath &path) const {
   auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return false;
@@ -271,11 +209,7 @@ bool VirtualFilesystem::is_file(const Path &path) const {
   return (bool)file_it->second;
 }
 
-bool VirtualFilesystem::is_directory(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("VirtualFilesystem::is_directory: path must be absolute");
-  }
-
+bool VirtualFilesystem::is_directory(const AbsPath &path) const {
   auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return false;
@@ -284,20 +218,12 @@ bool VirtualFilesystem::is_directory(const Path &path) const {
 }
 
 std::unique_ptr<abstract::FileWalker>
-VirtualFilesystem::file_walker(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("VirtualFilesystem::file_walker: path must be absolute");
-  }
-
+VirtualFilesystem::file_walker(const AbsPath &path) const {
   return std::make_unique<VirtualFileWalker>(path, m_files);
 }
 
 std::shared_ptr<abstract::File>
-VirtualFilesystem::open(const Path &path) const {
-  if (path.relative()) {
-    throw InvalidPath("VirtualFilesystem::open: path must be absolute");
-  }
-
+VirtualFilesystem::open(const AbsPath &path) const {
   auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return {};
@@ -306,16 +232,11 @@ VirtualFilesystem::open(const Path &path) const {
 }
 
 std::unique_ptr<std::ostream>
-VirtualFilesystem::create_file(const Path & /*path*/) {
+VirtualFilesystem::create_file(const AbsPath & /*path*/) {
   throw UnsupportedOperation();
 }
 
-bool VirtualFilesystem::create_directory(const Path &path) {
-  if (path.relative()) {
-    throw InvalidPath(
-        "VirtualFilesystem::create_directory: path must be absolute");
-  }
-
+bool VirtualFilesystem::create_directory(const AbsPath &path) {
   if (exists(path)) {
     return false;
   }
@@ -323,11 +244,7 @@ bool VirtualFilesystem::create_directory(const Path &path) {
   return true;
 }
 
-bool VirtualFilesystem::remove(const Path &path) {
-  if (path.relative()) {
-    throw InvalidPath("VirtualFilesystem::remove: path must be absolute");
-  }
-
+bool VirtualFilesystem::remove(const AbsPath &path) {
   auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return false;
@@ -336,11 +253,7 @@ bool VirtualFilesystem::remove(const Path &path) {
   return true;
 }
 
-bool VirtualFilesystem::copy(const Path &from, const Path &to) {
-  if (from.relative() || to.relative()) {
-    throw InvalidPath("VirtualFilesystem::copy: paths must be absolute");
-  }
-
+bool VirtualFilesystem::copy(const AbsPath &from, const AbsPath &to) {
   // TODO what about directories?
 
   auto from_it = m_files.find(from);
@@ -355,16 +268,14 @@ bool VirtualFilesystem::copy(const Path &from, const Path &to) {
 }
 
 std::shared_ptr<abstract::File>
-VirtualFilesystem::copy(const abstract::File & /*from*/, const Path & /*to*/) {
+VirtualFilesystem::copy(const abstract::File & /*from*/,
+                        const AbsPath & /*to*/) {
   throw UnsupportedOperation();
 }
 
 std::shared_ptr<abstract::File>
-VirtualFilesystem::copy(std::shared_ptr<abstract::File> from, const Path &to) {
-  if (to.relative()) {
-    throw InvalidPath("VirtualFilesystem::copy: path must be absolute");
-  }
-
+VirtualFilesystem::copy(std::shared_ptr<abstract::File> from,
+                        const AbsPath &to) {
   if (exists(to)) {
     return {};
   }
@@ -372,11 +283,7 @@ VirtualFilesystem::copy(std::shared_ptr<abstract::File> from, const Path &to) {
   return from;
 }
 
-bool VirtualFilesystem::move(const Path &from, const Path &to) {
-  if (from.relative() || to.relative()) {
-    throw InvalidPath("VirtualFilesystem::move: paths must be absolute");
-  }
-
+bool VirtualFilesystem::move(const AbsPath &from, const AbsPath &to) {
   if (!copy(from, to)) {
     return false;
   }

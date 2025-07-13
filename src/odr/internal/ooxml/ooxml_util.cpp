@@ -282,9 +282,10 @@ ooxml::parse_relationships(const pugi::xml_document &rels) {
 
 std::unordered_map<std::string, std::string>
 ooxml::parse_relationships(const abstract::ReadableFilesystem &filesystem,
-                           const Path &path) {
-  auto rel_path =
-      path.parent().join(Path("_rels")).join(Path(path.basename() + ".rels"));
+                           const AbsPath &path) {
+  auto rel_path = path.parent()
+                      .join(RelPath("_rels"))
+                      .join(RelPath(path.basename() + ".rels"));
   if (!filesystem.is_file(rel_path)) {
     return {};
   }

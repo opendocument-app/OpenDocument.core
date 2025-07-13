@@ -105,7 +105,7 @@ public:
         out.write_raw(" ");
         out.write_element_end("span");
 
-        File file = m_filesystem.open(file_path);
+        File file = m_filesystem.open(file_path.string());
 
         out.write_element_begin("span");
         out.write_raw(std::to_string(file.size()));

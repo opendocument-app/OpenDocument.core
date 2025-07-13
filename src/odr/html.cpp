@@ -41,10 +41,10 @@ void bring_offline(const HtmlResources &resources,
         resource.is_external() || !resource.is_accessible()) {
       continue;
     }
-    auto path =
-        odr::internal::Path(output_path).join(odr::internal::Path(*location));
+    auto path = odr::internal::Path(output_path)
+                    .join(odr::internal::RelPath(*location));
 
-    std::filesystem::create_directories(path.parent());
+    std::filesystem::create_directories(path.parent().path());
     std::ofstream ostream = internal::util::file::create(path.string());
     resource.write_resource(ostream);
   }
@@ -116,10 +116,10 @@ Html HtmlService::bring_offline(const std::string &output_path,
   HtmlResources resources;
 
   for (const auto &view : views) {
-    auto path =
-        odr::internal::Path(output_path).join(odr::internal::Path(view.path()));
+    auto path = odr::internal::Path(output_path)
+                    .join(odr::internal::RelPath(view.path()));
 
-    std::filesystem::create_directories(path.parent());
+    std::filesystem::create_directories(path.parent().path());
     std::ofstream ostream = internal::util::file::create(path.string());
     HtmlResources view_resources = view.write_html(ostream);
 
@@ -166,11 +166,11 @@ HtmlResources HtmlView::write_html(std::ostream &out) const {
 Html HtmlView::bring_offline(const std::string &output_path) const {
   HtmlResources resources;
 
-  auto path =
-      odr::internal::Path(output_path).join(odr::internal::Path(this->path()));
+  auto path = odr::internal::Path(output_path)
+                  .join(odr::internal::RelPath(this->path()));
 
   {
-    std::filesystem::create_directories(path.parent());
+    std::filesystem::create_directories(path.parent().path());
     std::ofstream ostream = internal::util::file::create(path.string());
     resources = write_html(ostream);
   }
@@ -250,7 +250,7 @@ HtmlResourceLocator html::standard_resource_locator() {
 
     if (resource.is_shipped()) {
       auto resource_path =
-          Path(config.resource_path).join(Path(resource.path()));
+          Path(config.resource_path).join(RelPath(resource.path()));
       if (config.relative_resource_paths && config.output_path.has_value()) {
         resource_path = resource_path.rebase(Path(*config.output_path));
       }

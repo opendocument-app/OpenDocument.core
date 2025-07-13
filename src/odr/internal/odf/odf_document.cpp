@@ -18,10 +18,10 @@ Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : TemplateDocument<Element>(file_type, document_type,
                                 std::move(filesystem)) {
-  m_content_xml = util::xml::parse(*m_filesystem, Path("/content.xml"));
+  m_content_xml = util::xml::parse(*m_filesystem, AbsPath("/content.xml"));
 
-  if (m_filesystem->exists(Path("/styles.xml"))) {
-    m_styles_xml = util::xml::parse(*m_filesystem, Path("/styles.xml"));
+  if (m_filesystem->exists(AbsPath("/styles.xml"))) {
+    m_styles_xml = util::xml::parse(*m_filesystem, AbsPath("/styles.xml"));
   }
 
   m_root_element = parse_tree(
@@ -43,33 +43,34 @@ void Document::save(const Path &path) const {
   zip::ZipArchive archive;
 
   // `mimetype` has to be the first file and uncompressed
-  if (m_filesystem->is_file(Path("/mimetype"))) {
-    archive.insert_file(std::end(archive), Path("/mimetype"),
-                        m_filesystem->open(Path("/mimetype")), 0);
+  if (m_filesystem->is_file(AbsPath("/mimetype"))) {
+    archive.insert_file(std::end(archive), RelPath("mimetype"),
+                        m_filesystem->open(AbsPath("/mimetype")), 0);
   }
 
-  for (auto walker = m_filesystem->file_walker(Path("/")); !walker->end();
+  for (auto walker = m_filesystem->file_walker(AbsPath("/")); !walker->end();
        walker->next()) {
-    auto p = walker->path();
-    if (p == Path("/mimetype")) {
+    const AbsPath &abs_path = walker->path();
+    RelPath rel_path = abs_path.rebase(AbsPath("/"));
+    if (abs_path == Path("/mimetype")) {
       continue;
     }
-    if (m_filesystem->is_directory(p)) {
-      archive.insert_directory(std::end(archive), p);
+    if (walker->is_directory()) {
+      archive.insert_directory(std::end(archive), rel_path);
       continue;
     }
-    if (p == Path("/content.xml")) {
+    if (abs_path == Path("/content.xml")) {
       // TODO stream
       std::stringstream out;
       m_content_xml.print(out, "", pugi::format_raw);
       auto tmp = std::make_shared<MemoryFile>(out.str());
-      archive.insert_file(std::end(archive), p, tmp);
+      archive.insert_file(std::end(archive), rel_path, tmp);
       continue;
     }
-    if (p == Path("/META-INF/manifest.xml")) {
+    if (abs_path == Path("/META-INF/manifest.xml")) {
       // TODO
       auto manifest =
-          util::xml::parse(*m_filesystem, Path("/META-INF/manifest.xml"));
+          util::xml::parse(*m_filesystem, AbsPath("/META-INF/manifest.xml"));
 
       for (auto &&node : manifest.select_nodes("//manifest:encryption-data")) {
         node.node().parent().remove_child(node.node());
@@ -78,11 +79,12 @@ void Document::save(const Path &path) const {
       std::stringstream out;
       manifest.print(out, "", pugi::format_raw);
       auto tmp = std::make_shared<MemoryFile>(out.str());
-      archive.insert_file(std::end(archive), p, tmp);
+      archive.insert_file(std::end(archive), rel_path, tmp);
 
       continue;
     }
-    archive.insert_file(std::end(archive), p, m_filesystem->open(p));
+    archive.insert_file(std::end(archive), rel_path,
+                        m_filesystem->open(abs_path));
   }
 
   std::ofstream ostream = util::file::create(path.string());

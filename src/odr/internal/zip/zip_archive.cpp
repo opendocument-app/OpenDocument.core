@@ -9,22 +9,21 @@
 #include <odr/internal/zip/zip_util.hpp>
 
 #include <string>
-#include <utility>
 
 #include <miniz/miniz.h>
 
 namespace odr::internal::zip {
 
-ZipArchive::Entry::Entry(Path path, std::shared_ptr<abstract::File> file,
+ZipArchive::Entry::Entry(RelPath path, std::shared_ptr<abstract::File> file,
                          std::uint32_t compression_level)
     : m_path{std::move(path)}, m_file{std::move(file)},
       m_compression_level{compression_level} {}
 
-bool ZipArchive::Entry::is_file() const { return m_file.operator bool(); }
+bool ZipArchive::Entry::is_file() const { return m_file != nullptr; }
 
-bool ZipArchive::Entry::is_directory() const { return !m_file; }
+bool ZipArchive::Entry::is_directory() const { return m_file == nullptr; }
 
-Path ZipArchive::Entry::path() const { return m_path; }
+const RelPath &ZipArchive::Entry::path() const { return m_path; }
 
 std::shared_ptr<abstract::File> ZipArchive::Entry::file() const {
   return m_file;
@@ -42,14 +41,15 @@ ZipArchive::ZipArchive() = default;
 
 ZipArchive::ZipArchive(const std::shared_ptr<util::Archive> &archive) {
   for (auto &&entry : *archive) {
+    RelPath path(entry.path());
     if (entry.is_file()) {
       std::uint8_t compression_level = 6;
       if (entry.method() == util::Method::STORED) {
         compression_level = 0;
       }
-      insert_file(end(), entry.path(), entry.file(), compression_level);
+      insert_file(end(), std::move(path), entry.file(), compression_level);
     } else if (entry.is_directory()) {
-      insert_directory(end(), entry.path());
+      insert_directory(end(), std::move(path));
     }
   }
 }
@@ -59,10 +59,7 @@ std::shared_ptr<abstract::Filesystem> ZipArchive::as_filesystem() const {
   auto filesystem = std::make_shared<VirtualFilesystem>();
 
   for (const auto &e : *this) {
-    Path path = e.path();
-    if (path.relative()) {
-      path = Path("/").join(path);
-    }
+    AbsPath path = Path(e.path()).make_absolute();
 
     if (e.is_directory()) {
       filesystem->create_directory(path);
@@ -84,7 +81,8 @@ void ZipArchive::save(std::ostream &out) const {
   archive.m_pWrite = [](void *opaque, std::uint64_t /*offset*/,
                         const void *buffer, std::size_t size) {
     auto out = static_cast<std::ostream *>(opaque);
-    out->write(static_cast<const char *>(buffer), size);
+    out->write(static_cast<const char *>(buffer),
+               static_cast<std::streamsize>(size));
     return size;
   };
   state = mz_zip_writer_init(&archive, 0);
@@ -93,10 +91,7 @@ void ZipArchive::save(std::ostream &out) const {
   }
 
   for (auto &&entry : *this) {
-    auto path = entry.path();
-    if (path.absolute()) {
-      path = path.rebase(Path("/"));
-    }
+    RelPath path = entry.path().make_relative();
 
     if (entry.is_file()) {
       auto file = entry.file();
@@ -135,7 +130,7 @@ ZipArchive::Iterator ZipArchive::begin() const {
 
 ZipArchive::Iterator ZipArchive::end() const { return std::cend(m_entries); }
 
-ZipArchive::Iterator ZipArchive::find(const Path &path) const {
+ZipArchive::Iterator ZipArchive::find(const RelPath &path) const {
   for (auto it = begin(); it != end(); ++it) {
     if (it->path() == path) {
       return it;
@@ -146,7 +141,7 @@ ZipArchive::Iterator ZipArchive::find(const Path &path) const {
 }
 
 ZipArchive::Iterator
-ZipArchive::insert_file(Iterator at, Path path,
+ZipArchive::insert_file(Iterator at, RelPath path,
                         std::shared_ptr<abstract::File> file,
                         std::uint32_t compression_level) {
   return m_entries.insert(
@@ -154,7 +149,7 @@ ZipArchive::insert_file(Iterator at, Path path,
       ZipArchive::Entry(std::move(path), std::move(file), compression_level));
 }
 
-ZipArchive::Iterator ZipArchive::insert_directory(Iterator at, Path path) {
+ZipArchive::Iterator ZipArchive::insert_directory(Iterator at, RelPath path) {
   return m_entries.insert(at, ZipArchive::Entry(std::move(path), nullptr, 0));
 }
 

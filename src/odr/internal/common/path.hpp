@@ -8,7 +8,10 @@
 
 namespace odr::internal {
 
-class Path final {
+class AbsPath;
+class RelPath;
+
+class Path {
 public:
   Path() noexcept;
   explicit Path(const char *c_string);
@@ -16,14 +19,16 @@ public:
   explicit Path(std::string_view string_view);
   explicit Path(const std::filesystem::path &path);
 
+  Path(const Path &other) noexcept = default;
+  Path(Path &&other) noexcept = default;
+  virtual ~Path() noexcept = default;
+  Path &operator=(const Path &other) noexcept = default;
+  Path &operator=(Path &&other) noexcept = default;
+
   bool operator==(const Path &other) const noexcept;
   bool operator!=(const Path &other) const noexcept;
   bool operator<(const Path &other) const noexcept;
   bool operator>(const Path &other) const noexcept;
-
-  operator std::string() const noexcept;
-  operator std::filesystem::path() const noexcept;
-  operator const std::string &() const noexcept;
 
   [[nodiscard]] const std::string &string() const noexcept;
   [[nodiscard]] std::filesystem::path path() const noexcept;
@@ -39,11 +44,19 @@ public:
   [[nodiscard]] bool ancestor_of(const Path &other) const;
   [[nodiscard]] bool descendant_of(const Path &other) const;
 
+  [[nodiscard]] AbsPath as_absolute() const &;
+  [[nodiscard]] AbsPath as_absolute() &&;
+  [[nodiscard]] RelPath as_relative() const &;
+  [[nodiscard]] RelPath as_relative() &&;
+
+  [[nodiscard]] AbsPath make_absolute() const;
+  [[nodiscard]] RelPath make_relative() const;
+
   [[nodiscard]] std::string basename() const noexcept;
   [[nodiscard]] std::string extension() const noexcept;
 
   [[nodiscard]] Path parent() const;
-  [[nodiscard]] Path join(const Path &other) const;
+  [[nodiscard]] Path join(const RelPath &other) const;
   [[nodiscard]] Path rebase(const Path &on) const;
   [[nodiscard]] Path common_root(const Path &other) const;
 
@@ -77,8 +90,8 @@ public:
     void fill_();
   };
 
-  Iterator begin() const;
-  Iterator end() const;
+  [[nodiscard]] Iterator begin() const;
+  [[nodiscard]] Iterator end() const;
 
 private:
   std::string m_path;
@@ -86,10 +99,42 @@ private:
   std::uint32_t m_downwards;
   bool m_absolute;
 
-  friend std::ostream &operator<<(std::ostream &, const Path &);
+  friend std::ostream &operator<<(std::ostream &os, const Path &p) {
+    return os << p.m_path;
+  }
 
   void parent_();
   void join_(const std::string &);
+};
+
+class AbsPath final : public Path {
+public:
+  AbsPath() noexcept;
+  explicit AbsPath(const char *c_string);
+  explicit AbsPath(const std::string &string);
+  explicit AbsPath(std::string_view string_view);
+  explicit AbsPath(const std::filesystem::path &path);
+  explicit AbsPath(Path path);
+
+  [[nodiscard]] AbsPath parent() const;
+  [[nodiscard]] AbsPath join(const RelPath &other) const;
+  [[nodiscard]] RelPath rebase(const AbsPath &on) const;
+  [[nodiscard]] AbsPath common_root(const AbsPath &other) const;
+};
+
+class RelPath final : public Path {
+public:
+  RelPath() noexcept;
+  explicit RelPath(const char *c_string);
+  explicit RelPath(const std::string &string);
+  explicit RelPath(std::string_view string_view);
+  explicit RelPath(const std::filesystem::path &path);
+  explicit RelPath(Path path);
+
+  [[nodiscard]] RelPath parent() const;
+  [[nodiscard]] RelPath join(const RelPath &other) const;
+  [[nodiscard]] RelPath rebase(const RelPath &on) const;
+  [[nodiscard]] RelPath common_root(const RelPath &other) const;
 };
 
 } // namespace odr::internal
@@ -97,5 +142,11 @@ private:
 namespace std {
 template <> struct hash<::odr::internal::Path> {
   std::size_t operator()(const ::odr::internal::Path &p) const;
+};
+template <> struct hash<::odr::internal::AbsPath> {
+  std::size_t operator()(const ::odr::internal::AbsPath &p) const;
+};
+template <> struct hash<::odr::internal::RelPath> {
+  std::size_t operator()(const ::odr::internal::RelPath &p) const;
 };
 } // namespace std

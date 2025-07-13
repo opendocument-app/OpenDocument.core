@@ -21,7 +21,7 @@ class ReadableFilesystem;
 } // namespace odr::internal::abstract
 
 namespace odr::internal {
-class Path;
+class AbsPath;
 } // namespace odr::internal
 
 namespace odr::internal::ooxml {
@@ -54,6 +54,6 @@ std::unordered_map<std::string, std::string>
 parse_relationships(const pugi::xml_document &relations);
 std::unordered_map<std::string, std::string>
 parse_relationships(const abstract::ReadableFilesystem &filesystem,
-                    const Path &path);
+                    const AbsPath &path);
 
 } // namespace odr::internal::ooxml

@@ -161,7 +161,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   }
 
   const std::string resource_path =
-      Path(output_path_prefix).parent().join(Path("resources")).string();
+      Path(output_path_prefix).parent().join(RelPath("resources")).string();
   std::filesystem::copy(TestData::resource_directory(), resource_path,
                         fs::copy_options::recursive |
                             fs::copy_options::overwrite_existing);
@@ -213,11 +213,11 @@ TestParams create_test_params(const TestFile &test_file,
 
   const std::string test_repo = *Path(test_file_path).begin();
   const std::string output_path_prefix =
-      Path("output").join(Path(test_repo)).join(Path("output")).string();
+      Path("output").join(RelPath(test_repo)).join(RelPath("output")).string();
   const std::string output_path_suffix = engine_suffix(engine);
   const std::string output_path =
       Path(output_path_prefix)
-          .join(Path(test_file_path).rebase(Path(test_repo)))
+          .join(RelPath(test_file_path).rebase(RelPath(test_repo)))
           .string() +
       output_path_suffix;
 

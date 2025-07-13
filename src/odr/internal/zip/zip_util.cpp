@@ -107,7 +107,7 @@ public:
     return stat.m_uncomp_size;
   }
 
-  [[nodiscard]] std::optional<Path> disk_path() const final {
+  [[nodiscard]] std::optional<AbsPath> disk_path() const final {
     return std::nullopt;
   }
   [[nodiscard]] const char *memory_data() const final { return nullptr; }
@@ -145,12 +145,12 @@ bool Archive::Entry::is_directory() const {
   return mz_zip_reader_is_file_a_directory(m_archive->zip(), m_index);
 }
 
-Path Archive::Entry::path() const {
+RelPath Archive::Entry::path() const {
   std::lock_guard lock(m_archive->mutex());
   char filename[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
   mz_zip_reader_get_filename(m_archive->zip(), m_index, filename,
                              MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE);
-  return Path(filename);
+  return RelPath(filename);
 }
 
 Method Archive::Entry::method() const {
@@ -208,7 +208,7 @@ Archive::Iterator Archive::end() const {
   return {*this, mz_zip_reader_get_num_files(&m_zip)};
 }
 
-Archive::Iterator Archive::find(const Path &path) const {
+Archive::Iterator Archive::find(const RelPath &path) const {
   return std::find_if(begin(), end(), [&path](const Entry &entry) {
     return entry.path() == path;
   });
@@ -224,8 +224,8 @@ void util::open_from_file(mz_zip_archive &archive, const abstract::File &file,
   archive.m_pRead = [](void *opaque, std::uint64_t offset, void *buffer,
                        std::size_t size) {
     auto in = static_cast<std::istream *>(opaque);
-    in->seekg(offset);
-    in->read(static_cast<char *>(buffer), size);
+    in->seekg(static_cast<std::streamsize>(offset));
+    in->read(static_cast<char *>(buffer), static_cast<std::streamsize>(size));
     return size;
   };
   const bool state = mz_zip_reader_init(
@@ -242,7 +242,8 @@ bool util::append_file(mz_zip_archive &archive, const std::string &path,
   auto read_callback = [](void *opaque, std::uint64_t /*offset*/, void *buffer,
                           std::size_t size) -> std::size_t {
     auto istream = static_cast<std::istream *>(opaque);
-    istream->read(static_cast<char *>(buffer), size);
+    istream->read(static_cast<char *>(buffer),
+                  static_cast<std::streamsize>(size));
     return istream->gcount();
   };
 

@@ -121,25 +121,25 @@ public:
       : m_parent(std::move(parent)), m_manifest(std::move(manifest)),
         m_start_key(std::move(start_key)) {}
 
-  [[nodiscard]] bool exists(const Path &path) const final {
+  [[nodiscard]] bool exists(const AbsPath &path) const final {
     return m_parent->exists(path);
   }
 
-  [[nodiscard]] bool is_file(const Path &path) const final {
+  [[nodiscard]] bool is_file(const AbsPath &path) const final {
     return m_parent->is_file(path);
   }
 
-  [[nodiscard]] bool is_directory(const Path &path) const final {
+  [[nodiscard]] bool is_directory(const AbsPath &path) const final {
     return m_parent->is_directory(path);
   }
 
   [[nodiscard]] std::unique_ptr<abstract::FileWalker>
-  file_walker(const Path &path) const final {
+  file_walker(const AbsPath &path) const final {
     return m_parent->file_walker(path);
   }
 
   [[nodiscard]] std::shared_ptr<abstract::File>
-  open(const Path &path) const final {
+  open(const AbsPath &path) const final {
     const auto it = m_manifest.entries.find(path);
     if (it == std::end(m_manifest.entries)) {
       return m_parent->open(path);
@@ -170,7 +170,7 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
     throw NotEncryptedError();
   }
 
-  if (auto it = manifest.entries.find(Path("/encrypted-package"));
+  if (auto it = manifest.entries.find(AbsPath("/encrypted-package"));
       it != std::end(manifest.entries)) {
     try {
       const std::string start_key = odf::start_key(it->second, password);

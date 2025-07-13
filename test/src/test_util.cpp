@@ -122,7 +122,7 @@ TestFile::TestFile(std::string absolute_path, std::string short_path,
       password{std::move(password)} {}
 
 std::string TestData::data_input_directory() {
-  return Path(TestData::data_directory()).join(Path("input")).string();
+  return Path(TestData::data_directory()).join(RelPath("input")).string();
 }
 
 TestData &TestData::instance_() {

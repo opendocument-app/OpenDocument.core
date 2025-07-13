@@ -1,6 +1,5 @@
 #include <odr/internal/common/temporary_file.hpp>
 
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/common/random.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
@@ -58,7 +57,7 @@ TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
 
   while (true) {
     std::string file_name = m_random_file_name_generator();
-    file_path = m_directory.join(Path(file_name));
+    file_path = m_directory.join(RelPath(file_name));
 
     file.open(file_path.string(), std::ios_base::in | std::ios_base::out);
 

@@ -30,6 +30,6 @@ TEST(CfbArchive, open_encrypted_docx) {
   util::Archive cfb(std::make_shared<MemoryFile>(
       DiskFile(TestData::test_file_path("odr-public/docx/encrypted.docx"))));
 
-  EXPECT_TRUE(cfb.find(Path("EncryptionInfo")) == std::end(cfb));
-  EXPECT_TRUE(cfb.find(Path("/EncryptionInfo")) != std::end(cfb));
+  EXPECT_TRUE(cfb.find(AbsPath("/Encryption")) == std::end(cfb));
+  EXPECT_TRUE(cfb.find(AbsPath("/EncryptionInfo")) != std::end(cfb));
 }

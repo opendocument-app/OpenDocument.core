@@ -1,12 +1,11 @@
 #pragma once
 
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/path.hpp>
 
 #include <functional>
 
 namespace odr::internal {
-
-class Path;
 
 class TemporaryDiskFile final : public DiskFile {
 public:

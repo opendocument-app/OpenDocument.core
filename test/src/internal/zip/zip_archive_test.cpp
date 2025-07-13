@@ -42,11 +42,11 @@ TEST(ZipArchive, open) {
 TEST(ZipArchive, create_and_save) {
   ZipArchive zip;
 
-  zip.insert_file(std::end(zip), Path("a"),
+  zip.insert_file(std::end(zip), RelPath("a"),
                   std::make_shared<MemoryFile>("abc"));
-  zip.insert_file(std::end(zip), Path("hi"),
+  zip.insert_file(std::end(zip), RelPath("hi"),
                   std::make_shared<MemoryFile>("hello world!"));
-  zip.insert_directory(std::end(zip), Path("b"));
+  zip.insert_directory(std::end(zip), RelPath("b"));
 
   std::ofstream out("test.zip");
   zip.save(out);
@@ -58,18 +58,18 @@ TEST(ZipArchive, create) {
   {
     ZipArchive zip;
 
-    zip.insert_file(std::end(zip), Path("one.txt"),
+    zip.insert_file(std::end(zip), RelPath("one.txt"),
                     std::make_shared<MemoryFile>("this is written at once"));
     zip.insert_file(
-        std::end(zip), Path("two.txt"),
+        std::end(zip), RelPath("two.txt"),
         std::make_shared<MemoryFile>("this is written at two stages"));
 
-    zip.insert_directory(std::end(zip), Path("empty"));
-    zip.insert_directory(std::end(zip), Path("notempty"));
+    zip.insert_directory(std::end(zip), RelPath("empty"));
+    zip.insert_directory(std::end(zip), RelPath("notempty"));
 
-    zip.insert_file(std::end(zip), Path("notempty/three.txt"),
+    zip.insert_file(std::end(zip), RelPath("notempty/three.txt"),
                     std::make_shared<MemoryFile>("asdf"));
-    zip.insert_file(std::end(zip), Path("./notempty/four.txt"),
+    zip.insert_file(std::end(zip), RelPath("./notempty/four.txt"),
                     std::make_shared<MemoryFile>("1234"));
 
     std::ofstream out(path);
@@ -80,19 +80,19 @@ TEST(ZipArchive, create) {
     auto zip =
         std::make_shared<util::Archive>(std::make_shared<DiskFile>(path));
 
-    EXPECT_TRUE(zip->find(Path("one.txt"))->is_file());
-    EXPECT_TRUE(zip->find(Path("two.txt"))->is_file());
-    EXPECT_TRUE(zip->find(Path("empty"))->is_directory());
-    EXPECT_TRUE(zip->find(Path("notempty"))->is_directory());
-    EXPECT_TRUE(zip->find(Path("notempty/three.txt"))->is_file());
-    EXPECT_TRUE(zip->find(Path("notempty/four.txt"))->is_file());
-    EXPECT_TRUE(zip->find(Path("./notempty/four.txt"))->is_file());
+    EXPECT_TRUE(zip->find(RelPath("one.txt"))->is_file());
+    EXPECT_TRUE(zip->find(RelPath("two.txt"))->is_file());
+    EXPECT_TRUE(zip->find(RelPath("empty"))->is_directory());
+    EXPECT_TRUE(zip->find(RelPath("notempty"))->is_directory());
+    EXPECT_TRUE(zip->find(RelPath("notempty/three.txt"))->is_file());
+    EXPECT_TRUE(zip->find(RelPath("notempty/four.txt"))->is_file());
+    EXPECT_TRUE(zip->find(RelPath("./notempty/four.txt"))->is_file());
 
-    EXPECT_EQ(23, zip->find(Path("one.txt"))->file()->size());
-    EXPECT_EQ(29, zip->find(Path("two.txt"))->file()->size());
-    EXPECT_EQ(4, zip->find(Path("notempty/three.txt"))->file()->size());
-    EXPECT_EQ(4, zip->find(Path("notempty/four.txt"))->file()->size());
-    EXPECT_EQ(4, zip->find(Path("./notempty/four.txt"))->file()->size());
+    EXPECT_EQ(23, zip->find(RelPath("one.txt"))->file()->size());
+    EXPECT_EQ(29, zip->find(RelPath("two.txt"))->file()->size());
+    EXPECT_EQ(4, zip->find(RelPath("notempty/three.txt"))->file()->size());
+    EXPECT_EQ(4, zip->find(RelPath("notempty/four.txt"))->file()->size());
+    EXPECT_EQ(4, zip->find(RelPath("./notempty/four.txt"))->file()->size());
   }
 }
 
@@ -104,7 +104,8 @@ TEST(ZipArchive, create_order) {
     ZipArchive zip;
 
     for (auto &&e : entries) {
-      zip.insert_file(std::end(zip), Path(e), std::make_shared<MemoryFile>(""));
+      zip.insert_file(std::end(zip), RelPath(e),
+                      std::make_shared<MemoryFile>(""));
     }
 
     std::ofstream out(path);
@@ -116,7 +117,7 @@ TEST(ZipArchive, create_order) {
 
     auto it = entries.begin();
     for (auto &&e : zip) {
-      EXPECT_EQ(*it, e.path().string());
+      EXPECT_EQ(Path(*it), e.path());
       ++it;
     }
   }
