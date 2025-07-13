@@ -126,4 +126,7 @@ DecryptionFailed::DecryptionFailed()
 NotEncryptedError::NotEncryptedError()
     : std::runtime_error("not encrypted error") {}
 
+InvalidPath::InvalidPath(const std::string &message)
+    : std::runtime_error("invalid path: " + message) {}
+
 } // namespace odr

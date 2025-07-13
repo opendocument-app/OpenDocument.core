@@ -34,7 +34,6 @@ std::shared_ptr<abstract::Filesystem> CfbArchive::as_filesystem() const {
 
 void CfbArchive::save(std::ostream &out) const {
   (void)out;
-
   throw UnsupportedOperation();
 }
 
