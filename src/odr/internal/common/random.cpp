@@ -1,20 +1,25 @@
 #include <odr/internal/common/random.hpp>
 
 #include <algorithm>
+#include <random>
 
-namespace odr::internal {
+namespace odr {
 
-std::string common::random_string(std::size_t length) {
-  auto randchar = []() -> char {
-    const char charset[] = "0123456789"
-                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                           "abcdefghijklmnopqrstuvwxyz";
-    const std::size_t max_index = (sizeof(charset) - 1);
-    return charset[rand() % max_index];
-  };
-  std::string str(length, 0);
-  std::generate_n(str.begin(), length, randchar);
-  return str;
+std::string random_string(std::size_t length) {
+  static const std::string charset = "0123456789"
+                                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                     "abcdefghijklmnopqrstuvwxyz";
+
+  static thread_local std::mt19937 generator(std::random_device{}());
+  static thread_local std::uniform_int_distribution<std::size_t> distribution(
+      0, charset.size() - 1);
+
+  std::string result;
+  result.reserve(length);
+  std::generate_n(std::back_inserter(result), length,
+                  []() { return charset[distribution(generator)]; });
+
+  return result;
 }
 
-} // namespace odr::internal
+} // namespace odr

@@ -84,8 +84,8 @@ StyleRegistry::StyleRegistry(pugi::xml_node styles_root) {
   generate_indices_(styles_root);
 }
 
-common::ResolvedStyle StyleRegistry::cell_style(std::uint32_t i) const {
-  common::ResolvedStyle result;
+ResolvedStyle StyleRegistry::cell_style(std::uint32_t i) const {
+  ResolvedStyle result;
 
   auto cell_format = m_cell_formats_index.at(i);
 
@@ -124,7 +124,7 @@ common::ResolvedStyle StyleRegistry::cell_style(std::uint32_t i) const {
 }
 
 void StyleRegistry::resolve_font_(std::uint32_t i,
-                                  common::ResolvedStyle &result) const {
+                                  ResolvedStyle &result) const {
   auto font = m_fonts_index.at(i);
 
   if (auto size = font.child("sz").attribute("val")) {
@@ -142,7 +142,7 @@ void StyleRegistry::resolve_font_(std::uint32_t i,
 }
 
 void StyleRegistry::resolve_fill_(std::uint32_t i,
-                                  common::ResolvedStyle &result) const {
+                                  ResolvedStyle &result) const {
   auto fill = m_fills_index.at(i);
 
   if (auto pattern = fill.child("patternFill")) {
@@ -152,7 +152,7 @@ void StyleRegistry::resolve_fill_(std::uint32_t i,
 }
 
 void StyleRegistry::resolve_border_(std::uint32_t i,
-                                    common::ResolvedStyle &result) const {
+                                    ResolvedStyle &result) const {
   auto border = m_borders_index.at(i);
 
   result.table_cell_style.border.right = read_border(border.child("right"));

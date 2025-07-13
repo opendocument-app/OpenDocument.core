@@ -1,6 +1,6 @@
 #include <odr/internal/common/document_element.hpp>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 abstract::Element *Element::parent(const abstract::Document *) const {
   return m_parent;
@@ -54,4 +54,4 @@ void Table::append_column_(Element *element) {
 
 void Table::append_row_(Element *element) { Element::append_child_(element); }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

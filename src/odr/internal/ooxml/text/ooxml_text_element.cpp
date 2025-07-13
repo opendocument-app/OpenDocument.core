@@ -21,13 +21,13 @@ Element::Element(pugi::xml_node node) : m_node{node} {
   }
 }
 
-common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
+ResolvedStyle Element::partial_style(const abstract::Document *) const {
   return {};
 }
 
-common::ResolvedStyle
+ResolvedStyle
 Element::intermediate_style(const abstract::Document *document) const {
-  common::ResolvedStyle base;
+  ResolvedStyle base;
   abstract::Element *parent = this->parent(document);
   if (parent == nullptr) {
     base = style_(document)->default_style()->resolved();
@@ -66,7 +66,7 @@ abstract::Element *Root::first_master_page(const abstract::Document *) const {
   return {}; // TODO
 }
 
-common::ResolvedStyle
+ResolvedStyle
 Paragraph::partial_style(const abstract::Document *document) const {
   return style_(document)->partial_paragraph_style(m_node);
 }
@@ -79,8 +79,7 @@ TextStyle Paragraph::text_style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
 
-common::ResolvedStyle
-Span::partial_style(const abstract::Document *document) const {
+ResolvedStyle Span::partial_style(const abstract::Document *document) const {
   return style_(document)->partial_text_style(m_node);
 }
 
@@ -273,7 +272,7 @@ bool Image::is_internal(const abstract::Document *document) const {
     return false;
   }
   try {
-    return doc->as_filesystem()->is_file(common::Path(href(document)));
+    return doc->as_filesystem()->is_file(Path(href(document)));
   } catch (...) {
   }
   return false;
@@ -284,9 +283,9 @@ std::optional<odr::File> Image::file(const abstract::Document *document) const {
   if (!doc || !is_internal(document)) {
     return {};
   }
-  common::Path path(href(document));
+  Path path(href(document));
   if (path.relative()) {
-    path = common::Path("/").join(path);
+    path = Path("/").join(path);
   }
   return File(doc->as_filesystem()->open(path));
 }
@@ -298,7 +297,7 @@ std::string Image::href(const abstract::Document *document) const {
                      .attribute("r:embed")) {
     auto relations = document_relations_(document);
     if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
-      return common::Path("/word").join(common::Path(rel->second)).string();
+      return Path("/word").join(Path(rel->second)).string();
     }
   }
   return ""; // TODO

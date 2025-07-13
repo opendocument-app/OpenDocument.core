@@ -11,24 +11,24 @@ namespace odr {
 enum class FileLocation;
 }
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class DiskFile : public abstract::File {
 public:
   explicit DiskFile(const char *path);
   explicit DiskFile(const std::string &path);
-  explicit DiskFile(common::Path path);
+  explicit DiskFile(Path path);
 
   [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
 
-  [[nodiscard]] std::optional<common::Path> disk_path() const final;
+  [[nodiscard]] std::optional<Path> disk_path() const final;
   [[nodiscard]] const char *memory_data() const final;
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
 private:
-  common::Path m_path;
+  Path m_path;
 };
 
 class MemoryFile final : public abstract::File {
@@ -39,7 +39,7 @@ public:
   [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
 
-  [[nodiscard]] std::optional<common::Path> disk_path() const final;
+  [[nodiscard]] std::optional<Path> disk_path() const final;
   [[nodiscard]] const char *memory_data() const final;
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
@@ -50,4 +50,4 @@ private:
   std::string m_data;
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

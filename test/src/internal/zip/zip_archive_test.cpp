@@ -15,7 +15,6 @@
 using namespace odr;
 using namespace odr::internal;
 using namespace odr::internal::zip;
-using namespace odr::internal::common;
 using namespace odr::test;
 
 TEST(ZipArchive, open_directory) {

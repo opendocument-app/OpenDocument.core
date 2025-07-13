@@ -12,7 +12,7 @@
 
 namespace odr::internal::ooxml::spreadsheet {
 
-Element::Element(pugi::xml_node node, common::Path /*document_path*/,
+Element::Element(pugi::xml_node node, Path /*document_path*/,
                  const Relations & /*document_relations*/)
     : m_node{node} {
   if (!node) {
@@ -21,11 +21,11 @@ Element::Element(pugi::xml_node node, common::Path /*document_path*/,
   }
 }
 
-common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
+ResolvedStyle Element::partial_style(const abstract::Document *) const {
   return {};
 }
 
-common::ResolvedStyle
+ResolvedStyle
 Element::intermediate_style(const abstract::Document *document) const {
   abstract::Element *parent = this->parent(document);
   if (parent == nullptr) {
@@ -52,8 +52,7 @@ Element::style_registry_(const abstract::Document *document) {
   return &document_(document)->m_style_registry;
 }
 
-const common::Path &
-Element::document_path_(const abstract::Document *document) const {
+const Path &Element::document_path_(const abstract::Document *document) const {
   return dynamic_cast<Element *>(m_parent)->document_path_(document);
 }
 
@@ -62,13 +61,13 @@ Element::document_relations_(const abstract::Document *document) const {
   return dynamic_cast<Element *>(m_parent)->document_relations_(document);
 }
 
-Root::Root(pugi::xml_node node, common::Path document_path,
+Root::Root(pugi::xml_node node, Path document_path,
            const Relations &document_relations)
     : DefaultElement(node, document_path, document_relations),
       m_document_path{std::move(document_path)},
       m_document_relations{document_relations} {}
 
-const common::Path &Root::document_path_(const abstract::Document *) const {
+const Path &Root::document_path_(const abstract::Document *) const {
   return m_document_path;
 }
 
@@ -118,13 +117,13 @@ pugi::xml_node SheetIndex::cell(std::uint32_t column, std::uint32_t row) const {
   return {};
 }
 
-Sheet::Sheet(pugi::xml_node node, common::Path document_path,
+Sheet::Sheet(pugi::xml_node node, Path document_path,
              const Relations &document_relations)
     : Element(node, document_path, document_relations),
       m_document_path{std::move(document_path)},
       m_document_relations{document_relations} {}
 
-const common::Path &Sheet::document_path_(const abstract::Document *) const {
+const Path &Sheet::document_path_(const abstract::Document *) const {
   return m_document_path;
 }
 
@@ -191,8 +190,7 @@ TableCellStyle Sheet::cell_style(const abstract::Document *document,
   if (pugi::xml_attribute style_attr = m_index.cell(column, row).attribute("s");
       style_attr) {
     std::uint32_t style_id = style_attr.as_uint();
-    common::ResolvedStyle style =
-        style_registry_(document)->cell_style(style_id);
+    ResolvedStyle style = style_registry_(document)->cell_style(style_id);
     result.override(style.table_cell_style);
   }
   return result;
@@ -241,7 +239,7 @@ ValueType SheetCell::value_type(const abstract::Document *) const {
   return ValueType::string;
 }
 
-common::ResolvedStyle
+ResolvedStyle
 SheetCell::partial_style(const abstract::Document *document) const {
   if (auto style_id = m_node.attribute("s")) {
     return style_registry_(document)->cell_style(style_id.as_uint());
@@ -261,12 +259,12 @@ TextStyle Span::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
 
-Text::Text(pugi::xml_node node, common::Path document_path,
+Text::Text(pugi::xml_node node, Path document_path,
            const Relations &document_relations)
     : Text(node, node, document_path, document_relations) {}
 
-Text::Text(pugi::xml_node first, pugi::xml_node last,
-           common::Path document_path, const Relations &document_relations)
+Text::Text(pugi::xml_node first, pugi::xml_node last, Path document_path,
+           const Relations &document_relations)
     : Element(first, document_path, document_relations), m_last{last} {}
 
 std::string Text::content(const abstract::Document *) const {
@@ -296,13 +294,13 @@ std::string Text::text_(const pugi::xml_node node) {
   return "";
 }
 
-Frame::Frame(pugi::xml_node node, common::Path document_path,
+Frame::Frame(pugi::xml_node node, Path document_path,
              const Relations &document_relations)
     : Element(node, document_path, document_relations),
       m_document_path{std::move(document_path)},
       m_document_relations{document_relations} {}
 
-const common::Path &Frame::document_path_(const abstract::Document *) const {
+const Path &Frame::document_path_(const abstract::Document *) const {
   return m_document_path;
 }
 
@@ -372,7 +370,7 @@ bool ImageElement::is_internal(const abstract::Document *document) const {
     return false;
   }
   try {
-    return doc->as_filesystem()->is_file(common::Path(href(document)));
+    return doc->as_filesystem()->is_file(Path(href(document)));
   } catch (...) {
   }
   return false;
@@ -384,17 +382,14 @@ ImageElement::file(const abstract::Document *document) const {
   if (doc == nullptr || !is_internal(document)) {
     return {};
   }
-  return File(doc->as_filesystem()->open(common::Path(href(document))));
+  return File(doc->as_filesystem()->open(Path(href(document))));
 }
 
 std::string ImageElement::href(const abstract::Document *document) const {
   if (pugi::xml_attribute ref = m_node.attribute("r:embed")) {
     auto relations = document_relations_(document);
     if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
-      return document_path_(document)
-          .parent()
-          .join(common::Path(rel->second))
-          .string();
+      return document_path_(document).parent().join(Path(rel->second)).string();
     }
   }
   return ""; // TODO

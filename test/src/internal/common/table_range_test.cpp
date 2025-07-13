@@ -4,7 +4,7 @@
 
 #include <string>
 
-using namespace odr::internal::common;
+using namespace odr::internal;
 
 TEST(TableRange, default) {
   TableRange tr;

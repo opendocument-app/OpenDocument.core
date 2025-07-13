@@ -66,7 +66,7 @@ OfficeOpenXmlFile::decrypt(const std::string &password) const {
   }
 
   std::string encryption_info = util::stream::read(
-      *m_filesystem->open(common::Path("/EncryptionInfo"))->stream());
+      *m_filesystem->open(Path("/EncryptionInfo"))->stream());
   // TODO cache Crypto::Util
   crypto::Util util(encryption_info);
   std::string key = util.derive_key(password);
@@ -75,11 +75,10 @@ OfficeOpenXmlFile::decrypt(const std::string &password) const {
   }
 
   std::string encrypted_package = util::stream::read(
-      *m_filesystem->open(common::Path("/EncryptedPackage"))->stream());
+      *m_filesystem->open(Path("/EncryptedPackage"))->stream());
   std::string decrypted_package = util.decrypt(encrypted_package, key);
 
-  auto memory_file =
-      std::make_shared<common::MemoryFile>(std::move(decrypted_package));
+  auto memory_file = std::make_shared<MemoryFile>(std::move(decrypted_package));
   auto decrypted = std::make_shared<OfficeOpenXmlFile>(*this);
   decrypted->m_filesystem =
       zip::ZipFile(memory_file).archive()->as_filesystem();

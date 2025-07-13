@@ -1,6 +1,6 @@
 #include <odr/internal/common/image_file.hpp>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 ImageFile::ImageFile(std::shared_ptr<abstract::File> file,
                      const FileType file_type)
@@ -20,4 +20,4 @@ DecoderEngine ImageFile::decoder_engine() const noexcept {
 
 std::shared_ptr<abstract::Image> ImageFile::image() const { return {}; }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

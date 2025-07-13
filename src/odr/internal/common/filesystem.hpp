@@ -11,7 +11,7 @@ namespace odr::internal::abstract {
 class File;
 } // namespace odr::internal::abstract
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class SystemFilesystem final : public abstract::Filesystem {
 public:
@@ -72,4 +72,4 @@ private:
   std::map<Path, std::shared_ptr<abstract::File>> m_files;
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

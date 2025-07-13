@@ -57,9 +57,9 @@ struct Manifest {
   };
 
   bool encrypted{false};
-  std::unordered_map<common::Path, Entry> entries;
+  std::unordered_map<Path, Entry> entries;
 
-  common::Path smallest_file_path;
+  Path smallest_file_path;
 
   const Entry &smallest_file_entry() const;
 };

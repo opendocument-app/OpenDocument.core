@@ -8,13 +8,13 @@
 #include <fstream>
 #include <sstream>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
-DiskFile::DiskFile(const char *path) : DiskFile{common::Path(path)} {}
+DiskFile::DiskFile(const char *path) : DiskFile{Path(path)} {}
 
-DiskFile::DiskFile(const std::string &path) : DiskFile{common::Path(path)} {}
+DiskFile::DiskFile(const std::string &path) : DiskFile{Path(path)} {}
 
-DiskFile::DiskFile(common::Path path) : m_path{std::move(path)} {
+DiskFile::DiskFile(Path path) : m_path{std::move(path)} {
   if (!std::filesystem::is_regular_file(m_path)) {
     throw FileNotFound();
   }
@@ -26,7 +26,7 @@ std::size_t DiskFile::size() const {
   return std::filesystem::file_size(m_path.string());
 }
 
-std::optional<common::Path> DiskFile::disk_path() const { return m_path; }
+std::optional<Path> DiskFile::disk_path() const { return m_path; }
 
 const char *DiskFile::memory_data() const { return nullptr; }
 
@@ -51,7 +51,7 @@ FileLocation MemoryFile::location() const noexcept {
 
 std::size_t MemoryFile::size() const { return m_data.size(); }
 
-std::optional<common::Path> MemoryFile::disk_path() const { return {}; }
+std::optional<Path> MemoryFile::disk_path() const { return {}; }
 
 const char *MemoryFile::memory_data() const { return m_data.data(); }
 
@@ -61,4 +61,4 @@ std::unique_ptr<std::istream> MemoryFile::stream() const {
 
 const std::string &MemoryFile::content() const { return m_data; }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

@@ -10,9 +10,9 @@
 #include <memory>
 #include <string>
 
-namespace odr::internal::common {
+namespace odr::internal {
 class MemoryFile;
-} // namespace odr::internal::common
+} // namespace odr::internal
 
 namespace odr::internal::cfb::impl {
 class CompoundFileReader;
@@ -23,7 +23,7 @@ namespace odr::internal::cfb::util {
 
 class Archive final : public std::enable_shared_from_this<Archive> {
 public:
-  explicit Archive(const std::shared_ptr<common::MemoryFile> &file);
+  explicit Archive(const std::shared_ptr<MemoryFile> &file);
 
   [[nodiscard]] const impl::CompoundFileReader &cfb() const;
 
@@ -34,7 +34,7 @@ public:
   [[nodiscard]] Iterator begin() const;
   [[nodiscard]] Iterator end() const;
 
-  [[nodiscard]] Iterator find(const common::Path &path) const;
+  [[nodiscard]] Iterator find(const Path &path) const;
 
   class Entry {
   public:
@@ -43,9 +43,9 @@ public:
     Entry(const Archive &parent, const impl::CompoundFileEntry &entry)
         : m_parent{&parent}, m_entry{&entry}, m_path{"/"} {}
     Entry(const Archive &parent, const impl::CompoundFileEntry &entry,
-          const common::Path &parent_path)
+          const Path &parent_path)
         : m_parent{&parent}, m_entry{&entry},
-          m_path{parent_path.join(common::Path(name()))} {}
+          m_path{parent_path.join(Path(name()))} {}
     ~Entry() = default;
     Entry &operator=(const Entry &) = default;
     Entry &operator=(Entry &&) noexcept = default;
@@ -59,7 +59,7 @@ public:
 
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
-    [[nodiscard]] common::Path path() const;
+    [[nodiscard]] Path path() const;
     [[nodiscard]] std::unique_ptr<abstract::File> file() const;
 
     [[nodiscard]] std::string name() const;
@@ -70,7 +70,7 @@ public:
   private:
     const Archive *m_parent;
     const impl::CompoundFileEntry *m_entry;
-    common::Path m_path;
+    Path m_path;
 
     friend Iterator;
   };
@@ -91,7 +91,7 @@ public:
       dig_left_();
     }
     Iterator(const Archive &parent, const impl::CompoundFileEntry &entry,
-             const common::Path &parent_path)
+             const Path &parent_path)
         : m_entry{Entry(parent, entry, parent_path)} {
       dig_left_();
     }

@@ -127,8 +127,7 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
     auto image_file_impl = image_file.file().impl();
     // TODO memory file might not be necessary; other istreams didn't support
     // `tellg`
-    svm::SvmFile svm_file(
-        std::make_shared<common::MemoryFile>(*image_file_impl));
+    svm::SvmFile svm_file(std::make_shared<MemoryFile>(*image_file_impl));
     std::ostringstream svg_out;
     svm::Translator::svg(svm_file, svg_out);
     // TODO use stream

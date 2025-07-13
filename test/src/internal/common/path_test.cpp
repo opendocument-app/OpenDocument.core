@@ -4,7 +4,7 @@
 
 #include <memory>
 
-using namespace odr::internal::common;
+using namespace odr::internal;
 
 TEST(Path, empty) { EXPECT_EQ("", Path().string()); }
 

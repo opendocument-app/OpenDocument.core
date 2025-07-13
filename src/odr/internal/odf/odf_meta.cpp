@@ -65,29 +65,27 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
 
   result.password_encrypted = decrypted;
 
-  if (!filesystem.is_file(common::Path("/content.xml")) &&
-      manifest == nullptr && !filesystem.is_file(common::Path("/mimetype"))) {
+  if (!filesystem.is_file(Path("/content.xml")) && manifest == nullptr &&
+      !filesystem.is_file(Path("/mimetype"))) {
     throw NoOpenDocumentFile();
   }
 
-  if (filesystem.is_file(common::Path("/mimetype"))) {
-    const auto mimeType = util::stream::read(
-        *filesystem.open(common::Path("/mimetype"))->stream());
+  if (filesystem.is_file(Path("/mimetype"))) {
+    const auto mimeType =
+        util::stream::read(*filesystem.open(Path("/mimetype"))->stream());
     lookup_file_type(mimeType, result.type);
   }
 
   pugi::xml_document manifest_xml;
   if (manifest == nullptr &&
-      filesystem.is_file(common::Path("/META-INF/manifest.xml"))) {
-    manifest_xml =
-        util::xml::parse(filesystem, common::Path("/META-INF/manifest.xml"));
+      filesystem.is_file(Path("/META-INF/manifest.xml"))) {
+    manifest_xml = util::xml::parse(filesystem, Path("/META-INF/manifest.xml"));
     manifest = &manifest_xml;
   }
 
   if (manifest != nullptr) {
     for (auto &&e : manifest->select_nodes("//manifest:file-entry")) {
-      const common::Path path =
-          common::Path(e.node().attribute("manifest:full-path").as_string());
+      const Path path(e.node().attribute("manifest:full-path").as_string());
       if (path.root() && e.node().attribute("manifest:media-type")) {
         const std::string mimeType =
             e.node().attribute("manifest:media-type").as_string();
@@ -112,9 +110,8 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
   }
 
   if ((result.password_encrypted == decrypted) &&
-      filesystem.is_file(common::Path("/meta.xml"))) {
-    const auto meta_xml =
-        util::xml::parse(filesystem, common::Path("/meta.xml"));
+      filesystem.is_file(Path("/meta.xml"))) {
+    const auto meta_xml = util::xml::parse(filesystem, Path("/meta.xml"));
 
     const pugi::xml_node statistics = meta_xml.child("office:document-meta")
                                           .child("office:meta")

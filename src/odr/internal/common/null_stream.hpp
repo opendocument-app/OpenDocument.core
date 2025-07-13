@@ -2,7 +2,7 @@
 
 #include <ostream>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class NullBuffer final : public std::streambuf {
 public:
@@ -17,4 +17,4 @@ private:
   NullBuffer m_nb;
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

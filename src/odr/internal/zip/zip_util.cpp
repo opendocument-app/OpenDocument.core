@@ -107,7 +107,7 @@ public:
     return stat.m_uncomp_size;
   }
 
-  [[nodiscard]] std::optional<common::Path> disk_path() const final {
+  [[nodiscard]] std::optional<Path> disk_path() const final {
     return std::nullopt;
   }
   [[nodiscard]] const char *memory_data() const final { return nullptr; }
@@ -145,12 +145,12 @@ bool Archive::Entry::is_directory() const {
   return mz_zip_reader_is_file_a_directory(m_archive->zip(), m_index);
 }
 
-common::Path Archive::Entry::path() const {
+Path Archive::Entry::path() const {
   std::lock_guard lock(m_archive->mutex());
   char filename[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
   mz_zip_reader_get_filename(m_archive->zip(), m_index, filename,
                              MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE);
-  return common::Path(filename);
+  return Path(filename);
 }
 
 Method Archive::Entry::method() const {
@@ -173,10 +173,10 @@ std::shared_ptr<abstract::File> Archive::Entry::file() const {
   return std::make_shared<FileInZip>(m_archive->shared_from_this(), m_index);
 }
 
-Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)
+Archive::Archive(const std::shared_ptr<MemoryFile> &file)
     : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
 
-Archive::Archive(const std::shared_ptr<common::DiskFile> &file)
+Archive::Archive(const std::shared_ptr<DiskFile> &file)
     : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
 
 Archive::Archive(std::shared_ptr<abstract::File> file)
@@ -208,7 +208,7 @@ Archive::Iterator Archive::end() const {
   return {*this, mz_zip_reader_get_num_files(&m_zip)};
 }
 
-Archive::Iterator Archive::find(const common::Path &path) const {
+Archive::Iterator Archive::find(const Path &path) const {
   return std::find_if(begin(), end(), [&path](const Entry &entry) {
     return entry.path() == path;
   });

@@ -41,8 +41,8 @@ void bring_offline(const HtmlResources &resources,
         resource.is_external() || !resource.is_accessible()) {
       continue;
     }
-    auto path = odr::internal::common::Path(output_path)
-                    .join(odr::internal::common::Path(*location));
+    auto path =
+        odr::internal::Path(output_path).join(odr::internal::Path(*location));
 
     std::filesystem::create_directories(path.parent());
     std::ofstream ostream = internal::util::file::create(path.string());
@@ -116,8 +116,8 @@ Html HtmlService::bring_offline(const std::string &output_path,
   HtmlResources resources;
 
   for (const auto &view : views) {
-    auto path = odr::internal::common::Path(output_path)
-                    .join(odr::internal::common::Path(view.path()));
+    auto path =
+        odr::internal::Path(output_path).join(odr::internal::Path(view.path()));
 
     std::filesystem::create_directories(path.parent());
     std::ofstream ostream = internal::util::file::create(path.string());
@@ -166,8 +166,8 @@ HtmlResources HtmlView::write_html(std::ostream &out) const {
 Html HtmlView::bring_offline(const std::string &output_path) const {
   HtmlResources resources;
 
-  auto path = odr::internal::common::Path(output_path)
-                  .join(odr::internal::common::Path(this->path()));
+  auto path =
+      odr::internal::Path(output_path).join(odr::internal::Path(this->path()));
 
   {
     std::filesystem::create_directories(path.parent());
@@ -249,10 +249,10 @@ HtmlResourceLocator html::standard_resource_locator() {
     }
 
     if (resource.is_shipped()) {
-      auto resource_path = common::Path(config.resource_path)
-                               .join(common::Path(resource.path()));
+      auto resource_path =
+          Path(config.resource_path).join(Path(resource.path()));
       if (config.relative_resource_paths && config.output_path.has_value()) {
-        resource_path = resource_path.rebase(common::Path(*config.output_path));
+        resource_path = resource_path.rebase(Path(*config.output_path));
       }
       return resource_path.string();
     }

@@ -17,9 +17,9 @@ namespace odr::internal::odf {
 OpenDocumentFile::OpenDocumentFile(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
-  if (m_filesystem->exists(common::Path("/META-INF/manifest.xml"))) {
+  if (m_filesystem->exists(Path("/META-INF/manifest.xml"))) {
     auto manifest =
-        util::xml::parse(*m_filesystem, common::Path("/META-INF/manifest.xml"));
+        util::xml::parse(*m_filesystem, Path("/META-INF/manifest.xml"));
 
     m_file_meta = parse_file_meta(*m_filesystem, &manifest, false);
     m_manifest = parse_manifest(manifest);

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <string>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class TableRange final {
 public:
@@ -26,4 +26,4 @@ private:
   TablePosition m_to;
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

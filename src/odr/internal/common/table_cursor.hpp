@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <list>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class TableCursor final {
 public:
@@ -33,4 +33,4 @@ private:
   void handle_rowspan_() noexcept;
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

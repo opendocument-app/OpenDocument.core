@@ -2,12 +2,12 @@
 
 #include <stdexcept>
 
-std::size_t std::hash<::odr::internal::common::Path>::operator()(
-    const ::odr::internal::common::Path &p) const {
+std::size_t std::hash<::odr::internal::Path>::operator()(
+    const ::odr::internal::Path &p) const {
   return p.hash();
 }
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 Path::Path() noexcept : Path("") {}
 
@@ -317,4 +317,4 @@ std::ostream &operator<<(std::ostream &os, const Path &p) {
   return os << p.m_path;
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

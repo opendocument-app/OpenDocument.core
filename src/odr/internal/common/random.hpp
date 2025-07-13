@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 std::string random_string(std::size_t length);
 

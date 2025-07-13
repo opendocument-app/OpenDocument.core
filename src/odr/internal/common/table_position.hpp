@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class TablePosition final {
 public:
@@ -31,8 +31,8 @@ private:
   std::uint32_t m_row{0};
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal
 
-template <> struct std::hash<odr::internal::common::TablePosition> {
-  std::size_t operator()(const odr::internal::common::TablePosition &k) const;
+template <> struct std::hash<odr::internal::TablePosition> {
+  std::size_t operator()(const odr::internal::TablePosition &k) const;
 };

@@ -10,7 +10,7 @@ namespace odr::internal::abstract {
 class Document;
 } // namespace odr::internal::abstract
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 class Element : public virtual abstract::Element {
 public:
@@ -57,4 +57,4 @@ public:
   Element *m_last_column{};
 };
 
-} // namespace odr::internal::common
+} // namespace odr::internal

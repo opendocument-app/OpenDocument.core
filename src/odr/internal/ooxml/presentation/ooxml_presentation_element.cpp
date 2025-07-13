@@ -85,11 +85,11 @@ Element::Element(pugi::xml_node node) : m_node{node} {
   }
 }
 
-common::ResolvedStyle Element::partial_style(const abstract::Document *) const {
+ResolvedStyle Element::partial_style(const abstract::Document *) const {
   return {};
 }
 
-common::ResolvedStyle
+ResolvedStyle
 Element::intermediate_style(const abstract::Document *document) const {
   abstract::Element *parent = this->parent(document);
   if (parent == nullptr) {
@@ -138,9 +138,8 @@ pugi::xml_node Slide::slide_node_(const abstract::Document *document) const {
   return slide_(document, m_node.attribute("r:id").value());
 }
 
-common::ResolvedStyle
-Paragraph::partial_style(const abstract::Document *) const {
-  common::ResolvedStyle result;
+ResolvedStyle Paragraph::partial_style(const abstract::Document *) const {
+  ResolvedStyle result;
   resolve_text_style_(m_node, result.text_style);
   resolve_paragraph_style_(m_node, result.paragraph_style);
   return result;
@@ -154,8 +153,8 @@ TextStyle Paragraph::text_style(const abstract::Document *document) const {
   return partial_style(document).text_style;
 }
 
-common::ResolvedStyle Span::partial_style(const abstract::Document *) const {
-  common::ResolvedStyle result;
+ResolvedStyle Span::partial_style(const abstract::Document *) const {
+  ResolvedStyle result;
   resolve_text_style_(m_node, result.text_style);
   return result;
 }

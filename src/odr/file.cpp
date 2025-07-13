@@ -33,7 +33,7 @@ File::File(std::shared_ptr<internal::abstract::File> impl)
     : m_impl{std::move(impl)} {}
 
 File::File(const std::string &path)
-    : m_impl{std::make_shared<internal::common::DiskFile>(path)} {}
+    : m_impl{std::make_shared<internal::DiskFile>(path)} {}
 
 FileLocation File::location() const noexcept { return m_impl->location(); }
 
@@ -63,7 +63,7 @@ std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 std::vector<FileType> DecodedFile::list_file_types(const std::string &path,
                                                    Logger &logger) {
   return internal::open_strategy::list_file_types(
-      std::make_shared<internal::common::DiskFile>(path), logger);
+      std::make_shared<internal::DiskFile>(path), logger);
 }
 
 std::vector<DecoderEngine> DecodedFile::list_decoder_engines(FileType as) {
@@ -86,17 +86,16 @@ DecodedFile::DecodedFile(const File &file, FileType as, Logger &logger)
 
 DecodedFile::DecodedFile(const std::string &path, Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(
-          std::make_shared<internal::common::DiskFile>(path), logger)) {}
+          std::make_shared<internal::DiskFile>(path), logger)) {}
 
 DecodedFile::DecodedFile(const std::string &path, FileType as, Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(
-          std::make_shared<internal::common::DiskFile>(path), as, logger)) {}
+          std::make_shared<internal::DiskFile>(path), as, logger)) {}
 
 DecodedFile::DecodedFile(const std::string &path,
                          const DecodePreference &preference, Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(
-          std::make_shared<internal::common::DiskFile>(path), preference,
-          logger)) {}
+          std::make_shared<internal::DiskFile>(path), preference, logger)) {}
 
 File DecodedFile::file() const { return File(m_impl->file()); }
 
@@ -230,7 +229,7 @@ DocumentFile::DocumentFile(
 
 DocumentFile::DocumentFile(const std::string &path, Logger &logger)
     : DocumentFile(internal::open_strategy::open_document_file(
-          std::make_shared<internal::common::DiskFile>(path), logger)) {}
+          std::make_shared<internal::DiskFile>(path), logger)) {}
 
 DocumentType DocumentFile::document_type() const {
   return m_impl->document_type();

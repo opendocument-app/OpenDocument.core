@@ -12,7 +12,7 @@
 #include <map>
 #include <system_error>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 namespace {
 class SystemFileWalker final : public abstract::FileWalker {
@@ -384,4 +384,4 @@ bool VirtualFilesystem::move(const Path &from, const Path &to) {
   return true;
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

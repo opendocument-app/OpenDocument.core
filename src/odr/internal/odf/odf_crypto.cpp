@@ -121,25 +121,25 @@ public:
       : m_parent(std::move(parent)), m_manifest(std::move(manifest)),
         m_start_key(std::move(start_key)) {}
 
-  [[nodiscard]] bool exists(const common::Path &path) const final {
+  [[nodiscard]] bool exists(const Path &path) const final {
     return m_parent->exists(path);
   }
 
-  [[nodiscard]] bool is_file(const common::Path &path) const final {
+  [[nodiscard]] bool is_file(const Path &path) const final {
     return m_parent->is_file(path);
   }
 
-  [[nodiscard]] bool is_directory(const common::Path &path) const final {
+  [[nodiscard]] bool is_directory(const Path &path) const final {
     return m_parent->is_directory(path);
   }
 
   [[nodiscard]] std::unique_ptr<abstract::FileWalker>
-  file_walker(const common::Path &path) const final {
+  file_walker(const Path &path) const final {
     return m_parent->file_walker(path);
   }
 
   [[nodiscard]] std::shared_ptr<abstract::File>
-  open(const common::Path &path) const final {
+  open(const Path &path) const final {
     const auto it = m_manifest.entries.find(path);
     if (it == std::end(m_manifest.entries)) {
       return m_parent->open(path);
@@ -152,7 +152,7 @@ public:
     const std::string input = util::stream::read(*source);
     std::string result = crypto::util::inflate(
         derive_key_and_decrypt(it->second, m_start_key, input));
-    return std::make_shared<common::MemoryFile>(result);
+    return std::make_shared<MemoryFile>(result);
   }
 
 private:
@@ -170,7 +170,7 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
     throw NotEncryptedError();
   }
 
-  if (auto it = manifest.entries.find(common::Path("/encrypted-package"));
+  if (auto it = manifest.entries.find(Path("/encrypted-package"));
       it != std::end(manifest.entries)) {
     try {
       const std::string start_key = odf::start_key(it->second, password);
@@ -179,8 +179,7 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
       std::string decrypt = crypto::util::inflate(
           derive_key_and_decrypt(it->second, start_key, input));
 
-      auto memory_file =
-          std::make_shared<common::MemoryFile>(std::move(decrypt));
+      auto memory_file = std::make_shared<MemoryFile>(std::move(decrypt));
       return zip::ZipFile(memory_file).archive()->as_filesystem();
     } catch (...) {
       throw WrongPasswordError();

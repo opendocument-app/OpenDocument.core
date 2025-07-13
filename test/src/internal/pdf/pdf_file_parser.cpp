@@ -14,7 +14,7 @@ using namespace odr::internal::pdf;
 using namespace odr::test;
 
 TEST(FileParser, foo) {
-  auto file = std::make_shared<common::DiskFile>(
+  auto file = std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
   auto in = file->stream();
@@ -76,7 +76,7 @@ TEST(FileParser, foo) {
 }
 
 TEST(FileParser, bar) {
-  auto file = std::make_shared<common::DiskFile>(
+  auto file = std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
   auto in = file->stream();

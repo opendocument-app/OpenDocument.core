@@ -1,6 +1,6 @@
 #include <odr/internal/common/style.hpp>
 
-namespace odr::internal::common {
+namespace odr::internal {
 
 void ResolvedStyle::override(const ResolvedStyle &other) {
   text_style.override(other.text_style);
@@ -12,4 +12,4 @@ void ResolvedStyle::override(const ResolvedStyle &other) {
   graphic_style.override(other.graphic_style);
 }
 
-} // namespace odr::internal::common
+} // namespace odr::internal

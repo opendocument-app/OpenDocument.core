@@ -11,12 +11,12 @@ using int_type = std::streambuf::int_type;
 static constexpr int_type eof = std::streambuf::traits_type::eof();
 
 std::string stream::read(std::istream &in) {
-  return std::string(std::istreambuf_iterator<char>(in), {});
+  return {std::istreambuf_iterator<char>(in), {}};
 }
 
 std::string stream::read(std::istream &in, std::size_t size) {
   std::string result(size, '\0');
-  in.read(result.data(), size);
+  in.read(result.data(), static_cast<std::streamsize>(size));
   result.resize(in.gcount());
   return result;
 }
@@ -94,13 +94,13 @@ std::istream &stream::pipe_until(std::istream &in, std::ostream &out,
       return in;
     }
     if (inclusive) {
-      out.put(c);
+      out.put(static_cast<char>(c));
     }
     if (c == until_char) {
       return in;
     }
     if (!inclusive) {
-      out.put(c);
+      out.put(static_cast<char>(c));
     }
   }
 }

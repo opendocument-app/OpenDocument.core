@@ -73,7 +73,7 @@ public:
   }
   [[nodiscard]] std::size_t size() const final { return m_entry.size; }
 
-  [[nodiscard]] std::optional<common::Path> disk_path() const final {
+  [[nodiscard]] std::optional<Path> disk_path() const final {
     return std::nullopt;
   }
   [[nodiscard]] const char *memory_data() const final { return nullptr; }
@@ -94,7 +94,7 @@ bool Archive::Entry::is_file() const { return m_entry->is_stream(); }
 
 bool Archive::Entry::is_directory() const { return !m_entry->is_stream(); }
 
-common::Path Archive::Entry::path() const { return m_path; }
+Path Archive::Entry::path() const { return m_path; }
 
 std::unique_ptr<abstract::File> Archive::Entry::file() const {
   if (!is_file()) {
@@ -191,7 +191,7 @@ void Archive::Iterator::next_flat_() {
   m_entry = {};
 }
 
-Archive::Archive(const std::shared_ptr<common::MemoryFile> &file)
+Archive::Archive(const std::shared_ptr<MemoryFile> &file)
     : m_file{file}, m_cfb{file->content().data(), file->content().size()} {}
 
 const impl::CompoundFileReader &Archive::cfb() const { return m_cfb; }
@@ -204,7 +204,7 @@ Archive::Iterator Archive::begin() const {
 
 Archive::Iterator Archive::end() const { return {}; }
 
-Archive::Iterator Archive::find(const common::Path &path) const {
+Archive::Iterator Archive::find(const Path &path) const {
   return std::find_if(begin(), end(), [&path](const Entry &entry) {
     return entry.path() == path;
   });

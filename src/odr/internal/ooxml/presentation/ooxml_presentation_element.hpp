@@ -11,13 +11,13 @@
 namespace odr::internal::ooxml::presentation {
 class Document;
 
-class Element : public common::Element {
+class Element : public internal::Element {
 public:
   explicit Element(pugi::xml_node);
 
-  [[nodiscard]] virtual common::ResolvedStyle
+  [[nodiscard]] virtual ResolvedStyle
   partial_style(const abstract::Document *) const;
-  [[nodiscard]] virtual common::ResolvedStyle
+  [[nodiscard]] virtual ResolvedStyle
   intermediate_style(const abstract::Document *) const;
 
   [[nodiscard]] bool
@@ -64,7 +64,7 @@ class Paragraph final : public Element, public abstract::Paragraph {
 public:
   using Element::Element;
 
-  [[nodiscard]] common::ResolvedStyle
+  [[nodiscard]] ResolvedStyle
   partial_style(const abstract::Document *) const final;
 
   [[nodiscard]] ParagraphStyle style(const abstract::Document *) const final;
@@ -76,7 +76,7 @@ class Span final : public Element, public abstract::Span {
 public:
   using Element::Element;
 
-  [[nodiscard]] common::ResolvedStyle
+  [[nodiscard]] ResolvedStyle
   partial_style(const abstract::Document *) const final;
 
   [[nodiscard]] TextStyle style(const abstract::Document *) const final;

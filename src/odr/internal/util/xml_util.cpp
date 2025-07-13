@@ -31,7 +31,7 @@ pugi::xml_document xml::parse(std::istream &in) {
 }
 
 pugi::xml_document xml::parse(const abstract::ReadableFilesystem &filesystem,
-                              const common::Path &path) {
+                              const Path &path) {
   pugi::xml_document result;
   auto file = filesystem.open(path);
   if (!file) {

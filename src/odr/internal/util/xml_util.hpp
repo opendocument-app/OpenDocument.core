@@ -12,15 +12,15 @@ namespace odr::internal::abstract {
 class ReadableFilesystem;
 }
 
-namespace odr::internal::common {
+namespace odr::internal {
 class Path;
 }
 
 namespace odr::internal::util::xml {
+
 pugi::xml_document parse(const std::string &);
 pugi::xml_document parse(std::istream &);
-pugi::xml_document parse(const abstract::ReadableFilesystem &,
-                         const common::Path &);
+pugi::xml_document parse(const abstract::ReadableFilesystem &, const Path &);
 
 struct StringToken {
   enum class Type {
@@ -37,4 +37,5 @@ struct StringToken {
 };
 
 std::vector<StringToken> tokenize_text(const std::string &text);
+
 } // namespace odr::internal::util::xml

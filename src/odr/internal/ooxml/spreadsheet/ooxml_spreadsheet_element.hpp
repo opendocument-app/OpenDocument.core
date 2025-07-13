@@ -21,19 +21,19 @@ class StyleRegistry;
 
 class SheetCell;
 
-class Element : public common::Element {
+class Element : public internal::Element {
 public:
-  Element(pugi::xml_node node, common::Path document_path,
+  Element(pugi::xml_node node, Path document_path,
           const Relations &document_relations);
 
-  [[nodiscard]] virtual common::ResolvedStyle
+  [[nodiscard]] virtual ResolvedStyle
   partial_style(const abstract::Document *) const;
-  [[nodiscard]] common::ResolvedStyle
+  [[nodiscard]] ResolvedStyle
   intermediate_style(const abstract::Document *) const;
 
   [[nodiscard]] bool is_editable(const abstract::Document *) const override;
 
-  [[nodiscard]] virtual const common::Path &
+  [[nodiscard]] virtual const Path &
   document_path_(const abstract::Document *) const;
   [[nodiscard]] virtual const Relations &
   document_relations_(const abstract::Document *) const;
@@ -56,16 +56,16 @@ public:
 
 class Root final : public DefaultElement<ElementType::root> {
 public:
-  Root(pugi::xml_node node, common::Path document_path,
+  Root(pugi::xml_node node, Path document_path,
        const Relations &document_relations);
 
-  [[nodiscard]] const common::Path &
+  [[nodiscard]] const Path &
   document_path_(const abstract::Document *) const final;
   [[nodiscard]] const Relations &
   document_relations_(const abstract::Document *) const final;
 
 private:
-  common::Path m_document_path;
+  Path m_document_path;
   const Relations &m_document_relations;
 };
 
@@ -93,7 +93,7 @@ struct SheetIndex final {
 
 class Sheet final : public Element, public abstract::Sheet {
 public:
-  Sheet(pugi::xml_node node, common::Path document_path,
+  Sheet(pugi::xml_node node, Path document_path,
         const Relations &document_relations);
 
   [[nodiscard]] std::string name(const abstract::Document *) const final;
@@ -131,18 +131,18 @@ public:
   void append_shape_(Element *shape);
 
 protected:
-  [[nodiscard]] const common::Path &
+  [[nodiscard]] const Path &
   document_path_(const abstract::Document *) const final;
   [[nodiscard]] const Relations &
   document_relations_(const abstract::Document *) const final;
 
 private:
-  common::Path m_document_path;
+  Path m_document_path;
   const Relations &m_document_relations;
 
   SheetIndex m_index;
 
-  std::unordered_map<common::TablePosition, SheetCell *> m_cells;
+  std::unordered_map<TablePosition, SheetCell *> m_cells;
   Element *m_first_shape{nullptr};
   Element *m_last_shape{nullptr};
 };
@@ -157,7 +157,7 @@ public:
 
   [[nodiscard]] TableCellStyle style(const abstract::Document *) const final;
 
-  [[nodiscard]] common::ResolvedStyle
+  [[nodiscard]] ResolvedStyle
   partial_style(const abstract::Document *) const final;
 };
 
@@ -170,9 +170,9 @@ public:
 
 class Text final : public Element, public abstract::Text {
 public:
-  explicit Text(pugi::xml_node node, common::Path document_path,
+  explicit Text(pugi::xml_node node, Path document_path,
                 const Relations &document_relations);
-  Text(pugi::xml_node first, pugi::xml_node last, common::Path document_path,
+  Text(pugi::xml_node first, pugi::xml_node last, Path document_path,
        const Relations &document_relations);
 
   [[nodiscard]] std::string content(const abstract::Document *) const final;
@@ -189,7 +189,7 @@ private:
 
 class Frame final : public Element, public abstract::Frame {
 public:
-  Frame(pugi::xml_node node, common::Path document_path,
+  Frame(pugi::xml_node node, Path document_path,
         const Relations &document_relations);
 
   [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final;
@@ -208,13 +208,13 @@ public:
 
   [[nodiscard]] GraphicStyle style(const abstract::Document *) const final;
 
-  [[nodiscard]] const common::Path &
+  [[nodiscard]] const Path &
   document_path_(const abstract::Document *) const final;
   [[nodiscard]] const Relations &
   document_relations_(const abstract::Document *) const final;
 
 private:
-  common::Path m_document_path;
+  Path m_document_path;
   const Relations &m_document_relations;
 };
 

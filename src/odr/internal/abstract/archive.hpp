@@ -2,10 +2,6 @@
 
 #include <memory>
 
-namespace odr::internal::common {
-class Path;
-} // namespace odr::internal::common
-
 namespace odr::internal::abstract {
 class Filesystem;
 
