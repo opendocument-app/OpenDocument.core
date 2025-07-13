@@ -80,11 +80,13 @@ EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {
 std::shared_ptr<abstract::DecodedFile>
 LegacyMicrosoftFile::decrypt(const std::string &password) const {
   (void)password;
-  return {}; // TODO throw
+  throw UnsupportedOperation(
+      "odrcore does not support decryption of legacy Microsoft files");
 }
 
 std::shared_ptr<abstract::Document> LegacyMicrosoftFile::document() const {
-  return {}; // TODO throw
+  throw UnsupportedOperation(
+      "odrcore does not support reading legacy Microsoft files");
 }
 
 } // namespace odr::internal::oldms
