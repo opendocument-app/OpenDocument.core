@@ -14,9 +14,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : common::TemplateDocument<Element>(FileType::office_open_xml_workbook,
                                         DocumentType::spreadsheet,
                                         std::move(filesystem)) {
-  auto workbook_path = common::Path("xl/workbook.xml");
+  auto workbook_path = common::Path("/xl/workbook.xml");
   auto [workbook_xml, workbook_relations] = parse_xml_(workbook_path);
-  auto [styles_xml, _] = parse_xml_(common::Path("xl/styles.xml"));
+  auto [styles_xml, _] = parse_xml_(common::Path("/xl/styles.xml"));
 
   for (pugi::xml_node sheet_node :
        workbook_xml.document_element().child("sheets").children("sheet")) {
@@ -32,9 +32,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     }
   }
 
-  if (m_filesystem->exists(common::Path("xl/sharedStrings.xml"))) {
+  if (m_filesystem->exists(common::Path("/xl/sharedStrings.xml"))) {
     auto [shared_strings_xml, _] =
-        parse_xml_(common::Path("xl/sharedStrings.xml"));
+        parse_xml_(common::Path("/xl/sharedStrings.xml"));
 
     for (auto shared_string : shared_strings_xml.document_element()) {
       m_shared_strings.push_back(shared_string);

@@ -295,7 +295,7 @@ std::string Image::href(const abstract::Document *document) const {
                      .attribute("r:embed")) {
     auto relations = document_relations_(document);
     if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
-      return common::Path("word").join(common::Path(rel->second)).string();
+      return common::Path("/word").join(common::Path(rel->second)).string();
     }
   }
   return ""; // TODO
