@@ -19,6 +19,12 @@ public:
   explicit Path(std::string_view string_view);
   explicit Path(const std::filesystem::path &path);
 
+  Path(const Path &other) noexcept = default;
+  Path(Path &&other) noexcept = default;
+  virtual ~Path() noexcept = default;
+  Path &operator=(const Path &other) noexcept = default;
+  Path &operator=(Path &&other) noexcept = default;
+
   bool operator==(const Path &other) const noexcept;
   bool operator!=(const Path &other) const noexcept;
   bool operator<(const Path &other) const noexcept;
