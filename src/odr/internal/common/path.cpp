@@ -158,6 +158,13 @@ AbsPath Path::make_absolute() const {
   return AbsPath("/" + m_path);
 }
 
+RelPath Path::make_relative() const {
+  if (!m_absolute) {
+    return RelPath(*this);
+  }
+  return RelPath(m_path.substr(1));
+}
+
 std::string Path::basename() const noexcept {
   const auto find = m_path.rfind('/');
   if (find == std::string::npos) {

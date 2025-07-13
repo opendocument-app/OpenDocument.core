@@ -40,28 +40,28 @@ public:
   [[nodiscard]] Iterator begin() const;
   [[nodiscard]] Iterator end() const;
 
-  [[nodiscard]] Iterator find(const Path &path) const;
+  [[nodiscard]] Iterator find(const RelPath &path) const;
 
-  Iterator insert_file(Iterator at, Path path,
+  Iterator insert_file(Iterator at, RelPath path,
                        std::shared_ptr<abstract::File> file,
                        std::uint32_t compression_level = 6);
-  Iterator insert_directory(Iterator at, Path path);
+  Iterator insert_directory(Iterator at, RelPath path);
 
   class Entry {
   public:
-    Entry(Path path, std::shared_ptr<abstract::File> file,
+    Entry(RelPath path, std::shared_ptr<abstract::File> file,
           std::uint32_t compression_level);
 
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
-    [[nodiscard]] Path path() const;
+    [[nodiscard]] const RelPath &path() const;
     [[nodiscard]] std::shared_ptr<abstract::File> file() const;
     [[nodiscard]] std::uint32_t compression_level() const;
 
     void file(std::shared_ptr<abstract::File> file);
 
   private:
-    Path m_path;
+    RelPath m_path;
     std::shared_ptr<abstract::File> m_file;
     std::uint32_t m_compression_level{6};
 

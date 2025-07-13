@@ -15,7 +15,7 @@
 #include <miniz/miniz_zip.h>
 
 namespace odr::internal {
-class Path;
+class RelPath;
 class MemoryFile;
 class DiskFile;
 } // namespace odr::internal
@@ -44,7 +44,7 @@ public:
   [[nodiscard]] Iterator begin() const;
   [[nodiscard]] Iterator end() const;
 
-  [[nodiscard]] Iterator find(const Path &path) const;
+  [[nodiscard]] Iterator find(const RelPath &path) const;
 
   class Entry {
   public:
@@ -59,13 +59,10 @@ public:
     [[nodiscard]] bool operator==(const Entry &other) const {
       return m_index == other.m_index;
     }
-    [[nodiscard]] bool operator!=(const Entry &other) const {
-      return m_index != other.m_index;
-    }
 
     [[nodiscard]] bool is_file() const;
     [[nodiscard]] bool is_directory() const;
-    [[nodiscard]] Path path() const;
+    [[nodiscard]] RelPath path() const;
     [[nodiscard]] Method method() const;
     [[nodiscard]] std::shared_ptr<abstract::File> file() const;
 
@@ -84,21 +81,13 @@ public:
     using pointer = const Entry *;
     using reference = const Entry &;
 
-    Iterator(const Iterator &) = default;
-    Iterator(Iterator &&) noexcept = default;
     Iterator(const Archive &zip, std::uint32_t index) : m_entry{zip, index} {}
-    ~Iterator() = default;
-    Iterator &operator=(const Iterator &) = default;
-    Iterator &operator=(Iterator &&) noexcept = default;
 
     [[nodiscard]] reference operator*() const { return m_entry; }
     [[nodiscard]] pointer operator->() const { return &m_entry; }
 
     [[nodiscard]] bool operator==(const Iterator &other) const {
       return m_entry == other.m_entry;
-    }
-    [[nodiscard]] bool operator!=(const Iterator &other) const {
-      return m_entry != other.m_entry;
     }
 
     Iterator &operator++() {

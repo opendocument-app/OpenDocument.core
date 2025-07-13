@@ -44,6 +44,7 @@ public:
   [[nodiscard]] RelPath as_relative() &&;
 
   [[nodiscard]] AbsPath make_absolute() const;
+  [[nodiscard]] RelPath make_relative() const;
 
   [[nodiscard]] std::string basename() const noexcept;
   [[nodiscard]] std::string extension() const noexcept;

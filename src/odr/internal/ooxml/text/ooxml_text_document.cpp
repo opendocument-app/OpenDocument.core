@@ -43,20 +43,22 @@ void Document::save(const Path &path) const {
 
   for (auto walker = m_filesystem->file_walker(AbsPath("/")); !walker->end();
        walker->next()) {
-    auto p = walker->path();
-    if (m_filesystem->is_directory(p)) {
-      archive.insert_directory(std::end(archive), p);
+    const AbsPath &abs_path = walker->path();
+    RelPath rel_path = walker->path().rebase(AbsPath("/"));
+    if (walker->is_directory()) {
+      archive.insert_directory(std::end(archive), rel_path);
       continue;
     }
-    if (p == Path("/word/document.xml")) {
+    if (abs_path == AbsPath("/word/document.xml")) {
       // TODO stream
       std::stringstream out;
       m_document_xml.print(out, "", pugi::format_raw);
       auto tmp = std::make_shared<MemoryFile>(out.str());
-      archive.insert_file(std::end(archive), p, tmp);
+      archive.insert_file(std::end(archive), rel_path, tmp);
       continue;
     }
-    archive.insert_file(std::end(archive), p, m_filesystem->open(p));
+    archive.insert_file(std::end(archive), rel_path,
+                        m_filesystem->open(abs_path));
   }
 
   std::ofstream ostream = util::file::create(path.string());

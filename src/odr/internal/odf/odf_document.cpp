@@ -44,29 +44,30 @@ void Document::save(const Path &path) const {
 
   // `mimetype` has to be the first file and uncompressed
   if (m_filesystem->is_file(AbsPath("/mimetype"))) {
-    archive.insert_file(std::end(archive), AbsPath("/mimetype"),
+    archive.insert_file(std::end(archive), RelPath("mimetype"),
                         m_filesystem->open(AbsPath("/mimetype")), 0);
   }
 
   for (auto walker = m_filesystem->file_walker(AbsPath("/")); !walker->end();
        walker->next()) {
-    auto p = walker->path();
-    if (p == Path("/mimetype")) {
+    const AbsPath &abs_path = walker->path();
+    RelPath rel_path = abs_path.rebase(AbsPath("/"));
+    if (abs_path == Path("/mimetype")) {
       continue;
     }
-    if (m_filesystem->is_directory(p)) {
-      archive.insert_directory(std::end(archive), p);
+    if (walker->is_directory()) {
+      archive.insert_directory(std::end(archive), rel_path);
       continue;
     }
-    if (p == Path("/content.xml")) {
+    if (abs_path == Path("/content.xml")) {
       // TODO stream
       std::stringstream out;
       m_content_xml.print(out, "", pugi::format_raw);
       auto tmp = std::make_shared<MemoryFile>(out.str());
-      archive.insert_file(std::end(archive), p, tmp);
+      archive.insert_file(std::end(archive), rel_path, tmp);
       continue;
     }
-    if (p == Path("/META-INF/manifest.xml")) {
+    if (abs_path == Path("/META-INF/manifest.xml")) {
       // TODO
       auto manifest =
           util::xml::parse(*m_filesystem, AbsPath("/META-INF/manifest.xml"));
@@ -78,11 +79,12 @@ void Document::save(const Path &path) const {
       std::stringstream out;
       manifest.print(out, "", pugi::format_raw);
       auto tmp = std::make_shared<MemoryFile>(out.str());
-      archive.insert_file(std::end(archive), p, tmp);
+      archive.insert_file(std::end(archive), rel_path, tmp);
 
       continue;
     }
-    archive.insert_file(std::end(archive), p, m_filesystem->open(p));
+    archive.insert_file(std::end(archive), rel_path,
+                        m_filesystem->open(abs_path));
   }
 
   std::ofstream ostream = util::file::create(path.string());

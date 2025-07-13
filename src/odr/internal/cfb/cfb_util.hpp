@@ -84,8 +84,6 @@ public:
     using reference = const Entry &;
 
     Iterator() = default;
-    Iterator(const Iterator &) = default;
-    Iterator(Iterator &&) noexcept = default;
     Iterator(const Archive &parent, const impl::CompoundFileEntry &entry)
         : m_entry{Entry(parent, entry)} {
       dig_left_();
@@ -95,18 +93,12 @@ public:
         : m_entry{Entry(parent, entry, parent_path)} {
       dig_left_();
     }
-    ~Iterator() = default;
-    Iterator &operator=(const Iterator &) = default;
-    Iterator &operator=(Iterator &&) noexcept = default;
 
     [[nodiscard]] reference operator*() const { return *m_entry; }
     [[nodiscard]] pointer operator->() const { return &*m_entry; }
 
     [[nodiscard]] bool operator==(const Iterator &other) const {
       return m_entry == other.m_entry;
-    }
-    [[nodiscard]] bool operator!=(const Iterator &other) const {
-      return m_entry != other.m_entry;
     }
 
     Iterator &operator++() {
