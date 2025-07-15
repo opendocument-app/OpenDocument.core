@@ -5,7 +5,7 @@
 
 namespace odr {
 
-std::string random_string(std::size_t length) {
+std::string internal::random_string(std::size_t length) {
   static const std::string charset = "0123456789"
                                      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                      "abcdefghijklmnopqrstuvwxyz";
