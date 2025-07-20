@@ -5,10 +5,12 @@
 #include <odr/html.hpp>
 
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/html/common.hpp>
+#include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/html/image_file.hpp>
 #include <odr/internal/oldms_wvware/wvware_oldms_file.hpp>
+#include <odr/internal/util/file_util.hpp>
 
 #include <wv/wv.h>
 
@@ -39,10 +41,10 @@ namespace {
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wv.h#L2776-L2814
 /// to allow for more state variables.
 struct TranslationState : public expand_data {
-  explicit TranslationState(html::HtmlWriter _out, const HtmlConfig &_config,
-                            std::string _cache_path)
-      : expand_data{}, out(std::move(_out)), config{&_config},
-        cache_path{std::move(_cache_path)} {}
+  explicit TranslationState(html::HtmlWriter _out, HtmlResources &_resources,
+                            const HtmlConfig &_config, std::string _cache_path)
+      : expand_data{}, out(std::move(_out)), resources(&_resources),
+        config{&_config}, cache_path{std::move(_cache_path)} {}
 
   char *charset = nullptr;
   PAP *ppap = nullptr;
@@ -54,9 +56,25 @@ struct TranslationState : public expand_data {
   std::size_t figure_number = 0;
 
   html::HtmlWriter out;
+  HtmlResources *resources;
   const HtmlConfig *config;
   std::string cache_path;
 };
+
+std::string figure_name(wvParseStruct *ps) {
+  auto *data = static_cast<TranslationState *>(ps->userData);
+
+  std::size_t number = data->figure_number++;
+  std::string name = "figure" + std::to_string(number);
+
+  return name;
+}
+
+std::string figure_cache_path(wvParseStruct *ps, const std::string &name) {
+  auto *data = static_cast<TranslationState *>(ps->userData);
+
+  return data->cache_path + "/" + name;
+}
 
 /// Originally from `text.c` `wvConvertUnicodeToHtml`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/text.c#L1999-L2154
@@ -283,7 +301,7 @@ void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
   }
 
   // TODO iconv could be cached
-  { g_iconv_close(g_iconv_handle); }
+  g_iconv_close(g_iconv_handle);
 }
 
 /// Originally from `wvWare.c` `wvStrangeNoGraphicData`
@@ -303,68 +321,85 @@ void strange_no_graphic_data(wvParseStruct *ps, int graphicstype) {
 /// Originally from `wvWare.c` `wvPrintGraphics`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L1239-L1287
 /// simplified to HTML output
-void print_graphics(wvParseStruct *ps, int graphicstype, int width, int height,
-                    const std::string &path) {
+void print_graphics(wvParseStruct *ps, int /*graphicstype*/, int width,
+                    int height, const std::string &name) {
   // upstream converts to PNG, we just use the original format as the browser
   // should support them
 
   auto *data = static_cast<TranslationState *>(ps->userData);
   auto &out = data->out;
 
-  // TODO export/embed image
+  std::string path = figure_cache_path(ps, name);
 
-  out.out() << R"(<img width=")" << width << R"(" height=")" << height
-            << R"(" alt=")" << std::hex << graphicstype << R"( graphic" src=")"
-            << path << R"("/><br/>)";
+  File file(path);
+  odr::HtmlResource resource =
+      HtmlResource::create(HtmlResourceType::image, "image/jpg", name, name,
+                           file, false, false, true);
+  HtmlResourceLocation resource_location =
+      data->config->resource_locator(resource, *data->config);
+  data->resources->emplace_back(std::move(resource), resource_location);
+
+  out.write_element_begin(
+      "img", HtmlElementOptions()
+                 .set_close_type(HtmlCloseType::trailing)
+                 .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+                   clb("alt", "Error: image not found or unsupported");
+                   if (resource_location.has_value()) {
+                     clb("src", resource_location.value());
+                   } else {
+                     clb("src", [&](std::ostream &o) {
+                       translate_image_src(file, o, *data->config);
+                     });
+                   }
+                 })
+                 .set_style("width:" + std::to_string(width) +
+                            "px;height:" + std::to_string(height) + "px"));
 }
 
-void handle_bitmap(wvParseStruct * /*ps*/, const std::string &name,
-                   BitmapBlip *bitmap) {
-  wvStream *pwv = bitmap->m_pvBits;
-  FILE *fd = nullptr;
-  std::size_t size = 0, i;
+void dump_bitmap(wvParseStruct *ps, const std::string &name,
+                 BitmapBlip *bitmap) {
+  std::string path = figure_cache_path(ps, name);
 
-  fd = fopen(name.c_str(), "wb");
-  if (fd == nullptr) {
-    throw std::runtime_error("Cannot open " + name + " file for writing");
-  }
-  size = wvStream_size(pwv);
+  wvStream *pwv = bitmap->m_pvBits;
+  std::size_t size = wvStream_size(pwv);
   wvStream_rewind(pwv);
 
-  for (i = 0; i < size; i++) {
-    fputc(read_8ubit(pwv), fd);
+  std::ofstream bitmap_out(path, std::ios::binary);
+  if (bitmap_out.fail()) {
+    throw std::runtime_error("Cannot open " + path + " file for writing");
   }
-  fclose(fd);
+
+  for (std::size_t i = 0; i < size; i++) {
+    std::uint8_t byte = read_8ubit(pwv);
+    bitmap_out.put(static_cast<char>(byte));
+  }
 }
 
-int handle_metafile(wvParseStruct * /*ps*/, const std::string &name,
-                    MetaFileBlip *bitmap) {
+int dump_metafile(wvParseStruct * /*ps*/, const std::string &path,
+                  MetaFileBlip *bitmap) {
+  FILE *fd = fopen(path.c_str(), "wb");
+  if (fd == nullptr) {
+    throw std::runtime_error("Cannot open " + path + " file for writing");
+  }
+
   wvStream *pwv = bitmap->m_pvBits;
-  FILE *fd = nullptr;
-  std::size_t size = 0, i;
+  std::size_t size = wvStream_size(pwv);
+  wvStream_rewind(pwv);
+
   std::uint8_t decompressf = 0;
-
-  fd = fopen(name.c_str(), "wb");
-  if (fd == nullptr) {
-    throw std::runtime_error("Cannot open " + name + " file for writing");
-  }
-  size = wvStream_size(pwv);
-  wvStream_rewind(pwv);
-
   if (bitmap->m_fCompression == msocompressionDeflate) {
     decompressf = setdecom();
   }
 
-  if (!decompressf) {
-    for (i = 0; i < size; i++) {
+  if (decompressf == 0) {
+    for (std::size_t i = 0; i < size; i++) {
       fputc(read_8ubit(pwv), fd);
     }
-  } else /* decompress here */
-  {
+  } else {
     FILE *tmp = tmpfile();
     FILE *out = tmpfile();
 
-    for (i = 0; i < size; i++) {
+    for (std::size_t i = 0; i < size; i++) {
       fputc(read_8ubit(pwv), tmp);
     }
 
@@ -374,7 +409,7 @@ int handle_metafile(wvParseStruct * /*ps*/, const std::string &name,
 
     rewind(out);
 
-    for (i = 0; i < bitmap->m_cb; i++) {
+    for (std::size_t i = 0; i < bitmap->m_cb; i++) {
       fputc(fgetc(out), fd);
     }
 
@@ -385,27 +420,8 @@ int handle_metafile(wvParseStruct * /*ps*/, const std::string &name,
   return 0;
 }
 
-std::string figure_name(wvParseStruct *ps) {
-  auto *data = static_cast<TranslationState *>(ps->userData);
-
-  std::size_t number = data->figure_number++;
-  std::string name = "figure" + std::to_string(number);
-
-  return name;
-}
-
-std::string figure_path(wvParseStruct *ps) {
-  auto *data = static_cast<TranslationState *>(ps->userData);
-
-  return data->cache_path + "/" + figure_name(ps);
-}
-
 std::string html_graphic(wvParseStruct *ps, Blip *blip) {
-  std::string path;
-  wvStream *fd;
-  char test[3];
-
-  path = figure_path(ps);
+  std::string name = figure_name(ps);
 
   /*
      temp hack to test older included bmps in word 6 and 7,
@@ -415,49 +431,51 @@ std::string html_graphic(wvParseStruct *ps, Blip *blip) {
   switch (blip->type) {
   case msoblipJPEG:
   case msoblipDIB:
-  case msoblipPNG:
-    fd = (blip->blip.bitmap.m_pvBits);
+  case msoblipPNG: {
+    wvStream *fd = (blip->blip.bitmap.m_pvBits);
+    char test[3];
+    test[0] = static_cast<char>(read_8ubit(fd));
+    test[1] = static_cast<char>(read_8ubit(fd));
     test[2] = '\0';
-    test[0] = (char)read_8ubit(fd);
-
-    test[1] = (char)read_8ubit(fd);
     wvStream_rewind(fd);
-    if (!(strcmp(test, "BM"))) {
-      path += ".bmp";
-      handle_bitmap(ps, path, &blip->blip.bitmap);
-      return path;
+    if (strcmp(test, "BM") == 0) {
+      name += ".bmp";
+      dump_bitmap(ps, name, &blip->blip.bitmap);
+      return name;
     }
+  }
   default:
     break;
   }
 
   switch (blip->type) {
   case msoblipWMF:
-    path += ".wmf";
-    handle_metafile(ps, path, &blip->blip.metafile);
+    name += ".wmf";
+    dump_metafile(ps, name, &blip->blip.metafile);
     break;
   case msoblipEMF:
-    path += ".emf";
-    handle_metafile(ps, path, &blip->blip.metafile);
+    name += ".emf";
+    dump_metafile(ps, name, &blip->blip.metafile);
     break;
   case msoblipPICT:
-    path += ".pict";
-    handle_metafile(ps, path, &blip->blip.metafile);
+    name += ".pict";
+    dump_metafile(ps, name, &blip->blip.metafile);
     break;
   case msoblipJPEG:
-    path += ".jpg";
-    handle_bitmap(ps, path, &blip->blip.bitmap);
+    name += ".jpg";
+    dump_bitmap(ps, name, &blip->blip.bitmap);
     break;
   case msoblipDIB:
-    path += ".dib";
-    handle_bitmap(ps, path, &blip->blip.bitmap);
+    name += ".dib";
+    dump_bitmap(ps, name, &blip->blip.bitmap);
     break;
   case msoblipPNG:
-    path += ".png";
-    handle_bitmap(ps, path, &blip->blip.bitmap);
+    name += ".png";
+    dump_bitmap(ps, name, &blip->blip.bitmap);
     break;
   }
-  return path;
+
+  return name;
 }
 
 /// Originally from `wvWare.c` `myelehandler`
@@ -697,9 +715,9 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
     wvGetPICF(wvQuerySupported(&ps->fib, nullptr), &picf, ps->data);
     f = picf.rgb;
     if (wv0x01(&blip, f, picf.lcb - picf.cbHeader) != 0) {
-      std::string path = html_graphic(ps, &blip);
+      std::string name = html_graphic(ps, &blip);
       print_graphics(ps, 0x01, (int)wvTwipsToHPixels(picf.dxaGoal),
-                     (int)wvTwipsToVPixels(picf.dyaGoal), path);
+                     (int)wvTwipsToVPixels(picf.dyaGoal), name);
     } else {
       strange_no_graphic_data(ps, 0x01);
     }
@@ -721,12 +739,12 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
 
         data->props = fspa;
         if (wv0x08(&blip, (int)fspa->spid, ps) != 0) {
-          std::string path = html_graphic(ps, &blip);
+          std::string name = html_graphic(ps, &blip);
           print_graphics(
               ps, 0x08,
               (int)wvTwipsToHPixels((short)(fspa->xaRight - fspa->xaLeft)),
               (int)wvTwipsToVPixels((short)(fspa->yaBottom - fspa->yaTop)),
-              path);
+              name);
         } else {
           strange_no_graphic_data(ps, 0x08);
         }
@@ -795,7 +813,7 @@ option to support correct symbol font conversion to a viewable format.\n";
   return 0;
 }
 
-class HtmlServiceImpl : public HtmlService {
+class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(WvWareLegacyMicrosoftFile oldms_file, HtmlConfig config,
                   std::string cache_path, std::shared_ptr<Logger> logger)
@@ -806,31 +824,75 @@ public:
         std::make_shared<HtmlView>(*this, "document", "document.html"));
   }
 
-  void warmup() const final {}
-
   [[nodiscard]] const HtmlViews &list_views() const final { return m_views; }
 
-  [[nodiscard]] bool exists(const std::string &path) const final {
-    if (path == "document.html") {
+  void warmup() const final {
+    std::lock_guard lock(m_mutex);
+
+    if (m_warm) {
+      return;
+    }
+
+    std::ofstream document_out(m_cache_path + "/document.html");
+    HtmlWriter out(document_out, config());
+    m_resources = write_document(out);
+
+    m_warm = true;
+  }
+
+  bool exists(const std::string &path) const final {
+    if (std::ranges::any_of(m_views, [&path](const auto &view) {
+          return view.path() == path;
+        })) {
+      return true;
+    }
+
+    warmup();
+
+    if (std::ranges::any_of(m_resources, [&path](const auto &pair) {
+          const auto &[resource, location] = pair;
+          return location.has_value() && location.value() == path;
+        })) {
       return true;
     }
 
     return false;
   }
 
-  [[nodiscard]] std::string mimetype(const std::string &path) const final {
-    if (path == "document.html") {
+  std::string mimetype(const std::string &path) const final {
+    if (std::ranges::any_of(m_views, [&path](const auto &view) {
+          return view.path() == path;
+        })) {
       return "text/html";
+    }
+
+    warmup();
+
+    for (const auto &[resource, location] : m_resources) {
+      if (location.has_value() && location.value() == path) {
+        return resource.mime_type();
+      }
     }
 
     throw FileNotFound("Unknown path: " + path);
   }
 
   void write(const std::string &path, std::ostream &out) const final {
-    if (path == "document.html") {
-      HtmlWriter writer(out, config());
-      write_document(writer);
-      return;
+    for (const auto &view : m_views) {
+      if (view.path() == path) {
+        HtmlWriter writer(out, config());
+        write_html(path, writer);
+        return;
+      }
+    }
+
+    warmup();
+
+    for (const auto &[resource, location] : m_resources) {
+      if (location.has_value() && location.value() == path) {
+        resource.write_resource(out);
+        return;
+      }
     }
 
     throw FileNotFound("Unknown path: " + path);
@@ -838,11 +900,11 @@ public:
 
   HtmlResources write_html(const std::string &path,
                            html::HtmlWriter &out) const final {
-    if (path == "document.html") {
-      return write_document(out);
-    }
+    warmup();
 
-    throw FileNotFound("Unknown path: " + path);
+    util::file::pipe(m_cache_path + "/" + path, out.out());
+
+    return m_resources;
   }
 
   HtmlResources write_document(HtmlWriter &out) const {
@@ -856,7 +918,7 @@ public:
     wvSetSpecialCharHandler(&ps, special_char_handler);
 
     state_data handle;
-    TranslationState translation_state(out, config(), m_cache_path);
+    TranslationState translation_state(out, resources, config(), m_cache_path);
 
     wvInitStateData(&handle);
 
@@ -886,9 +948,13 @@ public:
 protected:
   WvWareLegacyMicrosoftFile m_oldms_file;
 
+  std::string m_cache_path;
+
   HtmlViews m_views;
 
-  std::string m_cache_path;
+  mutable std::mutex m_mutex;
+  mutable bool m_warm = false;
+  mutable HtmlResources m_resources;
 };
 
 } // namespace
