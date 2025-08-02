@@ -324,6 +324,10 @@ Path::Iterator Path::Iterator::operator++(int) {
   return old;
 }
 
+AbsPath AbsPath::current_working_directory() {
+  return AbsPath(std::filesystem::current_path());
+}
+
 AbsPath::AbsPath() noexcept : Path("/") {}
 
 AbsPath::AbsPath(const char *c_string) : Path(c_string) {

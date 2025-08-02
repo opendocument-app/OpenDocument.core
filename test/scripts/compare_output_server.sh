@@ -17,5 +17,5 @@ docker run -ti \
   -v $(pwd):/repo \
   -p 8000:8000 \
   --platform linux/amd64 \
-  ghcr.io/opendocument-app/odr_core_test \
+  ghcr.io/opendocument-app/odr_core_test:1.0.13 \
   compare-html-server /repo/$REF /repo/$OBS --compare --driver $DRIVER --port 8000

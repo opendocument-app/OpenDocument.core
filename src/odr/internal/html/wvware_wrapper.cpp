@@ -378,8 +378,10 @@ void dump_bitmap(wvParseStruct *ps, const std::string &name,
   }
 }
 
-int dump_metafile(wvParseStruct * /*ps*/, const std::string &path,
+int dump_metafile(wvParseStruct *ps, const std::string &name,
                   MetaFileBlip *bitmap) {
+  std::string path = figure_cache_path(ps, name);
+
   FILE *fd = fopen(path.c_str(), "wb");
   if (fd == nullptr) {
     throw std::runtime_error("Cannot open " + path + " file for writing");

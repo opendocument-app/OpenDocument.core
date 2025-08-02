@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include <filesystem>
+
 using namespace odr;
 using namespace odr::test;
 
@@ -71,8 +73,8 @@ TEST(Document, edit_odt) {
   };
   edit(document.root_element());
 
-  document.save("about_edit.odt");
-  DocumentFile("about_edit.odt");
+  document.save(std::filesystem::current_path() / "about_edit.odt");
+  DocumentFile(std::filesystem::current_path() / "about_edit.odt");
 }
 
 TEST(Document, edit_docx) {
@@ -93,8 +95,8 @@ TEST(Document, edit_docx) {
   };
   edit(document.root_element());
 
-  document.save("style-various-1_edit.docx");
-  DocumentFile("style-various-1_edit.docx");
+  document.save(std::filesystem::current_path() / "style-various-1_edit.docx");
+  DocumentFile(std::filesystem::current_path() / "style-various-1_edit.docx");
 }
 
 TEST(Document, edit_odt_diff) {
@@ -108,8 +110,10 @@ TEST(Document, edit_odt_diff) {
 
   html::edit(document, diff);
 
-  document.save("style-various-1_edit_diff.odt");
-  DocumentFile("style-various-1_edit_diff.odt");
+  document.save(std::filesystem::current_path() /
+                "style-various-1_edit_diff.odt");
+  DocumentFile(std::filesystem::current_path() /
+               "style-various-1_edit_diff.odt");
 }
 
 TEST(Document, edit_ods_diff) {
@@ -125,8 +129,8 @@ TEST(Document, edit_ods_diff) {
 
   html::edit(document, diff);
 
-  document.save("pages_edit_diff.ods");
-  DocumentFile("pages_edit_diff.ods");
+  document.save(std::filesystem::current_path() / "pages_edit_diff.ods");
+  DocumentFile(std::filesystem::current_path() / "pages_edit_diff.ods");
 }
 
 TEST(Document, edit_docx_diff) {
@@ -141,6 +145,8 @@ TEST(Document, edit_docx_diff) {
 
   html::edit(document, diff);
 
-  document.save("style-various-1_edit_diff.docx");
-  DocumentFile("style-various-1_edit_diff.docx");
+  document.save(std::filesystem::current_path() /
+                "style-various-1_edit_diff.docx");
+  DocumentFile(std::filesystem::current_path() /
+               "style-various-1_edit_diff.docx");
 }

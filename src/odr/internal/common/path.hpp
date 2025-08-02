@@ -109,6 +109,8 @@ private:
 
 class AbsPath final : public Path {
 public:
+  static AbsPath current_working_directory();
+
   AbsPath() noexcept;
   explicit AbsPath(const char *c_string);
   explicit AbsPath(const std::string &string);

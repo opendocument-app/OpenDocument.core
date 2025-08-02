@@ -11,7 +11,7 @@ class TemporaryDiskFile final : public DiskFile {
 public:
   explicit TemporaryDiskFile(const char *path);
   explicit TemporaryDiskFile(const std::string &path);
-  explicit TemporaryDiskFile(const Path &path);
+  explicit TemporaryDiskFile(AbsPath path);
   TemporaryDiskFile(const TemporaryDiskFile &);
   TemporaryDiskFile(TemporaryDiskFile &&) noexcept;
   ~TemporaryDiskFile() override;
@@ -27,14 +27,14 @@ public:
   static RandomFileNameGenerator default_random_file_name_generator();
 
   explicit TemporaryDiskFileFactory(
-      Path directory, RandomFileNameGenerator random_file_name_generator =
-                          default_random_file_name_generator());
+      AbsPath directory, RandomFileNameGenerator random_file_name_generator =
+                             default_random_file_name_generator());
 
   [[nodiscard]] TemporaryDiskFile copy(const abstract::File &file) const;
   [[nodiscard]] TemporaryDiskFile copy(std::istream &in) const;
 
 private:
-  Path m_directory;
+  AbsPath m_directory;
   RandomFileNameGenerator m_random_file_name_generator;
 };
 
