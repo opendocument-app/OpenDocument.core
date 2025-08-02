@@ -355,6 +355,8 @@ void print_graphics(wvParseStruct *ps, int /*graphicstype*/, int width,
                  })
                  .set_style("width:" + std::to_string(width) +
                             "px;height:" + std::to_string(height) + "px"));
+  out.write_element_begin(
+      "br", HtmlElementOptions().set_close_type(HtmlCloseType::trailing));
 }
 
 void dump_bitmap(wvParseStruct *ps, const std::string &name,
