@@ -1,7 +1,6 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/html.hpp>
-#include <odr/quantity.hpp>
 
 #include <test_util.hpp>
 
@@ -73,8 +72,10 @@ TEST(Document, edit_odt) {
   };
   edit(document.root_element());
 
-  document.save(std::filesystem::current_path() / "about_edit.odt");
-  DocumentFile(std::filesystem::current_path() / "about_edit.odt");
+  std::string output_path =
+      (std::filesystem::current_path() / "about_edit.odt").string();
+  document.save(output_path);
+  DocumentFile{output_path};
 }
 
 TEST(Document, edit_docx) {
@@ -95,8 +96,10 @@ TEST(Document, edit_docx) {
   };
   edit(document.root_element());
 
-  document.save(std::filesystem::current_path() / "style-various-1_edit.docx");
-  DocumentFile(std::filesystem::current_path() / "style-various-1_edit.docx");
+  std::string output_path =
+      (std::filesystem::current_path() / "style-various-1_edit.docx").string();
+  document.save(output_path);
+  DocumentFile{output_path};
 }
 
 TEST(Document, edit_odt_diff) {
@@ -110,10 +113,11 @@ TEST(Document, edit_odt_diff) {
 
   html::edit(document, diff);
 
-  document.save(std::filesystem::current_path() /
-                "style-various-1_edit_diff.odt");
-  DocumentFile(std::filesystem::current_path() /
-               "style-various-1_edit_diff.odt");
+  std::string output_path =
+      (std::filesystem::current_path() / "style-various-1_edit_diff.odt")
+          .string();
+  document.save(output_path);
+  DocumentFile{output_path};
 }
 
 TEST(Document, edit_ods_diff) {
@@ -129,8 +133,10 @@ TEST(Document, edit_ods_diff) {
 
   html::edit(document, diff);
 
-  document.save(std::filesystem::current_path() / "pages_edit_diff.ods");
-  DocumentFile(std::filesystem::current_path() / "pages_edit_diff.ods");
+  std::string output_path =
+      (std::filesystem::current_path() / "pages_edit_diff.ods").string();
+  document.save(output_path);
+  DocumentFile{output_path};
 }
 
 TEST(Document, edit_docx_diff) {
@@ -145,8 +151,9 @@ TEST(Document, edit_docx_diff) {
 
   html::edit(document, diff);
 
-  document.save(std::filesystem::current_path() /
-                "style-various-1_edit_diff.docx");
-  DocumentFile(std::filesystem::current_path() /
-               "style-various-1_edit_diff.docx");
+  std::string output_path =
+      (std::filesystem::current_path() / "style-various-1_edit_diff.docx")
+          .string();
+  document.save(output_path);
+  DocumentFile{output_path};
 }

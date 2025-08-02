@@ -54,7 +54,8 @@ TEST(ZipArchive, create_and_save) {
 }
 
 TEST(ZipArchive, create) {
-  const std::string path = std::filesystem::current_path() / "created.zip";
+  const std::string path =
+      (std::filesystem::current_path() / "created.zip").string();
 
   {
     ZipArchive zip;
@@ -98,7 +99,8 @@ TEST(ZipArchive, create) {
 }
 
 TEST(ZipArchive, create_order) {
-  const std::string path = std::filesystem::current_path() / "created.zip";
+  const std::string path =
+      (std::filesystem::current_path() / "created.zip").string();
   const std::vector<std::string> entries{"z", "one", "two", "three", "a", "0"};
 
   {
