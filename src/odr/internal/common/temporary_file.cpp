@@ -13,7 +13,8 @@ TemporaryDiskFile::TemporaryDiskFile(const char *path) : DiskFile{path} {}
 TemporaryDiskFile::TemporaryDiskFile(const std::string &path)
     : DiskFile{path} {}
 
-TemporaryDiskFile::TemporaryDiskFile(const Path &path) : DiskFile{path} {}
+TemporaryDiskFile::TemporaryDiskFile(AbsPath path)
+    : DiskFile{std::move(path)} {}
 
 TemporaryDiskFile::TemporaryDiskFile(const TemporaryDiskFile &) = default;
 
@@ -31,7 +32,7 @@ TemporaryDiskFile::operator=(TemporaryDiskFile &&) noexcept = default;
 
 const TemporaryDiskFileFactory &TemporaryDiskFileFactory::system_default() {
   static TemporaryDiskFileFactory instance(
-      Path(std::filesystem::temp_directory_path()),
+      AbsPath(std::filesystem::temp_directory_path()),
       default_random_file_name_generator());
   return instance;
 }
@@ -42,7 +43,7 @@ TemporaryDiskFileFactory::default_random_file_name_generator() {
 }
 
 TemporaryDiskFileFactory::TemporaryDiskFileFactory(
-    Path directory, RandomFileNameGenerator random_file_name_generator)
+    AbsPath directory, RandomFileNameGenerator random_file_name_generator)
     : m_directory{std::move(directory)},
       m_random_file_name_generator{std::move(random_file_name_generator)} {}
 
@@ -53,7 +54,7 @@ TemporaryDiskFileFactory::copy(const abstract::File &file) const {
 
 TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
   std::fstream file;
-  Path file_path;
+  AbsPath file_path;
 
   while (true) {
     std::string file_name = m_random_file_name_generator();

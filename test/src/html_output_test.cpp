@@ -211,12 +211,15 @@ TestParams create_test_params(const TestFile &test_file,
                               const DecoderEngine engine) {
   const std::string test_file_path = test_file.short_path;
 
-  const std::string test_repo = *Path(test_file_path).begin();
-  const std::string output_path_prefix =
-      Path("output").join(RelPath(test_repo)).join(RelPath("output")).string();
+  const std::string test_repo = *RelPath(test_file_path).begin();
+  const std::string output_path_prefix = AbsPath::current_working_directory()
+                                             .join(RelPath("output"))
+                                             .join(RelPath(test_repo))
+                                             .join(RelPath("output"))
+                                             .string();
   const std::string output_path_suffix = engine_suffix(engine);
   const std::string output_path =
-      Path(output_path_prefix)
+      AbsPath(output_path_prefix)
           .join(RelPath(test_file_path).rebase(RelPath(test_repo)))
           .string() +
       output_path_suffix;

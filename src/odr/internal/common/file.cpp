@@ -10,15 +10,14 @@
 
 namespace odr::internal {
 
-DiskFile::DiskFile(const char *path) : DiskFile{Path(path)} {}
+DiskFile::DiskFile(const char *path) : DiskFile{AbsPath(path)} {}
 
-DiskFile::DiskFile(const std::string &path) : DiskFile{Path(path)} {}
+DiskFile::DiskFile(const std::string &path) : DiskFile{AbsPath(path)} {}
 
-DiskFile::DiskFile(Path path) {
-  if (!std::filesystem::is_regular_file(path.path())) {
+DiskFile::DiskFile(AbsPath path) : m_path{std::move(path)} {
+  if (!std::filesystem::is_regular_file(m_path.path())) {
     throw FileNotFound();
   }
-  m_path = AbsPath(std::filesystem::absolute(path.path()));
 }
 
 FileLocation DiskFile::location() const noexcept { return FileLocation::disk; }

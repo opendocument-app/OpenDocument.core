@@ -5,7 +5,6 @@
 #include <odr/global_params.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>

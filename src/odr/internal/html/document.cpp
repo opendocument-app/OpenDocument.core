@@ -45,7 +45,7 @@ void front(const Document &document, const WritingState &state) {
   }
 
   auto odr_css_file = File(
-      Path(state.config().resource_path).join(RelPath("odr.css")).string());
+      AbsPath(state.config().resource_path).join(RelPath("odr.css")).string());
   odr::HtmlResource odr_css_resource =
       html::HtmlResource::create(HtmlResourceType::css, "text/css", "odr.css",
                                  "odr.css", odr_css_file, true, false, true);
@@ -62,7 +62,7 @@ void front(const Document &document, const WritingState &state) {
 
   if (document.document_type() == DocumentType::spreadsheet) {
     auto odr_spreadsheet_css_file =
-        File(Path(state.config().resource_path)
+        File(AbsPath(state.config().resource_path)
                  .join(RelPath("odr_spreadsheet.css"))
                  .string());
     odr::HtmlResource odr_spreadsheet_css_resource = html::HtmlResource::create(
@@ -122,8 +122,8 @@ void back(const Document &document, const WritingState &state) {
     out.write_element_end("div");
   }
 
-  auto odr_js_file =
-      File(Path(state.config().resource_path).join(RelPath("odr.js")).string());
+  auto odr_js_file = File(
+      AbsPath(state.config().resource_path).join(RelPath("odr.js")).string());
   odr::HtmlResource odr_js_resource = html::HtmlResource::create(
       HtmlResourceType::js, "text/javascript", "odr.js", "odr.js", odr_js_file,
       true, false, true);

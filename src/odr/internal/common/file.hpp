@@ -17,7 +17,7 @@ class DiskFile : public abstract::File {
 public:
   explicit DiskFile(const char *path);
   explicit DiskFile(const std::string &path);
-  explicit DiskFile(Path path);
+  explicit DiskFile(AbsPath path);
 
   [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
