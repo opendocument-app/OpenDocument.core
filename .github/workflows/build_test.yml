@@ -23,7 +23,7 @@ jobs:
           - { os: macos-13, config: macos-13-clang-14 }
           - { os: macos-14, config: macos-14-armv8-clang-14 }
           - { os: windows-2022, config: windows-2022-msvc-1940 }
-          - { os: ubuntu-24.04, config: android-35-x86_64 }
+          - { os: ubuntu-24.04, config: android-35-x86_64, ndk_version: 28.1.13356709 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -45,6 +45,10 @@ jobs:
           python-version: 3.12
       - name: install python dependencies
         run: pip install conan
+
+      - name: install NDK
+        if: startsWith(matrix.config, 'android')
+        run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
 
       - name: conan remote
         run: |
@@ -270,7 +274,7 @@ jobs:
           - { os: macos-13, config: macos-13-clang-14 }
           - { os: macos-14, config: macos-14-armv8-clang-14 }
           - { os: windows-2022, config: windows-2022-msvc-1940 }
-          - { os: ubuntu-24.04, config: android-35-x86_64 }
+          - { os: ubuntu-24.04, config: android-35-x86_64, ndk_version: 28.1.13356709 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -292,6 +296,10 @@ jobs:
           python-version: 3.12
       - name: install python dependencies
         run: pip install conan
+
+      - name: install NDK
+        if: startsWith(matrix.config, 'android')
+        run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
 
       - name: conan remote
         run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
