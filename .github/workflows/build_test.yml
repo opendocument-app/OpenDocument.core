@@ -325,7 +325,6 @@ jobs:
       - name: conan downstream
         run: >
           conan install test/downstream
-          --lockfile conan.lock
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
           --output-folder=test/downstream/build
