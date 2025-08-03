@@ -23,7 +23,7 @@ jobs:
           - { os: macos-13, config: macos-13-clang-14 }
           - { os: macos-14, config: macos-14-armv8-clang-14 }
           - { os: windows-2022, config: windows-2022-msvc-1940 }
-          - { os: android-35, config: android-35-x86_64 }
+          - { os: ubuntu-24.04, config: android-35-x86_64 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -270,7 +270,7 @@ jobs:
           - { os: macos-13, config: macos-13-clang-14 }
           - { os: macos-14, config: macos-14-armv8-clang-14 }
           - { os: windows-2022, config: windows-2022-msvc-1940 }
-          - { os: android-35, config: android-35-x86_64 }
+          - { os: ubuntu-24.04, config: android-35-x86_64 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
