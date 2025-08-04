@@ -39,6 +39,7 @@ jobs:
           --lockfile conan.lock
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
+          --build=missing
 
       - name: create conan package
         run: >
