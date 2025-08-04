@@ -19,14 +19,14 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": [True, False],
         "with_pdf2htmlEX": [True, False],
         "with_wvWare": [True, False],
-        "with_customTmpfile": [True, False],
+        "with_tmpfile_hack": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
         "with_pdf2htmlEX": True,
         "with_wvWare": True,
-        "with_customTmpfile": False,
+        "with_tmpfile_hack": True,
     }
 
     exports_sources = ["cli/*", "cmake/*", "resources/dist/*", "src/*", "CMakeLists.txt"]
@@ -37,10 +37,8 @@ class OpenDocumentCoreConan(ConanFile):
             del self.options.with_pdf2htmlEX
             del self.options.with_wvWare
 
-        if self.settings.os == "Android":
-            self.default_options.with_customTmpfile = True
-        else:
-            del self.options.with_customTmpfile
+        if self.settings.os != "Android":
+            del self.options.with_tmpfile_hack
 
     def requirements(self):
         self.requires("pugixml/1.14")
@@ -57,7 +55,7 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("cpp-httplib/0.16.3")
         self.requires("argon2/20190702-odr")
 
-        if self.options.get_safe("with_customTmpfile", False):
+        if self.options.get_safe("with_tmpfile_hack", False):
             self.requires("tmpfile/3.0.6")
 
     def build_requirements(self):
