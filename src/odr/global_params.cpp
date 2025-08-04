@@ -6,10 +6,6 @@
 #include <poppler/GlobalParams.h>
 #endif
 
-#ifdef ODR_WITH_CUSTOM_TMPFILE
-#include <tmpfile.h>
-#endif
-
 namespace odr {
 
 GlobalParams &GlobalParams::instance() {
@@ -45,10 +41,6 @@ const std::string &GlobalParams::pdf2htmlex_data_path() {
   return instance().m_pdf2htmlex_data_path;
 }
 
-const std::string &GlobalParams::custom_tmpfile_path() {
-  return instance().m_custom_tmpfile_path;
-}
-
 void GlobalParams::set_odr_core_data_path(const std::string &path) {
   instance().m_odr_core_data_path = path;
 }
@@ -68,14 +60,6 @@ void GlobalParams::set_poppler_data_path(const std::string &path) {
 
 void GlobalParams::set_pdf2htmlex_data_path(const std::string &path) {
   instance().m_pdf2htmlex_data_path = path;
-}
-
-void GlobalParams::set_custom_tmpfile_path(const std::string &path) {
-#ifdef ODR_WITH_CUSTOM_TMPFILE
-  set_tmpfile_directory(path.c_str());
-#endif
-
-  instance().m_custom_tmpfile_path = path;
 }
 
 GlobalParams::GlobalParams()
