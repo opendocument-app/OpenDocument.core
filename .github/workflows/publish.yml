@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -27,13 +27,20 @@ jobs:
         run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
 
       - name: conan config
-        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
+        run: conan config install .github/config/conan
 
       - name: get version
         run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: create conan package
-        run: conan create conanfile.py --name odrcore --version ${VERSION} --build missing
+        run: >
+          conan create conanfile.py
+          --lockfile conan.lock
+          --profile:host '${{ matrix.host_profile }}'
+          --profile:build '${{ matrix.build_profile }}'
+          --name odrcore
+          --version ${VERSION}
+          --build missing
 
       - name: conan login
         run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
