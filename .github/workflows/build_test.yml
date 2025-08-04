@@ -63,6 +63,7 @@ jobs:
           --lockfile conan.lock
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
+          --build=missing
 
       - name: cache
         uses: actions/cache@v4
