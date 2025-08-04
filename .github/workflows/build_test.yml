@@ -340,8 +340,8 @@ jobs:
         run: cmake --build test/downstream/build --config Release
 
       - name: run
-        if: runner.os == 'Linux' || runner.os == 'macOS'
+        if: matrix.build_profile == matrix.host_profile && (runner.os == 'Linux' || runner.os == 'macOS')
         run: test/downstream/build/odr-test-downstream
       - name: run
-        if: runner.os == 'Windows'
+        if: matrix.build_profile == matrix.host_profile && runner.os == 'Windows'
         run: test/downstream/build/Release/odr-test-downstream.exe
