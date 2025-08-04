@@ -18,11 +18,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-18 }
-          - { os: ubuntu-24.04, compiler: gcc-14 }
-          - { os: macos-13, compiler: clang-14 }
-          - { os: macos-14, compiler: armv8-clang-14 }
-          - { os: windows-2022, compiler: msvc-1940 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
+          - { os: macos-13, build_profile: macos-13-clang-14, host_profile: macos-13-clang-14 }
+          - { os: macos-14, build_profile: macos-14-armv8-clang-14, host_profile: macos-14-armv8-clang-14 }
+          - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: android-35-x86_64, ndk_version: 28.1.13356709 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -45,15 +46,23 @@ jobs:
       - name: install python dependencies
         run: pip install conan
 
+      - name: install NDK
+        if: startsWith(matrix.host_profile, 'android')
+        run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
+
       - name: conan remote
         run: |
           conan remote remove "*"
           conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
           conan remote add conancenter https://center2.conan.io
       - name: conan config
-        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
+        run: conan config install .github/config/conan
       - name: conan install
-        run: conan install . --output-folder=build --build=missing
+        run: >
+          conan install .
+          --lockfile conan.lock
+          --profile:host '${{ matrix.host_profile }}'
+          --profile:build '${{ matrix.build_profile }}'
 
       - name: cache
         uses: actions/cache@v4
@@ -61,9 +70,9 @@ jobs:
           path: |
             ~/.ccache
             /Users/runner/Library/Caches/ccache
-          key: ${{ matrix.os }}-${{ matrix.compiler }}-${{ env.CCACHE_KEY_SUFFIX }}
+          key: ${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
           restore-keys: |
-            ${{ matrix.os }}-${{ matrix.compiler }}-
+            ${{ matrix.host_profile }}-
 
       - name: cmake
         if: runner.os != 'Windows'
@@ -99,7 +108,7 @@ jobs:
       - name: upload binaries to github
         uses: actions/upload-artifact@v4
         with:
-          name: bin-${{ matrix.os }}-${{ matrix.compiler }}
+          name: bin-${{ matrix.host_profile }}
           path: |
             install
             build/test/odr_test
@@ -109,7 +118,7 @@ jobs:
       - name: Artifact .conan2/p dir
         uses: actions/upload-artifact@v4
         with:
-          name: conan2-${{ matrix.os }}-${{ matrix.compiler }}
+          name: conan2-${{ matrix.host_profile }}
           path: ~/.conan2/p
           if-no-files-found: error
           compression-level: 0
@@ -121,7 +130,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-18 }
+          - { os: ubuntu-24.04, host_profile: ubuntu-24.04-clang-18 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -156,7 +165,7 @@ jobs:
       - name: download binaries
         uses: actions/download-artifact@v4
         with:
-          name: bin-${{ matrix.os }}-${{ matrix.compiler }}
+          name: bin-${{ matrix.host_profile }}
           path: cli
 
       - name: Build and push
@@ -179,14 +188,14 @@ jobs:
       matrix:
         include:
           # fails at the moment because of pdf2htmlex
-          #- { os: ubuntu-24.04, compiler: clang-18 }
-          #- { os: ubuntu-24.04, compiler: gcc-14 }
-          #- { os: macos-13, compiler: clang-14 }
-          - { os: macos-14, compiler: armv8-clang-14 }
+          #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-clang-18 }
+          #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-gcc-14 }
+          #- { os: macos-13, host_profile: macos-13-clang-14 }
+          - { os: macos-14, host_profile: macos-14-armv8-clang-14 }
           # Windows test disabled because:
           # Running main() from C:\Users\runneradmin\.conan2\p\b\gtestdd9407d368b89\b\src\googletest\src\gtest_main.cc
           # [ FATAL ] C:/Users/runneradmin/.conan2/p/gtest28fa6787e7f6e/p/include\gtest/internal/gtest-param-util.h(585):: Condition IsValidParamName(param_name) failed. Parameterized test name 'odr_private\docx\03_smpldap_docx' is invalid, in D:\a\OpenDocument.core\OpenDocument.core\test\src\html_output_test.cpp line 129
-          # - { os: windows-2022, compiler: msvc-1940 }
+          #- { os: windows-2022, host_profile: windows-2022-msvc-1940 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -211,13 +220,13 @@ jobs:
       - name: download binaries
         uses: actions/download-artifact@v4
         with:
-          name: bin-${{ matrix.os }}-${{ matrix.compiler }}
+          name: bin-${{ matrix.host_profile }}
           path: .
 
       - name: Download .conan2/p dir
         uses: actions/download-artifact@v4
         with:
-          name: conan2-${{ matrix.os }}-${{ matrix.compiler }}
+          name: conan2-${{ matrix.host_profile }}
           path: ~/.conan2/p
 
       - name: fix artifact permissions
@@ -264,11 +273,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: clang-18 }
-          - { os: ubuntu-24.04, compiler: gcc-14 }
-          - { os: macos-13, compiler: clang-14 }
-          - { os: macos-14, compiler: armv8-clang-14 }
-          - { os: windows-2022, compiler: msvc-1940 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
+          - { os: macos-13, build_profile: macos-13-clang-14, host_profile: macos-13-clang-14 }
+          - { os: macos-14, build_profile: macos-14-armv8-clang-14, host_profile: macos-14-armv8-clang-14 }
+          - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: android-35-x86_64, ndk_version: 28.1.13356709 }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -291,19 +301,34 @@ jobs:
       - name: install python dependencies
         run: pip install conan
 
+      - name: install NDK
+        if: startsWith(matrix.host_profile, 'android')
+        run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
+
       - name: conan remote
         run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan config
-        run: conan config install .github/config/${{ matrix.os }}-${{ matrix.compiler }}/conan
+        run: conan config install .github/config/conan
 
       - name: conan odrcore
         run: conan export . --name odrcore --version 0.0.0
 
       - name: conan install
-        run: conan install . --output-folder=build --build=missing
+        run: >
+          conan install .
+          --lockfile conan.lock
+          --profile:host '${{ matrix.host_profile }}'
+          --profile:build '${{ matrix.build_profile }}'
+          --output-folder=build
+          --build=missing
 
       - name: conan downstream
-        run: conan install test/downstream --output-folder=test/downstream/build --build=missing
+        run: >
+          conan install test/downstream
+          --profile:host '${{ matrix.host_profile }}'
+          --profile:build '${{ matrix.build_profile }}'
+          --output-folder=test/downstream/build
+          --build=missing
 
       - name: cmake
         run: >
@@ -315,8 +340,8 @@ jobs:
         run: cmake --build test/downstream/build --config Release
 
       - name: run
-        if: runner.os != 'Windows'
+        if: matrix.build_profile == matrix.host_profile && (runner.os == 'Linux' || runner.os == 'macOS')
         run: test/downstream/build/odr-test-downstream
       - name: run
-        if: runner.os == 'Windows'
+        if: matrix.build_profile == matrix.host_profile && runner.os == 'Windows'
         run: test/downstream/build/Release/odr-test-downstream.exe
