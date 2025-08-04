@@ -23,18 +23,26 @@ jobs:
       - name: install python dependencies
         run: pip install --upgrade pip conan
 
-      - name: conan remote
-        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
-
-      - name: conan config
-        run: conan config install .github/config/conan
-
       - name: get version
         run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
+      - name: conan remote
+        run: |
+          conan remote remove "*"
+          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+          conan remote add conancenter https://center2.conan.io
+      - name: conan config
+        run: conan config install .github/config/conan
+      - name: conan install
+        run: >
+          conan install .
+          --lockfile conan.lock
+          --profile:host '${{ matrix.host_profile }}'
+          --profile:build '${{ matrix.build_profile }}'
+
       - name: create conan package
         run: >
-          conan create conanfile.py
+          conan create .
           --lockfile conan.lock
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
@@ -46,4 +54,4 @@ jobs:
         run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
 
       - name: upload to conan repo
-        run: conan upload "*" --remote odr --confirm
+        run: conan upload "*" --remote odr --only-recipe --confirm
