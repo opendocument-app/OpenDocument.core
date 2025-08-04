@@ -55,7 +55,7 @@ class OpenDocumentCoreConan(ConanFile):
         if self.options.get_safe("with_wvWare", False):
             self.requires("wvware/1.2.9-odr")
         self.requires("cpp-httplib/0.16.3")
-        self.requires("argon2/20190702")
+        self.requires("argon2/20190702-odr")
 
         if self.options.get_safe("with_customTmpfile", False):
             self.requires("tmpfile/3.0.6")
