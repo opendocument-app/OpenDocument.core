@@ -45,6 +45,7 @@ int main(int argc, char **argv) {
   html_config.embed_shipped_resources = true;
   html_config.relative_resource_paths = false;
   html_config.text_document_margin = true;
+  html_config.editable = true;
 
   {
     std::string prefix = "one_file";

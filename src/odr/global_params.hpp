@@ -15,7 +15,6 @@ public:
   static void set_fontconfig_data_path(const std::string &path);
   static void set_poppler_data_path(const std::string &path);
   static void set_pdf2htmlex_data_path(const std::string &path);
-  static void set_custom_tmpfile_path(const std::string &path);
 
 private:
   static GlobalParams &instance();
