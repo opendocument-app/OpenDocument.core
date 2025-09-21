@@ -24,15 +24,17 @@ void PopplerPdfFile::open(const std::optional<std::string> &password) {
     password_goo = GooString(password.value().c_str());
   }
 
-  if (auto disk_file = std::dynamic_pointer_cast<DiskFile>(m_file)) {
+  if (const auto disk_file = std::dynamic_pointer_cast<DiskFile>(m_file)) {
     auto file_path_goo =
         std::make_unique<GooString>(disk_file->disk_path()->string().c_str());
     m_pdf_doc = std::make_shared<PDFDoc>(std::move(file_path_goo), password_goo,
                                          password_goo);
-  } else if (auto memory_file = std::dynamic_pointer_cast<MemoryFile>(m_file)) {
+  } else if (const auto memory_file =
+                 std::dynamic_pointer_cast<MemoryFile>(m_file)) {
     // `stream` is freed by `m_pdf_doc`
     auto stream = new MemStream(memory_file->memory_data(), 0,
-                                memory_file->size(), Object(objNull));
+                                static_cast<Goffset>(memory_file->size()),
+                                Object(objNull));
     m_pdf_doc = std::make_shared<PDFDoc>(stream, password_goo, password_goo);
   } else {
     throw NoPdfFile();
@@ -87,7 +89,7 @@ PopplerPdfFile::decrypt(const std::string &password) const {
   auto decrypted_file = std::make_shared<PopplerPdfFile>(*this);
   try {
     decrypted_file->open(password);
-  } catch (const std::exception &e) {
+  } catch (const std::exception &) {
     throw DecryptionFailed();
   }
   if (decrypted_file->encryption_state() != EncryptionState::decrypted) {

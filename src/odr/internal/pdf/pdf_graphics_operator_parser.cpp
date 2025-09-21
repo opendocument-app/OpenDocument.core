@@ -122,7 +122,7 @@ std::string GraphicsOperatorParser::read_operator_name() const {
   std::string result;
 
   while (true) {
-    int_type c = m_parser.geti();
+    const int_type c = m_parser.geti();
 
     if (c == eof) {
       return result;
@@ -132,7 +132,7 @@ std::string GraphicsOperatorParser::read_operator_name() const {
     }
 
     m_parser.bumpc();
-    result += (char_type)c;
+    result += static_cast<char_type>(c);
   }
 }
 
@@ -159,7 +159,7 @@ GraphicsOperator GraphicsOperatorParser::read_operator() const {
     m_parser.skip_whitespace();
   }
 
-  std::string operator_name = read_operator_name();
+  const std::string operator_name = read_operator_name();
   result.type = operator_name_to_type(operator_name);
   if (result.type == GraphicsOperatorType::unknown) {
     std::cerr << "unknown operator: " << operator_name << std::endl;

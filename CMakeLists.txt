@@ -161,13 +161,10 @@ set(ODR_SOURCE_FILES
 
         "src/odr/internal/pdf/pdf_cmap.cpp"
         "src/odr/internal/pdf/pdf_cmap_parser.cpp"
-        "src/odr/internal/pdf/pdf_document.cpp"
-        "src/odr/internal/pdf/pdf_document_element.cpp"
         "src/odr/internal/pdf/pdf_document_parser.cpp"
         "src/odr/internal/pdf/pdf_file.cpp"
         "src/odr/internal/pdf/pdf_file_object.cpp"
         "src/odr/internal/pdf/pdf_file_parser.cpp"
-        "src/odr/internal/pdf/pdf_graphics_operator.cpp"
         "src/odr/internal/pdf/pdf_graphics_operator_parser.cpp"
         "src/odr/internal/pdf/pdf_graphics_state.cpp"
         "src/odr/internal/pdf/pdf_object.cpp"

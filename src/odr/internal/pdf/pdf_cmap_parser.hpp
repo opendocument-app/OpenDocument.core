@@ -27,9 +27,9 @@ private:
 
   Token read_token() const;
 
-  void read_codespacerange(std::uint32_t n, CMap &) const;
+  void read_codespacerange(std::uint32_t n, const CMap &) const;
   void read_bfchar(std::uint32_t n, CMap &) const;
-  void read_bfrange(std::uint32_t n, CMap &) const;
+  void read_bfrange(std::uint32_t n, const CMap &) const;
 };
 
 } // namespace odr::internal::pdf

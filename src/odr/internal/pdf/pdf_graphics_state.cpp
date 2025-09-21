@@ -49,10 +49,12 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     current().general.line_width = op.arguments.at(0).as_real();
     break;
   case GraphicsOperatorType::set_cap_style:
-    current().general.cap_style = op.arguments.at(0).as_integer();
+    current().general.cap_style =
+        static_cast<int>(op.arguments.at(0).as_integer());
     break;
   case GraphicsOperatorType::set_join_style:
-    current().general.join_style = op.arguments.at(0).as_integer();
+    current().general.join_style =
+        static_cast<int>(op.arguments.at(0).as_integer());
     break;
   case GraphicsOperatorType::set_miter_limit:
     current().general.miter_limit = op.arguments.at(0).as_real();
@@ -114,7 +116,8 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     current().text.size = op.arguments.at(1).as_real();
     break;
   case GraphicsOperatorType::set_text_rendering_mode:
-    current().text.rendering_mode = op.arguments.at(0).as_integer();
+    current().text.rendering_mode =
+        static_cast<int>(op.arguments.at(0).as_integer());
     break;
   case GraphicsOperatorType::set_text_rise:
     current().text.rise = op.arguments.at(0).as_real();

@@ -6,19 +6,19 @@
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 
-#include <functional>
 #include <iostream>
+#include <ranges>
 #include <sstream>
 
 namespace odr::internal::pdf {
 namespace {
 
-pdf::Element *parse_page_or_pages(DocumentParser &parser,
-                                  const ObjectReference &reference,
-                                  Document &document, Element *parent);
+Element *parse_page_or_pages(DocumentParser &parser,
+                             const ObjectReference &reference,
+                             Document &document, Element *parent);
 
-pdf::Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
-                      Document &document) {
+Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
+                 Document &document) {
   Font *font = document.create_element<Font>();
 
   IndirectObject object = parser.read_object(reference);
@@ -41,8 +41,8 @@ pdf::Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   return font;
 }
 
-pdf::Resources *parse_resources(DocumentParser &parser, const Object &object,
-                                Document &document) {
+Resources *parse_resources(DocumentParser &parser, const Object &object,
+                           Document &document) {
   auto *resources = document.create_element<Resources>();
 
   Dictionary dictionary = parser.resolve_object_copy(object).as_dictionary();
@@ -61,9 +61,9 @@ pdf::Resources *parse_resources(DocumentParser &parser, const Object &object,
   return resources;
 }
 
-pdf::Annotation *parse_annotation(DocumentParser &parser,
-                                  const ObjectReference &reference,
-                                  Document &document) {
+Annotation *parse_annotation(DocumentParser &parser,
+                             const ObjectReference &reference,
+                             Document &document) {
   auto *annotation = document.create_element<Annotation>();
 
   IndirectObject object = parser.read_object(reference);
@@ -76,8 +76,8 @@ pdf::Annotation *parse_annotation(DocumentParser &parser,
   return annotation;
 }
 
-pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
-                      Document &document, Element *parent) {
+Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
+                 Document &document, Element *parent) {
   Page *page = document.create_element<Page>();
 
   IndirectObject object = parser.read_object(reference);
@@ -110,8 +110,8 @@ pdf::Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   return page;
 }
 
-pdf::Pages *parse_pages(DocumentParser &parser,
-                        const ObjectReference &reference, Document &document) {
+Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
+                   Document &document) {
   auto *pages = document.create_element<Pages>();
 
   IndirectObject object = parser.read_object(reference);
@@ -130,9 +130,9 @@ pdf::Pages *parse_pages(DocumentParser &parser,
   return pages;
 }
 
-pdf::Element *parse_page_or_pages(DocumentParser &parser,
-                                  const ObjectReference &reference,
-                                  Document &document, Element *parent) {
+Element *parse_page_or_pages(DocumentParser &parser,
+                             const ObjectReference &reference,
+                             Document &document, Element *parent) {
   // TODO we are parsing twice
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -148,9 +148,8 @@ pdf::Element *parse_page_or_pages(DocumentParser &parser,
   throw std::runtime_error("unknown element");
 }
 
-pdf::Catalog *parse_catalog(DocumentParser &parser,
-                            const ObjectReference &reference,
-                            Document &document) {
+Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
+                       Document &document) {
   auto *catalog = document.create_element<Catalog>();
 
   IndirectObject object = parser.read_object(reference);
@@ -177,11 +176,11 @@ const Xref &DocumentParser::xref() const { return m_xref; }
 
 const IndirectObject &
 DocumentParser::read_object(const ObjectReference &reference) {
-  if (auto it = m_objects.find(reference); it != std::end(m_objects)) {
+  if (const auto it = m_objects.find(reference); it != std::end(m_objects)) {
     return it->second;
   }
 
-  std::uint32_t position = m_xref.table.at(reference).position;
+  const std::uint32_t position = m_xref.table.at(reference).position;
   in().seekg(position);
   IndirectObject object = parser().read_indirect_object();
 
@@ -194,8 +193,8 @@ DocumentParser::read_object_stream(const ObjectReference &reference) {
 }
 
 std::string DocumentParser::read_object_stream(const IndirectObject &object) {
-  Object length = object.object.as_dictionary()["Length"];
-  std::uint32_t size;
+  const Object length = object.object.as_dictionary()["Length"];
+  std::uint32_t size = 0;
   if (length.is_integer()) {
     size = length.as_integer();
   } else if (length.is_reference()) {
@@ -205,12 +204,12 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
   }
 
   in().seekg(object.stream_position.value());
-  return m_parser.read_stream(size);
+  return m_parser.read_stream(static_cast<std::int32_t>(size));
 }
 
 std::unique_ptr<Document> DocumentParser::parse_document() {
   parser().seek_start_xref();
-  StartXref start_xref = parser().read_start_xref();
+  const StartXref start_xref = parser().read_start_xref();
 
   std::uint32_t xref_position = start_xref.start;
   std::optional<Trailer> trailer;
@@ -253,7 +252,7 @@ void DocumentParser::deep_resolve_object(Object &object) {
       deep_resolve_object(e);
     }
   } else if (object.is_dictionary()) {
-    for (auto &[k, v] : object.as_dictionary()) {
+    for (Object &v : object.as_dictionary() | std::views::values) {
       deep_resolve_object(v);
     }
   }

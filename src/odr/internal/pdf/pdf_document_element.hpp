@@ -32,16 +32,16 @@ struct Element {
   Object object;
 };
 
-struct Catalog : Element {
+struct Catalog final : Element {
   Pages *pages{nullptr};
 };
 
-struct Pages : Element {
+struct Pages final : Element {
   std::vector<Element *> kids;
   std::uint32_t count{0};
 };
 
-struct Page : Element {
+struct Page final : Element {
   Pages *parent{nullptr};
 
   Resources *resources;
@@ -51,13 +51,13 @@ struct Page : Element {
   std::vector<ObjectReference> contents_reference;
 };
 
-struct Annotation : Element {};
+struct Annotation final : Element {};
 
-struct Resources : Element {
+struct Resources final : Element {
   std::unordered_map<std::string, Font *> font;
 };
 
-struct Font : Element {
+struct Font final : Element {
   CMap cmap;
 };
 

@@ -37,20 +37,21 @@ std::variant<Object, std::string> CMapParser::read_token() const {
 
   std::string token;
   while (true) {
-    int_type i = m_parser.geti();
+    const int_type i = m_parser.geti();
     if (i == eof) {
       return token;
     }
-    auto c = static_cast<char_type>(i);
+    const auto c = static_cast<char_type>(i);
     if (ObjectParser::is_whitespace(c)) {
       return token;
     }
     m_parser.bumpc();
-    token += (char_type)c;
+    token += c;
   }
 }
 
-void CMapParser::read_codespacerange(std::uint32_t n, CMap &cmap) const {
+void CMapParser::read_codespacerange(const std::uint32_t n,
+                                     const CMap &cmap) const {
   (void)cmap;
 
   m_parser.skip_whitespace();
@@ -64,7 +65,7 @@ void CMapParser::read_codespacerange(std::uint32_t n, CMap &cmap) const {
   }
 }
 
-void CMapParser::read_bfchar(std::uint32_t n, CMap &cmap) const {
+void CMapParser::read_bfchar(const std::uint32_t n, CMap &cmap) const {
   m_parser.skip_whitespace();
   for (std::uint32_t i = 0; i < n; ++i) {
     std::string glyph = m_parser.read_object().as_string();
@@ -73,7 +74,7 @@ void CMapParser::read_bfchar(std::uint32_t n, CMap &cmap) const {
     m_parser.skip_whitespace();
 
     util::reverse_bytes(reinterpret_cast<char16_t *>(unicode.data()),
-                        (std::size_t)unicode.size() / 2);
+                        unicode.size() / 2);
     std::u16string_view unicode16(
         reinterpret_cast<const char16_t *>(unicode.data()), unicode.size() / 2);
 
@@ -88,7 +89,7 @@ void CMapParser::read_bfchar(std::uint32_t n, CMap &cmap) const {
   }
 }
 
-void CMapParser::read_bfrange(std::uint32_t n, CMap &cmap) const {
+void CMapParser::read_bfrange(const std::uint32_t n, const CMap &cmap) const {
   (void)cmap;
 
   m_parser.skip_whitespace();
@@ -118,13 +119,12 @@ CMap CMapParser::parse_cmap() const {
     m_parser.skip_whitespace();
 
     if (std::holds_alternative<Object>(token)) {
-      const Object &object = std::get<Object>(token);
-      if (object.is_integer()) {
+      if (const Object &object = std::get<Object>(token); object.is_integer()) {
         last_int = object.as_integer();
       }
     } else if (std::holds_alternative<std::string>(token)) {
-      const std::string &command = std::get<std::string>(token);
-      if (command == "begincodespacerange") {
+      if (const std::string &command = std::get<std::string>(token);
+          command == "begincodespacerange") {
         read_codespacerange(last_int, cmap);
       } else if (command == "beginbfchar") {
         read_bfchar(last_int, cmap);

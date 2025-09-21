@@ -13,11 +13,11 @@ struct Document;
 
 class DocumentParser {
 public:
-  DocumentParser(std::istream &);
+  explicit DocumentParser(std::istream &);
 
-  std::istream &in() const;
-  const FileParser &parser() const;
-  const Xref &xref() const;
+  [[nodiscard]] std::istream &in() const;
+  [[nodiscard]] const FileParser &parser() const;
+  [[nodiscard]] const Xref &xref() const;
 
   const IndirectObject &read_object(const ObjectReference &reference);
   std::string read_object_stream(const ObjectReference &reference);

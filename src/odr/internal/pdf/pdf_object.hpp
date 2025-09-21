@@ -47,7 +47,8 @@ struct ObjectReference {
   std::uint64_t gen{};
 
   ObjectReference() = default;
-  ObjectReference(std::uint64_t _id, std::uint64_t _gen) : id{_id}, gen{_gen} {}
+  ObjectReference(const std::uint64_t _id, const std::uint64_t _gen)
+      : id{_id}, gen{_gen} {}
 
   [[nodiscard]] bool operator<(const ObjectReference &rhs) const;
 
@@ -95,7 +96,7 @@ public:
   [[nodiscard]] Boolean as_bool() const { return as<Boolean>(); }
   [[nodiscard]] Integer as_integer() const { return as<Integer>(); }
   [[nodiscard]] Real as_real() const {
-    return is<Real>() ? as<Real>() : as_integer();
+    return is<Real>() ? as<Real>() : static_cast<Real>(as_integer());
   }
   [[nodiscard]] const std::string &as_standard_string() const {
     return as<const StandardString &>().string;
@@ -129,10 +130,16 @@ public:
 private:
   Holder m_holder;
 
-  template <typename T> bool is() const { return m_holder.type() == typeid(T); }
-  template <typename T> T as() const & { return std::any_cast<T>(m_holder); }
-  template <typename T> T as() & { return std::any_cast<T>(m_holder); }
-  template <typename T> T as() && {
+  template <typename T> [[nodiscard]] bool is() const {
+    return m_holder.type() == typeid(T);
+  }
+  template <typename T> [[nodiscard]] T as() const & {
+    return std::any_cast<T>(m_holder);
+  }
+  template <typename T> [[nodiscard]] T as() & {
+    return std::any_cast<T>(m_holder);
+  }
+  template <typename T> [[nodiscard]] T as() && {
     return std::any_cast<T>(std::move(m_holder));
   }
 };
@@ -160,8 +167,8 @@ public:
   }
   [[nodiscard]] Holder::const_iterator end() const { return m_holder.cend(); }
 
-  Object &operator[](std::size_t i) { return m_holder.at(i); }
-  const Object &operator[](std::size_t i) const { return m_holder.at(i); }
+  Object &operator[](const std::size_t i) { return m_holder.at(i); }
+  const Object &operator[](const std::size_t i) const { return m_holder.at(i); }
 
   void to_stream(std::ostream &) const;
   [[nodiscard]] std::string to_string() const;
@@ -194,7 +201,7 @@ public:
   }
 
   [[nodiscard]] bool has_key(const std::string &name) const {
-    return m_holder.find(name) != std::end(m_holder);
+    return m_holder.contains(name);
   }
 
   void to_stream(std::ostream &) const;
@@ -215,5 +222,6 @@ std::ostream &operator<<(std::ostream &, const Dictionary &);
 } // namespace odr::internal::pdf
 
 template <> struct std::hash<odr::internal::pdf::ObjectReference> {
-  std::size_t operator()(const odr::internal::pdf::ObjectReference &k) const;
+  std::size_t
+  operator()(const odr::internal::pdf::ObjectReference &k) const noexcept;
 };
