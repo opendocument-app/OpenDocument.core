@@ -13,6 +13,7 @@ namespace {
 template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
 };
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 bool is_empty(const HtmlWritable &writable) {
   return std::visit(
