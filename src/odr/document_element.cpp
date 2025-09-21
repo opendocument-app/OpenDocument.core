@@ -305,6 +305,17 @@ TextStyle ListItem::style() const {
   return exists_() ? m_element->style(m_document) : TextStyle();
 }
 
+TableRow Table::first_row() const {
+  return exists_() ? TableRow(m_document, m_element->first_row(m_document))
+                   : TableRow();
+}
+
+TableColumn Table::first_column() const {
+  return exists_()
+             ? TableColumn(m_document, m_element->first_column(m_document))
+             : TableColumn();
+}
+
 ElementRange Table::columns() const {
   return exists_() ? ElementRange(ElementIterator(
                          m_document, m_element->first_column(m_document)))

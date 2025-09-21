@@ -418,6 +418,9 @@ class Table final : public TypedElement<internal::abstract::Table> {
 public:
   using TypedElement::TypedElement;
 
+  [[nodiscard]] TableRow first_row() const;
+  [[nodiscard]] TableColumn first_column() const;
+
   [[nodiscard]] ElementRange columns() const;
   [[nodiscard]] ElementRange rows() const;
 

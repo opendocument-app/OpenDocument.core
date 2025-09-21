@@ -102,8 +102,41 @@ DocumentPath DocumentPath::extract(Element element, Element root) {
   return DocumentPath(reverse);
 }
 
-Element DocumentPath::find(Element root, const DocumentPath & /*path*/) {
-  return root; // TODO
+Element DocumentPath::find(Element root, const DocumentPath &path) {
+  Element element = root;
+
+  for (const DocumentPath::Component &c : path) {
+    std::uint32_t number = 0;
+    if (const auto child = std::get_if<DocumentPath::Child>(&c)) {
+      if (!element.first_child()) {
+        throw std::invalid_argument("child not found");
+      }
+      element = element.first_child();
+      number = child->number;
+    } else if (const auto column = std::get_if<DocumentPath::Column>(&c)) {
+      if (!element.as_table().first_column()) {
+        throw std::invalid_argument("column not found");
+      }
+      element = Element(element.as_table().first_column());
+      number = column->number;
+    } else if (const auto row = std::get_if<DocumentPath::Row>(&c)) {
+      if (!element.as_table().first_row()) {
+        throw std::invalid_argument("row not found");
+      }
+      element = Element(element.as_table().first_row());
+      number = row->number;
+    } else {
+      throw std::invalid_argument("unknown component");
+    }
+    for (std::uint32_t i = 0; i < number; ++i) {
+      if (!element.next_sibling()) {
+        throw std::invalid_argument("sibling not found");
+      }
+      element = element.next_sibling();
+    }
+  }
+
+  return element;
 }
 
 DocumentPath::DocumentPath() noexcept = default;

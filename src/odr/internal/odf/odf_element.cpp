@@ -183,30 +183,57 @@ std::string Text::content(const abstract::Document *) const {
 
 void Text::set_content(const abstract::Document *, const std::string &text) {
   auto parent = m_node.parent();
-  auto old_start = m_node;
+  auto old_first = m_node;
+  auto old_last = m_last;
+  auto new_first = old_first;
+  auto new_last = m_last;
 
-  for (auto &&token : util::xml::tokenize_text(text)) {
+  const auto insert_pcdata = [&]() {
+    auto new_node =
+        parent.insert_child_before(pugi::xml_node_type::node_pcdata, old_first);
+    if (new_first == old_first) {
+      new_first = new_node;
+    }
+    new_last = new_node;
+    return new_node;
+  };
+  const auto insert_node = [&](const char *node) {
+    auto new_node = parent.insert_child_before(node, old_first);
+    if (new_first == old_first) {
+      new_first = new_node;
+    }
+    new_last = new_node;
+    return new_node;
+  };
+
+  for (const util::xml::StringToken &token : util::xml::tokenize_text(text)) {
     switch (token.type) {
     case util::xml::StringToken::Type::none:
       break;
     case util::xml::StringToken::Type::string: {
-      auto text_node = parent.insert_child_before(
-          pugi::xml_node_type::node_pcdata, old_start);
+      auto text_node = insert_pcdata();
       text_node.text().set(token.string.c_str());
     } break;
     case util::xml::StringToken::Type::spaces: {
-      auto space_node = parent.insert_child_before("text:s", old_start);
+      auto space_node = insert_node("text:s");
       space_node.prepend_attribute("text:c").set_value(token.string.size());
     } break;
     case util::xml::StringToken::Type::tabs: {
       for (std::size_t i = 0; i < token.string.size(); ++i) {
-        parent.insert_child_before("text:tab", old_start);
+        insert_node("text:tab");
       }
     } break;
     }
   }
 
-  // TODO set first and last
+  m_node = new_first;
+  m_last = new_last;
+
+  for (auto node = old_first; node != old_last.next_sibling();) {
+    auto next = node.next_sibling();
+    parent.remove_child(node);
+    node = next;
+  }
 }
 
 TextStyle Text::style(const abstract::Document *document) const {

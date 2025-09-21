@@ -110,22 +110,34 @@ void Text::set_content(const abstract::Document *, const std::string &text) {
   // TODO http://officeopenxml.com/WPtextSpacing.php
   // <w:t xml:space="preserve">
   // use `xml:space`
-  auto parent = m_node.parent();
-  auto old_start = m_node;
 
-  auto tokens = util::xml::tokenize_text(text);
-  for (auto &&token : tokens) {
+  auto parent = m_node.parent();
+  auto old_first = m_node;
+  auto old_last = m_last;
+  auto new_first = old_first;
+  auto new_last = m_last;
+
+  const auto insert_node = [&](const char *node) {
+    auto new_node = parent.insert_child_before(node, old_first);
+    if (new_first == old_first) {
+      new_first = new_node;
+    }
+    new_last = new_node;
+    return new_node;
+  };
+
+  for (const util::xml::StringToken &token : util::xml::tokenize_text(text)) {
     switch (token.type) {
     case util::xml::StringToken::Type::none:
       break;
     case util::xml::StringToken::Type::string: {
-      auto text_node = parent.insert_child_before("w:t", old_start);
+      auto text_node = insert_node("w:t");
       text_node.append_child(pugi::xml_node_type::node_pcdata)
           .text()
           .set(token.string.c_str());
     } break;
     case util::xml::StringToken::Type::spaces: {
-      auto text_node = parent.insert_child_before("w:t", old_start);
+      auto text_node = insert_node("w:t");
       text_node.append_attribute("xml:space").set_value("preserve");
       text_node.append_child(pugi::xml_node_type::node_pcdata)
           .text()
@@ -133,13 +145,20 @@ void Text::set_content(const abstract::Document *, const std::string &text) {
     } break;
     case util::xml::StringToken::Type::tabs: {
       for (std::size_t i = 0; i < token.string.size(); ++i) {
-        parent.insert_child_before("w:tab", old_start);
+        insert_node("w:tab");
       }
     } break;
     }
   }
 
-  // TODO remove other
+  m_node = new_first;
+  m_last = new_last;
+
+  for (auto node = old_first; node != old_last.next_sibling();) {
+    auto next = node.next_sibling();
+    parent.remove_child(node);
+    node = next;
+  }
 }
 
 TextStyle Text::style(const abstract::Document *document) const {
