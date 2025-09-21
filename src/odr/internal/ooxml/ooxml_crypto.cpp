@@ -11,7 +11,7 @@
 
 namespace {
 template <typename I, typename O> void to_little_endian(I in, O &out) {
-  for (int i = 0; i < sizeof(in); ++i) {
+  for (unsigned int i = 0; i < sizeof(in); ++i) {
     out[i] = in & 0xff;
     in >>= 8;
   }
@@ -25,13 +25,14 @@ template <typename I, typename O> void to_big_endian(I in, O &out) {
 }
 
 std::string xor_bytes(const std::string &a, const std::string &b) {
-  if (a.size() != b.size())
+  if (a.size() != b.size()) {
     throw std::invalid_argument("a.size() != b.size()");
+  }
 
   std::string result(a.size(), ' ');
 
   for (std::size_t i = 0; i < result.size(); ++i) {
-    result[i] = a[i] ^ b[i];
+    result[i] = static_cast<char>(a[i] ^ b[i]);
   }
 
   return result;
