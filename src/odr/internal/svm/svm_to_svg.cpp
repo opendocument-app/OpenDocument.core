@@ -188,8 +188,8 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     write_polygon(out, "polygon", points, true, context);
   } break;
   case META_POLYPOLYGON_ACTION: {
-    for (auto [polygons] = read_poly_polygon_action(in, action_header.vl);
-         const auto &p : polygons) {
+    auto [polygons] = read_poly_polygon_action(in, action_header.vl);
+    for (const auto &p : polygons) {
       write_polygon(out, "polygon", p, true, context);
     }
   } break;
