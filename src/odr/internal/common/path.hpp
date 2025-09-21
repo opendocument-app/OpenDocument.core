@@ -143,12 +143,12 @@ public:
 
 namespace std {
 template <> struct hash<::odr::internal::Path> {
-  std::size_t operator()(const ::odr::internal::Path &p) const;
+  std::size_t operator()(const ::odr::internal::Path &p) const noexcept;
 };
 template <> struct hash<::odr::internal::AbsPath> {
-  std::size_t operator()(const ::odr::internal::AbsPath &p) const;
+  std::size_t operator()(const ::odr::internal::AbsPath &p) const noexcept;
 };
 template <> struct hash<::odr::internal::RelPath> {
-  std::size_t operator()(const ::odr::internal::RelPath &p) const;
+  std::size_t operator()(const ::odr::internal::RelPath &p) const noexcept;
 };
 } // namespace std

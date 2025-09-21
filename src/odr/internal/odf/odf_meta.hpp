@@ -1,12 +1,5 @@
 #pragma once
 
-#include <odr/internal/common/path.hpp>
-
-#include <cstdint>
-#include <exception>
-#include <string>
-#include <unordered_map>
-
 namespace pugi {
 class xml_document;
 class xml_node;

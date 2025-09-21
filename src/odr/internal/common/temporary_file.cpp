@@ -39,7 +39,7 @@ const TemporaryDiskFileFactory &TemporaryDiskFileFactory::system_default() {
 
 TemporaryDiskFileFactory::RandomFileNameGenerator
 TemporaryDiskFileFactory::default_random_file_name_generator() {
-  return []() { return random_string(10); };
+  return [] { return random_string(10); };
 }
 
 TemporaryDiskFileFactory::TemporaryDiskFileFactory(

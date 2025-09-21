@@ -1,16 +1,15 @@
 #include <odr/internal/common/document.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/document_element.hpp>
 
 #include <utility>
 
 namespace odr::internal {
 
-Document::Document(FileType file_type, DocumentType document_type,
-                   std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+Document::Document(const FileType file_type, const DocumentType document_type,
+                   std::shared_ptr<abstract::ReadableFilesystem> files)
     : m_file_type{file_type}, m_document_type{document_type},
-      m_filesystem{std::move(filesystem)} {}
+      m_filesystem{std::move(files)} {}
 
 FileType Document::file_type() const noexcept { return m_file_type; }
 

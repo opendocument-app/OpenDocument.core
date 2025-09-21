@@ -68,7 +68,7 @@ struct Color final {
   std::uint8_t alpha{255};
 
   Color();
-  Color(std::uint32_t rgb);
+  explicit Color(std::uint32_t rgb);
   Color(std::uint32_t argb, bool dummy);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue,
@@ -77,6 +77,8 @@ struct Color final {
   [[nodiscard]] std::uint32_t rgb() const;
   [[nodiscard]] std::uint32_t argb() const;
 };
+
+inline Color operator""_rgb(const unsigned long long rgb) { return Color(rgb); }
 
 /// @brief Represents a directional style.
 template <typename T> struct DirectionalStyle final {

@@ -11,7 +11,7 @@ namespace odr::internal::cfb::util {
 
 namespace {
 
-class ReaderBuffer : public std::streambuf {
+class ReaderBuffer final : public std::streambuf {
 public:
   ReaderBuffer(const impl::CompoundFileReader &reader,
                const impl::CompoundFileEntry &entry)
@@ -23,7 +23,7 @@ public:
   ReaderBuffer &operator=(const ReaderBuffer &) = delete;
   ReaderBuffer &operator=(ReaderBuffer &&other) noexcept = delete;
 
-  int underflow() final {
+  int underflow() override {
     const std::uint64_t remaining = m_entry.size - m_offset;
     if (remaining <= 0) {
       return std::char_traits<char>::eof();
@@ -48,18 +48,18 @@ private:
 class FileInCfbIstream final : public std::istream {
 public:
   FileInCfbIstream(std::shared_ptr<const Archive> archive,
-                   std::unique_ptr<util::ReaderBuffer> sbuf)
+                   std::unique_ptr<ReaderBuffer> sbuf)
       : std::istream(sbuf.get()), m_archive{std::move(archive)},
         m_sbuf{std::move(sbuf)} {}
   FileInCfbIstream(std::shared_ptr<const Archive> archive,
                    const impl::CompoundFileReader &reader,
                    const impl::CompoundFileEntry &entry)
       : FileInCfbIstream(std::move(archive),
-                         std::make_unique<util::ReaderBuffer>(reader, entry)) {}
+                         std::make_unique<ReaderBuffer>(reader, entry)) {}
 
 private:
   std::shared_ptr<const Archive> m_archive;
-  std::unique_ptr<util::ReaderBuffer> m_sbuf;
+  std::unique_ptr<ReaderBuffer> m_sbuf;
 };
 
 class FileInCfb final : public abstract::File {
@@ -68,17 +68,17 @@ public:
             const impl::CompoundFileEntry &entry)
       : m_archive{std::move(archive)}, m_entry{entry} {}
 
-  [[nodiscard]] FileLocation location() const noexcept final {
+  [[nodiscard]] FileLocation location() const noexcept override {
     return m_archive->file()->location();
   }
-  [[nodiscard]] std::size_t size() const final { return m_entry.size; }
+  [[nodiscard]] std::size_t size() const override { return m_entry.size; }
 
-  [[nodiscard]] std::optional<AbsPath> disk_path() const final {
+  [[nodiscard]] std::optional<AbsPath> disk_path() const override {
     return std::nullopt;
   }
-  [[nodiscard]] const char *memory_data() const final { return nullptr; }
+  [[nodiscard]] const char *memory_data() const override { return nullptr; }
 
-  [[nodiscard]] std::unique_ptr<std::istream> stream() const final {
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const override {
     return std::make_unique<FileInCfbIstream>(m_archive, m_archive->cfb(),
                                               m_entry);
   }
@@ -104,12 +104,12 @@ std::unique_ptr<abstract::File> Archive::Entry::file() const {
 }
 
 std::string Archive::Entry::name() const {
-  return odr::internal::util::string::c16str_to_string(
+  return internal::util::string::c16str_to_string(
       reinterpret_cast<const char16_t *>(m_entry->name), m_entry->name_len - 2);
 }
 
 std::optional<Archive::Entry> Archive::Entry::left() const {
-  auto left = m_parent->cfb().get_entry(m_entry->left_sibling_id);
+  const auto *left = m_parent->cfb().get_entry(m_entry->left_sibling_id);
   if (left == nullptr) {
     return {};
   }
@@ -117,7 +117,7 @@ std::optional<Archive::Entry> Archive::Entry::left() const {
 }
 
 std::optional<Archive::Entry> Archive::Entry::right() const {
-  auto right = m_parent->cfb().get_entry(m_entry->right_sibling_id);
+  const auto *right = m_parent->cfb().get_entry(m_entry->right_sibling_id);
   if (right == nullptr) {
     return {};
   }
@@ -125,7 +125,7 @@ std::optional<Archive::Entry> Archive::Entry::right() const {
 }
 
 std::optional<Archive::Entry> Archive::Entry::child() const {
-  auto child = m_parent->cfb().get_entry(m_entry->child_id);
+  const auto *child = m_parent->cfb().get_entry(m_entry->child_id);
   if (child == nullptr) {
     return {};
   }
@@ -138,7 +138,7 @@ void Archive::Iterator::dig_left_() {
   }
 
   while (true) {
-    auto left = m_entry->left();
+    const std::optional<Entry> left = m_entry->left();
     if (!left) {
       break;
     }
@@ -152,8 +152,7 @@ void Archive::Iterator::next_() {
     return;
   }
 
-  auto child = m_entry->child();
-  if (child) {
+  if (const std::optional<Entry> child = m_entry->child()) {
     m_directories.push_back(*m_entry);
     m_entry = child;
     dig_left_();
@@ -168,8 +167,7 @@ void Archive::Iterator::next_flat_() {
     return;
   }
 
-  auto right = m_entry->right();
-  if (right) {
+  if (const std::optional<Entry> right = m_entry->right()) {
     m_entry = right;
     dig_left_();
     return;

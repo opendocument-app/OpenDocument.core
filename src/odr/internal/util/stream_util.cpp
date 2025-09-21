@@ -11,10 +11,10 @@ using int_type = std::streambuf::int_type;
 static constexpr int_type eof = std::streambuf::traits_type::eof();
 
 std::string stream::read(std::istream &in) {
-  return {std::istreambuf_iterator<char>(in), {}};
+  return {std::istreambuf_iterator(in), {}};
 }
 
-std::string stream::read(std::istream &in, std::size_t size) {
+std::string stream::read(std::istream &in, const std::size_t size) {
   std::string result(size, '\0');
   in.read(result.data(), static_cast<std::streamsize>(size));
   result.resize(in.gcount());
@@ -38,7 +38,7 @@ void stream::pipe(std::istream &in, std::ostream &out) {
 
 // from https://stackoverflow.com/a/6089413
 std::istream &stream::pipe_line(std::istream &in, std::ostream &out,
-                                bool inclusive) {
+                                const bool inclusive) {
   // The characters in the stream are read one-by-one using a std::streambuf.
   // That is faster than reading them one-by-one using the std::istream.
   // Code that uses streambuf this way must be guarded by a sentry object.
@@ -49,21 +49,20 @@ std::istream &stream::pipe_line(std::istream &in, std::ostream &out,
   std::streambuf *sb = in.rdbuf();
 
   while (true) {
-    int_type c = sb->sbumpc();
-    switch (c) {
+    switch (int_type c = sb->sbumpc()) {
     case '\n':
       if (inclusive) {
-        out.put((char_type)c);
+        out.put(static_cast<char_type>(c));
       }
       return in;
     case '\r':
       if (inclusive) {
-        out.put((char_type)c);
+        out.put(static_cast<char_type>(c));
       }
       if (sb->sgetc() == '\n') {
         c = sb->sbumpc();
         if (inclusive) {
-          out.put((char_type)c);
+          out.put(static_cast<char_type>(c));
         }
       }
       return in;
@@ -71,24 +70,24 @@ std::istream &stream::pipe_line(std::istream &in, std::ostream &out,
       in.setstate(std::ios::eofbit);
       return in;
     default:
-      out.put((char_type)c);
+      out.put(static_cast<char_type>(c));
     }
   }
 }
 
-std::string stream::read_line(std::istream &in, bool inclusive) {
+std::string stream::read_line(std::istream &in, const bool inclusive) {
   std::stringstream ss;
   pipe_line(in, ss, inclusive);
   return ss.str();
 }
 
 std::istream &stream::pipe_until(std::istream &in, std::ostream &out,
-                                 char until_char, bool inclusive) {
+                                 const char until_char, const bool inclusive) {
   std::istream::sentry se(in, true);
   std::streambuf *sb = in.rdbuf();
 
   while (true) {
-    int_type c = sb->sbumpc();
+    const int_type c = sb->sbumpc();
     if (c == eof) {
       in.setstate(std::ios::eofbit);
       return in;
@@ -105,8 +104,8 @@ std::istream &stream::pipe_until(std::istream &in, std::ostream &out,
   }
 }
 
-std::string stream::read_until(std::istream &in, char until_char,
-                               bool inclusive) {
+std::string stream::read_until(std::istream &in, const char until_char,
+                               const bool inclusive) {
   std::stringstream ss;
   pipe_until(in, ss, until_char, inclusive);
   return ss.str();

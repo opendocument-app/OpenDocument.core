@@ -8,12 +8,10 @@
 
 #include <cstring>
 
-#include <pugixml.hpp>
-
 namespace odr::internal {
 
 std::optional<std::string>
-ooxml::read_string_attribute(pugi::xml_attribute attribute) {
+ooxml::read_string_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
@@ -21,7 +19,7 @@ ooxml::read_string_attribute(pugi::xml_attribute attribute) {
 }
 
 std::optional<Color>
-ooxml::read_color_attribute(pugi::xml_attribute attribute) {
+ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
   // color codes from http://officeopenxml.com/WPtextShading.php
   // rgb values suggested by chatgpt
   static const std::unordered_map<std::string, Color> color_map{
@@ -38,23 +36,23 @@ ooxml::read_color_attribute(pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  auto value = attribute.value();
+  const char *value = attribute.value();
   if (std::strcmp("auto", value) == 0 || std::strcmp("none", value) == 0) {
     return {};
   }
-  if (auto color_map_it = color_map.find(value);
+  if (const auto color_map_it = color_map.find(value);
       color_map_it != std::end(color_map)) {
     return color_map_it->second;
   }
   if (std::strlen(value) == 6) {
-    std::uint32_t color = std::strtoull(value, nullptr, 16);
+    const std::uint32_t color = std::strtoull(value, nullptr, 16);
     return Color(color);
   }
   return {};
 }
 
 std::optional<Measure>
-ooxml::read_half_point_attribute(pugi::xml_attribute attribute) {
+ooxml::read_half_point_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
@@ -62,7 +60,7 @@ ooxml::read_half_point_attribute(pugi::xml_attribute attribute) {
 }
 
 std::optional<Measure>
-ooxml::read_hundredth_point_attribute(pugi::xml_attribute attribute) {
+ooxml::read_hundredth_point_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
@@ -70,7 +68,7 @@ ooxml::read_hundredth_point_attribute(pugi::xml_attribute attribute) {
 }
 
 std::optional<Measure>
-ooxml::read_emus_attribute(pugi::xml_attribute attribute) {
+ooxml::read_emus_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
@@ -78,7 +76,7 @@ ooxml::read_emus_attribute(pugi::xml_attribute attribute) {
 }
 
 std::optional<Measure>
-ooxml::read_twips_attribute(pugi::xml_attribute attribute) {
+ooxml::read_twips_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
@@ -86,7 +84,7 @@ ooxml::read_twips_attribute(pugi::xml_attribute attribute) {
 }
 
 std::optional<Measure>
-ooxml::read_pct_attribute(pugi::xml_attribute attribute) {
+ooxml::read_pct_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
@@ -106,11 +104,11 @@ ooxml::read_pct_attribute(pugi::xml_attribute attribute) {
   return Measure(attribute.as_double() / 50.0, DynamicUnit("%"));
 }
 
-std::optional<Measure> ooxml::read_width_attribute(pugi::xml_node node) {
+std::optional<Measure> ooxml::read_width_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  auto type = node.attribute("w:type").value();
+  const char *type = node.attribute("w:type").value();
   if (std::strcmp("auto", type) == 0) {
     return {};
   }
@@ -126,31 +124,32 @@ std::optional<Measure> ooxml::read_width_attribute(pugi::xml_node node) {
   return {};
 }
 
-bool ooxml::read_line_attribute(pugi::xml_node node) {
+bool ooxml::read_line_attribute(const pugi::xml_node node) {
   if (!node) {
     return false;
   }
-  auto val = node.attribute("w:val").value();
-  if (std::strcmp("none", val) == 0 || std::strcmp("false", val) == 0 ||
+  if (const char *val = node.attribute("w:val").value();
+      std::strcmp("none", val) == 0 || std::strcmp("false", val) == 0 ||
       std::strcmp("noStrike", val) == 0) {
     return false;
   }
   return true;
 }
 
-bool ooxml::read_line_attribute(pugi::xml_attribute attribute) {
+bool ooxml::read_line_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return false;
   }
-  auto val = attribute.value();
-  if (std::strcmp("none", val) == 0 || std::strcmp("false", val) == 0 ||
-      std::strcmp("noStrike", val) == 0) {
+  if (const char *val = attribute.value(); std::strcmp("none", val) == 0 ||
+                                           std::strcmp("false", val) == 0 ||
+                                           std::strcmp("noStrike", val) == 0) {
     return false;
   }
   return true;
 }
 
-std::optional<std::string> ooxml::read_shadow_attribute(pugi::xml_node node) {
+std::optional<std::string>
+ooxml::read_shadow_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
@@ -158,7 +157,7 @@ std::optional<std::string> ooxml::read_shadow_attribute(pugi::xml_node node) {
 }
 
 std::optional<std::string>
-ooxml::read_shadow_attribute(pugi::xml_attribute attribute) {
+ooxml::read_shadow_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
@@ -166,59 +165,59 @@ ooxml::read_shadow_attribute(pugi::xml_attribute attribute) {
 }
 
 std::optional<FontWeight>
-ooxml::read_font_weight_attribute(pugi::xml_node node) {
+ooxml::read_font_weight_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  auto val = node.attribute("w:val").value();
-  if (std::strcmp("false", val) == 0 || std::strcmp("0", val) == 0) {
+  if (const char *val = node.attribute("w:val").value();
+      std::strcmp("false", val) == 0 || std::strcmp("0", val) == 0) {
     return FontWeight::normal;
   }
   return FontWeight::bold;
 }
 
 std::optional<FontWeight>
-ooxml::read_font_weight_attribute(pugi::xml_attribute attribute) {
+ooxml::read_font_weight_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  auto val = attribute.value();
-  if (std::strcmp("false", val) == 0 || std::strcmp("0", val) == 0) {
+  if (const char *val = attribute.value();
+      std::strcmp("false", val) == 0 || std::strcmp("0", val) == 0) {
     return FontWeight::normal;
   }
   return FontWeight::bold;
 }
 
-std::optional<FontStyle> ooxml::read_font_style_attribute(pugi::xml_node node) {
+std::optional<FontStyle>
+ooxml::read_font_style_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  auto val = node.attribute("w:val").value();
-  if (std::strcmp("false", val) == 0) {
+  if (const char *val = node.attribute("w:val").value();
+      std::strcmp("false", val) == 0) {
     return {};
   }
   return FontStyle::italic;
 }
 
 std::optional<FontStyle>
-ooxml::read_font_style_attribute(pugi::xml_attribute attribute) {
+ooxml::read_font_style_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  auto val = attribute.value();
-  if (std::strcmp("false", val) == 0) {
+  if (const char *val = attribute.value(); std::strcmp("false", val) == 0) {
     return {};
   }
   return FontStyle::italic;
 }
 
 std::optional<TextAlign>
-ooxml::read_text_align_attribute(pugi::xml_attribute attribute) {
-  auto val = attribute.value();
-  if ((std::strcmp("left", val) == 0) || (std::strcmp("start", val) == 0)) {
+ooxml::read_text_align_attribute(const pugi::xml_attribute attribute) {
+  const char *val = attribute.value();
+  if (std::strcmp("left", val) == 0 || std::strcmp("start", val) == 0) {
     return TextAlign::left;
   }
-  if ((std::strcmp("right", val) == 0) || (std::strcmp("end", val) == 0)) {
+  if (std::strcmp("right", val) == 0 || std::strcmp("end", val) == 0) {
     return TextAlign::right;
   }
   if (std::strcmp("center", val) == 0) {
@@ -231,8 +230,8 @@ ooxml::read_text_align_attribute(pugi::xml_attribute attribute) {
 }
 
 std::optional<VerticalAlign>
-ooxml::read_vertical_align_attribute(pugi::xml_attribute attribute) {
-  auto val = attribute.value();
+ooxml::read_vertical_align_attribute(const pugi::xml_attribute attribute) {
+  const char *val = attribute.value();
   if (std::strcmp("top", val) == 0) {
     return VerticalAlign::top;
   }
@@ -245,11 +244,11 @@ ooxml::read_vertical_align_attribute(pugi::xml_attribute attribute) {
   return {};
 }
 
-std::optional<std::string> ooxml::read_border_node(pugi::xml_node node) {
+std::optional<std::string> ooxml::read_border_node(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  auto val = node.attribute("w:val").value();
+  const char *val = node.attribute("w:val").value();
   if (std::strcmp("nil", val) == 0) {
     return {};
   }
@@ -263,18 +262,19 @@ std::optional<std::string> ooxml::read_border_node(pugi::xml_node node) {
   } else {
     result.append("solid ");
   }
-  if (auto color = read_color_attribute(node.attribute("w:color"))) {
-    result.append(internal::html::color(*color));
+  if (const std::optional<Color> color =
+          read_color_attribute(node.attribute("w:color"))) {
+    result.append(html::color(*color));
   }
   return result;
 }
 
 std::unordered_map<std::string, std::string>
-ooxml::parse_relationships(const pugi::xml_document &rels) {
+ooxml::parse_relationships(const pugi::xml_document &relations) {
   std::unordered_map<std::string, std::string> result;
-  for (auto &&e : rels.select_nodes("//Relationship")) {
-    std::string r_id = e.node().attribute("Id").as_string();
-    std::string p = e.node().attribute("Target").as_string();
+  for (const pugi::xpath_node e : relations.select_nodes("//Relationship")) {
+    const std::string r_id = e.node().attribute("Id").as_string();
+    const std::string p = e.node().attribute("Target").as_string();
     result.insert({r_id, p});
   }
   return result;
@@ -283,14 +283,15 @@ ooxml::parse_relationships(const pugi::xml_document &rels) {
 std::unordered_map<std::string, std::string>
 ooxml::parse_relationships(const abstract::ReadableFilesystem &filesystem,
                            const AbsPath &path) {
-  auto rel_path = path.parent()
-                      .join(RelPath("_rels"))
-                      .join(RelPath(path.basename() + ".rels"));
+  const AbsPath rel_path = path.parent()
+                               .join(RelPath("_rels"))
+                               .join(RelPath(path.basename() + ".rels"));
   if (!filesystem.is_file(rel_path)) {
     return {};
   }
 
-  auto relationships = util::xml::parse(filesystem, rel_path);
+  const pugi::xml_document relationships =
+      util::xml::parse(filesystem, rel_path);
   return parse_relationships(relationships);
 }
 

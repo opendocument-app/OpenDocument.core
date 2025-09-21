@@ -9,10 +9,10 @@
 
 using namespace odr;
 
-int main(int argc, char **argv) {
+int main(const int argc, char **argv) {
   const std::string input{argv[1]};
 
-  bool has_password = argc >= 4;
+  const bool has_password = argc >= 4;
   std::string password;
   if (has_password) {
     password = argv[2];
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   }
 
   const auto json =
-      odr::internal::util::meta::meta_to_json(document_file.file_meta());
+      internal::util::meta::meta_to_json(document_file.file_meta());
   std::cout << json.dump(4) << std::endl;
 
   return 0;

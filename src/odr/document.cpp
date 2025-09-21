@@ -8,8 +8,6 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/path.hpp>
 
-#include <stdexcept>
-
 namespace odr {
 
 Document::Document(std::shared_ptr<internal::abstract::Document> impl)

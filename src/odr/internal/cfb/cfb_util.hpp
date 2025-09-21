@@ -107,7 +107,7 @@ public:
     }
     Iterator operator++(int) {
       Iterator tmp = *this;
-      ++(*this);
+      ++*this;
       return tmp;
     }
 

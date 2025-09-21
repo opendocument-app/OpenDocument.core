@@ -12,13 +12,13 @@ using namespace odr::test;
 
 TEST(miniz, list) {
   mz_zip_archive zip{};
-  bool state = mz_zip_reader_init_file(
+  const bool state = mz_zip_reader_init_file(
       &zip,
       TestData::test_file_path("odr-public/odt/style-various-1.odt").c_str(),
       0);
   EXPECT_TRUE(state);
 
-  auto num_files = mz_zip_reader_get_num_files(&zip);
+  const auto num_files = mz_zip_reader_get_num_files(&zip);
   for (std::uint32_t i = 0; i < num_files; ++i) {
     mz_zip_archive_file_stat stat{};
     mz_zip_reader_file_stat(&zip, i, &stat);
@@ -28,33 +28,36 @@ TEST(miniz, list) {
 }
 
 TEST(miniz, create) {
-  bool state;
+  bool state{};
   std::ofstream out("test.zip");
   const auto time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
   mz_zip_archive archive{};
   archive.m_pIO_opaque = &out;
-  archive.m_pWrite = [](void *opaque, std::uint64_t offset, const void *buffer,
-                        std::size_t size) {
-    auto ostream = static_cast<std::ostream *>(opaque);
+  archive.m_pWrite = [](void *opaque, const std::uint64_t offset,
+                        const void *buffer, const std::size_t size) {
+    const auto ostream = static_cast<std::ostream *>(opaque);
     EXPECT_EQ(offset, ostream->tellp());
-    ostream->write(static_cast<const char *>(buffer), size);
+    ostream->write(static_cast<const char *>(buffer),
+                   static_cast<std::streamsize>(size));
     return size;
   };
   state = mz_zip_writer_init(&archive, 0);
   EXPECT_TRUE(state);
 
   auto append_file = [&](const char *path, const std::string &content) {
-    auto read_callback = [](void *opaque, std::uint64_t /*offset*/,
-                            void *buffer, std::size_t size) -> std::size_t {
-      auto istream = static_cast<std::istream *>(opaque);
-      istream->read(static_cast<char *>(buffer), size);
+    auto read_callback = [](void *opaque, const std::uint64_t /*offset*/,
+                            void *buffer,
+                            const std::size_t size) -> std::size_t {
+      const auto istream = static_cast<std::istream *>(opaque);
+      istream->read(static_cast<char *>(buffer),
+                    static_cast<std::streamsize>(size));
       return istream->gcount();
     };
 
     std::istringstream istream(content);
-    auto size = content.size();
+    const std::size_t size = content.size();
 
     state = mz_zip_writer_add_read_buf_callback(&archive, path, read_callback,
                                                 &istream, size, &time, nullptr,

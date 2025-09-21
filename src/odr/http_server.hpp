@@ -3,7 +3,6 @@
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
 
-#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -16,7 +15,7 @@ class HtmlService;
 
 class HttpServer {
 public:
-  constexpr static const char *prefix_pattern = R"(([a-zA-Z0-9_-]+))";
+  constexpr static auto prefix_pattern = R"(([a-zA-Z0-9_-]+))";
 
   struct Config {
     std::string cache_path{"/tmp/odr"};
@@ -27,16 +26,17 @@ public:
 
   [[nodiscard]] const Config &config() const;
 
-  void connect_service(HtmlService service, const std::string &prefix);
+  void connect_service(HtmlService service, const std::string &prefix) const;
 
-  HtmlViews serve_file(DecodedFile file, const std::string &prefix,
-                       const HtmlConfig &config);
+  [[nodiscard]] HtmlViews serve_file(const DecodedFile &file,
+                                     const std::string &prefix,
+                                     const HtmlConfig &config) const;
 
-  void listen(const std::string &host, std::uint32_t port);
+  void listen(const std::string &host, std::uint32_t port) const;
 
-  void clear();
+  void clear() const;
 
-  void stop();
+  void stop() const;
 
 private:
   class Impl;

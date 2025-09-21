@@ -1,7 +1,5 @@
 #pragma once
 
-#include <odr/file.hpp>
-
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_element.hpp>
@@ -11,19 +9,17 @@
 #include <string>
 #include <unordered_map>
 
-#include <pugixml.hpp>
-
 namespace odr::internal::ooxml::text {
 
 class Document final : public TemplateDocument<Element> {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
-  [[nodiscard]] bool is_editable() const noexcept final;
-  [[nodiscard]] bool is_savable(bool encrypted) const noexcept final;
+  [[nodiscard]] bool is_editable() const noexcept override;
+  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 
-  void save(const Path &path) const final;
-  void save(const Path &path, const char *password) const final;
+  void save(const Path &path) const override;
+  void save(const Path &path, const char *password) const override;
 
 private:
   pugi::xml_document m_document_xml;

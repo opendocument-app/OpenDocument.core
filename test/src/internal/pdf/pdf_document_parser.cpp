@@ -18,7 +18,7 @@ using namespace odr::internal::pdf;
 using namespace odr::test;
 
 TEST(DocumentParser, foo) {
-  auto file = std::make_shared<DiskFile>(
+  const auto file = std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
   auto in = file->stream();
@@ -30,9 +30,9 @@ TEST(DocumentParser, foo) {
   std::cout << "pages count " << document->catalog->pages->count << std::endl;
 
   std::vector<Page *> ordered_pages;
-  std::function<void(Pages * pages)> recurse_pages = [&](Pages *pages) {
+  std::function<void(Pages * pages)> recurse_pages = [&](const Pages *pages) {
     for (Element *kid : pages->kids) {
-      if (auto p = dynamic_cast<Pages *>(kid); p != nullptr) {
+      if (const auto p = dynamic_cast<Pages *>(kid); p != nullptr) {
         recurse_pages(p);
       } else if (auto page = dynamic_cast<Page *>(kid); page != nullptr) {
         ordered_pages.push_back(page);
@@ -54,8 +54,7 @@ TEST(DocumentParser, foo) {
   Page *first_page = ordered_pages.front();
   std::string stream;
   for (const auto &content_reference : first_page->contents_reference) {
-    pdf::IndirectObject page_contents_object =
-        parser.read_object(content_reference);
+    IndirectObject page_contents_object = parser.read_object(content_reference);
     stream += parser.read_object_stream(page_contents_object);
   }
   std::string first_page_content = crypto::util::zlib_inflate(stream);

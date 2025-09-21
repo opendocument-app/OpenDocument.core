@@ -3,7 +3,6 @@
 #include <odr/html.hpp>
 
 #include <iosfwd>
-#include <memory>
 #include <optional>
 
 namespace odr {

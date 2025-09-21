@@ -24,14 +24,14 @@ IndirectObject FileParser::read_indirect_object() const {
   m_parser.skip_whitespace();
   result.reference.gen = m_parser.read_unsigned_integer();
   m_parser.skip_whitespace();
-  if (std::string line = m_parser.read_line(); line != "obj") {
+  if (const std::string line = m_parser.read_line(); line != "obj") {
     throw std::runtime_error("expected obj");
   }
 
   result.object = m_parser.read_object();
   m_parser.skip_whitespace();
 
-  auto next = m_parser.read_line();
+  const std::string next = m_parser.read_line();
 
   if (next == "endobj") {
     m_parser.skip_whitespace();
@@ -64,7 +64,7 @@ Trailer FileParser::read_trailer() const {
 }
 
 Xref FileParser::read_xref() const {
-  if (std::string line = m_parser.read_line(); line != "xref") {
+  if (const std::string line = m_parser.read_line(); line != "xref") {
     throw std::runtime_error("expected xref");
   }
 
@@ -76,9 +76,9 @@ Xref FileParser::read_xref() const {
       return result;
     }
 
-    std::uint32_t first_id = m_parser.read_integer();
+    const std::uint32_t first_id = m_parser.read_integer();
     m_parser.skip_whitespace();
-    std::uint32_t entry_count = m_parser.read_integer();
+    const std::uint32_t entry_count = m_parser.read_integer();
     m_parser.skip_line();
 
     for (std::uint32_t i = 0; i < entry_count; ++i) {
@@ -86,7 +86,7 @@ Xref FileParser::read_xref() const {
 
       entry.position = m_parser.read_unsigned_integer();
       m_parser.skip_whitespace();
-      std::uint64_t generation = m_parser.read_unsigned_integer();
+      const std::uint64_t generation = m_parser.read_unsigned_integer();
       m_parser.skip_whitespace();
       entry.in_use = m_parser.read_line().at(0) == 'n';
 
@@ -96,7 +96,7 @@ Xref FileParser::read_xref() const {
 }
 
 StartXref FileParser::read_start_xref() const {
-  if (std::string line = m_parser.read_line(); line != "startxref") {
+  if (const std::string line = m_parser.read_line(); line != "startxref") {
     throw std::runtime_error("expected startxref");
   }
 
@@ -109,7 +109,7 @@ StartXref FileParser::read_start_xref() const {
   return result;
 }
 
-std::string FileParser::read_stream(std::int32_t size) const {
+std::string FileParser::read_stream(const std::int32_t size) const {
   std::string result;
 
   if (size >= 0) {
@@ -117,7 +117,7 @@ std::string FileParser::read_stream(std::int32_t size) const {
 
     m_parser.skip_line();
 
-    if (std::string line = m_parser.read_line(); line != "endstream") {
+    if (const std::string line = m_parser.read_line(); line != "endstream") {
       throw std::runtime_error("expected endstream");
     }
   } else {
@@ -132,7 +132,7 @@ std::string FileParser::read_stream(std::int32_t size) const {
     }
   }
 
-  if (std::string line = m_parser.read_line(); line != "endobj") {
+  if (const std::string line = m_parser.read_line(); line != "endobj") {
     throw std::runtime_error("expected endobj");
   }
 
@@ -142,8 +142,8 @@ std::string FileParser::read_stream(std::int32_t size) const {
 }
 
 void FileParser::read_header() const {
-  std::string header1 = m_parser.read_line();
-  std::string header2 = m_parser.read_line();
+  const std::string header1 = m_parser.read_line();
+  const std::string header2 = m_parser.read_line();
 
   if (!util::string::starts_with(header1, "%PDF-")) {
     throw std::runtime_error("illegal header");
@@ -154,7 +154,7 @@ void FileParser::read_header() const {
 
 Entry FileParser::read_entry() const {
   std::uint32_t position = in().tellg();
-  std::string entry_header = m_parser.read_line();
+  const std::string entry_header = m_parser.read_line();
   in().seekg(position);
 
   if (util::string::ends_with(entry_header, "obj")) {
@@ -180,15 +180,15 @@ Entry FileParser::read_entry() const {
   throw std::runtime_error("unknown entry");
 }
 
-void FileParser::seek_start_xref(std::uint32_t margin) const {
+void FileParser::seek_start_xref(const std::uint32_t margin) const {
   in().seekg(0, std::ios::end);
-  std::int64_t size = in().tellg();
-  in().seekg(std::max((std::int64_t)0, size - margin), std::ios::beg);
+  const std::int64_t size = in().tellg();
+  in().seekg(std::max(static_cast<std::int64_t>(0), size - margin),
+             std::ios::beg);
 
   while (!m_parser.in().eof()) {
-    std::uint32_t position = m_parser.in().tellg();
-    std::string line = m_parser.read_line();
-    if (line == "startxref") {
+    const std::uint32_t position = m_parser.in().tellg();
+    if (const std::string line = m_parser.read_line(); line == "startxref") {
       m_parser.in().seekg(position);
       return;
     }

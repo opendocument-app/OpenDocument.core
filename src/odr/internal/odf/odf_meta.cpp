@@ -5,6 +5,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/path.hpp>
 #include <odr/internal/util/map_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
@@ -71,7 +72,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
   }
 
   if (filesystem.is_file(AbsPath("/mimetype"))) {
-    const auto mimeType =
+    const std::string mimeType =
         util::stream::read(*filesystem.open(AbsPath("/mimetype"))->stream());
     lookup_file_type(mimeType, result.type);
   }
@@ -85,9 +86,10 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
   }
 
   if (manifest != nullptr) {
-    for (auto &&e : manifest->select_nodes("//manifest:file-entry")) {
-      const Path path(e.node().attribute("manifest:full-path").as_string());
-      if (path.root() && e.node().attribute("manifest:media-type")) {
+    for (const pugi::xpath_node e :
+         manifest->select_nodes("//manifest:file-entry")) {
+      if (const Path path(e.node().attribute("manifest:full-path").as_string());
+          path.root() && e.node().attribute("manifest:media-type")) {
         const std::string mimeType =
             e.node().attribute("manifest:media-type").as_string();
         lookup_file_type(mimeType, result.type);
@@ -110,20 +112,23 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
     document_meta.document_type = DocumentType::drawing;
   }
 
-  if ((result.password_encrypted == decrypted) &&
+  if (result.password_encrypted == decrypted &&
       filesystem.is_file(AbsPath("/meta.xml"))) {
-    const auto meta_xml = util::xml::parse(filesystem, AbsPath("/meta.xml"));
+    const pugi::xml_document meta_xml =
+        util::xml::parse(filesystem, AbsPath("/meta.xml"));
 
     const pugi::xml_node statistics = meta_xml.child("office:document-meta")
                                           .child("office:meta")
                                           .child("meta:document-statistic");
 
     if (result.type == FileType::opendocument_text) {
-      if (auto page_count = statistics.attribute("meta:page-count")) {
+      if (const pugi::xml_attribute page_count =
+              statistics.attribute("meta:page-count")) {
         document_meta.entry_count = page_count.as_uint();
       }
     } else if (result.type == FileType::opendocument_spreadsheet) {
-      if (auto table_count = statistics.attribute("meta:table-count")) {
+      if (const pugi::xml_attribute table_count =
+              statistics.attribute("meta:table-count")) {
         document_meta.entry_count = table_count.as_uint();
       }
     }

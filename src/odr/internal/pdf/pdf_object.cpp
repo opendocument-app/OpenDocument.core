@@ -45,7 +45,7 @@ bool ObjectReference::operator<(const ObjectReference &rhs) const {
 
 std::size_t ObjectReference::hash() const noexcept {
   std::size_t result = 0;
-  odr::internal::util::hash::hash_combine(result, gen, id);
+  util::hash::hash_combine(result, gen, id);
   return result;
 }
 
@@ -189,6 +189,6 @@ std::ostream &pdf::operator<<(std::ostream &out, const Dictionary &dictionary) {
 } // namespace odr::internal
 
 std::size_t std::hash<odr::internal::pdf::ObjectReference>::operator()(
-    const odr::internal::pdf::ObjectReference &k) const {
+    const odr::internal::pdf::ObjectReference &k) const noexcept {
   return k.hash();
 }

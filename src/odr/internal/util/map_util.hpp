@@ -26,7 +26,7 @@ bool lookup_default(const Map &map, const Key &key,
 }
 
 template <typename Map, typename Key>
-typename Map::mapped_type
+Map::mapped_type
 lookup_default(const Map &map, const Key &key,
                const typename Map::mapped_type &default_value) {
   const auto it = map.find(key);
@@ -37,14 +37,12 @@ lookup_default(const Map &map, const Key &key,
 }
 
 template <typename Map, typename Key>
-typename Map::const_iterator lookup_greater_than(const Map &map,
-                                                 const Key &key) {
+Map::const_iterator lookup_greater_than(const Map &map, const Key &key) {
   return map.upper_bound(key);
 }
 
 template <typename Map, typename Key>
-typename Map::const_iterator lookup_greater_or_equals(const Map &map,
-                                                      const Key &key) {
+Map::const_iterator lookup_greater_or_equals(const Map &map, const Key &key) {
   return map.lower_bound(key);
 }
 

@@ -3,7 +3,6 @@
 #include <odr/file.hpp>
 
 #include <odr/internal/abstract/file.hpp>
-#include <odr/internal/abstract/filesystem.hpp>
 
 #include <memory>
 
@@ -22,21 +21,21 @@ public:
   explicit WvWareLegacyMicrosoftFile(std::shared_ptr<DiskFile> file);
   explicit WvWareLegacyMicrosoftFile(std::shared_ptr<MemoryFile> file);
 
-  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
-  [[nodiscard]] FileType file_type() const noexcept final;
-  [[nodiscard]] FileMeta file_meta() const noexcept final;
-  [[nodiscard]] DecoderEngine decoder_engine() const noexcept final;
+  [[nodiscard]] FileType file_type() const noexcept override;
+  [[nodiscard]] FileMeta file_meta() const noexcept override;
+  [[nodiscard]] DecoderEngine decoder_engine() const noexcept override;
 
-  [[nodiscard]] DocumentType document_type() const final;
-  [[nodiscard]] DocumentMeta document_meta() const final;
+  [[nodiscard]] DocumentType document_type() const override;
+  [[nodiscard]] DocumentMeta document_meta() const override;
 
-  [[nodiscard]] bool password_encrypted() const noexcept final;
-  [[nodiscard]] EncryptionState encryption_state() const noexcept final;
-  [[nodiscard]] std::shared_ptr<abstract::DecodedFile>
-  decrypt(const std::string &password) const final;
+  [[nodiscard]] bool password_encrypted() const noexcept override;
+  [[nodiscard]] EncryptionState encryption_state() const noexcept override;
+  [[nodiscard]] std::shared_ptr<DecodedFile>
+  decrypt(const std::string &password) const override;
 
-  [[nodiscard]] std::shared_ptr<abstract::Document> document() const final;
+  [[nodiscard]] std::shared_ptr<abstract::Document> document() const override;
 
   [[nodiscard]] wvParseStruct &parse_struct() const;
 

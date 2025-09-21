@@ -14,14 +14,14 @@ struct GraphicsOperator;
 
 class GraphicsOperatorParser {
 public:
-  GraphicsOperatorParser(std::istream &);
+  explicit GraphicsOperatorParser(std::istream &);
 
-  std::istream &in() const;
-  std::streambuf &sb() const;
+  [[nodiscard]] std::istream &in() const;
+  [[nodiscard]] std::streambuf &sb() const;
 
-  std::string read_operator_name() const;
+  [[nodiscard]] std::string read_operator_name() const;
 
-  GraphicsOperator read_operator() const;
+  [[nodiscard]] GraphicsOperator read_operator() const;
 
 private:
   ObjectParser m_parser;

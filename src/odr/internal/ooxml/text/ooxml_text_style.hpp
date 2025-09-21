@@ -1,9 +1,8 @@
 #pragma once
 
-#include <odr/document.hpp>
-
 #include <odr/internal/common/style.hpp>
 
+#include <memory>
 #include <unordered_map>
 
 #include <pugixml.hpp>
@@ -39,11 +38,14 @@ public:
   [[nodiscard]] Style *default_style() const;
   [[nodiscard]] Style *style(const std::string &name) const;
 
-  ResolvedStyle partial_text_style(pugi::xml_node node) const;
-  ResolvedStyle partial_paragraph_style(pugi::xml_node node) const;
-  ResolvedStyle partial_table_style(pugi::xml_node node) const;
-  ResolvedStyle partial_table_row_style(pugi::xml_node node) const;
-  ResolvedStyle partial_table_cell_style(pugi::xml_node node) const;
+  [[nodiscard]] ResolvedStyle partial_text_style(pugi::xml_node node) const;
+  [[nodiscard]] ResolvedStyle
+  partial_paragraph_style(pugi::xml_node node) const;
+  [[nodiscard]] ResolvedStyle partial_table_style(pugi::xml_node node) const;
+  [[nodiscard]] ResolvedStyle
+  partial_table_row_style(pugi::xml_node node) const;
+  [[nodiscard]] ResolvedStyle
+  partial_table_cell_style(pugi::xml_node node) const;
 
 private:
   std::unordered_map<std::string, pugi::xml_node> m_index;

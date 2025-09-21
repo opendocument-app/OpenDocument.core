@@ -52,6 +52,6 @@ void Table::append_column_(Element *element) {
   m_last_column = element;
 }
 
-void Table::append_row_(Element *element) { Element::append_child_(element); }
+void Table::append_row_(Element *element) { append_child_(element); }
 
 } // namespace odr::internal

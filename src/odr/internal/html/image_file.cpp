@@ -16,7 +16,7 @@
 namespace odr::internal::html {
 namespace {
 
-class HtmlServiceImpl : public HtmlService {
+class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(ImageFile image_file, HtmlConfig config,
                   std::shared_ptr<Logger> logger)
@@ -26,11 +26,11 @@ public:
         std::make_shared<HtmlView>(*this, "image", "image.html"));
   }
 
-  void warmup() const final {}
+  void warmup() const override {}
 
-  [[nodiscard]] const HtmlViews &list_views() const final { return m_views; }
+  [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
-  [[nodiscard]] bool exists(const std::string &path) const final {
+  [[nodiscard]] bool exists(const std::string &path) const override {
     if (path == "image.html") {
       return true;
     }
@@ -38,7 +38,7 @@ public:
     return false;
   }
 
-  [[nodiscard]] std::string mimetype(const std::string &path) const final {
+  [[nodiscard]] std::string mimetype(const std::string &path) const override {
     if (path == "image.html") {
       return "text/html";
     }
@@ -46,7 +46,7 @@ public:
     throw FileNotFound("Unknown path: " + path);
   }
 
-  void write(const std::string &path, std::ostream &out) const final {
+  void write(const std::string &path, std::ostream &out) const override {
     if (path == "image.html") {
       HtmlWriter writer(out, config());
       write_image(writer);
@@ -57,7 +57,7 @@ public:
   }
 
   HtmlResources write_html(const std::string &path,
-                           html::HtmlWriter &out) const final {
+                           HtmlWriter &out) const override {
     if (path == "image.html") {
       return write_image(out);
     }
@@ -124,10 +124,11 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
   try {
     // TODO `image_file` is already an `SvmFile`
     // TODO `impl()` might be a bit dirty
-    auto image_file_impl = image_file.file().impl();
+    const std::shared_ptr<abstract::File> image_file_impl =
+        image_file.file().impl();
     // TODO memory file might not be necessary; other istreams didn't support
     // `tellg`
-    svm::SvmFile svm_file(std::make_shared<MemoryFile>(*image_file_impl));
+    const svm::SvmFile svm_file(std::make_shared<MemoryFile>(*image_file_impl));
     std::ostringstream svg_out;
     svm::Translator::svg(svm_file, svg_out);
     // TODO use stream

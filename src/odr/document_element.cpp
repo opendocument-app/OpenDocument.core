@@ -121,7 +121,7 @@ bool ElementIterator::operator!=(const ElementIterator &rhs) const {
 }
 
 ElementIterator::reference ElementIterator::operator*() const {
-  return Element(m_document, m_element);
+  return {m_document, m_element};
 }
 
 ElementIterator &ElementIterator::operator++() {
@@ -142,10 +142,11 @@ bool ElementIterator::exists_() const { return m_element != nullptr; }
 
 ElementRange::ElementRange() = default;
 
-ElementRange::ElementRange(ElementIterator begin) : m_begin{std::move(begin)} {}
+ElementRange::ElementRange(const ElementIterator begin) : m_begin{begin} {}
 
-ElementRange::ElementRange(ElementIterator begin, ElementIterator end)
-    : m_begin{std::move(begin)}, m_end{std::move(end)} {}
+ElementRange::ElementRange(const ElementIterator begin,
+                           const ElementIterator end)
+    : m_begin{begin}, m_end{end} {}
 
 ElementIterator ElementRange::begin() const { return m_begin; }
 
@@ -182,19 +183,21 @@ TableDimensions Sheet::dimensions() const {
   return exists_() ? m_element->dimensions(m_document) : TableDimensions();
 }
 
-TableDimensions Sheet::content(std::optional<TableDimensions> range) const {
+TableDimensions
+Sheet::content(const std::optional<TableDimensions> range) const {
   return exists_() ? m_element->content(m_document, range) : TableDimensions();
 }
 
-SheetColumn Sheet::column(std::uint32_t column) const {
+SheetColumn Sheet::column(const std::uint32_t column) const {
   return exists_() ? SheetColumn(m_document, m_element, column) : SheetColumn();
 }
 
-SheetRow Sheet::row(std::uint32_t row) const {
+SheetRow Sheet::row(const std::uint32_t row) const {
   return exists_() ? SheetRow(m_document, m_element, row) : SheetRow();
 }
 
-SheetCell Sheet::cell(std::uint32_t column, std::uint32_t row) const {
+SheetCell Sheet::cell(const std::uint32_t column,
+                      const std::uint32_t row) const {
   return exists_() ? SheetCell(m_document, m_element, column, row,
                                m_element->cell(m_document, column, row))
                    : SheetCell();
@@ -207,7 +210,8 @@ ElementRange Sheet::shapes() const {
 }
 
 SheetColumn::SheetColumn(const internal::abstract::Document *document,
-                         internal::abstract::Sheet *sheet, std::uint32_t column)
+                         internal::abstract::Sheet *sheet,
+                         const std::uint32_t column)
     : TypedElement(document, sheet), m_column{column} {}
 
 TableColumnStyle SheetColumn::style() const {
@@ -216,7 +220,7 @@ TableColumnStyle SheetColumn::style() const {
 }
 
 SheetRow::SheetRow(const internal::abstract::Document *document,
-                   internal::abstract::Sheet *sheet, std::uint32_t row)
+                   internal::abstract::Sheet *sheet, const std::uint32_t row)
     : TypedElement(document, sheet), m_row{row} {}
 
 TableRowStyle SheetRow::style() const {
@@ -224,10 +228,17 @@ TableRowStyle SheetRow::style() const {
 }
 
 SheetCell::SheetCell(const internal::abstract::Document *document,
-                     internal::abstract::Sheet *sheet, std::uint32_t column,
-                     std::uint32_t row, internal::abstract::SheetCell *element)
+                     internal::abstract::Sheet *sheet,
+                     const std::uint32_t column, const std::uint32_t row,
+                     internal::abstract::SheetCell *element)
     : TypedElement(document, element), m_sheet{sheet}, m_column{column},
       m_row{row} {}
+
+Sheet SheetCell::sheet() const { return {m_document, m_sheet}; }
+
+std::uint32_t SheetCell::column() const { return m_column; }
+
+std::uint32_t SheetCell::row() const { return m_row; }
 
 bool SheetCell::is_covered() const {
   return exists_() ? m_element->is_covered(m_document) : false;

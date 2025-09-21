@@ -2,9 +2,6 @@
 
 #include <odr/internal/pdf/pdf_object.hpp>
 
-#include <iosfwd>
-#include <string>
-#include <variant>
 #include <vector>
 
 namespace odr::internal::pdf {

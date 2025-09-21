@@ -7,7 +7,7 @@
 using namespace odr::internal;
 
 TEST(TableRange, default) {
-  TableRange tr;
+  const TableRange tr;
   EXPECT_EQ(0, tr.from().column());
   EXPECT_EQ(0, tr.from().row());
   EXPECT_EQ(0, tr.to().column());
@@ -17,7 +17,7 @@ TEST(TableRange, default) {
 
 TEST(TableRange, string1) {
   const std::string input = "A1:C55";
-  TableRange tr(input);
+  const TableRange tr(input);
   EXPECT_EQ(0, tr.from().column());
   EXPECT_EQ(0, tr.from().row());
   EXPECT_EQ(2, tr.to().column());

@@ -44,10 +44,10 @@ public:
   }
 
   bool operator==(const Quantity &rhs) const {
-    return (m_magnitude == rhs.m_magnitude) && (m_unit == rhs.m_unit);
+    return m_magnitude == rhs.m_magnitude && m_unit == rhs.m_unit;
   }
   bool operator!=(const Quantity &rhs) const {
-    return (m_magnitude != rhs.m_magnitude) || (m_unit != rhs.m_unit);
+    return m_magnitude != rhs.m_magnitude || m_unit != rhs.m_unit;
   }
 
   explicit operator Magnitude() const { return m_magnitude; }

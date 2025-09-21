@@ -144,7 +144,7 @@ Manifest parse_manifest(const pugi::xml_document &manifest) {
       }
     }
 
-    if (!smallest_file_size || (entry.size < *smallest_file_size)) {
+    if (!smallest_file_size || entry.size < *smallest_file_size) {
       smallest_file_size = entry.size;
       result.smallest_file_path = path;
     }

@@ -423,16 +423,16 @@ RelPath RelPath::common_root(const RelPath &other) const {
 } // namespace odr::internal
 
 std::size_t std::hash<::odr::internal::Path>::operator()(
-    const ::odr::internal::Path &p) const {
+    const ::odr::internal::Path &p) const noexcept {
   return p.hash();
 }
 
 std::size_t std::hash<::odr::internal::AbsPath>::operator()(
-    const ::odr::internal::AbsPath &p) const {
+    const ::odr::internal::AbsPath &p) const noexcept {
   return p.hash();
 }
 
 std::size_t std::hash<::odr::internal::RelPath>::operator()(
-    const ::odr::internal::RelPath &p) const {
+    const ::odr::internal::RelPath &p) const noexcept {
   return p.hash();
 }

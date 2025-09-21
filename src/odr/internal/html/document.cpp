@@ -6,7 +6,6 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/common/path.hpp>
@@ -27,10 +26,11 @@ namespace {
 void front(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
-  bool paged_content = ((document.document_type() == DocumentType::text) &&
-                        state.config().text_document_margin) ||
-                       document.document_type() == DocumentType::presentation ||
-                       document.document_type() == DocumentType::drawing;
+  const bool paged_content =
+      (document.document_type() == DocumentType::text &&
+       state.config().text_document_margin) ||
+      document.document_type() == DocumentType::presentation ||
+      document.document_type() == DocumentType::drawing;
 
   out.write_begin();
   out.write_header_begin();
@@ -47,8 +47,8 @@ void front(const Document &document, const WritingState &state) {
   auto odr_css_file = File(
       AbsPath(state.config().resource_path).join(RelPath("odr.css")).string());
   odr::HtmlResource odr_css_resource =
-      html::HtmlResource::create(HtmlResourceType::css, "text/css", "odr.css",
-                                 "odr.css", odr_css_file, true, false, true);
+      HtmlResource::create(HtmlResourceType::css, "text/css", "odr.css",
+                           "odr.css", odr_css_file, true, false, true);
   HtmlResourceLocation odr_css_location =
       state.config().resource_locator(odr_css_resource, state.config());
   state.resources().emplace_back(std::move(odr_css_resource), odr_css_location);
@@ -65,7 +65,7 @@ void front(const Document &document, const WritingState &state) {
         File(AbsPath(state.config().resource_path)
                  .join(RelPath("odr_spreadsheet.css"))
                  .string());
-    odr::HtmlResource odr_spreadsheet_css_resource = html::HtmlResource::create(
+    odr::HtmlResource odr_spreadsheet_css_resource = HtmlResource::create(
         HtmlResourceType::css, "text/css", "odr_spreadsheet.css",
         "odr_spreadsheet.css", odr_spreadsheet_css_file, true, false, true);
     HtmlResourceLocation odr_spreadsheet_css_location =
@@ -113,10 +113,11 @@ void front(const Document &document, const WritingState &state) {
 void back(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
-  bool paged_content = ((document.document_type() == DocumentType::text) &&
-                        state.config().text_document_margin) ||
-                       document.document_type() == DocumentType::presentation ||
-                       document.document_type() == DocumentType::drawing;
+  const bool paged_content =
+      (document.document_type() == DocumentType::text &&
+       state.config().text_document_margin) ||
+      document.document_type() == DocumentType::presentation ||
+      document.document_type() == DocumentType::drawing;
 
   if (paged_content) {
     out.write_element_end("div");
@@ -124,9 +125,9 @@ void back(const Document &document, const WritingState &state) {
 
   auto odr_js_file = File(
       AbsPath(state.config().resource_path).join(RelPath("odr.js")).string());
-  odr::HtmlResource odr_js_resource = html::HtmlResource::create(
-      HtmlResourceType::js, "text/javascript", "odr.js", "odr.js", odr_js_file,
-      true, false, true);
+  odr::HtmlResource odr_js_resource =
+      HtmlResource::create(HtmlResourceType::js, "text/javascript", "odr.js",
+                           "odr.js", odr_js_file, true, false, true);
   HtmlResourceLocation odr_js_location =
       state.config().resource_locator(odr_js_resource, state.config());
   state.resources().emplace_back(std::move(odr_js_resource), odr_js_location);
@@ -143,7 +144,7 @@ void back(const Document &document, const WritingState &state) {
 }
 
 std::string fill_path_variables(const std::string &path,
-                                std::optional<std::uint32_t> index = {}) {
+                                const std::optional<std::uint32_t> index = {}) {
   std::string result = path;
   util::string::replace_all(result, "{index}",
                             index ? std::to_string(*index) : "");
@@ -155,6 +156,8 @@ public:
   HtmlFragmentBase(std::string name, std::string path, Document document)
       : m_name{std::move(name)}, m_path{std::move(path)},
         m_document{std::move(document)} {}
+
+  virtual ~HtmlFragmentBase() = default;
 
   [[nodiscard]] const std::string &name() const { return m_name; }
   [[nodiscard]] const std::string &path() const { return m_path; }
@@ -180,7 +183,7 @@ public:
       : HtmlView(service, std::move(name), std::move(path)),
         m_fragment{std::move(fragment)} {}
 
-  HtmlResources write_html(html::HtmlWriter &out) const final {
+  HtmlResources write_html(HtmlWriter &out) const override {
     HtmlResources resources;
     WritingState state(out, service().config(), resources);
     m_fragment->write_document(out, state);
@@ -191,7 +194,7 @@ private:
   std::shared_ptr<HtmlFragmentBase> m_fragment;
 };
 
-class HtmlServiceImpl : public HtmlService {
+class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(Document document,
                   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments,
@@ -209,14 +212,9 @@ public:
     }
   }
 
-  const HtmlViews &list_views() const final { return m_views; }
+  const HtmlViews &list_views() const override { return m_views; }
 
-  [[nodiscard]] std::vector<std::shared_ptr<HtmlFragmentBase>>
-  fragments() const {
-    return m_fragments;
-  }
-
-  void warmup() const final {
+  void warmup() const override {
     std::lock_guard lock(m_mutex);
 
     if (m_warm) {
@@ -230,7 +228,7 @@ public:
     m_warm = true;
   }
 
-  bool exists(const std::string &path) const final {
+  bool exists(const std::string &path) const override {
     if (std::ranges::any_of(m_views, [&path](const auto &view) {
           return view.path() == path;
         })) {
@@ -249,7 +247,7 @@ public:
     return false;
   }
 
-  std::string mimetype(const std::string &path) const final {
+  std::string mimetype(const std::string &path) const override {
     if (std::ranges::any_of(m_views, [&path](const auto &view) {
           return view.path() == path;
         })) {
@@ -267,7 +265,7 @@ public:
     throw FileNotFound("Unknown path: " + path);
   }
 
-  void write(const std::string &path, std::ostream &out) const final {
+  void write(const std::string &path, std::ostream &out) const override {
     for (const auto &view : m_views) {
       if (view.path() == path) {
         HtmlWriter writer(out, config());
@@ -289,7 +287,7 @@ public:
   }
 
   HtmlResources write_html(const std::string &path,
-                           html::HtmlWriter &out) const final {
+                           HtmlWriter &out) const override {
     if (path == "document.html") {
       return write_document(out);
     }
@@ -335,9 +333,9 @@ public:
       : HtmlFragmentBase(std::move(name), std::move(path),
                          std::move(document)) {}
 
-  void write_fragment(HtmlWriter &out, WritingState &state) const final {
-    auto root = m_document.root_element();
-    auto element = root.as_text_root();
+  void write_fragment(HtmlWriter &out, WritingState &state) const override {
+    const Element root = m_document.root_element();
+    const TextRoot element = root.as_text_root();
 
     if (state.config().text_document_margin) {
       auto page_layout = element.page_layout();
@@ -367,12 +365,12 @@ public:
 class SlideHtmlFragment final : public HtmlFragmentBase {
 public:
   explicit SlideHtmlFragment(std::string name, std::string path,
-                             Document document, Slide slide)
+                             Document document, const Slide &slide)
       : HtmlFragmentBase(std::move(name), std::move(path), std::move(document)),
         m_slide{slide} {}
 
-  void write_fragment(HtmlWriter &, WritingState &state) const final {
-    html::translate_slide(m_slide, state);
+  void write_fragment(HtmlWriter &, WritingState &state) const override {
+    translate_slide(m_slide, state);
   }
 
 private:
@@ -382,11 +380,11 @@ private:
 class SheetHtmlFragment final : public HtmlFragmentBase {
 public:
   explicit SheetHtmlFragment(std::string name, std::string path,
-                             Document document, Sheet sheet)
+                             Document document, const Sheet &sheet)
       : HtmlFragmentBase(std::move(name), std::move(path), std::move(document)),
         m_sheet{sheet} {}
 
-  void write_fragment(HtmlWriter &, WritingState &state) const final {
+  void write_fragment(HtmlWriter &, WritingState &state) const override {
     translate_sheet(m_sheet, state);
   }
 
@@ -397,12 +395,12 @@ private:
 class PageHtmlFragment final : public HtmlFragmentBase {
 public:
   explicit PageHtmlFragment(std::string name, std::string path,
-                            Document document, Page page)
+                            Document document, const Page &page)
       : HtmlFragmentBase(std::move(name), std::move(path), std::move(document)),
         m_page{page} {}
 
-  void write_fragment(HtmlWriter &, WritingState &state) const final {
-    html::translate_page(m_page, state);
+  void write_fragment(HtmlWriter &, WritingState &state) const override {
+    translate_page(m_page, state);
   }
 
 private:

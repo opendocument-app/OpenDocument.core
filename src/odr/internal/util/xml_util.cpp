@@ -12,8 +12,7 @@ namespace odr::internal::util {
 
 pugi::xml_document xml::parse(const std::string &in) {
   pugi::xml_document result;
-  const auto success = result.load_string(in.c_str());
-  if (!success) {
+  if (const auto success = result.load_string(in.c_str()); !success) {
     throw NoXmlFile();
   }
   return result;
@@ -21,8 +20,7 @@ pugi::xml_document xml::parse(const std::string &in) {
 
 pugi::xml_document xml::parse(std::istream &in) {
   pugi::xml_document result;
-  const auto success = result.load(in);
-  if (!success) {
+  if (const auto success = result.load(in); !success) {
     throw NoXmlFile();
   }
   return result;
@@ -35,8 +33,7 @@ pugi::xml_document xml::parse(const abstract::ReadableFilesystem &filesystem,
   if (!file) {
     throw FileNotFound();
   }
-  const auto success = result.load(*file->stream());
-  if (!success) {
+  if (const auto success = result.load(*file->stream()); !success) {
     throw NoXmlFile();
   }
   return result;
@@ -46,9 +43,9 @@ xml::StringToken::StringToken(const Type type, std::string string)
     : type{type}, string{std::move(string)} {}
 
 std::vector<xml::StringToken> xml::tokenize_text(const std::string &text) {
-  std::vector<xml::StringToken> result;
+  std::vector<StringToken> result;
 
-  StringToken::Type token_type{StringToken::Type::none};
+  auto token_type{StringToken::Type::none};
   std::uint32_t token_start{0};
   auto close_token = [&](const std::uint32_t token_end,
                          const StringToken::Type new_token_type) {
@@ -66,9 +63,9 @@ std::vector<xml::StringToken> xml::tokenize_text(const std::string &text) {
   for (std::uint32_t i = 0; i < text.size(); ++i) {
     if (text[i] == '\t') {
       close_token(i, StringToken::Type::tabs);
-    } else if ((text[i] == ' ') &&
-               (((i > 0) && (text[i - 1] == ' ')) ||
-                ((i + 1 < text.size()) && (text[i + 1] == ' ')))) {
+    } else if (text[i] == ' ' &&
+               ((i > 0 && text[i - 1] == ' ') ||
+                (i + 1 < text.size() && text[i + 1] == ' '))) {
       close_token(i, StringToken::Type::spaces);
     } else {
       close_token(i, StringToken::Type::string);

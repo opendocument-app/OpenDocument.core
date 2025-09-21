@@ -8,9 +8,9 @@
 
 using namespace odr;
 
-int main(int argc, char **argv) {
-  std::string input{argv[1]};
-  std::string output{argv[2]};
+int main(const int argc, char **argv) {
+  const std::string input{argv[1]};
+  const std::string output{argv[2]};
 
   std::optional<std::string> password;
   if (argc >= 4) {
@@ -35,9 +35,9 @@ int main(int argc, char **argv) {
   HtmlConfig config;
   config.editable = true;
 
-  std::string output_tmp = output + "/tmp";
+  const std::string output_tmp = output + "/tmp";
   std::filesystem::create_directories(output_tmp);
-  HtmlService service = html::translate(decoded_file, output, config);
+  const HtmlService service = html::translate(decoded_file, output, config);
   Html html = service.bring_offline(output);
   std::filesystem::remove_all(output_tmp);
 

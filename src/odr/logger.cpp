@@ -13,21 +13,21 @@ namespace {
 
 class NullLogger final : public Logger {
 public:
-  [[nodiscard]] bool will_log(LogLevel) const final { return false; }
+  [[nodiscard]] bool will_log(LogLevel) const override { return false; }
 
   void log_impl(Time, LogLevel, const std::string &,
-                const std::source_location &) final {
+                const std::source_location &) override {
     // Do nothing
   }
 
-  void flush() final {
+  void flush() override {
     // Do nothing
   }
 };
 
 class StdioLogger final : public Logger {
 public:
-  StdioLogger(std::string name, LogLevel level, LogFormat format,
+  StdioLogger(std::string name, const LogLevel level, LogFormat format,
               std::unique_ptr<std::ostream> output)
       : m_name(std::move(name)), m_level(level), m_format(std::move(format)),
         m_output(std::move(output)) {
@@ -36,19 +36,20 @@ public:
     }
   }
 
-  ~StdioLogger() final { flush(); }
+  ~StdioLogger() override { flush(); }
 
-  [[nodiscard]] bool will_log(LogLevel level) const final {
+  [[nodiscard]] bool will_log(const LogLevel level) const override {
     return level >= m_level;
   }
 
-  void log_impl(Time time, LogLevel level, const std::string &message,
-                const std::source_location &location) final {
+  void log_impl(const Time time, const LogLevel level,
+                const std::string &message,
+                const std::source_location &location) override {
     print_head(*m_output, time, level, m_name, location, m_format);
     *m_output << message << "\n";
   }
 
-  void flush() final { m_output->flush(); }
+  void flush() override { m_output->flush(); }
 
 private:
   std::string m_name;
@@ -66,16 +67,17 @@ public:
     }
   }
 
-  ~TeeLogger() final { flush(); }
+  ~TeeLogger() override { flush(); }
 
-  [[nodiscard]] bool will_log(LogLevel level) const final {
+  [[nodiscard]] bool will_log(const LogLevel level) const override {
     return std::ranges::any_of(m_loggers, [level](const auto &logger) {
       return logger->will_log(level);
     });
   }
 
-  void log_impl(Time time, LogLevel level, const std::string &message,
-                const std::source_location &location) final {
+  void log_impl(const Time time, const LogLevel level,
+                const std::string &message,
+                const std::source_location &location) override {
     for (const auto &logger : m_loggers) {
       if (!logger->will_log(level)) {
         continue;
@@ -84,7 +86,7 @@ public:
     }
   }
 
-  void flush() final {
+  void flush() override {
     for (const auto &logger : m_loggers) {
       logger->flush();
     }
@@ -94,7 +96,7 @@ private:
   std::vector<std::shared_ptr<Logger>> m_loggers;
 };
 
-std::string_view level_to_string(LogLevel level) {
+std::string_view level_to_string(const LogLevel level) {
   switch (level) {
   case LogLevel::verbose:
     return "VERBOSE";

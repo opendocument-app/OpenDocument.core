@@ -3,7 +3,6 @@
 #include <odr/internal/odf/odf_manifest.hpp>
 #include <odr/internal/odf/odf_meta.hpp>
 
-#include <exception>
 #include <memory>
 #include <string>
 

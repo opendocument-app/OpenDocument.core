@@ -17,7 +17,7 @@ bool is_text_node(const pugi::xml_node node) {
     return true;
   }
 
-  std::string name = node.name();
+  const std::string name = node.name();
 
   if (name == "text:s") {
     return true;
@@ -35,16 +35,17 @@ bool is_text_node(const pugi::xml_node node) {
 
 namespace odr::internal {
 
-odf::Element *odf::parse_tree(Document &document, pugi::xml_node node) {
+odf::Element *odf::parse_tree(Document &document, const pugi::xml_node node) {
   auto [root, _] = parse_any_element_tree(document, node);
   return root;
 }
 
 void odf::parse_element_children(Document &document, Element *element,
-                                 pugi::xml_node node) {
+                                 const pugi::xml_node node) {
   for (auto child_node = node.first_child(); child_node;) {
-    auto [child, next_sibling] = parse_any_element_tree(document, child_node);
-    if (child == nullptr) {
+    if (auto [child, next_sibling] =
+            parse_any_element_tree(document, child_node);
+        child == nullptr) {
       child_node = child_node.next_sibling();
     } else {
       element->append_child_(child);
@@ -54,24 +55,24 @@ void odf::parse_element_children(Document &document, Element *element,
 }
 
 void odf::parse_element_children(Document &document, PresentationRoot *element,
-                                 pugi::xml_node node) {
-  for (auto child_node : node.children("draw:page")) {
+                                 const pugi::xml_node node) {
+  for (const pugi::xml_node child_node : node.children("draw:page")) {
     auto [child, _] = parse_element_tree<Slide>(document, child_node);
     element->append_child_(child);
   }
 }
 
 void odf::parse_element_children(Document &document, SpreadsheetRoot *element,
-                                 pugi::xml_node node) {
-  for (auto child_node : node.children("table:table")) {
+                                 const pugi::xml_node node) {
+  for (const pugi::xml_node child_node : node.children("table:table")) {
     auto [child, _] = parse_element_tree<Sheet>(document, child_node);
     element->append_child_(child);
   }
 }
 
 void odf::parse_element_children(Document &document, DrawingRoot *element,
-                                 pugi::xml_node node) {
-  for (auto child_node : node.children("draw:page")) {
+                                 const pugi::xml_node node) {
+  for (const pugi::xml_node child_node : node.children("draw:page")) {
     auto [child, _] = parse_element_tree<Page>(document, child_node);
     element->append_child_(child);
   }
@@ -79,16 +80,16 @@ void odf::parse_element_children(Document &document, DrawingRoot *element,
 
 template <>
 std::tuple<odf::Text *, pugi::xml_node>
-odf::parse_element_tree<odf::Text>(Document &document, pugi::xml_node first) {
-  if (!first) {
+odf::parse_element_tree<odf::Text>(Document &document, pugi::xml_node node) {
+  if (!node) {
     return std::make_tuple(nullptr, pugi::xml_node());
   }
 
-  pugi::xml_node last = first;
+  pugi::xml_node last = node;
   for (; is_text_node(last.next_sibling()); last = last.next_sibling()) {
   }
 
-  auto element_unique = std::make_unique<Text>(first, last);
+  auto element_unique = std::make_unique<Text>(node, last);
   auto element = element_unique.get();
   document.register_element_(std::move(element_unique));
 
@@ -118,7 +119,7 @@ odf::parse_element_tree<odf::Table>(Document &document, pugi::xml_node node) {
     }
   }
 
-  for (auto row_node : node.children("table:table-row")) {
+  for (const pugi::xml_node row_node : node.children("table:table-row")) {
     // TODO log warning if repeated
     auto [row, _] = parse_element_tree<TableRow>(document, row_node);
     table->append_row_(row);
@@ -130,7 +131,7 @@ odf::parse_element_tree<odf::Table>(Document &document, pugi::xml_node node) {
 template <>
 std::tuple<odf::TableRow *, pugi::xml_node>
 odf::parse_element_tree<odf::TableRow>(Document &document,
-                                       pugi::xml_node node) {
+                                       const pugi::xml_node node) {
   if (!node) {
     return std::make_tuple(nullptr, pugi::xml_node());
   }
@@ -139,7 +140,7 @@ odf::parse_element_tree<odf::TableRow>(Document &document,
   auto table_row = table_row_unique.get();
   document.register_element_(std::move(table_row_unique));
 
-  for (auto cell_node : node.children()) {
+  for (const pugi::xml_node cell_node : node.children()) {
     // TODO log warning if repeated
     auto [cell, _] = parse_any_element_tree(document, cell_node);
     table_row->append_child_(cell);
@@ -149,7 +150,7 @@ odf::parse_element_tree<odf::TableRow>(Document &document,
 }
 
 std::tuple<odf::Element *, pugi::xml_node>
-odf::parse_any_element_tree(Document &document, pugi::xml_node node) {
+odf::parse_any_element_tree(Document &document, const pugi::xml_node node) {
   using Parser = std::function<std::tuple<Element *, pugi::xml_node>(
       Document & document, pugi::xml_node node)>;
 
@@ -204,7 +205,7 @@ odf::parse_any_element_tree(Document &document, pugi::xml_node node) {
     return parse_element_tree<Text>(document, node);
   }
 
-  if (auto constructor_it = parser_table.find(node.name());
+  if (const auto constructor_it = parser_table.find(node.name());
       constructor_it != std::end(parser_table)) {
     return constructor_it->second(document, node);
   }

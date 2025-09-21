@@ -48,8 +48,9 @@ public:
 
   [[nodiscard]] virtual bool will_log(LogLevel level) const = 0;
 
-  inline void
-  log(LogLevel level, const std::string &message, Time time = Clock::now(),
+  void
+  log(const LogLevel level, const std::string &message,
+      Time time = Clock::now(),
       const std::source_location &location = std::source_location::current()) {
     if (will_log(level)) {
       log_impl(time, level, message, location);

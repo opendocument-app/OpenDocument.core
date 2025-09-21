@@ -26,9 +26,9 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
 
   FileMeta result;
 
-  for (auto &&t : types) {
-    if (storage.is_file(t.first)) {
-      result.type = t.second;
+  for (const auto &[path, type] : types) {
+    if (storage.is_file(path)) {
+      result.type = type;
       break;
     }
   }

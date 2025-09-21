@@ -11,7 +11,7 @@ namespace odr::internal {
 std::string svm::read_ascii_string(std::istream &in,
                                    const std::uint32_t length) {
   std::string result(length, ' ');
-  in.read(static_cast<char *>(result.data()), result.size());
+  in.read(result.data(), static_cast<std::streamsize>(result.size()));
   return result;
 }
 
@@ -114,7 +114,7 @@ svm::Header svm::read_header(std::istream &in) {
 
   result.vl = read_version_length(in);
 
-  std::size_t start = in.tellg();
+  const std::size_t start = in.tellg();
   read_primitive(in, result.compression_mode);
   result.map_mode = read_map_mode(in);
   result.size = read_int_pair(in);
@@ -124,10 +124,11 @@ svm::Header svm::read_header(std::istream &in) {
     read_primitive(in, result.render_graphic_replacements);
   }
 
-  const std::size_t left = result.vl.length - ((std::size_t)in.tellg() - start);
-  if (left > 0) {
+  if (const std::size_t left =
+          result.vl.length - (static_cast<std::size_t>(in.tellg()) - start);
+      left > 0) {
     // TODO log header skipping bytes
-    in.ignore(left);
+    in.ignore(static_cast<std::streamsize>(left));
   }
 
   return result;
@@ -159,12 +160,12 @@ svm::MapMode svm::read_map_mode(std::istream &in) {
 svm::LineInfo svm::read_line_info(std::istream &in) {
   LineInfo result;
 
-  VersionLength vl = read_version_length(in);
+  auto [version, length] = read_version_length(in);
 
   read_primitive(in, result.line_style);
   read_primitive(in, result.width);
 
-  if (vl.version >= 2) {
+  if (version >= 2) {
     read_primitive(in, result.dash_count);
     read_primitive(in, result.dash_length);
     read_primitive(in, result.dot_count);
@@ -172,11 +173,11 @@ svm::LineInfo svm::read_line_info(std::istream &in) {
     read_primitive(in, result.distance);
   }
 
-  if (vl.version >= 3) {
+  if (version >= 3) {
     read_primitive(in, result.line_join);
   }
 
-  if (vl.version >= 4) {
+  if (version >= 4) {
     // TODO log version 4 not implemented
   }
 

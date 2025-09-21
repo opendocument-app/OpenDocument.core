@@ -11,10 +11,9 @@
 namespace odr::internal::ooxml::spreadsheet {
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : TemplateDocument<Element>(FileType::office_open_xml_workbook,
-                                DocumentType::spreadsheet,
-                                std::move(filesystem)) {
-  AbsPath workbook_path("/xl/workbook.xml");
+    : TemplateDocument(FileType::office_open_xml_workbook,
+                       DocumentType::spreadsheet, std::move(filesystem)) {
+  const AbsPath workbook_path("/xl/workbook.xml");
   auto [workbook_xml, workbook_relations] = parse_xml_(workbook_path);
   auto [styles_xml, _] = parse_xml_(AbsPath("/xl/styles.xml"));
 
@@ -33,9 +32,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   }
 
   if (m_filesystem->exists(AbsPath("/xl/sharedStrings.xml"))) {
-    auto [shared_strings_xml, _] = parse_xml_(AbsPath("/xl/sharedStrings.xml"));
-
-    for (auto shared_string : shared_strings_xml.document_element()) {
+    for (auto [shared_strings_xml, _] =
+             parse_xml_(AbsPath("/xl/sharedStrings.xml"));
+         auto shared_string : shared_strings_xml.document_element()) {
       m_shared_strings.push_back(shared_string);
     }
   }
@@ -51,9 +50,9 @@ Document::parse_xml_(const AbsPath &path) {
   pugi::xml_document document = util::xml::parse(*m_filesystem, path);
   Relations relations = parse_relationships(*m_filesystem, path);
 
-  auto result = m_xml.emplace(
+  auto [it, _] = m_xml.emplace(
       path, std::make_pair(std::move(document), std::move(relations)));
-  return {result.first->second.first, result.first->second.second};
+  return {it->second.first, it->second.second};
 }
 
 bool Document::is_editable() const noexcept { return false; }
@@ -75,7 +74,7 @@ Document::get_xml(const Path &path) const {
   return m_xml.at(path);
 }
 
-pugi::xml_node Document::get_shared_string(std::size_t index) const {
+pugi::xml_node Document::get_shared_string(const std::size_t index) const {
   return m_shared_strings.at(index);
 }
 

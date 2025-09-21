@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -86,6 +85,10 @@ enum class ElementType {
   page,
 
   master_page,
+
+  sheet_column,
+  sheet_row,
+  sheet_cell,
 
   text,
   line_break,
@@ -321,6 +324,9 @@ public:
             internal::abstract::Sheet *sheet, std::uint32_t column,
             std::uint32_t row, internal::abstract::SheetCell *element);
 
+  [[nodiscard]] Sheet sheet() const;
+  [[nodiscard]] std::uint32_t column() const;
+  [[nodiscard]] std::uint32_t row() const;
   [[nodiscard]] bool is_covered() const;
   [[nodiscard]] TableDimensions span() const;
   [[nodiscard]] ValueType value_type() const;
@@ -530,7 +536,7 @@ public:
   using TypedElement::TypedElement;
 
   [[nodiscard]] bool is_internal() const;
-  [[nodiscard]] std::optional<odr::File> file() const;
+  [[nodiscard]] std::optional<File> file() const;
   [[nodiscard]] std::string href() const;
 };
 

@@ -10,17 +10,16 @@
 #include <odr/internal/zip/zip_archive.hpp>
 #include <odr/internal/zip/zip_file.hpp>
 
-#include <iostream>
 #include <stdexcept>
 
 namespace odr::internal {
 
 bool odf::can_decrypt(const Manifest::Entry &entry) noexcept {
   return (!entry.checksum.has_value() ||
-          (entry.checksum->type != ChecksumType::UNKNOWN)) &&
-         (entry.algorithm.type != AlgorithmType::UNKNOWN) &&
-         (entry.key_derivation.type != KeyDerivationType::UNKNOWN) &&
-         (entry.start_key_generation.type != ChecksumType::UNKNOWN);
+          entry.checksum->type != ChecksumType::UNKNOWN) &&
+         entry.algorithm.type != AlgorithmType::UNKNOWN &&
+         entry.key_derivation.type != KeyDerivationType::UNKNOWN &&
+         entry.start_key_generation.type != ChecksumType::UNKNOWN;
 }
 
 std::string odf::hash(const std::string &input,
@@ -90,7 +89,7 @@ std::string odf::derive_key(const Manifest::Entry &entry,
 std::string odf::derive_key_and_decrypt(const Manifest::Entry &entry,
                                         const std::string &start_key,
                                         const std::string &input) {
-  std::string derived_key = derive_key(entry, start_key);
+  const std::string derived_key = derive_key(entry, start_key);
   return decrypt(input, derived_key, entry.algorithm.initialisation_vector,
                  entry.algorithm.type);
 }
@@ -116,30 +115,30 @@ namespace odf {
 namespace {
 class DecryptedFilesystem final : public abstract::ReadableFilesystem {
 public:
-  DecryptedFilesystem(std::shared_ptr<abstract::ReadableFilesystem> parent,
+  DecryptedFilesystem(std::shared_ptr<ReadableFilesystem> parent,
                       Manifest manifest, std::string start_key)
       : m_parent(std::move(parent)), m_manifest(std::move(manifest)),
         m_start_key(std::move(start_key)) {}
 
-  [[nodiscard]] bool exists(const AbsPath &path) const final {
+  [[nodiscard]] bool exists(const AbsPath &path) const override {
     return m_parent->exists(path);
   }
 
-  [[nodiscard]] bool is_file(const AbsPath &path) const final {
+  [[nodiscard]] bool is_file(const AbsPath &path) const override {
     return m_parent->is_file(path);
   }
 
-  [[nodiscard]] bool is_directory(const AbsPath &path) const final {
+  [[nodiscard]] bool is_directory(const AbsPath &path) const override {
     return m_parent->is_directory(path);
   }
 
   [[nodiscard]] std::unique_ptr<abstract::FileWalker>
-  file_walker(const AbsPath &path) const final {
+  file_walker(const AbsPath &path) const override {
     return m_parent->file_walker(path);
   }
 
   [[nodiscard]] std::shared_ptr<abstract::File>
-  open(const AbsPath &path) const final {
+  open(const AbsPath &path) const override {
     const auto it = m_manifest.entries.find(path);
     if (it == std::end(m_manifest.entries)) {
       return m_parent->open(path);
@@ -148,7 +147,7 @@ public:
       throw UnsupportedCryptoAlgorithm();
     }
     // TODO stream
-    auto source = m_parent->open(path)->stream();
+    const auto source = m_parent->open(path)->stream();
     const std::string input = util::stream::read(*source);
     std::string result = crypto::util::inflate(
         derive_key_and_decrypt(it->second, m_start_key, input));
@@ -156,7 +155,7 @@ public:
   }
 
 private:
-  const std::shared_ptr<abstract::ReadableFilesystem> m_parent;
+  const std::shared_ptr<ReadableFilesystem> m_parent;
   const Manifest m_manifest;
   const std::string m_start_key;
 };
@@ -170,7 +169,7 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
     throw NotEncryptedError();
   }
 
-  if (auto it = manifest.entries.find(AbsPath("/encrypted-package"));
+  if (const auto it = manifest.entries.find(AbsPath("/encrypted-package"));
       it != std::end(manifest.entries)) {
     try {
       const std::string start_key = odf::start_key(it->second, password);
@@ -179,7 +178,7 @@ odf::decrypt(const std::shared_ptr<abstract::ReadableFilesystem> &filesystem,
       std::string decrypt = crypto::util::inflate(
           derive_key_and_decrypt(it->second, start_key, input));
 
-      auto memory_file = std::make_shared<MemoryFile>(std::move(decrypt));
+      const auto memory_file = std::make_shared<MemoryFile>(std::move(decrypt));
       return zip::ZipFile(memory_file).archive()->as_filesystem();
     } catch (...) {
       throw WrongPasswordError();

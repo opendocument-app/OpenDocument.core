@@ -10,11 +10,9 @@
 
 #include <optional>
 
-#include <pugixml.hpp>
-
 namespace odr::internal::ooxml::text {
 
-Element::Element(pugi::xml_node node) : m_node{node} {
+Element::Element(const pugi::xml_node node) : m_node{node} {
   if (!node) {
     // TODO log error
     throw std::runtime_error("node not set");
@@ -28,8 +26,7 @@ ResolvedStyle Element::partial_style(const abstract::Document *) const {
 ResolvedStyle
 Element::intermediate_style(const abstract::Document *document) const {
   ResolvedStyle base;
-  abstract::Element *parent = this->parent(document);
-  if (parent == nullptr) {
+  if (abstract::Element *parent = this->parent(document); parent == nullptr) {
     base = style_(document)->default_style()->resolved();
   } else {
     base = dynamic_cast<Element *>(parent)->intermediate_style(document);
@@ -87,9 +84,9 @@ TextStyle Span::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
 
-Text::Text(pugi::xml_node node) : Text(node, node) {}
+Text::Text(const pugi::xml_node node) : Text(node, node) {}
 
-Text::Text(pugi::xml_node first, pugi::xml_node last)
+Text::Text(const pugi::xml_node first, const pugi::xml_node last)
     : Element(first), m_last{last} {
   if (!last) {
     // TODO log error
@@ -111,14 +108,14 @@ void Text::set_content(const abstract::Document *, const std::string &text) {
   // <w:t xml:space="preserve">
   // use `xml:space`
 
-  auto parent = m_node.parent();
-  auto old_first = m_node;
-  auto old_last = m_last;
-  auto new_first = old_first;
-  auto new_last = m_last;
+  pugi::xml_node parent = m_node.parent();
+  const pugi::xml_node old_first = m_node;
+  const pugi::xml_node old_last = m_last;
+  pugi::xml_node new_first = old_first;
+  pugi::xml_node new_last = m_last;
 
   const auto insert_node = [&](const char *node) {
-    auto new_node = parent.insert_child_before(node, old_first);
+    const pugi::xml_node new_node = parent.insert_child_before(node, old_first);
     if (new_first == old_first) {
       new_first = new_node;
     }
@@ -154,8 +151,8 @@ void Text::set_content(const abstract::Document *, const std::string &text) {
   m_node = new_first;
   m_last = new_last;
 
-  for (auto node = old_first; node != old_last.next_sibling();) {
-    auto next = node.next_sibling();
+  for (pugi::xml_node node = old_first; node != old_last.next_sibling();) {
+    const pugi::xml_node next = node.next_sibling();
     parent.remove_child(node);
     node = next;
   }
@@ -166,7 +163,7 @@ TextStyle Text::style(const abstract::Document *document) const {
 }
 
 std::string Text::text_(const pugi::xml_node node) {
-  std::string name = node.name();
+  const std::string name = node.name();
 
   if (name == "w:t") {
     return node.text().get();
@@ -179,12 +176,13 @@ std::string Text::text_(const pugi::xml_node node) {
 }
 
 std::string Link::href(const abstract::Document *document) const {
-  if (auto anchor = m_node.attribute("w:anchor")) {
+  if (const pugi::xml_attribute anchor = m_node.attribute("w:anchor")) {
     return std::string("#") + anchor.value();
   }
-  if (auto ref = m_node.attribute("r:id")) {
+  if (const pugi::xml_attribute ref = m_node.attribute("r:id")) {
     auto relations = document_relations_(document);
-    if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
+    if (const auto rel = relations.find(ref.value());
+        rel != std::end(relations)) {
       return rel->second;
     }
   }
@@ -213,7 +211,8 @@ TableStyle Table::style(const abstract::Document *document) const {
 
 TableColumnStyle TableColumn::style(const abstract::Document *) const {
   TableColumnStyle result;
-  if (auto width = read_twips_attribute(m_node.attribute("w:w"))) {
+  if (const std::optional<Measure> width =
+          read_twips_attribute(m_node.attribute("w:w"))) {
     result.width = width;
   }
   return result;
@@ -254,7 +253,7 @@ std::optional<std::string> Frame::y(const abstract::Document *) const {
 
 std::optional<std::string>
 Frame::width(const abstract::Document *document) const {
-  if (auto width = read_emus_attribute(
+  if (const std::optional<Measure> width = read_emus_attribute(
           inner_node_(document).child("wp:extent").attribute("cx"))) {
     return width->to_string();
   }
@@ -263,7 +262,7 @@ Frame::width(const abstract::Document *document) const {
 
 std::optional<std::string>
 Frame::height(const abstract::Document *document) const {
-  if (auto height = read_emus_attribute(
+  if (const std::optional<Measure> height = read_emus_attribute(
           inner_node_(document).child("wp:extent").attribute("cy"))) {
     return height->to_string();
   }
@@ -277,17 +276,18 @@ std::optional<std::string> Frame::z_index(const abstract::Document *) const {
 GraphicStyle Frame::style(const abstract::Document *) const { return {}; }
 
 pugi::xml_node Frame::inner_node_(const abstract::Document *) const {
-  if (auto anchor = m_node.child("wp:anchor")) {
+  if (const pugi::xml_node anchor = m_node.child("wp:anchor")) {
     return anchor;
-  } else if (auto inline_node = m_node.child("wp:inline")) {
+  }
+  if (const pugi::xml_node inline_node = m_node.child("wp:inline")) {
     return inline_node;
   }
   return {};
 }
 
 bool Image::is_internal(const abstract::Document *document) const {
-  auto doc = document_(document);
-  if (!doc || !doc->as_filesystem()) {
+  const Document *doc = document_(document);
+  if (doc == nullptr || !doc->as_filesystem()) {
     return false;
   }
   try {
@@ -297,22 +297,23 @@ bool Image::is_internal(const abstract::Document *document) const {
   return false;
 }
 
-std::optional<odr::File> Image::file(const abstract::Document *document) const {
-  auto doc = document_(document);
-  if (!doc || !is_internal(document)) {
+std::optional<File> Image::file(const abstract::Document *document) const {
+  const Document *doc = document_(document);
+  if (doc == nullptr || !is_internal(document)) {
     return {};
   }
-  AbsPath path = Path(href(document)).make_absolute();
+  const AbsPath path = Path(href(document)).make_absolute();
   return File(doc->as_filesystem()->open(path));
 }
 
 std::string Image::href(const abstract::Document *document) const {
-  if (auto ref = m_node.child("pic:pic")
-                     .child("pic:blipFill")
-                     .child("a:blip")
-                     .attribute("r:embed")) {
+  if (const pugi::xml_attribute ref = m_node.child("pic:pic")
+                                          .child("pic:blipFill")
+                                          .child("a:blip")
+                                          .attribute("r:embed")) {
     auto relations = document_relations_(document);
-    if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
+    if (const auto rel = relations.find(ref.value());
+        rel != std::end(relations)) {
       return AbsPath("/word").join(RelPath(rel->second)).string();
     }
   }

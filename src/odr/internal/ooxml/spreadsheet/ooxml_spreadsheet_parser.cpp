@@ -9,7 +9,7 @@ namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
 
-template <typename element_t, typename... args_t>
+template <typename element_t>
 std::tuple<element_t *, pugi::xml_node>
 parse_element_tree(Document &document, pugi::xml_node node,
                    const Path &document_path,
@@ -26,7 +26,8 @@ parse_any_element_tree(Document &document, pugi::xml_node node,
                        const Relations &document_relations);
 
 void parse_element_children(Document &document, Element *element,
-                            pugi::xml_node node, const Path &document_path,
+                            const pugi::xml_node node,
+                            const Path &document_path,
                             const Relations &document_relations) {
   for (pugi::xml_node child_node = node.first_child(); child_node;) {
     auto [child, next_sibling] = parse_any_element_tree(
@@ -41,7 +42,8 @@ void parse_element_children(Document &document, Element *element,
 }
 
 void parse_element_children(Document &document, Root *element,
-                            pugi::xml_node node, const Path &document_path,
+                            const pugi::xml_node node,
+                            const Path &document_path,
                             const Relations &document_relations) {
   for (pugi::xml_node child_node : node.child("sheets").children("sheet")) {
     const char *id = child_node.attribute("r:id").value();
@@ -55,13 +57,14 @@ void parse_element_children(Document &document, Root *element,
 }
 
 void parse_element_children(Document &document, SheetCell *element,
-                            pugi::xml_node node, const Path &document_path,
+                            const pugi::xml_node node,
+                            const Path &document_path,
                             const Relations &document_relations) {
-  if (pugi::xml_attribute type_attr = node.attribute("t");
+  if (const pugi::xml_attribute type_attr = node.attribute("t");
       type_attr.value() == std::string("s")) {
-    pugi::xml_node v_node = node.child("v");
-    std::size_t ref = v_node.first_child().text().as_ullong();
-    pugi::xml_node shared_node = document.get_shared_string(ref);
+    const pugi::xml_node v_node = node.child("v");
+    const std::size_t ref = v_node.first_child().text().as_ullong();
+    const pugi::xml_node shared_node = document.get_shared_string(ref);
     parse_element_children(document, dynamic_cast<Element *>(element),
                            shared_node, document_path, document_relations);
     return;
@@ -72,9 +75,10 @@ void parse_element_children(Document &document, SheetCell *element,
 }
 
 void parse_element_children(Document &document, Frame *element,
-                            pugi::xml_node node, const Path &document_path,
+                            const pugi::xml_node node,
+                            const Path &document_path,
                             const Relations &document_relations) {
-  if (pugi::xml_node image_node =
+  if (const pugi::xml_node image_node =
           node.child("xdr:pic").child("xdr:blipFill").child("a:blip")) {
     auto [image, _] = parse_element_tree<ImageElement>(
         document, image_node, document_path, document_relations);
@@ -82,9 +86,9 @@ void parse_element_children(Document &document, Frame *element,
   }
 }
 
-template <typename element_t, typename... args_t>
+template <typename element_t>
 std::tuple<element_t *, pugi::xml_node>
-parse_element_tree(Document &document, pugi::xml_node node,
+parse_element_tree(Document &document, const pugi::xml_node node,
                    const Path &document_path,
                    const Relations &document_relations) {
   if (!node) {
@@ -116,18 +120,19 @@ parse_element_tree(Document &document, pugi::xml_node node,
   auto element = element_unique.get();
   document.register_element_(std::move(element_unique));
 
-  for (auto col_node : node.child("cols").children("col")) {
-    std::uint32_t min = col_node.attribute("min").as_uint() - 1;
-    std::uint32_t max = col_node.attribute("max").as_uint() - 1;
+  for (const pugi::xml_node col_node : node.child("cols").children("col")) {
+    const std::uint32_t min = col_node.attribute("min").as_uint() - 1;
+    const std::uint32_t max = col_node.attribute("max").as_uint() - 1;
     element->init_column_(min, max, col_node);
   }
 
-  for (auto row_node : node.child("sheetData").children("row")) {
-    std::uint32_t row = row_node.attribute("r").as_uint() - 1;
+  for (const pugi::xml_node row_node :
+       node.child("sheetData").children("row")) {
+    const std::uint32_t row = row_node.attribute("r").as_uint() - 1;
     element->init_row_(row, row_node);
 
-    for (auto cell_node : row_node.children("c")) {
-      auto position = TablePosition(cell_node.attribute("r").value());
+    for (const pugi::xml_node cell_node : row_node.children("c")) {
+      TablePosition position(cell_node.attribute("r").value());
       element->init_cell_(position.column(), position.row(), cell_node);
 
       auto [cell, _] = parse_element_tree<SheetCell>(
@@ -137,7 +142,7 @@ parse_element_tree(Document &document, pugi::xml_node node,
   }
 
   {
-    std::string dimension_ref =
+    const std::string dimension_ref =
         node.child("dimension").attribute("ref").value();
     TablePosition position_to;
     if (dimension_ref.find(':') == std::string::npos) {
@@ -149,13 +154,14 @@ parse_element_tree(Document &document, pugi::xml_node node,
         TableDimensions(position_to.row() + 1, position_to.column() + 1));
   }
 
-  if (pugi::xml_node drawing_node = node.child("drawing")) {
+  if (const pugi::xml_node drawing_node = node.child("drawing")) {
     const char *id = drawing_node.attribute("r:id").value();
-    Path drawing_path =
+    const Path drawing_path =
         document_path.parent().join(RelPath(document_relations.at(id)));
-    auto [drawing_xml, drawing_relations] = document.get_xml(drawing_path);
 
-    for (pugi::xml_node shape_node :
+    for (const auto [drawing_xml, drawing_relations] =
+             document.get_xml(drawing_path);
+         const pugi::xml_node shape_node :
          drawing_xml.document_element().children()) {
       auto [shape, _] = parse_any_element_tree(document, shape_node,
                                                drawing_path, drawing_relations);
@@ -173,7 +179,7 @@ bool is_text_node(const pugi::xml_node node) {
     return false;
   }
 
-  std::string name = node.name();
+  const std::string name = node.name();
 
   if (name == "w:t") {
     return true;
@@ -207,7 +213,7 @@ parse_element_tree<Text>(Document &document, pugi::xml_node first,
 }
 
 std::tuple<Element *, pugi::xml_node>
-parse_any_element_tree(Document &document, pugi::xml_node node,
+parse_any_element_tree(Document &document, const pugi::xml_node node,
                        const Path &document_path,
                        const Relations &document_relations) {
   using Parser = std::function<std::tuple<Element *, pugi::xml_node>(
@@ -223,7 +229,7 @@ parse_any_element_tree(Document &document, pugi::xml_node node,
       {"xdr:twoCellAnchor", parse_element_tree<Frame>},
   };
 
-  if (auto constructor_it = parser_table.find(node.name());
+  if (const auto constructor_it = parser_table.find(node.name());
       constructor_it != std::end(parser_table)) {
     return constructor_it->second(document, node, document_path,
                                   document_relations);
@@ -239,7 +245,7 @@ parse_any_element_tree(Document &document, pugi::xml_node node,
 namespace odr::internal::ooxml {
 
 spreadsheet::Element *
-spreadsheet::parse_tree(Document &document, pugi::xml_node node,
+spreadsheet::parse_tree(Document &document, const pugi::xml_node node,
                         const Path &document_path,
                         const Relations &document_relations) {
   auto [root_id, _] =

@@ -15,9 +15,8 @@
 namespace odr::internal::odf {
 
 Document::Document(const FileType file_type, const DocumentType document_type,
-                   std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : TemplateDocument<Element>(file_type, document_type,
-                                std::move(filesystem)) {
+                   std::shared_ptr<abstract::ReadableFilesystem> files)
+    : TemplateDocument(file_type, document_type, std::move(files)) {
   m_content_xml = util::xml::parse(*m_filesystem, AbsPath("/content.xml"));
 
   if (m_filesystem->exists(AbsPath("/styles.xml"))) {

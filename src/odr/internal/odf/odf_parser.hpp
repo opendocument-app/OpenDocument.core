@@ -6,8 +6,6 @@
 #include <utility>
 #include <vector>
 
-#include <pugixml.hpp>
-
 namespace odr::internal::odf {
 class Element;
 class PresentationRoot;
@@ -37,7 +35,7 @@ parse_element_tree(Document &document, pugi::xml_node node, args_t &&...args) {
 }
 template <>
 std::tuple<Text *, pugi::xml_node>
-parse_element_tree<Text>(Document &document, pugi::xml_node first);
+parse_element_tree<Text>(Document &document, pugi::xml_node node);
 template <>
 std::tuple<Table *, pugi::xml_node>
 parse_element_tree<Table>(Document &document, pugi::xml_node node);

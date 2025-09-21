@@ -16,8 +16,8 @@
 namespace odr::internal::ooxml::text {
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : TemplateDocument<Element>(FileType::office_open_xml_document,
-                                DocumentType::text, std::move(filesystem)) {
+    : TemplateDocument(FileType::office_open_xml_document, DocumentType::text,
+                       std::move(filesystem)) {
   m_document_xml =
       util::xml::parse(*m_filesystem, AbsPath("/word/document.xml"));
   m_styles_xml = util::xml::parse(*m_filesystem, AbsPath("/word/styles.xml"));

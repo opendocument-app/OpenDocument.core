@@ -135,7 +135,6 @@ private:
   [[nodiscard]] std::size_t
   get_fat_sector_location(std::size_t fat_sector_number) const;
 
-private:
   const std::uint8_t *m_buffer;
   std::size_t m_buffer_len;
 

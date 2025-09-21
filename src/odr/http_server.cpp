@@ -12,7 +12,7 @@ namespace odr {
 
 class HttpServer::Impl {
 public:
-  Impl(HttpServer::Config config, std::shared_ptr<Logger> logger)
+  Impl(Config config, std::shared_ptr<Logger> logger)
       : m_config{std::move(config)}, m_logger{std::move(logger)} {
     m_server.Get("/",
                  [](const httplib::Request & /*req*/, httplib::Response &res) {
@@ -29,7 +29,7 @@ public:
                  });
   }
 
-  const HttpServer::Config &config() const { return m_config; }
+  const Config &config() const { return m_config; }
 
   const std::shared_ptr<Logger> &logger() const { return m_logger; }
 
@@ -44,14 +44,14 @@ public:
       res.status = 404;
       return;
     }
-    Content content = it->second;
+    auto [_, service] = it->second;
     lock.unlock();
 
-    serve_file(res, content.service, path);
+    serve_file(res, service, path);
   }
 
   void serve_file(httplib::Response &res, const HtmlService &service,
-                  const std::string &path) {
+                  const std::string &path) const {
     if (!service.exists(path)) {
       ODR_ERROR(*m_logger, "File not found: " << path);
       res.status = 404;
@@ -61,7 +61,7 @@ public:
     ODR_VERBOSE(*m_logger, "Serving file: " << path);
 
     httplib::ContentProviderWithoutLength content_provider =
-        [service = service, path = path](std::size_t offset,
+        [service = service, path = path](const std::size_t offset,
                                          httplib::DataSink &sink) -> bool {
       if (offset != 0) {
         throw std::runtime_error("Invalid offset: " + std::to_string(offset) +
@@ -85,7 +85,7 @@ public:
     m_content.emplace(prefix, Content{prefix, std::move(service)});
   }
 
-  void listen(const std::string &host, std::uint32_t port) {
+  void listen(const std::string &host, const std::uint32_t port) {
     ODR_VERBOSE(*m_logger, "Listening on " << host << ":" << port);
 
     m_server.listen(host, static_cast<int>(port));
@@ -113,7 +113,7 @@ public:
   }
 
 private:
-  HttpServer::Config m_config;
+  Config m_config;
 
   std::shared_ptr<Logger> m_logger;
 
@@ -136,7 +136,7 @@ const HttpServer::Config &HttpServer::config() const {
 }
 
 void HttpServer::connect_service(HtmlService service,
-                                 const std::string &prefix) {
+                                 const std::string &prefix) const {
   static std::regex prefix_regex(prefix_pattern);
   if (!std::regex_match(prefix, prefix_regex)) {
     throw InvalidPrefix(prefix);
@@ -154,12 +154,13 @@ void HttpServer::connect_service(HtmlService service,
   m_impl->connect_service(std::move(service), prefix);
 }
 
-HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
-                                 const HtmlConfig &config) {
-  std::string cache_path = m_impl->config().cache_path + "/" + prefix;
+HtmlViews HttpServer::serve_file(const DecodedFile &file,
+                                 const std::string &prefix,
+                                 const HtmlConfig &config) const {
+  const std::string cache_path = m_impl->config().cache_path + "/" + prefix;
   std::filesystem::create_directories(cache_path);
 
-  HtmlService service =
+  const HtmlService service =
       html::translate(file, cache_path, config, m_impl->logger());
 
   connect_service(service, prefix);
@@ -167,12 +168,13 @@ HtmlViews HttpServer::serve_file(DecodedFile file, const std::string &prefix,
   return service.list_views();
 }
 
-void HttpServer::listen(const std::string &host, std::uint32_t port) {
+void HttpServer::listen(const std::string &host,
+                        const std::uint32_t port) const {
   m_impl->listen(host, port);
 }
 
-void HttpServer::clear() { m_impl->clear(); }
+void HttpServer::clear() const { m_impl->clear(); }
 
-void HttpServer::stop() { m_impl->stop(); }
+void HttpServer::stop() const { m_impl->stop(); }
 
 } // namespace odr

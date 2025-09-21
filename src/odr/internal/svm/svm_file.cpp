@@ -12,7 +12,7 @@ namespace odr::internal::svm {
 
 SvmFile::SvmFile(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {
-  auto in = m_file->stream();
+  const auto in = m_file->stream();
   read_header(*in);
   // TODO store header?
 }

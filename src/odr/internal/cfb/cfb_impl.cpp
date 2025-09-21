@@ -41,7 +41,7 @@ CompoundFileReader::CompoundFileReader(const void *buffer,
 
   m_sector_size = m_hdr->major_version == 3 ? 512 : 4096;
 
-  // The file must contains at least 3 sectors
+  // The file must contain at least 3 sectors
   if (m_buffer_len < m_sector_size * 3) {
     throw CfbFileCorrupted();
   }
@@ -54,7 +54,8 @@ CompoundFileReader::CompoundFileReader(const void *buffer,
   m_mini_stream_start_sector = root->start_sector_location;
 }
 
-const CompoundFileEntry *CompoundFileReader::get_entry(size_t entry_id) const {
+const CompoundFileEntry *
+CompoundFileReader::get_entry(const std::size_t entry_id) const {
   if (entry_id == 0xFFFFFFFF) {
     return nullptr;
   }
@@ -94,9 +95,9 @@ void CompoundFileReader::read_file(const CompoundFileEntry *entry,
 }
 
 void CompoundFileReader::enum_files(const CompoundFileEntry *entry,
-                                    int max_level,
+                                    const int max_level,
                                     const EnumFilesCallback &callback) const {
-  std::u16string dir;
+  const std::u16string dir;
   enum_nodes(get_entry(entry->child_id), 0, max_level, dir, callback);
 }
 
@@ -114,10 +115,10 @@ void CompoundFileReader::enum_nodes(const CompoundFileEntry *entry,
 
   callback(entry, dir, current_level + 1);
 
-  const CompoundFileEntry *child = get_entry(entry->child_id);
-  if (child != nullptr) {
+  if (const CompoundFileEntry *child = get_entry(entry->child_id);
+      child != nullptr) {
     std::u16string new_dir = dir;
-    if (dir.length() != 0) {
+    if (!dir.empty()) {
       new_dir.push_back('/');
     }
     new_dir.append(reinterpret_cast<const char16_t *>(entry->name),
@@ -141,7 +142,7 @@ void CompoundFileReader::read_stream(std::size_t sector, std::size_t offset,
   // -->   m_sectorSize  --> ... -->    remaining
   while (len > 0) {
     const std::uint8_t *src = sector_offset_to_address(sector, offset);
-    std::size_t copylen = std::min(len, m_sector_size - offset);
+    const std::size_t copylen = std::min(len, m_sector_size - offset);
     if (m_buffer + m_buffer_len < src + copylen) {
       throw CfbFileCorrupted();
     }
@@ -164,7 +165,7 @@ void CompoundFileReader::read_mini_stream(std::size_t sector,
   // -->   m_sectorSize  --> ... -->    remaining
   while (len > 0) {
     const std::uint8_t *src = mini_sector_offset_to_address(sector, offset);
-    std::size_t copylen = std::min(len, m_mini_sector_size - offset);
+    const std::size_t copylen = std::min(len, m_mini_sector_size - offset);
     if (m_buffer + m_buffer_len < src + copylen) {
       throw CfbFileCorrupted();
     }
@@ -177,16 +178,19 @@ void CompoundFileReader::read_mini_stream(std::size_t sector,
   }
 }
 
-std::size_t CompoundFileReader::get_next_sector(size_t sector) const {
+std::size_t
+CompoundFileReader::get_next_sector(const std::size_t sector) const {
   // lookup FAT
-  std::size_t entriesPerSector = m_sector_size / 4;
-  std::size_t fatSectorNumber = sector / entriesPerSector;
-  std::size_t fatSectorLocation = get_fat_sector_location(fatSectorNumber);
+  const std::size_t entriesPerSector = m_sector_size / 4;
+  const std::size_t fatSectorNumber = sector / entriesPerSector;
+  const std::size_t fatSectorLocation =
+      get_fat_sector_location(fatSectorNumber);
   return parse_uint32(sector_offset_to_address(fatSectorLocation,
                                                sector % entriesPerSector * 4));
 }
 
-std::size_t CompoundFileReader::get_next_mini_sector(size_t mini_sector) const {
+std::size_t
+CompoundFileReader::get_next_mini_sector(const std::size_t mini_sector) const {
   std::size_t sector, offset;
   locate_final_sector(m_hdr->first_mini_fat_sector_location, mini_sector * 4,
                       &sector, &offset);
@@ -194,8 +198,8 @@ std::size_t CompoundFileReader::get_next_mini_sector(size_t mini_sector) const {
 }
 
 const std::uint8_t *
-CompoundFileReader::sector_offset_to_address(size_t sector,
-                                             size_t offset) const {
+CompoundFileReader::sector_offset_to_address(const std::size_t sector,
+                                             const std::size_t offset) const {
   if (sector >= MAX_REG_SECT || offset >= m_sector_size ||
       m_buffer_len <= static_cast<std::uint64_t>(m_sector_size) * sector +
                           m_sector_size + offset) {
@@ -249,7 +253,7 @@ std::size_t CompoundFileReader::get_fat_sector_location(
   }
 
   fat_sector_number -= 109;
-  std::size_t entriesPerSector = m_sector_size / 4 - 1;
+  const std::size_t entriesPerSector = m_sector_size / 4 - 1;
   std::size_t difatSectorLocation = m_hdr->first_difat_sector_location;
   while (fat_sector_number >= entriesPerSector) {
     fat_sector_number -= entriesPerSector;
@@ -273,15 +277,18 @@ PropertySet::PropertySet(const void *buffer, const std::size_t len,
   }
 }
 
-const std::uint16_t *PropertySet::get_string_property(uint32_t property_id) {
+const std::uint16_t *
+PropertySet::get_string_property(const std::uint32_t property_id) {
   for (std::uint32_t i = 0; i < m_hdr->num_properties; i++) {
     if (m_hdr->property_identifier_and_offset[i].id == property_id) {
-      std::uint32_t offset = m_hdr->property_identifier_and_offset[i].offset;
+      const std::uint32_t offset =
+          m_hdr->property_identifier_and_offset[i].offset;
       if (m_buffer_len < offset + 8) {
         throw CfbFileCorrupted();
       }
-      std::uint32_t stringLengthInChar = parse_uint32(m_buffer + offset + 4);
-      if (m_buffer_len < offset + 8 + stringLengthInChar * 2) {
+      if (const std::uint32_t stringLengthInChar =
+              parse_uint32(m_buffer + offset + 4);
+          m_buffer_len < offset + 8 + stringLengthInChar * 2) {
         throw CfbFileCorrupted();
       }
       return reinterpret_cast<const std::uint16_t *>(m_buffer + offset + 8);
@@ -307,15 +314,15 @@ std::size_t PropertySetStream::get_property_set_count() {
   return m_hdr->num_property_sets;
 }
 
-PropertySet PropertySetStream::get_property_set(size_t index) {
+PropertySet PropertySetStream::get_property_set(const std::size_t index) {
   if (index >= get_property_set_count()) {
     throw CfbFileCorrupted();
   }
-  std::uint32_t offset = m_hdr->property_set_info[index].offset;
+  const std::uint32_t offset = m_hdr->property_set_info[index].offset;
   if (m_buffer_len < offset + 4) {
     throw CfbFileCorrupted();
   }
-  std::uint32_t size = parse_uint32(m_buffer + offset);
+  const std::uint32_t size = parse_uint32(m_buffer + offset);
   if (m_buffer_len < offset + size) {
     throw CfbFileCorrupted();
   }

@@ -3,6 +3,7 @@
 #include <odr/internal/cfb/cfb_archive.hpp>
 #include <odr/internal/cfb/cfb_file.hpp>
 #include <odr/internal/cfb/cfb_util.hpp>
+#include <odr/internal/common/file.hpp>
 
 #include <test_util.hpp>
 

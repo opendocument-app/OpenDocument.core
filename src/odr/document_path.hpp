@@ -28,17 +28,17 @@ public:
     [[nodiscard]] std::string to_string() const noexcept;
   };
 
-  struct Child final : public ComponentTemplate<Child> {
+  struct Child final : ComponentTemplate<Child> {
     static constexpr std::string_view prefix = "child";
     using ComponentTemplate::ComponentTemplate;
   };
 
-  struct Column final : public ComponentTemplate<Column> {
+  struct Column final : ComponentTemplate<Column> {
     static constexpr std::string_view prefix = "column";
     using ComponentTemplate::ComponentTemplate;
   };
 
-  struct Row final : public ComponentTemplate<Row> {
+  struct Row final : ComponentTemplate<Row> {
     static constexpr std::string_view prefix = "row";
     using ComponentTemplate::ComponentTemplate;
   };

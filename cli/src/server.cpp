@@ -8,7 +8,7 @@
 
 using namespace odr;
 
-int main(int argc, char **argv) {
+int main(const int argc, char **argv) {
   auto logger = Logger::create_stdio("odr-server", LogLevel::verbose);
 
   std::string input{argv[1]};

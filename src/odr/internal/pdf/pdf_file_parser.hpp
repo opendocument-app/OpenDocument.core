@@ -17,19 +17,19 @@ class FileParser {
 public:
   explicit FileParser(std::istream &);
 
-  std::istream &in() const;
-  std::streambuf &sb() const;
-  const ObjectParser &parser() const;
+  [[nodiscard]] std::istream &in() const;
+  [[nodiscard]] std::streambuf &sb() const;
+  [[nodiscard]] const ObjectParser &parser() const;
 
-  IndirectObject read_indirect_object() const;
-  Trailer read_trailer() const;
-  Xref read_xref() const;
-  StartXref read_start_xref() const;
+  [[nodiscard]] IndirectObject read_indirect_object() const;
+  [[nodiscard]] Trailer read_trailer() const;
+  [[nodiscard]] Xref read_xref() const;
+  [[nodiscard]] StartXref read_start_xref() const;
 
-  std::string read_stream(std::int32_t size) const;
+  [[nodiscard]] std::string read_stream(std::int32_t size) const;
 
   void read_header() const;
-  Entry read_entry() const;
+  [[nodiscard]] Entry read_entry() const;
 
   void seek_start_xref(std::uint32_t margin = 64) const;
 

@@ -22,13 +22,13 @@ public:
   explicit ZipFile(const std::shared_ptr<MemoryFile> &file);
   explicit ZipFile(const std::shared_ptr<DiskFile> &file);
 
-  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept final;
+  [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
-  [[nodiscard]] FileType file_type() const noexcept final;
-  [[nodiscard]] FileMeta file_meta() const noexcept final;
-  [[nodiscard]] DecoderEngine decoder_engine() const noexcept final;
+  [[nodiscard]] FileType file_type() const noexcept override;
+  [[nodiscard]] FileMeta file_meta() const noexcept override;
+  [[nodiscard]] DecoderEngine decoder_engine() const noexcept override;
 
-  [[nodiscard]] std::shared_ptr<abstract::Archive> archive() const final;
+  [[nodiscard]] std::shared_ptr<abstract::Archive> archive() const override;
 
 private:
   std::shared_ptr<util::Archive> m_zip;

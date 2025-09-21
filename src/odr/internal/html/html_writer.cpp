@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cstring>
-#include <iostream>
 #include <stdexcept>
 
 namespace odr::internal::html {
@@ -84,13 +83,13 @@ void write_element_options(std::ostream &out,
 
 } // namespace
 
-HtmlElementOptions &HtmlElementOptions::set_inline(bool _inline_element) {
+HtmlElementOptions &HtmlElementOptions::set_inline(const bool _inline_element) {
   inline_element = _inline_element;
   return *this;
 }
 
 HtmlElementOptions &
-HtmlElementOptions::set_close_type(HtmlCloseType _close_type) {
+HtmlElementOptions::set_close_type(const HtmlCloseType _close_type) {
   close_type = _close_type;
   return *this;
 }
@@ -119,8 +118,9 @@ HtmlElementOptions::set_extra(std::optional<HtmlWritable> _extra) {
   return *this;
 }
 
-HtmlWriter::HtmlWriter(std::ostream &out, bool format, std::uint8_t indent,
-                       std::uint32_t current_indent)
+HtmlWriter::HtmlWriter(std::ostream &out, const bool format,
+                       const std::uint8_t indent,
+                       const std::uint32_t current_indent)
     : m_out{&out}, m_format{format}, m_indent(indent, ' '),
       m_current_indent{current_indent} {}
 
@@ -299,7 +299,7 @@ void HtmlWriter::write_new_line() {
   }
 }
 
-void HtmlWriter::write_raw(const HtmlWritable &writable, bool new_line) {
+void HtmlWriter::write_raw(const HtmlWritable &writable, const bool new_line) {
   if (new_line) {
     write_new_line();
   }

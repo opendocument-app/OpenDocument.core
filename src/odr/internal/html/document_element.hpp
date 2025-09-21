@@ -13,14 +13,15 @@ namespace odr::internal::html {
 struct WritingState;
 class HtmlWriter;
 
-void translate_children(ElementRange range, const WritingState &state);
+void translate_children(const ElementRange &range, const WritingState &state);
 void translate_element(Element element, const WritingState &state);
 
-void translate_slide(Slide slide, const WritingState &state);
-void translate_sheet(Sheet sheet, const WritingState &state);
-void translate_page(Page page, const WritingState &state);
+void translate_slide(const Slide &slide, const WritingState &state);
+void translate_sheet(const Sheet &sheet, const WritingState &state);
+void translate_page(const Page &page, const WritingState &state);
 
-void translate_master_page(MasterPage masterPage, const WritingState &state);
+void translate_master_page(const MasterPage &masterPage,
+                           const WritingState &state);
 
 void translate_text(Element element, const WritingState &state);
 void translate_line_break(Element element, const WritingState &state);

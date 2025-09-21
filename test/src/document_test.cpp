@@ -13,18 +13,18 @@ using namespace odr;
 using namespace odr::test;
 
 TEST(Document, odt) {
-  auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  DocumentFile document_file(
+  const DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"), *logger);
 
   EXPECT_EQ(document_file.file_type(), FileType::opendocument_text);
 
-  Document document = document_file.document();
+  const Document document = document_file.document();
 
   EXPECT_EQ(document.document_type(), DocumentType::text);
 
-  auto page_layout = document.root_element().as_text_root().page_layout();
+  const auto page_layout = document.root_element().as_text_root().page_layout();
   EXPECT_TRUE(page_layout.width);
   EXPECT_EQ(Measure("8.2673in"), page_layout.width);
   EXPECT_TRUE(page_layout.height);
@@ -57,35 +57,35 @@ TEST(Document, odg) {
 }
 
 TEST(Document, edit_odt) {
-  auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  DocumentFile document_file(
+  const DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"), *logger);
-  Document document = document_file.document();
+  const Document document = document_file.document();
 
-  std::function<void(Element)> edit = [&](Element element) {
-    for (Element child : element.children()) {
+  std::function<void(Element)> edit = [&](const Element element) {
+    for (const Element child : element.children()) {
       edit(child);
     }
     // TODO make editing empty text possible
-    if (auto text = element.as_text(); text && !text.content().empty()) {
+    if (const auto text = element.as_text(); text && !text.content().empty()) {
       text.set_content("hello world!");
     }
   };
   edit(document.root_element());
 
-  std::string output_path =
+  const std::string output_path =
       (std::filesystem::current_path() / "about_edit.odt").string();
   document.save(output_path);
 
-  DocumentFile validate_file(output_path);
-  Document validate_document = validate_file.document();
-  std::function<void(Element)> validate = [&](Element element) {
-    for (Element child : element.children()) {
+  const DocumentFile validate_file(output_path);
+  const Document validate_document = validate_file.document();
+  std::function<void(Element)> validate = [&](const Element element) {
+    for (const Element child : element.children()) {
       validate(child);
     }
     // TODO make editing empty text possible
-    if (auto text = element.as_text(); text && !text.content().empty()) {
+    if (const auto text = element.as_text(); text && !text.content().empty()) {
       EXPECT_EQ("hello world!", text.content());
     }
   };
@@ -93,36 +93,36 @@ TEST(Document, edit_odt) {
 }
 
 TEST(Document, edit_docx) {
-  auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  DocumentFile document_file(
+  const DocumentFile document_file(
       TestData::test_file_path("odr-public/docx/style-various-1.docx"),
       *logger);
-  Document document = document_file.document();
+  const Document document = document_file.document();
 
-  std::function<void(Element)> edit = [&](Element element) {
-    for (Element child : element.children()) {
+  std::function<void(Element)> edit = [&](const Element element) {
+    for (const Element child : element.children()) {
       edit(child);
     }
     // TODO make editing empty text possible
-    if (auto text = element.as_text(); text && !text.content().empty()) {
+    if (const auto text = element.as_text(); text && !text.content().empty()) {
       text.set_content("hello world!");
     }
   };
   edit(document.root_element());
 
-  std::string output_path =
+  const std::string output_path =
       (std::filesystem::current_path() / "style-various-1_edit.docx").string();
   document.save(output_path);
 
-  DocumentFile validate_file(output_path);
-  Document validate_document = validate_file.document();
-  std::function<void(Element)> validate = [&](Element element) {
-    for (Element child : element.children()) {
+  const DocumentFile validate_file(output_path);
+  const Document validate_document = validate_file.document();
+  std::function<void(Element)> validate = [&](const Element element) {
+    for (const Element child : element.children()) {
       validate(child);
     }
     // TODO make editing empty text possible
-    if (auto text = element.as_text(); text && !text.content().empty()) {
+    if (const auto text = element.as_text(); text && !text.content().empty()) {
       EXPECT_EQ("hello world!", text.content());
     }
   };
@@ -130,23 +130,23 @@ TEST(Document, edit_docx) {
 }
 
 TEST(Document, edit_odt_diff) {
-  auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  auto diff =
+  const auto diff =
       R"({"modifiedText":{"/child:16/child:0":"Outasdfsdafdline","/child:24/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0":"Text hello world!"}})";
-  DocumentFile document_file(
+  const DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/style-various-1.odt"), *logger);
-  Document document = document_file.document();
+  const Document document = document_file.document();
 
   html::edit(document, diff);
 
-  std::string output_path =
+  const std::string output_path =
       (std::filesystem::current_path() / "style-various-1_edit_diff.odt")
           .string();
   document.save(output_path);
 
-  DocumentFile validate_file(output_path);
-  Document validate_document = validate_file.document();
+  const DocumentFile validate_file(output_path);
+  const Document validate_document = validate_file.document();
   EXPECT_EQ("Outasdfsdafdline",
             DocumentPath::find(validate_document.root_element(),
                                DocumentPath("/child:16/child:0"))
@@ -222,24 +222,24 @@ TEST(Document, edit_odt_diff) {
 // }
 
 TEST(Document, edit_docx_diff) {
-  auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  auto diff =
+  const auto diff =
       R"({"modifiedText":{"/child:16/child:0/child:0":"Outasdfsdafdline","/child:24/child:0/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0/child:0":"Text hello world!"}})";
-  DocumentFile document_file(
+  const DocumentFile document_file(
       TestData::test_file_path("odr-public/docx/style-various-1.docx"),
       *logger);
-  Document document = document_file.document();
+  const Document document = document_file.document();
 
   html::edit(document, diff);
 
-  std::string output_path =
+  const std::string output_path =
       (std::filesystem::current_path() / "style-various-1_edit_diff.docx")
           .string();
   document.save(output_path);
 
-  DocumentFile validate_file(output_path);
-  Document validate_document = validate_file.document();
+  const DocumentFile validate_file(output_path);
+  const Document validate_document = validate_file.document();
   EXPECT_EQ("Outasdfsdafdline",
             DocumentPath::find(validate_document.root_element(),
                                DocumentPath("/child:16/child:0/child:0"))

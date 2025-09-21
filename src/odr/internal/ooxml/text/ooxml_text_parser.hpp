@@ -1,9 +1,5 @@
 #pragma once
 
-#include <memory>
-#include <utility>
-#include <vector>
-
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::text {

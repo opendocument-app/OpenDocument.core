@@ -3,9 +3,7 @@
 #include <odr/internal/abstract/archive.hpp>
 #include <odr/internal/common/path.hpp>
 
-#include <cstdint>
 #include <iosfwd>
-#include <iterator>
 #include <memory>
 #include <vector>
 
@@ -29,9 +27,9 @@ public:
   explicit ZipArchive(const std::shared_ptr<util::Archive> &archive);
 
   [[nodiscard]] std::shared_ptr<abstract::Filesystem>
-  as_filesystem() const final;
+  as_filesystem() const override;
 
-  void save(std::ostream &out) const final;
+  void save(std::ostream &out) const override;
 
   class Entry;
 

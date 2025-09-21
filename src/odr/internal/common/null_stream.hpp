@@ -1,12 +1,13 @@
 #pragma once
 
 #include <ostream>
+#include <streambuf>
 
 namespace odr::internal {
 
 class NullBuffer final : public std::streambuf {
 public:
-  int overflow(int c) final { return c; }
+  int overflow(const int c) override { return c; }
 };
 
 class NullStream final : public std::ostream {

@@ -36,9 +36,9 @@ std::unique_ptr<std::istream> DiskFile::stream() const {
 
 MemoryFile::MemoryFile(std::string data) : m_data{std::move(data)} {}
 
-MemoryFile::MemoryFile(const abstract::File &file) : m_data(file.size(), ' ') {
-  auto istream = file.stream();
-  auto size = (std::int64_t)file.size();
+MemoryFile::MemoryFile(const File &file) : m_data(file.size(), ' ') {
+  const auto istream = file.stream();
+  const auto size = static_cast<std::int64_t>(file.size());
   istream->read(m_data.data(), size);
   if (istream->gcount() != size) {
     throw FileReadError();

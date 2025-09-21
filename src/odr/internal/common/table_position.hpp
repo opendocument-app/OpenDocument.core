@@ -34,5 +34,5 @@ private:
 } // namespace odr::internal
 
 template <> struct std::hash<odr::internal::TablePosition> {
-  std::size_t operator()(const odr::internal::TablePosition &k) const;
+  std::size_t operator()(const odr::internal::TablePosition &k) const noexcept;
 };

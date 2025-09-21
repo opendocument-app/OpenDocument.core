@@ -1,7 +1,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <cctype>
+#include <cstdint>
 #include <iomanip>
 #include <locale>
 #include <sstream>
@@ -15,20 +15,20 @@ bool string::starts_with(const std::string &string, const std::string &with) {
 }
 
 bool string::ends_with(const std::string &string, const std::string &with) {
-  return (string.length() >= with.length()) &&
-         (string.compare(string.length() - with.length(), with.length(),
-                         with) == 0);
+  return string.length() >= with.length() &&
+         string.compare(string.length() - with.length(), with.length(), with) ==
+             0;
 }
 
 void string::ltrim(std::string &s) {
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+  s.erase(s.begin(), std::ranges::find_if(s, [](const std::uint8_t ch) {
             return !std::isspace(ch);
           }));
 }
 
 void string::rtrim(std::string &s) {
   s.erase(std::find_if(s.rbegin(), s.rend(),
-                       [](unsigned char ch) { return !std::isspace(ch); })
+                       [](const std::uint8_t ch) { return !std::isspace(ch); })
               .base(),
           s.end());
 }
@@ -81,7 +81,7 @@ std::u16string string::string_to_u16string(const std::string &string) {
 }
 
 std::string string::c16str_to_string(const char16_t *c16str,
-                                     std::size_t length) {
+                                     const std::size_t length) {
   return u16string_to_string(std::u16string(c16str, length / 2));
 }
 

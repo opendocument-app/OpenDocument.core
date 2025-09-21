@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -31,9 +30,9 @@ public:
   [[nodiscard]] bool is_file() const;
   [[nodiscard]] bool is_directory() const;
 
-  void pop();
-  void next();
-  void flat_next();
+  void pop() const;
+  void next() const;
+  void flat_next() const;
 
 private:
   std::unique_ptr<internal::abstract::FileWalker> m_impl;

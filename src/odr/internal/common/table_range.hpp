@@ -11,8 +11,6 @@ class TableRange final {
 public:
   TableRange() noexcept;
   TableRange(const TablePosition &from, const TablePosition &to) noexcept;
-  TableRange(const TablePosition &from, std::uint32_t rows,
-             std::uint32_t cols) noexcept;
   explicit TableRange(const std::string &);
 
   [[nodiscard]] const TablePosition &from() const noexcept;

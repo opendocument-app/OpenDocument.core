@@ -5,13 +5,11 @@
 
 namespace odr::internal::pdf {
 
-CMap::CMap() = default;
-
-void CMap::map_bfchar(char glyph, char16_t unicode) {
+void CMap::map_bfchar(const char glyph, const char16_t unicode) {
   m_bfchar[glyph] = unicode;
 }
 
-char16_t CMap::translate_glyph(char glyph) const {
+char16_t CMap::translate_glyph(const char glyph) const {
   return util::map::lookup_default(m_bfchar, glyph, glyph);
 }
 

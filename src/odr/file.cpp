@@ -23,9 +23,9 @@ DocumentMeta::DocumentMeta(const DocumentType document_type,
 FileMeta::FileMeta() = default;
 
 FileMeta::FileMeta(const FileType type, const bool password_encrypted,
-                   std::optional<DocumentMeta> document_meta)
+                   const std::optional<DocumentMeta> document_meta)
     : type{type}, password_encrypted{password_encrypted},
-      document_meta{std::move(document_meta)} {}
+      document_meta{document_meta} {}
 
 File::File() = default;
 
@@ -40,7 +40,7 @@ FileLocation File::location() const noexcept { return m_impl->location(); }
 std::size_t File::size() const { return m_impl->size(); }
 
 std::optional<std::string> File::disk_path() const {
-  if (auto path = m_impl->disk_path()) {
+  if (const std::optional<internal::AbsPath> path = m_impl->disk_path()) {
     return path->string();
   }
   return {};
@@ -66,7 +66,8 @@ std::vector<FileType> DecodedFile::list_file_types(const std::string &path,
       std::make_shared<internal::DiskFile>(path), logger);
 }
 
-std::vector<DecoderEngine> DecodedFile::list_decoder_engines(FileType as) {
+std::vector<DecoderEngine>
+DecodedFile::list_decoder_engines(const FileType as) {
   return internal::open_strategy::list_decoder_engines(as);
 }
 
@@ -80,7 +81,7 @@ DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
 DecodedFile::DecodedFile(const File &file, Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(file.impl(), logger)) {}
 
-DecodedFile::DecodedFile(const File &file, FileType as, Logger &logger)
+DecodedFile::DecodedFile(const File &file, const FileType as, Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(file.impl(), as, logger)) {
 }
 
@@ -88,7 +89,8 @@ DecodedFile::DecodedFile(const std::string &path, Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(
           std::make_shared<internal::DiskFile>(path), logger)) {}
 
-DecodedFile::DecodedFile(const std::string &path, FileType as, Logger &logger)
+DecodedFile::DecodedFile(const std::string &path, const FileType as,
+                         Logger &logger)
     : DecodedFile(internal::open_strategy::open_file(
           std::make_shared<internal::DiskFile>(path), as, logger)) {}
 
@@ -149,7 +151,7 @@ bool DecodedFile::is_pdf_file() const {
 }
 
 TextFile DecodedFile::as_text_file() const {
-  if (auto text_file =
+  if (const auto text_file =
           std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl)) {
     return TextFile(text_file);
   }
@@ -157,7 +159,7 @@ TextFile DecodedFile::as_text_file() const {
 }
 
 ImageFile DecodedFile::as_image_file() const {
-  if (auto image_file =
+  if (const auto image_file =
           std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl)) {
     return ImageFile(image_file);
   }
@@ -165,7 +167,7 @@ ImageFile DecodedFile::as_image_file() const {
 }
 
 ArchiveFile DecodedFile::as_archive_file() const {
-  if (auto archive_file =
+  if (const auto archive_file =
           std::dynamic_pointer_cast<internal::abstract::ArchiveFile>(m_impl)) {
     return ArchiveFile(archive_file);
   }
@@ -173,7 +175,7 @@ ArchiveFile DecodedFile::as_archive_file() const {
 }
 
 DocumentFile DecodedFile::as_document_file() const {
-  if (auto document_file =
+  if (const auto document_file =
           std::dynamic_pointer_cast<internal::abstract::DocumentFile>(m_impl)) {
     return DocumentFile(document_file);
   }
@@ -181,7 +183,7 @@ DocumentFile DecodedFile::as_document_file() const {
 }
 
 PdfFile DecodedFile::as_pdf_file() const {
-  if (auto pdf_file =
+  if (const auto pdf_file =
           std::dynamic_pointer_cast<internal::abstract::PdfFile>(m_impl)) {
     return PdfFile(pdf_file);
   }

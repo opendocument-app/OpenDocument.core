@@ -34,7 +34,7 @@ TEST(ZipArchive, open_odt) {
 }
 
 TEST(ZipArchive, open) {
-  util::Archive zip(std::make_shared<DiskFile>(
+  const util::Archive zip(std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/odt/style-various-1.odt")));
 
   EXPECT_EQ(19, std::vector(zip.begin(), zip.end()).size());

@@ -21,9 +21,9 @@ int main(int, char **argv) {
     return 1;
   }
 
-  Document document = document_file.document();
+  const Document document = document_file.document();
 
-  const std::string diff = odr::internal::util::file::read(diff_path);
+  const std::string diff = internal::util::file::read(diff_path);
   html::edit(document, diff.c_str());
 
   document.save(output);

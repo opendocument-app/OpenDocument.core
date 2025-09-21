@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -63,31 +62,31 @@ public:
   explicit ECMA376Standard(const std::string &encryption_info);
 
   [[nodiscard]] std::string
-  derive_key(const std::string &password) const noexcept final;
-  [[nodiscard]] bool verify(const std::string &key) const noexcept final;
+  derive_key(const std::string &password) const noexcept override;
+  [[nodiscard]] bool verify(const std::string &key) const noexcept override;
   [[nodiscard]] std::string
   decrypt(const std::string &encrypted_package,
-          const std::string &key) const noexcept final;
+          const std::string &key) const noexcept override;
 
 private:
   static constexpr auto ITER_COUNT = 50000;
 
-  EncryptionHeader m_encryption_header;
-  EncryptionVerifier m_encryption_verifier;
+  EncryptionHeader m_encryption_header{};
+  EncryptionVerifier m_encryption_verifier{};
   std::string m_encrypted_verifier_hash;
 };
 
 class Util final : public Algorithm {
 public:
   explicit Util(const std::string &encryption_info);
-  ~Util() noexcept final;
+  ~Util() noexcept override;
 
   [[nodiscard]] std::string
-  derive_key(const std::string &password) const noexcept final;
-  [[nodiscard]] bool verify(const std::string &key) const noexcept final;
+  derive_key(const std::string &password) const noexcept override;
+  [[nodiscard]] bool verify(const std::string &key) const noexcept override;
   [[nodiscard]] std::string
   decrypt(const std::string &encrypted_package,
-          const std::string &key) const noexcept final;
+          const std::string &key) const noexcept override;
 
 private:
   std::unique_ptr<Algorithm> impl;
