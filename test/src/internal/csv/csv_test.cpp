@@ -10,17 +10,17 @@ using namespace odr::test;
 TEST(Csv, guess_format) {
   const auto path =
       TestData::test_file_path("odr-public/csv/file_example_ODS_5000.csv");
-  const auto format = csv::guess_format(path);
+  const auto [delim, header_row] = csv::guess_format(path);
 
-  EXPECT_EQ(0, format.header_row);
-  EXPECT_EQ(',', format.delim);
+  EXPECT_EQ(0, header_row);
+  EXPECT_EQ(',', delim);
 }
 
 TEST(Csv, CSVReader_csv) {
   const auto path =
       TestData::test_file_path("odr-public/csv/file_example_ODS_5000.csv");
 
-  csv::CSVReader reader(path);
+  const csv::CSVReader reader(path);
   const auto format = reader.get_format();
 
   EXPECT_EQ(0, format.get_header());
@@ -34,7 +34,7 @@ TEST(Csv, CSVReader_txt) {
 
   const auto path = TestData::test_file_path("odr-public/txt/lorem ipsum.txt");
 
-  csv::CSVReader reader(path);
+  const csv::CSVReader reader(path);
   const auto format = reader.get_format();
 
   EXPECT_EQ(1, format.get_header());

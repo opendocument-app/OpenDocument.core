@@ -22,14 +22,14 @@ namespace {
 TestFile get_test_file(const std::string &root_path,
                        std::string absolute_path) {
   const FileType type =
-      odr::file_type_by_file_extension(Path(absolute_path).extension());
+      file_type_by_file_extension(Path(absolute_path).extension());
 
   std::string short_path = absolute_path.substr(root_path.size() + 1);
 
   std::optional<std::string> password;
   const std::string filename = fs::path(absolute_path).filename().string();
   if (const auto left = filename.find('$'), right = filename.rfind('$');
-      (left != std::string::npos) && (left != right)) {
+      left != std::string::npos && left != right) {
     password = filename.substr(left, right);
   }
 
@@ -53,7 +53,7 @@ std::vector<TestFile> get_test_files(const std::string &root_path,
     for (const auto &row : csv::CSVReader(index_path)) {
       std::string absolute_path = input_path + "/" + row["path"].get<>();
       std::string short_path = absolute_path.substr(root_path.size() + 1);
-      FileType type = odr::file_type_by_file_extension(row["type"].get<>());
+      FileType type = file_type_by_file_extension(row["type"].get<>());
       std::optional<std::string> password = row["encrypted"].get<>() == "yes"
                                                 ? row["password"].get<>()
                                                 : std::optional<std::string>();
@@ -77,9 +77,8 @@ std::vector<TestFile> get_test_files(const std::string &root_path,
     if (p.path().filename().string().starts_with(".")) {
       continue;
     }
-    if (const auto it = std::find_if(
-            std::begin(result), std::end(result),
-            [&](auto &&file) { return file.absolute_path == path; });
+    if (const auto it = std::ranges::find_if(
+            result, [&](auto &&file) { return file.absolute_path == path; });
         it != std::end(result)) {
       continue;
     }
@@ -98,17 +97,15 @@ std::vector<TestFile> get_test_files(const std::string &root_path,
 std::vector<TestFile> get_test_files() {
   std::vector<TestFile> result;
 
-  std::string root = TestData::data_input_directory();
-
-  for (const auto &e : fs::directory_iterator(root)) {
+  for (const std::string root = TestData::data_input_directory();
+       const auto &e : fs::directory_iterator(root)) {
     const auto files = get_test_files(root, e.path().string());
     result.insert(std::end(result), std::begin(files), std::end(files));
   }
 
-  std::sort(std::begin(result), std::end(result),
-            [](const auto &lhs, const auto &rhs) {
-              return lhs.short_path < rhs.short_path;
-            });
+  std::ranges::sort(result, [](const auto &lhs, const auto &rhs) {
+    return lhs.short_path < rhs.short_path;
+  });
 
   return result;
 }
@@ -122,7 +119,7 @@ TestFile::TestFile(std::string absolute_path, std::string short_path,
       password{std::move(password)} {}
 
 std::string TestData::data_input_directory() {
-  return Path(TestData::data_directory()).join(RelPath("input")).string();
+  return Path(data_directory()).join(RelPath("input")).string();
 }
 
 TestData &TestData::instance_() {
@@ -134,16 +131,14 @@ std::vector<TestFile> TestData::test_files() {
   return instance_().m_test_files;
 }
 
-std::vector<TestFile> TestData::test_files(FileType fileType) {
+std::vector<TestFile> TestData::test_files(const FileType fileType) {
   return instance_().test_files_(fileType);
 }
 
 TestFile TestData::test_file(const std::string &short_path) {
   const auto &files = instance_().m_test_files;
-  const auto it =
-      std::find_if(std::begin(files), std::end(files), [&](const auto &file) {
-        return file.short_path == short_path;
-      });
+  const auto it = std::ranges::find_if(
+      files, [&](const auto &file) { return file.short_path == short_path; });
   if (it == std::end(files)) {
     throw std::runtime_error("Test file not found: " + short_path);
   }

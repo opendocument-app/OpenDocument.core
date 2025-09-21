@@ -5,6 +5,6 @@
 using namespace odr;
 
 TEST(Quantity, construct) {
-  Quantity<double> a{"10ms"};
-  Quantity<double> b{"10 ms"};
+  Quantity<double>{"10ms"};
+  Quantity<double>{"10 ms"};
 }

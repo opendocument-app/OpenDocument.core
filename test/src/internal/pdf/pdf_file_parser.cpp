@@ -6,6 +6,7 @@
 #include <test_util.hpp>
 
 #include <memory>
+#include <ranges>
 
 #include <gtest/gtest.h>
 
@@ -14,11 +15,11 @@ using namespace odr::internal::pdf;
 using namespace odr::test;
 
 TEST(FileParser, foo) {
-  auto file = std::make_shared<DiskFile>(
+  const auto file = std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
-  auto in = file->stream();
-  FileParser parser(*in);
+  const auto in = file->stream();
+  const FileParser parser(*in);
 
   parser.read_header();
   while (true) {
@@ -28,9 +29,9 @@ TEST(FileParser, foo) {
       break;
     }
     if (entry.is_trailer()) {
-      const Trailer &trailer = entry.as_trailer();
+      const auto &[size, dictionary] = entry.as_trailer();
 
-      for (const auto &[key, value] : trailer.dictionary) {
+      for (const auto &key : dictionary | std::views::keys) {
         std::cout << key << std::endl;
       }
     }
@@ -50,7 +51,7 @@ TEST(FileParser, foo) {
       if (object.object.is_dictionary()) {
         const auto &dictionary = object.object.as_dictionary();
         std::cout << "dictionary size " << dictionary.size() << std::endl;
-        for (const auto &[key, value] : dictionary) {
+        for (const auto &key : dictionary | std::views::keys) {
           std::cout << key << std::endl;
         }
       }
@@ -76,16 +77,16 @@ TEST(FileParser, foo) {
 }
 
 TEST(FileParser, bar) {
-  auto file = std::make_shared<DiskFile>(
+  const auto file = std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
-  auto in = file->stream();
-  FileParser parser(*in);
+  const auto in = file->stream();
+  const FileParser parser(*in);
 
   parser.read_header();
   parser.seek_start_xref();
-  StartXref startxref = parser.read_start_xref();
-  parser.in().seekg(startxref.start);
+  auto [start] = parser.read_start_xref();
+  parser.in().seekg(start);
 
   Dictionary trailer;
   Xref xref;
@@ -105,22 +106,22 @@ TEST(FileParser, bar) {
   }
 
   std::cout << "xref" << std::endl;
-  for (const auto &entry : xref.table) {
-    std::cout << entry.first << " " << entry.second.position << " "
-              << entry.second.in_use << std::endl;
+  for (const auto &[ref, entry] : xref.table) {
+    std::cout << ref << " " << entry.position << " " << entry.in_use
+              << std::endl;
   }
 
   std::cout << "trailer" << std::endl;
-  for (const auto &[key, value] : trailer) {
+  for (const auto &key : trailer | std::views::keys) {
     std::cout << key << std::endl;
   }
 
-  ObjectReference root_ref = trailer["Root"].as_reference();
-  std::uint32_t root_pos = xref.table.at(root_ref).position;
+  const ObjectReference root_ref = trailer["Root"].as_reference();
+  const std::uint32_t root_pos = xref.table.at(root_ref).position;
   parser.in().seekg(root_pos);
   IndirectObject root = parser.read_indirect_object();
   std::cout << "root" << std::endl;
-  ObjectReference root_pages_ref =
+  const ObjectReference root_pages_ref =
       root.object.as_dictionary()["Pages"].as_reference();
   std::cout << root_pages_ref.id << " " << root_pages_ref.gen << std::endl;
 }

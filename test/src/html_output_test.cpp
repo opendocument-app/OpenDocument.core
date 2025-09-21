@@ -46,10 +46,10 @@ struct TestParams {
   std::string output_path_prefix;
 };
 
-using HtmlOutputTests = ::testing::TestWithParam<TestParams>;
+using HtmlOutputTests = testing::TestWithParam<TestParams>;
 
 TEST_P(HtmlOutputTests, html_meta) {
-  auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const TestParams &params = GetParam();
   const TestFile &test_file = params.test_file;
@@ -66,25 +66,24 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   // these files cannot be opened
   if (util::string::ends_with(test_file.short_path, ".sxw") ||
-      (test_file.type == FileType::legacy_powerpoint_presentation) ||
-      (test_file.type == FileType::legacy_excel_worksheets) ||
-      (test_file.type == FileType::word_perfect) ||
-      (test_file.type == FileType::starview_metafile)) {
+      test_file.type == FileType::legacy_powerpoint_presentation ||
+      test_file.type == FileType::legacy_excel_worksheets ||
+      test_file.type == FileType::word_perfect ||
+      test_file.type == FileType::starview_metafile) {
     GTEST_SKIP();
   }
 
   // TODO fix pdf implementation
-  if ((engine == DecoderEngine::odr) &&
-      (test_file.type == FileType::portable_document_format) &&
-      (test_repo != "odr-public")) {
+  if (engine == DecoderEngine::odr &&
+      test_file.type == FileType::portable_document_format &&
+      test_repo != "odr-public") {
     GTEST_SKIP();
   }
 
   DecodePreference decode_preference;
   decode_preference.as_file_type = test_file.type;
   decode_preference.with_engine = engine;
-  DecodedFile file =
-      odr::open(test_file.absolute_path, decode_preference, *logger);
+  DecodedFile file = open(test_file.absolute_path, decode_preference, *logger);
 
   FileMeta file_meta = file.file_meta();
 
@@ -100,8 +99,7 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   {
     const std::string meta_output = output_path + "/meta.json";
-    const nlohmann::json json =
-        odr::internal::util::meta::meta_to_json(file_meta);
+    const nlohmann::json json = util::meta::meta_to_json(file_meta);
     std::ofstream o(meta_output);
     o << std::setw(4) << json << std::endl;
     EXPECT_TRUE(fs::is_regular_file(meta_output));
@@ -109,21 +107,21 @@ TEST_P(HtmlOutputTests, html_meta) {
   }
 
   // encrypted ooxml type cannot be inspected
-  if ((file.file_type() != FileType::office_open_xml_encrypted)) {
+  if (file.file_type() != FileType::office_open_xml_encrypted) {
     EXPECT_EQ(test_file.type, file.file_type());
   }
 
   // TODO enable zip, csv, json
-  if ((test_file.type == FileType::zip) ||
-      (test_file.type == FileType::comma_separated_values) ||
-      (test_file.type == FileType::javascript_object_notation)) {
+  if (test_file.type == FileType::zip ||
+      test_file.type == FileType::comma_separated_values ||
+      test_file.type == FileType::javascript_object_notation) {
     GTEST_SKIP();
   }
 
   // TODO wvware decryption
   if (test_file.password.has_value() &&
-      (test_file.type == FileType::legacy_word_document) &&
-      (engine == DecoderEngine::wvware)) {
+      test_file.type == FileType::legacy_word_document &&
+      engine == DecoderEngine::wvware) {
     GTEST_SKIP();
   }
 
@@ -145,8 +143,7 @@ TEST_P(HtmlOutputTests, html_meta) {
 
     {
       const std::string meta_output = output_path + "/meta-decrypted.json";
-      const nlohmann::json json =
-          odr::internal::util::meta::meta_to_json(file_meta);
+      const nlohmann::json json = util::meta::meta_to_json(file_meta);
       std::ofstream o(meta_output);
       o << std::setw(4) << json << std::endl;
       EXPECT_TRUE(fs::is_regular_file(meta_output));
@@ -178,7 +175,7 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   std::string output_path_tmp = output_path + "/tmp";
   std::filesystem::create_directories(output_path_tmp);
-  HtmlService service = odr::html::translate(file, output_path_tmp, config);
+  HtmlService service = html::translate(file, output_path_tmp, config);
   Html html = service.bring_offline(output_path);
   std::filesystem::remove_all(output_path_tmp);
 
@@ -191,19 +188,18 @@ TEST_P(HtmlOutputTests, html_meta) {
 namespace {
 
 std::string engine_suffix(const DecoderEngine engine) {
-  return engine == DecoderEngine::odr
-             ? ""
-             : "-" + odr::decoder_engine_to_string(engine);
+  return engine == DecoderEngine::odr ? ""
+                                      : "-" + decoder_engine_to_string(engine);
 }
 
 std::string test_params_to_name(const TestParams &params) {
   std::string path = params.path + engine_suffix(params.engine);
-  internal::util::string::replace_all(path, "/", "_");
-  internal::util::string::replace_all(path, "-", "_");
-  internal::util::string::replace_all(path, "+", "_");
-  internal::util::string::replace_all(path, ".", "_");
-  internal::util::string::replace_all(path, " ", "_");
-  internal::util::string::replace_all(path, "$", "");
+  util::string::replace_all(path, "/", "_");
+  util::string::replace_all(path, "-", "_");
+  util::string::replace_all(path, "+", "_");
+  util::string::replace_all(path, ".", "_");
+  util::string::replace_all(path, " ", "_");
+  util::string::replace_all(path, "$", "");
   return path;
 }
 
@@ -237,7 +233,7 @@ TestParams create_test_params(const TestFile &test_file,
 std::vector<TestParams> list_test_params() {
   std::vector<TestParams> params;
   for (const TestFile &test_file : TestData::test_files()) {
-    std::vector<DecoderEngine> engines = {DecoderEngine::odr};
+    std::vector engines = {DecoderEngine::odr};
     if (test_file.type == FileType::portable_document_format) {
       engines.push_back(DecoderEngine::poppler);
     }
