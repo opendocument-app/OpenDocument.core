@@ -350,6 +350,13 @@ void html::edit(const Document &document, const char *diff,
   for (const auto &[key, value] : json["modifiedText"].items()) {
     auto element =
         DocumentPath::find(document.root_element(), DocumentPath(key));
+    if (!element) {
+      throw std::invalid_argument("element with path " + key + " not found");
+    }
+    if (!element.as_text()) {
+      throw std::invalid_argument("element with path " + key +
+                                  " is not a text element");
+    }
     element.as_text().set_content(value);
   }
 }
