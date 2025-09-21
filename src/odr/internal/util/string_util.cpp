@@ -1,6 +1,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <cstdint>
 #include <iomanip>
 #include <locale>
 #include <sstream>
