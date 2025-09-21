@@ -2,7 +2,6 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
-#include <odr/html.hpp>
 
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/project_info.hpp>
@@ -29,51 +28,73 @@ odr::FileType
 odr::file_type_by_file_extension(const std::string &extension) noexcept {
   if (extension == "zip") {
     return FileType::zip;
-  } else if (extension == "cfb") {
+  }
+  if (extension == "cfb") {
     return FileType::compound_file_binary_format;
-  } else if (extension == "odt" || extension == "fodt" || extension == "ott" ||
-             extension == "odm") {
+  }
+  if (extension == "odt" || extension == "fodt" || extension == "ott" ||
+      extension == "odm") {
     return FileType::opendocument_text;
-  } else if (extension == "odp" || extension == "fodp" || extension == "otp") {
+  }
+  if (extension == "odp" || extension == "fodp" || extension == "otp") {
     return FileType::opendocument_presentation;
-  } else if (extension == "ods" || extension == "fods" || extension == "ots") {
+  }
+  if (extension == "ods" || extension == "fods" || extension == "ots") {
     return FileType::opendocument_spreadsheet;
-  } else if (extension == "odg" || extension == "fodg" || extension == "otg") {
+  }
+  if (extension == "odg" || extension == "fodg" || extension == "otg") {
     return FileType::opendocument_graphics;
-  } else if (extension == "docx") {
+  }
+  if (extension == "docx") {
     return FileType::office_open_xml_document;
-  } else if (extension == "pptx") {
+  }
+  if (extension == "pptx") {
     return FileType::office_open_xml_presentation;
-  } else if (extension == "xlsx") {
+  }
+  if (extension == "xlsx") {
     return FileType::office_open_xml_workbook;
-  } else if (extension == "doc") {
+  }
+  if (extension == "doc") {
     return FileType::legacy_word_document;
-  } else if (extension == "ppt") {
+  }
+  if (extension == "ppt") {
     return FileType::legacy_powerpoint_presentation;
-  } else if (extension == "xls") {
+  }
+  if (extension == "xls") {
     return FileType::legacy_excel_worksheets;
-  } else if (extension == "wpd") {
+  }
+  if (extension == "wpd") {
     return FileType::word_perfect;
-  } else if (extension == "rtf") {
+  }
+  if (extension == "rtf") {
     return FileType::rich_text_format;
-  } else if (extension == "pdf") {
+  }
+  if (extension == "pdf") {
     return FileType::portable_document_format;
-  } else if (extension == "png") {
+  }
+  if (extension == "png") {
     return FileType::portable_network_graphics;
-  } else if (extension == "gif") {
+  }
+  if (extension == "gif") {
     return FileType::graphics_interchange_format;
-  } else if (extension == "jpg" || extension == "jpeg" || extension == "jpe" ||
-             extension == "jif" || extension == "jfif" || extension == "jfi") {
+  }
+  if (extension == "jpg" || extension == "jpeg" || extension == "jpe" ||
+      extension == "jif" || extension == "jfif" || extension == "jfi") {
     return FileType::jpeg;
-  } else if (extension == "bmp" || extension == "dib") {
+  }
+  if (extension == "bmp" || extension == "dib") {
     return FileType::bitmap_image_file;
-  } else if (extension == "svm") {
+  }
+  if (extension == "svm") {
     return FileType::starview_metafile;
-  } else if (extension == "txt") {
+  }
+  if (extension == "txt") {
     return FileType::text_file;
-  } else if (extension == "csv") {
+  }
+  if (extension == "csv") {
     return FileType::comma_separated_values;
-  } else if (extension == "json") {
+  }
+  if (extension == "json") {
     return FileType::javascript_object_notation;
   }
   return FileType::unknown;
@@ -197,7 +218,7 @@ std::string odr::file_type_to_string(const FileType type) noexcept {
   }
 }
 
-std::string odr::file_category_to_string(FileCategory type) noexcept {
+std::string odr::file_category_to_string(const FileCategory type) noexcept {
   switch (type) {
   case FileCategory::unknown:
     return "unknown";
@@ -234,20 +255,24 @@ std::string odr::document_type_to_string(const DocumentType type) noexcept {
 std::string odr::decoder_engine_to_string(const DecoderEngine engine) {
   if (engine == DecoderEngine::odr) {
     return "odr";
-  } else if (engine == DecoderEngine::poppler) {
+  }
+  if (engine == DecoderEngine::poppler) {
     return "poppler";
-  } else if (engine == DecoderEngine::wvware) {
+  }
+  if (engine == DecoderEngine::wvware) {
     return "wvware";
   }
   throw UnknownDecoderEngine();
 }
 
-odr::DecoderEngine odr::decoder_engine_by_name(const std::string &name) {
-  if (name == "odr") {
+odr::DecoderEngine odr::decoder_engine_by_name(const std::string &engine) {
+  if (engine == "odr") {
     return DecoderEngine::odr;
-  } else if (name == "poppler") {
+  }
+  if (engine == "poppler") {
     return DecoderEngine::poppler;
-  } else if (name == "wvware") {
+  }
+  if (engine == "wvware") {
     return DecoderEngine::wvware;
   }
   throw UnknownDecoderEngine();
@@ -268,10 +293,10 @@ odr::DecodedFile odr::open(const std::string &path, Logger &logger) {
 
 odr::DecodedFile odr::open(const std::string &path, const FileType as,
                            Logger &logger) {
-  return DecodedFile(path, as, logger);
+  return {path, as, logger};
 }
 
 odr::DecodedFile odr::open(const std::string &path,
                            const DecodePreference &preference, Logger &logger) {
-  return DecodedFile(path, preference, logger);
+  return {path, preference, logger};
 }

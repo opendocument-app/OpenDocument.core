@@ -1,11 +1,8 @@
 #pragma once
 
-#include <odr/file.hpp>
-
 #include <odr/internal/abstract/file.hpp>
 
 #include <chrono>
-#include <cstdint>
 #include <istream>
 #include <memory>
 #include <mutex>
@@ -50,7 +47,7 @@ public:
   public:
     Entry(const Entry &) = default;
     Entry(Entry &&) noexcept = default;
-    Entry(const Archive &archive, std::uint32_t index)
+    Entry(const Archive &archive, const std::uint32_t index)
         : m_archive{&archive}, m_index{index} {}
     ~Entry() = default;
     Entry &operator=(const Entry &) = default;
@@ -81,7 +78,8 @@ public:
     using pointer = const Entry *;
     using reference = const Entry &;
 
-    Iterator(const Archive &zip, std::uint32_t index) : m_entry{zip, index} {}
+    Iterator(const Archive &zip, const std::uint32_t index)
+        : m_entry{zip, index} {}
 
     [[nodiscard]] reference operator*() const { return m_entry; }
     [[nodiscard]] pointer operator->() const { return &m_entry; }
@@ -95,8 +93,8 @@ public:
       return *this;
     }
     Iterator operator++(int) {
-      Iterator tmp = *this;
-      ++(*this);
+      const Iterator tmp = *this;
+      ++*this;
       return tmp;
     }
 

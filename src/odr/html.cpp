@@ -24,7 +24,6 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 
 #include <nlohmann/json.hpp>
 
@@ -41,11 +40,10 @@ void bring_offline(const HtmlResources &resources,
         resource.is_external() || !resource.is_accessible()) {
       continue;
     }
-    auto path = odr::internal::Path(output_path)
-                    .join(odr::internal::RelPath(*location));
+    auto path = Path(output_path).join(RelPath(*location));
 
     std::filesystem::create_directories(path.parent().path());
-    std::ofstream ostream = internal::util::file::create(path.string());
+    std::ofstream ostream = util::file::create(path.string());
     resource.write_resource(ostream);
   }
 }
@@ -76,7 +74,7 @@ HtmlPage::HtmlPage(std::string name, std::string path)
 
 HtmlService::HtmlService() = default;
 
-HtmlService::HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl)
+HtmlService::HtmlService(std::shared_ptr<abstract::HtmlService> impl)
     : m_impl{std::move(impl)} {}
 
 const HtmlConfig &HtmlService::config() const { return m_impl->config(); }
@@ -116,11 +114,10 @@ Html HtmlService::bring_offline(const std::string &output_path,
   HtmlResources resources;
 
   for (const auto &view : views) {
-    auto path = odr::internal::Path(output_path)
-                    .join(odr::internal::RelPath(view.path()));
+    auto path = Path(output_path).join(RelPath(view.path()));
 
     std::filesystem::create_directories(path.parent().path());
-    std::ofstream ostream = internal::util::file::create(path.string());
+    std::ofstream ostream = util::file::create(path.string());
     HtmlResources view_resources = view.write_html(ostream);
 
     resources.insert(resources.end(), view_resources.begin(),
@@ -130,10 +127,10 @@ Html HtmlService::bring_offline(const std::string &output_path,
   }
 
   {
-    auto it = std::unique(resources.begin(), resources.end(),
-                          [](const auto &lhs, const auto &rhs) {
-                            return lhs.first.path() == rhs.first.path();
-                          });
+    const auto it =
+        std::ranges::unique(resources, [](const auto &lhs, const auto &rhs) {
+          return lhs.first.path() == rhs.first.path();
+        }).begin();
     resources.erase(it, resources.end());
   }
 
@@ -142,14 +139,13 @@ Html HtmlService::bring_offline(const std::string &output_path,
   return {config(), std::move(pages)};
 }
 
-const std::shared_ptr<internal::abstract::HtmlService> &
-HtmlService::impl() const {
+const std::shared_ptr<abstract::HtmlService> &HtmlService::impl() const {
   return m_impl;
 }
 
 HtmlView::HtmlView() = default;
 
-HtmlView::HtmlView(std::shared_ptr<internal::abstract::HtmlView> impl)
+HtmlView::HtmlView(std::shared_ptr<abstract::HtmlView> impl)
     : m_impl{std::move(impl)} {}
 
 const std::string &HtmlView::name() const { return m_impl->name(); }
@@ -166,12 +162,11 @@ HtmlResources HtmlView::write_html(std::ostream &out) const {
 Html HtmlView::bring_offline(const std::string &output_path) const {
   HtmlResources resources;
 
-  auto path = odr::internal::Path(output_path)
-                  .join(odr::internal::RelPath(this->path()));
+  const auto path = Path(output_path).join(RelPath(this->path()));
 
   {
     std::filesystem::create_directories(path.parent().path());
-    std::ofstream ostream = internal::util::file::create(path.string());
+    std::ofstream ostream = util::file::create(path.string());
     resources = write_html(ostream);
   }
 
@@ -180,14 +175,13 @@ Html HtmlView::bring_offline(const std::string &output_path) const {
   return {config(), {{name(), path.string()}}};
 }
 
-const std::shared_ptr<internal::abstract::HtmlView> &HtmlView::impl() const {
+const std::shared_ptr<abstract::HtmlView> &HtmlView::impl() const {
   return m_impl;
 }
 
 HtmlResource::HtmlResource() = default;
 
-HtmlResource::HtmlResource(
-    std::shared_ptr<internal::abstract::HtmlResource> impl)
+HtmlResource::HtmlResource(std::shared_ptr<abstract::HtmlResource> impl)
     : m_impl{std::move(impl)} {}
 
 HtmlResourceType HtmlResource::type() const { return m_impl->type(); }
@@ -212,32 +206,35 @@ void HtmlResource::write_resource(std::ostream &os) const {
   m_impl->write_resource(os);
 }
 
-HtmlService html::translate(const DecodedFile &decoded_file,
-                            const std::string &output_path,
+HtmlService html::translate(const DecodedFile &file,
+                            const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  if (decoded_file.is_text_file()) {
-    return translate(decoded_file.as_text_file(), output_path, config,
-                     std::move(logger));
-  } else if (decoded_file.is_image_file()) {
-    return translate(decoded_file.as_image_file(), output_path, config,
-                     std::move(logger));
-  } else if (decoded_file.is_archive_file()) {
-    return translate(decoded_file.as_archive_file(), output_path, config,
-                     std::move(logger));
-  } else if (decoded_file.is_document_file()) {
-    return translate(decoded_file.as_document_file(), output_path, config,
-                     std::move(logger));
-  } else if (decoded_file.is_pdf_file()) {
-    return translate(decoded_file.as_pdf_file(), output_path, config,
+  if (file.is_text_file()) {
+    return translate(file.as_text_file(), cache_path, config,
                      std::move(logger));
   }
+  if (file.is_image_file()) {
+    return translate(file.as_image_file(), cache_path, config,
+                     std::move(logger));
+  }
+  if (file.is_archive_file()) {
+    return translate(file.as_archive_file(), cache_path, config,
+                     std::move(logger));
+  }
+  if (file.is_document_file()) {
+    return translate(file.as_document_file(), cache_path, config,
+                     std::move(logger));
+  }
+  if (file.is_pdf_file()) {
+    return translate(file.as_pdf_file(), cache_path, config, std::move(logger));
+  }
 
-  throw UnsupportedFileType(decoded_file.file_type());
+  throw UnsupportedFileType(file.file_type());
 }
 
 HtmlResourceLocator html::standard_resource_locator() {
-  return [](const odr::HtmlResource &resource,
+  return [](const HtmlResource &resource,
             const HtmlConfig &config) -> HtmlResourceLocation {
     if (!resource.is_accessible()) {
       return resource.path();
@@ -262,92 +259,93 @@ HtmlResourceLocator html::standard_resource_locator() {
 }
 
 HtmlService html::translate(const TextFile &text_file,
-                            const std::string &output_path,
+                            const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  std::filesystem::create_directories(output_path);
-  return internal::html::create_text_service(text_file, output_path, config,
+  std::filesystem::create_directories(cache_path);
+  return internal::html::create_text_service(text_file, cache_path, config,
                                              std::move(logger));
 }
 
 HtmlService html::translate(const ImageFile &image_file,
-                            const std::string &output_path,
+                            const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  std::filesystem::create_directories(output_path);
-  return internal::html::create_image_service(image_file, output_path, config,
+  std::filesystem::create_directories(cache_path);
+  return internal::html::create_image_service(image_file, cache_path, config,
                                               std::move(logger));
 }
 
 HtmlService html::translate(const ArchiveFile &archive_file,
-                            const std::string &output_path,
+                            const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  return translate(archive_file.archive(), output_path, config,
+  return translate(archive_file.archive(), cache_path, config,
                    std::move(logger));
 }
 
 HtmlService html::translate(const DocumentFile &document_file,
-                            const std::string &output_path,
+                            const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  auto document_file_impl = document_file.impl();
+  const std::shared_ptr<abstract::DocumentFile> document_file_impl =
+      document_file.impl();
 
 #ifdef ODR_WITH_WVWARE
-  if (auto wv_document_file =
-          std::dynamic_pointer_cast<internal::WvWareLegacyMicrosoftFile>(
+  if (const auto wv_document_file =
+          std::dynamic_pointer_cast<WvWareLegacyMicrosoftFile>(
               document_file_impl)) {
-    std::filesystem::create_directories(output_path);
+    std::filesystem::create_directories(cache_path);
     return internal::html::create_wvware_oldms_service(
-        *wv_document_file, output_path, config, std::move(logger));
+        *wv_document_file, cache_path, config, std::move(logger));
   }
 #endif
 
-  return translate(document_file.document(), output_path, config,
+  return translate(document_file.document(), cache_path, config,
                    std::move(logger));
 }
 
 HtmlService html::translate(const PdfFile &pdf_file,
-                            const std::string &output_path,
+                            const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  auto pdf_file_impl = pdf_file.impl();
+  const std::shared_ptr<abstract::PdfFile> pdf_file_impl = pdf_file.impl();
 
 #ifdef ODR_WITH_PDF2HTMLEX
-  if (auto poppler_pdf_file =
-          std::dynamic_pointer_cast<internal::PopplerPdfFile>(pdf_file_impl)) {
-    std::filesystem::create_directories(output_path);
+  if (const auto poppler_pdf_file =
+          std::dynamic_pointer_cast<PopplerPdfFile>(pdf_file_impl)) {
+    std::filesystem::create_directories(cache_path);
     return internal::html::create_poppler_pdf_service(
-        *poppler_pdf_file, output_path, config, std::move(logger));
+        *poppler_pdf_file, cache_path, config, std::move(logger));
   }
 #endif
 
-  return internal::html::create_pdf_service(pdf_file, output_path, config,
+  return internal::html::create_pdf_service(pdf_file, cache_path, config,
                                             std::move(logger));
 }
 
 HtmlService html::translate(const Archive &archive,
-                            const std::string &output_path,
+                            const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  std::filesystem::create_directories(output_path);
+  std::filesystem::create_directories(cache_path);
   return internal::html::create_filesystem_service(
-      archive.as_filesystem(), output_path, config, std::move(logger));
+      archive.as_filesystem(), cache_path, config, std::move(logger));
 }
 
 HtmlService html::translate(const Document &document,
-                            const std::string &output_path,
+                            const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  std::filesystem::create_directories(output_path);
-  return internal::html::create_document_service(document, output_path, config,
+  std::filesystem::create_directories(cache_path);
+  return internal::html::create_document_service(document, cache_path, config,
                                                  std::move(logger));
 }
 
 void html::edit(const Document &document, const char *diff,
                 Logger & /*logger*/) {
-  auto json = nlohmann::json::parse(diff);
-  for (const auto &[key, value] : json["modifiedText"].items()) {
+  for (auto json = nlohmann::json::parse(diff);
+       const auto &[key, value] : json["modifiedText"].items()) {
     auto element =
         DocumentPath::find(document.root_element(), DocumentPath(key));
     if (!element) {

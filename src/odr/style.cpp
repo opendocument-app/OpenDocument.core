@@ -5,12 +5,15 @@ namespace odr {
 Color::Color() = default;
 
 Color::Color(const std::uint32_t rgb)
-    : red{(std::uint8_t)(rgb >> 16)}, green{(std::uint8_t)(rgb >> 8)},
-      blue{(std::uint8_t)(rgb >> 0)} {}
+    : red{static_cast<std::uint8_t>(rgb >> 16)},
+      green{static_cast<std::uint8_t>(rgb >> 8)},
+      blue{static_cast<std::uint8_t>(rgb >> 0)} {}
 
 Color::Color(const std::uint32_t argb, bool)
-    : red{(std::uint8_t)(argb >> 16)}, green{(std::uint8_t)(argb >> 8)},
-      blue{(std::uint8_t)(argb >> 0)}, alpha{(std::uint8_t)(argb >> 24)} {}
+    : red{static_cast<std::uint8_t>(argb >> 16)},
+      green{static_cast<std::uint8_t>(argb >> 8)},
+      blue{static_cast<std::uint8_t>(argb >> 0)},
+      alpha{static_cast<std::uint8_t>(argb >> 24)} {}
 
 Color::Color(const std::uint8_t red, const std::uint8_t green,
              const std::uint8_t blue)

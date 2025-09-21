@@ -11,7 +11,7 @@ namespace odr::internal {
 std::string text::guess_charset(std::istream &in) {
   static constexpr auto BUFFER_SIZE = 4096;
 
-  auto ud = uchardet_new();
+  const auto ud = uchardet_new();
   char buffer[BUFFER_SIZE];
 
   while (true) {

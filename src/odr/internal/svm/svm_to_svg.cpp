@@ -31,7 +31,7 @@ struct Context final {
 
 double transform(const std::int32_t coordinate, const std::int32_t origin,
                  const IntPair scale) {
-  return (origin + coordinate) * (double)scale.x / scale.y;
+  return (origin + coordinate) * static_cast<double>(scale.x) / scale.y;
 }
 
 double transform_x(const std::int32_t x, const Context &context) {
@@ -43,9 +43,9 @@ double transform_y(const std::int32_t y, const Context &context) {
 }
 
 std::string get_svg_color_string(const std::uint32_t color) {
-  const uint8_t blue = (color >> 0) & 0xff;
-  const uint8_t green = (color >> 8) & 0xff;
-  const uint8_t red = (color >> 16) & 0xff;
+  const uint8_t blue = color >> 0 & 0xff;
+  const uint8_t green = color >> 8 & 0xff;
+  const uint8_t red = color >> 16 & 0xff;
   return "rgb(" + std::to_string(red) + "," + std::to_string(green) + "," +
          std::to_string(blue) + ")";
 }
@@ -60,24 +60,24 @@ void write_color_style(std::ostream &out, const std::string &prefix,
   out << ";";
 }
 
-void write_line_style(std::ostream &out, Context &context) {
+void write_line_style(std::ostream &out, const Context &context) {
   write_color_style(out, "stroke", context.line_rgb, context.line_rgb_set);
   out << "vector-effect:non-scaling-stroke;";
   out << "fill:none;";
 }
 
-void write_fill_style(std::ostream &out, Context &context) {
+void write_fill_style(std::ostream &out, const Context &context) {
   write_color_style(out, "fill", context.fill_rgb, context.fill_rgb_set);
   out << "stroke:none;";
 }
 
-void write_text_style(std::ostream &out, Context &context) {
+void write_text_style(std::ostream &out, const Context &context) {
   write_color_style(out, "fill", context.text_rgb, true);
   out << "font-family:" << context.font.family_name << ";";
   out << "font-size:" << context.font.size.y << ";";
 }
 
-void write_style(std::ostream &out, Context &context, const int styles) {
+void write_style(std::ostream &out, const Context &context, const int styles) {
   out << " style=\"";
   switch (styles) {
   case 0:
@@ -91,14 +91,14 @@ void write_style(std::ostream &out, Context &context, const int styles) {
     write_text_style(out, context);
     break;
   default:
-    // TODO log or throw
-    break;
+      // TODO log or throw
+      ;
   }
   out << "\"";
 }
 
 void write_rectangle(std::ostream &out, const Rectangle &rect,
-                     Context &context) {
+                     const Context &context) {
   out << "<rect";
   out << " x=\"" << transform_x(rect.left, context) << "\"";
   out << " y=\"" << transform_y(rect.top, context) << "\"";
@@ -114,12 +114,12 @@ void write_rectangle(std::ostream &out, const Rectangle &rect,
 
 void write_polygon(std::ostream &out, const std::string &tag,
                    const std::vector<IntPair> &points, const bool fill,
-                   Context &context) {
+                   const Context &context) {
   out << "<" << tag;
 
   out << " points=\"";
-  for (auto &&p : points) {
-    out << transform_x(p.x, context) << "," << transform_y(p.y, context);
+  for (auto [x, y] : points) {
+    out << transform_x(x, context) << "," << transform_y(y, context);
     out << " ";
   }
   out << "\"";
@@ -134,7 +134,7 @@ void write_polygon(std::ostream &out, const std::string &tag,
 }
 
 void write_text(std::ostream &out, const IntPair &point,
-                const std::string &text, Context &context) {
+                const std::string &text, const Context &context) {
   out << "<text";
   out << " x=\"" << transform_x(point.x, context) << "\"";
   out << " y=\"" << transform_y(point.y, context) << "\"";
@@ -167,7 +167,7 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     break;
   case META_FONT_ACTION:
     context.font = read_font(in);
-    context.encoding = (TextEncoding)context.font.charset;
+    context.encoding = static_cast<TextEncoding>(context.font.charset);
     break;
   case META_TEXTLINE_ACTION:
     context.text_line = read_text_line_action(in, action_header.vl);
@@ -180,17 +180,16 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     context.map_mode = read_map_mode(in);
   } break;
   case META_POLYLINE_ACTION: {
-    PolyLineAction action = read_poly_line_action(in, action_header.vl);
-    write_polygon(out, "polyline", action.points, false, context);
+    auto [points, line_info] = read_poly_line_action(in, action_header.vl);
+    write_polygon(out, "polyline", points, false, context);
   } break;
   case META_POLYGON_ACTION: {
-    PolygonAction action = read_polygon_action(in, action_header.vl);
-    write_polygon(out, "polygon", action.points, true, context);
+    auto [points] = read_polygon_action(in, action_header.vl);
+    write_polygon(out, "polygon", points, true, context);
   } break;
   case META_POLYPOLYGON_ACTION: {
-    PolyPolygonAction action = read_poly_polygon_action(in, action_header.vl);
-
-    for (auto &&p : action.polygons) {
+    for (auto [polygons] = read_poly_polygon_action(in, action_header.vl);
+         const auto &p : polygons) {
       write_polygon(out, "polygon", p, true, context);
     }
   } break;
@@ -229,14 +228,14 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
 } // namespace
 
 void Translator::svg(const SvmFile &file, std::ostream &out) {
-  auto istream = file.file()->stream();
+  const auto istream = file.file()->stream();
   auto &in = *istream;
 
   Context context;
   context.in = &in;
   context.out = &out;
 
-  Header header = read_header(in);
+  const Header header = read_header(in);
 
   context.encoding = RTL_TEXTENCODING_ASCII_US;
   context.map_mode = header.map_mode;
@@ -250,12 +249,12 @@ void Translator::svg(const SvmFile &file, std::ostream &out) {
   while (in.peek() != -1) {
     // TODO check length fields should never exceed file size (limited istream?)
     ActionHeader action_header = read_action_header(in);
-    std::int64_t start = in.tellg();
+    const std::int64_t start = in.tellg();
 
     translate_action(action_header, in, out, context);
 
-    const std::int64_t left =
-        action_header.vl.length - ((std::int64_t)in.tellg() - start);
+    const std::int64_t left = action_header.vl.length -
+                              (static_cast<std::int64_t>(in.tellg()) - start);
     if (left > 0) {
       // TODO log skipping
       in.ignore(left);

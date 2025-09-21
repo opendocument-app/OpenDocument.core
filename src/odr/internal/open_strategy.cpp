@@ -22,6 +22,7 @@
 #include <odr/internal/zip/zip_file.hpp>
 
 #include <algorithm>
+#include <utility>
 
 namespace odr::internal {
 
@@ -209,7 +210,8 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, Logger &logger) {
     }
 
     return zip_file;
-  } else if (file_type == FileType::compound_file_binary_format) {
+  }
+  if (file_type == FileType::compound_file_binary_format) {
     ODR_VERBOSE(logger, "open as cbf");
 
     auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
@@ -231,19 +233,22 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, Logger &logger) {
     }
 
     return cfb_file;
-  } else if (file_type == FileType::portable_document_format) {
+  }
+  if (file_type == FileType::portable_document_format) {
     ODR_VERBOSE(logger, "open as pdf");
     return std::make_unique<PdfFile>(file);
-  } else if (file_type == FileType::portable_network_graphics ||
-             file_type == FileType::graphics_interchange_format ||
-             file_type == FileType::jpeg ||
-             file_type == FileType::bitmap_image_file) {
+  }
+  if (file_type == FileType::portable_network_graphics ||
+      file_type == FileType::graphics_interchange_format ||
+      file_type == FileType::jpeg || file_type == FileType::bitmap_image_file) {
     ODR_VERBOSE(logger, "open as image");
     return std::make_unique<ImageFile>(file, file_type);
-  } else if (file_type == FileType::starview_metafile) {
+  }
+  if (file_type == FileType::starview_metafile) {
     ODR_VERBOSE(logger, "open as svm");
     return std::make_unique<svm::SvmFile>(memory_file);
-  } else if (file_type == FileType::unknown) {
+  }
+  if (file_type == FileType::unknown) {
     ODR_VERBOSE(logger, "handle unknown file type");
 
     try {
@@ -295,7 +300,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
                          Logger &logger) {
   DecodePreference preference;
   preference.as_file_type = as;
-  return open_file(file, preference, logger);
+  return open_file(std::move(file), preference, logger);
 }
 
 std::unique_ptr<abstract::DecodedFile>
@@ -553,7 +558,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
     std::vector<FileType> detected_types = list_file_types(file, logger);
     probe_types.insert(probe_types.end(), detected_types.begin(),
                        detected_types.end());
-    auto probe_types_end = std::unique(probe_types.begin(), probe_types.end());
+    auto probe_types_end = std::ranges::unique(probe_types).begin();
     probe_types.erase(probe_types_end, probe_types.end());
     // more specific file types are further down the list, so we bring them up
     std::ranges::reverse(probe_types);
@@ -576,8 +581,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
           open_strategy::list_decoder_engines(as);
       probe_engines.insert(probe_engines.end(), detected_engines.begin(),
                            detected_engines.end());
-      auto probe_engines_end =
-          std::unique(probe_engines.begin(), probe_engines.end());
+      auto probe_engines_end = std::ranges::unique(probe_engines).begin();
       probe_engines.erase(probe_engines_end, probe_engines.end());
     }
 

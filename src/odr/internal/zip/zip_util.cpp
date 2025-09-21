@@ -13,7 +13,8 @@ namespace {
 class ReaderBuffer final : public std::streambuf {
 public:
   ReaderBuffer(std::shared_ptr<const Archive> archive,
-               mz_zip_reader_extract_iter_state *iter, std::size_t buffer_size)
+               mz_zip_reader_extract_iter_state *iter,
+               const std::size_t buffer_size)
       : m_archive{std::move(archive)} {
     if (m_archive == nullptr) {
       throw NullPointerError("ReaderBuffer: archive is nullptr");
@@ -33,7 +34,7 @@ public:
     other.m_iter = nullptr;
     other.m_buffer = nullptr;
   }
-  ~ReaderBuffer() final {
+  ~ReaderBuffer() override {
     mz_zip_reader_extract_iter_free(m_iter);
     delete[] m_buffer;
   }
@@ -51,7 +52,7 @@ public:
     return *this;
   }
 
-  int underflow() final {
+  int underflow() override {
     if (m_remaining <= 0) {
       return std::char_traits<char>::eof();
     }
@@ -90,29 +91,29 @@ private:
 
 class FileInZip final : public abstract::File {
 public:
-  FileInZip(std::shared_ptr<const Archive> archive, std::uint32_t index)
+  FileInZip(std::shared_ptr<const Archive> archive, const std::uint32_t index)
       : m_archive{std::move(archive)}, m_index{index} {
     if (m_archive == nullptr) {
       throw NullPointerError("FileInZip: archive is nullptr");
     }
   }
 
-  [[nodiscard]] FileLocation location() const noexcept final {
+  [[nodiscard]] FileLocation location() const noexcept override {
     return m_archive->file()->location();
   }
-  [[nodiscard]] std::size_t size() const final {
+  [[nodiscard]] std::size_t size() const override {
     std::lock_guard lock(m_archive->mutex());
     mz_zip_archive_file_stat stat{};
     mz_zip_reader_file_stat(m_archive->zip(), m_index, &stat);
     return stat.m_uncomp_size;
   }
 
-  [[nodiscard]] std::optional<AbsPath> disk_path() const final {
+  [[nodiscard]] std::optional<AbsPath> disk_path() const override {
     return std::nullopt;
   }
-  [[nodiscard]] const char *memory_data() const final { return nullptr; }
+  [[nodiscard]] const char *memory_data() const override { return nullptr; }
 
-  [[nodiscard]] std::unique_ptr<std::istream> stream() const final {
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const override {
     std::lock_guard lock(m_archive->mutex());
     if (mz_zip_reader_is_file_encrypted(m_archive->zip(), m_index)) {
       throw UnsupportedOperation("cannot read encrypted zip entry");
@@ -162,8 +163,9 @@ Method Archive::Entry::method() const {
     return Method::STORED;
   case MZ_DEFLATED:
     return Method::DEFLATED;
+  default:
+    return Method::UNSUPPORTED;
   }
-  return Method::UNSUPPORTED;
 }
 
 std::shared_ptr<abstract::File> Archive::Entry::file() const {
@@ -221,9 +223,9 @@ namespace odr::internal::zip {
 void util::open_from_file(mz_zip_archive &archive, const abstract::File &file,
                           std::istream &stream) {
   archive.m_pIO_opaque = &stream;
-  archive.m_pRead = [](void *opaque, std::uint64_t offset, void *buffer,
-                       std::size_t size) {
-    auto in = static_cast<std::istream *>(opaque);
+  archive.m_pRead = [](void *opaque, const std::uint64_t offset, void *buffer,
+                       const std::size_t size) {
+    const auto in = static_cast<std::istream *>(opaque);
     in->seekg(static_cast<std::streamsize>(offset));
     in->read(static_cast<char *>(buffer), static_cast<std::streamsize>(size));
     return size;
@@ -240,11 +242,10 @@ bool util::append_file(mz_zip_archive &archive, const std::string &path,
                        const std::time_t &time, const std::string &comment,
                        const std::uint32_t level_and_flags) {
   auto read_callback = [](void *opaque, std::uint64_t /*offset*/, void *buffer,
-                          std::size_t size) -> std::size_t {
-    auto istream = static_cast<std::istream *>(opaque);
-    istream->read(static_cast<char *>(buffer),
-                  static_cast<std::streamsize>(size));
-    return istream->gcount();
+                          const std::size_t s) -> std::size_t {
+    const auto in = static_cast<std::istream *>(opaque);
+    in->read(static_cast<char *>(buffer), static_cast<std::streamsize>(s));
+    return in->gcount();
   };
 
   return mz_zip_writer_add_read_buf_callback(

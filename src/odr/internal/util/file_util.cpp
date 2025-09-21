@@ -28,17 +28,11 @@ std::string file::read(const std::string &path) {
 
   std::string result;
 
-  try {
-    in.seekg(0, std::ios::end);
-    result.reserve(in.tellg());
-    in.seekg(0, std::ios::beg);
+  in.seekg(0, std::ios::end);
+  result.reserve(in.tellg());
+  in.seekg(0, std::ios::beg);
 
-    result.assign(std::istreambuf_iterator<char>(in),
-                  std::istreambuf_iterator<char>());
-  } catch (std::exception &e) {
-    // TODO
-    throw e;
-  }
+  result.assign(std::istreambuf_iterator(in), std::istreambuf_iterator<char>());
 
   return result;
 }

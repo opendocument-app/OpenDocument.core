@@ -50,7 +50,7 @@ DocumentPath::ComponentTemplate<Derived>::to_string() const noexcept {
 
 DocumentPath::Component
 DocumentPath::component_from_string(const std::string &string) {
-  auto colon = string.find(':');
+  const auto colon = string.find(':');
   if (colon == std::string::npos) {
     throw std::invalid_argument("string");
   }
@@ -60,24 +60,26 @@ DocumentPath::component_from_string(const std::string &string) {
 
   if (prefix == Child::prefix_string()) {
     return Child(number);
-  } else if (prefix == Column::prefix_string()) {
+  }
+  if (prefix == Column::prefix_string()) {
     return Column(number);
-  } else if (prefix == Row::prefix_string()) {
+  }
+  if (prefix == Row::prefix_string()) {
     return Row(number);
   }
 
   throw std::invalid_argument("string");
 }
 
-DocumentPath DocumentPath::extract(Element element) {
+DocumentPath DocumentPath::extract(const Element element) {
   return extract(element, {});
 }
 
-DocumentPath DocumentPath::extract(Element element, Element root) {
+DocumentPath DocumentPath::extract(const Element element, const Element root) {
   std::vector<Component> reverse;
 
   for (auto current = element; current != root;) {
-    auto parent = current.parent();
+    const auto parent = current.parent();
     if (!parent) {
       break;
     }
@@ -98,28 +100,28 @@ DocumentPath DocumentPath::extract(Element element, Element root) {
     current = parent;
   }
 
-  std::reverse(std::begin(reverse), std::end(reverse));
+  std::ranges::reverse(reverse);
   return DocumentPath(reverse);
 }
 
-Element DocumentPath::find(Element root, const DocumentPath &path) {
+Element DocumentPath::find(const Element root, const DocumentPath &path) {
   Element element = root;
 
-  for (const DocumentPath::Component &c : path) {
+  for (const Component &c : path) {
     std::uint32_t number = 0;
-    if (const auto child = std::get_if<DocumentPath::Child>(&c)) {
+    if (const auto child = std::get_if<Child>(&c)) {
       if (!element.first_child()) {
         throw std::invalid_argument("child not found");
       }
       element = element.first_child();
       number = child->number;
-    } else if (const auto column = std::get_if<DocumentPath::Column>(&c)) {
+    } else if (const auto column = std::get_if<Column>(&c)) {
       if (!element.as_table().first_column()) {
         throw std::invalid_argument("column not found");
       }
       element = Element(element.as_table().first_column());
       number = column->number;
-    } else if (const auto row = std::get_if<DocumentPath::Row>(&c)) {
+    } else if (const auto row = std::get_if<Row>(&c)) {
       if (!element.as_table().first_row()) {
         throw std::invalid_argument("row not found");
       }

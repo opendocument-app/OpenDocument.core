@@ -2,7 +2,6 @@
 
 #include <odr/logger.hpp>
 
-#include <functional>
 #include <string>
 #include <vector>
 
@@ -67,6 +66,7 @@ file_type_by_file_extension(const std::string &extension) noexcept;
 
 /// @brief Determine the file types by the file path.
 /// @param path The file path.
+/// @param logger The logger to use.
 /// @return The file types.
 [[nodiscard]] std::vector<FileType>
 list_file_types(const std::string &path, Logger &logger = Logger::null());
@@ -77,18 +77,21 @@ list_file_types(const std::string &path, Logger &logger = Logger::null());
 
 /// @brief Open a file.
 /// @param path The file path.
+/// @param logger The logger to use.
 /// @return The decoded file.
 [[nodiscard]] DecodedFile open(const std::string &path,
                                Logger &logger = Logger::null());
 /// @brief Open a file.
 /// @param path The file path.
 /// @param as The file type.
+/// @param logger The logger to use.
 /// @return The decoded file.
 [[nodiscard]] DecodedFile open(const std::string &path, FileType as,
                                Logger &logger = Logger::null());
 /// @brief Open a file.
 /// @param path The file path.
 /// @param preference The decode preference.
+/// @param logger The logger to use.
 /// @return The decoded file.
 [[nodiscard]] DecodedFile open(const std::string &path,
                                const DecodePreference &preference,

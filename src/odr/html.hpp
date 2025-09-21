@@ -102,7 +102,7 @@ struct HtmlConfig {
   HtmlResourceLocator resource_locator;
 
   HtmlConfig();
-  explicit HtmlConfig(std::string output_path);
+  explicit HtmlConfig(std::string output_path_);
 
 private:
   void init();
@@ -219,7 +219,7 @@ HtmlService translate(const ImageFile &image_file,
                       std::shared_ptr<Logger> logger = Logger::create_null());
 /// @brief Translates an archive to HTML.
 ///
-/// @param archive Archive file to translate.
+/// @param archive_file Archive file to translate.
 /// @param cache_path Directory path for temporary output.
 /// @param config Configuration for the HTML output.
 /// @param logger Logger to use for logging.

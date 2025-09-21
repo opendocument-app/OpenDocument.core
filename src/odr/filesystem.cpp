@@ -19,7 +19,7 @@ FileWalker::FileWalker(FileWalker &&other) noexcept = default;
 
 FileWalker::~FileWalker() = default;
 
-FileWalker &FileWalker::operator=(const odr::FileWalker &other) {
+FileWalker &FileWalker::operator=(const FileWalker &other) {
   if (this == &other) {
     return *this;
   }
@@ -27,7 +27,7 @@ FileWalker &FileWalker::operator=(const odr::FileWalker &other) {
   return *this;
 }
 
-FileWalker &FileWalker::operator=(odr::FileWalker &&) noexcept = default;
+FileWalker &FileWalker::operator=(FileWalker &&) noexcept = default;
 
 FileWalker::operator bool() const { return m_impl != nullptr; }
 
@@ -49,19 +49,19 @@ bool FileWalker::is_directory() const {
   return m_impl != nullptr && m_impl->is_directory();
 }
 
-void FileWalker::pop() {
+void FileWalker::pop() const {
   if (m_impl != nullptr) {
     m_impl->pop();
   }
 }
 
-void FileWalker::next() {
+void FileWalker::next() const {
   if (m_impl != nullptr) {
     m_impl->next();
   }
 }
 
-void FileWalker::flat_next() {
+void FileWalker::flat_next() const {
   if (m_impl != nullptr) {
     m_impl->flat_next();
   }

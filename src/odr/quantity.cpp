@@ -21,12 +21,11 @@ private:
 
   Registry() = default;
 
-  std::unordered_map<std::string, std::unique_ptr<DynamicUnit::Unit>>
-      m_registry;
+  std::unordered_map<std::string, std::unique_ptr<Unit>> m_registry;
 
   const Unit *unit_(const char *name) {
-    auto &&unit = m_registry[name];
-    if (!unit) {
+    std::unique_ptr<Unit> &unit = m_registry[name];
+    if (unit == nullptr) {
       unit = std::make_unique<Unit>();
       unit->name = name;
     }

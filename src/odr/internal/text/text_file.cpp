@@ -6,13 +6,13 @@
 
 namespace odr::internal::text {
 
-TextFile::TextFile(std::shared_ptr<internal::abstract::File> file)
+TextFile::TextFile(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)}, m_charset{guess_charset(*m_file->stream())} {}
 
 TextFile::TextFile(std::shared_ptr<abstract::File> file, std::string charset)
     : m_file{std::move(file)}, m_charset{std::move(charset)} {}
 
-std::shared_ptr<internal::abstract::File> TextFile::file() const noexcept {
+std::shared_ptr<abstract::File> TextFile::file() const noexcept {
   return m_file;
 }
 
