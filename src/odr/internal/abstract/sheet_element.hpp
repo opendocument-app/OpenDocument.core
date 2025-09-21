@@ -35,7 +35,7 @@ public:
 class SheetCell : public virtual Element {
 public:
   [[nodiscard]] ElementType type(const Document *) const override {
-    return ElementType::table_cell;
+    return ElementType::sheet_cell;
   }
 
   [[nodiscard]] virtual bool is_covered(const Document *) const = 0;

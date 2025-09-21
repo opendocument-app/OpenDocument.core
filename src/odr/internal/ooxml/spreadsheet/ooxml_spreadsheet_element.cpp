@@ -4,14 +4,11 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 #include <odr/internal/util/map_util.hpp>
 
-#include <functional>
 #include <optional>
-
-#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
 
-Element::Element(pugi::xml_node node, Path /*document_path*/,
+Element::Element(const pugi::xml_node node, const Path & /*document_path*/,
                  const Relations & /*document_relations*/)
     : m_node{node} {
   if (!node) {
@@ -60,7 +57,7 @@ Element::document_relations_(const abstract::Document *document) const {
   return dynamic_cast<Element *>(m_parent)->document_relations_(document);
 }
 
-Root::Root(pugi::xml_node node, Path document_path,
+Root::Root(const pugi::xml_node node, Path document_path,
            const Relations &document_relations)
     : DefaultElement(node, document_path, document_relations),
       m_document_path{std::move(document_path)},
@@ -74,41 +71,43 @@ const Relations &Root::document_relations_(const abstract::Document *) const {
   return m_document_relations;
 }
 
-void SheetIndex::init_column(std::uint32_t /*min*/, std::uint32_t max,
-                             pugi::xml_node element) {
+void SheetIndex::init_column(std::uint32_t /*min*/, const std::uint32_t max,
+                             const pugi::xml_node element) {
   columns[max] = element;
 }
 
-void SheetIndex::init_row(std::uint32_t row, pugi::xml_node element) {
+void SheetIndex::init_row(const std::uint32_t row,
+                          const pugi::xml_node element) {
   rows[row].row = element;
 }
 
-void SheetIndex::init_cell(std::uint32_t column, std::uint32_t row,
-                           pugi::xml_node element) {
+void SheetIndex::init_cell(const std::uint32_t column, const std::uint32_t row,
+                           const pugi::xml_node element) {
   rows[row].cells[column] = element;
 }
 
-pugi::xml_node SheetIndex::column(std::uint32_t column) const {
-  if (auto it = util::map::lookup_greater_or_equals(columns, column);
+pugi::xml_node SheetIndex::column(const std::uint32_t column) const {
+  if (const auto it = util::map::lookup_greater_or_equals(columns, column);
       it != std::end(columns)) {
     return it->second;
   }
   return {};
 }
 
-pugi::xml_node SheetIndex::row(std::uint32_t row) const {
-  if (auto it = util::map::lookup_greater_or_equals(rows, row);
+pugi::xml_node SheetIndex::row(const std::uint32_t row) const {
+  if (const auto it = util::map::lookup_greater_or_equals(rows, row);
       it != std::end(rows)) {
     return it->second.row;
   }
   return {};
 }
 
-pugi::xml_node SheetIndex::cell(std::uint32_t column, std::uint32_t row) const {
-  if (auto row_it = util::map::lookup_greater_or_equals(rows, row);
+pugi::xml_node SheetIndex::cell(const std::uint32_t column,
+                                const std::uint32_t row) const {
+  if (const auto row_it = util::map::lookup_greater_or_equals(rows, row);
       row_it != std::end(rows)) {
     const auto &cells = row_it->second.cells;
-    if (auto cell_it = util::map::lookup_greater_or_equals(cells, column);
+    if (const auto cell_it = util::map::lookup_greater_or_equals(cells, column);
         cell_it != std::end(cells)) {
       return cell_it->second;
     }
@@ -116,7 +115,7 @@ pugi::xml_node SheetIndex::cell(std::uint32_t column, std::uint32_t row) const {
   return {};
 }
 
-Sheet::Sheet(pugi::xml_node node, Path document_path,
+Sheet::Sheet(const pugi::xml_node node, Path document_path,
              const Relations &document_relations)
     : Element(node, document_path, document_relations),
       m_document_path{std::move(document_path)},
@@ -147,7 +146,7 @@ TableDimensions Sheet::content(const abstract::Document *document,
 abstract::SheetCell *Sheet::cell(const abstract::Document *,
                                  std::uint32_t column,
                                  std::uint32_t row) const {
-  if (auto cell_it = m_cells.find({column, row});
+  if (const auto cell_it = m_cells.find({column, row});
       cell_it != std::end(m_cells)) {
     return cell_it->second;
   }
@@ -159,63 +158,64 @@ abstract::Element *Sheet::first_shape(const abstract::Document *) const {
 }
 
 TableStyle Sheet::style(const abstract::Document *) const {
-  return TableStyle(); // TODO
+  return {}; // TODO
 }
 
 TableColumnStyle Sheet::column_style(const abstract::Document *,
-                                     std::uint32_t column) const {
+                                     const std::uint32_t column) const {
   TableColumnStyle result;
-  pugi::xml_node column_node = m_index.column(column);
-  if (pugi::xml_attribute width = column_node.attribute("width")) {
+  const pugi::xml_node column_node = m_index.column(column);
+  if (const pugi::xml_attribute width = column_node.attribute("width")) {
     result.width = Measure(width.as_float(), DynamicUnit("ch"));
   }
   return result;
 }
 
 TableRowStyle Sheet::row_style(const abstract::Document *,
-                               std::uint32_t row) const {
+                               const std::uint32_t row) const {
   TableRowStyle result;
-  pugi::xml_node row_node = m_index.row(row);
-  if (pugi::xml_attribute height = row_node.attribute("ht")) {
+  const pugi::xml_node row_node = m_index.row(row);
+  if (const pugi::xml_attribute height = row_node.attribute("ht")) {
     result.height = Measure(height.as_float(), DynamicUnit("pt"));
   }
   return result;
 }
 
 TableCellStyle Sheet::cell_style(const abstract::Document *document,
-                                 std::uint32_t column,
-                                 std::uint32_t row) const {
+                                 const std::uint32_t column,
+                                 const std::uint32_t row) const {
   TableCellStyle result;
-  if (pugi::xml_attribute style_attr = m_index.cell(column, row).attribute("s");
+  if (const pugi::xml_attribute style_attr =
+          m_index.cell(column, row).attribute("s");
       style_attr) {
-    std::uint32_t style_id = style_attr.as_uint();
-    ResolvedStyle style = style_registry_(document)->cell_style(style_id);
+    const std::uint32_t style_id = style_attr.as_uint();
+    const ResolvedStyle style = style_registry_(document)->cell_style(style_id);
     result.override(style.table_cell_style);
   }
   return result;
 }
 
-void Sheet::init_column_(std::uint32_t min, std::uint32_t max,
-                         pugi::xml_node element) {
+void Sheet::init_column_(const std::uint32_t min, const std::uint32_t max,
+                         const pugi::xml_node element) {
   m_index.init_column(min, max, element);
 }
 
-void Sheet::init_row_(std::uint32_t row, pugi::xml_node element) {
+void Sheet::init_row_(const std::uint32_t row, const pugi::xml_node element) {
   m_index.init_row(row, element);
 }
 
-void Sheet::init_cell_(std::uint32_t column, std::uint32_t row,
-                       pugi::xml_node element) {
+void Sheet::init_cell_(const std::uint32_t column, const std::uint32_t row,
+                       const pugi::xml_node element) {
   m_index.init_cell(column, row, element);
 }
 
-void Sheet::init_cell_element_(std::uint32_t column, std::uint32_t row,
-                               SheetCell *element) {
+void Sheet::init_cell_element_(const std::uint32_t column,
+                               const std::uint32_t row, SheetCell *element) {
   m_cells[{column, row}] = element;
   element->m_parent = this;
 }
 
-void Sheet::init_dimensions_(TableDimensions dimensions) {
+void Sheet::init_dimensions_(const TableDimensions dimensions) {
   m_index.dimensions = dimensions;
 }
 
@@ -240,7 +240,7 @@ ValueType SheetCell::value_type(const abstract::Document *) const {
 
 ResolvedStyle
 SheetCell::partial_style(const abstract::Document *document) const {
-  if (auto style_id = m_node.attribute("s")) {
+  if (const pugi::xml_attribute style_id = m_node.attribute("s")) {
     return style_registry_(document)->cell_style(style_id.as_uint());
   }
   return {};
@@ -258,17 +258,17 @@ TextStyle Span::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
 
-Text::Text(pugi::xml_node node, Path document_path,
+Text::Text(const pugi::xml_node node, const Path &document_path,
            const Relations &document_relations)
     : Text(node, node, document_path, document_relations) {}
 
-Text::Text(pugi::xml_node first, pugi::xml_node last, Path document_path,
-           const Relations &document_relations)
+Text::Text(const pugi::xml_node first, const pugi::xml_node last,
+           const Path &document_path, const Relations &document_relations)
     : Element(first, document_path, document_relations), m_last{last} {}
 
 std::string Text::content(const abstract::Document *) const {
   std::string result;
-  for (auto node = m_node; node != m_last.next_sibling();
+  for (pugi::xml_node node = m_node; node != m_last.next_sibling();
        node = node.next_sibling()) {
     result += text_(node);
   }
@@ -284,16 +284,14 @@ TextStyle Text::style(const abstract::Document *document) const {
 }
 
 std::string Text::text_(const pugi::xml_node node) {
-  std::string name = node.name();
-
-  if (name == "t" || name == "v") {
+  if (const std::string name = node.name(); name == "t" || name == "v") {
     return node.text().get();
   }
 
   return "";
 }
 
-Frame::Frame(pugi::xml_node node, Path document_path,
+Frame::Frame(const pugi::xml_node node, Path document_path,
              const Relations &document_relations)
     : Element(node, document_path, document_relations),
       m_document_path{std::move(document_path)},
@@ -312,29 +310,31 @@ AnchorType Frame::anchor_type(const abstract::Document *) const {
 }
 
 std::optional<std::string> Frame::x(const abstract::Document *) const {
-  if (std::optional<Measure> x = read_emus_attribute(m_node.child("xdr:pic")
-                                                         .child("xdr:spPr")
-                                                         .child("a:xfrm")
-                                                         .child("a:off")
-                                                         .attribute("x"))) {
+  if (const std::optional<Measure> x =
+          read_emus_attribute(m_node.child("xdr:pic")
+                                  .child("xdr:spPr")
+                                  .child("a:xfrm")
+                                  .child("a:off")
+                                  .attribute("x"))) {
     return x->to_string();
   }
   return {};
 }
 
 std::optional<std::string> Frame::y(const abstract::Document *) const {
-  if (std::optional<Measure> y = read_emus_attribute(m_node.child("xdr:pic")
-                                                         .child("xdr:spPr")
-                                                         .child("a:xfrm")
-                                                         .child("a:off")
-                                                         .attribute("y"))) {
+  if (const std::optional<Measure> y =
+          read_emus_attribute(m_node.child("xdr:pic")
+                                  .child("xdr:spPr")
+                                  .child("a:xfrm")
+                                  .child("a:off")
+                                  .attribute("y"))) {
     return y->to_string();
   }
   return {};
 }
 
 std::optional<std::string> Frame::width(const abstract::Document *) const {
-  if (std::optional<Measure> width =
+  if (const std::optional<Measure> width =
           read_emus_attribute(m_node.child("xdr:pic")
                                   .child("xdr:spPr")
                                   .child("a:xfrm")
@@ -346,7 +346,7 @@ std::optional<std::string> Frame::width(const abstract::Document *) const {
 }
 
 std::optional<std::string> Frame::height(const abstract::Document *) const {
-  if (std::optional<Measure> height =
+  if (const std::optional<Measure> height =
           read_emus_attribute(m_node.child("xdr:pic")
                                   .child("xdr:spPr")
                                   .child("a:xfrm")
@@ -375,7 +375,7 @@ bool ImageElement::is_internal(const abstract::Document *document) const {
   return false;
 }
 
-std::optional<odr::File>
+std::optional<File>
 ImageElement::file(const abstract::Document *document) const {
   const Document *doc = document_(document);
   if (doc == nullptr || !is_internal(document)) {
@@ -385,9 +385,10 @@ ImageElement::file(const abstract::Document *document) const {
 }
 
 std::string ImageElement::href(const abstract::Document *document) const {
-  if (pugi::xml_attribute ref = m_node.attribute("r:embed")) {
-    auto relations = document_relations_(document);
-    if (auto rel = relations.find(ref.value()); rel != std::end(relations)) {
+  if (const pugi::xml_attribute ref = m_node.attribute("r:embed")) {
+    const Relations relations = document_relations_(document);
+    if (const auto rel = relations.find(ref.value());
+        rel != std::end(relations)) {
       return document_path_(document)
           .parent()
           .join(RelPath(rel->second))

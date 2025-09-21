@@ -11,14 +11,14 @@
 
 namespace {
 template <typename I, typename O> void to_little_endian(I in, O &out) {
-  for (std::size_t i = 0; i < sizeof(in); ++i) {
+  for (int i = 0; i < sizeof(in); ++i) {
     out[i] = in & 0xff;
     in >>= 8;
   }
 }
 
 template <typename I, typename O> void to_big_endian(I in, O &out) {
-  for (std::size_t i = sizeof(in) - 1; i >= 0; --i) {
+  for (int i = sizeof(in) - 1; i >= 0; --i) {
     out[i] = in & 0xff;
     in >>= 8;
   }
@@ -50,12 +50,12 @@ ECMA376Standard::ECMA376Standard(const EncryptionHeader &encryption_header,
 ECMA376Standard::ECMA376Standard(const std::string &encryption_info) {
   const char *offset = encryption_info.data() + sizeof(VersionInfo);
 
-  StandardHeader standard_header;
+  StandardHeader standard_header{};
   std::memcpy(&standard_header, offset, sizeof(standard_header));
   offset += sizeof(standard_header);
 
   std::memcpy(&m_encryption_header, offset, sizeof(m_encryption_header));
-  std::u16string csp_name_u16(
+  const std::u16string csp_name_u16(
       reinterpret_cast<const char16_t *>(offset + sizeof(m_encryption_header)));
   const std::string csp_name = util::string::u16string_to_string(csp_name_u16);
   offset += standard_header.encryption_header_size;
@@ -88,7 +88,7 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
       to_little_endian(i, ibytes);
       hash = internal::crypto::util::sha1(ibytes + hash);
     }
-    to_little_endian((std::uint32_t)0, ibytes);
+    to_little_endian(static_cast<std::uint32_t>(0), ibytes);
     hash = internal::crypto::util::sha1(hash + ibytes);
   }
 
@@ -96,7 +96,7 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
   {
     const std::uint32_t cb_required_key_length =
         m_encryption_header.key_size / 8;
-    const std::uint32_t cb_hash = 20;
+    constexpr std::uint32_t cb_hash = 20;
 
     std::string buf1(64, '\x36');
     buf1 = xor_bytes(hash, buf1.substr(0, cb_hash)) + buf1.substr(cb_hash);
@@ -128,7 +128,7 @@ bool ECMA376Standard::verify(const std::string &key) const noexcept {
 std::string ECMA376Standard::decrypt(const std::string &encrypted_package,
                                      const std::string &key) const noexcept {
   const std::uint64_t total_size =
-      *(reinterpret_cast<const std::uint64_t *>(encrypted_package.data()));
+      *reinterpret_cast<const std::uint64_t *>(encrypted_package.data());
   std::string result =
       internal::crypto::util::decrypt_aes_ecb(key, encrypted_package.substr(8))
           .substr(0, total_size);
@@ -139,22 +139,22 @@ std::string ECMA376Standard::decrypt(const std::string &encrypted_package,
 Util::Util(const std::string &encryption_info) {
   {
     // big endian is not supported
-    const std::uint16_t num = 1;
-    if (*(reinterpret_cast<const std::uint8_t *>(&num)) != 1) {
+    constexpr std::uint16_t num = 1;
+    if (*reinterpret_cast<const std::uint8_t *>(&num) != 1) {
       throw UnsupportedEndian();
     }
   }
 
-  VersionInfo version_info;
+  VersionInfo version_info{};
   std::memcpy(&version_info, encryption_info.data(), sizeof(version_info));
-  if (((version_info.major == 2) || (version_info.major == 3) ||
-       (version_info.major == 4)) &&
-      (version_info.minor == 2)) {
+  if ((version_info.major == 2 || version_info.major == 3 ||
+       version_info.major == 4) &&
+      version_info.minor == 2) {
     impl = std::make_unique<ECMA376Standard>(encryption_info);
-  } else if ((version_info.major == 4) && (version_info.minor == 4)) {
+  } else if (version_info.major == 4 && version_info.minor == 4) {
     throw MsUnsupportedCryptoAlgorithm(); // agile
-  } else if (((version_info.major == 3) || (version_info.major == 4)) &&
-             (version_info.minor == 3)) {
+  } else if ((version_info.major == 3 || version_info.major == 4) &&
+             version_info.minor == 3) {
     throw MsUnsupportedCryptoAlgorithm(); // extensible
   } else {
     throw MsUnsupportedCryptoAlgorithm(); // unknown

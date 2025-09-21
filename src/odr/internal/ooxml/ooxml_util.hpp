@@ -2,8 +2,6 @@
 
 #include <odr/style.hpp>
 
-#include <any>
-#include <functional>
 #include <optional>
 #include <string>
 #include <unordered_map>

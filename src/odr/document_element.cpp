@@ -229,6 +229,12 @@ SheetCell::SheetCell(const internal::abstract::Document *document,
     : TypedElement(document, element), m_sheet{sheet}, m_column{column},
       m_row{row} {}
 
+Sheet SheetCell::sheet() const { return Sheet(m_document, m_sheet); }
+
+std::uint32_t SheetCell::column() const { return m_column; }
+
+std::uint32_t SheetCell::row() const { return m_row; }
+
 bool SheetCell::is_covered() const {
   return exists_() ? m_element->is_covered(m_document) : false;
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/sheet_element.hpp>
 #include <odr/internal/common/document_element.hpp>
@@ -11,9 +10,6 @@
 
 #include <map>
 #include <string>
-#include <vector>
-
-#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
 class Document;
@@ -23,7 +19,7 @@ class SheetCell;
 
 class Element : public internal::Element {
 public:
-  Element(pugi::xml_node node, Path document_path,
+  Element(pugi::xml_node node, const Path &document_path,
           const Relations &document_relations);
 
   [[nodiscard]] virtual ResolvedStyle
@@ -60,9 +56,9 @@ public:
        const Relations &document_relations);
 
   [[nodiscard]] const Path &
-  document_path_(const abstract::Document *) const final;
+  document_path_(const abstract::Document *) const override;
   [[nodiscard]] const Relations &
-  document_relations_(const abstract::Document *) const final;
+  document_relations_(const abstract::Document *) const override;
 
 private:
   Path m_document_path;
@@ -96,29 +92,29 @@ public:
   Sheet(pugi::xml_node node, Path document_path,
         const Relations &document_relations);
 
-  [[nodiscard]] std::string name(const abstract::Document *) const final;
+  [[nodiscard]] std::string name(const abstract::Document *) const override;
 
   [[nodiscard]] TableDimensions
-  dimensions(const abstract::Document *) const final;
+  dimensions(const abstract::Document *) const override;
   [[nodiscard]] TableDimensions
   content(const abstract::Document *,
-          std::optional<TableDimensions>) const final;
+          std::optional<TableDimensions>) const override;
 
   [[nodiscard]] abstract::SheetCell *cell(const abstract::Document *,
                                           std::uint32_t column,
-                                          std::uint32_t row) const final;
+                                          std::uint32_t row) const override;
 
   [[nodiscard]] abstract::Element *
-  first_shape(const abstract::Document *) const final;
+  first_shape(const abstract::Document *) const override;
 
-  [[nodiscard]] TableStyle style(const abstract::Document *) const final;
-  [[nodiscard]] TableColumnStyle column_style(const abstract::Document *,
-                                              std::uint32_t column) const final;
+  [[nodiscard]] TableStyle style(const abstract::Document *) const override;
+  [[nodiscard]] TableColumnStyle
+  column_style(const abstract::Document *, std::uint32_t column) const override;
   [[nodiscard]] TableRowStyle row_style(const abstract::Document *,
-                                        std::uint32_t row) const final;
+                                        std::uint32_t row) const override;
   [[nodiscard]] TableCellStyle cell_style(const abstract::Document *,
                                           std::uint32_t column,
-                                          std::uint32_t row) const final;
+                                          std::uint32_t row) const override;
 
   void init_column_(std::uint32_t min, std::uint32_t max,
                     pugi::xml_node element);
@@ -132,9 +128,9 @@ public:
 
 protected:
   [[nodiscard]] const Path &
-  document_path_(const abstract::Document *) const final;
+  document_path_(const abstract::Document *) const override;
   [[nodiscard]] const Relations &
-  document_relations_(const abstract::Document *) const final;
+  document_relations_(const abstract::Document *) const override;
 
 private:
   Path m_document_path;
@@ -151,40 +147,40 @@ class SheetCell final : public Element, public abstract::SheetCell {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool is_covered(const abstract::Document *) const final;
-  [[nodiscard]] TableDimensions span(const abstract::Document *) const final;
-  [[nodiscard]] ValueType value_type(const abstract::Document *) const final;
+  [[nodiscard]] bool is_covered(const abstract::Document *) const override;
+  [[nodiscard]] TableDimensions span(const abstract::Document *) const override;
+  [[nodiscard]] ValueType value_type(const abstract::Document *) const override;
 
-  [[nodiscard]] TableCellStyle style(const abstract::Document *) const final;
+  [[nodiscard]] TableCellStyle style(const abstract::Document *) const override;
 
   [[nodiscard]] ResolvedStyle
-  partial_style(const abstract::Document *) const final;
+  partial_style(const abstract::Document *) const override;
 };
 
 class Span final : public Element, public abstract::Span {
 public:
   using Element::Element;
 
-  [[nodiscard]] TextStyle style(const abstract::Document *) const final;
+  [[nodiscard]] TextStyle style(const abstract::Document *) const override;
 };
 
 class Text final : public Element, public abstract::Text {
 public:
-  explicit Text(pugi::xml_node node, Path document_path,
+  explicit Text(pugi::xml_node node, const Path &document_path,
                 const Relations &document_relations);
-  Text(pugi::xml_node first, pugi::xml_node last, Path document_path,
+  Text(pugi::xml_node first, pugi::xml_node last, const Path &document_path,
        const Relations &document_relations);
 
-  [[nodiscard]] std::string content(const abstract::Document *) const final;
+  [[nodiscard]] std::string content(const abstract::Document *) const override;
 
-  void set_content(const abstract::Document *, const std::string &) final;
+  void set_content(const abstract::Document *, const std::string &) override;
 
-  [[nodiscard]] TextStyle style(const abstract::Document *) const final;
+  [[nodiscard]] TextStyle style(const abstract::Document *) const override;
 
 private:
   pugi::xml_node m_last;
 
-  static std::string text_(const pugi::xml_node node);
+  static std::string text_(pugi::xml_node node);
 };
 
 class Frame final : public Element, public abstract::Frame {
@@ -192,26 +188,27 @@ public:
   Frame(pugi::xml_node node, Path document_path,
         const Relations &document_relations);
 
-  [[nodiscard]] AnchorType anchor_type(const abstract::Document *) const final;
+  [[nodiscard]] AnchorType
+  anchor_type(const abstract::Document *) const override;
 
   [[nodiscard]] std::optional<std::string>
-  x(const abstract::Document *) const final;
+  x(const abstract::Document *) const override;
   [[nodiscard]] std::optional<std::string>
-  y(const abstract::Document *) const final;
+  y(const abstract::Document *) const override;
   [[nodiscard]] std::optional<std::string>
-  width(const abstract::Document *) const final;
+  width(const abstract::Document *) const override;
   [[nodiscard]] std::optional<std::string>
-  height(const abstract::Document *) const final;
+  height(const abstract::Document *) const override;
 
   [[nodiscard]] std::optional<std::string>
-  z_index(const abstract::Document *) const final;
+  z_index(const abstract::Document *) const override;
 
-  [[nodiscard]] GraphicStyle style(const abstract::Document *) const final;
+  [[nodiscard]] GraphicStyle style(const abstract::Document *) const override;
 
   [[nodiscard]] const Path &
-  document_path_(const abstract::Document *) const final;
+  document_path_(const abstract::Document *) const override;
   [[nodiscard]] const Relations &
-  document_relations_(const abstract::Document *) const final;
+  document_relations_(const abstract::Document *) const override;
 
 private:
   Path m_document_path;
@@ -222,12 +219,12 @@ class ImageElement final : public Element, public abstract::Image {
 public:
   using Element::Element;
 
-  [[nodiscard]] bool is_internal(const abstract::Document *) const final;
+  [[nodiscard]] bool is_internal(const abstract::Document *) const override;
 
-  [[nodiscard]] std::optional<odr::File>
-  file(const abstract::Document *) const final;
+  [[nodiscard]] std::optional<File>
+  file(const abstract::Document *) const override;
 
-  [[nodiscard]] std::string href(const abstract::Document *) const final;
+  [[nodiscard]] std::string href(const abstract::Document *) const override;
 };
 
 } // namespace odr::internal::ooxml::spreadsheet

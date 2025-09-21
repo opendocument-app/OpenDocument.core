@@ -9,10 +9,7 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
 #include <memory>
-#include <string>
 #include <unordered_map>
-
-#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
 
@@ -20,11 +17,11 @@ class Document final : public TemplateDocument<Element> {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
 
-  [[nodiscard]] bool is_editable() const noexcept final;
-  [[nodiscard]] bool is_savable(bool encrypted) const noexcept final;
+  [[nodiscard]] bool is_editable() const noexcept override;
+  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 
-  void save(const Path &path) const final;
-  void save(const Path &path, const char *password) const final;
+  void save(const Path &path) const override;
+  void save(const Path &path, const char *password) const override;
 
   std::pair<const pugi::xml_document &, const Relations &>
   get_xml(const Path &) const;
