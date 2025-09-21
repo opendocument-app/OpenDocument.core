@@ -287,7 +287,8 @@ public:
   }
 
   [[nodiscard]] virtual bool is_internal(const Document *) const = 0;
-  [[nodiscard]] virtual std::optional<File> file(const Document *) const = 0;
+  [[nodiscard]] virtual std::optional<odr::File>
+  file(const Document *) const = 0;
   [[nodiscard]] virtual std::string href(const Document *) const = 0;
 };
 

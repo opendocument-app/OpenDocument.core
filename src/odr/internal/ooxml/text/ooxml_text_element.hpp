@@ -6,6 +6,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <pugixml.hpp>
+
 namespace odr::internal::ooxml::text {
 class Document;
 class StyleRegistry;

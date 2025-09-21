@@ -4,9 +4,7 @@
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/common/table_position.hpp>
 
-namespace pugi {
-class xml_node;
-}
+#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 class Document;
