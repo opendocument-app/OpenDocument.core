@@ -34,15 +34,15 @@ private:
 class MemoryFile final : public abstract::File {
 public:
   explicit MemoryFile(std::string data);
-  explicit MemoryFile(const abstract::File &file);
+  explicit MemoryFile(const File &file);
 
-  [[nodiscard]] FileLocation location() const noexcept final;
-  [[nodiscard]] std::size_t size() const final;
+  [[nodiscard]] FileLocation location() const noexcept override;
+  [[nodiscard]] std::size_t size() const override;
 
-  [[nodiscard]] std::optional<AbsPath> disk_path() const final;
-  [[nodiscard]] const char *memory_data() const final;
+  [[nodiscard]] std::optional<AbsPath> disk_path() const override;
+  [[nodiscard]] const char *memory_data() const override;
 
-  [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const override;
 
   [[nodiscard]] const std::string &content() const;
 

@@ -4,9 +4,7 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/common/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
-#include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
@@ -22,7 +20,7 @@ namespace odr::internal::html {
 
 namespace {
 
-class HtmlServiceImpl : public HtmlService {
+class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config,
                   std::shared_ptr<Logger> logger)
@@ -32,11 +30,11 @@ public:
         std::make_shared<HtmlView>(*this, "document", "document.html"));
   }
 
-  void warmup() const final {}
+  void warmup() const override {}
 
-  [[nodiscard]] const HtmlViews &list_views() const final { return m_views; }
+  [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
-  [[nodiscard]] bool exists(const std::string &path) const final {
+  [[nodiscard]] bool exists(const std::string &path) const override {
     if (path == "document.html") {
       return true;
     }
@@ -44,7 +42,7 @@ public:
     return false;
   }
 
-  [[nodiscard]] std::string mimetype(const std::string &path) const final {
+  [[nodiscard]] std::string mimetype(const std::string &path) const override {
     if (path == "document.html") {
       return "text/html";
     }
@@ -52,7 +50,7 @@ public:
     throw FileNotFound("Unknown path: " + path);
   }
 
-  void write(const std::string &path, std::ostream &out) const final {
+  void write(const std::string &path, std::ostream &out) const override {
     if (path == "document.html") {
       HtmlWriter writer(out, config());
       write_document(writer);
@@ -63,7 +61,7 @@ public:
   }
 
   HtmlResources write_html(const std::string &path,
-                           html::HtmlWriter &out) const final {
+                           HtmlWriter &out) const override {
     if (path == "document.html") {
       return write_document(out);
     }
@@ -81,9 +79,9 @@ public:
 
     std::vector<pdf::Page *> ordered_pages;
     std::function<void(pdf::Pages * pages)> recurse_pages =
-        [&](pdf::Pages *pages) {
+        [&](const pdf::Pages *pages) {
           for (pdf::Element *kid : pages->kids) {
-            if (auto p = dynamic_cast<pdf::Pages *>(kid); p != nullptr) {
+            if (auto *p = dynamic_cast<pdf::Pages *>(kid); p != nullptr) {
               recurse_pages(p);
             } else if (auto page = dynamic_cast<pdf::Page *>(kid);
                        page != nullptr) {
@@ -211,10 +209,10 @@ protected:
 
 namespace odr::internal {
 
-odr::HtmlService html::create_pdf_service(const PdfFile &pdf_file,
-                                          const std::string & /*cache_path*/,
-                                          HtmlConfig config,
-                                          std::shared_ptr<Logger> logger) {
+HtmlService html::create_pdf_service(const PdfFile &pdf_file,
+                                     const std::string & /*cache_path*/,
+                                     HtmlConfig config,
+                                     std::shared_ptr<Logger> logger) {
   return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
       pdf_file, std::move(config), std::move(logger)));
 }

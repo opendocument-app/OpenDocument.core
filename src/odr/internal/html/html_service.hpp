@@ -30,7 +30,7 @@ public:
   [[nodiscard]] const HtmlConfig &config() const override;
   [[nodiscard]] const abstract::HtmlService &service() const;
 
-  HtmlResources write_html(html::HtmlWriter &out) const override;
+  HtmlResources write_html(HtmlWriter &out) const override;
 
 private:
   const abstract::HtmlService *m_service;

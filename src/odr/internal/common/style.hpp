@@ -2,8 +2,6 @@
 
 #include <odr/style.hpp>
 
-#include <optional>
-
 namespace odr::internal {
 
 struct ResolvedStyle final {

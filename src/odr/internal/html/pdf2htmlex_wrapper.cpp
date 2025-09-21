@@ -94,8 +94,8 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   // misc
   param.clean_tmp = 1;
   param.tmp_dir = cache_path;
-  param.data_dir = odr::GlobalParams::pdf2htmlex_data_path();
-  param.poppler_data_dir = odr::GlobalParams::poppler_data_path();
+  param.data_dir = GlobalParams::pdf2htmlex_data_path();
+  param.poppler_data_dir = GlobalParams::poppler_data_path();
   param.debug = 0;
   param.proof = 0;
   param.quiet = 1;
@@ -109,16 +109,16 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
 
 } // namespace
 
-class BackgroundImageResource : public HtmlResource {
+class BackgroundImageResource final : public HtmlResource {
 public:
-  static std::string file_name(std::size_t page_number) {
+  static std::string file_name(const std::size_t page_number) {
     std::stringstream stream;
     stream << "bg";
     stream << std::hex << page_number;
     return stream.str();
   }
 
-  static std::string file_path(std::size_t page_number,
+  static std::string file_path(const std::size_t page_number,
                                const std::string &format) {
     std::stringstream stream;
     stream << "bg";
@@ -131,8 +131,8 @@ public:
       PopplerPdfFile pdf_file, std::string cache_path,
       std::shared_ptr<pdf2htmlEX::HTMLRenderer> html_renderer,
       std::shared_ptr<std::mutex> html_renderer_mutex,
-      std::shared_ptr<pdf2htmlEX::Param> html_renderer_param, int page_number,
-      const std::string &format)
+      std::shared_ptr<pdf2htmlEX::Param> html_renderer_param,
+      const int page_number, const std::string &format)
       : HtmlResource(HtmlResourceType::image, "image/jpg",
                      file_name(page_number), file_path(page_number, format),
                      std::nullopt, false, false, true),
@@ -188,9 +188,9 @@ public:
         std::make_shared<HtmlView>(*this, "document", "document.html"));
   }
 
-  const HtmlViews &list_views() const final { return m_views; }
+  const HtmlViews &list_views() const override { return m_views; }
 
-  void warmup() const final {
+  void warmup() const override {
     if (m_warm) {
       return;
     }
@@ -209,7 +209,7 @@ public:
     m_warm = true;
   }
 
-  bool exists(const std::string &path) const final {
+  bool exists(const std::string &path) const override {
     if (std::ranges::any_of(m_views, [&path](const auto &view) {
           return view.path() == path;
         })) {
@@ -226,7 +226,7 @@ public:
     return false;
   }
 
-  std::string mimetype(const std::string &path) const final {
+  std::string mimetype(const std::string &path) const override {
     if (std::ranges::any_of(m_views, [&path](const auto &view) {
           return view.path() == path;
         })) {
@@ -250,7 +250,7 @@ public:
     return m_resources;
   }
 
-  void write(const std::string &path, std::ostream &out) const final {
+  void write(const std::string &path, std::ostream &out) const override {
     warmup();
 
     for (const auto &view : m_views) {
@@ -272,7 +272,7 @@ public:
   }
 
   HtmlResources write_html(const std::string &path,
-                           html::HtmlWriter &out) const final {
+                           HtmlWriter &out) const override {
     if (path == "document.html") {
       return write_document(out);
     }
@@ -297,9 +297,10 @@ private:
 
 namespace odr::internal {
 
-odr::HtmlService html::create_poppler_pdf_service(
-    const PopplerPdfFile &pdf_file, const std::string &cache_path,
-    HtmlConfig config, std::shared_ptr<Logger> logger) {
+HtmlService html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
+                                             const std::string &cache_path,
+                                             HtmlConfig config,
+                                             std::shared_ptr<Logger> logger) {
   PDFDoc &pdf_doc = pdf_file.pdf_doc();
 
   auto html_renderer_param = std::make_shared<pdf2htmlEX::Param>(
@@ -313,13 +314,13 @@ odr::HtmlService html::create_poppler_pdf_service(
   }
 
   if (!pdf_doc.okToCopy() && html_renderer_param->no_drm == 0) {
-    throw odr::DocumentCopyProtectedException();
+    throw DocumentCopyProtectedException();
   }
 
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
   // TODO potentially just a cache dir?
   auto html_renderer = std::make_shared<pdf2htmlEX::HTMLRenderer>(
-      odr::GlobalParams::fontconfig_data_path().c_str(), *html_renderer_param);
+      GlobalParams::fontconfig_data_path().c_str(), *html_renderer_param);
   html_renderer->process(&pdf_doc);
 
   // renderer is not thread safe

@@ -6,7 +6,9 @@ namespace odr::internal {
 
 TableCursor::TableCursor() noexcept { m_sparse.emplace_back(); }
 
-void TableCursor::add_column(uint32_t repeat) noexcept { m_col += repeat; }
+void TableCursor::add_column(const uint32_t repeat) noexcept {
+  m_col += repeat;
+}
 
 void TableCursor::add_row(const std::uint32_t repeat) noexcept {
   m_row += repeat;
@@ -51,7 +53,7 @@ std::uint32_t TableCursor::row() const noexcept { return m_row; }
 void TableCursor::handle_rowspan_() noexcept {
   auto &s = m_sparse.front();
   auto it = std::begin(s);
-  while ((it != std::end(s)) && (m_col == it->start)) {
+  while (it != std::end(s) && m_col == it->start) {
     m_col = it->end;
     ++it;
   }

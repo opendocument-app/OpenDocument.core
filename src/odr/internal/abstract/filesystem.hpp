@@ -40,7 +40,7 @@ public:
   [[nodiscard]] virtual std::unique_ptr<FileWalker>
   file_walker(const AbsPath &path) const = 0;
 
-  [[nodiscard]] virtual std::shared_ptr<abstract::File>
+  [[nodiscard]] virtual std::shared_ptr<File>
   open(const AbsPath &path) const = 0;
 };
 
@@ -53,10 +53,9 @@ public:
 
   virtual bool remove(const AbsPath &path) = 0;
   virtual bool copy(const AbsPath &from, const AbsPath &to) = 0;
-  virtual std::shared_ptr<abstract::File> copy(const abstract::File &from,
-                                               const AbsPath &to) = 0;
-  virtual std::shared_ptr<abstract::File>
-  copy(std::shared_ptr<abstract::File> from, const AbsPath &to) = 0;
+  virtual std::shared_ptr<File> copy(const File &from, const AbsPath &to) = 0;
+  virtual std::shared_ptr<File> copy(std::shared_ptr<File> from,
+                                     const AbsPath &to) = 0;
   virtual bool move(const AbsPath &from, const AbsPath &to) = 0;
 };
 

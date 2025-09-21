@@ -1,6 +1,5 @@
 #pragma once
 
-#include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/sheet_element.hpp>
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/common/table_position.hpp>
@@ -8,7 +7,6 @@
 #include <odr/internal/odf/odf_parser.hpp>
 
 #include <map>
-#include <memory>
 #include <unordered_map>
 
 namespace pugi {
@@ -43,38 +41,39 @@ struct SheetIndex final {
                  std::uint32_t columns_repeated, std::uint32_t rows_repeated,
                  pugi::xml_node element);
 
-  pugi::xml_node column(std::uint32_t) const;
-  pugi::xml_node row(std::uint32_t) const;
-  pugi::xml_node cell(std::uint32_t column, std::uint32_t row) const;
+  [[nodiscard]] pugi::xml_node column(std::uint32_t) const;
+  [[nodiscard]] pugi::xml_node row(std::uint32_t) const;
+  [[nodiscard]] pugi::xml_node cell(std::uint32_t column,
+                                    std::uint32_t row) const;
 };
 
 class Sheet final : public Element, public abstract::Sheet {
 public:
   using Element::Element;
 
-  [[nodiscard]] std::string name(const abstract::Document *) const final;
+  [[nodiscard]] std::string name(const abstract::Document *) const override;
 
   [[nodiscard]] TableDimensions
-  dimensions(const abstract::Document *) const final;
+  dimensions(const abstract::Document *) const override;
 
   [[nodiscard]] TableDimensions
   content(const abstract::Document *,
-          const std::optional<TableDimensions> range) const final;
+          std::optional<TableDimensions> range) const override;
 
   abstract::SheetCell *cell(const abstract::Document *, std::uint32_t column,
-                            std::uint32_t row) const final;
+                            std::uint32_t row) const override;
 
   [[nodiscard]] abstract::Element *
-  first_shape(const abstract::Document *) const final;
+  first_shape(const abstract::Document *) const override;
 
-  [[nodiscard]] TableStyle style(const abstract::Document *) const final;
-  [[nodiscard]] TableColumnStyle column_style(const abstract::Document *,
-                                              std::uint32_t column) const final;
+  [[nodiscard]] TableStyle style(const abstract::Document *) const override;
+  [[nodiscard]] TableColumnStyle
+  column_style(const abstract::Document *, std::uint32_t column) const override;
   [[nodiscard]] TableRowStyle row_style(const abstract::Document *,
-                                        std::uint32_t row) const final;
+                                        std::uint32_t row) const override;
   [[nodiscard]] TableCellStyle cell_style(const abstract::Document *,
                                           std::uint32_t column,
-                                          std::uint32_t row) const final;
+                                          std::uint32_t row) const override;
 
   void init_column_(std::uint32_t column, std::uint32_t repeated,
                     pugi::xml_node element);

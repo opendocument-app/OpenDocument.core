@@ -63,9 +63,9 @@ void WvWareLegacyMicrosoftFile::open() {
     m_encryption_state = EncryptionState::encrypted;
     m_parser_state->encryption_flag = ret & 0x7fff;
 
-    if ((m_parser_state->encryption_flag == WORD8) ||
-        (m_parser_state->encryption_flag == WORD7) ||
-        (m_parser_state->encryption_flag == WORD6)) {
+    if (m_parser_state->encryption_flag == WORD8 ||
+        m_parser_state->encryption_flag == WORD7 ||
+        m_parser_state->encryption_flag == WORD6) {
       ret = 0;
     }
   } else {

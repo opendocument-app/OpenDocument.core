@@ -22,37 +22,39 @@ public:
         m_iterator{std::filesystem::recursive_directory_iterator(path.path())} {
   }
 
-  [[nodiscard]] std::unique_ptr<FileWalker> clone() const final {
+  [[nodiscard]] std::unique_ptr<FileWalker> clone() const override {
     return std::make_unique<SystemFileWalker>(*this);
   }
 
-  [[nodiscard]] bool equals(const FileWalker & /*rhs*/) const final {
+  [[nodiscard]] bool equals(const FileWalker & /*rhs*/) const override {
     return false; // TODO
   }
 
-  [[nodiscard]] bool end() const final {
+  [[nodiscard]] bool end() const override {
     return m_iterator == std::filesystem::end(m_iterator);
   }
 
-  [[nodiscard]] std::uint32_t depth() const final { return m_iterator.depth(); }
+  [[nodiscard]] std::uint32_t depth() const override {
+    return m_iterator.depth();
+  }
 
-  [[nodiscard]] AbsPath path() const final {
+  [[nodiscard]] AbsPath path() const override {
     return AbsPath("/").join(AbsPath(m_iterator->path()).rebase(m_root));
   }
 
-  [[nodiscard]] bool is_file() const final {
+  [[nodiscard]] bool is_file() const override {
     return m_iterator->is_regular_file();
   }
 
-  [[nodiscard]] bool is_directory() const final {
+  [[nodiscard]] bool is_directory() const override {
     return m_iterator->is_directory();
   }
 
-  void pop() final { return m_iterator.pop(); }
+  void pop() override { return m_iterator.pop(); }
 
-  void next() final { ++m_iterator; }
+  void next() override { ++m_iterator; }
 
-  void flat_next() final {
+  void flat_next() override {
     m_iterator.disable_recursion_pending();
     ++m_iterator;
   }
@@ -117,8 +119,8 @@ bool SystemFilesystem::copy(const AbsPath &from, const AbsPath &to) {
 
 std::shared_ptr<abstract::File>
 SystemFilesystem::copy(const abstract::File &from, const AbsPath &to) {
-  auto istream = from.stream();
-  auto ostream = create_file(to_system_path_(to));
+  const auto istream = from.stream();
+  const auto ostream = create_file(to_system_path_(to));
 
   util::stream::pipe(*istream, *ostream);
 
@@ -126,7 +128,7 @@ SystemFilesystem::copy(const abstract::File &from, const AbsPath &to) {
 }
 
 std::shared_ptr<abstract::File>
-SystemFilesystem::copy(std::shared_ptr<abstract::File> from,
+SystemFilesystem::copy(const std::shared_ptr<abstract::File> from,
                        const AbsPath &to) {
   return copy(*from, to_system_path_(to));
 }
@@ -147,47 +149,47 @@ public:
   using Files = std::map<AbsPath, std::shared_ptr<abstract::File>>;
 
   VirtualFileWalker(const AbsPath &root, const Files &files) {
-    for (auto &&f : files) {
-      if (f.first.ancestor_of(root)) {
-        m_files[f.first] = f.second;
+    for (const auto &[path, file] : files) {
+      if (path.ancestor_of(root)) {
+        m_files[path] = file;
       }
     }
 
     m_iterator = std::begin(m_files);
   }
 
-  [[nodiscard]] std::unique_ptr<FileWalker> clone() const final {
+  [[nodiscard]] std::unique_ptr<FileWalker> clone() const override {
     return std::make_unique<VirtualFileWalker>(*this);
   }
 
-  [[nodiscard]] bool equals(const FileWalker &rhs_) const final {
+  [[nodiscard]] bool equals(const FileWalker &rhs_) const override {
     auto &&rhs = dynamic_cast<const VirtualFileWalker &>(rhs_);
     return m_iterator == rhs.m_iterator;
   }
 
-  [[nodiscard]] bool end() const final {
+  [[nodiscard]] bool end() const override {
     return m_iterator == std::end(m_files);
   }
 
-  [[nodiscard]] std::uint32_t depth() const final {
+  [[nodiscard]] std::uint32_t depth() const override {
     return 0; // TODO
   }
 
-  [[nodiscard]] AbsPath path() const final { return m_iterator->first; }
+  [[nodiscard]] AbsPath path() const override { return m_iterator->first; }
 
-  [[nodiscard]] bool is_file() const final {
+  [[nodiscard]] bool is_file() const override {
     return m_iterator->second.operator bool();
   }
 
-  [[nodiscard]] bool is_directory() const final { return !is_file(); }
+  [[nodiscard]] bool is_directory() const override { return !is_file(); }
 
-  void pop() final {
+  void pop() override {
     // TODO
   }
 
-  void next() final { ++m_iterator; }
+  void next() override { ++m_iterator; }
 
-  void flat_next() final {
+  void flat_next() override {
     // TODO
   }
 
@@ -198,23 +200,23 @@ private:
 } // namespace
 
 bool VirtualFilesystem::exists(const AbsPath &path) const {
-  return m_files.find(path) != std::end(m_files);
+  return m_files.contains(path);
 }
 
 bool VirtualFilesystem::is_file(const AbsPath &path) const {
-  auto file_it = m_files.find(path);
+  const auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return false;
   }
-  return (bool)file_it->second;
+  return static_cast<bool>(file_it->second);
 }
 
 bool VirtualFilesystem::is_directory(const AbsPath &path) const {
-  auto file_it = m_files.find(path);
+  const auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return false;
   }
-  return !(bool)file_it->second;
+  return !static_cast<bool>(file_it->second);
 }
 
 std::unique_ptr<abstract::FileWalker>
@@ -224,7 +226,7 @@ VirtualFilesystem::file_walker(const AbsPath &path) const {
 
 std::shared_ptr<abstract::File>
 VirtualFilesystem::open(const AbsPath &path) const {
-  auto file_it = m_files.find(path);
+  const auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return {};
   }
@@ -245,7 +247,7 @@ bool VirtualFilesystem::create_directory(const AbsPath &path) {
 }
 
 bool VirtualFilesystem::remove(const AbsPath &path) {
-  auto file_it = m_files.find(path);
+  const auto file_it = m_files.find(path);
   if (file_it == std::end(m_files)) {
     return false;
   }
@@ -256,7 +258,7 @@ bool VirtualFilesystem::remove(const AbsPath &path) {
 bool VirtualFilesystem::copy(const AbsPath &from, const AbsPath &to) {
   // TODO what about directories?
 
-  auto from_it = m_files.find(from);
+  const auto from_it = m_files.find(from);
   if (from_it == std::end(m_files)) {
     return false;
   }

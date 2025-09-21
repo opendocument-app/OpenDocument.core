@@ -6,13 +6,13 @@
 
 namespace odr::internal::json {
 
-JsonFile::JsonFile(std::shared_ptr<internal::text::TextFile> file)
+JsonFile::JsonFile(std::shared_ptr<text::TextFile> file)
     : m_file{std::move(file)} {
   // TODO use text file?
   check_json_file(*m_file->file()->stream());
 }
 
-std::shared_ptr<internal::abstract::File> JsonFile::file() const noexcept {
+std::shared_ptr<abstract::File> JsonFile::file() const noexcept {
   return m_file->file();
 }
 

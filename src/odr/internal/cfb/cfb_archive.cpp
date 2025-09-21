@@ -3,7 +3,6 @@
 #include <odr/exceptions.hpp>
 #include <odr/internal/cfb/cfb_util.hpp>
 #include <odr/internal/common/filesystem.hpp>
-#include <odr/internal/util/string_util.hpp>
 
 namespace odr::internal::abstract {
 class File;

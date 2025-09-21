@@ -14,7 +14,7 @@
 namespace odr::internal::html {
 namespace {
 
-class HtmlServiceImpl : public HtmlService {
+class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(TextFile text_file, HtmlConfig config,
                   std::shared_ptr<Logger> logger)
@@ -24,11 +24,11 @@ public:
         std::make_shared<HtmlView>(*this, "text", "text.html"));
   }
 
-  void warmup() const final {}
+  void warmup() const override {}
 
-  [[nodiscard]] const HtmlViews &list_views() const final { return m_views; }
+  [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
-  [[nodiscard]] bool exists(const std::string &path) const final {
+  [[nodiscard]] bool exists(const std::string &path) const override {
     if (path == "text.html") {
       return true;
     }
@@ -36,7 +36,7 @@ public:
     return false;
   }
 
-  [[nodiscard]] std::string mimetype(const std::string &path) const final {
+  [[nodiscard]] std::string mimetype(const std::string &path) const override {
     if (path == "text.html") {
       return "text/html";
     }
@@ -44,7 +44,7 @@ public:
     throw FileNotFound("Unknown path: " + path);
   }
 
-  void write(const std::string &path, std::ostream &out) const final {
+  void write(const std::string &path, std::ostream &out) const override {
     if (path == "text.html") {
       HtmlWriter writer(out, config());
       write_text(writer);
@@ -55,7 +55,7 @@ public:
   }
 
   HtmlResources write_html(const std::string &path,
-                           html::HtmlWriter &out) const final {
+                           HtmlWriter &out) const override {
     if (path == "text.html") {
       return write_text(out);
     }
@@ -66,7 +66,7 @@ public:
   HtmlResources write_text(HtmlWriter &out) const {
     HtmlResources resources;
 
-    auto in = m_text_file.stream();
+    const std::unique_ptr<std::istream> in = m_text_file.stream();
 
     out.write_begin();
 
@@ -130,10 +130,10 @@ protected:
 
 namespace odr::internal {
 
-odr::HtmlService html::create_text_service(const TextFile &text_file,
-                                           const std::string &cache_path,
-                                           HtmlConfig config,
-                                           std::shared_ptr<Logger> logger) {
+HtmlService html::create_text_service(const TextFile &text_file,
+                                      const std::string &cache_path,
+                                      HtmlConfig config,
+                                      std::shared_ptr<Logger> logger) {
   (void)cache_path;
 
   return odr::HtmlService(std::make_unique<HtmlServiceImpl>(

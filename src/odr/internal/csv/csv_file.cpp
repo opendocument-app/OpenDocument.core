@@ -6,13 +6,13 @@
 
 namespace odr::internal::csv {
 
-CsvFile::CsvFile(std::shared_ptr<internal::text::TextFile> file)
+CsvFile::CsvFile(std::shared_ptr<text::TextFile> file)
     : m_file{std::move(file)} {
   // TODO use text file?
   check_csv_file(*m_file->file()->stream());
 }
 
-std::shared_ptr<internal::abstract::File> CsvFile::file() const noexcept {
+std::shared_ptr<abstract::File> CsvFile::file() const noexcept {
   return m_file->file();
 }
 

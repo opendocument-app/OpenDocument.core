@@ -13,7 +13,7 @@ std::uint32_t TablePosition::to_column_num(const std::string &string) {
 
   std::uint32_t result = 0;
   for (std::size_t i = 0; i < string.size(); ++i) {
-    if ((string[i] < 'A') || (string[i] > 'Z')) {
+    if (string[i] < 'A' || string[i] > 'Z') {
       throw std::invalid_argument("illegal character in \"" + string + "\"");
     }
     result = result * 26 + (string[i] - 'A' + 1);
@@ -30,12 +30,11 @@ std::string TablePosition::to_column_string(std::uint32_t column) {
 
   column += 1;
   do {
-    const auto rem = column % 26;
-    if (rem == 0) {
+    if (const std::uint32_t rem = column % 26; rem == 0) {
       result = 'Z' + result;
       column /= 27;
     } else {
-      result = (char)('A' + rem - 1) + result;
+      result = static_cast<char>('A' + rem - 1) + result;
       column /= 26;
     }
   } while (column > 0);
@@ -80,13 +79,13 @@ std::string TablePosition::to_string() const noexcept {
 
 std::size_t TablePosition::hash() const noexcept {
   std::size_t result = 0;
-  odr::internal::util::hash::hash_combine(result, m_row, m_column);
+  util::hash::hash_combine(result, m_row, m_column);
   return result;
 }
 
 } // namespace odr::internal
 
 std::size_t std::hash<odr::internal::TablePosition>::operator()(
-    const odr::internal::TablePosition &k) const {
+    const odr::internal::TablePosition &k) const noexcept {
   return k.hash();
 }

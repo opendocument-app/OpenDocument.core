@@ -10,10 +10,6 @@ TableRange::TableRange(const TablePosition &from,
                        const TablePosition &to) noexcept
     : m_from{from}, m_to{to} {}
 
-TableRange::TableRange(const TablePosition &from, const std::uint32_t columns,
-                       const std::uint32_t rows) noexcept
-    : m_from{from}, m_to{from.column() + columns, from.row() + rows} {}
-
 TableRange::TableRange(const std::string &s) {
   const auto sep = s.find(':');
   if (sep == std::string::npos) {
@@ -32,9 +28,9 @@ std::string TableRange::to_string() const noexcept {
 }
 
 bool TableRange::contains(const TablePosition &position) const noexcept {
-  return (m_from.column() <= position.column()) &&
-         (m_to.column() > position.column()) &&
-         (m_from.row() <= position.row()) && (m_to.row() > position.row());
+  return m_from.column() <= position.column() &&
+         m_to.column() > position.column() && m_from.row() <= position.row() &&
+         m_to.row() > position.row();
 }
 
 } // namespace odr::internal

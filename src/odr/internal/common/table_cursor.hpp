@@ -16,9 +16,9 @@ public:
   void add_cell(std::uint32_t colspan = 1, std::uint32_t rowspan = 1,
                 std::uint32_t repeat = 1) noexcept;
 
-  TablePosition position() const noexcept;
-  std::uint32_t column() const noexcept;
-  std::uint32_t row() const noexcept;
+  [[nodiscard]] TablePosition position() const noexcept;
+  [[nodiscard]] std::uint32_t column() const noexcept;
+  [[nodiscard]] std::uint32_t row() const noexcept;
 
 private:
   struct Range {

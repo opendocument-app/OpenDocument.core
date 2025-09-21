@@ -73,10 +73,10 @@ const char *html::translate_font_style(const FontStyle font_style) {
 
 std::string html::translate_outer_page_style(const PageLayout &page_layout) {
   std::string result;
-  if (auto width = page_layout.width) {
+  if (const std::optional<Measure> width = page_layout.width) {
     result.append("width:").append(width->to_string()).append(";");
   }
-  if (auto height = page_layout.height) {
+  if (const std::optional<Measure> height = page_layout.height) {
     result.append("height:").append(height->to_string()).append(";");
   }
   return result;
@@ -84,18 +84,22 @@ std::string html::translate_outer_page_style(const PageLayout &page_layout) {
 
 std::string html::translate_inner_page_style(const PageLayout &page_layout) {
   std::string result;
-  if (auto margin_right = page_layout.margin.right) {
+  if (const std::optional<Quantity<double>> margin_right =
+          page_layout.margin.right) {
     result.append("margin-right:")
         .append(margin_right->to_string())
         .append(";");
   }
-  if (auto margin_top = page_layout.margin.top) {
+  if (const std::optional<Quantity<double>> margin_top =
+          page_layout.margin.top) {
     result.append("margin-top:").append(margin_top->to_string()).append(";");
   }
-  if (auto margin_left = page_layout.margin.left) {
+  if (const std::optional<Quantity<double>> margin_left =
+          page_layout.margin.left) {
     result.append("margin-left:").append(margin_left->to_string()).append(";");
   }
-  if (auto margin_bottom = page_layout.margin.bottom) {
+  if (const std::optional<Quantity<double>> margin_bottom =
+          page_layout.margin.bottom) {
     result.append("margin-bottom:")
         .append(margin_bottom->to_string())
         .append(";");
@@ -105,18 +109,18 @@ std::string html::translate_inner_page_style(const PageLayout &page_layout) {
 
 std::string html::translate_text_style(const TextStyle &text_style) {
   std::string result;
-  if (auto font_name = text_style.font_name) {
+  if (const char *font_name = text_style.font_name) {
     result.append("font-family:").append(font_name).append(";");
   }
-  if (auto font_size = text_style.font_size) {
+  if (const std::optional<Measure> font_size = text_style.font_size) {
     result.append("font-size:").append(font_size->to_string()).append(";");
   }
-  if (auto font_weight = text_style.font_weight) {
+  if (const std::optional<FontWeight> font_weight = text_style.font_weight) {
     result.append("font-weight:")
         .append(translate_font_weight(*font_weight))
         .append(";");
   }
-  if (auto font_style = text_style.font_style) {
+  if (const std::optional<FontStyle> font_style = text_style.font_style) {
     result.append("font-style:")
         .append(translate_font_style(*font_style))
         .append(";");
@@ -127,17 +131,16 @@ std::string html::translate_text_style(const TextStyle &text_style) {
   if (text_style.font_line_through && *text_style.font_line_through) {
     result += "text-decoration:line-through;";
   }
-  if (auto font_shadow = text_style.font_shadow) {
+  if (const std::optional<std::string> font_shadow = text_style.font_shadow) {
     result.append("text-shadow:").append(*font_shadow).append(";");
   }
-  if (auto font_color = text_style.font_color) {
-    result.append("color:")
-        .append(internal::html::color(*font_color))
-        .append(";");
+  if (const std::optional<Color> font_color = text_style.font_color) {
+    result.append("color:").append(color(*font_color)).append(";");
   }
-  if (auto background_color = text_style.background_color) {
+  if (const std::optional<Color> background_color =
+          text_style.background_color) {
     result.append("background-color:")
-        .append(internal::html::color(*background_color))
+        .append(color(*background_color))
         .append(";");
   }
   return result;
@@ -146,28 +149,32 @@ std::string html::translate_text_style(const TextStyle &text_style) {
 std::string
 html::translate_paragraph_style(const ParagraphStyle &paragraph_style) {
   std::string result;
-  if (auto text_align = paragraph_style.text_align) {
+  if (const std::optional<TextAlign> text_align = paragraph_style.text_align) {
     result.append("text-align:")
         .append(translate_text_align(*text_align))
         .append(";");
   }
-  if (auto margin_right = paragraph_style.margin.right) {
+  if (const std::optional<Quantity<double>> margin_right =
+          paragraph_style.margin.right) {
     result.append("margin-right:")
         .append(margin_right->to_string())
         .append(";");
   }
-  if (auto margin_top = paragraph_style.margin.top) {
+  if (const std::optional<Quantity<double>> margin_top =
+          paragraph_style.margin.top) {
     result.append("margin-top:").append(margin_top->to_string()).append(";");
   }
-  if (auto margin_left = paragraph_style.margin.left) {
+  if (const std::optional<Quantity<double>> margin_left =
+          paragraph_style.margin.left) {
     result.append("margin-left:").append(margin_left->to_string()).append(";");
   }
-  if (auto margin_bottom = paragraph_style.margin.bottom) {
+  if (const std::optional<Quantity<double>> margin_bottom =
+          paragraph_style.margin.bottom) {
     result.append("margin-bottom:")
         .append(margin_bottom->to_string())
         .append(";");
   }
-  if (auto line_height = paragraph_style.line_height) {
+  if (const std::optional<Measure> line_height = paragraph_style.line_height) {
     result.append("line-height:").append(line_height->to_string()).append(";");
   }
   return result;
@@ -175,7 +182,7 @@ html::translate_paragraph_style(const ParagraphStyle &paragraph_style) {
 
 std::string html::translate_table_style(const TableStyle &table_style) {
   std::string result;
-  if (auto width = table_style.width) {
+  if (const std::optional<Measure> width = table_style.width) {
     result.append("width:").append(width->to_string()).append(";");
   }
   return result;
@@ -184,7 +191,7 @@ std::string html::translate_table_style(const TableStyle &table_style) {
 std::string
 html::translate_table_column_style(const TableColumnStyle &table_column_style) {
   std::string result;
-  if (auto width = table_column_style.width) {
+  if (const std::optional<Measure> width = table_column_style.width) {
     result.append("width:").append(width->to_string()).append(";");
     result.append("min-width:").append(width->to_string()).append(";");
   }
@@ -196,7 +203,7 @@ html::translate_table_row_style(const TableRowStyle &table_row_style) {
   std::string result;
   // TODO that does not work with HTML; height would need to be applied to the
   // cells
-  if (auto height = table_row_style.height) {
+  if (const std::optional<Measure> height = table_row_style.height) {
     result.append("height:").append(height->to_string()).append(";");
   }
   return result;
@@ -205,53 +212,65 @@ html::translate_table_row_style(const TableRowStyle &table_row_style) {
 std::string
 html::translate_table_cell_style(const TableCellStyle &table_cell_style) {
   std::string result;
-  if (auto horizontal_align = table_cell_style.horizontal_align) {
+  if (const std::optional<HorizontalAlign> horizontal_align =
+          table_cell_style.horizontal_align) {
     result.append("text-align:")
         .append(translate_horizontal_align(*horizontal_align))
         .append(";");
   }
-  if (auto vertical_align = table_cell_style.vertical_align) {
+  if (const std::optional<VerticalAlign> vertical_align =
+          table_cell_style.vertical_align) {
     result.append("vertical-align:")
         .append(translate_vertical_align(*vertical_align))
         .append(";");
   }
-  if (auto background_color = table_cell_style.background_color) {
+  if (const std::optional<Color> background_color =
+          table_cell_style.background_color) {
     result.append("background-color:")
-        .append(internal::html::color(*background_color))
+        .append(color(*background_color))
         .append(";");
   }
-  if (auto padding_right = table_cell_style.padding.right) {
+  if (const std::optional<Quantity<double>> padding_right =
+          table_cell_style.padding.right) {
     result.append("padding-right:")
         .append(padding_right->to_string())
         .append(";");
   }
-  if (auto padding_top = table_cell_style.padding.top) {
+  if (const std::optional<Quantity<double>> padding_top =
+          table_cell_style.padding.top) {
     result.append("padding-top:").append(padding_top->to_string()).append(";");
   }
-  if (auto padding_left = table_cell_style.padding.left) {
+  if (const std::optional<Quantity<double>> padding_left =
+          table_cell_style.padding.left) {
     result.append("padding-left:")
         .append(padding_left->to_string())
         .append(";");
   }
-  if (auto padding_bottom = table_cell_style.padding.bottom) {
+  if (const std::optional<Quantity<double>> padding_bottom =
+          table_cell_style.padding.bottom) {
     result.append("padding-bottom:")
         .append(padding_bottom->to_string())
         .append(";");
   }
-  if (auto border_right = table_cell_style.border.right) {
+  if (const std::optional<std::string> border_right =
+          table_cell_style.border.right) {
     result.append("border-right:").append(*border_right).append(";");
   }
-  if (auto border_top = table_cell_style.border.top) {
+  if (const std::optional<std::string> border_top =
+          table_cell_style.border.top) {
     result.append("border-top:").append(*border_top).append(";");
   }
-  if (auto border_left = table_cell_style.border.left) {
+  if (const std::optional<std::string> border_left =
+          table_cell_style.border.left) {
     result.append("border-left:").append(*border_left).append(";");
   }
-  if (auto border_bottom = table_cell_style.border.bottom) {
+  if (const std::optional<std::string> border_bottom =
+          table_cell_style.border.bottom) {
     result.append("border-bottom:").append(*border_bottom).append(";");
   }
-  if (auto text_rotation = table_cell_style.text_rotation;
-      text_rotation && (*text_rotation != 0)) {
+  if (const std::optional<double> text_rotation =
+          table_cell_style.text_rotation;
+      text_rotation && *text_rotation != 0) {
     // TODO covers only the -90° case
     result.append("writing-mode:vertical-lr;");
   }
@@ -260,22 +279,19 @@ html::translate_table_cell_style(const TableCellStyle &table_cell_style) {
 
 std::string html::translate_drawing_style(const GraphicStyle &graphic_style) {
   std::string result;
-  if (auto stroke_width = graphic_style.stroke_width) {
+  if (const std::optional<Measure> stroke_width = graphic_style.stroke_width) {
     result.append("stroke-width:")
         .append(stroke_width->to_string())
         .append(";");
   }
-  if (auto stroke_color = graphic_style.stroke_color) {
-    result.append("stroke:")
-        .append(internal::html::color(*stroke_color))
-        .append(";");
+  if (const std::optional<Color> stroke_color = graphic_style.stroke_color) {
+    result.append("stroke:").append(color(*stroke_color)).append(";");
   }
-  if (auto fill_color = graphic_style.fill_color) {
-    result.append("fill:")
-        .append(internal::html::color(*fill_color))
-        .append(";");
+  if (const std::optional<Color> fill_color = graphic_style.fill_color) {
+    result.append("fill:").append(color(*fill_color)).append(";");
   }
-  if (auto vertical_align = graphic_style.vertical_align) {
+  if (const std::optional<VerticalAlign> vertical_align =
+          graphic_style.vertical_align) {
     if (vertical_align == VerticalAlign::middle) {
       result += "display:flex;justify-content:center;flex-direction:column;";
     }
@@ -373,12 +389,12 @@ std::string
 html::translate_custom_shape_properties(const CustomShape &custom_shape) {
   std::string result;
   result += "position:absolute;";
-  if (auto x = custom_shape.x()) {
+  if (const std::optional<std::string> x = custom_shape.x()) {
     result += "left:" + *x + ";";
   } else {
     result += "left:0;";
   }
-  if (auto y = custom_shape.y()) {
+  if (const std::optional<std::string> y = custom_shape.y()) {
     result += "top:" + *y + ";";
   } else {
     result += "top:0;";

@@ -1,13 +1,8 @@
 #pragma once
 
 #include <odr/internal/abstract/archive.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/common/path.hpp>
 
-#include <iterator>
 #include <memory>
-#include <optional>
-#include <string>
 #include <vector>
 
 namespace odr {
@@ -34,9 +29,9 @@ public:
   explicit CfbArchive(std::shared_ptr<util::Archive> archive);
 
   [[nodiscard]] std::shared_ptr<abstract::Filesystem>
-  as_filesystem() const final;
+  as_filesystem() const override;
 
-  void save(std::ostream &out) const final;
+  void save(std::ostream &out) const override;
 
 private:
   std::shared_ptr<util::Archive> m_cfb;

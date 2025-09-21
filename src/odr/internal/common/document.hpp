@@ -33,7 +33,7 @@ protected:
 
 template <typename element_t> class TemplateDocument : public Document {
 public:
-  TemplateDocument(FileType file_type, DocumentType document_type,
+  TemplateDocument(FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
       : Document(file_type, document_type, std::move(filesystem)) {}
 

@@ -18,7 +18,7 @@ OpenDocumentFile::OpenDocumentFile(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   if (m_filesystem->exists(AbsPath("/META-INF/manifest.xml"))) {
-    auto manifest =
+    const pugi::xml_document manifest =
         util::xml::parse(*m_filesystem, AbsPath("/META-INF/manifest.xml"));
 
     m_file_meta = parse_file_meta(*m_filesystem, &manifest, false);

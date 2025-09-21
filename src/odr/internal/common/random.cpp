@@ -5,19 +5,19 @@
 
 namespace odr {
 
-std::string internal::random_string(std::size_t length) {
+std::string internal::random_string(const std::size_t length) {
   static const std::string charset = "0123456789"
                                      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                      "abcdefghijklmnopqrstuvwxyz";
 
-  static thread_local std::mt19937 generator(std::random_device{}());
-  static thread_local std::uniform_int_distribution<std::size_t> distribution(
+  thread_local std::mt19937 generator(std::random_device{}());
+  thread_local std::uniform_int_distribution<std::size_t> distribution(
       0, charset.size() - 1);
 
   std::string result;
   result.reserve(length);
   std::generate_n(std::back_inserter(result), length,
-                  []() { return charset[distribution(generator)]; });
+                  [] { return charset[distribution(generator)]; });
 
   return result;
 }

@@ -12,14 +12,12 @@
 #include <optional>
 #include <string>
 
-#include <pugixml.hpp>
-
 namespace odr::internal::odf {
 
 namespace {
 
 const char *default_style_name(const pugi::xml_node node) {
-  for (auto attribute : node.attributes()) {
+  for (pugi::xml_attribute attribute : node.attributes()) {
     if (util::string::ends_with(attribute.name(), ":style-name")) {
       return attribute.value();
     }
@@ -29,7 +27,7 @@ const char *default_style_name(const pugi::xml_node node) {
 
 } // namespace
 
-Element::Element(pugi::xml_node node) : m_node{node} {
+Element::Element(const pugi::xml_node node) : m_node{node} {
   if (!node) {
     // TODO log error
     throw std::runtime_error("node not set");
@@ -37,8 +35,8 @@ Element::Element(pugi::xml_node node) : m_node{node} {
 }
 
 ResolvedStyle Element::partial_style(const abstract::Document *document) const {
-  if (auto style_name = style_name_(document)) {
-    if (auto style = style_(document)->style(style_name)) {
+  if (const char *style_name = style_name_(document)) {
+    if (const Style *style = style_(document)->style(style_name)) {
       return style->resolved();
     }
   }
@@ -69,11 +67,11 @@ const char *Element::style_name_(const abstract::Document *) const {
 }
 
 const Document *Element::document_(const abstract::Document *document) {
-  return static_cast<const Document *>(document);
+  return dynamic_cast<const Document *>(document);
 }
 
 const StyleRegistry *Element::style_(const abstract::Document *document) {
-  return &static_cast<const Document *>(document)->m_style_registry;
+  return &dynamic_cast<const Document *>(document)->m_style_registry;
 }
 
 ElementType Root::type(const abstract::Document *) const {
@@ -85,7 +83,7 @@ ElementType TextRoot::type(const abstract::Document *) const {
 }
 
 PageLayout TextRoot::page_layout(const abstract::Document *document) const {
-  if (auto master_page =
+  if (const auto *master_page =
           dynamic_cast<MasterPage *>(this->first_master_page(document))) {
     return master_page->page_layout(document);
   }
@@ -94,21 +92,22 @@ PageLayout TextRoot::page_layout(const abstract::Document *document) const {
 
 abstract::Element *
 TextRoot::first_master_page(const abstract::Document *document) const {
-  if (auto first_master_page = style_(document)->first_master_page()) {
+  if (MasterPage *first_master_page = style_(document)->first_master_page()) {
     return first_master_page;
   }
   return {};
 }
 
 PageLayout MasterPage::page_layout(const abstract::Document *document) const {
-  if (auto attribute = m_node.attribute("style:page-layout-name")) {
+  if (const pugi::xml_attribute attribute =
+          m_node.attribute("style:page-layout-name")) {
     return style_(document)->page_layout(attribute.value());
   }
   return {};
 }
 
 PageLayout Slide::page_layout(const abstract::Document *document) const {
-  if (auto master_page =
+  if (const auto *master_page =
           dynamic_cast<MasterPage *>(this->master_page(document))) {
     return master_page->page_layout(document);
   }
@@ -117,7 +116,8 @@ PageLayout Slide::page_layout(const abstract::Document *document) const {
 
 abstract::Element *
 Slide::master_page(const abstract::Document *document) const {
-  if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
+  if (const pugi::xml_attribute master_page_name_attr =
+          m_node.attribute("draw:master-page-name")) {
     return style_(document)->master_page(master_page_name_attr.value());
   }
   return {};
@@ -128,15 +128,16 @@ std::string Slide::name(const abstract::Document *) const {
 }
 
 PageLayout Page::page_layout(const abstract::Document *document) const {
-  if (auto master_page =
-          dynamic_cast<MasterPage *>(this->master_page(document))) {
+  if (const auto *master_page =
+          dynamic_cast<const MasterPage *>(this->master_page(document))) {
     return master_page->page_layout(document);
   }
   return {};
 }
 
 abstract::Element *Page::master_page(const abstract::Document *document) const {
-  if (auto master_page_name_attr = m_node.attribute("draw:master-page-name")) {
+  if (const pugi::xml_attribute master_page_name_attr =
+          m_node.attribute("draw:master-page-name")) {
     return style_(document)->master_page(master_page_name_attr.value());
   }
   return {};
@@ -162,9 +163,9 @@ TextStyle Span::style(const abstract::Document *document) const {
   return intermediate_style(document).text_style;
 }
 
-Text::Text(pugi::xml_node node) : Text(node, node) {}
+Text::Text(const pugi::xml_node node) : Text(node, node) {}
 
-Text::Text(pugi::xml_node first, pugi::xml_node last)
+Text::Text(const pugi::xml_node first, const pugi::xml_node last)
     : Element(first), m_last{last} {
   if (!last) {
     // TODO log error
@@ -174,7 +175,7 @@ Text::Text(pugi::xml_node first, pugi::xml_node last)
 
 std::string Text::content(const abstract::Document *) const {
   std::string result;
-  for (auto node = m_node; node != m_last.next_sibling();
+  for (pugi::xml_node node = m_node; node != m_last.next_sibling();
        node = node.next_sibling()) {
     result += text_(node);
   }
@@ -182,14 +183,14 @@ std::string Text::content(const abstract::Document *) const {
 }
 
 void Text::set_content(const abstract::Document *, const std::string &text) {
-  auto parent = m_node.parent();
-  auto old_first = m_node;
-  auto old_last = m_last;
-  auto new_first = old_first;
-  auto new_last = m_last;
+  pugi::xml_node parent = m_node.parent();
+  const pugi::xml_node old_first = m_node;
+  const pugi::xml_node old_last = m_last;
+  pugi::xml_node new_first = old_first;
+  pugi::xml_node new_last = m_last;
 
-  const auto insert_pcdata = [&]() {
-    auto new_node =
+  const auto insert_pcdata = [&] {
+    const pugi::xml_node new_node =
         parent.insert_child_before(pugi::xml_node_type::node_pcdata, old_first);
     if (new_first == old_first) {
       new_first = new_node;
@@ -198,7 +199,7 @@ void Text::set_content(const abstract::Document *, const std::string &text) {
     return new_node;
   };
   const auto insert_node = [&](const char *node) {
-    auto new_node = parent.insert_child_before(node, old_first);
+    const pugi::xml_node new_node = parent.insert_child_before(node, old_first);
     if (new_first == old_first) {
       new_first = new_node;
     }
@@ -229,8 +230,8 @@ void Text::set_content(const abstract::Document *, const std::string &text) {
   m_node = new_first;
   m_last = new_last;
 
-  for (auto node = old_first; node != old_last.next_sibling();) {
-    auto next = node.next_sibling();
+  for (pugi::xml_node node = old_first; node != old_last.next_sibling();) {
+    const pugi::xml_node next = node.next_sibling();
     parent.remove_child(node);
     node = next;
   }
@@ -245,9 +246,9 @@ std::string Text::text_(const pugi::xml_node node) {
     return node.value();
   }
 
-  std::string name = node.name();
+  const std::string name = node.name();
   if (name == "text:s") {
-    const auto count = node.attribute("text:c").as_uint(1);
+    const std::size_t count = node.attribute("text:c").as_uint(1);
     return std::string(count, ' ');
   }
   if (name == "text:tab") {
@@ -314,8 +315,8 @@ TableDimensions TableCell::span(const abstract::Document *) const {
 }
 
 ValueType TableCell::value_type(const abstract::Document *) const {
-  auto value_type = m_node.attribute("office:value-type").value();
-  if (std::strcmp("float", value_type) == 0) {
+  if (const char *value_type = m_node.attribute("office:value-type").value();
+      std::strcmp("float", value_type) == 0) {
     return ValueType::float_number;
   }
   return ValueType::string;
@@ -326,7 +327,7 @@ TableCellStyle TableCell::style(const abstract::Document *document) const {
 }
 
 AnchorType Frame::anchor_type(const abstract::Document *) const {
-  auto anchor_type = m_node.attribute("text:anchor-type").value();
+  const char *anchor_type = m_node.attribute("text:anchor-type").value();
   if (std::strcmp("as-char", anchor_type) == 0) {
     return AnchorType::as_char;
   }
@@ -343,35 +344,35 @@ AnchorType Frame::anchor_type(const abstract::Document *) const {
 }
 
 std::optional<std::string> Frame::x(const abstract::Document *) const {
-  if (auto attribute = m_node.attribute("svg:x")) {
+  if (const pugi::xml_attribute attribute = m_node.attribute("svg:x")) {
     return attribute.value();
   }
   return {};
 }
 
 std::optional<std::string> Frame::y(const abstract::Document *) const {
-  if (auto attribute = m_node.attribute("svg:y")) {
+  if (const pugi::xml_attribute attribute = m_node.attribute("svg:y")) {
     return attribute.value();
   }
   return {};
 }
 
 std::optional<std::string> Frame::width(const abstract::Document *) const {
-  if (auto attribute = m_node.attribute("svg:width")) {
+  if (const pugi::xml_attribute attribute = m_node.attribute("svg:width")) {
     return attribute.value();
   }
   return {};
 }
 
 std::optional<std::string> Frame::height(const abstract::Document *) const {
-  if (auto attribute = m_node.attribute("svg:height")) {
+  if (const pugi::xml_attribute attribute = m_node.attribute("svg:height")) {
     return attribute.value();
   }
   return {};
 }
 
 std::optional<std::string> Frame::z_index(const abstract::Document *) const {
-  if (auto attribute = m_node.attribute("draw:z-index")) {
+  if (const pugi::xml_attribute attribute = m_node.attribute("draw:z-index")) {
     return attribute.value();
   }
   return {};
@@ -462,24 +463,24 @@ GraphicStyle CustomShape::style(const abstract::Document *document) const {
 }
 
 bool Image::is_internal(const abstract::Document *document) const {
-  auto doc = document_(document);
+  const Document *doc = document_(document);
   if (!doc || !doc->as_filesystem()) {
     return false;
   }
   try {
-    AbsPath path = Path(href(document)).make_absolute();
+    const AbsPath path = Path(href(document)).make_absolute();
     return doc->as_filesystem()->is_file(path);
   } catch (...) {
   }
   return false;
 }
 
-std::optional<odr::File> Image::file(const abstract::Document *document) const {
-  auto doc = document_(document);
+std::optional<File> Image::file(const abstract::Document *document) const {
+  const Document *doc = document_(document);
   if (!doc || !is_internal(document)) {
     return {};
   }
-  AbsPath path = Path(href(document)).make_absolute();
+  const AbsPath path = Path(href(document)).make_absolute();
   return File(doc->as_filesystem()->open(path));
 }
 

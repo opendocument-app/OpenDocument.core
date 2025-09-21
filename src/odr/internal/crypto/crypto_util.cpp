@@ -40,21 +40,21 @@ std::string util::sha1(const std::string &in) {
   byte out[CryptoPP::SHA1::DIGESTSIZE];
   CryptoPP::SHA1().CalculateDigest(
       out, reinterpret_cast<const byte *>(in.data()), in.size());
-  return std::string(reinterpret_cast<char *>(out), CryptoPP::SHA1::DIGESTSIZE);
+  return {reinterpret_cast<char *>(out), CryptoPP::SHA1::DIGESTSIZE};
 }
 
 std::string util::sha256(const std::string &in) {
   byte out[CryptoPP::SHA256::DIGESTSIZE];
   CryptoPP::SHA256().CalculateDigest(
       out, reinterpret_cast<const byte *>(in.data()), in.size());
-  return std::string(reinterpret_cast<char *>(out),
-                     CryptoPP::SHA256::DIGESTSIZE);
+  return {reinterpret_cast<char *>(out), CryptoPP::SHA256::DIGESTSIZE};
 }
 
-std::string util::pbkdf2(std::size_t key_size, const std::string &start_key,
-                         const std::string &salt, std::size_t iteration_count) {
+std::string util::pbkdf2(const std::size_t key_size,
+                         const std::string &start_key, const std::string &salt,
+                         const std::size_t iteration_count) {
   std::string result(key_size, '\0');
-  CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
+  const CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
   pbkdf2.DeriveKey(reinterpret_cast<byte *>(result.data()), result.size(),
                    false, reinterpret_cast<const byte *>(start_key.data()),
                    start_key.size(),
@@ -63,9 +63,11 @@ std::string util::pbkdf2(std::size_t key_size, const std::string &start_key,
   return result;
 }
 
-std::string util::argon2id(std::size_t key_size, const std::string &start_key,
-                           const std::string &salt, std::size_t iteration_count,
-                           std::size_t memory, std::size_t lanes) {
+std::string util::argon2id(const std::size_t key_size,
+                           const std::string &start_key,
+                           const std::string &salt,
+                           const std::size_t iteration_count,
+                           const std::size_t memory, const std::size_t lanes) {
   std::string result(key_size, '\0');
   argon2id_hash_raw(iteration_count, memory, lanes, start_key.data(),
                     start_key.size(), salt.data(), salt.size(), result.data(),
@@ -107,21 +109,22 @@ std::string util::decrypt_aes_gcm(const std::string &key, const std::string &iv,
 
   std::string result(input.size(), '\0');
 
-  std::size_t iv_size = iv.size();
-  std::size_t mac_size = 16;
-  std::size_t cipher_size = input.size() - iv_size - mac_size;
-  byte *message = reinterpret_cast<byte *>(result.data());
-  const byte *mac =
+  const std::size_t iv_size = iv.size();
+  constexpr std::size_t mac_size = 16;
+  const std::size_t cipher_size = input.size() - iv_size - mac_size;
+  auto *message = reinterpret_cast<byte *>(result.data());
+  const auto *mac =
       reinterpret_cast<const byte *>(input.data() + input.size() - mac_size);
-  const byte *iv_ = reinterpret_cast<const byte *>(input.data());
-  const byte *cipher = reinterpret_cast<const byte *>(input.data() + iv_size);
+  const auto *iv_ = reinterpret_cast<const byte *>(input.data());
+  const auto *cipher = reinterpret_cast<const byte *>(input.data() + iv_size);
 
   CryptoPP::GCM<CryptoPP::AES>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
                           key.size(), reinterpret_cast<const byte *>(iv.data()),
                           iv.size());
-  bool check = decryption.DecryptAndVerify(message, mac, mac_size, iv_, iv_size,
-                                           nullptr, 0, cipher, cipher_size);
+  const bool check = decryption.DecryptAndVerify(
+      message, mac, mac_size, iv_, static_cast<int>(iv_size), nullptr, 0,
+      cipher, cipher_size);
 
   if (!check) {
     throw std::runtime_error("GCM decryption failed");
@@ -168,7 +171,7 @@ public:
   std::uint32_t GetPadding() const { return m_padding; }
 
 protected:
-  void ProcessPoststreamTail() final {
+  void ProcessPoststreamTail() override {
     m_padding = m_inQueue.CurrentSize();
     m_inQueue.Clear();
   }

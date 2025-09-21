@@ -4,7 +4,6 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/common/file.hpp>
 #include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
@@ -41,8 +40,8 @@ namespace {
 /// Extension of `expand_data` see
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wv.h#L2776-L2814
 /// to allow for more state variables.
-struct TranslationState : public expand_data {
-  explicit TranslationState(html::HtmlWriter _out, HtmlResources &_resources,
+struct TranslationState : expand_data {
+  explicit TranslationState(HtmlWriter _out, HtmlResources &_resources,
                             const HtmlConfig &_config, std::string _cache_path)
       : expand_data{}, out(std::move(_out)), resources(&_resources),
         config{&_config}, cache_path{std::move(_cache_path)} {}
@@ -56,30 +55,32 @@ struct TranslationState : public expand_data {
 
   std::size_t figure_number = 0;
 
-  html::HtmlWriter out;
+  HtmlWriter out;
   HtmlResources *resources;
   const HtmlConfig *config;
   std::string cache_path;
 };
 
-std::string figure_name(wvParseStruct *ps) {
+std::string figure_name(const wvParseStruct *ps) {
   auto *data = static_cast<TranslationState *>(ps->userData);
 
-  std::size_t number = data->figure_number++;
+  const std::size_t number = data->figure_number++;
   std::string name = "figure" + std::to_string(number);
 
   return name;
 }
 
-std::string figure_cache_path(wvParseStruct *ps, const std::string &name) {
-  auto *data = static_cast<TranslationState *>(ps->userData);
+std::string figure_cache_path(const wvParseStruct *ps,
+                              const std::string &name) {
+  const auto *data = static_cast<TranslationState *>(ps->userData);
 
   return data->cache_path + "/" + name;
 }
 
 /// Originally from `text.c` `wvConvertUnicodeToHtml`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/text.c#L1999-L2154
-int convert_unicode_to_html(wvParseStruct *ps, std::uint16_t char16) {
+int convert_unicode_to_html(const wvParseStruct *ps,
+                            const std::uint16_t char16) {
   auto *data = static_cast<TranslationState *>(ps->userData);
   auto &out = data->out;
 
@@ -228,15 +229,15 @@ int convert_unicode_to_html(wvParseStruct *ps, std::uint16_t char16) {
 
 /// Originally from `text.c` `wvOutputFromUnicode`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/text.c#L757-L840
-void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
-                         char *outputtype) {
+void output_from_unicode(const wvParseStruct *ps, const std::uint16_t eachchar,
+                         const char *outputtype) {
   auto *data = static_cast<TranslationState *>(ps->userData);
-  auto &out = data->out;
+  HtmlWriter &out = data->out;
 
-  GIConv g_iconv_handle;
-  int need_swapping;
-  gchar *ibuf, *obuf;
-  std::size_t ibuflen, obuflen, len, count, i;
+  GIConv g_iconv_handle{};
+  int need_swapping{};
+  gchar *ibuf{}, *obuf{};
+  std::size_t ibuflen{}, obuflen{}, len{}, count{}, i{};
   std::uint8_t buffer[2], buffer2[5];
 
   if (convert_unicode_to_html(ps, eachchar) != 0) {
@@ -245,7 +246,7 @@ void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
 
   {
     g_iconv_handle = g_iconv_open(outputtype, "UCS-2");
-    if (g_iconv_handle == (GIConv)-1) {
+    if (g_iconv_handle == reinterpret_cast<GIConv>(-1)) {
       std::cerr << "g_iconv_open fail: " << errno
                 << ", cannot convert UCS-2 to " << outputtype << "\n";
       out.out() << "?";
@@ -263,7 +264,7 @@ void output_from_unicode(wvParseStruct *ps, std::uint16_t eachchar,
     obuflen = 5;
 
     count = g_iconv(g_iconv_handle, &ibuf, &ibuflen, &obuf, &obuflen);
-    if (count != (std::size_t)-1) {
+    if (count != static_cast<std::size_t>(-1)) {
       need_swapping = buffer2[0] != 0x20;
     }
   }
@@ -478,6 +479,8 @@ std::string html_graphic(wvParseStruct *ps, Blip *blip) {
     name += ".png";
     dump_bitmap(ps, name, &blip->blip.bitmap);
     break;
+  default:
+    break;
   }
 
   return name;
@@ -622,8 +625,8 @@ int document_handler(wvParseStruct *ps, wvTag tag) {
 /// Originally from `wvWare.c` `myCharProc`
 /// https://github.com/opendocument-app/wvWare/blob/c015326b001f1ad6dfb1f5e718461c16c56cca5f/wvWare.c#L1556-L1605
 int char_handler(wvParseStruct *ps, std::uint16_t eachchar,
-                 std::uint8_t chartype, std::uint16_t lid) {
-  auto *data = static_cast<TranslationState *>(ps->userData);
+                 const std::uint8_t chartype, const std::uint16_t lid) {
+  const auto *data = static_cast<TranslationState *>(ps->userData);
 
   switch (eachchar) {
   case 19:
@@ -671,7 +674,7 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
   auto &state = data->special_char_handler_state;
   auto &out = data->out;
 
-  PICF picf;
+  PICF picf{};
   FSPA *fspa = nullptr;
 
   switch (eachchar) {
@@ -721,8 +724,8 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
     f = picf.rgb;
     if (wv0x01(&blip, f, picf.lcb - picf.cbHeader) != 0) {
       std::string name = html_graphic(ps, &blip);
-      print_graphics(ps, 0x01, (int)wvTwipsToHPixels(picf.dxaGoal),
-                     (int)wvTwipsToVPixels(picf.dyaGoal), name);
+      print_graphics(ps, 0x01, static_cast<int>(wvTwipsToHPixels(picf.dxaGoal)),
+                     static_cast<int>(wvTwipsToVPixels(picf.dyaGoal)), name);
     } else {
       strange_no_graphic_data(ps, 0x01);
     }
@@ -743,13 +746,14 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
         }
 
         data->props = fspa;
-        if (wv0x08(&blip, (int)fspa->spid, ps) != 0) {
+        if (wv0x08(&blip, static_cast<int>(fspa->spid), ps) != 0) {
           std::string name = html_graphic(ps, &blip);
-          print_graphics(
-              ps, 0x08,
-              (int)wvTwipsToHPixels((short)(fspa->xaRight - fspa->xaLeft)),
-              (int)wvTwipsToVPixels((short)(fspa->yaBottom - fspa->yaTop)),
-              name);
+          print_graphics(ps, 0x08,
+                         static_cast<int>(wvTwipsToHPixels(
+                             static_cast<short>(fspa->xaRight - fspa->xaLeft))),
+                         static_cast<int>(wvTwipsToVPixels(
+                             static_cast<short>(fspa->yaBottom - fspa->yaTop))),
+                         name);
         } else {
           strange_no_graphic_data(ps, 0x08);
         }
@@ -773,8 +777,8 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
     std::uint16_t wingdings[9] = {'W', 'i', 'n', 'g', 'd', 'i', 'n', 'g', 's'};
     std::uint16_t mtextra[8] = {'M', 'T', ' ', 'E', 'x', 't', 'r', 'a'};
 
-    if (0 == memcmp(symbol, ps->fonts.ffn[achp->ftcSym].xszFfn, 12)) {
-      if ((state.message == 0) && (strcasecmp("UTF-8", data->charset) != 0)) {
+    if (memcmp(symbol, ps->fonts.ffn[achp->ftcSym].xszFfn, 12) == 0) {
+      if (state.message == 0 && strcasecmp("UTF-8", data->charset) != 0) {
         std::cerr << "Symbol font detected (too late sorry!), rerun wvHtml "
                      "with option --charset utf-8\noption to support correct "
                      "symbol font conversion to a viewable format.\n";
@@ -783,8 +787,9 @@ int special_char_handler(wvParseStruct *ps, std::uint16_t eachchar, CHP *achp) {
       output_from_unicode(ps, wvConvertSymbolToUnicode(achp->xchSym - 61440),
                           data->charset);
       return 0;
-    } else if (0 == memcmp(mtextra, ps->fonts.ffn[achp->ftcSym].xszFfn, 16)) {
-      if ((state.message == 0) && (strcasecmp("UTF-8", data->charset) != 0)) {
+    }
+    if (memcmp(mtextra, ps->fonts.ffn[achp->ftcSym].xszFfn, 16) == 0) {
+      if (state.message == 0 && strcasecmp("UTF-8", data->charset) != 0) {
         std::cerr
             << "MT Extra font detected (too late sorry!), rerun wvHtml with option --charset utf-8\n\
 option to support correct symbol font conversion to a viewable format.\n";
@@ -793,7 +798,8 @@ option to support correct symbol font conversion to a viewable format.\n";
       output_from_unicode(ps, wvConvertMTExtraToUnicode(achp->xchSym - 61440),
                           data->charset);
       return 0;
-    } else if (0 == memcmp(wingdings, ps->fonts.ffn[achp->ftcSym].xszFfn, 18)) {
+    }
+    if (memcmp(wingdings, ps->fonts.ffn[achp->ftcSym].xszFfn, 18) == 0) {
       if (state.message == 0) {
         std::cerr << "Wingdings font detected, i need a mapping table to "
                      "unicode for this\n";
@@ -829,9 +835,9 @@ public:
         std::make_shared<HtmlView>(*this, "document", "document.html"));
   }
 
-  [[nodiscard]] const HtmlViews &list_views() const final { return m_views; }
+  [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
-  void warmup() const final {
+  void warmup() const override {
     std::lock_guard lock(m_mutex);
 
     if (m_warm) {
@@ -845,7 +851,7 @@ public:
     m_warm = true;
   }
 
-  bool exists(const std::string &path) const final {
+  bool exists(const std::string &path) const override {
     if (std::ranges::any_of(m_views, [&path](const auto &view) {
           return view.path() == path;
         })) {
@@ -864,7 +870,7 @@ public:
     return false;
   }
 
-  std::string mimetype(const std::string &path) const final {
+  std::string mimetype(const std::string &path) const override {
     if (std::ranges::any_of(m_views, [&path](const auto &view) {
           return view.path() == path;
         })) {
@@ -882,7 +888,7 @@ public:
     throw FileNotFound("Unknown path: " + path);
   }
 
-  void write(const std::string &path, std::ostream &out) const final {
+  void write(const std::string &path, std::ostream &out) const override {
     for (const auto &view : m_views) {
       if (view.path() == path) {
         HtmlWriter writer(out, config());
@@ -904,7 +910,7 @@ public:
   }
 
   HtmlResources write_html(const std::string &path,
-                           html::HtmlWriter &out) const final {
+                           HtmlWriter &out) const override {
     warmup();
 
     util::file::pipe(m_cache_path + "/" + path, out.out());
@@ -967,7 +973,7 @@ protected:
 
 namespace odr::internal {
 
-odr::HtmlService html::create_wvware_oldms_service(
+HtmlService html::create_wvware_oldms_service(
     const WvWareLegacyMicrosoftFile &oldms_file, const std::string &cache_path,
     HtmlConfig config, std::shared_ptr<Logger> logger) {
   return odr::HtmlService(std::make_unique<HtmlServiceImpl>(

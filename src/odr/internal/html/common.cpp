@@ -3,7 +3,6 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
-#include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -12,7 +11,6 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
-#include <utility>
 
 namespace odr::internal {
 

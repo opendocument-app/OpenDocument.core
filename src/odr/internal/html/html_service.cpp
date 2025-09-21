@@ -4,8 +4,6 @@
 
 #include <odr/exceptions.hpp>
 
-#include <iostream>
-
 namespace odr::internal::html {
 
 HtmlService::HtmlService(HtmlConfig config, std::shared_ptr<Logger> logger)
@@ -25,7 +23,7 @@ const HtmlConfig &HtmlView::config() const { return m_service->config(); }
 
 const abstract::HtmlService &HtmlView::service() const { return *m_service; }
 
-HtmlResources HtmlView::write_html(html::HtmlWriter &out) const {
+HtmlResources HtmlView::write_html(HtmlWriter &out) const {
   return m_service->write_html(path(), out);
 }
 
