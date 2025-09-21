@@ -297,10 +297,9 @@ private:
 
 namespace odr::internal {
 
-HtmlService html::create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
-                                             const std::string &cache_path,
-                                             HtmlConfig config,
-                                             std::shared_ptr<Logger> logger) {
+odr::HtmlService html::create_poppler_pdf_service(
+    const PopplerPdfFile &pdf_file, const std::string &cache_path,
+    HtmlConfig config, std::shared_ptr<Logger> logger) {
   PDFDoc &pdf_doc = pdf_file.pdf_doc();
 
   auto html_renderer_param = std::make_shared<pdf2htmlEX::Param>(

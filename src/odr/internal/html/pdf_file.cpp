@@ -209,10 +209,10 @@ protected:
 
 namespace odr::internal {
 
-HtmlService html::create_pdf_service(const PdfFile &pdf_file,
-                                     const std::string & /*cache_path*/,
-                                     HtmlConfig config,
-                                     std::shared_ptr<Logger> logger) {
+odr::HtmlService html::create_pdf_service(const PdfFile &pdf_file,
+                                          const std::string & /*cache_path*/,
+                                          HtmlConfig config,
+                                          std::shared_ptr<Logger> logger) {
   return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
       pdf_file, std::move(config), std::move(logger)));
 }

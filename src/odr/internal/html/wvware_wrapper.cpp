@@ -973,7 +973,7 @@ protected:
 
 namespace odr::internal {
 
-HtmlService html::create_wvware_oldms_service(
+odr::HtmlService html::create_wvware_oldms_service(
     const WvWareLegacyMicrosoftFile &oldms_file, const std::string &cache_path,
     HtmlConfig config, std::shared_ptr<Logger> logger) {
   return odr::HtmlService(std::make_unique<HtmlServiceImpl>(

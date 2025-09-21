@@ -412,10 +412,9 @@ private:
 
 namespace odr::internal {
 
-HtmlService html::create_document_service(const Document &document,
-                                          const std::string & /*cache_path*/,
-                                          HtmlConfig config,
-                                          std::shared_ptr<Logger> logger) {
+odr::HtmlService html::create_document_service(
+    const Document &document, const std::string & /*cache_path*/,
+    HtmlConfig config, std::shared_ptr<Logger> logger) {
   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments;
 
   if (document.document_type() == DocumentType::text) {
