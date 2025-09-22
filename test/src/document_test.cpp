@@ -33,6 +33,30 @@ TEST(Document, odt) {
   EXPECT_EQ(Measure("0.7874in"), page_layout.margin.top);
 }
 
+TEST(Document, odt_element_path) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/odt/about.odt"), *logger);
+
+  EXPECT_EQ(document_file.file_type(), FileType::opendocument_text);
+
+  const Document document = document_file.document();
+
+  EXPECT_EQ(document.document_type(), DocumentType::text);
+
+  const auto root = document.root_element();
+  const auto p1 = root.first_child();
+  EXPECT_EQ(p1.type(), ElementType::paragraph);
+  const auto t1 = p1.first_child();
+  EXPECT_EQ(t1.type(), ElementType::text);
+
+  const DocumentPath t1_path = DocumentPath::extract(t1, root);
+  EXPECT_EQ(t1_path.to_string(), "/child:0/child:0");
+  const Element t1_via_path = DocumentPath::find(root, t1_path);
+  EXPECT_EQ(t1_via_path, t1);
+}
+
 TEST(Document, odg) {
   auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 

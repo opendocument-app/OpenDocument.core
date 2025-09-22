@@ -235,14 +235,8 @@ public:
       : Element(document, element), m_element{element} {}
   TypedElement(const internal::abstract::Document *document,
                internal::abstract::Element *element)
-      : Element(document, element), m_element{dynamic_cast<T *>(element)} {}
-
-  bool operator==(const TypedElement &rhs) const {
-    return m_element == rhs.m_element;
-  }
-  bool operator!=(const TypedElement &rhs) const {
-    return m_element != rhs.m_element;
-  }
+      : Element(document, dynamic_cast<T *>(element)),
+        m_element{dynamic_cast<T *>(element)} {}
 
 protected:
   T *m_element;
