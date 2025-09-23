@@ -57,6 +57,26 @@ TEST(Document, odt_element_path) {
   EXPECT_EQ(t1_via_path, t1);
 }
 
+TEST(Document, odt_element_path2) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/odt/style-various-1.odt"), *logger);
+
+  EXPECT_EQ(document_file.file_type(), FileType::opendocument_text);
+
+  const Document document = document_file.document();
+
+  EXPECT_EQ(document.document_type(), DocumentType::text);
+
+  const auto root = document.root_element();
+
+  const Element cell_via_path = DocumentPath::find(
+      root, DocumentPath("/child:41/row:0/column:1/child:0/child:0"));
+  EXPECT_EQ(cell_via_path.type(), ElementType::text);
+  EXPECT_EQ(cell_via_path.as_text().content(), "B1");
+}
+
 TEST(Document, odg) {
   auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 

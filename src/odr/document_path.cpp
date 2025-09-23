@@ -116,10 +116,10 @@ Element DocumentPath::find(const Element root, const DocumentPath &path) {
       element = element.first_child();
       number = child->number;
     } else if (const auto column = std::get_if<Column>(&c)) {
-      if (!element.as_table().first_column()) {
+      if (!element.as_table_row()) {
         throw std::invalid_argument("column not found");
       }
-      element = Element(element.as_table().first_column());
+      element = element.as_table_row().first_child();
       number = column->number;
     } else if (const auto row = std::get_if<Row>(&c)) {
       if (!element.as_table().first_row()) {

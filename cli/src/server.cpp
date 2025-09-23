@@ -21,7 +21,6 @@ int main(const int argc, char **argv) {
   DecodePreference decode_preference;
   decode_preference.engine_priority = {
       DecoderEngine::poppler, DecoderEngine::wvware, DecoderEngine::odr};
-  decode_preference.as_file_type = FileType::zip;
 
   DecodedFile decoded_file{input, decode_preference, *logger};
 
