@@ -3,9 +3,9 @@
 #include <odr/file.hpp>
 
 #include <odr/internal/common/document.hpp>
-#include <odr/internal/common/path.hpp>
-#include <odr/internal/odf/odf_element.hpp>
 #include <odr/internal/odf/odf_style.hpp>
+
+#include <pugixml.hpp>
 
 #include <memory>
 
@@ -15,7 +15,7 @@ class ReadableFilesystem;
 
 namespace odr::internal::odf {
 
-class Document final : public TemplateDocument<Element> {
+class Document final : public internal::Document {
 public:
   Document(FileType file_type, DocumentType document_type,
            std::shared_ptr<abstract::ReadableFilesystem> files);
@@ -26,13 +26,11 @@ public:
   void save(const Path &path) const override;
   void save(const Path &path, const char *password) const override;
 
-protected:
+private:
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
 
   StyleRegistry m_style_registry;
-
-  friend class Element;
 };
 
 } // namespace odr::internal::odf

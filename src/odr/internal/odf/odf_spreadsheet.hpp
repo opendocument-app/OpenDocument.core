@@ -1,9 +1,7 @@
 #pragma once
 
-#include <odr/internal/abstract/sheet_element.hpp>
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/common/table_position.hpp>
-#include <odr/internal/odf/odf_element.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 
 #include <map>

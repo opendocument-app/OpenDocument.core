@@ -1,15 +1,15 @@
 #pragma once
 
+#include <odr/document_element_identifier.hpp>
 #include <odr/internal/abstract/document.hpp>
 
-#include <vector>
+#include <memory>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
 } // namespace odr::internal::abstract
 
 namespace odr::internal {
-class Element;
 
 class Document : public abstract::Document {
 public:
@@ -22,32 +22,19 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   as_filesystem() const noexcept final;
 
+  [[nodiscard]] ExtendedElementIdentifier root_element() const override;
+
+  [[nodiscard]] const abstract::ElementAdapter *
+  element_adapter(ExtendedElementIdentifier element_id) const override;
+
 protected:
   FileType m_file_type;
   DocumentType m_document_type;
 
-  std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
+  std::shared_ptr<abstract::ReadableFilesystem> m_files;
 
-  friend class Element;
-};
-
-template <typename element_t> class TemplateDocument : public Document {
-public:
-  TemplateDocument(FileType file_type, const DocumentType document_type,
-                   std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-      : Document(file_type, document_type, std::move(filesystem)) {}
-
-  [[nodiscard]] abstract::Element *root_element() const final {
-    return m_root_element;
-  }
-
-  void register_element_(std::unique_ptr<element_t> element) {
-    m_elements.push_back(std::move(element));
-  }
-
-protected:
-  std::vector<std::unique_ptr<element_t>> m_elements;
-  element_t *m_root_element{};
+  ExtendedElementIdentifier m_root_element;
+  abstract::ElementAdapter *m_element_adapter{nullptr};
 };
 
 } // namespace odr::internal

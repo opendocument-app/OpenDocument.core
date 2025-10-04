@@ -1,9 +1,10 @@
 #include <odr/internal/odf/odf_parser.hpp>
 
-#include <odr/internal/odf/odf_element.hpp>
 #include <odr/internal/odf/odf_spreadsheet.hpp>
 
 #include <unordered_map>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 
@@ -35,17 +36,19 @@ bool is_text_node(const pugi::xml_node node) {
 
 namespace odr::internal {
 
-odf::Element *odf::parse_tree(Document &document, const pugi::xml_node node) {
-  auto [root, _] = parse_any_element_tree(document, node);
+ElementIdentifier odf::parse_tree(ElementRegistry &entry_registry,
+                                  const pugi::xml_node node) {
+  auto [root, _] = parse_any_element_tree(entry_registry, node);
   return root;
 }
 
-void odf::parse_element_children(Document &document, Element *element,
+void odf::parse_element_children(ElementRegistry &entry_registry,
+                                 ElementIdentifier parent_id,
                                  const pugi::xml_node node) {
   for (auto child_node = node.first_child(); child_node;) {
     if (auto [child, next_sibling] =
-            parse_any_element_tree(document, child_node);
-        child == nullptr) {
+            parse_any_element_tree(entry_registry, child_node);
+        child == null_element_id) {
       child_node = child_node.next_sibling();
     } else {
       element->append_child_(child);
@@ -149,8 +152,9 @@ odf::parse_element_tree<odf::TableRow>(Document &document,
   return std::make_tuple(table_row, node.next_sibling());
 }
 
-std::tuple<odf::Element *, pugi::xml_node>
-odf::parse_any_element_tree(Document &document, const pugi::xml_node node) {
+std::tuple<ElementIdentifier, pugi::xml_node>
+odf::parse_any_element_tree(ElementRegistry &entry_registry,
+                            const pugi::xml_node node) {
   using Parser = std::function<std::tuple<Element *, pugi::xml_node>(
       Document & document, pugi::xml_node node)>;
 

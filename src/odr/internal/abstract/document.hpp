@@ -1,10 +1,9 @@
 #pragma once
 
-#include <odr/document_element.hpp>
-
 #include <memory>
 
 namespace odr {
+class ExtendedElementIdentifier;
 class File;
 enum class FileType;
 enum class DocumentType;
@@ -16,7 +15,7 @@ class Path;
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
-class Element;
+class ElementAdapter;
 
 class Document {
 public:
@@ -47,7 +46,10 @@ public:
   as_filesystem() const noexcept = 0;
 
   /// \return cursor to the root element of the document.
-  [[nodiscard]] virtual Element *root_element() const = 0;
+  [[nodiscard]] virtual ExtendedElementIdentifier root_element() const = 0;
+
+  [[nodiscard]] virtual const ElementAdapter *
+  element_adapter(ExtendedElementIdentifier element_id) const = 0;
 };
 
 } // namespace odr::internal::abstract
