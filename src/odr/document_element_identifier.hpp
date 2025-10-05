@@ -72,6 +72,10 @@ public:
     return {column(), row()};
   }
 
+  [[nodiscard]] ExtendedElementIdentifier without_extra() const noexcept {
+    return ExtendedElementIdentifier(m_element_id);
+  }
+
 private:
   ElementIdentifier m_element_id{null_element_id};
   Extra m_extra0{no_extra};

@@ -21,8 +21,7 @@ namespace odr::internal::odf {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document,
-                       const ElementRegistry &registry);
+create_element_adapter(const Document &document, ElementRegistry &registry);
 }
 
 Document::Document(const FileType file_type, const DocumentType document_type,
@@ -153,37 +152,37 @@ public:
 
   [[nodiscard]] ElementType
   element_type(const ExtendedElementIdentifier element_id) const override {
-    return m_registry->entry(element_id.element_id()).type;
+    return m_registry->element(element_id).type;
   }
 
   [[nodiscard]] ExtendedElementIdentifier
   element_parent(const ExtendedElementIdentifier element_id) const override {
-    return m_registry->entry(element_id.element_id()).parent_id;
+    return m_registry->element(element_id).parent_id;
   }
   [[nodiscard]] ExtendedElementIdentifier element_first_child(
       const ExtendedElementIdentifier element_id) const override {
     return ExtendedElementIdentifier(
-        m_registry->entry(element_id.element_id()).first_child_id);
+        m_registry->element(element_id).first_child_id);
   }
   [[nodiscard]] ExtendedElementIdentifier element_last_child(
       const ExtendedElementIdentifier element_id) const override {
     return ExtendedElementIdentifier(
-        m_registry->entry(element_id.element_id()).last_child_id);
+        m_registry->element(element_id).last_child_id);
   }
   [[nodiscard]] ExtendedElementIdentifier element_previous_sibling(
       const ExtendedElementIdentifier element_id) const override {
     return ExtendedElementIdentifier(
-        m_registry->entry(element_id.element_id()).previous_sibling_id);
+        m_registry->element(element_id).previous_sibling_id);
   }
   [[nodiscard]] ExtendedElementIdentifier element_next_sibling(
       const ExtendedElementIdentifier element_id) const override {
     return ExtendedElementIdentifier(
-        m_registry->entry(element_id.element_id()).next_sibling_id);
+        m_registry->element(element_id).next_sibling_id);
   }
 
   [[nodiscard]] bool element_is_editable(
       const ExtendedElementIdentifier element_id) const override {
-    return m_registry->entry(element_id.element_id()).is_editable;
+    return m_registry->element(element_id).is_editable;
   }
 
   [[nodiscard]] const TextRootAdapter *
@@ -399,37 +398,74 @@ public:
 
   [[nodiscard]] TableColumnStyle sheet_column_style(
       const ExtendedElementIdentifier element_id) const override {
-    return {}; // TODO
+    const ElementRegistry::Sheet &sheet_registry =
+        m_registry->sheet_element(element_id);
+
+    if (const pugi::xml_node column_node =
+            sheet_registry.column(element_id.column());
+        column_node) {
+      if (const pugi::xml_attribute attr =
+              column_node.attribute("table:style-name")) {
+        if (const Style *style =
+                m_document->style_registry().style(attr.value());
+            style != nullptr) {
+          return style->resolved().table_column_style;
+        }
+      }
+    }
+    return {};
   }
 
   [[nodiscard]] TableRowStyle
   sheet_row_style(const ExtendedElementIdentifier element_id) const override {
-    return {}; // TODO
+    const ElementRegistry::Sheet &sheet_registry =
+        m_registry->sheet_element(element_id);
+
+    if (const pugi::xml_node column_node = sheet_registry.row(element_id.row());
+        column_node) {
+      if (const pugi::xml_attribute attr =
+              column_node.attribute("table:style-name")) {
+        if (const Style *style =
+                m_document->style_registry().style(attr.value());
+            style != nullptr) {
+          return style->resolved().table_row_style;
+        }
+      }
+    }
+    return {};
   }
 
   [[nodiscard]] std::uint32_t
   sheet_cell_column(const ExtendedElementIdentifier element_id) const override {
-    return {}; // TODO
+    return element_id.column();
   }
   [[nodiscard]] std::uint32_t
   sheet_cell_row(const ExtendedElementIdentifier element_id) const override {
-    return {}; // TODO
+    return element_id.row();
   }
   [[nodiscard]] bool sheet_cell_is_covered(
       const ExtendedElementIdentifier element_id) const override {
-    return {}; // TODO
+    const pugi::xml_node node = get_node(element_id);
+    return std::strcmp(node.name(), "table:covered-table-cell") == 0;
   }
   [[nodiscard]] TableDimensions
   sheet_cell_span(const ExtendedElementIdentifier element_id) const override {
-    return {}; // TODO
+    const pugi::xml_node node = get_node(element_id);
+    return {node.attribute("table:number-rows-spanned").as_uint(1),
+            node.attribute("table:number-columns-spanned").as_uint(1)};
   }
   [[nodiscard]] ValueType sheet_cell_value_type(
       const ExtendedElementIdentifier element_id) const override {
-    return {}; // TODO
+    const pugi::xml_node node = get_node(element_id);
+    if (const char *value_type = node.attribute("office:value-type").value();
+        std::strcmp("float", value_type) == 0) {
+      return ValueType::float_number;
+    }
+    return ValueType::string;
   }
   [[nodiscard]] TableCellStyle
   sheet_cell_style(const ExtendedElementIdentifier element_id) const override {
-    return {}; // TODO
+    return get_partial_cell_style(element_id).table_cell_style;
   }
 
   [[nodiscard]] PageLayout master_page_page_layout(
@@ -464,7 +500,7 @@ public:
   [[nodiscard]] std::string
   text_content(const ExtendedElementIdentifier element_id) const override {
     const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = m_registry->text(element_id.element_id()).last;
+    const pugi::xml_node last = m_registry->text_element(element_id).last;
 
     std::string result;
     for (pugi::xml_node node = first; node != last.next_sibling();
@@ -476,7 +512,7 @@ public:
   void text_set_content(const ExtendedElementIdentifier element_id,
                         const std::string &text) const override {
     const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = m_registry->text(element_id.element_id()).last;
+    const pugi::xml_node last = m_registry->text_element(element_id).last;
 
     pugi::xml_node parent = first.parent();
     const pugi::xml_node old_first = first;
@@ -523,8 +559,8 @@ public:
       }
     }
 
-    m_registry->entry(element_id.element_id()).node = new_first;
-    m_registry->text(element_id.element_id()).last = new_last;
+    m_registry->element(element_id).node = new_first;
+    m_registry->text_element(element_id).last = new_last;
 
     for (pugi::xml_node node = old_first; node != old_last.next_sibling();) {
       const pugi::xml_node next = node.next_sibling();
@@ -583,7 +619,7 @@ public:
   [[nodiscard]] ExtendedElementIdentifier table_first_column(
       const ExtendedElementIdentifier element_id) const override {
     return ExtendedElementIdentifier(
-        m_registry->table(element_id.element_id()).first_column_id);
+        m_registry->table_element(element_id).first_column_id);
   }
   [[nodiscard]] ExtendedElementIdentifier
   table_first_row(const ExtendedElementIdentifier element_id) const override {
@@ -631,71 +667,199 @@ public:
 
   [[nodiscard]] AnchorType
   frame_anchor_type(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+
+    const char *anchor_type = node.attribute("text:anchor-type").value();
+    if (std::strcmp("as-char", anchor_type) == 0) {
+      return AnchorType::as_char;
+    }
+    if (std::strcmp("char", anchor_type) == 0) {
+      return AnchorType::at_char;
+    }
+    if (std::strcmp("paragraph", anchor_type) == 0) {
+      return AnchorType::at_paragraph;
+    }
+    if (std::strcmp("page", anchor_type) == 0) {
+      return AnchorType::at_page;
+    }
+    return AnchorType::at_page;
   }
   [[nodiscard]] std::optional<std::string>
-  frame_x(const ExtendedElementIdentifier element_id) const override {}
+  frame_x(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_attribute attribute = node.attribute("svg:x")) {
+      return attribute.value();
+    }
+    return std::nullopt;
+  }
   [[nodiscard]] std::optional<std::string>
-  frame_y(const ExtendedElementIdentifier element_id) const override {}
+  frame_y(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_attribute attribute = node.attribute("svg:y")) {
+      return attribute.value();
+    }
+    return std::nullopt;
+  }
   [[nodiscard]] std::optional<std::string>
-  frame_width(const ExtendedElementIdentifier element_id) const override {}
+  frame_width(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_attribute attribute = node.attribute("svg:width")) {
+      return attribute.value();
+    }
+    return std::nullopt;
+  }
   [[nodiscard]] std::optional<std::string>
-  frame_height(const ExtendedElementIdentifier element_id) const override {}
+  frame_height(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_attribute attribute = node.attribute("svg:height")) {
+      return attribute.value();
+    }
+    return std::nullopt;
+  }
   [[nodiscard]] std::optional<std::string>
-  frame_z_index(const ExtendedElementIdentifier element_id) const override {}
+  frame_z_index(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_attribute attribute = node.attribute("svg:z-index")) {
+      return attribute.value();
+    }
+    return std::nullopt;
+  }
   [[nodiscard]] GraphicStyle
-  frame_style(const ExtendedElementIdentifier element_id) const override {}
+  frame_style(const ExtendedElementIdentifier element_id) const override {
+    return get_intermediate_style(element_id).graphic_style;
+  }
 
   [[nodiscard]] std::string
-  rect_x(const ExtendedElementIdentifier element_id) const override {}
+  rect_x(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:x").value();
+  }
   [[nodiscard]] std::string
-  rect_y(const ExtendedElementIdentifier element_id) const override {}
+  rect_y(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:y").value();
+  }
   [[nodiscard]] std::string
-  rect_width(const ExtendedElementIdentifier element_id) const override {}
+  rect_width(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:width").value();
+  }
   [[nodiscard]] std::string
-  rect_height(const ExtendedElementIdentifier element_id) const override {}
+  rect_height(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:height").value();
+  }
   [[nodiscard]] GraphicStyle
-  rect_style(const ExtendedElementIdentifier element_id) const override {}
+  rect_style(const ExtendedElementIdentifier element_id) const override {
+    return get_intermediate_style(element_id).graphic_style;
+  }
 
   [[nodiscard]] std::string
-  line_x1(const ExtendedElementIdentifier element_id) const override {}
+  line_x1(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:x1").value();
+  }
   [[nodiscard]] std::string
-  line_y1(const ExtendedElementIdentifier element_id) const override {}
+  line_y1(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:y1").value();
+  }
   [[nodiscard]] std::string
-  line_x2(const ExtendedElementIdentifier element_id) const override {}
+  line_x2(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:x2").value();
+  }
   [[nodiscard]] std::string
-  line_y2(const ExtendedElementIdentifier element_id) const override {}
+  line_y2(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:y2").value();
+  }
   [[nodiscard]] GraphicStyle
-  line_style(const ExtendedElementIdentifier element_id) const override {}
+  line_style(const ExtendedElementIdentifier element_id) const override {
+    return get_intermediate_style(element_id).graphic_style;
+  }
 
   [[nodiscard]] std::string
-  circle_x(const ExtendedElementIdentifier element_id) const override {}
+  circle_x(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:x").value();
+  }
   [[nodiscard]] std::string
-  circle_y(const ExtendedElementIdentifier element_id) const override {}
+  circle_y(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:y").value();
+  }
   [[nodiscard]] std::string
-  circle_width(const ExtendedElementIdentifier element_id) const override {}
+  circle_width(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:width").value();
+  }
   [[nodiscard]] std::string
-  circle_height(const ExtendedElementIdentifier element_id) const override {}
+  circle_height(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:height").value();
+  }
   [[nodiscard]] GraphicStyle
-  circle_style(const ExtendedElementIdentifier element_id) const override {}
+  circle_style(const ExtendedElementIdentifier element_id) const override {
+    return get_intermediate_style(element_id).graphic_style;
+  }
 
   [[nodiscard]] std::optional<std::string>
-  custom_shape_x(const ExtendedElementIdentifier element_id) const override {}
+  custom_shape_x(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_attribute attribute = node.attribute("svg:x")) {
+      return attribute.value();
+    }
+    return std::nullopt;
+  }
   [[nodiscard]] std::optional<std::string>
-  custom_shape_y(const ExtendedElementIdentifier element_id) const override {}
+  custom_shape_y(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_attribute attribute = node.attribute("svg:y")) {
+      return attribute.value();
+    }
+    return std::nullopt;
+  }
   [[nodiscard]] std::string custom_shape_width(
-      const ExtendedElementIdentifier element_id) const override {}
+      const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:width").value();
+  }
   [[nodiscard]] std::string custom_shape_height(
-      const ExtendedElementIdentifier element_id) const override {}
+      const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("svg:height").value();
+  }
   [[nodiscard]] GraphicStyle custom_shape_style(
-      const ExtendedElementIdentifier element_id) const override {}
+      const ExtendedElementIdentifier element_id) const override {
+    return get_intermediate_style(element_id).graphic_style;
+  }
 
   [[nodiscard]] bool
   image_is_internal(const ExtendedElementIdentifier element_id) const override {
+    if (m_document->as_filesystem() == nullptr) {
+      return false;
+    }
+    try {
+      const AbsPath path = Path(image_href(element_id)).make_absolute();
+      return m_document->as_filesystem()->is_file(path);
+    } catch (...) {
+    }
+    return false;
   }
   [[nodiscard]] std::optional<odr::File>
-  image_file(const ExtendedElementIdentifier element_id) const override {}
+  image_file(const ExtendedElementIdentifier element_id) const override {
+    if (m_document->as_filesystem() == nullptr) {
+      return std::nullopt;
+    }
+    const AbsPath path = Path(image_href(element_id)).make_absolute();
+    return File(m_document->as_filesystem()->open(path));
+  }
   [[nodiscard]] std::string
-  image_href(const ExtendedElementIdentifier element_id) const override {}
+  image_href(const ExtendedElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("xlink:href").value();
+  }
 
 private:
   const Document *m_document{nullptr};
@@ -703,7 +867,7 @@ private:
 
   [[nodiscard]] pugi::xml_node
   get_node(const ExtendedElementIdentifier element_id) const {
-    return m_registry->entry(element_id.element_id()).node;
+    return m_registry->element(element_id).node;
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {
@@ -735,6 +899,10 @@ private:
 
   [[nodiscard]] ResolvedStyle
   get_partial_style(const ExtendedElementIdentifier element_id) const {
+    if (const ElementType type = element_type(element_id);
+        type == ElementType::sheet_cell) {
+      return get_partial_cell_style(element_id);
+    }
     if (const char *style_name = get_style_name(element_id)) {
       if (const Style *style = m_document->style_registry().style(style_name)) {
         return style->resolved();
@@ -753,11 +921,49 @@ private:
     base.override(get_partial_style(element_id));
     return base;
   }
+
+  ResolvedStyle
+  get_partial_cell_style(const ExtendedElementIdentifier element_id) const {
+    const char *style_name = nullptr;
+
+    const ElementRegistry::Sheet sheet_registry =
+        m_registry->sheet_element(element_id.without_extra());
+    const auto [column, row] = element_id.cell();
+
+    const pugi::xml_node cell_node = sheet_registry.cell(column, row);
+    if (const pugi::xml_attribute attr =
+            cell_node.attribute("table:style-name")) {
+      style_name = attr.value();
+    }
+
+    if (style_name == nullptr) {
+      const pugi::xml_node row_node = sheet_registry.row(row);
+      if (const pugi::xml_attribute attr =
+              row_node.attribute("table:default-cell-style-name")) {
+        style_name = attr.value();
+      }
+    }
+    if (style_name == nullptr) {
+      const pugi::xml_node column_node = sheet_registry.column(column);
+      if (const pugi::xml_attribute attr =
+              column_node.attribute("table:default-cell-style-name")) {
+        style_name = attr.value();
+      }
+    }
+
+    if (style_name != nullptr) {
+      if (const Style *style = m_document->style_registry().style(style_name);
+          style != nullptr) {
+        return style->resolved();
+      }
+    }
+
+    return {};
+  }
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document,
-                       const ElementRegistry &registry) {
+create_element_adapter(const Document &document, ElementRegistry &registry) {
   return std::make_unique<ElementAdapter>(document, registry);
 }
 

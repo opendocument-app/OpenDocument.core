@@ -2,7 +2,9 @@
 
 #include <odr/document_element.hpp>
 #include <odr/document_element_identifier.hpp>
+#include <odr/style.hpp>
 
+#include <map>
 #include <unordered_map>
 #include <vector>
 
@@ -10,9 +12,9 @@
 
 namespace odr::internal::odf {
 
-class ElementRegistry {
+class ElementRegistry final {
 public:
-  struct Entry {
+  struct Element final {
     ExtendedElementIdentifier parent_id;
     ElementIdentifier first_child_id{null_element_id};
     ElementIdentifier last_child_id{null_element_id};
@@ -23,40 +25,71 @@ public:
     bool is_editable{false};
   };
 
-  struct Table {
+  struct Table final {
     ElementIdentifier first_column_id{null_element_id};
     ElementIdentifier last_column_id{null_element_id};
   };
 
-  struct Text {
+  struct Text final {
     pugi::xml_node last;
+  };
+
+  struct Sheet final {
+    struct Row {
+      pugi::xml_node row;
+      std::map<std::uint32_t, pugi::xml_node> cells;
+    };
+
+    TableDimensions dimensions;
+
+    std::map<std::uint32_t, pugi::xml_node> columns;
+    std::map<std::uint32_t, Row> rows;
+
+    void create_column(std::uint32_t column, std::uint32_t repeated,
+                       pugi::xml_node element);
+    void create_row(std::uint32_t row, std::uint32_t repeated,
+                    pugi::xml_node element);
+    void create_cell(std::uint32_t column, std::uint32_t row,
+                     std::uint32_t columns_repeated,
+                     std::uint32_t rows_repeated, pugi::xml_node element);
+
+    [[nodiscard]] pugi::xml_node column(std::uint32_t) const;
+    [[nodiscard]] pugi::xml_node row(std::uint32_t) const;
+    [[nodiscard]] pugi::xml_node cell(std::uint32_t column,
+                                      std::uint32_t row) const;
   };
 
   void clear() noexcept;
 
   [[nodiscard]] std::size_t size() const noexcept;
 
-  ElementIdentifier create_element();
-  Table &create_table(ElementIdentifier id);
-  Text &create_text(ElementIdentifier id);
+  ExtendedElementIdentifier create_element();
+  Table &create_table_element(ExtendedElementIdentifier id);
+  Text &create_text_element(ExtendedElementIdentifier id);
+  Sheet &create_sheet_element(ExtendedElementIdentifier id);
 
-  [[nodiscard]] Entry &entry(ElementIdentifier id);
-  [[nodiscard]] const Entry &entry(ElementIdentifier id) const;
+  [[nodiscard]] Element &element(ExtendedElementIdentifier id);
+  [[nodiscard]] const Element &element(ExtendedElementIdentifier id) const;
 
-  [[nodiscard]] Table &table(ElementIdentifier id);
-  [[nodiscard]] const Table &table(ElementIdentifier id) const;
+  [[nodiscard]] Table &table_element(ExtendedElementIdentifier id);
+  [[nodiscard]] const Table &table_element(ExtendedElementIdentifier id) const;
 
-  [[nodiscard]] Text &text(ElementIdentifier id);
-  [[nodiscard]] const Text &text(ElementIdentifier id) const;
+  [[nodiscard]] Text &text_element(ExtendedElementIdentifier id);
+  [[nodiscard]] const Text &text_element(ExtendedElementIdentifier id) const;
+
+  [[nodiscard]] Sheet &sheet_element(ExtendedElementIdentifier id);
+  [[nodiscard]] const Sheet &sheet_element(ExtendedElementIdentifier id) const;
 
 private:
-  std::vector<Entry> m_entries;
+  std::vector<Element> m_elements;
   std::unordered_map<ElementIdentifier, Table> m_tables;
   std::unordered_map<ElementIdentifier, Text> m_texts;
+  std::unordered_map<ElementIdentifier, Sheet> m_sheets;
 
-  void check_element_id(ElementIdentifier id) const;
-  void check_table_id(ElementIdentifier id) const;
-  void check_text_id(ElementIdentifier id) const;
+  void check_element_id(ExtendedElementIdentifier id) const;
+  void check_table_id(ExtendedElementIdentifier id) const;
+  void check_text_id(ExtendedElementIdentifier id) const;
+  void check_sheet_id(ExtendedElementIdentifier id) const;
 };
 
 } // namespace odr::internal::odf
