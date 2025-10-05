@@ -48,8 +48,7 @@ public:
   /// \return cursor to the root element of the document.
   [[nodiscard]] virtual ExtendedElementIdentifier root_element() const = 0;
 
-  [[nodiscard]] virtual const ElementAdapter *
-  element_adapter(ExtendedElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual const ElementAdapter *element_adapter() const = 0;
 };
 
 } // namespace odr::internal::abstract

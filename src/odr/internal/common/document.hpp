@@ -15,6 +15,7 @@ class Document : public abstract::Document {
 public:
   Document(FileType file_type, DocumentType document_type,
            std::shared_ptr<abstract::ReadableFilesystem> files);
+  ~Document() override;
 
   [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] DocumentType document_type() const noexcept final;
@@ -25,7 +26,7 @@ public:
   [[nodiscard]] ExtendedElementIdentifier root_element() const override;
 
   [[nodiscard]] const abstract::ElementAdapter *
-  element_adapter(ExtendedElementIdentifier element_id) const override;
+  element_adapter() const override;
 
 protected:
   FileType m_file_type;
@@ -34,7 +35,7 @@ protected:
   std::shared_ptr<abstract::ReadableFilesystem> m_files;
 
   ExtendedElementIdentifier m_root_element;
-  abstract::ElementAdapter *m_element_adapter{nullptr};
+  std::unique_ptr<abstract::ElementAdapter> m_element_adapter;
 };
 
 } // namespace odr::internal

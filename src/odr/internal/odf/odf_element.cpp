@@ -5,6 +5,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_document.hpp>
+#include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
@@ -26,13 +27,6 @@ const char *default_style_name(const pugi::xml_node node) {
 }
 
 } // namespace
-
-Element::Element(const pugi::xml_node node) : m_node{node} {
-  if (!node) {
-    // TODO log error
-    throw std::runtime_error("node not set");
-  }
-}
 
 ResolvedStyle Element::partial_style(const abstract::Document *document) const {
   if (const char *style_name = style_name_(document)) {

@@ -588,7 +588,8 @@ pugi::xml_node StyleRegistry::font_face_node(const std::string &name) const {
   return {};
 }
 
-MasterPage *StyleRegistry::master_page(const std::string &name) const {
+ExtendedElementIdentifier
+StyleRegistry::master_page(const std::string &name) const {
   if (const auto master_page_elements_it = m_master_page_elements.find(name);
       master_page_elements_it != std::end(m_master_page_elements)) {
     return master_page_elements_it->second;
@@ -596,7 +597,7 @@ MasterPage *StyleRegistry::master_page(const std::string &name) const {
   return {};
 }
 
-MasterPage *StyleRegistry::first_master_page() const {
+ExtendedElementIdentifier StyleRegistry::first_master_page() const {
   return m_first_master_page_element;
 }
 
