@@ -1,8 +1,9 @@
+#include "odf_document.hpp"
+
 #include <odr/internal/odf/odf_style.hpp>
 
 #include <odr/internal/odf/odf_parser.hpp>
 
-#include <cstring>
 #include <unordered_map>
 #include <utility>
 
@@ -556,7 +557,7 @@ Style *StyleRegistry::generate_style_(const std::string &name,
 void StyleRegistry::generate_master_pages_(Document &document) {
   for (const auto &[name, node] : m_index_master_page) {
     m_master_page_elements[name] =
-        dynamic_cast<MasterPage *>(parse_tree(document, node));
+        parse_tree(document.element_registry(), node);
   }
 
   if (m_first_master_page) {

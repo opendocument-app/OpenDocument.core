@@ -92,6 +92,72 @@ ElementRegistry::sheet_element(const ExtendedElementIdentifier id) const {
   return m_sheets.at(id.element_id());
 }
 
+void ElementRegistry::append_child(const ExtendedElementIdentifier parent_id,
+                                   const ExtendedElementIdentifier child_id) {
+  check_element_id(parent_id);
+  check_element_id(child_id);
+
+  const ExtendedElementIdentifier previous_sibling_id(
+      element(parent_id).last_child_id);
+
+  element(child_id).parent_id = parent_id;
+  element(child_id).first_child_id = null_element_id;
+  element(child_id).last_child_id = null_element_id;
+  element(child_id).previous_sibling_id = previous_sibling_id.element_id();
+  element(child_id).next_sibling_id = null_element_id;
+
+  if (element(parent_id).first_child_id == null_element_id) {
+    element(parent_id).first_child_id = child_id.element_id();
+  } else {
+    element(previous_sibling_id).next_sibling_id = child_id.element_id();
+  }
+  element(parent_id).last_child_id = child_id.element_id();
+}
+
+void ElementRegistry::append_column(const ExtendedElementIdentifier table_id,
+                                    const ExtendedElementIdentifier column_id) {
+  check_table_id(table_id);
+  check_element_id(column_id);
+
+  const ExtendedElementIdentifier previous_sibling_id(
+      table_element(table_id).last_column_id);
+
+  element(column_id).parent_id = table_id;
+  element(column_id).first_child_id = null_element_id;
+  element(column_id).last_child_id = null_element_id;
+  element(column_id).previous_sibling_id = previous_sibling_id.element_id();
+  element(column_id).next_sibling_id = null_element_id;
+
+  if (table_element(table_id).first_column_id == null_element_id) {
+    table_element(table_id).first_column_id = column_id.element_id();
+  } else {
+    element(previous_sibling_id).next_sibling_id = column_id.element_id();
+  }
+  table_element(table_id).last_column_id = column_id.element_id();
+}
+
+void ElementRegistry::append_shape(const ExtendedElementIdentifier sheet_id,
+                                   const ExtendedElementIdentifier shape_id) {
+  check_sheet_id(sheet_id);
+  check_element_id(shape_id);
+
+  const ExtendedElementIdentifier previous_sibling_id(
+      sheet_element(sheet_id).last_shape_id);
+
+  element(shape_id).parent_id = sheet_id;
+  element(shape_id).first_child_id = null_element_id;
+  element(shape_id).last_child_id = null_element_id;
+  element(shape_id).previous_sibling_id = previous_sibling_id.element_id();
+  element(shape_id).next_sibling_id = null_element_id;
+
+  if (sheet_element(sheet_id).first_shape_id == null_element_id) {
+    sheet_element(sheet_id).first_shape_id = shape_id.element_id();
+  } else {
+    element(previous_sibling_id).next_sibling_id = shape_id.element_id();
+  }
+  sheet_element(sheet_id).last_shape_id = shape_id.element_id();
+}
+
 void ElementRegistry::check_element_id(
     const ExtendedElementIdentifier id) const {
   if (id.is_null()) {
@@ -131,13 +197,13 @@ void ElementRegistry::check_sheet_id(const ExtendedElementIdentifier id) const {
 void ElementRegistry::Sheet::create_column(const std::uint32_t column,
                                            const std::uint32_t repeated,
                                            const pugi::xml_node element) {
-  columns[column + repeated] = element;
+  columns[column + repeated] = {.node = element};
 }
 
 void ElementRegistry::Sheet::create_row(const std::uint32_t row,
                                         const std::uint32_t repeated,
                                         const pugi::xml_node element) {
-  rows[row + repeated].row = element;
+  rows[row + repeated].node = element;
 }
 
 void ElementRegistry::Sheet::create_cell(const std::uint32_t column,
@@ -145,14 +211,18 @@ void ElementRegistry::Sheet::create_cell(const std::uint32_t column,
                                          const std::uint32_t columns_repeated,
                                          const std::uint32_t rows_repeated,
                                          const pugi::xml_node element) {
-  rows[row + rows_repeated].cells[column + columns_repeated] = element;
+  const bool is_repeated = columns_repeated > 1 || rows_repeated > 1;
+
+  Cell &cell = rows[row + rows_repeated].cells[column + columns_repeated];
+  cell.node = element;
+  cell.is_repeated = is_repeated;
 }
 
 pugi::xml_node
 ElementRegistry::Sheet::column(const std::uint32_t column) const {
   if (const auto it = util::map::lookup_greater_than(columns, column);
       it != std::end(columns)) {
-    return it->second;
+    return it->second.node;
   }
   return {};
 }
@@ -160,7 +230,7 @@ ElementRegistry::Sheet::column(const std::uint32_t column) const {
 pugi::xml_node ElementRegistry::Sheet::row(const std::uint32_t row) const {
   if (const auto it = util::map::lookup_greater_than(rows, row);
       it != std::end(rows)) {
-    return it->second.row;
+    return it->second.node;
   }
   return {};
 }
@@ -172,7 +242,7 @@ pugi::xml_node ElementRegistry::Sheet::cell(const std::uint32_t column,
     const auto &cells = row_it->second.cells;
     if (const auto cell_it = util::map::lookup_greater_than(cells, column);
         cell_it != std::end(cells)) {
-      return cell_it->second;
+      return cell_it->second.node;
     }
   }
   return {};

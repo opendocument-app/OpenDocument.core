@@ -35,15 +35,27 @@ public:
   };
 
   struct Sheet final {
-    struct Row {
-      pugi::xml_node row;
-      std::map<std::uint32_t, pugi::xml_node> cells;
+    struct Column final {
+      pugi::xml_node node;
+    };
+
+    struct Cell final {
+      pugi::xml_node node;
+      bool is_repeated{false};
+    };
+
+    struct Row final {
+      pugi::xml_node node;
+      std::map<std::uint32_t, Cell> cells;
     };
 
     TableDimensions dimensions;
 
-    std::map<std::uint32_t, pugi::xml_node> columns;
+    std::map<std::uint32_t, Column> columns;
     std::map<std::uint32_t, Row> rows;
+
+    ElementIdentifier first_shape_id{null_element_id};
+    ElementIdentifier last_shape_id{null_element_id};
 
     void create_column(std::uint32_t column, std::uint32_t repeated,
                        pugi::xml_node element);
@@ -79,6 +91,13 @@ public:
 
   [[nodiscard]] Sheet &sheet_element(ExtendedElementIdentifier id);
   [[nodiscard]] const Sheet &sheet_element(ExtendedElementIdentifier id) const;
+
+  void append_child(ExtendedElementIdentifier parent_id,
+                    ExtendedElementIdentifier child_id);
+  void append_column(ExtendedElementIdentifier table_id,
+                     ExtendedElementIdentifier column_id);
+  void append_shape(ExtendedElementIdentifier sheet_id,
+                    ExtendedElementIdentifier shape_id);
 
 private:
   std::vector<Element> m_elements;
