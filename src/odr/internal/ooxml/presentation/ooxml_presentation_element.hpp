@@ -1,7 +1,6 @@
 #pragma once
 
 #include <odr/internal/abstract/document.hpp>
-#include <odr/internal/common/document_element.hpp>
 #include <odr/internal/common/style.hpp>
 
 #include <string>
