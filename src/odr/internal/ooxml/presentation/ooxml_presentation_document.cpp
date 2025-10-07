@@ -10,17 +10,15 @@
 
 namespace odr::internal::ooxml::presentation {
 
-Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : TemplateDocument<Element>(FileType::office_open_xml_presentation,
-                                DocumentType::presentation,
-                                std::move(filesystem)) {
-  m_document_xml =
-      util::xml::parse(*m_filesystem, AbsPath("/ppt/presentation.xml"));
+Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
+    : internal::Document(FileType::office_open_xml_presentation,
+                         DocumentType::presentation, std::move(files)) {
+  m_document_xml = util::xml::parse(*m_files, AbsPath("/ppt/presentation.xml"));
 
   for (const auto &relationships :
-       parse_relationships(*m_filesystem, AbsPath("/ppt/presentation.xml"))) {
+       parse_relationships(*m_files, AbsPath("/ppt/presentation.xml"))) {
     m_slides_xml[relationships.first] = util::xml::parse(
-        *m_filesystem, AbsPath("/ppt").join(RelPath(relationships.second)));
+        *m_files, AbsPath("/ppt").join(RelPath(relationships.second)));
   }
 
   m_root_element = parse_tree(*this, m_document_xml.document_element());

@@ -3,6 +3,10 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 
+namespace pugi {
+class xml_node;
+}
+
 namespace odr::internal::ooxml::spreadsheet {
 class Document;
 class Element;

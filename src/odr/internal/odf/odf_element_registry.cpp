@@ -4,7 +4,12 @@
 
 namespace odr::internal::odf {
 
-void ElementRegistry::clear() noexcept { m_elements.clear(); }
+void ElementRegistry::clear() noexcept {
+  m_elements.clear();
+  m_tables.clear();
+  m_texts.clear();
+  m_sheets.clear();
+}
 
 [[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
   return m_elements.size();
@@ -16,21 +21,21 @@ ExtendedElementIdentifier ElementRegistry::create_element() {
 }
 
 ElementRegistry::Table &
-ElementRegistry::create_table_element(ExtendedElementIdentifier id) {
+ElementRegistry::create_table_element(const ExtendedElementIdentifier id) {
   check_element_id(id);
   auto [it, success] = m_tables.emplace(id.element_id(), Table{});
   return it->second;
 }
 
 ElementRegistry::Text &
-ElementRegistry::create_text_element(ExtendedElementIdentifier id) {
+ElementRegistry::create_text_element(const ExtendedElementIdentifier id) {
   check_element_id(id);
   auto [it, success] = m_texts.emplace(id.element_id(), Text{});
   return it->second;
 }
 
 ElementRegistry::Sheet &
-ElementRegistry::create_sheet_element(ExtendedElementIdentifier id) {
+ElementRegistry::create_sheet_element(const ExtendedElementIdentifier id) {
   check_element_id(id);
   auto [it, success] = m_sheets.emplace(id.element_id(), Sheet{});
   return it->second;

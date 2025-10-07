@@ -16,9 +16,9 @@
 namespace odr::internal::ooxml {
 
 OfficeOpenXmlFile::OfficeOpenXmlFile(
-    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : m_filesystem(std::move(filesystem)) {
-  m_file_meta = parse_file_meta(*m_filesystem);
+    std::shared_ptr<abstract::ReadableFilesystem> files)
+    : m_files(std::move(files)) {
+  m_file_meta = parse_file_meta(*m_files);
 
   if (m_file_meta.password_encrypted) {
     m_encryption_state = EncryptionState::encrypted;
@@ -61,8 +61,8 @@ OfficeOpenXmlFile::decrypt(const std::string &password) const {
     throw NotEncryptedError();
   }
 
-  const std::string encryption_info = util::stream::read(
-      *m_filesystem->open(AbsPath("/EncryptionInfo"))->stream());
+  const std::string encryption_info =
+      util::stream::read(*m_files->open(AbsPath("/EncryptionInfo"))->stream());
   // TODO cache Crypto::Util
   const crypto::Util util(encryption_info);
   const std::string key = util.derive_key(password);
@@ -71,15 +71,14 @@ OfficeOpenXmlFile::decrypt(const std::string &password) const {
   }
 
   const std::string encrypted_package = util::stream::read(
-      *m_filesystem->open(AbsPath("/EncryptedPackage"))->stream());
+      *m_files->open(AbsPath("/EncryptedPackage"))->stream());
   std::string decrypted_package = util.decrypt(encrypted_package, key);
 
   const auto memory_file =
       std::make_shared<MemoryFile>(std::move(decrypted_package));
   auto decrypted = std::make_shared<OfficeOpenXmlFile>(*this);
-  decrypted->m_filesystem =
-      zip::ZipFile(memory_file).archive()->as_filesystem();
-  decrypted->m_file_meta = parse_file_meta(*decrypted->m_filesystem);
+  decrypted->m_files = zip::ZipFile(memory_file).archive()->as_filesystem();
+  decrypted->m_file_meta = parse_file_meta(*decrypted->m_files);
   decrypted->m_encryption_state = EncryptionState::decrypted;
   return decrypted;
 }
@@ -88,11 +87,11 @@ std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
   // TODO throw if encrypted
   switch (file_type()) {
   case FileType::office_open_xml_document:
-    return std::make_shared<text::Document>(m_filesystem);
+    return std::make_shared<text::Document>(m_files);
   case FileType::office_open_xml_presentation:
-    return std::make_shared<presentation::Document>(m_filesystem);
+    return std::make_shared<presentation::Document>(m_files);
   case FileType::office_open_xml_workbook:
-    return std::make_shared<spreadsheet::Document>(m_filesystem);
+    return std::make_shared<spreadsheet::Document>(m_files);
   default:
     throw UnsupportedOperation();
   }

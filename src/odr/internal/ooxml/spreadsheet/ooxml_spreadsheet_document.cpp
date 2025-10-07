@@ -1,6 +1,7 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 
 #include <odr/exceptions.hpp>
+#include <odr/file.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
@@ -10,9 +11,9 @@
 
 namespace odr::internal::ooxml::spreadsheet {
 
-Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : TemplateDocument(FileType::office_open_xml_workbook,
-                       DocumentType::spreadsheet, std::move(filesystem)) {
+Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
+    : internal::Document(FileType::office_open_xml_workbook,
+                         DocumentType::spreadsheet, std::move(files)) {
   const AbsPath workbook_path("/xl/workbook.xml");
   auto [workbook_xml, workbook_relations] = parse_xml_(workbook_path);
   auto [styles_xml, _] = parse_xml_(AbsPath("/xl/styles.xml"));
@@ -31,7 +32,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     }
   }
 
-  if (m_filesystem->exists(AbsPath("/xl/sharedStrings.xml"))) {
+  if (m_files->exists(AbsPath("/xl/sharedStrings.xml"))) {
     for (auto [shared_strings_xml, _] =
              parse_xml_(AbsPath("/xl/sharedStrings.xml"));
          auto shared_string : shared_strings_xml.document_element()) {
@@ -47,8 +48,8 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
 
 std::pair<pugi::xml_document &, Relations &>
 Document::parse_xml_(const AbsPath &path) {
-  pugi::xml_document document = util::xml::parse(*m_filesystem, path);
-  Relations relations = parse_relationships(*m_filesystem, path);
+  pugi::xml_document document = util::xml::parse(*m_files, path);
+  Relations relations = parse_relationships(*m_files, path);
 
   auto [it, _] = m_xml.emplace(
       path, std::make_pair(std::move(document), std::move(relations)));

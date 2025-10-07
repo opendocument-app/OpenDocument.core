@@ -6,6 +6,8 @@
 #include <iostream>
 #include <unordered_map>
 
+#include <pugixml.hpp>
+
 namespace odr::internal::ooxml::presentation {
 
 namespace {

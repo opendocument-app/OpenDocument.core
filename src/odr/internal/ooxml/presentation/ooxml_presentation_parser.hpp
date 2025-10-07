@@ -1,12 +1,8 @@
 #pragma once
 
-#include <odr/document_element.hpp>
-
-#include <memory>
-#include <utility>
-#include <vector>
-
-#include <pugixml.hpp>
+namespace pugi {
+class xml_node;
+} // namespace pugi
 
 namespace odr::internal::ooxml::presentation {
 class Document;

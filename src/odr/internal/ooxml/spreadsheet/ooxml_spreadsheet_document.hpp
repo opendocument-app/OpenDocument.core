@@ -1,21 +1,21 @@
 #pragma once
 
-#include <odr/file.hpp>
-
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
 #include <memory>
 #include <unordered_map>
+#include <vector>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::ooxml::spreadsheet {
 
-class Document final : public TemplateDocument<Element> {
+class Document final : public internal::Document {
 public:
-  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
+  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> files);
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
@@ -34,8 +34,6 @@ private:
   std::vector<pugi::xml_node> m_shared_strings;
 
   std::pair<pugi::xml_document &, Relations &> parse_xml_(const AbsPath &path);
-
-  friend class Element;
 };
 
 } // namespace odr::internal::ooxml::spreadsheet

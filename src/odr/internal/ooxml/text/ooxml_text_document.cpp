@@ -15,18 +15,17 @@
 
 namespace odr::internal::ooxml::text {
 
-Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : TemplateDocument(FileType::office_open_xml_document, DocumentType::text,
-                       std::move(filesystem)) {
-  m_document_xml =
-      util::xml::parse(*m_filesystem, AbsPath("/word/document.xml"));
-  m_styles_xml = util::xml::parse(*m_filesystem, AbsPath("/word/styles.xml"));
+Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
+    : internal::Document(FileType::office_open_xml_document, DocumentType::text,
+                         std::move(files)) {
+  m_document_xml = util::xml::parse(*m_files, AbsPath("/word/document.xml"));
+  m_styles_xml = util::xml::parse(*m_files, AbsPath("/word/styles.xml"));
 
   m_document_relations =
-      parse_relationships(*m_filesystem, AbsPath("/word/document.xml"));
+      parse_relationships(*m_files, AbsPath("/word/document.xml"));
 
-  m_root_element =
-      parse_tree(*this, m_document_xml.document_element().child("w:body"));
+  m_root_element = parse_tree(
+      m_element_registry, m_document_xml.document_element().child("w:body"));
 
   m_style_registry = StyleRegistry(m_styles_xml.document_element());
 }
@@ -41,7 +40,7 @@ void Document::save(const Path &path) const {
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 
-  for (auto walker = m_filesystem->file_walker(AbsPath("/")); !walker->end();
+  for (auto walker = m_files->file_walker(AbsPath("/")); !walker->end();
        walker->next()) {
     const AbsPath &abs_path = walker->path();
     RelPath rel_path = walker->path().rebase(AbsPath("/"));
@@ -57,8 +56,7 @@ void Document::save(const Path &path) const {
       archive.insert_file(std::end(archive), rel_path, tmp);
       continue;
     }
-    archive.insert_file(std::end(archive), rel_path,
-                        m_filesystem->open(abs_path));
+    archive.insert_file(std::end(archive), rel_path, m_files->open(abs_path));
   }
 
   std::ofstream ostream = util::file::create(path.string());

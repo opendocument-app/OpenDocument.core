@@ -1,7 +1,5 @@
 #pragma once
 
-#include <odr/file.hpp>
-
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_style.hpp>
@@ -9,10 +7,6 @@
 #include <pugixml.hpp>
 
 #include <memory>
-
-namespace odr::internal::abstract {
-class ReadableFilesystem;
-} // namespace odr::internal::abstract
 
 namespace odr::internal::odf {
 

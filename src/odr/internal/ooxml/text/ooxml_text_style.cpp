@@ -233,8 +233,8 @@ StyleRegistry::partial_table_cell_style(const pugi::xml_node node) const {
 }
 
 void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
-  for (auto style : styles_root) {
-    std::string element_name = style.name();
+  for (const pugi::xml_node style : styles_root) {
+    const std::string element_name = style.name();
 
     if (element_name == "w:style") {
       m_index[style.attribute("w:styleId").value()] = style;
@@ -245,23 +245,24 @@ void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
 void StyleRegistry::generate_styles_(const pugi::xml_node styles_root) {
   m_default_style = std::make_unique<Style>(styles_root.child("w:docDefaults"));
 
-  for (auto &&e : m_index) {
-    generate_style_(e.first, e.second);
+  for (const auto &[name, node] : m_index) {
+    generate_style_(name, node);
   }
 }
 
 Style *StyleRegistry::generate_style_(const std::string &name,
                                       const pugi::xml_node node) {
-  auto &&style = m_styles[name];
+  std::unique_ptr<Style> &style = m_styles[name];
   if (style) {
     return style.get();
   }
 
   Style *parent{nullptr};
 
-  if (auto parent_attr = node.child("w:basedOn").attribute("w:val");
+  if (const pugi::xml_attribute parent_attr =
+          node.child("w:basedOn").attribute("w:val");
       parent_attr) {
-    if (auto parent_node = m_index[parent_attr.value()]) {
+    if (const pugi::xml_node parent_node = m_index[parent_attr.value()]) {
       parent = generate_style_(parent_attr.value(), parent_node);
     }
   }

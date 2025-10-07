@@ -1,10 +1,12 @@
 #pragma once
 
-#include <odr/document_element_identifier.hpp>
-
 namespace pugi {
 class xml_node;
 } // namespace pugi
+
+namespace odr {
+class ExtendedElementIdentifier;
+}
 
 namespace odr::internal::odf {
 class ElementRegistry;
