@@ -125,6 +125,10 @@ DecodedFile DecodedFile::decrypt(const std::string &password) const {
   return DecodedFile(m_impl->decrypt(password));
 }
 
+bool DecodedFile::is_decodable() const noexcept {
+  return m_impl->is_decodable();
+}
+
 bool DecodedFile::is_text_file() const {
   return std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl) !=
          nullptr;

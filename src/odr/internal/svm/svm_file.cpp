@@ -1,3 +1,5 @@
+#include <odr/exceptions.hpp>
+
 #include <odr/internal/svm/svm_file.hpp>
 
 #include <odr/internal/svm/svm_format.hpp>
@@ -35,6 +37,10 @@ DecoderEngine SvmFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
-std::shared_ptr<abstract::Image> SvmFile::image() const { return {}; }
+bool SvmFile::is_decodable() const noexcept { return false; }
+
+std::shared_ptr<abstract::Image> SvmFile::image() const {
+  throw UnsupportedFileEncoding("generally unsupported");
+}
 
 } // namespace odr::internal::svm

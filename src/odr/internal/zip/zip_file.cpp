@@ -27,6 +27,8 @@ DecoderEngine ZipFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+bool ZipFile::is_decodable() const noexcept { return true; }
+
 std::shared_ptr<abstract::Archive> ZipFile::archive() const {
   return std::make_shared<ZipArchive>(m_zip);
 }

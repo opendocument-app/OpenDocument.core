@@ -1,5 +1,7 @@
 #include <odr/internal/common/image_file.hpp>
 
+#include <odr/exceptions.hpp>
+
 namespace odr::internal {
 
 ImageFile::ImageFile(std::shared_ptr<abstract::File> file,
@@ -18,6 +20,10 @@ DecoderEngine ImageFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
-std::shared_ptr<abstract::Image> ImageFile::image() const { return {}; }
+bool ImageFile::is_decodable() const noexcept { return false; }
+
+std::shared_ptr<abstract::Image> ImageFile::image() const {
+  throw UnsupportedFileEncoding("generally unsupported");
+}
 
 } // namespace odr::internal

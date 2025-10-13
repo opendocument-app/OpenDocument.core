@@ -136,9 +136,11 @@ WvWareLegacyMicrosoftFile::decrypt(const std::string &password) const {
   return decrypted;
 }
 
+bool WvWareLegacyMicrosoftFile::is_decodable() const noexcept { return false; }
+
 std::shared_ptr<abstract::Document>
 WvWareLegacyMicrosoftFile::document() const {
-  return {}; // TODO throw
+  throw UnsupportedFileEncoding("generally unsupported");
 }
 
 wvParseStruct &WvWareLegacyMicrosoftFile::parse_struct() const {

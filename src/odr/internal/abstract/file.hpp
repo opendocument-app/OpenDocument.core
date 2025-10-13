@@ -50,6 +50,8 @@ public:
     (void)password;
     return nullptr;
   }
+
+  [[nodiscard]] virtual bool is_decodable() const noexcept = 0;
 };
 
 class TextFile : public DecodedFile {

@@ -98,6 +98,8 @@ PopplerPdfFile::decrypt(const std::string &password) const {
   return decrypted_file;
 }
 
+bool PopplerPdfFile::is_decodable() const noexcept { return false; }
+
 PDFDoc &PopplerPdfFile::pdf_doc() const { return *m_pdf_doc; }
 
 } // namespace odr::internal
