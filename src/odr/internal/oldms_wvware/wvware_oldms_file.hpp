@@ -35,6 +35,8 @@ public:
   [[nodiscard]] std::shared_ptr<DecodedFile>
   decrypt(const std::string &password) const override;
 
+  [[nodiscard]] bool is_decodable() const noexcept override;
+
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const override;
 
   [[nodiscard]] wvParseStruct &parse_struct() const;

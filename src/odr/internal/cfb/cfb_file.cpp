@@ -26,6 +26,8 @@ DecoderEngine CfbFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+bool CfbFile::is_decodable() const noexcept { return true; }
+
 std::shared_ptr<abstract::Archive> CfbFile::archive() const {
   return std::make_shared<CfbArchive>(m_cfb);
 }

@@ -18,6 +18,8 @@ public:
   [[nodiscard]] std::shared_ptr<DecodedFile>
   decrypt(const std::string &password) const override;
 
+  [[nodiscard]] bool is_decodable() const noexcept override;
+
 private:
   std::shared_ptr<abstract::File> m_file;
   FileMeta m_file_meta;

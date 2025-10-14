@@ -28,4 +28,6 @@ DecoderEngine CsvFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+bool CsvFile::is_decodable() const noexcept { return false; }
+
 } // namespace odr::internal::csv

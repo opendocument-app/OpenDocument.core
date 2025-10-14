@@ -26,4 +26,6 @@ DecoderEngine TextFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+bool TextFile::is_decodable() const noexcept { return false; }
+
 } // namespace odr::internal::text

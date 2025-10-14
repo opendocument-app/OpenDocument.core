@@ -29,4 +29,6 @@ PdfFile::decrypt(const std::string &password) const {
   return nullptr;
 }
 
+bool PdfFile::is_decodable() const noexcept { return false; }
+
 } // namespace odr::internal

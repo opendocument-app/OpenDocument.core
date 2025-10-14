@@ -28,4 +28,6 @@ DecoderEngine JsonFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+bool JsonFile::is_decodable() const noexcept { return false; }
+
 } // namespace odr::internal::json

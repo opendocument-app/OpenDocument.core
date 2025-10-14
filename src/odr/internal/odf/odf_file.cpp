@@ -77,8 +77,15 @@ OpenDocumentFile::decrypt(const std::string &password) const {
   return decrypted_file;
 }
 
+bool OpenDocumentFile::is_decodable() const noexcept {
+  return m_encryption_state != EncryptionState::encrypted;
+}
+
 std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
-  // TODO throw if encrypted
+  if (m_encryption_state == EncryptionState::encrypted) {
+    throw FileEncryptedError();
+  }
+
   switch (file_type()) {
   case FileType::opendocument_text:
     return std::make_shared<Document>(m_file_meta.type, DocumentType::text,
@@ -93,7 +100,7 @@ std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
     return std::make_shared<Document>(m_file_meta.type, DocumentType::drawing,
                                       m_filesystem);
   default:
-    throw UnsupportedOperation();
+    throw UnsupportedFileType(file_type());
   }
 }
 

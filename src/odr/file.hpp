@@ -200,6 +200,8 @@ public:
   [[nodiscard]] EncryptionState encryption_state() const;
   [[nodiscard]] DecodedFile decrypt(const std::string &password) const;
 
+  [[nodiscard]] bool is_decodable() const noexcept;
+
   [[nodiscard]] bool is_text_file() const;
   [[nodiscard]] bool is_image_file() const;
   [[nodiscard]] bool is_archive_file() const;

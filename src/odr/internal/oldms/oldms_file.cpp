@@ -84,8 +84,10 @@ LegacyMicrosoftFile::decrypt(const std::string &password) const {
       "odrcore does not support decryption of legacy Microsoft files");
 }
 
+bool LegacyMicrosoftFile::is_decodable() const noexcept { return false; }
+
 std::shared_ptr<abstract::Document> LegacyMicrosoftFile::document() const {
-  throw UnsupportedOperation(
+  throw UnsupportedFileEncoding(
       "odrcore does not support reading legacy Microsoft files");
 }
 
