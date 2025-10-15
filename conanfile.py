@@ -19,12 +19,14 @@ class OpenDocumentCoreConan(ConanFile):
         "fPIC": [True, False],
         "with_pdf2htmlEX": [True, False],
         "with_wvWare": [True, False],
+        "with_libmagic": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
         "with_pdf2htmlEX": True,
         "with_wvWare": True,
+        "with_libmagic": True,
     }
 
     exports_sources = ["cli/*", "cmake/*", "resources/dist/*", "src/*", "CMakeLists.txt"]
@@ -49,6 +51,8 @@ class OpenDocumentCoreConan(ConanFile):
             self.requires("wvware/1.2.9-odr")
         self.requires("cpp-httplib/0.16.3")
         self.requires("argon2/20190702-odr")
+        if self.options.get_safe("with_libmagic", False):
+            self.requires("libmagic/5.45")
 
     def build_requirements(self):
         self.test_requires("gtest/1.14.0")
@@ -67,6 +71,7 @@ class OpenDocumentCoreConan(ConanFile):
         tc.variables["ODR_TEST"] = False
         tc.variables["WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX", False)
         tc.variables["WITH_WVWARE"] = self.options.get_safe("with_wvWare", False)
+        tc.variables["WITH_LIBMAGIC"] = self.options.get_safe("with_libmagic", False)
 
         # Get runenv info, exported by package_info() of dependencies
         # We need to obtain PDF2HTMLEX_DATA_DIR, POPPLER_DATA_DIR, FONTCONFIG_PATH and WVDATADIR

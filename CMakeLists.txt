@@ -16,7 +16,6 @@ option(ODR_CLI "enable command line interface" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 option(WITH_PDF2HTMLEX "Build with pdf2htmlEX" ON)
 option(WITH_WVWARE "Build with wvWare" ON)
-option(WITH_CUSTOM_TMPFILE "Build with custom temporary file implementation" OFF)
 
 # TODO defining global compiler flags seems to be bad practice with conan
 # TODO consider using conan profiles
@@ -245,15 +244,19 @@ if (WITH_WVWARE)
             ODR_WITH_WVWARE
     )
 endif ()
-if (WITH_CUSTOM_TMPFILE)
-    find_package(tmpfile REQUIRED CONFIG)
+if (WITH_LIBMAGIC)
+    find_package(libmagic REQUIRED)
+    target_sources(odr
+            PRIVATE
+            "src/odr/internal/libmagic/libmagic.cpp"
+    )
     target_link_libraries(odr
             PRIVATE
-            tmpfile::tmpfile
+            libmagic::libmagic
     )
     target_compile_definitions(odr
             PRIVATE
-            ODR_WITH_CUSTOM_TMPFILE
+            ODR_WITH_LIBMAGIC
     )
 endif ()
 
