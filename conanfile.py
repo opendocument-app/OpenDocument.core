@@ -77,13 +77,13 @@ class OpenDocumentCoreConan(ConanFile):
         # Get runenv info, exported by package_info() of dependencies
         # We need to obtain PDF2HTMLEX_DATA_DIR, POPPLER_DATA_DIR, FONTCONFIG_PATH and WVDATADIR
         runenv_info = Environment()
-        deps = self.dependencies.host.topological_sort
-        deps = [dep for dep in reversed(deps.values())]
-        for dep in deps:
+        for dep in self.dependencies.host.topological_sort.values():
             runenv_info.compose_env(dep.runenv_info)
         envvars = runenv_info.vars(self)
-        for v in ["PDF2HTMLEX_DATA_DIR", "POPPLER_DATA_DIR", "FONTCONFIG_PATH", "WVDATADIR", "MAGIC"]:
-            tc.variables[v] = envvars.get(v)
+        tc.variables["FONTCONFIG_DATA_PATH"] = envvars.get("FONTCONFIG_PATH")
+        tc.variables["POPPLER_DATA_PATH"] = envvars.get("POPPLER_DATA_DIR")
+        tc.variables["PDF2HTMLEX_DATA_PATH"] = envvars.get("PDF2HTMLEX_DATA_DIR")
+        tc.variables["LIBMAGIC_DATABASE_PATH"] = envvars.get("MAGIC")
 
         tc.generate()
 
