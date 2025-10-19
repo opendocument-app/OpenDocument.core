@@ -21,11 +21,16 @@ FileType JsonFile::file_type() const noexcept {
 }
 
 FileMeta JsonFile::file_meta() const noexcept {
-  return {FileType::javascript_object_notation, false, {}};
+  return {FileType::javascript_object_notation, "application/json", false,
+          std::nullopt};
 }
 
 DecoderEngine JsonFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
+}
+
+std::string_view JsonFile::mimetype() const noexcept {
+  return "application/json";
 }
 
 bool JsonFile::is_decodable() const noexcept { return false; }

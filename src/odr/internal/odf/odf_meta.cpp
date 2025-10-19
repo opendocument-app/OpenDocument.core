@@ -6,7 +6,6 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
-#include <odr/internal/util/map_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
@@ -18,7 +17,8 @@ namespace odr::internal::odf {
 
 namespace {
 
-bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
+bool lookup_file_type(const std::string &mimetype_in, FileType &file_type,
+                      std::string_view &mimetype_out) {
   // https://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
   static const std::unordered_map<std::string, FileType> MIME_TYPES = {
       {"application/vnd.oasis.opendocument.text", FileType::opendocument_text},
@@ -53,8 +53,14 @@ bool lookup_file_type(const std::string &mime_type, FileType &file_type) {
       {"application/vnd.sun.xml.draw.template",
        FileType::opendocument_graphics},
   };
-  return util::map::lookup_default(MIME_TYPES, mime_type, file_type,
-                                   FileType::unknown);
+  if (const auto it = MIME_TYPES.find(mimetype_in); it != MIME_TYPES.end()) {
+    file_type = it->second;
+    mimetype_out = it->first;
+  } else {
+    file_type = FileType::unknown;
+    mimetype_out = "application/octet-stream";
+  }
+  return false;
 }
 
 } // namespace
@@ -74,7 +80,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
   if (filesystem.is_file(AbsPath("/mimetype"))) {
     const std::string mimeType =
         util::stream::read(*filesystem.open(AbsPath("/mimetype"))->stream());
-    lookup_file_type(mimeType, result.type);
+    lookup_file_type(mimeType, result.type, result.mimetype);
   }
 
   pugi::xml_document manifest_xml;
@@ -92,7 +98,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
           path.root() && e.node().attribute("manifest:media-type")) {
         const std::string mimeType =
             e.node().attribute("manifest:media-type").as_string();
-        lookup_file_type(mimeType, result.type);
+        lookup_file_type(mimeType, result.type, result.mimetype);
       }
     }
     if (!manifest->select_nodes("//manifest:encryption-data").empty()) {

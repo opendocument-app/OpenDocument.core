@@ -17,6 +17,10 @@ DecoderEngine PdfFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+std::string_view PdfFile::mimetype() const noexcept {
+  return "application/pdf";
+}
+
 bool PdfFile::password_encrypted() const noexcept { return false; }
 
 EncryptionState PdfFile::encryption_state() const noexcept {

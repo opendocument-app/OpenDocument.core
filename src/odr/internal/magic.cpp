@@ -1,6 +1,7 @@
 #include <odr/internal/magic.hpp>
 
 #include <odr/file.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/libmagic/libmagic.hpp>
@@ -87,11 +88,11 @@ FileType magic::file_type(const File &file) {
   return file_type(*file.stream());
 }
 
-const char *magic::mime_type(const std::string &path) {
+std::string_view magic::mimetype(const std::string &path) {
 #ifdef ODR_USE_LIBMAGIC
   return libmagic::mime_type(path);
 #else
-  return nullptr;
+  return odr::mimetype_by_file_type(magic::file_type(path));
 #endif
 }
 

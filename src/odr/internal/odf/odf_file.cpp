@@ -46,6 +46,10 @@ DecoderEngine OpenDocumentFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+std::string_view OpenDocumentFile::mimetype() const noexcept {
+  return m_file_meta.mimetype;
+}
+
 DocumentType OpenDocumentFile::document_type() const {
   return m_file_meta.document_meta.value().document_type;
 }

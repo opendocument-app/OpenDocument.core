@@ -17,13 +17,16 @@ FileType CfbFile::file_type() const noexcept {
 }
 
 FileMeta CfbFile::file_meta() const noexcept {
-  FileMeta meta;
-  meta.type = file_type();
-  return meta;
+  return {FileType::compound_file_binary_format, "application/x-cfb", false,
+          std::nullopt};
 }
 
 DecoderEngine CfbFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
+}
+
+std::string_view CfbFile::mimetype() const noexcept {
+  return "application/x-cfb";
 }
 
 bool CfbFile::is_decodable() const noexcept { return true; }

@@ -18,5 +18,5 @@ FileType file_type(std::istream &in);
 FileType file_type(const abstract::File &file);
 FileType file_type(const File &file);
 
-const char *mime_type(const std::string &path);
+std::string_view mimetype(const std::string &path);
 } // namespace odr::internal::magic

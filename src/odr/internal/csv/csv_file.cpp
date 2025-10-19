@@ -20,12 +20,14 @@ FileType CsvFile::file_type() const noexcept {
   return FileType::comma_separated_values;
 }
 
-FileMeta CsvFile::file_meta() const noexcept {
-  return {FileType::comma_separated_values, false, {}};
-}
-
 DecoderEngine CsvFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
+}
+
+std::string_view CsvFile::mimetype() const noexcept { return "text/csv"; }
+
+FileMeta CsvFile::file_meta() const noexcept {
+  return {FileType::comma_separated_values, "text/csv", false, std::nullopt};
 }
 
 bool CsvFile::is_decodable() const noexcept { return false; }

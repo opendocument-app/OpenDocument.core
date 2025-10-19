@@ -6,6 +6,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/magic.hpp>
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
@@ -25,6 +26,12 @@ FileMeta::FileMeta() = default;
 FileMeta::FileMeta(const FileType type, const bool password_encrypted,
                    const std::optional<DocumentMeta> document_meta)
     : type{type}, password_encrypted{password_encrypted},
+      document_meta{document_meta} {}
+
+FileMeta::FileMeta(const FileType type, const std::string_view mimetype,
+                   const bool password_encrypted,
+                   const std::optional<DocumentMeta> document_meta)
+    : type{type}, mimetype{mimetype}, password_encrypted{password_encrypted},
       document_meta{document_meta} {}
 
 File::File() = default;
@@ -64,6 +71,12 @@ std::vector<FileType> DecodedFile::list_file_types(const std::string &path,
                                                    Logger &logger) {
   return internal::open_strategy::list_file_types(
       std::make_shared<internal::DiskFile>(path), logger);
+}
+
+std::string_view DecodedFile::mimetype(const std::string &path,
+                                       Logger &logger) {
+  (void)logger;
+  return internal::magic::mimetype(path);
 }
 
 std::vector<DecoderEngine>

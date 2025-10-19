@@ -17,6 +17,7 @@ public:
 
   [[nodiscard]] FileMeta file_meta() const noexcept override;
   [[nodiscard]] DecoderEngine decoder_engine() const noexcept override;
+  [[nodiscard]] std::string_view mimetype() const noexcept override;
 
   [[nodiscard]] bool password_encrypted() const noexcept override;
   [[nodiscard]] EncryptionState encryption_state() const noexcept override;

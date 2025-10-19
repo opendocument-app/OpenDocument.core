@@ -252,6 +252,143 @@ std::string odr::document_type_to_string(const DocumentType type) noexcept {
   }
 }
 
+odr::FileType
+odr::file_type_by_mimetype(const std::string_view mimetype) noexcept {
+  if (mimetype == "application/vnd.oasis.opendocument.text") {
+    return FileType::opendocument_text;
+  }
+  if (mimetype == "application/vnd.oasis.opendocument.presentation") {
+    return FileType::opendocument_presentation;
+  }
+  if (mimetype == "application/vnd.oasis.opendocument.spreadsheet") {
+    return FileType::opendocument_spreadsheet;
+  }
+  if (mimetype == "application/vnd.oasis.opendocument.graphics") {
+    return FileType::opendocument_graphics;
+  }
+  if (mimetype ==
+      "application/"
+      "vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return FileType::office_open_xml_document;
+  }
+  if (mimetype ==
+      "application/"
+      "vnd.openxmlformats-officedocument.presentationml.presentation") {
+    return FileType::office_open_xml_presentation;
+  }
+  if (mimetype ==
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+    return FileType::office_open_xml_workbook;
+  }
+  if (mimetype == "application/msword") {
+    return FileType::legacy_word_document;
+  }
+  if (mimetype == "application/vnd.ms-powerpoint") {
+    return FileType::legacy_powerpoint_presentation;
+  }
+  if (mimetype == "application/vnd.ms-excel") {
+    return FileType::legacy_excel_worksheets;
+  }
+  if (mimetype == "application/zip" ||
+      mimetype == "application/x-zip-compressed") {
+    return FileType::zip;
+  }
+  if (mimetype == "application/pdf") {
+    return FileType::portable_document_format;
+  }
+  if (mimetype == "text/plain") {
+    return FileType::text_file;
+  }
+  if (mimetype == "text/csv") {
+    return FileType::comma_separated_values;
+  }
+  if (mimetype == "application/json") {
+    return FileType::javascript_object_notation;
+  }
+  if (mimetype == "text/markdown") {
+    return FileType::markdown;
+  }
+  if (mimetype == "image/png") {
+    return FileType::portable_network_graphics;
+  }
+  if (mimetype == "image/gif") {
+    return FileType::graphics_interchange_format;
+  }
+  if (mimetype == "image/jpeg") {
+    return FileType::jpeg;
+  }
+  if (mimetype == "image/bmp") {
+    return FileType::bitmap_image_file;
+  }
+  return FileType::unknown;
+}
+
+std::string_view odr::mimetype_by_file_type(const FileType type) {
+  if (type == FileType::opendocument_text) {
+    return "application/vnd.oasis.opendocument.text";
+  }
+  if (type == FileType::opendocument_presentation) {
+    return "application/vnd.oasis.opendocument.presentation";
+  }
+  if (type == FileType::opendocument_spreadsheet) {
+    return "application/vnd.oasis.opendocument.spreadsheet";
+  }
+  if (type == FileType::opendocument_graphics) {
+    return "application/vnd.oasis.opendocument.graphics";
+  }
+  if (type == FileType::office_open_xml_document) {
+    return "application/"
+           "vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+  if (type == FileType::office_open_xml_presentation) {
+    return "application/"
+           "vnd.openxmlformats-officedocument.presentationml.presentation";
+  }
+  if (type == FileType::office_open_xml_workbook) {
+    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  }
+  if (type == FileType::legacy_word_document) {
+    return "application/msword";
+  }
+  if (type == FileType::legacy_powerpoint_presentation) {
+    return "application/vnd.ms-powerpoint";
+  }
+  if (type == FileType::legacy_excel_worksheets) {
+    return "application/vnd.ms-excel";
+  }
+  if (type == FileType::zip) {
+    return "application/zip";
+  }
+  if (type == FileType::portable_document_format) {
+    return "application/pdf";
+  }
+  if (type == FileType::text_file) {
+    return "text/plain";
+  }
+  if (type == FileType::comma_separated_values) {
+    return "text/csv";
+  }
+  if (type == FileType::javascript_object_notation) {
+    return "application/json";
+  }
+  if (type == FileType::markdown) {
+    return "text/markdown";
+  }
+  if (type == FileType::portable_network_graphics) {
+    return "image/png";
+  }
+  if (type == FileType::graphics_interchange_format) {
+    return "image/gif";
+  }
+  if (type == FileType::jpeg) {
+    return "image/jpeg";
+  }
+  if (type == FileType::bitmap_image_file) {
+    return "image/bmp";
+  }
+  throw UnsupportedFileType(type);
+}
+
 std::string odr::decoder_engine_to_string(const DecoderEngine engine) {
   if (engine == DecoderEngine::odr) {
     return "odr";

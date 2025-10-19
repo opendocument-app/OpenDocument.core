@@ -28,13 +28,16 @@ FileType SvmFile::file_type() const noexcept {
 }
 
 FileMeta SvmFile::file_meta() const noexcept {
-  FileMeta result;
-  result.type = FileType::starview_metafile;
-  return result;
+  return {FileType::starview_metafile, "application/x-starview-metafile", false,
+          std::nullopt};
 }
 
 DecoderEngine SvmFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
+}
+
+std::string_view SvmFile::mimetype() const noexcept {
+  return "application/x-starview-metafile";
 }
 
 bool SvmFile::is_decodable() const noexcept { return false; }
