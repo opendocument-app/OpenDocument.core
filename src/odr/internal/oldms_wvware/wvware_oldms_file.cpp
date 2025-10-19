@@ -83,20 +83,20 @@ WvWareLegacyMicrosoftFile::file() const noexcept {
   return m_file;
 }
 
-FileType WvWareLegacyMicrosoftFile::file_type() const noexcept {
-  return FileType::legacy_word_document;
-}
-
-FileMeta WvWareLegacyMicrosoftFile::file_meta() const noexcept {
-  return m_file_meta;
-}
-
 DecoderEngine WvWareLegacyMicrosoftFile::decoder_engine() const noexcept {
   return DecoderEngine::wvware;
 }
 
+FileType WvWareLegacyMicrosoftFile::file_type() const noexcept {
+  return FileType::legacy_word_document;
+}
+
 std::string_view WvWareLegacyMicrosoftFile::mimetype() const noexcept {
   return "application/msword";
+}
+
+FileMeta WvWareLegacyMicrosoftFile::file_meta() const noexcept {
+  return m_file_meta;
 }
 
 DocumentType WvWareLegacyMicrosoftFile::document_type() const {

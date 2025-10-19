@@ -2,6 +2,8 @@
 
 #include <odr/global_params.hpp>
 
+#include <memory>
+
 #include <magic.h>
 
 namespace odr::internal {

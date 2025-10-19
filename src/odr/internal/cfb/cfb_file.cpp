@@ -12,21 +12,20 @@ std::shared_ptr<abstract::File> CfbFile::file() const noexcept {
   return m_cfb->file();
 }
 
-FileType CfbFile::file_type() const noexcept {
-  return FileType::compound_file_binary_format;
-}
-
-FileMeta CfbFile::file_meta() const noexcept {
-  return {FileType::compound_file_binary_format, "application/x-cfb", false,
-          std::nullopt};
-}
-
 DecoderEngine CfbFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+FileType CfbFile::file_type() const noexcept {
+  return FileType::compound_file_binary_format;
+}
+
 std::string_view CfbFile::mimetype() const noexcept {
   return "application/x-cfb";
+}
+
+FileMeta CfbFile::file_meta() const noexcept {
+  return {file_type(), mimetype(), false, std::nullopt};
 }
 
 bool CfbFile::is_decodable() const noexcept { return true; }

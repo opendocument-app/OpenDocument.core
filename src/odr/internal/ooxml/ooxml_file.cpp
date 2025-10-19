@@ -29,19 +29,19 @@ std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
   return {};
 }
 
-FileType OfficeOpenXmlFile::file_type() const noexcept {
-  return m_file_meta.type;
-}
-
-FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_file_meta; }
-
 DecoderEngine OfficeOpenXmlFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
+}
+
+FileType OfficeOpenXmlFile::file_type() const noexcept {
+  return m_file_meta.type;
 }
 
 std::string_view OfficeOpenXmlFile::mimetype() const noexcept {
   return m_file_meta.mimetype;
 }
+
+FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_file_meta; }
 
 DocumentType OfficeOpenXmlFile::document_type() const {
   return m_file_meta.document_meta.value().document_type;

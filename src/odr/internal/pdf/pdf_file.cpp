@@ -11,15 +11,11 @@ std::shared_ptr<abstract::File> PdfFile::file() const noexcept {
   return m_file;
 }
 
-FileMeta PdfFile::file_meta() const noexcept { return m_file_meta; }
-
 DecoderEngine PdfFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
-std::string_view PdfFile::mimetype() const noexcept {
-  return "application/pdf";
-}
+FileMeta PdfFile::file_meta() const noexcept { return m_file_meta; }
 
 bool PdfFile::password_encrypted() const noexcept { return false; }
 

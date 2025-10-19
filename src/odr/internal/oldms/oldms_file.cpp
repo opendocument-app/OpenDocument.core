@@ -60,19 +60,19 @@ std::shared_ptr<abstract::File> LegacyMicrosoftFile::file() const noexcept {
   return {};
 }
 
-FileType LegacyMicrosoftFile::file_type() const noexcept {
-  return m_file_meta.type;
-}
-
-FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_file_meta; }
-
 DecoderEngine LegacyMicrosoftFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
+}
+
+FileType LegacyMicrosoftFile::file_type() const noexcept {
+  return m_file_meta.type;
 }
 
 std::string_view LegacyMicrosoftFile::mimetype() const noexcept {
   return m_file_meta.mimetype;
 }
+
+FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_file_meta; }
 
 DocumentType LegacyMicrosoftFile::document_type() const {
   return m_file_meta.document_meta.value().document_type;

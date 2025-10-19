@@ -16,21 +16,20 @@ std::shared_ptr<abstract::File> JsonFile::file() const noexcept {
   return m_file->file();
 }
 
-FileType JsonFile::file_type() const noexcept {
-  return FileType::javascript_object_notation;
-}
-
-FileMeta JsonFile::file_meta() const noexcept {
-  return {FileType::javascript_object_notation, "application/json", false,
-          std::nullopt};
-}
-
 DecoderEngine JsonFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+FileType JsonFile::file_type() const noexcept {
+  return FileType::javascript_object_notation;
+}
+
 std::string_view JsonFile::mimetype() const noexcept {
   return "application/json";
+}
+
+FileMeta JsonFile::file_meta() const noexcept {
+  return {file_type(), mimetype(), false, std::nullopt};
 }
 
 bool JsonFile::is_decodable() const noexcept { return false; }

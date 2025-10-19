@@ -66,15 +66,11 @@ std::shared_ptr<abstract::File> PopplerPdfFile::file() const noexcept {
   return m_file;
 }
 
-FileMeta PopplerPdfFile::file_meta() const noexcept { return m_file_meta; }
-
 DecoderEngine PopplerPdfFile::decoder_engine() const noexcept {
   return DecoderEngine::poppler;
 }
 
-std::string_view PopplerPdfFile::mimetype() const noexcept {
-  return "application/pdf";
-}
+FileMeta PopplerPdfFile::file_meta() const noexcept { return m_file_meta; }
 
 bool PopplerPdfFile::password_encrypted() const noexcept {
   return m_encryption_state == EncryptionState::encrypted ||

@@ -16,18 +16,18 @@ std::shared_ptr<abstract::File> CsvFile::file() const noexcept {
   return m_file->file();
 }
 
-FileType CsvFile::file_type() const noexcept {
-  return FileType::comma_separated_values;
-}
-
 DecoderEngine CsvFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
+}
+
+FileType CsvFile::file_type() const noexcept {
+  return FileType::comma_separated_values;
 }
 
 std::string_view CsvFile::mimetype() const noexcept { return "text/csv"; }
 
 FileMeta CsvFile::file_meta() const noexcept {
-  return {FileType::comma_separated_values, "text/csv", false, std::nullopt};
+  return {file_type(), mimetype(), false, std::nullopt};
 }
 
 bool CsvFile::is_decodable() const noexcept { return false; }
