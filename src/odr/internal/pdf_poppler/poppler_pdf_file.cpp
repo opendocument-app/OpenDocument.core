@@ -53,6 +53,7 @@ void PopplerPdfFile::open(const std::optional<std::string> &password) {
   }
 
   m_file_meta.type = FileType::portable_document_format;
+  m_file_meta.mimetype = "application/pdf";
   m_file_meta.password_encrypted = m_pdf_doc->isEncrypted();
   m_file_meta.document_meta.emplace();
   m_file_meta.document_meta->document_type = DocumentType::text;
@@ -65,11 +66,11 @@ std::shared_ptr<abstract::File> PopplerPdfFile::file() const noexcept {
   return m_file;
 }
 
-FileMeta PopplerPdfFile::file_meta() const noexcept { return m_file_meta; }
-
 DecoderEngine PopplerPdfFile::decoder_engine() const noexcept {
   return DecoderEngine::poppler;
 }
+
+FileMeta PopplerPdfFile::file_meta() const noexcept { return m_file_meta; }
 
 bool PopplerPdfFile::password_encrypted() const noexcept {
   return m_encryption_state == EncryptionState::encrypted ||

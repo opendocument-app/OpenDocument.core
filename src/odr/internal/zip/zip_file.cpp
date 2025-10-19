@@ -15,16 +15,18 @@ std::shared_ptr<abstract::File> ZipFile::file() const noexcept {
   return m_zip->file();
 }
 
-FileType ZipFile::file_type() const noexcept { return FileType::zip; }
-
-FileMeta ZipFile::file_meta() const noexcept {
-  FileMeta meta;
-  meta.type = file_type();
-  return meta;
-}
-
 DecoderEngine ZipFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
+}
+
+FileType ZipFile::file_type() const noexcept { return FileType::zip; }
+
+std::string_view ZipFile::mimetype() const noexcept {
+  return "application/zip";
+}
+
+FileMeta ZipFile::file_meta() const noexcept {
+  return {file_type(), mimetype(), false, std::nullopt};
 }
 
 bool ZipFile::is_decodable() const noexcept { return true; }

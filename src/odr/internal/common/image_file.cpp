@@ -20,6 +20,8 @@ DecoderEngine ImageFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
 
+std::string_view ImageFile::mimetype() const noexcept { return ""; }
+
 bool ImageFile::is_decodable() const noexcept { return false; }
 
 std::shared_ptr<abstract::Image> ImageFile::image() const {

@@ -54,6 +54,7 @@ void WvWareLegacyMicrosoftFile::open() {
   int ret = wvInitParser_gsf(&m_parser_state->ps, m_parser_state->gsf_input);
 
   m_file_meta.type = FileType::legacy_word_document;
+  m_file_meta.mimetype = "application/msword";
   m_file_meta.document_meta = DocumentMeta();
   m_file_meta.document_meta->document_type = DocumentType::text;
 
@@ -82,16 +83,20 @@ WvWareLegacyMicrosoftFile::file() const noexcept {
   return m_file;
 }
 
+DecoderEngine WvWareLegacyMicrosoftFile::decoder_engine() const noexcept {
+  return DecoderEngine::wvware;
+}
+
 FileType WvWareLegacyMicrosoftFile::file_type() const noexcept {
   return FileType::legacy_word_document;
 }
 
-FileMeta WvWareLegacyMicrosoftFile::file_meta() const noexcept {
-  return m_file_meta;
+std::string_view WvWareLegacyMicrosoftFile::mimetype() const noexcept {
+  return "application/msword";
 }
 
-DecoderEngine WvWareLegacyMicrosoftFile::decoder_engine() const noexcept {
-  return DecoderEngine::wvware;
+FileMeta WvWareLegacyMicrosoftFile::file_meta() const noexcept {
+  return m_file_meta;
 }
 
 DocumentType WvWareLegacyMicrosoftFile::document_type() const {

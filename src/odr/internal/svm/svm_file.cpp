@@ -23,18 +23,20 @@ std::shared_ptr<abstract::File> SvmFile::file() const noexcept {
   return m_file;
 }
 
+DecoderEngine SvmFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 FileType SvmFile::file_type() const noexcept {
   return FileType::starview_metafile;
 }
 
-FileMeta SvmFile::file_meta() const noexcept {
-  FileMeta result;
-  result.type = FileType::starview_metafile;
-  return result;
+std::string_view SvmFile::mimetype() const noexcept {
+  return "application/x-starview-metafile";
 }
 
-DecoderEngine SvmFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
+FileMeta SvmFile::file_meta() const noexcept {
+  return {file_type(), mimetype(), false, std::nullopt};
 }
 
 bool SvmFile::is_decodable() const noexcept { return false; }

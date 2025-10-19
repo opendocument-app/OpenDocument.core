@@ -10,19 +10,25 @@
 
 namespace odr::internal::ooxml {
 
-FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
+FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem) {
   struct TypeInfo {
-    FileType file_type;
-    DocumentType document_type;
+    FileType file_type{FileType::unknown};
+    DocumentType document_type{DocumentType::unknown};
+    std::string_view mimetype;
   };
 
   static const std::unordered_map<AbsPath, TypeInfo> types = {
       {AbsPath("/word/document.xml"),
-       {FileType::office_open_xml_document, DocumentType::text}},
+       {FileType::office_open_xml_document, DocumentType::text,
+        "application/"
+        "vnd.openxmlformats-officedocument.wordprocessingml.document"}},
       {AbsPath("/ppt/presentation.xml"),
-       {FileType::office_open_xml_presentation, DocumentType::presentation}},
+       {FileType::office_open_xml_presentation, DocumentType::presentation,
+        "application/"
+        "vnd.openxmlformats-officedocument.presentationml.presentation"}},
       {AbsPath("/xl/workbook.xml"),
-       {FileType::office_open_xml_workbook, DocumentType::spreadsheet}},
+       {FileType::office_open_xml_workbook, DocumentType::spreadsheet,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}},
   };
 
   FileMeta result;
@@ -35,10 +41,11 @@ FileMeta parse_file_meta(abstract::ReadableFilesystem &filesystem) {
     return result;
   }
 
-  for (auto &&t : types) {
-    if (filesystem.is_file(t.first)) {
-      result.type = t.second.file_type;
-      result.document_meta->document_type = t.second.document_type;
+  for (const auto &[path, info] : types) {
+    if (filesystem.is_file(path)) {
+      result.type = info.file_type;
+      result.mimetype = info.mimetype;
+      result.document_meta->document_type = info.document_type;
       break;
     }
   }

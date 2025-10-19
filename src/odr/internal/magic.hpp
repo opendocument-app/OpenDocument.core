@@ -15,6 +15,8 @@ class File;
 namespace odr::internal::magic {
 FileType file_type(const std::string &magic);
 FileType file_type(std::istream &in);
-FileType file_type(const internal::abstract::File &file);
+FileType file_type(const abstract::File &file);
 FileType file_type(const File &file);
+
+std::string_view mimetype(const std::string &path);
 } // namespace odr::internal::magic

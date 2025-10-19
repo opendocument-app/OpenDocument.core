@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal::abstract {
@@ -140,10 +141,14 @@ struct DocumentMeta final {
 /// @brief Meta information about a file.
 struct FileMeta final {
   FileMeta();
+  [[deprecated]]
   FileMeta(FileType type, bool password_encrypted,
+           std::optional<DocumentMeta> document_meta);
+  FileMeta(FileType type, std::string_view mimetype, bool password_encrypted,
            std::optional<DocumentMeta> document_meta);
 
   FileType type{FileType::unknown};
+  std::string_view mimetype;
   bool password_encrypted{false};
   std::optional<DocumentMeta> document_meta;
 };
@@ -175,9 +180,12 @@ protected:
 /// @brief Represents a decoded file.
 class DecodedFile {
 public:
-  static std::vector<FileType> list_file_types(const std::string &path,
-                                               Logger &logger = Logger::null());
-  static std::vector<DecoderEngine> list_decoder_engines(FileType as);
+  [[nodiscard]] static std::vector<FileType>
+  list_file_types(const std::string &path, Logger &logger = Logger::null());
+  [[nodiscard]] static std::vector<DecoderEngine>
+  list_decoder_engines(FileType as);
+  [[nodiscard]] static std::string_view
+  mimetype(const std::string &path, Logger &logger = Logger::null());
 
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
   explicit DecodedFile(const File &file, Logger &logger = Logger::null());

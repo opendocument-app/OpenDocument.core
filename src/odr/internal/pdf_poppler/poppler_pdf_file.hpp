@@ -15,8 +15,8 @@ public:
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
-  [[nodiscard]] FileMeta file_meta() const noexcept override;
   [[nodiscard]] DecoderEngine decoder_engine() const noexcept override;
+  [[nodiscard]] FileMeta file_meta() const noexcept override;
 
   [[nodiscard]] bool password_encrypted() const noexcept override;
   [[nodiscard]] EncryptionState encryption_state() const noexcept override;

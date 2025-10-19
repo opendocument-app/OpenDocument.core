@@ -36,15 +36,19 @@ std::shared_ptr<abstract::File> OpenDocumentFile::file() const noexcept {
   return {};
 }
 
+DecoderEngine OpenDocumentFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 FileType OpenDocumentFile::file_type() const noexcept {
   return m_file_meta.type;
 }
 
-FileMeta OpenDocumentFile::file_meta() const noexcept { return m_file_meta; }
-
-DecoderEngine OpenDocumentFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
+std::string_view OpenDocumentFile::mimetype() const noexcept {
+  return m_file_meta.mimetype;
 }
+
+FileMeta OpenDocumentFile::file_meta() const noexcept { return m_file_meta; }
 
 DocumentType OpenDocumentFile::document_type() const {
   return m_file_meta.document_meta.value().document_type;
