@@ -29,8 +29,8 @@ magic_t get_magic_cookie() {
   if (!magic_cookie) {
     throw std::runtime_error("magic_open failed");
   }
-  if (magic_load(magic_cookie.get(), GlobalParams::libmagic_path().c_str()) ==
-      0) {
+  if (magic_load(magic_cookie.get(),
+                 GlobalParams::libmagic_database_path().c_str()) == 0) {
     return magic_cookie.get();
   }
   if (magic_load(magic_cookie.get(), nullptr) == 0) {
