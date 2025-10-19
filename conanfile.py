@@ -36,6 +36,7 @@ class OpenDocumentCoreConan(ConanFile):
             del self.options.fPIC
             del self.options.with_pdf2htmlEX
             del self.options.with_wvWare
+            del self.options.with_libmagic
 
     def requirements(self):
         self.requires("pugixml/1.14")
