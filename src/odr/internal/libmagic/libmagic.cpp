@@ -29,8 +29,8 @@ magic_t get_magic_cookie() {
   if (!magic_cookie) {
     throw std::runtime_error("magic_open failed");
   }
-  if (magic_load(magic_cookie.get(),
-                 GlobalParams::libmagic_data_path().c_str()) == 0) {
+  if (magic_load(magic_cookie.get(), GlobalParams::libmagic_path().c_str()) ==
+      0) {
     return magic_cookie.get();
   }
   if (magic_load(magic_cookie.get(), nullptr) == 0) {
@@ -42,7 +42,7 @@ magic_t get_magic_cookie() {
 
 } // namespace
 
-const char *libmagic::mime_type(const std::string &path) {
+const char *libmagic::mimetype(const std::string &path) {
   const magic_t magic_cookie = get_magic_cookie();
   return magic_file(magic_cookie, path.c_str());
 }

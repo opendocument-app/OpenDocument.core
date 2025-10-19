@@ -16,6 +16,7 @@ option(ODR_CLI "enable command line interface" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 option(WITH_PDF2HTMLEX "Build with pdf2htmlEX" ON)
 option(WITH_WVWARE "Build with wvWare" ON)
+option(WITH_LIBMAGIC "Build with libmagic" ON)
 
 # TODO defining global compiler flags seems to be bad practice with conan
 # TODO consider using conan profiles

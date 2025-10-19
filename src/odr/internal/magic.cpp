@@ -89,8 +89,8 @@ FileType magic::file_type(const File &file) {
 }
 
 std::string_view magic::mimetype(const std::string &path) {
-#ifdef ODR_USE_LIBMAGIC
-  return libmagic::mime_type(path);
+#ifdef ODR_WITH_LIBMAGIC
+  return libmagic::mimetype(path);
 #else
   return odr::mimetype_by_file_type(magic::file_type(path));
 #endif

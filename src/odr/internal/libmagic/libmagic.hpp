@@ -3,5 +3,5 @@
 #include <string>
 
 namespace odr::internal::libmagic {
-const char *mime_type(const std::string &path);
+const char *mimetype(const std::string &path);
 }

@@ -41,8 +41,8 @@ const std::string &GlobalParams::pdf2htmlex_data_path() {
   return instance().m_pdf2htmlex_data_path;
 }
 
-const std::string &GlobalParams::libmagic_data_path() {
-  return instance().m_libmagic_data_path;
+const std::string &GlobalParams::libmagic_path() {
+  return instance().m_libmagic_path;
 }
 
 void GlobalParams::set_odr_core_data_path(const std::string &path) {
@@ -66,8 +66,8 @@ void GlobalParams::set_pdf2htmlex_data_path(const std::string &path) {
   instance().m_pdf2htmlex_data_path = path;
 }
 
-void GlobalParams::set_libmagic_data_path(const std::string &path) {
-  instance().m_libmagic_data_path = path;
+void GlobalParams::set_libmagic_path(const std::string &path) {
+  instance().m_libmagic_path = path;
 }
 
 GlobalParams::GlobalParams()
@@ -75,6 +75,6 @@ GlobalParams::GlobalParams()
       m_fontconfig_data_path{internal::project_info::fontconfig_data_path()},
       m_poppler_data_path{internal::project_info::poppler_data_path()},
       m_pdf2htmlex_data_path{internal::project_info::pdf2htmlex_data_path()},
-      m_libmagic_data_path{internal::project_info::libmagic_data_path()} {}
+      m_libmagic_path{internal::project_info::libmagic_path()} {}
 
 } // namespace odr

@@ -82,7 +82,7 @@ class OpenDocumentCoreConan(ConanFile):
         for dep in deps:
             runenv_info.compose_env(dep.runenv_info)
         envvars = runenv_info.vars(self)
-        for v in ["PDF2HTMLEX_DATA_DIR", "POPPLER_DATA_DIR", "FONTCONFIG_PATH", "WVDATADIR"]:
+        for v in ["PDF2HTMLEX_DATA_DIR", "POPPLER_DATA_DIR", "FONTCONFIG_PATH", "WVDATADIR", "MAGIC"]:
             tc.variables[v] = envvars.get(v)
 
         tc.generate()
