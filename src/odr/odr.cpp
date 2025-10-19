@@ -424,6 +424,10 @@ std::vector<odr::DecoderEngine> odr::list_decoder_engines(const FileType as) {
   return DecodedFile::list_decoder_engines(as);
 }
 
+std::string_view odr::mimetype(const std::string &path, Logger &logger) {
+  return DecodedFile::mimetype(path, logger);
+}
+
 odr::DecodedFile odr::open(const std::string &path, Logger &logger) {
   return DecodedFile(path, logger);
 }
