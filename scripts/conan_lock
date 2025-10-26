@@ -3,5 +3,5 @@
 conan lock create . --lockfile conan.lock --lockfile-out conan.lock
 
 for profile in .github/config/conan/profiles/*; do
-    conan lock create . --lockfile conan.lock --lockfile-out conan.lock --profile:build "${profile}"
+    conan lock create . --lockfile conan.lock --lockfile-out conan.lock --profile:build "${profile}" --profile:host "${profile}"
 done
