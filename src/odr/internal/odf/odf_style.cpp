@@ -4,6 +4,7 @@
 
 #include <odr/internal/odf/odf_parser.hpp>
 
+#include <cstring>
 #include <unordered_map>
 #include <utility>
 
