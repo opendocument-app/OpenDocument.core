@@ -2,6 +2,8 @@
 
 #include <odr/internal/util/map_util.hpp>
 
+#include <stdexcept>
+
 namespace odr::internal::ooxml::spreadsheet {
 
 void ElementRegistry::clear() noexcept {

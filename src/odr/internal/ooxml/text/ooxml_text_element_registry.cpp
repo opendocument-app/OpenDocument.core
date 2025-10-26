@@ -1,5 +1,7 @@
 #include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
 
+#include <stdexcept>
+
 namespace odr::internal::ooxml::text {
 
 void ElementRegistry::clear() noexcept {
