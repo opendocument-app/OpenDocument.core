@@ -54,6 +54,15 @@ file_type_by_file_extension(const std::string &extension) noexcept;
 /// @param type The file type.
 /// @return The file type as a string.
 [[nodiscard]] std::string document_type_to_string(DocumentType type) noexcept;
+/// @brief Get the file type by the MIME type.
+/// @param mimetype The MIME type.
+/// @return The file type.
+[[nodiscard]] FileType
+file_type_by_mimetype(std::string_view mimetype) noexcept;
+/// @brief Get MIME type by the file type.
+/// @param type The file type.
+/// @return The MIME type.
+[[nodiscard]] std::string_view mimetype_by_file_type(FileType type);
 
 /// @brief Get the decoder engine as a string.
 /// @param engine The decoder engine.
@@ -74,6 +83,12 @@ list_file_types(const std::string &path, Logger &logger = Logger::null());
 /// @param as The file type.
 /// @return The decoder engines.
 [[nodiscard]] std::vector<DecoderEngine> list_decoder_engines(FileType as);
+/// @brief Determine MIME types by the file path.
+/// @param path The file path.
+/// @param logger The logger to use.
+/// @return The MIME types.
+[[nodiscard]] std::string_view mimetype(const std::string &path,
+                                        Logger &logger = Logger::null());
 
 /// @brief Open a file.
 /// @param path The file path.

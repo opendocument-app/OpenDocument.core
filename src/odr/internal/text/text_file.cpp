@@ -16,14 +16,18 @@ std::shared_ptr<abstract::File> TextFile::file() const noexcept {
   return m_file;
 }
 
-FileType TextFile::file_type() const noexcept { return FileType::text_file; }
-
-FileMeta TextFile::file_meta() const noexcept {
-  return {FileType::text_file, false, {}};
-}
-
 DecoderEngine TextFile::decoder_engine() const noexcept {
   return DecoderEngine::odr;
 }
+
+FileType TextFile::file_type() const noexcept { return FileType::text_file; }
+
+std::string_view TextFile::mimetype() const noexcept { return "text/plain"; }
+
+FileMeta TextFile::file_meta() const noexcept {
+  return {file_type(), mimetype(), false, std::nullopt};
+}
+
+bool TextFile::is_decodable() const noexcept { return false; }
 
 } // namespace odr::internal::text

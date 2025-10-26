@@ -28,20 +28,32 @@ bool project_info::has_pdf2htmlex() noexcept{
 #endif
 }
 
+bool project_info::has_libmagic() noexcept{
+#ifdef ODR_WITH_LIBMAGIC
+    return true;
+#else
+    return false;
+#endif
+}
+
 const char *project_info::odr_data_path() noexcept {
   return "${ODR_DATA_PATH}";
 }
 
 const char *project_info::fontconfig_data_path() noexcept {
-  return "${FONTCONFIG_PATH}";
+  return "${FONTCONFIG_DATA_PATH}";
 }
 
 const char *project_info::poppler_data_path() noexcept {
-        return "${POPPLER_DATA_DIR}";
+        return "${POPPLER_DATA_PATH}";
 }
 
 const char *project_info::pdf2htmlex_data_path() noexcept{
-        return "${PDF2HTMLEX_DATA_DIR}";
+        return "${PDF2HTMLEX_DATA_PATH}";
+}
+
+const char *project_info::libmagic_database_path() noexcept{
+        return "${LIBMAGIC_DATABASE_PATH}";
 }
 
 } // namespace odr::internal

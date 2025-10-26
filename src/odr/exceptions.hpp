@@ -220,4 +220,14 @@ struct InvalidPath final : std::runtime_error {
   explicit InvalidPath(const std::string &message);
 };
 
+/// @brief Unsupported file encoding
+struct UnsupportedFileEncoding final : std::runtime_error {
+  explicit UnsupportedFileEncoding(const std::string &message);
+};
+
+/// @brief File is encrypted
+struct FileEncryptedError final : std::runtime_error {
+  explicit FileEncryptedError();
+};
+
 } // namespace odr

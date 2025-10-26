@@ -129,4 +129,10 @@ NotEncryptedError::NotEncryptedError()
 InvalidPath::InvalidPath(const std::string &message)
     : std::runtime_error("invalid path: " + message) {}
 
+UnsupportedFileEncoding::UnsupportedFileEncoding(const std::string &message)
+    : std::runtime_error("unsupported file encoding: " + message) {}
+
+FileEncryptedError::FileEncryptedError()
+    : std::runtime_error("file encrypted error") {}
+
 } // namespace odr

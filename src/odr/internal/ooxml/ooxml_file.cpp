@@ -29,15 +29,19 @@ std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
   return {};
 }
 
+DecoderEngine OfficeOpenXmlFile::decoder_engine() const noexcept {
+  return DecoderEngine::odr;
+}
+
 FileType OfficeOpenXmlFile::file_type() const noexcept {
   return m_file_meta.type;
 }
 
-FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_file_meta; }
-
-DecoderEngine OfficeOpenXmlFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
+std::string_view OfficeOpenXmlFile::mimetype() const noexcept {
+  return m_file_meta.mimetype;
 }
+
+FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_file_meta; }
 
 DocumentType OfficeOpenXmlFile::document_type() const {
   return m_file_meta.document_meta.value().document_type;
@@ -83,8 +87,15 @@ OfficeOpenXmlFile::decrypt(const std::string &password) const {
   return decrypted;
 }
 
+bool OfficeOpenXmlFile::is_decodable() const noexcept {
+  return m_encryption_state != EncryptionState::encrypted;
+}
+
 std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
-  // TODO throw if encrypted
+  if (m_encryption_state == EncryptionState::encrypted) {
+    throw FileEncryptedError();
+  }
+
   switch (file_type()) {
   case FileType::office_open_xml_document:
     return std::make_shared<text::Document>(m_files);
@@ -93,7 +104,7 @@ std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
   case FileType::office_open_xml_workbook:
     return std::make_shared<spreadsheet::Document>(m_files);
   default:
-    throw UnsupportedOperation();
+    throw UnsupportedFileType(file_type());
   }
 }
 

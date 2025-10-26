@@ -1,4 +1,7 @@
+#include <odr/exceptions.hpp>
 #include <odr/odr.hpp>
+
+#include <odr/internal/project_info.hpp>
 
 #include <test_util.hpp>
 
@@ -20,6 +23,9 @@ TEST(odr, types_odt) {
   EXPECT_EQ(types.size(), 2);
   EXPECT_EQ(types[0], FileType::zip);
   EXPECT_EQ(types[1], FileType::opendocument_text);
+
+  const auto mime = mimetype(path, *logger);
+  EXPECT_EQ(mime, "application/vnd.oasis.opendocument.text");
 }
 
 TEST(odr, types_wpd) {
@@ -30,4 +36,11 @@ TEST(odr, types_wpd) {
   const auto types = list_file_types(path, *logger);
   EXPECT_EQ(types.size(), 1);
   EXPECT_EQ(types[0], FileType::word_perfect);
+
+  if (project_info::has_libmagic()) {
+    const auto mime = mimetype(path, *logger);
+    EXPECT_EQ(mime, "application/vnd.wordperfect");
+  } else {
+    EXPECT_THROW(auto mime = mimetype(path, *logger), UnsupportedFileType);
+  }
 }
