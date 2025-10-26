@@ -13,6 +13,7 @@
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
+#include <cstring>
 #include <fstream>
 #include <sstream>
 
@@ -252,10 +253,12 @@ public:
 
   [[nodiscard]] PageLayout text_root_page_layout(
       const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     return {};
   }
   [[nodiscard]] ExtendedElementIdentifier text_root_first_master_page(
       const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     return {};
   }
 
@@ -475,10 +478,12 @@ public:
   }
   [[nodiscard]] std::optional<std::string>
   frame_x(const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
   frame_y(const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
@@ -501,10 +506,12 @@ public:
   }
   [[nodiscard]] std::optional<std::string>
   frame_z_index(const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     return std::nullopt;
   }
   [[nodiscard]] GraphicStyle
   frame_style(const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     return {};
   }
 

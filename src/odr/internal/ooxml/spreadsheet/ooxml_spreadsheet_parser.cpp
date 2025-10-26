@@ -187,6 +187,8 @@ bool is_text_node(const pugi::xml_node node) {
 std::tuple<ExtendedElementIdentifier, pugi::xml_node>
 parse_text_element(ElementRegistry &registry, const ParseContext &context,
                    const pugi::xml_node first) {
+  (void)context;
+
   if (!first) {
     return {ExtendedElementIdentifier::null(), pugi::xml_node()};
   }
