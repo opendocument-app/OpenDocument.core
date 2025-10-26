@@ -18,8 +18,8 @@ public:
   ElementRegistry &element_registry();
   StyleRegistry &style_registry();
 
-  const ElementRegistry &element_registry() const;
-  const StyleRegistry &style_registry() const;
+  [[nodiscard]] const ElementRegistry &element_registry() const;
+  [[nodiscard]] const StyleRegistry &style_registry() const;
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;

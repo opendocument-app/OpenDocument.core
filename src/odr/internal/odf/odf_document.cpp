@@ -33,9 +33,9 @@ Document::Document(const FileType file_type, const DocumentType document_type,
     m_styles_xml = util::xml::parse(*m_files, AbsPath("/styles.xml"));
   }
 
-  // m_root_element = parse_tree(
-  //     *this,
-  //     m_content_xml.document_element().child("office:body").first_child());
+  m_root_element = parse_tree(
+      m_element_registry,
+      m_content_xml.document_element().child("office:body").first_child());
 
   m_style_registry = StyleRegistry(*this, m_content_xml.document_element(),
                                    m_styles_xml.document_element());
