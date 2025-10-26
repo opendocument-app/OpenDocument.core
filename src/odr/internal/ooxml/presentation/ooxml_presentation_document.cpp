@@ -21,7 +21,8 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
         *m_files, AbsPath("/ppt").join(RelPath(relationships.second)));
   }
 
-  m_root_element = parse_tree(*this, m_document_xml.document_element());
+  m_root_element =
+      parse_tree(m_element_registry, m_document_xml.document_element());
 }
 
 bool Document::is_editable() const noexcept { return false; }
@@ -36,13 +37,6 @@ void Document::save(const Path & /*path*/) const {
 
 void Document::save(const Path & /*path*/, const char * /*password*/) const {
   throw UnsupportedOperation();
-}
-
-pugi::xml_node Document::get_slide_root(const std::string &ref) const {
-  if (auto it = m_slides_xml.find(ref); it != std::end(m_slides_xml)) {
-    return it->second.document_element();
-  }
-  return {};
 }
 
 } // namespace odr::internal::ooxml::presentation

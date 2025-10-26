@@ -10,7 +10,7 @@
 
 #include <pugixml.hpp>
 
-namespace odr::internal::odf {
+namespace odr::internal::ooxml::spreadsheet {
 
 class ElementRegistry final {
 public:
@@ -25,11 +25,6 @@ public:
     bool is_editable{false};
   };
 
-  struct Table final {
-    ElementIdentifier first_column_id{null_element_id};
-    ElementIdentifier last_column_id{null_element_id};
-  };
-
   struct Text final {
     pugi::xml_node last;
   };
@@ -41,7 +36,6 @@ public:
 
     struct Cell final {
       pugi::xml_node node;
-      bool is_repeated{false};
     };
 
     struct Row final {
@@ -57,13 +51,11 @@ public:
     ElementIdentifier first_shape_id{null_element_id};
     ElementIdentifier last_shape_id{null_element_id};
 
-    void create_column(std::uint32_t column, std::uint32_t repeated,
+    void create_column(std::uint32_t column_min, std::uint32_t column_max,
                        pugi::xml_node element);
-    void create_row(std::uint32_t row, std::uint32_t repeated,
-                    pugi::xml_node element);
+    void create_row(std::uint32_t row, pugi::xml_node element);
     void create_cell(std::uint32_t column, std::uint32_t row,
-                     std::uint32_t columns_repeated,
-                     std::uint32_t rows_repeated, pugi::xml_node element);
+                     pugi::xml_node element);
 
     [[nodiscard]] pugi::xml_node column(std::uint32_t) const;
     [[nodiscard]] pugi::xml_node row(std::uint32_t) const;
@@ -76,15 +68,11 @@ public:
   [[nodiscard]] std::size_t size() const noexcept;
 
   ExtendedElementIdentifier create_element();
-  Table &create_table_element(ExtendedElementIdentifier id);
   Text &create_text_element(ExtendedElementIdentifier id);
   Sheet &create_sheet_element(ExtendedElementIdentifier id);
 
   [[nodiscard]] Element &element(ExtendedElementIdentifier id);
   [[nodiscard]] const Element &element(ExtendedElementIdentifier id) const;
-
-  [[nodiscard]] Table &table_element(ExtendedElementIdentifier id);
-  [[nodiscard]] const Table &table_element(ExtendedElementIdentifier id) const;
 
   [[nodiscard]] Text &text_element(ExtendedElementIdentifier id);
   [[nodiscard]] const Text &text_element(ExtendedElementIdentifier id) const;
@@ -94,8 +82,6 @@ public:
 
   void append_child(ExtendedElementIdentifier parent_id,
                     ExtendedElementIdentifier child_id);
-  void append_column(ExtendedElementIdentifier table_id,
-                     ExtendedElementIdentifier column_id);
   void append_shape(ExtendedElementIdentifier sheet_id,
                     ExtendedElementIdentifier shape_id);
   void append_sheet_cell(ExtendedElementIdentifier sheet_id,
@@ -103,14 +89,12 @@ public:
 
 private:
   std::vector<Element> m_elements;
-  std::unordered_map<ElementIdentifier, Table> m_tables;
   std::unordered_map<ElementIdentifier, Text> m_texts;
   std::unordered_map<ElementIdentifier, Sheet> m_sheets;
 
   void check_element_id(ExtendedElementIdentifier id) const;
-  void check_table_id(ExtendedElementIdentifier id) const;
   void check_text_id(ExtendedElementIdentifier id) const;
   void check_sheet_id(ExtendedElementIdentifier id) const;
 };
 
-} // namespace odr::internal::odf
+} // namespace odr::internal::ooxml::spreadsheet

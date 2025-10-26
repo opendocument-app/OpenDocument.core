@@ -3,6 +3,7 @@
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element_registry.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
 #include <memory>
@@ -23,15 +24,12 @@ public:
   void save(const Path &path) const override;
   void save(const Path &path, const char *password) const override;
 
-  std::pair<const pugi::xml_document &, const Relations &>
-  get_xml(const Path &) const;
-  pugi::xml_node get_shared_string(std::size_t index) const;
-
 private:
-  std::unordered_map<Path, std::pair<pugi::xml_document, Relations>> m_xml;
+  XmlDocumentsAndRelations m_xml_documents_and_relations;
+  SharedStrings m_shared_strings;
 
+  ElementRegistry m_element_registry;
   StyleRegistry m_style_registry;
-  std::vector<pugi::xml_node> m_shared_strings;
 
   std::pair<pugi::xml_document &, Relations &> parse_xml_(const AbsPath &path);
 };

@@ -1,7 +1,6 @@
 #include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
 
 #include <odr/document_element.hpp>
-#include <odr/internal/ooxml/text/ooxml_text_document.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
 
 #include <functional>

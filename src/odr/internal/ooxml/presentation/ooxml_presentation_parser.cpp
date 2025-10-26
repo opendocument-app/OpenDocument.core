@@ -1,9 +1,9 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
 
-#include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
+#include <odr/document_element.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_element_registry.hpp>
 
 #include <functional>
-#include <iostream>
 #include <unordered_map>
 
 #include <pugixml.hpp>
@@ -12,56 +12,46 @@ namespace odr::internal::ooxml::presentation {
 
 namespace {
 
-template <typename element_t>
-std::tuple<Element *, pugi::xml_node> parse_element_tree(Document &document,
-                                                         pugi::xml_node node);
+using TreeParser =
+    std::function<std::tuple<ExtendedElementIdentifier, pugi::xml_node>(
+        ElementRegistry &registry, pugi::xml_node node)>;
+using ChildrenParser = std::function<void(ElementRegistry &registry,
+                                          ExtendedElementIdentifier parent_id,
+                                          pugi::xml_node node)>;
 
-std::tuple<Element *, pugi::xml_node>
-parse_any_element_tree(Document &document, pugi::xml_node node);
+std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+parse_any_element_tree(ElementRegistry &registry, pugi::xml_node node);
 
-void parse_element_children(Document &document, Element *element,
-                            pugi::xml_node node) {
-  for (auto child_node = node.first_child(); child_node;) {
-    auto [child, next_sibling] = parse_any_element_tree(document, child_node);
-    if (child == nullptr) {
+void parse_any_element_children(ElementRegistry &registry,
+                                const ExtendedElementIdentifier parent_id,
+                                const pugi::xml_node node) {
+  for (pugi::xml_node child_node = node.first_child(); child_node;) {
+    if (const auto [child_id, next_sibling] =
+            parse_any_element_tree(registry, child_node);
+        child_id.is_null()) {
       child_node = child_node.next_sibling();
     } else {
-      element->append_child_(child);
+      registry.append_child(parent_id, child_id);
       child_node = next_sibling;
     }
   }
 }
 
-void parse_element_children(Document &document, Root *element,
-                            pugi::xml_node node) {
-  for (auto child_node : node.child("p:sldIdLst").children("p:sldId")) {
-    const char *id = child_node.attribute("r:id").value();
-    auto slide_node = document.get_slide_root(id);
-    auto [slide, _] = parse_element_tree<Slide>(document, slide_node);
-    element->append_child_(slide);
-  }
-}
-
-void parse_element_children(Document &document, Slide *element,
-                            pugi::xml_node node) {
-  parse_element_children(document, dynamic_cast<Element *>(element),
-                         node.child("p:cSld").child("p:spTree"));
-}
-
-template <typename element_t>
-std::tuple<Element *, pugi::xml_node> parse_element_tree(Document &document,
-                                                         pugi::xml_node node) {
+std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+parse_element_tree(ElementRegistry &registry, const ElementType type,
+                   const pugi::xml_node node,
+                   const ChildrenParser &children_parser) {
   if (!node) {
-    return std::make_tuple(nullptr, pugi::xml_node());
+    return {ExtendedElementIdentifier::null(), pugi::xml_node()};
   }
 
-  auto element_unique = std::make_unique<element_t>(node);
-  auto element = element_unique.get();
-  document.register_element_(std::move(element_unique));
+  const ExtendedElementIdentifier element_id = registry.create_element();
+  ElementRegistry::Element &element = registry.element(element_id);
+  element.type = type;
 
-  parse_element_children(document, element, node);
+  children_parser(registry, element_id, node);
 
-  return std::make_tuple(element, node.next_sibling());
+  return {element_id, node.next_sibling()};
 }
 
 bool is_text_node(const pugi::xml_node node) {
@@ -69,7 +59,7 @@ bool is_text_node(const pugi::xml_node node) {
     return false;
   }
 
-  std::string name = node.name();
+  const std::string name = node.name();
 
   if (name == "w:t") {
     return true;
@@ -81,51 +71,53 @@ bool is_text_node(const pugi::xml_node node) {
   return false;
 }
 
-template <>
-std::tuple<Element *, pugi::xml_node>
-parse_element_tree<Text>(Document &document, pugi::xml_node first) {
+std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+parse_text_element(ElementRegistry &registry, pugi::xml_node first) {
   if (!first) {
-    return std::make_tuple(nullptr, pugi::xml_node());
+    return {ExtendedElementIdentifier::null(), pugi::xml_node()};
   }
 
-  pugi::xml_node last = first;
-  for (; is_text_node(last.next_sibling()); last = last.next_sibling()) {
+  const ExtendedElementIdentifier element_id = registry.create_element();
+  auto &[last] = registry.create_text_element(element_id);
+
+  for (last = first; is_text_node(last.next_sibling());
+       last = last.next_sibling()) {
   }
 
-  auto element_unique = std::make_unique<Text>(first, last);
-  auto element = element_unique.get();
-  document.register_element_(std::move(element_unique));
-
-  return std::make_tuple(element, last.next_sibling());
+  return {element_id, last.next_sibling()};
 }
 
-std::tuple<Element *, pugi::xml_node>
-parse_any_element_tree(Document &document, pugi::xml_node node) {
-  using Parser = std::function<std::tuple<Element *, pugi::xml_node>(
-      Document & document, pugi::xml_node node)>;
+std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+parse_any_element_tree(ElementRegistry &registry, pugi::xml_node node) {
+  const auto create_default_tree_parser =
+      [](const ElementType type,
+         const ChildrenParser &children_parser = parse_any_element_children) {
+        return [type, children_parser](ElementRegistry &r,
+                                       const pugi::xml_node n) {
+          return parse_element_tree(r, type, n, children_parser);
+        };
+      };
 
-  using Group = DefaultElement<ElementType::group>;
-
-  static std::unordered_map<std::string, Parser> parser_table{
-      {"p:presentation", parse_element_tree<Root>},
-      {"p:sld", parse_element_tree<Slide>},
-      {"p:sp", parse_element_tree<Frame>},
-      {"p:txBody", parse_element_tree<Group>},
-      {"a:t", parse_element_tree<Text>},
-      {"a:p", parse_element_tree<Paragraph>},
-      {"a:r", parse_element_tree<Span>},
-      {"a:tbl", parse_element_tree<TableElement>},
-      {"a:gridCol", parse_element_tree<TableColumn>},
-      {"a:tr", parse_element_tree<TableRow>},
-      {"a:tc", parse_element_tree<TableCell>},
+  static std::unordered_map<std::string, TreeParser> parser_table{
+      {"p:presentation", create_default_tree_parser(ElementType::root)},
+      {"p:sld", create_default_tree_parser(ElementType::slide)},
+      {"p:sp", create_default_tree_parser(ElementType::frame)},
+      {"p:txBody", create_default_tree_parser(ElementType::group)},
+      {"a:t", parse_text_element},
+      {"a:p", create_default_tree_parser(ElementType::paragraph)},
+      {"a:r", create_default_tree_parser(ElementType::span)},
+      {"a:tbl", create_default_tree_parser(ElementType::table)},
+      {"a:gridCol", create_default_tree_parser(ElementType::table_column)},
+      {"a:tr", create_default_tree_parser(ElementType::table_row)},
+      {"a:tc", create_default_tree_parser(ElementType::table_cell)},
   };
 
   if (auto constructor_it = parser_table.find(node.name());
       constructor_it != std::end(parser_table)) {
-    return constructor_it->second(document, node);
+    return constructor_it->second(registry, node);
   }
 
-  return std::make_tuple(nullptr, pugi::xml_node());
+  return {ExtendedElementIdentifier::null(), pugi::xml_node()};
 }
 
 } // namespace
@@ -134,10 +126,9 @@ parse_any_element_tree(Document &document, pugi::xml_node node) {
 
 namespace odr::internal::ooxml {
 
-presentation::Element *
-presentation::parse_tree(presentation::Document &document,
-                         pugi::xml_node node) {
-  auto [root, _] = parse_any_element_tree(document, node);
+ExtendedElementIdentifier presentation::parse_tree(ElementRegistry &registry,
+                                                   const pugi::xml_node node) {
+  auto [root, _] = parse_any_element_tree(registry, node);
   return root;
 }
 

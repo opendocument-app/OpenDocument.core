@@ -1,9 +1,9 @@
 #pragma once
 
 #include <odr/internal/common/document.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_element_registry.hpp>
 
 #include <unordered_map>
-#include <vector>
 
 #include <pugixml.hpp>
 
@@ -22,6 +22,8 @@ public:
 private:
   pugi::xml_document m_document_xml;
   std::unordered_map<std::string, pugi::xml_document> m_slides_xml;
+
+  ElementRegistry m_element_registry;
 };
 
 } // namespace odr::internal::ooxml::presentation

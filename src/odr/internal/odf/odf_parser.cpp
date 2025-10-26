@@ -191,6 +191,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
                 ExtendedElementIdentifier::make_cell(
                     element_id.element_id(), cursor.column() + column_repeat,
                     cursor.row() + row_repeat);
+            registry.append_sheet_cell(element_id, cell_id);
             parse_any_element_children(registry, cell_id, cell_node);
           }
         }

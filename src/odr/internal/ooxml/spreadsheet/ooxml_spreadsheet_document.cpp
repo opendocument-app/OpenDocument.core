@@ -42,18 +42,10 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
 
   m_style_registry = StyleRegistry(styles_xml.document_element());
 
-  m_root_element = parse_tree(*this, workbook_xml.document_element(),
-                              workbook_path, workbook_relations);
-}
-
-std::pair<pugi::xml_document &, Relations &>
-Document::parse_xml_(const AbsPath &path) {
-  pugi::xml_document document = util::xml::parse(*m_files, path);
-  Relations relations = parse_relationships(*m_files, path);
-
-  auto [it, _] = m_xml.emplace(
-      path, std::make_pair(std::move(document), std::move(relations)));
-  return {it->second.first, it->second.second};
+  ParseContext parse_context(workbook_path, workbook_relations,
+                             m_xml_documents_and_relations, m_shared_strings);
+  m_root_element = parse_tree(m_element_registry, parse_context,
+                              workbook_xml.document_element());
 }
 
 bool Document::is_editable() const noexcept { return false; }
@@ -70,13 +62,14 @@ void Document::save(const Path & /*path*/, const char * /*password*/) const {
   throw UnsupportedOperation();
 }
 
-std::pair<const pugi::xml_document &, const Relations &>
-Document::get_xml(const Path &path) const {
-  return m_xml.at(path);
-}
+std::pair<pugi::xml_document &, Relations &>
+Document::parse_xml_(const AbsPath &path) {
+  pugi::xml_document document = util::xml::parse(*m_files, path);
+  Relations relations = parse_relationships(*m_files, path);
 
-pugi::xml_node Document::get_shared_string(const std::size_t index) const {
-  return m_shared_strings.at(index);
+  auto [it, _] = m_xml_documents_and_relations.emplace(
+      path, std::make_pair(std::move(document), std::move(relations)));
+  return {it->second.first, it->second.second};
 }
 
 } // namespace odr::internal::ooxml::spreadsheet
