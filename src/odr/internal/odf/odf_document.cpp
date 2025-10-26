@@ -14,8 +14,11 @@
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
+#include <cstring>
 #include <fstream>
 #include <sstream>
+
+#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 
@@ -297,6 +300,7 @@ public:
   }
   [[nodiscard]] ExtendedElementIdentifier text_root_first_master_page(
       const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     if (const ExtendedElementIdentifier first_master_page_id =
             m_document->style_registry().first_master_page();
         !first_master_page_id.is_null()) {
@@ -364,35 +368,47 @@ public:
   }
   [[nodiscard]] TableDimensions
   sheet_dimensions(const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     return {}; // TODO
   }
   [[nodiscard]] TableDimensions
   sheet_content(const ExtendedElementIdentifier element_id,
                 const std::optional<TableDimensions> range) const override {
+    (void)element_id;
+    (void)range;
     return {}; // TODO
   }
   [[nodiscard]] ExtendedElementIdentifier
   sheet_column(const ExtendedElementIdentifier element_id,
                const std::uint32_t column) const override {
+    (void)element_id;
+    (void)column;
     return {}; // TODO
   }
   [[nodiscard]] ExtendedElementIdentifier
   sheet_row(const ExtendedElementIdentifier element_id,
             const std::uint32_t row) const override {
+    (void)element_id;
+    (void)row;
     return {}; // TODO
   }
   [[nodiscard]] ExtendedElementIdentifier
   sheet_cell(const ExtendedElementIdentifier element_id,
              const std::uint32_t column,
              const std::uint32_t row) const override {
+    (void)element_id;
+    (void)column;
+    (void)row;
     return {}; // TODO
   }
   [[nodiscard]] ExtendedElementIdentifier
   sheet_first_shape(const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     return {}; // TODO
   }
   [[nodiscard]] TableStyle
   sheet_style(const ExtendedElementIdentifier element_id) const override {
+    (void)element_id;
     return {}; // TODO
   }
 
