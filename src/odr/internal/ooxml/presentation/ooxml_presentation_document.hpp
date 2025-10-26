@@ -13,6 +13,8 @@ class Document final : public internal::Document {
 public:
   explicit Document(std::shared_ptr<abstract::ReadableFilesystem> files);
 
+  [[nodiscard]] const ElementRegistry &element_registry() const;
+
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 
