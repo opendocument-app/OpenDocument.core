@@ -41,6 +41,6 @@ TEST(odr, types_wpd) {
     const auto mime = mimetype(path, *logger);
     EXPECT_EQ(mime, "application/vnd.wordperfect");
   } else {
-    EXPECT_THROW(auto mime = mimetype(path, *logger), UnsupportedFileType);
+    EXPECT_THROW(std::ignore = mimetype(path, *logger), UnsupportedFileType);
   }
 }

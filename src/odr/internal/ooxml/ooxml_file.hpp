@@ -20,7 +20,7 @@ namespace odr::internal::ooxml {
 class OfficeOpenXmlFile final : public abstract::DocumentFile {
 public:
   explicit OfficeOpenXmlFile(
-      std::shared_ptr<abstract::ReadableFilesystem> storage);
+      std::shared_ptr<abstract::ReadableFilesystem> files);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
@@ -42,7 +42,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const override;
 
 private:
-  std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
+  std::shared_ptr<abstract::ReadableFilesystem> m_files;
   FileMeta m_file_meta;
   EncryptionState m_encryption_state{EncryptionState::not_encrypted};
 };
