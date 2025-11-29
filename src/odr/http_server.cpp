@@ -9,6 +9,7 @@
 #include <httplib/httplib.h>
 
 #include <atomic>
+#include <memory>
 #include <sstream>
 
 namespace odr {
@@ -16,10 +17,11 @@ namespace odr {
 class HttpServer::Impl {
 public:
   Impl(Config config, std::shared_ptr<Logger> logger)
-      : m_config{std::move(config)}, m_logger{std::move(logger)} {
+      : m_config{std::move(config)}, m_logger{std::move(logger)},
+        m_server{std::make_unique<httplib::Server>()} {
     // Set up exception handler to catch any internal httplib exceptions.
     // This prevents crashes when exceptions occur during request processing.
-    m_server.set_exception_handler(
+    m_server->set_exception_handler(
         [this](const httplib::Request & /*req*/, httplib::Response &res,
                std::exception_ptr ep) {
           try {
@@ -35,37 +37,47 @@ public:
           res.set_content("Internal Server Error", "text/plain");
         });
 
-    m_server.Get("/",
-                 [](const httplib::Request & /*req*/, httplib::Response &res) {
-                   res.set_content("Hello World!", "text/plain");
-                 });
+    m_server->Get("/",
+                  [](const httplib::Request & /*req*/, httplib::Response &res) {
+                    res.set_content("Hello World!", "text/plain");
+                  });
 
-    m_server.Get("/file/" + std::string(prefix_pattern),
-                 [this](const httplib::Request &req, httplib::Response &res) {
-                   if (m_stopping.load(std::memory_order_acquire)) {
-                     res.status = 503;
-                     res.set_content("Service Unavailable", "text/plain");
-                     return;
-                   }
-                   serve_file(req, res);
-                 });
-    m_server.Get("/file/" + std::string(prefix_pattern) + "/(.*)",
-                 [this](const httplib::Request &req, httplib::Response &res) {
-                   if (m_stopping.load(std::memory_order_acquire)) {
-                     res.status = 503;
-                     res.set_content("Service Unavailable", "text/plain");
-                     return;
-                   }
-                   serve_file(req, res);
-                 });
+    m_server->Get("/file/" + std::string(prefix_pattern),
+                  [this](const httplib::Request &req, httplib::Response &res) {
+                    if (m_stopping.load(std::memory_order_acquire)) {
+                      res.status = 503;
+                      res.set_content("Service Unavailable", "text/plain");
+                      return;
+                    }
+                    serve_file(req, res);
+                  });
+    m_server->Get("/file/" + std::string(prefix_pattern) + "/(.*)",
+                  [this](const httplib::Request &req, httplib::Response &res) {
+                    if (m_stopping.load(std::memory_order_acquire)) {
+                      res.status = 503;
+                      res.set_content("Service Unavailable", "text/plain");
+                      return;
+                    }
+                    serve_file(req, res);
+                  });
   }
 
   ~Impl() {
     // Ensure the server is properly stopped before destruction.
     // This prevents crashes from worker threads accessing freed memory.
-    if (m_server.is_running()) {
-      stop();
+    //
+    // IMPORTANT: We must fully stop and destroy the server BEFORE
+    // m_content is destroyed. httplib's thread pool threads may still
+    // be running after stop() returns - they only fully stop when the
+    // Server destructor joins them. By explicitly destroying the server
+    // here (via unique_ptr::reset), we ensure all threads are joined
+    // before any other members are destroyed.
+    m_stopping.store(true, std::memory_order_release);
+    if (m_server) {
+      m_server->stop();
+      m_server.reset();  // Destroy server, join all thread pool threads
     }
+    // Now safe to let other members destruct - no threads are running
   }
 
   // Prevent copying - the lambdas capture 'this' so copying would be unsafe
@@ -151,7 +163,7 @@ public:
   void listen(const std::string &host, const std::uint32_t port) {
     ODR_VERBOSE(*m_logger, "Listening on " << host << ":" << port);
 
-    m_server.listen(host, static_cast<int>(port));
+    m_server->listen(host, static_cast<int>(port));
   }
 
   void clear() {
@@ -174,12 +186,17 @@ public:
     // This prevents new requests from starting while we're shutting down.
     m_stopping.store(true, std::memory_order_release);
 
-    // Stop the server to prevent new connections and allow in-flight
-    // requests to complete. httplib::Server::stop() signals the server
-    // to stop and waits for the listen thread to finish.
-    m_server.stop();
+    if (m_server) {
+      // Stop the server to prevent new connections.
+      // Note: httplib::Server::stop() signals shutdown but thread pool
+      // threads may still be running. They only fully stop when the
+      // Server is destroyed. For explicit stop() calls (not destructor),
+      // we destroy the server here to ensure threads are joined.
+      m_server->stop();
+      m_server.reset();  // Destroy server, join all thread pool threads
+    }
 
-    // Clear content after server has stopped to avoid use-after-free.
+    // Clear content after server is fully destroyed to avoid use-after-free.
     clear();
   }
 
@@ -187,8 +204,6 @@ private:
   Config m_config;
 
   std::shared_ptr<Logger> m_logger;
-
-  httplib::Server m_server;
 
   // Flag to indicate server is shutting down - checked by handlers
   // to reject new requests during shutdown.
@@ -201,6 +216,14 @@ private:
 
   std::mutex m_mutex;
   std::unordered_map<std::string, Content> m_content;
+
+  // IMPORTANT: m_server is declared LAST and as unique_ptr so we can
+  // explicitly destroy it in the destructor BEFORE other members.
+  // httplib's Server destructor joins thread pool threads, so we must
+  // ensure threads are fully stopped before m_content is destroyed.
+  // Using unique_ptr allows us to call reset() to trigger destruction
+  // at a controlled point in the destructor.
+  std::unique_ptr<httplib::Server> m_server;
 };
 
 HttpServer::HttpServer(const Config &config, std::shared_ptr<Logger> logger)
