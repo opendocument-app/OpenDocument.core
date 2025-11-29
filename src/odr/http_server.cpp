@@ -8,6 +8,7 @@
 
 #include <httplib/httplib.h>
 
+#include <atomic>
 #include <sstream>
 
 namespace odr {
@@ -16,20 +17,60 @@ class HttpServer::Impl {
 public:
   Impl(Config config, std::shared_ptr<Logger> logger)
       : m_config{std::move(config)}, m_logger{std::move(logger)} {
+    // Set up exception handler to catch any internal httplib exceptions.
+    // This prevents crashes when exceptions occur during request processing.
+    m_server.set_exception_handler(
+        [this](const httplib::Request & /*req*/, httplib::Response &res,
+               std::exception_ptr ep) {
+          try {
+            if (ep) {
+              std::rethrow_exception(ep);
+            }
+          } catch (const std::exception &e) {
+            ODR_ERROR(*m_logger, "Exception in HTTP handler: " << e.what());
+          } catch (...) {
+            ODR_ERROR(*m_logger, "Unknown exception in HTTP handler");
+          }
+          res.status = 500;
+          res.set_content("Internal Server Error", "text/plain");
+        });
+
     m_server.Get("/",
                  [](const httplib::Request & /*req*/, httplib::Response &res) {
                    res.set_content("Hello World!", "text/plain");
                  });
 
     m_server.Get("/file/" + std::string(prefix_pattern),
-                 [&](const httplib::Request &req, httplib::Response &res) {
+                 [this](const httplib::Request &req, httplib::Response &res) {
+                   if (m_stopping.load(std::memory_order_acquire)) {
+                     res.status = 503;
+                     res.set_content("Service Unavailable", "text/plain");
+                     return;
+                   }
                    serve_file(req, res);
                  });
     m_server.Get("/file/" + std::string(prefix_pattern) + "/(.*)",
-                 [&](const httplib::Request &req, httplib::Response &res) {
+                 [this](const httplib::Request &req, httplib::Response &res) {
+                   if (m_stopping.load(std::memory_order_acquire)) {
+                     res.status = 503;
+                     res.set_content("Service Unavailable", "text/plain");
+                     return;
+                   }
                    serve_file(req, res);
                  });
   }
+
+  ~Impl() {
+    // Ensure the server is properly stopped before destruction.
+    // This prevents crashes from worker threads accessing freed memory.
+    if (m_server.is_running()) {
+      stop();
+    }
+  }
+
+  // Prevent copying - the lambdas capture 'this' so copying would be unsafe
+  Impl(const Impl &) = delete;
+  Impl &operator=(const Impl &) = delete;
 
   const Config &config() const { return m_config; }
 
@@ -129,12 +170,16 @@ public:
   void stop() {
     ODR_VERBOSE(*m_logger, "Stopping HTTP server...");
 
-    // Stop the server first to prevent new requests and allow in-flight
-    // requests to complete. This fixes a race condition where clear() was
-    // called before stop(), potentially invalidating resources while requests
-    // were still being processed.
+    // Set stopping flag first to reject new requests immediately.
+    // This prevents new requests from starting while we're shutting down.
+    m_stopping.store(true, std::memory_order_release);
+
+    // Stop the server to prevent new connections and allow in-flight
+    // requests to complete. httplib::Server::stop() signals the server
+    // to stop and waits for the listen thread to finish.
     m_server.stop();
 
+    // Clear content after server has stopped to avoid use-after-free.
     clear();
   }
 
@@ -144,6 +189,10 @@ private:
   std::shared_ptr<Logger> m_logger;
 
   httplib::Server m_server;
+
+  // Flag to indicate server is shutting down - checked by handlers
+  // to reject new requests during shutdown.
+  std::atomic<bool> m_stopping{false};
 
   struct Content {
     std::string id;
