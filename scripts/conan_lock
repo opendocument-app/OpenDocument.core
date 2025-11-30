@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+conan lock create .
+
+for profile in .github/config/conan/profiles/*; do
+    conan lock create . --profile:build "${profile}" --profile:host "${profile}"
+done
