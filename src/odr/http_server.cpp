@@ -21,21 +21,21 @@ public:
         m_server{std::make_unique<httplib::Server>()} {
     // Set up exception handler to catch any internal httplib exceptions.
     // This prevents crashes when exceptions occur during request processing.
-    m_server->set_exception_handler(
-        [this](const httplib::Request & /*req*/, httplib::Response &res,
-               std::exception_ptr ep) {
-          try {
-            if (ep) {
-              std::rethrow_exception(ep);
-            }
-          } catch (const std::exception &e) {
-            ODR_ERROR(*m_logger, "Exception in HTTP handler: " << e.what());
-          } catch (...) {
-            ODR_ERROR(*m_logger, "Unknown exception in HTTP handler");
-          }
-          res.status = 500;
-          res.set_content("Internal Server Error", "text/plain");
-        });
+    m_server->set_exception_handler([this](const httplib::Request & /*req*/,
+                                           httplib::Response &res,
+                                           std::exception_ptr ep) {
+      try {
+        if (ep) {
+          std::rethrow_exception(ep);
+        }
+      } catch (const std::exception &e) {
+        ODR_ERROR(*m_logger, "Exception in HTTP handler: " << e.what());
+      } catch (...) {
+        ODR_ERROR(*m_logger, "Unknown exception in HTTP handler");
+      }
+      res.status = 500;
+      res.set_content("Internal Server Error", "text/plain");
+    });
 
     m_server->Get("/",
                   [](const httplib::Request & /*req*/, httplib::Response &res) {
@@ -75,7 +75,7 @@ public:
     m_stopping.store(true, std::memory_order_release);
     if (m_server) {
       m_server->stop();
-      m_server.reset();  // Destroy server, join all thread pool threads
+      m_server.reset(); // Destroy server, join all thread pool threads
     }
     // Now safe to let other members destruct - no threads are running
   }
@@ -193,7 +193,7 @@ public:
       // Server is destroyed. For explicit stop() calls (not destructor),
       // we destroy the server here to ensure threads are joined.
       m_server->stop();
-      m_server.reset();  // Destroy server, join all thread pool threads
+      m_server.reset(); // Destroy server, join all thread pool threads
     }
 
     // Clear content after server is fully destroyed to avoid use-after-free.
