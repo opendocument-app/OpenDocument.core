@@ -4,4 +4,4 @@
 scripts/git_hooks/git-hooks --install
 
 # setup conan
-scripts/conan
+scripts/conan_install
