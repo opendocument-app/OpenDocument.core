@@ -28,7 +28,10 @@ jobs:
         run: pip install --upgrade pip conan
 
       - name: conan remote
-        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+        run: |
+          conan remote remove "*"
+          conan remote add conancenter https://center2.conan.io
+          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan config
         run: conan config install .github/config/conan
       - name: conan install
