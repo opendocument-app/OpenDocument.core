@@ -21,21 +21,35 @@ public:
         m_server{std::make_unique<httplib::Server>()} {
     // Set up exception handler to catch any internal httplib exceptions.
     // This prevents crashes when exceptions occur during request processing.
-    m_server->set_exception_handler([this](const httplib::Request & /*req*/,
-                                           httplib::Response &res,
-                                           std::exception_ptr ep) {
-      try {
-        if (ep) {
-          std::rethrow_exception(ep);
-        }
-      } catch (const std::exception &e) {
-        ODR_ERROR(*m_logger, "Exception in HTTP handler: " << e.what());
-      } catch (...) {
-        ODR_ERROR(*m_logger, "Unknown exception in HTTP handler");
-      }
-      res.status = 500;
-      res.set_content("Internal Server Error", "text/plain");
-    });
+    // NOTE: We capture m_stopping by pointer (not 'this') to safely check
+    // if we're shutting down before accessing other members.
+    m_server->set_exception_handler(
+        [stopping = &m_stopping, logger = m_logger](
+            const httplib::Request & /*req*/, httplib::Response &res,
+            std::exception_ptr ep) {
+          // Check stopping flag before accessing any other state.
+          // During shutdown, just set error status without logging.
+          if (stopping->load(std::memory_order_acquire)) {
+            res.status = 503;
+            res.set_content("Service Unavailable", "text/plain");
+            return;
+          }
+          try {
+            if (ep) {
+              std::rethrow_exception(ep);
+            }
+          } catch (const std::exception &e) {
+            if (logger) {
+              ODR_ERROR(*logger, "Exception in HTTP handler: " << e.what());
+            }
+          } catch (...) {
+            if (logger) {
+              ODR_ERROR(*logger, "Unknown exception in HTTP handler");
+            }
+          }
+          res.status = 500;
+          res.set_content("Internal Server Error", "text/plain");
+        });
 
     m_server->Get("/",
                   [](const httplib::Request & /*req*/, httplib::Response &res) {
@@ -77,6 +91,11 @@ public:
       m_server->stop();
       m_server.reset(); // Destroy server, join all thread pool threads
     }
+
+    // Clear content after server is fully destroyed.
+    // This is safe now because all threads have been joined.
+    clear();
+
     // Now safe to let other members destruct - no threads are running
   }
 
@@ -90,6 +109,13 @@ public:
 
   void serve_file(const httplib::Request &req, httplib::Response &res) {
     try {
+      // Check stopping flag at entry - return immediately if shutting down
+      if (m_stopping.load(std::memory_order_acquire)) {
+        res.status = 503;
+        res.set_content("Service Unavailable", "text/plain");
+        return;
+      }
+
       std::string id = req.matches[1].str();
       std::string path = req.matches.size() > 1 ? req.matches[2].str() : "";
 
@@ -103,13 +129,25 @@ public:
       auto [_, service] = it->second;
       lock.unlock();
 
+      // Check again after lock - shutdown may have started while waiting
+      if (m_stopping.load(std::memory_order_acquire)) {
+        res.status = 503;
+        res.set_content("Service Unavailable", "text/plain");
+        return;
+      }
+
       serve_file(res, service, path);
     } catch (const std::exception &e) {
-      ODR_ERROR(*m_logger, "Error handling request: " << e.what());
+      // Don't log if we're shutting down - logger may be invalid
+      if (!m_stopping.load(std::memory_order_acquire)) {
+        ODR_ERROR(*m_logger, "Error handling request: " << e.what());
+      }
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
     } catch (...) {
-      ODR_ERROR(*m_logger, "Unknown error handling request");
+      if (!m_stopping.load(std::memory_order_acquire)) {
+        ODR_ERROR(*m_logger, "Unknown error handling request");
+      }
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
     }
@@ -117,13 +155,24 @@ public:
 
   void serve_file(httplib::Response &res, const HtmlService &service,
                   const std::string &path) const {
+    // Check stopping flag - return early if shutting down
+    if (m_stopping.load(std::memory_order_acquire)) {
+      res.status = 503;
+      res.set_content("Service Unavailable", "text/plain");
+      return;
+    }
+
     if (!service.exists(path)) {
-      ODR_ERROR(*m_logger, "File not found: " << path);
+      if (!m_stopping.load(std::memory_order_acquire)) {
+        ODR_ERROR(*m_logger, "File not found: " << path);
+      }
       res.status = 404;
       return;
     }
 
-    ODR_VERBOSE(*m_logger, "Serving file: " << path);
+    if (!m_stopping.load(std::memory_order_acquire)) {
+      ODR_VERBOSE(*m_logger, "Serving file: " << path);
+    }
 
     // Buffer content to avoid streaming issues on Android.
     // Using ContentProviderWithoutLength (chunked transfer encoding) can cause
@@ -136,13 +185,25 @@ public:
     try {
       std::ostringstream buffer;
       service.write(path, buffer);
+
+      // Final check before setting content
+      if (m_stopping.load(std::memory_order_acquire)) {
+        res.status = 503;
+        res.set_content("Service Unavailable", "text/plain");
+        return;
+      }
+
       res.set_content(buffer.str(), service.mimetype(path));
     } catch (const std::exception &e) {
-      ODR_ERROR(*m_logger, "Error serving file " << path << ": " << e.what());
+      if (!m_stopping.load(std::memory_order_acquire)) {
+        ODR_ERROR(*m_logger, "Error serving file " << path << ": " << e.what());
+      }
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
     } catch (...) {
-      ODR_ERROR(*m_logger, "Unknown error serving file: " << path);
+      if (!m_stopping.load(std::memory_order_acquire)) {
+        ODR_ERROR(*m_logger, "Unknown error serving file: " << path);
+      }
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
     }
@@ -187,17 +248,15 @@ public:
     m_stopping.store(true, std::memory_order_release);
 
     if (m_server) {
-      // Stop the server to prevent new connections.
-      // Note: httplib::Server::stop() signals shutdown but thread pool
-      // threads may still be running. They only fully stop when the
-      // Server is destroyed. For explicit stop() calls (not destructor),
-      // we destroy the server here to ensure threads are joined.
+      // Only signal shutdown - don't destroy the server here.
+      // The destructor will handle proper destruction after listen() returns.
+      // Calling reset() here would destroy the server while listen() is
+      // still on the call stack, causing use-after-free crashes.
       m_server->stop();
-      m_server.reset(); // Destroy server, join all thread pool threads
     }
 
-    // Clear content after server is fully destroyed to avoid use-after-free.
-    clear();
+    // Don't call clear() here - the destructor will handle it after
+    // the server is fully destroyed and all threads are joined.
   }
 
 private:
