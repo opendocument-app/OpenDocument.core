@@ -82,14 +82,14 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   param.text_dpi = 300;
 
   // background
-  param.bg_format = "png";
+  param.bg_format = config.background_image_format;
   param.svg_node_count_limit = -1;
   param.svg_embed_bitmap = 1;
 
   // encryption
   param.owner_password = "";
   param.user_password = "";
-  param.no_drm = 1;
+  param.no_drm = config.no_drm ? 1 : 0;
 
   // misc
   param.clean_tmp = 1;
@@ -310,10 +310,6 @@ odr::HtmlService html::create_poppler_pdf_service(
   } else {
     html_renderer_param->embed_image = 0;
     html_renderer_param->delay_background = 1;
-  }
-
-  if (!pdf_doc.okToCopy() && html_renderer_param->no_drm == 0) {
-    throw DocumentCopyProtectedException();
   }
 
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`
