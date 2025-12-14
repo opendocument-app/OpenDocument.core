@@ -98,6 +98,12 @@ struct HtmlConfig {
   bool format_html{false};
   std::uint8_t html_indent{2};
 
+  // background image
+  std::string background_image_format{"png"};
+
+  // drm
+  bool no_drm{false};
+
   std::optional<std::string> output_path;
   HtmlResourceLocator resource_locator;
 
