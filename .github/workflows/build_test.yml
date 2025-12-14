@@ -20,7 +20,6 @@ jobs:
         include:
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
-          - { os: macos-13, build_profile: macos-13-clang-14, host_profile: macos-13-clang-14 }
           - { os: macos-14, build_profile: macos-14-armv8-clang-14, host_profile: macos-14-armv8-clang-14 }
           - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: android-35-x86_64, ndk_version: 28.1.13356709 }
@@ -191,7 +190,6 @@ jobs:
           # fails at the moment because of pdf2htmlex
           #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-clang-18 }
           #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-gcc-14 }
-          #- { os: macos-13, host_profile: macos-13-clang-14 }
           - { os: macos-14, host_profile: macos-14-armv8-clang-14 }
           # Windows test disabled because:
           # Running main() from C:\Users\runneradmin\.conan2\p\b\gtestdd9407d368b89\b\src\googletest\src\gtest_main.cc
@@ -276,7 +274,6 @@ jobs:
         include:
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
-          - { os: macos-13, build_profile: macos-13-clang-14, host_profile: macos-13-clang-14 }
           - { os: macos-14, build_profile: macos-14-armv8-clang-14, host_profile: macos-14-armv8-clang-14 }
           - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: android-35-x86_64, ndk_version: 28.1.13356709 }
