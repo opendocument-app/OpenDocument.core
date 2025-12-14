@@ -20,7 +20,8 @@ jobs:
         include:
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
-          - { os: macos-14, build_profile: macos-14-armv8-clang-14, host_profile: macos-14-armv8-clang-14 }
+          - { os: macos-15, build_profile: macos-15-armv8-clang-14, host_profile: macos-15-armv8-clang-14 }
+          - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14 }
           - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: android-35-x86_64, ndk_version: 28.1.13356709 }
     steps:
@@ -190,7 +191,7 @@ jobs:
           # fails at the moment because of pdf2htmlex
           #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-clang-18 }
           #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-gcc-14 }
-          - { os: macos-14, host_profile: macos-14-armv8-clang-14 }
+          - { os: macos-26, host_profile: macos-26-armv8-clang-14 }
           # Windows test disabled because:
           # Running main() from C:\Users\runneradmin\.conan2\p\b\gtestdd9407d368b89\b\src\googletest\src\gtest_main.cc
           # [ FATAL ] C:/Users/runneradmin/.conan2/p/gtest28fa6787e7f6e/p/include\gtest/internal/gtest-param-util.h(585):: Condition IsValidParamName(param_name) failed. Parameterized test name 'odr_private\docx\03_smpldap_docx' is invalid, in D:\a\OpenDocument.core\OpenDocument.core\test\src\html_output_test.cpp line 129
@@ -274,7 +275,8 @@ jobs:
         include:
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
-          - { os: macos-14, build_profile: macos-14-armv8-clang-14, host_profile: macos-14-armv8-clang-14 }
+          - { os: macos-15, build_profile: macos-15-armv8-clang-14, host_profile: macos-15-armv8-clang-14 }
+          - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14 }
           - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: android-35-x86_64, ndk_version: 28.1.13356709 }
     steps:
