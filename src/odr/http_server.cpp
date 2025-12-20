@@ -28,6 +28,18 @@ public:
     // Write timeout: 60 seconds (allows time for large document transfers)
     m_server->set_write_timeout(60, 0);
 
+    // Connection management to prevent write_response_core crashes.
+    // These settings prevent crashes when clients disconnect during response
+    // transmission or when sockets become invalid.
+    // Limit keep-alive requests per connection (prevents long-lived connections)
+    m_server->set_keep_alive_max_count(10);
+    // Keep-alive timeout: 5 seconds (closes idle connections promptly)
+    m_server->set_keep_alive_timeout(5, 0);
+    // Idle interval: 1 second (improves connection cleanup on Android)
+    m_server->set_idle_interval(1, 0);
+    // Enable TCP_NODELAY to avoid buffering issues during response writes
+    m_server->set_tcp_nodelay(true);
+
     // Set up exception handler to catch any internal httplib exceptions.
     // This prevents crashes when exceptions occur during request processing.
     m_server->set_exception_handler([this](const httplib::Request & /*req*/,
@@ -44,6 +56,19 @@ public:
       }
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
+    });
+
+    // Set up error handler to customize error responses.
+    // This helps provide consistent error responses and logs errors that occur
+    // during request processing, including socket write errors.
+    m_server->set_error_handler([this](const httplib::Request &req,
+                                       httplib::Response &res) {
+      ODR_ERROR(*m_logger, "HTTP error " << res.status << " for path: "
+                                         << req.path);
+      // Ensure error responses have content to avoid write_response_core issues
+      if (res.body.empty()) {
+        res.set_content("Error " + std::to_string(res.status), "text/plain");
+      }
     });
 
     m_server->Get("/",
