@@ -198,6 +198,15 @@ target_include_directories(odr
         src
         ${CMAKE_CURRENT_BINARY_DIR}/src
 )
+target_compile_definitions(odr
+        PRIVATE
+        # httplib resource limits to prevent crashes from malformed requests
+        # Reduce header max length to 4KB (default is 8KB)
+        # This prevents memory allocation crashes in header map operations
+        CPPHTTPLIB_HEADER_MAX_LENGTH=4096
+        # Limit payload to 100MB at compile-time as additional safety
+        CPPHTTPLIB_PAYLOAD_MAX_LENGTH=104857600
+)
 target_link_libraries(odr
         PRIVATE
         pugixml::pugixml

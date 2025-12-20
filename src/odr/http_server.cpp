@@ -19,6 +19,15 @@ public:
   Impl(Config config, std::shared_ptr<Logger> logger)
       : m_config{std::move(config)}, m_logger{std::move(logger)},
         m_server{std::make_unique<httplib::Server>()} {
+    // Set resource limits to prevent crashes from malformed or excessive requests.
+    // This prevents memory exhaustion and header processing crashes on Android.
+    // Max payload: 100MB (reasonable for document serving, prevents DoS)
+    m_server->set_payload_max_length(100 * 1024 * 1024);
+    // Read timeout: 30 seconds (prevents slow requests from tying up threads)
+    m_server->set_read_timeout(30, 0);
+    // Write timeout: 60 seconds (allows time for large document transfers)
+    m_server->set_write_timeout(60, 0);
+
     // Set up exception handler to catch any internal httplib exceptions.
     // This prevents crashes when exceptions occur during request processing.
     m_server->set_exception_handler([this](const httplib::Request & /*req*/,
