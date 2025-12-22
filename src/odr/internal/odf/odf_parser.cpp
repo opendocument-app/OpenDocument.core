@@ -44,10 +44,7 @@ parse_element_tree(ElementRegistry &registry, const ElementType type,
     return {ExtendedElementIdentifier::null(), pugi::xml_node()};
   }
 
-  const ExtendedElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = type;
-  element.node = node;
+  const auto &[element_id, _] = registry.create_element(type, node);
 
   children_parser(registry, element_id, node);
 
@@ -80,14 +77,10 @@ parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
     return {ExtendedElementIdentifier::null(), pugi::xml_node()};
   }
 
-  const ExtendedElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::text;
-  element.node = first;
-  auto &[last] = registry.create_text_element(element_id);
+  const auto &[element_id, _, text] = registry.create_text_element(first);
 
-  for (last = first; is_text_node(last.next_sibling());
-       last = last.next_sibling()) {
+  pugi::xml_node last = first;
+  for (; is_text_node(last.next_sibling()); last = last.next_sibling()) {
   }
 
   return {element_id, last.next_sibling()};
@@ -99,10 +92,8 @@ parse_table_row(ElementRegistry &registry, const pugi::xml_node node) {
     return {ExtendedElementIdentifier::null(), pugi::xml_node()};
   }
 
-  const ExtendedElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::table_row;
-  element.node = node;
+  const auto &[element_id, _] =
+      registry.create_element(ElementType::table_row, node);
 
   for (const pugi::xml_node cell_node : node.children()) {
     // TODO log warning if repeated
@@ -119,11 +110,7 @@ parse_table(ElementRegistry &registry, const pugi::xml_node node) {
     return {ExtendedElementIdentifier::null(), pugi::xml_node()};
   }
 
-  const ExtendedElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::table;
-  element.node = node;
-  registry.create_table_element(element_id);
+  const auto &[element_id, _, table] = registry.create_table_element(node);
 
   // TODO inflate table first?
 
@@ -152,11 +139,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
     return {ExtendedElementIdentifier::null(), pugi::xml_node()};
   }
 
-  const ExtendedElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::sheet;
-  element.node = node;
-  ElementRegistry::Sheet &sheet = registry.create_sheet_element(element_id);
+  const auto &[element_id, _, sheet] = registry.create_sheet_element(node);
 
   TableCursor cursor;
 

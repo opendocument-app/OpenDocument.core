@@ -17,30 +17,39 @@ void ElementRegistry::clear() noexcept {
   return m_elements.size();
 }
 
-ExtendedElementIdentifier ElementRegistry::create_element() {
-  m_elements.emplace_back();
-  return ExtendedElementIdentifier(m_elements.size());
+std::tuple<ExtendedElementIdentifier, ElementRegistry::Element &>
+ElementRegistry::create_element(const ElementType type,
+                                const pugi::xml_node node) {
+  Element &element = m_elements.emplace_back();
+  ExtendedElementIdentifier element_id(m_elements.size());
+  element.type = type;
+  element.node = node;
+  return {element_id, element};
 }
 
-ElementRegistry::Table &
-ElementRegistry::create_table_element(const ExtendedElementIdentifier id) {
-  check_element_id(id);
-  auto [it, success] = m_tables.emplace(id.element_id(), Table{});
-  return it->second;
+std::tuple<ExtendedElementIdentifier, ElementRegistry::Element &,
+           ElementRegistry::Text &>
+ElementRegistry::create_text_element(const pugi::xml_node first_node) {
+  const auto &[element_id, element] =
+      create_element(ElementType::text, first_node);
+  auto [it, success] = m_texts.emplace(element_id.element_id(), Text{});
+  return {element_id, element, it->second};
 }
 
-ElementRegistry::Text &
-ElementRegistry::create_text_element(const ExtendedElementIdentifier id) {
-  check_element_id(id);
-  auto [it, success] = m_texts.emplace(id.element_id(), Text{});
-  return it->second;
+std::tuple<ExtendedElementIdentifier, ElementRegistry::Element &,
+           ElementRegistry::Table &>
+ElementRegistry::create_table_element(const pugi::xml_node node) {
+  const auto &[element_id, element] = create_element(ElementType::table, node);
+  auto [it, success] = m_tables.emplace(element_id.element_id(), Table{});
+  return {element_id, element, it->second};
 }
 
-ElementRegistry::Sheet &
-ElementRegistry::create_sheet_element(const ExtendedElementIdentifier id) {
-  check_element_id(id);
-  auto [it, success] = m_sheets.emplace(id.element_id(), Sheet{});
-  return it->second;
+std::tuple<ExtendedElementIdentifier, ElementRegistry::Element &,
+           ElementRegistry::Sheet &>
+ElementRegistry::create_sheet_element(const pugi::xml_node node) {
+  const auto &[element_id, element] = create_element(ElementType::table, node);
+  auto [it, success] = m_sheets.emplace(element_id.element_id(), Sheet{});
+  return {element_id, element, it->second};
 }
 
 [[nodiscard]] ElementRegistry::Element &
@@ -103,6 +112,10 @@ void ElementRegistry::append_child(const ExtendedElementIdentifier parent_id,
                                    const ExtendedElementIdentifier child_id) {
   check_element_id(parent_id);
   check_element_id(child_id);
+  if (!element(child_id).parent_id.is_null()) {
+    throw std::invalid_argument(
+        "DocumentElementRegistry::append_child: child already has a parent");
+  }
 
   const ExtendedElementIdentifier previous_sibling_id(
       element(parent_id).last_child_id);
@@ -121,15 +134,15 @@ void ElementRegistry::append_column(const ExtendedElementIdentifier table_id,
                                     const ExtendedElementIdentifier column_id) {
   check_table_id(table_id);
   check_element_id(column_id);
+  if (!element(column_id).parent_id.is_null()) {
+    throw std::invalid_argument(
+        "DocumentElementRegistry::append_column: child already has a parent");
+  }
 
   const ExtendedElementIdentifier previous_sibling_id(
       table_element(table_id).last_column_id);
 
   element(column_id).parent_id = table_id;
-  element(column_id).first_child_id = null_element_id;
-  element(column_id).last_child_id = null_element_id;
-  element(column_id).previous_sibling_id = previous_sibling_id.element_id();
-  element(column_id).next_sibling_id = null_element_id;
 
   if (table_element(table_id).first_column_id == null_element_id) {
     table_element(table_id).first_column_id = column_id.element_id();
@@ -143,15 +156,15 @@ void ElementRegistry::append_shape(const ExtendedElementIdentifier sheet_id,
                                    const ExtendedElementIdentifier shape_id) {
   check_sheet_id(sheet_id);
   check_element_id(shape_id);
+  if (!element(shape_id).parent_id.is_null()) {
+    throw std::invalid_argument(
+        "DocumentElementRegistry::append_shape: child already has a parent");
+  }
 
   const ExtendedElementIdentifier previous_sibling_id(
       sheet_element(sheet_id).last_shape_id);
 
   element(shape_id).parent_id = sheet_id;
-  element(shape_id).first_child_id = null_element_id;
-  element(shape_id).last_child_id = null_element_id;
-  element(shape_id).previous_sibling_id = previous_sibling_id.element_id();
-  element(shape_id).next_sibling_id = null_element_id;
 
   if (sheet_element(sheet_id).first_shape_id == null_element_id) {
     sheet_element(sheet_id).first_shape_id = shape_id.element_id();
@@ -166,12 +179,12 @@ void ElementRegistry::append_sheet_cell(
     const ExtendedElementIdentifier cell_id) {
   check_sheet_id(sheet_id);
   check_element_id(cell_id);
+  if (!element(cell_id).parent_id.is_null()) {
+    throw std::invalid_argument("DocumentElementRegistry::append_sheet_cell: "
+                                "child already has a parent");
+  }
 
   element(cell_id).parent_id = sheet_id;
-  element(cell_id).first_child_id = null_element_id;
-  element(cell_id).last_child_id = null_element_id;
-  element(cell_id).previous_sibling_id = null_element_id;
-  element(cell_id).next_sibling_id = null_element_id;
 }
 
 void ElementRegistry::check_element_id(

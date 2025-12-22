@@ -75,19 +75,23 @@ public:
 
   [[nodiscard]] std::size_t size() const noexcept;
 
-  ExtendedElementIdentifier create_element();
-  Table &create_table_element(ExtendedElementIdentifier id);
-  Text &create_text_element(ExtendedElementIdentifier id);
-  Sheet &create_sheet_element(ExtendedElementIdentifier id);
+  std::tuple<ExtendedElementIdentifier, Element &>
+  create_element(ElementType type, pugi::xml_node node);
+  std::tuple<ExtendedElementIdentifier, Element &, Text &>
+  create_text_element(pugi::xml_node first_node);
+  std::tuple<ExtendedElementIdentifier, Element &, Table &>
+  create_table_element(pugi::xml_node node);
+  std::tuple<ExtendedElementIdentifier, Element &, Sheet &>
+  create_sheet_element(pugi::xml_node node);
 
   [[nodiscard]] Element &element(ExtendedElementIdentifier id);
   [[nodiscard]] const Element &element(ExtendedElementIdentifier id) const;
 
-  [[nodiscard]] Table &table_element(ExtendedElementIdentifier id);
-  [[nodiscard]] const Table &table_element(ExtendedElementIdentifier id) const;
-
   [[nodiscard]] Text &text_element(ExtendedElementIdentifier id);
   [[nodiscard]] const Text &text_element(ExtendedElementIdentifier id) const;
+
+  [[nodiscard]] Table &table_element(ExtendedElementIdentifier id);
+  [[nodiscard]] const Table &table_element(ExtendedElementIdentifier id) const;
 
   [[nodiscard]] Sheet &sheet_element(ExtendedElementIdentifier id);
   [[nodiscard]] const Sheet &sheet_element(ExtendedElementIdentifier id) const;
@@ -103,8 +107,8 @@ public:
 
 private:
   std::vector<Element> m_elements;
-  std::unordered_map<ElementIdentifier, Table> m_tables;
   std::unordered_map<ElementIdentifier, Text> m_texts;
+  std::unordered_map<ElementIdentifier, Table> m_tables;
   std::unordered_map<ElementIdentifier, Sheet> m_sheets;
 
   void check_element_id(ExtendedElementIdentifier id) const;
