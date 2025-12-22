@@ -31,7 +31,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_style_registry = StyleRegistry(m_styles_xml.document_element());
 }
 
-bool Document::is_editable() const noexcept { return false; }
+bool Document::is_editable() const noexcept { return true; }
 
 bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;

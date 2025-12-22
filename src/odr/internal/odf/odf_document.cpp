@@ -31,7 +31,12 @@ Document::Document(const FileType file_type, const DocumentType document_type,
                                    m_styles_xml.document_element());
 }
 
-bool Document::is_editable() const noexcept { return true; }
+bool Document::is_editable() const noexcept {
+  // TODO fix spreadsheet editability
+  return m_document_type == DocumentType::text ||
+         m_document_type == DocumentType::presentation ||
+         m_document_type == DocumentType::drawing;
+}
 
 bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;
