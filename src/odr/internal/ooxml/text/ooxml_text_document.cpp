@@ -158,31 +158,31 @@ public:
     return this;
   }
   [[nodiscard]] const abstract::SlideAdapter *
-  slide_adapter(const ExtendedElementIdentifier element_id) const override {
+  slide_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::PageAdapter *
-  page_adapter(const ExtendedElementIdentifier element_id) const override {
+  page_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::SheetAdapter *
-  sheet_adapter(const ExtendedElementIdentifier element_id) const override {
+  sheet_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
-  [[nodiscard]] const abstract::SheetColumnAdapter *sheet_column_adapter(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] const abstract::SheetColumnAdapter *
+  sheet_column_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::SheetRowAdapter *
-  sheet_row_adapter(const ExtendedElementIdentifier element_id) const override {
+  sheet_row_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
-  [[nodiscard]] const abstract::SheetCellAdapter *sheet_cell_adapter(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] const abstract::SheetCellAdapter *
+  sheet_cell_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
-  [[nodiscard]] const abstract::MasterPageAdapter *master_page_adapter(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] const abstract::MasterPageAdapter *
+  master_page_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const LineBreakAdapter *line_break_adapter(
@@ -270,19 +270,19 @@ public:
     return this;
   }
   [[nodiscard]] const abstract::RectAdapter *
-  rect_adapter(const ExtendedElementIdentifier element_id) const override {
+  rect_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::LineAdapter *
-  line_adapter(const ExtendedElementIdentifier element_id) const override {
+  line_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::CircleAdapter *
-  circle_adapter(const ExtendedElementIdentifier element_id) const override {
+  circle_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
-  [[nodiscard]] const abstract::CustomShapeAdapter *custom_shape_adapter(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] const abstract::CustomShapeAdapter *
+  custom_shape_adapter(const ExtendedElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const ImageAdapter *
