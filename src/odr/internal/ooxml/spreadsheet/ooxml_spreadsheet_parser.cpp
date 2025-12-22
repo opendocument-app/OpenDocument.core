@@ -196,6 +196,9 @@ parse_text_element(ElementRegistry &registry, const ParseContext &context,
   }
 
   const ExtendedElementIdentifier element_id = registry.create_element();
+  ElementRegistry::Element &element = registry.element(element_id);
+  element.type = ElementType::text;
+  element.node = first;
   auto &[last] = registry.create_text_element(element_id);
 
   for (last = first; is_text_node(last.next_sibling());

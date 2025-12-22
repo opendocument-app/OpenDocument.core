@@ -194,103 +194,178 @@ public:
   }
 
   [[nodiscard]] const TextRootAdapter *
-  text_root_adapter(const ExtendedElementIdentifier) const override {
+  text_root_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::root) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const SlideAdapter *
-  slide_adapter(const ExtendedElementIdentifier) const override {
+  slide_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::slide) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const PageAdapter *
-  page_adapter(const ExtendedElementIdentifier) const override {
+  page_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::page) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const SheetAdapter *
-  sheet_adapter(const ExtendedElementIdentifier) const override {
+  sheet_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::sheet) {
+      return nullptr;
+    }
     return this;
   }
-  [[nodiscard]] const SheetColumnAdapter *
-  sheet_column_adapter(const ExtendedElementIdentifier) const override {
+  [[nodiscard]] const SheetColumnAdapter *sheet_column_adapter(
+      const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::sheet_column) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const SheetRowAdapter *
-  sheet_row_adapter(const ExtendedElementIdentifier) const override {
+  sheet_row_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::sheet_row) {
+      return nullptr;
+    }
     return this;
   }
-  [[nodiscard]] const SheetCellAdapter *
-  sheet_cell_adapter(const ExtendedElementIdentifier) const override {
+  [[nodiscard]] const SheetCellAdapter *sheet_cell_adapter(
+      const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::sheet_cell) {
+      return nullptr;
+    }
     return this;
   }
-  [[nodiscard]] const MasterPageAdapter *
-  master_page_adapter(const ExtendedElementIdentifier) const override {
+  [[nodiscard]] const MasterPageAdapter *master_page_adapter(
+      const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::page) {
+      return nullptr;
+    }
     return this;
   }
-  [[nodiscard]] const LineBreakAdapter *
-  line_break_adapter(const ExtendedElementIdentifier) const override {
+  [[nodiscard]] const LineBreakAdapter *line_break_adapter(
+      const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::line_break) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const ParagraphAdapter *
-  paragraph_adapter(const ExtendedElementIdentifier) const override {
+  paragraph_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::paragraph) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const SpanAdapter *
-  span_adapter(const ExtendedElementIdentifier) const override {
+  span_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::span) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const TextAdapter *
-  text_adapter(const ExtendedElementIdentifier) const override {
+  text_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::text) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const LinkAdapter *
-  link_adapter(const ExtendedElementIdentifier) const override {
+  link_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::link) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const BookmarkAdapter *
-  bookmark_adapter(const ExtendedElementIdentifier) const override {
+  bookmark_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::bookmark) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const ListItemAdapter *
-  list_item_adapter(const ExtendedElementIdentifier) const override {
+  list_item_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::list_item) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const TableAdapter *
-  table_adapter(const ExtendedElementIdentifier) const override {
+  table_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::table) {
+      return nullptr;
+    }
     return this;
   }
-  [[nodiscard]] const TableColumnAdapter *
-  table_column_adapter(const ExtendedElementIdentifier) const override {
+  [[nodiscard]] const TableColumnAdapter *table_column_adapter(
+      const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::table_column) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const TableRowAdapter *
-  table_row_adapter(const ExtendedElementIdentifier) const override {
+  table_row_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::table_row) {
+      return nullptr;
+    }
     return this;
   }
-  [[nodiscard]] const TableCellAdapter *
-  table_cell_adapter(const ExtendedElementIdentifier) const override {
+  [[nodiscard]] const TableCellAdapter *table_cell_adapter(
+      const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::table_cell) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const FrameAdapter *
-  frame_adapter(const ExtendedElementIdentifier) const override {
+  frame_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::frame) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const RectAdapter *
-  rect_adapter(const ExtendedElementIdentifier) const override {
+  rect_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::rect) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const LineAdapter *
-  line_adapter(const ExtendedElementIdentifier) const override {
+  line_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::line) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const CircleAdapter *
-  circle_adapter(const ExtendedElementIdentifier) const override {
+  circle_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::circle) {
+      return nullptr;
+    }
     return this;
   }
-  [[nodiscard]] const CustomShapeAdapter *
-  custom_shape_adapter(const ExtendedElementIdentifier) const override {
+  [[nodiscard]] const CustomShapeAdapter *custom_shape_adapter(
+      const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::custom_shape) {
+      return nullptr;
+    }
     return this;
   }
   [[nodiscard]] const ImageAdapter *
-  image_adapter(const ExtendedElementIdentifier) const override {
+  image_adapter(const ExtendedElementIdentifier element_id) const override {
+    if (m_registry->element(element_id).type != ElementType::image) {
+      return nullptr;
+    }
     return this;
   }
 

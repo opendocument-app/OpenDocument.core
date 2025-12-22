@@ -81,6 +81,9 @@ parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
   }
 
   const ExtendedElementIdentifier element_id = registry.create_element();
+  ElementRegistry::Element &element = registry.element(element_id);
+  element.type = ElementType::text;
+  element.node = first;
   auto &[last] = registry.create_text_element(element_id);
 
   for (last = first; is_text_node(last.next_sibling());
@@ -97,6 +100,9 @@ parse_table_row(ElementRegistry &registry, const pugi::xml_node node) {
   }
 
   const ExtendedElementIdentifier element_id = registry.create_element();
+  ElementRegistry::Element &element = registry.element(element_id);
+  element.type = ElementType::table_row;
+  element.node = node;
 
   for (const pugi::xml_node cell_node : node.children()) {
     // TODO log warning if repeated
@@ -114,6 +120,10 @@ parse_table(ElementRegistry &registry, const pugi::xml_node node) {
   }
 
   const ExtendedElementIdentifier element_id = registry.create_element();
+  ElementRegistry::Element &element = registry.element(element_id);
+  element.type = ElementType::table;
+  element.node = node;
+  registry.create_table_element(element_id);
 
   // TODO inflate table first?
 
@@ -143,6 +153,9 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
   }
 
   const ExtendedElementIdentifier element_id = registry.create_element();
+  ElementRegistry::Element &element = registry.element(element_id);
+  element.type = ElementType::sheet;
+  element.node = node;
   ElementRegistry::Sheet &sheet = registry.create_sheet_element(element_id);
 
   TableCursor cursor;
@@ -221,7 +234,8 @@ void parse_presentation_children(ElementRegistry &registry,
                                  const ExtendedElementIdentifier root_id,
                                  const pugi::xml_node node) {
   for (const pugi::xml_node child_node : node.children("draw:page")) {
-    auto [child_id, _] = parse_any_element_tree(registry, child_node);
+    auto [child_id, _] = parse_element_tree(
+        registry, ElementType::slide, child_node, parse_any_element_children);
     registry.append_child(root_id, child_id);
   }
 }
@@ -239,7 +253,8 @@ void parse_drawing_children(ElementRegistry &registry,
                             const ExtendedElementIdentifier root_id,
                             const pugi::xml_node node) {
   for (const pugi::xml_node child_node : node.children("draw:page")) {
-    auto [child_id, _] = parse_any_element_tree(registry, child_node);
+    auto [child_id, _] = parse_element_tree(
+        registry, ElementType::page, child_node, parse_any_element_children);
     registry.append_child(root_id, child_id);
   }
 }

@@ -243,6 +243,8 @@ public:
               const ExtendedElementIdentifier identifier, const T *adapter2)
       : Element(adapter, identifier), m_adapter2{adapter2} {}
 
+  explicit operator bool() const { return exists_(); }
+
 protected:
   const T *m_adapter2{nullptr};
 

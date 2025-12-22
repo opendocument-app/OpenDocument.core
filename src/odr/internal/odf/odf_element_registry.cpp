@@ -108,10 +108,6 @@ void ElementRegistry::append_child(const ExtendedElementIdentifier parent_id,
       element(parent_id).last_child_id);
 
   element(child_id).parent_id = parent_id;
-  element(child_id).first_child_id = null_element_id;
-  element(child_id).last_child_id = null_element_id;
-  element(child_id).previous_sibling_id = previous_sibling_id.element_id();
-  element(child_id).next_sibling_id = null_element_id;
 
   if (element(parent_id).first_child_id == null_element_id) {
     element(parent_id).first_child_id = child_id.element_id();

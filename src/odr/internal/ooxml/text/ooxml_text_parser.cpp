@@ -79,6 +79,9 @@ parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
   }
 
   const ExtendedElementIdentifier element_id = registry.create_element();
+  ElementRegistry::Element &element = registry.element(element_id);
+  element.type = ElementType::text;
+  element.node = first;
   auto &[last] = registry.create_text_element(element_id);
 
   for (last = first; is_text_node(last.next_sibling());
@@ -126,6 +129,7 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
       const ExtendedElementIdentifier nested_id = registry.create_element();
       ElementRegistry::Element &nested_element = registry.element(nested_id);
       nested_element.type = ElementType::list;
+      nested_element.node = node;
 
       registry.append_child(element_id, nested_id);
     }
@@ -133,10 +137,12 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
     const ExtendedElementIdentifier item_id = registry.create_element();
     ElementRegistry::Element &item_element = registry.element(item_id);
     item_element.type = ElementType::list_item;
+    item_element.node = node;
 
     registry.append_child(element_id, item_id);
 
-    auto [child_id, _] = parse_any_element_tree(registry, node);
+    auto [child_id, _] = parse_element_tree(registry, ElementType::paragraph,
+                                            node, parse_any_element_children);
     registry.append_child(item_id, child_id);
   }
 
@@ -174,6 +180,7 @@ parse_table_element(ElementRegistry &registry, const pugi::xml_node node) {
   ElementRegistry::Element &element = registry.element(element_id);
   element.type = ElementType::table_row;
   element.node = node;
+  registry.create_table_element(element_id);
 
   for (const pugi::xml_node column_node :
        node.child("w:tblGrid").children("w:gridCol")) {
