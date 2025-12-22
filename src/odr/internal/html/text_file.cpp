@@ -21,7 +21,7 @@ public:
       : HtmlService(std::move(config), std::move(logger)),
         m_text_file{std::move(text_file)} {
     m_views.emplace_back(
-        std::make_shared<HtmlView>(*this, "text", "text.html"));
+        std::make_shared<HtmlView>(*this, "text", 0, "text.html"));
   }
 
   void warmup() const override {}

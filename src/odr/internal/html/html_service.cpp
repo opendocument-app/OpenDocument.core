@@ -12,10 +12,13 @@ HtmlService::HtmlService(HtmlConfig config, std::shared_ptr<Logger> logger)
 const HtmlConfig &HtmlService::config() const { return m_config; }
 
 HtmlView::HtmlView(const abstract::HtmlService &service, std::string name,
-                   std::string path)
-    : m_service{&service}, m_name{std::move(name)}, m_path{std::move(path)} {}
+                   std::size_t index, std::string path)
+    : m_service{&service}, m_name{std::move(name)}, m_index{index},
+      m_path{std::move(path)} {}
 
 const std::string &HtmlView::name() const { return m_name; }
+
+std::size_t HtmlView::index() const { return m_index; }
 
 const std::string &HtmlView::path() const { return m_path; }
 

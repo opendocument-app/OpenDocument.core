@@ -58,7 +58,12 @@ const StyleRegistry &Document::style_registry() const {
   return m_style_registry;
 }
 
-bool Document::is_editable() const noexcept { return true; }
+bool Document::is_editable() const noexcept {
+  // TODO fix spreadsheet editability
+  return m_document_type == DocumentType::text ||
+         m_document_type == DocumentType::presentation ||
+         m_document_type == DocumentType::drawing;
+}
 
 bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;

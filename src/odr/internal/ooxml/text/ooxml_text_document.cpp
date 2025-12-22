@@ -57,7 +57,7 @@ const Relations &Document::document_relations() const {
   return m_document_relations;
 }
 
-bool Document::is_editable() const noexcept { return false; }
+bool Document::is_editable() const noexcept { return true; }
 
 bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;

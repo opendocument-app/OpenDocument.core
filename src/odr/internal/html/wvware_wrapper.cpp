@@ -832,7 +832,7 @@ public:
         m_oldms_file{std::move(oldms_file)},
         m_cache_path{std::move(cache_path)} {
     m_views.emplace_back(
-        std::make_shared<HtmlView>(*this, "document", "document.html"));
+        std::make_shared<HtmlView>(*this, "document", 0, "document.html"));
   }
 
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }

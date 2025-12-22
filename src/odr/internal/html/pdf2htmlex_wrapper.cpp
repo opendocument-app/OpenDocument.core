@@ -36,14 +36,17 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   param.fit_width = 0;
   param.fit_height = 0;
   param.use_cropbox = 1;
-  param.desired_dpi = 144;
+  param.desired_dpi = config.background_image_dpi;
+  param.actual_dpi = config.background_image_dpi;
+  param.max_dpi = config.background_image_dpi;
+  param.text_dpi = config.background_image_dpi;
 
   // output
   param.embed_css = 1;
   param.embed_font = 1;
   param.embed_image = 1;
   param.embed_javascript = 1;
-  param.embed_outline = 1;
+  param.embed_outline = config.embed_outline ? 1 : 0;
   param.split_pages = 0;
   param.dest_dir = cache_path;
   param.css_filename = "style.css";
@@ -79,17 +82,16 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   param.tounicode = 0;
   param.optimize_text = 0;
   param.correct_text_visibility = 1;
-  param.text_dpi = 300;
 
   // background
-  param.bg_format = "png";
+  param.bg_format = config.background_image_format;
   param.svg_node_count_limit = -1;
   param.svg_embed_bitmap = 1;
 
   // encryption
   param.owner_password = "";
   param.user_password = "";
-  param.no_drm = 1;
+  param.no_drm = config.no_drm ? 1 : 0;
 
   // misc
   param.clean_tmp = 1;
@@ -185,7 +187,7 @@ public:
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
         m_html_renderer_param{std::move(html_renderer_param)} {
     m_views.emplace_back(
-        std::make_shared<HtmlView>(*this, "document", "document.html"));
+        std::make_shared<HtmlView>(*this, "document", 0, "document.html"));
   }
 
   const HtmlViews &list_views() const override { return m_views; }
@@ -310,10 +312,6 @@ odr::HtmlService html::create_poppler_pdf_service(
   } else {
     html_renderer_param->embed_image = 0;
     html_renderer_param->delay_background = 1;
-  }
-
-  if (!pdf_doc.okToCopy() && html_renderer_param->no_drm == 0) {
-    throw DocumentCopyProtectedException();
   }
 
   // TODO not sure what the `progPath` is used for. it cannot be `nullptr`

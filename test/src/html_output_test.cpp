@@ -9,7 +9,6 @@
 
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <optional>
 #include <string>
 
@@ -54,7 +53,6 @@ TEST_P(HtmlOutputTests, html_meta) {
   const TestParams &params = GetParam();
   const TestFile &test_file = params.test_file;
   const DecoderEngine engine = params.engine;
-  const std::string &test_repo = params.test_repo;
   const std::string &output_path = params.output_path;
   const std::string &output_path_prefix = params.output_path_prefix;
 
@@ -76,7 +74,8 @@ TEST_P(HtmlOutputTests, html_meta) {
   // TODO fix pdf implementation
   if (engine == DecoderEngine::odr &&
       test_file.type == FileType::portable_document_format &&
-      test_repo != "odr-public") {
+      (test_file.short_path.starts_with("odr-private") ||
+       test_file.short_path == "odr-public/pdf/Casio_WVA-M650-7AJF.pdf")) {
     GTEST_SKIP();
   }
 

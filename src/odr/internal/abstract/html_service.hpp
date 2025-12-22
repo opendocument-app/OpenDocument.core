@@ -37,6 +37,7 @@ public:
   virtual ~HtmlView() = default;
 
   [[nodiscard]] virtual const std::string &name() const = 0;
+  [[nodiscard]] virtual std::size_t index() const = 0;
   [[nodiscard]] virtual const std::string &path() const = 0;
   [[nodiscard]] virtual const HtmlConfig &config() const = 0;
 

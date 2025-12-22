@@ -98,6 +98,16 @@ struct HtmlConfig {
   bool format_html{false};
   std::uint8_t html_indent{2};
 
+  // background image
+  std::string background_image_format{"png"};
+  double background_image_dpi{144.0};
+
+  // drm options
+  bool no_drm{false};
+
+  // outline options
+  bool embed_outline{false};
+
   std::optional<std::string> output_path;
   HtmlResourceLocator resource_locator;
 
@@ -139,6 +149,7 @@ public:
   explicit HtmlView(std::shared_ptr<internal::abstract::HtmlView> impl);
 
   [[nodiscard]] const std::string &name() const;
+  [[nodiscard]] std::size_t index() const;
   [[nodiscard]] const std::string &path() const;
   [[nodiscard]] const HtmlConfig &config() const;
 
