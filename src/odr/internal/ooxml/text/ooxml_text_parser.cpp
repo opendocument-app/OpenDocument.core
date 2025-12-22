@@ -48,6 +48,7 @@ parse_element_tree(ElementRegistry &registry, const ElementType type,
   const ExtendedElementIdentifier element_id = registry.create_element();
   ElementRegistry::Element &element = registry.element(element_id);
   element.type = type;
+  element.node = node;
 
   children_parser(registry, element_id, node);
 
@@ -108,6 +109,7 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
   const ExtendedElementIdentifier element_id = registry.create_element();
   ElementRegistry::Element &element = registry.element(element_id);
   element.type = ElementType::list;
+  element.node = node;
 
   for (; is_list_item(node); node = node.next_sibling()) {
     const std::int32_t level = list_level(node);
@@ -150,6 +152,7 @@ parse_table_row_element(ElementRegistry &registry, const pugi::xml_node node) {
   const ExtendedElementIdentifier element_id = registry.create_element();
   ElementRegistry::Element &element = registry.element(element_id);
   element.type = ElementType::table_row;
+  element.node = node;
 
   for (const pugi::xml_node cell_node : node.children("w:tc")) {
     auto [cell_id, _] =
@@ -170,6 +173,7 @@ parse_table_element(ElementRegistry &registry, const pugi::xml_node node) {
   const ExtendedElementIdentifier element_id = registry.create_element();
   ElementRegistry::Element &element = registry.element(element_id);
   element.type = ElementType::table_row;
+  element.node = node;
 
   for (const pugi::xml_node column_node :
        node.child("w:tblGrid").children("w:gridCol")) {

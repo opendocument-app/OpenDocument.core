@@ -47,6 +47,7 @@ parse_element_tree(ElementRegistry &registry, const ElementType type,
   const ExtendedElementIdentifier element_id = registry.create_element();
   ElementRegistry::Element &element = registry.element(element_id);
   element.type = type;
+  element.node = node;
 
   children_parser(registry, element_id, node);
 

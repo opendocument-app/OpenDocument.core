@@ -52,6 +52,7 @@ parse_element_tree(ElementRegistry &registry, const ParseContext &context,
   const ExtendedElementIdentifier element_id = registry.create_element();
   ElementRegistry::Element &element = registry.element(element_id);
   element.type = type;
+  element.node = node;
 
   children_parser(registry, context, element_id, node);
 
@@ -113,6 +114,7 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
   const ExtendedElementIdentifier element_id = registry.create_element();
   ElementRegistry::Element &element = registry.element(element_id);
   element.type = ElementType::sheet;
+  element.node = node;
   ElementRegistry::Sheet &sheet = registry.create_sheet_element(element_id);
 
   for (const pugi::xml_node col_node : node.child("cols").children("col")) {
