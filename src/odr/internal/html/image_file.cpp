@@ -23,7 +23,7 @@ public:
       : HtmlService(std::move(config), std::move(logger)),
         m_image_file{std::move(image_file)} {
     m_views.emplace_back(
-        std::make_shared<HtmlView>(*this, "image", "image.html"));
+        std::make_shared<HtmlView>(*this, "image", 0, "image.html"));
   }
 
   void warmup() const override {}

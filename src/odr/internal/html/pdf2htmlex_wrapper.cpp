@@ -185,7 +185,7 @@ public:
         m_html_renderer_mutex{std::move(html_renderer_mutex)},
         m_html_renderer_param{std::move(html_renderer_param)} {
     m_views.emplace_back(
-        std::make_shared<HtmlView>(*this, "document", "document.html"));
+        std::make_shared<HtmlView>(*this, "document", 0, "document.html"));
   }
 
   const HtmlViews &list_views() const override { return m_views; }

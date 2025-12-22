@@ -27,7 +27,7 @@ public:
       : HtmlService(std::move(config), std::move(logger)),
         m_pdf_file{std::move(pdf_file)} {
     m_views.emplace_back(
-        std::make_shared<HtmlView>(*this, "document", "document.html"));
+        std::make_shared<HtmlView>(*this, "document", 0, "document.html"));
   }
 
   void warmup() const override {}
