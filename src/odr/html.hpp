@@ -100,9 +100,13 @@ struct HtmlConfig {
 
   // background image
   std::string background_image_format{"png"};
+  double background_image_dpi{144.0};
 
-  // drm
+  // drm options
   bool no_drm{false};
+
+  // outline options
+  bool embed_outline{false};
 
   std::optional<std::string> output_path;
   HtmlResourceLocator resource_locator;
