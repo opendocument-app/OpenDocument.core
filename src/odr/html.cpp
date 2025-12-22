@@ -150,6 +150,8 @@ HtmlView::HtmlView(std::shared_ptr<abstract::HtmlView> impl)
 
 const std::string &HtmlView::name() const { return m_impl->name(); }
 
+std::size_t HtmlView::index() const { return m_impl->index(); }
+
 const std::string &HtmlView::path() const { return m_impl->path(); }
 
 const HtmlConfig &HtmlView::config() const { return m_impl->config(); }

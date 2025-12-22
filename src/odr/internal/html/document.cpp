@@ -153,13 +153,15 @@ std::string fill_path_variables(const std::string &path,
 
 class HtmlFragmentBase {
 public:
-  HtmlFragmentBase(std::string name, std::string path, Document document)
-      : m_name{std::move(name)}, m_path{std::move(path)},
+  HtmlFragmentBase(std::string name, const std::size_t index, std::string path,
+                   Document document)
+      : m_name{std::move(name)}, m_index{index}, m_path{std::move(path)},
         m_document{std::move(document)} {}
 
   virtual ~HtmlFragmentBase() = default;
 
   [[nodiscard]] const std::string &name() const { return m_name; }
+  [[nodiscard]] std::size_t index() const { return m_index; }
   [[nodiscard]] const std::string &path() const { return m_path; }
 
   virtual void write_fragment(HtmlWriter &out, WritingState &state) const = 0;
@@ -172,16 +174,32 @@ public:
 
 protected:
   std::string m_name;
+  std::size_t m_index = 0;
   std::string m_path;
   Document m_document;
 };
 
-class HtmlFragmentView final : public HtmlView {
+class HtmlFragmentView final : public abstract::HtmlView {
 public:
-  HtmlFragmentView(const abstract::HtmlService &service, std::string name,
-                   std::string path, std::shared_ptr<HtmlFragmentBase> fragment)
-      : HtmlView(service, std::move(name), std::move(path)),
-        m_fragment{std::move(fragment)} {}
+  HtmlFragmentView(const abstract::HtmlService &service,
+                   std::shared_ptr<HtmlFragmentBase> fragment)
+      : m_service{&service}, m_fragment{std::move(fragment)} {}
+
+  [[nodiscard]] const std::string &name() const override {
+    return m_fragment->name();
+  }
+  [[nodiscard]] std::size_t index() const override {
+    return m_fragment->index();
+  }
+  [[nodiscard]] const std::string &path() const override {
+    return m_fragment->path();
+  }
+  [[nodiscard]] const HtmlConfig &config() const override {
+    return m_service->config();
+  }
+  [[nodiscard]] const abstract::HtmlService &service() const {
+    return *m_service;
+  }
 
   HtmlResources write_html(HtmlWriter &out) const override {
     HtmlResources resources;
@@ -191,6 +209,7 @@ public:
   }
 
 private:
+  const abstract::HtmlService *m_service = nullptr;
   std::shared_ptr<HtmlFragmentBase> m_fragment;
 };
 
@@ -202,13 +221,12 @@ public:
       : HtmlService(std::move(config), std::move(logger)),
         m_document{std::move(document)}, m_fragments{std::move(fragments)} {
     m_views.emplace_back(
-        std::make_shared<HtmlView>(*this, "document", "document.html"));
+        std::make_shared<HtmlView>(*this, "document", 0, "document.html"));
     for (const auto &fragment : m_fragments) {
       if (fragment->name() == "document") {
         continue;
       }
-      m_views.emplace_back(std::make_shared<HtmlFragmentView>(
-          *this, fragment->name(), fragment->path(), fragment));
+      m_views.emplace_back(std::make_shared<HtmlFragmentView>(*this, fragment));
     }
   }
 
@@ -328,9 +346,9 @@ protected:
 
 class TextHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit TextHtmlFragment(std::string name, std::string path,
-                            Document document)
-      : HtmlFragmentBase(std::move(name), std::move(path),
+  explicit TextHtmlFragment(std::string name, const std::size_t index,
+                            std::string path, Document document)
+      : HtmlFragmentBase(std::move(name), index, std::move(path),
                          std::move(document)) {}
 
   void write_fragment(HtmlWriter &out, WritingState &state) const override {
@@ -364,9 +382,11 @@ public:
 
 class SlideHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit SlideHtmlFragment(std::string name, std::string path,
-                             Document document, const Slide &slide)
-      : HtmlFragmentBase(std::move(name), std::move(path), std::move(document)),
+  explicit SlideHtmlFragment(std::string name, const std::size_t index,
+                             std::string path, Document document,
+                             const Slide &slide)
+      : HtmlFragmentBase(std::move(name), index, std::move(path),
+                         std::move(document)),
         m_slide{slide} {}
 
   void write_fragment(HtmlWriter &, WritingState &state) const override {
@@ -379,9 +399,11 @@ private:
 
 class SheetHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit SheetHtmlFragment(std::string name, std::string path,
-                             Document document, const Sheet &sheet)
-      : HtmlFragmentBase(std::move(name), std::move(path), std::move(document)),
+  explicit SheetHtmlFragment(std::string name, const std::size_t index,
+                             std::string path, Document document,
+                             const Sheet &sheet)
+      : HtmlFragmentBase(std::move(name), index, std::move(path),
+                         std::move(document)),
         m_sheet{sheet} {}
 
   void write_fragment(HtmlWriter &, WritingState &state) const override {
@@ -394,9 +416,11 @@ private:
 
 class PageHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit PageHtmlFragment(std::string name, std::string path,
-                            Document document, const Page &page)
-      : HtmlFragmentBase(std::move(name), std::move(path), std::move(document)),
+  explicit PageHtmlFragment(std::string name, const std::size_t index,
+                            std::string path, Document document,
+                            const Page &page)
+      : HtmlFragmentBase(std::move(name), index, std::move(path),
+                         std::move(document)),
         m_page{page} {}
 
   void write_fragment(HtmlWriter &, WritingState &state) const override {
@@ -419,32 +443,35 @@ odr::HtmlService html::create_document_service(
 
   if (document.document_type() == DocumentType::text) {
     fragments.push_back(std::make_unique<TextHtmlFragment>(
-        "document", config.document_output_file_name, document));
+        "document", 0, config.document_output_file_name, document));
   } else if (document.document_type() == DocumentType::presentation) {
     std::size_t i = 0;
-    for (auto child : document.root_element().children()) {
+    for (Element child : document.root_element().children()) {
+      Slide slide = child.as_slide();
       fragments.push_back(std::make_unique<SlideHtmlFragment>(
-          "slide" + std::to_string(i),
+          slide.name(), i + 1,
           fill_path_variables(config.slide_output_file_name, i), document,
-          child.as_slide()));
+          slide));
       ++i;
     }
   } else if (document.document_type() == DocumentType::spreadsheet) {
     std::size_t i = 0;
-    for (auto child : document.root_element().children()) {
+    for (Element child : document.root_element().children()) {
+      Sheet sheet = child.as_sheet();
       fragments.push_back(std::make_unique<SheetHtmlFragment>(
-          "sheet" + std::to_string(i),
+          sheet.name(), i + 1,
           fill_path_variables(config.sheet_output_file_name, i), document,
-          child.as_sheet()));
+          sheet));
       ++i;
     }
   } else if (document.document_type() == DocumentType::drawing) {
     std::size_t i = 0;
-    for (auto child : document.root_element().children()) {
+    for (Element child : document.root_element().children()) {
+      Page page = child.as_page();
       fragments.push_back(std::make_unique<PageHtmlFragment>(
-          "page" + std::to_string(i),
+          page.name(), i + 1,
           fill_path_variables(config.page_output_file_name, i), document,
-          child.as_page()));
+          page));
       ++i;
     }
   } else {

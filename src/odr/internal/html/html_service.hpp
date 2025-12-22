@@ -23,9 +23,10 @@ protected:
 class HtmlView : public abstract::HtmlView {
 public:
   HtmlView(const abstract::HtmlService &service, std::string name,
-           std::string path);
+           std::size_t index, std::string path);
 
   [[nodiscard]] const std::string &name() const override;
+  [[nodiscard]] std::size_t index() const override;
   [[nodiscard]] const std::string &path() const override;
   [[nodiscard]] const HtmlConfig &config() const override;
   [[nodiscard]] const abstract::HtmlService &service() const;
@@ -33,8 +34,9 @@ public:
   HtmlResources write_html(HtmlWriter &out) const override;
 
 private:
-  const abstract::HtmlService *m_service;
+  const abstract::HtmlService *m_service{};
   std::string m_name;
+  std::size_t m_index{};
   std::string m_path;
 };
 
@@ -61,7 +63,7 @@ public:
   void write_resource(std::ostream &os) const override;
 
 private:
-  HtmlResourceType m_type;
+  HtmlResourceType m_type{};
   std::string m_mime_type;
   std::string m_name;
   std::string m_path;

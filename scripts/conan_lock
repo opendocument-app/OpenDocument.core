@@ -5,3 +5,4 @@ conan lock create .
 for profile in .github/config/conan/profiles/*; do
     conan lock create . --profile:build "${profile}" --profile:host "${profile}"
 done
+conan lock create . --profile:build ".github/config/conan/profiles/ubuntu-24.04-clang-18" --profile:host ".github/config/conan/profiles/android-35-x86_64"
