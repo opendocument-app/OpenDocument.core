@@ -36,14 +36,17 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   param.fit_width = 0;
   param.fit_height = 0;
   param.use_cropbox = 1;
-  param.desired_dpi = 144;
+  param.desired_dpi = config.background_image_dpi;
+  param.actual_dpi = config.background_image_dpi;
+  param.max_dpi = config.background_image_dpi;
+  param.text_dpi = config.background_image_dpi;
 
   // output
   param.embed_css = 1;
   param.embed_font = 1;
   param.embed_image = 1;
   param.embed_javascript = 1;
-  param.embed_outline = 1;
+  param.embed_outline = config.embed_outline ? 1 : 0;
   param.split_pages = 0;
   param.dest_dir = cache_path;
   param.css_filename = "style.css";
@@ -79,7 +82,6 @@ pdf2htmlEX::Param create_params(PDFDoc &pdf_doc, const HtmlConfig &config,
   param.tounicode = 0;
   param.optimize_text = 0;
   param.correct_text_visibility = 1;
-  param.text_dpi = 300;
 
   // background
   param.bg_format = config.background_image_format;
