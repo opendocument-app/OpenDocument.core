@@ -12,6 +12,8 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
+#include <cstring>
+
 namespace odr::internal::ooxml::presentation {
 
 namespace {
