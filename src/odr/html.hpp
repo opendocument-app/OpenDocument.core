@@ -145,7 +145,7 @@ public:
   explicit HtmlView(std::shared_ptr<internal::abstract::HtmlView> impl);
 
   [[nodiscard]] const std::string &name() const;
-  [[nodiscard]] const std::size_t index() const;
+  [[nodiscard]] std::size_t index() const;
   [[nodiscard]] const std::string &path() const;
   [[nodiscard]] const HtmlConfig &config() const;
 
