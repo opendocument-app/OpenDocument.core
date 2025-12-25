@@ -29,14 +29,15 @@ void parse_any_element_children(ElementRegistry &registry,
                                 const ElementIdentifier parent_id,
                                 const pugi::xml_node node) {
   for (pugi::xml_node child_node = node.first_child(); child_node;) {
-    if (const auto [child_id, next_sibling] =
-            parse_any_element_tree(registry, context, child_node);
-        child_id == null_element_id) {
+    const auto [child_id, next_sibling] =
+        parse_any_element_tree(registry, context, child_node);
+    if (child_id == null_element_id) {
       child_node = child_node.next_sibling();
-    } else {
-      registry.append_child(parent_id, child_id);
-      child_node = next_sibling;
+      continue;
     }
+
+    registry.append_child(parent_id, child_id);
+    child_node = next_sibling;
   }
 }
 
@@ -56,7 +57,7 @@ parse_element_tree(ElementRegistry &registry, const ParseContext &context,
 }
 
 void parse_root_children(ElementRegistry &registry, const ParseContext &context,
-                         ElementIdentifier parent_id,
+                         const ElementIdentifier parent_id,
                          const pugi::xml_node node) {
   for (pugi::xml_node child_node : node.child("sheets").children("sheet")) {
     const char *id = child_node.attribute("r:id").value();
@@ -75,7 +76,7 @@ void parse_root_children(ElementRegistry &registry, const ParseContext &context,
 
 void parse_sheet_cell_children(ElementRegistry &registry,
                                const ParseContext &context,
-                               ElementIdentifier parent_id,
+                               const ElementIdentifier parent_id,
                                const pugi::xml_node node) {
   if (const pugi::xml_attribute type_attr = node.attribute("t");
       type_attr.value() == std::string("s")) {
@@ -91,10 +92,14 @@ void parse_sheet_cell_children(ElementRegistry &registry,
 
 void parse_frame_children(ElementRegistry &registry,
                           const ParseContext &context,
-                          ElementIdentifier parent_id,
+                          const ElementIdentifier parent_id,
                           const pugi::xml_node node) {
+  (void)registry;
+  (void)context;
+  (void)parent_id;
   if (const pugi::xml_node image_node =
           node.child("xdr:pic").child("xdr:blipFill").child("a:blip")) {
+    (void)image_node;
     // TODO
     // auto [image, _] = parse_any_element_tree(registry, context, image_node);
     // registry.append_child(parent_id, image);
@@ -153,9 +158,10 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
     for (const pugi::xml_node shape_node :
          drawing_xml.document_element().children()) {
       auto [shape, _] = parse_any_element_tree(registry, context, shape_node);
-      if (shape != null_element_id) {
-        registry.append_shape(element_id, shape);
+      if (shape == null_element_id) {
+        continue;
       }
+      registry.append_shape(element_id, shape);
     }
   }
 
