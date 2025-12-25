@@ -76,11 +76,11 @@ parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
     return {null_element_id, pugi::xml_node()};
   }
 
-  const auto &[element_id, _, text] = registry.create_text_element(first);
-
   pugi::xml_node last = first;
   for (; is_text_node(last.next_sibling()); last = last.next_sibling()) {
   }
+
+  const auto &[element_id, _, __] = registry.create_text_element(first, last);
 
   return {element_id, last.next_sibling()};
 }

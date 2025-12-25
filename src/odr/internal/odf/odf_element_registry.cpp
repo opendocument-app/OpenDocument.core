@@ -29,10 +29,11 @@ ElementRegistry::create_element(const ElementType type,
 
 std::tuple<ElementIdentifier, ElementRegistry::Element &,
            ElementRegistry::Text &>
-ElementRegistry::create_text_element(const pugi::xml_node first_node) {
+ElementRegistry::create_text_element(const pugi::xml_node first_node,
+                                     const pugi::xml_node last_node) {
   const auto &[element_id, element] =
       create_element(ElementType::text, first_node);
-  auto [it, success] = m_texts.emplace(element_id, Text{});
+  auto [it, success] = m_texts.emplace(element_id, Text{last_node});
   return {element_id, element, it->second};
 }
 

@@ -3,6 +3,7 @@
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
 #include <odr/table_dimension.hpp>
+#include <odr/table_position.hpp>
 
 #include <map>
 #include <unordered_map>
@@ -51,11 +52,11 @@ public:
     ElementIdentifier first_shape_id{null_element_id};
     ElementIdentifier last_shape_id{null_element_id};
 
-    void create_column(std::uint32_t column_min, std::uint32_t column_max,
+    void register_column(std::uint32_t column_min, std::uint32_t column_max,
+                         pugi::xml_node element);
+    void register_row(std::uint32_t row, pugi::xml_node element);
+    void register_cell(std::uint32_t column, std::uint32_t row,
                        pugi::xml_node element);
-    void create_row(std::uint32_t row, pugi::xml_node element);
-    void create_cell(std::uint32_t column, std::uint32_t row,
-                     pugi::xml_node element);
 
     [[nodiscard]] pugi::xml_node column(std::uint32_t) const;
     [[nodiscard]] pugi::xml_node row(std::uint32_t) const;
@@ -63,22 +64,36 @@ public:
                                       std::uint32_t row) const;
   };
 
+  struct SheetCell final {
+    TablePosition position;
+  };
+
   void clear() noexcept;
 
   [[nodiscard]] std::size_t size() const noexcept;
 
-  ElementIdentifier create_element();
-  Text &create_text_element(ElementIdentifier id);
-  Sheet &create_sheet_element(ElementIdentifier id);
+  std::tuple<ElementIdentifier, Element &> create_element(ElementType type,
+                                                          pugi::xml_node node);
+  std::tuple<ElementIdentifier, Element &, Text &>
+  create_text_element(pugi::xml_node first_node, pugi::xml_node last_node);
+  std::tuple<ElementIdentifier, Element &, Sheet &>
+  create_sheet_element(pugi::xml_node node);
+  std::tuple<ElementIdentifier, Element &, SheetCell &>
+  create_sheet_cell_element(pugi::xml_node node, const TablePosition &position);
 
-  [[nodiscard]] Element &element(ElementIdentifier id);
-  [[nodiscard]] const Element &element(ElementIdentifier id) const;
+  [[nodiscard]] Element &element_at(ElementIdentifier id);
+  [[nodiscard]] Sheet &sheet_element_at(ElementIdentifier id);
 
-  [[nodiscard]] Text &text_element(ElementIdentifier id);
-  [[nodiscard]] const Text &text_element(ElementIdentifier id) const;
+  [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
+  [[nodiscard]] const Sheet &sheet_element_at(ElementIdentifier id) const;
 
-  [[nodiscard]] Sheet &sheet_element(ElementIdentifier id);
-  [[nodiscard]] const Sheet &sheet_element(ElementIdentifier id) const;
+  [[nodiscard]] Element *element(ElementIdentifier id);
+  [[nodiscard]] Text *text_element(ElementIdentifier id);
+
+  [[nodiscard]] const Element *element(ElementIdentifier id) const;
+  [[nodiscard]] const Text *text_element(ElementIdentifier id) const;
+  [[nodiscard]] const Sheet *sheet_element(ElementIdentifier id) const;
+  [[nodiscard]] const SheetCell *sheet_cell_element(ElementIdentifier id) const;
 
   void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
   void append_shape(ElementIdentifier sheet_id, ElementIdentifier shape_id);
@@ -88,10 +103,12 @@ private:
   std::vector<Element> m_elements;
   std::unordered_map<ElementIdentifier, Text> m_texts;
   std::unordered_map<ElementIdentifier, Sheet> m_sheets;
+  std::unordered_map<ElementIdentifier, SheetCell> m_sheet_cells;
 
   void check_element_id(ElementIdentifier id) const;
   void check_text_id(ElementIdentifier id) const;
   void check_sheet_id(ElementIdentifier id) const;
+  void check_sheet_cell_id(ElementIdentifier id) const;
 };
 
 } // namespace odr::internal::ooxml::spreadsheet

@@ -48,10 +48,7 @@ parse_element_tree(ElementRegistry &registry, const ParseContext &context,
     return {null_element_id, pugi::xml_node()};
   }
 
-  const ElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = type;
-  element.node = node;
+  const auto &[element_id, _] = registry.create_element(type, node);
 
   children_parser(registry, context, element_id, node);
 
@@ -98,8 +95,9 @@ void parse_frame_children(ElementRegistry &registry,
                           const pugi::xml_node node) {
   if (const pugi::xml_node image_node =
           node.child("xdr:pic").child("xdr:blipFill").child("a:blip")) {
-    auto [image, _] = parse_any_element_tree(registry, context, image_node);
-    registry.append_child(parent_id, image);
+    // TODO
+    // auto [image, _] = parse_any_element_tree(registry, context, image_node);
+    // registry.append_child(parent_id, image);
   }
 }
 
@@ -110,26 +108,22 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
     return {null_element_id, pugi::xml_node()};
   }
 
-  const ElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::sheet;
-  element.node = node;
-  ElementRegistry::Sheet &sheet = registry.create_sheet_element(element_id);
+  const auto &[element_id, _, sheet] = registry.create_sheet_element(node);
 
   for (const pugi::xml_node col_node : node.child("cols").children("col")) {
     const std::uint32_t min = col_node.attribute("min").as_uint() - 1;
     const std::uint32_t max = col_node.attribute("max").as_uint() - 1;
-    sheet.create_column(min, max - min, col_node);
+    sheet.register_column(min, max - min, col_node);
   }
 
   for (const pugi::xml_node row_node :
        node.child("sheetData").children("row")) {
     const std::uint32_t row = row_node.attribute("r").as_uint() - 1;
-    sheet.create_row(row, row_node);
+    sheet.register_row(row, row_node);
 
     for (const pugi::xml_node cell_node : row_node.children("c")) {
       TablePosition position(cell_node.attribute("r").value());
-      sheet.create_cell(position.column(), position.row(), cell_node);
+      sheet.register_cell(position.column(), position.row(), cell_node);
 
       auto [cell, _] = parse_any_element_tree(registry, context, cell_node);
       registry.append_sheet_cell(element_id, cell);
@@ -194,15 +188,12 @@ parse_text_element(ElementRegistry &registry, const ParseContext &context,
     return {null_element_id, pugi::xml_node()};
   }
 
-  const ElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::text;
-  element.node = first;
-  auto &[last] = registry.create_text_element(element_id);
-
+  pugi::xml_node last;
   for (last = first; is_text_node(last.next_sibling());
        last = last.next_sibling()) {
   }
+
+  const auto &[element_id, _, __] = registry.create_text_element(first, last);
 
   return {element_id, last.next_sibling()};
 }

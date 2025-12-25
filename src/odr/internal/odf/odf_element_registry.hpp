@@ -87,7 +87,7 @@ public:
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type,
                                                           pugi::xml_node node);
   std::tuple<ElementIdentifier, Element &, Text &>
-  create_text_element(pugi::xml_node first_node);
+  create_text_element(pugi::xml_node first_node, pugi::xml_node last_node);
   std::tuple<ElementIdentifier, Element &, Table &>
   create_table_element(pugi::xml_node node);
   std::tuple<ElementIdentifier, Element &, Sheet &>

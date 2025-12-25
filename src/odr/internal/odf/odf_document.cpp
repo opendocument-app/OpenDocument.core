@@ -158,28 +158,58 @@ public:
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).type;
+    if (const ElementRegistry::Element *element =
+            m_registry->element(element_id);
+        element != nullptr) {
+      return element->type;
+    }
+    return ElementType::none;
   }
 
   [[nodiscard]] ElementIdentifier
   element_parent(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).parent_id;
+    if (const ElementRegistry::Element *element =
+            m_registry->element(element_id);
+        element != nullptr) {
+      return element->parent_id;
+    }
+    return null_element_id;
   }
   [[nodiscard]] ElementIdentifier
   element_first_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).first_child_id;
+    if (const ElementRegistry::Element *element =
+            m_registry->element(element_id);
+        element != nullptr) {
+      return element->first_child_id;
+    }
+    return null_element_id;
   }
   [[nodiscard]] ElementIdentifier
   element_last_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).last_child_id;
+    if (const ElementRegistry::Element *element =
+            m_registry->element(element_id);
+        element != nullptr) {
+      return element->last_child_id;
+    }
+    return null_element_id;
   }
   [[nodiscard]] ElementIdentifier
   element_previous_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).previous_sibling_id;
+    if (const ElementRegistry::Element *element =
+            m_registry->element(element_id);
+        element != nullptr) {
+      return element->previous_sibling_id;
+    }
+    return null_element_id;
   }
   [[nodiscard]] ElementIdentifier
   element_next_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).next_sibling_id;
+    if (const ElementRegistry::Element *element =
+            m_registry->element(element_id);
+        element != nullptr) {
+      return element->next_sibling_id;
+    }
+    return null_element_id;
   }
 
   [[nodiscard]] bool
