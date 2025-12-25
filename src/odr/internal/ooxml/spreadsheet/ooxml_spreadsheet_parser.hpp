@@ -1,14 +1,11 @@
 #pragma once
 
+#include <odr/definitions.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 
 namespace pugi {
 class xml_node;
-}
-
-namespace odr {
-class ExtendedElementIdentifier;
 }
 
 namespace odr::internal::ooxml::spreadsheet {
@@ -41,8 +38,7 @@ private:
   const SharedStrings *m_shared_strings{};
 };
 
-ExtendedElementIdentifier parse_tree(ElementRegistry &registry,
-                                     const ParseContext &context,
-                                     pugi::xml_node node);
+ElementIdentifier parse_tree(ElementRegistry &registry,
+                             const ParseContext &context, pugi::xml_node node);
 
 } // namespace odr::internal::ooxml::spreadsheet

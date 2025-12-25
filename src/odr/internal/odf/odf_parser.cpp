@@ -11,23 +11,22 @@ namespace odr::internal::odf {
 
 namespace {
 
-using TreeParser =
-    std::function<std::tuple<ExtendedElementIdentifier, pugi::xml_node>(
-        ElementRegistry &registry, pugi::xml_node node)>;
-using ChildrenParser = std::function<void(ElementRegistry &registry,
-                                          ExtendedElementIdentifier parent_id,
-                                          pugi::xml_node node)>;
+using TreeParser = std::function<std::tuple<ElementIdentifier, pugi::xml_node>(
+    ElementRegistry &registry, pugi::xml_node node)>;
+using ChildrenParser =
+    std::function<void(ElementRegistry &registry, ElementIdentifier parent_id,
+                       pugi::xml_node node)>;
 
-std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+std::tuple<ElementIdentifier, pugi::xml_node>
 parse_any_element_tree(ElementRegistry &registry, pugi::xml_node node);
 
 void parse_any_element_children(ElementRegistry &registry,
-                                const ExtendedElementIdentifier parent_id,
+                                const ElementIdentifier parent_id,
                                 const pugi::xml_node node) {
   for (pugi::xml_node child_node = node.first_child(); child_node;) {
     if (auto [child_id, next_sibling] =
             parse_any_element_tree(registry, child_node);
-        child_id.is_null()) {
+        child_id == null_element_id) {
       child_node = child_node.next_sibling();
     } else {
       registry.append_child(parent_id, child_id);
@@ -36,12 +35,12 @@ void parse_any_element_children(ElementRegistry &registry,
   }
 }
 
-std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+std::tuple<ElementIdentifier, pugi::xml_node>
 parse_element_tree(ElementRegistry &registry, const ElementType type,
                    const pugi::xml_node node,
                    const ChildrenParser &children_parser) {
   if (!node) {
-    return {ExtendedElementIdentifier::null(), pugi::xml_node()};
+    return {null_element_id, pugi::xml_node()};
   }
 
   const auto &[element_id, _] = registry.create_element(type, node);
@@ -71,10 +70,10 @@ bool is_text_node(const pugi::xml_node node) {
   return false;
 }
 
-std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+std::tuple<ElementIdentifier, pugi::xml_node>
 parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
   if (!first) {
-    return {ExtendedElementIdentifier::null(), pugi::xml_node()};
+    return {null_element_id, pugi::xml_node()};
   }
 
   const auto &[element_id, _, text] = registry.create_text_element(first);
@@ -86,10 +85,10 @@ parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
   return {element_id, last.next_sibling()};
 }
 
-std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+std::tuple<ElementIdentifier, pugi::xml_node>
 parse_table_row(ElementRegistry &registry, const pugi::xml_node node) {
   if (!node) {
-    return {ExtendedElementIdentifier::null(), pugi::xml_node()};
+    return {null_element_id, pugi::xml_node()};
   }
 
   const auto &[element_id, _] =
@@ -104,10 +103,10 @@ parse_table_row(ElementRegistry &registry, const pugi::xml_node node) {
   return {element_id, node.next_sibling()};
 }
 
-std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+std::tuple<ElementIdentifier, pugi::xml_node>
 parse_table(ElementRegistry &registry, const pugi::xml_node node) {
   if (!node) {
-    return {ExtendedElementIdentifier::null(), pugi::xml_node()};
+    return {null_element_id, pugi::xml_node()};
   }
 
   const auto &[element_id, _, table] = registry.create_table_element(node);
@@ -133,10 +132,10 @@ parse_table(ElementRegistry &registry, const pugi::xml_node node) {
   return {element_id, node.next_sibling()};
 }
 
-std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+std::tuple<ElementIdentifier, pugi::xml_node>
 parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
   if (!node) {
-    return {ExtendedElementIdentifier::null(), pugi::xml_node()};
+    return {null_element_id, pugi::xml_node()};
   }
 
   const auto &[element_id, _, sheet] = registry.create_sheet_element(node);
@@ -147,7 +146,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
     const std::uint32_t columns_repeated =
         column_node.attribute("table:number-columns-repeated").as_uint(1);
 
-    sheet.create_column(cursor.column(), columns_repeated, column_node);
+    sheet.register_column(cursor.column(), columns_repeated, column_node);
 
     cursor.add_column(columns_repeated);
   }
@@ -159,45 +158,78 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
     const std::uint32_t rows_repeated =
         row_node.attribute("table:number-rows-repeated").as_uint(1);
 
-    sheet.create_row(cursor.row(), rows_repeated, row_node);
+    sheet.register_row(cursor.row(), rows_repeated, row_node);
 
     // TODO covered cells
+    bool row_empty = true;
     for (const pugi::xml_node cell_node :
          row_node.children("table:table-cell")) {
-      const std::uint32_t columns_repeated =
-          cell_node.attribute("table:number-columns-repeated").as_uint(1);
-      const std::uint32_t colspan =
-          cell_node.attribute("table:number-columns-spanned").as_uint(1);
-      const std::uint32_t rowspan =
-          cell_node.attribute("table:number-rows-spanned").as_uint(1);
-
-      sheet.create_cell(cursor.column(), cursor.row(), columns_repeated,
-                        rows_repeated, cell_node);
-
-      bool empty = false;
+      bool cell_empty = false;
       if (!cell_node.first_child()) {
-        empty = true;
+        cell_empty = true;
       }
 
-      if (!empty) {
-        for (std::uint32_t row_repeat = 0; row_repeat < rows_repeated;
-             ++row_repeat) {
-          for (std::uint32_t column_repeat = 0;
-               column_repeat < columns_repeated; ++column_repeat) {
-            const ExtendedElementIdentifier cell_id =
-                ExtendedElementIdentifier::make_cell(
-                    element_id.element_id(), cursor.column() + column_repeat,
-                    cursor.row() + row_repeat);
-            registry.append_sheet_cell(element_id, cell_id);
-            parse_any_element_children(registry, cell_id, cell_node);
-          }
+      if (!cell_empty) {
+        row_empty = false;
+        break;
+      }
+    }
+
+    if (row_empty) {
+      sheet.register_row(cursor.row(), rows_repeated, row_node);
+      // TODO covered cells
+      for (const pugi::xml_node cell_node :
+           row_node.children("table:table-cell")) {
+        const std::uint32_t columns_repeated =
+            cell_node.attribute("table:number-columns-repeated").as_uint(1);
+        const std::uint32_t colspan =
+            cell_node.attribute("table:number-columns-spanned").as_uint(1);
+        const std::uint32_t rowspan =
+            cell_node.attribute("table:number-rows-spanned").as_uint(1);
+
+        cursor.add_cell(colspan, rowspan, columns_repeated);
+      }
+      cursor.add_row(rows_repeated);
+      continue;
+    }
+
+    for (std::uint32_t row_repeat = 0; row_repeat < rows_repeated;
+         ++row_repeat) {
+      sheet.register_row(cursor.row(), 1, row_node);
+
+      // TODO covered cells
+      for (const pugi::xml_node cell_node :
+           row_node.children("table:table-cell")) {
+        const std::uint32_t columns_repeated =
+            cell_node.attribute("table:number-columns-repeated").as_uint(1);
+        const std::uint32_t colspan =
+            cell_node.attribute("table:number-columns-spanned").as_uint(1);
+        const std::uint32_t rowspan =
+            cell_node.attribute("table:number-rows-spanned").as_uint(1);
+        const bool is_repeated = columns_repeated > 1 || rows_repeated > 1;
+
+        bool cell_empty = false;
+        if (!cell_node.first_child()) {
+          cell_empty = true;
+        }
+
+        if (cell_empty) {
+          cursor.add_cell(colspan, rowspan, columns_repeated);
+          continue;
+        }
+
+        for (std::uint32_t column_repeat = 0; column_repeat < columns_repeated;
+             ++column_repeat) {
+          const auto &[cell_id, _, __] = registry.create_sheet_cell_element(
+              cell_node, cursor.position(), is_repeated);
+          registry.append_sheet_cell(element_id, cell_id);
+          sheet.register_cell(cursor.column(), cursor.row(), 1, 1, cell_id);
+          parse_any_element_children(registry, cell_id, cell_node);
         }
       }
 
-      cursor.add_cell(colspan, rowspan, columns_repeated);
+      cursor.add_row(1);
     }
-
-    cursor.add_row(rows_repeated);
   }
 
   sheet.dimensions.rows = cursor.row();
@@ -205,7 +237,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
   for (const pugi::xml_node shape_node :
        node.child("table:shapes").children()) {
     if (auto [shape_id, _] = parse_any_element_tree(registry, shape_node);
-        !shape_id.is_null()) {
+        shape_id != null_element_id) {
       registry.append_shape(element_id, shape_id);
     }
   }
@@ -214,7 +246,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
 }
 
 void parse_presentation_children(ElementRegistry &registry,
-                                 const ExtendedElementIdentifier root_id,
+                                 const ElementIdentifier root_id,
                                  const pugi::xml_node node) {
   for (const pugi::xml_node child_node : node.children("draw:page")) {
     auto [child_id, _] = parse_element_tree(
@@ -224,7 +256,7 @@ void parse_presentation_children(ElementRegistry &registry,
 }
 
 void parse_spreadsheet_children(ElementRegistry &registry,
-                                const ExtendedElementIdentifier root_id,
+                                const ElementIdentifier root_id,
                                 const pugi::xml_node node) {
   for (const pugi::xml_node child_node : node.children("table:table")) {
     auto [child_id, _] = parse_sheet(registry, child_node);
@@ -233,7 +265,7 @@ void parse_spreadsheet_children(ElementRegistry &registry,
 }
 
 void parse_drawing_children(ElementRegistry &registry,
-                            const ExtendedElementIdentifier root_id,
+                            const ElementIdentifier root_id,
                             const pugi::xml_node node) {
   for (const pugi::xml_node child_node : node.children("draw:page")) {
     auto [child_id, _] = parse_element_tree(
@@ -242,7 +274,7 @@ void parse_drawing_children(ElementRegistry &registry,
   }
 }
 
-std::tuple<ExtendedElementIdentifier, pugi::xml_node>
+std::tuple<ElementIdentifier, pugi::xml_node>
 parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
   const auto create_default_tree_parser =
       [](const ElementType type,
@@ -317,7 +349,7 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
     return constructor_it->second(registry, node);
   }
 
-  return {ExtendedElementIdentifier::null(), pugi::xml_node()};
+  return {null_element_id, pugi::xml_node()};
 }
 
 } // namespace
@@ -326,8 +358,8 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
 
 namespace odr::internal {
 
-ExtendedElementIdentifier odf::parse_tree(ElementRegistry &registry,
-                                          const pugi::xml_node node) {
+ElementIdentifier odf::parse_tree(ElementRegistry &registry,
+                                  const pugi::xml_node node) {
   auto [root, _] = parse_any_element_tree(registry, node);
   return root;
 }

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
-#include <odr/document_element_identifier.hpp>
-#include <odr/style.hpp>
+#include <odr/table_dimension.hpp>
 
 #include <map>
 #include <unordered_map>
@@ -15,7 +15,7 @@ namespace odr::internal::ooxml::spreadsheet {
 class ElementRegistry final {
 public:
   struct Element final {
-    ExtendedElementIdentifier parent_id;
+    ElementIdentifier parent_id{null_element_id};
     ElementIdentifier first_child_id{null_element_id};
     ElementIdentifier last_child_id{null_element_id};
     ElementIdentifier previous_sibling_id{null_element_id};
@@ -67,34 +67,31 @@ public:
 
   [[nodiscard]] std::size_t size() const noexcept;
 
-  ExtendedElementIdentifier create_element();
-  Text &create_text_element(ExtendedElementIdentifier id);
-  Sheet &create_sheet_element(ExtendedElementIdentifier id);
+  ElementIdentifier create_element();
+  Text &create_text_element(ElementIdentifier id);
+  Sheet &create_sheet_element(ElementIdentifier id);
 
-  [[nodiscard]] Element &element(ExtendedElementIdentifier id);
-  [[nodiscard]] const Element &element(ExtendedElementIdentifier id) const;
+  [[nodiscard]] Element &element(ElementIdentifier id);
+  [[nodiscard]] const Element &element(ElementIdentifier id) const;
 
-  [[nodiscard]] Text &text_element(ExtendedElementIdentifier id);
-  [[nodiscard]] const Text &text_element(ExtendedElementIdentifier id) const;
+  [[nodiscard]] Text &text_element(ElementIdentifier id);
+  [[nodiscard]] const Text &text_element(ElementIdentifier id) const;
 
-  [[nodiscard]] Sheet &sheet_element(ExtendedElementIdentifier id);
-  [[nodiscard]] const Sheet &sheet_element(ExtendedElementIdentifier id) const;
+  [[nodiscard]] Sheet &sheet_element(ElementIdentifier id);
+  [[nodiscard]] const Sheet &sheet_element(ElementIdentifier id) const;
 
-  void append_child(ExtendedElementIdentifier parent_id,
-                    ExtendedElementIdentifier child_id);
-  void append_shape(ExtendedElementIdentifier sheet_id,
-                    ExtendedElementIdentifier shape_id);
-  void append_sheet_cell(ExtendedElementIdentifier sheet_id,
-                         ExtendedElementIdentifier cell_id);
+  void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
+  void append_shape(ElementIdentifier sheet_id, ElementIdentifier shape_id);
+  void append_sheet_cell(ElementIdentifier sheet_id, ElementIdentifier cell_id);
 
 private:
   std::vector<Element> m_elements;
   std::unordered_map<ElementIdentifier, Text> m_texts;
   std::unordered_map<ElementIdentifier, Sheet> m_sheets;
 
-  void check_element_id(ExtendedElementIdentifier id) const;
-  void check_text_id(ExtendedElementIdentifier id) const;
-  void check_sheet_id(ExtendedElementIdentifier id) const;
+  void check_element_id(ElementIdentifier id) const;
+  void check_text_id(ElementIdentifier id) const;
+  void check_sheet_id(ElementIdentifier id) const;
 };
 
 } // namespace odr::internal::ooxml::spreadsheet

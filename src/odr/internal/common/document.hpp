@@ -1,6 +1,6 @@
 #pragma once
 
-#include <odr/document_element_identifier.hpp>
+#include <odr/definitions.hpp>
 #include <odr/internal/abstract/document.hpp>
 
 #include <memory>
@@ -23,7 +23,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   as_filesystem() const noexcept final;
 
-  [[nodiscard]] ExtendedElementIdentifier root_element() const override;
+  [[nodiscard]] ElementIdentifier root_element() const override;
 
   [[nodiscard]] const abstract::ElementAdapter *
   element_adapter() const override;
@@ -34,7 +34,7 @@ protected:
 
   std::shared_ptr<abstract::ReadableFilesystem> m_files;
 
-  ExtendedElementIdentifier m_root_element;
+  ElementIdentifier m_root_element;
   std::unique_ptr<abstract::ElementAdapter> m_element_adapter;
 };
 

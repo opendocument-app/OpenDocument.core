@@ -2,6 +2,7 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/table_dimension.hpp>
 
 #include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
@@ -28,7 +29,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
 
   for (const auto &[id, target] :
        parse_relationships(*m_files, AbsPath("/ppt/presentation.xml"))) {
-    m_slides_xml.at(id) =
+    m_slides_xml[id] =
         util::xml::parse(*m_files, AbsPath("/ppt").join(RelPath(target)));
   }
 
@@ -78,177 +79,165 @@ public:
       : m_document(&document), m_registry(&registry) {}
 
   [[nodiscard]] ElementType
-  element_type(const ExtendedElementIdentifier element_id) const override {
+  element_type(const ElementIdentifier element_id) const override {
     return m_registry->element(element_id).type;
   }
 
-  [[nodiscard]] ExtendedElementIdentifier
-  element_parent(const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] ElementIdentifier
+  element_parent(const ElementIdentifier element_id) const override {
     return m_registry->element(element_id).parent_id;
   }
-  [[nodiscard]] ExtendedElementIdentifier element_first_child(
-      const ExtendedElementIdentifier element_id) const override {
-    return ExtendedElementIdentifier(
-        m_registry->element(element_id).first_child_id);
+  [[nodiscard]] ElementIdentifier
+  element_first_child(const ElementIdentifier element_id) const override {
+    return m_registry->element(element_id).first_child_id;
   }
-  [[nodiscard]] ExtendedElementIdentifier element_last_child(
-      const ExtendedElementIdentifier element_id) const override {
-    return ExtendedElementIdentifier(
-        m_registry->element(element_id).last_child_id);
+  [[nodiscard]] ElementIdentifier
+  element_last_child(const ElementIdentifier element_id) const override {
+    return m_registry->element(element_id).last_child_id;
   }
-  [[nodiscard]] ExtendedElementIdentifier element_previous_sibling(
-      const ExtendedElementIdentifier element_id) const override {
-    return ExtendedElementIdentifier(
-        m_registry->element(element_id).previous_sibling_id);
+  [[nodiscard]] ElementIdentifier
+  element_previous_sibling(const ElementIdentifier element_id) const override {
+    return m_registry->element(element_id).previous_sibling_id;
   }
-  [[nodiscard]] ExtendedElementIdentifier element_next_sibling(
-      const ExtendedElementIdentifier element_id) const override {
-    return ExtendedElementIdentifier(
-        m_registry->element(element_id).next_sibling_id);
+  [[nodiscard]] ElementIdentifier
+  element_next_sibling(const ElementIdentifier element_id) const override {
+    return m_registry->element(element_id).next_sibling_id;
   }
 
-  [[nodiscard]] bool element_is_editable(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] bool
+  element_is_editable(const ElementIdentifier element_id) const override {
     return m_registry->element(element_id).is_editable;
   }
 
   [[nodiscard]] const abstract::TextRootAdapter *
-  text_root_adapter(const ExtendedElementIdentifier) const override {
+  text_root_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::SlideAdapter *
-  slide_adapter(const ExtendedElementIdentifier) const override {
+  slide_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const PageAdapter *
-  page_adapter(const ExtendedElementIdentifier element_id) const override {
+  page_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::page) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const abstract::SheetAdapter *
-  sheet_adapter(const ExtendedElementIdentifier) const override {
-    return nullptr;
-  }
-  [[nodiscard]] const abstract::SheetColumnAdapter *
-  sheet_column_adapter(const ExtendedElementIdentifier) const override {
-    return nullptr;
-  }
-  [[nodiscard]] const abstract::SheetRowAdapter *
-  sheet_row_adapter(const ExtendedElementIdentifier) const override {
+  sheet_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::SheetCellAdapter *
-  sheet_cell_adapter(const ExtendedElementIdentifier) const override {
+  sheet_cell_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::MasterPageAdapter *
-  master_page_adapter(const ExtendedElementIdentifier) const override {
+  master_page_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
-  [[nodiscard]] const LineBreakAdapter *line_break_adapter(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] const LineBreakAdapter *
+  line_break_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::line_break) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const ParagraphAdapter *
-  paragraph_adapter(const ExtendedElementIdentifier element_id) const override {
+  paragraph_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::paragraph) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const SpanAdapter *
-  span_adapter(const ExtendedElementIdentifier element_id) const override {
+  span_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::span) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const TextAdapter *
-  text_adapter(const ExtendedElementIdentifier element_id) const override {
+  text_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::text) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const LinkAdapter *
-  link_adapter(const ExtendedElementIdentifier element_id) const override {
+  link_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::link) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const BookmarkAdapter *
-  bookmark_adapter(const ExtendedElementIdentifier element_id) const override {
+  bookmark_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::bookmark) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const ListItemAdapter *
-  list_item_adapter(const ExtendedElementIdentifier element_id) const override {
+  list_item_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::list_item) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const TableAdapter *
-  table_adapter(const ExtendedElementIdentifier element_id) const override {
+  table_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::table) {
       return nullptr;
     }
     return this;
   }
-  [[nodiscard]] const TableColumnAdapter *table_column_adapter(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] const TableColumnAdapter *
+  table_column_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::table_column) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const TableRowAdapter *
-  table_row_adapter(const ExtendedElementIdentifier element_id) const override {
+  table_row_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::table_row) {
       return nullptr;
     }
     return this;
   }
-  [[nodiscard]] const TableCellAdapter *table_cell_adapter(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] const TableCellAdapter *
+  table_cell_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::table_cell) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const FrameAdapter *
-  frame_adapter(const ExtendedElementIdentifier element_id) const override {
+  frame_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::frame) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const abstract::RectAdapter *
-  rect_adapter(const ExtendedElementIdentifier) const override {
+  rect_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::LineAdapter *
-  line_adapter(const ExtendedElementIdentifier) const override {
+  line_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::CircleAdapter *
-  circle_adapter(const ExtendedElementIdentifier) const override {
+  circle_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::CustomShapeAdapter *
-  custom_shape_adapter(const ExtendedElementIdentifier) const override {
+  custom_shape_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const ImageAdapter *
-  image_adapter(const ExtendedElementIdentifier element_id) const override {
+  image_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::image) {
       return nullptr;
     }
@@ -256,42 +245,42 @@ public:
   }
 
   [[nodiscard]] PageLayout
-  page_layout(const ExtendedElementIdentifier element_id) const override {
+  page_layout(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
   }
-  [[nodiscard]] ExtendedElementIdentifier
-  page_master_page(const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] ElementIdentifier
+  page_master_page(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
   }
   [[nodiscard]] std::string
-  page_name(const ExtendedElementIdentifier element_id) const override {
+  page_name(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
   }
 
   [[nodiscard]] TextStyle
-  line_break_style(const ExtendedElementIdentifier element_id) const override {
+  line_break_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] ParagraphStyle
-  paragraph_style(const ExtendedElementIdentifier element_id) const override {
+  paragraph_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).paragraph_style;
   }
-  [[nodiscard]] TextStyle paragraph_text_style(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] TextStyle
+  paragraph_text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] TextStyle
-  span_style(const ExtendedElementIdentifier element_id) const override {
+  span_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] std::string
-  text_content(const ExtendedElementIdentifier element_id) const override {
+  text_content(const ElementIdentifier element_id) const override {
     const pugi::xml_node first = get_node(element_id);
     const pugi::xml_node last = m_registry->text_element(element_id).last;
 
@@ -302,7 +291,7 @@ public:
     }
     return result;
   }
-  void text_set_content(const ExtendedElementIdentifier element_id,
+  void text_set_content(const ElementIdentifier element_id,
                         const std::string &text) const override {
     const pugi::xml_node first = get_node(element_id);
     const pugi::xml_node last = m_registry->text_element(element_id).last;
@@ -358,29 +347,29 @@ public:
     }
   }
   [[nodiscard]] TextStyle
-  text_style(const ExtendedElementIdentifier element_id) const override {
+  text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] std::string
-  link_href(const ExtendedElementIdentifier element_id) const override {
+  link_href(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
   }
 
   [[nodiscard]] std::string
-  bookmark_name(const ExtendedElementIdentifier element_id) const override {
+  bookmark_name(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     return node.attribute("text:name").value();
   }
 
   [[nodiscard]] TextStyle
-  list_item_style(const ExtendedElementIdentifier element_id) const override {
+  list_item_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] TableDimensions
-  table_dimensions(const ExtendedElementIdentifier element_id) const override {
+  table_dimensions(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
 
     TableDimensions result;
@@ -405,22 +394,21 @@ public:
 
     return result;
   }
-  [[nodiscard]] ExtendedElementIdentifier table_first_column(
-      const ExtendedElementIdentifier element_id) const override {
-    return ExtendedElementIdentifier(
-        m_registry->table_element(element_id).first_column_id);
+  [[nodiscard]] ElementIdentifier
+  table_first_column(const ElementIdentifier element_id) const override {
+    return m_registry->table_element(element_id).first_column_id;
   }
-  [[nodiscard]] ExtendedElementIdentifier
-  table_first_row(const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] ElementIdentifier
+  table_first_row(const ElementIdentifier element_id) const override {
     return element_first_child(element_id);
   }
   [[nodiscard]] TableStyle
-  table_style(const ExtendedElementIdentifier element_id) const override {
+  table_style(const ElementIdentifier element_id) const override {
     return get_partial_style(element_id).table_style;
   }
 
-  [[nodiscard]] TableColumnStyle table_column_style(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] TableColumnStyle
+  table_column_style(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     TableColumnStyle result;
     if (const std::optional<Measure> width =
@@ -431,24 +419,23 @@ public:
   }
 
   [[nodiscard]] TableRowStyle
-  table_row_style(const ExtendedElementIdentifier element_id) const override {
-    (void)element_id;
+  table_row_style(const ElementIdentifier) const override {
     return {}; // TODO
   }
 
-  [[nodiscard]] bool table_cell_is_covered(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] bool
+  table_cell_is_covered(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     return std::strcmp(node.name(), "table:covered-table-cell") == 0;
   }
   [[nodiscard]] TableDimensions
-  table_cell_span(const ExtendedElementIdentifier element_id) const override {
+  table_cell_span(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     return {node.attribute("table:number-rows-spanned").as_uint(1),
             node.attribute("table:number-columns-spanned").as_uint(1)};
   }
-  [[nodiscard]] ValueType table_cell_value_type(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] ValueType
+  table_cell_value_type(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     if (const char *value_type = node.attribute("office:value-type").value();
         std::strcmp("float", value_type) == 0) {
@@ -457,13 +444,12 @@ public:
     return ValueType::string;
   }
   [[nodiscard]] TableCellStyle
-  table_cell_style(const ExtendedElementIdentifier element_id) const override {
-    (void)element_id;
+  table_cell_style(const ElementIdentifier) const override {
     return {}; // TODO
   }
 
   [[nodiscard]] AnchorType
-  frame_anchor_type(const ExtendedElementIdentifier element_id) const override {
+  frame_anchor_type(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
 
     if (node.child("wp:inline")) {
@@ -472,17 +458,15 @@ public:
     return AnchorType::as_char; // TODO default?
   }
   [[nodiscard]] std::optional<std::string>
-  frame_x(const ExtendedElementIdentifier element_id) const override {
-    (void)element_id;
+  frame_x(const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
-  frame_y(const ExtendedElementIdentifier element_id) const override {
-    (void)element_id;
+  frame_y(const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
-  frame_width(const ExtendedElementIdentifier element_id) const override {
+  frame_width(const ElementIdentifier element_id) const override {
     const pugi::xml_node inner_node = get_frame_inner_node(element_id);
     if (const std::optional<Measure> width = read_emus_attribute(
             inner_node.child("wp:extent").attribute("cx"))) {
@@ -491,7 +475,7 @@ public:
     return {};
   }
   [[nodiscard]] std::optional<std::string>
-  frame_height(const ExtendedElementIdentifier element_id) const override {
+  frame_height(const ElementIdentifier element_id) const override {
     const pugi::xml_node inner_node = get_frame_inner_node(element_id);
     if (const std::optional<Measure> height = read_emus_attribute(
             inner_node.child("wp:extent").attribute("cy"))) {
@@ -500,18 +484,16 @@ public:
     return {};
   }
   [[nodiscard]] std::optional<std::string>
-  frame_z_index(const ExtendedElementIdentifier element_id) const override {
-    (void)element_id;
+  frame_z_index(const ElementIdentifier) const override {
     return std::nullopt;
   }
   [[nodiscard]] GraphicStyle
-  frame_style(const ExtendedElementIdentifier element_id) const override {
-    (void)element_id;
+  frame_style(const ElementIdentifier) const override {
     return {};
   }
 
   [[nodiscard]] bool
-  image_is_internal(const ExtendedElementIdentifier element_id) const override {
+  image_is_internal(const ElementIdentifier element_id) const override {
     if (m_document->as_filesystem() == nullptr) {
       return false;
     }
@@ -523,7 +505,7 @@ public:
     return false;
   }
   [[nodiscard]] std::optional<odr::File>
-  image_file(const ExtendedElementIdentifier element_id) const override {
+  image_file(const ElementIdentifier element_id) const override {
     if (m_document->as_filesystem() == nullptr) {
       return std::nullopt;
     }
@@ -531,7 +513,7 @@ public:
     return File(m_document->as_filesystem()->open(path));
   }
   [[nodiscard]] std::string
-  image_href(const ExtendedElementIdentifier element_id) const override {
+  image_href(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     return node.attribute("xlink:href").value();
   }
@@ -541,12 +523,12 @@ private:
   ElementRegistry *m_registry{nullptr};
 
   [[nodiscard]] pugi::xml_node
-  get_node(const ExtendedElementIdentifier element_id) const {
+  get_node(const ElementIdentifier element_id) const {
     return m_registry->element(element_id).node;
   }
 
   [[nodiscard]] pugi::xml_node
-  get_frame_inner_node(const ExtendedElementIdentifier element_id) const {
+  get_frame_inner_node(const ElementIdentifier element_id) const {
     const pugi::xml_node node = get_node(element_id);
     if (const pugi::xml_node anchor = node.child("wp:anchor")) {
       return anchor;
@@ -570,21 +552,16 @@ private:
     return "";
   }
 
-  [[nodiscard]] const char *
-  get_style_name(const ExtendedElementIdentifier element_id) const {
-    (void)element_id;
+  [[nodiscard]] const char *get_style_name(const ElementIdentifier) const {
+    return {}; // TODO
+  }
+
+  [[nodiscard]] ResolvedStyle get_partial_style(const ElementIdentifier) const {
     return {}; // TODO
   }
 
   [[nodiscard]] ResolvedStyle
-  get_partial_style(const ExtendedElementIdentifier element_id) const {
-    (void)element_id;
-    return {}; // TODO
-  }
-
-  [[nodiscard]] ResolvedStyle
-  get_intermediate_style(const ExtendedElementIdentifier element_id) const {
-    (void)element_id;
+  get_intermediate_style(const ElementIdentifier element_id) const {
     return {}; // TODO
   }
 };

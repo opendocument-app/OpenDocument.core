@@ -3,7 +3,6 @@
 #include <memory>
 
 namespace odr {
-class ExtendedElementIdentifier;
 class File;
 enum class FileType;
 enum class DocumentType;
@@ -46,7 +45,7 @@ public:
   as_filesystem() const noexcept = 0;
 
   /// \return cursor to the root element of the document.
-  [[nodiscard]] virtual ExtendedElementIdentifier root_element() const = 0;
+  [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
 
   [[nodiscard]] virtual const ElementAdapter *element_adapter() const = 0;
 };

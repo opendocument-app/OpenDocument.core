@@ -2,6 +2,8 @@
 
 #include <odr/file.hpp>
 #include <odr/style.hpp>
+#include <odr/table_dimension.hpp>
+#include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/document_element.hpp>
 
@@ -10,13 +12,13 @@ namespace odr {
 Element::Element() = default;
 
 Element::Element(const internal::abstract::ElementAdapter *adapter,
-                 const ExtendedElementIdentifier identifier)
+                 const ElementIdentifier identifier)
     : m_adapter{adapter}, m_identifier{identifier} {}
 
 Element::operator bool() const { return exists_(); }
 
 bool Element::exists_() const {
-  return m_adapter != nullptr && !m_identifier.is_null();
+  return m_adapter != nullptr && m_identifier != null_element_id;
 }
 
 ElementType Element::type() const {
@@ -64,6 +66,10 @@ Sheet Element::as_sheet() const {
 
 Page Element::as_page() const {
   return {m_adapter, m_identifier, m_adapter->page_adapter(m_identifier)};
+}
+
+SheetCell Element::as_sheet_cell() const {
+  return {m_adapter, m_identifier, m_adapter->sheet_cell_adapter(m_identifier)};
 }
 
 MasterPage Element::as_master_page() const {
@@ -152,7 +158,7 @@ ElementIterator::ElementIterator() = default;
 
 ElementIterator::ElementIterator(
     const internal::abstract::ElementAdapter *adapter,
-    const ExtendedElementIdentifier identifier)
+    const ElementIdentifier identifier)
     : m_adapter{adapter}, m_identifier{identifier} {}
 
 ElementIterator::reference ElementIterator::operator*() const {
@@ -174,7 +180,7 @@ ElementIterator ElementIterator::operator++(int) {
 }
 
 bool ElementIterator::exists_() const {
-  return m_adapter != nullptr && !m_identifier.is_null();
+  return m_adapter != nullptr && m_identifier != null_element_id;
 }
 
 ElementRange::ElementRange() = default;
@@ -198,7 +204,7 @@ MasterPage TextRoot::first_master_page() const {
   if (!exists_()) {
     return {};
   }
-  const ExtendedElementIdentifier master_page_id =
+  const ElementIdentifier master_page_id =
       m_adapter2->text_root_first_master_page(m_identifier);
   return {m_adapter, master_page_id,
           m_adapter->master_page_adapter(master_page_id)};
@@ -216,7 +222,7 @@ MasterPage Slide::master_page() const {
   if (!exists_()) {
     return {};
   }
-  const ExtendedElementIdentifier master_page_id =
+  const ElementIdentifier master_page_id =
       m_adapter2->slide_master_page(m_identifier);
   return {m_adapter, master_page_id,
           m_adapter->master_page_adapter(master_page_id)};
@@ -237,30 +243,12 @@ Sheet::content(const std::optional<TableDimensions> range) const {
                    : TableDimensions();
 }
 
-SheetColumn Sheet::column(const std::uint32_t column) const {
-  if (!exists_()) {
-    return {};
-  }
-  const ExtendedElementIdentifier column_id =
-      m_adapter2->sheet_column(m_identifier, column);
-  return {m_adapter, column_id, m_adapter->sheet_column_adapter(column_id)};
-}
-
-SheetRow Sheet::row(const std::uint32_t row) const {
-  if (!exists_()) {
-    return {};
-  }
-  const ExtendedElementIdentifier row_id =
-      m_adapter2->sheet_row(m_identifier, row);
-  return {m_adapter, row_id, m_adapter->sheet_row_adapter(row_id)};
-}
-
 SheetCell Sheet::cell(const std::uint32_t column,
                       const std::uint32_t row) const {
   if (!exists_()) {
     return {};
   }
-  const ExtendedElementIdentifier cell_id =
+  const ElementIdentifier cell_id =
       m_adapter2->sheet_cell(m_identifier, column, row);
   return {m_adapter, cell_id, m_adapter->sheet_cell_adapter(cell_id)};
 }
@@ -269,27 +257,28 @@ ElementRange Sheet::shapes() const {
   if (!exists_()) {
     return {};
   }
-  const ExtendedElementIdentifier first_shape_id =
+  const ElementIdentifier first_shape_id =
       m_adapter2->sheet_first_shape(m_identifier);
   return ElementRange(ElementIterator(m_adapter, first_shape_id));
 }
 
-TableColumnStyle SheetColumn::style() const {
-  return exists_() ? m_adapter2->sheet_column_style(m_identifier)
+TableStyle Sheet::style() const {
+  return exists_() ? m_adapter2->sheet_style(m_identifier) : TableStyle();
+}
+
+TableColumnStyle Sheet::column_style(const std::uint32_t column) const {
+  return exists_() ? m_adapter2->sheet_column_style(m_identifier, column)
                    : TableColumnStyle();
 }
 
-TableRowStyle SheetRow::style() const {
-  return exists_() ? m_adapter2->sheet_row_style(m_identifier)
+TableRowStyle Sheet::row_style(const std::uint32_t row) const {
+  return exists_() ? m_adapter2->sheet_row_style(m_identifier, row)
                    : TableRowStyle();
 }
 
-std::uint32_t SheetCell::column() const {
-  return exists_() ? m_adapter2->sheet_cell_column(m_identifier) : 0;
-}
-
-std::uint32_t SheetCell::row() const {
-  return exists_() ? m_adapter2->sheet_cell_row(m_identifier) : 0;
+TablePosition SheetCell::position() const {
+  return exists_() ? m_adapter2->sheet_cell_position(m_identifier)
+                   : TablePosition(0, 0);
 }
 
 bool SheetCell::is_covered() const {
@@ -323,7 +312,7 @@ MasterPage Page::master_page() const {
   if (!exists_()) {
     return {};
   }
-  const ExtendedElementIdentifier master_page_id =
+  const ElementIdentifier master_page_id =
       m_adapter2->page_master_page(m_identifier);
   return {m_adapter, master_page_id,
           m_adapter->master_page_adapter(master_page_id)};
@@ -383,8 +372,7 @@ TableRow Table::first_row() const {
   if (!exists_()) {
     return {};
   }
-  const ExtendedElementIdentifier row_id =
-      m_adapter2->table_first_row(m_identifier);
+  const ElementIdentifier row_id = m_adapter2->table_first_row(m_identifier);
   return {m_adapter, row_id, m_adapter->table_row_adapter(row_id)};
 }
 
@@ -392,7 +380,7 @@ TableColumn Table::first_column() const {
   if (!exists_()) {
     return {};
   }
-  const ExtendedElementIdentifier column_id =
+  const ElementIdentifier column_id =
       m_adapter2->table_first_column(m_identifier);
   return {m_adapter, column_id, m_adapter->table_column_adapter(column_id)};
 }

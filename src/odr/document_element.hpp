@@ -4,7 +4,21 @@
 #include <optional>
 #include <string>
 
-#include <odr/document_element_identifier.hpp>
+#include <odr/definitions.hpp>
+
+namespace odr {
+class TablePosition;
+struct TableDimensions;
+class File;
+struct TextStyle;
+struct ParagraphStyle;
+struct TableStyle;
+struct TableColumnStyle;
+struct TableRowStyle;
+struct TableCellStyle;
+struct GraphicStyle;
+struct PageLayout;
+} // namespace odr
 
 namespace odr::internal::abstract {
 class Document;
@@ -38,17 +52,6 @@ class ImageAdapter;
 } // namespace odr::internal::abstract
 
 namespace odr {
-
-class File;
-struct TextStyle;
-struct ParagraphStyle;
-struct TableStyle;
-struct TableColumnStyle;
-struct TableRowStyle;
-struct TableCellStyle;
-struct GraphicStyle;
-struct PageLayout;
-struct TableDimensions;
 
 class Element;
 class ElementIterator;
@@ -90,8 +93,6 @@ enum class ElementType {
 
   master_page,
 
-  sheet_column,
-  sheet_row,
   sheet_cell,
 
   text,
@@ -141,7 +142,7 @@ class Element {
 public:
   Element();
   Element(const internal::abstract::ElementAdapter *adapter,
-          ExtendedElementIdentifier identifier);
+          ElementIdentifier identifier);
 
   explicit operator bool() const;
 
@@ -160,6 +161,7 @@ public:
   [[nodiscard]] Slide as_slide() const;
   [[nodiscard]] Sheet as_sheet() const;
   [[nodiscard]] Page as_page() const;
+  [[nodiscard]] SheetCell as_sheet_cell() const;
   [[nodiscard]] MasterPage as_master_page() const;
   [[nodiscard]] LineBreak as_line_break() const;
   [[nodiscard]] Paragraph as_paragraph() const;
@@ -181,7 +183,7 @@ public:
 
 protected:
   const internal::abstract::ElementAdapter *m_adapter{nullptr};
-  ExtendedElementIdentifier m_identifier;
+  ElementIdentifier m_identifier;
 
   friend bool operator==(const Element &lhs, const Element &rhs) {
     return lhs.m_identifier == rhs.m_identifier;
@@ -201,7 +203,7 @@ public:
 
   ElementIterator();
   ElementIterator(const internal::abstract::ElementAdapter *adapter,
-                  ExtendedElementIdentifier identifier);
+                  ElementIdentifier identifier);
 
   reference operator*() const;
 
@@ -210,7 +212,7 @@ public:
 
 private:
   const internal::abstract::ElementAdapter *m_adapter{nullptr};
-  ExtendedElementIdentifier m_identifier;
+  ElementIdentifier m_identifier{null_element_id};
 
   friend bool operator==(const ElementIterator &lhs,
                          const ElementIterator &rhs) {
@@ -240,7 +242,7 @@ template <typename T> class ElementBase : public Element {
 public:
   ElementBase() = default;
   ElementBase(const internal::abstract::ElementAdapter *adapter,
-              const ExtendedElementIdentifier identifier, const T *adapter2)
+              const ElementIdentifier identifier, const T *adapter2)
       : Element(adapter, identifier), m_adapter2{adapter2} {}
 
   explicit operator bool() const { return exists_(); }
@@ -286,28 +288,12 @@ public:
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;
 
-  [[nodiscard]] SheetColumn column(std::uint32_t column) const;
-  [[nodiscard]] SheetRow row(std::uint32_t row) const;
   [[nodiscard]] SheetCell cell(std::uint32_t column, std::uint32_t row) const;
-
   [[nodiscard]] ElementRange shapes() const;
-};
 
-/// @brief Represents a sheet column element in a document.
-class SheetColumn final
-    : public ElementBase<internal::abstract::SheetColumnAdapter> {
-public:
-  using ElementBase::ElementBase;
-
-  [[nodiscard]] TableColumnStyle style() const;
-};
-
-/// @brief Represents a sheet row element in a document.
-class SheetRow final : public ElementBase<internal::abstract::SheetRowAdapter> {
-public:
-  using ElementBase::ElementBase;
-
-  [[nodiscard]] TableRowStyle style() const;
+  [[nodiscard]] TableStyle style() const;
+  [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;
+  [[nodiscard]] TableRowStyle row_style(std::uint32_t row) const;
 };
 
 /// @brief Represents a sheet cell element in a document.
@@ -316,8 +302,7 @@ class SheetCell final
 public:
   using ElementBase::ElementBase;
 
-  [[nodiscard]] std::uint32_t column() const;
-  [[nodiscard]] std::uint32_t row() const;
+  [[nodiscard]] TablePosition position() const;
   [[nodiscard]] bool is_covered() const;
   [[nodiscard]] TableDimensions span() const;
   [[nodiscard]] ValueType value_type() const;

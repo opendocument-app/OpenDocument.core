@@ -87,6 +87,8 @@ set(ODR_SOURCE_FILES
         "src/odr/odr.cpp"
         "src/odr/quantity.cpp"
         "src/odr/style.cpp"
+        "src/odr/table_dimension.cpp"
+        "src/odr/table_position.cpp"
 
         "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp"
         "src/odr/internal/magic.cpp"
@@ -106,7 +108,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/random.cpp"
         "src/odr/internal/common/style.cpp"
         "src/odr/internal/common/table_cursor.cpp"
-        "src/odr/internal/common/table_position.cpp"
+        "src/odr/table_position.cpp"
         "src/odr/internal/common/table_range.cpp"
         "src/odr/internal/common/temporary_file.cpp"
 

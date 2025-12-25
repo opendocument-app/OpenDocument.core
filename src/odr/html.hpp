@@ -3,7 +3,7 @@
 #include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
-#include <odr/style.hpp>
+#include <odr/table_dimension.hpp>
 
 #include <functional>
 #include <memory>

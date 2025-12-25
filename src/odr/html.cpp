@@ -349,7 +349,7 @@ void html::edit(const Document &document, const char *diff,
   for (auto json = nlohmann::json::parse(diff);
        const auto &[key, value] : json["modifiedText"].items()) {
     auto element =
-        DocumentPath::find(document.root_element(), DocumentPath(key));
+        DocumentPath::resolve(document.root_element(), DocumentPath(key));
     if (!element) {
       throw std::invalid_argument("element with path " + key + " not found");
     }

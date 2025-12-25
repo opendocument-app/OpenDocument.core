@@ -2,6 +2,7 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
@@ -94,8 +95,6 @@ namespace {
 
 class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::SheetAdapter,
-                             public abstract::SheetColumnAdapter,
-                             public abstract::SheetRowAdapter,
                              public abstract::SheetCellAdapter,
                              public abstract::LineBreakAdapter,
                              public abstract::ParagraphAdapter,
@@ -108,283 +107,246 @@ public:
       : m_document(&document), m_registry(&registry) {}
 
   [[nodiscard]] ElementType
-  element_type(const ExtendedElementIdentifier element_id) const override {
+  element_type(const ElementIdentifier element_id) const override {
     return m_registry->element(element_id).type;
   }
 
-  [[nodiscard]] ExtendedElementIdentifier
-  element_parent(const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] ElementIdentifier
+  element_parent(const ElementIdentifier element_id) const override {
     return m_registry->element(element_id).parent_id;
   }
-  [[nodiscard]] ExtendedElementIdentifier element_first_child(
-      const ExtendedElementIdentifier element_id) const override {
-    return ExtendedElementIdentifier(
-        m_registry->element(element_id).first_child_id);
+  [[nodiscard]] ElementIdentifier
+  element_first_child(const ElementIdentifier element_id) const override {
+    return m_registry->element(element_id).first_child_id;
   }
-  [[nodiscard]] ExtendedElementIdentifier element_last_child(
-      const ExtendedElementIdentifier element_id) const override {
-    return ExtendedElementIdentifier(
-        m_registry->element(element_id).last_child_id);
+  [[nodiscard]] ElementIdentifier
+  element_last_child(const ElementIdentifier element_id) const override {
+    return m_registry->element(element_id).last_child_id;
   }
-  [[nodiscard]] ExtendedElementIdentifier element_previous_sibling(
-      const ExtendedElementIdentifier element_id) const override {
-    return ExtendedElementIdentifier(
-        m_registry->element(element_id).previous_sibling_id);
+  [[nodiscard]] ElementIdentifier
+  element_previous_sibling(const ElementIdentifier element_id) const override {
+    return m_registry->element(element_id).previous_sibling_id;
   }
-  [[nodiscard]] ExtendedElementIdentifier element_next_sibling(
-      const ExtendedElementIdentifier element_id) const override {
-    return ExtendedElementIdentifier(
-        m_registry->element(element_id).next_sibling_id);
+  [[nodiscard]] ElementIdentifier
+  element_next_sibling(const ElementIdentifier element_id) const override {
+    return m_registry->element(element_id).next_sibling_id;
   }
 
-  [[nodiscard]] bool element_is_editable(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] bool
+  element_is_editable(const ElementIdentifier element_id) const override {
     return m_registry->element(element_id).is_editable;
   }
 
   [[nodiscard]] const abstract::TextRootAdapter *
-  text_root_adapter(const ExtendedElementIdentifier) const override {
+  text_root_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::SlideAdapter *
-  slide_adapter(const ExtendedElementIdentifier) const override {
+  slide_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::PageAdapter *
-  page_adapter(const ExtendedElementIdentifier) const override {
+  page_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const SheetAdapter *
-  sheet_adapter(const ExtendedElementIdentifier element_id) const override {
+  sheet_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::sheet) {
       return nullptr;
     }
     return this;
   }
-  [[nodiscard]] const SheetColumnAdapter *sheet_column_adapter(
-      const ExtendedElementIdentifier element_id) const override {
-    if (m_registry->element(element_id).type != ElementType::sheet_column) {
-      return nullptr;
-    }
-    return this;
-  }
-  [[nodiscard]] const SheetRowAdapter *
-  sheet_row_adapter(const ExtendedElementIdentifier element_id) const override {
-    if (m_registry->element(element_id).type != ElementType::sheet_row) {
-      return nullptr;
-    }
-    return this;
-  }
-  [[nodiscard]] const SheetCellAdapter *sheet_cell_adapter(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] const SheetCellAdapter *
+  sheet_cell_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::sheet_cell) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const abstract::MasterPageAdapter *
-  master_page_adapter(const ExtendedElementIdentifier) const override {
+  master_page_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
-  [[nodiscard]] const LineBreakAdapter *line_break_adapter(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] const LineBreakAdapter *
+  line_break_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::line_break) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const ParagraphAdapter *
-  paragraph_adapter(const ExtendedElementIdentifier element_id) const override {
+  paragraph_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::paragraph) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const SpanAdapter *
-  span_adapter(const ExtendedElementIdentifier element_id) const override {
+  span_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::span) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const TextAdapter *
-  text_adapter(const ExtendedElementIdentifier element_id) const override {
+  text_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::text) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const abstract::LinkAdapter *
-  link_adapter(const ExtendedElementIdentifier) const override {
+  link_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::BookmarkAdapter *
-  bookmark_adapter(const ExtendedElementIdentifier) const override {
+  bookmark_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::ListItemAdapter *
-  list_item_adapter(const ExtendedElementIdentifier) const override {
+  list_item_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::TableAdapter *
-  table_adapter(const ExtendedElementIdentifier) const override {
+  table_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::TableColumnAdapter *
-  table_column_adapter(const ExtendedElementIdentifier) const override {
+  table_column_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::TableRowAdapter *
-  table_row_adapter(const ExtendedElementIdentifier) const override {
+  table_row_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::TableCellAdapter *
-  table_cell_adapter(const ExtendedElementIdentifier) const override {
+  table_cell_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const FrameAdapter *
-  frame_adapter(const ExtendedElementIdentifier element_id) const override {
+  frame_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::frame) {
       return nullptr;
     }
     return this;
   }
   [[nodiscard]] const abstract::RectAdapter *
-  rect_adapter(const ExtendedElementIdentifier) const override {
+  rect_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::LineAdapter *
-  line_adapter(const ExtendedElementIdentifier) const override {
+  line_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::CircleAdapter *
-  circle_adapter(const ExtendedElementIdentifier) const override {
+  circle_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const abstract::CustomShapeAdapter *
-  custom_shape_adapter(const ExtendedElementIdentifier) const override {
+  custom_shape_adapter(const ElementIdentifier) const override {
     return nullptr;
   }
   [[nodiscard]] const ImageAdapter *
-  image_adapter(const ExtendedElementIdentifier element_id) const override {
+  image_adapter(const ElementIdentifier element_id) const override {
     if (m_registry->element(element_id).type != ElementType::image) {
       return nullptr;
     }
     return this;
   }
 
-  [[nodiscard]] std::string
-  sheet_name(const ExtendedElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] std::string sheet_name(const ElementIdentifier) const override {
     return {}; // TODO
   }
   [[nodiscard]] TableDimensions
-  sheet_dimensions(const ExtendedElementIdentifier element_id) const override {
-    (void)element_id;
+  sheet_dimensions(const ElementIdentifier) const override {
     return {}; // TODO
   }
   [[nodiscard]] TableDimensions
-  sheet_content(const ExtendedElementIdentifier element_id,
+  sheet_content(const ElementIdentifier element_id,
                 const std::optional<TableDimensions> range) const override {
     (void)element_id;
     (void)range;
     return {}; // TODO
   }
-  [[nodiscard]] ExtendedElementIdentifier
-  sheet_column(const ExtendedElementIdentifier element_id,
-               const std::uint32_t column) const override {
-    (void)element_id;
-    (void)column;
-    return {}; // TODO
-  }
-  [[nodiscard]] ExtendedElementIdentifier
-  sheet_row(const ExtendedElementIdentifier element_id,
-            const std::uint32_t row) const override {
-    (void)element_id;
-    (void)row;
-    return {}; // TODO
-  }
-  [[nodiscard]] ExtendedElementIdentifier
-  sheet_cell(const ExtendedElementIdentifier element_id,
-             const std::uint32_t column,
+  [[nodiscard]] ElementIdentifier
+  sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,
              const std::uint32_t row) const override {
     (void)element_id;
     (void)column;
     (void)row;
     return {}; // TODO
   }
-  [[nodiscard]] ExtendedElementIdentifier
-  sheet_first_shape(const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] ElementIdentifier
+  sheet_first_shape(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
   }
   [[nodiscard]] TableStyle
-  sheet_style(const ExtendedElementIdentifier element_id) const override {
+  sheet_style(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
   }
-
-  [[nodiscard]] TableColumnStyle sheet_column_style(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] TableColumnStyle
+  sheet_column_style(ElementIdentifier element_id,
+                     std::uint32_t column) const override {
     (void)element_id;
+    (void)column;
     return {}; // TODO
   }
-
   [[nodiscard]] TableRowStyle
-  sheet_row_style(const ExtendedElementIdentifier element_id) const override {
+  sheet_row_style(ElementIdentifier element_id,
+                  std::uint32_t row) const override {
     (void)element_id;
+    (void)row;
     return {}; // TODO
   }
 
-  [[nodiscard]] std::uint32_t
-  sheet_cell_column(const ExtendedElementIdentifier element_id) const override {
-    return element_id.column();
+  [[nodiscard]] TablePosition
+  sheet_cell_position(const ElementIdentifier element_id) const override {
+    (void)element_id;
+    return {}; // TODO
   }
-  [[nodiscard]] std::uint32_t
-  sheet_cell_row(const ExtendedElementIdentifier element_id) const override {
-    return element_id.row();
-  }
-  [[nodiscard]] bool sheet_cell_is_covered(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] bool
+  sheet_cell_is_covered(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
   }
   [[nodiscard]] TableDimensions
-  sheet_cell_span(const ExtendedElementIdentifier element_id) const override {
+  sheet_cell_span(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
   }
-  [[nodiscard]] ValueType sheet_cell_value_type(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] ValueType
+  sheet_cell_value_type(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
   }
   [[nodiscard]] TableCellStyle
-  sheet_cell_style(const ExtendedElementIdentifier element_id) const override {
+  sheet_cell_style(const ElementIdentifier element_id) const override {
     return get_partial_cell_style(element_id).table_cell_style;
   }
 
   [[nodiscard]] TextStyle
-  line_break_style(const ExtendedElementIdentifier element_id) const override {
+  line_break_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] ParagraphStyle
-  paragraph_style(const ExtendedElementIdentifier element_id) const override {
+  paragraph_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).paragraph_style;
   }
-  [[nodiscard]] TextStyle paragraph_text_style(
-      const ExtendedElementIdentifier element_id) const override {
+  [[nodiscard]] TextStyle
+  paragraph_text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] TextStyle
-  span_style(const ExtendedElementIdentifier element_id) const override {
+  span_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] std::string
-  text_content(const ExtendedElementIdentifier element_id) const override {
+  text_content(const ElementIdentifier element_id) const override {
     const pugi::xml_node first = get_node(element_id);
     const pugi::xml_node last = m_registry->text_element(element_id).last;
 
@@ -395,7 +357,7 @@ public:
     }
     return result;
   }
-  void text_set_content(const ExtendedElementIdentifier element_id,
+  void text_set_content(const ElementIdentifier element_id,
                         const std::string &text) const override {
     const pugi::xml_node first = get_node(element_id);
     const pugi::xml_node last = m_registry->text_element(element_id).last;
@@ -451,12 +413,12 @@ public:
     }
   }
   [[nodiscard]] TextStyle
-  text_style(const ExtendedElementIdentifier element_id) const override {
+  text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] AnchorType
-  frame_anchor_type(const ExtendedElementIdentifier element_id) const override {
+  frame_anchor_type(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
 
     if (node.child("wp:inline")) {
@@ -465,17 +427,17 @@ public:
     return AnchorType::as_char; // TODO default?
   }
   [[nodiscard]] std::optional<std::string>
-  frame_x(const ExtendedElementIdentifier element_id) const override {
+  frame_x(const ElementIdentifier element_id) const override {
     (void)element_id;
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
-  frame_y(const ExtendedElementIdentifier element_id) const override {
+  frame_y(const ElementIdentifier element_id) const override {
     (void)element_id;
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
-  frame_width(const ExtendedElementIdentifier element_id) const override {
+  frame_width(const ElementIdentifier element_id) const override {
     const pugi::xml_node inner_node = get_frame_inner_node(element_id);
     if (const std::optional<Measure> width = read_emus_attribute(
             inner_node.child("wp:extent").attribute("cx"))) {
@@ -484,7 +446,7 @@ public:
     return {};
   }
   [[nodiscard]] std::optional<std::string>
-  frame_height(const ExtendedElementIdentifier element_id) const override {
+  frame_height(const ElementIdentifier element_id) const override {
     const pugi::xml_node inner_node = get_frame_inner_node(element_id);
     if (const std::optional<Measure> height = read_emus_attribute(
             inner_node.child("wp:extent").attribute("cy"))) {
@@ -493,18 +455,18 @@ public:
     return {};
   }
   [[nodiscard]] std::optional<std::string>
-  frame_z_index(const ExtendedElementIdentifier element_id) const override {
+  frame_z_index(const ElementIdentifier element_id) const override {
     (void)element_id;
     return std::nullopt;
   }
   [[nodiscard]] GraphicStyle
-  frame_style(const ExtendedElementIdentifier element_id) const override {
+  frame_style(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {};
   }
 
   [[nodiscard]] bool
-  image_is_internal(const ExtendedElementIdentifier element_id) const override {
+  image_is_internal(const ElementIdentifier element_id) const override {
     if (m_document->as_filesystem() == nullptr) {
       return false;
     }
@@ -516,7 +478,7 @@ public:
     return false;
   }
   [[nodiscard]] std::optional<odr::File>
-  image_file(const ExtendedElementIdentifier element_id) const override {
+  image_file(const ElementIdentifier element_id) const override {
     if (m_document->as_filesystem() == nullptr) {
       return std::nullopt;
     }
@@ -524,7 +486,7 @@ public:
     return File(m_document->as_filesystem()->open(path));
   }
   [[nodiscard]] std::string
-  image_href(const ExtendedElementIdentifier element_id) const override {
+  image_href(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     return node.attribute("xlink:href").value();
   }
@@ -534,12 +496,12 @@ private:
   ElementRegistry *m_registry{nullptr};
 
   [[nodiscard]] pugi::xml_node
-  get_node(const ExtendedElementIdentifier element_id) const {
+  get_node(const ElementIdentifier element_id) const {
     return m_registry->element(element_id).node;
   }
 
   [[nodiscard]] pugi::xml_node
-  get_frame_inner_node(const ExtendedElementIdentifier element_id) const {
+  get_frame_inner_node(const ElementIdentifier element_id) const {
     const pugi::xml_node node = get_node(element_id);
     if (const pugi::xml_node anchor = node.child("wp:anchor")) {
       return anchor;
@@ -564,7 +526,7 @@ private:
   }
 
   [[nodiscard]] const char *
-  get_style_name(const ExtendedElementIdentifier element_id) const {
+  get_style_name(const ElementIdentifier element_id) const {
     const pugi::xml_node node = get_node(element_id);
     for (pugi::xml_attribute attribute : node.attributes()) {
       if (util::string::ends_with(attribute.name(), ":style-name")) {
@@ -575,7 +537,7 @@ private:
   }
 
   [[nodiscard]] ResolvedStyle
-  get_partial_style(const ExtendedElementIdentifier element_id) const {
+  get_partial_style(const ElementIdentifier element_id) const {
     if (const ElementType type = element_type(element_id);
         type == ElementType::sheet_cell) {
       return get_partial_cell_style(element_id);
@@ -584,7 +546,7 @@ private:
   }
 
   [[nodiscard]] ResolvedStyle
-  get_partial_cell_style(const ExtendedElementIdentifier element_id) const {
+  get_partial_cell_style(const ElementIdentifier element_id) const {
     const pugi::xml_node node = get_node(element_id);
     if (const pugi::xml_attribute style_id = node.attribute("s")) {
       return m_document->style_registry().cell_style(style_id.as_uint());
@@ -593,9 +555,9 @@ private:
   }
 
   [[nodiscard]] ResolvedStyle
-  get_intermediate_style(const ExtendedElementIdentifier element_id) const {
-    const ExtendedElementIdentifier parent_id = element_parent(element_id);
-    if (parent_id.is_null()) {
+  get_intermediate_style(const ElementIdentifier element_id) const {
+    const ElementIdentifier parent_id = element_parent(element_id);
+    if (parent_id == null_element_id) {
       return get_partial_style(element_id);
     }
     ResolvedStyle base = get_intermediate_style(parent_id);

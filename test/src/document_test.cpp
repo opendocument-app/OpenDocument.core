@@ -2,6 +2,7 @@
 #include <odr/document_element.hpp>
 #include <odr/document_path.hpp>
 #include <odr/html.hpp>
+#include <odr/style.hpp>
 
 #include <test_util.hpp>
 
@@ -53,7 +54,7 @@ TEST(Document, odt_element_path) {
 
   const DocumentPath t1_path = DocumentPath::extract(t1, root);
   EXPECT_EQ(t1_path.to_string(), "/child:0/child:0");
-  const Element t1_via_path = DocumentPath::find(root, t1_path);
+  const Element t1_via_path = DocumentPath::resolve(root, t1_path);
   EXPECT_EQ(t1_via_path, t1);
 }
 
@@ -71,8 +72,8 @@ TEST(Document, odt_element_path2) {
 
   const auto root = document.root_element();
 
-  const Element cell_via_path = DocumentPath::find(
-      root, DocumentPath("/child:41/row:0/column:1/child:0/child:0"));
+  const Element cell_via_path = DocumentPath::resolve(
+      root, DocumentPath("/child:41/child:0/child:1/child:0/child:0"));
   EXPECT_EQ(cell_via_path.type(), ElementType::text);
   EXPECT_EQ(cell_via_path.as_text().content(), "B1");
 }
@@ -192,18 +193,18 @@ TEST(Document, edit_odt_diff) {
   const DocumentFile validate_file(output_path);
   const Document validate_document = validate_file.document();
   EXPECT_EQ("Outasdfsdafdline",
-            DocumentPath::find(validate_document.root_element(),
-                               DocumentPath("/child:16/child:0"))
+            DocumentPath::resolve(validate_document.root_element(),
+                                  DocumentPath("/child:16/child:0"))
                 .as_text()
                 .content());
   EXPECT_EQ("Colorasdfasdfasdfed Line",
-            DocumentPath::find(validate_document.root_element(),
-                               DocumentPath("/child:24/child:0"))
+            DocumentPath::resolve(validate_document.root_element(),
+                                  DocumentPath("/child:24/child:0"))
                 .as_text()
                 .content());
   EXPECT_EQ("Text hello world!",
-            DocumentPath::find(validate_document.root_element(),
-                               DocumentPath("/child:6/child:0"))
+            DocumentPath::resolve(validate_document.root_element(),
+                                  DocumentPath("/child:6/child:0"))
                 .as_text()
                 .content());
 }
@@ -212,7 +213,7 @@ TEST(Document, edit_ods_diff) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const auto diff =
-      R"({"modifiedText":{"/child:0/row:0/child:0/child:0/child:0":"Page 1 hi","/child:1/row:0/child:0/child:0/child:0":"Page 2 hihi","/child:2/row:0/child:0/child:0/child:0":"Page 3 hihihi","/child:3/row:0/child:0/child:0/child:0":"Page 4 hihihihi","/child:4/row:0/child:0/child:0/child:0":"Page 5 hihihihihi"}})";
+      R"({"modifiedText":{"/child:0/cell:A1/child:0/child:0":"Page 1 hi","/child:1/cell:A1/child:0/child:0":"Page 2 hihi","/child:2/cell:A1/child:0/child:0":"Page 3 hihihi","/child:3/cell:A1/child:0/child:0":"Page 4 hihihihi","/child:4/cell:A1/child:0/child:0":"Page 5 hihihihihi"}})";
   DocumentFile document_file(
       TestData::test_file_path("odr-public/ods/pages.ods"), *logger);
   document_file = document_file.decrypt(
@@ -227,34 +228,32 @@ TEST(Document, edit_ods_diff) {
 
   const DocumentFile validate_file(output_path);
   const Document validate_document = validate_file.document();
-  EXPECT_EQ(
-      "Page 1 hi",
-      DocumentPath::find(validate_document.root_element(),
-                         DocumentPath("/child:0/row:0/child:0/child:0/child:0"))
-          .as_text()
-          .content());
-  EXPECT_EQ(
-      "Page 2 hihi",
-      DocumentPath::find(validate_document.root_element(),
-                         DocumentPath("/child:1/row:0/child:0/child:0/child:0"))
-          .as_text()
-          .content());
+  EXPECT_EQ("Page 1 hi", DocumentPath::resolve(
+                             validate_document.root_element(),
+                             DocumentPath("/child:0/cell:A1/child:0/child:0"))
+                             .as_text()
+                             .content());
+  EXPECT_EQ("Page 2 hihi", DocumentPath::resolve(
+                               validate_document.root_element(),
+                               DocumentPath("/child:1/cell:A1/child:0/child:0"))
+                               .as_text()
+                               .content());
   EXPECT_EQ(
       "Page 3 hihihi",
-      DocumentPath::find(validate_document.root_element(),
-                         DocumentPath("/child:2/row:0/child:0/child:0/child:0"))
+      DocumentPath::resolve(validate_document.root_element(),
+                            DocumentPath("/child:2/cell:A1/child:0/child:0"))
           .as_text()
           .content());
   EXPECT_EQ(
       "Page 4 hihihihi",
-      DocumentPath::find(validate_document.root_element(),
-                         DocumentPath("/child:3/row:0/child:0/child:0/child:0"))
+      DocumentPath::resolve(validate_document.root_element(),
+                            DocumentPath("/child:3/cell:A1/child:0/child:0"))
           .as_text()
           .content());
   EXPECT_EQ(
       "Page 5 hihihihihi",
-      DocumentPath::find(validate_document.root_element(),
-                         DocumentPath("/child:4/row:0/child:0/child:0/child:0"))
+      DocumentPath::resolve(validate_document.root_element(),
+                            DocumentPath("/child:4/cell:A1/child:0/child:0"))
           .as_text()
           .content());
 }
@@ -279,18 +278,18 @@ TEST(Document, edit_docx_diff) {
   const DocumentFile validate_file(output_path);
   const Document validate_document = validate_file.document();
   EXPECT_EQ("Outasdfsdafdline",
-            DocumentPath::find(validate_document.root_element(),
-                               DocumentPath("/child:16/child:0/child:0"))
+            DocumentPath::resolve(validate_document.root_element(),
+                                  DocumentPath("/child:16/child:0/child:0"))
                 .as_text()
                 .content());
   EXPECT_EQ("Colorasdfasdfasdfed Line",
-            DocumentPath::find(validate_document.root_element(),
-                               DocumentPath("/child:24/child:0/child:0"))
+            DocumentPath::resolve(validate_document.root_element(),
+                                  DocumentPath("/child:24/child:0/child:0"))
                 .as_text()
                 .content());
   EXPECT_EQ("Text hello world!",
-            DocumentPath::find(validate_document.root_element(),
-                               DocumentPath("/child:6/child:0/child:0"))
+            DocumentPath::resolve(validate_document.root_element(),
+                                  DocumentPath("/child:6/child:0/child:0"))
                 .as_text()
                 .content());
 }
