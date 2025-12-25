@@ -459,10 +459,12 @@ public:
   }
   [[nodiscard]] std::optional<std::string>
   frame_x(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
   frame_y(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
@@ -552,16 +554,21 @@ private:
     return "";
   }
 
-  [[nodiscard]] const char *get_style_name(const ElementIdentifier) const {
+  [[nodiscard]] const char *
+  get_style_name(const ElementIdentifier element_id) const {
+    (void)element_id;
     return {}; // TODO
   }
 
-  [[nodiscard]] ResolvedStyle get_partial_style(const ElementIdentifier) const {
+  [[nodiscard]] ResolvedStyle
+  get_partial_style(const ElementIdentifier element_id) const {
+    (void)element_id;
     return {}; // TODO
   }
 
   [[nodiscard]] ResolvedStyle
   get_intermediate_style(const ElementIdentifier element_id) const {
+    (void)element_id;
     return {}; // TODO
   }
 };
