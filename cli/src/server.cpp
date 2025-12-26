@@ -1,5 +1,8 @@
+#include "odr/archive.hpp"
+
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 #include <odr/http_server.hpp>
 
@@ -9,7 +12,8 @@
 using namespace odr;
 
 int main(const int argc, char **argv) {
-  auto logger = Logger::create_stdio("odr-server", LogLevel::verbose);
+  std::shared_ptr logger =
+      Logger::create_stdio("odr-server", LogLevel::verbose);
 
   std::string input{argv[1]};
 
@@ -48,10 +52,31 @@ int main(const int argc, char **argv) {
   html_config.editable = true;
 
   {
-    std::string prefix = "one_file";
-    HtmlViews views = server.serve_file(decoded_file, prefix, html_config);
+    constexpr std::string prefix = "file";
+    const HtmlViews views =
+        server.serve_file(decoded_file, prefix, html_config);
     ODR_INFO(*logger, "hosted decoded file with id: " << prefix);
     for (const auto &view : views) {
+      ODR_INFO(*logger,
+               "http://localhost:8080/file/" << prefix << "/" << view.path());
+    }
+  }
+
+  if (decoded_file.is_document_file() || decoded_file.is_archive_file()) {
+    std::optional<Filesystem> filesystem;
+    if (decoded_file.is_document_file()) {
+      filesystem = decoded_file.as_document_file().document().as_filesystem();
+    } else if (decoded_file.is_archive_file()) {
+      filesystem = decoded_file.as_archive_file().archive().as_filesystem();
+    }
+
+    constexpr std::string prefix = "filesystem";
+    const HtmlService filesystem_service = html::translate(
+        filesystem.value(), server_config.cache_path + "/" + prefix,
+        html_config, logger);
+    server.connect_service(filesystem_service, prefix);
+    ODR_INFO(*logger, "hosted filesystem with id: " << prefix);
+    for (const auto &view : filesystem_service.list_views()) {
       ODR_INFO(*logger,
                "http://localhost:8080/file/" << prefix << "/" << view.path());
     }

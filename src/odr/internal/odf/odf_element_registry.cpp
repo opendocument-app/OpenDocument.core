@@ -169,6 +169,7 @@ void ElementRegistry::append_child(const ElementIdentifier parent_id,
       element_at(parent_id).last_child_id;
 
   element_at(child_id).parent_id = parent_id;
+  element_at(child_id).previous_sibling_id = previous_sibling_id;
 
   if (element_at(parent_id).first_child_id == null_element_id) {
     element_at(parent_id).first_child_id = child_id;
@@ -191,6 +192,7 @@ void ElementRegistry::append_column(const ElementIdentifier table_id,
       table_element_at(table_id).last_column_id;
 
   element_at(column_id).parent_id = table_id;
+  element_at(column_id).previous_sibling_id = previous_sibling_id;
 
   if (table_element_at(table_id).first_column_id == null_element_id) {
     table_element_at(table_id).first_column_id = column_id;
@@ -213,6 +215,7 @@ void ElementRegistry::append_shape(const ElementIdentifier sheet_id,
       sheet_element_at(sheet_id).last_shape_id;
 
   element_at(shape_id).parent_id = sheet_id;
+  element_at(shape_id).previous_sibling_id = previous_sibling_id;
 
   if (sheet_element_at(sheet_id).first_shape_id == null_element_id) {
     sheet_element_at(sheet_id).first_shape_id = shape_id;
@@ -293,8 +296,10 @@ void ElementRegistry::Sheet::register_cell(const std::uint32_t column,
                                            const std::uint32_t row,
                                            const std::uint32_t columns_repeated,
                                            const std::uint32_t rows_repeated,
+                                           const pugi::xml_node element,
                                            const ElementIdentifier element_id) {
   Cell &cell = rows[row + rows_repeated].cells[column + columns_repeated];
+  cell.node = element;
   cell.element_id = element_id;
 }
 
@@ -319,14 +324,12 @@ ElementRegistry::Sheet::row(const std::uint32_t row) const {
 const ElementRegistry::Sheet::Cell *
 ElementRegistry::Sheet::cell(const std::uint32_t column,
                              const std::uint32_t row) const {
-  const Row *row_entry = this->row(row);
-  if (row_entry == nullptr) {
-    return nullptr;
-  }
-  const auto &cells = row_entry->cells;
-  if (const auto cell_it = util::map::lookup_greater_than(cells, column);
-      cell_it != std::end(cells)) {
-    return &cell_it->second;
+  if (const Row *row_entry = this->row(row); row_entry != nullptr) {
+    const auto &cells = row_entry->cells;
+    if (const auto cell_it = util::map::lookup_greater_than(cells, column);
+        cell_it != std::end(cells)) {
+      return &cell_it->second;
+    }
   }
   return nullptr;
 }
@@ -344,6 +347,15 @@ ElementRegistry::Sheet::column_node(const std::uint32_t column) const {
 ElementRegistry::Sheet::row_node(const std::uint32_t row) const {
   if (const Row *row_entry = this->row(row); row_entry != nullptr) {
     return row_entry->node;
+  }
+  return {};
+}
+
+[[nodiscard]] pugi::xml_node
+ElementRegistry::Sheet::cell_node(const std::uint32_t column,
+                                  const std::uint32_t row) const {
+  if (const Cell *cell_entry = this->cell(column, row); cell_entry != nullptr) {
+    return cell_entry->node;
   }
   return {};
 }

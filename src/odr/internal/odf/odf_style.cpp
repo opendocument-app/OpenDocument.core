@@ -1,7 +1,6 @@
-#include "odf_document.hpp"
-
 #include <odr/internal/odf/odf_style.hpp>
 
+#include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 
 #include <cstring>

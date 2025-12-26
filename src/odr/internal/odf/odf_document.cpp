@@ -217,7 +217,15 @@ public:
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->is_editable;
+      if (element->parent_id != null_element_id) {
+        return element_is_editable(element->parent_id);
+      }
+      if (element->type == ElementType::sheet_cell) {
+        const ElementRegistry::SheetCell *sheet_cell =
+            m_registry->sheet_cell_element(element_id);
+        return sheet_cell != nullptr && !sheet_cell->is_repeated;
+      }
+      return true;
     }
     return false;
   }
@@ -517,9 +525,37 @@ public:
   [[nodiscard]] TableDimensions
   sheet_content(const ElementIdentifier element_id,
                 const std::optional<TableDimensions> range) const override {
-    (void)element_id;
-    (void)range;
-    return {}; // TODO
+    const pugi::xml_node node = get_node(element_id);
+
+    TableDimensions result;
+
+    TableCursor cursor;
+    for (auto row : node.children("table:table-row")) {
+      const auto rows_repeated =
+          row.attribute("table:number-rows-repeated").as_uint(1);
+      cursor.add_row(rows_repeated);
+
+      for (auto cell : row.children("table:table-cell")) {
+        const auto columns_repeated =
+            cell.attribute("table:number-columns-repeated").as_uint(1);
+        const auto colspan =
+            cell.attribute("table:number-columns-spanned").as_uint(1);
+        const auto rowspan =
+            cell.attribute("table:number-rows-spanned").as_uint(1);
+        cursor.add_cell(colspan, rowspan, columns_repeated);
+
+        const std::uint32_t new_rows = cursor.row();
+        if (const std::uint32_t new_cols =
+                std::max(result.columns, cursor.column());
+            cell.first_child() && range && new_rows < range->rows &&
+            new_cols < range->columns) {
+          result.rows = new_rows;
+          result.columns = new_cols;
+        }
+      }
+    }
+
+    return result;
   }
   [[nodiscard]] ElementIdentifier
   sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,
@@ -586,6 +622,14 @@ public:
     }
     return {};
   }
+  [[nodiscard]] TableCellStyle
+  sheet_cell_style(const ElementIdentifier element_id,
+                   const std::uint32_t column,
+                   const std::uint32_t row) const override {
+    const ElementIdentifier cell_id = sheet_cell(element_id, column, row);
+    return get_partial_cell_style(element_id, cell_id, {column, row})
+        .table_cell_style;
+  }
 
   [[nodiscard]] TablePosition
   sheet_cell_position(const ElementIdentifier element_id) const override {
@@ -611,10 +655,6 @@ public:
       return ValueType::float_number;
     }
     return ValueType::string;
-  }
-  [[nodiscard]] TableCellStyle
-  sheet_cell_style(const ElementIdentifier element_id) const override {
-    return get_partial_cell_style(element_id).table_cell_style;
   }
 
   [[nodiscard]] PageLayout
@@ -1069,11 +1109,14 @@ private:
 
   [[nodiscard]] ResolvedStyle
   get_partial_style(const ElementIdentifier element_id) const {
-    if (const ElementType type = element_type(element_id);
-        type == ElementType::sheet_cell) {
-      return get_partial_cell_style(element_id);
+    if (const ElementRegistry::SheetCell *cell_registry =
+            m_registry->sheet_cell_element(element_id);
+        cell_registry != nullptr) {
+      return get_partial_cell_style(element_parent(element_id), element_id,
+                                    cell_registry->position);
     }
-    if (const char *style_name = get_style_name(element_id)) {
+    if (const char *style_name = get_style_name(element_id);
+        style_name != nullptr) {
       if (const Style *style = m_document->style_registry().style(style_name)) {
         return style->resolved();
       }
@@ -1092,26 +1135,29 @@ private:
     return base;
   }
 
-  ResolvedStyle
-  get_partial_cell_style(const ElementIdentifier element_id) const {
+  ResolvedStyle get_partial_cell_style(const ElementIdentifier sheet_id,
+                                       const ElementIdentifier cell_id,
+                                       const TablePosition &position) const {
     const char *style_name = nullptr;
 
     if (const pugi::xml_attribute attr =
-            get_node(element_id).attribute("table:style-name")) {
+            get_node(cell_id).attribute("table:style-name")) {
       style_name = attr.value();
     }
 
-    const ElementRegistry::SheetCell *cell_registry =
-        m_registry->sheet_cell_element(element_id);
-    if (cell_registry == nullptr) {
-      return {};
-    }
-    const auto [column, row] = cell_registry->position.pair();
-    const ElementIdentifier sheet_id = element_parent(element_id);
+    const auto [column, row] = position.pair();
     const ElementRegistry::Sheet *sheet_registry =
         m_registry->sheet_element(sheet_id);
     if (sheet_registry == nullptr) {
       return {};
+    }
+
+    if (style_name == nullptr) {
+      const pugi::xml_node cell_node = sheet_registry->cell_node(column, row);
+      if (const pugi::xml_attribute attr =
+              cell_node.attribute("table:style-name")) {
+        style_name = attr.value();
+      }
     }
 
     if (style_name == nullptr) {

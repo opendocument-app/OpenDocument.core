@@ -341,16 +341,25 @@ public:
     return {}; // TODO
   }
   [[nodiscard]] TableColumnStyle
-  sheet_column_style(ElementIdentifier element_id,
-                     std::uint32_t column) const override {
+  sheet_column_style(const ElementIdentifier element_id,
+                     const std::uint32_t column) const override {
     (void)element_id;
     (void)column;
     return {}; // TODO
   }
   [[nodiscard]] TableRowStyle
-  sheet_row_style(ElementIdentifier element_id,
-                  std::uint32_t row) const override {
+  sheet_row_style(const ElementIdentifier element_id,
+                  const std::uint32_t row) const override {
     (void)element_id;
+    (void)row;
+    return {}; // TODO
+  }
+  [[nodiscard]] TableCellStyle
+  sheet_cell_style(const ElementIdentifier element_id,
+                   const std::uint32_t column,
+                   const std::uint32_t row) const override {
+    (void)element_id;
+    (void)column;
     (void)row;
     return {}; // TODO
   }
@@ -374,10 +383,6 @@ public:
   sheet_cell_value_type(const ElementIdentifier element_id) const override {
     (void)element_id;
     return {}; // TODO
-  }
-  [[nodiscard]] TableCellStyle
-  sheet_cell_style(const ElementIdentifier element_id) const override {
-    return get_partial_cell_style(element_id).table_cell_style;
   }
 
   [[nodiscard]] TextStyle

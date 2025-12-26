@@ -105,6 +105,7 @@ void ElementRegistry::append_child(const ElementIdentifier parent_id,
       element(parent_id).last_child_id;
 
   element(child_id).parent_id = parent_id;
+  element(child_id).previous_sibling_id = previous_sibling_id;
 
   if (element(parent_id).first_child_id == null_element_id) {
     element(parent_id).first_child_id = child_id;
@@ -123,10 +124,7 @@ void ElementRegistry::append_column(const ElementIdentifier table_id,
       table_element(table_id).last_column_id;
 
   element(column_id).parent_id = table_id;
-  element(column_id).first_child_id = null_element_id;
-  element(column_id).last_child_id = null_element_id;
   element(column_id).previous_sibling_id = previous_sibling_id;
-  element(column_id).next_sibling_id = null_element_id;
 
   if (table_element(table_id).first_column_id == null_element_id) {
     table_element(table_id).first_column_id = column_id;

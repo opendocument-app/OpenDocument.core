@@ -172,6 +172,9 @@ public:
                      std::uint32_t column) const = 0;
   [[nodiscard]] virtual TableRowStyle
   sheet_row_style(ElementIdentifier element_id, std::uint32_t row) const = 0;
+  [[nodiscard]] virtual TableCellStyle
+  sheet_cell_style(ElementIdentifier element_id, std::uint32_t column,
+                   std::uint32_t row) const = 0;
 };
 
 class SheetCellAdapter {
@@ -187,9 +190,6 @@ public:
   sheet_cell_span(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual ValueType
   sheet_cell_value_type(ElementIdentifier element_id) const = 0;
-
-  [[nodiscard]] virtual TableCellStyle
-  sheet_cell_style(ElementIdentifier element_id) const = 0;
 };
 
 class MasterPageAdapter {

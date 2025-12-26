@@ -158,10 +158,11 @@ void ElementRegistry::append_child(const ElementIdentifier parent_id,
   check_element_id(parent_id);
   check_element_id(child_id);
 
-  const ElementIdentifier previous_sibling_id(
-      element_at(parent_id).last_child_id);
+  const ElementIdentifier previous_sibling_id =
+      element_at(parent_id).last_child_id;
 
   element_at(child_id).parent_id = parent_id;
+  element_at(child_id).previous_sibling_id = previous_sibling_id;
 
   if (element_at(parent_id).first_child_id == null_element_id) {
     element_at(parent_id).first_child_id = child_id;
@@ -176,8 +177,8 @@ void ElementRegistry::append_shape(const ElementIdentifier sheet_id,
   check_sheet_id(sheet_id);
   check_element_id(shape_id);
 
-  const ElementIdentifier previous_sibling_id(
-      sheet_element_at(sheet_id).last_shape_id);
+  const ElementIdentifier previous_sibling_id =
+      sheet_element_at(sheet_id).last_shape_id;
 
   element_at(shape_id).parent_id = sheet_id;
   element_at(shape_id).previous_sibling_id = previous_sibling_id;

@@ -294,6 +294,8 @@ public:
   [[nodiscard]] TableStyle style() const;
   [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;
   [[nodiscard]] TableRowStyle row_style(std::uint32_t row) const;
+  [[nodiscard]] TableCellStyle cell_style(std::uint32_t column,
+                                          std::uint32_t row) const;
 };
 
 /// @brief Represents a sheet cell element in a document.
@@ -306,8 +308,6 @@ public:
   [[nodiscard]] bool is_covered() const;
   [[nodiscard]] TableDimensions span() const;
   [[nodiscard]] ValueType value_type() const;
-
-  [[nodiscard]] TableCellStyle style() const;
 };
 
 /// @brief Represents a page element in a document.

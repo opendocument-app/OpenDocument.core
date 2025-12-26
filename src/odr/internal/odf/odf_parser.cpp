@@ -177,6 +177,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
 
     if (row_empty) {
       sheet.register_row(cursor.row(), rows_repeated, row_node);
+
       // TODO covered cells
       for (const pugi::xml_node cell_node :
            row_node.children("table:table-cell")) {
@@ -187,8 +188,12 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
         const std::uint32_t rowspan =
             cell_node.attribute("table:number-rows-spanned").as_uint(1);
 
+        sheet.register_cell(cursor.column(), cursor.row(), columns_repeated,
+                            rows_repeated, cell_node, null_element_id);
+
         cursor.add_cell(colspan, rowspan, columns_repeated);
       }
+
       cursor.add_row(rows_repeated);
       continue;
     }
@@ -214,6 +219,9 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
         }
 
         if (cell_empty) {
+          sheet.register_cell(cursor.column(), cursor.row(), columns_repeated,
+                              1, cell_node, null_element_id);
+
           cursor.add_cell(colspan, rowspan, columns_repeated);
           continue;
         }
@@ -223,8 +231,11 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
           const auto &[cell_id, _, __] = registry.create_sheet_cell_element(
               cell_node, cursor.position(), is_repeated);
           registry.append_sheet_cell(element_id, cell_id);
-          sheet.register_cell(cursor.column(), cursor.row(), 1, 1, cell_id);
+          sheet.register_cell(cursor.column(), cursor.row(), 1, 1, cell_node,
+                              cell_id);
           parse_any_element_children(registry, cell_id, cell_node);
+
+          cursor.add_cell(colspan, rowspan, 1);
         }
       }
 
@@ -298,8 +309,8 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"text:p", create_default_tree_parser(ElementType::paragraph)},
       {"text:h", create_default_tree_parser(ElementType::paragraph)},
       {"text:span", create_default_tree_parser(ElementType::span)},
-      {"text:s", create_default_tree_parser(ElementType::text)},
-      {"text:tab", create_default_tree_parser(ElementType::text)},
+      {"text:s", parse_text_element},
+      {"text:tab", parse_text_element},
       {"text:line-break", create_default_tree_parser(ElementType::line_break)},
       {"text:a", create_default_tree_parser(ElementType::link)},
       {"text:bookmark", create_default_tree_parser(ElementType::bookmark)},

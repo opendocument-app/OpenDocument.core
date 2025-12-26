@@ -88,7 +88,8 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
   for (std::uint32_t column_index = 0; column_index < end_column;
        ++column_index) {
-    TableColumnStyle table_column_style = sheet.column_style(column_index);
+    const TableColumnStyle table_column_style =
+        sheet.column_style(column_index);
 
     state.out().write_element_begin(
         "col",
@@ -120,7 +121,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   TableCursor cursor;
   for (std::uint32_t row_index = cursor.row(); row_index < end_row;
        row_index = cursor.row()) {
-    TableRowStyle table_row_style = sheet.row_style(row_index);
+    const TableRowStyle table_row_style = sheet.row_style(row_index);
 
     state.out().write_element_begin(
         "tr", HtmlElementOptions().set_style(
@@ -140,7 +141,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
     for (std::uint32_t column_index = cursor.column();
          column_index < end_column; column_index = cursor.column()) {
-      SheetCell cell = sheet.cell(column_index, row_index);
+      const SheetCell cell = sheet.cell(column_index, row_index);
 
       if (cell.is_covered()) {
         continue;
@@ -148,9 +149,10 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
       // TODO looks a bit odd to query the same (col, row) all the time. maybe
       // there could be a struct to get all the info?
-      TableCellStyle cell_style = cell.style();
-      TableDimensions cell_span = cell.span();
-      ValueType cell_value_type = cell.value_type();
+      const TableCellStyle cell_style =
+          sheet.cell_style(column_index, row_index);
+      const TableDimensions cell_span = cell.span();
+      const ValueType cell_value_type = cell.value_type();
 
       state.out().write_element_begin(
           "td",

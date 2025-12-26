@@ -23,7 +23,6 @@ public:
     ElementIdentifier next_sibling_id{null_element_id};
     ElementType type{ElementType::none};
     pugi::xml_node node;
-    bool is_editable{false};
   };
 
   struct Table final {
@@ -41,6 +40,7 @@ public:
     };
 
     struct Cell final {
+      pugi::xml_node node;
       ElementIdentifier element_id{null_element_id};
     };
 
@@ -63,7 +63,7 @@ public:
                       pugi::xml_node element);
     void register_cell(std::uint32_t column, std::uint32_t row,
                        std::uint32_t columns_repeated,
-                       std::uint32_t rows_repeated,
+                       std::uint32_t rows_repeated, pugi::xml_node element,
                        ElementIdentifier element_id);
 
     [[nodiscard]] const Column *column(std::uint32_t column) const;
@@ -73,6 +73,8 @@ public:
 
     [[nodiscard]] pugi::xml_node column_node(std::uint32_t column) const;
     [[nodiscard]] pugi::xml_node row_node(std::uint32_t row) const;
+    [[nodiscard]] pugi::xml_node cell_node(std::uint32_t column,
+                                           std::uint32_t row) const;
   };
 
   struct SheetCell final {

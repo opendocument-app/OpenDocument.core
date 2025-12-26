@@ -19,6 +19,7 @@ class HtmlResource;
 
 namespace odr {
 class Archive;
+class Filesystem;
 struct HtmlPage;
 class HtmlService;
 struct HtmlConfig;
@@ -259,6 +260,16 @@ HtmlService translate(const PdfFile &pdf_file, const std::string &cache_path,
                       const HtmlConfig &config,
                       std::shared_ptr<Logger> logger = Logger::create_null());
 
+/// @brief Translates a filesystem to HTML.
+///
+/// @param filesystem Filesystem to translate.
+/// @param cache_path Directory path for temporary output.
+/// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
+/// @return HTML output.
+HtmlService translate(const Filesystem &filesystem,
+                      const std::string &cache_path, const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
 /// @brief Translates an archive to HTML.
 ///
 /// @param archive Archive to translate.

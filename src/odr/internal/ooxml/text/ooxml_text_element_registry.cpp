@@ -101,9 +101,11 @@ void ElementRegistry::append_child(const ElementIdentifier parent_id,
   check_element_id(parent_id);
   check_element_id(child_id);
 
-  const ElementIdentifier previous_sibling_id(element(parent_id).last_child_id);
+  const ElementIdentifier previous_sibling_id =
+      element(parent_id).last_child_id;
 
   element(child_id).parent_id = parent_id;
+  element(child_id).previous_sibling_id = previous_sibling_id;
 
   if (element(parent_id).first_child_id == null_element_id) {
     element(parent_id).first_child_id = child_id;

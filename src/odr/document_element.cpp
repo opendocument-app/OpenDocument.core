@@ -276,6 +276,12 @@ TableRowStyle Sheet::row_style(const std::uint32_t row) const {
                    : TableRowStyle();
 }
 
+TableCellStyle Sheet::cell_style(const std::uint32_t column,
+                                 const std::uint32_t row) const {
+  return exists_() ? m_adapter2->sheet_cell_style(m_identifier, column, row)
+                   : TableCellStyle();
+}
+
 TablePosition SheetCell::position() const {
   return exists_() ? m_adapter2->sheet_cell_position(m_identifier)
                    : TablePosition(0, 0);
@@ -293,11 +299,6 @@ TableDimensions SheetCell::span() const {
 ValueType SheetCell::value_type() const {
   return exists_() ? m_adapter2->sheet_cell_value_type(m_identifier)
                    : ValueType::unknown;
-}
-
-TableCellStyle SheetCell::style() const {
-  return exists_() ? m_adapter2->sheet_cell_style(m_identifier)
-                   : TableCellStyle();
 }
 
 std::string Page::name() const {
