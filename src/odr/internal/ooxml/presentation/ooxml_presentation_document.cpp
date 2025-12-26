@@ -59,6 +59,73 @@ void Document::save(const Path & /*path*/, const char * /*password*/) const {
 
 namespace {
 
+void resolve_text_style_(const pugi::xml_node node, TextStyle &result) {
+  const pugi::xml_node run_properties = node.child("a:rPr");
+
+  if (const pugi::xml_attribute font_name =
+          run_properties.child("rFonts").attribute("ascii")) {
+    result.font_name = font_name.value();
+  }
+  if (const std::optional<Measure> font_size =
+          read_hundredth_point_attribute(run_properties.attribute("sz"))) {
+    result.font_size = font_size;
+  }
+  if (const std::optional<FontWeight> font_weight =
+          read_font_weight_attribute(run_properties.attribute("b"))) {
+    result.font_weight = font_weight;
+  }
+  if (const std::optional<FontStyle> font_style =
+          read_font_style_attribute(run_properties.attribute("i"))) {
+    result.font_style = font_style;
+  }
+  if (const bool font_underline =
+          read_line_attribute(run_properties.attribute("u"))) {
+    result.font_underline = font_underline;
+  }
+  if (const bool font_line_through =
+          read_line_attribute(run_properties.attribute("strike"))) {
+    result.font_line_through = font_line_through;
+  }
+  if (const std::optional<std::string> font_shadow =
+          read_shadow_attribute(run_properties.attribute("shadow"))) {
+    result.font_shadow = font_shadow;
+  }
+  if (const std::optional<Color> font_color =
+          read_color_attribute(run_properties.attribute("color"))) {
+    result.font_color = font_color;
+  }
+  if (const std::optional<Color> background_color =
+          read_color_attribute(run_properties.attribute("highlight"))) {
+    result.background_color = background_color;
+  }
+}
+
+void resolve_paragraph_style_(const pugi::xml_node node,
+                              ParagraphStyle &result) {
+  const pugi::xml_node paragraph_properties = node.child("a:pPr");
+
+  if (const std::optional<TextAlign> text_align =
+          read_text_align_attribute(paragraph_properties.attribute("jc"))) {
+    result.text_align = text_align;
+  }
+  if (const std::optional<Measure> margin_left = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("left"))) {
+    result.margin.left = margin_left;
+  }
+  if (const std::optional<Measure> margin_left = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("start"))) {
+    result.margin.left = margin_left;
+  }
+  if (const std::optional<Measure> margin_right = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("right"))) {
+    result.margin.right = margin_right;
+  }
+  if (const std::optional<Measure> margin_right = read_twips_attribute(
+          paragraph_properties.child("ind").attribute("end"))) {
+    result.margin.right = margin_right;
+  }
+}
+
 class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::SlideAdapter,
                              public abstract::LineBreakAdapter,
@@ -310,7 +377,13 @@ public:
   [[nodiscard]] PageLayout
   slide_page_layout(const ElementIdentifier element_id) const override {
     (void)element_id;
-    return {}; // TODO
+    // TODO
+    return {
+        .width = Measure("11.02 in"),
+        .height = Measure("8.27 in"),
+        .print_orientation = {},
+        .margin = {},
+    };
   }
   [[nodiscard]] ElementIdentifier
   slide_master_page(const ElementIdentifier element_id) const override {
@@ -489,79 +562,80 @@ public:
 
   [[nodiscard]] TableColumnStyle
   table_column_style(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    TableColumnStyle result;
-    if (const std::optional<Measure> width =
-            read_twips_attribute(node.attribute("a:w"))) {
-      result.width = width;
-    }
-    return result;
+    return get_partial_style(element_id).table_column_style;
   }
 
   [[nodiscard]] TableRowStyle
-  table_row_style(const ElementIdentifier) const override {
-    return {}; // TODO
+  table_row_style(const ElementIdentifier element_id) const override {
+    return get_partial_style(element_id).table_row_style;
   }
 
   [[nodiscard]] bool
   table_cell_is_covered(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return std::strcmp(node.name(), "table:covered-table-cell") == 0;
+    return false;
   }
   [[nodiscard]] TableDimensions
   table_cell_span(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return {node.attribute("table:number-rows-spanned").as_uint(1),
-            node.attribute("table:number-columns-spanned").as_uint(1)};
+    return {1, 1}; // TODO
   }
   [[nodiscard]] ValueType
   table_cell_value_type(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const char *value_type = node.attribute("office:value-type").value();
-        std::strcmp("float", value_type) == 0) {
-      return ValueType::float_number;
-    }
     return ValueType::string;
   }
   [[nodiscard]] TableCellStyle
-  table_cell_style(const ElementIdentifier) const override {
-    return {}; // TODO
+  table_cell_style(const ElementIdentifier element_id) const override {
+    return get_partial_style(element_id).table_cell_style;
   }
 
   [[nodiscard]] AnchorType
   frame_anchor_type(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-
-    if (node.child("wp:inline")) {
-      return AnchorType::as_char;
-    }
-    return AnchorType::as_char; // TODO default?
+    return AnchorType::at_page;
   }
   [[nodiscard]] std::optional<std::string>
   frame_x(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return std::nullopt;
+    if (const std::optional<Measure> x =
+            read_emus_attribute(get_node(element_id)
+                                    .child("p:spPr")
+                                    .child("a:xfrm")
+                                    .child("a:off")
+                                    .attribute("x"))) {
+      return x->to_string();
+    }
+    return {};
   }
   [[nodiscard]] std::optional<std::string>
   frame_y(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return std::nullopt;
+    if (const std::optional<Measure> y =
+            read_emus_attribute(get_node(element_id)
+                                    .child("p:spPr")
+                                    .child("a:xfrm")
+                                    .child("a:off")
+                                    .attribute("y"))) {
+      return y->to_string();
+    }
+    return {};
   }
   [[nodiscard]] std::optional<std::string>
   frame_width(const ElementIdentifier element_id) const override {
-    const pugi::xml_node inner_node = get_frame_inner_node(element_id);
-    if (const std::optional<Measure> width = read_emus_attribute(
-            inner_node.child("wp:extent").attribute("cx"))) {
-      return width->to_string();
+    if (const std::optional<Measure> cx =
+            read_emus_attribute(get_node(element_id)
+                                    .child("p:spPr")
+                                    .child("a:xfrm")
+                                    .child("a:ext")
+                                    .attribute("cx"))) {
+      return cx->to_string();
     }
     return {};
   }
   [[nodiscard]] std::optional<std::string>
   frame_height(const ElementIdentifier element_id) const override {
-    const pugi::xml_node inner_node = get_frame_inner_node(element_id);
-    if (const std::optional<Measure> height = read_emus_attribute(
-            inner_node.child("wp:extent").attribute("cy"))) {
-      return height->to_string();
+    if (const std::optional<Measure> cy =
+            read_emus_attribute(get_node(element_id)
+                                    .child("p:spPr")
+                                    .child("a:xfrm")
+                                    .child("a:ext")
+                                    .attribute("cy"))) {
+      return cy->to_string();
     }
     return {};
   }
@@ -614,18 +688,6 @@ private:
     return {};
   }
 
-  [[nodiscard]] pugi::xml_node
-  get_frame_inner_node(const ElementIdentifier element_id) const {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_node anchor = node.child("wp:anchor")) {
-      return anchor;
-    }
-    if (const pugi::xml_node inline_node = node.child("wp:inline")) {
-      return inline_node;
-    }
-    return {};
-  }
-
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {
     const std::string name = node.name();
 
@@ -639,22 +701,35 @@ private:
     return "";
   }
 
-  [[nodiscard]] const char *
-  get_style_name(const ElementIdentifier element_id) const {
-    (void)element_id;
-    return {}; // TODO
-  }
-
   [[nodiscard]] ResolvedStyle
   get_partial_style(const ElementIdentifier element_id) const {
-    (void)element_id;
-    return {}; // TODO
+    if (const ElementRegistry::Element *element =
+            m_registry->element(element_id);
+        element != nullptr) {
+      if (element->type == ElementType::paragraph) {
+        ResolvedStyle result;
+        resolve_text_style_(element->node, result.text_style);
+        resolve_paragraph_style_(element->node, result.paragraph_style);
+        return result;
+      }
+      if (element->type == ElementType::span) {
+        ResolvedStyle result;
+        resolve_text_style_(element->node, result.text_style);
+        return result;
+      }
+    }
+    return {};
   }
 
   [[nodiscard]] ResolvedStyle
   get_intermediate_style(const ElementIdentifier element_id) const {
-    (void)element_id;
-    return {}; // TODO
+    const ElementIdentifier parent_id = element_parent(element_id);
+    if (parent_id == null_element_id) {
+      return get_partial_style(element_id);
+    }
+    ResolvedStyle base = get_intermediate_style(parent_id);
+    base.override(get_partial_style(element_id));
+    return base;
   }
 };
 
