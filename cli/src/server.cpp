@@ -52,7 +52,7 @@ int main(const int argc, char **argv) {
   html_config.editable = true;
 
   {
-    constexpr std::string prefix = "file";
+    const std::string prefix = "file";
     const HtmlViews views =
         server.serve_file(decoded_file, prefix, html_config);
     ODR_INFO(*logger, "hosted decoded file with id: " << prefix);
@@ -70,7 +70,7 @@ int main(const int argc, char **argv) {
       filesystem = decoded_file.as_archive_file().archive().as_filesystem();
     }
 
-    constexpr std::string prefix = "filesystem";
+    const std::string prefix = "filesystem";
     const HtmlService filesystem_service = html::translate(
         filesystem.value(), server_config.cache_path + "/" + prefix,
         html_config, logger);
