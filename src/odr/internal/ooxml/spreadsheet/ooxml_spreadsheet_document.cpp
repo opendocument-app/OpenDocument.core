@@ -100,6 +100,7 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::ParagraphAdapter,
                              public abstract::SpanAdapter,
                              public abstract::TextAdapter,
+                             public abstract::LinkAdapter,
                              public abstract::FrameAdapter,
                              public abstract::ImageAdapter {
 public:
@@ -242,9 +243,14 @@ public:
     }
     return this;
   }
-  [[nodiscard]] const abstract::LinkAdapter *
-  link_adapter(const ElementIdentifier) const override {
-    return nullptr;
+  [[nodiscard]] const LinkAdapter *
+  link_adapter(const ElementIdentifier element_id) const override {
+    if (const ElementRegistry::Element *element =
+            m_registry->element(element_id);
+        element == nullptr || element->type != ElementType::link) {
+      return nullptr;
+    }
+    return this;
   }
   [[nodiscard]] const abstract::BookmarkAdapter *
   bookmark_adapter(const ElementIdentifier) const override {
@@ -486,6 +492,12 @@ public:
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
+  }
+
+  [[nodiscard]] std::string
+  link_href(const ElementIdentifier element_id) const override {
+    (void)element_id;
+    return {}; // TODO
   }
 
   [[nodiscard]] AnchorType

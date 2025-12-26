@@ -37,18 +37,26 @@ public:
 
   [[nodiscard]] std::size_t size() const noexcept;
 
-  ElementIdentifier create_element();
-  Table &create_table_element(ElementIdentifier id);
-  Text &create_text_element(ElementIdentifier id);
+  std::tuple<ElementIdentifier, Element &> create_element(ElementType type,
+                                                          pugi::xml_node node);
+  std::tuple<ElementIdentifier, Element &, Table &>
+  create_table_element(pugi::xml_node node);
+  std::tuple<ElementIdentifier, Element &, Text &>
+  create_text_element(pugi::xml_node first_node, pugi::xml_node last_node);
 
-  [[nodiscard]] Element &element(ElementIdentifier id);
-  [[nodiscard]] const Element &element(ElementIdentifier id) const;
+  [[nodiscard]] Element &element_at(ElementIdentifier id);
+  [[nodiscard]] Table &table_element_at(ElementIdentifier id);
 
-  [[nodiscard]] Table &table_element(ElementIdentifier id);
-  [[nodiscard]] const Table &table_element(ElementIdentifier id) const;
+  [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
+  [[nodiscard]] const Table &table_element_at(ElementIdentifier id) const;
 
-  [[nodiscard]] Text &text_element(ElementIdentifier id);
-  [[nodiscard]] const Text &text_element(ElementIdentifier id) const;
+  [[nodiscard]] Element *element(ElementIdentifier id);
+  [[nodiscard]] Table *table_element(ElementIdentifier id);
+  [[nodiscard]] Text *text_element(ElementIdentifier id);
+
+  [[nodiscard]] const Element *element(ElementIdentifier id) const;
+  [[nodiscard]] const Table *table_element(ElementIdentifier id) const;
+  [[nodiscard]] const Text *text_element(ElementIdentifier id) const;
 
   void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
   void append_column(ElementIdentifier table_id, ElementIdentifier column_id);
