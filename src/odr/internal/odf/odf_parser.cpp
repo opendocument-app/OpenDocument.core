@@ -164,9 +164,17 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
     bool row_empty = true;
     for (const pugi::xml_node cell_node :
          row_node.children("table:table-cell")) {
-      bool cell_empty = false;
-      if (!cell_node.first_child()) {
-        cell_empty = true;
+      const std::uint32_t colspan =
+          cell_node.attribute("table:number-columns-spanned").as_uint(1);
+      const std::uint32_t rowspan =
+          cell_node.attribute("table:number-rows-spanned").as_uint(1);
+
+      bool cell_empty = true;
+      if (cell_node.first_child()) {
+        cell_empty = false;
+      }
+      if (colspan > 1 || rowspan > 1) {
+        cell_empty = false;
       }
 
       if (!cell_empty) {
@@ -213,9 +221,12 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
             cell_node.attribute("table:number-rows-spanned").as_uint(1);
         const bool is_repeated = columns_repeated > 1 || rows_repeated > 1;
 
-        bool cell_empty = false;
-        if (!cell_node.first_child()) {
-          cell_empty = true;
+        bool cell_empty = true;
+        if (cell_node.first_child()) {
+          cell_empty = false;
+        }
+        if (colspan > 1 || rowspan > 1) {
+          cell_empty = false;
         }
 
         if (cell_empty) {

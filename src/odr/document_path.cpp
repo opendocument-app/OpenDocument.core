@@ -3,6 +3,7 @@
 #include <odr/document_element.hpp>
 
 #include <algorithm>
+#include <iostream>
 #include <stdexcept>
 
 namespace odr {
@@ -131,12 +132,12 @@ DocumentPath DocumentPath::extract(const Element element) {
 DocumentPath DocumentPath::extract(const Element element, const Element root) {
   std::vector<Component> reverse;
 
-  for (auto current = element; current != root;) {
+  for (Element current = element; current != root;) {
     if (!current.parent()) {
       break;
     }
 
-    if (const SheetCell sheet_cell = element.as_sheet_cell(); sheet_cell) {
+    if (const SheetCell sheet_cell = current.as_sheet_cell(); sheet_cell) {
       const auto [parent, cell] = Cell::extract(sheet_cell);
       reverse.emplace_back(cell);
       current = static_cast<Element>(parent);

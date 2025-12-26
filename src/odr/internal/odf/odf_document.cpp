@@ -573,13 +573,16 @@ public:
   }
   [[nodiscard]] ElementIdentifier
   sheet_first_shape(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {}; // TODO
+    if (const ElementRegistry::Sheet *sheet_registry =
+            m_registry->sheet_element(element_id);
+        sheet_registry != nullptr) {
+      return sheet_registry->first_shape_id;
+    }
+    return null_element_id;
   }
   [[nodiscard]] TableStyle
   sheet_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {}; // TODO
+    return get_partial_style(element_id).table_style;
   }
   [[nodiscard]] TableColumnStyle
   sheet_column_style(const ElementIdentifier element_id,
@@ -633,8 +636,12 @@ public:
 
   [[nodiscard]] TablePosition
   sheet_cell_position(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {0, 0};
+    if (const ElementRegistry::SheetCell *sheet_cell =
+            m_registry->sheet_cell_element(element_id);
+        sheet_cell != nullptr) {
+      return sheet_cell->position;
+    }
+    return {};
   }
   [[nodiscard]] bool
   sheet_cell_is_covered(const ElementIdentifier element_id) const override {
@@ -924,7 +931,7 @@ public:
   [[nodiscard]] std::optional<std::string>
   frame_z_index(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:z-index")) {
+    if (const pugi::xml_attribute attribute = node.attribute("draw:z-index")) {
       return attribute.value();
     }
     return std::nullopt;
