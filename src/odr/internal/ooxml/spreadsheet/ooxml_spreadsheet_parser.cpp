@@ -118,7 +118,7 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
   for (const pugi::xml_node col_node : node.child("cols").children("col")) {
     const std::uint32_t min = col_node.attribute("min").as_uint() - 1;
     const std::uint32_t max = col_node.attribute("max").as_uint() - 1;
-    sheet.register_column(min, max - min, col_node);
+    sheet.register_column(min, max, col_node);
   }
 
   for (const pugi::xml_node row_node :
@@ -128,10 +128,13 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
 
     for (const pugi::xml_node cell_node : row_node.children("c")) {
       TablePosition position(cell_node.attribute("r").value());
-      sheet.register_cell(position.column(), position.row(), cell_node);
 
-      auto [cell, _] = parse_any_element_tree(registry, context, cell_node);
-      registry.append_sheet_cell(element_id, cell);
+      const auto &[cell_id, _, __] =
+          registry.create_sheet_cell_element(cell_node, position);
+      registry.append_sheet_cell(element_id, cell_id);
+      sheet.register_cell(position.column(), position.row(), cell_node,
+                          cell_id);
+      parse_sheet_cell_children(registry, context, cell_id, cell_node);
     }
   }
 
@@ -175,10 +178,10 @@ bool is_text_node(const pugi::xml_node node) {
 
   const std::string name = node.name();
 
-  if (name == "w:t") {
+  if (name == "t") {
     return true;
   }
-  if (name == "w:tab") {
+  if (name == "v") {
     return true;
   }
 

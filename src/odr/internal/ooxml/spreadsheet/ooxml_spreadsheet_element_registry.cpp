@@ -153,6 +153,14 @@ void ElementRegistry::check_sheet_id(const ElementIdentifier id) const {
   }
 }
 
+void ElementRegistry::check_sheet_cell_id(const ElementIdentifier id) const {
+  check_element_id(id);
+  if (!m_sheet_cells.contains(id)) {
+    throw std::out_of_range(
+        "DocumentElementRegistry::check_id: identifier not found");
+  }
+}
+
 void ElementRegistry::append_child(const ElementIdentifier parent_id,
                                    const ElementIdentifier child_id) {
   check_element_id(parent_id);
@@ -213,37 +221,61 @@ void ElementRegistry::Sheet::register_row(const std::uint32_t row,
 
 void ElementRegistry::Sheet::register_cell(const std::uint32_t column,
                                            const std::uint32_t row,
-                                           const pugi::xml_node element) {
-  Cell &cell = rows[row].cells[column];
+                                           const pugi::xml_node element,
+                                           const ElementIdentifier element_id) {
+  Cell &cell = cells[TablePosition(column, row)];
   cell.node = element;
+  cell.element_id = element_id;
+}
+
+const ElementRegistry::Sheet::Column *
+ElementRegistry::Sheet::column(const std::uint32_t column) const {
+  if (const auto it = util::map::lookup_greater_or_equals(columns, column);
+      it != std::end(columns)) {
+    return &it->second;
+  }
+  return nullptr;
+}
+
+const ElementRegistry::Sheet::Row *
+ElementRegistry::Sheet::row(const std::uint32_t row) const {
+  if (const auto it = rows.find(row); it != std::end(rows)) {
+    return &it->second;
+  }
+  return nullptr;
+}
+
+const ElementRegistry::Sheet::Cell *
+ElementRegistry::Sheet::cell(const std::uint32_t column,
+                             const std::uint32_t row) const {
+  if (const auto it = cells.find(TablePosition(column, row));
+      it != std::end(cells)) {
+    return &it->second;
+  }
+  return nullptr;
 }
 
 pugi::xml_node
-ElementRegistry::Sheet::column(const std::uint32_t column) const {
-  if (const auto it = util::map::lookup_greater_than(columns, column);
-      it != std::end(columns)) {
-    return it->second.node;
+ElementRegistry::Sheet::column_node(const std::uint32_t column) const {
+  if (const Column *column_entry = this->column(column);
+      column_entry != nullptr) {
+    return column_entry->node;
   }
   return {};
 }
 
-pugi::xml_node ElementRegistry::Sheet::row(const std::uint32_t row) const {
-  if (const auto it = util::map::lookup_greater_than(rows, row);
-      it != std::end(rows)) {
-    return it->second.node;
+pugi::xml_node ElementRegistry::Sheet::row_node(const std::uint32_t row) const {
+  if (const Row *row_entry = this->row(row); row_entry != nullptr) {
+    return row_entry->node;
   }
   return {};
 }
 
-pugi::xml_node ElementRegistry::Sheet::cell(const std::uint32_t column,
-                                            const std::uint32_t row) const {
-  if (const auto row_it = util::map::lookup_greater_than(rows, row);
-      row_it != std::end(rows)) {
-    const auto &cells = row_it->second.cells;
-    if (const auto cell_it = util::map::lookup_greater_than(cells, column);
-        cell_it != std::end(cells)) {
-      return cell_it->second.node;
-    }
+pugi::xml_node
+ElementRegistry::Sheet::cell_node(const std::uint32_t column,
+                                  const std::uint32_t row) const {
+  if (const Cell *cell_entry = this->cell(column, row); cell_entry != nullptr) {
+    return cell_entry->node;
   }
   return {};
 }

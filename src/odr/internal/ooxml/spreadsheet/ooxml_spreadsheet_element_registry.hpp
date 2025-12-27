@@ -35,19 +35,20 @@ public:
       pugi::xml_node node;
     };
 
-    struct Cell final {
+    struct Row final {
       pugi::xml_node node;
     };
 
-    struct Row final {
+    struct Cell final {
       pugi::xml_node node;
-      std::map<std::uint32_t, Cell> cells;
+      ElementIdentifier element_id{null_element_id};
     };
 
     TableDimensions dimensions;
 
     std::map<std::uint32_t, Column> columns;
-    std::map<std::uint32_t, Row> rows;
+    std::unordered_map<std::uint32_t, Row> rows;
+    std::unordered_map<TablePosition, Cell> cells;
 
     ElementIdentifier first_shape_id{null_element_id};
     ElementIdentifier last_shape_id{null_element_id};
@@ -56,12 +57,17 @@ public:
                          pugi::xml_node element);
     void register_row(std::uint32_t row, pugi::xml_node element);
     void register_cell(std::uint32_t column, std::uint32_t row,
-                       pugi::xml_node element);
+                       pugi::xml_node element, ElementIdentifier element_id);
 
-    [[nodiscard]] pugi::xml_node column(std::uint32_t) const;
-    [[nodiscard]] pugi::xml_node row(std::uint32_t) const;
-    [[nodiscard]] pugi::xml_node cell(std::uint32_t column,
-                                      std::uint32_t row) const;
+    [[nodiscard]] const Column *column(std::uint32_t column) const;
+    [[nodiscard]] const Row *row(std::uint32_t row) const;
+    [[nodiscard]] const Cell *cell(std::uint32_t column,
+                                   std::uint32_t row) const;
+
+    [[nodiscard]] pugi::xml_node column_node(std::uint32_t column) const;
+    [[nodiscard]] pugi::xml_node row_node(std::uint32_t row) const;
+    [[nodiscard]] pugi::xml_node cell_node(std::uint32_t column,
+                                           std::uint32_t row) const;
   };
 
   struct SheetCell final {

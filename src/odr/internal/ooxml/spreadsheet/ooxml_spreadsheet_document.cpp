@@ -7,7 +7,6 @@
 #include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
-#include <odr/internal/util/string_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
 #include <utility>
@@ -16,7 +15,8 @@ namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry);
+create_element_adapter(const Document &document, ElementRegistry &registry,
+                       StyleRegistry &style_registry);
 }
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
@@ -56,7 +56,8 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   m_root_element = parse_tree(m_element_registry, parse_context,
                               workbook_xml.document_element());
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
+  m_element_adapter =
+      create_element_adapter(*this, m_element_registry, m_style_registry);
 }
 
 const ElementRegistry &Document::element_registry() const {
@@ -104,8 +105,10 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::FrameAdapter,
                              public abstract::ImageAdapter {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry)
-      : m_document(&document), m_registry(&registry) {}
+  ElementAdapter(const Document &document, ElementRegistry &registry,
+                 StyleRegistry &style_registry)
+      : m_document(&document), m_registry(&registry),
+        m_style_registry(&style_registry) {}
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
@@ -313,33 +316,45 @@ public:
 
   [[nodiscard]] std::string
   sheet_name(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {}; // TODO
+    return get_node(element_id).attribute("name").value();
   }
   [[nodiscard]] TableDimensions
   sheet_dimensions(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {}; // TODO
+    if (const ElementRegistry::Sheet *element =
+            m_registry->sheet_element(element_id);
+        element != nullptr) {
+      return element->dimensions;
+    }
+    return {};
   }
   [[nodiscard]] TableDimensions
   sheet_content(const ElementIdentifier element_id,
                 const std::optional<TableDimensions> range) const override {
-    (void)element_id;
     (void)range;
-    return {}; // TODO
+    return sheet_dimensions(element_id); // TODO
   }
   [[nodiscard]] ElementIdentifier
   sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,
              const std::uint32_t row) const override {
-    (void)element_id;
-    (void)column;
-    (void)row;
-    return {}; // TODO
+    if (const ElementRegistry::Sheet *sheet_element =
+            m_registry->sheet_element(element_id);
+        sheet_element != nullptr) {
+      if (const ElementRegistry::Sheet::Cell *cell =
+              sheet_element->cell(column, row);
+          cell != nullptr) {
+        return cell->element_id;
+      }
+    }
+    return null_element_id;
   }
   [[nodiscard]] ElementIdentifier
   sheet_first_shape(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {}; // TODO
+    if (const ElementRegistry::Sheet *sheet_element =
+            m_registry->sheet_element(element_id);
+        sheet_element != nullptr) {
+      return sheet_element->first_shape_id;
+    }
+    return null_element_id;
   }
   [[nodiscard]] TableStyle
   sheet_style(const ElementIdentifier element_id) const override {
@@ -349,46 +364,73 @@ public:
   [[nodiscard]] TableColumnStyle
   sheet_column_style(const ElementIdentifier element_id,
                      const std::uint32_t column) const override {
-    (void)element_id;
-    (void)column;
-    return {}; // TODO
+    TableColumnStyle result;
+    if (const ElementRegistry::Sheet *sheet_element =
+            m_registry->sheet_element(element_id);
+        sheet_element != nullptr) {
+      const pugi::xml_node column_node = sheet_element->column_node(column);
+      if (const pugi::xml_attribute width = column_node.attribute("width")) {
+        result.width = Measure(width.as_float(), DynamicUnit("ch"));
+      }
+    }
+    return result;
   }
   [[nodiscard]] TableRowStyle
   sheet_row_style(const ElementIdentifier element_id,
                   const std::uint32_t row) const override {
-    (void)element_id;
-    (void)row;
-    return {}; // TODO
+    TableRowStyle result;
+    if (const ElementRegistry::Sheet *sheet_element =
+            m_registry->sheet_element(element_id);
+        sheet_element != nullptr) {
+      const pugi::xml_node row_node = sheet_element->row_node(row);
+      if (const pugi::xml_attribute height = row_node.attribute("ht")) {
+        result.height = Measure(height.as_float(), DynamicUnit("pt"));
+      }
+    }
+    return result;
   }
   [[nodiscard]] TableCellStyle
   sheet_cell_style(const ElementIdentifier element_id,
                    const std::uint32_t column,
                    const std::uint32_t row) const override {
-    (void)element_id;
-    (void)column;
-    (void)row;
-    return {}; // TODO
+    TableCellStyle result;
+    if (const ElementRegistry::Sheet *sheet_element =
+            m_registry->sheet_element(element_id);
+        sheet_element != nullptr) {
+      if (const pugi::xml_attribute style_attr =
+              sheet_element->cell_node(column, row).attribute("s");
+          style_attr) {
+        const std::uint32_t style_id = style_attr.as_uint();
+        const ResolvedStyle style = m_style_registry->cell_style(style_id);
+        result.override(style.table_cell_style);
+      }
+    }
+    return result;
   }
 
   [[nodiscard]] TablePosition
   sheet_cell_position(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {}; // TODO
+    if (const ElementRegistry::SheetCell *cell_element =
+            m_registry->sheet_cell_element(element_id);
+        cell_element != nullptr) {
+      return cell_element->position;
+    }
+    return {};
   }
   [[nodiscard]] bool
   sheet_cell_is_covered(const ElementIdentifier element_id) const override {
     (void)element_id;
-    return {}; // TODO
+    return false; // TODO
   }
   [[nodiscard]] TableDimensions
   sheet_cell_span(const ElementIdentifier element_id) const override {
     (void)element_id;
-    return {}; // TODO
+    return {1, 1}; // TODO
   }
   [[nodiscard]] ValueType
   sheet_cell_value_type(const ElementIdentifier element_id) const override {
     (void)element_id;
-    return {}; // TODO
+    return ValueType::string; // TODO
   }
 
   [[nodiscard]] TextStyle
@@ -430,64 +472,9 @@ public:
   }
   void text_set_content(const ElementIdentifier element_id,
                         const std::string &text) const override {
-    ElementRegistry::Element *element = m_registry->element(element_id);
-    ElementRegistry::Text *text_element = m_registry->text_element(element_id);
-    if (element == nullptr || text_element == nullptr) {
-      return;
-    }
-
-    const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = text_element->last;
-
-    pugi::xml_node parent = first.parent();
-    const pugi::xml_node old_first = first;
-    const pugi::xml_node old_last = last;
-    pugi::xml_node new_first = old_first;
-    pugi::xml_node new_last = last;
-
-    const auto insert_node = [&](const char *node) {
-      const pugi::xml_node new_node =
-          parent.insert_child_before(node, old_first);
-      if (new_first == old_first) {
-        new_first = new_node;
-      }
-      new_last = new_node;
-      return new_node;
-    };
-
-    for (const util::xml::StringToken &token : util::xml::tokenize_text(text)) {
-      switch (token.type) {
-      case util::xml::StringToken::Type::none:
-        break;
-      case util::xml::StringToken::Type::string: {
-        auto text_node = insert_node("w:t");
-        text_node.append_child(pugi::xml_node_type::node_pcdata)
-            .text()
-            .set(token.string.c_str());
-      } break;
-      case util::xml::StringToken::Type::spaces: {
-        auto text_node = insert_node("w:t");
-        text_node.append_attribute("xml:space").set_value("preserve");
-        text_node.append_child(pugi::xml_node_type::node_pcdata)
-            .text()
-            .set(token.string.c_str());
-      } break;
-      case util::xml::StringToken::Type::tabs: {
-        for (std::size_t i = 0; i < token.string.size(); ++i) {
-          insert_node("w:tab");
-        }
-      } break;
-      }
-    }
-
-    element->node = new_first;
-    text_element->last = new_last;
-
-    for (pugi::xml_node node = old_first; node != old_last.next_sibling();) {
-      const pugi::xml_node next = node.next_sibling();
-      parent.remove_child(node);
-      node = next;
-    }
+    (void)element_id;
+    (void)text;
+    // TODO
   }
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
@@ -502,37 +489,56 @@ public:
 
   [[nodiscard]] AnchorType
   frame_anchor_type(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-
-    if (node.child("wp:inline")) {
-      return AnchorType::as_char;
-    }
-    return AnchorType::as_char; // TODO default?
+    return AnchorType::at_page;
   }
   [[nodiscard]] std::optional<std::string>
   frame_x(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return std::nullopt;
+    if (const std::optional<Measure> x =
+            read_emus_attribute(get_node(element_id)
+                                    .child("xdr:pic")
+                                    .child("xdr:spPr")
+                                    .child("a:xfrm")
+                                    .child("a:off")
+                                    .attribute("x"))) {
+      return x->to_string();
+    }
+    return {};
   }
   [[nodiscard]] std::optional<std::string>
   frame_y(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return std::nullopt;
+    if (const std::optional<Measure> y =
+            read_emus_attribute(get_node(element_id)
+                                    .child("xdr:pic")
+                                    .child("xdr:spPr")
+                                    .child("a:xfrm")
+                                    .child("a:off")
+                                    .attribute("y"))) {
+      return y->to_string();
+    }
+    return {};
   }
   [[nodiscard]] std::optional<std::string>
   frame_width(const ElementIdentifier element_id) const override {
-    const pugi::xml_node inner_node = get_frame_inner_node(element_id);
-    if (const std::optional<Measure> width = read_emus_attribute(
-            inner_node.child("wp:extent").attribute("cx"))) {
+    if (const std::optional<Measure> width =
+            read_emus_attribute(get_node(element_id)
+                                    .child("xdr:pic")
+                                    .child("xdr:spPr")
+                                    .child("a:xfrm")
+                                    .child("a:ext")
+                                    .attribute("cx"))) {
       return width->to_string();
     }
     return {};
   }
   [[nodiscard]] std::optional<std::string>
   frame_height(const ElementIdentifier element_id) const override {
-    const pugi::xml_node inner_node = get_frame_inner_node(element_id);
-    if (const std::optional<Measure> height = read_emus_attribute(
-            inner_node.child("wp:extent").attribute("cy"))) {
+    if (const std::optional<Measure> height =
+            read_emus_attribute(get_node(element_id)
+                                    .child("xdr:pic")
+                                    .child("xdr:spPr")
+                                    .child("a:xfrm")
+                                    .child("a:ext")
+                                    .attribute("cy"))) {
       return height->to_string();
     }
     return {};
@@ -577,6 +583,7 @@ public:
 private:
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};
+  StyleRegistry *m_style_registry{nullptr};
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
@@ -588,40 +595,12 @@ private:
     return {};
   }
 
-  [[nodiscard]] pugi::xml_node
-  get_frame_inner_node(const ElementIdentifier element_id) const {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_node anchor = node.child("wp:anchor")) {
-      return anchor;
-    }
-    if (const pugi::xml_node inline_node = node.child("wp:inline")) {
-      return inline_node;
-    }
-    return {};
-  }
-
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {
-    const std::string name = node.name();
-
-    if (name == "w:t") {
+    if (const std::string name = node.name(); name == "t" || name == "v") {
       return node.text().get();
-    }
-    if (name == "w:tab") {
-      return "\t";
     }
 
     return "";
-  }
-
-  [[nodiscard]] const char *
-  get_style_name(const ElementIdentifier element_id) const {
-    const pugi::xml_node node = get_node(element_id);
-    for (pugi::xml_attribute attribute : node.attributes()) {
-      if (util::string::ends_with(attribute.name(), ":style-name")) {
-        return attribute.value();
-      }
-    }
-    return {};
   }
 
   [[nodiscard]] ResolvedStyle
@@ -655,8 +634,9 @@ private:
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+create_element_adapter(const Document &document, ElementRegistry &registry,
+                       StyleRegistry &style_registry) {
+  return std::make_unique<ElementAdapter>(document, registry, style_registry);
 }
 
 } // namespace
