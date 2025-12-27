@@ -572,14 +572,17 @@ public:
 
   [[nodiscard]] bool
   table_cell_is_covered(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return false;
   }
   [[nodiscard]] TableDimensions
   table_cell_span(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return {1, 1}; // TODO
   }
   [[nodiscard]] ValueType
   table_cell_value_type(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return ValueType::string;
   }
   [[nodiscard]] TableCellStyle
@@ -589,6 +592,7 @@ public:
 
   [[nodiscard]] AnchorType
   frame_anchor_type(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return AnchorType::at_page;
   }
   [[nodiscard]] std::optional<std::string>
