@@ -38,3 +38,13 @@ As an alternative to the Conan remote you can also export the package locally vi
 ## Version
 
 Versions and history are tracked on [GitHub](https://github.com/opendocument-app/OpenDocument.core).
+
+## Testing
+
+### Running the HTML Comparison Server
+
+Scripts and Docker images can be found here https://github.com/opendocument-app/compare-html
+
+```bash
+./test/scripts/compare_output_server.sh
+```

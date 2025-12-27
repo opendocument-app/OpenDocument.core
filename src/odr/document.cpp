@@ -39,7 +39,7 @@ DocumentType Document::document_type() const noexcept {
 }
 
 Element Document::root_element() const {
-  return {m_impl.get(), m_impl->root_element()};
+  return {m_impl->element_adapter(), m_impl->root_element()};
 }
 
 Filesystem Document::as_filesystem() const {

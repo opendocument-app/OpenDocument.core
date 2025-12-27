@@ -1,17 +1,17 @@
 #pragma once
 
-#include <odr/document_element.hpp>
+#include <odr/definitions.hpp>
 
-#include <memory>
-#include <utility>
-#include <vector>
+#include <string>
+#include <unordered_map>
 
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::presentation {
-class Document;
-class Element;
+class ElementRegistry;
 
-Element *parse_tree(Document &document, pugi::xml_node node);
+ElementIdentifier parse_tree(
+    ElementRegistry &registry, pugi::xml_node node,
+    const std::unordered_map<std::string, pugi::xml_document> &slides_xml);
 
 } // namespace odr::internal::ooxml::presentation

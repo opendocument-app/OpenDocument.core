@@ -4,37 +4,11 @@
 #include <optional>
 #include <string>
 
-namespace odr::internal::abstract {
-class Document;
-
-class Element;
-class TextRoot;
-class Slide;
-class Sheet;
-class SheetCell;
-class Page;
-class MasterPage;
-class LineBreak;
-class Paragraph;
-class Span;
-class Text;
-class Link;
-class Bookmark;
-class ListItem;
-class Table;
-class TableColumn;
-class TableRow;
-class TableCell;
-class Frame;
-class Rect;
-class Line;
-class Circle;
-class CustomShape;
-class Image;
-} // namespace odr::internal::abstract
+#include <odr/definitions.hpp>
 
 namespace odr {
-
+class TablePosition;
+struct TableDimensions;
 class File;
 struct TextStyle;
 struct ParagraphStyle;
@@ -44,7 +18,40 @@ struct TableRowStyle;
 struct TableCellStyle;
 struct GraphicStyle;
 struct PageLayout;
-struct TableDimensions;
+} // namespace odr
+
+namespace odr::internal::abstract {
+class Document;
+
+class ElementAdapter;
+class TextRootAdapter;
+class SlideAdapter;
+class PageAdapter;
+class SheetAdapter;
+class SheetColumnAdapter;
+class SheetRowAdapter;
+class SheetCellAdapter;
+class MasterPageAdapter;
+class LineBreakAdapter;
+class ParagraphAdapter;
+class SpanAdapter;
+class TextAdapter;
+class LinkAdapter;
+class BookmarkAdapter;
+class ListItemAdapter;
+class TableAdapter;
+class TableColumnAdapter;
+class TableRowAdapter;
+class TableCellAdapter;
+class FrameAdapter;
+class RectAdapter;
+class LineAdapter;
+class CircleAdapter;
+class CustomShapeAdapter;
+class ImageAdapter;
+} // namespace odr::internal::abstract
+
+namespace odr {
 
 class Element;
 class ElementIterator;
@@ -86,8 +93,6 @@ enum class ElementType {
 
   master_page,
 
-  sheet_column,
-  sheet_row,
   sheet_cell,
 
   text,
@@ -136,10 +141,8 @@ enum class ValueType {
 class Element {
 public:
   Element();
-  Element(const internal::abstract::Document *, internal::abstract::Element *);
-
-  bool operator==(const Element &rhs) const;
-  bool operator!=(const Element &rhs) const;
+  Element(const internal::abstract::ElementAdapter *adapter,
+          ElementIdentifier identifier);
 
   explicit operator bool() const;
 
@@ -158,6 +161,7 @@ public:
   [[nodiscard]] Slide as_slide() const;
   [[nodiscard]] Sheet as_sheet() const;
   [[nodiscard]] Page as_page() const;
+  [[nodiscard]] SheetCell as_sheet_cell() const;
   [[nodiscard]] MasterPage as_master_page() const;
   [[nodiscard]] LineBreak as_line_break() const;
   [[nodiscard]] Paragraph as_paragraph() const;
@@ -178,8 +182,12 @@ public:
   [[nodiscard]] Image as_image() const;
 
 protected:
-  const internal::abstract::Document *m_document{nullptr};
-  internal::abstract::Element *m_element{nullptr};
+  const internal::abstract::ElementAdapter *m_adapter{nullptr};
+  ElementIdentifier m_identifier;
+
+  friend bool operator==(const Element &lhs, const Element &rhs) {
+    return lhs.m_identifier == rhs.m_identifier;
+  }
 
   [[nodiscard]] bool exists_() const;
 };
@@ -194,11 +202,8 @@ public:
   using iterator_category = std::forward_iterator_tag;
 
   ElementIterator();
-  ElementIterator(const internal::abstract::Document *,
-                  internal::abstract::Element *);
-
-  bool operator==(const ElementIterator &rhs) const;
-  bool operator!=(const ElementIterator &rhs) const;
+  ElementIterator(const internal::abstract::ElementAdapter *adapter,
+                  ElementIdentifier identifier);
 
   reference operator*() const;
 
@@ -206,8 +211,13 @@ public:
   ElementIterator operator++(int);
 
 private:
-  const internal::abstract::Document *m_document{nullptr};
-  internal::abstract::Element *m_element{nullptr};
+  const internal::abstract::ElementAdapter *m_adapter{nullptr};
+  ElementIdentifier m_identifier{null_element_id};
+
+  friend bool operator==(const ElementIterator &lhs,
+                         const ElementIterator &rhs) {
+    return lhs.m_identifier == rhs.m_identifier;
+  }
 
   [[nodiscard]] bool exists_() const;
 };
@@ -216,8 +226,8 @@ private:
 class ElementRange {
 public:
   ElementRange();
-  explicit ElementRange(ElementIterator begin);
-  ElementRange(ElementIterator begin, ElementIterator end);
+  explicit ElementRange(const ElementIterator &begin);
+  ElementRange(const ElementIterator &begin, const ElementIterator &end);
 
   [[nodiscard]] ElementIterator begin() const;
   [[nodiscard]] ElementIterator end() const;
@@ -228,26 +238,27 @@ private:
 };
 
 /// @brief Represents a typed element in a document.
-template <typename T> class TypedElement : public Element {
+template <typename T> class ElementBase : public Element {
 public:
-  TypedElement() = default;
-  TypedElement(const internal::abstract::Document *document, T *element)
-      : Element(document, element), m_element{element} {}
-  TypedElement(const internal::abstract::Document *document,
-               internal::abstract::Element *element)
-      : Element(document, dynamic_cast<T *>(element)),
-        m_element{dynamic_cast<T *>(element)} {}
+  ElementBase() = default;
+  ElementBase(const internal::abstract::ElementAdapter *adapter,
+              const ElementIdentifier identifier, const T *adapter2)
+      : Element(adapter, identifier), m_adapter2{adapter2} {}
+
+  explicit operator bool() const { return exists_(); }
 
 protected:
-  T *m_element;
+  const T *m_adapter2{nullptr};
 
-  [[nodiscard]] bool exists_() const { return m_element != nullptr; }
+  [[nodiscard]] bool exists_() const {
+    return Element::exists_() && m_adapter2 != nullptr;
+  }
 };
 
 /// @brief Represents a root element in a document.
-class TextRoot final : public TypedElement<internal::abstract::TextRoot> {
+class TextRoot final : public ElementBase<internal::abstract::TextRootAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] PageLayout page_layout() const;
 
@@ -255,9 +266,9 @@ public:
 };
 
 /// @brief Represents a slide element in a document.
-class Slide final : public TypedElement<internal::abstract::Slide> {
+class Slide final : public ElementBase<internal::abstract::SlideAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::string name() const;
 
@@ -267,9 +278,9 @@ public:
 };
 
 /// @brief Represents a sheet element in a document.
-class Sheet final : public TypedElement<internal::abstract::Sheet> {
+class Sheet final : public ElementBase<internal::abstract::SheetAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::string name() const;
 
@@ -277,66 +288,32 @@ public:
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;
 
-  [[nodiscard]] SheetColumn column(std::uint32_t column) const;
-  [[nodiscard]] SheetRow row(std::uint32_t row) const;
   [[nodiscard]] SheetCell cell(std::uint32_t column, std::uint32_t row) const;
-
   [[nodiscard]] ElementRange shapes() const;
-};
 
-/// @brief Represents a sheet column element in a document.
-class SheetColumn final : public TypedElement<internal::abstract::Sheet> {
-public:
-  SheetColumn() = default;
-  SheetColumn(const internal::abstract::Document *document,
-              internal::abstract::Sheet *sheet, std::uint32_t column);
-
-  [[nodiscard]] TableColumnStyle style() const;
-
-private:
-  std::uint32_t m_column{};
-};
-
-/// @brief Represents a sheet row element in a document.
-class SheetRow final : public TypedElement<internal::abstract::Sheet> {
-public:
-  SheetRow() = default;
-  SheetRow(const internal::abstract::Document *document,
-           internal::abstract::Sheet *sheet, std::uint32_t row);
-
-  [[nodiscard]] TableRowStyle style() const;
-
-private:
-  std::uint32_t m_row{};
+  [[nodiscard]] TableStyle style() const;
+  [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;
+  [[nodiscard]] TableRowStyle row_style(std::uint32_t row) const;
+  [[nodiscard]] TableCellStyle cell_style(std::uint32_t column,
+                                          std::uint32_t row) const;
 };
 
 /// @brief Represents a sheet cell element in a document.
-class SheetCell final : public TypedElement<internal::abstract::SheetCell> {
+class SheetCell final
+    : public ElementBase<internal::abstract::SheetCellAdapter> {
 public:
-  SheetCell() = default;
-  SheetCell(const internal::abstract::Document *document,
-            internal::abstract::Sheet *sheet, std::uint32_t column,
-            std::uint32_t row, internal::abstract::SheetCell *element);
+  using ElementBase::ElementBase;
 
-  [[nodiscard]] Sheet sheet() const;
-  [[nodiscard]] std::uint32_t column() const;
-  [[nodiscard]] std::uint32_t row() const;
+  [[nodiscard]] TablePosition position() const;
   [[nodiscard]] bool is_covered() const;
   [[nodiscard]] TableDimensions span() const;
   [[nodiscard]] ValueType value_type() const;
-
-  [[nodiscard]] TableCellStyle style() const;
-
-private:
-  internal::abstract::Sheet *m_sheet{};
-  std::uint32_t m_column{};
-  std::uint32_t m_row{};
 };
 
 /// @brief Represents a page element in a document.
-class Page final : public TypedElement<internal::abstract::Page> {
+class Page final : public ElementBase<internal::abstract::PageAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::string name() const;
 
@@ -346,42 +323,45 @@ public:
 };
 
 /// @brief Represents a master page element in a document.
-class MasterPage final : public TypedElement<internal::abstract::MasterPage> {
+class MasterPage final
+    : public ElementBase<internal::abstract::MasterPageAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] PageLayout page_layout() const;
 };
 
 /// @brief Represents a line break element in a document.
-class LineBreak final : public TypedElement<internal::abstract::LineBreak> {
+class LineBreak final
+    : public ElementBase<internal::abstract::LineBreakAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] TextStyle style() const;
 };
 
 /// @brief Represents a paragraph element in a document.
-class Paragraph final : public TypedElement<internal::abstract::Paragraph> {
+class Paragraph final
+    : public ElementBase<internal::abstract::ParagraphAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] ParagraphStyle style() const;
   [[nodiscard]] TextStyle text_style() const;
 };
 
 /// @brief Represents a span element in a document.
-class Span final : public TypedElement<internal::abstract::Span> {
+class Span final : public ElementBase<internal::abstract::SpanAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] TextStyle style() const;
 };
 
 /// @brief Represents a text element in a document.
-class Text final : public TypedElement<internal::abstract::Text> {
+class Text final : public ElementBase<internal::abstract::TextAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::string content() const;
   void set_content(const std::string &text) const;
@@ -390,33 +370,33 @@ public:
 };
 
 /// @brief Represents a link element in a document.
-class Link final : public TypedElement<internal::abstract::Link> {
+class Link final : public ElementBase<internal::abstract::LinkAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::string href() const;
 };
 
 /// @brief Represents a bookmark element in a document.
-class Bookmark final : public TypedElement<internal::abstract::Bookmark> {
+class Bookmark final : public ElementBase<internal::abstract::BookmarkAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::string name() const;
 };
 
 /// @brief Represents a list item element in a document.
-class ListItem final : public TypedElement<internal::abstract::ListItem> {
+class ListItem final : public ElementBase<internal::abstract::ListItemAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] TextStyle style() const;
 };
 
 /// @brief Represents a table element in a document.
-class Table final : public TypedElement<internal::abstract::Table> {
+class Table final : public ElementBase<internal::abstract::TableAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] TableRow first_row() const;
   [[nodiscard]] TableColumn first_column() const;
@@ -430,25 +410,27 @@ public:
 };
 
 /// @brief Represents a table column element in a document.
-class TableColumn final : public TypedElement<internal::abstract::TableColumn> {
+class TableColumn final
+    : public ElementBase<internal::abstract::TableColumnAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] TableColumnStyle style() const;
 };
 
 /// @brief Represents a table row element in a document.
-class TableRow final : public TypedElement<internal::abstract::TableRow> {
+class TableRow final : public ElementBase<internal::abstract::TableRowAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] TableRowStyle style() const;
 };
 
 /// @brief Represents a table cell element in a document.
-class TableCell final : public TypedElement<internal::abstract::TableCell> {
+class TableCell final
+    : public ElementBase<internal::abstract::TableCellAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] bool is_covered() const;
   [[nodiscard]] TableDimensions span() const;
@@ -458,9 +440,9 @@ public:
 };
 
 /// @brief Represents a frame element in a document.
-class Frame final : public TypedElement<internal::abstract::Frame> {
+class Frame final : public ElementBase<internal::abstract::FrameAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] AnchorType anchor_type() const;
   [[nodiscard]] std::optional<std::string> x() const;
@@ -473,9 +455,9 @@ public:
 };
 
 /// @brief Represents a rectangle element in a document.
-class Rect final : public TypedElement<internal::abstract::Rect> {
+class Rect final : public ElementBase<internal::abstract::RectAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::string x() const;
   [[nodiscard]] std::string y() const;
@@ -486,9 +468,9 @@ public:
 };
 
 /// @brief Represents a line element in a document.
-class Line final : public TypedElement<internal::abstract::Line> {
+class Line final : public ElementBase<internal::abstract::LineAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::string x1() const;
   [[nodiscard]] std::string y1() const;
@@ -499,9 +481,9 @@ public:
 };
 
 /// @brief Represents a circle element in a document.
-class Circle final : public TypedElement<internal::abstract::Circle> {
+class Circle final : public ElementBase<internal::abstract::CircleAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::string x() const;
   [[nodiscard]] std::string y() const;
@@ -512,9 +494,10 @@ public:
 };
 
 /// @brief Represents a custom shape element in a document.
-class CustomShape final : public TypedElement<internal::abstract::CustomShape> {
+class CustomShape final
+    : public ElementBase<internal::abstract::CustomShapeAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] std::optional<std::string> x() const;
   [[nodiscard]] std::optional<std::string> y() const;
@@ -525,9 +508,9 @@ public:
 };
 
 /// @brief Represents an image element in a document.
-class Image final : public TypedElement<internal::abstract::Image> {
+class Image final : public ElementBase<internal::abstract::ImageAdapter> {
 public:
-  using TypedElement::TypedElement;
+  using ElementBase::ElementBase;
 
   [[nodiscard]] bool is_internal() const;
   [[nodiscard]] std::optional<File> file() const;

@@ -1,11 +1,14 @@
 #pragma once
 
-#include <pugixml.hpp>
+#include <odr/definitions.hpp>
+
+namespace pugi {
+class xml_node;
+}
 
 namespace odr::internal::ooxml::text {
-class Document;
-class Element;
+class ElementRegistry;
 
-Element *parse_tree(Document &document, pugi::xml_node node);
+ElementIdentifier parse_tree(ElementRegistry &registry, pugi::xml_node node);
 
 } // namespace odr::internal::ooxml::text

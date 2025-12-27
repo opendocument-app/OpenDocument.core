@@ -1,6 +1,6 @@
 #pragma once
 
-#include <odr/internal/common/table_position.hpp>
+#include <odr/table_position.hpp>
 
 #include <cstdint>
 #include <list>

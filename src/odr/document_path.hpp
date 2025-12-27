@@ -1,56 +1,64 @@
 #pragma once
 
+#include <odr/table_position.hpp>
+
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
 namespace odr {
 class Document;
 class Element;
+class Sheet;
+class SheetCell;
 
 /// @brief A path to a specific element in a document.
 class DocumentPath final {
 public:
-  template <typename Derived> struct ComponentTemplate {
-    static const std::string &prefix_string();
-
-    std::uint32_t number{0};
-
-    explicit ComponentTemplate(std::uint32_t number);
-
-    bool operator==(const ComponentTemplate &other) const noexcept;
-    bool operator!=(const ComponentTemplate &other) const noexcept;
-
-    Derived &operator++();
-    Derived &operator--();
-
-    [[nodiscard]] std::string to_string() const noexcept;
-  };
-
-  struct Child final : ComponentTemplate<Child> {
+  class Child final {
+  public:
     static constexpr std::string_view prefix = "child";
-    using ComponentTemplate::ComponentTemplate;
+
+    static const std::string &prefix_string();
+    static std::pair<Element, Child> extract(Element element);
+    static Element resolve(Element element, const Child &child);
+
+    explicit Child(std::uint32_t number);
+
+    bool operator==(const Child &other) const noexcept;
+    [[nodiscard]] std::string to_string() const noexcept;
+
+  private:
+    std::uint32_t m_number{0};
   };
 
-  struct Column final : ComponentTemplate<Column> {
-    static constexpr std::string_view prefix = "column";
-    using ComponentTemplate::ComponentTemplate;
+  class Cell final {
+  public:
+    static constexpr std::string_view prefix = "cell";
+
+    static const std::string &prefix_string();
+    static std::pair<Sheet, Cell> extract(const SheetCell &element);
+    static SheetCell resolve(const Sheet &element, const Cell &cell);
+
+    explicit Cell(const TablePosition &position);
+
+    bool operator==(const Cell &other) const noexcept;
+    [[nodiscard]] std::string to_string() const noexcept;
+
+  private:
+    TablePosition m_position;
   };
 
-  struct Row final : ComponentTemplate<Row> {
-    static constexpr std::string_view prefix = "row";
-    using ComponentTemplate::ComponentTemplate;
-  };
-
-  using Component = std::variant<Child, Column, Row>;
+  using Component = std::variant<Child, Cell>;
   using Container = std::vector<Component>;
   using const_iterator = Container::const_iterator;
 
   static Component component_from_string(const std::string &string);
   static DocumentPath extract(Element element);
   static DocumentPath extract(Element element, Element root);
-  static Element find(Element root, const DocumentPath &path);
+  static Element resolve(Element root, const DocumentPath &path);
 
   DocumentPath() noexcept;
   explicit DocumentPath(const Container &components);

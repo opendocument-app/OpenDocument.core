@@ -326,13 +326,21 @@ HtmlService html::translate(const PdfFile &pdf_file,
                                             std::move(logger));
 }
 
-HtmlService html::translate(const Archive &archive,
+HtmlService html::translate(const Filesystem &filesystem,
                             const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
   std::filesystem::create_directories(cache_path);
-  return internal::html::create_filesystem_service(
-      archive.as_filesystem(), cache_path, config, std::move(logger));
+  return internal::html::create_filesystem_service(filesystem, cache_path,
+                                                   config, std::move(logger));
+}
+
+HtmlService html::translate(const Archive &archive,
+                            const std::string &cache_path,
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
+  return translate(archive.as_filesystem(), cache_path, config,
+                   std::move(logger));
 }
 
 HtmlService html::translate(const Document &document,
@@ -349,7 +357,7 @@ void html::edit(const Document &document, const char *diff,
   for (auto json = nlohmann::json::parse(diff);
        const auto &[key, value] : json["modifiedText"].items()) {
     auto element =
-        DocumentPath::find(document.root_element(), DocumentPath(key));
+        DocumentPath::resolve(document.root_element(), DocumentPath(key));
     if (!element) {
       throw std::invalid_argument("element with path " + key + " not found");
     }

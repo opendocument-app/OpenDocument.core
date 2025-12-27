@@ -1,32 +1,31 @@
 #pragma once
 
 #include <odr/internal/common/document.hpp>
-#include <odr/internal/ooxml/presentation/ooxml_presentation_element.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_element_registry.hpp>
 
 #include <unordered_map>
-#include <vector>
 
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::presentation {
 
-class Document final : public TemplateDocument<Element> {
+class Document final : public internal::Document {
 public:
-  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
+  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> files);
 
-  [[nodiscard]] bool is_editable() const noexcept final;
-  [[nodiscard]] bool is_savable(bool encrypted) const noexcept final;
+  [[nodiscard]] const ElementRegistry &element_registry() const;
 
-  void save(const Path &path) const final;
-  void save(const Path &path, const char *password) const final;
+  [[nodiscard]] bool is_editable() const noexcept override;
+  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 
-  pugi::xml_node get_slide_root(const std::string &ref) const;
+  void save(const Path &path) const override;
+  void save(const Path &path, const char *password) const override;
 
 private:
   pugi::xml_document m_document_xml;
   std::unordered_map<std::string, pugi::xml_document> m_slides_xml;
 
-  friend class Element;
+  ElementRegistry m_element_registry;
 };
 
 } // namespace odr::internal::ooxml::presentation
