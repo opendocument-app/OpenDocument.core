@@ -526,7 +526,8 @@ public:
   }
   [[nodiscard]] TableStyle
   table_style(const ElementIdentifier element_id) const override {
-    return get_partial_style(element_id).table_style;
+    const pugi::xml_node node = get_node(element_id);
+    return m_document->style_registry().partial_table_style(node).table_style;
   }
 
   [[nodiscard]] TableColumnStyle
