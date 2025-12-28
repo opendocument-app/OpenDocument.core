@@ -15,6 +15,7 @@
 #include <odr/internal/pdf/pdf_graphics_state.hpp>
 
 #include <fstream>
+#include <iostream>
 
 namespace odr::internal::html {
 

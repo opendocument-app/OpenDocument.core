@@ -2,8 +2,6 @@
 
 #include <odr/internal/pdf/pdf_object_parser.hpp>
 
-#include <iostream>
-
 namespace odr::internal::pdf {
 
 class SimpleArray;

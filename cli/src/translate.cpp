@@ -3,12 +3,14 @@
 #include <odr/html.hpp>
 
 #include <filesystem>
-#include <iostream>
 #include <string>
 
 using namespace odr;
 
 int main(const int argc, char **argv) {
+  const std::shared_ptr logger =
+      Logger::create_stdio("odr-translate", LogLevel::verbose);
+
   const std::string input{argv[1]};
   const std::string output{argv[2]};
 
@@ -20,14 +22,14 @@ int main(const int argc, char **argv) {
   DecodedFile decoded_file{input};
 
   if (decoded_file.password_encrypted() && !password) {
-    std::cerr << "document encrypted but no password given" << std::endl;
+    ODR_FATAL(*logger, "document encrypted but no password given");
     return 2;
   }
   if (decoded_file.password_encrypted()) {
     try {
       decoded_file = decoded_file.decrypt(*password);
     } catch (const WrongPasswordError &) {
-      std::cerr << "wrong password" << std::endl;
+      ODR_FATAL(*logger, "wrong password");
       return 1;
     }
   }

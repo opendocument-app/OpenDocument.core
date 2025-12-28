@@ -1,18 +1,16 @@
-#include "odr/archive.hpp"
-
+#include <odr/archive.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 #include <odr/http_server.hpp>
 
-#include <iostream>
 #include <string>
 
 using namespace odr;
 
 int main(const int argc, char **argv) {
-  std::shared_ptr logger =
+  const std::shared_ptr logger =
       Logger::create_stdio("odr-server", LogLevel::verbose);
 
   std::string input{argv[1]};

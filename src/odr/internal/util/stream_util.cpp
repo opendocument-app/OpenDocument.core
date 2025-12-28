@@ -1,6 +1,5 @@
 #include <odr/internal/util/stream_util.hpp>
 
-#include <iostream>
 #include <iterator>
 #include <sstream>
 

@@ -3,6 +3,7 @@
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/util/map_util.hpp>
 
+#include <iostream>
 #include <unordered_map>
 
 namespace odr::internal::pdf {

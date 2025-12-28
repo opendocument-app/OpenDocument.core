@@ -2,7 +2,7 @@
 
 #include <odr/exceptions.hpp>
 
-#include <iostream>
+#include <istream>
 
 #include <uchardet/uchardet.h>
 

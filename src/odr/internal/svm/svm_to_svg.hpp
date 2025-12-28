@@ -1,7 +1,6 @@
 #pragma once
 
-#include <iostream>
-#include <memory>
+#include <ostream>
 
 namespace odr::internal::svm {
 class SvmFile;

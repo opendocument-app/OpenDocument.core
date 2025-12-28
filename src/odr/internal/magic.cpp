@@ -7,8 +7,6 @@
 #include <odr/internal/libmagic/libmagic.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <iostream>
-
 namespace odr::internal {
 
 namespace {

@@ -4,12 +4,14 @@
 
 #include <odr/internal/util/file_util.hpp>
 
-#include <iostream>
 #include <string>
 
 using namespace odr;
 
 int main(int, char **argv) {
+  const std::shared_ptr logger =
+      Logger::create_stdio("odr-back-translate", LogLevel::verbose);
+
   const std::string input{argv[1]};
   const std::string diff_path{argv[2]};
   const std::string output{argv[3]};
@@ -17,7 +19,7 @@ int main(int, char **argv) {
   const DocumentFile document_file{input};
 
   if (document_file.password_encrypted()) {
-    std::cerr << "encrypted documents are not supported" << std::endl;
+    ODR_FATAL(*logger, "encrypted documents are not supported");
     return 1;
   }
 

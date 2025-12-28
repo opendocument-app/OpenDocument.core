@@ -3,7 +3,6 @@
 #include <odr/document_element.hpp>
 
 #include <algorithm>
-#include <iostream>
 #include <stdexcept>
 
 namespace odr {
