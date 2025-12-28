@@ -106,6 +106,7 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
       registry.create_element(ElementType::list, node);
 
   for (; is_list_item(node); node = node.next_sibling()) {
+    ElementIdentifier base_id = element_id;
     const std::int32_t level = list_level(node);
 
     for (std::int32_t i = 0; i < level; ++i) {
@@ -120,13 +121,15 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
       const auto &[nested_id, _] =
           registry.create_element(ElementType::list, node);
 
-      registry.append_child(element_id, nested_id);
+      registry.append_child(base_id, nested_id);
+
+      base_id = nested_id;
     }
 
     const auto &[item_id, _] =
         registry.create_element(ElementType::list_item, node);
 
-    registry.append_child(element_id, item_id);
+    registry.append_child(base_id, item_id);
 
     auto [child_id, __] = parse_element_tree(registry, ElementType::paragraph,
                                              node, parse_any_element_children);
