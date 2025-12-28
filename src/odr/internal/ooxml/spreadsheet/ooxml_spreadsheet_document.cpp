@@ -170,14 +170,17 @@ public:
 
   [[nodiscard]] bool
   element_is_unique(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return true;
   }
   [[nodiscard]] bool
   element_is_self_locatable(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return true;
   }
   [[nodiscard]] bool
   element_is_editable(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return true;
   }
   [[nodiscard]]
