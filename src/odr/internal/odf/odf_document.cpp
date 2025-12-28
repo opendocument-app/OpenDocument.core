@@ -1,6 +1,7 @@
 #include <odr/internal/odf/odf_document.hpp>
 
 #include <odr/document_element.hpp>
+#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/abstract/document_element.hpp>
@@ -9,6 +10,7 @@
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
+#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
@@ -17,8 +19,6 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
-
-#include <pugixml.hpp>
 
 namespace odr::internal::odf {
 
@@ -213,6 +213,14 @@ public:
   }
 
   [[nodiscard]] bool
+  element_is_unique(const ElementIdentifier element_id) const override {
+    return true;
+  }
+  [[nodiscard]] bool
+  element_is_self_locatable(const ElementIdentifier element_id) const override {
+    return true;
+  }
+  [[nodiscard]] bool
   element_is_editable(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
@@ -228,6 +236,16 @@ public:
       return true;
     }
     return false;
+  }
+  [[nodiscard]]
+  DocumentPath
+  element_document_path(const ElementIdentifier element_id) const override {
+    return util::document::extract_path(*this, element_id, null_element_id);
+  }
+  [[nodiscard]] ElementIdentifier
+  element_navigate_path(const ElementIdentifier element_id,
+                        const DocumentPath &path) const override {
+    return util::document::navigate_path(*this, element_id, path);
   }
 
   [[nodiscard]] const TextRootAdapter *
@@ -1059,7 +1077,7 @@ public:
     }
     return false;
   }
-  [[nodiscard]] std::optional<odr::File>
+  [[nodiscard]] std::optional<File>
   image_file(const ElementIdentifier element_id) const override {
     if (m_document->as_filesystem() == nullptr) {
       return std::nullopt;
@@ -1142,9 +1160,10 @@ private:
     return base;
   }
 
-  ResolvedStyle get_partial_cell_style(const ElementIdentifier sheet_id,
-                                       const ElementIdentifier cell_id,
-                                       const TablePosition &position) const {
+  [[nodiscard]] ResolvedStyle
+  get_partial_cell_style(const ElementIdentifier sheet_id,
+                         const ElementIdentifier cell_id,
+                         const TablePosition &position) const {
     const char *style_name = nullptr;
 
     if (const pugi::xml_attribute attr =

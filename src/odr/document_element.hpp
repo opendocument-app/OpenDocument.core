@@ -9,6 +9,7 @@
 namespace odr {
 class TablePosition;
 struct TableDimensions;
+class DocumentPath;
 class File;
 struct TextStyle;
 struct ParagraphStyle;
@@ -153,7 +154,11 @@ public:
   [[nodiscard]] Element previous_sibling() const;
   [[nodiscard]] Element next_sibling() const;
 
+  [[nodiscard]] bool is_unique() const;
+  [[nodiscard]] bool is_self_locatable() const;
   [[nodiscard]] bool is_editable() const;
+  [[nodiscard]] DocumentPath document_path() const;
+  [[nodiscard]] Element navigate_path(const DocumentPath &path) const;
 
   [[nodiscard]] ElementRange children() const;
 
@@ -183,7 +188,7 @@ public:
 
 protected:
   const internal::abstract::ElementAdapter *m_adapter{nullptr};
-  ElementIdentifier m_identifier;
+  ElementIdentifier m_identifier{null_element_id};
 
   friend bool operator==(const Element &lhs, const Element &rhs) {
     return lhs.m_identifier == rhs.m_identifier;

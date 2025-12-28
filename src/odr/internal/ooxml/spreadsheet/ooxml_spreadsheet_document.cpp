@@ -1,5 +1,6 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 
+#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/table_position.hpp>
@@ -7,6 +8,7 @@
 #include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
+#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
 #include <utility>
@@ -167,13 +169,26 @@ public:
   }
 
   [[nodiscard]] bool
+  element_is_unique(const ElementIdentifier element_id) const override {
+    return true;
+  }
+  [[nodiscard]] bool
+  element_is_self_locatable(const ElementIdentifier element_id) const override {
+    return true;
+  }
+  [[nodiscard]] bool
   element_is_editable(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return element->is_editable;
-    }
-    return false;
+    return true;
+  }
+  [[nodiscard]]
+  DocumentPath
+  element_document_path(const ElementIdentifier element_id) const override {
+    return util::document::extract_path(*this, element_id, null_element_id);
+  }
+  [[nodiscard]] ElementIdentifier
+  element_navigate_path(const ElementIdentifier element_id,
+                        const DocumentPath &path) const override {
+    return util::document::navigate_path(*this, element_id, path);
   }
 
   [[nodiscard]] const abstract::TextRootAdapter *
@@ -567,7 +582,7 @@ public:
     }
     return false;
   }
-  [[nodiscard]] std::optional<odr::File>
+  [[nodiscard]] std::optional<File>
   image_file(const ElementIdentifier element_id) const override {
     if (m_document->as_filesystem() == nullptr) {
       return std::nullopt;

@@ -9,6 +9,7 @@
 namespace odr {
 enum class ElementType;
 class File;
+class DocumentPath;
 } // namespace odr
 
 namespace odr::internal::abstract {
@@ -56,12 +57,17 @@ public:
   [[nodiscard]] virtual ElementIdentifier
   element_next_sibling(ElementIdentifier element_id) const = 0;
 
-  // TODO element_is_unique
-  // TODO element_is_self_locatable
+  [[nodiscard]] virtual bool
+  element_is_unique(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual bool
+  element_is_self_locatable(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual bool
   element_is_editable(ElementIdentifier element_id) const = 0;
-  // TODO element_path_from_parent
-  // TODO element_path_from_document
+  [[nodiscard]] virtual DocumentPath
+  element_document_path(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
+  element_navigate_path(ElementIdentifier element_id,
+                        const DocumentPath &path) const = 0;
 
   // TODO push to document
   [[nodiscard]] virtual const TextRootAdapter *

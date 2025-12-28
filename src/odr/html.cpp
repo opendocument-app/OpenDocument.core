@@ -40,7 +40,7 @@ void bring_offline(const HtmlResources &resources,
         resource.is_external() || !resource.is_accessible()) {
       continue;
     }
-    auto path = Path(output_path).join(RelPath(*location));
+    const Path path = Path(output_path).join(RelPath(*location));
 
     std::filesystem::create_directories(path.parent().path());
     std::ofstream ostream = util::file::create(path.string());
@@ -113,8 +113,8 @@ Html HtmlService::bring_offline(const std::string &output_path,
 
   HtmlResources resources;
 
-  for (const auto &view : views) {
-    auto path = Path(output_path).join(RelPath(view.path()));
+  for (const HtmlView &view : views) {
+    const Path path = Path(output_path).join(RelPath(view.path()));
 
     std::filesystem::create_directories(path.parent().path());
     std::ofstream ostream = util::file::create(path.string());
@@ -164,7 +164,7 @@ HtmlResources HtmlView::write_html(std::ostream &out) const {
 Html HtmlView::bring_offline(const std::string &output_path) const {
   HtmlResources resources;
 
-  const auto path = Path(output_path).join(RelPath(this->path()));
+  const Path path = Path(output_path).join(RelPath(this->path()));
 
   {
     std::filesystem::create_directories(path.parent().path());
@@ -248,7 +248,7 @@ HtmlResourceLocator html::standard_resource_locator() {
     }
 
     if (resource.is_shipped()) {
-      auto resource_path =
+      Path resource_path =
           Path(config.resource_path).join(RelPath(resource.path()));
       if (config.relative_resource_paths && config.output_path.has_value()) {
         resource_path = resource_path.rebase(Path(*config.output_path));
@@ -294,7 +294,7 @@ HtmlService html::translate(const DocumentFile &document_file,
       document_file.impl();
 
 #ifdef ODR_WITH_WVWARE
-  if (const auto wv_document_file =
+  if (const std::shared_ptr wv_document_file =
           std::dynamic_pointer_cast<WvWareLegacyMicrosoftFile>(
               document_file_impl)) {
     std::filesystem::create_directories(cache_path);
@@ -314,7 +314,7 @@ HtmlService html::translate(const PdfFile &pdf_file,
   const std::shared_ptr<abstract::PdfFile> pdf_file_impl = pdf_file.impl();
 
 #ifdef ODR_WITH_PDF2HTMLEX
-  if (const auto poppler_pdf_file =
+  if (const std::shared_ptr poppler_pdf_file =
           std::dynamic_pointer_cast<PopplerPdfFile>(pdf_file_impl)) {
     std::filesystem::create_directories(cache_path);
     return internal::html::create_poppler_pdf_service(
@@ -354,10 +354,10 @@ HtmlService html::translate(const Document &document,
 
 void html::edit(const Document &document, const char *diff,
                 Logger & /*logger*/) {
-  for (auto json = nlohmann::json::parse(diff);
-       const auto &[key, value] : json["modifiedText"].items()) {
-    auto element =
-        DocumentPath::resolve(document.root_element(), DocumentPath(key));
+  const nlohmann::json json = nlohmann::json::parse(diff);
+  for (const auto &[key, value] : json["modifiedText"].items()) {
+    const Element element =
+        document.root_element().navigate_path(DocumentPath(key));
     if (!element) {
       throw std::invalid_argument("element with path " + key + " not found");
     }

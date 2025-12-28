@@ -240,8 +240,7 @@ void html::translate_text(const Element &element, const WritingState &state) {
                  .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
                    if (state.config().editable && element.is_editable()) {
                      clb("contenteditable", "true");
-                     clb("data-odr-path",
-                         DocumentPath::extract(element).to_string());
+                     clb("data-odr-path", element.document_path().to_string());
                    }
                  })
                  .set_style(translate_text_style(text.style())));

@@ -21,7 +21,6 @@ public:
     ElementIdentifier next_sibling_id{null_element_id};
     ElementType type{ElementType::none};
     pugi::xml_node node;
-    bool is_editable{false};
   };
 
   struct Table final {

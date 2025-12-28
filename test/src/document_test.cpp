@@ -14,7 +14,8 @@ using namespace odr;
 using namespace odr::test;
 
 TEST(Document, odt) {
-  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"), *logger);
@@ -25,7 +26,8 @@ TEST(Document, odt) {
 
   EXPECT_EQ(document.document_type(), DocumentType::text);
 
-  const auto page_layout = document.root_element().as_text_root().page_layout();
+  const PageLayout page_layout =
+      document.root_element().as_text_root().page_layout();
   EXPECT_TRUE(page_layout.width.has_value());
   EXPECT_EQ(Measure("8.2673in"), page_layout.width);
   EXPECT_TRUE(page_layout.height.has_value());
@@ -35,7 +37,8 @@ TEST(Document, odt) {
 }
 
 TEST(Document, odt_element_path) {
-  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"), *logger);
@@ -46,20 +49,20 @@ TEST(Document, odt_element_path) {
 
   EXPECT_EQ(document.document_type(), DocumentType::text);
 
-  const auto root = document.root_element();
-  const auto p1 = root.first_child();
+  const Element root = document.root_element();
+  const Element p1 = root.first_child();
   EXPECT_EQ(p1.type(), ElementType::paragraph);
-  const auto t1 = p1.first_child();
+  const Element t1 = p1.first_child();
   EXPECT_EQ(t1.type(), ElementType::text);
 
-  const DocumentPath t1_path = DocumentPath::extract(t1, root);
-  EXPECT_EQ(t1_path.to_string(), "/child:0/child:0");
-  const Element t1_via_path = DocumentPath::resolve(root, t1_path);
+  const DocumentPath t1_path = t1.document_path();
+  const Element t1_via_path = root.navigate_path(t1_path);
   EXPECT_EQ(t1_via_path, t1);
 }
 
 TEST(Document, odt_element_path2) {
-  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/style-various-1.odt"), *logger);
@@ -70,28 +73,29 @@ TEST(Document, odt_element_path2) {
 
   EXPECT_EQ(document.document_type(), DocumentType::text);
 
-  const auto root = document.root_element();
+  const Element root = document.root_element();
 
-  const Element cell_via_path = DocumentPath::resolve(
-      root, DocumentPath("/child:41/child:0/child:1/child:0/child:0"));
+  const Element cell_via_path = root.navigate_path(
+      DocumentPath("/child:41/child:0/child:1/child:0/child:0"));
   EXPECT_EQ(cell_via_path.type(), ElementType::text);
   EXPECT_EQ(cell_via_path.as_text().content(), "B1");
 }
 
 TEST(Document, odg) {
-  auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  DocumentFile document_file(
+  const DocumentFile document_file(
       TestData::test_file_path("odr-public/odg/sample.odg"), *logger);
 
   EXPECT_EQ(document_file.file_type(), FileType::opendocument_graphics);
 
-  Document document = document_file.document();
+  const Document document = document_file.document();
 
   EXPECT_EQ(document.document_type(), DocumentType::drawing);
 
-  for (auto child : document.root_element().children()) {
-    auto page_layout = child.as_page().page_layout();
+  for (const Element child : document.root_element().children()) {
+    const PageLayout page_layout = child.as_page().page_layout();
     EXPECT_TRUE(page_layout.width.has_value());
     EXPECT_EQ(Measure("21cm"), page_layout.width);
     EXPECT_TRUE(page_layout.height.has_value());
@@ -102,7 +106,8 @@ TEST(Document, odg) {
 }
 
 TEST(Document, edit_odt) {
-  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/about.odt"), *logger);
@@ -113,7 +118,7 @@ TEST(Document, edit_odt) {
       edit(child);
     }
     // TODO make editing empty text possible
-    if (const auto text = element.as_text(); text && !text.content().empty()) {
+    if (const Text text = element.as_text(); text && !text.content().empty()) {
       text.set_content("hello world!");
     }
   };
@@ -130,7 +135,7 @@ TEST(Document, edit_odt) {
       validate(child);
     }
     // TODO make editing empty text possible
-    if (const auto text = element.as_text(); text && !text.content().empty()) {
+    if (const Text text = element.as_text(); text && !text.content().empty()) {
       EXPECT_EQ("hello world!", text.content());
     }
   };
@@ -138,7 +143,8 @@ TEST(Document, edit_odt) {
 }
 
 TEST(Document, edit_docx) {
-  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
       TestData::test_file_path("odr-public/docx/style-various-1.docx"),
@@ -150,7 +156,7 @@ TEST(Document, edit_docx) {
       edit(child);
     }
     // TODO make editing empty text possible
-    if (const auto text = element.as_text(); text && !text.content().empty()) {
+    if (const Text text = element.as_text(); text && !text.content().empty()) {
       text.set_content("hello world!");
     }
   };
@@ -167,7 +173,7 @@ TEST(Document, edit_docx) {
       validate(child);
     }
     // TODO make editing empty text possible
-    if (const auto text = element.as_text(); text && !text.content().empty()) {
+    if (const Text text = element.as_text(); text && !text.content().empty()) {
       EXPECT_EQ("hello world!", text.content());
     }
   };
@@ -175,9 +181,10 @@ TEST(Document, edit_docx) {
 }
 
 TEST(Document, edit_odt_diff) {
-  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const auto diff =
+  const char *diff =
       R"({"modifiedText":{"/child:16/child:0":"Outasdfsdafdline","/child:24/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0":"Text hello world!"}})";
   const DocumentFile document_file(
       TestData::test_file_path("odr-public/odt/style-various-1.odt"), *logger);
@@ -193,26 +200,27 @@ TEST(Document, edit_odt_diff) {
   const DocumentFile validate_file(output_path);
   const Document validate_document = validate_file.document();
   EXPECT_EQ("Outasdfsdafdline",
-            DocumentPath::resolve(validate_document.root_element(),
-                                  DocumentPath("/child:16/child:0"))
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:16/child:0"))
                 .as_text()
                 .content());
   EXPECT_EQ("Colorasdfasdfasdfed Line",
-            DocumentPath::resolve(validate_document.root_element(),
-                                  DocumentPath("/child:24/child:0"))
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:24/child:0"))
                 .as_text()
                 .content());
   EXPECT_EQ("Text hello world!",
-            DocumentPath::resolve(validate_document.root_element(),
-                                  DocumentPath("/child:6/child:0"))
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:6/child:0"))
                 .as_text()
                 .content());
 }
 
 TEST(Document, edit_ods_diff) {
-  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const auto diff =
+  const char *diff =
       R"({"modifiedText":{"/child:0/cell:A1/child:0/child:0":"Page 1 hi","/child:1/cell:A1/child:0/child:0":"Page 2 hihi","/child:2/cell:A1/child:0/child:0":"Page 3 hihihi","/child:3/cell:A1/child:0/child:0":"Page 4 hihihihi","/child:4/cell:A1/child:0/child:0":"Page 5 hihihihihi"}})";
   DocumentFile document_file(
       TestData::test_file_path("odr-public/ods/pages.ods"), *logger);
@@ -228,40 +236,38 @@ TEST(Document, edit_ods_diff) {
 
   const DocumentFile validate_file(output_path);
   const Document validate_document = validate_file.document();
-  EXPECT_EQ("Page 1 hi", DocumentPath::resolve(
-                             validate_document.root_element(),
-                             DocumentPath("/child:0/cell:A1/child:0/child:0"))
-                             .as_text()
-                             .content());
-  EXPECT_EQ("Page 2 hihi", DocumentPath::resolve(
-                               validate_document.root_element(),
-                               DocumentPath("/child:1/cell:A1/child:0/child:0"))
-                               .as_text()
-                               .content());
-  EXPECT_EQ(
-      "Page 3 hihihi",
-      DocumentPath::resolve(validate_document.root_element(),
-                            DocumentPath("/child:2/cell:A1/child:0/child:0"))
-          .as_text()
-          .content());
-  EXPECT_EQ(
-      "Page 4 hihihihi",
-      DocumentPath::resolve(validate_document.root_element(),
-                            DocumentPath("/child:3/cell:A1/child:0/child:0"))
-          .as_text()
-          .content());
-  EXPECT_EQ(
-      "Page 5 hihihihihi",
-      DocumentPath::resolve(validate_document.root_element(),
-                            DocumentPath("/child:4/cell:A1/child:0/child:0"))
-          .as_text()
-          .content());
+  EXPECT_EQ("Page 1 hi",
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:0/cell:A1/child:0/child:0"))
+                .as_text()
+                .content());
+  EXPECT_EQ("Page 2 hihi",
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:1/cell:A1/child:0/child:0"))
+                .as_text()
+                .content());
+  EXPECT_EQ("Page 3 hihihi",
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:2/cell:A1/child:0/child:0"))
+                .as_text()
+                .content());
+  EXPECT_EQ("Page 4 hihihihi",
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:3/cell:A1/child:0/child:0"))
+                .as_text()
+                .content());
+  EXPECT_EQ("Page 5 hihihihihi",
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:4/cell:A1/child:0/child:0"))
+                .as_text()
+                .content());
 }
 
 TEST(Document, edit_docx_diff) {
-  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const auto diff =
+  const auto *diff =
       R"({"modifiedText":{"/child:16/child:0/child:0":"Outasdfsdafdline","/child:24/child:0/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0/child:0":"Text hello world!"}})";
   const DocumentFile document_file(
       TestData::test_file_path("odr-public/docx/style-various-1.docx"),
@@ -278,18 +284,18 @@ TEST(Document, edit_docx_diff) {
   const DocumentFile validate_file(output_path);
   const Document validate_document = validate_file.document();
   EXPECT_EQ("Outasdfsdafdline",
-            DocumentPath::resolve(validate_document.root_element(),
-                                  DocumentPath("/child:16/child:0/child:0"))
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:16/child:0/child:0"))
                 .as_text()
                 .content());
   EXPECT_EQ("Colorasdfasdfasdfed Line",
-            DocumentPath::resolve(validate_document.root_element(),
-                                  DocumentPath("/child:24/child:0/child:0"))
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:24/child:0/child:0"))
                 .as_text()
                 .content());
   EXPECT_EQ("Text hello world!",
-            DocumentPath::resolve(validate_document.root_element(),
-                                  DocumentPath("/child:6/child:0/child:0"))
+            validate_document.root_element()
+                .navigate_path(DocumentPath("/child:6/child:0/child:0"))
                 .as_text()
                 .content());
 }

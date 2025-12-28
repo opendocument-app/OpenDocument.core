@@ -1,5 +1,6 @@
 #include <odr/document_element.hpp>
 
+#include <odr/document_path.hpp>
 #include <odr/file.hpp>
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
@@ -48,8 +49,28 @@ Element Element::next_sibling() const {
              : Element();
 }
 
+bool Element::is_unique() const {
+  return exists_() ? m_adapter->element_is_unique(m_identifier) : false;
+}
+
+bool Element::is_self_locatable() const {
+  return exists_() ? m_adapter->element_is_self_locatable(m_identifier) : false;
+}
+
 bool Element::is_editable() const {
   return exists_() ? m_adapter->element_is_editable(m_identifier) : false;
+}
+
+DocumentPath Element::document_path() const {
+  return exists_() ? m_adapter->element_document_path(m_identifier)
+                   : DocumentPath();
+}
+
+Element Element::navigate_path(const DocumentPath &path) const {
+  return exists_()
+             ? Element(m_adapter,
+                       m_adapter->element_navigate_path(m_identifier, path))
+             : Element();
 }
 
 TextRoot Element::as_text_root() const {
