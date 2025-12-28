@@ -181,7 +181,7 @@ public:
   [[nodiscard]] bool
   element_is_editable(const ElementIdentifier element_id) const override {
     (void)element_id;
-    return true;
+    return false;
   }
   [[nodiscard]]
   DocumentPath
