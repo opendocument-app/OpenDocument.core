@@ -4,6 +4,10 @@
 
 #include <odr/internal/abstract/document_element.hpp>
 
+#include <ranges>
+#include <stdexcept>
+#include <vector>
+
 namespace odr::internal::util {
 
 namespace {
