@@ -489,6 +489,7 @@ public:
 
   [[nodiscard]] AnchorType
   frame_anchor_type(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return AnchorType::at_page;
   }
   [[nodiscard]] std::optional<std::string>
