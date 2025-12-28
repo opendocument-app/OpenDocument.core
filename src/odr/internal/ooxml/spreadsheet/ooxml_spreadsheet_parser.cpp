@@ -90,22 +90,6 @@ void parse_sheet_cell_children(ElementRegistry &registry,
   parse_any_element_children(registry, context, parent_id, node);
 }
 
-void parse_frame_children(ElementRegistry &registry,
-                          const ParseContext &context,
-                          const ElementIdentifier parent_id,
-                          const pugi::xml_node node) {
-  (void)registry;
-  (void)context;
-  (void)parent_id;
-  if (const pugi::xml_node image_node =
-          node.child("xdr:pic").child("xdr:blipFill").child("a:blip")) {
-    (void)image_node;
-    // TODO
-    // auto [image, _] = parse_any_element_tree(registry, context, image_node);
-    // registry.append_child(parent_id, image);
-  }
-}
-
 std::tuple<ElementIdentifier, pugi::xml_node>
 parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
                     const pugi::xml_node node) {
@@ -114,6 +98,9 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
   }
 
   const auto &[element_id, _, sheet] = registry.create_sheet_element(node);
+  registry.attach_element_relations(element_id,
+                                    context.get_document_relations(),
+                                    context.get_document_path());
 
   for (const pugi::xml_node col_node : node.child("cols").children("col")) {
     const std::uint32_t min = col_node.attribute("min").as_uint() - 1;
@@ -158,9 +145,14 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
     const auto &[drawing_xml, drawing_relations] =
         context.get_documents_and_relations().at(drawing_path);
 
+    const ParseContext drawing_context(drawing_path, drawing_relations,
+                                       context.get_documents_and_relations(),
+                                       context.get_shared_strings());
+
     for (const pugi::xml_node shape_node :
          drawing_xml.document_element().children()) {
-      auto [shape, _] = parse_any_element_tree(registry, context, shape_node);
+      const auto [shape, _] =
+          parse_any_element_tree(registry, drawing_context, shape_node);
       if (shape == null_element_id) {
         continue;
       }
@@ -208,6 +200,30 @@ parse_text_element(ElementRegistry &registry, const ParseContext &context,
 }
 
 std::tuple<ElementIdentifier, pugi::xml_node>
+parse_frame_element(ElementRegistry &registry, const ParseContext &context,
+                    const pugi::xml_node node) {
+  if (!node) {
+    return {null_element_id, pugi::xml_node()};
+  }
+
+  const auto &[element_id, _] =
+      registry.create_element(ElementType::frame, node);
+  registry.attach_element_relations(element_id,
+                                    context.get_document_relations(),
+                                    context.get_document_path());
+
+  if (const pugi::xml_node image_node =
+          node.child("xdr:pic").child("xdr:blipFill").child("a:blip")) {
+    auto [image, _] =
+        parse_element_tree(registry, context, ElementType::image, image_node,
+                           parse_any_element_children);
+    registry.append_child(element_id, image);
+  }
+
+  return {element_id, node.next_sibling()};
+}
+
+std::tuple<ElementIdentifier, pugi::xml_node>
 parse_any_element_tree(ElementRegistry &registry, const ParseContext &context,
                        const pugi::xml_node node) {
   const auto create_default_tree_parser =
@@ -229,9 +245,7 @@ parse_any_element_tree(ElementRegistry &registry, const ParseContext &context,
       {"r", create_default_tree_parser(ElementType::span)},
       {"t", parse_text_element},
       {"v", parse_text_element},
-      {"xdr:twoCellAnchor",
-       create_default_tree_parser(ElementType::frame, parse_frame_children)},
-  };
+      {"xdr:twoCellAnchor", parse_frame_element}};
 
   if (const auto constructor_it = parser_table.find(node.name());
       constructor_it != std::end(parser_table)) {

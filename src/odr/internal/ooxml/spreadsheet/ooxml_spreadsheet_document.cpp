@@ -577,7 +577,16 @@ public:
   [[nodiscard]] std::string
   image_href(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    return node.attribute("xlink:href").value();
+    if (const pugi::xml_attribute ref = node.attribute("r:embed"); ref) {
+      if (const auto [relations, origin] = get_relations_and_origin(element_id);
+          relations != nullptr) {
+        if (const auto rel = relations->find(ref.value());
+            rel != std::end(*relations)) {
+          return origin.parent().join(RelPath(rel->second)).string();
+        }
+      }
+    }
+    return ""; // TODO
   }
 
 private:
@@ -593,6 +602,21 @@ private:
       return element->node;
     }
     return {};
+  }
+
+  [[nodiscard]] std::pair<const Relations *, AbsPath>
+  get_relations_and_origin(const ElementIdentifier element_id) const {
+    if (const ElementRegistry::Element *element =
+            m_registry->element(element_id);
+        element == nullptr) {
+      return {nullptr, {}};
+    }
+    if (const ElementRegistry::ElementRelations *element_relations =
+            m_registry->element_relations(element_id);
+        element_relations != nullptr) {
+      return {element_relations->relations, element_relations->origin};
+    }
+    return get_relations_and_origin(element_parent(element_id));
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {

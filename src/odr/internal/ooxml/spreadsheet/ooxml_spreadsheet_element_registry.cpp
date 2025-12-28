@@ -55,6 +55,21 @@ ElementRegistry::create_sheet_cell_element(const pugi::xml_node node,
   return {element_id, element, it->second};
 }
 
+ElementRegistry::ElementRelations &
+ElementRegistry::attach_element_relations(const ElementIdentifier id,
+                                          const Relations &relations,
+                                          const AbsPath &origin) {
+  check_element_id(id);
+  if (m_element_relations.contains(id)) {
+    throw std::runtime_error("DocumentElementRegistry::attach_element_"
+                             "relations: relations already attached");
+  }
+  ElementRelations &result = m_element_relations[id];
+  result.relations = &relations;
+  result.origin = origin;
+  return result;
+}
+
 ElementRegistry::Element &
 ElementRegistry::element_at(const ElementIdentifier id) {
   check_element_id(id);
@@ -100,6 +115,15 @@ ElementRegistry::element(const ElementIdentifier id) const {
     return nullptr;
   }
   return &m_elements.at(id - 1);
+}
+
+const ElementRegistry::ElementRelations *
+ElementRegistry::element_relations(const ElementIdentifier id) const {
+  if (const auto it = m_element_relations.find(id);
+      it != m_element_relations.end()) {
+    return &it->second;
+  }
+  return nullptr;
 }
 
 const ElementRegistry::Text *

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <odr/internal/common/path.hpp>
+
+#include <odr/internal/ooxml/ooxml_util.hpp>
+
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
 #include <odr/table_dimension.hpp>
@@ -24,6 +28,11 @@ public:
     ElementType type{ElementType::none};
     pugi::xml_node node;
     bool is_editable{false};
+  };
+
+  struct ElementRelations final {
+    const Relations *relations{nullptr};
+    AbsPath origin;
   };
 
   struct Text final {
@@ -87,6 +96,10 @@ public:
   std::tuple<ElementIdentifier, Element &, SheetCell &>
   create_sheet_cell_element(pugi::xml_node node, const TablePosition &position);
 
+  ElementRelations &attach_element_relations(ElementIdentifier id,
+                                             const Relations &relations,
+                                             const AbsPath &origin);
+
   [[nodiscard]] Element &element_at(ElementIdentifier id);
   [[nodiscard]] Sheet &sheet_element_at(ElementIdentifier id);
 
@@ -97,6 +110,8 @@ public:
   [[nodiscard]] Text *text_element(ElementIdentifier id);
 
   [[nodiscard]] const Element *element(ElementIdentifier id) const;
+  [[nodiscard]] const ElementRelations *
+  element_relations(ElementIdentifier id) const;
   [[nodiscard]] const Text *text_element(ElementIdentifier id) const;
   [[nodiscard]] const Sheet *sheet_element(ElementIdentifier id) const;
   [[nodiscard]] const SheetCell *sheet_cell_element(ElementIdentifier id) const;
@@ -107,6 +122,7 @@ public:
 
 private:
   std::vector<Element> m_elements;
+  std::unordered_map<ElementIdentifier, ElementRelations> m_element_relations;
   std::unordered_map<ElementIdentifier, Text> m_texts;
   std::unordered_map<ElementIdentifier, Sheet> m_sheets;
   std::unordered_map<ElementIdentifier, SheetCell> m_sheet_cells;
