@@ -7,6 +7,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <odr/html.hpp>
+#include <odr/style.hpp>
 
 #include <fstream>
 #include <iomanip>

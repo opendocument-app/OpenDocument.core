@@ -1,13 +1,16 @@
 #pragma once
 
+#include <odr/definitions.hpp>
+
 #include <odr/internal/common/style.hpp>
-#include <odr/internal/odf/odf_element.hpp>
 
 #include <any>
 #include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
+
+#include <pugixml.hpp>
 
 namespace odr {
 struct PageLayout;
@@ -73,8 +76,8 @@ public:
 
   [[nodiscard]] pugi::xml_node font_face_node(const std::string &name) const;
 
-  [[nodiscard]] MasterPage *master_page(const std::string &name) const;
-  [[nodiscard]] MasterPage *first_master_page() const;
+  [[nodiscard]] ElementIdentifier master_page(const std::string &name) const;
+  [[nodiscard]] ElementIdentifier first_master_page() const;
 
 private:
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
@@ -89,8 +92,8 @@ private:
   std::unordered_map<std::string, std::unique_ptr<Style>> m_default_styles;
   std::unordered_map<std::string, std::unique_ptr<Style>> m_styles;
 
-  std::unordered_map<std::string, MasterPage *> m_master_page_elements;
-  MasterPage *m_first_master_page_element{};
+  std::unordered_map<std::string, ElementIdentifier> m_master_page_elements;
+  ElementIdentifier m_first_master_page_element{};
 
   void generate_indices_(pugi::xml_node content_root,
                          pugi::xml_node styles_root);

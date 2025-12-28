@@ -3,7 +3,6 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cmath>
-#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <utility>

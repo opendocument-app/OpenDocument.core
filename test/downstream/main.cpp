@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-int main(void) {
+int main() {
   std::cout << "odr version=\"" << odr::version() << "\' "
             << "commit=\'" << odr::commit_hash() << "\"" << std::endl;
 }

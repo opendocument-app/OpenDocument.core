@@ -1,7 +1,5 @@
 #pragma once
 
-#include <odr/document_element.hpp>
-
 #include <memory>
 
 namespace odr {
@@ -16,7 +14,7 @@ class Path;
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
-class Element;
+class ElementAdapter;
 
 class Document {
 public:
@@ -47,7 +45,12 @@ public:
   as_filesystem() const noexcept = 0;
 
   /// \return cursor to the root element of the document.
-  [[nodiscard]] virtual Element *root_element() const = 0;
+  [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
+
+  // TODO element adapter per id
+  /// \return the element adapter for this document.
+  [[nodiscard]] virtual const ElementAdapter *element_adapter() const = 0;
+  // TODO move other adapters here
 };
 
 } // namespace odr::internal::abstract

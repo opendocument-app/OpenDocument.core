@@ -2,8 +2,6 @@
 
 #include <odr/internal/text/text_util.hpp>
 
-#include <iostream>
-
 namespace odr::internal::text {
 
 TextFile::TextFile(std::shared_ptr<abstract::File> file)

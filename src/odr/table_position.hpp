@@ -3,9 +3,8 @@
 #include <cstdint>
 #include <functional>
 #include <string>
-#include <string_view>
 
-namespace odr::internal {
+namespace odr {
 
 class TablePosition final {
 public:
@@ -16,13 +15,14 @@ public:
 
   TablePosition() noexcept;
   TablePosition(std::uint32_t column, std::uint32_t row) noexcept;
-  explicit TablePosition(const std::string &);
+  explicit TablePosition(const std::string &string);
 
   bool operator==(const TablePosition &rhs) const;
   bool operator!=(const TablePosition &rhs) const;
 
   [[nodiscard]] std::uint32_t column() const noexcept;
   [[nodiscard]] std::uint32_t row() const noexcept;
+  [[nodiscard]] std::pair<std::uint32_t, std::uint32_t> pair() const noexcept;
   [[nodiscard]] std::string to_string() const noexcept;
   [[nodiscard]] std::size_t hash() const noexcept;
 
@@ -31,8 +31,8 @@ private:
   std::uint32_t m_row{0};
 };
 
-} // namespace odr::internal
+} // namespace odr
 
-template <> struct std::hash<odr::internal::TablePosition> {
-  std::size_t operator()(const odr::internal::TablePosition &k) const noexcept;
+template <> struct std::hash<odr::TablePosition> {
+  std::size_t operator()(const odr::TablePosition &k) const noexcept;
 };

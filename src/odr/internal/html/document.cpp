@@ -5,6 +5,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/style.hpp>
 
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/null_stream.hpp>

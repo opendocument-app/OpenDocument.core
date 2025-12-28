@@ -18,6 +18,7 @@ public:
   constexpr static auto prefix_pattern = R"(([a-zA-Z0-9_-]+))";
 
   struct Config {
+    // TODO remove
     std::string cache_path{"/tmp/odr"};
   };
 
@@ -28,6 +29,7 @@ public:
 
   void connect_service(HtmlService service, const std::string &prefix) const;
 
+  // TODO remove
   [[nodiscard]] HtmlViews serve_file(const DecodedFile &file,
                                      const std::string &prefix,
                                      const HtmlConfig &config) const;

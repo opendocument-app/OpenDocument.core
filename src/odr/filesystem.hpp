@@ -14,7 +14,6 @@ class File;
 /// @brief FileWalker class
 class FileWalker {
 public:
-  FileWalker();
   explicit FileWalker(std::unique_ptr<internal::abstract::FileWalker>);
   FileWalker(const FileWalker &);
   FileWalker(FileWalker &&) noexcept;
@@ -22,7 +21,6 @@ public:
 
   FileWalker &operator=(const FileWalker &);
   FileWalker &operator=(FileWalker &&) noexcept;
-  [[nodiscard]] explicit operator bool() const;
 
   [[nodiscard]] bool end() const;
   [[nodiscard]] std::uint32_t depth() const;
@@ -42,8 +40,6 @@ private:
 class Filesystem {
 public:
   explicit Filesystem(std::shared_ptr<internal::abstract::ReadableFilesystem>);
-
-  [[nodiscard]] explicit operator bool() const;
 
   [[nodiscard]] bool exists(const std::string &path) const;
   [[nodiscard]] bool is_file(const std::string &path) const;

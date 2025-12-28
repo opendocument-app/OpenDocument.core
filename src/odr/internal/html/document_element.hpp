@@ -14,7 +14,7 @@ struct WritingState;
 class HtmlWriter;
 
 void translate_children(const ElementRange &range, const WritingState &state);
-void translate_element(Element element, const WritingState &state);
+void translate_element(const Element &element, const WritingState &state);
 
 void translate_slide(const Slide &slide, const WritingState &state);
 void translate_sheet(const Sheet &sheet, const WritingState &state);
@@ -23,20 +23,20 @@ void translate_page(const Page &page, const WritingState &state);
 void translate_master_page(const MasterPage &masterPage,
                            const WritingState &state);
 
-void translate_text(Element element, const WritingState &state);
-void translate_line_break(Element element, const WritingState &state);
-void translate_paragraph(Element element, const WritingState &state);
-void translate_span(Element element, const WritingState &state);
-void translate_link(Element element, const WritingState &state);
-void translate_bookmark(Element element, const WritingState &state);
-void translate_list(Element element, const WritingState &state);
-void translate_list_item(Element element, const WritingState &state);
-void translate_table(Element element, const WritingState &state);
-void translate_image(Element element, const WritingState &state);
-void translate_frame(Element element, const WritingState &state);
-void translate_rect(Element element, const WritingState &state);
-void translate_line(Element element, const WritingState &state);
-void translate_circle(Element element, const WritingState &state);
-void translate_custom_shape(Element element, const WritingState &state);
+void translate_text(const Element &element, const WritingState &state);
+void translate_line_break(const Element &element, const WritingState &state);
+void translate_paragraph(const Element &element, const WritingState &state);
+void translate_span(const Element &element, const WritingState &state);
+void translate_link(const Element &element, const WritingState &state);
+void translate_bookmark(const Element &element, const WritingState &state);
+void translate_list(const Element &element, const WritingState &state);
+void translate_list_item(const Element &element, const WritingState &state);
+void translate_table(const Element &element, const WritingState &state);
+void translate_image(const Element &element, const WritingState &state);
+void translate_frame(const Element &element, const WritingState &state);
+void translate_rect(const Element &element, const WritingState &state);
+void translate_line(const Element &element, const WritingState &state);
+void translate_circle(const Element &element, const WritingState &state);
+void translate_custom_shape(const Element &element, const WritingState &state);
 
 } // namespace odr::internal::html

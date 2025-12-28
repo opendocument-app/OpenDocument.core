@@ -1,10 +1,10 @@
-#include <odr/internal/common/table_position.hpp>
+#include <odr/table_position.hpp>
 
 #include <odr/internal/util/hash_util.hpp>
 
 #include <stdexcept>
 
-namespace odr::internal {
+namespace odr {
 
 std::uint32_t TablePosition::to_column_num(const std::string &string) {
   if (string.empty()) {
@@ -73,19 +73,23 @@ std::uint32_t TablePosition::column() const noexcept { return m_column; }
 
 std::uint32_t TablePosition::row() const noexcept { return m_row; }
 
+std::pair<std::uint32_t, std::uint32_t> TablePosition::pair() const noexcept {
+  return {m_column, m_row};
+}
+
 std::string TablePosition::to_string() const noexcept {
   return to_column_string(m_column) + to_row_string(m_row);
 }
 
 std::size_t TablePosition::hash() const noexcept {
   std::size_t result = 0;
-  util::hash::hash_combine(result, m_row, m_column);
+  internal::util::hash::hash_combine(result, m_row, m_column);
   return result;
 }
 
-} // namespace odr::internal
+} // namespace odr
 
-std::size_t std::hash<odr::internal::TablePosition>::operator()(
-    const odr::internal::TablePosition &k) const noexcept {
+std::size_t std::hash<odr::TablePosition>::operator()(
+    const odr::TablePosition &k) const noexcept {
   return k.hash();
 }

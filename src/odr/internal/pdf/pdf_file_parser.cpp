@@ -4,7 +4,6 @@
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <iostream>
 #include <stdexcept>
 
 namespace odr::internal::pdf {

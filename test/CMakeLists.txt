@@ -19,6 +19,7 @@ add_executable(odr_test
         "src/logger_test.cpp"
         "src/odr_test.cpp"
         "src/quantity_test.cpp"
+        "src/table_position_test.cpp"
 
         "src/internal/magic_test.cpp"
 
@@ -26,7 +27,6 @@ add_executable(odr_test
 
         "src/internal/common/path_test.cpp"
         "src/internal/common/table_cursor_test.cpp"
-        "src/internal/common/table_position_test.cpp"
         "src/internal/common/table_range_test.cpp"
 
         "src/internal/csv/csv_file_test.cpp"

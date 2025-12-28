@@ -7,10 +7,12 @@
 
 namespace odr {
 
-FileWalker::FileWalker() = default;
-
 FileWalker::FileWalker(std::unique_ptr<internal::abstract::FileWalker> impl)
-    : m_impl{std::move(impl)} {}
+    : m_impl{std::move(impl)} {
+  if (m_impl == nullptr) {
+    throw std::invalid_argument("impl must not be null");
+  }
+}
 
 FileWalker::FileWalker(const FileWalker &other)
     : m_impl{other.m_impl->clone()} {}
@@ -29,71 +31,48 @@ FileWalker &FileWalker::operator=(const FileWalker &other) {
 
 FileWalker &FileWalker::operator=(FileWalker &&) noexcept = default;
 
-FileWalker::operator bool() const { return m_impl != nullptr; }
+bool FileWalker::end() const { return m_impl->end(); }
 
-bool FileWalker::end() const { return m_impl == nullptr || m_impl->end(); }
+std::uint32_t FileWalker::depth() const { return m_impl->depth(); }
 
-std::uint32_t FileWalker::depth() const {
-  return m_impl != nullptr ? m_impl->depth() : 0;
-}
+std::string FileWalker::path() const { return m_impl->path().string(); }
 
-std::string FileWalker::path() const {
-  return m_impl != nullptr ? m_impl->path().string() : std::string("");
-}
+bool FileWalker::is_file() const { return m_impl->is_file(); }
 
-bool FileWalker::is_file() const {
-  return m_impl != nullptr && m_impl->is_file();
-}
+bool FileWalker::is_directory() const { return m_impl->is_directory(); }
 
-bool FileWalker::is_directory() const {
-  return m_impl != nullptr && m_impl->is_directory();
-}
+void FileWalker::pop() const { m_impl->pop(); }
 
-void FileWalker::pop() const {
-  if (m_impl != nullptr) {
-    m_impl->pop();
-  }
-}
+void FileWalker::next() const { m_impl->next(); }
 
-void FileWalker::next() const {
-  if (m_impl != nullptr) {
-    m_impl->next();
-  }
-}
-
-void FileWalker::flat_next() const {
-  if (m_impl != nullptr) {
-    m_impl->flat_next();
-  }
-}
+void FileWalker::flat_next() const { m_impl->flat_next(); }
 
 Filesystem::Filesystem(
     std::shared_ptr<internal::abstract::ReadableFilesystem> impl)
-    : m_impl{std::move(impl)} {}
-
-Filesystem::operator bool() const { return m_impl != nullptr; }
+    : m_impl{std::move(impl)} {
+  if (m_impl == nullptr) {
+    throw std::invalid_argument("impl must not be null");
+  }
+}
 
 bool Filesystem::exists(const std::string &path) const {
-  return m_impl != nullptr && m_impl->exists(internal::AbsPath(path));
+  return m_impl->exists(internal::AbsPath(path));
 }
 
 bool Filesystem::is_file(const std::string &path) const {
-  return m_impl != nullptr && m_impl->is_file(internal::AbsPath(path));
+  return m_impl->is_file(internal::AbsPath(path));
 }
 
 bool Filesystem::is_directory(const std::string &path) const {
-  return m_impl != nullptr && m_impl->is_directory(internal::AbsPath(path));
+  return m_impl->is_directory(internal::AbsPath(path));
 }
 
 FileWalker Filesystem::file_walker(const std::string &path) const {
-  return m_impl != nullptr
-             ? FileWalker(m_impl->file_walker(internal::AbsPath(path)))
-             : FileWalker();
+  return FileWalker(m_impl->file_walker(internal::AbsPath(path)));
 }
 
 File Filesystem::open(const std::string &path) const {
-  return m_impl != nullptr ? File(m_impl->open(internal::AbsPath(path)))
-                           : File();
+  return File(m_impl->open(internal::AbsPath(path)));
 }
 
 } // namespace odr

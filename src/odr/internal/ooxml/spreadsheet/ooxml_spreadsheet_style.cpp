@@ -3,7 +3,6 @@
 #include <odr/internal/html/common.hpp>
 
 #include <cstring>
-#include <iostream>
 
 namespace odr::internal::ooxml::spreadsheet {
 
@@ -115,7 +114,8 @@ ResolvedStyle StyleRegistry::cell_style(const std::uint32_t i) const {
         read_horizontal(alignment.attribute("horizontal"));
     result.table_cell_style.vertical_align =
         read_vertical(alignment.attribute("vertical"));
-    if (auto text_rotation = alignment.attribute("textRotation").as_float();
+    if (const float text_rotation =
+            alignment.attribute("textRotation").as_float();
         text_rotation != 0) {
       result.table_cell_style.text_rotation = text_rotation;
     }

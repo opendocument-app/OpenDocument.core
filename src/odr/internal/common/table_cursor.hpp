@@ -1,6 +1,6 @@
 #pragma once
 
-#include <odr/internal/common/table_position.hpp>
+#include <odr/table_position.hpp>
 
 #include <cstdint>
 #include <list>
@@ -22,11 +22,11 @@ public:
 
 private:
   struct Range {
-    std::uint32_t start;
-    std::uint32_t end;
+    std::uint32_t start{0};
+    std::uint32_t end{0};
   };
 
-  std::uint32_t m_col{0};
+  std::uint32_t m_column{0};
   std::uint32_t m_row{0};
   std::list<std::list<Range>> m_sparse;
 

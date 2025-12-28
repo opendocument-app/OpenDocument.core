@@ -1,10 +1,10 @@
-#include <odr/internal/common/table_position.hpp>
+#include <odr/table_position.hpp>
 
 #include <gtest/gtest.h>
 
 #include <string>
 
-using namespace odr::internal;
+using namespace odr;
 
 TEST(TablePosition, default) {
   const TablePosition tp;

@@ -2,8 +2,6 @@
 
 #include <odr/internal/csv/csv_util.hpp>
 
-#include <iostream>
-
 namespace odr::internal::csv {
 
 CsvFile::CsvFile(std::shared_ptr<text::TextFile> file)
