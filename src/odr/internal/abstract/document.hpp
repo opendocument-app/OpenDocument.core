@@ -47,7 +47,10 @@ public:
   /// \return cursor to the root element of the document.
   [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
 
+  // TODO element adapter per id
+  /// \return the element adapter for this document.
   [[nodiscard]] virtual const ElementAdapter *element_adapter() const = 0;
+  // TODO move other adapters here
 };
 
 } // namespace odr::internal::abstract

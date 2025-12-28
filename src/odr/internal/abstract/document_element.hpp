@@ -63,6 +63,7 @@ public:
   // TODO element_path_from_parent
   // TODO element_path_from_document
 
+  // TODO push to document
   [[nodiscard]] virtual const TextRootAdapter *
   text_root_adapter(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual const SlideAdapter *
