@@ -44,10 +44,7 @@ parse_element_tree(ElementRegistry &registry, const ElementType type,
     return {null_element_id, pugi::xml_node()};
   }
 
-  const ElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = type;
-  element.node = node;
+  const auto &[element_id, _] = registry.create_element(type, node);
 
   children_parser(registry, element_id, node);
 
@@ -77,15 +74,12 @@ parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
     return {null_element_id, pugi::xml_node()};
   }
 
-  const ElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::text;
-  element.node = first;
-  auto &[last] = registry.create_text_element(element_id);
-
+  pugi::xml_node last;
   for (last = first; is_text_node(last.next_sibling());
        last = last.next_sibling()) {
   }
+
+  const auto &[element_id, _, __] = registry.create_text_element(first, last);
 
   return {element_id, last.next_sibling()};
 }
@@ -108,10 +102,8 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
     return {null_element_id, pugi::xml_node()};
   }
 
-  const ElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::list;
-  element.node = node;
+  const auto &[element_id, _] =
+      registry.create_element(ElementType::list, node);
 
   for (; is_list_item(node); node = node.next_sibling()) {
     const std::int32_t level = list_level(node);
@@ -125,27 +117,23 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
       base->init_append_child(list_item);
        */
 
-      const ElementIdentifier nested_id = registry.create_element();
-      ElementRegistry::Element &nested_element = registry.element(nested_id);
-      nested_element.type = ElementType::list;
-      nested_element.node = node;
+      const auto &[nested_id, _] =
+          registry.create_element(ElementType::list, node);
 
       registry.append_child(element_id, nested_id);
     }
 
-    const ElementIdentifier item_id = registry.create_element();
-    ElementRegistry::Element &item_element = registry.element(item_id);
-    item_element.type = ElementType::list_item;
-    item_element.node = node;
+    const auto &[item_id, _] =
+        registry.create_element(ElementType::list_item, node);
 
     registry.append_child(element_id, item_id);
 
-    auto [child_id, _] = parse_element_tree(registry, ElementType::paragraph,
-                                            node, parse_any_element_children);
+    auto [child_id, __] = parse_element_tree(registry, ElementType::paragraph,
+                                             node, parse_any_element_children);
     registry.append_child(item_id, child_id);
   }
 
-  return {element_id, node.next_sibling()};
+  return {element_id, node};
 }
 
 std::tuple<ElementIdentifier, pugi::xml_node>
@@ -154,10 +142,8 @@ parse_table_row_element(ElementRegistry &registry, const pugi::xml_node node) {
     return {null_element_id, pugi::xml_node()};
   }
 
-  const ElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::table_row;
-  element.node = node;
+  const auto &[element_id, _] =
+      registry.create_element(ElementType::table_row, node);
 
   for (const pugi::xml_node cell_node : node.children("w:tc")) {
     auto [cell_id, _] =
@@ -175,11 +161,7 @@ parse_table_element(ElementRegistry &registry, const pugi::xml_node node) {
     return {null_element_id, pugi::xml_node()};
   }
 
-  const ElementIdentifier element_id = registry.create_element();
-  ElementRegistry::Element &element = registry.element(element_id);
-  element.type = ElementType::table_row;
-  element.node = node;
-  registry.create_table_element(element_id);
+  const auto &[element_id, _, __] = registry.create_table_element(node);
 
   for (const pugi::xml_node column_node :
        node.child("w:tblGrid").children("w:gridCol")) {

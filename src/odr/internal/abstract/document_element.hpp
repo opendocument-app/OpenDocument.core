@@ -56,8 +56,11 @@ public:
   [[nodiscard]] virtual ElementIdentifier
   element_next_sibling(ElementIdentifier element_id) const = 0;
 
+  // TODO element_is_unique
   [[nodiscard]] virtual bool
   element_is_editable(ElementIdentifier element_id) const = 0;
+  // TODO element_path_parent
+  // TODO element_path_document
 
   [[nodiscard]] virtual const TextRootAdapter *
   text_root_adapter(ElementIdentifier element_id) const = 0;
