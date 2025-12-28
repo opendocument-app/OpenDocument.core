@@ -2,7 +2,6 @@
 
 #include <odr/table_position.hpp>
 
-#include <cstdint>
 #include <string>
 
 namespace odr::internal {

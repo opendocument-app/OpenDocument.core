@@ -2,10 +2,10 @@
 
 namespace odr {
 
-TableDimensions::TableDimensions() = default;
+TableDimensions::TableDimensions() noexcept = default;
 
 TableDimensions::TableDimensions(const std::uint32_t rows,
-                                 const std::uint32_t columns)
+                                 const std::uint32_t columns) noexcept
     : rows{rows}, columns{columns} {}
 
 } // namespace odr
