@@ -1,15 +1,19 @@
 #include <odr/document_element.hpp>
 
+#include <odr/document_path.hpp>
 #include <odr/file.hpp>
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
-#include <odr/internal/abstract/document_element.hpp>
+#include <odr/internal/abstract/document.hpp>
 
 namespace odr {
 
 Element::Element() = default;
+
+Element::Element(const ElementHandle &handle)
+    : m_adapter{handle.adapter_ptr}, m_identifier{handle.identifier} {}
 
 Element::Element(const internal::abstract::ElementAdapter *adapter,
                  const ElementIdentifier identifier)
@@ -26,30 +30,46 @@ ElementType Element::type() const {
 }
 
 Element Element::parent() const {
-  return exists_() ? Element(m_adapter, m_adapter->element_parent(m_identifier))
+  return exists_() ? Element(m_adapter->element_parent(m_identifier))
                    : Element();
 }
 
 Element Element::first_child() const {
-  return exists_()
-             ? Element(m_adapter, m_adapter->element_first_child(m_identifier))
-             : Element();
+  return exists_() ? Element(m_adapter->element_first_child(m_identifier))
+                   : Element();
 }
 
 Element Element::previous_sibling() const {
-  return exists_() ? Element(m_adapter,
-                             m_adapter->element_previous_sibling(m_identifier))
+  return exists_() ? Element(m_adapter->element_previous_sibling(m_identifier))
                    : Element();
 }
 
 Element Element::next_sibling() const {
-  return exists_()
-             ? Element(m_adapter, m_adapter->element_next_sibling(m_identifier))
-             : Element();
+  return exists_() ? Element(m_adapter->element_next_sibling(m_identifier))
+                   : Element();
+}
+
+bool Element::is_unique() const {
+  return exists_() ? m_adapter->element_is_unique(m_identifier) : false;
+}
+
+bool Element::is_self_locatable() const {
+  return exists_() ? m_adapter->element_is_self_locatable(m_identifier) : false;
 }
 
 bool Element::is_editable() const {
   return exists_() ? m_adapter->element_is_editable(m_identifier) : false;
+}
+
+DocumentPath Element::document_path() const {
+  return exists_() ? m_adapter->element_document_path(m_identifier)
+                   : DocumentPath();
+}
+
+Element Element::navigate_path(const DocumentPath &path) const {
+  return exists_()
+             ? Element(m_adapter->element_navigate_path(m_identifier, path))
+             : Element();
 }
 
 TextRoot Element::as_text_root() const {
@@ -148,35 +168,39 @@ Image Element::as_image() const {
 }
 
 ElementRange Element::children() const {
-  return {exists_() ? ElementIterator(m_adapter, m_adapter->element_first_child(
-                                                     m_identifier))
-                    : ElementIterator(),
+  return {exists_()
+              ? ElementIterator(m_adapter->element_first_child(m_identifier))
+              : ElementIterator(),
           ElementIterator()};
 }
 
 ElementIterator::ElementIterator() = default;
+
+ElementIterator::ElementIterator(const ElementHandle &handle)
+    : m_adapter{handle.adapter_ptr}, m_identifier{handle.identifier} {}
 
 ElementIterator::ElementIterator(
     const internal::abstract::ElementAdapter *adapter,
     const ElementIdentifier identifier)
     : m_adapter{adapter}, m_identifier{identifier} {}
 
-ElementIterator::reference ElementIterator::operator*() const {
-  return {m_adapter, m_identifier};
-}
+Element ElementIterator::operator*() const { return {m_adapter, m_identifier}; }
 
 ElementIterator &ElementIterator::operator++() {
   if (exists_()) {
-    m_identifier = m_adapter->element_next_sibling(m_identifier);
+    const auto [next_adapter, next_id] =
+        m_adapter->element_next_sibling(m_identifier);
+    m_adapter = next_adapter;
+    m_identifier = next_id;
   }
   return *this;
 }
 
-ElementIterator ElementIterator::operator++(int) {
+ElementIterator ElementIterator::operator++(int) const {
   if (!exists_()) {
     return {};
   }
-  return {m_adapter, m_adapter->element_next_sibling(m_identifier)};
+  return ElementIterator(m_adapter->element_next_sibling(m_identifier));
 }
 
 bool ElementIterator::exists_() const {
@@ -204,9 +228,9 @@ MasterPage TextRoot::first_master_page() const {
   if (!exists_()) {
     return {};
   }
-  const ElementIdentifier master_page_id =
+  const auto [master_page_adapter, master_page_id] =
       m_adapter2->text_root_first_master_page(m_identifier);
-  return {m_adapter, master_page_id,
+  return {master_page_adapter, master_page_id,
           m_adapter->master_page_adapter(master_page_id)};
 }
 
@@ -248,18 +272,18 @@ SheetCell Sheet::cell(const std::uint32_t column,
   if (!exists_()) {
     return {};
   }
-  const ElementIdentifier cell_id =
+  const auto [cell_adapter, cell_id] =
       m_adapter2->sheet_cell(m_identifier, column, row);
-  return {m_adapter, cell_id, m_adapter->sheet_cell_adapter(cell_id)};
+  return {cell_adapter, cell_id, m_adapter->sheet_cell_adapter(cell_id)};
 }
 
 ElementRange Sheet::shapes() const {
   if (!exists_()) {
     return {};
   }
-  const ElementIdentifier first_shape_id =
+  const auto [first_shape_adapter, first_shape_id] =
       m_adapter2->sheet_first_shape(m_identifier);
-  return ElementRange(ElementIterator(m_adapter, first_shape_id));
+  return ElementRange(ElementIterator(first_shape_adapter, first_shape_id));
 }
 
 TableStyle Sheet::style() const {
@@ -373,29 +397,29 @@ TableRow Table::first_row() const {
   if (!exists_()) {
     return {};
   }
-  const ElementIdentifier row_id = m_adapter2->table_first_row(m_identifier);
-  return {m_adapter, row_id, m_adapter->table_row_adapter(row_id)};
+  const auto [row_adapter, row_id] = m_adapter2->table_first_row(m_identifier);
+  return {row_adapter, row_id, m_adapter->table_row_adapter(row_id)};
 }
 
 TableColumn Table::first_column() const {
   if (!exists_()) {
     return {};
   }
-  const ElementIdentifier column_id =
+  const auto [column_adapter, column_id] =
       m_adapter2->table_first_column(m_identifier);
-  return {m_adapter, column_id, m_adapter->table_column_adapter(column_id)};
+  return {column_adapter, column_id,
+          m_adapter->table_column_adapter(column_id)};
 }
 
 ElementRange Table::columns() const {
-  return exists_()
-             ? ElementRange(ElementIterator(
-                   m_adapter, m_adapter2->table_first_column(m_identifier)))
-             : ElementRange();
+  return exists_() ? ElementRange(ElementIterator(
+                         m_adapter2->table_first_column(m_identifier)))
+                   : ElementRange();
 }
 
 ElementRange Table::rows() const {
   return exists_() ? ElementRange(ElementIterator(
-                         m_adapter, m_adapter2->table_first_row(m_identifier)))
+                         m_adapter2->table_first_row(m_identifier)))
                    : ElementRange();
 }
 

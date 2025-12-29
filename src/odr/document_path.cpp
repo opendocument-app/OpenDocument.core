@@ -1,8 +1,5 @@
 #include <odr/document_path.hpp>
 
-#include <odr/document_element.hpp>
-
-#include <algorithm>
 #include <stdexcept>
 
 namespace odr {
@@ -12,44 +9,9 @@ const std::string &DocumentPath::Child::prefix_string() {
   return result;
 }
 
-std::pair<Element, DocumentPath::Child>
-DocumentPath::Child::extract(const Element element) {
-  if (!element) {
-    throw std::invalid_argument("element is null");
-  }
-  const Element parent = element.parent();
-  if (!parent) {
-    throw std::invalid_argument("parent not found");
-  }
-
-  Element current = element;
-  std::uint32_t distance = 0;
-  for (; current.previous_sibling(); current = current.previous_sibling()) {
-    ++distance;
-  }
-
-  return {parent, Child(distance)};
-}
-
-Element DocumentPath::Child::resolve(const Element element,
-                                     const Child &child) {
-  if (!element) {
-    throw std::invalid_argument("element is null");
-  }
-  if (!element.first_child()) {
-    throw std::invalid_argument("child not found");
-  }
-  Element result = element.first_child();
-  for (std::uint32_t i = 0; i < child.m_number; ++i) {
-    if (!result.next_sibling()) {
-      throw std::invalid_argument("sibling not found");
-    }
-    result = result.next_sibling();
-  }
-  return result;
-}
-
 DocumentPath::Child::Child(const std::uint32_t number) : m_number{number} {}
+
+std::uint32_t DocumentPath::Child::number() const { return m_number; }
 
 bool DocumentPath::Child::operator==(const Child &other) const noexcept {
   return m_number == other.m_number;
@@ -64,36 +26,10 @@ const std::string &DocumentPath::Cell::prefix_string() {
   return result;
 }
 
-std::pair<Sheet, DocumentPath::Cell>
-DocumentPath::Cell::extract(const SheetCell &element) {
-  if (!element) {
-    throw std::invalid_argument("element is null");
-  }
-  const Element parent = element.parent();
-  if (!parent) {
-    throw std::invalid_argument("parent not found");
-  }
-  const Sheet sheet = parent.as_sheet();
-  if (!sheet) {
-    throw std::invalid_argument("parent is not a sheet");
-  }
-  const SheetCell cell = element.as_sheet_cell();
-  if (!cell) {
-    throw std::invalid_argument("element is not a sheet cell");
-  }
-  return {sheet, Cell(cell.position())};
-}
-
-SheetCell DocumentPath::Cell::resolve(const Sheet &element, const Cell &cell) {
-  if (!element) {
-    throw std::invalid_argument("element is null");
-  }
-  return element.as_sheet().cell(cell.m_position.column(),
-                                 cell.m_position.row());
-}
-
 DocumentPath::Cell::Cell(const TablePosition &position)
     : m_position{position} {}
+
+TablePosition DocumentPath::Cell::position() const { return m_position; }
 
 bool DocumentPath::Cell::operator==(const Cell &other) const noexcept {
   return m_position == other.m_position;
@@ -122,57 +58,6 @@ DocumentPath::component_from_string(const std::string &string) {
   }
 
   throw std::invalid_argument("string");
-}
-
-DocumentPath DocumentPath::extract(const Element element) {
-  return extract(element, {});
-}
-
-DocumentPath DocumentPath::extract(const Element element, const Element root) {
-  std::vector<Component> reverse;
-
-  for (Element current = element; current != root;) {
-    if (!current.parent()) {
-      break;
-    }
-
-    if (const SheetCell sheet_cell = current.as_sheet_cell(); sheet_cell) {
-      const auto [parent, cell] = Cell::extract(sheet_cell);
-      reverse.emplace_back(cell);
-      current = static_cast<Element>(parent);
-    } else {
-      const auto [parent, child] = Child::extract(current);
-      reverse.emplace_back(child);
-      current = parent;
-    }
-  }
-
-  std::ranges::reverse(reverse);
-  return DocumentPath(reverse);
-}
-
-Element DocumentPath::resolve(const Element root, const DocumentPath &path) {
-  Element element = root;
-
-  for (const Component &c : path) {
-    if (const auto *child = std::get_if<Child>(&c); child != nullptr) {
-      element = Child::resolve(element, *child);
-    } else if (const auto *cell = std::get_if<Cell>(&c); cell != nullptr) {
-      const Sheet sheet = element.as_sheet();
-      if (!sheet) {
-        throw std::invalid_argument("element is not a sheet");
-      }
-      const SheetCell sheet_cell = Cell::resolve(sheet, *cell);
-      element = static_cast<Element>(sheet_cell);
-    } else {
-      throw std::invalid_argument("unknown component");
-    }
-    if (!element) {
-      throw std::invalid_argument("element not found");
-    }
-  }
-
-  return element;
 }
 
 DocumentPath::DocumentPath() noexcept = default;
@@ -228,7 +113,7 @@ std::string DocumentPath::to_string() const noexcept {
 
 bool DocumentPath::empty() const noexcept { return m_components.empty(); }
 
-DocumentPath::Component DocumentPath::back() const {
+const DocumentPath::Component &DocumentPath::back() const {
   return m_components.back();
 }
 

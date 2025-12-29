@@ -4,15 +4,10 @@
 
 #include <cstdint>
 #include <string>
-#include <utility>
 #include <variant>
 #include <vector>
 
 namespace odr {
-class Document;
-class Element;
-class Sheet;
-class SheetCell;
 
 /// @brief A path to a specific element in a document.
 class DocumentPath final {
@@ -22,10 +17,10 @@ public:
     static constexpr std::string_view prefix = "child";
 
     static const std::string &prefix_string();
-    static std::pair<Element, Child> extract(Element element);
-    static Element resolve(Element element, const Child &child);
 
     explicit Child(std::uint32_t number);
+
+    [[nodiscard]] std::uint32_t number() const;
 
     bool operator==(const Child &other) const noexcept;
     [[nodiscard]] std::string to_string() const noexcept;
@@ -39,10 +34,10 @@ public:
     static constexpr std::string_view prefix = "cell";
 
     static const std::string &prefix_string();
-    static std::pair<Sheet, Cell> extract(const SheetCell &element);
-    static SheetCell resolve(const Sheet &element, const Cell &cell);
 
     explicit Cell(const TablePosition &position);
+
+    [[nodiscard]] TablePosition position() const;
 
     bool operator==(const Cell &other) const noexcept;
     [[nodiscard]] std::string to_string() const noexcept;
@@ -56,9 +51,6 @@ public:
   using const_iterator = Container::const_iterator;
 
   static Component component_from_string(const std::string &string);
-  static DocumentPath extract(Element element);
-  static DocumentPath extract(Element element, Element root);
-  static Element resolve(Element root, const DocumentPath &path);
 
   DocumentPath() noexcept;
   explicit DocumentPath(const Container &components);
@@ -73,7 +65,7 @@ public:
 
   [[nodiscard]] bool empty() const noexcept;
 
-  [[nodiscard]] Component back() const;
+  [[nodiscard]] const Component &back() const;
   [[nodiscard]] DocumentPath parent() const;
   [[nodiscard]] DocumentPath join(const DocumentPath &other) const;
 

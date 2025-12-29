@@ -1,16 +1,16 @@
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
 
+#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/table_dimension.hpp>
 
-#include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
+#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/file_util.hpp>
-#include <odr/internal/util/string_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
@@ -130,60 +130,76 @@ public:
     return ElementType::none;
   }
 
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_parent(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->parent_id;
+      return {this, element->parent_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_first_child(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->first_child_id;
+      return {this, element->first_child_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_last_child(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->last_child_id;
+      return {this, element->last_child_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_previous_sibling(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->previous_sibling_id;
+      return {this, element->previous_sibling_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_next_sibling(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->next_sibling_id;
+      return {this, element->next_sibling_id};
     }
-    return null_element_id;
+    return {};
   }
 
   [[nodiscard]] bool
+  element_is_unique(const ElementIdentifier element_id) const override {
+    (void)element_id;
+    return true;
+  }
+  [[nodiscard]] bool
+  element_is_self_locatable(const ElementIdentifier element_id) const override {
+    (void)element_id;
+    return true;
+  }
+  [[nodiscard]] bool
   element_is_editable(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return element->is_editable;
-    }
-    return false;
+    (void)element_id;
+    return true;
+  }
+  [[nodiscard]]
+  DocumentPath
+  element_document_path(const ElementIdentifier element_id) const override {
+    return util::document::extract_path(*this, element_id, null_element_id);
+  }
+  [[nodiscard]] ElementHandle
+  element_navigate_path(const ElementIdentifier element_id,
+                        const DocumentPath &path) const override {
+    return util::document::navigate_path(*this, element_id, path);
   }
 
   [[nodiscard]] const TextRootAdapter *
@@ -354,7 +370,7 @@ public:
     (void)element_id;
     return {};
   }
-  [[nodiscard]] ElementIdentifier text_root_first_master_page(
+  [[nodiscard]] ElementHandle text_root_first_master_page(
       const ElementIdentifier element_id) const override {
     (void)element_id;
     return {};
@@ -516,11 +532,11 @@ public:
 
     return result;
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   table_first_column(const ElementIdentifier element_id) const override {
-    return m_registry->table_element_at(element_id).first_column_id;
+    return {this, m_registry->table_element_at(element_id).first_column_id};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   table_first_row(const ElementIdentifier element_id) const override {
     return element_first_child(element_id);
   }
@@ -579,8 +595,8 @@ public:
 
   [[nodiscard]] AnchorType
   frame_anchor_type(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (node.child("wp:inline")) {
+    if (const pugi::xml_node node = get_node(element_id);
+        node.child("wp:inline")) {
       return AnchorType::as_char;
     }
     return AnchorType::as_char; // TODO default?
@@ -636,7 +652,7 @@ public:
     }
     return false;
   }
-  [[nodiscard]] std::optional<odr::File>
+  [[nodiscard]] std::optional<File>
   image_file(const ElementIdentifier element_id) const override {
     if (m_document->as_filesystem() == nullptr) {
       return std::nullopt;
@@ -718,7 +734,7 @@ private:
 
   [[nodiscard]] ResolvedStyle
   get_intermediate_style(const ElementIdentifier element_id) const {
-    const ElementIdentifier parent_id = element_parent(element_id);
+    const auto [_, parent_id] = element_parent(element_id);
     ResolvedStyle base;
     if (parent_id == null_element_id) {
       base = m_document->style_registry().default_style()->resolved();

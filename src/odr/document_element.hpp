@@ -9,6 +9,7 @@
 namespace odr {
 class TablePosition;
 struct TableDimensions;
+class DocumentPath;
 class File;
 struct TextStyle;
 struct ParagraphStyle;
@@ -141,6 +142,7 @@ enum class ValueType {
 class Element {
 public:
   Element();
+  explicit Element(const ElementHandle &handle);
   Element(const internal::abstract::ElementAdapter *adapter,
           ElementIdentifier identifier);
 
@@ -153,7 +155,11 @@ public:
   [[nodiscard]] Element previous_sibling() const;
   [[nodiscard]] Element next_sibling() const;
 
+  [[nodiscard]] bool is_unique() const;
+  [[nodiscard]] bool is_self_locatable() const;
   [[nodiscard]] bool is_editable() const;
+  [[nodiscard]] DocumentPath document_path() const;
+  [[nodiscard]] Element navigate_path(const DocumentPath &path) const;
 
   [[nodiscard]] ElementRange children() const;
 
@@ -183,7 +189,7 @@ public:
 
 protected:
   const internal::abstract::ElementAdapter *m_adapter{nullptr};
-  ElementIdentifier m_identifier;
+  ElementIdentifier m_identifier{null_element_id};
 
   friend bool operator==(const Element &lhs, const Element &rhs) {
     return lhs.m_identifier == rhs.m_identifier;
@@ -202,13 +208,14 @@ public:
   using iterator_category = std::forward_iterator_tag;
 
   ElementIterator();
+  explicit ElementIterator(const ElementHandle &handle);
   ElementIterator(const internal::abstract::ElementAdapter *adapter,
                   ElementIdentifier identifier);
 
-  reference operator*() const;
+  Element operator*() const;
 
   ElementIterator &operator++();
-  ElementIterator operator++(int);
+  ElementIterator operator++(int) const;
 
 private:
   const internal::abstract::ElementAdapter *m_adapter{nullptr};
@@ -241,8 +248,10 @@ private:
 template <typename T> class ElementBase : public Element {
 public:
   ElementBase() = default;
+  ElementBase(const ElementHandle &handle, const T *adapter2)
+      : Element(handle), m_adapter2{adapter2} {}
   ElementBase(const internal::abstract::ElementAdapter *adapter,
-              const ElementIdentifier identifier, const T *adapter2)
+              ElementIdentifier identifier, const T *adapter2)
       : Element(adapter, identifier), m_adapter2{adapter2} {}
 
   explicit operator bool() const { return exists_(); }

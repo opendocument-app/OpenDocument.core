@@ -1,12 +1,13 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 
+#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/table_position.hpp>
 
-#include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
+#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
 #include <utility>
@@ -120,60 +121,76 @@ public:
     return ElementType::none;
   }
 
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_parent(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->parent_id;
+      return {this, element->parent_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_first_child(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->first_child_id;
+      return {this, element->first_child_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_last_child(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->last_child_id;
+      return {this, element->last_child_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_previous_sibling(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->previous_sibling_id;
+      return {this, element->previous_sibling_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_next_sibling(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->next_sibling_id;
+      return {this, element->next_sibling_id};
     }
-    return null_element_id;
+    return {};
   }
 
   [[nodiscard]] bool
+  element_is_unique(const ElementIdentifier element_id) const override {
+    (void)element_id;
+    return true;
+  }
+  [[nodiscard]] bool
+  element_is_self_locatable(const ElementIdentifier element_id) const override {
+    (void)element_id;
+    return true;
+  }
+  [[nodiscard]] bool
   element_is_editable(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return element->is_editable;
-    }
+    (void)element_id;
     return false;
+  }
+  [[nodiscard]]
+  DocumentPath
+  element_document_path(const ElementIdentifier element_id) const override {
+    return util::document::extract_path(*this, element_id, null_element_id);
+  }
+  [[nodiscard]] ElementHandle
+  element_navigate_path(const ElementIdentifier element_id,
+                        const DocumentPath &path) const override {
+    return util::document::navigate_path(*this, element_id, path);
   }
 
   [[nodiscard]] const abstract::TextRootAdapter *
@@ -333,7 +350,7 @@ public:
     (void)range;
     return sheet_dimensions(element_id); // TODO
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,
              const std::uint32_t row) const override {
     if (const ElementRegistry::Sheet *sheet_element =
@@ -342,19 +359,19 @@ public:
       if (const ElementRegistry::Sheet::Cell *cell =
               sheet_element->cell(column, row);
           cell != nullptr) {
-        return cell->element_id;
+        return {this, cell->element_id};
       }
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   sheet_first_shape(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Sheet *sheet_element =
             m_registry->sheet_element(element_id);
         sheet_element != nullptr) {
-      return sheet_element->first_shape_id;
+      return {this, sheet_element->first_shape_id};
     }
-    return null_element_id;
+    return {};
   }
   [[nodiscard]] TableStyle
   sheet_style(const ElementIdentifier element_id) const override {
@@ -567,7 +584,7 @@ public:
     }
     return false;
   }
-  [[nodiscard]] std::optional<odr::File>
+  [[nodiscard]] std::optional<File>
   image_file(const ElementIdentifier element_id) const override {
     if (m_document->as_filesystem() == nullptr) {
       return std::nullopt;
@@ -617,7 +634,8 @@ private:
         element_relations != nullptr) {
       return {element_relations->relations, element_relations->origin};
     }
-    return get_relations_and_origin(element_parent(element_id));
+    const auto [_, parent_id] = element_parent(element_id);
+    return get_relations_and_origin(parent_id);
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {
@@ -648,7 +666,7 @@ private:
 
   [[nodiscard]] ResolvedStyle
   get_intermediate_style(const ElementIdentifier element_id) const {
-    const ElementIdentifier parent_id = element_parent(element_id);
+    const auto [_, parent_id] = element_parent(element_id);
     if (parent_id == null_element_id) {
       return get_partial_style(element_id);
     }

@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 
-namespace odr::internal::util {
+namespace odr::internal::util::byte {
 
 template <class T> void reverse_bytes(T &x) {
   for (char *a = reinterpret_cast<char *>(std::addressof(x)),
@@ -18,4 +18,4 @@ void reverse_bytes(char32_t *string, std::size_t length);
 void reverse_bytes(std::u16string &string);
 void reverse_bytes(std::u32string &string);
 
-} // namespace odr::internal::util
+} // namespace odr::internal::util::byte
