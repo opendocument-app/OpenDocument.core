@@ -1,8 +1,9 @@
 #include <odr/internal/util/document_util.hpp>
 
+#include <odr/document_element.hpp>
 #include <odr/document_path.hpp>
 
-#include <odr/internal/abstract/document_element.hpp>
+#include <odr/internal/abstract/document.hpp>
 
 #include <algorithm>
 #include <stdexcept>
@@ -26,34 +27,33 @@ extract_path_component(const abstract::ElementAdapter &element_adapter,
   }
 
   std::uint32_t distance = 0;
-  for (ElementIdentifier current_id =
+  for (ElementHandle current =
            element_adapter.element_previous_sibling(element_id);
-       current_id != null_element_id;
-       current_id = element_adapter.element_previous_sibling(current_id)) {
+       !current.is_null(); current = current.adapter().element_previous_sibling(
+                               current.identifier)) {
     ++distance;
   }
 
   return DocumentPath::Child(distance);
 }
 
-ElementIdentifier
+ElementHandle
 navigate_path_component(const abstract::ElementAdapter &element_adapter,
                         const ElementIdentifier element_id,
                         const DocumentPath::Component &component) {
   if (const auto *child = std::get_if<DocumentPath::Child>(&component);
       child != nullptr) {
-    ElementIdentifier result_id =
-        element_adapter.element_first_child(element_id);
-    if (result_id == null_element_id) {
+    ElementHandle result = element_adapter.element_first_child(element_id);
+    if (result.is_null()) {
       throw std::invalid_argument("child not found");
     }
     for (std::uint32_t i = 0; i < child->number(); ++i) {
-      result_id = element_adapter.element_next_sibling(result_id);
-      if (result_id == null_element_id) {
+      result = result.adapter().element_next_sibling(result.identifier);
+      if (result.is_null()) {
         throw std::invalid_argument("child not found");
       }
     }
-    return result_id;
+    return result;
   }
 
   if (const auto *cell = std::get_if<DocumentPath::Cell>(&component);
@@ -82,33 +82,39 @@ document::extract_path(const abstract::ElementAdapter &element_adapter,
 
   std::vector<DocumentPath::Component> reverse;
 
-  for (ElementIdentifier current_id = to_element_id;
-       current_id != from_element_id;
-       current_id = element_adapter.element_parent(current_id)) {
-    if (current_id == null_element_id) {
+  for (ElementHandle current = {&element_adapter, to_element_id};
+       current.identifier != from_element_id;) {
+    const ElementHandle parent =
+        current.adapter().element_parent(current.identifier);
+    if (parent.is_null()) {
+      break;
+    }
+    if (current.is_null()) {
       throw std::invalid_argument(
           "Element is not a descendant of the specified root.");
     }
 
     const DocumentPath::Component component =
-        extract_path_component(element_adapter, current_id);
+        extract_path_component(element_adapter, current.identifier);
     reverse.push_back(component);
+
+    current = parent;
   }
 
   std::ranges::reverse(reverse);
   return DocumentPath(std::move(reverse));
 }
 
-ElementIdentifier
+ElementHandle
 document::navigate_path(const abstract::ElementAdapter &element_adapter,
                         const ElementIdentifier from_element_id,
                         const DocumentPath &path) {
-  ElementIdentifier current_id = from_element_id;
+  ElementHandle current{element_adapter, from_element_id};
   for (const DocumentPath::Component &component : path) {
-    current_id =
-        navigate_path_component(element_adapter, current_id, component);
+    current = navigate_path_component(current.adapter(), current.identifier,
+                                      component);
   }
-  return current_id;
+  return current;
 }
 
 } // namespace odr::internal::util

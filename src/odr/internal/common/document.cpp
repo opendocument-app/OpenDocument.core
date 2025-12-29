@@ -1,7 +1,5 @@
 #include <odr/internal/common/document.hpp>
 
-#include <odr/definitions.hpp>
-#include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 
 namespace odr::internal {
@@ -24,10 +22,8 @@ Document::as_filesystem() const noexcept {
   return m_files;
 }
 
-ElementIdentifier Document::root_element() const { return m_root_element; }
-
-const abstract::ElementAdapter *Document::element_adapter() const {
-  return m_element_adapter.get();
+ElementHandle Document::root_element() const {
+  return {*m_element_adapter, m_root_element};
 }
 
 } // namespace odr::internal

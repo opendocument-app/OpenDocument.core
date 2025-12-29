@@ -4,7 +4,6 @@
 #include <odr/exceptions.hpp>
 #include <odr/table_dimension.hpp>
 
-#include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/table_cursor.hpp>
@@ -131,50 +130,50 @@ public:
     return ElementType::none;
   }
 
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_parent(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->parent_id;
+      return {this, element->parent_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_first_child(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->first_child_id;
+      return {this, element->first_child_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_last_child(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->last_child_id;
+      return {this, element->last_child_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_previous_sibling(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->previous_sibling_id;
+      return {this, element->previous_sibling_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_next_sibling(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->next_sibling_id;
+      return {this, element->next_sibling_id};
     }
-    return null_element_id;
+    return {};
   }
 
   [[nodiscard]] bool
@@ -197,7 +196,7 @@ public:
   element_document_path(const ElementIdentifier element_id) const override {
     return util::document::extract_path(*this, element_id, null_element_id);
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_navigate_path(const ElementIdentifier element_id,
                         const DocumentPath &path) const override {
     return util::document::navigate_path(*this, element_id, path);
@@ -371,7 +370,7 @@ public:
     (void)element_id;
     return {};
   }
-  [[nodiscard]] ElementIdentifier text_root_first_master_page(
+  [[nodiscard]] ElementHandle text_root_first_master_page(
       const ElementIdentifier element_id) const override {
     (void)element_id;
     return {};
@@ -533,11 +532,11 @@ public:
 
     return result;
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   table_first_column(const ElementIdentifier element_id) const override {
-    return m_registry->table_element_at(element_id).first_column_id;
+    return {this, m_registry->table_element_at(element_id).first_column_id};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   table_first_row(const ElementIdentifier element_id) const override {
     return element_first_child(element_id);
   }
@@ -735,7 +734,7 @@ private:
 
   [[nodiscard]] ResolvedStyle
   get_intermediate_style(const ElementIdentifier element_id) const {
-    const ElementIdentifier parent_id = element_parent(element_id);
+    const auto [_, parent_id] = element_parent(element_id);
     ResolvedStyle base;
     if (parent_id == null_element_id) {
       base = m_document->style_registry().default_style()->resolved();

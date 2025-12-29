@@ -61,13 +61,13 @@ void parse_root_children(ElementRegistry &registry, const ParseContext &context,
                          const pugi::xml_node node) {
   for (pugi::xml_node child_node : node.child("sheets").children("sheet")) {
     const char *id = child_node.attribute("r:id").value();
-    AbsPath sheet_path = context.get_document_path().parent().join(
-        RelPath(context.get_document_relations().at(id)));
+    AbsPath sheet_path = context.document_path().parent().join(
+        RelPath(context.document_relations().at(id)));
     const auto &[sheet_xml, sheet_relations] =
-        context.get_documents_and_relations().at(sheet_path);
+        context.documents_and_relations().at(sheet_path);
     ParseContext newContext(sheet_path, sheet_relations,
-                            context.get_documents_and_relations(),
-                            context.get_shared_strings());
+                            context.documents_and_relations(),
+                            context.shared_strings());
     const auto &[sheet, _] = parse_any_element_tree(
         registry, newContext, sheet_xml.document_element());
     registry.append_child(parent_id, sheet);
@@ -82,7 +82,7 @@ void parse_sheet_cell_children(ElementRegistry &registry,
       type_attr.value() == std::string("s")) {
     const pugi::xml_node v_node = node.child("v");
     const std::size_t ref = v_node.first_child().text().as_ullong();
-    const pugi::xml_node shared_node = context.get_shared_strings().at(ref);
+    const pugi::xml_node shared_node = context.shared_strings().at(ref);
     parse_any_element_children(registry, context, parent_id, shared_node);
     return;
   }
@@ -98,9 +98,8 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
   }
 
   const auto &[element_id, _, sheet] = registry.create_sheet_element(node);
-  registry.attach_element_relations(element_id,
-                                    context.get_document_relations(),
-                                    context.get_document_path());
+  registry.attach_element_relations(element_id, context.document_relations(),
+                                    context.document_path());
 
   for (const pugi::xml_node col_node : node.child("cols").children("col")) {
     const std::uint32_t min = col_node.attribute("min").as_uint() - 1;
@@ -140,14 +139,14 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
 
   if (const pugi::xml_node drawing_node = node.child("drawing")) {
     const char *id = drawing_node.attribute("r:id").value();
-    const AbsPath drawing_path = context.get_document_path().parent().join(
-        RelPath(context.get_document_relations().at(id)));
+    const AbsPath drawing_path = context.document_path().parent().join(
+        RelPath(context.document_relations().at(id)));
     const auto &[drawing_xml, drawing_relations] =
-        context.get_documents_and_relations().at(drawing_path);
+        context.documents_and_relations().at(drawing_path);
 
     const ParseContext drawing_context(drawing_path, drawing_relations,
-                                       context.get_documents_and_relations(),
-                                       context.get_shared_strings());
+                                       context.documents_and_relations(),
+                                       context.shared_strings());
 
     for (const pugi::xml_node shape_node :
          drawing_xml.document_element().children()) {
@@ -208,9 +207,8 @@ parse_frame_element(ElementRegistry &registry, const ParseContext &context,
 
   const auto &[element_id, _] =
       registry.create_element(ElementType::frame, node);
-  registry.attach_element_relations(element_id,
-                                    context.get_document_relations(),
-                                    context.get_document_path());
+  registry.attach_element_relations(element_id, context.document_relations(),
+                                    context.document_path());
 
   if (const pugi::xml_node image_node =
           node.child("xdr:pic").child("xdr:blipFill").child("a:blip")) {

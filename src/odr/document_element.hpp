@@ -142,6 +142,7 @@ enum class ValueType {
 class Element {
 public:
   Element();
+  explicit Element(const ElementHandle &handle);
   Element(const internal::abstract::ElementAdapter *adapter,
           ElementIdentifier identifier);
 
@@ -207,13 +208,14 @@ public:
   using iterator_category = std::forward_iterator_tag;
 
   ElementIterator();
+  explicit ElementIterator(const ElementHandle &handle);
   ElementIterator(const internal::abstract::ElementAdapter *adapter,
                   ElementIdentifier identifier);
 
-  reference operator*() const;
+  Element operator*() const;
 
   ElementIterator &operator++();
-  ElementIterator operator++(int);
+  ElementIterator operator++(int) const;
 
 private:
   const internal::abstract::ElementAdapter *m_adapter{nullptr};
@@ -246,8 +248,10 @@ private:
 template <typename T> class ElementBase : public Element {
 public:
   ElementBase() = default;
+  ElementBase(const ElementHandle &handle, const T *adapter2)
+      : Element(handle), m_adapter2{adapter2} {}
   ElementBase(const internal::abstract::ElementAdapter *adapter,
-              const ElementIdentifier identifier, const T *adapter2)
+              ElementIdentifier identifier, const T *adapter2)
       : Element(adapter, identifier), m_adapter2{adapter2} {}
 
   explicit operator bool() const { return exists_(); }

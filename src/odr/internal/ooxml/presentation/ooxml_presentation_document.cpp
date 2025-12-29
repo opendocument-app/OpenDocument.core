@@ -5,7 +5,6 @@
 #include <odr/file.hpp>
 #include <odr/table_dimension.hpp>
 
-#include <odr/internal/abstract/document_element.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/common/style.hpp>
@@ -33,8 +32,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
         util::xml::parse(*m_files, AbsPath("/ppt").join(RelPath(target)));
   }
 
-  m_root_element = parse_tree(m_element_registry,
-                              m_document_xml.document_element(), m_slides_xml);
+  const ParseContext parse_context(m_slides_xml);
+  m_root_element = parse_tree(m_element_registry, parse_context,
+                              m_document_xml.document_element());
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
 }
@@ -155,50 +155,50 @@ public:
     return ElementType::none;
   }
 
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_parent(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->parent_id;
+      return {this, element->parent_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_first_child(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->first_child_id;
+      return {this, element->first_child_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_last_child(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->last_child_id;
+      return {this, element->last_child_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_previous_sibling(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->previous_sibling_id;
+      return {this, element->previous_sibling_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_next_sibling(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Element *element =
             m_registry->element(element_id);
         element != nullptr) {
-      return element->next_sibling_id;
+      return {this, element->next_sibling_id};
     }
-    return null_element_id;
+    return {};
   }
 
   [[nodiscard]] bool
@@ -221,7 +221,7 @@ public:
   element_document_path(const ElementIdentifier element_id) const override {
     return util::document::extract_path(*this, element_id, null_element_id);
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   element_navigate_path(const ElementIdentifier element_id,
                         const DocumentPath &path) const override {
     return util::document::navigate_path(*this, element_id, path);
@@ -558,16 +558,16 @@ public:
 
     return result;
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   table_first_column(const ElementIdentifier element_id) const override {
     if (const ElementRegistry::Table *table_registry =
             m_registry->table_element(element_id);
         table_registry != nullptr) {
-      return table_registry->first_column_id;
+      return {this, table_registry->first_column_id};
     }
-    return null_element_id;
+    return {};
   }
-  [[nodiscard]] ElementIdentifier
+  [[nodiscard]] ElementHandle
   table_first_row(const ElementIdentifier element_id) const override {
     return element_first_child(element_id);
   }
@@ -743,7 +743,7 @@ private:
 
   [[nodiscard]] ResolvedStyle
   get_intermediate_style(const ElementIdentifier element_id) const {
-    const ElementIdentifier parent_id = element_parent(element_id);
+    const auto [_, parent_id] = element_parent(element_id);
     if (parent_id == null_element_id) {
       return get_partial_style(element_id);
     }
