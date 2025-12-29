@@ -4,7 +4,7 @@
 
 #include <odr/internal/abstract/document_element.hpp>
 
-#include <ranges>
+#include <algorithm>
 #include <stdexcept>
 #include <vector>
 
