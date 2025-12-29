@@ -13,7 +13,7 @@ enum class ValueType;
 enum class AnchorType;
 struct PageLayout;
 struct TableDimensions;
-struct TablePosition;
+class TablePosition;
 struct TableStyle;
 struct TableColumnStyle;
 struct TableRowStyle;
