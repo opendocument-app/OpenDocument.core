@@ -90,9 +90,8 @@ EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {
   return EncryptionState::unknown;
 }
 
-std::shared_ptr<abstract::DecodedFile>
-LegacyMicrosoftFile::decrypt(const std::string &password) const {
-  (void)password;
+std::shared_ptr<abstract::DecodedFile> LegacyMicrosoftFile::decrypt(
+    [[maybe_unused]] const std::string &password) const {
   throw UnsupportedOperation(
       "odrcore does not support decryption of legacy Microsoft files");
 }

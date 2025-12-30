@@ -71,6 +71,12 @@ ElementRegistry::element_at(const ElementIdentifier id) {
   return m_elements.at(id - 1);
 }
 
+ElementRegistry::Text &
+ElementRegistry::text_element_at(const ElementIdentifier id) {
+  check_text_id(id);
+  return m_texts.at(id);
+}
+
 ElementRegistry::Table &
 ElementRegistry::table_element_at(const ElementIdentifier id) {
   check_table_id(id);
@@ -89,6 +95,12 @@ ElementRegistry::element_at(const ElementIdentifier id) const {
   return m_elements.at(id - 1);
 }
 
+const ElementRegistry::Text &
+ElementRegistry::text_element_at(const ElementIdentifier id) const {
+  check_text_id(id);
+  return m_texts.at(id);
+}
+
 const ElementRegistry::Table &
 ElementRegistry::table_element_at(const ElementIdentifier id) const {
   check_table_id(id);
@@ -101,51 +113,10 @@ ElementRegistry::sheet_element_at(const ElementIdentifier id) const {
   return m_sheets.at(id);
 }
 
-ElementRegistry::Element *ElementRegistry::element(const ElementIdentifier id) {
-  if (id == null_element_id || id - 1 >= m_elements.size()) {
-    return nullptr;
-  }
-  return &m_elements.at(id - 1);
-}
-
-ElementRegistry::Text *
-ElementRegistry::text_element(const ElementIdentifier id) {
-  if (const auto it = m_texts.find(id); it != m_texts.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-const ElementRegistry::Element *
-ElementRegistry::element(const ElementIdentifier id) const {
-  if (id == null_element_id || id - 1 >= m_elements.size()) {
-    return nullptr;
-  }
-  return &m_elements.at(id - 1);
-}
-
-const ElementRegistry::Table *
-ElementRegistry::table_element(const ElementIdentifier id) const {
-  if (const auto it = m_tables.find(id); it != m_tables.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-const ElementRegistry::Text *
-ElementRegistry::text_element(const ElementIdentifier id) const {
-  if (const auto it = m_texts.find(id); it != m_texts.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-const ElementRegistry::Sheet *
-ElementRegistry::sheet_element(const ElementIdentifier id) const {
-  if (const auto it = m_sheets.find(id); it != m_sheets.end()) {
-    return &it->second;
-  }
-  return nullptr;
+const ElementRegistry::SheetCell &
+ElementRegistry::sheet_cell_element_at(const ElementIdentifier id) const {
+  check_sheet_cell_id(id);
+  return m_sheet_cells.at(id);
 }
 
 const ElementRegistry::SheetCell *

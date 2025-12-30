@@ -88,63 +88,28 @@ ElementRegistry::element_at(const ElementIdentifier id) const {
   return m_elements.at(id - 1);
 }
 
+const ElementRegistry::Text &
+ElementRegistry::text_element_at(const ElementIdentifier id) const {
+  check_text_id(id);
+  return m_texts.at(id);
+}
+
 const ElementRegistry::Sheet &
 ElementRegistry::sheet_element_at(const ElementIdentifier id) const {
   check_sheet_id(id);
   return m_sheets.at(id);
 }
 
-ElementRegistry::Element *ElementRegistry::element(const ElementIdentifier id) {
-  if (id == null_element_id || id - 1 >= m_elements.size()) {
-    return nullptr;
-  }
-  return &m_elements.at(id - 1);
-}
-
-ElementRegistry::Text *
-ElementRegistry::text_element(const ElementIdentifier id) {
-  if (const auto it = m_texts.find(id); it != m_texts.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-const ElementRegistry::Element *
-ElementRegistry::element(const ElementIdentifier id) const {
-  if (id == null_element_id || id - 1 >= m_elements.size()) {
-    return nullptr;
-  }
-  return &m_elements.at(id - 1);
+const ElementRegistry::SheetCell &
+ElementRegistry::sheet_cell_element_at(const ElementIdentifier id) const {
+  check_sheet_cell_id(id);
+  return m_sheet_cells.at(id);
 }
 
 const ElementRegistry::ElementRelations *
 ElementRegistry::element_relations(const ElementIdentifier id) const {
   if (const auto it = m_element_relations.find(id);
       it != m_element_relations.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-const ElementRegistry::Text *
-ElementRegistry::text_element(const ElementIdentifier id) const {
-  if (const auto it = m_texts.find(id); it != m_texts.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-const ElementRegistry::Sheet *
-ElementRegistry::sheet_element(const ElementIdentifier id) const {
-  if (const auto it = m_sheets.find(id); it != m_sheets.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-const ElementRegistry::SheetCell *
-ElementRegistry::sheet_cell_element(const ElementIdentifier id) const {
-  if (const auto it = m_sheet_cells.find(id); it != m_sheet_cells.end()) {
     return &it->second;
   }
   return nullptr;
@@ -231,10 +196,9 @@ void ElementRegistry::append_sheet_cell(const ElementIdentifier sheet_id,
   element_at(cell_id).parent_id = sheet_id;
 }
 
-void ElementRegistry::Sheet::register_column(const std::uint32_t column_min,
-                                             const std::uint32_t column_max,
-                                             const pugi::xml_node element) {
-  (void)column_min;
+void ElementRegistry::Sheet::register_column(
+    [[maybe_unused]] const std::uint32_t column_min,
+    const std::uint32_t column_max, const pugi::xml_node element) {
   columns[column_max] = {.node = element};
 }
 

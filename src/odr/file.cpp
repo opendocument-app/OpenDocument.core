@@ -74,8 +74,7 @@ std::vector<FileType> DecodedFile::list_file_types(const std::string &path,
 }
 
 std::string_view DecodedFile::mimetype(const std::string &path,
-                                       Logger &logger) {
-  (void)logger;
+                                       [[maybe_unused]] Logger &logger) {
   return internal::magic::mimetype(path);
 }
 

@@ -157,93 +157,58 @@ public:
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return element->type;
-    }
-    return ElementType::none;
+    return m_registry->element_at(element_id).type;
   }
 
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_parent(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->parent_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).parent_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_first_child(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->first_child_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).first_child_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_last_child(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->last_child_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).last_child_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_previous_sibling(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->previous_sibling_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).previous_sibling_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_next_sibling(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->next_sibling_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).next_sibling_id;
   }
 
-  [[nodiscard]] bool
-  element_is_unique(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_unique(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_self_locatable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_self_locatable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
   [[nodiscard]] bool
   element_is_editable(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      if (element->parent_id != null_element_id) {
-        return element_is_editable(element->parent_id);
-      }
-      if (element->type == ElementType::sheet_cell) {
-        const ElementRegistry::SheetCell *sheet_cell =
-            m_registry->sheet_cell_element(element_id);
-        return sheet_cell != nullptr && !sheet_cell->is_repeated;
-      }
-      return true;
+    const ElementRegistry::Element &element =
+        m_registry->element_at(element_id);
+    if (element.parent_id != null_element_id) {
+      return element_is_editable(element.parent_id);
     }
-    return false;
+    if (element.type == ElementType::sheet_cell) {
+      const ElementRegistry::SheetCell &sheet_cell =
+          m_registry->sheet_cell_element_at(element_id);
+      return !sheet_cell.is_repeated;
+    }
+    return true;
   }
   [[nodiscard]]
   DocumentPath
   element_document_path(const ElementIdentifier element_id) const override {
     return util::document::extract_path(*this, element_id, null_element_id);
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_navigate_path(const ElementIdentifier element_id,
                         const DocumentPath &path) const override {
     return util::document::navigate_path(*this, element_id, path);
@@ -251,230 +216,112 @@ public:
 
   [[nodiscard]] const TextRootAdapter *
   text_root_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::root) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::root ? this : nullptr;
   }
   [[nodiscard]] const SlideAdapter *
   slide_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::slide) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::slide ? this : nullptr;
   }
   [[nodiscard]] const PageAdapter *
   page_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::page) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::page ? this : nullptr;
   }
   [[nodiscard]] const SheetAdapter *
   sheet_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::sheet) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::sheet ? this : nullptr;
   }
   [[nodiscard]] const SheetCellAdapter *
   sheet_cell_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::sheet_cell) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::sheet_cell ? this : nullptr;
   }
   [[nodiscard]] const MasterPageAdapter *
   master_page_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::page) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::master_page ? this
+                                                                : nullptr;
   }
   [[nodiscard]] const LineBreakAdapter *
   line_break_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::line_break) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::line_break ? this : nullptr;
   }
   [[nodiscard]] const ParagraphAdapter *
   paragraph_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::paragraph) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::paragraph ? this : nullptr;
   }
   [[nodiscard]] const SpanAdapter *
   span_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::span) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::span ? this : nullptr;
   }
   [[nodiscard]] const TextAdapter *
   text_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::text) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::text ? this : nullptr;
   }
   [[nodiscard]] const LinkAdapter *
   link_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::link) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::link ? this : nullptr;
   }
   [[nodiscard]] const BookmarkAdapter *
   bookmark_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::bookmark) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::bookmark ? this : nullptr;
   }
   [[nodiscard]] const ListItemAdapter *
   list_item_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::list_item) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::list_item ? this : nullptr;
   }
   [[nodiscard]] const TableAdapter *
   table_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::table) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::table ? this : nullptr;
   }
   [[nodiscard]] const TableColumnAdapter *
   table_column_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::table_column) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::table_column ? this
+                                                                 : nullptr;
   }
   [[nodiscard]] const TableRowAdapter *
   table_row_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::table_row) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::table_row ? this : nullptr;
   }
   [[nodiscard]] const TableCellAdapter *
   table_cell_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::table_cell) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::table_cell ? this : nullptr;
   }
   [[nodiscard]] const FrameAdapter *
   frame_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::frame) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::frame ? this : nullptr;
   }
   [[nodiscard]] const RectAdapter *
   rect_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::rect) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::rect ? this : nullptr;
   }
   [[nodiscard]] const LineAdapter *
   line_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::line) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::line ? this : nullptr;
   }
   [[nodiscard]] const CircleAdapter *
   circle_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::circle) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::circle ? this : nullptr;
   }
   [[nodiscard]] const CustomShapeAdapter *
   custom_shape_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::custom_shape) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::custom_shape ? this
+                                                                 : nullptr;
   }
   [[nodiscard]] const ImageAdapter *
   image_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::image) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::image ? this : nullptr;
   }
 
   [[nodiscard]] PageLayout
   text_root_page_layout(const ElementIdentifier element_id) const override {
-    if (const auto [_, master_page_id] =
+    if (const ElementIdentifier master_page_id =
             text_root_first_master_page(element_id);
         master_page_id != null_element_id) {
       return master_page_page_layout(master_page_id);
     }
     return {};
   }
-  [[nodiscard]] ElementHandle text_root_first_master_page(
-      const ElementIdentifier element_id) const override {
-    (void)element_id;
-    if (const ElementIdentifier first_master_page_id =
-            m_document->style_registry().first_master_page();
-        first_master_page_id != null_element_id) {
-      return {this, first_master_page_id};
-    }
-    return {};
+  [[nodiscard]] ElementIdentifier text_root_first_master_page(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return m_document->style_registry().first_master_page();
   }
 
   [[nodiscard]] PageLayout
@@ -523,23 +370,16 @@ public:
   }
   [[nodiscard]] std::string
   page_name(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("draw:name").value();
+    return get_node(element_id).attribute("draw:name").value();
   }
 
   [[nodiscard]] std::string
   sheet_name(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("table:name").value();
+    return get_node(element_id).attribute("table:name").value();
   }
   [[nodiscard]] TableDimensions
   sheet_dimensions(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Sheet *sheet_registry =
-            m_registry->sheet_element(element_id);
-        sheet_registry != nullptr) {
-      return sheet_registry->dimensions;
-    }
-    return {};
+    return m_registry->sheet_element_at(element_id).dimensions;
   }
   [[nodiscard]] TableDimensions
   sheet_content(const ElementIdentifier element_id,
@@ -576,28 +416,21 @@ public:
 
     return result;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,
              const std::uint32_t row) const override {
-    if (const ElementRegistry::Sheet *sheet_registry =
-            m_registry->sheet_element(element_id);
-        sheet_registry != nullptr) {
-      if (const ElementRegistry::Sheet::Cell *sheet_cell =
-              sheet_registry->cell(column, row);
-          sheet_cell != nullptr) {
-        return {this, sheet_cell->element_id};
-      }
+    const ElementRegistry::Sheet &sheet_registry =
+        m_registry->sheet_element_at(element_id);
+    if (const ElementRegistry::Sheet::Cell *sheet_cell =
+            sheet_registry.cell(column, row);
+        sheet_cell != nullptr) {
+      return sheet_cell->element_id;
     }
     return {};
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   sheet_first_shape(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Sheet *sheet_registry =
-            m_registry->sheet_element(element_id);
-        sheet_registry != nullptr) {
-      return {this, sheet_registry->first_shape_id};
-    }
-    return {};
+    return m_registry->sheet_element_at(element_id).first_shape_id;
   }
   [[nodiscard]] TableStyle
   sheet_style(const ElementIdentifier element_id) const override {
@@ -606,20 +439,15 @@ public:
   [[nodiscard]] TableColumnStyle
   sheet_column_style(const ElementIdentifier element_id,
                      const std::uint32_t column) const override {
-    if (const ElementRegistry::Sheet *sheet_registry =
-            m_registry->sheet_element(element_id);
-        sheet_registry != nullptr) {
-      if (const pugi::xml_node column_node =
-              sheet_registry->column_node(column);
-          column_node) {
-        if (const pugi::xml_attribute attr =
-                column_node.attribute("table:style-name")) {
-          if (const Style *style =
-                  m_document->style_registry().style(attr.value());
-              style != nullptr) {
-            return style->resolved().table_column_style;
-          }
-        }
+    const ElementRegistry::Sheet &sheet_registry =
+        m_registry->sheet_element_at(element_id);
+    const pugi::xml_node column_node = sheet_registry.column_node(column);
+    if (const pugi::xml_attribute attr =
+            column_node.attribute("table:style-name");
+        attr) {
+      if (const Style *style = m_document->style_registry().style(attr.value());
+          style != nullptr) {
+        return style->resolved().table_column_style;
       }
     }
     return {};
@@ -627,19 +455,14 @@ public:
   [[nodiscard]] TableRowStyle
   sheet_row_style(const ElementIdentifier element_id,
                   const std::uint32_t row) const override {
-    if (const ElementRegistry::Sheet *sheet_registry =
-            m_registry->sheet_element(element_id);
-        sheet_registry != nullptr) {
-      if (const pugi::xml_node column_node = sheet_registry->row_node(row);
-          column_node) {
-        if (const pugi::xml_attribute attr =
-                column_node.attribute("table:style-name")) {
-          if (const Style *style =
-                  m_document->style_registry().style(attr.value());
-              style != nullptr) {
-            return style->resolved().table_row_style;
-          }
-        }
+    const ElementRegistry::Sheet &sheet_registry =
+        m_registry->sheet_element_at(element_id);
+    const pugi::xml_node column_node = sheet_registry.row_node(row);
+    if (const pugi::xml_attribute attr =
+            column_node.attribute("table:style-name")) {
+      if (const Style *style = m_document->style_registry().style(attr.value());
+          style != nullptr) {
+        return style->resolved().table_row_style;
       }
     }
     return {};
@@ -648,24 +471,19 @@ public:
   sheet_cell_style(const ElementIdentifier element_id,
                    const std::uint32_t column,
                    const std::uint32_t row) const override {
-    const auto [_, cell_id] = sheet_cell(element_id, column, row);
+    const ElementIdentifier cell_id = sheet_cell(element_id, column, row);
     return get_partial_cell_style(element_id, cell_id, {column, row})
         .table_cell_style;
   }
 
   [[nodiscard]] TablePosition
   sheet_cell_position(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::SheetCell *sheet_cell =
-            m_registry->sheet_cell_element(element_id);
-        sheet_cell != nullptr) {
-      return sheet_cell->position;
-    }
-    return {};
+    return m_registry->sheet_cell_element_at(element_id).position;
   }
   [[nodiscard]] bool
   sheet_cell_is_covered(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return std::strcmp(node.name(), "table:covered-table-cell") == 0;
+    return std::strcmp(get_node(element_id).name(),
+                       "table:covered-table-cell") == 0;
   }
   [[nodiscard]] TableDimensions
   sheet_cell_span(const ElementIdentifier element_id) const override {
@@ -687,7 +505,8 @@ public:
   master_page_page_layout(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     if (const pugi::xml_attribute attribute =
-            node.attribute("style:page-layout-name")) {
+            node.attribute("style:page-layout-name");
+        attribute) {
       return m_document->style_registry().page_layout(attribute.value());
     }
     return {};
@@ -714,14 +533,11 @@ public:
 
   [[nodiscard]] std::string
   text_content(const ElementIdentifier element_id) const override {
-    const ElementRegistry::Text *text_element =
-        m_registry->text_element(element_id);
-    if (text_element == nullptr) {
-      return "";
-    }
+    const ElementRegistry::Text &text_element =
+        m_registry->text_element_at(element_id);
 
     const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = text_element->last;
+    const pugi::xml_node last = text_element.last;
 
     std::string result;
     for (pugi::xml_node node = first; node != last.next_sibling();
@@ -732,14 +548,12 @@ public:
   }
   void text_set_content(const ElementIdentifier element_id,
                         const std::string &text) const override {
-    ElementRegistry::Element *element = m_registry->element(element_id);
-    ElementRegistry::Text *text_element = m_registry->text_element(element_id);
-    if (element == nullptr || text_element == nullptr) {
-      return;
-    }
+    ElementRegistry::Element &element = m_registry->element_at(element_id);
+    ElementRegistry::Text &text_element =
+        m_registry->text_element_at(element_id);
 
     const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = text_element->last;
+    const pugi::xml_node last = text_element.last;
 
     pugi::xml_node parent = first.parent();
     const pugi::xml_node old_first = first;
@@ -786,8 +600,8 @@ public:
       }
     }
 
-    element->node = new_first;
-    text_element->last = new_last;
+    element.node = new_first;
+    text_element.last = new_last;
 
     for (pugi::xml_node node = old_first; node != old_last.next_sibling();) {
       const pugi::xml_node next = node.next_sibling();
@@ -802,14 +616,12 @@ public:
 
   [[nodiscard]] std::string
   link_href(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("xlink:href").value();
+    return get_node(element_id).attribute("xlink:href").value();
   }
 
   [[nodiscard]] std::string
   bookmark_name(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("text:name").value();
+    return get_node(element_id).attribute("text:name").value();
   }
 
   [[nodiscard]] TextStyle
@@ -843,16 +655,11 @@ public:
 
     return result;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   table_first_column(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Table *table_registry =
-            m_registry->table_element(element_id);
-        table_registry != nullptr) {
-      return {this, table_registry->first_column_id};
-    }
-    return {};
+    return m_registry->table_element_at(element_id).first_column_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   table_first_row(const ElementIdentifier element_id) const override {
     return element_first_child(element_id);
   }
@@ -873,8 +680,8 @@ public:
 
   [[nodiscard]] bool
   table_cell_is_covered(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return std::strcmp(node.name(), "table:covered-table-cell") == 0;
+    return std::strcmp(get_node(element_id).name(),
+                       "table:covered-table-cell") == 0;
   }
   [[nodiscard]] TableDimensions
   table_cell_span(const ElementIdentifier element_id) const override {
@@ -918,7 +725,8 @@ public:
   [[nodiscard]] std::optional<std::string>
   frame_x(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:x")) {
+    if (const pugi::xml_attribute attribute = node.attribute("svg:x");
+        attribute) {
       return attribute.value();
     }
     return std::nullopt;
@@ -926,7 +734,8 @@ public:
   [[nodiscard]] std::optional<std::string>
   frame_y(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:y")) {
+    if (const pugi::xml_attribute attribute = node.attribute("svg:y");
+        attribute) {
       return attribute.value();
     }
     return std::nullopt;
@@ -934,7 +743,8 @@ public:
   [[nodiscard]] std::optional<std::string>
   frame_width(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:width")) {
+    if (const pugi::xml_attribute attribute = node.attribute("svg:width");
+        attribute) {
       return attribute.value();
     }
     return std::nullopt;
@@ -942,7 +752,8 @@ public:
   [[nodiscard]] std::optional<std::string>
   frame_height(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:height")) {
+    if (const pugi::xml_attribute attribute = node.attribute("svg:height");
+        attribute) {
       return attribute.value();
     }
     return std::nullopt;
@@ -950,7 +761,8 @@ public:
   [[nodiscard]] std::optional<std::string>
   frame_z_index(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("draw:z-index")) {
+    if (const pugi::xml_attribute attribute = node.attribute("draw:z-index");
+        attribute) {
       return attribute.value();
     }
     return std::nullopt;
@@ -962,23 +774,19 @@ public:
 
   [[nodiscard]] std::string
   rect_x(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:x").value();
+    return get_node(element_id).attribute("svg:x").value();
   }
   [[nodiscard]] std::string
   rect_y(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:y").value();
+    return get_node(element_id).attribute("svg:y").value();
   }
   [[nodiscard]] std::string
   rect_width(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:width").value();
+    return get_node(element_id).attribute("svg:width").value();
   }
   [[nodiscard]] std::string
   rect_height(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:height").value();
+    return get_node(element_id).attribute("svg:height").value();
   }
   [[nodiscard]] GraphicStyle
   rect_style(const ElementIdentifier element_id) const override {
@@ -987,23 +795,19 @@ public:
 
   [[nodiscard]] std::string
   line_x1(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:x1").value();
+    return get_node(element_id).attribute("svg:x1").value();
   }
   [[nodiscard]] std::string
   line_y1(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:y1").value();
+    return get_node(element_id).attribute("svg:y1").value();
   }
   [[nodiscard]] std::string
   line_x2(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:x2").value();
+    return get_node(element_id).attribute("svg:x2").value();
   }
   [[nodiscard]] std::string
   line_y2(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:y2").value();
+    return get_node(element_id).attribute("svg:y2").value();
   }
   [[nodiscard]] GraphicStyle
   line_style(const ElementIdentifier element_id) const override {
@@ -1012,23 +816,19 @@ public:
 
   [[nodiscard]] std::string
   circle_x(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:x").value();
+    return get_node(element_id).attribute("svg:x").value();
   }
   [[nodiscard]] std::string
   circle_y(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:y").value();
+    return get_node(element_id).attribute("svg:y").value();
   }
   [[nodiscard]] std::string
   circle_width(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:width").value();
+    return get_node(element_id).attribute("svg:width").value();
   }
   [[nodiscard]] std::string
   circle_height(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:height").value();
+    return get_node(element_id).attribute("svg:height").value();
   }
   [[nodiscard]] GraphicStyle
   circle_style(const ElementIdentifier element_id) const override {
@@ -1038,7 +838,8 @@ public:
   [[nodiscard]] std::optional<std::string>
   custom_shape_x(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:x")) {
+    if (const pugi::xml_attribute attribute = node.attribute("svg:x");
+        attribute) {
       return attribute.value();
     }
     return std::nullopt;
@@ -1046,7 +847,8 @@ public:
   [[nodiscard]] std::optional<std::string>
   custom_shape_y(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:y")) {
+    if (const pugi::xml_attribute attribute = node.attribute("svg:y");
+        attribute) {
       return attribute.value();
     }
     return std::nullopt;
@@ -1098,12 +900,7 @@ private:
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return element->node;
-    }
-    return {};
+    return m_registry->element_at(element_id).node;
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {
@@ -1125,7 +922,7 @@ private:
   [[nodiscard]] const char *
   get_style_name(const ElementIdentifier element_id) const {
     const pugi::xml_node node = get_node(element_id);
-    for (pugi::xml_attribute attribute : node.attributes()) {
+    for (const pugi::xml_attribute attribute : node.attributes()) {
       if (util::string::ends_with(attribute.name(), ":style-name")) {
         return attribute.value();
       }
@@ -1138,7 +935,7 @@ private:
     if (const ElementRegistry::SheetCell *cell_registry =
             m_registry->sheet_cell_element(element_id);
         cell_registry != nullptr) {
-      const auto [_, parent_id] = element_parent(element_id);
+      const ElementIdentifier parent_id = element_parent(element_id);
       return get_partial_cell_style(parent_id, element_id,
                                     cell_registry->position);
     }
@@ -1153,7 +950,7 @@ private:
 
   [[nodiscard]] ResolvedStyle
   get_intermediate_style(const ElementIdentifier element_id) const {
-    const auto [_, parent_id] = element_parent(element_id);
+    const ElementIdentifier parent_id = element_parent(element_id);
     if (parent_id == null_element_id) {
       return get_partial_style(element_id);
     }
@@ -1168,38 +965,41 @@ private:
                          const TablePosition &position) const {
     const char *style_name = nullptr;
 
-    if (const pugi::xml_attribute attr =
-            get_node(cell_id).attribute("table:style-name")) {
-      style_name = attr.value();
+    if (cell_id != null_element_id) {
+      if (const pugi::xml_attribute attribute =
+              get_node(cell_id).attribute("table:style-name");
+          attribute) {
+        style_name = attribute.value();
+      }
     }
 
     const auto [column, row] = position.pair();
-    const ElementRegistry::Sheet *sheet_registry =
-        m_registry->sheet_element(sheet_id);
-    if (sheet_registry == nullptr) {
-      return {};
-    }
+    const ElementRegistry::Sheet &sheet_registry =
+        m_registry->sheet_element_at(sheet_id);
 
     if (style_name == nullptr) {
-      const pugi::xml_node cell_node = sheet_registry->cell_node(column, row);
-      if (const pugi::xml_attribute attr =
-              cell_node.attribute("table:style-name")) {
-        style_name = attr.value();
+      const pugi::xml_node cell_node = sheet_registry.cell_node(column, row);
+      if (const pugi::xml_attribute attribute =
+              cell_node.attribute("table:style-name");
+          attribute) {
+        style_name = attribute.value();
       }
     }
 
     if (style_name == nullptr) {
-      const pugi::xml_node row_node = sheet_registry->row_node(row);
-      if (const pugi::xml_attribute attr =
-              row_node.attribute("table:default-cell-style-name")) {
-        style_name = attr.value();
+      const pugi::xml_node row_node = sheet_registry.row_node(row);
+      if (const pugi::xml_attribute attribute =
+              row_node.attribute("table:default-cell-style-name");
+          attribute) {
+        style_name = attribute.value();
       }
     }
     if (style_name == nullptr) {
-      const pugi::xml_node column_node = sheet_registry->column_node(column);
-      if (const pugi::xml_attribute attr =
-              column_node.attribute("table:default-cell-style-name")) {
-        style_name = attr.value();
+      const pugi::xml_node column_node = sheet_registry.column_node(column);
+      if (const pugi::xml_attribute attribute =
+              column_node.attribute("table:default-cell-style-name");
+          attribute) {
+        style_name = attribute.value();
       }
     }
 

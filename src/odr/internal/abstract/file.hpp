@@ -47,8 +47,7 @@ public:
     return EncryptionState::not_encrypted;
   }
   [[nodiscard]] virtual std::shared_ptr<DecodedFile>
-  decrypt(const std::string &password) const {
-    (void)password;
+  decrypt([[maybe_unused]] const std::string &password) const {
     return nullptr;
   }
 

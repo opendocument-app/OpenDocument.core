@@ -70,10 +70,9 @@ bool is_text_node(const pugi::xml_node node) {
 }
 
 std::tuple<ElementIdentifier, pugi::xml_node>
-parse_text_element(ElementRegistry &registry, const ParseContext &context,
+parse_text_element(ElementRegistry &registry,
+                   [[maybe_unused]] const ParseContext &context,
                    const pugi::xml_node first) {
-  (void)context;
-
   if (!first) {
     return {null_element_id, pugi::xml_node()};
   }

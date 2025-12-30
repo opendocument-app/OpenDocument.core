@@ -24,8 +24,7 @@ EncryptionState PdfFile::encryption_state() const noexcept {
 }
 
 std::shared_ptr<abstract::DecodedFile>
-PdfFile::decrypt(const std::string &password) const {
-  (void)password;
+PdfFile::decrypt([[maybe_unused]] const std::string &password) const {
   return nullptr;
 }
 

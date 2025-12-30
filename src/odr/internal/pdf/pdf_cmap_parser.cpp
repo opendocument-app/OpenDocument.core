@@ -51,9 +51,7 @@ std::variant<Object, std::string> CMapParser::read_token() const {
 }
 
 void CMapParser::read_codespacerange(const std::uint32_t n,
-                                     const CMap &cmap) const {
-  (void)cmap;
-
+                                     [[maybe_unused]] const CMap &cmap) const {
   m_parser.skip_whitespace();
   for (std::uint32_t i = 0; i < n; ++i) {
     auto from_glyph = m_parser.read_object();
@@ -89,9 +87,8 @@ void CMapParser::read_bfchar(const std::uint32_t n, CMap &cmap) const {
   }
 }
 
-void CMapParser::read_bfrange(const std::uint32_t n, const CMap &cmap) const {
-  (void)cmap;
-
+void CMapParser::read_bfrange(const std::uint32_t n,
+                              [[maybe_unused]] const CMap &cmap) const {
   m_parser.skip_whitespace();
   for (std::uint32_t i = 0; i < n; ++i) {
     auto from_glyph = m_parser.read_object();
