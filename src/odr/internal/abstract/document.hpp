@@ -88,7 +88,10 @@ public:
   as_filesystem() const noexcept = 0;
 
   /// \return cursor to the root element of the document.
-  [[nodiscard]] virtual ElementHandle root_element() const = 0;
+  [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
+
+  /// \return the element adapter for this document.
+  [[nodiscard]] virtual const ElementAdapter *element_adapter() const = 0;
 };
 
 class ElementAdapter {
@@ -98,15 +101,15 @@ public:
   [[nodiscard]] virtual ElementType
   element_type(ElementIdentifier element_id) const = 0;
 
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
   element_parent(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
   element_first_child(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
   element_last_child(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
   element_previous_sibling(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
   element_next_sibling(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual bool
@@ -117,56 +120,102 @@ public:
   element_is_editable(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual DocumentPath
   element_document_path(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
   element_navigate_path(ElementIdentifier element_id,
                         const DocumentPath &path) const = 0;
 
   [[nodiscard]] virtual const TextRootAdapter *
-  text_root_adapter(ElementIdentifier element_id) const = 0;
+  text_root_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const SlideAdapter *
-  slide_adapter(ElementIdentifier element_id) const = 0;
+  slide_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const PageAdapter *
-  page_adapter(ElementIdentifier element_id) const = 0;
+  page_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const SheetAdapter *
-  sheet_adapter(ElementIdentifier element_id) const = 0;
+  sheet_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const SheetCellAdapter *
-  sheet_cell_adapter(ElementIdentifier element_id) const = 0;
+  sheet_cell_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const MasterPageAdapter *
-  master_page_adapter(ElementIdentifier element_id) const = 0;
+  master_page_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const LineBreakAdapter *
-  line_break_adapter(ElementIdentifier element_id) const = 0;
+  line_break_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const ParagraphAdapter *
-  paragraph_adapter(ElementIdentifier element_id) const = 0;
+  paragraph_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const SpanAdapter *
-  span_adapter(ElementIdentifier element_id) const = 0;
+  span_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const TextAdapter *
-  text_adapter(ElementIdentifier element_id) const = 0;
+  text_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const LinkAdapter *
-  link_adapter(ElementIdentifier element_id) const = 0;
+  link_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const BookmarkAdapter *
-  bookmark_adapter(ElementIdentifier element_id) const = 0;
+  bookmark_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const ListItemAdapter *
-  list_item_adapter(ElementIdentifier element_id) const = 0;
+  list_item_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const TableAdapter *
-  table_adapter(ElementIdentifier element_id) const = 0;
+  table_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const TableColumnAdapter *
-  table_column_adapter(ElementIdentifier element_id) const = 0;
+  table_column_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const TableRowAdapter *
-  table_row_adapter(ElementIdentifier element_id) const = 0;
+  table_row_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const TableCellAdapter *
-  table_cell_adapter(ElementIdentifier element_id) const = 0;
+  table_cell_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const FrameAdapter *
-  frame_adapter(ElementIdentifier element_id) const = 0;
+  frame_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const RectAdapter *
-  rect_adapter(ElementIdentifier element_id) const = 0;
+  rect_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const LineAdapter *
-  line_adapter(ElementIdentifier element_id) const = 0;
+  line_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const CircleAdapter *
-  circle_adapter(ElementIdentifier element_id) const = 0;
+  circle_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const CustomShapeAdapter *
-  custom_shape_adapter(ElementIdentifier element_id) const = 0;
+  custom_shape_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
   [[nodiscard]] virtual const ImageAdapter *
-  image_adapter(ElementIdentifier element_id) const = 0;
+  image_adapter(ElementIdentifier element_id) const {
+    return nullptr;
+  }
 };
 
 class TextRootAdapter {
@@ -176,7 +225,7 @@ public:
   [[nodiscard]] virtual PageLayout
   text_root_page_layout(ElementIdentifier element_id) const = 0;
 
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
   text_root_first_master_page(ElementIdentifier element_id) const = 0;
 };
 
@@ -221,10 +270,10 @@ public:
   sheet_content(ElementIdentifier element_id,
                 std::optional<TableDimensions> range) const = 0;
 
-  [[nodiscard]] virtual ElementHandle sheet_cell(ElementIdentifier element_id,
-                                                 std::uint32_t column,
-                                                 std::uint32_t row) const = 0;
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
+  sheet_cell(ElementIdentifier element_id, std::uint32_t column,
+             std::uint32_t row) const = 0;
+  [[nodiscard]] virtual ElementIdentifier
   sheet_first_shape(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual TableStyle
@@ -332,9 +381,9 @@ public:
   [[nodiscard]] virtual TableDimensions
   table_dimensions(ElementIdentifier element_id) const = 0;
 
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
   table_first_column(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual ElementHandle
+  [[nodiscard]] virtual ElementIdentifier
   table_first_row(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual TableStyle

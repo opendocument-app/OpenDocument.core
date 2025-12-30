@@ -22,8 +22,10 @@ Document::as_filesystem() const noexcept {
   return m_files;
 }
 
-ElementHandle Document::root_element() const {
-  return {*m_element_adapter, m_root_element};
+ElementIdentifier Document::root_element() const { return m_root_element; }
+
+const abstract::ElementAdapter *Document::element_adapter() const {
+  return m_element_adapter.get();
 }
 
 } // namespace odr::internal

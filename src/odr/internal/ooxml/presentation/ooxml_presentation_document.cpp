@@ -147,58 +147,28 @@ public:
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return element->type;
-    }
-    return ElementType::none;
+    return m_registry->element_at(element_id).type;
   }
 
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_parent(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->parent_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).parent_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_first_child(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->first_child_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).first_child_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_last_child(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->last_child_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).last_child_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_previous_sibling(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->previous_sibling_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).previous_sibling_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_next_sibling(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return {this, element->next_sibling_id};
-    }
-    return {};
+    return m_registry->element_at(element_id).next_sibling_id;
   }
 
   [[nodiscard]] bool
@@ -221,173 +191,68 @@ public:
   element_document_path(const ElementIdentifier element_id) const override {
     return util::document::extract_path(*this, element_id, null_element_id);
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   element_navigate_path(const ElementIdentifier element_id,
                         const DocumentPath &path) const override {
     return util::document::navigate_path(*this, element_id, path);
   }
 
-  [[nodiscard]] const abstract::TextRootAdapter *
-  text_root_adapter(const ElementIdentifier) const override {
-    return nullptr;
-  }
   [[nodiscard]] const SlideAdapter *
   slide_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::slide) {
-      return nullptr;
-    }
-    return this;
-  }
-  [[nodiscard]] const abstract::PageAdapter *
-  page_adapter(const ElementIdentifier) const override {
-    return nullptr;
-  }
-  [[nodiscard]] const abstract::SheetAdapter *
-  sheet_adapter(const ElementIdentifier) const override {
-    return nullptr;
-  }
-  [[nodiscard]] const abstract::SheetCellAdapter *
-  sheet_cell_adapter(const ElementIdentifier) const override {
-    return nullptr;
-  }
-  [[nodiscard]] const abstract::MasterPageAdapter *
-  master_page_adapter(const ElementIdentifier) const override {
-    return nullptr;
+    return element_type(element_id) == ElementType::slide ? this : nullptr;
   }
   [[nodiscard]] const LineBreakAdapter *
   line_break_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::line_break) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::line_break ? this : nullptr;
   }
   [[nodiscard]] const ParagraphAdapter *
   paragraph_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::paragraph) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::paragraph ? this : nullptr;
   }
   [[nodiscard]] const SpanAdapter *
   span_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::span) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::span ? this : nullptr;
   }
   [[nodiscard]] const TextAdapter *
   text_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::text) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::text ? this : nullptr;
   }
   [[nodiscard]] const LinkAdapter *
   link_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::link) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::link ? this : nullptr;
   }
   [[nodiscard]] const BookmarkAdapter *
   bookmark_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::bookmark) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::bookmark ? this : nullptr;
   }
   [[nodiscard]] const ListItemAdapter *
   list_item_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::list_item) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::list_item ? this : nullptr;
   }
   [[nodiscard]] const TableAdapter *
   table_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::table) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::table ? this : nullptr;
   }
   [[nodiscard]] const TableColumnAdapter *
   table_column_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::table_column) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::table_column ? this
+                                                                 : nullptr;
   }
   [[nodiscard]] const TableRowAdapter *
   table_row_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::table_row) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::table_row ? this : nullptr;
   }
   [[nodiscard]] const TableCellAdapter *
   table_cell_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::table_cell) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::table_cell ? this : nullptr;
   }
   [[nodiscard]] const FrameAdapter *
   frame_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::frame) {
-      return nullptr;
-    }
-    return this;
-  }
-  [[nodiscard]] const abstract::RectAdapter *
-  rect_adapter(const ElementIdentifier) const override {
-    return nullptr;
-  }
-  [[nodiscard]] const abstract::LineAdapter *
-  line_adapter(const ElementIdentifier) const override {
-    return nullptr;
-  }
-  [[nodiscard]] const abstract::CircleAdapter *
-  circle_adapter(const ElementIdentifier) const override {
-    return nullptr;
-  }
-  [[nodiscard]] const abstract::CustomShapeAdapter *
-  custom_shape_adapter(const ElementIdentifier) const override {
-    return nullptr;
+    return element_type(element_id) == ElementType::frame ? this : nullptr;
   }
   [[nodiscard]] const ImageAdapter *
   image_adapter(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element == nullptr || element->type != ElementType::image) {
-      return nullptr;
-    }
-    return this;
+    return element_type(element_id) == ElementType::image ? this : nullptr;
   }
 
   [[nodiscard]] PageLayout
@@ -433,14 +298,11 @@ public:
 
   [[nodiscard]] std::string
   text_content(const ElementIdentifier element_id) const override {
-    const ElementRegistry::Text *text_element =
-        m_registry->text_element(element_id);
-    if (text_element == nullptr) {
-      return "";
-    }
+    const ElementRegistry::Text &text_element =
+        m_registry->text_element_at(element_id);
 
     const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = text_element->last;
+    const pugi::xml_node last = text_element.last;
 
     std::string result;
     for (pugi::xml_node node = first; node != last.next_sibling();
@@ -451,14 +313,12 @@ public:
   }
   void text_set_content(const ElementIdentifier element_id,
                         const std::string &text) const override {
-    ElementRegistry::Element *element = m_registry->element(element_id);
-    ElementRegistry::Text *text_element = m_registry->text_element(element_id);
-    if (element == nullptr || text_element == nullptr) {
-      return;
-    }
+    ElementRegistry::Element &element = m_registry->element_at(element_id);
+    ElementRegistry::Text &text_element =
+        m_registry->text_element_at(element_id);
 
     const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = text_element->last;
+    const pugi::xml_node last = text_element.last;
 
     pugi::xml_node parent = first.parent();
     const pugi::xml_node old_first = first;
@@ -501,8 +361,8 @@ public:
       }
     }
 
-    element->node = new_first;
-    text_element->last = new_last;
+    element.node = new_first;
+    text_element.last = new_last;
 
     for (pugi::xml_node node = old_first; node != old_last.next_sibling();) {
       const pugi::xml_node next = node.next_sibling();
@@ -523,8 +383,7 @@ public:
 
   [[nodiscard]] std::string
   bookmark_name(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("text:name").value();
+    return get_node(element_id).attribute("text:name").value();
   }
 
   [[nodiscard]] TextStyle
@@ -558,16 +417,11 @@ public:
 
     return result;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   table_first_column(const ElementIdentifier element_id) const override {
-    if (const ElementRegistry::Table *table_registry =
-            m_registry->table_element(element_id);
-        table_registry != nullptr) {
-      return {this, table_registry->first_column_id};
-    }
-    return {};
+    return m_registry->table_element_at(element_id).first_column_id;
   }
-  [[nodiscard]] ElementHandle
+  [[nodiscard]] ElementIdentifier
   table_first_row(const ElementIdentifier element_id) const override {
     return element_first_child(element_id);
   }
@@ -670,9 +524,6 @@ public:
 
   [[nodiscard]] bool
   image_is_internal(const ElementIdentifier element_id) const override {
-    if (m_document->as_filesystem() == nullptr) {
-      return false;
-    }
     try {
       const AbsPath path = Path(image_href(element_id)).make_absolute();
       return m_document->as_filesystem()->is_file(path);
@@ -682,16 +533,12 @@ public:
   }
   [[nodiscard]] std::optional<File>
   image_file(const ElementIdentifier element_id) const override {
-    if (m_document->as_filesystem() == nullptr) {
-      return std::nullopt;
-    }
     const AbsPath path = Path(image_href(element_id)).make_absolute();
     return File(m_document->as_filesystem()->open(path));
   }
   [[nodiscard]] std::string
   image_href(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("xlink:href").value();
+    return get_node(element_id).attribute("xlink:href").value();
   }
 
 private:
@@ -700,12 +547,7 @@ private:
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      return element->node;
-    }
-    return {};
+    return m_registry->element_at(element_id).node;
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {
@@ -723,27 +565,25 @@ private:
 
   [[nodiscard]] ResolvedStyle
   get_partial_style(const ElementIdentifier element_id) const {
-    if (const ElementRegistry::Element *element =
-            m_registry->element(element_id);
-        element != nullptr) {
-      if (element->type == ElementType::paragraph) {
-        ResolvedStyle result;
-        resolve_text_style_(element->node, result.text_style);
-        resolve_paragraph_style_(element->node, result.paragraph_style);
-        return result;
-      }
-      if (element->type == ElementType::span) {
-        ResolvedStyle result;
-        resolve_text_style_(element->node, result.text_style);
-        return result;
-      }
+    const ElementRegistry::Element &element =
+        m_registry->element_at(element_id);
+    if (element.type == ElementType::paragraph) {
+      ResolvedStyle result;
+      resolve_text_style_(element.node, result.text_style);
+      resolve_paragraph_style_(element.node, result.paragraph_style);
+      return result;
+    }
+    if (element.type == ElementType::span) {
+      ResolvedStyle result;
+      resolve_text_style_(element.node, result.text_style);
+      return result;
     }
     return {};
   }
 
   [[nodiscard]] ResolvedStyle
   get_intermediate_style(const ElementIdentifier element_id) const {
-    const auto [_, parent_id] = element_parent(element_id);
+    const ElementIdentifier parent_id = element_parent(element_id);
     if (parent_id == null_element_id) {
       return get_partial_style(element_id);
     }

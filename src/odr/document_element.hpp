@@ -142,7 +142,6 @@ enum class ValueType {
 class Element {
 public:
   Element();
-  explicit Element(const ElementHandle &handle);
   Element(const internal::abstract::ElementAdapter *adapter,
           ElementIdentifier identifier);
 
@@ -208,7 +207,6 @@ public:
   using iterator_category = std::forward_iterator_tag;
 
   ElementIterator();
-  explicit ElementIterator(const ElementHandle &handle);
   ElementIterator(const internal::abstract::ElementAdapter *adapter,
                   ElementIdentifier identifier);
 
@@ -248,8 +246,6 @@ private:
 template <typename T> class ElementBase : public Element {
 public:
   ElementBase() = default;
-  ElementBase(const ElementHandle &handle, const T *adapter2)
-      : Element(handle), m_adapter2{adapter2} {}
   ElementBase(const internal::abstract::ElementAdapter *adapter,
               ElementIdentifier identifier, const T *adapter2)
       : Element(adapter, identifier), m_adapter2{adapter2} {}

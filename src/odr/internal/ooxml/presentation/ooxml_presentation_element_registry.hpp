@@ -45,17 +45,11 @@ public:
 
   [[nodiscard]] Element &element_at(ElementIdentifier id);
   [[nodiscard]] Table &table_element_at(ElementIdentifier id);
+  [[nodiscard]] Text &text_element_at(ElementIdentifier id);
 
   [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
   [[nodiscard]] const Table &table_element_at(ElementIdentifier id) const;
-
-  [[nodiscard]] Element *element(ElementIdentifier id);
-  [[nodiscard]] Table *table_element(ElementIdentifier id);
-  [[nodiscard]] Text *text_element(ElementIdentifier id);
-
-  [[nodiscard]] const Element *element(ElementIdentifier id) const;
-  [[nodiscard]] const Table *table_element(ElementIdentifier id) const;
-  [[nodiscard]] const Text *text_element(ElementIdentifier id) const;
+  [[nodiscard]] const Text &text_element_at(ElementIdentifier id) const;
 
   void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
   void append_column(ElementIdentifier table_id, ElementIdentifier column_id);

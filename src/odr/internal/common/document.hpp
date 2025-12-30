@@ -2,6 +2,7 @@
 
 #include <odr/definitions.hpp>
 #include <odr/file.hpp>
+
 #include <odr/internal/abstract/document.hpp>
 
 #include <memory>
@@ -24,7 +25,10 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   as_filesystem() const noexcept final;
 
-  [[nodiscard]] ElementHandle root_element() const override;
+  [[nodiscard]] ElementIdentifier root_element() const override;
+
+  [[nodiscard]] const abstract::ElementAdapter *
+  element_adapter() const override;
 
 protected:
   FileType m_file_type{FileType::unknown};
