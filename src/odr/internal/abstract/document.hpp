@@ -125,118 +125,95 @@ public:
                         const DocumentPath &path) const = 0;
 
   [[nodiscard]] virtual const TextRootAdapter *
-  text_root_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  text_root_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const SlideAdapter *
-  slide_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  slide_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const PageAdapter *
-  page_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  page_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const SheetAdapter *
-  sheet_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  sheet_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
-  [[nodiscard]] virtual const SheetCellAdapter *
-  sheet_cell_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  [[nodiscard]] virtual const SheetCellAdapter *sheet_cell_adapter(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
-  [[nodiscard]] virtual const MasterPageAdapter *
-  master_page_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  [[nodiscard]] virtual const MasterPageAdapter *master_page_adapter(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
-  [[nodiscard]] virtual const LineBreakAdapter *
-  line_break_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  [[nodiscard]] virtual const LineBreakAdapter *line_break_adapter(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const ParagraphAdapter *
-  paragraph_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  paragraph_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const SpanAdapter *
-  span_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  span_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const TextAdapter *
-  text_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  text_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const LinkAdapter *
-  link_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  link_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const BookmarkAdapter *
-  bookmark_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  bookmark_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const ListItemAdapter *
-  list_item_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  list_item_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const TableAdapter *
-  table_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  table_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
-  [[nodiscard]] virtual const TableColumnAdapter *
-  table_column_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  [[nodiscard]] virtual const TableColumnAdapter *table_column_adapter(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const TableRowAdapter *
-  table_row_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  table_row_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
-  [[nodiscard]] virtual const TableCellAdapter *
-  table_cell_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  [[nodiscard]] virtual const TableCellAdapter *table_cell_adapter(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const FrameAdapter *
-  frame_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  frame_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const RectAdapter *
-  rect_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  rect_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const LineAdapter *
-  line_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  line_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const CircleAdapter *
-  circle_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  circle_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
-  [[nodiscard]] virtual const CustomShapeAdapter *
-  custom_shape_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  [[nodiscard]] virtual const CustomShapeAdapter *custom_shape_adapter(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const ImageAdapter *
-  image_adapter(ElementIdentifier element_id) const {
-    (void)element_id;
+  image_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
 };

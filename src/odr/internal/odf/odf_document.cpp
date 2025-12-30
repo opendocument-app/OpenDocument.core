@@ -181,14 +181,12 @@ public:
     return m_registry->element_at(element_id).next_sibling_id;
   }
 
-  [[nodiscard]] bool
-  element_is_unique(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_unique(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_self_locatable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_self_locatable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
   [[nodiscard]] bool
@@ -322,8 +320,7 @@ public:
     return {};
   }
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
-      const ElementIdentifier element_id) const override {
-    (void)element_id;
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return m_document->style_registry().first_master_page();
   }
 

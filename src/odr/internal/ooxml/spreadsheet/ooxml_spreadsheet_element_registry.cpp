@@ -196,10 +196,9 @@ void ElementRegistry::append_sheet_cell(const ElementIdentifier sheet_id,
   element_at(cell_id).parent_id = sheet_id;
 }
 
-void ElementRegistry::Sheet::register_column(const std::uint32_t column_min,
-                                             const std::uint32_t column_max,
-                                             const pugi::xml_node element) {
-  (void)column_min;
+void ElementRegistry::Sheet::register_column(
+    [[maybe_unused]] const std::uint32_t column_min,
+    const std::uint32_t column_max, const pugi::xml_node element) {
   columns[column_max] = {.node = element};
 }
 

@@ -16,9 +16,9 @@ class PopplerPdfFile;
 
 namespace odr::internal::html {
 
-odr::HtmlService create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
-                                            const std::string &cache_path,
-                                            HtmlConfig config,
-                                            std::shared_ptr<Logger> logger);
+HtmlService create_poppler_pdf_service(const PopplerPdfFile &pdf_file,
+                                       const std::string &cache_path,
+                                       HtmlConfig config,
+                                       std::shared_ptr<Logger> logger);
 
 } // namespace odr::internal::html

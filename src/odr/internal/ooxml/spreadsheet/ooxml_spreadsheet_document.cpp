@@ -137,19 +137,16 @@ public:
     return m_registry->element_at(element_id).next_sibling_id;
   }
 
-  [[nodiscard]] bool
-  element_is_unique(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_unique(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_self_locatable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_self_locatable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_editable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_editable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return false;
   }
   [[nodiscard]]
@@ -210,8 +207,8 @@ public:
   }
   [[nodiscard]] TableDimensions
   sheet_content(const ElementIdentifier element_id,
-                const std::optional<TableDimensions> range) const override {
-    (void)range;
+                [[maybe_unused]] const std::optional<TableDimensions> range)
+      const override {
     return sheet_dimensions(element_id); // TODO
   }
   [[nodiscard]] ElementIdentifier
@@ -230,9 +227,8 @@ public:
   sheet_first_shape(const ElementIdentifier element_id) const override {
     return m_registry->sheet_element_at(element_id).first_shape_id;
   }
-  [[nodiscard]] TableStyle
-  sheet_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] TableStyle sheet_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {}; // TODO
   }
   [[nodiscard]] TableColumnStyle
@@ -283,19 +279,16 @@ public:
   sheet_cell_position(const ElementIdentifier element_id) const override {
     return m_registry->sheet_cell_element_at(element_id).position;
   }
-  [[nodiscard]] bool
-  sheet_cell_is_covered(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool sheet_cell_is_covered(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return false; // TODO
   }
-  [[nodiscard]] TableDimensions
-  sheet_cell_span(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] TableDimensions sheet_cell_span(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {1, 1}; // TODO
   }
-  [[nodiscard]] ValueType
-  sheet_cell_value_type(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] ValueType sheet_cell_value_type(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return ValueType::string; // TODO
   }
 
@@ -333,10 +326,9 @@ public:
     }
     return result;
   }
-  void text_set_content(const ElementIdentifier element_id,
-                        const std::string &text) const override {
-    (void)element_id;
-    (void)text;
+  void
+  text_set_content([[maybe_unused]] const ElementIdentifier element_id,
+                   [[maybe_unused]] const std::string &text) const override {
     // TODO
   }
   [[nodiscard]] TextStyle
@@ -344,15 +336,13 @@ public:
     return get_intermediate_style(element_id).text_style;
   }
 
-  [[nodiscard]] std::string
-  link_href(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] std::string link_href(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {}; // TODO
   }
 
-  [[nodiscard]] AnchorType
-  frame_anchor_type(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] AnchorType frame_anchor_type(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return AnchorType::at_page;
   }
   [[nodiscard]] std::optional<std::string>
@@ -407,14 +397,12 @@ public:
     }
     return {};
   }
-  [[nodiscard]] std::optional<std::string>
-  frame_z_index(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] std::optional<std::string> frame_z_index(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
-  [[nodiscard]] GraphicStyle
-  frame_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] GraphicStyle frame_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
 

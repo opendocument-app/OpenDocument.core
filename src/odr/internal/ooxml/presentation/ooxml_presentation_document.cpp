@@ -171,19 +171,16 @@ public:
     return m_registry->element_at(element_id).next_sibling_id;
   }
 
-  [[nodiscard]] bool
-  element_is_unique(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_unique(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_self_locatable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_self_locatable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_editable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_editable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
   [[nodiscard]]
@@ -255,9 +252,8 @@ public:
     return element_type(element_id) == ElementType::image ? this : nullptr;
   }
 
-  [[nodiscard]] PageLayout
-  slide_page_layout(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] PageLayout slide_page_layout(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     // TODO
     return {
         .width = Measure("11.02 in"),
@@ -266,14 +262,12 @@ public:
         .margin = {},
     };
   }
-  [[nodiscard]] ElementIdentifier
-  slide_master_page(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] ElementIdentifier slide_master_page(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {}; // TODO
   }
-  [[nodiscard]] std::string
-  slide_name(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] std::string slide_name(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {}; // TODO
   }
 
@@ -375,9 +369,8 @@ public:
     return get_intermediate_style(element_id).text_style;
   }
 
-  [[nodiscard]] std::string
-  link_href(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] std::string link_href(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {}; // TODO
   }
 
@@ -440,19 +433,16 @@ public:
     return get_partial_style(element_id).table_row_style;
   }
 
-  [[nodiscard]] bool
-  table_cell_is_covered(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool table_cell_is_covered(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return false;
   }
-  [[nodiscard]] TableDimensions
-  table_cell_span(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] TableDimensions table_cell_span(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {1, 1}; // TODO
   }
-  [[nodiscard]] ValueType
-  table_cell_value_type(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] ValueType table_cell_value_type(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return ValueType::string;
   }
   [[nodiscard]] TableCellStyle
@@ -460,9 +450,8 @@ public:
     return get_partial_style(element_id).table_cell_style;
   }
 
-  [[nodiscard]] AnchorType
-  frame_anchor_type(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] AnchorType frame_anchor_type(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return AnchorType::at_page;
   }
   [[nodiscard]] std::optional<std::string>

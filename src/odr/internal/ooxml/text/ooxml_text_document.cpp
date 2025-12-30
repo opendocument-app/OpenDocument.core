@@ -146,19 +146,16 @@ public:
     return m_registry->element_at(element_id).next_sibling_id;
   }
 
-  [[nodiscard]] bool
-  element_is_unique(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_unique(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_self_locatable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_self_locatable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_editable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_editable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
   [[nodiscard]]
@@ -230,14 +227,12 @@ public:
     return element_type(element_id) == ElementType::image ? this : nullptr;
   }
 
-  [[nodiscard]] PageLayout
-  text_root_page_layout(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] PageLayout text_root_page_layout(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
-      const ElementIdentifier element_id) const override {
-    (void)element_id;
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
 
@@ -461,13 +456,11 @@ public:
     return AnchorType::as_char; // TODO default?
   }
   [[nodiscard]] std::optional<std::string>
-  frame_x(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  frame_x([[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
-  frame_y(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  frame_y([[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
   [[nodiscard]] std::optional<std::string>
@@ -488,14 +481,12 @@ public:
     }
     return {};
   }
-  [[nodiscard]] std::optional<std::string>
-  frame_z_index(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] std::optional<std::string> frame_z_index(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
-  [[nodiscard]] GraphicStyle
-  frame_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] GraphicStyle frame_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
 

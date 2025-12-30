@@ -230,9 +230,8 @@ bool ObjectParser::peek_null() const {
 }
 
 void ObjectParser::read_null() const {
-  const auto tmp = bumpnc<4>();
+  std::ignore = bumpnc<4>();
   // TODO check ignore case
-  (void)tmp;
 }
 
 bool ObjectParser::peek_boolean() const {
@@ -244,17 +243,15 @@ Boolean ObjectParser::read_boolean() const {
   const int_type c = geti();
 
   if (c == 't' || c == 'T') {
-    const auto tmp = bumpnc<4>();
+    std::ignore = bumpnc<4>();
     // TODO check ignore case
-    (void)tmp;
 
     return true;
   }
 
   if (c == 'f' || c == 'F') {
-    const auto tmp = bumpnc<5>();
+    std::ignore = bumpnc<5>();
     // TODO check ignore case
-    (void)tmp;
 
     return false;
   }
