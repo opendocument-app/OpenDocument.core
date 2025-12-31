@@ -133,13 +133,13 @@ std::optional<Archive::Entry> Archive::Entry::child() const {
 }
 
 void Archive::Iterator::dig_left_() {
-  if (!m_entry) {
+  if (!m_entry.has_value()) {
     return;
   }
 
   while (true) {
     const std::optional<Entry> left = m_entry->left();
-    if (!left) {
+    if (!left.has_value()) {
       break;
     }
     m_ancestors.push_back(*m_entry);
@@ -148,11 +148,11 @@ void Archive::Iterator::dig_left_() {
 }
 
 void Archive::Iterator::next_() {
-  if (!m_entry) {
+  if (!m_entry.has_value()) {
     return;
   }
 
-  if (const std::optional<Entry> child = m_entry->child()) {
+  if (const std::optional<Entry> child = m_entry->child(); child.has_value()) {
     m_directories.push_back(*m_entry);
     m_entry = child;
     dig_left_();
@@ -163,11 +163,11 @@ void Archive::Iterator::next_() {
 }
 
 void Archive::Iterator::next_flat_() {
-  if (!m_entry) {
+  if (!m_entry.has_value()) {
     return;
   }
 
-  if (const std::optional<Entry> right = m_entry->right()) {
+  if (const std::optional<Entry> right = m_entry->right(); right.has_value()) {
     m_entry = right;
     dig_left_();
     return;

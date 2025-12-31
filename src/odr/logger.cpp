@@ -167,9 +167,9 @@ void Logger::print_head(std::ostream &out, Time time, LogLevel level,
   }
 
   if (format.location_width > 0) {
-    std::string file_name =
+    const std::string file_name =
         std::filesystem::path(location.file_name()).filename().string();
-    std::string line_number = std::to_string(location.line());
+    const std::string line_number = std::to_string(location.line());
     std::stringstream location_ss;
     if (file_name.size() + 1 + line_number.size() > format.location_width) {
       if (1 + line_number.size() < format.location_width) {

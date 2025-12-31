@@ -28,9 +28,8 @@ std::string TableRange::to_string() const noexcept {
 }
 
 bool TableRange::contains(const TablePosition &position) const noexcept {
-  return m_from.column() <= position.column() &&
-         m_to.column() > position.column() && m_from.row() <= position.row() &&
-         m_to.row() > position.row();
+  return m_from.column <= position.column && m_to.column > position.column &&
+         m_from.row <= position.row && m_to.row > position.row;
 }
 
 } // namespace odr::internal

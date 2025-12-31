@@ -46,44 +46,26 @@ std::string TablePosition::to_row_string(const std::uint32_t row) {
   return std::to_string(row + 1);
 }
 
-TablePosition::TablePosition() noexcept = default;
-
-TablePosition::TablePosition(const std::uint32_t column,
-                             const std::uint32_t row) noexcept
-    : m_column{column}, m_row{row} {}
-
 TablePosition::TablePosition(const std::string &s) {
   const auto pos = s.find_first_of("0123456789");
   if (pos == std::string::npos) {
     throw std::invalid_argument("malformed table position " + s);
   }
-  m_row = to_row_num(s.substr(pos));
-  m_column = to_column_num(s.substr(0, pos));
+  row = to_row_num(s.substr(pos));
+  column = to_column_num(s.substr(0, pos));
 }
 
 bool TablePosition::operator==(const TablePosition &rhs) const {
-  return m_column == rhs.m_column && m_row == rhs.m_row;
-}
-
-bool TablePosition::operator!=(const TablePosition &rhs) const {
-  return m_column != rhs.m_column || m_row != rhs.m_row;
-}
-
-std::uint32_t TablePosition::column() const noexcept { return m_column; }
-
-std::uint32_t TablePosition::row() const noexcept { return m_row; }
-
-std::pair<std::uint32_t, std::uint32_t> TablePosition::pair() const noexcept {
-  return {m_column, m_row};
+  return column == rhs.column && row == rhs.row;
 }
 
 std::string TablePosition::to_string() const noexcept {
-  return to_column_string(m_column) + to_row_string(m_row);
+  return to_column_string(column) + to_row_string(row);
 }
 
 std::size_t TablePosition::hash() const noexcept {
   std::size_t result = 0;
-  internal::util::hash::hash_combine(result, m_row, m_column);
+  internal::util::hash::hash_combine(result, row, column);
   return result;
 }
 

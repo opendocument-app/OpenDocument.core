@@ -973,7 +973,7 @@ private:
       }
     }
 
-    const auto [column, row] = position.pair();
+    const auto [column, row] = position;
     const ElementRegistry::Sheet &sheet_registry =
         m_registry->sheet_element_at(sheet_id);
 

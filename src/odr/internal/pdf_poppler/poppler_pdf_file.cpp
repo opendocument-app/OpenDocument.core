@@ -24,13 +24,16 @@ void PopplerPdfFile::open(const std::optional<std::string> &password) {
     password_goo = GooString(password.value().c_str());
   }
 
-  if (const auto disk_file = std::dynamic_pointer_cast<DiskFile>(m_file)) {
+  if (const std::shared_ptr disk_file =
+          std::dynamic_pointer_cast<DiskFile>(m_file);
+      disk_file != nullptr) {
     auto file_path_goo =
         std::make_unique<GooString>(disk_file->disk_path()->string().c_str());
     m_pdf_doc = std::make_shared<PDFDoc>(std::move(file_path_goo), password_goo,
                                          password_goo);
-  } else if (const auto memory_file =
-                 std::dynamic_pointer_cast<MemoryFile>(m_file)) {
+  } else if (const std::shared_ptr memory_file =
+                 std::dynamic_pointer_cast<MemoryFile>(m_file);
+             memory_file != nullptr) {
     // `stream` is freed by `m_pdf_doc`
     auto stream = new MemStream(memory_file->memory_data(), 0,
                                 static_cast<Goffset>(memory_file->size()),

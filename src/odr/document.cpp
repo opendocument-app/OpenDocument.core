@@ -12,7 +12,7 @@ namespace odr {
 
 Document::Document(std::shared_ptr<internal::abstract::Document> impl)
     : m_impl{std::move(impl)} {
-  if (!m_impl) {
+  if (m_impl == nullptr) {
     throw NullPointerError("document is null");
   }
 }

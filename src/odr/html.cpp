@@ -296,7 +296,8 @@ HtmlService html::translate(const DocumentFile &document_file,
 #ifdef ODR_WITH_WVWARE
   if (const std::shared_ptr wv_document_file =
           std::dynamic_pointer_cast<WvWareLegacyMicrosoftFile>(
-              document_file_impl)) {
+              document_file_impl);
+      wv_document_file != nullptr) {
     std::filesystem::create_directories(cache_path);
     return internal::html::create_wvware_oldms_service(
         *wv_document_file, cache_path, config, std::move(logger));
@@ -315,7 +316,8 @@ HtmlService html::translate(const PdfFile &pdf_file,
 
 #ifdef ODR_WITH_PDF2HTMLEX
   if (const std::shared_ptr poppler_pdf_file =
-          std::dynamic_pointer_cast<PopplerPdfFile>(pdf_file_impl)) {
+          std::dynamic_pointer_cast<PopplerPdfFile>(pdf_file_impl);
+      poppler_pdf_file != nullptr) {
     std::filesystem::create_directories(cache_path);
     return internal::html::create_poppler_pdf_service(
         *poppler_pdf_file, cache_path, config, std::move(logger));
