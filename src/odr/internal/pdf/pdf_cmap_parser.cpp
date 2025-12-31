@@ -13,13 +13,13 @@ static constexpr int_type eof = std::streambuf::traits_type::eof();
 
 CMapParser::CMapParser(std::istream &in) : m_parser(in) {}
 
-std::istream &CMapParser::in() const { return m_parser.in(); }
+std::istream &CMapParser::in() { return m_parser.in(); }
 
-std::streambuf &CMapParser::sb() const { return m_parser.sb(); }
+std::streambuf &CMapParser::sb() { return m_parser.sb(); }
 
-const ObjectParser &CMapParser::parser() const { return m_parser; }
+const ObjectParser &CMapParser::parser() { return m_parser; }
 
-std::variant<Object, std::string> CMapParser::read_token() const {
+std::variant<Object, std::string> CMapParser::read_token() {
   if (m_parser.peek_number()) {
     return std::visit([](auto n) { return Object(n); },
                       m_parser.read_integer_or_real());
@@ -51,7 +51,7 @@ std::variant<Object, std::string> CMapParser::read_token() const {
 }
 
 void CMapParser::read_codespacerange(const std::uint32_t n,
-                                     [[maybe_unused]] const CMap &cmap) const {
+                                     [[maybe_unused]] const CMap &cmap) {
   m_parser.skip_whitespace();
   for (std::uint32_t i = 0; i < n; ++i) {
     auto from_glyph = m_parser.read_object();
@@ -63,7 +63,7 @@ void CMapParser::read_codespacerange(const std::uint32_t n,
   }
 }
 
-void CMapParser::read_bfchar(const std::uint32_t n, CMap &cmap) const {
+void CMapParser::read_bfchar(const std::uint32_t n, CMap &cmap) {
   m_parser.skip_whitespace();
   for (std::uint32_t i = 0; i < n; ++i) {
     std::string glyph = m_parser.read_object().as_string();
@@ -88,7 +88,7 @@ void CMapParser::read_bfchar(const std::uint32_t n, CMap &cmap) const {
 }
 
 void CMapParser::read_bfrange(const std::uint32_t n,
-                              [[maybe_unused]] const CMap &cmap) const {
+                              [[maybe_unused]] const CMap &cmap) {
   m_parser.skip_whitespace();
   for (std::uint32_t i = 0; i < n; ++i) {
     auto from_glyph = m_parser.read_object();
@@ -102,7 +102,7 @@ void CMapParser::read_bfrange(const std::uint32_t n,
   }
 }
 
-CMap CMapParser::parse_cmap() const {
+CMap CMapParser::parse_cmap() {
   CMap cmap;
 
   std::uint32_t last_int{};

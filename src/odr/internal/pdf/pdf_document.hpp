@@ -9,7 +9,7 @@ struct Catalog;
 struct Element;
 
 struct Document {
-  Catalog *catalog;
+  Catalog *catalog{nullptr};
   std::vector<std::unique_ptr<Element>> elements;
 
   template <typename T, typename... Args> T *create_element(Args &&...args) {

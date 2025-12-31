@@ -4,22 +4,18 @@
 
 namespace odr::internal::pdf {
 
-class SimpleArray;
-class SimpleArrayElement;
-class GraphicsArgument;
-enum class GraphicsOperatorType;
 struct GraphicsOperator;
 
 class GraphicsOperatorParser {
 public:
   explicit GraphicsOperatorParser(std::istream &);
 
-  [[nodiscard]] std::istream &in() const;
-  [[nodiscard]] std::streambuf &sb() const;
+  [[nodiscard]] std::istream &in();
+  [[nodiscard]] std::streambuf &sb();
 
-  [[nodiscard]] std::string read_operator_name() const;
+  [[nodiscard]] std::string read_operator_name();
 
-  [[nodiscard]] GraphicsOperator read_operator() const;
+  [[nodiscard]] GraphicsOperator read_operator();
 
 private:
   ObjectParser m_parser;

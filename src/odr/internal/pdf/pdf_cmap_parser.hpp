@@ -16,20 +16,20 @@ public:
 
   explicit CMapParser(std::istream &);
 
-  std::istream &in() const;
-  std::streambuf &sb() const;
-  const ObjectParser &parser() const;
+  [[nodiscard]] std::istream &in();
+  [[nodiscard]] std::streambuf &sb();
+  [[nodiscard]] const ObjectParser &parser();
 
-  CMap parse_cmap() const;
+  [[nodiscard]] CMap parse_cmap();
 
 private:
   ObjectParser m_parser;
 
-  Token read_token() const;
+  [[nodiscard]] Token read_token();
 
-  void read_codespacerange(std::uint32_t n, const CMap &) const;
-  void read_bfchar(std::uint32_t n, CMap &) const;
-  void read_bfrange(std::uint32_t n, const CMap &) const;
+  void read_codespacerange(std::uint32_t n, const CMap &cmap);
+  void read_bfchar(std::uint32_t n, CMap &cmap);
+  void read_bfrange(std::uint32_t n, const CMap &cmap);
 };
 
 } // namespace odr::internal::pdf

@@ -103,7 +103,7 @@ struct GraphicsOperator {
   using Argument = Object;
   using Arguments = std::vector<Argument>;
 
-  GraphicsOperatorType type;
+  GraphicsOperatorType type{GraphicsOperatorType::unknown};
   Arguments arguments;
 };
 

@@ -167,9 +167,9 @@ Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
 
 DocumentParser::DocumentParser(std::istream &in) : m_parser(in) {}
 
-std::istream &DocumentParser::in() const { return m_parser.in(); }
+std::istream &DocumentParser::in() { return m_parser.in(); }
 
-const FileParser &DocumentParser::parser() const { return m_parser; }
+FileParser &DocumentParser::parser() { return m_parser; }
 
 const Xref &DocumentParser::xref() const { return m_xref; }
 

@@ -10,13 +10,13 @@ namespace odr::internal::pdf {
 
 FileParser::FileParser(std::istream &in) : m_parser(in) {}
 
-std::istream &FileParser::in() const { return m_parser.in(); }
+std::istream &FileParser::in() { return m_parser.in(); }
 
-std::streambuf &FileParser::sb() const { return m_parser.sb(); }
+std::streambuf &FileParser::sb() { return m_parser.sb(); }
 
-const ObjectParser &FileParser::parser() const { return m_parser; }
+ObjectParser &FileParser::parser() { return m_parser; }
 
-IndirectObject FileParser::read_indirect_object() const {
+IndirectObject FileParser::read_indirect_object() {
   IndirectObject result;
 
   result.reference.id = m_parser.read_unsigned_integer();
@@ -47,7 +47,7 @@ IndirectObject FileParser::read_indirect_object() const {
   throw std::runtime_error("expected stream");
 }
 
-Trailer FileParser::read_trailer() const {
+Trailer FileParser::read_trailer() {
   m_parser.expect_characters("trailer");
   m_parser.skip_whitespace();
 
@@ -62,7 +62,7 @@ Trailer FileParser::read_trailer() const {
   return result;
 }
 
-Xref FileParser::read_xref() const {
+Xref FileParser::read_xref() {
   if (const std::string line = m_parser.read_line(); line != "xref") {
     throw std::runtime_error("expected xref");
   }
@@ -94,7 +94,7 @@ Xref FileParser::read_xref() const {
   }
 }
 
-StartXref FileParser::read_start_xref() const {
+StartXref FileParser::read_start_xref() {
   if (const std::string line = m_parser.read_line(); line != "startxref") {
     throw std::runtime_error("expected startxref");
   }
@@ -108,7 +108,7 @@ StartXref FileParser::read_start_xref() const {
   return result;
 }
 
-std::string FileParser::read_stream(const std::int32_t size) const {
+std::string FileParser::read_stream(const std::int32_t size) {
   std::string result;
 
   if (size >= 0) {
@@ -140,7 +140,7 @@ std::string FileParser::read_stream(const std::int32_t size) const {
   return result;
 }
 
-void FileParser::read_header() const {
+void FileParser::read_header() {
   const std::string header1 = m_parser.read_line();
   const std::string header2 = m_parser.read_line();
 
@@ -151,7 +151,7 @@ void FileParser::read_header() const {
   m_parser.skip_whitespace();
 }
 
-Entry FileParser::read_entry() const {
+Entry FileParser::read_entry() {
   std::uint32_t position = in().tellg();
   const std::string entry_header = m_parser.read_line();
   in().seekg(position);
@@ -179,7 +179,7 @@ Entry FileParser::read_entry() const {
   throw std::runtime_error("unknown entry");
 }
 
-void FileParser::seek_start_xref(const std::uint32_t margin) const {
+void FileParser::seek_start_xref(const std::uint32_t margin) {
   in().seekg(0, std::ios::end);
   const std::int64_t size = in().tellg();
   in().seekg(std::max(static_cast<std::int64_t>(0), size - margin),

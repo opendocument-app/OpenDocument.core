@@ -69,7 +69,7 @@ struct GraphicsState {
   GraphicsState();
 
   State &current();
-  const State &current() const;
+  [[nodiscard]] const State &current() const;
 
   void execute(const GraphicsOperator &);
 };
