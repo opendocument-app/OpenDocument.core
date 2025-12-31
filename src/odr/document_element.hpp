@@ -7,7 +7,7 @@
 #include <odr/definitions.hpp>
 
 namespace odr {
-class TablePosition;
+struct TablePosition;
 struct TableDimensions;
 class DocumentPath;
 class File;
