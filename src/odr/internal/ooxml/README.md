@@ -13,12 +13,12 @@ docx, pptx and xlsx have almost nothing in common.
 ### Functional
 
 - [x] open
-    - [x] decryption (only _standard_)
+  - [x] decryption (only _standard_)
 - [x] meta data
 - [x] edit
-    - [x] text
+  - [x] text
 - [x] save
-    - [ ] encryption
+  - [ ] encryption
 
 ## References
 

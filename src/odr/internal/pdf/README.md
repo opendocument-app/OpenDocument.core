@@ -33,6 +33,7 @@ PDF has the ability to continue text where it left of or move down a line which 
 Apart from that PDF can also modify the spacing between the characters for example which we might be able to translate to CSS positioning.
 
 ## References
+
 - https://en.wikipedia.org/wiki/PDF
 - File Format
   - Objects https://www.oreilly.com/library/view/developing-with-pdf/9781449327903/ch01.html

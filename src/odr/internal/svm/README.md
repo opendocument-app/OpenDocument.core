@@ -3,12 +3,12 @@
 ## Features
 
 - [ ] font
-    - [ ] size
-    - [ ] italic, bold
-    - [ ] alignment
-    - [ ] underline, strike through
-    - [ ] color
-    - [ ] family
+  - [ ] size
+  - [ ] italic, bold
+  - [ ] alignment
+  - [ ] underline, strike through
+  - [ ] color
+  - [ ] family
 - [ ] transform (e.g. flip, rotate)
 - [ ] images
 
