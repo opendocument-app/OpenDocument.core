@@ -115,11 +115,11 @@ static constexpr int_type eof = std::streambuf::traits_type::eof();
 GraphicsOperatorParser::GraphicsOperatorParser(std::istream &in)
     : m_parser(in) {}
 
-std::istream &GraphicsOperatorParser::in() const { return m_parser.in(); }
+std::istream &GraphicsOperatorParser::in() { return m_parser.in(); }
 
-std::streambuf &GraphicsOperatorParser::sb() const { return m_parser.sb(); }
+std::streambuf &GraphicsOperatorParser::sb() { return m_parser.sb(); }
 
-std::string GraphicsOperatorParser::read_operator_name() const {
+std::string GraphicsOperatorParser::read_operator_name() {
   std::string result;
 
   while (true) {
@@ -137,7 +137,7 @@ std::string GraphicsOperatorParser::read_operator_name() const {
   }
 }
 
-GraphicsOperator GraphicsOperatorParser::read_operator() const {
+GraphicsOperator GraphicsOperatorParser::read_operator() {
   GraphicsOperator result;
 
   while (true) {

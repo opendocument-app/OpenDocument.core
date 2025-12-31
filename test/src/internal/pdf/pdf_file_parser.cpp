@@ -19,7 +19,7 @@ TEST(FileParser, foo) {
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
   const auto in = file->stream();
-  const FileParser parser(*in);
+  FileParser parser(*in);
 
   parser.read_header();
   while (true) {
@@ -81,7 +81,7 @@ TEST(FileParser, bar) {
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
   const auto in = file->stream();
-  const FileParser parser(*in);
+  FileParser parser(*in);
 
   parser.read_header();
   parser.seek_start_xref();

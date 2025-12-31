@@ -44,7 +44,7 @@ struct Pages final : Element {
 struct Page final : Element {
   Pages *parent{nullptr};
 
-  Resources *resources;
+  Resources *resources{nullptr};
   std::vector<Annotation *> annotations;
 
   // TODO remove

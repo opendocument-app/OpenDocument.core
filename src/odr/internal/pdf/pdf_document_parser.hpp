@@ -15,8 +15,8 @@ class DocumentParser {
 public:
   explicit DocumentParser(std::istream &);
 
-  [[nodiscard]] std::istream &in() const;
-  [[nodiscard]] const FileParser &parser() const;
+  [[nodiscard]] std::istream &in();
+  [[nodiscard]] FileParser &parser();
   [[nodiscard]] const Xref &xref() const;
 
   const IndirectObject &read_object(const ObjectReference &reference);
