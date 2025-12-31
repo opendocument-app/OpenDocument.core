@@ -92,31 +92,31 @@ template <typename T> struct DirectionalStyle final {
       : right{all}, top{all}, left{all}, bottom{all} {}
 
   void override(const DirectionalStyle &other) {
-    if (other.right) {
+    if (other.right.has_value()) {
       right = other.right;
     }
-    if (other.top) {
+    if (other.top.has_value()) {
       top = other.top;
     }
-    if (other.left) {
+    if (other.left.has_value()) {
       left = other.left;
     }
-    if (other.bottom) {
+    if (other.bottom.has_value()) {
       bottom = other.bottom;
     }
   }
 
   void override(DirectionalStyle &&other) {
-    if (other.right) {
+    if (other.right.has_value()) {
       right = std::move(other.right);
     }
-    if (other.top) {
+    if (other.top.has_value()) {
       top = std::move(other.top);
     }
-    if (other.left) {
+    if (other.left.has_value()) {
       left = std::move(other.left);
     }
-    if (other.bottom) {
+    if (other.bottom.has_value()) {
       bottom = std::move(other.bottom);
     }
   }

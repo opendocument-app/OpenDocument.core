@@ -2,14 +2,12 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
-#include <odr/filesystem.hpp>
 #include <odr/html.hpp>
-#include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 
 #include <httplib/httplib.h>
 
 #include <atomic>
-#include <memory>
+#include <filesystem>
 #include <sstream>
 
 namespace odr {
@@ -23,9 +21,9 @@ public:
     // This prevents crashes when exceptions occur during request processing.
     m_server->set_exception_handler([this](const httplib::Request & /*req*/,
                                            httplib::Response &res,
-                                           std::exception_ptr ep) {
+                                           const std::exception_ptr &ep) {
       try {
-        if (ep) {
+        if (ep != nullptr) {
           std::rethrow_exception(ep);
         }
       } catch (const std::exception &e) {
@@ -73,7 +71,7 @@ public:
     // here (via unique_ptr::reset), we ensure all threads are joined
     // before any other members are destroyed.
     m_stopping.store(true, std::memory_order_release);
-    if (m_server) {
+    if (m_server != nullptr) {
       m_server->stop();
       m_server.reset(); // Destroy server, join all thread pool threads
     }
@@ -160,7 +158,7 @@ public:
     m_content.emplace(prefix, Content{prefix, std::move(service)});
   }
 
-  void listen(const std::string &host, const std::uint32_t port) {
+  void listen(const std::string &host, const std::uint32_t port) const {
     ODR_VERBOSE(*m_logger, "Listening on " << host << ":" << port);
 
     m_server->listen(host, static_cast<int>(port));
@@ -186,7 +184,7 @@ public:
     // This prevents new requests from starting while we're shutting down.
     m_stopping.store(true, std::memory_order_release);
 
-    if (m_server) {
+    if (m_server != nullptr) {
       // Stop the server to prevent new connections.
       // Note: httplib::Server::stop() signals shutdown but thread pool
       // threads may still be running. They only fully stop when the

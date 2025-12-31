@@ -94,9 +94,9 @@ public:
 
 private:
   std::string m_path;
-  std::uint32_t m_upwards;
-  std::uint32_t m_downwards;
-  bool m_absolute;
+  std::uint32_t m_upwards{0};
+  std::uint32_t m_downwards{0};
+  bool m_absolute{false};
 
   friend std::ostream &operator<<(std::ostream &os, const Path &p) {
     return os << p.m_path;

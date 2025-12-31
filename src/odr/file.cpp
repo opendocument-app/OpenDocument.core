@@ -167,40 +167,45 @@ bool DecodedFile::is_pdf_file() const {
 }
 
 TextFile DecodedFile::as_text_file() const {
-  if (const auto text_file =
-          std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl)) {
+  if (const std::shared_ptr text_file =
+          std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl);
+      text_file != nullptr) {
     return TextFile(text_file);
   }
   throw NoTextFile();
 }
 
 ImageFile DecodedFile::as_image_file() const {
-  if (const auto image_file =
-          std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl)) {
+  if (const std::shared_ptr image_file =
+          std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl);
+      image_file != nullptr) {
     return ImageFile(image_file);
   }
   throw NoImageFile();
 }
 
 ArchiveFile DecodedFile::as_archive_file() const {
-  if (const auto archive_file =
-          std::dynamic_pointer_cast<internal::abstract::ArchiveFile>(m_impl)) {
+  if (const std::shared_ptr archive_file =
+          std::dynamic_pointer_cast<internal::abstract::ArchiveFile>(m_impl);
+      archive_file != nullptr) {
     return ArchiveFile(archive_file);
   }
   throw NoArchiveFile();
 }
 
 DocumentFile DecodedFile::as_document_file() const {
-  if (const auto document_file =
-          std::dynamic_pointer_cast<internal::abstract::DocumentFile>(m_impl)) {
+  if (const std::shared_ptr document_file =
+          std::dynamic_pointer_cast<internal::abstract::DocumentFile>(m_impl);
+      document_file != nullptr) {
     return DocumentFile(document_file);
   }
   throw NoDocumentFile();
 }
 
 PdfFile DecodedFile::as_pdf_file() const {
-  if (const auto pdf_file =
-          std::dynamic_pointer_cast<internal::abstract::PdfFile>(m_impl)) {
+  if (const std::shared_ptr pdf_file =
+          std::dynamic_pointer_cast<internal::abstract::PdfFile>(m_impl);
+      pdf_file != nullptr) {
     return PdfFile(pdf_file);
   }
   throw NoPdfFile();

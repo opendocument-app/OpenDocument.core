@@ -130,7 +130,8 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
     state.out().write_element_begin(
         "td", HtmlElementOptions().set_inline(true).set_style([&] {
           std::string style = "text-align:center;vertical-align:middle;";
-          if (const std::optional<Measure> height = table_row_style.height) {
+          if (const std::optional<Measure> height = table_row_style.height;
+              height.has_value()) {
             style += "height:" + height->to_string() + ";";
             style += "max-height:" + height->to_string() + ";";
           }

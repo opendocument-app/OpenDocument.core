@@ -41,94 +41,94 @@ std::uint32_t Color::argb() const {
 }
 
 void TextStyle::override(const TextStyle &other) {
-  if (other.font_name) {
+  if (other.font_name != nullptr) {
     font_name = other.font_name;
   }
-  if (other.font_size) {
+  if (other.font_size.has_value()) {
     font_size = other.font_size;
   }
-  if (other.font_weight) {
+  if (other.font_weight.has_value()) {
     font_weight = other.font_weight;
   }
-  if (other.font_style) {
+  if (other.font_style.has_value()) {
     font_style = other.font_style;
   }
-  if (other.font_underline) {
+  if (other.font_underline.has_value()) {
     font_underline = other.font_underline;
   }
-  if (other.font_line_through) {
+  if (other.font_line_through.has_value()) {
     font_line_through = other.font_line_through;
   }
-  if (other.font_shadow) {
+  if (other.font_shadow.has_value()) {
     font_shadow = other.font_shadow;
   }
-  if (other.font_color) {
+  if (other.font_color.has_value()) {
     font_color = other.font_color;
   }
-  if (other.background_color) {
+  if (other.background_color.has_value()) {
     background_color = other.background_color;
   }
 }
 
 void ParagraphStyle::override(const ParagraphStyle &other) {
-  if (other.text_align) {
+  if (other.text_align.has_value()) {
     text_align = other.text_align;
   }
   margin.override(other.margin);
-  if (other.line_height) {
+  if (other.line_height.has_value()) {
     line_height = other.line_height;
   }
 }
 
 void TableStyle::override(const TableStyle &other) {
-  if (other.width) {
+  if (other.width.has_value()) {
     width = other.width;
   }
 }
 
 void TableColumnStyle::override(const TableColumnStyle &other) {
-  if (other.width) {
+  if (other.width.has_value()) {
     width = other.width;
   }
 }
 
 void TableRowStyle::override(const TableRowStyle &other) {
-  if (other.height) {
+  if (other.height.has_value()) {
     height = other.height;
   }
 }
 
 void TableCellStyle::override(const TableCellStyle &other) {
-  if (other.horizontal_align) {
+  if (other.horizontal_align.has_value()) {
     horizontal_align = other.horizontal_align;
   }
-  if (other.vertical_align) {
+  if (other.vertical_align.has_value()) {
     vertical_align = other.vertical_align;
   }
-  if (other.background_color) {
+  if (other.background_color.has_value()) {
     background_color = other.background_color;
   }
   padding.override(other.padding);
   border.override(other.border);
-  if (other.text_rotation) {
+  if (other.text_rotation.has_value()) {
     text_rotation = other.text_rotation;
   }
 }
 
 void GraphicStyle::override(const GraphicStyle &other) {
-  if (other.stroke_width) {
+  if (other.stroke_width.has_value()) {
     stroke_width = other.stroke_width;
   }
-  if (other.stroke_color) {
+  if (other.stroke_color.has_value()) {
     stroke_color = other.stroke_color;
   }
-  if (other.fill_color) {
+  if (other.fill_color.has_value()) {
     fill_color = other.fill_color;
   }
-  if (other.vertical_align) {
+  if (other.vertical_align.has_value()) {
     vertical_align = other.vertical_align;
   }
-  if (other.text_wrap) {
+  if (other.text_wrap.has_value()) {
     text_wrap = other.text_wrap;
   }
 }

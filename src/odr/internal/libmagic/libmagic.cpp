@@ -21,12 +21,12 @@ magic_t get_magic_cookie() {
       std::unique_ptr<std::remove_pointer_t<magic_t>, decltype(&magic_deleter)>;
   static Holder magic_cookie(nullptr, &magic_deleter);
 
-  if (magic_cookie) {
+  if (magic_cookie != nullptr) {
     return magic_cookie.get();
   }
 
   magic_cookie = Holder(magic_open(MAGIC_MIME_TYPE), &magic_deleter);
-  if (!magic_cookie) {
+  if (magic_cookie == nullptr) {
     throw std::runtime_error("magic_open failed");
   }
   if (magic_load(magic_cookie.get(),

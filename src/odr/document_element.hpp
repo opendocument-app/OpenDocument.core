@@ -7,7 +7,7 @@
 #include <odr/definitions.hpp>
 
 namespace odr {
-class TablePosition;
+struct TablePosition;
 struct TableDimensions;
 class DocumentPath;
 class File;
@@ -29,8 +29,6 @@ class TextRootAdapter;
 class SlideAdapter;
 class PageAdapter;
 class SheetAdapter;
-class SheetColumnAdapter;
-class SheetRowAdapter;
 class SheetCellAdapter;
 class MasterPageAdapter;
 class LineBreakAdapter;
@@ -60,8 +58,6 @@ class ElementRange;
 class TextRoot;
 class Slide;
 class Sheet;
-class SheetColumn;
-class SheetRow;
 class SheetCell;
 class Page;
 class MasterPage;

@@ -118,8 +118,7 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
       const auto &[cell_id, _, __] =
           registry.create_sheet_cell_element(cell_node, position);
       registry.append_sheet_cell(element_id, cell_id);
-      sheet.register_cell(position.column(), position.row(), cell_node,
-                          cell_id);
+      sheet.register_cell(position.column, position.row, cell_node, cell_id);
       parse_sheet_cell_children(registry, context, cell_id, cell_node);
     }
   }
@@ -134,7 +133,7 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
       position_to = TableRange(dimension_ref).to();
     }
     sheet.dimensions =
-        TableDimensions(position_to.row() + 1, position_to.column() + 1);
+        TableDimensions(position_to.row + 1, position_to.column + 1);
   }
 
   if (const pugi::xml_node drawing_node = node.child("drawing")) {

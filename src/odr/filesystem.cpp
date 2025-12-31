@@ -22,7 +22,7 @@ FileWalker::FileWalker(FileWalker &&other) noexcept = default;
 FileWalker::~FileWalker() = default;
 
 FileWalker &FileWalker::operator=(const FileWalker &other) {
-  if (this == &other) {
+  if (&other == this) {
     return *this;
   }
   m_impl = other.m_impl->clone();

@@ -64,8 +64,8 @@ navigate_path_component(const abstract::ElementAdapter &element_adapter,
     if (sheet_adapter == nullptr) {
       throw std::invalid_argument("sheet adapter not found");
     }
-    return sheet_adapter->sheet_cell(element_id, cell->position().column(),
-                                     cell->position().row());
+    return sheet_adapter->sheet_cell(element_id, cell->position().column,
+                                     cell->position().row);
   }
 
   throw std::invalid_argument("unknown document path component");
