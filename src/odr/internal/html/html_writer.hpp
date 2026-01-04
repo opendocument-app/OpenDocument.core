@@ -37,12 +37,12 @@ struct HtmlElementOptions {
 
   std::optional<HtmlWritable> extra{};
 
-  HtmlElementOptions &set_inline(bool);
-  HtmlElementOptions &set_close_type(HtmlCloseType);
-  HtmlElementOptions &set_attributes(std::optional<HtmlAttributes>);
-  HtmlElementOptions &set_style(std::optional<HtmlWritable>);
-  HtmlElementOptions &set_class(std::optional<HtmlWritable>);
-  HtmlElementOptions &set_extra(std::optional<HtmlWritable>);
+  HtmlElementOptions &set_inline(bool is_inline);
+  HtmlElementOptions &set_close_type(HtmlCloseType _close_type);
+  HtmlElementOptions &set_attributes(std::optional<HtmlAttributes> _attributes);
+  HtmlElementOptions &set_style(std::optional<HtmlWritable> _style);
+  HtmlElementOptions &set_class(std::optional<HtmlWritable> _class);
+  HtmlElementOptions &set_extra(std::optional<HtmlWritable> _extra);
 };
 
 class HtmlWriter {

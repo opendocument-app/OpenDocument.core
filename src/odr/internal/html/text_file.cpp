@@ -78,37 +78,46 @@ public:
         "width=device-width,initial-scale=1.0,user-scalable=yes");
     out.write_header_style_begin();
     out.write_raw("*{font-family:monospace;}");
-    out.write_raw("td{padding-left:10px;padding-right:10px;}");
+    out.write_raw("td{padding-left:3pt;padding-right:3pt}");
+    out.write_raw("td:first-child{text-align:right;vertical-align:top;user-"
+                  "select:none;color:#999999;border-right:solid #999999;}");
     out.write_header_style_end();
     out.write_header_end();
 
     out.write_body_begin();
-    out.write_element_begin(
-        "table",
-        HtmlElementOptions().set_attributes(HtmlAttributesVector{
-            {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}}));
+    out.write_element_begin("table",
+                            HtmlElementOptions().set_attributes(
+                                [&](const HtmlAttributeWriterCallback &clb) {
+                                  clb("cellpadding", "0");
+                                  clb("border", "0");
+                                  clb("cellspacing", "0");
+                                  if (config().editable) {
+                                    clb("contenteditable", "plaintext-only");
+                                  }
+                                }));
 
-    for (std::uint32_t line = 1;; ++line) {
+    for (std::uint32_t line = 1; !in->eof(); ++line) {
       out.write_element_begin("tr");
 
-      out.write_element_begin("td",
-                              HtmlElementOptions().set_inline(true).set_style(
-                                  "text-align:right;user-select:none;"));
+      out.write_element_begin(
+          "td", HtmlElementOptions().set_inline(true).set_attributes(
+                    [&](const HtmlAttributeWriterCallback &clb) {
+                      if (config().editable) {
+                        clb("contenteditable", "false");
+                      }
+                    }));
       out.out() << line;
       out.write_element_end("td");
 
-      out.write_element_begin("td");
+      out.write_element_begin("td", HtmlElementOptions().set_inline(true));
 
       std::ostringstream ss_out;
       util::stream::pipe_line(*in, ss_out, false);
       out.out() << escape_text(ss_out.str());
 
       out.write_element_end("td");
-      out.write_element_end("tr");
 
-      if (in->eof()) {
-        break;
-      }
+      out.write_element_end("tr");
     }
 
     out.write_element_end("table");
