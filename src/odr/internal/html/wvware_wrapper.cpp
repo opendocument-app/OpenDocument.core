@@ -4,7 +4,6 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
@@ -973,7 +972,7 @@ protected:
 
 namespace odr::internal {
 
-odr::HtmlService html::create_wvware_oldms_service(
+HtmlService html::create_wvware_oldms_service(
     const WvWareLegacyMicrosoftFile &oldms_file, const std::string &cache_path,
     HtmlConfig config, std::shared_ptr<Logger> logger) {
   return odr::HtmlService(std::make_unique<HtmlServiceImpl>(

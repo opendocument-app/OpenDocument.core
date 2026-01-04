@@ -1,7 +1,6 @@
 #include <odr/internal/html/common.hpp>
 
 #include <odr/internal/abstract/file.hpp>
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>

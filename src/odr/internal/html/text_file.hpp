@@ -12,9 +12,9 @@ class Logger;
 
 namespace odr::internal::html {
 
-odr::HtmlService create_text_service(const TextFile &text_file,
-                                     const std::string &cache_path,
-                                     HtmlConfig config,
-                                     std::shared_ptr<Logger> logger);
+HtmlService create_text_service(const TextFile &text_file,
+                                const std::string &cache_path,
+                                HtmlConfig config,
+                                std::shared_ptr<Logger> logger);
 
 }

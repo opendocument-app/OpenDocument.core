@@ -139,7 +139,7 @@ protected:
 
 namespace odr::internal {
 
-odr::HtmlService
+HtmlService
 html::create_text_service(const TextFile &text_file,
                           [[maybe_unused]] const std::string &cache_path,
                           HtmlConfig config, std::shared_ptr<Logger> logger) {

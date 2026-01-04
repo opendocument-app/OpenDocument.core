@@ -148,9 +148,10 @@ protected:
 
 namespace odr::internal {
 
-odr::HtmlService html::create_filesystem_service(
-    const Filesystem &filesystem, const std::string & /*cache_path*/,
-    HtmlConfig config, std::shared_ptr<Logger> logger) {
+HtmlService html::create_filesystem_service(const Filesystem &filesystem,
+                                            const std::string & /*cache_path*/,
+                                            HtmlConfig config,
+                                            std::shared_ptr<Logger> logger) {
   return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
       filesystem, std::move(config), std::move(logger)));
 }
