@@ -4,7 +4,7 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/html/common.hpp>
+#include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
@@ -66,8 +66,6 @@ public:
   HtmlResources write_text(HtmlWriter &out) const {
     HtmlResources resources;
 
-    const std::unique_ptr<std::istream> in = m_text_file.stream();
-
     out.write_begin();
 
     out.write_header_begin();
@@ -77,50 +75,107 @@ public:
     out.write_header_viewport(
         "width=device-width,initial-scale=1.0,user-scalable=yes");
     out.write_header_style_begin();
-    out.write_raw("*{font-family:monospace;}");
-    out.write_raw("td{padding-left:3pt;padding-right:3pt}");
-    out.write_raw("td:first-child{text-align:right;vertical-align:top;user-"
-                  "select:none;color:#999999;border-right:solid #999999;}");
+    out.write_raw(
+        ".odr-text{display:flex;flex-direction:row;font-family:monospace;}");
+    out.write_raw(
+        ".odr-text-nr{display:flex;flex-direction:column;text-align:"
+        "right;vertical-align:top;color:#999999;border-right:solid #999999;}");
+    out.write_raw(".odr-text-body{display:flex;flex-direction:column;padding-"
+                  "left:5pt;white-space:pre;}");
+    out.write_raw(".odr-text-wrap{white-space:break-spaces;word-break:break-"
+                  "word;overflow-wrap:anywhere;flex-shrink:1;}");
+    out.write_raw("[contenteditable]:focus{outline:none;}");
     out.write_header_style_end();
     out.write_header_end();
 
     out.write_body_begin();
-    out.write_element_begin("table",
+
+    out.write_element_begin("div", HtmlElementOptions().set_class("odr-text"));
+
+    out.write_element_begin("div",
+                            HtmlElementOptions().set_class("odr-text-nr"));
+    std::unique_ptr<std::istream> in = m_text_file.stream();
+    for (std::uint32_t line = 1; !in->eof(); ++line) {
+      out.write_element_begin("div", HtmlElementOptions().set_inline(true));
+      out.out() << line;
+      out.write_element_end("div");
+
+      NullStream ss_out;
+      util::stream::pipe_line(*in, ss_out, false);
+    }
+    out.write_element_end("div");
+
+    out.write_element_begin("div",
                             HtmlElementOptions().set_attributes(
                                 [&](const HtmlAttributeWriterCallback &clb) {
-                                  clb("cellpadding", "0");
-                                  clb("border", "0");
-                                  clb("cellspacing", "0");
+                                  clb("class", "odr-text-body odr-text-wrap");
                                   if (config().editable) {
-                                    clb("contenteditable", "plaintext-only");
+                                    clb("contenteditable", "true");
                                   }
                                 }));
-
-    for (std::uint32_t line = 1; !in->eof(); ++line) {
-      out.write_element_begin("tr");
-
-      out.write_element_begin(
-          "td", HtmlElementOptions().set_inline(true).set_attributes(
-                    [&](const HtmlAttributeWriterCallback &clb) {
-                      if (config().editable) {
-                        clb("contenteditable", "false");
-                      }
-                    }));
-      out.out() << line;
-      out.write_element_end("td");
-
-      out.write_element_begin("td", HtmlElementOptions().set_inline(true));
+    in = m_text_file.stream();
+    while (!in->eof()) {
+      out.write_element_begin("div", HtmlElementOptions().set_inline(true));
 
       std::ostringstream ss_out;
       util::stream::pipe_line(*in, ss_out, false);
-      out.out() << escape_text(ss_out.str());
+      const std::string &line = ss_out.str();
+      if (line.empty()) {
+        out.write_element_begin(
+            "br", HtmlElementOptions().set_close_type(HtmlCloseType::trailing));
+      } else {
+        out.out() << ss_out.str();
+      }
 
-      out.write_element_end("td");
+      out.write_element_end("div");
+    }
+    out.write_element_end("div");
 
-      out.write_element_end("tr");
+    out.write_element_end("div");
+
+    out.write_element_begin("script");
+    out.out() << R"(
+function updateLineNumberHeight() {
+    const nrCells = document.querySelectorAll('.odr-text-nr > div');
+    const textCells = document.querySelectorAll('.odr-text-body > div');
+
+    for (let i = 0; i < textCells.length; i++) {
+            const height = textCells[i].offsetHeight;
+            nrCells[i].style.height = height + 'px';
+    }
+}
+
+const textBody = document.querySelector('.odr-text-body');
+
+const resizeObserver = new ResizeObserver(entries => {
+    updateLineNumberHeight();
+});
+resizeObserver.observe(textBody);
+
+textBody.addEventListener('input', (event) => {
+    const nrCells = document.querySelectorAll('.odr-text-nr > div');
+    const textCells = document.querySelectorAll('.odr-text-body > div');
+
+    const nrCount = nrCells.length;
+    const lineCount = textCells.length;
+    if (lineCount > nrCount) {
+        for (let i = nrCount + 1; i <= lineCount; i++) {
+            const nrCell = document.createElement('div');
+            nrCell.textContent = i;
+            document.querySelector('.odr-text-nr').appendChild(nrCell);
+        }
+    } else if (lineCount < nrCount) {
+        for (let i = nrCount; i > lineCount; --i) {
+            document.querySelector('.odr-text-nr').removeChild(
+                document.querySelector('.odr-text-nr').lastChild);
+        }
     }
 
-    out.write_element_end("table");
+    updateLineNumberHeight();
+});
+)";
+    out.write_element_end("script");
+
     out.write_body_end();
 
     out.write_end();
