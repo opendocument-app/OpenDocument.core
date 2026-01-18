@@ -136,43 +136,373 @@ public:
     out.write_element_begin("script");
     out.out() << R"(
 function updateLineNumberHeight() {
-    const nrCells = document.querySelectorAll('.odr-text-nr > div');
-    const textCells = document.querySelectorAll('.odr-text-body > div');
+    const nrCells = document.querySelectorAll(".odr-text-nr > div");
+    const textCells = document.querySelectorAll(".odr-text-body > div");
 
     for (let i = 0; i < textCells.length; i++) {
             const height = textCells[i].offsetHeight;
-            nrCells[i].style.height = height + 'px';
+            nrCells[i].style.height = height + "px";
     }
 }
 
-const textBody = document.querySelector('.odr-text-body');
+const textNr = document.querySelector(".odr-text-nr");
+const textBody = document.querySelector(".odr-text-body");
+const history = [];
+const future = [];
 
 const resizeObserver = new ResizeObserver(entries => {
     updateLineNumberHeight();
 });
 resizeObserver.observe(textBody);
 
-textBody.addEventListener('input', (event) => {
-    const nrCells = document.querySelectorAll('.odr-text-nr > div');
-    const textCells = document.querySelectorAll('.odr-text-body > div');
+textBody.addEventListener("input", (event) => {
+  const nrCells = document.querySelectorAll(".odr-text-nr > div");
+  const textCells = document.querySelectorAll(".odr-text-body > div");
 
-    const nrCount = nrCells.length;
-    const lineCount = textCells.length;
-    if (lineCount > nrCount) {
-        for (let i = nrCount + 1; i <= lineCount; i++) {
-            const nrCell = document.createElement('div');
-            nrCell.textContent = i;
-            document.querySelector('.odr-text-nr').appendChild(nrCell);
-        }
-    } else if (lineCount < nrCount) {
-        for (let i = nrCount; i > lineCount; --i) {
-            document.querySelector('.odr-text-nr').removeChild(
-                document.querySelector('.odr-text-nr').lastChild);
-        }
+  const nrCount = nrCells.length;
+  const lineCount = textCells.length;
+  if (lineCount > nrCount) {
+    for (let i = nrCount + 1; i <= lineCount; i++) {
+      const nrCell = document.createElement("div");
+      nrCell.textContent = i;
+      document.querySelector(".odr-text-nr").appendChild(nrCell);
+    }
+  } else if (lineCount < nrCount) {
+    for (let i = nrCount; i > lineCount; --i) {
+      document.querySelector(".odr-text-nr").removeChild(
+        document.querySelector(".odr-text-nr").lastChild);
+    }
+  }
+
+  updateLineNumberHeight();
+});
+
+function getPosition(container, offset) {
+  const line = container.nodeName === "DIV" ? container : container.parentNode;
+  const lines = Array.from(textBody.childNodes);
+  const lineIndex = lines.indexOf(line);
+
+  return {
+    line: lineIndex,
+    offset: offset,
+  };
+}
+
+function getLine(lineNr) {
+  const lines = Array.from(textBody.childNodes);
+  return lines[lineNr];
+}
+
+function getLineText(line) {
+  return line.textContent;
+}
+
+function setLineText(line, text) {
+  line.textContent = text;
+  if (text === "") {
+    line.appendChild(document.createElement("br"));
+  }
+}
+
+function movePosition(position, delta) {
+  let lineNr = position.line;
+  let offset = position.offset;
+  let line = getLine(lineNr);
+  let lineLength = getLineText(line).length;
+
+  while (true) {
+    const remaining = delta > 0 ? lineLength - offset : -offset;
+    const step = delta > 0 ? Math.min(remaining, delta) : Math.max(remaining, delta);
+    offset += step;
+    delta -= step;
+    if (delta === 0) {
+      break;
     }
 
-    updateLineNumberHeight();
+    line = delta > 0 ? line.nextSibling : line.previousSibling;
+    if (line === null) {
+      break;
+    }
+    lineLength = getLineText(line).length;
+    lineNr += delta > 0 ? 1 : -1;
+    offset = delta > 0 ? 0 : lineLength;
+    delta = delta > 0 ? delta - 1 : delta + 1;
+  }
+
+  return { line: lineNr, offset: offset };
+}
+
+function getText(from, to) {
+  let result = "";
+
+  for (let lineNr = from.line; lineNr <= to.line; ++lineNr) {
+    if (lineNr > from.line) {
+      result += "\n";
+    }
+
+    const line = getLine(lineNr);
+    const lineText = getLineText(line);
+
+    if (from.line === to.line) {
+      result += lineText.slice(from.offset, to.offset);
+    } else if (lineNr === from.line) {
+      result += lineText.slice(from.offset);
+    } else if (lineNr === to.line) {
+      result += lineText.slice(0, to.offset);
+    } else {
+      result += lineText;
+    }
+  }
+
+  return result;
+}
+
+function insertText(position, text) {
+  const textLines = text.split("\n");
+
+  let line = getLine(position.line);
+  const originalText = getLineText(line);
+
+  if (textLines.length === 1) {
+    const newText =
+      originalText.slice(0, position.offset) +
+      textLines[0] +
+      originalText.slice(position.offset);
+    setLineText(line, newText);
+    return { line: position.line, offset: position.offset + textLines[0].length };
+  }
+
+  for (let i = 0; i < textLines.length; ++i) {
+    if (i > 0) {
+      textBody.insertBefore(
+        document.createElement("div"),
+        line.nextSibling
+      );
+      line = line.nextSibling;
+
+      textNr.appendChild(document.createElement("div"));
+      textNr.lastChild.textContent = Array.from(textBody.childNodes).length + 1;
+    }
+
+    if (i === 0) {
+      const newText =
+        originalText.slice(0, position.offset) +
+        textLines[i];
+      setLineText(line, newText);
+    } else if (i === textLines.length - 1) {
+      const newText =
+        textLines[i] +
+        originalText.slice(position.offset);
+      setLineText(line, newText);
+    } else {
+      setLineText(line, textLines[i]);
+    }
+  }
+
+  return {
+    line: position.line + textLines.length - 1,
+    offset: textLines[textLines.length - 1].length,
+  };
+}
+
+function removeText(from, to) {
+  console.log("removeText", from, to);
+
+  const firstLine = getLine(from.line);
+  const lastLine = getLine(to.line);
+
+  const newText =
+    getLineText(firstLine).slice(0, from.offset) +
+    getLineText(lastLine).slice(to.offset);
+  setLineText(firstLine, newText);
+
+  let line = firstLine;
+  for (let lineNr = from.line + 1; lineNr <= to.line; ++lineNr) {
+    console.log(line, textBody);
+    line = line.nextSibling;
+    console.log(line, textBody);
+    textBody.removeChild(line);
+
+    textNr.removeChild(textNr.lastChild);
+  }
+}
+
+function placeCursorAt(start) {
+  const line = getLine(start.line);
+  const text = line.firstChild;
+
+  const range = document.createRange();
+  const selection = window.getSelection();
+
+  range.setStart(text, start.offset);
+  range.setEnd(text, start.offset);
+  range.collapse(true);
+
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function doChange(change) {
+  if (change.type === "insertText") {
+    placeCursorAt(change.position);
+    // TODO
+    document.execCommand("insertText", false, change.text);
+    return;
+  }
+
+  if (change.type === "removeText") {
+    placeCursorAt(change.position);
+    // TODO
+    document.execCommand("delete", false, null);
+    return;
+  }
+}
+
+function invertChange(change) {
+  if (change.type === "insertText") {
+    return {
+      type: "removeText",
+      text: change.text,
+      position: change.position,
+    };
+  }
+
+  if (change.type === "removeText") {
+    return {
+      type: "insertText",
+      text: change.text,
+      position: change.position,
+    };
+  }
+}
+
+function undoChange(change) {
+  doChange(invertChange(change));
+}
+
+function undo() {
+  if (history.length === 0) {
+    return;
+  }
+
+  const lastChange = history.pop();
+  undoChange(lastChange);
+  future.push(lastChange);
+}
+
+function redo() {
+  if (future.length === 0) {
+    return;
+  }
+
+  const nextChange = future.pop();
+  doChange(nextChange);
+  history.push(nextChange);
+}
+
+function insertTextAction(text) {
+  const selection = window.getSelection();
+  if (selection.rangeCount !== 1) {
+    console.log("Multiple selection ranges, not supported");
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  const position = getPosition(range.startContainer, range.startOffset);
+
+  if (range.startContainer !== range.endContainer ||
+      range.startOffset !== range.endOffset) {
+    removeTextAction("backward");
+  }
+  const newPosition = insertText(position, text);
+  history.push({
+    type: "insertText",
+    text: text,
+    position: position,
+  });
+  console.log("history", history);
+
+  placeCursorAt(newPosition);
+}
+
+function removeTextAction(mode) {
+  const selection = window.getSelection();
+  if (selection.rangeCount !== 1) {
+    console.log("Multiple selection ranges, not supported");
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  const startPosition = getPosition(range.startContainer, range.startOffset);
+  const endPosition = getPosition(range.endContainer, range.endOffset);
+  const isSelected =
+      range.startContainer !== range.endContainer ||
+      range.startOffset !== range.endOffset;
+
+  console.log("startPosition", startPosition, "endPosition", endPosition);
+  const fromPosition = isSelected ? startPosition : (mode === "forward" ? startPosition : movePosition(startPosition, -1));
+  const toPosition = isSelected ? endPosition : (mode === "forward" ? movePosition(endPosition, 1): endPosition);
+
+  console.log("fromPosition", fromPosition, "toPosition", toPosition);
+  if (fromPosition.line === toPosition.line &&
+      fromPosition.offset === toPosition.offset) {
+    console.log("No text to remove");
+    return;
+  }
+
+  const removedText = getText(fromPosition, toPosition);
+  console.log("remove", removedText);
+  removeText(fromPosition, toPosition);
+  history.push({
+    type: "removeText",
+    text: removedText,
+    position: fromPosition,
+  });
+
+  placeCursorAt(fromPosition);
+}
+
+textBody.addEventListener("beforeinput", (e) => {
+  console.log("beforeinput", e);
+  e.preventDefault();
+
+  if (e.inputType === "historyUndo") {
+    undo();
+    return;
+  }
+  if (e.inputType === "historyRedo") {
+    redo();
+    return;
+  }
+
+  if (e.inputType === "insertText") {
+    insertTextAction(e.data);
+    return;
+  }
+  if (e.inputType === "insertParagraph") {
+    insertTextAction("\n");
+    return;
+  }
+
+  if (e.inputType === "deleteContentBackward") {
+    removeTextAction("backward");
+    return;
+  }
+  if (e.inputType === "deleteContentForward") {
+    removeTextAction("forward");
+    return;
+  }
 });
+
+textBody.addEventListener("paste", (e) => {
+  console.log("paste", e);
+  e.preventDefault();
+
+  const plain = e.clipboardData.getData("text/plain");
+  console.log("plain", plain);
+  insertTextAction(plain);
+});
+
+textBody.addEventListener("drop", e => e.preventDefault());
+textBody.addEventListener("dragover", e => e.preventDefault());
 )";
     out.write_element_end("script");
 
