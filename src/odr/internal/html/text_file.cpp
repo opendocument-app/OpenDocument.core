@@ -205,28 +205,31 @@ function setLineText(line, text) {
 }
 
 function movePosition(position, delta) {
+  let absDelta = Math.abs(delta);
+  const signDelta = delta >= 0 ? 1 : -1;
+
   let lineNr = position.line;
   let offset = position.offset;
   let line = getLine(lineNr);
   let lineLength = getLineText(line).length;
 
   while (true) {
-    const remaining = delta > 0 ? lineLength - offset : -offset;
-    const step = delta > 0 ? Math.min(remaining, delta) : Math.max(remaining, delta);
-    offset += step;
-    delta -= step;
-    if (delta === 0) {
+    const remaining = signDelta > 0 ? lineLength - offset : offset;
+    const step = Math.min(remaining, absDelta);
+    offset += signDelta * step;
+    absDelta -= step;
+    if (absDelta === 0) {
       break;
     }
 
-    line = delta > 0 ? line.nextSibling : line.previousSibling;
+    line = signDelta > 0 ? line.nextSibling : line.previousSibling;
     if (line === null) {
       break;
     }
     lineLength = getLineText(line).length;
-    lineNr += delta > 0 ? 1 : -1;
-    offset = delta > 0 ? 0 : lineLength;
-    delta = delta > 0 ? delta - 1 : delta + 1;
+    lineNr += signDelta;
+    offset = signDelta > 0 ? 0 : lineLength;
+    absDelta -= 1;
   }
 
   return { line: lineNr, offset: offset };
@@ -306,8 +309,6 @@ function insertText(position, text) {
 }
 
 function removeText(from, to) {
-  console.log("removeText", from, to);
-
   const firstLine = getLine(from.line);
   const lastLine = getLine(to.line);
 
@@ -316,12 +317,8 @@ function removeText(from, to) {
     getLineText(lastLine).slice(to.offset);
   setLineText(firstLine, newText);
 
-  let line = firstLine;
   for (let lineNr = from.line + 1; lineNr <= to.line; ++lineNr) {
-    console.log(line, textBody);
-    line = line.nextSibling;
-    console.log(line, textBody);
-    textBody.removeChild(line);
+    textBody.removeChild(firstLine.nextSibling);
 
     textNr.removeChild(textNr.lastChild);
   }
@@ -344,16 +341,13 @@ function placeCursorAt(start) {
 
 function doChange(change) {
   if (change.type === "insertText") {
-    placeCursorAt(change.position);
-    // TODO
-    document.execCommand("insertText", false, change.text);
+    insertText(change.position, change.text);
     return;
   }
 
   if (change.type === "removeText") {
-    placeCursorAt(change.position);
-    // TODO
-    document.execCommand("delete", false, null);
+    const toPosition = movePosition(change.position, change.text.length);
+    removeText(change.position, toPosition);
     return;
   }
 }
@@ -437,11 +431,9 @@ function removeTextAction(mode) {
       range.startContainer !== range.endContainer ||
       range.startOffset !== range.endOffset;
 
-  console.log("startPosition", startPosition, "endPosition", endPosition);
   const fromPosition = isSelected ? startPosition : (mode === "forward" ? startPosition : movePosition(startPosition, -1));
   const toPosition = isSelected ? endPosition : (mode === "forward" ? movePosition(endPosition, 1): endPosition);
 
-  console.log("fromPosition", fromPosition, "toPosition", toPosition);
   if (fromPosition.line === toPosition.line &&
       fromPosition.offset === toPosition.offset) {
     console.log("No text to remove");
@@ -449,7 +441,6 @@ function removeTextAction(mode) {
   }
 
   const removedText = getText(fromPosition, toPosition);
-  console.log("remove", removedText);
   removeText(fromPosition, toPosition);
   history.push({
     type: "removeText",
@@ -461,7 +452,6 @@ function removeTextAction(mode) {
 }
 
 textBody.addEventListener("beforeinput", (e) => {
-  console.log("beforeinput", e);
   e.preventDefault();
 
   if (e.inputType === "historyUndo") {
@@ -493,11 +483,9 @@ textBody.addEventListener("beforeinput", (e) => {
 });
 
 textBody.addEventListener("paste", (e) => {
-  console.log("paste", e);
   e.preventDefault();
 
   const plain = e.clipboardData.getData("text/plain");
-  console.log("plain", plain);
   insertTextAction(plain);
 });
 
