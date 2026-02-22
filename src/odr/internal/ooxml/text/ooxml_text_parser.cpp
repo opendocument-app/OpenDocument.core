@@ -200,6 +200,7 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"w:tab", parse_text_element},
       {"w:p", create_default_tree_parser(ElementType::paragraph)},
       {"w:r", create_default_tree_parser(ElementType::span)},
+      {"w:br", create_default_tree_parser(ElementType::line_break)},
       {"w:bookmarkStart", create_default_tree_parser(ElementType::bookmark)},
       {"w:hyperlink", create_default_tree_parser(ElementType::link)},
       {"w:tbl", parse_table_element},
