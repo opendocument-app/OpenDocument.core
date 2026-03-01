@@ -50,7 +50,7 @@ find_package(argon2 REQUIRED)
 include(FetchContent)
 FetchContent_Declare(odr.js
         URL "https://github.com/opendocument-app/OpenDocument.js/releases/download/v2.0.0/build.zip"
-        URL_HASH SHA256=sha256:5ccbe1c5bb46d65bc0dccc6c6df6548a571eef5536fcb95f9dcb80add26800b6
+        URL_HASH SHA256=5ccbe1c5bb46d65bc0dccc6c6df6548a571eef5536fcb95f9dcb80add26800b6
 )
 FetchContent_MakeAvailable(odr.js)
 
