@@ -83,8 +83,8 @@ void write_element_options(std::ostream &out,
 
 } // namespace
 
-HtmlElementOptions &HtmlElementOptions::set_inline(const bool _inline_element) {
-  inline_element = _inline_element;
+HtmlElementOptions &HtmlElementOptions::set_inline(const bool is_inline) {
+  inline_element = is_inline;
   return *this;
 }
 

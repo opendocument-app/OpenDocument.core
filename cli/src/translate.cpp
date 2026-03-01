@@ -36,6 +36,7 @@ int main(const int argc, char **argv) {
 
   HtmlConfig config;
   config.editable = true;
+  config.format_html = true;
 
   const std::string output_tmp = output + "/tmp";
   std::filesystem::create_directories(output_tmp);
