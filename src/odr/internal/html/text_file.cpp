@@ -1,12 +1,12 @@
 #include <odr/internal/html/text_file.hpp>
 
-#include "odr/internal/common/path.hpp"
-
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
 #include <odr/internal/common/null_stream.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
@@ -129,12 +129,11 @@ public:
 
       std::ostringstream ss_out;
       util::stream::pipe_line(*in, ss_out, false);
-      const std::string &line = ss_out.str();
-      if (line.empty()) {
+      if (const std::string &line = ss_out.str(); line.empty()) {
         out.write_element_begin(
             "br", HtmlElementOptions().set_close_type(HtmlCloseType::trailing));
       } else {
-        out.out() << ss_out.str();
+        out.out() << escape_text(ss_out.str());
       }
 
       out.write_element_end("div");
