@@ -20,7 +20,7 @@ void reverse_bytes(std::u32string &string);
 
 template <typename I, std::ranges::range O>
 void to_little_endian(I in, O &out) {
-  for (int i = 0; i < sizeof(in); ++i) {
+  for (unsigned int i = 0; i < sizeof(in); ++i) {
     out[i] = in & 0xff;
     in >>= 8;
   }
