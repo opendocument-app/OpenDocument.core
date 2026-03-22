@@ -10,7 +10,6 @@ env:
   CCACHE_DIR: ${{ github.workspace }}/ccache
   CCACHE_MAXSIZE: 500M
   CCACHE_KEY_SUFFIX: r22
-  CONAN_ODR_INDEX_REF: 4c017e76b56d6972564bd6d704a8843076b94f32
 
 jobs:
   build:
@@ -55,7 +54,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: opendocument-app/conan-odr-index
-          ref: ${{ env.CONAN_ODR_INDEX_REF }}
       - name: export conan-odr-index
         run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
@@ -313,7 +311,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: opendocument-app/conan-odr-index
-          ref: ${{ env.CONAN_ODR_INDEX_REF }}
       - name: export conan-odr-index
         run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
