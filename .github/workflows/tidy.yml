@@ -6,6 +6,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  CCACHE_DIR: ${{ github.workspace }}/ccache
+  CCACHE_MAXSIZE: 500M
+  CCACHE_KEY_SUFFIX: r22
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -28,19 +33,27 @@ jobs:
         run: pip install --upgrade pip conan
 
       - name: conan remote
-        run: |
-          conan remote remove "*"
-          conan remote add conancenter https://center2.conan.io
-          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
       - name: conan config
         run: conan config install .github/config/conan
+
+      - name: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ccache
+            /Users/runner/Library/Caches/ccache
+          key: ${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
+          restore-keys: |
+            ${{ matrix.host_profile }}-
+
       - name: conan install
         run: >
           conan install .
           --lockfile conan.lock
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
-          --build=missing
+          --build "*"
 
       - name: cmake
         run: >

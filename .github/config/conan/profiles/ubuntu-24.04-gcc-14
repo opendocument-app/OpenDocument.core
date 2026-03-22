@@ -8,4 +8,4 @@ compiler.libcxx=libstdc++11
 os=Linux
 
 [conf]
-tools.build:compiler_executables={'c': 'gcc-14', 'cpp': 'g++-14'}
+tools.build:compiler_executables={'c': 'ccache gcc-14', 'cpp': 'ccache g++-14'}
