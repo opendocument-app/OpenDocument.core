@@ -52,9 +52,3 @@ jobs:
           --name odrcore
           --version ${VERSION}
           --build "*"
-
-      - name: conan login
-        run: conan remote login odr admin --password ${{ secrets.ARTIFACTORY }}
-
-      - name: upload to conan repo
-        run: conan upload "*" --remote odr --only-recipe --confirm
