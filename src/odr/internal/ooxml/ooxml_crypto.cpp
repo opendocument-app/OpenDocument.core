@@ -6,6 +6,7 @@
 #include <odr/internal/util/byte_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <cstring>
 #include <stdexcept>
 #include <utility>
 
