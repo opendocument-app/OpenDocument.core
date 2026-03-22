@@ -54,7 +54,7 @@ public:
 
   int underflow() override {
     if (m_remaining <= 0) {
-      return std::char_traits<char>::eof();
+      return traits_type::eof();
     }
 
     std::lock_guard lock(m_archive->mutex());
@@ -65,7 +65,7 @@ public:
     m_remaining -= result;
     setg(m_buffer, m_buffer, m_buffer + result);
 
-    return std::char_traits<char>::to_int_type(*gptr());
+    return traits_type::to_int_type(*gptr());
   }
 
 private:
@@ -174,12 +174,6 @@ std::shared_ptr<abstract::File> Archive::Entry::file() const {
   }
   return std::make_shared<FileInZip>(m_archive->shared_from_this(), m_index);
 }
-
-Archive::Archive(const std::shared_ptr<MemoryFile> &file)
-    : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
-
-Archive::Archive(const std::shared_ptr<DiskFile> &file)
-    : Archive(std::dynamic_pointer_cast<abstract::File>(file)) {}
 
 Archive::Archive(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {

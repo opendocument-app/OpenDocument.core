@@ -4,6 +4,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 #include <utility>
 
@@ -14,35 +15,33 @@ namespace {
 class ReaderBuffer final : public std::streambuf {
 public:
   ReaderBuffer(const impl::CompoundFileReader &reader,
-               const impl::CompoundFileEntry &entry)
-      : m_reader{reader}, m_entry{entry}, m_buffer{new char[m_buffer_size]} {}
-  ReaderBuffer(const ReaderBuffer &) = delete;
-  ReaderBuffer(ReaderBuffer &&other) noexcept = delete;
-  ~ReaderBuffer() override { delete[] m_buffer; }
-
-  ReaderBuffer &operator=(const ReaderBuffer &) = delete;
-  ReaderBuffer &operator=(ReaderBuffer &&other) noexcept = delete;
+               const impl::CompoundFileEntry &entry,
+               std::unique_ptr<std::istream> stream,
+               const std::uint32_t buffer_size = 4098)
+      : m_reader{&reader}, m_entry{&entry}, m_stream{std::move(stream)},
+        m_buffer(buffer_size, '\0') {}
 
   int underflow() override {
-    const std::uint64_t remaining = m_entry.size - m_offset;
-    if (remaining <= 0) {
-      return std::char_traits<char>::eof();
+    if (m_offset >= m_entry->size) {
+      return traits_type::eof();
     }
 
-    const std::uint64_t amount = std::min(remaining, m_buffer_size);
-    m_reader.read_file(&m_entry, m_offset, m_buffer, amount);
+    const std::uint64_t remaining = m_entry->size - m_offset;
+    const std::uint64_t amount =
+        std::min<std::uint64_t>(remaining, m_buffer.size());
+    m_reader->read_file(*m_stream, *m_entry, m_offset, m_buffer.data(), amount);
     m_offset += amount;
-    setg(m_buffer, m_buffer, m_buffer + amount);
+    setg(m_buffer.data(), m_buffer.data(), m_buffer.data() + amount);
 
-    return std::char_traits<char>::to_int_type(*gptr());
+    return traits_type::to_int_type(*gptr());
   }
 
 private:
-  const impl::CompoundFileReader &m_reader;
-  const impl::CompoundFileEntry &m_entry;
+  const impl::CompoundFileReader *m_reader{};
+  const impl::CompoundFileEntry *m_entry{};
+  std::unique_ptr<std::istream> m_stream;
   std::uint64_t m_offset{0};
-  std::uint64_t m_buffer_size{4098};
-  char *m_buffer;
+  std::vector<char> m_buffer;
 };
 
 class FileInCfbIstream final : public std::istream {
@@ -51,11 +50,12 @@ public:
                    std::unique_ptr<ReaderBuffer> sbuf)
       : std::istream(sbuf.get()), m_archive{std::move(archive)},
         m_sbuf{std::move(sbuf)} {}
-  FileInCfbIstream(std::shared_ptr<const Archive> archive,
+  FileInCfbIstream(const std::shared_ptr<const Archive> &archive,
                    const impl::CompoundFileReader &reader,
                    const impl::CompoundFileEntry &entry)
-      : FileInCfbIstream(std::move(archive),
-                         std::make_unique<ReaderBuffer>(reader, entry)) {}
+      : FileInCfbIstream(archive,
+                         std::make_unique<ReaderBuffer>(
+                             reader, entry, archive->file()->stream())) {}
 
 private:
   std::shared_ptr<const Archive> m_archive;
@@ -85,51 +85,49 @@ public:
 
 private:
   std::shared_ptr<const Archive> m_archive;
-  const impl::CompoundFileEntry &m_entry;
+  impl::CompoundFileEntry m_entry;
 };
 
 } // namespace
 
-bool Archive::Entry::is_file() const { return m_entry->is_stream(); }
-
-bool Archive::Entry::is_directory() const { return !m_entry->is_stream(); }
-
-AbsPath Archive::Entry::path() const { return m_path; }
+Archive::Archive(std::shared_ptr<abstract::File> file)
+    : m_file{std::move(file)}, m_cfb{*m_file->stream(), m_file->size()} {}
 
 std::unique_ptr<abstract::File> Archive::Entry::file() const {
   if (!is_file()) {
     return {};
   }
-  return std::make_unique<FileInCfb>(m_parent->shared_from_this(), *m_entry);
-}
-
-std::string Archive::Entry::name() const {
-  return internal::util::string::c16str_to_string(
-      reinterpret_cast<const char16_t *>(m_entry->name), m_entry->name_len - 2);
+  return std::make_unique<FileInCfb>(m_archive->shared_from_this(), m_entry);
 }
 
 std::optional<Archive::Entry> Archive::Entry::left() const {
-  const auto *left = m_parent->cfb().get_entry(m_entry->left_sibling_id);
-  if (left == nullptr) {
+  if (m_entry.left_sibling_id == impl::NullId) {
     return {};
   }
-  return Entry(*m_parent, *left, m_path.parent());
+  const impl::CompoundFileEntry left = m_archive->m_cfb.parse_entry(
+      *m_archive->m_file->stream(), m_entry.left_sibling_id);
+  return Entry(*m_archive, m_entry.left_sibling_id, left,
+               m_path.parent().join(RelPath(left.get_name())));
 }
 
 std::optional<Archive::Entry> Archive::Entry::right() const {
-  const auto *right = m_parent->cfb().get_entry(m_entry->right_sibling_id);
-  if (right == nullptr) {
+  if (m_entry.right_sibling_id == impl::NullId) {
     return {};
   }
-  return Entry(*m_parent, *right, m_path.parent());
+  const impl::CompoundFileEntry right = m_archive->m_cfb.parse_entry(
+      *m_archive->m_file->stream(), m_entry.right_sibling_id);
+  return Entry(*m_archive, m_entry.right_sibling_id, right,
+               m_path.parent().join(RelPath(right.get_name())));
 }
 
 std::optional<Archive::Entry> Archive::Entry::child() const {
-  const auto *child = m_parent->cfb().get_entry(m_entry->child_id);
-  if (child == nullptr) {
+  if (m_entry.child_id == impl::NullId) {
     return {};
   }
-  return Entry(*m_parent, *child, m_path);
+  const impl::CompoundFileEntry child = m_archive->m_cfb.parse_entry(
+      *m_archive->m_file->stream(), m_entry.child_id);
+  return Entry(*m_archive, m_entry.child_id, child,
+               m_path.join(RelPath(child.get_name())));
 }
 
 void Archive::Iterator::dig_left_() {
@@ -189,20 +187,19 @@ void Archive::Iterator::next_flat_() {
   m_entry = {};
 }
 
-Archive::Archive(const std::shared_ptr<MemoryFile> &file)
-    : m_file{file}, m_cfb{file->content().data(), file->content().size()} {}
-
 const impl::CompoundFileReader &Archive::cfb() const { return m_cfb; }
 
 std::shared_ptr<abstract::File> Archive::file() const { return m_file; }
 
-Archive::Iterator Archive::begin() const {
-  return {*this, *m_cfb.get_root_entry()};
+Archive::Entry Archive::root() const {
+  return {*this, impl::RootId, m_cfb.get_root_entry(), RelPath("")};
 }
 
-Archive::Iterator Archive::end() const { return {}; }
+Archive::Iterator Archive::begin() const { return Iterator::begin(root()); }
 
-Archive::Iterator Archive::find(const AbsPath &path) const {
+Archive::Iterator Archive::end() const { return Iterator::end(); }
+
+Archive::Iterator Archive::find(const RelPath &path) const {
   return std::find_if(begin(), end(), [&path](const Entry &entry) {
     return entry.path() == path;
   });

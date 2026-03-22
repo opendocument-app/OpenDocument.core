@@ -33,6 +33,7 @@ public:
   [[nodiscard]] std::filesystem::path path() const noexcept;
   [[nodiscard]] std::size_t hash() const noexcept;
 
+  [[nodiscard]] bool empty() const noexcept;
   [[nodiscard]] bool root() const noexcept;
   [[nodiscard]] bool absolute() const noexcept;
   [[nodiscard]] bool relative() const noexcept;

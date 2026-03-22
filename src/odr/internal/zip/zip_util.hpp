@@ -27,8 +27,7 @@ enum class Method {
 
 class Archive final : public std::enable_shared_from_this<Archive> {
 public:
-  explicit Archive(const std::shared_ptr<MemoryFile> &file);
-  explicit Archive(const std::shared_ptr<DiskFile> &file);
+  explicit Archive(std::shared_ptr<abstract::File> file);
   ~Archive();
 
   [[nodiscard]] std::mutex &mutex() const;
@@ -108,8 +107,6 @@ private:
 
   mutable std::mutex m_mutex;
   mutable mz_zip_archive m_zip{};
-
-  explicit Archive(std::shared_ptr<abstract::File> file);
 };
 
 void open_from_file(mz_zip_archive &archive, const abstract::File &file,

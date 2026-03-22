@@ -5,8 +5,8 @@
 
 namespace odr::internal::cfb {
 
-CfbFile::CfbFile(const std::shared_ptr<MemoryFile> &file)
-    : m_cfb{std::make_shared<util::Archive>(file)} {}
+CfbFile::CfbFile(std::shared_ptr<abstract::File> file)
+    : m_cfb{std::make_shared<util::Archive>(std::move(file))} {}
 
 std::shared_ptr<abstract::File> CfbFile::file() const noexcept {
   return m_cfb->file();
