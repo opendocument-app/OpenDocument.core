@@ -26,28 +26,27 @@ public:
   explicit Archive(std::shared_ptr<abstract::File> file);
 
   [[nodiscard]] const impl::CompoundFileReader &cfb() const;
-
   [[nodiscard]] std::shared_ptr<abstract::File> file() const;
+
+  class Entry;
+
+  Entry root() const;
 
   class Iterator;
 
   [[nodiscard]] Iterator begin() const;
   [[nodiscard]] Iterator end() const;
 
-  [[nodiscard]] Iterator find(const AbsPath &path) const;
+  [[nodiscard]] Iterator find(const RelPath &path) const;
 
   class Entry {
   public:
     Entry(const Entry &) = default;
     Entry(Entry &&) noexcept = default;
     Entry(const Archive &archive, const std::uint32_t entry_id,
-          const impl::CompoundFileEntry &entry)
+          const impl::CompoundFileEntry &entry, RelPath path)
         : m_archive{&archive}, m_entry_id{entry_id}, m_entry{entry},
-          m_path{"/"} {}
-    Entry(const Archive &archive, const std::uint32_t entry_id,
-          const impl::CompoundFileEntry &entry, const AbsPath &parent_path)
-        : m_archive{&archive}, m_entry_id{entry_id}, m_entry{entry},
-          m_path{parent_path.join(RelPath(name()))} {}
+          m_path{std::move(path)} {}
     ~Entry() = default;
     Entry &operator=(const Entry &) = default;
     Entry &operator=(Entry &&) noexcept = default;
@@ -56,21 +55,21 @@ public:
       return m_entry_id == other.m_entry_id;
     }
 
-    [[nodiscard]] bool is_file() const;
-    [[nodiscard]] bool is_directory() const;
-    [[nodiscard]] AbsPath path() const;
+    [[nodiscard]] bool is_file() const { return m_entry.is_file(); }
+    [[nodiscard]] bool is_directory() const { return m_entry.is_directory(); }
+    [[nodiscard]] RelPath path() const { return m_path; }
     [[nodiscard]] std::unique_ptr<abstract::File> file() const;
 
-    [[nodiscard]] std::string name() const;
+    [[nodiscard]] std::string name() const { return m_entry.get_name(); }
     [[nodiscard]] std::optional<Entry> left() const;
     [[nodiscard]] std::optional<Entry> right() const;
     [[nodiscard]] std::optional<Entry> child() const;
 
   private:
     const Archive *m_archive{};
-    std::uint32_t m_entry_id{};
+    std::uint32_t m_entry_id{impl::NullId};
     impl::CompoundFileEntry m_entry{};
-    AbsPath m_path;
+    RelPath m_path;
 
     friend Iterator;
   };
@@ -83,17 +82,8 @@ public:
     using pointer = const Entry *;
     using reference = const Entry &;
 
-    Iterator() = default;
-    Iterator(const Archive &parent, const std::uint32_t entry_id,
-             const impl::CompoundFileEntry &entry)
-        : m_entry{Entry(parent, entry_id, entry)} {
-      dig_left_();
-    }
-    Iterator(const Archive &parent, const std::uint32_t entry_id,
-             const impl::CompoundFileEntry &entry, const AbsPath &parent_path)
-        : m_entry{Entry(parent, entry_id, entry, parent_path)} {
-      dig_left_();
-    }
+    static Iterator begin(const Entry &entry) { return Iterator(entry); }
+    static Iterator end() { return {}; }
 
     [[nodiscard]] reference operator*() const { return *m_entry; }
     [[nodiscard]] pointer operator->() const { return &*m_entry; }
@@ -116,6 +106,11 @@ public:
     std::optional<Entry> m_entry;
     std::vector<Entry> m_ancestors;
     std::vector<Entry> m_directories;
+
+    Iterator() = default;
+    explicit Iterator(const Entry &root_entry) : m_entry{root_entry} {
+      dig_left_();
+    }
 
     void dig_left_();
     void next_();

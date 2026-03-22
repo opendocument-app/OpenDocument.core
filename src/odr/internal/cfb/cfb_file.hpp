@@ -15,7 +15,7 @@ namespace odr::internal::cfb {
 
 class CfbFile final : public abstract::ArchiveFile {
 public:
-  explicit CfbFile(const std::shared_ptr<abstract::File> &file);
+  explicit CfbFile(std::shared_ptr<abstract::File> file);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 

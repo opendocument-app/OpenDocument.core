@@ -4,6 +4,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 #include <utility>
 
@@ -92,22 +93,11 @@ private:
 Archive::Archive(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)}, m_cfb{*m_file->stream(), m_file->size()} {}
 
-bool Archive::Entry::is_file() const { return m_entry.is_stream(); }
-
-bool Archive::Entry::is_directory() const { return !m_entry.is_stream(); }
-
-AbsPath Archive::Entry::path() const { return m_path; }
-
 std::unique_ptr<abstract::File> Archive::Entry::file() const {
   if (!is_file()) {
     return {};
   }
   return std::make_unique<FileInCfb>(m_archive->shared_from_this(), m_entry);
-}
-
-std::string Archive::Entry::name() const {
-  return internal::util::string::c16str_to_string(m_entry.name,
-                                                  m_entry.name_len - 2);
 }
 
 std::optional<Archive::Entry> Archive::Entry::left() const {
@@ -116,7 +106,8 @@ std::optional<Archive::Entry> Archive::Entry::left() const {
   }
   const impl::CompoundFileEntry left = m_archive->m_cfb.parse_entry(
       *m_archive->m_file->stream(), m_entry.left_sibling_id);
-  return Entry(*m_archive, m_entry.left_sibling_id, left, m_path.parent());
+  return Entry(*m_archive, m_entry.left_sibling_id, left,
+               m_path.parent().join(RelPath(left.get_name())));
 }
 
 std::optional<Archive::Entry> Archive::Entry::right() const {
@@ -125,7 +116,8 @@ std::optional<Archive::Entry> Archive::Entry::right() const {
   }
   const impl::CompoundFileEntry right = m_archive->m_cfb.parse_entry(
       *m_archive->m_file->stream(), m_entry.right_sibling_id);
-  return Entry(*m_archive, m_entry.right_sibling_id, right, m_path.parent());
+  return Entry(*m_archive, m_entry.right_sibling_id, right,
+               m_path.parent().join(RelPath(right.get_name())));
 }
 
 std::optional<Archive::Entry> Archive::Entry::child() const {
@@ -134,7 +126,8 @@ std::optional<Archive::Entry> Archive::Entry::child() const {
   }
   const impl::CompoundFileEntry child = m_archive->m_cfb.parse_entry(
       *m_archive->m_file->stream(), m_entry.child_id);
-  return Entry(*m_archive, m_entry.child_id, child, m_path);
+  return Entry(*m_archive, m_entry.child_id, child,
+               m_path.join(RelPath(child.get_name())));
 }
 
 void Archive::Iterator::dig_left_() {
@@ -198,13 +191,15 @@ const impl::CompoundFileReader &Archive::cfb() const { return m_cfb; }
 
 std::shared_ptr<abstract::File> Archive::file() const { return m_file; }
 
-Archive::Iterator Archive::begin() const {
-  return {*this, impl::RootId, m_cfb.get_root_entry()};
+Archive::Entry Archive::root() const {
+  return {*this, impl::RootId, m_cfb.get_root_entry(), RelPath("")};
 }
 
-Archive::Iterator Archive::end() const { return {}; }
+Archive::Iterator Archive::begin() const { return Iterator::begin(root()); }
 
-Archive::Iterator Archive::find(const AbsPath &path) const {
+Archive::Iterator Archive::end() const { return Iterator::end(); }
+
+Archive::Iterator Archive::find(const RelPath &path) const {
   return std::find_if(begin(), end(), [&path](const Entry &entry) {
     return entry.path() == path;
   });

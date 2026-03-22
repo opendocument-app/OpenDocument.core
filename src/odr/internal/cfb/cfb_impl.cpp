@@ -2,6 +2,7 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -37,6 +38,10 @@ impl::CompoundFileEntry impl::parse_entry(std::istream &in) {
 
 namespace odr::internal::cfb::impl {
 
+std::string CompoundFileEntry::get_name() const {
+  return internal::util::string::c16str_to_string(name, name_len - 2);
+}
+
 CompoundFileReader::CompoundFileReader(std::istream &in,
                                        const std::uint64_t file_size)
     : m_file_size{file_size} {
@@ -53,7 +58,7 @@ CompoundFileReader::CompoundFileReader(std::istream &in,
     throw CfbFileCorrupted();
   }
 
-  impl::parse_entry(in, m_root);
+  m_root = parse_entry(in, RootId);
 
   m_mini_stream_start_sector = m_root.start_sector_location;
 }

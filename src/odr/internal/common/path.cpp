@@ -108,8 +108,10 @@ std::size_t Path::hash() const noexcept {
   return std::hash<std::string>{}(m_path);
 }
 
+bool Path::empty() const noexcept { return m_path.empty(); }
+
 bool Path::root() const noexcept {
-  return (m_upwards == 0) && (m_downwards == 0);
+  return m_absolute && (m_upwards == 0) && (m_downwards == 0);
 }
 
 bool Path::absolute() const noexcept { return m_absolute; }
@@ -189,6 +191,9 @@ Path Path::parent() const {
 }
 
 Path Path::join(const RelPath &b) const {
+  if (empty()) {
+    return b;
+  }
   if (root()) {
     return Path("/" + b.m_path);
   }

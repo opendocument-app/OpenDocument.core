@@ -55,7 +55,9 @@ struct CompoundFileEntry {
     // defined in [MS-OLEPS] 2.23 "Property Set Stream and Storage Names"
     return name[0] == 5;
   }
-  [[nodiscard]] bool is_stream() const { return type == 2; }
+  [[nodiscard]] bool is_file() const { return type == 2; }
+  [[nodiscard]] bool is_directory() const { return !is_file(); }
+  [[nodiscard]] std::string get_name() const;
 };
 
 #pragma pack(pop)
