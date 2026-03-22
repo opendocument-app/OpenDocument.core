@@ -4,6 +4,9 @@ on:
   release:
     types: [published]
 
+env:
+  CONAN_ODR_INDEX_REF: 4c017e76b56d6972564bd6d704a8843076b94f32
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -26,8 +29,13 @@ jobs:
       - name: get version
         run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
-      - name: conan remote
-        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: fetch conan-odr-index
+        uses: actions/checkout@v4
+        with:
+          repository: opendocument-app/conan-odr-index
+          ref: ${{ env.CONAN_ODR_INDEX_REF }}
+      - name: export conan-odr-index
+        run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
         run: conan config install .github/config/conan
 
