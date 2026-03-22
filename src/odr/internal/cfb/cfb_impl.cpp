@@ -100,8 +100,7 @@ void CompoundFileReader::visit_descendants(
     std::istream &in, const CompoundFileEntry &entry,
     const std::int32_t max_level, const EnumFilesCallback &callback) const {
   const CompoundFileEntry child_entry = parse_entry(in, entry.child_id);
-  constexpr std::u16string dir;
-  visit_descendants(in, child_entry, 0, max_level, dir, callback);
+  visit_descendants(in, child_entry, 0, max_level, std::u16string(), callback);
 }
 
 void CompoundFileReader::visit_descendants(
@@ -118,9 +117,6 @@ void CompoundFileReader::visit_descendants(
     const CompoundFileEntry child = parse_entry(in, entry.child_id);
 
     std::u16string new_dir = dir;
-    if (!dir.empty()) {
-      new_dir.push_back('/');
-    }
     new_dir.append(reinterpret_cast<const char16_t *>(entry.name),
                    entry.name_len / 2);
     visit_descendants(in, child, current_level + 1, max_level, new_dir,
