@@ -59,13 +59,10 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
   ODR_VERBOSE(logger,
               "magic determined file type " << file_type_to_string(file_type));
 
-  // TODO if `file` is in memory we would copy it unnecessarily
-  auto memory_file = std::make_shared<MemoryFile>(*file);
-
   if (file_type == FileType::zip) {
     ODR_VERBOSE(logger, "open as zip");
 
-    zip::ZipFile zip_file(memory_file);
+    zip::ZipFile zip_file(file);
     result.push_back(FileType::zip);
 
     auto filesystem = zip_file.archive()->as_filesystem();
@@ -86,7 +83,7 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
   } else if (file_type == FileType::compound_file_binary_format) {
     ODR_VERBOSE(logger, "open as cbf");
 
-    cfb::CfbFile cfb_file(memory_file);
+    cfb::CfbFile cfb_file(file);
     result.push_back(FileType::compound_file_binary_format);
 
     auto filesystem = cfb_file.archive()->as_filesystem();
@@ -107,7 +104,7 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
   } else if (file_type == FileType::starview_metafile) {
     try {
       ODR_VERBOSE(logger, "try open as svm");
-      result.push_back(svm::SvmFile(memory_file).file_type());
+      result.push_back(svm::SvmFile(file).file_type());
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as svm");
     }
@@ -139,7 +136,7 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
 #ifdef ODR_WITH_PDF2HTMLEX
     try {
       ODR_VERBOSE(logger, "try open as pdf with poppler");
-      result.push_back(PopplerPdfFile(memory_file).file_type());
+      result.push_back(PopplerPdfFile(file).file_type());
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as pdf with poppler");
     }
@@ -149,7 +146,7 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
 #ifdef ODR_WITH_WVWARE
     try {
       ODR_VERBOSE(logger, "try open as legacy ms with wvware");
-      result.push_back(WvWareLegacyMicrosoftFile(memory_file).file_type());
+      result.push_back(WvWareLegacyMicrosoftFile(file).file_type());
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as legacy ms with wvware");
     }
@@ -185,13 +182,10 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, Logger &logger) {
   ODR_VERBOSE(logger,
               "magic determined file type " << file_type_to_string(file_type));
 
-  // TODO if `file` is in memory we would copy it unnecessarily
-  auto memory_file = std::make_shared<MemoryFile>(*file);
-
   if (file_type == FileType::zip) {
     ODR_VERBOSE(logger, "open as zip");
 
-    auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
+    auto zip_file = std::make_unique<zip::ZipFile>(std::move(file));
 
     auto filesystem = zip_file->archive()->as_filesystem();
 
@@ -214,7 +208,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, Logger &logger) {
   if (file_type == FileType::compound_file_binary_format) {
     ODR_VERBOSE(logger, "open as cbf");
 
-    auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
+    auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(file));
 
     auto filesystem = cfb_file->archive()->as_filesystem();
 
@@ -246,7 +240,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, Logger &logger) {
   }
   if (file_type == FileType::starview_metafile) {
     ODR_VERBOSE(logger, "open as svm");
-    return std::make_unique<svm::SvmFile>(memory_file);
+    return std::make_unique<svm::SvmFile>(file);
   }
   if (file_type == FileType::unknown) {
     ODR_VERBOSE(logger, "handle unknown file type");
@@ -281,7 +275,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, Logger &logger) {
 #ifdef ODR_WITH_PDF2HTMLEX
     try {
       ODR_VERBOSE(logger, "try open as pdf with poppler");
-      return std::make_unique<PopplerPdfFile>(memory_file);
+      return std::make_unique<PopplerPdfFile>(file);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as pdf with poppler");
     }
@@ -314,8 +308,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<MemoryFile>(*file);
-        auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
+        auto zip_file = std::make_unique<zip::ZipFile>(std::move(file));
         auto filesystem = zip_file->archive()->as_filesystem();
         return std::make_unique<odf::OpenDocumentFile>(filesystem);
       } catch (...) {
@@ -336,16 +329,14 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<MemoryFile>(*file);
-        auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
+        auto zip_file = std::make_unique<zip::ZipFile>(std::move(file));
         auto filesystem = zip_file->archive()->as_filesystem();
         return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as ooxml zip with odr engine");
       }
       try {
-        auto memory_file = std::make_shared<MemoryFile>(*file);
-        auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
+        auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(file));
         auto filesystem = cfb_file->archive()->as_filesystem();
         return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
       } catch (...) {
@@ -365,8 +356,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<MemoryFile>(*file);
-        auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
+        auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(file));
         auto filesystem = cfb_file->archive()->as_filesystem();
         return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
       } catch (...) {
@@ -378,9 +368,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::wvware) {
       ODR_VERBOSE(logger, "using wvware engine");
       try {
-        auto memory_file = std::make_shared<MemoryFile>(*file);
-        return std::make_unique<WvWareLegacyMicrosoftFile>(
-            std::move(memory_file));
+        return std::make_unique<WvWareLegacyMicrosoftFile>(std::move(file));
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as legacy ms with wvware engine");
       }
@@ -407,8 +395,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::poppler) {
       ODR_VERBOSE(logger, "using poppler engine");
       try {
-        auto memory_file = std::make_shared<MemoryFile>(*file);
-        return std::make_unique<PopplerPdfFile>(memory_file);
+        return std::make_unique<PopplerPdfFile>(file);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as pdf with poppler engine");
       }
@@ -443,8 +430,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<MemoryFile>(*file);
-        return std::make_unique<svm::SvmFile>(memory_file);
+        return std::make_unique<svm::SvmFile>(file);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as svm with odr engine");
       }
@@ -510,8 +496,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<MemoryFile>(*file);
-        return std::make_unique<zip::ZipFile>(memory_file);
+        return std::make_unique<zip::ZipFile>(file);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as zip with odr engine");
       }
@@ -527,8 +512,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file, FileType as,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        auto memory_file = std::make_shared<MemoryFile>(*file);
-        return std::make_unique<cfb::CfbFile>(memory_file);
+        return std::make_unique<cfb::CfbFile>(file);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as cfb with odr engine");
       }
@@ -592,7 +576,7 @@ open_strategy::open_file(std::shared_ptr<abstract::File> file,
       ODR_VERBOSE(logger,
                   "with decoder engine " << decoder_engine_to_string(with));
       try {
-        return open_file(file, as, with, logger);
+        return open_file(std::move(file), as, with, logger);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as file type "
                                 << file_type_to_string(as)
@@ -616,10 +600,7 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file,
   if (file_type == FileType::zip) {
     ODR_VERBOSE(logger, "open as zip");
 
-    // TODO if `file` is in memory we would copy it unnecessarily
-    auto memory_file = std::make_shared<MemoryFile>(*file);
-
-    auto zip_file = std::make_unique<zip::ZipFile>(std::move(memory_file));
+    auto zip_file = std::make_unique<zip::ZipFile>(std::move(file));
 
     auto filesystem = zip_file->archive()->as_filesystem();
 
@@ -639,10 +620,7 @@ open_strategy::open_document_file(std::shared_ptr<abstract::File> file,
   } else if (file_type == FileType::compound_file_binary_format) {
     ODR_VERBOSE(logger, "open as cbf");
 
-    // TODO if `file` is in memory we would copy it unnecessarily
-    auto memory_file = std::make_unique<MemoryFile>(*file);
-
-    auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(memory_file));
+    auto cfb_file = std::make_unique<cfb::CfbFile>(std::move(file));
 
     auto filesystem = cfb_file->archive()->as_filesystem();
 

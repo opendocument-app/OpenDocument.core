@@ -26,4 +26,18 @@ void byte::reverse_bytes(std::u32string &string) {
   }
 }
 
+std::string byte::xor_bytes(const std::string &a, const std::string &b) {
+  if (a.size() != b.size()) {
+    throw std::invalid_argument("a.size() != b.size()");
+  }
+
+  std::string result(a.size(), ' ');
+
+  for (std::size_t i = 0; i < result.size(); ++i) {
+    result[i] = static_cast<char>(a[i] ^ b[i]);
+  }
+
+  return result;
+}
+
 } // namespace odr::internal::util

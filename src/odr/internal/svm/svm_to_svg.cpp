@@ -43,9 +43,9 @@ double transform_y(const std::int32_t y, const Context &context) {
 }
 
 std::string get_svg_color_string(const std::uint32_t color) {
-  const uint8_t blue = color >> 0 & 0xff;
-  const uint8_t green = color >> 8 & 0xff;
-  const uint8_t red = color >> 16 & 0xff;
+  const std::uint8_t blue = color >> 0 & 0xff;
+  const std::uint8_t green = color >> 8 & 0xff;
+  const std::uint8_t red = color >> 16 & 0xff;
   return "rgb(" + std::to_string(red) + "," + std::to_string(green) + "," +
          std::to_string(blue) + ")";
 }

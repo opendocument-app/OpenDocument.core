@@ -10,9 +10,9 @@
 #include <memory>
 #include <string>
 
-namespace odr::internal {
-class MemoryFile;
-} // namespace odr::internal
+namespace odr::abstract {
+class File;
+} // namespace odr::abstract
 
 namespace odr::internal::cfb::impl {
 class CompoundFileReader;
@@ -23,7 +23,7 @@ namespace odr::internal::cfb::util {
 
 class Archive final : public std::enable_shared_from_this<Archive> {
 public:
-  explicit Archive(const std::shared_ptr<MemoryFile> &file);
+  explicit Archive(std::shared_ptr<abstract::File> file);
 
   [[nodiscard]] const impl::CompoundFileReader &cfb() const;
 
@@ -40,21 +40,20 @@ public:
   public:
     Entry(const Entry &) = default;
     Entry(Entry &&) noexcept = default;
-    Entry(const Archive &parent, const impl::CompoundFileEntry &entry)
-        : m_parent{&parent}, m_entry{&entry}, m_path{"/"} {}
-    Entry(const Archive &parent, const impl::CompoundFileEntry &entry,
-          const AbsPath &parent_path)
-        : m_parent{&parent}, m_entry{&entry},
+    Entry(const Archive &archive, const std::uint32_t entry_id,
+          const impl::CompoundFileEntry &entry)
+        : m_archive{&archive}, m_entry_id{entry_id}, m_entry{entry},
+          m_path{"/"} {}
+    Entry(const Archive &archive, const std::uint32_t entry_id,
+          const impl::CompoundFileEntry &entry, const AbsPath &parent_path)
+        : m_archive{&archive}, m_entry_id{entry_id}, m_entry{entry},
           m_path{parent_path.join(RelPath(name()))} {}
     ~Entry() = default;
     Entry &operator=(const Entry &) = default;
     Entry &operator=(Entry &&) noexcept = default;
 
     bool operator==(const Entry &other) const {
-      return m_entry == other.m_entry;
-    }
-    bool operator!=(const Entry &other) const {
-      return m_entry != other.m_entry;
+      return m_entry_id == other.m_entry_id;
     }
 
     [[nodiscard]] bool is_file() const;
@@ -68,8 +67,9 @@ public:
     [[nodiscard]] std::optional<Entry> child() const;
 
   private:
-    const Archive *m_parent;
-    const impl::CompoundFileEntry *m_entry;
+    const Archive *m_archive{};
+    std::uint32_t m_entry_id{};
+    impl::CompoundFileEntry m_entry{};
     AbsPath m_path;
 
     friend Iterator;
@@ -84,13 +84,14 @@ public:
     using reference = const Entry &;
 
     Iterator() = default;
-    Iterator(const Archive &parent, const impl::CompoundFileEntry &entry)
-        : m_entry{Entry(parent, entry)} {
+    Iterator(const Archive &parent, const std::uint32_t entry_id,
+             const impl::CompoundFileEntry &entry)
+        : m_entry{Entry(parent, entry_id, entry)} {
       dig_left_();
     }
-    Iterator(const Archive &parent, const impl::CompoundFileEntry &entry,
-             const AbsPath &parent_path)
-        : m_entry{Entry(parent, entry, parent_path)} {
+    Iterator(const Archive &parent, const std::uint32_t entry_id,
+             const impl::CompoundFileEntry &entry, const AbsPath &parent_path)
+        : m_entry{Entry(parent, entry_id, entry, parent_path)} {
       dig_left_();
     }
 

@@ -3,41 +3,13 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/util/byte_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <cstring>
 #include <stdexcept>
 #include <utility>
 
-namespace {
-template <typename I, typename O> void to_little_endian(I in, O &out) {
-  for (unsigned int i = 0; i < sizeof(in); ++i) {
-    out[i] = in & 0xff;
-    in >>= 8;
-  }
-}
-
-template <typename I, typename O> void to_big_endian(I in, O &out) {
-  for (int i = sizeof(in) - 1; i >= 0; --i) {
-    out[i] = in & 0xff;
-    in >>= 8;
-  }
-}
-
-std::string xor_bytes(const std::string &a, const std::string &b) {
-  if (a.size() != b.size()) {
-    throw std::invalid_argument("a.size() != b.size()");
-  }
-
-  std::string result(a.size(), ' ');
-
-  for (std::size_t i = 0; i < result.size(); ++i) {
-    result[i] = static_cast<char>(a[i] ^ b[i]);
-  }
-
-  return result;
-}
-} // namespace
+namespace {} // namespace
 
 namespace odr::internal::ooxml::crypto {
 
@@ -86,10 +58,10 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
         password_u16_bytes);
     std::string ibytes(4, ' ');
     for (std::uint32_t i = 0; i < ITER_COUNT; ++i) {
-      to_little_endian(i, ibytes);
+      util::byte::to_little_endian(i, ibytes);
       hash = internal::crypto::util::sha1(ibytes + hash);
     }
-    to_little_endian(static_cast<std::uint32_t>(0), ibytes);
+    util::byte::to_little_endian(static_cast<std::uint32_t>(0), ibytes);
     hash = internal::crypto::util::sha1(hash + ibytes);
   }
 
@@ -100,10 +72,12 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
     constexpr std::uint32_t cb_hash = 20;
 
     std::string buf1(64, '\x36');
-    buf1 = xor_bytes(hash, buf1.substr(0, cb_hash)) + buf1.substr(cb_hash);
+    buf1 = util::byte::xor_bytes(hash, buf1.substr(0, cb_hash)) +
+           buf1.substr(cb_hash);
     const auto x1 = internal::crypto::util::sha1(buf1);
     std::string buf2(64, '\x5c');
-    buf2 = xor_bytes(hash, buf2.substr(0, cb_hash)) + buf2.substr(cb_hash);
+    buf2 = util::byte::xor_bytes(hash, buf2.substr(0, cb_hash)) +
+           buf2.substr(cb_hash);
     const auto x2 = internal::crypto::util::sha1(buf2);
     const auto x3 = x1 + x2;
     result = x3.substr(0, cb_required_key_length);

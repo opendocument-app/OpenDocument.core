@@ -23,19 +23,19 @@ std::string svm::read_utf16_string(std::istream &in,
 }
 
 std::string svm::read_uint16_prefixed_ascii_string(std::istream &in) {
-  uint16_t length;
+  std::uint16_t length;
   read_primitive(in, length);
   return read_ascii_string(in, length);
 }
 
 std::string svm::read_uint32_prefixed_utf16_string(std::istream &in) {
-  uint32_t length;
+  std::uint32_t length;
   read_primitive(in, length);
   return read_utf16_string(in, length);
 }
 
 std::string svm::read_uint16_prefixed_utf16_string(std::istream &in) {
-  uint16_t length;
+  std::uint16_t length;
   read_primitive(in, length);
   return read_utf16_string(in, length);
 }

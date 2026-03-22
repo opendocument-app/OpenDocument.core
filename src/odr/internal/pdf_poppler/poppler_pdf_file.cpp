@@ -8,12 +8,7 @@
 
 namespace odr::internal {
 
-PopplerPdfFile::PopplerPdfFile(std::shared_ptr<DiskFile> file)
-    : m_file{std::move(file)} {
-  open(std::nullopt);
-}
-
-PopplerPdfFile::PopplerPdfFile(std::shared_ptr<MemoryFile> file)
+PopplerPdfFile::PopplerPdfFile(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {
   open(std::nullopt);
 }

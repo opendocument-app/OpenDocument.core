@@ -7,10 +7,6 @@ enum class FileType;
 struct FileMeta;
 } // namespace odr
 
-namespace odr::internal {
-class MemoryFile;
-} // namespace odr::internal
-
 namespace odr::internal::cfb::util {
 class Archive;
 }
@@ -19,7 +15,7 @@ namespace odr::internal::cfb {
 
 class CfbFile final : public abstract::ArchiveFile {
 public:
-  explicit CfbFile(const std::shared_ptr<MemoryFile> &file);
+  explicit CfbFile(const std::shared_ptr<abstract::File> &file);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 

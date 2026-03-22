@@ -20,30 +20,24 @@ struct WvWareLegacyMicrosoftFile::ParserState {
 };
 
 WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
-    std::shared_ptr<DiskFile> file)
+    std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {
   GError *error = nullptr;
 
   m_parser_state = std::make_shared<ParserState>();
 
-  m_parser_state->gsf_input =
-      gsf_input_stdio_new(m_file->disk_path()->string().c_str(), &error);
+  if (m_file->disk_path().has_value()) {
+    m_parser_state->gsf_input =
+        gsf_input_stdio_new(m_file->disk_path()->string().c_str(), &error);
+  } else if (m_file->memory_data() != nullptr) {
+    m_parser_state->gsf_input = gsf_input_memory_new(
+        reinterpret_cast<const guint8 *>(m_file->memory_data()),
+        static_cast<gsf_off_t>(m_file->size()), false);
+  }
 
   if (m_parser_state->gsf_input == nullptr) {
     throw std::runtime_error("gsf_input_stdio_new failed");
   }
-
-  open();
-}
-
-WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
-    std::shared_ptr<MemoryFile> file)
-    : m_file{std::move(file)} {
-  m_parser_state = std::make_shared<ParserState>();
-
-  m_parser_state->gsf_input = gsf_input_memory_new(
-      reinterpret_cast<const guint8 *>(m_file->memory_data()),
-      static_cast<gsf_off_t>(m_file->size()), false);
 
   open();
 }
