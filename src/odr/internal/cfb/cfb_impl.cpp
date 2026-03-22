@@ -58,14 +58,14 @@ CompoundFileReader::CompoundFileReader(std::istream &in,
     throw CfbFileCorrupted();
   }
 
-  m_root = parse_entry(in, RootId);
+  parse_entry(in, RootId, m_root);
 
   m_mini_stream_start_sector = m_root.start_sector_location;
 }
 
-CompoundFileEntry
-CompoundFileReader::parse_entry(std::istream &in,
-                                const std::uint32_t entry_id) const {
+void CompoundFileReader::parse_entry(std::istream &in,
+                                     const std::uint32_t entry_id,
+                                     CompoundFileEntry &entry) const {
   const std::uint64_t offset = entry_id * sizeof(CompoundFileEntry);
 
   if (offset >= m_file_size) {
@@ -76,7 +76,15 @@ CompoundFileReader::parse_entry(std::istream &in,
       in, {m_header.first_directory_sector_location, offset});
   const std::uint64_t address = sector_offset_to_address(sector_offset);
   in.seekg(static_cast<std::streampos>(address));
-  return impl::parse_entry(in);
+  impl::parse_entry(in, entry);
+}
+
+CompoundFileEntry
+CompoundFileReader::parse_entry(std::istream &in,
+                                const std::uint32_t entry_id) const {
+  CompoundFileEntry entry{};
+  parse_entry(in, entry_id, entry);
+  return entry;
 }
 
 void CompoundFileReader::read_file(std::istream &in,

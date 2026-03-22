@@ -91,6 +91,9 @@ public:
   [[nodiscard]] CompoundFileEntry parse_entry(std::istream &in,
                                               std::uint32_t entry_id) const;
 
+  void parse_entry(std::istream &in, std::uint32_t entry_id,
+                   CompoundFileEntry &entry) const;
+
   /// Get file(stream) data start with "offset".
   /// The buffer must have enough space to store "len" bytes. Typically, "len"
   /// is derived by the steam length.
