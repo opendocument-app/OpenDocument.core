@@ -1,5 +1,7 @@
 #include <odr/internal/util/byte_util.hpp>
 
+#include <stdexcept>
+
 namespace odr::internal::util {
 
 void byte::reverse_bytes(char16_t *string, const std::size_t length) {

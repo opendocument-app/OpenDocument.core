@@ -8,6 +8,8 @@
 
 namespace odr::internal::cfb::impl {
 
+using Sector = std::uint32_t;
+
 static constexpr std::uint32_t NullId = 0xFFFFFFFF;
 static constexpr std::uint32_t RootId = 0;
 
@@ -35,7 +37,7 @@ struct CompoundFileHeader {
 };
 
 struct CompoundFileEntry {
-  std::uint16_t name[32];
+  char16_t name[32];
   std::uint16_t name_len;
   std::uint8_t type;
   std::uint8_t color_flag;
@@ -91,7 +93,7 @@ public:
   /// The buffer must have enough space to store "len" bytes. Typically, "len"
   /// is derived by the steam length.
   void read_file(std::istream &in, const CompoundFileEntry &entry,
-                 std::uint32_t offset, char *buffer, std::uint32_t len) const;
+                 std::uint64_t offset, char *buffer, std::uint64_t len) const;
 
   void visit_descendants(std::istream &in, const CompoundFileEntry &entry,
                          int max_level,
@@ -99,11 +101,11 @@ public:
 
 private:
   struct SectorOffset final {
-    std::uint32_t sector;
-    std::uint32_t offset;
+    Sector sector;
+    std::uint64_t offset;
   };
 
-  static constexpr std::uint32_t MAX_REG_SECT = 0xFFFFFFFA;
+  static constexpr Sector MaxSector = 0xFFFFFFFA;
 
   // Enum entries with same level, including 'entry' itself
   void visit_descendants(std::istream &in, const CompoundFileEntry &entry,
@@ -112,23 +114,23 @@ private:
                          const EnumFilesCallback &callback) const;
 
   void read_stream(std::istream &in, const SectorOffset &sector_offset,
-                   char *buffer, std::uint32_t len) const;
+                   char *buffer, std::uint64_t length) const;
 
   // Same logic as "ReadStream" except that use MiniStream functions instead
   void read_mini_stream(std::istream &in, const SectorOffset &sector_offset,
-                        char *buffer, std::uint32_t len) const;
+                        char *buffer, std::uint64_t length) const;
 
-  [[nodiscard]] std::uint32_t resolve_next_sector(std::istream &in,
-                                                  std::uint32_t sector) const;
+  [[nodiscard]] Sector resolve_next_sector(std::istream &in,
+                                           Sector sector) const;
 
-  [[nodiscard]] std::uint32_t
-  resolve_next_mini_sector(std::istream &in, std::uint32_t mini_sector) const;
+  [[nodiscard]] Sector resolve_next_mini_sector(std::istream &in,
+                                                Sector mini_sector) const;
 
   /// Get absolute address from sector and offset.
-  [[nodiscard]] std::uint32_t
+  [[nodiscard]] std::uint64_t
   sector_offset_to_address(const SectorOffset &sector_offset) const;
 
-  [[nodiscard]] std::uint32_t
+  [[nodiscard]] std::uint64_t
   mini_sector_offset_to_address(std::istream &in,
                                 const SectorOffset &sector_offset) const;
 
@@ -148,8 +150,8 @@ private:
   std::uint64_t m_file_size{};
   CompoundFileHeader m_header{};
   CompoundFileEntry m_root{};
-  std::uint32_t m_sector_size{512};
-  std::uint32_t m_mini_sector_size{64};
+  std::uint64_t m_sector_size{512};
+  std::uint64_t m_mini_sector_size{64};
   std::uint32_t m_mini_stream_start_sector{0};
 };
 

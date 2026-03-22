@@ -61,7 +61,7 @@ CompoundFileReader::CompoundFileReader(std::istream &in,
 CompoundFileEntry
 CompoundFileReader::parse_entry(std::istream &in,
                                 const std::uint32_t entry_id) const {
-  const std::uint32_t offset = entry_id * sizeof(CompoundFileEntry);
+  const std::uint64_t offset = entry_id * sizeof(CompoundFileEntry);
 
   if (offset >= m_file_size) {
     throw std::invalid_argument("");
@@ -69,15 +69,15 @@ CompoundFileReader::parse_entry(std::istream &in,
 
   const SectorOffset sector_offset = normalize_sector_offset(
       in, {m_header.first_directory_sector_location, offset});
-  const std::uint32_t address = sector_offset_to_address(sector_offset);
-  in.seekg(address);
+  const std::uint64_t address = sector_offset_to_address(sector_offset);
+  in.seekg(static_cast<std::streampos>(address));
   return impl::parse_entry(in);
 }
 
 void CompoundFileReader::read_file(std::istream &in,
                                    const CompoundFileEntry &entry,
-                                   const std::uint32_t offset, char *buffer,
-                                   const std::uint32_t len) const {
+                                   const std::uint64_t offset, char *buffer,
+                                   const std::uint64_t len) const {
   if (offset > entry.size) {
     throw std::invalid_argument(
         "offset bigger than entry size: " + std::to_string(offset) + " > " +
@@ -117,8 +117,7 @@ void CompoundFileReader::visit_descendants(
     const CompoundFileEntry child = parse_entry(in, entry.child_id);
 
     std::u16string new_dir = dir;
-    new_dir.append(reinterpret_cast<const char16_t *>(entry.name),
-                   entry.name_len / 2);
+    new_dir.append(entry.name, entry.name_len / 2);
     visit_descendants(in, child, current_level + 1, max_level, new_dir,
                       callback);
   }
@@ -140,26 +139,26 @@ void CompoundFileReader::visit_descendants(
 
 void CompoundFileReader::read_stream(std::istream &in,
                                      const SectorOffset &sector_offset,
-                                     char *buffer, std::uint32_t len) const {
+                                     char *buffer, std::uint64_t length) const {
   SectorOffset current_sector_offset =
       normalize_sector_offset(in, sector_offset);
 
   // copy as many as possible in each step
   // copy_length typically iterate as: m_sectorSize - offset   --> m_sectorSize
   // -->   m_sectorSize  --> ... -->    remaining
-  while (len > 0) {
-    const std::uint32_t address =
+  while (length > 0) {
+    const std::uint64_t address =
         sector_offset_to_address(current_sector_offset);
     const std::size_t copy_length =
-        std::min(len, m_sector_size - current_sector_offset.offset);
+        std::min(length, m_sector_size - current_sector_offset.offset);
     if (address + copy_length > m_file_size) {
       throw CfbFileCorrupted();
     }
 
-    in.seekg(address);
+    in.seekg(static_cast<std::streampos>(address));
     in.read(buffer, static_cast<std::streamsize>(copy_length));
     buffer += copy_length;
-    len -= copy_length;
+    length -= copy_length;
 
     current_sector_offset.sector =
         resolve_next_sector(in, current_sector_offset.sector);
@@ -170,26 +169,26 @@ void CompoundFileReader::read_stream(std::istream &in,
 void CompoundFileReader::read_mini_stream(std::istream &in,
                                           const SectorOffset &sector_offset,
                                           char *buffer,
-                                          std::uint32_t len) const {
+                                          std::uint64_t length) const {
   SectorOffset current_sector_offset =
       normalize_mini_sector_offset(in, sector_offset);
 
   // copy as many as possible in each step
   // copy_length typically iterate as: m_sectorSize - offset   --> m_sectorSize
   // -->   m_sectorSize  --> ... -->    remaining
-  while (len > 0) {
-    const std::uint32_t address =
+  while (length > 0) {
+    const std::uint64_t address =
         mini_sector_offset_to_address(in, current_sector_offset);
     const std::size_t copy_length =
-        std::min(len, m_mini_sector_size - current_sector_offset.offset);
+        std::min(length, m_mini_sector_size - current_sector_offset.offset);
     if (address + copy_length > m_file_size) {
       throw CfbFileCorrupted();
     }
 
-    in.seekg(address);
+    in.seekg(static_cast<std::streampos>(address));
     in.read(buffer, static_cast<std::streamsize>(copy_length));
     buffer += copy_length;
-    len -= copy_length;
+    length -= copy_length;
 
     current_sector_offset.sector =
         resolve_next_mini_sector(in, current_sector_offset.sector);
@@ -197,35 +196,34 @@ void CompoundFileReader::read_mini_stream(std::istream &in,
   }
 }
 
-std::uint32_t
-CompoundFileReader::resolve_next_sector(std::istream &in,
-                                        const std::uint32_t sector) const {
+Sector CompoundFileReader::resolve_next_sector(std::istream &in,
+                                               const Sector sector) const {
   // lookup FAT
   const std::uint32_t entriesPerSector = m_sector_size / 4;
   const std::uint32_t fatSectorNumber = sector / entriesPerSector;
   const std::uint32_t fatSectorLocation =
       resolve_fat_sector_location(in, fatSectorNumber);
-  const std::uint32_t address = sector_offset_to_address(
+  const std::uint64_t address = sector_offset_to_address(
       {fatSectorLocation, sector % entriesPerSector * 4});
-  in.seekg(address);
+  in.seekg(static_cast<std::streampos>(address));
   return parse_uint32(in);
 }
 
-std::uint32_t CompoundFileReader::resolve_next_mini_sector(
+Sector CompoundFileReader::resolve_next_mini_sector(
     std::istream &in, const std::uint32_t mini_sector) const {
   const SectorOffset sector_offset = normalize_sector_offset(
       in, {m_header.first_mini_fat_sector_location, mini_sector * 4});
-  const std::uint32_t address = sector_offset_to_address(sector_offset);
-  in.seekg(address);
+  const std::uint64_t address = sector_offset_to_address(sector_offset);
+  in.seekg(static_cast<std::streampos>(address));
   return parse_uint32(in);
 }
 
-std::uint32_t CompoundFileReader::sector_offset_to_address(
+std::uint64_t CompoundFileReader::sector_offset_to_address(
     const SectorOffset &sector_offset) const {
-  const std::uint32_t address = sector_offset.offset + m_sector_size +
+  const std::uint64_t address = sector_offset.offset + m_sector_size +
                                 sector_offset.sector * m_sector_size;
 
-  if (sector_offset.sector >= MAX_REG_SECT ||
+  if (sector_offset.sector >= MaxSector ||
       sector_offset.offset >= m_sector_size || address >= m_file_size) {
     throw CfbFileCorrupted();
   }
@@ -233,12 +231,12 @@ std::uint32_t CompoundFileReader::sector_offset_to_address(
   return address;
 }
 
-std::uint32_t CompoundFileReader::mini_sector_offset_to_address(
+std::uint64_t CompoundFileReader::mini_sector_offset_to_address(
     std::istream &in, const SectorOffset &sector_offset) const {
-  const std::uint32_t address =
+  const std::uint64_t address =
       sector_offset.offset + sector_offset.sector * m_mini_sector_size;
 
-  if (sector_offset.sector >= MAX_REG_SECT ||
+  if (sector_offset.sector >= MaxSector ||
       sector_offset.offset >= m_mini_sector_size || address >= m_file_size) {
     throw CfbFileCorrupted();
   }
@@ -278,14 +276,14 @@ std::uint32_t CompoundFileReader::resolve_fat_sector_location(
   std::uint32_t difatSectorLocation = m_header.first_difat_sector_location;
   while (fat_sector_number >= entriesPerSector) {
     fat_sector_number -= entriesPerSector;
-    const std::uint32_t address =
+    const std::uint64_t address =
         sector_offset_to_address({difatSectorLocation, m_sector_size - 4});
-    in.seekg(address);
+    in.seekg(static_cast<std::streampos>(address));
     difatSectorLocation = parse_uint32(in);
   }
-  const std::uint32_t address =
+  const std::uint64_t address =
       sector_offset_to_address({difatSectorLocation, fat_sector_number * 4});
-  in.seekg(address);
+  in.seekg(static_cast<std::streampos>(address));
   return parse_uint32(in);
 }
 

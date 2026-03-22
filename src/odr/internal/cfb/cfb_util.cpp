@@ -25,9 +25,9 @@ public:
       return traits_type::eof();
     }
 
-    const std::uint32_t remaining = m_entry->size - m_offset;
-    const std::uint32_t amount =
-        std::min(remaining, static_cast<std::uint32_t>(m_buffer.size()));
+    const std::uint64_t remaining = m_entry->size - m_offset;
+    const std::uint64_t amount =
+        std::min<std::uint64_t>(remaining, m_buffer.size());
     m_reader->read_file(*m_stream, *m_entry, m_offset, m_buffer.data(), amount);
     m_offset += amount;
     setg(m_buffer.data(), m_buffer.data(), m_buffer.data() + amount);
@@ -106,8 +106,8 @@ std::unique_ptr<abstract::File> Archive::Entry::file() const {
 }
 
 std::string Archive::Entry::name() const {
-  return internal::util::string::c16str_to_string(
-      reinterpret_cast<const char16_t *>(m_entry.name), m_entry.name_len - 2);
+  return internal::util::string::c16str_to_string(m_entry.name,
+                                                  m_entry.name_len - 2);
 }
 
 std::optional<Archive::Entry> Archive::Entry::left() const {
