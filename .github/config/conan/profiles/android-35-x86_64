@@ -21,6 +21,7 @@ compiler.libcxx=c++_shared
 
 [conf]
 tools.android:ndk_path={{android_home}}/ndk/{{ndk_version}}
+tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccache', 'CMAKE_C_COMPILER_LAUNCHER': 'ccache'}
 
 [buildenv]
 # Cross compile toolchain evn vars are required to build

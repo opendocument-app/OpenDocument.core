@@ -8,4 +8,9 @@ compiler.libcxx=libc++
 os=Macos
 
 [conf]
-tools.build:compiler_executables={'c': 'ccache clang', 'cpp': 'ccache clang++'}
+tools.build:compiler_executables={'c': 'clang', 'cpp': 'clang++'}
+tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccache', 'CMAKE_C_COMPILER_LAUNCHER': 'ccache'}
+
+[buildenv]
+CC=ccache clang
+CXX=ccache clang++
