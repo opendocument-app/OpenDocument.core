@@ -7,11 +7,6 @@ enum class FileType;
 struct FileMeta;
 } // namespace odr
 
-namespace odr::internal {
-class MemoryFile;
-class DiskFile;
-} // namespace odr::internal
-
 namespace odr::internal::zip {
 namespace util {
 class Archive;
@@ -19,8 +14,7 @@ class Archive;
 
 class ZipFile final : public abstract::ArchiveFile {
 public:
-  explicit ZipFile(const std::shared_ptr<MemoryFile> &file);
-  explicit ZipFile(const std::shared_ptr<DiskFile> &file);
+  explicit ZipFile(std::shared_ptr<abstract::File> file);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 

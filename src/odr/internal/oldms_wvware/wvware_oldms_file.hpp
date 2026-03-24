@@ -10,16 +10,10 @@ struct _wvParseStruct;
 using wvParseStruct = struct _wvParseStruct;
 
 namespace odr::internal {
-class DiskFile;
-class MemoryFile;
-} // namespace odr::internal
-
-namespace odr::internal {
 
 class WvWareLegacyMicrosoftFile final : public abstract::DocumentFile {
 public:
-  explicit WvWareLegacyMicrosoftFile(std::shared_ptr<DiskFile> file);
-  explicit WvWareLegacyMicrosoftFile(std::shared_ptr<MemoryFile> file);
+  explicit WvWareLegacyMicrosoftFile(std::shared_ptr<abstract::File> file);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 

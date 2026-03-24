@@ -18,13 +18,16 @@ CfbArchive::CfbArchive(std::shared_ptr<util::Archive> archive)
     : m_cfb{std::move(archive)} {}
 
 std::shared_ptr<abstract::Filesystem> CfbArchive::as_filesystem() const {
+  // TODO return an actual filesystem view
   auto filesystem = std::make_shared<VirtualFilesystem>();
 
   for (const auto &e : *m_cfb) {
+    const AbsPath path = Path(e.path()).make_absolute();
+
     if (e.is_directory()) {
-      filesystem->create_directory(e.path());
+      filesystem->create_directory(path);
     } else if (e.is_file()) {
-      filesystem->copy(e.file(), e.path());
+      filesystem->copy(e.file(), path);
     }
   }
 

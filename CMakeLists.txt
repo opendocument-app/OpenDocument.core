@@ -178,6 +178,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/text/text_util.cpp"
 
         "src/odr/internal/util/byte_util.cpp"
+        "src/odr/internal/util/byte_stream_util.cpp"
         "src/odr/internal/util/document_util.cpp"
         "src/odr/internal/util/file_util.cpp"
         "src/odr/internal/util/hash_util.cpp"

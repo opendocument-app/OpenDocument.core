@@ -5,11 +5,8 @@
 
 namespace odr::internal::zip {
 
-ZipFile::ZipFile(const std::shared_ptr<MemoryFile> &file)
-    : m_zip{std::make_shared<util::Archive>(file)} {}
-
-ZipFile::ZipFile(const std::shared_ptr<DiskFile> &file)
-    : m_zip{std::make_shared<util::Archive>(file)} {}
+ZipFile::ZipFile(std::shared_ptr<abstract::File> file)
+    : m_zip{std::make_shared<util::Archive>(std::move(file))} {}
 
 std::shared_ptr<abstract::File> ZipFile::file() const noexcept {
   return m_zip->file();
