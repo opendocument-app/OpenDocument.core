@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: checkout conan-odr-index
+        run: git submodule update --init --depth 1 conan-odr-index
 
       - name: ubuntu install ccache
         if: runner.os == 'Linux'
@@ -50,11 +52,6 @@ jobs:
         if: startsWith(matrix.host_profile, 'android')
         run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
 
-      - name: fetch conan-odr-index
-        uses: actions/checkout@v4
-        with:
-          repository: opendocument-app/conan-odr-index
-          path: conan-odr-index
       - name: export conan-odr-index
         run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
