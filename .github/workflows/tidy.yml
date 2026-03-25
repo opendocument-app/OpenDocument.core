@@ -43,11 +43,6 @@ jobs:
       - name: install python dependencies
         run: pip install --upgrade pip conan
 
-      - name: fetch conan-odr-index
-        uses: actions/checkout@v4
-        with:
-          repository: opendocument-app/conan-odr-index
-          path: conan-odr-index
       - name: export conan-odr-index
         run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
