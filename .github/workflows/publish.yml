@@ -16,6 +16,17 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
+      - name: ubuntu install ccache
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt install ccache
+          ccache -V
+      - name: macos install ccache
+        if: runner.os == 'macOS'
+        run: |
+          brew install ccache
+          ccache -V
+
       - name: set up python 3.12
         uses: actions/setup-python@v5
         with:
