@@ -12,4 +12,4 @@
 	url = git@github.com:opendocument-app/OpenDocument.test-private.output.git
 [submodule "conan-odr-index"]
 	path = conan-odr-index
-	url = https://github.com/opendocument-app/OpenDocument.core.git
+	url = https://github.com/opendocument-app/conan-odr-index.git
