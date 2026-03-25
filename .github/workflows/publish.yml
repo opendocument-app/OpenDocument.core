@@ -14,7 +14,7 @@ jobs:
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: set up python 3.12
         uses: actions/setup-python@v5
