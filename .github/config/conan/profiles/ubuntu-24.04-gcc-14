@@ -12,5 +12,5 @@ tools.build:compiler_executables={'c': 'gcc-14', 'cpp': 'g++-14'}
 tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccache', 'CMAKE_C_COMPILER_LAUNCHER': 'ccache'}
 
 [buildenv]
-CC=ccache g++-14
+CC=ccache gcc-14
 CXX=ccache g++-14
