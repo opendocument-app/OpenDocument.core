@@ -168,7 +168,7 @@ jobs:
           path: cli
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         with:
           context: cli
           push: true
