@@ -124,14 +124,6 @@ jobs:
             build/test/Release/odr_test.exe
             build/_deps/odr.js-src
 
-      - name: Artifact .conan2/p dir
-        uses: actions/upload-artifact@v4
-        with:
-          name: conan2-${{ matrix.host_profile }}
-          path: ${{ env.CONAN_HOME }}
-          if-no-files-found: error
-          compression-level: 0
-
   docker:
     needs: build
     runs-on: ${{ matrix.os }}
@@ -230,12 +222,6 @@ jobs:
         with:
           name: bin-${{ matrix.host_profile }}
           path: .
-
-      - name: Download .conan2/p dir
-        uses: actions/download-artifact@v4
-        with:
-          name: conan2-${{ matrix.host_profile }}
-          path: ~/.conan2/p
 
       - name: fix artifact permissions
         if: runner.os != 'Windows'
