@@ -123,6 +123,7 @@ jobs:
             build/test/odr_test
             build/test/Release/odr_test.exe
             build/_deps/odr.js-src
+          if-no-files-found: error
 
       # TODO this is only needed because of data files from dependencies; there should be a better solution
       - name: upload conan2 directory to github
@@ -130,6 +131,7 @@ jobs:
         with:
           name: conan2-${{ matrix.host_profile }}
           path: ${{ env.CONAN_HOME }}
+          if-no-files-found: error
 
   docker:
     needs: build
