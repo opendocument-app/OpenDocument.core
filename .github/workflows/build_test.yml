@@ -83,8 +83,6 @@ jobs:
           --profile:build '${{ matrix.build_profile }}'
           --build missing
 
-      - run: ls -la ${{ env.CONAN_HOME }}
-
       - name: cmake
         if: runner.os != 'Windows'
         run: >
@@ -110,15 +108,11 @@ jobs:
           -DWITH_PDF2HTMLEX=OFF
           -DWITH_WVWARE=OFF
 
-      - run: ls -la ${{ env.CONAN_HOME }}
-
       - name: build
         run: cmake --build build --config Release
 
       - name: install
         run: cmake --build build --target install --config Release
-
-      - run: ls -la ${{ env.CONAN_HOME }}
 
       - name: upload binaries to github
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
@@ -130,8 +124,7 @@ jobs:
             build/test/Release/odr_test.exe
             build/_deps/odr.js-src
           if-no-files-found: error
-
-      - run: ls -la ${{ env.CONAN_HOME }}
+          include-hidden-files: true
 
       # TODO this is only needed because of data files from dependencies; there should be a better solution
       - name: upload conan directory to github
@@ -140,6 +133,7 @@ jobs:
           name: conan-${{ matrix.host_profile }}
           path: ${{ env.CONAN_HOME }}
           if-no-files-found: error
+          include-hidden-files: true
 
   docker:
     needs: build
