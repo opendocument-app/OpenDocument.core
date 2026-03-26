@@ -45,7 +45,7 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("nlohmann_json/3.11.3")
         self.requires("vincentlaucsb-csv-parser/2.3.0")
         self.requires("uchardet/0.0.8")
-        self.requires("utfcpp/4.0.4")
+        self.requires("utfcpp/4.0.9")
         if self.options.get_safe("with_pdf2htmlEX", False):
             self.requires("pdf2htmlex/0.18.8.rc1-odr-git-eb5d291")
         if self.options.get_safe("with_wvWare", False):
