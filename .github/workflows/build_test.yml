@@ -105,7 +105,7 @@ jobs:
         run: cmake --build build --target install --config Release
 
       - name: upload binaries to github
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: bin-${{ matrix.host_profile }}
           path: |
@@ -115,7 +115,7 @@ jobs:
             build/_deps/odr.js-src
 
       - name: Artifact .conan2/p dir
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: conan2-${{ matrix.host_profile }}
           path: ~/.conan2/p
@@ -162,7 +162,7 @@ jobs:
             type=sha
 
       - name: download binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: bin-${{ matrix.host_profile }}
           path: cli
@@ -216,13 +216,13 @@ jobs:
         run: pip install htmlcmp==1.2.1
 
       - name: download binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: bin-${{ matrix.host_profile }}
           path: .
 
       - name: Download .conan2/p dir
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: conan2-${{ matrix.host_profile }}
           path: ~/.conan2/p
