@@ -7,9 +7,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CCACHE_DIR: ${{ github.workspace }}/ccache
-  CCACHE_MAXSIZE: 500M
-  CCACHE_KEY_SUFFIX: r22
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 1G
+  CCACHE_KEY_SUFFIX: r1
+  CONAN_HOME: ${{ github.workspace }}/.conan2
+  CONAN_KEY_SUFFIX: r1
 
 jobs:
   build:
@@ -27,6 +29,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: checkout conan-odr-index
+        run: git submodule update --init --depth 1 conan-odr-index
 
       - name: ubuntu install ccache
         if: runner.os == 'Linux'
@@ -39,7 +43,7 @@ jobs:
           brew install ccache
           ccache -V
 
-      - name: setup python 3.12
+      - name: setup python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: 3.14
@@ -50,28 +54,34 @@ jobs:
         if: startsWith(matrix.host_profile, 'android')
         run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
 
-      - name: conan remote
-        run: |
-          conan remote remove "*"
-          conan remote add conancenter https://center2.conan.io
-          conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: cache conan
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+        with:
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
+          restore-keys: |
+            conan-${{ matrix.host_profile }}-
+
+      - name: export conan-odr-index
+        run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
         run: conan config install .github/config/conan
+
+      - name: cache ccache
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
+          restore-keys: |
+            ccache-${{ matrix.host_profile }}-
+
       - name: conan install
         run: >
           conan install .
           --lockfile conan.lock
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
-          --build=missing
-
-      - name: cache
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
-        with:
-          path: ${{ github.workspace }}/ccache
-          key: ${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
-          restore-keys: |
-            ${{ matrix.host_profile }}-
+          --build missing
 
       - name: cmake
         if: runner.os != 'Windows'
@@ -113,14 +123,17 @@ jobs:
             build/test/odr_test
             build/test/Release/odr_test.exe
             build/_deps/odr.js-src
+          if-no-files-found: error
+          include-hidden-files: true
 
-      - name: Artifact .conan2/p dir
+      # TODO this is only needed because of data files from dependencies; there should be a better solution
+      - name: upload conan directory to github
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
-          name: conan2-${{ matrix.host_profile }}
-          path: ~/.conan2/p
+          name: conan-${{ matrix.host_profile }}
+          path: ${{ env.CONAN_HOME }}
           if-no-files-found: error
-          compression-level: 0
+          include-hidden-files: true
 
   docker:
     needs: build
@@ -208,7 +221,7 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install tidy-html5
 
-      - name: set up python 3.12
+      - name: set up python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: 3.14
@@ -221,11 +234,11 @@ jobs:
           name: bin-${{ matrix.host_profile }}
           path: .
 
-      - name: Download .conan2/p dir
+      - name: download conan directory
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: conan2-${{ matrix.host_profile }}
-          path: ~/.conan2/p
+          name: conan-${{ matrix.host_profile }}
+          path: ${{ env.CONAN_HOME }}
 
       - name: fix artifact permissions
         if: runner.os != 'Windows'
@@ -275,6 +288,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: checkout conan-odr-index
+        run: git submodule update --init --depth 1 conan-odr-index
 
       - name: ubuntu install ccache
         if: runner.os == 'Linux'
@@ -287,7 +302,7 @@ jobs:
           brew install ccache
           ccache -V
 
-      - name: set up python 3.12
+      - name: set up python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: 3.14
@@ -298,13 +313,29 @@ jobs:
         if: startsWith(matrix.host_profile, 'android')
         run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
 
-      - name: conan remote
-        run: conan remote add odr https://artifactory.opendocument.app/artifactory/api/conan/conan
+      - name: cache conan
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+        with:
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
+          restore-keys: |
+            conan-${{ matrix.host_profile }}-
+
+      - name: export conan-odr-index
+        run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
         run: conan config install .github/config/conan
 
       - name: conan odrcore
         run: conan export . --name odrcore --version 0.0.0
+
+      - name: cache ccache
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
+          restore-keys: |
+            ccache-${{ matrix.host_profile }}-
 
       - name: conan install
         run: >
@@ -312,16 +343,16 @@ jobs:
           --lockfile conan.lock
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
-          --output-folder=build
-          --build=missing
+          --output-folder build
+          --build missing
 
       - name: conan downstream
         run: >
           conan install test/downstream
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
-          --output-folder=test/downstream/build
-          --build=missing
+          --output-folder test/downstream/build
+          --build missing
 
       - name: cmake
         run: >

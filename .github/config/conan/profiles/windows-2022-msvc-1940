@@ -6,3 +6,11 @@ compiler.version=194
 compiler.cppstd=20
 compiler.runtime=dynamic
 os=Windows
+
+[conf]
+tools.build:compiler_executables={'c': 'msvc', 'cpp': 'msvc'}
+tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccache', 'CMAKE_C_COMPILER_LAUNCHER': 'ccache'}
+
+[buildenv]
+CC=ccache msvc
+CXX=ccache msvc

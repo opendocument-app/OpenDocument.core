@@ -9,3 +9,8 @@ os=Linux
 
 [conf]
 tools.build:compiler_executables={'c': 'clang-18', 'cpp': 'clang++-18'}
+tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccache', 'CMAKE_C_COMPILER_LAUNCHER': 'ccache'}
+
+[buildenv]
+CC=ccache clang-18
+CXX=ccache clang++-18
