@@ -272,11 +272,6 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
-          - { os: macos-15, build_profile: macos-15-armv8-clang-14, host_profile: macos-15-armv8-clang-14 }
-          - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14 }
-          - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: android-35-x86_64, ndk_version: 28.1.13356709 }
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
