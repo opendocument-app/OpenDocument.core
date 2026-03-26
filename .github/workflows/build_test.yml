@@ -128,7 +128,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: conan2-${{ matrix.host_profile }}
-          path: ~/.conan2/p
+          path: ${{ env.CONAN_HOME }}
           if-no-files-found: error
           compression-level: 0
 
