@@ -83,6 +83,8 @@ jobs:
           --profile:build '${{ matrix.build_profile }}'
           --build missing
 
+      - run: ls -la ${{ env.CONAN_HOME }}
+
       - name: cmake
         if: runner.os != 'Windows'
         run: >
@@ -108,11 +110,15 @@ jobs:
           -DWITH_PDF2HTMLEX=OFF
           -DWITH_WVWARE=OFF
 
+      - run: ls -la ${{ env.CONAN_HOME }}
+
       - name: build
         run: cmake --build build --config Release
 
       - name: install
         run: cmake --build build --target install --config Release
+
+      - run: ls -la ${{ env.CONAN_HOME }}
 
       - name: upload binaries to github
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
@@ -125,11 +131,13 @@ jobs:
             build/_deps/odr.js-src
           if-no-files-found: error
 
+      - run: ls -la ${{ env.CONAN_HOME }}
+
       # TODO this is only needed because of data files from dependencies; there should be a better solution
-      - name: upload conan2 directory to github
+      - name: upload conan directory to github
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
-          name: conan2-${{ matrix.host_profile }}
+          name: conan-${{ matrix.host_profile }}
           path: ${{ env.CONAN_HOME }}
           if-no-files-found: error
 
@@ -232,10 +240,10 @@ jobs:
           name: bin-${{ matrix.host_profile }}
           path: .
 
-      - name: download conan2 directory
+      - name: download conan directory
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: conan2-${{ matrix.host_profile }}
+          name: conan-${{ matrix.host_profile }}
           path: ${{ env.CONAN_HOME }}
 
       - name: fix artifact permissions
